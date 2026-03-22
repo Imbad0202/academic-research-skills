@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v4.0.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v4.0.3)
+[![Version](https://img.shields.io/badge/version-v4.1.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v4.1.0)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -12,7 +12,7 @@ A comprehensive suite of Claude Code skills for academic research, covering the 
 
 ## Features
 
-- **Deep Research** — 13-agent research team with Socratic guided mode + systematic review / PRISMA
+- **Deep Research** — 13-agent research team with Socratic guided mode + systematic review / PRISMA + SCR Loop
 - **Academic Paper** — 12-agent paper writing with LaTeX output hardening, visualization, revision coaching, and citation conversion
 - **Academic Paper Reviewer** — Multi-perspective peer review with 0-100 quality rubrics (EIC + 3 dynamic reviewers + Devil's Advocate)
 - **Academic Pipeline** — Full 10-stage pipeline orchestrator with adaptive checkpoints, claim verification, and material passport
@@ -29,7 +29,7 @@ Research → Write → Integrity Check → Review (5-person) → Socratic Coachi
 1. Adaptive checkpoints (FULL / SLIM / MANDATORY) after every stage
 2. Pre-review integrity verification — 100% reference, data, and claim validation (Phase A-E)
 3. Two-stage review with Devil's Advocate + 0-100 quality rubrics
-4. Socratic revision coaching between review and revision stages
+4. Socratic revision coaching with SCR Loop (State-Challenge-Reflect) between review and revision stages
 5. Final integrity verification before publication
 6. Output: MD + DOCX + LaTeX (APA 7.0 `apa7` class / IEEE / Chicago) → PDF via tectonic
 7. Post-pipeline process summary with 6-dimension collaboration quality scoring (1–100)

@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v4.0.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v4.0.3)
+[![Version](https://img.shields.io/badge/version-v4.1.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v4.1.0)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 

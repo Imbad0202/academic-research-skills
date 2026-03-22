@@ -197,6 +197,33 @@ This consistency ensures a coherent experience when users switch between differe
 
 ---
 
+## SCR Overlay Protocol
+
+The SCR (State-Challenge-Reflect) overlay works ON TOP of existing Socratic questioning. It does not replace any existing mechanism; it adds a commitment-tracking layer that deepens the learning impact.
+
+### Mapping to Socratic Functions
+
+| SCR Phase | Socratic Function | Timing | Purpose |
+|-----------|------------------|--------|---------|
+| **State** (表態) | Clarifying + Probing | Before presenting data/evidence | Collect user's prediction or self-assessment |
+| **Challenge** (挑戰) | Structuring + Challenging | After commitment collected | Present information that tests the commitment |
+| **Reflect** (反思) | Probing + Structuring | After divergence revealed | Guide user to self-explain the gap |
+
+### Design Constraints
+1. The user never sees the words "SCR", "commitment gate", or "divergence reveal"
+2. The experience feels like a natural Socratic dialogue that happens to ask for predictions before showing data
+3. The mechanism is invisible; the learning is visible
+4. Commitment questions should feel like natural warm-up questions, not formal assessments
+5. If the user's commitment turns out to be accurate, acknowledge it and move on — no need to force divergence where none exists
+
+### Integration with Convergence Signals
+The new S5/C5 (Self-Calibration) signal tracks whether the user's commitments become more accurate over the dialogue. This signal:
+- Strengthens convergence when present (user is both understanding AND self-aware)
+- Does NOT block convergence when absent (understanding can exist without perfect self-calibration)
+- Provides valuable coaching feedback at dialogue end
+
+---
+
 ## References
 
 - Paul, R., & Elder, L. (2007). *Critical Thinking: The Art of Socratic Questioning*. Journal of Developmental Education, 31(1), 36-37.
