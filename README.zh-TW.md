@@ -448,6 +448,15 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## 更新紀錄
 
+### v4.1.0 (2026-03-22) — SCR Loop Phase 1：State-Challenge-Reflect 反思機制
+- **Socratic Mentor Agent**（deep-research + academic-paper）：整合 SCR（表態-挑戰-反思）協議
+  - **Commitment Gate**：在每個層級/章節轉換前收集使用者預測，再呈現資料
+  - **Certainty-Triggered Contradiction**：偵測高信心語句（「顯然」「毫無疑問」），自動引入反面觀點
+  - **Adaptive Intensity**：追蹤 commitment 準確率，動態調整挑戰頻率
+  - **Self-Calibration Signal (S5)**：新收斂訊號，追蹤使用者在對話中是否展現自我校準能力
+- `deep-research/references/socratic_questioning_framework.md`：新增 SCR Overlay Protocol，對映 SCR 三階段到蘇格拉底功能
+- 新增 `CHANGELOG.md`
+
 ### v2.7 (2026-03-09) — 誠信驗證 v2.0：反幻覺全面改版
 - **integrity_verification_agent v2.0**：Anti-Hallucination Mandate（禁止靠 AI 記憶驗證）、消除灰色地帶分類（僅 VERIFIED/NOT_FOUND/MISMATCH）、強制 WebSearch audit trail、Stage 4.5 獨立全面驗證、Gray-Zone Prevention Rule
 - **已知引用幻覺 Pattern**：5 類分類法（TF/PAC/IH/PH/SH，來自 GPTZero × NeurIPS 2025 研究）、5 種複合欺騙模式、實戰案例、文獻統計

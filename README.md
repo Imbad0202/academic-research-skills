@@ -449,6 +449,15 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## Changelog
 
+### v4.1.0 (2026-03-22) — SCR Loop Phase 1: State-Challenge-Reflect
+- **Socratic Mentor Agent** (deep-research + academic-paper): SCR (State-Challenge-Reflect) protocol integration
+  - **Commitment Gates**: Collect user predictions before presenting evidence at each layer/chapter transition
+  - **Certainty-Triggered Contradiction**: Detect high-confidence language ("obviously", "clearly") and introduce counterpoints
+  - **Adaptive Intensity**: Track commitment accuracy, dynamically adjust challenge frequency
+  - **Self-Calibration Signal (S5)**: New convergence signal tracking user's self-calibration growth across dialogue
+- `deep-research/references/socratic_questioning_framework.md`: SCR Overlay Protocol mapping SCR phases to Socratic functions
+- Added `CHANGELOG.md`
+
 ### v2.7 (2026-03-09) — Integrity Verification v2.0: Anti-Hallucination Overhaul
 - **integrity_verification_agent v2.0**: Anti-Hallucination Mandate (no AI memory verification), eliminated gray-zone classifications (VERIFIED/NOT_FOUND/MISMATCH only), mandatory WebSearch audit trail for every reference, Stage 4.5 fresh independent verification, Gray-Zone Prevention Rule
 - **Known Hallucination Patterns**: 5-type taxonomy (TF/PAC/IH/PH/SH) from GPTZero × NeurIPS 2025 study, 5 compound deception patterns, real-world case study, literature statistics
