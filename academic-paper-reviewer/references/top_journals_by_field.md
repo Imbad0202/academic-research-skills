@@ -118,7 +118,25 @@ This document is used by `field_analyst_agent` and `eic_agent` as a reference fo
 
 ---
 
-## 7. Interdisciplinary
+## 7. Information Systems (Senior Scholars' Basket of 11)
+
+| Journal | Publisher | Impact Factor Range | Typical Review Preferences |
+|---------|----------|-------------------|---------------------------|
+| *MIS Quarterly* | MIS Quarterly | 7-9 | Theory-driven empirical research, design science; rigorous quantitative and qualitative methods |
+| *Information Systems Research* | INFORMS | 5-7 | Analytical, behavioral, and design science; strong methodological standards |
+| *Journal of Management Information Systems* | Taylor & Francis | 5-7 | Management-oriented IS research, theory and practice |
+| *Journal of the Association for Information Systems* | AIS | 4-6 | Broad IS topics, AIS flagship journal |
+| *European Journal of Information Systems* | Taylor & Francis | 8-10 | European and international IS perspectives, pluralist methodologies |
+| *Information Systems Journal* | Wiley | 6-8 | Qualitative and interpretive IS research, socio-technical perspectives |
+| *Journal of Information Technology* | SAGE | 7-10 | IT strategy, policy, and organizational impact |
+| *Journal of Strategic Information Systems* | Elsevier | 8-11 | Strategic role of IS, digital transformation, organizational change |
+| *Decision Support Systems* | Elsevier | 6-8 | Analytics, decision-making, DSS design and evaluation |
+| *Information & Management* | Elsevier | 8-11 | IS management, technology adoption, organizational impact |
+| *Information and Organization* | Elsevier | 5-7 | Socio-material perspectives, qualitative and interpretive research |
+
+---
+
+## 8. Interdisciplinary
 
 | Journal | Publisher | Impact Factor Range | Typical Review Preferences |
 |---------|----------|-------------------|---------------------------|
@@ -149,7 +167,7 @@ This document is used by `field_analyst_agent` and `eic_agent` as a reference fo
 
 ---
 
-## 8. Asian & Regional Journals
+## 9. Asian & Regional Journals
 
 ### Taiwan (TSSCI-Indexed)
 
