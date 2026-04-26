@@ -29,6 +29,35 @@ REF_DOC_BACKPOINTER = "academic-pipeline/references/literature_corpus_consumers.
 PR_A_SET = frozenset({"bibliography_agent"})
 PR_B_SET = frozenset({"bibliography_agent", "literature_strategist_agent"})
 
+PRE_SCREENED_LINE_MARKERS = (
+    "PRE-SCREENED FROM USER CORPUS:",
+    "Adapter:",
+    "Snapshot date:",
+    "Total entries scanned:",
+    "Pre-screening result:",
+    "Included:",
+    "Excluded by inclusion / exclusion criteria:",
+    "Skipped (criteria cannot be applied):",
+    "Note: presence in corpus does not imply inclusion",
+)
+
+IRON_RULE_TITLES = (
+    "Iron Rule 1 — Same criteria",
+    "Iron Rule 2 — No silent skip",
+    "Iron Rule 3 — No corpus mutation",
+    "Iron Rule 4 — Graceful fallback on parse failure",
+)
+
+STEP_HEADINGS = (
+    "Step 0:",
+    "Step 1:",
+    "Step 2:",
+    "Step 3:",
+    "Step 4:",
+)
+
+STEP2_CASE_MARKERS = ("case A", "case B", "case B'", "case C")
+
 
 def load_manifest() -> dict:
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -49,6 +78,12 @@ def find_consumer_blocks(ref_text: str) -> dict[str, str]:
         end = matches[i + 1].start() if i + 1 < len(matches) else len(ref_text)
         out[m.group(1)] = ref_text[start:end]
     return out
+
+
+def _manifested_agent_paths() -> list[Path]:
+    return [
+        REPO_ROOT / c["agent_path"] for c in load_manifest()["supported_consumers"]
+    ]
 
 
 def check_l1() -> list[str]:
@@ -90,9 +125,87 @@ def check_l2() -> list[str]:
     return failures
 
 
+def check_l3() -> list[str]:
+    failures: list[str] = []
+    for agent_path in _manifested_agent_paths():
+        if not agent_path.exists():
+            failures.append(f"L3: manifest references missing file {agent_path.relative_to(REPO_ROOT)}")
+            continue
+        if REF_DOC_BACKPOINTER not in agent_path.read_text(encoding="utf-8"):
+            failures.append(
+                f"L3: {agent_path.relative_to(REPO_ROOT)} missing backpointer '{REF_DOC_BACKPOINTER}'"
+            )
+    return failures
+
+
+def check_l4() -> list[str]:
+    failures: list[str] = []
+    for agent_path in _manifested_agent_paths():
+        if not agent_path.exists():
+            continue
+        text = agent_path.read_text(encoding="utf-8")
+        if "PRE-SCREENED FROM USER CORPUS:" not in text:
+            failures.append(
+                f"L4: {agent_path.relative_to(REPO_ROOT)} missing PRE-SCREENED template start"
+            )
+    return failures
+
+
+def check_l5() -> list[str]:
+    failures: list[str] = []
+    for agent_path in _manifested_agent_paths():
+        if not agent_path.exists():
+            continue
+        text = agent_path.read_text(encoding="utf-8")
+        for title in IRON_RULE_TITLES:
+            if title not in text:
+                failures.append(
+                    f"L5: {agent_path.relative_to(REPO_ROOT)} missing iron-rule title '{title}'"
+                )
+    return failures
+
+
+def check_l6() -> list[str]:
+    failures: list[str] = []
+    for agent_path in _manifested_agent_paths():
+        if not agent_path.exists():
+            continue
+        text = agent_path.read_text(encoding="utf-8")
+        for heading in STEP_HEADINGS:
+            if heading not in text:
+                failures.append(
+                    f"L6: {agent_path.relative_to(REPO_ROOT)} missing step heading '{heading}'"
+                )
+        for case in STEP2_CASE_MARKERS:
+            if case not in text:
+                failures.append(
+                    f"L6: {agent_path.relative_to(REPO_ROOT)} missing Step 2 case marker '{case}'"
+                )
+    return failures
+
+
+def check_l7() -> list[str]:
+    failures: list[str] = []
+    for agent_path in _manifested_agent_paths():
+        if not agent_path.exists():
+            continue
+        text = agent_path.read_text(encoding="utf-8")
+        for marker in PRE_SCREENED_LINE_MARKERS:
+            if marker not in text:
+                failures.append(
+                    f"L7: {agent_path.relative_to(REPO_ROOT)} PRE-SCREENED template missing line marker '{marker}'"
+                )
+    return failures
+
+
 CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
     ("L1", check_l1),
     ("L2", check_l2),
+    ("L3", check_l3),
+    ("L4", check_l4),
+    ("L5", check_l5),
+    ("L6", check_l6),
+    ("L7", check_l7),
 ]
 
 
