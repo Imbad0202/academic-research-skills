@@ -61,14 +61,16 @@ Any skipped corpus entry must be recorded in the PRE-SCREENED block's skipped su
 <!-- BAD -->
 ```
 [corpus has 5 entries]
-agent excludes 1 (off-topic), keeps 4 in pre_screened_included[].
-agent silently drops 1 with empty abstract because "I cannot evaluate it".
+agent includes 3, excludes 1 (off-topic), and silently drops 1 with empty
+abstract because "I cannot evaluate it".
 
 PRE-SCREENED block reports:
-- Included: 4 entries
+- Total entries scanned: 5
+- Included: 3 entries
 - Excluded: 1 entry
+(no Skipped sub-block)
 
-(2 entries silently disappeared from the pipeline — Iron Rule 2 violation.)
+(1 entry silently disappeared from the pipeline: 3 + 1 ≠ 5 — Iron Rule 2 violation.)
 ```
 
 <!-- GOOD -->

@@ -257,6 +257,24 @@ def test_l6_fails_when_case_marker_missing(fixture_repo: Path) -> None:
     assert "L6" in result.stdout or "L6" in result.stderr
 
 
+def test_l6_distinguishes_case_b_from_case_b_prime(fixture_repo: Path) -> None:
+    """Drop the standalone `case B:` line but keep `case B':`.
+
+    Substring matching would let `case B'` cover for the missing
+    `case B`, falsely passing L6. The boundary regex must catch this.
+    """
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text().replace("case B: ...\n", "")
+    agent.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "L6" in combined
+    # Failure message must point at the missing "case B" (not "case B'"),
+    # which still exists in the fixture text.
+    assert "'case B'" in combined
+
+
 # --- L7: PRE-SCREENED template line markers ---
 
 
@@ -274,6 +292,27 @@ def test_l7_fails_when_skipped_marker_missing(fixture_repo: Path) -> None:
     result = run_lint(fixture_repo)
     assert result.returncode != 0
     assert "L7" in result.stdout or "L7" in result.stderr
+
+
+def test_l7_fails_when_citation_keys_marker_missing(fixture_repo: Path) -> None:
+    """Spec §5.2 L7: PRE-SCREENED template must contain citation_keys marker.
+
+    If the agent drops the citation_keys lines while keeping the counts,
+    the reproducibility surface no longer says which corpus entries
+    were screened. L7 catches this.
+    """
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text()
+    # Drop both citation_keys variants.
+    new_text = text.replace("citation_keys with reasons:", "REMOVED1:")
+    new_text = new_text.replace("citation_keys:", "REMOVED2:")
+    assert "citation_keys" not in new_text
+    agent.write_text(new_text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "L7" in combined
+    assert "citation_keys" in combined
 
 
 def test_l7_fails_when_truncation_prose_missing(fixture_repo: Path) -> None:

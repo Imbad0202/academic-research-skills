@@ -38,6 +38,7 @@ PRE_SCREENED_LINE_MARKERS = (
     "Included:",
     "Excluded by inclusion / exclusion criteria:",
     "Skipped (criteria cannot be applied):",
+    "citation_keys",
     "Note: presence in corpus does not imply inclusion",
 )
 
@@ -56,7 +57,15 @@ STEP_HEADINGS = (
     "Step 4:",
 )
 
-STEP2_CASE_MARKERS = ("case A", "case B", "case B'", "case C")
+# Each case marker is matched with an explicit boundary regex so that
+# "case B" and "case B'" are distinct: substring matching would let
+# "case B'" cover for a missing "case B" line.
+STEP2_CASE_MARKERS = (
+    ("case A", re.compile(r"\bcase A\b")),
+    ("case B", re.compile(r"\bcase B(?![A-Za-z'])")),
+    ("case B'", re.compile(r"\bcase B'")),
+    ("case C", re.compile(r"\bcase C\b")),
+)
 
 
 def load_manifest() -> dict:
@@ -176,10 +185,10 @@ def check_l6() -> list[str]:
                 failures.append(
                     f"L6: {agent_path.relative_to(REPO_ROOT)} missing step heading '{heading}'"
                 )
-        for case in STEP2_CASE_MARKERS:
-            if case not in text:
+        for label, pattern in STEP2_CASE_MARKERS:
+            if not pattern.search(text):
                 failures.append(
-                    f"L6: {agent_path.relative_to(REPO_ROOT)} missing Step 2 case marker '{case}'"
+                    f"L6: {agent_path.relative_to(REPO_ROOT)} missing Step 2 case marker '{label}'"
                 )
     return failures
 
