@@ -55,6 +55,17 @@ PRE_SCREENED_LINE_MARKERS = (
     "Excluded by inclusion / exclusion criteria:",
     "Skipped (criteria cannot be applied):",
     "citation_keys",
+    # F3 conditional zero-hit note line (canonical per spec §3.2).
+    "Zero-hit note (emit per F3 only when Included: 0)",
+    # F4 inline-comment anchors (canonical per spec §3.2 + §4.2). These
+    # ensure the F4a-c / F4d-f reproducibility surface is not silently
+    # dropped from the template.
+    "per F4a",
+    "per F4b",
+    "per F4c",
+    "per F4d",
+    "per F4e",
+    "per F4f",
     "Note: presence in corpus does not imply inclusion",
 )
 

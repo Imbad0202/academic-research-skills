@@ -119,7 +119,9 @@ def fixture_repo(tmp_path: Path) -> Path:
             ```
             PRE-SCREENED FROM USER CORPUS:
             - Adapter: zotero-bbt-export
+              # per F4a, per F4b, per F4c documented inline
             - Snapshot date: 2026-04-26
+              # per F4d, per F4e, per F4f documented inline
             - Total entries scanned: 87
             - Pre-screening result:
               - Included: 12 entries
@@ -131,6 +133,8 @@ def fixture_repo(tmp_path: Path) -> Path:
               - Skipped (criteria cannot be applied): 2 entries
                 citation_keys with reasons:
                   - baz2024: missing required tags
+            - Zero-hit note (emit per F3 only when Included: 0):
+              corpus stale, RQ shifted, or adapter exported unrelated entries.
             - Note: presence in corpus does not imply inclusion;
               same criteria applied to corpus and external sources.
             ```
@@ -323,6 +327,47 @@ def test_l7_fails_when_citation_keys_marker_missing(fixture_repo: Path) -> None:
     combined = result.stdout + result.stderr
     assert "L7" in combined
     assert "citation_keys" in combined
+
+
+def test_l7_fails_when_f4_inline_anchors_missing(fixture_repo: Path) -> None:
+    """Cross-model codex round-3 caught: L7 only checked coarse line
+    prefixes (Adapter:, Snapshot date:), so silently dropping the F4a-c
+    / F4d-f inline-comment guidance from the canonical template would
+    not fail CI.
+
+    Regression: drop the F4 inline anchors from the template body and
+    assert L7 fails.
+    """
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text()
+    new_text = text.replace("# per F4a, per F4b, per F4c documented inline\n", "", 1)
+    new_text = new_text.replace("# per F4d, per F4e, per F4f documented inline\n", "", 1)
+    assert new_text != text
+    agent.write_text(new_text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "L7" in combined
+    assert "F4" in combined or "per F4" in combined
+
+
+def test_l7_fails_when_zero_hit_anchor_missing(fixture_repo: Path) -> None:
+    """L7 must require the F3 zero-hit conditional template line.
+    Without it, a future PR could drop the zero-hit reproducibility
+    surface from the template and CI would still pass.
+    """
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text()
+    new_text = text.replace(
+        "- Zero-hit note (emit per F3 only when Included: 0):", "- Removed:"
+    )
+    assert new_text != text
+    agent.write_text(new_text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "L7" in combined
+    assert "Zero-hit" in combined or "F3" in combined
 
 
 def test_l7_marker_check_is_scoped_to_fenced_template(fixture_repo: Path) -> None:

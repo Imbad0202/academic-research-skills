@@ -49,6 +49,11 @@ PRE-SCREENED FROM USER CORPUS:
     citation_keys with reasons:
       - <key>: <reason>
     (omit this sub-block if 0)
+- Zero-hit note (emit per F3 only when Included: 0):
+  Zero-hit note (corpus non-empty, 0 included after screening): possible
+  causes are (a) corpus is stale relative to current RQ, (b) RQ has
+  shifted away from what the user originally curated, (c) adapter
+  exported entries unrelated to this RQ.
 - Note: presence in corpus does not imply inclusion;
   same criteria applied to corpus and external sources.
 ```
