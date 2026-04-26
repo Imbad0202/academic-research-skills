@@ -195,6 +195,10 @@ def check_l7() -> list[str]:
                 failures.append(
                     f"L7: {agent_path.relative_to(REPO_ROOT)} PRE-SCREENED template missing line marker '{marker}'"
                 )
+        if "truncation rule" not in text.lower():
+            failures.append(
+                f"L7: {agent_path.relative_to(REPO_ROOT)} missing 'truncation rule' prose mention (spec §5.2 L7)"
+            )
     return failures
 
 

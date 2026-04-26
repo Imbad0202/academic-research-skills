@@ -134,6 +134,7 @@ def fixture_repo(tmp_path: Path) -> Path:
             - Note: presence in corpus does not imply inclusion;
               same criteria applied to corpus and external sources.
             ```
+            Truncation rule: lists exceeding 50 entries truncate to first 20 + last 5 alphabetically with appendix file.
             """
         )
     )
@@ -270,6 +271,19 @@ def test_l7_fails_when_skipped_marker_missing(fixture_repo: Path) -> None:
         "Skipped (criteria cannot be applied):", "Removed:"
     )
     agent.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L7" in result.stdout or "L7" in result.stderr
+
+
+def test_l7_fails_when_truncation_prose_missing(fixture_repo: Path) -> None:
+    """Spec §5.2 L7: PRE-SCREENED template must include 'truncation rule' prose."""
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text()
+    # Remove the truncation prose. Use a lowercase replace to catch both casings.
+    new_text = text.replace("Truncation rule:", "Removed:")
+    assert new_text != text, "fixture must contain 'Truncation rule:' line for this test"
+    agent.write_text(new_text)
     result = run_lint(fixture_repo)
     assert result.returncode != 0
     assert "L7" in result.stdout or "L7" in result.stderr
