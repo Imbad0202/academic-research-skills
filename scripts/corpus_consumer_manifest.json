@@ -1,0 +1,12 @@
+{
+  "$schema_note": "Manifest of supported literature_corpus[] consumer agents. PR-A pre-release state: single entry. PR-B release state: both entries.",
+  "supported_consumers": [
+    {
+      "agent_path": "deep-research/agents/bibliography_agent.md",
+      "agent_basename": "bibliography_agent",
+      "skill": "deep-research",
+      "since_version": "v3.6.5",
+      "phase": "Phase 1"
+    }
+  ]
+}
