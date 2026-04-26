@@ -420,3 +420,29 @@ def test_l9_fails_when_good_marker_missing(fixture_repo: Path) -> None:
     result = run_lint(fixture_repo)
     assert result.returncode != 0
     assert "L9" in result.stdout or "L9" in result.stderr
+
+
+# --- Integration: lint runs against the real repo state ---
+
+
+def test_integration_lint_passes_against_real_repo() -> None:
+    """Run the lint against the actual repo (REPO_ROOT).
+
+    This test is RED until Tasks 9 + 10 ship the real artifacts:
+    - academic-pipeline/references/literature_corpus_consumers.md
+    - bibliography_agent.md modifications (corpus-first section)
+
+    After Task 11 wires the lint into CI, this becomes a guard against
+    real-repo drift in subsequent commits.
+    """
+    result = subprocess.run(
+        [sys.executable, str(LINT_SCRIPT)],
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"Lint failed against real repo:\n"
+        f"STDOUT:\n{result.stdout}\n"
+        f"STDERR:\n{result.stderr}"
+    )
