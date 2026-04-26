@@ -193,20 +193,49 @@ def check_l6() -> list[str]:
     return failures
 
 
+_PRE_SCREENED_BLOCK_RE = re.compile(
+    r"```[a-z]*\s*\n(PRE-SCREENED FROM USER CORPUS:.*?)\n```",
+    re.DOTALL,
+)
+
+
+def _extract_pre_screened_block(text: str) -> str | None:
+    """Extract the fenced PRE-SCREENED template block. Returns None if absent.
+
+    Marker checks must run against the template body, not the full file —
+    otherwise unrelated prose mentions of a marker name (e.g.,
+    \"citation_keys\" inside the truncation rule sentence) would mask a
+    missing template line and L7 would falsely pass.
+    """
+    m = _PRE_SCREENED_BLOCK_RE.search(text)
+    return m.group(1) if m else None
+
+
 def check_l7() -> list[str]:
     failures: list[str] = []
     for agent_path in _manifested_agent_paths():
         if not agent_path.exists():
             continue
         text = agent_path.read_text(encoding="utf-8")
-        for marker in PRE_SCREENED_LINE_MARKERS:
-            if marker not in text:
-                failures.append(
-                    f"L7: {agent_path.relative_to(REPO_ROOT)} PRE-SCREENED template missing line marker '{marker}'"
-                )
+        rel = agent_path.relative_to(REPO_ROOT)
+
+        block = _extract_pre_screened_block(text)
+        if block is None:
+            failures.append(
+                f"L7: {rel} PRE-SCREENED template fenced block not found"
+            )
+        else:
+            for marker in PRE_SCREENED_LINE_MARKERS:
+                if marker not in block:
+                    failures.append(
+                        f"L7: {rel} PRE-SCREENED template missing line marker '{marker}'"
+                    )
+
+        # Truncation prose check stays scoped to the full file: the spec §5.2
+        # L7 places this prose in surrounding text, not inside the template.
         if "truncation rule" not in text.lower():
             failures.append(
-                f"L7: {agent_path.relative_to(REPO_ROOT)} missing 'truncation rule' prose mention (spec §5.2 L7)"
+                f"L7: {rel} missing 'truncation rule' prose mention (spec §5.2 L7)"
             )
     return failures
 

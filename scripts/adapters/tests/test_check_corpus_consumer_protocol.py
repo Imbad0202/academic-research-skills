@@ -303,10 +303,57 @@ def test_l7_fails_when_citation_keys_marker_missing(fixture_repo: Path) -> None:
     """
     agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
     text = agent.read_text()
-    # Drop both citation_keys variants.
-    new_text = text.replace("citation_keys with reasons:", "REMOVED1:")
-    new_text = new_text.replace("citation_keys:", "REMOVED2:")
-    assert "citation_keys" not in new_text
+    # Drop both citation_keys variants from inside the fenced template.
+    # Keep the trailing truncation-rule prose mention.
+    new_text = text.replace(
+        "    citation_keys:\n      - chen2024ai\n", "", 1
+    )
+    new_text = new_text.replace(
+        "    citation_keys:\n      - foo2023bar\n", "", 1
+    )
+    new_text = new_text.replace(
+        "    citation_keys with reasons:\n      - baz2024: missing required tags\n",
+        "",
+        1,
+    )
+    assert new_text != text
+    agent.write_text(new_text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "L7" in combined
+    assert "citation_keys" in combined
+
+
+def test_l7_marker_check_is_scoped_to_fenced_template(fixture_repo: Path) -> None:
+    """Marker checks must run against the PRE-SCREENED block body only.
+
+    Codex review round-3 caught: an agent file that mentions a marker
+    string in surrounding prose (e.g., \"citation_keys\" inside the
+    truncation rule sentence) would mask a deletion of the marker line
+    inside the actual template, causing L7 to falsely pass.
+
+    Regression: drop the citation_keys lines from the template body but
+    keep them mentioned in the surrounding prose; the lint must still
+    fail L7.
+    """
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text()
+    # Drop citation_keys lines from inside the fenced template.
+    new_text = text.replace(
+        "    citation_keys:\n      - chen2024ai\n", "", 1
+    )
+    new_text = new_text.replace(
+        "    citation_keys:\n      - foo2023bar\n", "", 1
+    )
+    new_text = new_text.replace(
+        "    citation_keys with reasons:\n      - baz2024: missing required tags\n",
+        "",
+        1,
+    )
+    # Append a sentence outside the fenced block that mentions the marker —
+    # this is what would have falsely satisfied a full-file substring check.
+    new_text = new_text + "\nNote: each citation_keys list participates in the truncation rule.\n"
     agent.write_text(new_text)
     result = run_lint(fixture_repo)
     assert result.returncode != 0
