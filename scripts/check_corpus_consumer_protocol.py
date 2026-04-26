@@ -12,6 +12,10 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+# Path.cwd() (not __file__) is intentional: fixture-based tests in
+# scripts/adapters/tests/test_check_corpus_consumer_protocol.py invoke
+# this lint via subprocess.run(..., cwd=fixture_repo) and rely on cwd
+# to swap repo state. Path(__file__) would hard-code the real repo.
 REPO_ROOT = Path.cwd()
 MANIFEST_PATH = REPO_ROOT / "scripts" / "corpus_consumer_manifest.json"
 REF_DOC_PATH = REPO_ROOT / "academic-pipeline" / "references" / "literature_corpus_consumers.md"
@@ -27,7 +31,7 @@ PR_B_SET = frozenset({"bibliography_agent", "literature_strategist_agent"})
 
 
 def load_manifest() -> dict:
-    return json.loads(MANIFEST_PATH.read_text())
+    return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
 
 def manifest_basenames() -> frozenset[str]:
@@ -56,7 +60,7 @@ def check_l1() -> list[str]:
 def check_l2() -> list[str]:
     if not REF_DOC_PATH.exists():
         return []  # L1 already failed
-    text = REF_DOC_PATH.read_text()
+    text = REF_DOC_PATH.read_text(encoding="utf-8")
     blocks = find_consumer_blocks(text)
     failures: list[str] = []
 
