@@ -469,6 +469,67 @@ def test_l8_fails_invalid_third_state_strategist_only(fixture_repo: Path) -> Non
     assert "L8" in result.stdout or "L8" in result.stderr
 
 
+def test_l8_fails_duplicate_basename_with_different_path(fixture_repo: Path) -> None:
+    """Cross-model codex review caught: L8 used to compare frozenset of
+    basenames only. A future manifest could stash a second bibliography_agent
+    entry pointing at a different agent_path; frozenset would collapse the
+    duplicate and L8 would falsely treat it as PR-A.
+
+    Regression: insert a duplicate basename with a different path and assert
+    L8 fails with a duplicate-basename message.
+    """
+    manifest = json.loads(
+        (fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text()
+    )
+    manifest["supported_consumers"].append(
+        {
+            "agent_path": "fake/agents/shadow_bibliography_agent.md",
+            "agent_basename": "bibliography_agent",
+            "skill": "academic-paper",
+            "since_version": "v3.6.5",
+            "phase": "Phase 1",
+        }
+    )
+    (fixture_repo / "scripts" / "corpus_consumer_manifest.json").write_text(
+        json.dumps(manifest, indent=2)
+    )
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "L8" in combined
+    assert "duplicate" in combined.lower()
+
+
+def test_l8_fails_when_path_diverges_from_canonical(fixture_repo: Path) -> None:
+    """L8 must compare the full (basename, path) tuple, not just basename.
+
+    A manifest with the right basename but a moved/renamed agent_path
+    is no longer the canonical PR-A state. Lint must catch this even
+    when basenames alone would still match PR_A_SET.
+    """
+    manifest = {
+        "supported_consumers": [
+            {
+                "agent_path": "deep-research/agents/MOVED_bibliography_agent.md",
+                "agent_basename": "bibliography_agent",
+                "skill": "deep-research",
+                "since_version": "v3.6.5",
+                "phase": "Phase 1",
+            }
+        ]
+    }
+    (fixture_repo / "scripts" / "corpus_consumer_manifest.json").write_text(
+        json.dumps(manifest, indent=2)
+    )
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "L8" in combined
+    # Either a "does not match a known release state" message OR a
+    # related path-driven failure is acceptable; the contract is just
+    # "lint must fail" for non-canonical paths.
+
+
 def test_l8_fails_invalid_third_state_extra_unknown(fixture_repo: Path) -> None:
     """Manifest with an unknown extra consumer must fail L8."""
     manifest = json.loads(

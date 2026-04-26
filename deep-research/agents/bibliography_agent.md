@@ -180,6 +180,37 @@ PRE-SCREENED FROM USER CORPUS:
 
 Lists with more than 50 entries truncate to first 20 + last 5 alphabetically, with an appendix file at `pre_screened_citation_keys_<list>_<timestamp>.txt`. Skipped truncation preserves `<key>: <reason>` in both inline and appendix forms. See spec §3.2 for the full truncation rule.
 
+### Zero-hit and provenance reporting (F3 / F4)
+
+Two reproducibility surfaces sit inside the PRE-SCREENED block. The agent emits each one when the corresponding trigger fires; both are non-blocking.
+
+**Zero-hit note (F3).** When `pre_screened_included[]` is empty after Step 1 — corpus is non-empty but no entry survived screening — the agent emits a zero-hit note inside the PRE-SCREENED block listing the three plausible causes:
+
+```
+- Zero-hit note (corpus non-empty, 0 included after screening): possible causes
+  are (a) corpus is stale relative to current RQ, (b) RQ has shifted away from
+  what the user originally curated, (c) adapter exported entries unrelated to
+  this RQ.
+```
+
+The note appears regardless of which Step 2 case fires next. Step 2 dispatch follows F3 in spec §4.1: NOT user_corpus_only routes through case A or C with external DB; user_corpus_only routes through case B' with no external search but explicit gap surfacing.
+
+**Provenance reporting (F4a–F4f).** `obtained_via` and `obtained_at` are optional in v3.6.4. The PRE-SCREENED block's `Adapter:` and `Snapshot date:` lines must reflect actual coverage, not invent enum values:
+
+| Sub-case | Trigger | `Adapter:` line content |
+|---|---|---|
+| F4a | Zero entries declare `obtained_via` | `Adapter: <unspecified>` + trailing note `Adapter origin not declared; user-written adapter should populate obtained_via per v3.6.4 schema recommendation.` |
+| F4b | At least one entry declares; all declared share single value | `Adapter: <enum value> (N of M entries declared)` |
+| F4c | Two or more distinct enum values among declared entries | `Adapter: mixed (zotero-bbt-export: K, obsidian-vault: L, ..., undeclared: U)` |
+
+| Sub-case | Trigger | `Snapshot date:` line content |
+|---|---|---|
+| F4d | Zero entries declare `obtained_at` | `Snapshot date: <unspecified>` + trailing note `Snapshot date not declared; reproducibility is reduced. Adapter should populate obtained_at per v3.6.4 schema recommendation.` |
+| F4e | Partial coverage | `Snapshot date: <max(obtained_at)> (M of N entries declared)` |
+| F4f | Wide spread (>90 days between min and max) | append `(spans <N> days; corpus may not be a single snapshot)`. Composes with F4e. |
+
+F4a/b/c are mutually exclusive by trigger. F4d applies only when zero entries declare `obtained_at`; F4e and F4f compose. Never silently fill in or guess; never demand presence. See spec §4.2 for the full precedence reasoning.
+
 ## APA 7.0 Quick Reference
 
 Reference: `references/apa7_style_guide.md`

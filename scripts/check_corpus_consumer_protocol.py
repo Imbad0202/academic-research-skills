@@ -26,8 +26,24 @@ STUB_STATUS_LINE = "**Status:** Stub — implementation in PR-B (v3.6.5)"
 DEFERRED_CAVEAT = "Consumer-side integration deferred to v3.6.5+"
 REF_DOC_BACKPOINTER = "academic-pipeline/references/literature_corpus_consumers.md"
 
-PR_A_SET = frozenset({"bibliography_agent"})
-PR_B_SET = frozenset({"bibliography_agent", "literature_strategist_agent"})
+# Canonical (agent_basename, agent_path) tuples per release state. L8
+# compares the full tuple set, not just basenames, so a future manifest
+# cannot slip in a duplicate basename with a different path and have
+# frozenset collapsing mask the closed-set match. The spec §5.2 L8
+# language is "supported_consumers[] MUST exactly match" — we honour
+# that on (basename, path), with extra defence against duplicate
+# basename entries.
+_BIBLIO_ENTRY = ("bibliography_agent", "deep-research/agents/bibliography_agent.md")
+_STRAT_ENTRY = (
+    "literature_strategist_agent",
+    "academic-paper/agents/literature_strategist_agent.md",
+)
+PR_A_TUPLES = frozenset({_BIBLIO_ENTRY})
+PR_B_TUPLES = frozenset({_BIBLIO_ENTRY, _STRAT_ENTRY})
+
+# Basename-only sets retained for L2 cross-check (which iterates by basename).
+PR_A_SET = frozenset(b for b, _ in PR_A_TUPLES)
+PR_B_SET = frozenset(b for b, _ in PR_B_TUPLES)
 
 PRE_SCREENED_LINE_MARKERS = (
     "PRE-SCREENED FROM USER CORPUS:",
@@ -74,6 +90,17 @@ def load_manifest() -> dict:
 
 def manifest_basenames() -> frozenset[str]:
     return frozenset(c["agent_basename"] for c in load_manifest()["supported_consumers"])
+
+
+def manifest_entry_tuples() -> tuple[tuple[str, str], ...]:
+    """Return (agent_basename, agent_path) tuples in manifest order.
+
+    A list, not a set, so duplicates are visible to the caller.
+    """
+    return tuple(
+        (c["agent_basename"], c["agent_path"])
+        for c in load_manifest()["supported_consumers"]
+    )
 
 
 def find_consumer_blocks(ref_text: str) -> dict[str, str]:
@@ -242,14 +269,47 @@ def check_l7() -> list[str]:
 
 def check_l8() -> list[str]:
     failures: list[str] = []
-    manifest_set = manifest_basenames()
     rel = HANDOFF_SCHEMAS.relative_to(REPO_ROOT)
 
-    if manifest_set not in (PR_A_SET, PR_B_SET):
+    entries = manifest_entry_tuples()
+
+    # Duplicate-entry guard: a future PR cannot stuff in a second
+    # bibliography_agent row pointing at a different path and have the
+    # frozenset comparison below silently collapse the dup.
+    if len(entries) != len(set(entries)):
+        seen: dict[tuple[str, str], int] = {}
+        dups: list[tuple[str, str]] = []
+        for e in entries:
+            seen[e] = seen.get(e, 0) + 1
+            if seen[e] == 2:
+                dups.append(e)
+        failures.append(
+            f"L8: manifest contains duplicate (agent_basename, agent_path) "
+            f"entries: {dups}"
+        )
+
+    # Same-basename, different-path guard: the original codex-flagged
+    # blind spot. supported_consumers[] MUST be unique on basename too.
+    basenames = [b for b, _ in entries]
+    if len(basenames) != len(set(basenames)):
+        seen_b: dict[str, int] = {}
+        dup_basenames = []
+        for b in basenames:
+            seen_b[b] = seen_b.get(b, 0) + 1
+            if seen_b[b] == 2:
+                dup_basenames.append(b)
+        failures.append(
+            f"L8: manifest contains duplicate agent_basename entries (with "
+            f"differing agent_path): {dup_basenames}. Each consumer must "
+            f"appear exactly once."
+        )
+
+    entry_set = frozenset(entries)
+    if entry_set not in (PR_A_TUPLES, PR_B_TUPLES):
         failures.append(
             f"L8: manifest does not match a known release state. "
-            f"Got {sorted(manifest_set)}; expected {sorted(PR_A_SET)} (PR-A) or "
-            f"{sorted(PR_B_SET)} (PR-B)."
+            f"Got {sorted(entries)}; expected "
+            f"{sorted(PR_A_TUPLES)} (PR-A) or {sorted(PR_B_TUPLES)} (PR-B)."
         )
         return failures
 
@@ -259,7 +319,7 @@ def check_l8() -> list[str]:
 
     text = HANDOFF_SCHEMAS.read_text(encoding="utf-8")
 
-    if manifest_set == PR_A_SET:
+    if entry_set == PR_A_TUPLES:
         # Caveat MUST remain in PR-A; retirement is forbidden until PR-B
         if DEFERRED_CAVEAT not in text:
             failures.append(
@@ -267,7 +327,7 @@ def check_l8() -> list[str]:
                 f"{rel}; caveat retirement is forbidden until "
                 f"literature_strategist_agent ships in PR-B"
             )
-    else:  # PR_B_SET
+    else:  # PR_B_TUPLES
         if DEFERRED_CAVEAT in text:
             failures.append(
                 f"L8: PR-B release state requires deferred caveat to be retired in {rel}"
