@@ -287,3 +287,136 @@ def test_l7_fails_when_truncation_prose_missing(fixture_repo: Path) -> None:
     result = run_lint(fixture_repo)
     assert result.returncode != 0
     assert "L7" in result.stdout or "L7" in result.stderr
+
+
+# --- L8: caveat state vs manifest closed-set match ---
+
+
+def test_l8_passes_pr_a_with_caveat_remaining(fixture_repo: Path) -> None:
+    """PR-A state: manifest = {bibliography_agent}, caveat MUST remain."""
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l8_fails_pr_a_when_caveat_retired_prematurely(fixture_repo: Path) -> None:
+    """PR-A must NOT retire the deferred caveat."""
+    schemas = fixture_repo / "shared" / "handoff_schemas.md"
+    text = schemas.read_text().replace("Consumer-side integration deferred to v3.6.5+", "")
+    schemas.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L8" in result.stdout or "L8" in result.stderr
+
+
+def test_l8_passes_pr_b_with_caveat_retired_and_backpointer(fixture_repo: Path) -> None:
+    """PR-B state: manifest = both consumers, caveat retired, backpointer present."""
+    # Promote manifest to PR-B
+    manifest = json.loads(
+        (fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text()
+    )
+    manifest["supported_consumers"].append(
+        {
+            "agent_path": "academic-paper/agents/literature_strategist_agent.md",
+            "agent_basename": "literature_strategist_agent",
+            "skill": "academic-paper",
+            "since_version": "v3.6.5",
+            "phase": "Phase 1",
+        }
+    )
+    (fixture_repo / "scripts" / "corpus_consumer_manifest.json").write_text(
+        json.dumps(manifest, indent=2)
+    )
+
+    # Promote stub block to full content (remove LINT_STUB marker + Status line)
+    ref = fixture_repo / "academic-pipeline" / "references" / "literature_corpus_consumers.md"
+    text = ref.read_text()
+    text = text.replace("<!-- LINT_STUB: skip_cross_check -->", "")
+    text = text.replace(
+        "**Status:** Stub — implementation in PR-B (v3.6.5)",
+        "**Status:** Shipped (v3.6.5)",
+    )
+    ref.write_text(text)
+
+    # Create the second consumer agent file by cloning bibliography_agent.md content
+    strat_dir = fixture_repo / "academic-paper" / "agents"
+    strat_dir.mkdir(parents=True)
+    biblio_text = (
+        fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    ).read_text()
+    (strat_dir / "literature_strategist_agent.md").write_text(
+        biblio_text.replace(
+            "name: bibliography_agent", "name: literature_strategist_agent"
+        )
+    )
+
+    # Retire the caveat in handoff_schemas + add backpointer
+    schemas = fixture_repo / "shared" / "handoff_schemas.md"
+    text2 = schemas.read_text()
+    text2 = text2.replace(
+        "Consumer-side integration deferred to v3.6.5+",
+        "See `academic-pipeline/references/literature_corpus_consumers.md`",
+    )
+    schemas.write_text(text2)
+
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l8_fails_invalid_third_state_strategist_only(fixture_repo: Path) -> None:
+    """Manifest with only literature_strategist_agent must fail L8."""
+    manifest = {
+        "supported_consumers": [
+            {
+                "agent_path": "academic-paper/agents/literature_strategist_agent.md",
+                "agent_basename": "literature_strategist_agent",
+                "skill": "academic-paper",
+                "since_version": "v3.6.5",
+                "phase": "Phase 1",
+            }
+        ]
+    }
+    (fixture_repo / "scripts" / "corpus_consumer_manifest.json").write_text(
+        json.dumps(manifest, indent=2)
+    )
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L8" in result.stdout or "L8" in result.stderr
+
+
+def test_l8_fails_invalid_third_state_extra_unknown(fixture_repo: Path) -> None:
+    """Manifest with an unknown extra consumer must fail L8."""
+    manifest = json.loads(
+        (fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text()
+    )
+    manifest["supported_consumers"].append(
+        {
+            "agent_path": "fake/agents/citation_compliance_agent.md",
+            "agent_basename": "citation_compliance_agent",
+            "skill": "academic-paper",
+            "since_version": "v3.6.5",
+            "phase": "Phase 5a",
+        }
+    )
+    (fixture_repo / "scripts" / "corpus_consumer_manifest.json").write_text(
+        json.dumps(manifest, indent=2)
+    )
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L8" in result.stdout or "L8" in result.stderr
+
+
+# --- L9: BAD/GOOD example pair ---
+
+
+def test_l9_passes_when_bad_good_pair_present(fixture_repo: Path) -> None:
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l9_fails_when_good_marker_missing(fixture_repo: Path) -> None:
+    ref = fixture_repo / "academic-pipeline" / "references" / "literature_corpus_consumers.md"
+    text = ref.read_text().replace("<!-- GOOD -->", "")
+    ref.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L9" in result.stdout or "L9" in result.stderr
