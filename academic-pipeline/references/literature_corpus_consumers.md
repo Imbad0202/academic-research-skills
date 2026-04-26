@@ -1,0 +1,115 @@
+# Consumer Protocol — `literature_corpus[]` Reading
+
+**Status**: Active as of v3.6.5
+**Applies to**: any agent in this repo that reads `literature_corpus[]` from a Material Passport
+**Authoritative spec**: [`docs/design/2026-04-26-ars-v3.6.5-consumer-integration-design.md`](../../docs/design/2026-04-26-ars-v3.6.5-consumer-integration-design.md)
+
+## What this document covers
+
+This is the contract every literature-reading consumer agent must follow. The v3.6.4 input port (`shared/contracts/passport/literature_corpus_entry.schema.json`) defines what enters a Material Passport; this document defines how Phase 1 agents read it.
+
+The `corpus-first, search-fills-gap` flow has five steps; the four Iron Rules are non-negotiable; the PRE-SCREENED block is the reproducibility surface; failures are surfaced honestly via the `[CORPUS PARSE FAILURE: <cause>]` graceful fallback.
+
+## Reading flow (shared by every consumer)
+
+```
+Step 0: Detect literature_corpus[] presence and minimal shape
+Step 1: Pre-screen corpus against current RQ
+Step 2: Search-fills-gap — case A / B / B' / C
+Step 3: Merge included + external_included for downstream
+Step 4: Emit Search Strategy Report with PRE-SCREENED block
+```
+
+The full flow specification lives in spec §3.1. Each consumer agent's `agent.md` must include the full Step 0–4 description and all four Step 2 case markers (case A / case B / case B' / case C). The lint enforces presence (L6).
+
+## PRE-SCREENED block template
+
+Every consumer emits the block in this exact shape (alphabetical ordering for citation_keys; truncate at 50 entries with appendix file). Spec §3.2 has the complete template plus truncation rules.
+
+```markdown
+PRE-SCREENED FROM USER CORPUS:
+- Adapter: <obtained_via enum value>      # e.g., zotero-bbt-export
+- Snapshot date: <max(obtained_at)>        # ISO 8601, or <unspecified> per F4d
+- Total entries scanned: <N>
+- Pre-screening result:
+  - Included: <K> entries
+    citation_keys:
+      - <k1>
+      - <k2>
+  - Excluded by inclusion / exclusion criteria: <E> entries
+    citation_keys:
+      - <e1>
+    (omit this sub-block if 0)
+  - Skipped (criteria cannot be applied): <S> entries
+    citation_keys with reasons:
+      - <key>: <reason>
+    (omit this sub-block if 0)
+- Note: presence in corpus does not imply inclusion;
+  same criteria applied to corpus and external sources.
+```
+
+## The four Iron Rules
+
+### Iron Rule 1 — Same criteria
+
+Apply the same Inclusion / Exclusion criteria to corpus entries and external database results. No exceptions. A corpus entry is not "pre-approved"; it must clear the same screening as a fresh database hit.
+
+### Iron Rule 2 — No silent skip
+
+Any skipped corpus entry must be recorded in the PRE-SCREENED block's skipped sub-section with a reason. Silently dropping an entry is a prompt-layer violation. The lint enforces structural markers; behaviour is enforced by the BAD / GOOD example pair below and observed in real runs.
+
+<!-- BAD -->
+```
+[corpus has 5 entries]
+agent excludes 1 (off-topic), keeps 4 in pre_screened_included[].
+agent silently drops 1 with empty abstract because "I cannot evaluate it".
+
+PRE-SCREENED block reports:
+- Included: 4 entries
+- Excluded: 1 entry
+
+(2 entries silently disappeared from the pipeline — Iron Rule 2 violation.)
+```
+
+<!-- GOOD -->
+```
+[corpus has 5 entries]
+agent excludes 1 (off-topic), keeps 3 in pre_screened_included[].
+agent records 1 with empty abstract as Skipped: "abstract empty after privacy clearing; criteria reference research method but only title is present, criteria cannot be applied".
+
+PRE-SCREENED block reports:
+- Included: 3 entries
+- Excluded by inclusion / exclusion criteria: 1 entry
+- Skipped (criteria cannot be applied): 1 entry
+  - smith2024foo: abstract empty after privacy clearing; criteria reference research method but only title is present
+- Note: presence in corpus does not imply inclusion;
+  same criteria applied to corpus and external sources.
+```
+
+### Iron Rule 3 — No corpus mutation
+
+Consumer agents never modify, backfill, or derive new content into `literature_corpus[]`. Read only. The Material Passport's corpus is the user's curated list; any rewriting belongs to the user's adapter (v3.6.4 input port), not Phase 1 prompt-layer agents.
+
+### Iron Rule 4 — Graceful fallback on parse failure
+
+Consumer agents do NOT re-validate schema, do NOT parse JSON Schema at runtime, and do NOT dereference `source_pointer` URIs. The v3.6.4 input-port lint validates adapter output, but a passport may reach a Phase 1 agent through other paths (hand-edits, `resume_from_passport`, assembled passports). When a consumer cannot parse `literature_corpus[]`, emit `[CORPUS PARSE FAILURE: <cause>]` in the Search Strategy Report and fall back to external-DB-only flow. Do not abort Phase 1, do not attempt schema repair, do not invent contents.
+
+## Consumer: bibliography_agent
+
+**Status**: Shipped in PR-A (v3.6.5)
+**Skill**: deep-research
+**Phase**: 1 (literature search and curation)
+**Agent file**: [`deep-research/agents/bibliography_agent.md`](../../deep-research/agents/bibliography_agent.md)
+
+The deep-research bibliography agent applies the corpus-first flow during its systematic literature search. The PRE-SCREENED block sits inside the Search Strategy section of its Annotated Bibliography output (per the agent's existing Output Format), preceding the existing DATABASES / Inclusion-Exclusion / RESULTS structure.
+
+When `literature_corpus[]` is non-empty and parses cleanly, the agent enters Step 1 pre-screening. When the corpus is absent, empty, or fails the minimal shape check, the agent runs its existing external-DB-only flow (Iron Rule 4 graceful fallback for the failure cases).
+
+## Consumer: literature_strategist_agent
+
+**Status:** Stub — implementation in PR-B (v3.6.5)
+<!-- LINT_STUB: skip_cross_check -->
+
+The academic-paper literature_strategist agent will follow the same shared reading flow when PR-B ships. PR-A intentionally does not modify the strategist agent; this stub block exists so the manifest cross-check (L2 sub-invariant) has a target without flagging the strategist as a falsely-shipped consumer.
+
+PR-B replaces this entire block with the full content (matching the bibliography_agent pattern), removes the LINT_STUB marker and Status line, and appends the strategist entry to `scripts/corpus_consumer_manifest.json`.
