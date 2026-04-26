@@ -182,3 +182,94 @@ def test_l2_fails_when_stub_marker_missing(fixture_repo: Path) -> None:
     result = run_lint(fixture_repo)
     assert result.returncode != 0
     assert "L2" in result.stdout or "L2" in result.stderr
+
+
+# --- L3: backpointer ---
+
+
+def test_l3_passes_when_backpointer_present(fixture_repo: Path) -> None:
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l3_fails_when_backpointer_missing(fixture_repo: Path) -> None:
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text().replace(
+        "academic-pipeline/references/literature_corpus_consumers.md", ""
+    )
+    agent.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L3" in result.stdout or "L3" in result.stderr
+
+
+# --- L4: PRE-SCREENED template start ---
+
+
+def test_l4_passes_when_pre_screened_template_present(fixture_repo: Path) -> None:
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l4_fails_when_pre_screened_template_missing(fixture_repo: Path) -> None:
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text().replace("PRE-SCREENED FROM USER CORPUS:", "")
+    agent.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L4" in result.stdout or "L4" in result.stderr
+
+
+# --- L5: four Iron Rule titles ---
+
+
+def test_l5_passes_with_all_four_iron_rule_titles(fixture_repo: Path) -> None:
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l5_fails_when_iron_rule_title_missing(fixture_repo: Path) -> None:
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text().replace(
+        "Iron Rule 4 — Graceful fallback on parse failure", "Iron Rule 4 — TBD"
+    )
+    agent.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L5" in result.stdout or "L5" in result.stderr
+
+
+# --- L6: Step headings + Step 2 case markers ---
+
+
+def test_l6_passes_with_all_steps_and_cases(fixture_repo: Path) -> None:
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l6_fails_when_case_marker_missing(fixture_repo: Path) -> None:
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text().replace("case B': ...", "")
+    agent.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L6" in result.stdout or "L6" in result.stderr
+
+
+# --- L7: PRE-SCREENED template line markers ---
+
+
+def test_l7_passes_with_all_nine_line_markers(fixture_repo: Path) -> None:
+    result = run_lint(fixture_repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_l7_fails_when_skipped_marker_missing(fixture_repo: Path) -> None:
+    agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
+    text = agent.read_text().replace(
+        "Skipped (criteria cannot be applied):", "Removed:"
+    )
+    agent.write_text(text)
+    result = run_lint(fixture_repo)
+    assert result.returncode != 0
+    assert "L7" in result.stdout or "L7" in result.stderr
