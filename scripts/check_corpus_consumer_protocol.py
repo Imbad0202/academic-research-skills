@@ -205,40 +205,40 @@ def check_l7() -> list[str]:
 def check_l8() -> list[str]:
     failures: list[str] = []
     manifest_set = manifest_basenames()
+    rel = HANDOFF_SCHEMAS.relative_to(REPO_ROOT)
 
-    if manifest_set == PR_A_SET:
-        # Caveat MUST remain in PR-A
-        if not HANDOFF_SCHEMAS.exists():
-            failures.append(f"L8: {HANDOFF_SCHEMAS.relative_to(REPO_ROOT)} does not exist")
-            return failures
-        text = HANDOFF_SCHEMAS.read_text(encoding="utf-8")
-        if DEFERRED_CAVEAT not in text:
-            failures.append(
-                f"L8: PR-A pre-release state requires deferred caveat to remain in "
-                f"{HANDOFF_SCHEMAS.relative_to(REPO_ROOT)}; "
-                f"caveat retirement is forbidden until literature_strategist_agent ships in PR-B"
-            )
-    elif manifest_set == PR_B_SET:
-        if not HANDOFF_SCHEMAS.exists():
-            failures.append(f"L8: {HANDOFF_SCHEMAS.relative_to(REPO_ROOT)} does not exist")
-            return failures
-        text = HANDOFF_SCHEMAS.read_text(encoding="utf-8")
-        if DEFERRED_CAVEAT in text:
-            failures.append(
-                f"L8: PR-B release state requires deferred caveat to be retired in "
-                f"{HANDOFF_SCHEMAS.relative_to(REPO_ROOT)}"
-            )
-        if REF_DOC_BACKPOINTER not in text:
-            failures.append(
-                f"L8: PR-B release state requires backpointer "
-                f"'{REF_DOC_BACKPOINTER}' in {HANDOFF_SCHEMAS.relative_to(REPO_ROOT)}"
-            )
-    else:
+    if manifest_set not in (PR_A_SET, PR_B_SET):
         failures.append(
             f"L8: manifest does not match a known release state. "
             f"Got {sorted(manifest_set)}; expected {sorted(PR_A_SET)} (PR-A) or "
             f"{sorted(PR_B_SET)} (PR-B)."
         )
+        return failures
+
+    if not HANDOFF_SCHEMAS.exists():
+        failures.append(f"L8: {rel} does not exist")
+        return failures
+
+    text = HANDOFF_SCHEMAS.read_text(encoding="utf-8")
+
+    if manifest_set == PR_A_SET:
+        # Caveat MUST remain in PR-A; retirement is forbidden until PR-B
+        if DEFERRED_CAVEAT not in text:
+            failures.append(
+                f"L8: PR-A pre-release state requires deferred caveat to remain in "
+                f"{rel}; caveat retirement is forbidden until "
+                f"literature_strategist_agent ships in PR-B"
+            )
+    else:  # PR_B_SET
+        if DEFERRED_CAVEAT in text:
+            failures.append(
+                f"L8: PR-B release state requires deferred caveat to be retired in {rel}"
+            )
+        if REF_DOC_BACKPOINTER not in text:
+            failures.append(
+                f"L8: PR-B release state requires backpointer "
+                f"'{REF_DOC_BACKPOINTER}' in {rel}"
+            )
     return failures
 
 

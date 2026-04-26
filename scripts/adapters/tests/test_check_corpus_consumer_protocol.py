@@ -426,21 +426,13 @@ def test_l9_fails_when_good_marker_missing(fixture_repo: Path) -> None:
 
 
 def test_integration_lint_passes_against_real_repo() -> None:
-    """Run the lint against the actual repo (REPO_ROOT).
+    """Guard against real-repo drift: lint must pass against REPO_ROOT.
 
-    This test is RED until Tasks 9 + 10 ship the real artifacts:
-    - academic-pipeline/references/literature_corpus_consumers.md
-    - bibliography_agent.md modifications (corpus-first section)
-
-    After Task 11 wires the lint into CI, this becomes a guard against
-    real-repo drift in subsequent commits.
+    Wired into CI by spec-consistency.yml. Any future commit that
+    breaks an L1-L9 invariant against the live repo state fails here
+    AND in CI's `Validate corpus consumer protocol` step.
     """
-    result = subprocess.run(
-        [sys.executable, str(LINT_SCRIPT)],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
+    result = run_lint(REPO_ROOT)
     assert result.returncode == 0, (
         f"Lint failed against real repo:\n"
         f"STDOUT:\n{result.stdout}\n"
