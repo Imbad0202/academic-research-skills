@@ -153,8 +153,13 @@ The PRE-SCREENED block goes into the Search Strategy section, immediately before
 
 ```markdown
 PRE-SCREENED FROM USER CORPUS:
-- Adapter: <obtained_via enum value>      # e.g., zotero-bbt-export
-- Snapshot date: <max(obtained_at)>        # ISO 8601, or <unspecified> per F4d
+- Adapter: <obtained_via enum value | "<unspecified>" | "mixed (...)">
+                                          # e.g., zotero-bbt-export, or "<unspecified>" per F4a,
+                                          # or "<value> (N of M entries declared)" per F4b,
+                                          # or "mixed (zotero-bbt-export: K, ..., undeclared: U)" per F4c
+- Snapshot date: <max(obtained_at)>        # ISO 8601, or "<unspecified>" per F4d,
+                                          # or "<date> (M of N entries declared)" per F4e,
+                                          # or append "(spans <N> days; corpus may not be a single snapshot)" per F4f
 - Total entries scanned: <N>
 - Pre-screening result:
   - Included: <K> entries
