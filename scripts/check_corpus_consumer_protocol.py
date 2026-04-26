@@ -202,6 +202,62 @@ def check_l7() -> list[str]:
     return failures
 
 
+def check_l8() -> list[str]:
+    failures: list[str] = []
+    manifest_set = manifest_basenames()
+
+    if manifest_set == PR_A_SET:
+        # Caveat MUST remain in PR-A
+        if not HANDOFF_SCHEMAS.exists():
+            failures.append(f"L8: {HANDOFF_SCHEMAS.relative_to(REPO_ROOT)} does not exist")
+            return failures
+        text = HANDOFF_SCHEMAS.read_text(encoding="utf-8")
+        if DEFERRED_CAVEAT not in text:
+            failures.append(
+                f"L8: PR-A pre-release state requires deferred caveat to remain in "
+                f"{HANDOFF_SCHEMAS.relative_to(REPO_ROOT)}; "
+                f"caveat retirement is forbidden until literature_strategist_agent ships in PR-B"
+            )
+    elif manifest_set == PR_B_SET:
+        if not HANDOFF_SCHEMAS.exists():
+            failures.append(f"L8: {HANDOFF_SCHEMAS.relative_to(REPO_ROOT)} does not exist")
+            return failures
+        text = HANDOFF_SCHEMAS.read_text(encoding="utf-8")
+        if DEFERRED_CAVEAT in text:
+            failures.append(
+                f"L8: PR-B release state requires deferred caveat to be retired in "
+                f"{HANDOFF_SCHEMAS.relative_to(REPO_ROOT)}"
+            )
+        if REF_DOC_BACKPOINTER not in text:
+            failures.append(
+                f"L8: PR-B release state requires backpointer "
+                f"'{REF_DOC_BACKPOINTER}' in {HANDOFF_SCHEMAS.relative_to(REPO_ROOT)}"
+            )
+    else:
+        failures.append(
+            f"L8: manifest does not match a known release state. "
+            f"Got {sorted(manifest_set)}; expected {sorted(PR_A_SET)} (PR-A) or "
+            f"{sorted(PR_B_SET)} (PR-B)."
+        )
+    return failures
+
+
+def check_l9() -> list[str]:
+    if not REF_DOC_PATH.exists():
+        return []  # L1 already failed
+    text = REF_DOC_PATH.read_text(encoding="utf-8")
+    failures: list[str] = []
+    if "<!-- BAD -->" not in text:
+        failures.append(
+            f"L9: reference doc missing '<!-- BAD -->' marker (Iron Rule 2 example pair)"
+        )
+    if "<!-- GOOD -->" not in text:
+        failures.append(
+            f"L9: reference doc missing '<!-- GOOD -->' marker (Iron Rule 2 example pair)"
+        )
+    return failures
+
+
 CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
     ("L1", check_l1),
     ("L2", check_l2),
@@ -210,6 +266,8 @@ CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
     ("L5", check_l5),
     ("L6", check_l6),
     ("L7", check_l7),
+    ("L8", check_l8),
+    ("L9", check_l9),
 ]
 
 
