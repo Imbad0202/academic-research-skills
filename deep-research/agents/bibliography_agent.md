@@ -94,6 +94,87 @@ Full-text excluded (with reasons): ___
 Studies included in review: ___
 ```
 
+## Reading `literature_corpus[]` from Material Passport (v3.6.5+)
+
+**Backpointer**: see [`academic-pipeline/references/literature_corpus_consumers.md`](../../academic-pipeline/references/literature_corpus_consumers.md) for the full consumer protocol, BAD/GOOD examples, and shared template.
+
+When the input Material Passport carries a non-empty `literature_corpus[]`, this agent enters the **corpus-first, search-fills-gap** flow. The flow has five steps and four Iron Rules; the PRE-SCREENED block makes corpus utilisation reproducible.
+
+### The four Iron Rules
+
+1. **Iron Rule 1 — Same criteria.** Apply the same Inclusion / Exclusion criteria to corpus entries and external database results. No exceptions.
+2. **Iron Rule 2 — No silent skip.** Any skipped corpus entry must be recorded in the PRE-SCREENED block's skipped sub-section with a reason. Silently dropping an entry is a prompt-layer violation.
+3. **Iron Rule 3 — No corpus mutation.** Consumer agents never modify, backfill, or derive new content into `literature_corpus[]`. Read only.
+4. **Iron Rule 4 — Graceful fallback on parse failure.** Consumer agents do NOT re-validate schema, do NOT parse JSON Schema at runtime, and do NOT dereference `source_pointer` URIs. When the corpus cannot be parsed, emit `[CORPUS PARSE FAILURE: <cause>]` and fall back to external-DB-only flow.
+
+### Step 0: presence detection and minimal shape
+
+The agent applies a MINIMAL SHAPE CHECK on the corpus before reading further. This is not JSON Schema validation. It checks only what the consumer needs to read each entry safely — the v3.6.4 required fields:
+
+- shape OK ≡ `literature_corpus` is a YAML list AND
+- each entry is a YAML mapping AND
+- each entry has `citation_key` (non-empty string), `title` (non-empty string), `authors` (non-empty list), `year` (numeric-coercible), `source_pointer` (non-empty string).
+
+If the passport lacks `literature_corpus` or it is empty, run the original external-DB-only flow. If parse or shape check fails, emit `[CORPUS PARSE FAILURE: <one-line cause>]` and fall back. Otherwise, continue to Step 1.
+
+### Step 1: pre-screen corpus against current RQ
+
+For each entry:
+
+1. Read the five required fields and any optional fields present (`venue`, `doi`, `tags`, `abstract`, `user_notes`).
+2. Apply the current Inclusion / Exclusion criteria to whatever fields are present. `title` is always available; `abstract` and `tags` participate only when populated. Field absence narrows the screening surface but never causes SKIP.
+3. Classify as INCLUDE / EXCLUDE / SKIP. SKIP fires only when criteria cannot be applied at all (see F1 in spec §4.1).
+
+### Step 2: search-fills-gap (external DB)
+
+```
+derive uncovered_topics = RQ subtopics − {topics covered by pre_screened_included[]}
+user_corpus_only = user explicitly asked "use my corpus only"
+
+case A: uncovered_topics non-empty AND NOT user_corpus_only
+    → external DB search scoped to uncovered_topics
+case B: uncovered_topics empty AND user_corpus_only
+    → skip external; surface "external search omitted on user request"
+case B': uncovered_topics non-empty AND user_corpus_only
+    → skip external BUT surface uncovered_topics as known coverage gap
+case C: uncovered_topics empty AND NOT user_corpus_only
+    → standard external search (not scope-limited; newer-work + dedup validation)
+```
+
+### Step 3: merge
+
+`final_included = pre_screened_included[] ∪ external_included[]`. The annotated bibliography stays neutral — no source-attribution tags on entries.
+
+### Step 4: emit Search Strategy Report
+
+The PRE-SCREENED block goes into the Search Strategy section, immediately before the existing `**Databases**:` line of the Output Format below.
+
+### PRE-SCREENED block template
+
+```markdown
+PRE-SCREENED FROM USER CORPUS:
+- Adapter: <obtained_via enum value>      # e.g., zotero-bbt-export
+- Snapshot date: <max(obtained_at)>        # ISO 8601, or <unspecified> per F4d
+- Total entries scanned: <N>
+- Pre-screening result:
+  - Included: <K> entries
+    citation_keys:
+      - <k1>
+      - <k2>
+  - Excluded by inclusion / exclusion criteria: <E> entries
+    citation_keys:
+      - <e1>
+    (omit this sub-block if 0)
+  - Skipped (criteria cannot be applied): <S> entries
+    citation_keys with reasons:
+      - <key>: <reason>
+    (omit this sub-block if 0)
+- Note: presence in corpus does not imply inclusion;
+  same criteria applied to corpus and external sources.
+```
+
+Lists with more than 50 entries truncate to first 20 + last 5 alphabetically, with an appendix file at `pre_screened_citation_keys_<list>_<timestamp>.txt`. Skipped truncation preserves `<key>: <reason>` in both inline and appendix forms. See spec §3.2 for the full truncation rule.
+
 ## APA 7.0 Quick Reference
 
 Reference: `references/apa7_style_guide.md`
