@@ -88,9 +88,6 @@ jobs:
       - name: Validate corpus consumer protocol (v3.6.5+)
         run: python3 scripts/check_corpus_consumer_protocol.py
 
-      - name: Run corpus consumer protocol lint tests
-        run: python3 -m pytest scripts/adapters/tests/test_check_corpus_consumer_protocol.py -v
-
       - name: Check adapter docs up-to-date
         run: python3 scripts/sync_adapter_docs.py --check
 

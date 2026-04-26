@@ -5,17 +5,23 @@ on:
     paths:
       - 'scripts/adapters/**'
       - 'scripts/check_literature_corpus_schema.py'
+      - 'scripts/check_corpus_consumer_protocol.py'
       - 'scripts/sync_adapter_docs.py'
       - 'shared/contracts/passport/**'
       - 'academic-pipeline/references/adapters/**'
+      - 'academic-pipeline/references/literature_corpus_consumers.md'
+      - 'deep-research/agents/bibliography_agent.md'
   push:
     branches: [main]
     paths:
       - 'scripts/adapters/**'
       - 'scripts/check_literature_corpus_schema.py'
+      - 'scripts/check_corpus_consumer_protocol.py'
       - 'scripts/sync_adapter_docs.py'
       - 'shared/contracts/passport/**'
       - 'academic-pipeline/references/adapters/**'
+      - 'academic-pipeline/references/literature_corpus_consumers.md'
+      - 'deep-research/agents/bibliography_agent.md'
 
 concurrency:
   group: pytest-${{ github.ref }}
