@@ -208,6 +208,25 @@ claude
 
 Use these skills in [Claude Cowork](https://claude.com/product/cowork) — Claude Desktop's agentic workspace.
 
+> [!WARNING]
+> **Known broken (2026-04-27) — instructions in this section bury `SKILL.md` files one level too deep, so Cowork's skill discovery (`.claude/skills/<skill-name>/SKILL.md`) does not register them. A doc-correctness patch (v3.6.5.1) is in progress.**
+>
+> **Workaround until the patch ships** — install each of the four skill folders separately into `.claude/skills/`:
+>
+> ```bash
+> git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
+> mkdir -p ~/.claude/skills
+> cd ~/.claude/skills
+> ln -s ~/academic-research-skills/deep-research deep-research
+> ln -s ~/academic-research-skills/academic-paper academic-paper
+> ln -s ~/academic-research-skills/academic-paper-reviewer academic-paper-reviewer
+> ln -s ~/academic-research-skills/academic-pipeline academic-pipeline
+> ```
+>
+> Restart Cowork and the four skills should register. If you sync `~/.claude/skills` across machines (cloud folders), use `cp -R` instead of `ln -s` — symlinks pointing at absolute paths break on a fresh checkout.
+>
+> Tracking: [issue #44](https://github.com/Imbad0202/academic-research-skills/issues/44).
+
 **Option A: folder access (quickest)**
 
 1. Clone this repo locally:
@@ -235,6 +254,13 @@ Skills auto-load when relevant — e.g., saying "help me write a paper" triggers
 ### Method 4: Use with claude.ai (web)
 
 You can use these skills on [claude.ai](https://claude.ai) via the **Project** feature with GitHub integration — no Claude Code installation needed.
+
+> [!WARNING]
+> **Known misleading (2026-04-27) — claude.ai's GitHub integration loads files into _Project knowledge_ (static context for retrieval), NOT the Skills system. Skill auto-loading does not happen via this method.** Use this Method 4 only as a fallback knowledge mode (Claude can read the repo content but does not execute the skills as agentic workflows).
+>
+> **Real Skill upload on claude.ai** requires Settings → Capabilities → Skills, with one zip uploaded per skill. **Note**: the four skill `description` fields in this repo currently exceed the 200-character cap and would be rejected by the upload UI. A separate patch (v3.6.5.2) trims the descriptions and adds zip upload guidance. Until then, prefer Method 1, 2, or 3.
+>
+> A doc-correctness patch (v3.6.5.1) clarifying both modes is in progress. Tracking: [issue #44](https://github.com/Imbad0202/academic-research-skills/issues/44).
 
 1. Sign in to [claude.ai](https://claude.ai) (requires a paid plan)
 2. Create a new Project: **Projects** → **Create Project**
