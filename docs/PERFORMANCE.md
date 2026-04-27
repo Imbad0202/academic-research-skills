@@ -40,7 +40,7 @@ The full academic pipeline is designed for human-in-the-loop execution, with man
 
 ### v3.6.2 Sprint Contract reviewer cost (always-on for `full` / `methodology-focus`)
 
-The Schema 13 sprint contract gate splits each reviewer agent's run into Phase 1 (paper-content-blind, commits scoring plan) + Phase 2 (paper-visible review). For modes that ship templates (`full` panel 5 + `methodology-focus` panel 2), each reviewer therefore costs roughly two LLM turns instead of one. Reserved modes (`re_review` / `calibration` / `guided` / `quick`) keep pre-v3.6.2 behaviour.
+The Schema 13 sprint contract gate splits each reviewer agent's run into Phase 1 (paper-content-blind, commits scoring plan) + Phase 2 (paper-visible review). For modes that ship templates (`full` panel 5 + `methodology-focus` panel 2), each reviewer therefore costs roughly two LLM turns instead of one. Reserved modes (`re-review` / `calibration` / `guided` / `quick`) keep pre-v3.6.2 behaviour.
 
 | Skill / Mode | Effect on tokens | Notes |
 |---|---|---|

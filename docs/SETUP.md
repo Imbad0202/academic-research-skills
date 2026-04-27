@@ -100,10 +100,11 @@ Three reference Python adapters ship with v3.6.4 at `scripts/adapters/`:
 # 1. Install adapter dependencies (PyYAML + jsonschema, already in requirements-dev.txt)
 pip install -r requirements-dev.txt
 
-# 2. Run a reference adapter (pick one that matches your corpus source)
-python scripts/adapters/folder_scan.py --input /path/to/pdfs --out passport.yaml
-python scripts/adapters/zotero.py      --input my-zotero-export.json --out passport.yaml
-python scripts/adapters/obsidian.py    --input ~/Obsidian/Lit\ Notes --out passport.yaml
+# 2. Run a reference adapter (pick one that matches your corpus source).
+#    Both --passport and --rejection-log are required.
+python scripts/adapters/folder_scan.py --input /path/to/pdfs               --passport passport.yaml --rejection-log rejection_log.yaml
+python scripts/adapters/zotero.py      --input my-zotero-export.json       --passport passport.yaml --rejection-log rejection_log.yaml
+python scripts/adapters/obsidian.py    --input ~/Obsidian/Lit\ Notes       --passport passport.yaml --rejection-log rejection_log.yaml
 
 # 3. Pass the resulting passport.yaml into your ARS session
 #    (concrete invocation depends on which skill you're running — see scripts/adapters/README.md)

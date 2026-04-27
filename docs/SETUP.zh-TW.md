@@ -100,10 +100,11 @@ v3.6.4 附三個 reference Python adapter，位於 `scripts/adapters/`：
 # 1. 安裝 adapter 依賴（PyYAML + jsonschema，已在 requirements-dev.txt）
 pip install -r requirements-dev.txt
 
-# 2. 跑一個對應你語料來源的 reference adapter
-python scripts/adapters/folder_scan.py --input /path/to/pdfs --out passport.yaml
-python scripts/adapters/zotero.py      --input my-zotero-export.json --out passport.yaml
-python scripts/adapters/obsidian.py    --input ~/Obsidian/Lit\ Notes --out passport.yaml
+# 2. 跑一個對應你語料來源的 reference adapter。
+#    --passport 與 --rejection-log 兩個皆為必填。
+python scripts/adapters/folder_scan.py --input /path/to/pdfs               --passport passport.yaml --rejection-log rejection_log.yaml
+python scripts/adapters/zotero.py      --input my-zotero-export.json       --passport passport.yaml --rejection-log rejection_log.yaml
+python scripts/adapters/obsidian.py    --input ~/Obsidian/Lit\ Notes       --passport passport.yaml --rejection-log rejection_log.yaml
 
 # 3. 把產出的 passport.yaml 帶進你的 ARS session
 #    （實際 invocation 視你跑哪個 skill 而定 — 詳見 scripts/adapters/README.md）

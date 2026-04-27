@@ -40,7 +40,7 @@
 
 ### v3.6.2 Sprint Contract 審稿成本（`full` / `methodology-focus` 模式必跑）
 
-Schema 13 sprint contract 把每個 reviewer agent 切成 Phase 1（不見論文、先承諾評分準則）+ Phase 2（看論文做審稿）兩階段。已 ship template 的兩個模式（`full` panel 5 + `methodology-focus` panel 2）下，每位 reviewer 約等於跑兩個 LLM turn。保留模式（`re_review` / `calibration` / `guided` / `quick`）維持 pre-v3.6.2 行為。
+Schema 13 sprint contract 把每個 reviewer agent 切成 Phase 1（不見論文、先承諾評分準則）+ Phase 2（看論文做審稿）兩階段。已 ship template 的兩個模式（`full` panel 5 + `methodology-focus` panel 2）下，每位 reviewer 約等於跑兩個 LLM turn。保留模式（`re-review` / `calibration` / `guided` / `quick`）維持 pre-v3.6.2 行為。
 
 | Skill / 模式 | Token 影響 | 備註 |
 |---|---|---|
