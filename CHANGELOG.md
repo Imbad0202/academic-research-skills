@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.6.5] - 2026-04-27
+
+### Added
+
+- Material Passport `literature_corpus[]` consumer integration in Phase 1
+  (deep-research/bibliography_agent + academic-paper/literature_strategist_agent).
+  Corpus-first, search-fills-gap flow with PRE-SCREENED reproducibility block.
+  Reproducibility for systematic-review use is preserved through Iron Rule 1
+  same-criteria parity plus Step 2 case C (standard external search runs even
+  when corpus fully covers RQ subtopics).
+- `academic-pipeline/references/literature_corpus_consumers.md` — consumer protocol
+  reference with four Iron Rules (Same criteria / No silent skip / No corpus mutation /
+  Graceful fallback on parse failure) and per-consumer reading instructions.
+- `scripts/check_corpus_consumer_protocol.py` — CI lint enforcing nine protocol invariants
+  with manifest-driven consumer list and stub-block opt-out.
+- `scripts/corpus_consumer_manifest.json` — supported-consumer manifest.
+
+### Changed
+
+- `shared/handoff_schemas.md` Schema 9 — retired the v3.6.4 "Consumer-side integration
+  deferred to v3.6.5+" caveat; replaced with backpointer to the consumer protocol.
+- `deep-research/SKILL.md` 2.9.1 → 2.9.2 — bibliography_agent corpus-first flow (also
+  syncs Version Info footer that lagged at 2.9.0).
+- `academic-paper/SKILL.md` 3.1.0 → 3.1.1 — literature_strategist_agent corpus-first flow.
+- `academic-pipeline/SKILL.md` 3.6.4 → 3.6.5 — suite version invariant.
+- `.claude/CLAUDE.md`, `MODE_REGISTRY.md`, `README.md`, `README.zh-TW.md`,
+  `scripts/check_spec_consistency.py` updated for the version bump (suite version,
+  badge, tag, changelog heading).
+
+### Notes
+
+- Consumer integration is presence-based: auto-engages when passport carries a
+  non-empty `literature_corpus[]` and parses cleanly. Parse failures fall back
+  to external-DB-only flow with a `[CORPUS PARSE FAILURE]` surface. No new env
+  flag introduced.
+- Schema is unchanged from v3.6.4. Existing user adapters work without modification.
+- `citation_compliance_agent` corpus integration deferred to v3.6.6+.
+- `source_pointer` is not dereferenced by consumers; URI resolution remains a future
+  `source_verification_agent` concern.
+
 ## [3.6.4] - 2026-04-25
 
 ### Added
