@@ -575,7 +575,7 @@ The optional `literature_corpus[]` field is Schema 9's input port for user-owned
 
 ARS does not produce these entries. User-written adapters read their own corpus source (Zotero, Obsidian, folder, Notion, etc.) and emit a passport with `literature_corpus[]` populated. Three reference adapters ship with v3.6.4 under [`scripts/adapters/`](../scripts/adapters/).
 
-Consumer-side integration deferred to v3.6.5+ — `literature_corpus[]`-reading agents land progressively across PR-A (`bibliography_agent`) and PR-B (`literature_strategist_agent`); v3.6.5 release tag goes on PR-B. v3.6.4 defines the input port only.
+Consumer integration ships in v3.6.5: `bibliography_agent` (deep-research, Phase 1) and `literature_strategist_agent` (academic-paper, Phase 1) read `literature_corpus[]` via the corpus-first, search-fills-gap flow. See [`academic-pipeline/references/literature_corpus_consumers.md`](../academic-pipeline/references/literature_corpus_consumers.md) for the full consumer protocol, the four Iron Rules, and per-consumer reading instructions.
 
 See [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md) for the adapter contract.
 
