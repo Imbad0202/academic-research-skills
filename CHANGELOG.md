@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.6.5.2] - 2026-04-27
+
+### Changed
+
+- **`docs/SETUP.md` Method 4 (claude.ai) recommendation revised**. Method 4b
+  (Project + GitHub integration) is now presented first as the recommended
+  claude.ai path, since it brings the repository into Project knowledge for
+  reading and citation without losing fidelity. Method 4a (Custom Skill upload)
+  is now explicitly marked as **not recommended for this suite**, with a
+  rationale paragraph covering two compounding reasons:
+  - ARS depends on Claude Code-only orchestration features. Each skill drives
+    12-13 specialised agents through Claude Code's Task / subagent tooling
+    and Material Passport file handoffs that resume across sessions.
+    claude.ai Custom Skills do support multi-file packages with `scripts/`
+    and code execution per Anthropic's documentation, but the Anthropic-
+    documented scope of the claude.ai Custom Skill runtime does not include
+    Claude Code's Task / subagent control surface or cross-session Material
+    Passport handoffs. The recommendation is forward-looking based on those
+    documented assumptions; we have not run a live upload to characterise
+    the actual surfacing in claude.ai.
+  - Trimming the four `description` fields below claude.ai's 200-character cap
+    would weaken Claude Code and Cowork routing on the platforms the suite was
+    actually built for. The Agent Skills specification and Claude Code Skills
+    documentation both allow up to 1,024 characters; only claude.ai's upload
+    UI enforces 200. Trading Claude Code and Cowork routing precision for
+    partial functionality on the limited claude.ai path was judged not worth
+    it.
+- **Method 4a install commands kept in place** for users who decide to try it
+  anyway, framed as "if you want to try this path despite the limitations"
+  rather than as a recommended flow. The upload UI's expected rejection on
+  description-too-long is documented as deliberate, not an oversight to fix
+  later.
+- **`docs/SETUP.zh-TW.md`** mirrors the English changes end-to-end.
+
+### Notes
+
+- Doc-only patch. No `SKILL.md` (frontmatter or body), no agent file, no
+  schema, no script, no test, no workflow, and no version bump in any skill
+  changed in this patch. The four current `description` fields stay at their
+  Claude Code-native lengths (440-842 characters) so routing on Claude Code
+  and Cowork remains intact.
+- This patch is a scope change from the v3.6.5.2 originally forecast in the
+  v3.6.5.1 SETUP doc. The earlier plan was a description trim; on review, the
+  trim direction was abandoned because it would have damaged Claude Code and
+  Cowork routing to unblock a path that delivers an untested partial fit
+  anyway. The v3.6.5.1 SETUP text's forward-promise of a description trim is
+  removed here.
+- Issue [#44](https://github.com/Imbad0202/academic-research-skills/issues/44)
+  receives a single consolidated reply on this PR's merge, summarising both
+  v3.6.5.1 (SETUP doc rewrite) and v3.6.5.2 (Method 4a recommendation), and
+  closes there.
+
 ## [3.6.5.1] - 2026-04-27
 
 ### Fixed
@@ -18,7 +70,10 @@ All notable changes to this project will be documented in this file.
   install path) and Method 4b (Project + GitHub integration, fallback knowledge mode and
   not a Skill install). The previous text framed GitHub integration as a Skill install
   path, which conflated content retrieval with skill execution. Method 4a documents the
-  current 200-character `description` cap blocker; the description trim ships in v3.6.5.2.
+  current 200-character `description` cap blocker (this entry originally forecast a
+  description trim in v3.6.5.2; see the v3.6.5.2 entry above for the actual decision —
+  Method 4a is documented as not recommended for this suite, and descriptions remain at
+  their Claude Code-native lengths).
 - **Method 3 prerequisites** — expanded from one sentence to a full prerequisites
   subsection covering Claude Desktop version, internet connectivity, Cowork process model,
   folder permissions, paid plan, and Team/Enterprise org-admin controls.
@@ -46,10 +101,11 @@ All notable changes to this project will be documented in this file.
 - Doc-only patch. No skill content (`SKILL.md`), no agent file, no schema, no script,
   and no test changed in this patch.
 - Issue [#44](https://github.com/Imbad0202/academic-research-skills/issues/44) (philpav)
-  reports SETUP problems on Cowork and claude.ai. v3.6.5.1 fixes the SETUP doc; the
-  remaining `SKILL.md` description-length issue (the actual upload blocker on claude.ai)
-  ships in the follow-up patch v3.6.5.2. Issue #44 will receive a single consolidated
-  reply and close on v3.6.5.2 ship.
+  reports SETUP problems on Cowork and claude.ai. v3.6.5.1 fixes the SETUP doc;
+  this entry originally forecast a `SKILL.md` description-length fix in v3.6.5.2,
+  but v3.6.5.2 instead documents Method 4a as not recommended for this suite (see
+  the v3.6.5.2 entry above for the actual decision). Issue #44 receives a single
+  consolidated reply and closes on v3.6.5.2 ship.
 
 ## [3.6.5] - 2026-04-27
 

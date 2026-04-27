@@ -321,51 +321,22 @@ If description-based routing does not select the skill you want, Cowork also pro
 
 ### Method 4: Use with claude.ai (web)
 
-claude.ai has two different ways to use this repository. They are not equivalent:
+ARS is a Claude Code-native suite. The four skills are 12-13-agent teams that depend on multi-agent orchestration, executable scripts under `scripts/`, and Material Passport file handoffs. claude.ai's web interface delivers a different runtime than Claude Code, and the two access paths it offers reach this repository in different ways:
 
-- **Method 4a** uploads real Custom Skills. This is the standard claude.ai Skill install path, with auto-loading and skill routing.
-- **Method 4b** adds repository files to Project knowledge through GitHub integration. This is fallback knowledge mode, not a Skill install.
+- **Method 4b — Project + GitHub integration** (recommended for claude.ai users): brings the repository into a claude.ai Project as retrievable knowledge. Claude can read the skill bodies, references, schemas, and example outputs, and answer questions or draft against them. Not a Skill install — auto-loading and skill routing do not happen, but the content is fully available for reading and citation.
+- **Method 4a — Custom Skill upload**: claude.ai's standard Skill install path (Settings → Capabilities → Skills, one zip per skill). Not recommended for this suite — see the rationale below before using it.
 
 #### Prerequisites
 
-- A paid claude.ai plan. See Anthropic's current plan information at [claude.ai](https://claude.ai).
-- For Method 4a, no GitHub authentication is needed. You zip each skill folder locally and upload one zip per skill through **Settings** → **Capabilities** → **Skills**. Zip structure errors and the 200-character `description` cap surface as upload-time errors; see Anthropic's [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to).
-- For Method 4b, GitHub authentication is required through the Anthropic connector. See [Using the GitHub integration](https://support.claude.com/en/articles/10167454-using-the-github-integration) and [Set up Claude integrations](https://support.claude.com/en/articles/10168395-set-up-claude-integrations). Private repositories require the Anthropic GitHub App to be authorized on the repo or organization. Team and Enterprise plans require owner-level connector enablement before users can add GitHub-sourced files.
+- A claude.ai account. Plan availability differs by sub-method (see below).
+- **For Method 4b**: claude.ai Projects are available across plan tiers per Anthropic's [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects); paid plans (Pro, Max, Team, Enterprise) get larger knowledge capacity and stronger retrieval. GitHub authentication is required through the Anthropic connector — see [Using the GitHub integration](https://support.claude.com/en/articles/10167454-using-the-github-integration) and [Set up Claude integrations](https://support.claude.com/en/articles/10168395-set-up-claude-integrations). Private repositories require the Anthropic GitHub App to be authorized on the repo or organization. Team and Enterprise plans require owner-level connector enablement before users can add GitHub-sourced files.
+- **For Method 4a**: Custom Skills are available on Free, Pro, Max, Team, and Enterprise per Anthropic's [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude). The same article notes that Skills require **code execution to be enabled** in Settings → Capabilities. No GitHub authentication is needed for Method 4a — you zip each skill folder locally and upload one zip per skill through Settings → Capabilities → Skills. Zip structure errors and the 200-character `description` cap surface as upload-time errors; see Anthropic's [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) and [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
-#### Method 4a: Custom Skill upload (claude.ai's standard Skill install path)
+#### Method 4b: Project + GitHub integration (recommended for claude.ai)
 
-This is the real Skill install path for claude.ai. Upload one zip per skill via **Settings** → **Capabilities** → **Skills**.
+claude.ai Projects deliver content as static knowledge for Claude to retrieve and cite — see Anthropic's [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects). This is NOT a Skill install. Skill auto-loading does not happen. Trigger phrases do not route. Claude can read the repo content for reading and citation, and answer questions about it, but does not execute the skills as agentic workflows.
 
-Each zip must have the skill folder as its top-level entry, so the zip contains `<skill-name>/SKILL.md`, not `<skill-name>/<skill-name>/SKILL.md`.
-
-```bash
-git clone https://github.com/Imbad0202/academic-research-skills.git
-cd academic-research-skills
-
-zip -r deep-research.zip deep-research
-zip -r academic-paper.zip academic-paper
-zip -r academic-paper-reviewer.zip academic-paper-reviewer
-zip -r academic-pipeline.zip academic-pipeline
-```
-
-Then upload:
-
-1. Sign in to [claude.ai](https://claude.ai).
-2. Open **Settings**.
-3. Open **Capabilities**.
-4. Open **Skills**.
-5. Upload `deep-research.zip`.
-6. Upload `academic-paper.zip`.
-7. Upload `academic-paper-reviewer.zip`.
-8. Upload `academic-pipeline.zip`.
-
-Current blocker in v3.6.5.1: the four skill `description` fields in this repo currently exceed the 200-character cap and would be rejected by the upload UI. The description trim ships in a follow-up patch (v3.6.5.2). This path is documented here so the install instructions are correct in advance; until v3.6.5.2 ships, prefer Method 1, Method 2, or Method 3.
-
-#### Method 4b: Project + GitHub integration (fallback knowledge mode, not a Skill install)
-
-claude.ai Projects deliver content as static knowledge for Claude to retrieve and cite — see Anthropic's [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects). This is NOT a Skill install. Skill auto-loading does not happen. Trigger phrases do not route. Claude can read the repo content but does not execute the skills as agentic workflows.
-
-Use this when you want claude.ai to have access to the repo content for reading/citation, but you do not need agentic skill execution.
+Use this when you want claude.ai to have access to the repo content — including the agent definitions, references, and example outputs — for reading and citation, without needing agentic skill execution. For agentic execution, use Method 3 (Cowork) on the desktop, or Methods 1-2 in Claude Code.
 
 1. Sign in to [claude.ai](https://claude.ai).
 2. Create a new Project: **Projects** → **Create Project**.
@@ -390,9 +361,47 @@ Use this when you want claude.ai to have access to the repo content for reading/
 
 Anthropic's current [Project file limits](https://support.claude.com/en/articles/8241126-upload-files-to-claude) state that Project file count is not artificially capped at 200; files have a 30 MB per-file limit and total usable content is still subject to context-window limits at runtime. Keep the Project focused so Claude retrieves the relevant files reliably.
 
+#### Method 4a: Custom Skill upload (not recommended for this suite)
+
+Method 4a is claude.ai's standard Custom Skill install path: zip each skill folder, upload through Settings → Capabilities → Skills, and Claude treats it as an installed Skill with auto-loading and routing. claude.ai's Custom Skills do support multi-file skill packages including `scripts/` (see Anthropic's [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills) on supporting files and code execution), so Method 4a is mechanically capable of hosting skills with executable assets. The reasons not to recommend it for this specific suite are different and compound:
+
+1. **ARS depends on Claude Code-only orchestration features**. Each ARS skill drives 12-13 specialised agents through Claude Code's Task / subagent tooling and Material Passport file handoffs that resume across sessions. The Anthropic-documented scope of claude.ai's Custom Skill runtime — a containerised code-execution environment per session, with the Skills user guide ([Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)) describing skill activation but not multi-agent dispatch — does not include Claude Code's Task / subagent control surface. Method 4a is therefore expected to surface ARS as the SKILL.md body's instructions, without the multi-agent dispatch that produces the suite's actual outputs. We have not run a live upload to characterise this in detail; the recommendation is forward-looking based on the Claude Code-specific assumptions baked into the agent orchestration, not on a measured failure.
+2. **Cost to Claude Code and Cowork routing**. claude.ai limits each skill's `description` field to 200 characters per the [Custom Skills documentation](https://claude.com/docs/skills/how-to), while the [Agent Skills specification](https://agentskills.io/specification) and [Claude Code Skills documentation](https://code.claude.com/docs/en/skills) allow up to 1,024 characters. The four ARS descriptions currently sit in the 440-842 range, front-loading routing keywords that Claude Code and Cowork use to discriminate between research, writing, review, and orchestration. Trimming them to fit Method 4a would weaken routing on Claude Code and Cowork — the platforms ARS was built for — in exchange for an unverified partial fit on claude.ai.
+
+**Recommended paths instead:**
+
+- For agentic skill execution on the desktop, use [Method 3 (Cowork)](#method-3-claude-cowork-desktop). All four skills register as Cowork capabilities, with multi-agent orchestration intact.
+- For claude.ai web access to the repo content, use [Method 4b (Project + GitHub integration)](#method-4b-project--github-integration-recommended-for-claudeai). Claude reads the skill bodies, references, and examples, and you can ask questions or draft against them in a normal claude.ai chat.
+- For Claude Code projects, use [Method 1 (project skills)](#method-1-as-project-skills-recommended) or [Method 2 (standalone)](#method-2-as-a-standalone-project).
+
+If you still want to try Method 4a despite the limitations above, zip each skill folder so the archive's top-level entry is `<skill-name>/SKILL.md` (not `<skill-name>/<skill-name>/SKILL.md` — that nesting buries the discovery file one level too deep). The `zip -r` commands below produce that shape correctly:
+
+```bash
+git clone https://github.com/Imbad0202/academic-research-skills.git
+cd academic-research-skills
+
+zip -r deep-research.zip deep-research
+zip -r academic-paper.zip academic-paper
+zip -r academic-paper-reviewer.zip academic-paper-reviewer
+zip -r academic-pipeline.zip academic-pipeline
+```
+
+Then in claude.ai:
+
+1. Sign in to [claude.ai](https://claude.ai).
+2. Open **Settings**.
+3. Open **Capabilities**.
+4. Open **Skills**.
+5. Upload `deep-research.zip`.
+6. Upload `academic-paper.zip`.
+7. Upload `academic-paper-reviewer.zip`.
+8. Upload `academic-pipeline.zip`.
+
+The upload UI will reject each zip with a description-too-long error because every ARS description exceeds claude.ai's 200-character cap. The descriptions are intentionally not trimmed; see the rationale above.
+
 **claude.ai vs Claude Code:**
 
-- Method 4b is for content reading, not active Skill execution. If you need agentic skill execution, prefer Method 1, Method 2, Method 3, or Method 4a after v3.6.5.2.
+- Method 4b is for content reading, not active Skill execution. For agentic skill execution, prefer Methods 1-3.
 - claude.ai does not support local shell commands; results may be less comprehensive than Claude Code workflows that rely on local scripts.
 - Cross-model verification (`ARS_CROSS_MODEL`) requires Claude Code with API keys.
 - Direct `.docx` generation requires Pandoc, and LaTeX/PDF output requires Claude Code with `tectonic`; claude.ai can still produce Markdown and DOCX conversion instructions.
