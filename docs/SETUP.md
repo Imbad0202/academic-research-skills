@@ -166,26 +166,58 @@ Without `ARS_CROSS_MODEL` set, everything works exactly as before. The cross-mod
 
 ## Installation methods
 
+Claude discovers skills at `<install-root>/<skill-name>/SKILL.md`. This repo contains four separate skills, each with its own `SKILL.md`:
+
+- `deep-research`
+- `academic-paper`
+- `academic-paper-reviewer`
+- `academic-pipeline`
+
+Do not install the whole repository as one nested skill folder under `.claude/skills/academic-research-skills/`; that buries the four `SKILL.md` files one level too deep for discovery. See Anthropic's [Claude Code Skills documentation](https://code.claude.com/docs/en/skills).
+
 ### Method 1: As project skills (recommended)
 
-Clone this repo into your project's `.claude/skills/` directory:
+Use this when you want ARS available inside an existing Claude Code project.
+
+Clone the repo to a stable local path, then copy each skill folder into your project's `.claude/skills/` directory:
 
 ```bash
+git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
+
 cd /path/to/your/project
 mkdir -p .claude/skills
-git clone https://github.com/Imbad0202/academic-research-skills.git .claude/skills/academic-research-skills
+cp -R ~/academic-research-skills/deep-research .claude/skills/deep-research
+cp -R ~/academic-research-skills/academic-paper .claude/skills/academic-paper
+cp -R ~/academic-research-skills/academic-paper-reviewer .claude/skills/academic-paper-reviewer
+cp -R ~/academic-research-skills/academic-pipeline .claude/skills/academic-pipeline
+```
+
+Expected path shape:
+
+```text
+/path/to/your/project/.claude/skills/deep-research/SKILL.md
+/path/to/your/project/.claude/skills/academic-paper/SKILL.md
+/path/to/your/project/.claude/skills/academic-paper-reviewer/SKILL.md
+/path/to/your/project/.claude/skills/academic-pipeline/SKILL.md
 ```
 
 Then copy the `.claude/CLAUDE.md` content into your project's `.claude/CLAUDE.md` (merge with existing if you have one).
 
-> **Global installation:** To make skills available across all your projects, install to `~/.claude/skills/` instead:
+> **Global Claude Code installation:** To make these skills available across your Claude Code projects, install the four folders to `~/.claude/skills/` instead:
 >
 > ```bash
+> git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
+>
 > mkdir -p ~/.claude/skills
-> git clone https://github.com/Imbad0202/academic-research-skills.git ~/.claude/skills/academic-research-skills
+> cp -R ~/academic-research-skills/deep-research ~/.claude/skills/deep-research
+> cp -R ~/academic-research-skills/academic-paper ~/.claude/skills/academic-paper
+> cp -R ~/academic-research-skills/academic-paper-reviewer ~/.claude/skills/academic-paper-reviewer
+> cp -R ~/academic-research-skills/academic-pipeline ~/.claude/skills/academic-pipeline
 > ```
 
 ### Method 2: As a standalone project
+
+Use this when you want to work directly inside the ARS repository.
 
 ```bash
 git clone https://github.com/Imbad0202/academic-research-skills.git
@@ -199,92 +231,168 @@ claude
 1. Go to <https://github.com/Imbad0202/academic-research-skills>
 2. Click the green **Code** button → **Download ZIP**
 3. Extract the ZIP to your desired location
-4. For Method 1: move the extracted folder to `.claude/skills/academic-research-skills` inside your project
+4. For Method 1: copy the four extracted skill folders (`deep-research`, `academic-paper`, `academic-paper-reviewer`, `academic-pipeline`) into `.claude/skills/` inside your project
 5. For standalone use: open a terminal in the extracted folder and run `claude`
 
 </details>
 
 ### Method 3: Claude Cowork (desktop)
 
-Use these skills in [Claude Cowork](https://claude.com/product/cowork) — Claude Desktop's agentic workspace.
+Use this when you want the four ARS skills available in [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork), Claude Desktop's agentic workspace.
 
-> [!WARNING]
-> **Known broken (2026-04-27) — instructions in this section bury `SKILL.md` files one level too deep, so Cowork's skill discovery (`.claude/skills/<skill-name>/SKILL.md`) does not register them. A doc-correctness patch (v3.6.5.1) is in progress.**
->
-> **Workaround until the patch ships** — install each of the four skill folders separately into `.claude/skills/`:
->
-> ```bash
-> git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
-> mkdir -p ~/.claude/skills
-> cd ~/.claude/skills
-> ln -s ~/academic-research-skills/deep-research deep-research
-> ln -s ~/academic-research-skills/academic-paper academic-paper
-> ln -s ~/academic-research-skills/academic-paper-reviewer academic-paper-reviewer
-> ln -s ~/academic-research-skills/academic-pipeline academic-pipeline
-> ```
->
-> Restart Cowork and the four skills should register. If you sync `~/.claude/skills` across machines (cloud folders), use `cp -R` instead of `ln -s` — symlinks pointing at absolute paths break on a fresh checkout.
->
-> Tracking: [issue #44](https://github.com/Imbad0202/academic-research-skills/issues/44).
+Cowork uses the same skill folder shape: `~/.claude/skills/<skill-name>/SKILL.md`.
 
-**Option A: folder access (quickest)**
+#### Prerequisites
 
-1. Clone this repo locally:
-   ```bash
-   git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
-   ```
-2. Open Claude Desktop → click **Cowork** tab (top bar)
-3. Select the cloned `academic-research-skills` folder as the working directory
-4. Claude will auto-detect the skills from `SKILL.md` files and load them as needed
+- Claude Desktop latest version on macOS or Windows. Download from Anthropic's [Claude Desktop page](https://claude.ai/download).
+- Active internet connection; Cowork tasks call the Anthropic API.
+- Keep Claude Desktop open while Cowork tasks run. Cowork runs inside the Desktop process.
+- Folder/file permissions that allow Cowork to read and write in the project folder.
+- A paid plan with Cowork access. See Anthropic's [Cowork requirements](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork) for current plan availability.
+- On Team or Enterprise plans, your organization admin may have disabled Skills, plugins, connectors, or egress. If installed skills do not register after restart, ask your admin to check org-level controls.
 
-**Option B: as project skills**
+#### Option A: symlink install (fastest, single-machine)
 
-If you already have a project folder in Cowork:
+Use symlinks if you work on one machine and want updates by pulling the repo.
 
 ```bash
-cd /path/to/your/project
-mkdir -p .claude/skills
-git clone https://github.com/Imbad0202/academic-research-skills.git .claude/skills/academic-research-skills
+git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
+
+mkdir -p ~/.claude/skills
+cd ~/.claude/skills
+ln -s ~/academic-research-skills/deep-research deep-research
+ln -s ~/academic-research-skills/academic-paper academic-paper
+ln -s ~/academic-research-skills/academic-paper-reviewer academic-paper-reviewer
+ln -s ~/academic-research-skills/academic-pipeline academic-pipeline
 ```
 
-Skills auto-load when relevant — e.g., saying "help me write a paper" triggers `academic-paper`.
+Expected path shape:
 
-**Requirements:** Claude Desktop (latest version) with Cowork enabled; paid plan (Pro, Max, Team, or Enterprise).
+```text
+~/.claude/skills/deep-research/SKILL.md
+~/.claude/skills/academic-paper/SKILL.md
+~/.claude/skills/academic-paper-reviewer/SKILL.md
+~/.claude/skills/academic-pipeline/SKILL.md
+```
+
+If you sync `~/.claude/skills` across machines via a cloud folder, use Option B instead. Absolute-path symlinks can break on a fresh checkout or another machine.
+
+#### Option B: copy install (cross-machine safe, no auto-update)
+
+Use copies if you sync `~/.claude/skills` across machines or do not want symlinks. Updates require re-running the four `cp -R` commands.
+
+```bash
+git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
+
+mkdir -p ~/.claude/skills
+cp -R ~/academic-research-skills/deep-research ~/.claude/skills/deep-research
+cp -R ~/academic-research-skills/academic-paper ~/.claude/skills/academic-paper
+cp -R ~/academic-research-skills/academic-paper-reviewer ~/.claude/skills/academic-paper-reviewer
+cp -R ~/academic-research-skills/academic-pipeline ~/.claude/skills/academic-pipeline
+```
+
+Expected path shape:
+
+```text
+~/.claude/skills/deep-research/SKILL.md
+~/.claude/skills/academic-paper/SKILL.md
+~/.claude/skills/academic-paper-reviewer/SKILL.md
+~/.claude/skills/academic-pipeline/SKILL.md
+```
+
+#### Create or open a Cowork Project
+
+See Anthropic's [Organize your tasks with Projects in Claude Cowork](https://support.claude.com/en/articles/14116274-organize-your-tasks-with-projects-in-claude-cowork) for the canonical UI walk-through.
+
+1. Open Claude Desktop.
+2. Use the mode selector (**Chat / Cowork**) and switch to **Cowork**.
+3. In **Tasks**, use the left navigation panel and choose **Use an existing folder**.
+4. Select the local folder you want Cowork to work in. This creates a Cowork Project pointing at that folder.
+5. Restart Cowork after installing or updating the skill folders so the four skills register.
+
+#### How Cowork invokes the skills
+
+Claude uses each skill's `description` to judge relevance, as described in Anthropic's [Skills documentation](https://code.claude.com/docs/en/skills). Example phrases such as "help me write a paper" are illustrative, not literal trigger phrases; paraphrased intent works too.
+
+If description-based routing does not select the skill you want, Cowork also provides explicit UI surfaces described in Anthropic's [Cowork plugins documentation](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork):
+
+- Type `/` in a Cowork Task to use the command palette and select an available skill.
+- Use the `+` capability picker to add a skill to the current Task.
 
 ### Method 4: Use with claude.ai (web)
 
-You can use these skills on [claude.ai](https://claude.ai) via the **Project** feature with GitHub integration — no Claude Code installation needed.
+claude.ai has two different ways to use this repository. They are not equivalent:
 
-> [!WARNING]
-> **Known misleading (2026-04-27) — claude.ai's GitHub integration loads files into _Project knowledge_ (static context for retrieval), NOT the Skills system. Skill auto-loading does not happen via this method.** Use this Method 4 only as a fallback knowledge mode (Claude can read the repo content but does not execute the skills as agentic workflows).
->
-> **Real Skill upload on claude.ai** requires Settings → Capabilities → Skills, with one zip uploaded per skill. **Note**: the four skill `description` fields in this repo currently exceed the 200-character cap and would be rejected by the upload UI. A separate patch (v3.6.5.2) trims the descriptions and adds zip upload guidance. Until then, prefer Method 1, 2, or 3.
->
-> A doc-correctness patch (v3.6.5.1) clarifying both modes is in progress. Tracking: [issue #44](https://github.com/Imbad0202/academic-research-skills/issues/44).
+- **Method 4a** uploads real Custom Skills. This is the standard claude.ai Skill install path, with auto-loading and skill routing.
+- **Method 4b** adds repository files to Project knowledge through GitHub integration. This is fallback knowledge mode, not a Skill install.
 
-1. Sign in to [claude.ai](https://claude.ai) (requires a paid plan)
-2. Create a new Project: **Projects** → **Create Project**
-3. Import from GitHub: in the Project, click **Files** → **+** → **GitHub** → select `Imbad0202/academic-research-skills`
+#### Prerequisites
 
-   **Recommended selections** (to stay within capacity):
+- A paid claude.ai plan. See Anthropic's current plan information at [claude.ai](https://claude.ai).
+- For Method 4a, no GitHub authentication is needed. You zip each skill folder locally and upload one zip per skill through **Settings** → **Capabilities** → **Skills**. Zip structure errors and the 200-character `description` cap surface as upload-time errors; see Anthropic's [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to).
+- For Method 4b, GitHub authentication is required through the Anthropic connector. See [Using the GitHub integration](https://support.claude.com/en/articles/10167454-using-the-github-integration) and [Set up Claude integrations](https://support.claude.com/en/articles/10168395-set-up-claude-integrations). Private repositories require the Anthropic GitHub App to be authorized on the repo or organization. Team and Enterprise plans require owner-level connector enablement before users can add GitHub-sourced files.
 
-   | Select | Directory | Why |
+#### Method 4a: Custom Skill upload (claude.ai's standard Skill install path)
+
+This is the real Skill install path for claude.ai. Upload one zip per skill via **Settings** → **Capabilities** → **Skills**.
+
+Each zip must have the skill folder as its top-level entry, so the zip contains `<skill-name>/SKILL.md`, not `<skill-name>/<skill-name>/SKILL.md`.
+
+```bash
+git clone https://github.com/Imbad0202/academic-research-skills.git
+cd academic-research-skills
+
+zip -r deep-research.zip deep-research
+zip -r academic-paper.zip academic-paper
+zip -r academic-paper-reviewer.zip academic-paper-reviewer
+zip -r academic-pipeline.zip academic-pipeline
+```
+
+Then upload:
+
+1. Sign in to [claude.ai](https://claude.ai).
+2. Open **Settings**.
+3. Open **Capabilities**.
+4. Open **Skills**.
+5. Upload `deep-research.zip`.
+6. Upload `academic-paper.zip`.
+7. Upload `academic-paper-reviewer.zip`.
+8. Upload `academic-pipeline.zip`.
+
+Current blocker in v3.6.5.1: the four skill `description` fields in this repo currently exceed the 200-character cap and would be rejected by the upload UI. The description trim ships in a follow-up patch (v3.6.5.2). This path is documented here so the install instructions are correct in advance; until v3.6.5.2 ships, prefer Method 1, Method 2, or Method 3.
+
+#### Method 4b: Project + GitHub integration (fallback knowledge mode, not a Skill install)
+
+claude.ai Projects deliver content as static knowledge for Claude to retrieve and cite — see Anthropic's [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects). This is NOT a Skill install. Skill auto-loading does not happen. Trigger phrases do not route. Claude can read the repo content but does not execute the skills as agentic workflows.
+
+Use this when you want claude.ai to have access to the repo content for reading/citation, but you do not need agentic skill execution.
+
+1. Sign in to [claude.ai](https://claude.ai).
+2. Create a new Project: **Projects** → **Create Project**.
+3. Import from GitHub: in the Project, click **Files** → **+** → **GitHub** → select `Imbad0202/academic-research-skills`.
+4. Select the folders/files below.
+
+   | Select | Directory / file | Why |
    |---|---|---|
-   | ✅ | `.claude/` | Routing rules |
-   | ✅ | `deep-research/` | Core skill |
-   | ✅ | `academic-paper/` | Core skill |
-   | ✅ | `academic-paper-reviewer/` | Core skill |
-   | ✅ | `academic-pipeline/` | Core skill |
-   | ✅ | `shared/` | Cross-model verification, handoff schemas |
+   | ✅ | `deep-research/` | Core skill content for reading |
+   | ✅ | `academic-paper/` | Core skill content for reading |
+   | ✅ | `academic-paper-reviewer/` | Core skill content for reading |
+   | ✅ | `academic-pipeline/` | Core skill content for reading |
+   | ✅ | `shared/` | Cross-model verification, handoff schemas, shared protocols |
+   | ✅ | `scripts/` | `literature_corpus[]` adapters (`folder_scan`, `zotero`, `obsidian`) + schema validators; required for Material Passport corpus mode and CI-style validation |
    | ✅ | `MODE_REGISTRY.md` | Mode definitions |
-   | ❌ | `examples/` | Takes ~39% capacity — skip unless you have room |
-   | ❌ | `.github/`, READMEs, LICENSE, etc. | Not needed for functionality |
+   | Optional | `.claude/` | Project-level routing rules. Skip if you set Project Instructions in step 5 below (recommended path); include only if you prefer to keep routing rules visible as Project files. |
+   | Optional | `examples/` | Useful for reference examples; skip if you want a smaller Project knowledge set |
+   | Optional | `.github/`, READMEs, LICENSE, etc. | Repository metadata; not needed for core reading context |
 
-4. (Optional) Set **Instructions** in the Project to the content of `.claude/CLAUDE.md` for better routing
-5. Start chatting: "Guide my research on X" or "Help me write a paper about Y"
+5. (Recommended) Set **Instructions** in the Project to the content of `.claude/CLAUDE.md` for better routing.
+6. Start chatting: "Guide my research on X" or "Help me write a paper about Y".
+
+Anthropic's current [Project file limits](https://support.claude.com/en/articles/8241126-upload-files-to-claude) state that Project file count is not artificially capped at 200; files have a 30 MB per-file limit and total usable content is still subject to context-window limits at runtime. Keep the Project focused so Claude retrieves the relevant files reliably.
 
 **claude.ai vs Claude Code:**
 
-- claude.ai does not support parallel multi-agent execution or shell commands; results may be less comprehensive than Claude Code
-- Cross-model verification (`ARS_CROSS_MODEL`) requires Claude Code with API keys
-- Direct `.docx` generation requires Pandoc, and LaTeX/PDF output requires Claude Code with `tectonic`; claude.ai can still produce Markdown and DOCX conversion instructions
+- Method 4b is for content reading, not active Skill execution. If you need agentic skill execution, prefer Method 1, Method 2, Method 3, or Method 4a after v3.6.5.2.
+- claude.ai does not support local shell commands; results may be less comprehensive than Claude Code workflows that rely on local scripts.
+- Cross-model verification (`ARS_CROSS_MODEL`) requires Claude Code with API keys.
+- Direct `.docx` generation requires Pandoc, and LaTeX/PDF output requires Claude Code with `tectonic`; claude.ai can still produce Markdown and DOCX conversion instructions.
