@@ -27,7 +27,7 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 - **Three reference Python adapters**: `scripts/adapters/{folder_scan,zotero,obsidian}.py` with tests and fixtures. Starting points only; users are expected to write their own adapters for non-reference corpus sources.
 - **Rejection log contract**: `shared/contracts/passport/rejection_log.schema.json`. Always emitted, empty when no rejections; closed enum of categorical reason values.
 - **CI lint + pytest job**: `scripts/check_literature_corpus_schema.py` validates schemas + examples; `scripts/sync_adapter_docs.py --check` prevents schema→docs drift; new `pytest.yml` workflow runs `scripts/adapters/tests/` on path-filtered triggers.
-- **Input-port-only at v3.6.4**: v3.6.4 shipped the schema and adapter contract without consumer integration. `bibliography_agent` and `literature_strategist_agent` were wired in v3.6.5 (see above).
+- **Input-port-only at v3.6.4**: v3.6.4 shipped the schema and adapter contract; consumer integration landed in v3.6.5.
 
 ## v3.6.3 Key Additions
 
