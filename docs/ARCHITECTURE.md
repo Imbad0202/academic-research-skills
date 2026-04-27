@@ -311,4 +311,4 @@ timeline
 | `deep-research` v2.9.2 | full, quick, socratic, review, lit-review, fact-check, systematic-review (7) |
 | `academic-paper` v3.1.1 | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure (10) |
 | `academic-paper-reviewer` v1.9.0 | full, re-review, quick, methodology-focus, guided, calibration (6) |
-| `academic-pipeline` v3.6.5 | (orchestrator — delegates to sub-skill modes; no standalone modes) |
+| `academic-pipeline` v3.6.5 | orchestrator (delegates to sub-skill modes) + `resume_from_passport=<hash>` (v3.6.3 opt-in via `ARS_PASSPORT_RESET=1` — resume a prior pipeline run from a Material Passport reset boundary) |
