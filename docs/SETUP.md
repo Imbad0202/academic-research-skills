@@ -90,6 +90,42 @@ curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh
 
 ---
 
+## Material Passport `literature_corpus[]` adapters (v3.6.4+, optional)
+
+If you maintain a curated literature corpus (Zotero, Obsidian, a folder of PDFs, etc.), you can pre-load it into a Material Passport so Phase 1 ARS agents read your library *before* searching external databases. This is opt-in and presence-based — when no corpus is supplied, ARS runs the external-DB-only flow unchanged.
+
+Three reference Python adapters ship with v3.6.4 at `scripts/adapters/`:
+
+```bash
+# 1. Install adapter dependencies (PyYAML + jsonschema, already in requirements-dev.txt)
+pip install -r requirements-dev.txt
+
+# 2. Run a reference adapter (pick one that matches your corpus source)
+python scripts/adapters/folder_scan.py --input /path/to/pdfs --out passport.yaml
+python scripts/adapters/zotero.py      --input my-zotero-export.json --out passport.yaml
+python scripts/adapters/obsidian.py    --input ~/Obsidian/Lit\ Notes --out passport.yaml
+
+# 3. Pass the resulting passport.yaml into your ARS session
+#    (concrete invocation depends on which skill you're running — see scripts/adapters/README.md)
+```
+
+Each adapter emits two files: `passport.yaml` (Schema 9 with `literature_corpus[]` populated) and `rejection_log.yaml` (always emitted, empty when no rejections — closed enum of categorical reasons). Users with non-reference corpus sources are expected to write their own adapters following [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md).
+
+v3.6.5 wires `bibliography_agent` (deep-research, Phase 1) and `literature_strategist_agent` (academic-paper, Phase 1) as the consumers — both run the corpus-first / search-fills-gap flow when a non-empty corpus is present and parses cleanly. See [`academic-pipeline/references/literature_corpus_consumers.md`](../academic-pipeline/references/literature_corpus_consumers.md) for the consumer protocol.
+
+## Optional environment flags (v3.5.1+)
+
+ARS exposes a few opt-in flags. All default to OFF; setting them changes behaviour for the current session only.
+
+| Flag | Since | What it does | Reference |
+|---|---|---|---|
+| `ARS_CROSS_MODEL` | v3.0 | Enable cross-model verification (see next section) | [§"Cross-model verification"](#cross-model-verification-optional) |
+| `ARS_SOCRATIC_READING_PROBE=1` | v3.5.1 | Activate the Socratic reading-check probe layer in `socratic_mentor_agent`. Goal-oriented intent only; fires at most once per session when user has cited a specific paper; decline logged without penalty. | `deep-research/agents/socratic_mentor_agent.md` |
+| `ARS_PASSPORT_RESET=1` | v3.6.3 | Promote every FULL checkpoint to a context-reset boundary. Required to *emit* boundary entries; **not** required to invoke `resume_from_passport=<hash>` in a fresh session. With the flag ON in `systematic-review` mode, reset is mandatory at every FULL checkpoint. | `academic-pipeline/references/passport_as_reset_boundary.md` |
+| `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | Sampling interval for cross-model integrity checks (advisory) | `shared/cross_model_verification.md` |
+
+---
+
 ## Cross-model verification (optional)
 
 ARS works with Claude Opus 4.7 alone. For higher confidence, you can optionally enable a second AI model to independently verify integrity checks and challenge the devil's advocate.

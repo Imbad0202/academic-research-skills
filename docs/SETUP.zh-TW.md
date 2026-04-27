@@ -90,6 +90,42 @@ curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh
 
 ---
 
+## Material Passport `literature_corpus[]` adapter（v3.6.4+，選用）
+
+如果你已經維護一個策展過的文獻語料（Zotero、Obsidian、PDF 資料夾等），可以先把它打包進 Material Passport，讓 Phase 1 ARS agent 在去外部資料庫搜尋之前先讀你的文獻庫。此功能 opt-in、presence-based — 沒提供語料時，ARS 走 external-DB-only flow，行為不變。
+
+v3.6.4 附三個 reference Python adapter，位於 `scripts/adapters/`：
+
+```bash
+# 1. 安裝 adapter 依賴（PyYAML + jsonschema，已在 requirements-dev.txt）
+pip install -r requirements-dev.txt
+
+# 2. 跑一個對應你語料來源的 reference adapter
+python scripts/adapters/folder_scan.py --input /path/to/pdfs --out passport.yaml
+python scripts/adapters/zotero.py      --input my-zotero-export.json --out passport.yaml
+python scripts/adapters/obsidian.py    --input ~/Obsidian/Lit\ Notes --out passport.yaml
+
+# 3. 把產出的 passport.yaml 帶進你的 ARS session
+#    （實際 invocation 視你跑哪個 skill 而定 — 詳見 scripts/adapters/README.md）
+```
+
+每個 adapter 產兩個檔案：`passport.yaml`（Schema 9，已填 `literature_corpus[]`）與 `rejection_log.yaml`（永遠輸出，無 rejection 時為空，採 categorical reason 封閉 enum）。Reference 之外的語料來源預期由使用者自行撰寫 adapter，遵循 [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md)。
+
+v3.6.5 接上 `bibliography_agent`（deep-research, Phase 1）與 `literature_strategist_agent`（academic-paper, Phase 1）作為 consumer — 兩者在 passport 帶非空 corpus 且解析成功時走 corpus-first / search-fills-gap flow。完整 consumer 協定見 [`academic-pipeline/references/literature_corpus_consumers.md`](../academic-pipeline/references/literature_corpus_consumers.md)。
+
+## 選用環境變數（v3.5.1+）
+
+ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 session。
+
+| Flag | 起始版本 | 作用 | 參考 |
+|---|---|---|---|
+| `ARS_CROSS_MODEL` | v3.0 | 啟用跨模型驗證（見下節） | [§「跨模型驗證」](#跨模型驗證選用) |
+| `ARS_SOCRATIC_READING_PROBE=1` | v3.5.1 | 啟用 `socratic_mentor_agent` 的讀書檢查 probe layer。僅 goal-oriented intent；user 引用過具體論文時最多觸發一次；婉拒不留紀錄懲罰。 | `deep-research/agents/socratic_mentor_agent.md` |
+| `ARS_PASSPORT_RESET=1` | v3.6.3 | 把每個 FULL checkpoint 提升為 context 重置邊界。**emit** boundary entry 必須設此 flag；新 session 用 `resume_from_passport=<hash>` 續跑**不需要** flag。`systematic-review` 模式下 flag ON 時，每個 FULL checkpoint 一律強制重置。 | `academic-pipeline/references/passport_as_reset_boundary.md` |
+| `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | 跨模型完整性抽查的取樣間隔（advisory） | `shared/cross_model_verification.md` |
+
+---
+
 ## 跨模型驗證（選用）
 
 ARS 使用 Claude Opus 4.7 即可完整運作。想要更高信心，可選擇啟用第二 AI 模型獨立驗證。

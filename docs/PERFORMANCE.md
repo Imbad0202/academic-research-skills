@@ -38,6 +38,18 @@ The full academic pipeline is designed for human-in-the-loop execution, with man
 1. **Cache misses between checkpoints are normal.** When a stage checkpoint pauses longer than 5 minutes, the next stage reads its context uncached. This is an unavoidable cost of human-paced pipelines.
 2. **Cross-session resume relies on Material Passport.** ARS does not maintain its own orchestrator state between sessions. To resume in a new session, paste your Material Passport YAML back; the orchestrator reads `compliance_history[]` and stage completion markers to locate your breakpoint.
 
+### v3.6.2 Sprint Contract reviewer cost (always-on for `full` / `methodology-focus`)
+
+The Schema 13 sprint contract gate splits each reviewer agent's run into Phase 1 (paper-content-blind, commits scoring plan) + Phase 2 (paper-visible review). For modes that ship templates (`full` panel 5 + `methodology-focus` panel 2), each reviewer therefore costs roughly two LLM turns instead of one. Reserved modes (`re_review` / `calibration` / `guided` / `quick`) keep pre-v3.6.2 behaviour.
+
+| Skill / Mode | Effect on tokens | Notes |
+|---|---|---|
+| `academic-paper-reviewer full` | ~+30-40% input + small output bump per reviewer × 5 reviewers | Each reviewer reads the contract template + paper metadata in Phase 1, then full paper in Phase 2 |
+| `academic-paper-reviewer methodology-focus` | Same shape, panel 2 | Two reviewers (EIC + methodology) each run two phases |
+| Synthesizer (always one) | +~2-3K input | Reads contract + reviewer outputs to run three-step mechanical protocol |
+
+Empirical measurement pending real review runs at scale. The two-phase shape is non-optional for the gated modes; treat as fixed overhead, not a tunable.
+
 ### v3.4.0 compliance agent cost
 
 Adding the mode-aware `compliance_agent` to Stage 2.5 and Stage 4.5 increases full-pipeline SR tokens by approximately:
@@ -109,3 +121,16 @@ These boundaries are deliberate and reflect the ARS data-layer decision: ARS is 
 As of v3.6.5, two Phase 1 literature agents read `literature_corpus[]` via the **corpus-first, search-fills-gap** flow: `deep-research/agents/bibliography_agent.md` and `academic-paper/agents/literature_strategist_agent.md`. Both consumers follow the same five-step shared flow and four Iron Rules (Same criteria / No silent skip / No corpus mutation / Graceful fallback on parse failure). Search Strategy reports gain a PRE-SCREENED reproducibility block that enumerates included / excluded / skipped corpus entries with F3 zero-hit and F4 provenance reporting. Consumer integration is presence-based — auto-engages when the passport carries a non-empty `literature_corpus[]` and parses cleanly; parse failures fall back to external-DB-only flow with a `[CORPUS PARSE FAILURE]` surface.
 
 See [`academic-pipeline/references/literature_corpus_consumers.md`](../academic-pipeline/references/literature_corpus_consumers.md) for the full consumer protocol. `citation_compliance_agent` corpus integration is deferred to v3.6.6+.
+
+### v3.6.5 corpus consumer cost (presence-gated)
+
+When the Material Passport carries a non-empty `literature_corpus[]`, Phase 1 reads scale with corpus size. The PRE-SCREENED block emit itself is prompt-layer (effectively free); the LLM cost is Step 1 pre-screening — applying the current Inclusion / Exclusion criteria to each corpus entry's `title` (always present) and any populated optional fields (`abstract` / `tags`).
+
+| Corpus size | Step 1 pre-screening (per consumer) | Notes |
+|---|---|---|
+| Empty / absent | 0 | External-DB-only flow runs unchanged |
+| ~50 entries (typical Zotero subset) | +~3-5K input + ~1-2K output | Title + abstract scan |
+| ~200 entries | +~10-15K input + ~3-5K output | Title-only scan dominates; abstract scan only when populated |
+| ~500 entries (large library) | +~25-40K input + ~8-12K output | Consider trimming the corpus before passport emit |
+
+Step 2 search-fills-gap reduces external-DB cost when `uncovered_topics` is small (case A), which can offset Step 1 cost. Empirical net delta pending real systematic-review run instrumentation; until then, no aggregate numeric claim is made. Parse failures cost roughly one short turn (parse + emit `[CORPUS PARSE FAILURE]` + fall back).
