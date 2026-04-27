@@ -96,7 +96,7 @@ Material Passport 的 `literature_corpus[]` 欄位由**使用者自行撰寫的 
 - `literature_corpus[]` 依 `citation_key` 排序；`rejection_log.rejected[]` 依 `source` 排序。
 - Adapter 輸出大小與語料庫大小線性成長。500 筆 Zotero 書目約產出 300 KB 的 passport YAML。大型語料庫建議 ARS 消費端採 lazy load。
 
-### v3.6.4 **不做** 的事
+### 導入層邊界
 
 - 不讀 PDF 內容、不做文字抽取、不跑 OCR。
 - 不呼叫 Zotero Web API、Notion API 或任何遠端服務。
@@ -106,4 +106,6 @@ Material Passport 的 `literature_corpus[]` 欄位由**使用者自行撰寫的 
 
 ### 消費端整合
 
-v3.6.4 時沒有任何 ARS agent 讀取 `literature_corpus[]`。此欄位僅為 input port 定義，消費端整合（agent 實際使用語料做研究規劃 / citation 生成 / ...）留待 v3.6.5+。
+v3.6.5 起，Phase 1 兩個文獻 agent 透過 **corpus-first、search-fills-gap** 流程讀取 `literature_corpus[]`：`deep-research/agents/bibliography_agent.md` 與 `academic-paper/agents/literature_strategist_agent.md`。兩者走相同的五步流程與四條 Iron Rule（Same criteria / No silent skip / No corpus mutation / Graceful fallback on parse failure）。Search Strategy 報告新增 PRE-SCREENED 可重現區塊，列出已納入／排除／略過的 corpus entry，並含 F3 zero-hit 與 F4 provenance 報告。消費端啟動採 presence-based — passport 帶非空 `literature_corpus[]` 且解析成功時自動進入；解析失敗時 fallback 到 external-DB-only flow，並 surface `[CORPUS PARSE FAILURE]`。
+
+完整 consumer 協定見 [`academic-pipeline/references/literature_corpus_consumers.md`](../academic-pipeline/references/literature_corpus_consumers.md)。`citation_compliance_agent` 的 corpus 整合留到 v3.6.6+。

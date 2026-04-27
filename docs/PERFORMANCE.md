@@ -96,7 +96,7 @@ The Material Passport `literature_corpus[]` field is populated by user-written a
 - `literature_corpus[]` entries are sorted by `citation_key`; rejections are sorted by `source`.
 - Adapter output size grows linearly with corpus size. A 500-entry Zotero library typically produces a passport of ~300 KB YAML. ARS consumers should lazy-load when the corpus is large.
 
-### What v3.6.4 does NOT do
+### Ingestion-layer boundaries
 
 - Does not ingest PDFs, extract text, or run OCR.
 - Does not call the Zotero Web API, Notion API, or any live service.
@@ -106,4 +106,6 @@ These boundaries are deliberate and reflect the ARS data-layer decision: ARS is 
 
 ### Consumer-side integration
 
-As of v3.6.4, no ARS agent reads `literature_corpus[]`. The field is a defined input port only. Consumer-side integration (agents that actually USE the corpus for research planning, citation generation, etc.) is deferred to v3.6.5+.
+As of v3.6.5, two Phase 1 literature agents read `literature_corpus[]` via the **corpus-first, search-fills-gap** flow: `deep-research/agents/bibliography_agent.md` and `academic-paper/agents/literature_strategist_agent.md`. Both consumers follow the same five-step shared flow and four Iron Rules (Same criteria / No silent skip / No corpus mutation / Graceful fallback on parse failure). Search Strategy reports gain a PRE-SCREENED reproducibility block that enumerates included / excluded / skipped corpus entries with F3 zero-hit and F4 provenance reporting. Consumer integration is presence-based — auto-engages when the passport carries a non-empty `literature_corpus[]` and parses cleanly; parse failures fall back to external-DB-only flow with a `[CORPUS PARSE FAILURE]` surface.
+
+See [`academic-pipeline/references/literature_corpus_consumers.md`](../academic-pipeline/references/literature_corpus_consumers.md) for the full consumer protocol. `citation_compliance_agent` corpus integration is deferred to v3.6.6+.
