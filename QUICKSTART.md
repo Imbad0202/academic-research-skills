@@ -8,11 +8,19 @@ Get from zero to your first AI-assisted research in 3 steps.
 # Install Claude Code
 curl -fsSL https://claude.ai/install.sh | bash
 
-# Clone this repo into your project
+# Clone this repo somewhere stable
+git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
+
+# Install each of the four skills into your project's .claude/skills/
 cd /path/to/your/project
 mkdir -p .claude/skills
-git clone https://github.com/Imbad0202/academic-research-skills.git .claude/skills/academic-research-skills
+ln -s ~/academic-research-skills/deep-research .claude/skills/deep-research
+ln -s ~/academic-research-skills/academic-paper .claude/skills/academic-paper
+ln -s ~/academic-research-skills/academic-paper-reviewer .claude/skills/academic-paper-reviewer
+ln -s ~/academic-research-skills/academic-pipeline .claude/skills/academic-pipeline
 ```
+
+Each skill must sit at `.claude/skills/<skill-name>/SKILL.md` for Claude Code to discover it. See [docs/SETUP.md](docs/SETUP.md) for the copy-based alternative (Option B) and other installation methods (global `~/.claude/skills/`, Cowork, claude.ai).
 
 ## Step 2: Launch
 
