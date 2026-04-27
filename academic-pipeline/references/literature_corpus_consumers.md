@@ -1,6 +1,6 @@
 # Consumer Protocol — `literature_corpus[]` Reading
 
-**Status**: Pre-release in PR-A (single consumer wired); full v3.6.5 release pending PR-B
+**Status**: Released in v3.6.5 (both Phase 1 consumers wired)
 **Applies to**: any agent in this repo that reads `literature_corpus[]` from a Material Passport
 **Authoritative spec**: [`docs/design/2026-04-26-ars-v3.6.5-consumer-integration-design.md`](../../docs/design/2026-04-26-ars-v3.6.5-consumer-integration-design.md)
 
