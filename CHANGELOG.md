@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.6.5.1] - 2026-04-27
+
+### Fixed
+
+- **`docs/SETUP.md` Method 3 install paths** — Option A (symlink) and Option B (copy)
+  now install each of the four skill folders separately into `~/.claude/skills/<skill-name>/`,
+  matching the `<install-root>/<skill-name>/SKILL.md` discovery convention. The previous
+  text installed the whole repo under `~/.claude/skills/academic-research-skills/`, which
+  buried the four `SKILL.md` files one level too deep for Cowork / Claude Code discovery.
+- **`docs/SETUP.md` Method 4 (claude.ai) restructured** — split into Method 4a
+  (Custom Skill upload via Settings → Capabilities → Skills, the standard claude.ai Skill
+  install path) and Method 4b (Project + GitHub integration, fallback knowledge mode and
+  not a Skill install). The previous text framed GitHub integration as a Skill install
+  path, which conflated content retrieval with skill execution. Method 4a documents the
+  current 200-character `description` cap blocker; the description trim ships in v3.6.5.2.
+- **Method 3 prerequisites** — expanded from one sentence to a full prerequisites
+  subsection covering Claude Desktop version, internet connectivity, Cowork process model,
+  folder permissions, paid plan, and Team/Enterprise org-admin controls.
+- **Method 4 prerequisites** — split per sub-method. 4a documents zip structure +
+  description cap surfacing as upload-time errors; 4b documents GitHub authentication via
+  the Anthropic connector, private-repo App authorization, and Team/Enterprise owner-level
+  connector enablement.
+- **Cowork UI terminology** — replaced "Cowork tab" / "working directory" with current
+  Cowork UI labels: mode selector (Chat / Cowork), Tasks view, "Use an existing folder"
+  in the left navigation panel, and Cowork Project as the canonical term.
+- **Skill invocation framing** — clarified that Claude uses each skill's `description`
+  for relevance routing rather than literal trigger-phrase matching, and documented the
+  Cowork `/` command palette and `+` capability picker as explicit invocation surfaces.
+- **Method 4 directory table** — added the `scripts/` row (required for Material Passport
+  `literature_corpus[]` adapters and schema validators) and refreshed the project-capacity
+  guidance against current Anthropic Project file limits (per-file 30 MB; file count is
+  not artificially capped at 200).
+- **`docs/SETUP.zh-TW.md`** — mirrored the English rewrite end-to-end so Traditional
+  Chinese readers see the same structure and content for Methods 1-4.
+- **`QUICKSTART.md` Step 1** — install commands aligned with the new Method 3 four-symlink
+  approach.
+
+### Notes
+
+- Doc-only patch. No skill content (`SKILL.md`), no agent file, no schema, no script,
+  and no test changed in this patch.
+- Issue [#44](https://github.com/Imbad0202/academic-research-skills/issues/44) (philpav)
+  reports SETUP problems on Cowork and claude.ai. v3.6.5.1 fixes the SETUP doc; the
+  remaining `SKILL.md` description-length issue (the actual upload blocker on claude.ai)
+  ships in the follow-up patch v3.6.5.2. Issue #44 will receive a single consolidated
+  reply and close on v3.6.5.2 ship.
+
 ## [3.6.5] - 2026-04-27
 
 ### Added
