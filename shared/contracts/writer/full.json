@@ -7,7 +7,7 @@
     {
       "id": "D1",
       "name": "section_completeness",
-      "description": "Every outline section is written; no [MATERIAL GAP] placeholders remain unresolved at handoff to citation_compliance.",
+      "description": "Every section in the Structure Architect's approved outline is written; no [MATERIAL GAP] placeholders remain unresolved at handoff to citation_compliance.",
       "priority": "mandatory"
     },
     {
@@ -19,19 +19,19 @@
     {
       "id": "D3",
       "name": "argument_blueprint_fidelity",
-      "description": "Each section follows the Argument Builder's CER chains; topic sentences match the claim, evidence cites assigned sources, and explanation links back to the section purpose.",
+      "description": "Each section follows the CER chains delivered by argument_builder_agent (the Argument Blueprint runtime artefact); topic sentences match the claim, evidence cites assigned sources, and explanation links back to the section purpose. The Argument Blueprint, not the contract, is the source of CER chains.",
       "priority": "mandatory"
     },
     {
       "id": "D4",
       "name": "total_word_count",
-      "description": "Final draft total stays within plus or minus 10 percent of the configured target.",
+      "description": "Final draft total stays within plus or minus 10 percent of the target declared in the Paper Configuration Record.",
       "priority": "high"
     },
     {
       "id": "D5",
       "name": "per_section_word_count",
-      "description": "Each section stays within plus or minus 15 percent of its allocated word count.",
+      "description": "Each section stays within plus or minus 15 percent of the per-section allocation declared in the Paper Configuration Record.",
       "priority": "high"
     },
     {
@@ -50,36 +50,6 @@
   "pre_commitment_artifacts": {
     "acceptance_criteria_paraphrase": {
       "minimum_dimensions": "all"
-    },
-    "structure_plan": {
-      "section_outline": [
-        "abstract",
-        "introduction",
-        "literature_review",
-        "methodology",
-        "results",
-        "discussion",
-        "conclusion"
-      ],
-      "word_count_per_section": {
-        "abstract": 250,
-        "introduction": 1000,
-        "literature_review": 1500,
-        "methodology": 1200,
-        "results": 1500,
-        "discussion": 1500,
-        "conclusion": 800
-      }
-    },
-    "argument_plan": {
-      "claim_evidence_chains": [
-        {
-          "claim": "<placeholder — populated from Argument Builder CER chains before Phase 4a runs>",
-          "evidence_sources": [
-            "<citation_key>"
-          ]
-        }
-      ]
     }
   },
   "failure_conditions": [
@@ -88,6 +58,12 @@
       "severity": 90,
       "expression": "any mandatory dimension scores 'block'",
       "action": "writer_decision=escalate_to_evaluator"
+    },
+    {
+      "condition_id": "F4",
+      "severity": 75,
+      "expression": "any mandatory dimension scores 'warn'",
+      "action": "writer_decision=revise_in_phase_4b"
     },
     {
       "condition_id": "F2",

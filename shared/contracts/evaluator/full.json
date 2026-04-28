@@ -36,6 +36,7 @@
     }
   ],
   "disagreement_handling": {
+    "paraphrase_minimum_dimensions": "all",
     "scoring_plan": {
       "per_dimension_criteria": [
         {
@@ -88,13 +89,19 @@
     {
       "condition_id": "F2",
       "severity": 70,
-      "expression": "two or more mandatory dimensions score 'warn' or worse",
+      "expression": "one or more mandatory dimensions score 'warn'",
       "action": "evaluator_decision=request_revision"
     },
     {
       "condition_id": "F3",
       "severity": 60,
       "expression": "any high-priority dimension scores 'block'",
+      "action": "evaluator_decision=request_revision"
+    },
+    {
+      "condition_id": "F6",
+      "severity": 55,
+      "expression": "any normal-priority dimension scores 'block'",
       "action": "evaluator_decision=request_revision"
     },
     {
@@ -112,7 +119,7 @@
     {
       "condition_id": "F0",
       "severity": 10,
-      "expression": "every mandatory dimension scores 'pass' AND no high-priority dimension scores 'block'",
+      "expression": "every mandatory dimension scores 'pass' AND no dimension scores 'block'",
       "action": "evaluator_decision=accept"
     }
   ]
