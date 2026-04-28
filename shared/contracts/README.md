@@ -12,6 +12,19 @@ Validator: `scripts/check_sprint_contract.py`.
 Spec: `docs/design/2026-04-23-ars-v3.6.2-sprint-contract-design.md`.
 Protocol: `academic-paper-reviewer/references/sprint_contract_protocol.md`.
 
+### Spec-branch status (v3.6.6 work in progress)
+
+> **Active spec branch:** `spec/v3.6.6-generator-evaluator-contract` (not yet merged to `main`).
+>
+> While that branch is active, the following directories carry **design-time artefacts** rather than live shipped templates:
+>
+> - `writer/` — `writer_full` template, design-time only
+> - `evaluator/` — `evaluator_full` template, design-time only
+>
+> Schema 13.1 has not yet landed in `shared/sprint_contract.schema.json`, so the current validator rejects these files by design (writer / evaluator modes not in the schema enum, `pre_commitment_artifacts` and `disagreement_handling` not yet declared, mode-specific action enums not yet expressible). Spec § 4.0 of `docs/design/2026-04-27-ars-v3.6.6-generator-evaluator-contract-design.md` covers the full sequencing rationale and lists each expected validator error against its closing §3 schema change.
+>
+> Do not load these files as live contracts on the spec branch. Once the v3.6.6 implementation PR merges to `main`, both directories become live atomically with the Schema 13.1 upgrade, this notice is removed, and they are documented under "Shipped templates" alongside `reviewer/`.
+
 ### Shipped templates (v3.6.2)
 
 - `reviewer/full.json` — panel 5, 5 dimensions, 4 failure conditions

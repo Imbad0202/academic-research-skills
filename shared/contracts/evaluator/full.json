@@ -100,12 +100,12 @@
     {
       "condition_id": "F4",
       "severity": 50,
-      "expression": "any non-mandatory dimension scores below the writer's pre-commitment by 2 or more points and the disagreement is on a high or normal-priority dimension",
+      "expression": "the evaluator's own scoring plan triggers 'warn' on a high or normal-priority dimension AND no mandatory dimension scores 'block' or 'warn'",
       "action": "evaluator_decision=accept_with_dissent_note"
     },
     {
       "condition_id": "F5",
-      "severity": 30,
+      "severity": 95,
       "expression": "round 2 still shows mandatory-dimension block after a writer revise_in_phase_4b attempt",
       "action": "evaluator_decision=flag_for_reviewer_stage"
     },
