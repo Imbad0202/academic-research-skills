@@ -35,6 +35,9 @@ PROTOCOL_FILENAME = "passport_as_reset_boundary.md"
 PROTOCOL_PARENT_DIRNAME = "references"
 
 # Directories we never scan: VCS, caches, build output, local tooling scratch.
+# `.context` is hand-off / codex-review log scratch (gitignored); files there
+# routinely quote the ARS_PASSPORT_RESET token from prior work without owing
+# the protocol-doc co-location.
 SKIP_DIRS = {
     ".git",
     "node_modules",
@@ -43,6 +46,7 @@ SKIP_DIRS = {
     "dist",
     "build",
     ".gstack",
+    ".context",
 }
 
 

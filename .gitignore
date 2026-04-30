@@ -1,3 +1,10 @@
 .DS_Store
 experiment-agent/
 docs/superpowers/
+
+# Local working context (codex review logs, hand-off prompts, brief drafts).
+# Anything under .context/ is per-session scratch and must not be committed.
+.context/
+
+# Python bytecode / pytest cache.
+__pycache__/
