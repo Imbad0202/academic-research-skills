@@ -106,6 +106,15 @@ _ALWAYS_NEGATION_PATTERNS = [
     re.compile(r"\bare unable to\b", re.IGNORECASE),
     re.compile(r"\bonly when convenient\b", re.IGNORECASE),
     re.compile(r"\bif (?:space|time) (?:allows|permits)\b", re.IGNORECASE),
+    # Feasibility qualifiers (R6-001). "when possible" / "where possible"
+    # /etc. tail-attached to an obligation phrase silently downgrades it
+    # from mandatory to best-effort.
+    re.compile(r"\bwhen\s+possible\b", re.IGNORECASE),
+    re.compile(r"\bwhere\s+possible\b", re.IGNORECASE),
+    re.compile(r"\bwherever\s+feasible\b", re.IGNORECASE),
+    re.compile(r"\bif\s+practical\b", re.IGNORECASE),
+    re.compile(r"\bif\s+feasible\b", re.IGNORECASE),
+    re.compile(r"\bbest[- ]effort\b", re.IGNORECASE),
 ]
 
 
