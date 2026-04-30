@@ -115,4 +115,4 @@ The `report_compiler_agent` abstract-only mode prompt enforces the dispatch-cont
 
 - `shared/references/word_count_conventions.md` — whitespace-split standard, 3–5% buffer rule, publisher conventions.
 - `shared/templates/codex_audit_multifile_template.md` — audit dimensions including compression overclaim detection.
-- ARS feedback memory `feedback_ars_phase2_phase3_downstream_agent_patterns.md` — original empirical observation of compression overclaim in HEEACT chapter run.
+- `docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md` §3.3 (C1) — pattern definition and provenance.

@@ -25,7 +25,7 @@ ARS pipelines count words as `len(body.split())` in Python — that is, splits o
 |---|---|
 | `state-of-the-art` | 1 |
 | `2020-2024` | 1 |
-| `Wu, Cheng-I` | 2 (`Wu,` and `Cheng-I`) |
+| `Smith, John-Paul` | 2 (`Smith,` and `John-Paul`) |
 | `e.g.,` | 1 |
 | `123,456` | 1 |
 | `(n=42)` | 1 |
