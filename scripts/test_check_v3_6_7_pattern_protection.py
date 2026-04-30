@@ -28,10 +28,14 @@ def _archive_repo(dest: Path) -> None:
     archive = subprocess.Popen(
         ["git", "archive", "HEAD"], cwd=REPO_ROOT, stdout=subprocess.PIPE
     )
-    subprocess.run(
-        ["tar", "-x", "-C", str(dest)], stdin=archive.stdout, check=True
-    )
-    archive.wait()
+    try:
+        subprocess.run(
+            ["tar", "-x", "-C", str(dest)], stdin=archive.stdout, check=True
+        )
+    finally:
+        if archive.stdout is not None:
+            archive.stdout.close()
+        archive.wait()
     if archive.returncode != 0:
         raise RuntimeError(f"git archive failed: rc={archive.returncode}")
 

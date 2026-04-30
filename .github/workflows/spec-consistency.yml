@@ -102,3 +102,8 @@ jobs:
       - name: Validate v3.6.7 downstream-agent pattern protection
         run: python3 scripts/check_v3_6_7_pattern_protection.py
 
+      - name: Run v3.6.7 pattern-protection mutation tests
+        env:
+          PYTHONPATH: .
+        run: python3 -m unittest scripts.test_check_v3_6_7_pattern_protection -v
+
