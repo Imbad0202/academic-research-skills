@@ -307,5 +307,63 @@ class R5MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class R6MutationTests(_MutationTestBase):
+    """R6-001 (future/conditional modals + advisory adverb weakeners)."""
+
+    def test_r6_001_c1_will_not_preserve_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/report_compiler_agent.md",
+            "Compression must preserve protected hedging phrases",
+            "Compression will not preserve protected hedging phrases",
+        )
+        self.assert_mutation_fails()
+
+    def test_r6_001_c1_would_preserve_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/report_compiler_agent.md",
+            "Compression must preserve protected hedging phrases",
+            "Compression would preserve protected hedging phrases",
+        )
+        self.assert_mutation_fails()
+
+    def test_r6_001_a2_ought_to_wrap_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            'For any source flagged "pending verification" upstream: wrap claims in explicit hedge',
+            'For any source flagged "pending verification" upstream: ought to wrap claims in explicit hedge',
+        )
+        self.assert_mutation_fails()
+
+    def test_r6_001_a3_ideally_include_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            "For each substantive claim: include a one-line anchor justification.",
+            "For each substantive claim: ideally include a one-line anchor justification.",
+        )
+        self.assert_mutation_fails()
+
+    def test_r6_001_b5_preferably_enumerate_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/research_architect_agent.md",
+            "Any list-of-options item must declare its primary-source list and enumerate fully.",
+            "Any list-of-options item must declare its primary-source list and preferably enumerate fully.",
+        )
+        self.assert_mutation_fails()
+
+    def test_r6_001_a3_we_recommend_that_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            "For each substantive claim: include a one-line anchor justification.",
+            "We recommend that each substantive claim include a one-line anchor justification.",
+        )
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()

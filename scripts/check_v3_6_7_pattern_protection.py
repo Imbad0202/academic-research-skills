@@ -115,13 +115,32 @@ _ALWAYS_NEGATION_PATTERNS = [
     # are allowed when shorter" and B5's "Over-setting ... are allowed"
     # when those structures slip past the per-rule regex.
     re.compile(r"\b(?:is|are)\s+allowed\b", re.IGNORECASE),
-    # Same narrowing for `may` / `should` / `can` — only flag when the modal
-    # directly precedes one of the obligation verbs the v3.6.7 prompts use.
-    # B2 R4-001 expanded the verb list; B2 R5-001 added `should` / `can`
-    # to the modal coverage.
+    # Modal/advisory weakener coverage for the obligation verb list.
+    # B2 R4-001 added `may`; R5-001 added `should` / `can` /
+    # `is/are permitted`; R6-001 added the future/conditional modals
+    # (`will`, `would`, `ought to`) and the advisory adverb framings
+    # (`ideally`, `preferably`, `We recommend that`).
     re.compile(rf"\bmay\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
     re.compile(rf"\bshould\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
     re.compile(rf"\bcan\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    # B2 R6-001: future-tense `will` / `will not` directly contradicts a
+    # mandatory obligation when paired with the obligation verb.
+    re.compile(rf"\bwill\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    # B2 R6-001: conditional `would` framings turn an imperative into a
+    # hypothetical ("Compression would preserve" instead of "must preserve").
+    re.compile(rf"\bwould\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    # B2 R6-001: `ought to` is a modal-equivalent advisory.
+    re.compile(rf"\bought\s+to\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    # B2 R6-001: advisory adverb framings. "Ideally include X" or
+    # "Preferably enumerate fully" downgrades the obligation. The verb
+    # boundary is required so bare adverbs in unrelated context don't
+    # trigger.
+    re.compile(rf"\bideally\s+{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    re.compile(rf"\bpreferably\s+{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    # B2 R6-001: "We recommend that ..." reframing makes the obligation
+    # advisory. Anchor on the recommend-that structure to avoid false
+    # positives on legitimate references that just contain "recommend".
+    re.compile(r"\bWe\s+recommend\s+that\b", re.IGNORECASE),
     # B2 R5-001: "is/are permitted" turns a forbidden operation into an
     # exception ("over-setting is permitted when concise"). Mirrors the
     # `is/are allowed` pattern.
