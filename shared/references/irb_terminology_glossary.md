@@ -46,12 +46,12 @@ The four terms differ along two axes: (1) what is hidden — identity vs. conten
 
 ### De-identification
 
-**Operational definition:** Direct identifiers have been removed from a dataset, and the remaining record cannot be re-linked to the respondent without auxiliary information that has been destroyed or sequestered.
+**Operational definition:** Direct identifiers have been removed from a dataset, and the link key created during data collection has been destroyed. The remaining record cannot be re-linked to the respondent.
 
 **Necessary conditions:**
 - Direct identifiers (HIPAA Safe Harbor's 18 fields or the project's equivalent list) are removed or transformed into non-reversible categories.
 - Quasi-identifiers (zip + birth-date + gender, etc.) are evaluated for re-identification risk against plausible auxiliary datasets and reduced to acceptable risk threshold.
-- The link key used during data collection is destroyed or held by an independent party who is contractually prohibited from re-linking.
+- The link key used during data collection is **destroyed**. Any retained re-link key — even one held by an independent custodian — falls under pseudonymization (next section), not de-identification, because re-identification remains technically possible.
 
 **Example dataset description (correct):**
 > "The released dataset is de-identified. Names, emails, exact dates, and institutional affiliation have been removed. Birth year is generalised to 5-year buckets. The collection-time link key was destroyed at the close of data collection."

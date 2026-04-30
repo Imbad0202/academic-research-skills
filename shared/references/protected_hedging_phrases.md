@@ -79,7 +79,7 @@ protected_hedges:
 
 ### Calibration rules
 
-1. **Conservative inclusion.** When in doubt, include the phrase. The abstract compiler can decide to spend budget on a less-protected phrase first; it cannot recover a hedge that calibration omitted.
+1. **Conservative inclusion.** When in doubt, include the phrase. Calibration cannot recover a hedge it did not list — the compiler treats every entry on the list as non-negotiable, so omitting a phrase removes that protection regardless of intent.
 2. **Anchor every entry.** Each protected phrase must cite where in the paper it operates and one-line why. Without the anchor, the abstract compiler cannot judge replacement-vs-preservation when budget is tight.
 3. **No duplicates.** One entry per phrase. The compiler counts protected phrases against the budget once.
 4. **Calibration is mode-specific.** Deep-research INSIGHT abstracts and academic-paper journal abstracts have different convention (see `word_count_conventions.md`). Calibration runs once per target mode, not once per paper.
@@ -90,16 +90,16 @@ protected_hedges:
 
 The `report_compiler_agent` abstract-only mode treats protected hedges as **non-negotiable budget**. Concretely:
 
-1. **Budget allocation order.**
+1. **Budget allocation order.** Protected hedges are reserved before any other content competes for budget, because they are non-negotiable.
    - Step 1: Compute hard cap (whitespace-split, see `word_count_conventions.md`).
    - Step 2: Reserve 3–5% buffer.
-   - Step 3: Allocate words to required structural slots (research question, method, finding, implication).
-   - Step 4: **Allocate words to protected hedges.** Every entry in `protected_hedges` rides in unmodified or with calibration-approved synonym.
-   - Step 5: Spend remaining words on rhetorical polish, transitions, secondary findings.
+   - Step 3: **Reserve words for protected hedges.** Sum the word count of every entry in `protected_hedges` (verbatim). This subtotal is non-negotiable budget.
+   - Step 4: Allocate the remaining words to required structural slots (research question, method, finding, implication).
+   - Step 5: Spend any words still remaining on rhetorical polish, transitions, secondary findings.
 
-2. **Synonym substitution rule.** A protected phrase may be replaced by a calibration-approved synonym **only if** (a) the synonym is shorter, (b) the truth-claim is preserved, and (c) calibration explicitly listed the synonym as acceptable. Without an explicit synonym list, the original phrase rides verbatim.
+2. **Verbatim preservation rule.** A protected phrase rides verbatim into the abstract. The compiler does not paraphrase, compress, or substitute a synonym for a protected phrase. (A future v3.6.7+ extension may add an optional `approved_synonyms` field to the dispatch block; until then, verbatim only.)
 
-3. **Cut order under budget pressure.** When the draft exceeds budget after Step 4, cuts come from Step 5 first (rhetorical polish), then Step 3 (compress structural slots), **never** from Step 4 (protected hedges).
+3. **Cut order under budget pressure.** When the draft exceeds budget, cuts come from Step 5 first (rhetorical polish), then Step 4 (compress structural slots), **never** from Step 3 (protected hedges).
 
 4. **Failure surface.** If the abstract cannot fit Steps 1–4 within hard cap, the compiler **reports the conflict** rather than dropping a protected hedge. The conflict goes back to upstream calibration to either renegotiate the protected list or the publisher's word cap.
 

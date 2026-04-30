@@ -57,7 +57,7 @@ If that justification cannot be written without slipping into a different constr
 
 **The failure mode flagged in v3.6.7 patterns:** "Pseudo-reverse" items that look reverse-coded but are actually contrast items, leaving the scale effectively pure-positive. The pseudo-mitigation is worse than no mitigation because it gives the appearance of having addressed acquiescence while leaving it operative.
 
-**Designer requirement:** Apply the construct-equivalence justification rule (above) to every reverse-coded item. If half the "reverse-coded" items fail the justification, the acquiescence-bias mitigation is broken and the scale needs redesign before pilot.
+**Designer requirement:** Apply the construct-equivalence justification rule (above) to every reverse-coded item. If any "reverse-coded" item fails the justification, that item is mislabelled — it is a contrast item and must either move to its own scale or be removed. A scale that ends up with no surviving reverse-coded item after this filter has not mitigated acquiescence bias and needs redesign before pilot.
 
 ---
 
@@ -91,7 +91,7 @@ If that justification cannot be written without slipping into a different constr
 | Designer choice | Operational test | Failure flag |
 |---|---|---|
 | Item is reverse-coded | One-line construct-equivalence justification holds | Pseudo-reverse (contrast item mislabeled) |
-| Acquiescence mitigated | ≥1/3 items reverse-coded AND all reverse items pass construct-equivalence test | Pure-positive scale or pseudo-reverse mitigation |
+| Acquiescence mitigated | At least one true reverse-coded item per scale AND every item labelled reverse-coded passes the construct-equivalence test | Pure-positive scale or pseudo-reverse mitigation |
 | Recall-bias mitigated | Item anchors recall to a salient event the unit shares | Calendar-anchored without shared event date |
 
 ---

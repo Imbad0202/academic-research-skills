@@ -4,15 +4,25 @@
 Spec: docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md
 
 Greps the v3.6.7 reference files, audit template, and downstream agent prompts
-for the keywords that make each pattern-protection clause detectable. Static
-only — does not validate runtime behaviour. Behavioural validation belongs to
-spec §9 step 8 (live pipeline evaluation case) and is out of scope here.
+for the keywords and obligation phrases that make each pattern-protection
+clause detectable. Static only — does not validate runtime behaviour.
+Behavioural validation belongs to spec §9 step 8 (live pipeline evaluation
+case) and is out of scope here.
+
+Falsifiability discipline (per feedback_lint_passes_but_prompt_silent.md):
+- Agent-prompt checks scope grep to the `PATTERN PROTECTION (v3.6.7)` block
+  via `block_marker`. A keyword that lands outside the block in unrelated
+  prose does not count toward passing.
+- Obligation-bearing patterns (forbidden / required / only-if) are enforced
+  via `must_contain_regex` so the prohibition is grep-detectable as a
+  contiguous fragment, not as two unrelated nouns elsewhere in the file.
 
 Exit codes: 0 on pass, 1 on any failure.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,32 +37,71 @@ SYNTHESIS_AGENT = AGENT_DIR / "synthesis_agent.md"
 ARCHITECT_AGENT = AGENT_DIR / "research_architect_agent.md"
 COMPILER_AGENT = AGENT_DIR / "report_compiler_agent.md"
 
+# Markdown heading pattern that closes a `block_marker` scope. A check's scope
+# starts at the marker and ends at the next H1/H2/H3 heading or EOF.
+_HEADING_RE = re.compile(r"^#{1,3} ", re.MULTILINE)
+
 
 @dataclass
 class Check:
     pattern_id: str
     description: str
     target: Path
-    must_contain: list[str]
-    _needles: list[str] = field(init=False, repr=False)
+    must_contain: list[str] = field(default_factory=list)
+    must_contain_regex: list[tuple[str, str]] = field(default_factory=list)
+    block_marker: str | None = None
+    """If set, scope all keyword/regex checks to the text between the marker
+    and the next H1/H2/H3 heading. Use for agent-prompt checks where the
+    PATTERN PROTECTION clause must be inside its own block, not scattered
+    elsewhere in the file."""
 
-    def __post_init__(self) -> None:
-        # Match case-insensitively so Markdown headings ("Primary-source integrity")
-        # satisfy a check that names the term in lowercase.
-        self._needles = [s.lower() for s in self.must_contain]
+    def _scoped_text(self, full_text: str) -> tuple[str | None, str]:
+        """Return (scoped_text, error_message). scoped_text is None on failure."""
+        if self.block_marker is None:
+            return full_text, ""
+        marker_pos = full_text.lower().find(self.block_marker.lower())
+        if marker_pos == -1:
+            return None, f"block marker missing: {self.block_marker!r}"
+        # Find next heading after the marker; scope ends there.
+        rest = full_text[marker_pos:]
+        match = _HEADING_RE.search(rest, pos=len(self.block_marker))
+        scoped_end = marker_pos + (match.start() if match else len(rest))
+        return full_text[marker_pos:scoped_end], ""
+
+    def _display_path(self) -> str:
+        try:
+            return str(self.target.relative_to(REPO_ROOT))
+        except ValueError:
+            return str(self.target)
 
     def run(self) -> tuple[bool, str]:
+        display = self._display_path()
         if not self.target.exists():
-            return False, f"target file missing: {self.target.relative_to(REPO_ROOT)}"
-        text = self.target.read_text(encoding="utf-8").lower()
-        missing = [s for s, n in zip(self.must_contain, self._needles) if n not in text]
-        if missing:
-            return False, f"missing keywords in {self.target.relative_to(REPO_ROOT)}: {missing}"
+            return False, f"target file missing: {display}"
+        full = self.target.read_text(encoding="utf-8")
+        scoped, err = self._scoped_text(full)
+        if scoped is None:
+            return False, f"{display}: {err}"
+        scoped_lower = scoped.lower()
+        missing_substr = [s for s in self.must_contain if s.lower() not in scoped_lower]
+        missing_regex = [
+            label
+            for label, pattern in self.must_contain_regex
+            if not re.search(pattern, scoped, re.IGNORECASE | re.DOTALL)
+        ]
+        problems = []
+        if missing_substr:
+            problems.append(f"missing keywords: {missing_substr}")
+        if missing_regex:
+            problems.append(f"missing obligation phrases: {missing_regex}")
+        if problems:
+            scope_note = f" within {self.block_marker!r} block" if self.block_marker else ""
+            return False, f"{display}{scope_note}: {'; '.join(problems)}"
         return True, "OK"
 
 
 def reference_file_checks() -> list[Check]:
-    """Spec §7.1 — 4 reference files."""
+    """Spec §7.1 — 4 reference files. No block scoping; whole-file grep."""
     return [
         Check(
             pattern_id="REF-1 (B1)",
@@ -120,83 +169,120 @@ def template_file_checks() -> list[Check]:
     ]
 
 
+# Block marker every agent-prompt check scopes to. Defined once so the value
+# stays in sync across agents.
+PROTECTION_BLOCK = "PATTERN PROTECTION (v3.6.7)"
+
+
 def synthesis_agent_checks() -> list[Check]:
-    """Spec §6.1 — synthesis_agent A1-A5 protection."""
-    must = [
-        # Block marker
-        "PATTERN PROTECTION (v3.6.7)",
-        # A1 — cross-section consistency
-        "effect inventory",
-        "cross-section consistency",
-        # A2 — pending verification hedge
-        "pending verification",
-        # A3 — anchor justification
-        "anchor justification",
-        # A4 — quote scope
-        "verified phrase boundary",
-        # A5 — sibling-document fabrication. The injunction phrase
-        # "Declarative claims ... are forbidden" is what distinguishes
-        # an actual prohibition from narrative vocabulary about it.
-        "declarative claims about un-provided",
-        "are forbidden",
-    ]
+    """Spec §6.1 — synthesis_agent A1-A5 protection.
+
+    Scoped to the PATTERN PROTECTION (v3.6.7) block so keyword presence
+    elsewhere in the agent prompt does not count toward passing.
+    """
     return [
         Check(
             pattern_id="A1-A5",
             description="synthesis_agent carries 5 narrative-side protection clauses",
             target=SYNTHESIS_AGENT,
-            must_contain=must,
+            block_marker=PROTECTION_BLOCK,
+            must_contain=[
+                # A1 — cross-section consistency self-check
+                "effect inventory",
+                "cross-section consistency",
+                # A2 — pending-verification hedge
+                "pending verification",
+                # A3 — anchor justification
+                "anchor justification",
+                # A4 — quote scope boundary
+                "verified phrase boundary",
+            ],
+            must_contain_regex=[
+                # A5 — declarative claims about un-provided documents must be
+                # explicitly forbidden in one contiguous injunction, not split
+                # across unrelated clauses.
+                (
+                    "A5 contiguous injunction",
+                    r"declarative claims? about un-provided.{0,300}\bare forbidden\b",
+                ),
+            ],
         )
     ]
 
 
 def architect_agent_checks() -> list[Check]:
     """Spec §6.2 — research_architect_agent (survey designer mode) B1-B5 protection."""
-    must = [
-        "PATTERN PROTECTION (v3.6.7)",
-        # B1 — IRB terminology pass-through
-        "irb_terminology_glossary.md",
-        # B2 — reverse-coded construct equivalence
-        "construct-equivalence",
-        "reverse-coded",
-        # B3 — retrospective event-anchored phrasing
-        "event-anchored",
-        # B4 — neutral/balanced phrasing
-        "neutral",
-        "all valences",
-        # B5 — primary-source list enumeration
-        "primary-source list",
-    ]
     return [
         Check(
             pattern_id="B1-B5",
             description="research_architect_agent (survey designer) carries 5 instrument-side protection clauses",
             target=ARCHITECT_AGENT,
-            must_contain=must,
+            block_marker=PROTECTION_BLOCK,
+            must_contain=[
+                # B1 — IRB terminology pass-through (back-pointer to glossary)
+                "irb_terminology_glossary.md",
+                # B2 — reverse-coded construct equivalence
+                "construct-equivalence",
+                "reverse-coded",
+                # B5 — primary-source list enumeration (named term)
+                "primary-source list",
+            ],
+            must_contain_regex=[
+                # B3 — retrospective items default to event-anchored;
+                # calendar-anchored is conditional on a shared event date.
+                (
+                    "B3 retrospective default + calendar conditional",
+                    r"event-anchored.{0,400}\bcalendar[- ]anchored.{0,300}\bonly when\b",
+                ),
+                # B4 — open-text prompts invite all valences (positive +
+                # negative + neutral). Bare 'neutral' is too weak.
+                (
+                    "B4 open-text invites all valences",
+                    r"all valences|positive,? negative,? (?:or|and) neutral",
+                ),
+                # B5 — option lists must enumerate fully (no subsetting).
+                # Bare 'primary-source list' is too weak; require the
+                # subsetting prohibition.
+                (
+                    "B5 enumerate fully / no subsetting",
+                    r"enumerate(?:s|d)?\s+fully\b|no\s+subsetting\b",
+                ),
+            ],
         )
     ]
 
 
 def compiler_agent_checks() -> list[Check]:
     """Spec §6.3 — report_compiler_agent (abstract-only mode) C1-C3 protection."""
-    must = [
-        "PATTERN PROTECTION (v3.6.7)",
-        # C1 — word-count + buffer
-        "whitespace-split",
-        # Compression hedge protection
-        "protected hedging phrases",
-        # C2 — temporal disambiguation
-        "explicit year range",
-        # C3 — anti-fake-audit guard (THE critical clause per feedback_subagent_tool_hallucination.md)
-        "DO NOT simulate",
-        "DO NOT claim to have run",
-    ]
     return [
         Check(
             pattern_id="C1-C3",
             description="report_compiler_agent (abstract-only) carries 3 publication-side protection clauses incl. anti-fake-audit guard",
             target=COMPILER_AGENT,
-            must_contain=must,
+            block_marker=PROTECTION_BLOCK,
+            must_contain=[
+                # C1 — word-count algorithm
+                "whitespace-split",
+                # C2 — temporal disambiguation marker
+                "explicit year range",
+            ],
+            must_contain_regex=[
+                # C1 — protected hedges are budget-protected / non-negotiable.
+                # Bare 'protected hedging phrases' was too weak; require the
+                # obligation that they ride into the abstract verbatim.
+                (
+                    "C1 protected hedges non-negotiable",
+                    r"protected\s+hedg(?:e|ing)\s+phrases.{0,300}\b(?:budget[- ]protected|non-negotiable|verbatim)\b",
+                ),
+                # C3 — anti-fake-audit guard. Both DO NOT clauses must appear,
+                # in either order, within a 400-char window so the guard reads
+                # as one injunction rather than two unrelated sentences.
+                (
+                    "C3 anti-fake-audit guard pair",
+                    r"DO NOT simulate.{0,400}\bDO NOT claim to have run\b"
+                    r"|DO NOT claim to have run.{0,400}\bDO NOT simulate\b",
+                ),
+            ],
         )
     ]
 

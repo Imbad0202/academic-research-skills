@@ -12,7 +12,7 @@ This template fixes a single audit-prompt structure so the orchestrator's audit 
 
 ## Template structure
 
-A v3.6.7 multi-file audit prompt has six sections in this order:
+A v3.6.7 multi-file audit prompt has seven sections in this order:
 
 1. Round metadata
 2. Bundle inventory
@@ -20,8 +20,9 @@ A v3.6.7 multi-file audit prompt has six sections in this order:
 4. Round-specific job
 5. Convergence target
 6. Output format
+7. Anti-fake-audit guard (mandatory; rides verbatim in every audit dispatch)
 
-The orchestrator fills the placeholders in `{curly_braces}`. Everything else rides verbatim.
+The orchestrator fills the placeholders in `{curly_braces}`. Everything else rides verbatim. Section 7 is non-negotiable — omitting it leaves sub-agents free to fake audit-passed metadata, which is the failure mode v3.6.7 spec §5.3 + Pattern C3 + `feedback_subagent_tool_hallucination.md` exist to prevent.
 
 ---
 
@@ -108,7 +109,9 @@ Codex evaluates the bundle along seven dimensions. Each dimension surfaces a spe
 
 **What to check:** Conflict-of-interest and reflexivity disclosures use explicit temporal bounds (year ranges, role-bounded periods, "former" prefix). Deictic temporal phrases ("during this period," "at the time," "currently") are absent or fully resolved by adjacent context. Disclosure obligations under publisher policy are met at abstract / executive-summary level, not only at body level.
 
-**Patterns surfaced:** Pattern C2 (temporal ambiguity), Pattern C1 (when compression strips disclosure).
+**Patterns surfaced:** Pattern C2 (temporal ambiguity).
+
+Note: word-count convention, 3–5% buffer adherence, and protected-hedge preservation against compression are **not** covered by §3.7. They are handled by the bundle-specific check in Section 4 (f) below — see the report_compiler_agent example for the expected `(f)` clause.
 
 ---
 
@@ -126,10 +129,10 @@ Round {N} job:
 
 **Fill rules:**
 - (a)–(e) ride verbatim every round (with N substitution).
-- (f) is bundle-specific. The orchestrator picks the bundle-specific check based on which downstream agent produced the deliverable. Examples:
+- (f) is bundle-specific. The orchestrator picks the bundle-specific check based on which downstream agent produced the deliverable. For report_compiler_agent bundles, (f) is mandatory and combines three sub-checks; the others are single-check. Examples:
   - synthesis_agent bundle: cross-section consistency check on every source cited in 2+ sections.
   - research_architect_agent bundle: construct-equivalence test on every reverse-coded item.
-  - report_compiler_agent bundle: protected-hedge preservation check (abstract vs. body).
+  - report_compiler_agent bundle (mandatory three-part check): (i) word count = `len(body.split())` ≤ publisher cap minus 3–5% buffer per `word_count_conventions.md`; (ii) every entry of upstream `protected_hedges` block per `protected_hedging_phrases.md` appears verbatim in the abstract; (iii) no claim in the abstract is less hedged than its anchor in the body. Failure of any sub-check is a P1 finding.
 
 ---
 
@@ -164,7 +167,7 @@ Output:
 
 ---
 
-## Anti-fake-audit guard (Pattern C3)
+## Section 7 — Anti-fake-audit guard (Pattern C3, mandatory)
 
 **Critical clause that rides in every audit dispatch context:**
 
@@ -211,10 +214,10 @@ Round 2 job:
 Convergence target: ZERO findings of ANY severity in one round.
 [+ standard fallback]
 
-DO NOT simulate any audit step. [+ standard anti-fake-audit guard]
-
 Output:
 [+ standard output format]
+
+DO NOT simulate any audit step. [+ standard Section 7 anti-fake-audit guard]
 ```
 
 ---
