@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.6.5-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.6.5)
+[![Version](https://img.shields.io/badge/version-v3.6.7-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.6.7)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -269,6 +269,14 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.6.7（2026-04-30）— 下游 agent pattern protection（Step 1+2）
+
+- **三個下游 agent 收緊 13 / 18 個已知幻覺與漂移 pattern**：`synthesis_agent`（A1–A5 敘事側）、`research_architect_agent` survey-designer 模式（B1–B5 工具側）、`report_compiler_agent` abstract-only 模式（C1–C3 出版側）。三個 agent prompt 各自加上 `PATTERN PROTECTION (v3.6.7)` 區塊。
+- **`shared/references/` 增加四份 reference 文件**：`irb_terminology_glossary.md`、`psychometric_terminology_glossary.md`、`protected_hedging_phrases.md`、`word_count_conventions.md`。protection 條款引用這些檔案路徑做為 operational contract。
+- **跨模型 audit prompt 模板** 在 `shared/templates/codex_audit_multifile_template.md`，含七個 audit dimension 與 `report_compiler_agent` bundle 必跑的三段式 Section 4(f) 檢查。任一 sub-check 失敗即 P1 finding。
+- **靜態 lint + 29 條 mutation 測試**：`scripts/check_v3_6_7_pattern_protection.py` 強制 protection 條款存在性與 obligation phrase 形狀；`scripts/test_check_v3_6_7_pattern_protection.py` 把 codex review 的 mutation 證據封存為 unit test，未來 lint 退化會在 CI 浮上來。兩者都接進 `.github/workflows/spec-consistency.yml`。
+- **Codex review 紀錄**：七輪 `gpt-5.5` + `xhigh` 跨模型 review 收斂到 0 P1+P2 finding 才 SHIP。Step 6（orchestrator runtime hook）與 Step 8（合成 eval case）走 follow-up PR。
 
 ### v3.6.5（2026-04-27）— Material Passport `literature_corpus[]` Consumer 整合
 

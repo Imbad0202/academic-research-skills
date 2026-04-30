@@ -4,7 +4,7 @@ Single source of truth for all modes across the ARS suite. **25 modes** across 4
 
 When adding or modifying modes, update this file first — SKILL.md files and CLAUDE.md should reference this registry.
 
-Last updated: v3.6.5 (2026-04-27)
+Last updated: v3.6.7 (2026-04-30)
 
 ---
 

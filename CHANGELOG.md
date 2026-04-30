@@ -4,6 +4,108 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.6.7] - 2026-04-30
+
+### Added
+
+- **Downstream-agent pattern protection layer** (`docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md`).
+  Hardens three downstream agents against 18 hallucination/drift patterns
+  documented in the spec: `synthesis_agent` (A1–A5 narrative-side), the
+  survey-designer mode of `research_architect_agent` (B1–B5 instrument-side),
+  and the abstract-only mode of `report_compiler_agent` (C1–C3 publication-
+  side), plus four cross-cutting patterns (D1–D4). Patterns observed in
+  production output across multiple chapter-length runs.
+- **Four reference files in `shared/references/`** carrying the operational
+  contracts that protection clauses cite:
+  - `irb_terminology_glossary.md` — anonymity vs confidentiality vs
+    de-identification vs pseudonymization (B1).
+  - `psychometric_terminology_glossary.md` — true reverse-coded vs contrast
+    item, with construct-equivalence rule (B2).
+  - `protected_hedging_phrases.md` — five-rule contract for upstream-marked
+    hedge protocol (conservative inclusion, anchor every entry, no
+    duplicates, verbatim preservation, conflict reporting) (C1).
+  - `word_count_conventions.md` — whitespace-split standard (`body.split()`),
+    3–5% buffer below hard cap, publisher conventions (C1).
+- **Cross-model audit prompt template** at
+  `shared/templates/codex_audit_multifile_template.md` — seven audit
+  dimensions (cross-ref, hallucination, primary-source integrity, internal
+  coherence, instrument quality, Round-N framing, COI adequacy) plus a
+  mandatory three-part Section 4(f) check for `report_compiler_agent`
+  bundles (whitespace-split cap-minus-buffer, protected-hedge verbatim,
+  abstract no less hedged than body — failure of any sub-check is P1).
+- **Static lint** at `scripts/check_v3_6_7_pattern_protection.py` enforcing
+  protection-clause presence and obligation-phrase shape across the
+  reference files, audit template, and three downstream agent prompts.
+  Per-regex `allow_prohibition` flag scopes the prohibition exemption so
+  prohibition-style obligations (`DO NOT simulate`, `must not claim
+  audit-passed state`, `does not paraphrase`) do not leak the exemption to
+  assertion-style obligations on the same Check. Span-restricted exemption
+  rejects a second prohibition elsewhere in the bullet. Modal/advisory
+  weakener coverage: `may`, `should`, `can`, `will`, `would`, `ought to`,
+  `ideally`, `preferably`, `We recommend that`, `is/are recommended`,
+  `is/are allowed`, `is/are permitted`, plus exception qualifiers
+  (`except`, `unless`, `save when`).
+- **Mutation test suite** at
+  `scripts/test_check_v3_6_7_pattern_protection.py` with 29 tests
+  preserving codex review evidence (R2–R6). Future checker regressions
+  surface in CI rather than only in ad-hoc mutation runs.
+- **CI wiring** in `.github/workflows/spec-consistency.yml` runs both the
+  static lint and the mutation suite on every push and pull request.
+
+### Changed
+
+- **`deep-research/agents/synthesis_agent.md`** carries a `PATTERN
+  PROTECTION (v3.6.7)` block with five clauses covering effect-inventory
+  cross-section consistency self-check, pending-verification hedge wrap,
+  one-line anchor justification, verbatim phrase boundary on quotes, and
+  the prohibition on declarative claims about un-provided documents
+  (with conditional-language fallback).
+- **`deep-research/agents/research_architect_agent.md`** survey-designer
+  mode carries a `PATTERN PROTECTION (v3.6.7)` block with five clauses
+  covering IRB terminology pass-through, reverse-coded construct-
+  equivalence justification, event-anchored retrospective default
+  (calendar-anchored only when sample shares a common event date),
+  neutral-balanced item phrasing with chapter argument vocabulary
+  forbidden, and primary-source list enumerate-fully (no subsetting,
+  no over-setting, no scope cross-contamination).
+- **`deep-research/agents/report_compiler_agent.md`** abstract-only mode
+  carries a `PATTERN PROTECTION (v3.6.7)` block with three clauses
+  covering whitespace-split word budget plus 3–5% buffer with budget-
+  protected hedges, explicit-temporal-bounds reflexivity disclosure
+  (year range / past-tense disambiguating verb / "former" prefix; deictic
+  phrases forbidden), and the anti-fake-audit guard (DO NOT simulate any
+  audit step; DO NOT claim to have run codex/external review; output
+  metadata must not claim audit-passed state).
+
+### Notes
+
+- v3.6.7 ships in two stages. **Step 1 + Step 2** (this entry) include
+  the four reference files, the audit template, the static lint, the
+  mutation test suite, the CI wiring, and the three agent-prompt
+  protection blocks. **Step 6** (orchestrator hooks for automatic
+  per-agent audit and anti-fake-audit guard wiring) and **Step 8**
+  (synthetic evaluation case demonstrating all 18 patterns triggered +
+  protected) ship in a follow-up PR. Step 6 is cross-agent runtime work
+  that warrants its own design discussion and is intentionally decoupled
+  from this prompt-and-lint PR.
+- Codex review history: seven rounds of `gpt-5.5` + `xhigh` cross-model
+  review reached SHIP-OK with zero P1 + P2 findings. R1 closed ten
+  Step-1 findings; R2 closed four cascade gaps plus the per-Check
+  `allow_prohibition` leak; R3 closed three P2 findings (span-restricted
+  exemption, token→regex with imperative anchoring, `except/unless/
+  save when` weakeners); R4 closed three P2 findings (modal verb scope
+  expansion, §6 sub-clause coverage, lint→CI wiring); R5 closed one P2
+  plus one P3 (`should/can/permitted` modals and the mutation test
+  suite); R6 closed one P2 (`will/would/ought to/ideally/preferably/
+  We-recommend-that` weakeners) and explicitly deferred orchestrator
+  runtime hooks to the Step 6 follow-up PR. R7 surfaced only one P3
+  add-counter signal (`try to / generally / where relevant` weakeners),
+  which is non-blocking polish.
+- ARS pipeline ship-quality target updates from "each agent produces a
+  clean v1" to "end-to-end deliverable set passes independent xhigh
+  cross-model audit at 0 P1 + P2 finding within three rounds" (per spec
+  §10).
+
 ## [3.6.5.2] - 2026-04-27
 
 ### Changed
