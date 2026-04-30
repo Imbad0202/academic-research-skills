@@ -57,6 +57,11 @@ _HEADING_RE = re.compile(r"^#{1,3} ", re.MULTILINE)
 #   constitute a valid prohibition signal (rarely / sometimes / fails to /
 #   etc.). These apply regardless of `allow_prohibition`.
 _GENERAL_NEGATION_PATTERNS = [
+    # Subject + auxiliary negation that directly weakens an obligation.
+    # These are the verb-negation forms most commonly used to undo a rule
+    # ("X does not Y", "X must not Y"). They are excluded by default but
+    # exempted for prohibition-style obligations like C3 via
+    # `allow_prohibition`.
     re.compile(r"\bdoes not\b", re.IGNORECASE),
     re.compile(r"\bdo not\b", re.IGNORECASE),
     re.compile(r"\bDO NOT\b"),  # case-sensitive imperative form
@@ -66,23 +71,37 @@ _GENERAL_NEGATION_PATTERNS = [
     re.compile(r"\bshouldn'?t\b", re.IGNORECASE),
     re.compile(r"\bmust not\b", re.IGNORECASE),
     re.compile(r"\bmustn'?t\b", re.IGNORECASE),
-    re.compile(r"\bcannot\b", re.IGNORECASE),
-    re.compile(r"\bcan'?t\b", re.IGNORECASE),
+    # Adjective-targeted negations: explicit "not <obligation-adjective>"
+    # forms that directly negate the contract vocabulary.
     re.compile(r"\bnot\s+(?:non[- ]negotiable|enumerate|required|mandatory|forbidden|verbatim|reserved)\b", re.IGNORECASE),
     re.compile(r"\bneed not\b", re.IGNORECASE),
     re.compile(r"\bno\s+buffer\b", re.IGNORECASE),
     re.compile(r"\bno\s+enumeration\b", re.IGNORECASE),
+    # NOTE: `cannot` and `can't` are intentionally NOT in this list. They
+    # are routinely used in benign conditional phrasing ("if X cannot fit,
+    # the compiler reports..."), where `cannot` describes a trigger
+    # condition rather than weakening an obligation. The other negation
+    # patterns are tight enough to catch genuine weakening even without
+    # `cannot`.
 ]
 _ALWAYS_NEGATION_PATTERNS = [
     re.compile(r"\bisn'?t\b", re.IGNORECASE),
     re.compile(r"\baren'?t\b", re.IGNORECASE),
-    re.compile(r"\boptional\b", re.IGNORECASE),
-    re.compile(r"\bmay\s+(?:not\s+)?(?:invite|enumerate|preserve|drop|skip|substitute)\b", re.IGNORECASE),
+    # `optional` only counts as a weakener when it directly modifies an
+    # obligation noun. The bare token can appear in unrelated context
+    # ("optional `approved_synonyms` field"), so we narrow this rule to
+    # `optional <obligation-noun>` forms.
+    re.compile(r"\boptional\s+(?:buffer|enumeration|preservation|inclusion|verbatim|hedge|hedges|enforcement|requirement|reservation)\b", re.IGNORECASE),
+    # Same narrowing for `may` — only flag when `may` directly weakens an
+    # action verb that should be obligatory.
+    re.compile(r"\bmay\s+(?:not\s+)?(?:invite|enumerate|preserve|drop|skip|substitute|paraphrase)\b", re.IGNORECASE),
     re.compile(r"\bfails? to\b", re.IGNORECASE),
     re.compile(r"\binstead of\b", re.IGNORECASE),
-    re.compile(r"\brarely\b", re.IGNORECASE),
-    re.compile(r"\bsometimes\b", re.IGNORECASE),
-    re.compile(r"\boccasionally\b", re.IGNORECASE),
+    # `rarely` / `sometimes` / `occasionally` similarly need to be near
+    # an obligation verb to count as weakeners.
+    re.compile(r"\brarely\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE),
+    re.compile(r"\bsometimes\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE),
+    re.compile(r"\boccasionally\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE),
     re.compile(r"\bis unable to\b", re.IGNORECASE),
     re.compile(r"\bare unable to\b", re.IGNORECASE),
     re.compile(r"\bonly when convenient\b", re.IGNORECASE),
@@ -94,17 +113,38 @@ def _match_excludes_negation(text_window: str, allow_prohibition: bool = False) 
     """Return True if the sentence around an obligation match does NOT
     contain any negation that would weaken it.
 
-    `allow_prohibition=True` exempts the match from `_GENERAL_NEGATION_PATTERNS`
-    (DO NOT / cannot / must not), so prohibition-style obligations like the
-    C3 anti-fake-audit guard ("DO NOT simulate ... DO NOT claim to have
-    run") can still be detected. The `_ALWAYS_NEGATION_PATTERNS` (rarely,
-    sometimes, fails to, optional, etc.) apply regardless because no
-    legitimate obligation framing should rely on those.
+    `allow_prohibition=True` exempts only the literal `DO NOT` imperative
+    token (the prohibition obligation itself, e.g. C3 anti-fake-audit
+    guard's "DO NOT simulate" / "DO NOT claim to have run"). All OTHER
+    general negation patterns (cannot / must not / not required / need
+    not / etc.) still apply, so a window like "DO NOT simulate ...
+    this is not required" is still rejected (R4-001).
+
+    The `_ALWAYS_NEGATION_PATTERNS` (rarely, sometimes, fails to,
+    optional, etc.) apply regardless because no legitimate obligation
+    framing should rely on those.
     """
     if any(p.search(text_window) for p in _ALWAYS_NEGATION_PATTERNS):
         return False
-    if not allow_prohibition and any(p.search(text_window) for p in _GENERAL_NEGATION_PATTERNS):
-        return False
+    # When the caller signals this is a prohibition obligation, the
+    # subject-verb negation forms ("does not paraphrase", "DO NOT
+    # simulate") are how the obligation is *expressed*, not weakened.
+    # Exempt those forms but still enforce adjective-targeted negation
+    # ("not required", "not non-negotiable") and explicit weakeners
+    # (no buffer, no enumeration), which always indicate the contract
+    # is being undone rather than asserted.
+    PROHIBITION_VERB_PATTERNS = {
+        r"\bDO NOT\b",
+        r"\bdo not\b",
+        r"\bdoes not\b",
+        r"\bdoesn'?t\b",
+        r"\bdon'?t\b",
+    }
+    for p in _GENERAL_NEGATION_PATTERNS:
+        if allow_prohibition and p.pattern in PROHIBITION_VERB_PATTERNS:
+            continue
+        if p.search(text_window):
+            return False
     return True
 
 
@@ -120,6 +160,12 @@ class Check:
     and the next H1/H2/H3 heading. Use for agent-prompt checks where the
     PATTERN PROTECTION clause must be inside its own block, not scattered
     elsewhere in the file."""
+    allow_prohibition: bool = False
+    """If True, the negation post-filter exempts the literal `DO NOT` /
+    `do not` imperative tokens. Set for obligations that *are themselves*
+    prohibitions (C3 anti-fake-audit guard) or that include sub-clauses
+    using `does not paraphrase` / `does not substitute` style prohibitions
+    as the obligation's body (REF-3 verbatim preservation rule)."""
 
     def _scoped_text(self, full_text: str) -> tuple[str | None, str]:
         """Return (scoped_text, error_message). scoped_text is None on failure."""
@@ -157,46 +203,44 @@ class Check:
             if match is None:
                 missing_regex.append(label)
                 continue
-            # Reject if the full sentence containing the match (both the
-            # text before AND after the match) carries a negation that
-            # weakens the obligation (per R2-004 + R3-001). The check looks
-            # backward from the match start to the prior sentence boundary
-            # AND forward from the match end to the next sentence boundary,
-            # so weakeners after the matched phrase ("enumerate fully ...
-            # is not required") are caught.
+            # Reject if the bullet/paragraph containing the match carries
+            # a negation that weakens the obligation (per R2-004 + R3-001
+            # + R4-001). The check looks backward from the match start to
+            # the start of the current bullet (or paragraph start) and
+            # forward from the match end to the next bullet (or blank line
+            # / EOF). This catches trailing weakeners like
+            # "...obligation. This is not required."
             iterator = re.finditer(pattern, scoped, re.IGNORECASE | re.DOTALL)
             accepted = False
             for m in iterator:
                 start, end = m.start(), m.end()
-                # Lookback to prior sentence break, capped at 200 chars.
-                lookback_floor = max(0, start - 200)
+                # Lookback to the start of this bullet/paragraph: previous
+                # blank line, list-bullet marker on its own line, or start
+                # of scoped text. Capped at 400 chars so very long bullets
+                # do not pull in unrelated negation from far above.
+                lookback_floor = max(0, start - 400)
                 lookback = scoped[lookback_floor:start]
-                last_break_back = max(
-                    lookback.rfind("."),
-                    lookback.rfind("!"),
-                    lookback.rfind("?"),
-                    lookback.rfind("\n"),
-                )
-                sentence_start = (
+                blank_line = lookback.rfind("\n\n")
+                bullet_back_match = list(re.finditer(r"\n\s*-\s", lookback))
+                bullet_back = bullet_back_match[-1].start() if bullet_back_match else -1
+                last_break_back = max(blank_line, bullet_back)
+                bullet_start = (
                     lookback_floor + last_break_back + 1
                     if last_break_back >= 0
                     else lookback_floor
                 )
-                # Lookahead to next sentence break, capped at 200 chars.
-                lookahead_ceiling = min(len(scoped), end + 200)
+                # Lookahead to the start of the next bullet, blank line,
+                # or EOF (capped 400 chars).
+                lookahead_ceiling = min(len(scoped), end + 400)
                 lookahead = scoped[end:lookahead_ceiling]
-                next_break = min(
-                    [i for i in (
-                        lookahead.find("."),
-                        lookahead.find("!"),
-                        lookahead.find("?"),
-                        lookahead.find("\n"),
-                    ) if i >= 0],
-                    default=-1,
-                )
-                sentence_end = end + next_break + 1 if next_break >= 0 else lookahead_ceiling
-                window = scoped[sentence_start:sentence_end]
-                if _match_excludes_negation(window, allow_prohibition=label.startswith("C3")):
+                blank_fwd = lookahead.find("\n\n")
+                bullet_fwd_match = re.search(r"\n\s*-\s", lookahead)
+                bullet_fwd = bullet_fwd_match.start() if bullet_fwd_match else -1
+                fwd_breaks = [i for i in (blank_fwd, bullet_fwd) if i >= 0]
+                next_break = min(fwd_breaks) if fwd_breaks else -1
+                bullet_end = end + next_break if next_break >= 0 else lookahead_ceiling
+                window = scoped[bullet_start:bullet_end]
+                if _match_excludes_negation(window, allow_prohibition=self.allow_prohibition):
                     accepted = True
                     break
             if not accepted:
@@ -239,12 +283,46 @@ def reference_file_checks() -> list[Check]:
         ),
         Check(
             pattern_id="REF-3 (C1)",
-            description="protected_hedging_phrases defines upstream-marked hedge protocol",
+            description="protected_hedging_phrases defines upstream-marked hedge protocol with 5 contract rules",
             target=REF_DIR / "protected_hedging_phrases.md",
+            # Verbatim preservation rule body uses "does not paraphrase /
+            # substitute" as the prohibition expressing the obligation, so
+            # general DO NOT / does not patterns must be exempted (R4-001).
+            allow_prohibition=True,
             must_contain=[
                 "protected hedging phrases",
                 "upstream calibration",
                 "word budget",
+            ],
+            must_contain_regex=[
+                # Rule 1: conservative inclusion — when in doubt, include
+                (
+                    "Rule: Conservative inclusion",
+                    r"\bConservative inclusion\b.{0,200}\bWhen in doubt\b",
+                ),
+                # Rule 2: anchor every entry
+                (
+                    "Rule: Anchor every entry",
+                    r"\bAnchor every entry\b.{0,200}\bmust\s+cite\b",
+                ),
+                # Rule 3: no duplicates
+                (
+                    "Rule: No duplicates",
+                    r"\bNo duplicates\b.{0,150}\bOne entry per phrase\b",
+                ),
+                # Rule 4: verbatim preservation
+                (
+                    "Rule: Verbatim preservation",
+                    r"\bVerbatim preservation\b.{0,200}\brides\s+verbatim\b",
+                ),
+                # Rule 5: failure surface — report conflict, do not drop hedge.
+                # Sentence-bounded so the surrounding "if abstract cannot fit"
+                # conditional in the prose does not poison the negation
+                # filter on this regex's match window.
+                (
+                    "Rule: Conflict reporting (no silent drop)",
+                    r"\breports the conflict\b[^.\n]{0,200}\bdropping a protected hedge\b",
+                ),
             ],
         ),
         Check(
@@ -412,6 +490,12 @@ def compiler_agent_checks() -> list[Check]:
             description="report_compiler_agent (abstract-only) carries 3 publication-side protection clauses incl. anti-fake-audit guard",
             target=COMPILER_AGENT,
             block_marker=PROTECTION_BLOCK,
+            # C3 anti-fake-audit guard is a prohibition obligation
+            # ("DO NOT simulate" / "DO NOT claim to have run"); the
+            # negation post-filter must exempt the DO NOT imperative
+            # while still rejecting weakeners like "this is not required"
+            # (R4-001).
+            allow_prohibition=True,
             must_contain=[
                 # C1 — word-count algorithm
                 "whitespace-split",
