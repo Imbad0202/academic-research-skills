@@ -22,6 +22,7 @@ Exit codes: 0 on pass, 1 on any failure.
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -41,31 +42,70 @@ COMPILER_AGENT = AGENT_DIR / "report_compiler_agent.md"
 # starts at the marker and ends at the next H1/H2/H3 heading or EOF.
 _HEADING_RE = re.compile(r"^#{1,3} ", re.MULTILINE)
 
-# Negation patterns that, if present in a matched obligation sentence, indicate
-# the obligation is being denied or weakened rather than asserted. R2-004
-# flagged that "does not enumerate fully" / "not non-negotiable" can satisfy
-# a naive obligation regex while undermining the contract. We post-filter
-# matches against this list.
-_NEGATION_PATTERNS = [
+# Negation / weakening patterns that, if present in the sentence containing
+# an obligation match, indicate the obligation is being denied or weakened
+# rather than asserted. R2-004 flagged "does not enumerate fully" / "not non-
+# negotiable"; R3-002 expanded the list with should not / fails to / instead
+# of / rarely / sometimes / is unable to. The patterns split into two groups:
+#
+# - _GENERAL_NEGATION_PATTERNS: DO NOT-style imperative prohibitions and
+#   weakening modals. These reject most obligations BUT they would also
+#   reject a legitimate prohibition like C3's "DO NOT simulate". For
+#   prohibition-style obligations, callers pass `allow_prohibition=True` to
+#   skip this group.
+# - _ALWAYS_NEGATION_PATTERNS: weakening verbs and adverbs that never
+#   constitute a valid prohibition signal (rarely / sometimes / fails to /
+#   etc.). These apply regardless of `allow_prohibition`.
+_GENERAL_NEGATION_PATTERNS = [
     re.compile(r"\bdoes not\b", re.IGNORECASE),
     re.compile(r"\bdo not\b", re.IGNORECASE),
+    re.compile(r"\bDO NOT\b"),  # case-sensitive imperative form
     re.compile(r"\bdoesn'?t\b", re.IGNORECASE),
     re.compile(r"\bdon'?t\b", re.IGNORECASE),
-    re.compile(r"\bnot\s+(?:non[- ]negotiable|enumerate|required|mandatory|forbidden|verbatim)\b", re.IGNORECASE),
+    re.compile(r"\bshould not\b", re.IGNORECASE),
+    re.compile(r"\bshouldn'?t\b", re.IGNORECASE),
+    re.compile(r"\bmust not\b", re.IGNORECASE),
+    re.compile(r"\bmustn'?t\b", re.IGNORECASE),
+    re.compile(r"\bcannot\b", re.IGNORECASE),
+    re.compile(r"\bcan'?t\b", re.IGNORECASE),
+    re.compile(r"\bnot\s+(?:non[- ]negotiable|enumerate|required|mandatory|forbidden|verbatim|reserved)\b", re.IGNORECASE),
     re.compile(r"\bneed not\b", re.IGNORECASE),
+    re.compile(r"\bno\s+buffer\b", re.IGNORECASE),
+    re.compile(r"\bno\s+enumeration\b", re.IGNORECASE),
+]
+_ALWAYS_NEGATION_PATTERNS = [
     re.compile(r"\bisn'?t\b", re.IGNORECASE),
     re.compile(r"\baren'?t\b", re.IGNORECASE),
     re.compile(r"\boptional\b", re.IGNORECASE),
-    re.compile(r"\bmay\s+(?:not\s+)?(?:invite|enumerate|preserve)\b", re.IGNORECASE),
+    re.compile(r"\bmay\s+(?:not\s+)?(?:invite|enumerate|preserve|drop|skip|substitute)\b", re.IGNORECASE),
+    re.compile(r"\bfails? to\b", re.IGNORECASE),
+    re.compile(r"\binstead of\b", re.IGNORECASE),
+    re.compile(r"\brarely\b", re.IGNORECASE),
+    re.compile(r"\bsometimes\b", re.IGNORECASE),
+    re.compile(r"\boccasionally\b", re.IGNORECASE),
+    re.compile(r"\bis unable to\b", re.IGNORECASE),
+    re.compile(r"\bare unable to\b", re.IGNORECASE),
+    re.compile(r"\bonly when convenient\b", re.IGNORECASE),
+    re.compile(r"\bif (?:space|time) (?:allows|permits)\b", re.IGNORECASE),
 ]
 
 
-def _match_excludes_negation(text_window: str) -> bool:
-    """Return True if the matched window does NOT contain any negation that
-    would weaken the obligation. Used to reject 'does not enumerate fully' or
-    'not non-negotiable' false positives that the obligation regex alone
-    cannot exclude."""
-    return not any(p.search(text_window) for p in _NEGATION_PATTERNS)
+def _match_excludes_negation(text_window: str, allow_prohibition: bool = False) -> bool:
+    """Return True if the sentence around an obligation match does NOT
+    contain any negation that would weaken it.
+
+    `allow_prohibition=True` exempts the match from `_GENERAL_NEGATION_PATTERNS`
+    (DO NOT / cannot / must not), so prohibition-style obligations like the
+    C3 anti-fake-audit guard ("DO NOT simulate ... DO NOT claim to have
+    run") can still be detected. The `_ALWAYS_NEGATION_PATTERNS` (rarely,
+    sometimes, fails to, optional, etc.) apply regardless because no
+    legitimate obligation framing should rely on those.
+    """
+    if any(p.search(text_window) for p in _ALWAYS_NEGATION_PATTERNS):
+        return False
+    if not allow_prohibition and any(p.search(text_window) for p in _GENERAL_NEGATION_PATTERNS):
+        return False
+    return True
 
 
 @dataclass
@@ -117,31 +157,46 @@ class Check:
             if match is None:
                 missing_regex.append(label)
                 continue
-            # Reject if the matched window or its preceding sentence context
-            # contains a negation that would weaken the obligation (per
-            # R2-004). The negation check looks at the sentence containing
-            # the match — from the prior sentence boundary up through the
-            # match itself — so weakeners like "does not enumerate fully"
-            # or "may invite all valences" do not count as obligations.
+            # Reject if the full sentence containing the match (both the
+            # text before AND after the match) carries a negation that
+            # weakens the obligation (per R2-004 + R3-001). The check looks
+            # backward from the match start to the prior sentence boundary
+            # AND forward from the match end to the next sentence boundary,
+            # so weakeners after the matched phrase ("enumerate fully ...
+            # is not required") are caught.
             iterator = re.finditer(pattern, scoped, re.IGNORECASE | re.DOTALL)
             accepted = False
             for m in iterator:
-                # Find sentence start: nearest preceding `.` `!` `?` or
-                # newline, or start of scoped text. Limit lookback to 200
-                # chars so a long block does not accidentally pull in an
-                # unrelated negation from far above.
-                start = m.start()
+                start, end = m.start(), m.end()
+                # Lookback to prior sentence break, capped at 200 chars.
                 lookback_floor = max(0, start - 200)
                 lookback = scoped[lookback_floor:start]
-                last_sentence_break = max(
+                last_break_back = max(
                     lookback.rfind("."),
                     lookback.rfind("!"),
                     lookback.rfind("?"),
                     lookback.rfind("\n"),
                 )
-                sentence_start = lookback_floor + last_sentence_break + 1 if last_sentence_break >= 0 else lookback_floor
-                window = scoped[sentence_start:m.end()]
-                if _match_excludes_negation(window):
+                sentence_start = (
+                    lookback_floor + last_break_back + 1
+                    if last_break_back >= 0
+                    else lookback_floor
+                )
+                # Lookahead to next sentence break, capped at 200 chars.
+                lookahead_ceiling = min(len(scoped), end + 200)
+                lookahead = scoped[end:lookahead_ceiling]
+                next_break = min(
+                    [i for i in (
+                        lookahead.find("."),
+                        lookahead.find("!"),
+                        lookahead.find("?"),
+                        lookahead.find("\n"),
+                    ) if i >= 0],
+                    default=-1,
+                )
+                sentence_end = end + next_break + 1 if next_break >= 0 else lookahead_ceiling
+                window = scoped[sentence_start:sentence_end]
+                if _match_excludes_negation(window, allow_prohibition=label.startswith("C3")):
                     accepted = True
                     break
             if not accepted:
@@ -228,13 +283,13 @@ def template_file_checks() -> list[Check]:
         # (iii) abstract no less hedged than body. R1-006 upgraded this from
         # an example to a mandatory contract; lint must verify the contract
         # rides verbatim in the template, not just the prose around it.
+        # Scoped to the `report_compiler_agent bundle` clause so scattered
+        # text elsewhere in the template cannot satisfy the contract (R3-004).
         Check(
             pattern_id="TPL-2 (4f-compiler)",
             description="audit template encodes mandatory three-part (f) check for report_compiler bundles",
             target=TPL_DIR / "codex_audit_multifile_template.md",
-            must_contain=[
-                "report_compiler_agent bundle",
-            ],
+            block_marker="report_compiler_agent bundle (mandatory three-part check)",
             must_contain_regex=[
                 # Sub-check (i): whitespace-split cap minus 3-5% buffer
                 (
@@ -384,14 +439,36 @@ def compiler_agent_checks() -> list[Check]:
     ]
 
 
+# Environment variable controlling whether agent-prompt checks run.
+#
+# v3.6.7 implementation lands across multiple PRs: Step 1 ships the 4
+# reference files + audit template + this lint; Steps 2-4 land the actual
+# PATTERN PROTECTION (v3.6.7) blocks in the three downstream agent prompts.
+# Until Step 2-4 ship, the agent-prompt checks fail by design (the marker
+# does not exist yet). Running those checks in CI before Step 2-4 ship
+# would produce a misleading red.
+#
+# Default: agent-prompt checks are skipped. Set ARS_V3_6_7_AGENT_CHECKS=1
+# to enable them. Step 2-4 PRs will flip the default to enabled.
+_AGENT_CHECKS_ENV = "ARS_V3_6_7_AGENT_CHECKS"
+
+
+def _agent_checks_enabled() -> bool:
+    return os.environ.get(_AGENT_CHECKS_ENV, "0") == "1"
+
+
 def all_checks() -> list[Check]:
-    return [
+    checks = [
         *reference_file_checks(),
         *template_file_checks(),
-        *synthesis_agent_checks(),
-        *architect_agent_checks(),
-        *compiler_agent_checks(),
     ]
+    if _agent_checks_enabled():
+        checks.extend([
+            *synthesis_agent_checks(),
+            *architect_agent_checks(),
+            *compiler_agent_checks(),
+        ])
+    return checks
 
 
 def main(argv: list[str]) -> int:
@@ -406,7 +483,13 @@ def main(argv: list[str]) -> int:
         else:
             failed.append((check, msg))
 
-    summary = f"v3.6.7 pattern-protection static audit: {len(passed)}/{len(checks)} checks passed"
+    deferred_note = ""
+    if not _agent_checks_enabled():
+        deferred_note = " (agent-prompt checks deferred — set ARS_V3_6_7_AGENT_CHECKS=1 to enable)"
+    summary = (
+        f"v3.6.7 pattern-protection static audit: {len(passed)}/{len(checks)} "
+        f"checks passed{deferred_note}"
+    )
     print(summary)
     print()
 
