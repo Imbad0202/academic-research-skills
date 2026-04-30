@@ -115,49 +115,75 @@ _ALWAYS_NEGATION_PATTERNS = [
     re.compile(r"\bif\s+practical\b", re.IGNORECASE),
     re.compile(r"\bif\s+feasible\b", re.IGNORECASE),
     re.compile(r"\bbest[- ]effort\b", re.IGNORECASE),
+    # Exception qualifiers (B2 R3-003). "except" / "unless" / "save when"
+    # carve out a hole in an otherwise-mandatory rule. Mutation evidence:
+    # "No subsetting except when concise" silently weakens B5. These are
+    # treated as always-rejecting because no legitimate v3.6.7 contract
+    # rule carries an opt-out clause; if a future spec rule needs a
+    # genuine exception (e.g. "X is forbidden, except in mode Y"), the
+    # check for that rule should structure the obligation regex to
+    # demand both halves explicitly rather than relying on free prose.
+    re.compile(r"\bexcept\s+(?:when|if|in|for|as|where)\b", re.IGNORECASE),
+    re.compile(r"\bunless\b", re.IGNORECASE),
+    re.compile(r"\bsave\s+when\b", re.IGNORECASE),
 ]
 
 
-def _match_excludes_negation(text_window: str, allow_prohibition: bool = False) -> bool:
-    """Return True if the sentence around an obligation match does NOT
+# Imperative/auxiliary verb-negation tokens that, when allow_prohibition is
+# set, MAY appear in the matched obligation span but must still be rejected
+# anywhere else in the bullet window. This is the "span-restricted exemption"
+# (B2 R3-001): the obligation's own prohibition vocabulary ("DO NOT simulate",
+# "must not claim audit-passed state", "does not paraphrase") rides verbatim
+# in the matched span; a *second* prohibition elsewhere in the same bullet
+# (e.g. trailing "this must not be enforced") still indicates weakening.
+_PROHIBITION_VERB_PATTERN_TEXTS = {
+    r"\bDO NOT\b",
+    r"\bdo not\b",
+    r"\bdoes not\b",
+    r"\bdoesn'?t\b",
+    r"\bdon'?t\b",
+    r"\bmust not\b",
+    r"\bmustn'?t\b",
+}
+
+
+def _match_excludes_negation(
+    text_window: str,
+    allow_prohibition: bool = False,
+    matched_span: tuple[int, int] | None = None,
+) -> bool:
+    """Return True if the bullet window around an obligation match does NOT
     contain any negation that would weaken it.
 
-    `allow_prohibition=True` exempts only the literal `DO NOT` imperative
-    token (the prohibition obligation itself, e.g. C3 anti-fake-audit
-    guard's "DO NOT simulate" / "DO NOT claim to have run"). All OTHER
-    general negation patterns (cannot / must not / not required / need
-    not / etc.) still apply, so a window like "DO NOT simulate ...
-    this is not required" is still rejected (R4-001).
+    `allow_prohibition=True` exempts the literal prohibition tokens
+    (DO NOT / do not / does not / must not / etc.) **only when they fall
+    inside the matched obligation span**. A trailing "this must not be
+    enforced" outside the matched span still rejects (B2 R3-001).
 
-    The `_ALWAYS_NEGATION_PATTERNS` (rarely, sometimes, fails to,
-    optional, etc.) apply regardless because no legitimate obligation
+    The `_ALWAYS_NEGATION_PATTERNS` (rarely, sometimes, fails to, optional,
+    except, unless, etc.) apply regardless because no legitimate obligation
     framing should rely on those.
+
+    `matched_span` is `(start, end)` relative to `text_window`. When None
+    or `allow_prohibition=False`, prohibition tokens anywhere in the
+    window count as weakeners.
     """
     if any(p.search(text_window) for p in _ALWAYS_NEGATION_PATTERNS):
         return False
-    # When the caller signals this is a prohibition obligation, the
-    # subject-verb negation forms ("does not paraphrase", "DO NOT
-    # simulate") are how the obligation is *expressed*, not weakened.
-    # Exempt those forms but still enforce adjective-targeted negation
-    # ("not required", "not non-negotiable") and explicit weakeners
-    # (no buffer, no enumeration), which always indicate the contract
-    # is being undone rather than asserted.
-    PROHIBITION_VERB_PATTERNS = {
-        r"\bDO NOT\b",
-        r"\bdo not\b",
-        r"\bdoes not\b",
-        r"\bdoesn'?t\b",
-        r"\bdon'?t\b",
-        # `must not` is a prohibition expression of obligation, not a
-        # weakener — used in C3 ("Output metadata must not claim audit-
-        # passed state") and equivalent verbatim-only style rules.
-        r"\bmust not\b",
-        r"\bmustn'?t\b",
-    }
     for p in _GENERAL_NEGATION_PATTERNS:
-        if allow_prohibition and p.pattern in PROHIBITION_VERB_PATTERNS:
-            continue
-        if p.search(text_window):
+        is_prohibition_pattern = p.pattern in _PROHIBITION_VERB_PATTERN_TEXTS
+        for hit in p.finditer(text_window):
+            if (
+                allow_prohibition
+                and is_prohibition_pattern
+                and matched_span is not None
+                and hit.start() >= matched_span[0]
+                and hit.end() <= matched_span[1]
+            ):
+                # Prohibition token sits inside the matched obligation
+                # span — it is the obligation's own vocabulary, not a
+                # weakener. Skip this hit.
+                continue
             return False
     return True
 
@@ -259,7 +285,17 @@ class Check:
                 next_break = min(fwd_breaks) if fwd_breaks else -1
                 bullet_end = end + next_break if next_break >= 0 else lookahead_ceiling
                 window = scoped[bullet_start:bullet_end]
-                if _match_excludes_negation(window, allow_prohibition=allow_prohibition):
+                # Span of THIS obligation match within the window, so the
+                # negation filter can distinguish prohibition vocabulary
+                # that is the obligation itself ("DO NOT simulate") from
+                # a SECOND prohibition elsewhere in the bullet that
+                # weakens it (B2 R3-001).
+                match_in_window = (start - bullet_start, end - bullet_start)
+                if _match_excludes_negation(
+                    window,
+                    allow_prohibition=allow_prohibition,
+                    matched_span=match_in_window,
+                ):
                     accepted = True
                     break
             if not accepted:
@@ -443,7 +479,10 @@ def synthesis_agent_checks() -> list[Check]:
     """Spec §6.1 — synthesis_agent A1-A5 protection.
 
     Scoped to the PATTERN PROTECTION (v3.6.7) block so keyword presence
-    elsewhere in the agent prompt does not count toward passing.
+    elsewhere in the agent prompt does not count toward passing. All five
+    rules use must_contain_regex (not raw must_contain tokens) so the
+    weakening filter rejects mutations like "pending verification language
+    is optional" (B2 R3-002).
     """
     return [
         Check(
@@ -451,18 +490,43 @@ def synthesis_agent_checks() -> list[Check]:
             description="synthesis_agent carries 5 narrative-side protection clauses",
             target=SYNTHESIS_AGENT,
             block_marker=PROTECTION_BLOCK,
-            must_contain=[
-                # A1 — cross-section consistency self-check
-                "effect inventory",
-                "cross-section consistency",
-                # A2 — pending-verification hedge
-                "pending verification",
-                # A3 — anchor justification
-                "anchor justification",
-                # A4 — quote scope boundary
-                "verified phrase boundary",
-            ],
             must_contain_regex=[
+                # A1 — cross-section consistency self-check. Bullet must
+                # directive both the effect-inventory step and the
+                # consistency self-check; "is recommended" / "may run" /
+                # "optional" qualifiers are caught by the negation filter.
+                (
+                    "A1 effect inventory + cross-section consistency self-check",
+                    r"\beffect inventory\b[^.\n]{0,200}\bcross-section consistency\b",
+                ),
+                # A2 — pending-verification hedge. "wrap claims in explicit
+                # hedge" is the imperative; mutating to "pending verification
+                # language is optional" trips the optional-noun weakener
+                # only if the noun is in the narrowed list. Use a regex
+                # anchored on "wrap claims" so the imperative verb is
+                # required (R3-002 mutation evidence).
+                (
+                    "A2 pending-verification hedge wrap",
+                    r"\bpending verification\b[^.\n]{0,200}\bwrap claims\b[^.\n]{0,200}\bexplicit hedge\b",
+                ),
+                # A3 — anchor justification. "include a one-line anchor
+                # justification" is the imperative; bare token "anchor
+                # justification" alone could be subverted with "anchor
+                # justification is optional".
+                (
+                    "A3 one-line anchor justification (include)",
+                    r"\binclude\s+a\s+one[- ]line\s+anchor justification\b",
+                ),
+                # A4 — quote scope boundary. "Verbatim quotes only within
+                # the verified phrase boundary" is the imperative; mutating
+                # to "Verbatim quotes are not restricted to the verified
+                # phrase boundary" is caught by `not\s+restricted` only if
+                # listed; safer to require the "only within ... boundary"
+                # phrasing.
+                (
+                    "A4 verbatim quotes only within verified phrase boundary",
+                    r"\bVerbatim quotes\s+only\s+within\s+the\s+verified phrase boundary\b",
+                ),
                 # A5 — declarative claims about un-provided documents must be
                 # explicitly forbidden in one contiguous injunction, sentence-
                 # bounded so unrelated clauses elsewhere in the block do not
@@ -477,23 +541,34 @@ def synthesis_agent_checks() -> list[Check]:
 
 
 def architect_agent_checks() -> list[Check]:
-    """Spec §6.2 — research_architect_agent (survey designer mode) B1-B5 protection."""
+    """Spec §6.2 — research_architect_agent (survey designer mode) B1-B5
+    protection. B1, B2, B5 use must_contain_regex with imperative verbs
+    anchored so a mutation like "passing through the IRB glossary is
+    optional" or "construct equivalence justification is recommended"
+    is rejected by the weakening filter (B2 R3-002).
+    """
     return [
         Check(
             pattern_id="B1-B5",
             description="research_architect_agent (survey designer) carries 5 instrument-side protection clauses",
             target=ARCHITECT_AGENT,
             block_marker=PROTECTION_BLOCK,
-            must_contain=[
-                # B1 — IRB terminology pass-through (back-pointer to glossary)
-                "irb_terminology_glossary.md",
-                # B2 — reverse-coded construct equivalence
-                "construct-equivalence",
-                "reverse-coded",
-                # B5 — primary-source list enumeration (named term)
-                "primary-source list",
-            ],
             must_contain_regex=[
+                # B1 — IRB terminology pass-through. "must pass through ...
+                # before output" is the imperative; the glossary back-pointer
+                # is part of the obligation.
+                (
+                    "B1 IRB terminology pass-through (must, before output)",
+                    r"\bmust\s+pass\s+through\b[^.\n]{0,200}\birb_terminology_glossary\.md\b[^.\n]{0,200}\bbefore output\b",
+                ),
+                # B2 — reverse-coded construct equivalence. "include a one-
+                # line construct-equivalence justification" is the imperative
+                # that survives mutations like "construct-equivalence
+                # justification is recommended".
+                (
+                    "B2 reverse-coded construct-equivalence justification",
+                    r"\breverse-coded\b[^.\n]{0,200}\binclude\s+a\s+one[- ]line\s+construct-equivalence justification\b",
+                ),
                 # B3 — retrospective items default to event-anchored;
                 # calendar-anchored is conditional on a shared event date.
                 # Spec wording naturally spans two sentences ("default to..."
@@ -536,13 +611,30 @@ def compiler_agent_checks() -> list[Check]:
             description="report_compiler_agent (abstract-only) carries 3 publication-side protection clauses incl. anti-fake-audit guard",
             target=COMPILER_AGENT,
             block_marker=PROTECTION_BLOCK,
-            must_contain=[
-                # C1 — word-count algorithm
-                "whitespace-split",
-                # C2 — temporal disambiguation marker
-                "explicit year range",
-            ],
             must_contain_regex=[
+                # C1 word-count algorithm. "uses whitespace-split convention"
+                # is the imperative. R3-002 evidence: bare token
+                # "whitespace-split" passed even when surrounding prose was
+                # mutated; require the imperative phrasing.
+                (
+                    "C1 whitespace-split convention (uses)",
+                    r"\bWord budget\s+uses\s+whitespace-split\s+convention\b",
+                ),
+                # C2 temporal disambiguation. "Reflexivity disclosure must
+                # use explicit temporal bounds" is the imperative. Mutating
+                # to "may use" / "are allowed when shorter" is caught by
+                # the weakening filter on `may` and exception qualifiers
+                # (R3-002 + R3-003).
+                (
+                    "C2 reflexivity disclosure must use explicit year range",
+                    r"\bReflexivity disclosure\s+must\s+use\s+explicit temporal bounds\b[^.\n]{0,200}\bexplicit year range\b",
+                ),
+                # C2 deictic forbidden — paired with above so a mutation
+                # that drops the prohibition still fails.
+                (
+                    "C2 deictic temporal phrases forbidden",
+                    r"\bDeictic temporal phrases\b[^.\n]{0,200}\bare forbidden\b",
+                ),
                 # C1 — protected hedges are budget-protected / non-negotiable
                 # / verbatim. Sentence-bounded; negation post-filter rejects
                 # "are not non-negotiable" (R2-004) AND must reject inverted

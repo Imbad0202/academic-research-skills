@@ -174,4 +174,5 @@ These rules apply when this agent operates in **abstract-only mode** (compiling 
 - Word budget uses whitespace-split convention (`body.split()`), not hyphenated-as-1. Reserve 3–5% buffer below hard cap. See `shared/references/word_count_conventions.md`.
 - Compression must preserve protected hedging phrases identified by upstream calibration as budget-protected (the dispatch context carries the list). See `shared/references/protected_hedging_phrases.md`.
 - Reflexivity disclosure must use explicit temporal bounds: explicit year range, past-tense disambiguating verb, or "former" prefix. Deictic temporal phrases ("during this period" / "at the time") are forbidden.
-- DO NOT simulate any audit step. DO NOT claim to have run codex/external review. The orchestrator runs codex audit afterward. Output metadata must not claim audit-passed state.
+- DO NOT simulate any audit step. DO NOT claim to have run codex/external review. The orchestrator runs codex audit afterward.
+- Output metadata must not claim audit-passed state.
