@@ -295,33 +295,43 @@ def reference_file_checks() -> list[Check]:
                 "word budget",
             ],
             must_contain_regex=[
-                # Rule 1: conservative inclusion — when in doubt, include
+                # Rule 1: conservative inclusion — "include the phrase" is
+                # the operative directive (R5-002 mutation showed
+                # "ask upstream for advice" was previously accepted).
                 (
                     "Rule: Conservative inclusion",
-                    r"\bConservative inclusion\b.{0,200}\bWhen in doubt\b",
+                    r"\bConservative inclusion\b.{0,200}\bWhen in doubt\b.{0,150}\binclude\s+the\s+phrase\b",
                 ),
-                # Rule 2: anchor every entry
+                # Rule 2: anchor every entry — "where … and why" is the
+                # specific obligation; bare "must cite" was previously
+                # accepted with weakened content.
                 (
-                    "Rule: Anchor every entry",
-                    r"\bAnchor every entry\b.{0,200}\bmust\s+cite\b",
+                    "Rule: Anchor every entry (where + why)",
+                    r"\bAnchor every entry\b.{0,200}\bmust\s+cite\s+where\b.{0,200}\bwhy\b",
                 ),
-                # Rule 3: no duplicates
+                # Rule 3: no duplicates — bullet body must assert
+                # "One entry per phrase" then back-reference the count.
+                # R5-002 showed bare "One entry per phrase" alone could be
+                # suffixed with "is optional" and still pass; require the
+                # full "One entry per phrase. The compiler counts ... once"
+                # sequence so a tail weakener cannot land between them.
+                # Allow Markdown markup (`**`) between the heading word and
+                # the body sentence.
                 (
                     "Rule: No duplicates",
-                    r"\bNo duplicates\b.{0,150}\bOne entry per phrase\b",
+                    r"\bNo duplicates\b[\s.*\-]{0,10}One entry per phrase\.\s+The compiler counts[^.]{0,150}\bonce\b",
                 ),
-                # Rule 4: verbatim preservation
+                # Rule 4: verbatim preservation — both the title and the
+                # imperative body ("does not paraphrase") must appear.
                 (
                     "Rule: Verbatim preservation",
-                    r"\bVerbatim preservation\b.{0,200}\brides\s+verbatim\b",
+                    r"\bVerbatim preservation\b.{0,250}\brides\s+verbatim\b.{0,300}\bdoes\s+not\s+paraphrase\b",
                 ),
-                # Rule 5: failure surface — report conflict, do not drop hedge.
-                # Sentence-bounded so the surrounding "if abstract cannot fit"
-                # conditional in the prose does not poison the negation
-                # filter on this regex's match window.
+                # Rule 5: failure surface — must say "rather than dropping",
+                # not "while dropping" (R5-002 mutation flipped this).
                 (
                     "Rule: Conflict reporting (no silent drop)",
-                    r"\breports the conflict\b[^.\n]{0,200}\bdropping a protected hedge\b",
+                    r"\breports the conflict\b[^.\n]{0,100}\brather than\s+dropping a protected hedge\b",
                 ),
             ],
         ),
@@ -374,20 +384,29 @@ def template_file_checks() -> list[Check]:
                     "4f sub-check (i) word-count algorithm + buffer",
                     r"len\(body\.split\(\)\).{0,200}\b3[-–]5%\s+buffer\b",
                 ),
-                # Sub-check (ii): protected_hedges verbatim preservation
+                # Sub-check (ii): protected_hedges appear verbatim
+                # unconditionally. R5-003 mutation showed bare
+                # "appear verbatim when possible" was previously accepted;
+                # the obligation must be unconditional ("appears verbatim
+                # in the abstract" without "when possible" / "if space").
+                # The negation post-filter already rejects "when convenient"
+                # / "if space allows", so the regex requires the
+                # imperative-tense phrasing.
                 (
-                    "4f sub-check (ii) protected_hedges verbatim",
-                    r"protected_hedges\b.{0,300}\bverbatim\b",
+                    "4f sub-check (ii) protected_hedges verbatim (unconditional)",
+                    r"every entry of upstream\s+`?protected_hedges`?[^\n]{0,200}\bappears? verbatim in the abstract\b",
                 ),
-                # Sub-check (iii): abstract no less hedged than body
+                # Sub-check (iii): "no claim in the abstract is less hedged
+                # than its anchor in the body" — anchored on "no claim" so
+                # an inverted form ("every claim ... is less hedged") fails.
                 (
                     "4f sub-check (iii) less-hedged-than-body prohibition",
-                    r"less\s+hedged\s+than\s+its\s+anchor\s+in\s+the\s+body|no\s+claim\s+in\s+the\s+abstract\s+is\s+less\s+hedged",
+                    r"\bno claim in the abstract is less hedged than its anchor in the body\b",
                 ),
                 # P1 severity assignment for any sub-check failure
                 (
                     "4f failures severity P1",
-                    r"P1\s+finding\b",
+                    r"\bFailure of any sub-check is a P1 finding\b",
                 ),
             ],
         ),
