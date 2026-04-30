@@ -41,6 +41,32 @@ COMPILER_AGENT = AGENT_DIR / "report_compiler_agent.md"
 # starts at the marker and ends at the next H1/H2/H3 heading or EOF.
 _HEADING_RE = re.compile(r"^#{1,3} ", re.MULTILINE)
 
+# Negation patterns that, if present in a matched obligation sentence, indicate
+# the obligation is being denied or weakened rather than asserted. R2-004
+# flagged that "does not enumerate fully" / "not non-negotiable" can satisfy
+# a naive obligation regex while undermining the contract. We post-filter
+# matches against this list.
+_NEGATION_PATTERNS = [
+    re.compile(r"\bdoes not\b", re.IGNORECASE),
+    re.compile(r"\bdo not\b", re.IGNORECASE),
+    re.compile(r"\bdoesn'?t\b", re.IGNORECASE),
+    re.compile(r"\bdon'?t\b", re.IGNORECASE),
+    re.compile(r"\bnot\s+(?:non[- ]negotiable|enumerate|required|mandatory|forbidden|verbatim)\b", re.IGNORECASE),
+    re.compile(r"\bneed not\b", re.IGNORECASE),
+    re.compile(r"\bisn'?t\b", re.IGNORECASE),
+    re.compile(r"\baren'?t\b", re.IGNORECASE),
+    re.compile(r"\boptional\b", re.IGNORECASE),
+    re.compile(r"\bmay\s+(?:not\s+)?(?:invite|enumerate|preserve)\b", re.IGNORECASE),
+]
+
+
+def _match_excludes_negation(text_window: str) -> bool:
+    """Return True if the matched window does NOT contain any negation that
+    would weaken the obligation. Used to reject 'does not enumerate fully' or
+    'not non-negotiable' false positives that the obligation regex alone
+    cannot exclude."""
+    return not any(p.search(text_window) for p in _NEGATION_PATTERNS)
+
 
 @dataclass
 class Check:
@@ -84,11 +110,42 @@ class Check:
             return False, f"{display}: {err}"
         scoped_lower = scoped.lower()
         missing_substr = [s for s in self.must_contain if s.lower() not in scoped_lower]
-        missing_regex = [
-            label
-            for label, pattern in self.must_contain_regex
-            if not re.search(pattern, scoped, re.IGNORECASE | re.DOTALL)
-        ]
+        missing_regex = []
+        for label, pattern in self.must_contain_regex:
+            # First try to find an obligation match.
+            match = re.search(pattern, scoped, re.IGNORECASE | re.DOTALL)
+            if match is None:
+                missing_regex.append(label)
+                continue
+            # Reject if the matched window or its preceding sentence context
+            # contains a negation that would weaken the obligation (per
+            # R2-004). The negation check looks at the sentence containing
+            # the match — from the prior sentence boundary up through the
+            # match itself — so weakeners like "does not enumerate fully"
+            # or "may invite all valences" do not count as obligations.
+            iterator = re.finditer(pattern, scoped, re.IGNORECASE | re.DOTALL)
+            accepted = False
+            for m in iterator:
+                # Find sentence start: nearest preceding `.` `!` `?` or
+                # newline, or start of scoped text. Limit lookback to 200
+                # chars so a long block does not accidentally pull in an
+                # unrelated negation from far above.
+                start = m.start()
+                lookback_floor = max(0, start - 200)
+                lookback = scoped[lookback_floor:start]
+                last_sentence_break = max(
+                    lookback.rfind("."),
+                    lookback.rfind("!"),
+                    lookback.rfind("?"),
+                    lookback.rfind("\n"),
+                )
+                sentence_start = lookback_floor + last_sentence_break + 1 if last_sentence_break >= 0 else lookback_floor
+                window = scoped[sentence_start:m.end()]
+                if _match_excludes_negation(window):
+                    accepted = True
+                    break
+            if not accepted:
+                missing_regex.append(f"{label} (only negated forms found)")
         problems = []
         if missing_substr:
             problems.append(f"missing keywords: {missing_substr}")
@@ -166,6 +223,41 @@ def template_file_checks() -> list[Check]:
                 "COI adequacy",
             ],
         ),
+        # The report_compiler bundle's Section 4(f) is mandatory three-part:
+        # (i) word-count cap-minus-buffer, (ii) protected-hedge verbatim,
+        # (iii) abstract no less hedged than body. R1-006 upgraded this from
+        # an example to a mandatory contract; lint must verify the contract
+        # rides verbatim in the template, not just the prose around it.
+        Check(
+            pattern_id="TPL-2 (4f-compiler)",
+            description="audit template encodes mandatory three-part (f) check for report_compiler bundles",
+            target=TPL_DIR / "codex_audit_multifile_template.md",
+            must_contain=[
+                "report_compiler_agent bundle",
+            ],
+            must_contain_regex=[
+                # Sub-check (i): whitespace-split cap minus 3-5% buffer
+                (
+                    "4f sub-check (i) word-count algorithm + buffer",
+                    r"len\(body\.split\(\)\).{0,200}\b3[-–]5%\s+buffer\b",
+                ),
+                # Sub-check (ii): protected_hedges verbatim preservation
+                (
+                    "4f sub-check (ii) protected_hedges verbatim",
+                    r"protected_hedges\b.{0,300}\bverbatim\b",
+                ),
+                # Sub-check (iii): abstract no less hedged than body
+                (
+                    "4f sub-check (iii) less-hedged-than-body prohibition",
+                    r"less\s+hedged\s+than\s+its\s+anchor\s+in\s+the\s+body|no\s+claim\s+in\s+the\s+abstract\s+is\s+less\s+hedged",
+                ),
+                # P1 severity assignment for any sub-check failure
+                (
+                    "4f failures severity P1",
+                    r"P1\s+finding\b",
+                ),
+            ],
+        ),
     ]
 
 
@@ -199,11 +291,12 @@ def synthesis_agent_checks() -> list[Check]:
             ],
             must_contain_regex=[
                 # A5 — declarative claims about un-provided documents must be
-                # explicitly forbidden in one contiguous injunction, not split
-                # across unrelated clauses.
+                # explicitly forbidden in one contiguous injunction, sentence-
+                # bounded so unrelated clauses elsewhere in the block do not
+                # syntactically satisfy the obligation (per R2-003).
                 (
-                    "A5 contiguous injunction",
-                    r"declarative claims? about un-provided.{0,300}\bare forbidden\b",
+                    "A5 sentence-bounded injunction",
+                    r"declarative claims? about un-provided[^.\n]{0,200}\bare forbidden\b",
                 ),
             ],
         )
@@ -230,22 +323,26 @@ def architect_agent_checks() -> list[Check]:
             must_contain_regex=[
                 # B3 — retrospective items default to event-anchored;
                 # calendar-anchored is conditional on a shared event date.
+                # Spec wording naturally spans two sentences ("default to..."
+                # then "calendar... only when..."), so the gap allows one
+                # sentence boundary; the 'only when' tail must sit in the
+                # same sentence as 'calendar-anchored' to bind the conditional.
                 (
                     "B3 retrospective default + calendar conditional",
-                    r"event-anchored.{0,400}\bcalendar[- ]anchored.{0,300}\bonly when\b",
+                    r"event-anchored[^.\n]{0,200}\.[^.\n]{0,100}\bcalendar[- ]anchored[^.\n]{0,200}\bonly when\b",
                 ),
-                # B4 — open-text prompts invite all valences (positive +
-                # negative + neutral). Bare 'neutral' is too weak.
+                # B4 — open-text prompts invite all valences. Sentence-bounded
+                # so a stray 'neutral' elsewhere does not satisfy.
                 (
                     "B4 open-text invites all valences",
-                    r"all valences|positive,? negative,? (?:or|and) neutral",
+                    r"\b(?:all valences|positive,? negative,? (?:or|and) neutral)\b",
                 ),
                 # B5 — option lists must enumerate fully (no subsetting).
-                # Bare 'primary-source list' is too weak; require the
-                # subsetting prohibition.
+                # Sentence-bounded; negation post-filter rejects "does not
+                # enumerate fully" (R2-004).
                 (
                     "B5 enumerate fully / no subsetting",
-                    r"enumerate(?:s|d)?\s+fully\b|no\s+subsetting\b",
+                    r"\b(?:enumerate(?:s|d)?\s+fully|no\s+subsetting)\b",
                 ),
             ],
         )
@@ -267,20 +364,20 @@ def compiler_agent_checks() -> list[Check]:
                 "explicit year range",
             ],
             must_contain_regex=[
-                # C1 — protected hedges are budget-protected / non-negotiable.
-                # Bare 'protected hedging phrases' was too weak; require the
-                # obligation that they ride into the abstract verbatim.
+                # C1 — protected hedges are budget-protected / non-negotiable
+                # / verbatim. Sentence-bounded; negation post-filter rejects
+                # "are not non-negotiable" (R2-004).
                 (
                     "C1 protected hedges non-negotiable",
-                    r"protected\s+hedg(?:e|ing)\s+phrases.{0,300}\b(?:budget[- ]protected|non-negotiable|verbatim)\b",
+                    r"protected\s+hedg(?:e|ing)\s+phrases[^.\n]{0,200}\b(?:budget[- ]protected|non-negotiable|verbatim)\b",
                 ),
-                # C3 — anti-fake-audit guard. Both DO NOT clauses must appear,
-                # in either order, within a 400-char window so the guard reads
-                # as one injunction rather than two unrelated sentences.
+                # C3 — anti-fake-audit guard. Both DO NOT clauses must appear
+                # in either order. The gap allows two short sentences (the
+                # natural "DO NOT simulate ... DO NOT claim ..." wording).
                 (
                     "C3 anti-fake-audit guard pair",
-                    r"DO NOT simulate.{0,400}\bDO NOT claim to have run\b"
-                    r"|DO NOT claim to have run.{0,400}\bDO NOT simulate\b",
+                    r"DO NOT simulate[^\n]{0,300}\.[^\n]{0,100}\bDO NOT claim to have run\b"
+                    r"|DO NOT claim to have run[^\n]{0,300}\.[^\n]{0,100}\bDO NOT simulate\b",
                 ),
             ],
         )

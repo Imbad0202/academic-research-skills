@@ -107,7 +107,7 @@ The `report_compiler_agent` abstract-only mode treats protected hedges as **non-
 
 ## Where this protocol is enforced
 
-The `report_compiler_agent` abstract-only mode prompt enforces the dispatch-context protocol and the budget allocation order. The authoritative protection clause lives in `deep-research/agents/report_compiler_agent.md` under `PATTERN PROTECTION (v3.6.7)`. This file defines what counts as a protected hedge, the upstream calibration shape, and the compiler's budget allocation order; the agent prompt cites this file by path. Cross-model audit follows `shared/templates/codex_audit_multifile_template.md` (dimension §3.7).
+The `report_compiler_agent` abstract-only mode prompt enforces the dispatch-context protocol and the budget allocation order. The authoritative protection clause lives in `deep-research/agents/report_compiler_agent.md` under `PATTERN PROTECTION (v3.6.7)`. This file defines what counts as a protected hedge, the upstream calibration shape, and the compiler's budget allocation order; the agent prompt cites this file by path. Cross-model audit covers protected-hedge preservation under the report_compiler bundle's Section 4(f) check in `shared/templates/codex_audit_multifile_template.md`.
 
 ---
 

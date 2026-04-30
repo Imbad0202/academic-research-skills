@@ -121,7 +121,7 @@ Note: word-count convention, 3–5% buffer adherence, and protected-hedge preser
 Round {N} job:
 (a) Verify each round-{N-1} finding closed correctly. List by ID.
 (b) Audit for new issues introduced by round-{N-1} corrections (cascade audit per feedback_cross_model_review_cascade_inconsistency.md).
-(c) Run the 7 audit dimensions (§3.1–§3.7) on the primary deliverables. Report each finding with the dimension that surfaced it.
+(c) Run the 7 audit dimensions (§3.1–§3.7) plus the bundle-specific Section 4(f) check on the primary deliverables. Report each finding with the dimension or `4(f)` that surfaced it.
 (d) Anchoring-bias residual check: for each finding closed in prior rounds, confirm the closure is not a wording change that left the failure mode operative (per feedback_lint_passes_but_prompt_silent.md).
 (e) PARTIAL-vs-CLOSED check: every finding marked PARTIAL in prior rounds is either fully closed or remains open with a concrete remaining-work description.
 (f) {bundle-specific check, e.g. "compression overclaim check: every claim in the abstract is at least as hedged as its anchor in the body"}
@@ -155,7 +155,7 @@ Per feedback_codex_iterative_spec_review_to_zero.md: goal = 0 findings in a sing
 ```
 Output:
 - Cumulative numbered findings (carry forward IDs from round 1; new findings get next available ID).
-- For each finding: ID, severity (P1/P2/P3), dimension (one of §3.1–§3.7), file:line anchor, one-line description, suggested fix.
+- For each finding: ID, severity (P1/P2/P3), dimension (one of §3.1–§3.7 or `4(f)` for bundle-specific failures), file:line anchor, one-line description, suggested fix.
 - Do NOT propose fixes that change the spec; the spec is authoritative. Suggested fixes operate on the deliverables only.
 - End with severity-bucket count summary: "Round {N}: P1×{n1} / P2×{n2} / P3×{n3} ({total} total)".
 - If zero findings, end with: "Round {N}: 0 findings of any severity. Convergence reached."
@@ -226,8 +226,8 @@ DO NOT simulate any audit step. [+ standard Section 7 anti-fake-audit guard]
 
 - `shared/references/irb_terminology_glossary.md` — referenced by dimension §3.5.
 - `shared/references/psychometric_terminology_glossary.md` — referenced by dimension §3.5.
-- `shared/references/protected_hedging_phrases.md` — referenced by dimension §3.7.
-- `shared/references/word_count_conventions.md` — referenced by dimension §3.7.
+- `shared/references/protected_hedging_phrases.md` — referenced by Section 4(f) report_compiler bundle check (sub-checks ii + iii).
+- `shared/references/word_count_conventions.md` — referenced by Section 4(f) report_compiler bundle check (sub-check i).
 - ARS feedback memory `feedback_codex_iterative_spec_review_to_zero.md` — convergence target rationale.
 - ARS feedback memory `feedback_cross_model_review_cascade_inconsistency.md` — round-N+1 cascade audit rationale.
 - ARS feedback memory `feedback_subagent_tool_hallucination.md` — anti-fake-audit guard rationale.
