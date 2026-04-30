@@ -84,6 +84,17 @@ _GENERAL_NEGATION_PATTERNS = [
     # patterns are tight enough to catch genuine weakening even without
     # `cannot`.
 ]
+# Modal weakeners (`may`, `should`, `can`) downgrade mandatory obligations
+# to advisory. They are scoped to a verb list so the bare token does not
+# match unrelated prose ("you may want to see references/...", "this can
+# be useful"). The verb list covers imperatives the v3.6.7 agent prompts
+# actually use.
+_MODAL_WEAKENED_VERBS = (
+    r"(?:invite|enumerate|preserve|drop|skip|substitute|paraphrase"
+    r"|wrap|include|default|defaults?|run|use|declare|pass(?:\s+through)?"
+    r"|claim|cite|fall\s+back|be\s+quoted|be\s+permitted|use\s+chapter)"
+)
+
 _ALWAYS_NEGATION_PATTERNS = [
     re.compile(r"\bisn'?t\b", re.IGNORECASE),
     re.compile(r"\baren'?t\b", re.IGNORECASE),
@@ -104,17 +115,17 @@ _ALWAYS_NEGATION_PATTERNS = [
     # are allowed when shorter" and B5's "Over-setting ... are allowed"
     # when those structures slip past the per-rule regex.
     re.compile(r"\b(?:is|are)\s+allowed\b", re.IGNORECASE),
-    # Same narrowing for `may` — only flag when `may` directly weakens an
-    # action verb that should be obligatory. Verb list expanded in B2 R4-001
-    # to cover the imperative verbs the agent prompts use (wrap, include,
-    # default, run, use, declare, pass, claim, cite, fall back).
-    re.compile(
-        r"\bmay\s+(?:not\s+)?"
-        r"(?:invite|enumerate|preserve|drop|skip|substitute|paraphrase"
-        r"|wrap|include|default|defaults?|run|use|declare|pass(?:\s+through)?"
-        r"|claim|cite|fall\s+back|be\s+quoted|use\s+chapter)\b",
-        re.IGNORECASE,
-    ),
+    # Same narrowing for `may` / `should` / `can` — only flag when the modal
+    # directly precedes one of the obligation verbs the v3.6.7 prompts use.
+    # B2 R4-001 expanded the verb list; B2 R5-001 added `should` / `can`
+    # to the modal coverage.
+    re.compile(rf"\bmay\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    re.compile(rf"\bshould\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    re.compile(rf"\bcan\s+(?:not\s+)?{_MODAL_WEAKENED_VERBS}\b", re.IGNORECASE),
+    # B2 R5-001: "is/are permitted" turns a forbidden operation into an
+    # exception ("over-setting is permitted when concise"). Mirrors the
+    # `is/are allowed` pattern.
+    re.compile(r"\b(?:is|are)\s+permitted\b", re.IGNORECASE),
     re.compile(r"\bfails? to\b", re.IGNORECASE),
     re.compile(r"\binstead of\b", re.IGNORECASE),
     # `rarely` / `sometimes` / `occasionally` similarly need to be near
