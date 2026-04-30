@@ -92,9 +92,29 @@ _ALWAYS_NEGATION_PATTERNS = [
     # ("optional `approved_synonyms` field"), so we narrow this rule to
     # `optional <obligation-noun>` forms.
     re.compile(r"\boptional\s+(?:buffer|enumeration|preservation|inclusion|verbatim|hedge|hedges|enforcement|requirement|reservation)\b", re.IGNORECASE),
+    # B2 R4-001: "X is recommended" / "are recommended" downgrades a
+    # mandatory obligation to advisory. The narrowed verb list ensures
+    # this only flags weakening of actual contract verbs / nouns.
+    re.compile(
+        r"\b(?:is|are)\s+recommended\b",
+        re.IGNORECASE,
+    ),
+    # B2 R4-002 helper: "are allowed" / "is allowed" turns a forbidden
+    # operation into an exception. Covers C2's mutated "deictic phrases
+    # are allowed when shorter" and B5's "Over-setting ... are allowed"
+    # when those structures slip past the per-rule regex.
+    re.compile(r"\b(?:is|are)\s+allowed\b", re.IGNORECASE),
     # Same narrowing for `may` — only flag when `may` directly weakens an
-    # action verb that should be obligatory.
-    re.compile(r"\bmay\s+(?:not\s+)?(?:invite|enumerate|preserve|drop|skip|substitute|paraphrase)\b", re.IGNORECASE),
+    # action verb that should be obligatory. Verb list expanded in B2 R4-001
+    # to cover the imperative verbs the agent prompts use (wrap, include,
+    # default, run, use, declare, pass, claim, cite, fall back).
+    re.compile(
+        r"\bmay\s+(?:not\s+)?"
+        r"(?:invite|enumerate|preserve|drop|skip|substitute|paraphrase"
+        r"|wrap|include|default|defaults?|run|use|declare|pass(?:\s+through)?"
+        r"|claim|cite|fall\s+back|be\s+quoted|use\s+chapter)\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\bfails? to\b", re.IGNORECASE),
     re.compile(r"\binstead of\b", re.IGNORECASE),
     # `rarely` / `sometimes` / `occasionally` similarly need to be near
@@ -492,45 +512,56 @@ def synthesis_agent_checks() -> list[Check]:
             block_marker=PROTECTION_BLOCK,
             must_contain_regex=[
                 # A1 — cross-section consistency self-check. Bullet must
-                # directive both the effect-inventory step and the
-                # consistency self-check; "is recommended" / "may run" /
-                # "optional" qualifiers are caught by the negation filter.
+                # carry both the imperative pre-list step and the
+                # consistency self-check before output. "are recommended"
+                # / "may run" / "optional" weakeners are caught by the
+                # negation filter (verb list + `is/are recommended` in
+                # _ALWAYS_NEGATION_PATTERNS, B2 R4-001 expansion).
                 (
-                    "A1 effect inventory + cross-section consistency self-check",
-                    r"\beffect inventory\b[^.\n]{0,200}\bcross-section consistency\b",
+                    "A1 effect inventory pre-list + cross-section self-check before output",
+                    r"\bpre-list\b[^.\n]{0,200}\beffect inventory\b[^.\n]{0,200}\brun\s+a\s+cross-section consistency self-check\b[^.\n]{0,100}\bbefore output\b",
                 ),
                 # A2 — pending-verification hedge. "wrap claims in explicit
-                # hedge" is the imperative; mutating to "pending verification
-                # language is optional" trips the optional-noun weakener
-                # only if the noun is in the narrowed list. Use a regex
-                # anchored on "wrap claims" so the imperative verb is
-                # required (R3-002 mutation evidence).
+                # hedge" is the imperative; mutating to "may wrap" or
+                # "pending verification language is optional" trips the
+                # may-verb weakener (R4-001) and the optional-noun weakener
+                # respectively.
                 (
                     "A2 pending-verification hedge wrap",
                     r"\bpending verification\b[^.\n]{0,200}\bwrap claims\b[^.\n]{0,200}\bexplicit hedge\b",
                 ),
                 # A3 — anchor justification. "include a one-line anchor
-                # justification" is the imperative; bare token "anchor
-                # justification" alone could be subverted with "anchor
-                # justification is optional".
+                # justification" is the imperative; "may include" trips
+                # the may-verb weakener (R4-001).
                 (
                     "A3 one-line anchor justification (include)",
                     r"\binclude\s+a\s+one[- ]line\s+anchor justification\b",
                 ),
-                # A4 — quote scope boundary. "Verbatim quotes only within
-                # the verified phrase boundary" is the imperative; mutating
-                # to "Verbatim quotes are not restricted to the verified
-                # phrase boundary" is caught by `not\s+restricted` only if
-                # listed; safer to require the "only within ... boundary"
-                # phrasing.
+                # A4 — quote scope boundary AND surrounding-context handling.
+                # Spec §6.1 says "surrounding context paraphrased and
+                # unquoted". Without enforcing the second clause, an agent
+                # can satisfy "Verbatim quotes only within ..." while
+                # mutating context handling to "may be quoted" (R4-002).
+                # Two regexes so dropping either half fails lint.
                 (
                     "A4 verbatim quotes only within verified phrase boundary",
                     r"\bVerbatim quotes\s+only\s+within\s+the\s+verified phrase boundary\b",
                 ),
-                # A5 — declarative claims about un-provided documents must be
-                # explicitly forbidden in one contiguous injunction, sentence-
-                # bounded so unrelated clauses elsewhere in the block do not
-                # syntactically satisfy the obligation (per R2-003).
+                (
+                    "A4 surrounding context paraphrased and unquoted",
+                    r"\bsurrounding context\s+paraphrased\s+and\s+unquoted\b",
+                ),
+                # A5 — declarative claims about un-provided documents are
+                # forbidden AND the conditional-language fallback is
+                # required. Spec §6.1 pairs the two: conditional language
+                # / explicit gap acknowledgment is the constructive duty,
+                # the prohibition is the negative duty. Both must ride.
+                (
+                    "A5 conditional language fallback for un-provided documents",
+                    # Bullet contains "e.g., ..." parenthetical, so match
+                    # across periods within the bullet line.
+                    r"\bun-provided[^\n]{0,300}\buse\s+conditional language\b[^\n]{0,300}\bexplicit gap acknowledgment\b",
+                ),
                 (
                     "A5 sentence-bounded injunction",
                     r"declarative claims? about un-provided[^.\n]{0,200}\bare forbidden\b",
@@ -579,17 +610,33 @@ def architect_agent_checks() -> list[Check]:
                     "B3 retrospective default + calendar conditional",
                     r"event-anchored[^.\n]{0,200}\.[^.\n]{0,100}\bcalendar[- ]anchored[^.\n]{0,200}\bonly when\b",
                 ),
-                # B4 — open-text prompts invite all valences. Sentence-bounded
-                # so a stray 'neutral' elsewhere does not satisfy.
+                # B4 — three-part obligation per spec §6.2:
+                #   (i) item phrasing must be neutral/balanced,
+                #   (ii) chapter argument vocabulary forbidden in items,
+                #   (iii) open-text prompts invite all valences.
+                # Splitting into three regexes so dropping any one half
+                # fails lint (R4-002 mutation evidence: "may use chapter
+                # argument vocabulary" replaced (i)+(ii) and bare valences
+                # match still passed).
+                (
+                    "B4 item phrasing neutral/balanced (must)",
+                    r"\bItem phrasing\s+must\s+be\s+neutral[/-]balanced\b",
+                ),
+                (
+                    "B4 chapter argument vocabulary forbidden",
+                    r"\bChapter argument vocabulary\s+is\s+forbidden\s+in\s+instrument items\b",
+                ),
                 (
                     "B4 open-text invites all valences",
                     r"\b(?:all valences|positive,? negative,? (?:or|and) neutral)\b",
                 ),
                 # B5 — option lists must declare primary-source list AND
-                # enumerate fully AND prohibit subsetting. All three are
-                # the contract; matching any one alone (e.g. "enumerate
-                # fully" with "subsetting is acceptable" elsewhere) is a
-                # silent gap. Require all three obligation phrases.
+                # enumerate fully AND prohibit subsetting AND prohibit
+                # over-setting AND prohibit scope cross-contamination.
+                # All five are the contract per spec §6.2; matching any
+                # subset is a silent gap (R4-002 mutation: "Over-setting
+                # and scope cross-contamination are allowed" passed even
+                # though "No subsetting" remained).
                 (
                     "B5 primary-source list + enumerate fully",
                     r"\bprimary-source list\b[^.\n]{0,100}\benumerate(?:s|d)?\s+fully\b",
@@ -597,6 +644,14 @@ def architect_agent_checks() -> list[Check]:
                 (
                     "B5 no subsetting prohibition",
                     r"\bno\s+subsetting\b",
+                ),
+                (
+                    "B5 no over-setting prohibition",
+                    r"\bno\s+over-setting\b",
+                ),
+                (
+                    "B5 no scope cross-contamination prohibition",
+                    r"\bno\s+scope cross-contamination\b",
                 ),
             ],
         )
@@ -612,22 +667,34 @@ def compiler_agent_checks() -> list[Check]:
             target=COMPILER_AGENT,
             block_marker=PROTECTION_BLOCK,
             must_contain_regex=[
-                # C1 word-count algorithm. "uses whitespace-split convention"
-                # is the imperative. R3-002 evidence: bare token
-                # "whitespace-split" passed even when surrounding prose was
-                # mutated; require the imperative phrasing.
+                # C1 word-count algorithm + buffer. Spec §6.3 pairs the
+                # whitespace-split rule with "Reserve 3–5% buffer below
+                # hard cap"; both must ride. R4-002 mutation showed
+                # buffer deletion still passed.
                 (
                     "C1 whitespace-split convention (uses)",
                     r"\bWord budget\s+uses\s+whitespace-split\s+convention\b",
                 ),
-                # C2 temporal disambiguation. "Reflexivity disclosure must
-                # use explicit temporal bounds" is the imperative. Mutating
-                # to "may use" / "are allowed when shorter" is caught by
-                # the weakening filter on `may` and exception qualifiers
-                # (R3-002 + R3-003).
+                (
+                    "C1 reserve 3-5% buffer below hard cap",
+                    r"\bReserve\s+3[-–]5%\s+buffer\s+below\s+hard cap\b",
+                ),
+                # C2 temporal disambiguation: imperative + full triple of
+                # acceptable forms (year range, past-tense disambiguating
+                # verb, "former" prefix). R4-002 evidence: dropping the
+                # past-tense + former prefix still passed because only
+                # "explicit year range" was lint-required.
                 (
                     "C2 reflexivity disclosure must use explicit year range",
                     r"\bReflexivity disclosure\s+must\s+use\s+explicit temporal bounds\b[^.\n]{0,200}\bexplicit year range\b",
+                ),
+                (
+                    "C2 past-tense disambiguating verb form",
+                    r"\bpast-tense disambiguating verb\b",
+                ),
+                (
+                    "C2 'former' prefix form",
+                    r"['\"]former['\"]\s+prefix\b",
                 ),
                 # C2 deictic forbidden — paired with above so a mutation
                 # that drops the prohibition still fails.

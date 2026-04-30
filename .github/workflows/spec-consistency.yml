@@ -99,3 +99,6 @@ jobs:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_passport_reset_contract -v
 
+      - name: Validate v3.6.7 downstream-agent pattern protection
+        run: python3 scripts/check_v3_6_7_pattern_protection.py
+
