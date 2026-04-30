@@ -148,6 +148,11 @@ def _match_excludes_negation(text_window: str, allow_prohibition: bool = False) 
         r"\bdoes not\b",
         r"\bdoesn'?t\b",
         r"\bdon'?t\b",
+        # `must not` is a prohibition expression of obligation, not a
+        # weakener — used in C3 ("Output metadata must not claim audit-
+        # passed state") and equivalent verbatim-only style rules.
+        r"\bmust not\b",
+        r"\bmustn'?t\b",
     }
     for p in _GENERAL_NEGATION_PATTERNS:
         if allow_prohibition and p.pattern in PROHIBITION_VERB_PATTERNS:
@@ -163,18 +168,18 @@ class Check:
     description: str
     target: Path
     must_contain: list[str] = field(default_factory=list)
-    must_contain_regex: list[tuple[str, str]] = field(default_factory=list)
+    must_contain_regex: list[tuple[str, str] | tuple[str, str, bool]] = field(default_factory=list)
+    """Each entry is `(label, pattern)` or `(label, pattern, allow_prohibition)`.
+    `allow_prohibition` is per-regex (not per-Check) so a check can mix
+    prohibition-style obligations (REF-3 verbatim preservation, C3 anti-
+    fake-audit guard, C3 audit-passed metadata) with assertion-style
+    obligations (C1 protected hedges non-negotiable) without the
+    prohibition exemption leaking across regexes (B2 codex R2-001)."""
     block_marker: str | None = None
     """If set, scope all keyword/regex checks to the text between the marker
     and the next H1/H2/H3 heading. Use for agent-prompt checks where the
     PATTERN PROTECTION clause must be inside its own block, not scattered
     elsewhere in the file."""
-    allow_prohibition: bool = False
-    """If True, the negation post-filter exempts the literal `DO NOT` /
-    `do not` imperative tokens. Set for obligations that *are themselves*
-    prohibitions (C3 anti-fake-audit guard) or that include sub-clauses
-    using `does not paraphrase` / `does not substitute` style prohibitions
-    as the obligation's body (REF-3 verbatim preservation rule)."""
 
     def _scoped_text(self, full_text: str) -> tuple[str | None, str]:
         """Return (scoped_text, error_message). scoped_text is None on failure."""
@@ -206,7 +211,12 @@ class Check:
         scoped_lower = scoped.lower()
         missing_substr = [s for s in self.must_contain if s.lower() not in scoped_lower]
         missing_regex = []
-        for label, pattern in self.must_contain_regex:
+        for entry in self.must_contain_regex:
+            if len(entry) == 2:
+                label, pattern = entry
+                allow_prohibition = False
+            else:
+                label, pattern, allow_prohibition = entry
             # First try to find an obligation match.
             match = re.search(pattern, scoped, re.IGNORECASE | re.DOTALL)
             if match is None:
@@ -249,7 +259,7 @@ class Check:
                 next_break = min(fwd_breaks) if fwd_breaks else -1
                 bullet_end = end + next_break if next_break >= 0 else lookahead_ceiling
                 window = scoped[bullet_start:bullet_end]
-                if _match_excludes_negation(window, allow_prohibition=self.allow_prohibition):
+                if _match_excludes_negation(window, allow_prohibition=allow_prohibition):
                     accepted = True
                     break
             if not accepted:
@@ -294,10 +304,6 @@ def reference_file_checks() -> list[Check]:
             pattern_id="REF-3 (C1)",
             description="protected_hedging_phrases defines upstream-marked hedge protocol with 5 contract rules",
             target=REF_DIR / "protected_hedging_phrases.md",
-            # Verbatim preservation rule body uses "does not paraphrase /
-            # substitute" as the prohibition expressing the obligation, so
-            # general DO NOT / does not patterns must be exempted (R4-001).
-            allow_prohibition=True,
             must_contain=[
                 "protected hedging phrases",
                 "upstream calibration",
@@ -331,10 +337,16 @@ def reference_file_checks() -> list[Check]:
                     r"\bNo duplicates\b[\s.*\-]{0,10}One entry per phrase\.\s+The compiler counts[^.]{0,150}\bonce\b",
                 ),
                 # Rule 4: verbatim preservation — both the title and the
-                # imperative body ("does not paraphrase") must appear.
+                # imperative body ("does not paraphrase") must appear. The
+                # body uses "does not paraphrase / substitute" as the
+                # prohibition expressing the obligation, so this specific
+                # regex needs prohibition exemption (was per-Check before
+                # B2 R2-001; now per-regex so other regexes in this Check
+                # still reject inverted forms).
                 (
                     "Rule: Verbatim preservation",
                     r"\bVerbatim preservation\b.{0,250}\brides\s+verbatim\b.{0,300}\bdoes\s+not\s+paraphrase\b",
+                    True,  # allow_prohibition: prohibition-style obligation body
                 ),
                 # Rule 5: failure surface — must say "rather than dropping",
                 # not "while dropping" (R5-002 mutation flipped this).
@@ -498,12 +510,18 @@ def architect_agent_checks() -> list[Check]:
                     "B4 open-text invites all valences",
                     r"\b(?:all valences|positive,? negative,? (?:or|and) neutral)\b",
                 ),
-                # B5 — option lists must enumerate fully (no subsetting).
-                # Sentence-bounded; negation post-filter rejects "does not
-                # enumerate fully" (R2-004).
+                # B5 — option lists must declare primary-source list AND
+                # enumerate fully AND prohibit subsetting. All three are
+                # the contract; matching any one alone (e.g. "enumerate
+                # fully" with "subsetting is acceptable" elsewhere) is a
+                # silent gap. Require all three obligation phrases.
                 (
-                    "B5 enumerate fully / no subsetting",
-                    r"\b(?:enumerate(?:s|d)?\s+fully|no\s+subsetting)\b",
+                    "B5 primary-source list + enumerate fully",
+                    r"\bprimary-source list\b[^.\n]{0,100}\benumerate(?:s|d)?\s+fully\b",
+                ),
+                (
+                    "B5 no subsetting prohibition",
+                    r"\bno\s+subsetting\b",
                 ),
             ],
         )
@@ -518,12 +536,6 @@ def compiler_agent_checks() -> list[Check]:
             description="report_compiler_agent (abstract-only) carries 3 publication-side protection clauses incl. anti-fake-audit guard",
             target=COMPILER_AGENT,
             block_marker=PROTECTION_BLOCK,
-            # C3 anti-fake-audit guard is a prohibition obligation
-            # ("DO NOT simulate" / "DO NOT claim to have run"); the
-            # negation post-filter must exempt the DO NOT imperative
-            # while still rejecting weakeners like "this is not required"
-            # (R4-001).
-            allow_prohibition=True,
             must_contain=[
                 # C1 — word-count algorithm
                 "whitespace-split",
@@ -533,7 +545,10 @@ def compiler_agent_checks() -> list[Check]:
             must_contain_regex=[
                 # C1 — protected hedges are budget-protected / non-negotiable
                 # / verbatim. Sentence-bounded; negation post-filter rejects
-                # "are not non-negotiable" (R2-004).
+                # "are not non-negotiable" (R2-004) AND must reject inverted
+                # "Compression must not preserve protected hedging phrases"
+                # (B2 R2-001), so this regex does NOT take prohibition
+                # exemption — it is an assertion-style obligation.
                 (
                     "C1 protected hedges non-negotiable",
                     r"protected\s+hedg(?:e|ing)\s+phrases[^.\n]{0,200}\b(?:budget[- ]protected|non-negotiable|verbatim)\b",
@@ -541,10 +556,28 @@ def compiler_agent_checks() -> list[Check]:
                 # C3 — anti-fake-audit guard. Both DO NOT clauses must appear
                 # in either order. The gap allows two short sentences (the
                 # natural "DO NOT simulate ... DO NOT claim ..." wording).
+                # This is itself a prohibition obligation, so allow the
+                # `DO NOT` imperative through the negation post-filter
+                # (R4-001 still applies — trailing "this is not required"
+                # is rejected by the adjective-targeted negation rules).
                 (
                     "C3 anti-fake-audit guard pair",
                     r"DO NOT simulate[^\n]{0,300}\.[^\n]{0,100}\bDO NOT claim to have run\b"
                     r"|DO NOT claim to have run[^\n]{0,300}\.[^\n]{0,100}\bDO NOT simulate\b",
+                    True,  # allow_prohibition: this IS the prohibition
+                ),
+                # C3 — output metadata prohibition. Spec §6.3 explicitly
+                # closes the loop: "Output metadata must not claim
+                # audit-passed state." Without this, an agent could
+                # honour the DO NOT pair while still surfacing fake
+                # audit-passed metadata (B2 codex R1-001). Uses `must not`
+                # as the prohibition expression — exemption is per-regex
+                # so it does not leak to C1's assertion-style obligation
+                # (B2 R2-001).
+                (
+                    "C3 output metadata audit-passed prohibition",
+                    r"\bOutput metadata must not claim audit-passed state\b",
+                    True,  # allow_prohibition: `must not` is the obligation
                 ),
             ],
         )
@@ -553,20 +586,19 @@ def compiler_agent_checks() -> list[Check]:
 
 # Environment variable controlling whether agent-prompt checks run.
 #
-# v3.6.7 implementation lands across multiple PRs: Step 1 ships the 4
-# reference files + audit template + this lint; Steps 2-4 land the actual
-# PATTERN PROTECTION (v3.6.7) blocks in the three downstream agent prompts.
-# Until Step 2-4 ship, the agent-prompt checks fail by design (the marker
-# does not exist yet). Running those checks in CI before Step 2-4 ship
-# would produce a misleading red.
+# Spec §9 ships v3.6.7 across multiple steps. Step 1 (this PR) shipped the
+# 4 reference files + audit template + this lint. Step 2 (this PR / Step 1+2
+# bundle) lands the actual PATTERN PROTECTION (v3.6.7) blocks in the three
+# downstream agent prompts. With Step 2 in, the agent-prompt checks are
+# default-on so CI enforces the contract.
 #
-# Default: agent-prompt checks are skipped. Set ARS_V3_6_7_AGENT_CHECKS=1
-# to enable them. Step 2-4 PRs will flip the default to enabled.
+# Set ARS_V3_6_7_AGENT_CHECKS=0 to skip agent-prompt checks (e.g. for a
+# repo bisect that crosses a pre-Step-2 commit, or for partial test runs).
 _AGENT_CHECKS_ENV = "ARS_V3_6_7_AGENT_CHECKS"
 
 
 def _agent_checks_enabled() -> bool:
-    return os.environ.get(_AGENT_CHECKS_ENV, "0") == "1"
+    return os.environ.get(_AGENT_CHECKS_ENV, "1") == "1"
 
 
 def all_checks() -> list[Check]:
@@ -597,7 +629,7 @@ def main(argv: list[str]) -> int:
 
     deferred_note = ""
     if not _agent_checks_enabled():
-        deferred_note = " (agent-prompt checks deferred — set ARS_V3_6_7_AGENT_CHECKS=1 to enable)"
+        deferred_note = " (agent-prompt checks skipped — ARS_V3_6_7_AGENT_CHECKS=0)"
     summary = (
         f"v3.6.7 pattern-protection static audit: {len(passed)}/{len(checks)} "
         f"checks passed{deferred_note}"

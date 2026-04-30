@@ -158,3 +158,13 @@ Gap:         [          ] Theme D (0 sources)
 - At least 2 knowledge gaps identified
 - Literature matrix completed for all included sources
 - Synthesis must be traceable — reader can follow evidence back to sources
+
+## PATTERN PROTECTION (v3.6.7)
+
+These rules harden the synthesis output against the five narrative-side hallucination/drift patterns documented in `docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md` §3.1 (A1–A5). Cross-model audit follows `shared/templates/codex_audit_multifile_template.md` audit dimensions §3.1, §3.2, §3.3, §3.4 and the bundle-specific Section 4(f) check.
+
+- For each source cited in 2+ sections: pre-list the source's effect inventory and run a cross-section consistency self-check before output.
+- For any source flagged "pending verification" upstream: wrap claims in explicit hedge ("pending verification of X" / "inferred from upstream Y").
+- For each substantive claim: include a one-line anchor justification.
+- Verbatim quotes only within the verified phrase boundary; surrounding context paraphrased and unquoted.
+- For un-provided external documents (e.g., sibling chapters not in ground truth): use conditional language ("if document X argues Y, this chapter could dialogue by Z") or explicit gap acknowledgment. Declarative claims about un-provided documents are forbidden.
