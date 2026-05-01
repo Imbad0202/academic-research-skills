@@ -125,7 +125,13 @@ def _load_passport_audit_artifacts(path: Path) -> list[dict[str, Any]]:
         if suffix == ".json":
             data = json.loads(text)
         else:
-            data = yaml.safe_load(text)
+            # Use BaseLoader so PyYAML returns every scalar as str — without
+            # this, unquoted RFC 3339 timestamps in spec-example passports
+            # (e.g. `verified_at: 2026-04-30T15:23:11.847Z`) get auto-cast
+            # to datetime objects, which would break parse_rfc3339_ms()
+            # downstream. The schema constrains verified_at to a string;
+            # strict string load matches that contract.
+            data = yaml.load(text, Loader=yaml.BaseLoader)  # noqa: S506 - intentional, str-only
     except (yaml.YAMLError, json.JSONDecodeError) as e:
         raise ValueError(f"failed to parse {path}: {e}") from e
 

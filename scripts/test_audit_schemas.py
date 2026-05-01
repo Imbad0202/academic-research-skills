@@ -231,9 +231,56 @@ NEG_ENTRY_BAD_AGENT = {**ENTRY_PERSISTED_MINOR, "agent": "rogue_agent"}
 NEG_ENTRY_BAD_RUN_ID = {**ENTRY_PERSISTED_MINOR, "run_id": "not-an-iso-id"}
 NEG_ENTRY_BAD_SHA = {**ENTRY_PERSISTED_MINOR, "deliverable_sha": "tooshort"}
 
+# §3.7 A4 — acknowledgement requires verdict.status == MATERIAL.
+# Schema-level if/then guard blocks the hand-edit attack where someone
+# adds acknowledgement to a PASS / MINOR persisted entry.
+_VALID_ACK = {
+    "finding_ids": ["F-001"],
+    "acknowledged_at": "2026-04-30T15:23:11.847Z",
+    "acknowledged_by": "user",
+}
+NEG_ENTRY_PERSISTED_MINOR_WITH_ACK = {**ENTRY_PERSISTED_MINOR, "acknowledgement": _VALID_ACK}
+_PASS_ENTRY = {
+    **{k: v for k, v in ENTRY_PERSISTED_MINOR.items() if k != "verdict"},
+    "verdict": {
+        "status": "PASS",
+        "round": 1,
+        "target_rounds": 3,
+        "finding_counts": {"p1": 0, "p2": 0, "p3": 0},
+        "verified_at": "2026-04-30T15:23:11.847Z",
+        "verified_by": "pipeline_orchestrator_agent",
+    },
+}
+NEG_ENTRY_PERSISTED_PASS_WITH_ACK = {**_PASS_ENTRY, "acknowledgement": _VALID_ACK}
+
+# Positive: MATERIAL persisted entry with acknowledgement is the canonical
+# §5.4 ship_with_known_residue shape — must validate.
+ENTRY_PERSISTED_MATERIAL_WITH_ACK = {
+    **{k: v for k, v in ENTRY_PERSISTED_MINOR.items() if k != "verdict"},
+    "verdict": {
+        "status": "MATERIAL",
+        "round": 3,
+        "target_rounds": 3,
+        "finding_counts": {"p1": 1, "p2": 0, "p3": 0},
+        "verified_at": "2026-04-30T15:23:11.847Z",
+        "verified_by": "pipeline_orchestrator_agent",
+    },
+    "acknowledgement": _VALID_ACK,
+}
+
 NEG_JSONL_THREAD_STARTED_NO_ID = {"type": "thread.started"}
 NEG_JSONL_UNKNOWN_TYPE = {"type": "totally.fake", "thread_id": "abc"}
 NEG_JSONL_TURN_COMPLETED_NO_USAGE = {"type": "turn.completed"}
+# 36-char garbage (all dashes / all hex without separators) must NOT pass —
+# canonical UUID 8-4-4-4-12 layout closes the Layer 2 forgery seam.
+NEG_JSONL_THREAD_ID_ALL_DASHES = {
+    "type": "thread.started",
+    "thread_id": "------------------------------------",
+}
+NEG_JSONL_THREAD_ID_NO_SEPARATORS = {
+    "type": "thread.started",
+    "thread_id": "0123456789abcdef0123456789abcdef0123",  # 36 hex, no dashes
+}
 
 NEG_SIDECAR_BAD_VERSION = {**SIDECAR_CLEAN, "codex_cli_version": "0.125"}
 NEG_SIDECAR_NO_STREAM = {**SIDECAR_CLEAN, "stream": {}}
@@ -294,8 +341,19 @@ class TestEntrySchema(_SchemaTestBase):
     def test_proposal_audit_failed(self) -> None:
         self.assertValid(ENTRY_PROPOSAL_AUDIT_FAILED)
 
+    def test_persisted_material_with_acknowledgement(self) -> None:
+        self.assertValid(ENTRY_PERSISTED_MATERIAL_WITH_ACK)
+
     def test_rejects_persisted_with_bad_status(self) -> None:
         self.assertInvalid(NEG_ENTRY_PERSISTED_BAD_STATUS)
+
+    def test_rejects_persisted_minor_with_acknowledgement(self) -> None:
+        # A4 hand-edit attack: someone adds acknowledgement to a MINOR entry
+        # to claim residue acknowledgement that the §5.4 prompt never solicited.
+        self.assertInvalid(NEG_ENTRY_PERSISTED_MINOR_WITH_ACK)
+
+    def test_rejects_persisted_pass_with_acknowledgement(self) -> None:
+        self.assertInvalid(NEG_ENTRY_PERSISTED_PASS_WITH_ACK)
 
     def test_rejects_unknown_agent(self) -> None:
         self.assertInvalid(NEG_ENTRY_BAD_AGENT)
@@ -330,6 +388,12 @@ class TestJsonlSchema(_SchemaTestBase):
 
     def test_rejects_turn_completed_without_usage(self) -> None:
         self.assertInvalid(NEG_JSONL_TURN_COMPLETED_NO_USAGE)
+
+    def test_rejects_thread_id_all_dashes(self) -> None:
+        self.assertInvalid(NEG_JSONL_THREAD_ID_ALL_DASHES)
+
+    def test_rejects_thread_id_without_separators(self) -> None:
+        self.assertInvalid(NEG_JSONL_THREAD_ID_NO_SEPARATORS)
 
 
 class TestSidecarSchema(_SchemaTestBase):

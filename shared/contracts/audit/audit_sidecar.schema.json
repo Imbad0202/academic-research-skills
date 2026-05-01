@@ -116,13 +116,13 @@
 
   "allOf": [
     {
-      "description": "When the companion verdict's status is NOT AUDIT_FAILED, jsonl_thread_id MUST match UUID format. When status == 'AUDIT_FAILED', empty string is also acceptable. Co-validation with the verdict file is performed by Layer 3 lint (Phase 6.3); this schema enforces the format-or-empty discipline so a sidecar file alone (without verdict context) still rejects garbage values.",
+      "description": "When the companion verdict's status is NOT AUDIT_FAILED, jsonl_thread_id MUST match canonical UUID (8-4-4-4-12 hex). When status == 'AUDIT_FAILED', empty string is also acceptable. Pattern mirrors audit/audit_jsonl.schema.json#thread_id — keep in sync. Co-validation with the verdict file is performed by Layer 3 lint (Phase 6.3); this schema enforces the format-or-empty discipline so a sidecar file alone (without verdict context) still rejects garbage values like '------------------------------------'.",
       "properties": {
         "stream": {
           "properties": {
             "jsonl_thread_id": {
               "anyOf": [
-                { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+                { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
                 { "type": "string", "const": "" }
               ]
             }

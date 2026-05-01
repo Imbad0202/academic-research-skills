@@ -23,8 +23,8 @@
         "type": { "const": "thread.started" },
         "thread_id": {
           "type": "string",
-          "pattern": "^[0-9a-f-]{36}$",
-          "description": "UUID identifying this codex run. Per §3.3, codex emits this once at stream open; downstream events SHOULD NOT redeclare it."
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "Canonical UUID (8-4-4-4-12 hex layout) identifying this codex run. Per §3.3, codex emits this once at stream open; downstream events SHOULD NOT redeclare it. Tight pattern blocks Layer 2 forgery via 36-char garbage like '------------------------------------'."
         }
       }
     },
