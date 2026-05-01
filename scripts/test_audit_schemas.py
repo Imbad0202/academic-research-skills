@@ -111,9 +111,20 @@ JSONL_THREAD_STARTED: dict[str, Any] = {
     "thread_id": "019de371-4c13-7521-8af7-fccf6bd23279",
 }
 JSONL_TURN_STARTED: dict[str, Any] = {"type": "turn.started"}
+# Empirically confirmed against codex 0.125 in tool-using runs: item.started
+# precedes the matching item.completed for command_execution etc. Spec §3.3
+# table didn't list it but the wire format requires it; Layer 2 schema accepts.
+JSONL_ITEM_STARTED_TOOL: dict[str, Any] = {
+    "type": "item.started",
+    "item": {"id": "item_1", "type": "command_execution"},
+}
 JSONL_ITEM_COMPLETED: dict[str, Any] = {
     "type": "item.completed",
     "item": {"id": "item_0", "type": "agent_message", "text": "verdict text"},
+}
+JSONL_ITEM_COMPLETED_TOOL: dict[str, Any] = {
+    "type": "item.completed",
+    "item": {"id": "item_1", "type": "command_execution"},
 }
 JSONL_TURN_COMPLETED: dict[str, Any] = {
     "type": "turn.completed",
@@ -462,6 +473,16 @@ class TestJsonlSchema(_SchemaTestBase):
 
     def test_item_completed_agent_message(self) -> None:
         self.assertValid(JSONL_ITEM_COMPLETED)
+
+    def test_item_completed_tool_execution(self) -> None:
+        # tool-using runs emit completed events for non-agent_message item types
+        # (no text field expected).
+        self.assertValid(JSONL_ITEM_COMPLETED_TOOL)
+
+    def test_item_started_tool_execution(self) -> None:
+        # codex 0.125 emits item.started before matching item.completed for
+        # tool calls (command_execution, file_change, etc.).
+        self.assertValid(JSONL_ITEM_STARTED_TOOL)
 
     def test_turn_completed(self) -> None:
         self.assertValid(JSONL_TURN_COMPLETED)
