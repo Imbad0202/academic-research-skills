@@ -4,10 +4,12 @@ Avoid duplicating subprocess.run boilerplate across multiple test files.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def run_script(
@@ -39,4 +41,33 @@ def run_skill_linter(script_path: Path, root: Path) -> subprocess.CompletedProce
         "--path",
         str(root),
         extra_env={"PYTHONPATH": str(script_path.parent)},
+    )
+
+
+def load_json_schema(path: Path) -> dict[str, Any]:
+    """Load a JSON Schema file and verify it parses as Draft 2020-12.
+
+    Centralised so test files don't re-implement the same load + check_schema
+    pair. Mirrors the helper at scripts/check_literature_corpus_schema.py
+    (which predates this module) — that script can migrate at next edit.
+    """
+    from jsonschema import Draft202012Validator
+
+    with path.open("r", encoding="utf-8") as f:
+        schema = json.load(f)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
+def build_schema_validator(schema: dict[str, Any]):
+    """Construct a Draft 2020-12 validator with format checking enabled.
+
+    Without format_checker, format keywords (date-time on verified_at /
+    acknowledged_at / generated_at) validate silently — a hole codex flagged
+    in T3 review of literature_corpus_entry.schema.json.
+    """
+    from jsonschema import Draft202012Validator
+
+    return Draft202012Validator(
+        schema, format_checker=Draft202012Validator.FORMAT_CHECKER
     )

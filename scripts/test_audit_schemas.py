@@ -1,0 +1,371 @@
+"""Phase 6.2 acceptance tests for the four v3.6.7 Step 6 audit schemas.
+
+Per spec §10 verification gate:
+  1. All four schemas parse as valid JSON Schema 2020-12.
+  2. Example payloads in §3.1 / §3.3 / §3.4 / §3.5 validate against their
+     respective schemas (positive cases).
+  3. Deliberately-malformed counter-examples fail (negative cases).
+
+This is the schema-shape acceptance test. Cross-artifact invariants
+(§3.7 family A-F rows, --mode {proposal,persisted} arms, mirror rules,
+ordering rules) ship in scripts/check_audit_artifact_consistency.py +
+scripts/test_check_audit_artifact_consistency.py at Phase 6.3.
+
+Run:
+    python -m unittest scripts.test_audit_schemas -v
+"""
+from __future__ import annotations
+
+import unittest
+from pathlib import Path
+from typing import Any
+
+from scripts._test_helpers import build_schema_validator, load_json_schema
+
+REPO = Path(__file__).resolve().parent.parent
+PASSPORT = REPO / "shared/contracts/passport"
+AUDIT = REPO / "shared/contracts/audit"
+
+SCHEMA_PATHS: dict[str, Path] = {
+    "entry": PASSPORT / "audit_artifact_entry.schema.json",
+    "jsonl": AUDIT / "audit_jsonl.schema.json",
+    "sidecar": AUDIT / "audit_sidecar.schema.json",
+    "verdict": AUDIT / "audit_verdict.schema.json",
+}
+
+
+# ---------------------------------------------------------------------------
+# Positive examples — drawn directly from spec §3.1 / §3.3 / §3.4 / §3.5.
+# ---------------------------------------------------------------------------
+
+# §3.1 / §3.2 — persisted entry (verified_at + verified_by present, MINOR)
+ENTRY_PERSISTED_MINOR: dict[str, Any] = {
+    "stage": 2,
+    "agent": "synthesis_agent",
+    "deliverable_path": "chapter_4/synthesis.md",
+    "deliverable_sha": "a" * 64,
+    "run_id": "2026-04-30T15-22-04Z-d8f3",
+    "bundle_id": "phase2-chapter4-2026-04-30",
+    "bundle_manifest_sha": "9" * 64,
+    "artifact_paths": {
+        "jsonl": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.jsonl",
+        "sidecar": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.meta.json",
+        "verdict": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.verdict.yaml",
+    },
+    "verdict": {
+        "status": "MINOR",
+        "round": 2,
+        "target_rounds": 3,
+        "finding_counts": {"p1": 0, "p2": 0, "p3": 1},
+        "verified_at": "2026-04-30T15:23:11.847Z",
+        "verified_by": "pipeline_orchestrator_agent",
+    },
+}
+
+# §3.2 — proposal entry (verified_at + verified_by absent)
+ENTRY_PROPOSAL_PASS: dict[str, Any] = {
+    "stage": 2,
+    "agent": "synthesis_agent",
+    "deliverable_path": "chapter_4/synthesis.md",
+    "deliverable_sha": "b" * 64,
+    "run_id": "2026-04-30T15-22-04Z-d8f3",
+    "bundle_manifest_sha": "9" * 64,
+    "artifact_paths": {
+        "jsonl": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.jsonl",
+        "sidecar": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.meta.json",
+        "verdict": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.verdict.yaml",
+    },
+    "verdict": {
+        "status": "PASS",
+        "round": 1,
+        "target_rounds": 3,
+        "finding_counts": {"p1": 0, "p2": 0, "p3": 0},
+    },
+}
+
+# §3.2 — proposal AUDIT_FAILED (proposal-arm only, persisted excludes per §3.2)
+ENTRY_PROPOSAL_AUDIT_FAILED: dict[str, Any] = {
+    "stage": 2,
+    "agent": "synthesis_agent",
+    "deliverable_path": "chapter_4/synthesis.md",
+    "deliverable_sha": "c" * 64,
+    "run_id": "2026-04-30T15-22-04Z-d8f3",
+    "bundle_manifest_sha": "9" * 64,
+    "artifact_paths": {
+        "jsonl": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.jsonl",
+        "sidecar": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.meta.json",
+        "verdict": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.verdict.yaml",
+    },
+    "verdict": {
+        "status": "AUDIT_FAILED",
+        "failure_reason": "codex exit 70: network timeout after 600s",
+        "round": 2,
+        "target_rounds": 3,
+        "finding_counts": {"p1": 0, "p2": 0, "p3": 0},
+    },
+}
+
+# §3.3 — canonical four-event JSONL run (one validate per event row)
+JSONL_THREAD_STARTED: dict[str, Any] = {
+    "type": "thread.started",
+    "thread_id": "019de371-4c13-7521-8af7-fccf6bd23279",
+}
+JSONL_TURN_STARTED: dict[str, Any] = {"type": "turn.started"}
+JSONL_ITEM_COMPLETED: dict[str, Any] = {
+    "type": "item.completed",
+    "item": {"id": "item_0", "type": "agent_message", "text": "verdict text"},
+}
+JSONL_TURN_COMPLETED: dict[str, Any] = {
+    "type": "turn.completed",
+    "usage": {
+        "input_tokens": 12345,
+        "cached_input_tokens": 0,
+        "output_tokens": 678,
+        "reasoning_output_tokens": 90,
+    },
+}
+
+# §3.4 — sidecar example (clean run)
+SIDECAR_CLEAN: dict[str, Any] = {
+    "run_id": "2026-04-30T15-22-04Z-d8f3",
+    "codex_cli_version": "0.125.0",
+    "runner": {
+        "hostname": "imbad-mbp.local",
+        "cwd": "/Users/imbad/Projects/academic-research-skills",
+        "git_sha": "b4fbffd",
+        "git_dirty": False,
+    },
+    "timing": {
+        "started_at": "2026-04-30T15:22:04.123Z",
+        "ended_at": "2026-04-30T15:22:58.471Z",
+        "duration_seconds": 54.348,
+    },
+    "process": {
+        "exit_code": 0,
+        "stdout_path": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.stdout",
+        "stderr_path": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.stderr",
+    },
+    "stream": {"jsonl_thread_id": "019de371-4c13-7521-8af7-fccf6bd23279"},
+    "prompt": {
+        "audit_template_path": "shared/templates/codex_audit_multifile_template.md",
+        "audit_template_sha": "f" * 64,
+        "bundle": {
+            "bundle_id": "phase2-chapter4-2026-04-30",
+            "bundle_manifest_sha": "9" * 64,
+            "primary_deliverables": [
+                {"path": "chapter_4/synthesis.md", "sha": "a" * 64},
+            ],
+            "supporting_context": [
+                {"path": "chapter_4/bibliography.json", "sha": "e" * 64},
+                {"path": "chapter_4/verification.md", "sha": "c" * 64},
+            ],
+        },
+    },
+}
+
+# §3.4 — AUDIT_FAILED sidecar (jsonl_thread_id may be empty string)
+SIDECAR_AUDIT_FAILED: dict[str, Any] = {
+    **SIDECAR_CLEAN,
+    "process": {**SIDECAR_CLEAN["process"], "exit_code": 70},
+    "stream": {"jsonl_thread_id": ""},
+}
+
+# §3.5 — verdict file (clean MINOR)
+VERDICT_MINOR: dict[str, Any] = {
+    "run_id": "2026-04-30T15-22-04Z-d8f3",
+    "verdict_status": "MINOR",
+    "round": 2,
+    "target_rounds": 3,
+    "finding_counts": {"p1": 0, "p2": 0, "p3": 1},
+    "findings": [
+        {
+            "id": "F-007",
+            "severity": "P3",
+            "dimension": "3.7",
+            "file": "chapter_4/synthesis.md",
+            "line": 482,
+            "description": "deictic temporal phrase 'currently' on reflexivity disclosure",
+            "suggested_fix": "replace with 'as of 2026-04-30' or 'former director'",
+        }
+    ],
+    "generated_at": "2026-04-30T15:22:58.471Z",
+    "generated_by": "scripts/run_codex_audit.sh",
+    "generator_version": "1.0.0",
+}
+
+# §3.5 — verdict file (AUDIT_FAILED variant)
+VERDICT_AUDIT_FAILED: dict[str, Any] = {
+    "run_id": "2026-04-30T15-22-04Z-d8f3",
+    "verdict_status": "AUDIT_FAILED",
+    "round": 2,
+    "target_rounds": 3,
+    "finding_counts": {"p1": 0, "p2": 0, "p3": 0},
+    "failure_reason": "codex exit 70: network timeout after 600s",
+    "findings": [],
+    "generated_at": "2026-04-30T15:22:58.471Z",
+    "generated_by": "scripts/run_codex_audit.sh",
+    "generator_version": "1.0.0",
+}
+
+
+# ---------------------------------------------------------------------------
+# Negative examples — schema MUST reject each.
+# ---------------------------------------------------------------------------
+
+# Persisted-shape entry whose verdict.status is not in the persisted enum.
+# (Removing verified_at alone falls into the proposal arm — that's a lint-side
+# rule, not schema-side. See Phase 6.3 lint for --mode persisted enforcement.)
+NEG_ENTRY_PERSISTED_BAD_STATUS: dict[str, Any] = {
+    **{k: v for k, v in ENTRY_PERSISTED_MINOR.items() if k != "verdict"},
+    "verdict": {
+        "status": "INVALID",
+        "round": 2,
+        "target_rounds": 3,
+        "finding_counts": {"p1": 0, "p2": 0, "p3": 1},
+        "verified_at": "2026-04-30T15:23:11.847Z",
+        "verified_by": "pipeline_orchestrator_agent",
+    },
+}
+
+NEG_ENTRY_BAD_AGENT = {**ENTRY_PERSISTED_MINOR, "agent": "rogue_agent"}
+NEG_ENTRY_BAD_RUN_ID = {**ENTRY_PERSISTED_MINOR, "run_id": "not-an-iso-id"}
+NEG_ENTRY_BAD_SHA = {**ENTRY_PERSISTED_MINOR, "deliverable_sha": "tooshort"}
+
+NEG_JSONL_THREAD_STARTED_NO_ID = {"type": "thread.started"}
+NEG_JSONL_UNKNOWN_TYPE = {"type": "totally.fake", "thread_id": "abc"}
+NEG_JSONL_TURN_COMPLETED_NO_USAGE = {"type": "turn.completed"}
+
+NEG_SIDECAR_BAD_VERSION = {**SIDECAR_CLEAN, "codex_cli_version": "0.125"}
+NEG_SIDECAR_NO_STREAM = {**SIDECAR_CLEAN, "stream": {}}
+NEG_SIDECAR_WRONG_TEMPLATE = {
+    **SIDECAR_CLEAN,
+    "prompt": {**SIDECAR_CLEAN["prompt"], "audit_template_path": "wrong/path.md"},
+}
+
+NEG_VERDICT_BAD_STATUS = {**VERDICT_MINOR, "verdict_status": "WHATEVER"}
+NEG_VERDICT_AUDIT_FAILED_NO_REASON = {
+    k: v for k, v in VERDICT_AUDIT_FAILED.items() if k != "failure_reason"
+}
+
+
+class TestSchemasParseAsDraft202012(unittest.TestCase):
+    """Verification gate 1: every schema is valid JSON Schema 2020-12."""
+
+    def test_every_schema_file_exists_and_parses(self) -> None:
+        for name, path in SCHEMA_PATHS.items():
+            with self.subTest(schema=name):
+                self.assertTrue(path.exists(), f"missing schema: {path.relative_to(REPO)}")
+                # load_json_schema raises if the schema isn't valid 2020-12
+                load_json_schema(path)
+
+
+class _SchemaTestBase(unittest.TestCase):
+    """Subclasses set `schema_key`; setUp loads the validator once per class."""
+
+    schema_key: str = ""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        if not cls.schema_key:
+            return
+        cls._validator = build_schema_validator(load_json_schema(SCHEMA_PATHS[cls.schema_key]))
+
+    def assertValid(self, doc: dict[str, Any]) -> None:
+        errors = list(self._validator.iter_errors(doc))
+        if errors:
+            msg = "; ".join(f"{list(e.absolute_path) or '<root>'}: {e.message}" for e in errors)
+            self.fail(f"expected valid, got: {msg}")
+
+    def assertInvalid(self, doc: dict[str, Any]) -> None:
+        errors = list(self._validator.iter_errors(doc))
+        self.assertGreater(len(errors), 0, "expected schema rejection, got pass")
+
+
+class TestEntrySchema(_SchemaTestBase):
+    schema_key = "entry"
+
+    def test_persisted_minor(self) -> None:
+        self.assertValid(ENTRY_PERSISTED_MINOR)
+
+    def test_proposal_pass(self) -> None:
+        self.assertValid(ENTRY_PROPOSAL_PASS)
+
+    def test_proposal_audit_failed(self) -> None:
+        self.assertValid(ENTRY_PROPOSAL_AUDIT_FAILED)
+
+    def test_rejects_persisted_with_bad_status(self) -> None:
+        self.assertInvalid(NEG_ENTRY_PERSISTED_BAD_STATUS)
+
+    def test_rejects_unknown_agent(self) -> None:
+        self.assertInvalid(NEG_ENTRY_BAD_AGENT)
+
+    def test_rejects_malformed_run_id(self) -> None:
+        self.assertInvalid(NEG_ENTRY_BAD_RUN_ID)
+
+    def test_rejects_short_deliverable_sha(self) -> None:
+        self.assertInvalid(NEG_ENTRY_BAD_SHA)
+
+
+class TestJsonlSchema(_SchemaTestBase):
+    schema_key = "jsonl"
+
+    def test_thread_started(self) -> None:
+        self.assertValid(JSONL_THREAD_STARTED)
+
+    def test_turn_started(self) -> None:
+        self.assertValid(JSONL_TURN_STARTED)
+
+    def test_item_completed_agent_message(self) -> None:
+        self.assertValid(JSONL_ITEM_COMPLETED)
+
+    def test_turn_completed(self) -> None:
+        self.assertValid(JSONL_TURN_COMPLETED)
+
+    def test_rejects_thread_started_without_id(self) -> None:
+        self.assertInvalid(NEG_JSONL_THREAD_STARTED_NO_ID)
+
+    def test_rejects_unknown_event_type(self) -> None:
+        self.assertInvalid(NEG_JSONL_UNKNOWN_TYPE)
+
+    def test_rejects_turn_completed_without_usage(self) -> None:
+        self.assertInvalid(NEG_JSONL_TURN_COMPLETED_NO_USAGE)
+
+
+class TestSidecarSchema(_SchemaTestBase):
+    schema_key = "sidecar"
+
+    def test_clean_run(self) -> None:
+        self.assertValid(SIDECAR_CLEAN)
+
+    def test_audit_failed_run_with_empty_thread_id(self) -> None:
+        self.assertValid(SIDECAR_AUDIT_FAILED)
+
+    def test_rejects_non_semver_codex_version(self) -> None:
+        self.assertInvalid(NEG_SIDECAR_BAD_VERSION)
+
+    def test_rejects_missing_jsonl_thread_id(self) -> None:
+        self.assertInvalid(NEG_SIDECAR_NO_STREAM)
+
+    def test_rejects_non_canonical_template_path(self) -> None:
+        self.assertInvalid(NEG_SIDECAR_WRONG_TEMPLATE)
+
+
+class TestVerdictSchema(_SchemaTestBase):
+    schema_key = "verdict"
+
+    def test_clean_minor(self) -> None:
+        self.assertValid(VERDICT_MINOR)
+
+    def test_audit_failed(self) -> None:
+        self.assertValid(VERDICT_AUDIT_FAILED)
+
+    def test_rejects_unknown_status(self) -> None:
+        self.assertInvalid(NEG_VERDICT_BAD_STATUS)
+
+    def test_rejects_audit_failed_without_failure_reason(self) -> None:
+        self.assertInvalid(NEG_VERDICT_AUDIT_FAILED_NO_REASON)
+
+
+if __name__ == "__main__":
+    unittest.main()
