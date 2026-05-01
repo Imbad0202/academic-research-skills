@@ -84,6 +84,46 @@
     "acknowledgement": { "$ref": "#/$defs/acknowledgement_block" }
   },
 
+  "allOf": [
+    {
+      "title": "[A2] AUDIT_FAILED requires verdict.failure_reason; mirrors audit_verdict.schema.json",
+      "description": "Entry-side mirror of the verdict-file rule (§3.7 A2). Without this, a wrapper-emitted AUDIT_FAILED proposal missing failure_reason passes Path B4 schema validation; Path B5 then short-circuits and tries to surface a non-existent reason in the BLOCK message. Mirror keeps the rule enforceable at the first artifact orchestrator reads (entry), not just at the verdict file.",
+      "if": {
+        "properties": {
+          "verdict": {
+            "properties": { "status": { "const": "AUDIT_FAILED" } },
+            "required": ["status"]
+          }
+        },
+        "required": ["verdict"]
+      },
+      "then": {
+        "properties": {
+          "verdict": { "required": ["failure_reason"] }
+        }
+      }
+    },
+    {
+      "title": "[A2 inverse] non-AUDIT_FAILED proposals MUST NOT carry failure_reason",
+      "if": {
+        "properties": {
+          "verdict": {
+            "properties": {
+              "status": { "type": "string", "enum": ["PASS", "MINOR", "MATERIAL"] }
+            },
+            "required": ["status"]
+          }
+        },
+        "required": ["verdict"]
+      },
+      "then": {
+        "properties": {
+          "verdict": { "not": { "required": ["failure_reason"] } }
+        }
+      }
+    }
+  ],
+
   "oneOf": [
     {
       "title": "proposal",

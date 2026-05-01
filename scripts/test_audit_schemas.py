@@ -227,6 +227,26 @@ NEG_ENTRY_PERSISTED_BAD_STATUS: dict[str, Any] = {
     },
 }
 
+# §3.7 A2 — AUDIT_FAILED proposal without failure_reason must reject so that
+# Path B5 short-circuit always has a reason string to surface in the BLOCK
+# message (mirrors the verdict-file rule).
+NEG_ENTRY_PROPOSAL_AUDIT_FAILED_NO_REASON = {
+    **{k: v for k, v in ENTRY_PROPOSAL_AUDIT_FAILED.items() if k != "verdict"},
+    "verdict": {
+        k: v
+        for k, v in ENTRY_PROPOSAL_AUDIT_FAILED["verdict"].items()
+        if k != "failure_reason"
+    },
+}
+# §3.7 A2 inverse — non-AUDIT_FAILED proposal carrying failure_reason must reject.
+NEG_ENTRY_PROPOSAL_PASS_WITH_FAILURE_REASON = {
+    **ENTRY_PROPOSAL_PASS,
+    "verdict": {
+        **ENTRY_PROPOSAL_PASS["verdict"],
+        "failure_reason": "should not be here",
+    },
+}
+
 NEG_ENTRY_BAD_AGENT = {**ENTRY_PERSISTED_MINOR, "agent": "rogue_agent"}
 NEG_ENTRY_BAD_RUN_ID = {**ENTRY_PERSISTED_MINOR, "run_id": "not-an-iso-id"}
 NEG_ENTRY_BAD_SHA = {**ENTRY_PERSISTED_MINOR, "deliverable_sha": "tooshort"}
@@ -354,6 +374,12 @@ class TestEntrySchema(_SchemaTestBase):
 
     def test_rejects_persisted_pass_with_acknowledgement(self) -> None:
         self.assertInvalid(NEG_ENTRY_PERSISTED_PASS_WITH_ACK)
+
+    def test_rejects_audit_failed_proposal_without_failure_reason(self) -> None:
+        self.assertInvalid(NEG_ENTRY_PROPOSAL_AUDIT_FAILED_NO_REASON)
+
+    def test_rejects_pass_proposal_with_failure_reason(self) -> None:
+        self.assertInvalid(NEG_ENTRY_PROPOSAL_PASS_WITH_FAILURE_REASON)
 
     def test_rejects_unknown_agent(self) -> None:
         self.assertInvalid(NEG_ENTRY_BAD_AGENT)
