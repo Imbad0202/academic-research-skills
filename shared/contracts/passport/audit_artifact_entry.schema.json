@@ -35,10 +35,7 @@
       "description": "One of the three v3.6.7 audited agents. Other agent names are reserved for future versions and rejected by Schema 9 lint."
     },
     "deliverable_path": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^[^/][^\\s]*$",
-      "not": { "pattern": "(^|/)\\.\\.(/|$)" },
+      "$ref": "#/$defs/repo_relative_path",
       "description": "Repo-relative POSIX path to the audited deliverable. No leading '/' and no '..' segments."
     },
     "deliverable_sha": {
@@ -64,21 +61,25 @@
       "required": ["jsonl", "sidecar", "verdict"],
       "properties": {
         "jsonl": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "\\.jsonl$"
+          "allOf": [
+            { "$ref": "#/$defs/repo_relative_path" },
+            { "type": "string", "pattern": "\\.jsonl$" }
+          ]
         },
         "sidecar": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "\\.meta\\.json$"
+          "allOf": [
+            { "$ref": "#/$defs/repo_relative_path" },
+            { "type": "string", "pattern": "\\.meta\\.json$" }
+          ]
         },
         "verdict": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "\\.verdict\\.yaml$"
+          "allOf": [
+            { "$ref": "#/$defs/repo_relative_path" },
+            { "type": "string", "pattern": "\\.verdict\\.yaml$" }
+          ]
         }
-      }
+      },
+      "description": "All three paths are repo-relative POSIX (no leading '/', no '..' segments). Path B uses these to locate JSONL/sidecar/verdict evidence; an absolute or escaping path would let a forged proposal point verification outside the repo."
     },
     "verdict": { "$ref": "#/$defs/verdict_block" },
     "acknowledgement": { "$ref": "#/$defs/acknowledgement_block" }
@@ -181,6 +182,13 @@
   ],
 
   "$defs": {
+    "repo_relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/][^\\s]*$",
+      "not": { "pattern": "(^|/)\\.\\.(/|$)" },
+      "description": "Repo-relative POSIX path (no leading '/', no '..' segments). Sibling audit/* schemas duplicate this pattern; keep the regex pair in sync. Layer 3 lint reads these paths from disk for SHA-256 / git_sha verification — accepting absolute or escaping paths would let a forged proposal hash arbitrary files."
+    },
     "sha256_hex": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$",

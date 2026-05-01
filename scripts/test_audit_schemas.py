@@ -250,6 +250,26 @@ NEG_ENTRY_PROPOSAL_PASS_WITH_FAILURE_REASON = {
 NEG_ENTRY_BAD_AGENT = {**ENTRY_PERSISTED_MINOR, "agent": "rogue_agent"}
 NEG_ENTRY_BAD_RUN_ID = {**ENTRY_PERSISTED_MINOR, "run_id": "not-an-iso-id"}
 NEG_ENTRY_BAD_SHA = {**ENTRY_PERSISTED_MINOR, "deliverable_sha": "tooshort"}
+# Path safety on artifact_paths: jsonl/sidecar/verdict MUST be repo-relative.
+# Path B reads these to locate evidence; absolute or escaping paths would let a
+# forged proposal point verification outside the repo.
+NEG_ENTRY_ARTIFACT_PATH_ABSOLUTE = {
+    **ENTRY_PERSISTED_MINOR,
+    "artifact_paths": {
+        **ENTRY_PERSISTED_MINOR["artifact_paths"],
+        "jsonl": "/tmp/forged.jsonl",
+    },
+}
+NEG_ENTRY_ARTIFACT_PATH_DOTDOT = {
+    **ENTRY_PERSISTED_MINOR,
+    "artifact_paths": {
+        **ENTRY_PERSISTED_MINOR["artifact_paths"],
+        "verdict": "../../forged.verdict.yaml",
+    },
+}
+# Path safety on deliverable_path:
+NEG_ENTRY_DELIVERABLE_PATH_ABSOLUTE = {**ENTRY_PERSISTED_MINOR, "deliverable_path": "/etc/passwd"}
+NEG_ENTRY_DELIVERABLE_PATH_DOTDOT = {**ENTRY_PERSISTED_MINOR, "deliverable_path": "../../secret.md"}
 
 # §3.7 A4 — acknowledgement requires verdict.status == MATERIAL.
 # Schema-level if/then guard blocks the hand-edit attack where someone
@@ -307,6 +327,34 @@ NEG_SIDECAR_NO_STREAM = {**SIDECAR_CLEAN, "stream": {}}
 NEG_SIDECAR_WRONG_TEMPLATE = {
     **SIDECAR_CLEAN,
     "prompt": {**SIDECAR_CLEAN["prompt"], "audit_template_path": "wrong/path.md"},
+}
+# Path safety: bundle file_ref / process paths MUST be repo-relative POSIX.
+# Layer 3 lint hashes these for SHA-256 / freshness checks; an absolute or
+# escaping path would let a forged sidecar drive the verifier into arbitrary
+# files outside the repo.
+NEG_SIDECAR_BUNDLE_ESCAPING_PATH = {
+    **SIDECAR_CLEAN,
+    "prompt": {
+        **SIDECAR_CLEAN["prompt"],
+        "bundle": {
+            **SIDECAR_CLEAN["prompt"]["bundle"],
+            "primary_deliverables": [{"path": "../../secret.md", "sha": "a" * 64}],
+        },
+    },
+}
+NEG_SIDECAR_BUNDLE_ABSOLUTE_PATH = {
+    **SIDECAR_CLEAN,
+    "prompt": {
+        **SIDECAR_CLEAN["prompt"],
+        "bundle": {
+            **SIDECAR_CLEAN["prompt"]["bundle"],
+            "primary_deliverables": [{"path": "/etc/passwd", "sha": "a" * 64}],
+        },
+    },
+}
+NEG_SIDECAR_PROCESS_ESCAPING_STDOUT = {
+    **SIDECAR_CLEAN,
+    "process": {**SIDECAR_CLEAN["process"], "stdout_path": "../../oops.txt"},
 }
 
 NEG_VERDICT_BAD_STATUS = {**VERDICT_MINOR, "verdict_status": "WHATEVER"}
@@ -381,6 +429,18 @@ class TestEntrySchema(_SchemaTestBase):
     def test_rejects_pass_proposal_with_failure_reason(self) -> None:
         self.assertInvalid(NEG_ENTRY_PROPOSAL_PASS_WITH_FAILURE_REASON)
 
+    def test_rejects_artifact_path_absolute(self) -> None:
+        self.assertInvalid(NEG_ENTRY_ARTIFACT_PATH_ABSOLUTE)
+
+    def test_rejects_artifact_path_dotdot(self) -> None:
+        self.assertInvalid(NEG_ENTRY_ARTIFACT_PATH_DOTDOT)
+
+    def test_rejects_deliverable_path_absolute(self) -> None:
+        self.assertInvalid(NEG_ENTRY_DELIVERABLE_PATH_ABSOLUTE)
+
+    def test_rejects_deliverable_path_dotdot(self) -> None:
+        self.assertInvalid(NEG_ENTRY_DELIVERABLE_PATH_DOTDOT)
+
     def test_rejects_unknown_agent(self) -> None:
         self.assertInvalid(NEG_ENTRY_BAD_AGENT)
 
@@ -439,6 +499,15 @@ class TestSidecarSchema(_SchemaTestBase):
 
     def test_rejects_non_canonical_template_path(self) -> None:
         self.assertInvalid(NEG_SIDECAR_WRONG_TEMPLATE)
+
+    def test_rejects_bundle_path_with_dotdot(self) -> None:
+        self.assertInvalid(NEG_SIDECAR_BUNDLE_ESCAPING_PATH)
+
+    def test_rejects_bundle_absolute_path(self) -> None:
+        self.assertInvalid(NEG_SIDECAR_BUNDLE_ABSOLUTE_PATH)
+
+    def test_rejects_process_stdout_path_escaping(self) -> None:
+        self.assertInvalid(NEG_SIDECAR_PROCESS_ESCAPING_STDOUT)
 
 
 class TestVerdictSchema(_SchemaTestBase):
