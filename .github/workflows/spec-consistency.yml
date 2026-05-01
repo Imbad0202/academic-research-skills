@@ -107,3 +107,8 @@ jobs:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_v3_6_7_pattern_protection -v
 
+      - name: Run v3.6.7 Step 6 audit schema + helper tests (Phase 6.2 + 6.4)
+        env:
+          PYTHONPATH: .
+        run: python3 -m unittest scripts.test_audit_schemas scripts.test__next_verified_at_ms -v
+
