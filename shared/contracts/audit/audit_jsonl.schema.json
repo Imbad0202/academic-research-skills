@@ -39,8 +39,9 @@
     },
     {
       "title": "item.started",
-      "description": "Emitted in tool-using runs (e.g., command_execution begin) before the matching item.completed event. Carries no text yet — the completed event holds the result. Verdict logic only reads agent_message item.completed events; item.started rows are evidence that codex actually invoked tools.",
+      "description": "Emitted in tool-using runs (e.g., command_execution begin) before the matching item.completed event. Carries no text yet — the completed event holds the result. Verdict logic only reads agent_message item.completed events; item.started rows are evidence that codex actually invoked tools. Closed against unknown top-level fields to match the rest of the event arms; per-tool fields belong inside `item`, not at the row root.",
       "type": "object",
+      "additionalProperties": false,
       "required": ["type", "item"],
       "properties": {
         "type": { "const": "item.started" },

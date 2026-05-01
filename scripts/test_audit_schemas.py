@@ -332,6 +332,12 @@ NEG_JSONL_THREAD_ID_NO_SEPARATORS = {
     "type": "thread.started",
     "thread_id": "0123456789abcdef0123456789abcdef0123",  # 36 hex, no dashes
 }
+# item.started must reject extra top-level fields (consistency with other arms).
+NEG_JSONL_ITEM_STARTED_EXTRA_TOP_FIELD = {
+    "type": "item.started",
+    "item": {"id": "item_1", "type": "command_execution"},
+    "rogue": "should not validate",
+}
 
 NEG_SIDECAR_BAD_VERSION = {**SIDECAR_CLEAN, "codex_cli_version": "0.125"}
 NEG_SIDECAR_NO_STREAM = {**SIDECAR_CLEAN, "stream": {}}
@@ -501,6 +507,9 @@ class TestJsonlSchema(_SchemaTestBase):
 
     def test_rejects_thread_id_without_separators(self) -> None:
         self.assertInvalid(NEG_JSONL_THREAD_ID_NO_SEPARATORS)
+
+    def test_rejects_item_started_with_extra_top_field(self) -> None:
+        self.assertInvalid(NEG_JSONL_ITEM_STARTED_EXTRA_TOP_FIELD)
 
 
 class TestSidecarSchema(_SchemaTestBase):
