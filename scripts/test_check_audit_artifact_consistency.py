@@ -129,9 +129,9 @@ def make_valid_persisted_entry_minor() -> dict[str, Any]:
         "bundle_id": "phase2-chapter4-2026-04-30",
         "bundle_manifest_sha": "9" * 64,
         "artifact_paths": {
-            "jsonl": f"audit_artifacts/{VALID_RUN_ID}.jsonl",
-            "sidecar": f"audit_artifacts/{VALID_RUN_ID}.meta.json",
-            "verdict": f"audit_artifacts/{VALID_RUN_ID}.verdict.yaml",
+            "jsonl": f"{VALID_RUN_ID}.jsonl",
+            "sidecar": f"{VALID_RUN_ID}.meta.json",
+            "verdict": f"{VALID_RUN_ID}.verdict.yaml",
         },
         "verdict": {
             "status": "MINOR",
@@ -154,9 +154,9 @@ def make_valid_proposal_entry_pass() -> dict[str, Any]:
         "bundle_id": "phase2-chapter4-2026-04-30",
         "bundle_manifest_sha": "9" * 64,
         "artifact_paths": {
-            "jsonl": f"audit_artifacts/{VALID_RUN_ID}.jsonl",
-            "sidecar": f"audit_artifacts/{VALID_RUN_ID}.meta.json",
-            "verdict": f"audit_artifacts/{VALID_RUN_ID}.verdict.yaml",
+            "jsonl": f"{VALID_RUN_ID}.jsonl",
+            "sidecar": f"{VALID_RUN_ID}.meta.json",
+            "verdict": f"{VALID_RUN_ID}.verdict.yaml",
         },
         "verdict": {
             "status": "PASS",
@@ -211,7 +211,8 @@ def make_valid_jsonl_events_no_tool() -> list[dict[str, Any]]:
         {"type": "thread.started", "thread_id": VALID_THREAD_ID},
         {"type": "turn.started"},
         {"type": "item.completed",
-         "item": {"id": "item_0", "type": "agent_message", "text": "verdict text"}},
+         "item": {"id": "item_0", "type": "agent_message",
+                  "text": "## Section 6 — Verdict\n\nRound 1: 0 findings of any severity. Convergence reached.\n"}},
         {"type": "turn.completed",
          "usage": {"input_tokens": 100, "cached_input_tokens": 0,
                    "output_tokens": 50, "reasoning_output_tokens": 25}},
@@ -225,7 +226,8 @@ def make_valid_jsonl_events_tool_using() -> list[dict[str, Any]]:
         {"type": "item.started", "item": {"id": "item_1", "type": "command_execution"}},
         {"type": "item.completed", "item": {"id": "item_1", "type": "command_execution"}},
         {"type": "item.completed",
-         "item": {"id": "item_2", "type": "agent_message", "text": "verdict text"}},
+         "item": {"id": "item_2", "type": "agent_message",
+                  "text": "## Section 6 — Verdict\n\nRound 1: 0 findings of any severity. Convergence reached.\n"}},
         {"type": "turn.completed",
          "usage": {"input_tokens": 100, "cached_input_tokens": 0,
                    "output_tokens": 50, "reasoning_output_tokens": 25}},
@@ -1103,6 +1105,13 @@ class TestAggregator:
         entry = make_valid_persisted_entry_minor()
         # align entry's bundle_manifest_sha with the sidecar's computed value
         entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        # Codex round 8 P2 closure: B7 now resolves entry.artifact_paths
+        # against repo_root and verifies disk existence + samefile match
+        # against CLI-loaded paths. Aggregator test writes placeholder
+        # files at the recorded basename so the resolution succeeds.
+        for ext in (".jsonl", ".meta.json", ".verdict.yaml",
+                    ".audit_artifact_entry.json"):
+            (tmp_path / f"{VALID_RUN_ID}{ext}").write_text("placeholder")
         ctx = LintContext(
             mode="persisted",
             entry=entry,
@@ -1122,6 +1131,9 @@ class TestAggregator:
         sidecar = make_valid_sidecar()
         entry = make_valid_proposal_entry_pass()
         entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        for ext in (".jsonl", ".meta.json", ".verdict.yaml",
+                    ".audit_artifact_entry.json"):
+            (tmp_path / f"{VALID_RUN_ID}{ext}").write_text("placeholder")
         ctx = LintContext(
             mode="proposal",
             entry=entry,
@@ -1626,6 +1638,74 @@ class TestCLI:
         assert "SCHEMA" in captured.out, captured.out
         assert "AttributeError" not in captured.err
         assert "Traceback" not in captured.err
+
+    def test_jsonl_lacks_section6_verdict_text_rejected(self, tmp_path: Path, capsys):
+        # Codex round 8 P1: stream-shape passes but verdict text is not a
+        # parseable Section 6 → must be rejected as L2-4 finding.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()
+        # Stream-shape valid but agent_message has no Section 6 summary
+        events = [
+            {"type": "thread.started", "thread_id": VALID_THREAD_ID},
+            {"type": "turn.started"},
+            {"type": "item.completed",
+             "item": {"id": "item_0", "type": "agent_message",
+                      "text": "I considered the bundle and decided everything looks fine."}},
+            {"type": "turn.completed",
+             "usage": {"input_tokens": 100, "cached_input_tokens": 0,
+                       "output_tokens": 50, "reasoning_output_tokens": 25}},
+        ]
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "L2-4" in captured.out, captured.out
+        assert "Section 6" in captured.out, captured.out
+
+    def test_artifact_path_resolves_to_missing_file_rejected(self, tmp_path: Path, capsys):
+        # Codex round 8 P2: entry.artifact_paths recording a path that
+        # resolves under repo_root to a missing file must be flagged.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        # Recorded paths point at a sibling subdir that doesn't exist
+        entry["artifact_paths"] = {
+            "jsonl": f"missing_subdir/{run_id}.jsonl",
+            "sidecar": f"missing_subdir/{run_id}.meta.json",
+            "verdict": f"missing_subdir/{run_id}.verdict.yaml",
+        }
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "B7" in captured.out
+        assert "does not exist on disk" in captured.out
 
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when

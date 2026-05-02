@@ -88,8 +88,8 @@ VERDICT_SCHEMA_PATH = AUDIT_SCHEMAS / "audit_verdict.schema.json"
 AUDIT_TEMPLATE_PATH = "shared/templates/codex_audit_multifile_template.md"
 
 
-def _load_stream_shape_validator():
-    """Load parse_audit_verdict.validate_stream_shape + ParseError by file path.
+def _load_parse_audit_verdict():
+    """Load parse_audit_verdict module by file path via importlib.
 
     Codex round 5 P2 closure: a bare `from parse_audit_verdict import …`
     only resolves when scripts/ is on sys.path (typical for the CLI
@@ -115,6 +115,12 @@ def _load_stream_shape_validator():
         )
     module = _ilu.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+def _load_stream_shape_validator():
+    """Backwards-compatible accessor returning (validate_stream_shape, ParseError)."""
+    module = _load_parse_audit_verdict()
     return module.validate_stream_shape, module.ParseError
 
 
@@ -790,11 +796,18 @@ def check_b6(sidecar: dict[str, Any] | None, verdict: dict[str, Any] | None,
 def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
              entry_path: Path | None, sidecar_path: Path | None,
              jsonl_path: Path | None, verdict_path: Path | None,
-             mode: str, location: str = "<artifacts>") -> list[LintError]:
+             mode: str, location: str = "<artifacts>",
+             repo_root: Path | None = None) -> list[LintError]:
     """B7 — entry.run_id == sidecar.run_id == bare basename of every co-located file.
 
     Proposal mode: 4 files (jsonl + meta.json + verdict.yaml + entry.json).
     Persisted mode: 3 files (entry consumed; not file-checked here).
+
+    repo_root enables the round-8 P2 closure: cross-check that entry's
+    recorded artifact_paths actually resolve to (and equal) the CLI-loaded
+    files. Without this, an entry could record artifact_paths pointing at
+    a missing or wrong directory while the CLI loads valid evidence from
+    --output-dir; the orchestrator later follows the recorded paths.
     """
     if entry is None or sidecar is None:
         return []
@@ -840,6 +853,11 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
     # CLI; an explicit basename validation of the recorded artifact_paths
     # closes the gap regardless of how the lint was invoked.
     artifact_paths = entry.get("artifact_paths") if isinstance(entry, dict) else None
+    cli_loaded_paths = {
+        "jsonl": jsonl_path,
+        "sidecar": sidecar_path,
+        "verdict": verdict_path,
+    }
     if isinstance(artifact_paths, dict):
         for key, ext in (("jsonl", ".jsonl"),
                          ("sidecar", ".meta.json"),
@@ -853,11 +871,38 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
                 findings.append(LintError("B7",
                     f"entry.artifact_paths.{key}={recorded!r} basename does not end with {ext!r}",
                     location))
-            elif bare != canonical:
+                continue
+            if bare != canonical:
                 findings.append(LintError("B7",
                     f"entry.artifact_paths.{key}={recorded!r} basename stem={bare!r} "
                     f"!= canonical run_id={canonical!r} (artifact-paths forgery seam)",
                     location))
+                continue
+            # Codex round 8 P2 closure: basename match alone leaves the path
+            # forgery seam open — entry can record paths pointing at a
+            # missing or wrong directory while CLI loads valid files from
+            # elsewhere. Resolve the recorded path against repo_root and
+            # confirm (a) the file actually exists at that location, and
+            # (b) it matches the CLI-loaded artifact for that role.
+            if repo_root is not None:
+                resolved = (repo_root / recorded).resolve()
+                if not resolved.exists():
+                    findings.append(LintError("B7",
+                        f"entry.artifact_paths.{key}={recorded!r} resolves to "
+                        f"{resolved} which does not exist on disk — recorded "
+                        f"path is the contract orchestrator follows post-merge",
+                        location))
+                    continue
+                cli_path = cli_loaded_paths.get(key)
+                if cli_path is not None and cli_path.exists():
+                    cli_resolved = cli_path.resolve()
+                    if resolved != cli_resolved and not resolved.samefile(cli_resolved):
+                        findings.append(LintError("B7",
+                            f"entry.artifact_paths.{key}={recorded!r} resolves to "
+                            f"{resolved} but CLI loaded {cli_resolved} — declared "
+                            f"path is the evidence the orchestrator will verify; "
+                            f"loading from a different location masks divergence",
+                            location))
     return findings
 
 
@@ -1381,9 +1426,10 @@ def run_checks(ctx: LintContext) -> list[LintError]:
             # `scripts.check_audit_artifact_consistency` from elsewhere).
             # Silent ImportError degrade was hiding the gate from package
             # callers and letting truncated streams pass.
-            validate_stream_shape, ParseError = _load_stream_shape_validator()
+            module = _load_parse_audit_verdict()
+            ParseError = module.ParseError
             try:
-                validate_stream_shape(ctx.jsonl_events)
+                module.validate_stream_shape(ctx.jsonl_events)
             except ParseError as e:
                 findings.append(LintError(
                     "L2-3/L2-4",
@@ -1392,6 +1438,42 @@ def run_checks(ctx: LintContext) -> list[LintError]:
                     f"turn.started → … → turn.completed with valid usage)",
                     str(ctx.jsonl_path or "<jsonl>"),
                 ))
+            else:
+                # Codex round 8 P1 closure: stream-shape alone validates
+                # ordering / usage / canonical UUID but does NOT verify the
+                # last agent_message contains a parseable Section 6 verdict.
+                # A bundle whose JSONL ends with arbitrary text or no
+                # verdict at all could pass stream-shape and exit 0 as long
+                # as the separate verdict.yaml mirrored the entry. L2-4 in
+                # spec §5.2 is `parse_audit_verdict.py --probe` — extract
+                # the last agent_message and parse_section6 on its text.
+                # cmd_probe in parse_audit_verdict already chains all three
+                # checks; we replicate that chain here without invoking
+                # the module's CLI (avoids subprocess overhead in lint
+                # path) and capture each layer as its own LintError.
+                try:
+                    verdict_text = module.extract_verdict_text(ctx.jsonl_events)
+                except ParseError as e:
+                    findings.append(LintError(
+                        "L2-4",
+                        f"verdict text extraction failed: {e} — non-AUDIT_FAILED "
+                        f"bundle requires a parseable agent_message in the JSONL",
+                        str(ctx.jsonl_path or "<jsonl>"),
+                    ))
+                else:
+                    try:
+                        # Probe-style: pass current_round=None to accept any
+                        # parseable summary; cross-field count validation is
+                        # already covered by A5 against the verdict.yaml.
+                        module.parse_section6(verdict_text, current_round=None)
+                    except ParseError as e:
+                        findings.append(LintError(
+                            "L2-4",
+                            f"verdict text Section 6 parse failed: {e} — "
+                            f"agent_message did not contain a parseable "
+                            f"audit-template Section 6 verdict block",
+                            str(ctx.jsonl_path or "<jsonl>"),
+                        ))
 
     # Family B
     findings.extend(check_b1(ctx.sidecar, ctx.jsonl_events, ctx.verdict, location=sidecar_loc))
@@ -1401,7 +1483,8 @@ def run_checks(ctx: LintContext) -> list[LintError]:
     findings.extend(check_b5(ctx.sidecar, location=sidecar_loc))
     findings.extend(check_b6(ctx.sidecar, ctx.verdict, location=sidecar_loc))
     findings.extend(check_b7(ctx.entry, ctx.sidecar, ctx.entry_path, ctx.sidecar_path,
-                              ctx.jsonl_path, ctx.verdict_path, mode, location=entry_loc))
+                              ctx.jsonl_path, ctx.verdict_path, mode, location=entry_loc,
+                              repo_root=ctx.repo_root))
     findings.extend(check_b8(ctx.entry, mode, location=entry_loc))
     findings.extend(check_b9(ctx.entry, ctx.sidecar, location=entry_loc))
     findings.extend(check_b10(ctx.entry, ctx.verdict, mode, location=entry_loc))

@@ -7,9 +7,9 @@
   "bundle_id": "b1",
   "bundle_manifest_sha": "b645c8e238710dd7f6753b24868366e38e24eb0fe2d3c1178eed7bbe8033d1a6",
   "artifact_paths": {
-    "jsonl": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.jsonl",
-    "sidecar": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.meta.json",
-    "verdict": "audit_artifacts/2026-04-30T15-22-04Z-d8f3.verdict.yaml"
+    "jsonl": "2026-04-30T15-22-04Z-d8f3.jsonl",
+    "sidecar": "2026-04-30T15-22-04Z-d8f3.meta.json",
+    "verdict": "2026-04-30T15-22-04Z-d8f3.verdict.yaml"
   },
   "verdict": {
     "status": "PASS",

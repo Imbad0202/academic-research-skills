@@ -3,8 +3,10 @@ experiment-agent/
 docs/superpowers/
 
 # Local working context (codex review logs, hand-off prompts, brief drafts).
-# Anything under .context/ is per-session scratch and must not be committed.
+# Anything under .context/ or .codex-rounds/ is per-session scratch and must
+# not be committed.
 .context/
+.codex-rounds/
 
 # Python bytecode / pytest cache.
 __pycache__/
