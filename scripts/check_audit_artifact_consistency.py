@@ -1133,6 +1133,19 @@ def check_e1_e2_e6(passport_audit_artifacts: list[dict[str, Any]] | None,
             findings.append(LintError("E1/E2/E6",
                 f"audit_artifact[{idx}].verdict.verified_by={verdict.get('verified_by')!r} not 'pipeline_orchestrator_agent'",
                 location))
+        # Codex round 3 P2 closure: §3.2 lifecycle-conditional table
+        # excludes AUDIT_FAILED from the persisted arm. A hand-edited
+        # passport entry with verified_at + verified_by + AUDIT_FAILED
+        # status would otherwise pass E1/E2/E6's verified_at + verified_by
+        # checks above (E5 lives at schema level for CLI modes via the
+        # persisted oneOf arm; passport scan needs the same enforcement
+        # because AUDIT_FAILED entries are forbidden in `audit_artifact[]`).
+        if verdict.get("status") == "AUDIT_FAILED":
+            findings.append(LintError("E5",
+                f"audit_artifact[{idx}].verdict.status='AUDIT_FAILED' is forbidden in "
+                f"passport audit_artifact[] (§3.2: AUDIT_FAILED is proposal-arm only; "
+                f"persisted ledger never carries failed-audit entries)",
+                location))
     return findings
 
 
@@ -1281,6 +1294,41 @@ def run_checks(ctx: LintContext) -> list[LintError]:
     findings.extend(check_a6(ctx.verdict, location=verdict_loc))
     if ctx.jsonl_events is not None:
         findings.extend(check_a7(ctx.jsonl_events, location=str(ctx.jsonl_path or "<jsonl>")))
+        # Codex round 3 P1 closure: A7 alone does not reject a JSONL that
+        # ends after `thread.started + turn.started` (no item.started, so
+        # no pairing violation). Phase 6.1's parse_audit_verdict.validate_
+        # stream_shape covers L2-3/L2-4 stream-shape gates: exactly one
+        # thread.started, second event is turn.started, exactly one
+        # terminal turn.completed strictly after the last agent_message,
+        # turn.completed.usage all integers >= 0 with input_tokens > 0,
+        # canonical UUID thread_id, no error events. Reuse it here so a
+        # truncated stream is rejected before the rest of the gate runs.
+        # AUDIT_FAILED bundles legitimately have malformed streams (codex
+        # was killed mid-run); §3.4 already suspends Layer 3 cross-file
+        # rules for them, and we apply the same suspension here.
+        v_status = (ctx.verdict or {}).get("verdict_status")
+        if v_status != "AUDIT_FAILED":
+            try:
+                from parse_audit_verdict import validate_stream_shape, ParseError
+            except ImportError:
+                # parse_audit_verdict.py lives in scripts/ alongside this
+                # file; ensure it's importable when scripts/ is on sys.path
+                # (the canonical invocation path) but degrade gracefully
+                # otherwise — A7 alone still catches the most common
+                # forgery shapes.
+                validate_stream_shape = None  # type: ignore
+                ParseError = Exception  # type: ignore
+            if validate_stream_shape is not None:
+                try:
+                    validate_stream_shape(ctx.jsonl_events)
+                except ParseError as e:
+                    findings.append(LintError(
+                        "L2-3/L2-4",
+                        f"jsonl stream-shape rejected: {e} — non-AUDIT_FAILED "
+                        f"verdict requires a complete stream (thread.started → "
+                        f"turn.started → … → turn.completed with valid usage)",
+                        str(ctx.jsonl_path or "<jsonl>"),
+                    ))
 
     # Family B
     findings.extend(check_b1(ctx.sidecar, ctx.jsonl_events, ctx.verdict, location=sidecar_loc))

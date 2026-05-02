@@ -1288,6 +1288,95 @@ class TestCLI:
         assert "E5" in captured.out
         assert "AUDIT_FAILED" in captured.out
 
+    def test_persisted_truncated_jsonl_rejected(self, tmp_path: Path, capsys):
+        # Codex round 3 P1: JSONL with only thread.started + turn.started
+        # has no A7 pairing violation but is incomplete evidence. Phase 6.1's
+        # parse_audit_verdict.validate_stream_shape must run before A7 in
+        # full mode (non-AUDIT_FAILED bundles).
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()  # MINOR — non-AUDIT_FAILED
+        # Truncated stream: opens correctly, never closes
+        truncated_events = [
+            {"type": "thread.started", "thread_id": VALID_THREAD_ID},
+            {"type": "turn.started"},
+        ]
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in truncated_events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "L2-3/L2-4" in captured.out or "stream-shape" in captured.out, captured.out
+
+    def test_passport_scan_rejects_audit_failed(self, tmp_path: Path, capsys):
+        # Codex round 3 P2: hand-edited passport entry with AUDIT_FAILED status
+        # plus valid verified_at + verified_by must be flagged as forbidden.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        # Passport with hand-edited AUDIT_FAILED entry that passes E1/E2/E6
+        # presence checks (verified_at + verified_by both set, verified_by
+        # is the canonical orchestrator value).
+        passport = {
+            "audit_artifact": [
+                {
+                    "stage": 2,
+                    "agent": "synthesis_agent",
+                    "deliverable_path": "chapter_4/synthesis.md",
+                    "deliverable_sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+                    "run_id": "2026-04-30T15-22-04Z-aaaa",
+                    "bundle_manifest_sha": "9a8b7c6d5e4f3b2a1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9876",
+                    "artifact_paths": {
+                        "jsonl": "audit_artifacts/2026-04-30T15-22-04Z-aaaa.jsonl",
+                        "sidecar": "audit_artifacts/2026-04-30T15-22-04Z-aaaa.meta.json",
+                        "verdict": "audit_artifacts/2026-04-30T15-22-04Z-aaaa.verdict.yaml",
+                    },
+                    "verdict": {
+                        "status": "AUDIT_FAILED",
+                        "round": 1,
+                        "target_rounds": 3,
+                        "finding_counts": {"p1": 0, "p2": 0, "p3": 0},
+                        "failure_reason": "hand-edited forgery",
+                        "verified_at": "2026-04-30T15:23:11.847Z",
+                        "verified_by": "pipeline_orchestrator_agent",
+                    },
+                }
+            ]
+        }
+        passport_path = tmp_path / "passport.yaml"
+        passport_path.write_text(_yaml.safe_dump(passport))
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--passport-path", str(passport_path),
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "E5" in captured.out
+        assert "AUDIT_FAILED" in captured.out
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.
