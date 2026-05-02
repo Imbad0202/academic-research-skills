@@ -262,6 +262,19 @@ class TestA1:
         findings = check_a1(None, v)
         assert any("MINOR" in f.message for f in findings)
 
+    def test_minor_with_zero_counts_fails(self):
+        # Codex round 10 P2: MINOR with p1=p2=p3=0 is malformed because the
+        # wrapper classifies zero findings as PASS, not MINOR. A hand-edited
+        # verdict file claiming zero-count MINOR would otherwise pass A1
+        # and send the orchestrator down the MINOR escalation path with
+        # no findings to act on.
+        v = make_valid_verdict_file_minor()
+        v["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        findings = check_a1(None, v)
+        assert any(f.rule_id == "A1" and "MINOR" in f.message for f in findings), [
+            f.render() for f in findings
+        ]
+
     def test_material_with_p1_gt_0_passes(self):
         v = {**make_valid_verdict_file_pass(),
              "verdict_status": "MATERIAL",

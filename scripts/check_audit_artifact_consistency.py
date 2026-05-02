@@ -306,9 +306,20 @@ def check_a1(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
                 findings.append(LintError("A1",
                     "PASS forbids failure_reason", loc))
         elif status == "MINOR":
-            if not (p1 == 0 and p2 == 0 and 0 <= p3 <= 3):
+            # Codex round 10 P2 closure: spec §3.2 cross-field rule for MINOR
+            # is "p1==0 AND p2==0 AND p3<=3" — but PASS already covers
+            # p3==0 case, and the wrapper / parse_audit_verdict.py classifies
+            # zero findings as PASS not MINOR. A MINOR verdict with
+            # p1=p2=p3=0 is malformed (status disagrees with the parser's
+            # classification) and would let an inconsistent verdict file
+            # send the orchestrator down the MINOR escalation path with
+            # no findings to show. Require p3>=1 for MINOR — the lower
+            # bound that distinguishes MINOR from PASS.
+            if not (p1 == 0 and p2 == 0 and 1 <= p3 <= 3):
                 findings.append(LintError("A1",
-                    f"MINOR requires p1==0 AND p2==0 AND p3<=3 (got p1={p1},p2={p2},p3={p3})", loc))
+                    f"MINOR requires p1==0 AND p2==0 AND 1<=p3<=3 (got p1={p1},p2={p2},p3={p3}); "
+                    f"zero-count MINOR is malformed — wrapper classifies zero findings as PASS",
+                    loc))
             if has_failure:
                 findings.append(LintError("A1",
                     "MINOR forbids failure_reason", loc))
