@@ -134,3 +134,62 @@ When the Material Passport carries a non-empty `literature_corpus[]`, Phase 1 re
 | ~500 entries (large library) | +~25-40K input + ~8-12K output | Consider trimming the corpus before passport emit |
 
 Step 2 search-fills-gap reduces external-DB cost when `uncovered_topics` is small (case A), which can offset Step 1 cost. Empirical net delta pending real systematic-review run instrumentation; until then, no aggregate numeric claim is made. Parse failures cost roughly one short turn (parse + emit `[CORPUS PARSE FAILURE]` + fall back).
+
+## v3.6.7 Step 6 cross-model audit wrapper (onboarding)
+
+v3.6.7 Step 6 ships `scripts/run_codex_audit.sh` and `scripts/parse_audit_verdict.py`, which dispatch a separate codex CLI process to audit `synthesis_agent`, `research_architect_agent` (survey-designer mode), and `report_compiler_agent` (abstract-only mode) deliverables before stage transitions. The wrapper is the boundary object between deployment-side audit execution and ARS-side artifact verification — see [spec §4](design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md) for the full contract.
+
+### codex CLI install + credentials
+
+The wrapper invokes `codex exec --json -m gpt-5.5 -c 'model_reasoning_effort="xhigh"'`. Required setup before first audit run:
+
+| Step | macOS | Linux / WSL |
+|---|---|---|
+| Install codex CLI | `brew install codex` (or vendor installer) | vendor installer |
+| Verify install | `codex --version` should print a `codex-cli X.Y.Z` line; the wrapper requires bare-semver match `^[0-9]+\.[0-9]+\.[0-9]+$` | same |
+| Authenticate | `codex login` (browser SSO) OR set `OPENAI_API_KEY=...` in shell rc | same |
+| Bash 4+ | `brew install bash` (stock macOS ships 3.2 — not supported) | distro default usually 5.x |
+| `jq` | `brew install jq` | distro package |
+| `sha256sum` (optional — wrapper falls back to `shasum -a 256`) | `brew install coreutils` | preinstalled |
+
+The wrapper preflights every dependency at startup (§4.1 dependency table) and exits 64 (`EX_USAGE`) with `missing dependency: <name>` before touching any artifact file. No partial state is written when a dependency is missing.
+
+### Required environment
+
+| Variable | Required? | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` (or codex SSO session) | yes | codex CLI authentication |
+| Standard PATH containing `codex`, `git`, `jq`, `python3` | yes | wrapper preflight checks each |
+| Working directory inside the ARS repo | yes | `git rev-parse --short HEAD` for `runner.git_sha`, repo-relative paths in sidecar |
+
+The wrapper does NOT read any ARS-specific environment variables (no `ARS_*` flags affect Step 6). Audit dispatch is purely flag-driven.
+
+### Threat-model boundary
+
+Per [spec §1.2](design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md), Step 6 defends against Pattern C3 (sub-agent fabricated audit metadata, where a downstream agent claims to have run audit and surfaces simulated findings). The artifact-as-contract design closes the inadvertent-overclaim attack surface: the wrapper produces four cryptographically-pinned files (jsonl + sidecar + verdict + proposal entry), and the orchestrator runs eleven layered verification checks before merging any audit outcome into the Material Passport.
+
+Step 6 is **known-insufficient against motivated forgery** (a determined attacker with shell access could invoke codex with a different model and the JSONL stream alone would not betray them — see §9.1 R2). Two structural mitigations apply:
+
+- **§4.7 wrapper-not-LLM-callable rule.** The wrapper MUST NOT be invoked by an in-LLM Bash tool call from the same session producing the audited deliverable. Allowed invokers: human interactive shell, CI workflow step, SubagentStop hook, second-terminal Bash from outside the LLM session. Same-session in-LLM invocation creates the Pattern C3 motive-and-means combination the artifact-as-contract design was chosen to disrupt.
+- **Lifecycle ownership (§3.7 family E).** The wrapper writes only to `--output-dir`, never to the passport file. The orchestrator is the sole writer of `audit_artifact[]` entries. A wrapper-emitted proposal carrying `verdict.verified_at` or `verdict.verified_by` is rejected as malformed at lifecycle step 4 (Pattern C3 attack surface).
+
+Deployment-side discipline is the load-bearing defense for the residual motivated-forgery surface; ARS spec-level enforcement is the partial inversion of the three downstream agent prompts (§6) so the agent has no awareness that a downstream audit exists, removing the trigger for fabricated tool-call hallucination.
+
+### Wrapper exit-code contract
+
+The wrapper's process exit code always agrees with the verdict it just wrote (§4.6):
+
+| Exit code | Meaning | Verdict status | Orchestrator response |
+|---|---|---|---|
+| `0` | Audit completed cleanly | `PASS` / `MINOR` / `MATERIAL` | Read verdict, run §5.2 eleven gating checks, ship or block per §5.3 |
+| `64` (`EX_USAGE`) | Input validation failed | none (no files written) | Block, surface `<missing flag>` error to user |
+| `70` (`EX_SOFTWARE`) | codex itself exited 70 OR `parse_audit_verdict.py --probe` rejected JSONL OR bundle TOCTOU mutation detected | `AUDIT_FAILED` (with `failure_reason`) | §5.6 Path B5 short-circuits to BLOCK without gating |
+| `73` (`EX_CANTCREAT`) | Tee write failed (disk full / EIO) | none / partial (cleaned up) | Block, surface filesystem error |
+| `75` (`EX_TEMPFAIL`) | codex rate-limited OR SIGTERM/SIGINT received | `AUDIT_FAILED` | Same as 70: BLOCK without gating; deployment may apply backoff before retry |
+| Other non-zero (1, 2, 137, …) | codex exited with a code not enumerated above; wrapper preserves the code rather than normalizing | `AUDIT_FAILED` | Same as 70: BLOCK without gating |
+
+Even on AUDIT_FAILED, the wrapper writes all four contract files (jsonl placeholder + sidecar with `process.exit_code` carrying codex's actual exit + verdict.yaml carrying `status: AUDIT_FAILED` + proposal entry) so orchestrator can distinguish "audit ran but failed" (proposal exists with `AUDIT_FAILED`) from "audit never ran" (no proposal at all). Both states block transition; only `PASS / MINOR / MATERIAL` proposals reach the eleven gating checks.
+
+### Cost posture
+
+A typical Phase 2 chapter audit (synthesis + verification + bibliography bundle) runs codex `gpt-5.5` at `xhigh` reasoning effort for 30-90 seconds wall-clock per round. ARS-side cost is constant: the wrapper adds ~1-2 KB of metadata (sidecar + proposal entry) per audit run regardless of bundle size; the orchestrator's eleven-gate verification is sub-second per audit. The dominant cost is codex API usage on the deployment side, governed by audit template Section 1's three-round convergence target (§10 ship-quality target update).

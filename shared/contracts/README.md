@@ -55,7 +55,7 @@ the four-schema contract that `scripts/run_codex_audit.sh` (Phase 6.1) writes an
 orchestrator agent reads at every per-agent audit gate.
 
 - `audit/audit_jsonl.schema.json` — Layer 2 evidence: per-row schema for the codex CLI
-  0.125 `--json` event stream (`thread.started` / `turn.started` / `item.completed` /
+  0.125+ `--json` event stream (`thread.started` / `turn.started` / `item.completed` /
   `turn.completed` / `error`). One JSONL line per event row.
 - `audit/audit_sidecar.schema.json` — Layer 3 evidence: runner / timing / process /
   stream / prompt metadata. Cross-file rules linking sidecar fields to JSONL events,
