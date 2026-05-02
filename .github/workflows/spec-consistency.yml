@@ -112,3 +112,10 @@ jobs:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_audit_schemas scripts.test__next_verified_at_ms -v
 
+      - name: Run v3.6.7 Step 6 Phase 6.3 lint script tests (pytest)
+        env:
+          PYTHONPATH: scripts
+        run: |
+          pip install pytest pyyaml jsonschema
+          pytest scripts/test_check_audit_artifact_consistency.py -v
+
