@@ -926,18 +926,25 @@ class TestD3:
 
 
 class TestD4:
-    """D4 — superseding proposal must have higher round."""
+    """D4 — surface the supersession requirement when proposal round is
+    higher than persisted round (spec §3.7 family D + §5.6 A1.5)."""
 
-    def test_higher_round_passes(self):
-        assert check_d4(persisted_round=2, proposal_round=3) == []
-
-    def test_equal_round_fails(self):
-        findings = check_d4(persisted_round=3, proposal_round=3)
+    def test_higher_round_fires_supersession(self):
+        # The lint should SURFACE the supersession (proposal preempts
+        # persisted Path A) so the caller sees it before the orchestrator
+        # processes the artifacts.
+        findings = check_d4(persisted_round=2, proposal_round=3)
         assert any(f.rule_id == "D4" for f in findings)
+        assert any("supersedes" in f.message for f in findings)
 
-    def test_lower_round_fails(self):
-        findings = check_d4(persisted_round=3, proposal_round=1)
-        assert any(f.rule_id == "D4" for f in findings)
+    def test_equal_round_no_supersession(self):
+        # Same round — no supersession required; D4 is silent.
+        assert check_d4(persisted_round=3, proposal_round=3) == []
+
+    def test_lower_round_no_supersession(self):
+        # Lower-round proposal — D4 silent (orchestrator should reject the
+        # proposal at B1a as a stale leftover, but that's not D4's surface).
+        assert check_d4(persisted_round=3, proposal_round=1) == []
 
 
 # ---------------------------------------------------------------------------
@@ -1859,6 +1866,61 @@ class TestCLI:
         # Critical: no traceback must reach stderr
         assert "Traceback" not in captured.err, captured.err
         assert "AttributeError" not in captured.err, captured.err
+
+    def test_persisted_with_higher_round_proposal_fires_d4(self, tmp_path: Path, capsys):
+        # Codex round 13 P2: when --mode persisted runs and --output-dir
+        # contains a higher-round unmerged proposal for the same (stage,
+        # agent, deliverable_sha) tuple, D4 must fire (the persisted
+        # entry's Path A is supposed to be preempted).
+        run_id = VALID_RUN_ID
+        # Persisted entry at round 1
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["verdict"]["round"] = 1
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()
+        verdict["round"] = 1  # match entry round
+        events = make_valid_jsonl_events_no_tool()
+        # Move persisted into a consumed/ subdir so the scan doesn't see
+        # it as an unmerged proposal (matches §4.9 step 9 convention).
+        consumed = tmp_path / "consumed"
+        consumed.mkdir()
+        (consumed / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        # Companion files in output_dir (where the lint expects them)
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+
+        # Higher-round proposal in output_dir (round 2 > persisted round 1)
+        proposal_run_id = "2026-04-30T15-30-00Z-eeee"
+        proposal_entry = make_valid_persisted_entry_minor()
+        proposal_entry["verdict"]["round"] = 2  # higher than persisted round=1
+        proposal_entry["verdict"]["status"] = "PASS"
+        proposal_entry["verdict"]["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        proposal_entry["verdict"].pop("verified_at", None)  # proposal arm
+        proposal_entry["verdict"].pop("verified_by", None)
+        proposal_entry["run_id"] = proposal_run_id
+        proposal_entry["artifact_paths"] = {
+            "jsonl": f"{proposal_run_id}.jsonl",
+            "sidecar": f"{proposal_run_id}.meta.json",
+            "verdict": f"{proposal_run_id}.verdict.yaml",
+        }
+        (tmp_path / f"{proposal_run_id}.audit_artifact_entry.json").write_text(
+            json.dumps(proposal_entry))
+
+        rc = main([
+            "--mode", "persisted",
+            "--entry", str(consumed / f"{run_id}.audit_artifact_entry.json"),
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "D4" in captured.out, captured.out
+        assert "round=2" in captured.out and "round=1" in captured.out, captured.out
 
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when

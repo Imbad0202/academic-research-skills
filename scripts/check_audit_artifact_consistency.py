@@ -1198,15 +1198,21 @@ def check_d4(persisted_round: int | None, proposal_round: int | None,
              location: str = "<entry>") -> list[LintError]:
     """D4 — higher-round unmerged proposals supersede lower-round persisted entries.
 
-    Lint surface: when both are provided, flag if proposal_round <= persisted_round
-    while the orchestrator is in supersession mode. This is a sanity check only;
-    actual selection logic lives in the orchestrator.
+    Lint surface: when an unmerged proposal exists alongside a persisted
+    entry for the same (stage, agent, deliverable_sha) tuple AND the
+    proposal's round is greater than the persisted round, surface the
+    supersession requirement (spec §3.7 family D row D4 + §5.6 A1.5).
+    The orchestrator must preempt Path A and run Path B with
+    supersession_required=true; persisted-mode lint flagging this lets
+    the caller see the supersession before the orchestrator processes
+    the artifacts.
     """
     if persisted_round is None or proposal_round is None:
         return []
-    if proposal_round <= persisted_round:
+    if proposal_round > persisted_round:
         return [LintError("D4",
-            f"superseding proposal round={proposal_round} not greater than persisted round={persisted_round}",
+            f"unmerged proposal round={proposal_round} supersedes persisted round={persisted_round} "
+            f"— orchestrator must preempt Path A and run Path B with supersession_required=true",
             location)]
     return []
 
@@ -1555,6 +1561,29 @@ def run_checks(ctx: LintContext) -> list[LintError]:
         findings.extend(check_d3(ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>")))
         findings.extend(check_e1_e2_e6(ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>")))
 
+    # Codex round 13 P2 closure: D2/D4 supersession is only meaningful in
+    # persisted mode (proposal mode is itself the unmerged proposal). When
+    # --mode persisted runs with --output-dir present, scan the dir for
+    # OTHER unmerged proposal entries matching the same (stage, agent,
+    # deliverable_sha) tuple, then run:
+    #   - D2: detect ambiguous proposal selection (proposals sharing
+    #     started_at where run_id lex-max would be the only tie-breaker)
+    #   - D4: detect supersession requirement — a higher-round unmerged
+    #     proposal preempts the persisted entry's Path A selection
+    if mode == "persisted" and ctx.output_dir is not None and ctx.output_dir.is_dir() and ctx.entry is not None:
+        proposals = _scan_unmerged_proposals(ctx.output_dir, ctx.entry,
+                                              exclude_path=ctx.entry_path)
+        if proposals:
+            findings.extend(check_d2(proposals, location=str(ctx.output_dir)))
+            persisted_round = _safe_get(ctx.entry, "verdict", "round")
+            for p in proposals:
+                proposal_round = _safe_get(p, "entry", "verdict", "round")
+                findings.extend(check_d4(
+                    persisted_round if isinstance(persisted_round, int) else None,
+                    proposal_round if isinstance(proposal_round, int) else None,
+                    location=str(p.get("entry_path") or "<proposal-entry>"),
+                ))
+
     # Family E
     findings.extend(check_e3_e4(ctx.entry, mode, location=entry_loc))
     findings.extend(check_e5(ctx.entry, mode, location=entry_loc))
@@ -1592,6 +1621,73 @@ def _find_latest_material_entry_for_ack(
     if not candidates:
         return None
     return max(candidates, key=lambda e: _safe_get(e, "verdict", "verified_at") or "")
+
+
+def _scan_unmerged_proposals(
+    output_dir: Path, persisted_entry: dict[str, Any],
+    exclude_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Scan output_dir for unmerged proposal entries matching the persisted
+    entry's (stage, agent, deliverable_sha) tuple.
+
+    `exclude_path` is the persisted entry's own path (when present in
+    output_dir, e.g. fixture smoke tests where the persisted entry hasn't
+    been moved to consumed/ yet) — exclude it so we don't compare an
+    entry against itself.
+
+    Returns a list of dicts shaped {entry: <parsed entry>, sidecar: <parsed
+    sidecar>, entry_path: <Path>} so D2/D4 callers can read both sides
+    (entry has verdict.round; sidecar has timing.started_at).
+    Errors loading any single proposal are silently skipped — D2/D4 are
+    advisory checks; SCHEMA findings on those files would already fire
+    via validate_against_schema if they were the target of --mode
+    proposal in a separate invocation.
+    """
+    key = (persisted_entry.get("stage"), persisted_entry.get("agent"),
+           persisted_entry.get("deliverable_sha"))
+    proposals: list[dict[str, Any]] = []
+    try:
+        candidates = sorted(output_dir.glob("*.audit_artifact_entry.json"))
+    except OSError:
+        return proposals
+    exclude_resolved = exclude_path.resolve() if exclude_path is not None else None
+    for entry_path in candidates:
+        if exclude_resolved is not None:
+            try:
+                if entry_path.resolve() == exclude_resolved:
+                    continue
+            except OSError:
+                pass
+        try:
+            entry_data = json.loads(entry_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(entry_data, dict):
+            continue
+        # Proposal arm: no verified_at / verified_by
+        verdict = entry_data.get("verdict") or {}
+        if "verified_at" in verdict or "verified_by" in verdict:
+            continue
+        if (entry_data.get("stage"), entry_data.get("agent"),
+                entry_data.get("deliverable_sha")) != key:
+            continue
+        # Try to load companion sidecar (for D2 started_at)
+        sidecar_path = entry_path.parent / entry_path.name.replace(
+            ".audit_artifact_entry.json", ".meta.json")
+        sidecar_data: dict[str, Any] = {}
+        if sidecar_path.exists():
+            try:
+                sidecar_data = _load_yaml_or_json(sidecar_path)
+                if not isinstance(sidecar_data, dict):
+                    sidecar_data = {}
+            except Exception:
+                sidecar_data = {}
+        proposals.append({
+            "entry": entry_data,
+            "sidecar": sidecar_data,
+            "entry_path": entry_path,
+        })
+    return proposals
 
 
 # ---------------------------------------------------------------------------
