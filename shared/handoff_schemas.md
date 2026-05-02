@@ -607,7 +607,7 @@ audit_artifact:
         p1: 0
         p2: 0
         p3: 1
-      verified_at: 2026-04-30T15-23-11.847Z   # ms precision; strict-monotonic per scripts/_next_verified_at_ms.py
+      verified_at: 2026-04-30T15:23:11.847Z   # RFC 3339 UTC, ms precision; strict-monotonic per scripts/_next_verified_at_ms.py
       verified_by: pipeline_orchestrator_agent
   # append-only; never overwrite, never reorder
 ```
