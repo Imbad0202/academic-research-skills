@@ -2135,6 +2135,30 @@ def main(argv: list[str] | None = None) -> int:
                     str(entry)))
 
     # Companion artifacts (sidecar + verdict + jsonl) are REQUIRED in
+    # Codex round 16 P2 closure: spec §5.2 says the orchestrator follows
+    # entry.artifact_paths, so when caller only passes `--entry` (and a
+    # `--repo-root`), fall back to those declared paths to locate the
+    # JSONL/sidecar/verdict before emitting "missing companion" errors.
+    # The B7 path-resolution check (round 8) still verifies these match
+    # the recorded paths; this just removes the ergonomic gap that
+    # required redundant flags for a passport/proposal entry that
+    # already declares its own artifact bundle.
+    artifact_paths = entry_data.get("artifact_paths") if isinstance(entry_data, dict) else None
+    if isinstance(artifact_paths, dict):
+        repo_root = args.repo_root or REPO_ROOT
+        if jsonl is None:
+            recorded = artifact_paths.get("jsonl")
+            if isinstance(recorded, str) and recorded:
+                jsonl = (repo_root / recorded).resolve()
+        if sidecar is None:
+            recorded = artifact_paths.get("sidecar")
+            if isinstance(recorded, str) and recorded:
+                sidecar = (repo_root / recorded).resolve()
+        if verdict is None:
+            recorded = artifact_paths.get("verdict")
+            if isinstance(recorded, str) and recorded:
+                verdict = (repo_root / recorded).resolve()
+
     # proposal/persisted modes — they ARE the Layer 2/3 evidence Phase 6.3
     # is supposed to gate (codex round 1 P1: silently treating missing
     # files as None let valid-looking entries return exit 0 with no audit

@@ -1981,6 +1981,34 @@ class TestCLI:
         assert "verdict.run_id" in captured.out
         assert "swap-one-verdict-file forgery" in captured.out
 
+    def test_only_entry_flag_resolves_companions_from_artifact_paths(self, tmp_path: Path, capsys):
+        # Codex round 16 P2: caller passes only --entry + --repo-root; the
+        # lint must resolve sidecar/verdict/jsonl from
+        # entry.artifact_paths instead of demanding redundant flags.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        # Companion files in tmp_path; entry.artifact_paths records them
+        # as repo-relative basenames (matching the round-7+8 fixture
+        # convention).
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        # ONLY --entry + --repo-root, no --output-dir, no --sidecar/verdict/jsonl
+        rc = main([
+            "--mode", "persisted",
+            "--entry", str(tmp_path / f"{run_id}.audit_artifact_entry.json"),
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 0, captured.out
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.
