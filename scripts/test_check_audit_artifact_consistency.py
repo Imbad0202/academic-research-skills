@@ -1826,6 +1826,40 @@ class TestCLI:
             f"stderr: {captured.err}"
         )
 
+    def test_schema_error_short_circuits_no_traceback(self, tmp_path: Path, capsys):
+        # Codex round 12 P2: schema-valid-as-dict but with a nested field of
+        # the wrong shape (timing: [1] passes top-level isinstance(dict) but
+        # timing.get() crashes in check_b5). Short-circuit on SCHEMA error
+        # so cross-field rules don't crash on input violating their type
+        # presuppositions.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        # Inject malformed nested field that schema rejects but isinstance
+        # at the top level still passes:
+        sidecar["timing"] = [1, 2, 3]  # list instead of dict
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "SCHEMA" in captured.out, captured.out
+        # Critical: no traceback must reach stderr
+        assert "Traceback" not in captured.err, captured.err
+        assert "AttributeError" not in captured.err, captured.err
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.

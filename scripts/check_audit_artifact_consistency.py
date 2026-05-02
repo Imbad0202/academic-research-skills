@@ -2144,6 +2144,26 @@ def main(argv: list[str] | None = None) -> int:
         repo_root=args.repo_root or REPO_ROOT,
     )
 
+    # Codex round 12 P2 closure: when any schema-level finding fires, we
+    # must NOT proceed into run_checks. Cross-field rules call .get() /
+    # set() on nested fields assuming the schema-defined types — a value
+    # that satisfies the top-level isinstance(dict) check (added round 5/6)
+    # but has a malformed nested field (e.g. timing: [1] satisfies dict at
+    # the root but timing.get(...) crashes; finding_ids: [{}] satisfies
+    # array but `set(finding_ids)` crashes building a set of unhashable
+    # dicts) would trace back instead of producing the documented lint
+    # rejection. Short-circuit on any error-severity SCHEMA finding —
+    # the schema rejection is itself the lint result; the cross-field
+    # rules have nothing to add when the input doesn't match the schema
+    # contract they presuppose.
+    has_schema_error = any(
+        f.rule_id == "SCHEMA" and f.severity == "error" for f in schema_findings
+    )
+    if has_schema_error:
+        for f in schema_findings:
+            print(f.render())
+        return 1
+
     findings = schema_findings + run_checks(ctx)
     for f in findings:
         print(f.render())
