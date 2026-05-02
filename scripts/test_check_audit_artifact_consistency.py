@@ -1922,6 +1922,34 @@ class TestCLI:
         assert "D4" in captured.out, captured.out
         assert "round=2" in captured.out and "round=1" in captured.out, captured.out
 
+    def test_script_is_executable(self):
+        # Codex round 14 P1: spec §5.2 L2-5 invokes the lint as
+        # `scripts/check_audit_artifact_consistency.py --mode jsonl-stream …`
+        # without a `python` prefix. The file must carry the executable
+        # bit (100755) like Phase 6.1's audit_snapshot.py / parse_audit_
+        # verdict.py / run_codex_audit.sh — direct exec failing with
+        # permission denied (exit 126) would block the orchestrator gate.
+        import os
+        script_path = REPO / "scripts/check_audit_artifact_consistency.py"
+        assert os.access(script_path, os.X_OK), (
+            f"{script_path} must be executable for orchestrator §5.2 L2-5 "
+            f"direct invocation. Run `chmod +x` and `git update-index --chmod=+x`."
+        )
+
+    def test_script_runs_via_direct_exec(self):
+        # End-to-end smoke: invoke the script directly (no `python` prefix)
+        # and confirm it produces the documented harness exit code. Belt
+        # and braces against future `chmod 644` regressions.
+        script_path = REPO / "scripts/check_audit_artifact_consistency.py"
+        result = subprocess.run(
+            [str(script_path), "--example-validation-harness"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, (
+            f"direct exec returned {result.returncode} (expected 0)\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.
