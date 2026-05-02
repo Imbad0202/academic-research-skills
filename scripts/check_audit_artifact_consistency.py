@@ -1675,8 +1675,40 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: cannot load entry {entry}: {e}", file=sys.stderr)
         return 2
 
-    # Run schema validation on the entry first (defense in depth)
-    schema_findings = validate_against_schema(entry_data, ENTRY_SCHEMA_PATH)
+    # Schema validation on the entry first (defense in depth — the oneOf
+    # proposal/persisted arms enforce verified_at presence + AUDIT_FAILED
+    # exclusion at this layer, before any cross-field rule fires).
+    schema_findings: list[LintError] = list(
+        validate_against_schema(entry_data, ENTRY_SCHEMA_PATH)
+    )
+
+    # Companion artifacts (sidecar + verdict + jsonl) are REQUIRED in
+    # proposal/persisted modes — they ARE the Layer 2/3 evidence Phase 6.3
+    # is supposed to gate (codex round 1 P1: silently treating missing
+    # files as None let valid-looking entries return exit 0 with no audit
+    # evidence). When auto-discovered or explicitly given path doesn't
+    # exist, surface as an artifact-incomplete finding (B7 family — the
+    # bundle is supposed to be complete by §4.9 step 9).
+    def _missing_companion(role: str, path: Path | None) -> None:
+        if path is None:
+            schema_findings.append(LintError(
+                "B7",
+                f"audit bundle missing {role} (auto-discover failed and no explicit "
+                f"--{role} given) — proposal/persisted mode requires {role} for "
+                f"Layer 2/3 verification",
+                f"<{args.mode}>",
+            ))
+        elif not path.exists():
+            schema_findings.append(LintError(
+                "B7",
+                f"audit bundle missing {role} at {path} — proposal/persisted mode "
+                f"requires {role} for Layer 2/3 verification",
+                str(path),
+            ))
+
+    _missing_companion("sidecar", sidecar)
+    _missing_companion("verdict", verdict)
+    _missing_companion("jsonl", jsonl)
 
     sidecar_data = None
     if sidecar is not None and sidecar.exists():
@@ -1685,6 +1717,14 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:
             print(f"ERROR: cannot load sidecar {sidecar}: {e}", file=sys.stderr)
             return 2
+        # Schema-validate the sidecar (codex round 1 P2: the verdict /
+        # sidecar / jsonl-row schemas were silently bypassed in CLI modes
+        # — only entry was validated. Defense-in-depth requires every
+        # loaded artifact to clear its own schema before B/C/D rules
+        # consume it).
+        schema_findings.extend(
+            validate_against_schema(sidecar_data, SIDECAR_SCHEMA_PATH)
+        )
 
     verdict_data = None
     if verdict is not None and verdict.exists():
@@ -1693,6 +1733,9 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:
             print(f"ERROR: cannot load verdict {verdict}: {e}", file=sys.stderr)
             return 2
+        schema_findings.extend(
+            validate_against_schema(verdict_data, VERDICT_SCHEMA_PATH)
+        )
 
     events = None
     if jsonl is not None and jsonl.exists():
@@ -1701,6 +1744,16 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as e:
             print(f"ERROR: cannot load jsonl {jsonl}: {e}", file=sys.stderr)
             return 2
+        # Validate every JSONL row against the per-row schema. Stream-shape
+        # rules (A7 + parse_audit_verdict.py probe-style stream invariants)
+        # run separately in the family A check; the per-row schema gate
+        # ensures malformed rows don't reach those stream checks.
+        for row_idx, row in enumerate(events, start=1):
+            schema_findings.extend([
+                LintError(err.rule_id, err.message,
+                          f"{jsonl}:row={row_idx}")
+                for err in validate_against_schema(row, JSONL_SCHEMA_PATH)
+            ])
 
     passport_audit_artifacts = None
     if args.passport_path is not None and args.passport_path.exists():
@@ -1726,7 +1779,7 @@ def main(argv: list[str] | None = None) -> int:
         repo_root=args.repo_root or REPO_ROOT,
     )
 
-    findings = list(schema_findings) + run_checks(ctx)
+    findings = schema_findings + run_checks(ctx)
     for f in findings:
         print(f.render())
     return 1 if any(f.severity == "error" for f in findings) else 0

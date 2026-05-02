@@ -1192,6 +1192,58 @@ class TestCLI:
         # zero findings -> rc == 0
         assert rc == 0
 
+    def test_persisted_missing_sidecar_returns_1(self, tmp_path: Path, capsys):
+        # Codex round 1 P1: missing companion artifacts must be rejected, not
+        # silently ignored. Write entry + verdict + jsonl but NOT sidecar.
+        run_id = VALID_RUN_ID
+        entry = make_valid_persisted_entry_minor()
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "B7" in captured.out
+        assert "sidecar" in captured.out
+
+    def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
+        # Codex round 1 P2: schema-invalid sidecar must be rejected even when
+        # cross-field rules don't cover the malformed field.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        # Inject a malformed bare extra field (additionalProperties: false on
+        # sidecar root → schema rejects unknown top-level key).
+        sidecar["definitely_not_in_schema"] = "drift"
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "SCHEMA" in captured.out
+        assert "definitely_not_in_schema" in captured.out
+
 
 # ---------------------------------------------------------------------------
 # Example validation harness (F4) — smoke test it runs without crash
