@@ -808,8 +808,9 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
              entry_path: Path | None, sidecar_path: Path | None,
              jsonl_path: Path | None, verdict_path: Path | None,
              mode: str, location: str = "<artifacts>",
-             repo_root: Path | None = None) -> list[LintError]:
-    """B7 — entry.run_id == sidecar.run_id == bare basename of every co-located file.
+             repo_root: Path | None = None,
+             verdict: dict[str, Any] | None = None) -> list[LintError]:
+    """B7 — entry.run_id == sidecar.run_id == verdict.run_id == bare basename of every co-located file.
 
     Proposal mode: 4 files (jsonl + meta.json + verdict.yaml + entry.json).
     Persisted mode: 3 files (entry consumed; not file-checked here).
@@ -819,6 +820,14 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
     files. Without this, an entry could record artifact_paths pointing at
     a missing or wrong directory while the CLI loads valid evidence from
     --output-dir; the orchestrator later follows the recorded paths.
+
+    `verdict` enables the round-15 P1 closure: cross-check the verdict
+    file's internal `run_id` field against entry+sidecar+basename. C1
+    mirrors only the nested verdict block (status/round/counts/...) and
+    skips the verdict-file-level run_id; without this check, swapping a
+    valid verdict.yaml from a different run into the canonical filename
+    slot would pass B7 (basenames match), C1 (counts mirror entry), and
+    the rest of the gate as long as PASS/MINOR/MATERIAL counts agree.
     """
     if entry is None or sidecar is None:
         return []
@@ -829,6 +838,16 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
         findings.append(LintError("B7",
             f"entry.run_id={entry_run_id!r} != sidecar.run_id={side_run_id!r}",
             location))
+    # Codex round 15 P1 closure: also verify verdict.run_id matches.
+    if verdict is not None:
+        v_run_id = verdict.get("run_id")
+        if v_run_id is not None and v_run_id != side_run_id:
+            findings.append(LintError("B7",
+                f"verdict.run_id={v_run_id!r} != sidecar.run_id={side_run_id!r} "
+                f"(swap-one-verdict-file forgery seam — verdict file was renamed "
+                f"into <run_id>.verdict.yaml but internal run_id belongs to a "
+                f"different run)",
+                location))
 
     # File basename checks (only when we have actual paths)
     canonical = side_run_id if isinstance(side_run_id, str) else entry_run_id
@@ -1517,7 +1536,7 @@ def run_checks(ctx: LintContext) -> list[LintError]:
     if not is_audit_failed:
         findings.extend(check_b7(ctx.entry, ctx.sidecar, ctx.entry_path, ctx.sidecar_path,
                                   ctx.jsonl_path, ctx.verdict_path, mode, location=entry_loc,
-                                  repo_root=ctx.repo_root))
+                                  repo_root=ctx.repo_root, verdict=ctx.verdict))
     findings.extend(check_b8(ctx.entry, mode, location=entry_loc))
     findings.extend(check_b9(ctx.entry, ctx.sidecar, location=entry_loc))
     findings.extend(check_b10(ctx.entry, ctx.verdict, mode, location=entry_loc))

@@ -1950,6 +1950,37 @@ class TestCLI:
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
+    def test_swap_verdict_file_with_different_run_id_rejected(self, tmp_path: Path, capsys):
+        # Codex round 15 P1: swap-one-verdict-file forgery — a verdict.yaml
+        # with all valid schema/cross-field but internal run_id pointing at
+        # a different run, renamed into the canonical <run_id>.verdict.yaml
+        # slot. C1 mirrors only the nested verdict block; B7 (pre-round-15)
+        # checked sidecar.run_id but not verdict.run_id.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()
+        verdict["run_id"] = "2026-04-30T15-30-00Z-ffff"  # different run!
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "B7" in captured.out
+        assert "verdict.run_id" in captured.out
+        assert "swap-one-verdict-file forgery" in captured.out
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.
