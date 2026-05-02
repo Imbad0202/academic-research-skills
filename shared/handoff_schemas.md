@@ -607,7 +607,7 @@ audit_artifact:
         p1: 0
         p2: 0
         p3: 1
-      verified_at: 2026-04-30T15:23:11.847Z   # RFC 3339 UTC, ms precision; strict-monotonic per scripts/_next_verified_at_ms.py
+      verified_at: "2026-04-30T15:23:11.847Z"  # RFC 3339 UTC string, ms precision (quoted: schema is `string` + regex, not YAML datetime); strict-monotonic per scripts/_next_verified_at_ms.py
       verified_by: pipeline_orchestrator_agent
   # append-only; never overwrite, never reorder
 ```
@@ -622,7 +622,7 @@ audit_artifact:
 
 **This mirrors the v3.6.3 `reset_boundary[]` append-only pattern**: history preserved, freshness computed by ledger scan. Deletion or reordering is forbidden; lint at `scripts/check_audit_artifact_consistency.py` enforces the invariant family at [`docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md`](../docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md) §3.7.
 
-For the orchestrator-side gate procedure (Path A latest-by-`verified_at` lookup, Path B proposal merge), see [`academic-pipeline/agents/pipeline_orchestrator_agent.md`](../academic-pipeline/agents/pipeline_orchestrator_agent.md) §3.5 (added at Phase 6.6). For the resume-time re-verification semantics, see [`academic-pipeline/references/passport_as_reset_boundary.md`](../academic-pipeline/references/passport_as_reset_boundary.md).
+For the orchestrator-side gate procedure (Path A latest-by-`verified_at` selection, Path B proposal merge after Layer 2 + Layer 3 verification), the canonical contract is [`docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md`](../docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md) §5.6 (Path A/B fall-through with the §5.6 A1.5 superseding-proposal preflight) plus §5.2 (eleven Layer 2 + Layer 3 gating checks). Implementation lands as a subsection of `academic-pipeline/agents/pipeline_orchestrator_agent.md` (Phase 6.6 deliverable). For the resume-time re-verification semantics, see [`academic-pipeline/references/passport_as_reset_boundary.md`](../academic-pipeline/references/passport_as_reset_boundary.md).
 
 ---
 
