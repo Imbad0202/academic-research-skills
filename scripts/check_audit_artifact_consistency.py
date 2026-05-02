@@ -617,10 +617,20 @@ def check_b3(sidecar: dict[str, Any] | None, repo_root: Path,
             f"declared bundle_manifest_sha={declared_sha!r} disagrees with manifest of declared file SHAs (computed={sha_from_declared!r})",
             location))
 
-    # Step 2 — when files exist on disk, also verify live SHAs.
+    # Step 2 — verify against live disk SHAs. Codex round 2 P2 closure:
+    # a missing bundle file must NOT fall back to the sidecar-declared SHA
+    # (that would let a deleted/moved file silently pass B3 because the
+    # recomputed manifest would still match). Treat missing as
+    # stale/unverifiable: emit B3 finding and skip live-manifest comparison
+    # (no live manifest exists when files are gone). When repo_root has no
+    # .git/ marker (synthetic fixtures in tmp_path), skip the live check
+    # entirely — same convention as B4.
+    if not (repo_root / ".git").exists():
+        return findings  # Step 1 already ran; Step 2 needs a real repo
+
     live_primary: list[dict[str, Any]] = []
     live_supporting: list[dict[str, Any]] = []
-    any_disk = False
+    missing_bundle_files: list[str] = []
     for role, items, sink in (("primary", primary, live_primary), ("supporting", supporting, live_supporting)):
         for p in items:
             if not isinstance(p, dict):
@@ -630,23 +640,32 @@ def check_b3(sidecar: dict[str, Any] | None, repo_root: Path,
                 continue
             disk_path = repo_root / path
             if disk_path.exists():
-                any_disk = True
                 disk_sha = _sha256_file(disk_path)
                 sink.append({"path": path, "sha": disk_sha or p.get("sha")})
             else:
-                sink.append(dict(p))
+                missing_bundle_files.append(f"{role}:{path}")
     template_disk = repo_root / template_path
-    live_template_sha = template_sha
     if template_disk.exists():
-        any_disk = True
         live_template_sha = _sha256_file(template_disk) or template_sha
+    else:
+        missing_bundle_files.append(f"template:{template_path}")
+        live_template_sha = template_sha
 
-    if any_disk:
-        _, sha_live = compute_bundle_manifest(live_primary, live_supporting, template_path, live_template_sha)
-        if declared_sha != sha_live:
-            findings.append(LintError("B3",
-                f"declared bundle_manifest_sha={declared_sha!r} disagrees with live bundle (computed={sha_live!r}) — bundle file changed since audit",
-                location))
+    if missing_bundle_files:
+        # File-level mutation evidence (deletion / move) — flag explicitly so
+        # the auditor sees which file is gone, not just a manifest SHA mismatch.
+        findings.append(LintError("B3",
+            f"bundle file(s) missing on disk; cannot verify live manifest: "
+            f"{missing_bundle_files} — treat as stale/unverifiable",
+            location))
+        return findings
+
+    # All files present — recompute live manifest and compare.
+    _, sha_live = compute_bundle_manifest(live_primary, live_supporting, template_path, live_template_sha)
+    if declared_sha != sha_live:
+        findings.append(LintError("B3",
+            f"declared bundle_manifest_sha={declared_sha!r} disagrees with live bundle (computed={sha_live!r}) — bundle file changed since audit",
+            location))
     return findings
 
 
@@ -1681,6 +1700,53 @@ def main(argv: list[str] | None = None) -> int:
     schema_findings: list[LintError] = list(
         validate_against_schema(entry_data, ENTRY_SCHEMA_PATH)
     )
+
+    # Codex round 2 P1 closure: --mode persisted MUST enforce the persisted
+    # oneOf arm specifically. JSON Schema oneOf accepts EITHER arm by
+    # construction, so a proposal-shaped entry (no verified_at, no
+    # verified_by, possibly AUDIT_FAILED status) would silently pass
+    # `--mode persisted`. The mode flag is the lifecycle assertion the
+    # caller is making about the entry; the lint must enforce it.
+    # E3/E4 are the spec rules for proposal-mode rejection of orchestrator
+    # fields; the symmetric rule for persisted mode lives here.
+    verdict_block = entry_data.get("verdict") if isinstance(entry_data, dict) else None
+    if isinstance(verdict_block, dict):
+        if args.mode == "persisted":
+            # persisted arm requires verified_at + verified_by, forbids AUDIT_FAILED
+            if "verified_at" not in verdict_block:
+                schema_findings.append(LintError(
+                    "E3", "--mode persisted: entry.verdict.verified_at is required "
+                          "(entry has proposal-arm shape; orchestrator-side fields missing)",
+                    str(entry)))
+            if "verified_by" not in verdict_block:
+                schema_findings.append(LintError(
+                    "E3", "--mode persisted: entry.verdict.verified_by is required "
+                          "(entry has proposal-arm shape; orchestrator-side fields missing)",
+                    str(entry)))
+            if verdict_block.get("status") == "AUDIT_FAILED":
+                schema_findings.append(LintError(
+                    "E5", "--mode persisted: entry.verdict.status='AUDIT_FAILED' is "
+                          "forbidden (AUDIT_FAILED entries are proposal-arm only per "
+                          "§3.2 lifecycle-conditional table)",
+                    str(entry)))
+        elif args.mode == "proposal":
+            # proposal arm forbids verified_at + verified_by + acknowledgement
+            if "verified_at" in verdict_block:
+                schema_findings.append(LintError(
+                    "E4", "--mode proposal: entry.verdict.verified_at must be absent "
+                          "(orchestrator-only field; wrapper-emitted proposal carrying it "
+                          "is Pattern C3 attack surface)",
+                    str(entry)))
+            if "verified_by" in verdict_block:
+                schema_findings.append(LintError(
+                    "E4", "--mode proposal: entry.verdict.verified_by must be absent "
+                          "(orchestrator-only field; Pattern C3 attack surface)",
+                    str(entry)))
+            if "acknowledgement" in entry_data:
+                schema_findings.append(LintError(
+                    "A4", "--mode proposal: entry.acknowledgement must be absent "
+                          "(orchestrator-only write per §5.4)",
+                    str(entry)))
 
     # Companion artifacts (sidecar + verdict + jsonl) are REQUIRED in
     # proposal/persisted modes — they ARE the Layer 2/3 evidence Phase 6.3

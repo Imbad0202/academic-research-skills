@@ -522,6 +522,21 @@ class TestB3:
         findings = check_b3(s, REPO / "nonexistent_subtree")
         assert any(f.rule_id == "B3" for f in findings)
 
+    def test_missing_bundle_file_fails(self, tmp_path: Path):
+        # Codex round 2 P2: when a bundle file is missing on disk, B3 must
+        # NOT fall back to the sidecar-declared SHA — that would let a
+        # deleted/moved file silently pass. With a real .git/ marker, B3
+        # Step 2 is required to flag the missing file as stale/unverifiable.
+        # Synthesize a tmp repo with a real .git marker but missing bundle
+        # files; the sidecar's declared paths are intentionally absent.
+        (tmp_path / ".git").mkdir()  # marker only; B3 doesn't run git commands
+        s = make_valid_sidecar()  # references deliverable.md / bibliography.json / verification.md / template
+        findings = check_b3(s, tmp_path)
+        assert any(
+            f.rule_id == "B3" and "missing on disk" in f.message
+            for f in findings
+        ), [f.render() for f in findings]
+
 
 class TestB4:
     """B4 — runner.git_sha resolves to a real commit."""
@@ -1214,6 +1229,64 @@ class TestCLI:
         assert rc == 1, captured.out
         assert "B7" in captured.out
         assert "sidecar" in captured.out
+
+    def test_persisted_mode_rejects_proposal_shape(self, tmp_path: Path, capsys):
+        # Codex round 2 P1: --mode persisted must enforce persisted arm. A
+        # proposal-shaped entry (no verified_at/verified_by) was silently
+        # passing oneOf validation as the proposal arm.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        # Build a proposal-shaped entry (no verified_at, no verified_by)
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        entry["verdict"].pop("verified_at", None)
+        entry["verdict"].pop("verified_by", None)
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "E3" in captured.out
+        assert "verified_at" in captured.out
+
+    def test_persisted_mode_rejects_audit_failed(self, tmp_path: Path, capsys):
+        # AUDIT_FAILED is proposal-only per §3.2 lifecycle-conditional table.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        entry["verdict"]["status"] = "AUDIT_FAILED"
+        entry["verdict"]["failure_reason"] = "synthetic test"
+        entry["verdict"]["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "E5" in captured.out
+        assert "AUDIT_FAILED" in captured.out
 
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
