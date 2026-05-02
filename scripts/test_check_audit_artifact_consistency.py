@@ -1779,6 +1779,53 @@ class TestCLI:
                 f"suspended per §3.4: {captured.out}"
             )
 
+    def test_audit_failed_with_partial_jsonl_no_internal_error(self, tmp_path: Path, capsys):
+        # Codex round 11 P2: AUDIT_FAILED bundle with partial/non-JSON last
+        # line (codex SIGKILL'd mid-write) must NOT exit 2 internal error.
+        # Round 9 suspended schema validation but _load_jsonl() still raised
+        # before reaching that suspension.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        sidecar["stream"]["jsonl_thread_id"] = ""
+        sidecar["process"]["exit_code"] = 137  # 128 + SIGKILL
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        entry["verdict"].pop("verified_at", None)
+        entry["verdict"].pop("verified_by", None)
+        entry["verdict"]["status"] = "AUDIT_FAILED"
+        entry["verdict"]["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        entry["verdict"]["failure_reason"] = "synthetic — codex SIGKILL"
+        verdict = make_valid_verdict_file_minor()
+        verdict["verdict_status"] = "AUDIT_FAILED"
+        verdict["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        verdict["findings"] = []
+        verdict["failure_reason"] = "synthetic — codex SIGKILL"
+        # Partial JSON on the last line — would raise ValueError in
+        # _load_jsonl and previously caused exit 2.
+        partial_jsonl = (
+            json.dumps({"type": "thread.started", "thread_id": VALID_THREAD_ID}) + "\n"
+            + json.dumps({"type": "turn.started"}) + "\n"
+            + '{"type":"item.start'  # truncated mid-write, no closing quote/brace
+        )
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(partial_jsonl)
+        rc = main([
+            "--mode", "proposal",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        # Must NOT be rc=2 (internal error). Forensic-only bundle is allowed.
+        assert rc != 2, (
+            f"AUDIT_FAILED with partial JSONL returned rc=2 internal error; "
+            f"should be handled as forensic-only bundle\nstdout: {captured.out}\n"
+            f"stderr: {captured.err}"
+        )
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.

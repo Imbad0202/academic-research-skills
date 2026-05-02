@@ -2082,23 +2082,33 @@ def main(argv: list[str] | None = None) -> int:
 
     events = None
     if jsonl is not None and jsonl.exists():
-        try:
-            events = _load_jsonl(jsonl)
-        except ValueError as e:
-            print(f"ERROR: cannot load jsonl {jsonl}: {e}", file=sys.stderr)
-            return 2
-        # Codex round 9 P2 closure: AUDIT_FAILED bundles legitimately have
-        # truncated / malformed JSONL — codex was killed mid-run, so the
-        # final agent_message + turn.completed events may be absent and
-        # earlier rows may carry forensic-only fields. §3.4 + §5.6 Path B5
-        # suspend Layer 2/3 verification for AUDIT_FAILED; per-row schema
-        # validation is part of that suspension. Determine the verdict
-        # status now (verdict_data was already loaded above) so JSONL row
-        # schema checks skip cleanly when expected.
+        # Codex round 11 P2 closure: AUDIT_FAILED bundles can have a
+        # partial / non-JSON line at the end (codex was SIGKILL'd
+        # mid-write); _load_jsonl() raises ValueError on those, returning
+        # exit 2 as internal error and contradicting the round-9 schema
+        # suspension immediately below. Decide on AUDIT_FAILED before
+        # _load_jsonl runs so failure-signaling proposals with
+        # partially-written streams are handled cleanly.
         verdict_status_for_jsonl = (
             verdict_data.get("verdict_status") if isinstance(verdict_data, dict) else None
         )
-        if verdict_status_for_jsonl != "AUDIT_FAILED":
+        if verdict_status_for_jsonl == "AUDIT_FAILED":
+            # Skip per-row schema validation entirely; A7 / stream-shape
+            # are also suspended in run_checks. Best-effort load still
+            # populates events for the entry-side family A rules that
+            # don't depend on stream completeness — but a hard parse
+            # failure is acceptable evidence of "audit was killed mid-
+            # write" rather than a lint-blocking error.
+            try:
+                events = _load_jsonl(jsonl)
+            except ValueError:
+                events = None  # forensic-only bundle; stream is unparseable
+        else:
+            try:
+                events = _load_jsonl(jsonl)
+            except ValueError as e:
+                print(f"ERROR: cannot load jsonl {jsonl}: {e}", file=sys.stderr)
+                return 2
             # Validate every JSONL row against the per-row schema. Stream-shape
             # rules (A7 + parse_audit_verdict.py probe-style stream invariants)
             # run separately in the family A check; the per-row schema gate
