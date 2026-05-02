@@ -1707,6 +1707,65 @@ class TestCLI:
         assert "B7" in captured.out
         assert "does not exist on disk" in captured.out
 
+    def test_audit_failed_skips_layer_3_b2_b3_b4_b5_b7(self, tmp_path: Path, capsys):
+        # Codex round 9 P2: Layer 3 cross-file rules (B2/B3/B4/B5/B7) are
+        # suspended for AUDIT_FAILED bundles per §3.4 + §5.6 Path B5. A
+        # failed audit caused by bundle mutation legitimately has live
+        # deliverable SHA != recorded SHA; treating that as B2 violation
+        # would reject the failure-signaling artifact.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        sidecar["stream"]["jsonl_thread_id"] = ""  # AUDIT_FAILED suspension
+        # Forensic exit_code per §3.4 rule 6 — non-zero allowed for AUDIT_FAILED
+        sidecar["process"]["exit_code"] = 70
+        # Drift the bundle SHA in sidecar so live recompute would mismatch (if
+        # B3 ran). With AUDIT_FAILED suspension, B3 must NOT fire.
+        sidecar["prompt"]["bundle"]["primary_deliverables"][0]["sha"] = "f" * 64
+        # Drift git_sha to a bogus hex that fails B4 git cat-file (if it ran).
+        sidecar["runner"]["git_sha"] = "deadbee"
+        # Drift duration vs end-start by >>1s so B5 would fire (if it ran).
+        sidecar["timing"]["duration_seconds"] = 9999.0
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        entry["verdict"].pop("verified_at", None)
+        entry["verdict"].pop("verified_by", None)
+        entry["verdict"]["status"] = "AUDIT_FAILED"
+        entry["verdict"]["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        entry["verdict"]["failure_reason"] = "synthetic — codex killed"
+        # Drift entry.deliverable_sha so B2 entry-vs-sidecar would fire (if
+        # it ran) — entry side not suspended internally, only Layer 3 is.
+        entry["deliverable_sha"] = "c" * 64
+        verdict = make_valid_verdict_file_minor()
+        verdict["verdict_status"] = "AUDIT_FAILED"
+        verdict["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        verdict["findings"] = []
+        verdict["failure_reason"] = "synthetic — codex killed"
+        # Truncated stream — AUDIT_FAILED expected
+        events = [
+            {"type": "thread.started", "thread_id": VALID_THREAD_ID},
+            {"type": "turn.started"},
+            # codex was killed before final agent_message + turn.completed
+        ]
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "proposal",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        # B2/B3/B4/B5/B7 must not fire — AUDIT_FAILED suspends Layer 3
+        for rule in ("B2", "B3", "B4", "B5", "B7"):
+            assert f"[{rule}]" not in captured.out, (
+                f"{rule} fired on AUDIT_FAILED bundle but Layer 3 should be "
+                f"suspended per §3.4: {captured.out}"
+            )
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.

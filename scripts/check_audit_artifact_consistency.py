@@ -1475,16 +1475,32 @@ def run_checks(ctx: LintContext) -> list[LintError]:
                             str(ctx.jsonl_path or "<jsonl>"),
                         ))
 
+    # Codex round 9 P2 closure: §3.4 + §5.6 Path B5 + §3.7 family B note say
+    # "Layer 3 verification is suspended for AUDIT_FAILED" — the orchestrator
+    # short-circuits to BLOCK with failure_reason without running L3-2..L3-8
+    # gates. A failed audit caused by bundle mutation legitimately has a
+    # different live deliverable SHA from the recorded audit-time SHA;
+    # treating that as a B2/B3 violation would reject the failure-signaling
+    # artifact instead of letting the orchestrator surface failure_reason.
+    # Same suspension extends to B4 git_sha, B5 timing arithmetic, B7
+    # cross-file basename / path resolution: all are Layer 3 cross-file
+    # verification rules that don't apply when the audit boundary itself
+    # failed. B6 is suspended internally by its own AUDIT_FAILED branch
+    # (spec §3.4 rule 6 + F-027); B1 has its own conditional handling.
+    is_audit_failed = (ctx.verdict or {}).get("verdict_status") == "AUDIT_FAILED"
+
     # Family B
     findings.extend(check_b1(ctx.sidecar, ctx.jsonl_events, ctx.verdict, location=sidecar_loc))
-    findings.extend(check_b2(ctx.entry, ctx.sidecar, ctx.repo_root, location=entry_loc))
-    findings.extend(check_b3(ctx.sidecar, ctx.repo_root, location=sidecar_loc))
-    findings.extend(check_b4(ctx.sidecar, ctx.repo_root, location=sidecar_loc))
-    findings.extend(check_b5(ctx.sidecar, location=sidecar_loc))
+    if not is_audit_failed:
+        findings.extend(check_b2(ctx.entry, ctx.sidecar, ctx.repo_root, location=entry_loc))
+        findings.extend(check_b3(ctx.sidecar, ctx.repo_root, location=sidecar_loc))
+        findings.extend(check_b4(ctx.sidecar, ctx.repo_root, location=sidecar_loc))
+        findings.extend(check_b5(ctx.sidecar, location=sidecar_loc))
     findings.extend(check_b6(ctx.sidecar, ctx.verdict, location=sidecar_loc))
-    findings.extend(check_b7(ctx.entry, ctx.sidecar, ctx.entry_path, ctx.sidecar_path,
-                              ctx.jsonl_path, ctx.verdict_path, mode, location=entry_loc,
-                              repo_root=ctx.repo_root))
+    if not is_audit_failed:
+        findings.extend(check_b7(ctx.entry, ctx.sidecar, ctx.entry_path, ctx.sidecar_path,
+                                  ctx.jsonl_path, ctx.verdict_path, mode, location=entry_loc,
+                                  repo_root=ctx.repo_root))
     findings.extend(check_b8(ctx.entry, mode, location=entry_loc))
     findings.extend(check_b9(ctx.entry, ctx.sidecar, location=entry_loc))
     findings.extend(check_b10(ctx.entry, ctx.verdict, mode, location=entry_loc))
@@ -2060,16 +2076,28 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as e:
             print(f"ERROR: cannot load jsonl {jsonl}: {e}", file=sys.stderr)
             return 2
-        # Validate every JSONL row against the per-row schema. Stream-shape
-        # rules (A7 + parse_audit_verdict.py probe-style stream invariants)
-        # run separately in the family A check; the per-row schema gate
-        # ensures malformed rows don't reach those stream checks.
-        for row_idx, row in enumerate(events, start=1):
-            schema_findings.extend([
-                LintError(err.rule_id, err.message,
-                          f"{jsonl}:row={row_idx}")
-                for err in validate_against_schema(row, JSONL_SCHEMA_PATH)
-            ])
+        # Codex round 9 P2 closure: AUDIT_FAILED bundles legitimately have
+        # truncated / malformed JSONL — codex was killed mid-run, so the
+        # final agent_message + turn.completed events may be absent and
+        # earlier rows may carry forensic-only fields. §3.4 + §5.6 Path B5
+        # suspend Layer 2/3 verification for AUDIT_FAILED; per-row schema
+        # validation is part of that suspension. Determine the verdict
+        # status now (verdict_data was already loaded above) so JSONL row
+        # schema checks skip cleanly when expected.
+        verdict_status_for_jsonl = (
+            verdict_data.get("verdict_status") if isinstance(verdict_data, dict) else None
+        )
+        if verdict_status_for_jsonl != "AUDIT_FAILED":
+            # Validate every JSONL row against the per-row schema. Stream-shape
+            # rules (A7 + parse_audit_verdict.py probe-style stream invariants)
+            # run separately in the family A check; the per-row schema gate
+            # ensures malformed rows don't reach those stream checks.
+            for row_idx, row in enumerate(events, start=1):
+                schema_findings.extend([
+                    LintError(err.rule_id, err.message,
+                              f"{jsonl}:row={row_idx}")
+                    for err in validate_against_schema(row, JSONL_SCHEMA_PATH)
+                ])
 
     passport_audit_artifacts = None
     if args.passport_path is not None and args.passport_path.exists():
