@@ -1675,3 +1675,77 @@ class TestExampleHarness:
         # And every finding's rule_id is "F4" or "SCHEMA"-prefixed
         for f in findings:
             assert f.rule_id in ("F4", "SCHEMA"), f.render()
+
+
+# ---------------------------------------------------------------------------
+# Fixture smoke tests — codex round 7 P2 closure
+# ---------------------------------------------------------------------------
+
+
+FIXTURE_ROOT = REPO / "scripts/fixtures/audit_artifact_consistency"
+
+
+class TestFixtureSmoke:
+    """Verify scripts/fixtures/audit_artifact_consistency/ README invocation
+    examples actually produce the documented exit codes.
+
+    Codex round 7 P2: positive fixtures only pass when --repo-root points
+    at the fixture directory itself (so B3's live-disk gate hits the
+    synthetic-fixture safe-skip via missing .git/ marker). Without this
+    test, README drift could leave positive fixtures silently broken
+    against the documented invocation.
+    """
+
+    def test_positive_persisted_minor(self):
+        bundle = FIXTURE_ROOT / "positive/persisted_minor"
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
+             "--mode", "persisted",
+             "--output-dir", str(bundle),
+             "--run-id", "2026-04-30T15-22-04Z-d8f3",
+             "--repo-root", str(bundle)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, (
+            f"positive fixture persisted_minor returned {result.returncode}\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+    def test_positive_proposal_pass(self):
+        bundle = FIXTURE_ROOT / "positive/proposal_pass"
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
+             "--mode", "proposal",
+             "--output-dir", str(bundle),
+             "--run-id", "2026-04-30T15-22-04Z-d8f3",
+             "--repo-root", str(bundle)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, (
+            f"positive fixture proposal_pass returned {result.returncode}\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+    def test_negative_a1_pass_with_p1(self):
+        bundle = FIXTURE_ROOT / "negative/a1_pass_with_p1"
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
+             "--mode", "proposal",
+             "--output-dir", str(bundle),
+             "--run-id", "2026-04-30T15-22-04Z-d8f3",
+             "--repo-root", str(bundle)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 1, result.stdout
+        assert "A1" in result.stdout, result.stdout
+
+    def test_negative_a7_orphan_completion(self):
+        jsonl = FIXTURE_ROOT / "negative/a7_orphan_completion/2026-04-30T15-22-04Z-d8f3.jsonl"
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
+             "--mode", "jsonl-stream",
+             "--jsonl", str(jsonl)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 1, result.stdout
+        assert "A7" in result.stdout, result.stdout
