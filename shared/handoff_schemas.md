@@ -503,6 +503,7 @@ score_trajectory: {
 | `compliance_history` | list[object] | Append-only audit trail of `compliance_report` entries (Schema 12). Added v3.4.0+. See [Schema 12](#schema-12--compliance-report-v340) and [`shared/compliance_report.schema.json`](compliance_report.schema.json). |
 | `reset_boundary` | list[object] | Append-only ledger. Two entry kinds: `boundary` (recorded at FULL checkpoints when `ARS_PASSPORT_RESET=1`) and `resume` (recorded when `resume_from_passport` consumes a boundary). Added v3.6.3+. Entry shape: [`shared/contracts/passport/reset_ledger_entry.schema.json`](contracts/passport/reset_ledger_entry.schema.json). See [`academic-pipeline/references/passport_as_reset_boundary.md`](../academic-pipeline/references/passport_as_reset_boundary.md). |
 | `literature_corpus` | list[object] | Optional append-friendly literature corpus. Each entry conforms to [`shared/contracts/passport/literature_corpus_entry.schema.json`](contracts/passport/literature_corpus_entry.schema.json). Produced by user-written adapters (see [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md)); ARS does not produce these entries itself. Added v3.6.4+. |
+| `audit_artifact` | list[object] | Optional append-only ledger of cross-model audit runs for v3.6.7 downstream-agent deliverables. Each entry conforms to [`shared/contracts/passport/audit_artifact_entry.schema.json`](contracts/passport/audit_artifact_entry.schema.json). Produced by the pipeline orchestrator after Layer 2 + Layer 3 verification of wrapper-emitted proposal entries; only `persisted` entries are stored here. Added v3.6.7+. |
 
 ### Example
 
@@ -578,6 +579,50 @@ ARS does not produce these entries. User-written adapters read their own corpus 
 Consumer integration ships in v3.6.5: `bibliography_agent` (deep-research, Phase 1) and `literature_strategist_agent` (academic-paper, Phase 1) read `literature_corpus[]` via the corpus-first, search-fills-gap flow. See [`academic-pipeline/references/literature_corpus_consumers.md`](../academic-pipeline/references/literature_corpus_consumers.md) for the full consumer protocol, the four Iron Rules, and per-consumer reading instructions.
 
 See [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md) for the adapter contract.
+
+### Audit Artifact Ledger (v3.6.7)
+
+Schema 9 gains an optional append-only `audit_artifact[]` ledger recording cross-model audit runs that gate the three v3.6.7 downstream agents (`synthesis_agent`, `research_architect_agent` survey-designer mode, `report_compiler_agent` abstract-only mode). Each entry conforms to [`shared/contracts/passport/audit_artifact_entry.schema.json`](contracts/passport/audit_artifact_entry.schema.json).
+
+The ledger stores only `persisted` entries — those merged by `pipeline_orchestrator_agent` after Layer 2 (JSONL schema) + Layer 3 (sidecar metadata) anti-fake-audit checks pass per the eleven gating checks at [`docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md`](../docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md) §5.2. Wrapper-emitted `proposal` entries live under `audit_artifacts/<run_id>.audit_artifact_entry.json` until orchestrator consumes them; they never reach the passport.
+
+```yaml
+audit_artifact:
+  - stage: 2                                   # destination stage gated by this audit
+    agent: synthesis_agent                     # one of the three v3.6.7 agents
+    deliverable_path: chapter_4/synthesis.md
+    deliverable_sha: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    run_id: 2026-04-30T15-22-04Z-d8f3
+    bundle_id: phase2-chapter4-2026-04-30
+    bundle_manifest_sha: 9a8b7c6d5e4f3b2a1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9876
+    artifact_paths:
+      jsonl: audit_artifacts/2026-04-30T15-22-04Z-d8f3.jsonl
+      sidecar: audit_artifacts/2026-04-30T15-22-04Z-d8f3.meta.json
+      verdict: audit_artifacts/2026-04-30T15-22-04Z-d8f3.verdict.yaml
+    verdict:
+      status: MINOR                            # persisted enum: PASS | MINOR | MATERIAL
+      round: 2
+      target_rounds: 3
+      finding_counts:
+        p1: 0
+        p2: 0
+        p3: 1
+      verified_at: 2026-04-30T15-23-11.847Z   # ms precision; strict-monotonic per scripts/_next_verified_at_ms.py
+      verified_by: pipeline_orchestrator_agent
+  # append-only; never overwrite, never reorder
+```
+
+**Semantics:**
+
+- `stage` is the **destination stage** the just-completed deliverable is about to enter (synthesis_agent → 2, research_architect_agent survey-designer → 2, report_compiler_agent abstract-only → 5).
+- `verdict.status` enum is `["PASS", "MINOR", "MATERIAL"]` for persisted entries. `AUDIT_FAILED` is reachable only in the proposal arm and never persists; see [`audit_artifact_entry.schema.json`](contracts/passport/audit_artifact_entry.schema.json) Lifecycle-conditional fields for the rationale.
+- `verdict.verified_at` and `verdict.verified_by` are required on persisted entries (orchestrator-written) and forbidden on proposal entries (wrapper-emitted).
+- Multiple entries for the same `(stage, agent, deliverable_sha)` represent multiple audit rounds; orchestrator selects the latest by `verified_at` for verdict reads.
+- If `deliverable_sha` changes (deliverable mutated), prior entries become stale but remain as audit history; orchestrator only honors entries whose `deliverable_sha` matches the current deliverable.
+
+**This mirrors the v3.6.3 `reset_boundary[]` append-only pattern**: history preserved, freshness computed by ledger scan. Deletion or reordering is forbidden; lint at `scripts/check_audit_artifact_consistency.py` enforces the invariant family at [`docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md`](../docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md) §3.7.
+
+For the orchestrator-side gate procedure (Path A latest-by-`verified_at` lookup, Path B proposal merge), see [`academic-pipeline/agents/pipeline_orchestrator_agent.md`](../academic-pipeline/agents/pipeline_orchestrator_agent.md) §3.5 (added at Phase 6.6). For the resume-time re-verification semantics, see [`academic-pipeline/references/passport_as_reset_boundary.md`](../academic-pipeline/references/passport_as_reset_boundary.md).
 
 ---
 
