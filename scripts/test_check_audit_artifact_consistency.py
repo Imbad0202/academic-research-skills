@@ -1377,6 +1377,63 @@ class TestCLI:
         assert "E5" in captured.out
         assert "AUDIT_FAILED" in captured.out
 
+    def test_persisted_forged_artifact_paths_in_entry(self, tmp_path: Path, capsys):
+        # Codex round 4 P2: hand-edited entry.artifact_paths pointing at a
+        # different run_id must be flagged as forgery seam, even when the
+        # CLI is invoked with canonical --output-dir + --run-id and the
+        # actual on-disk files have the canonical basename.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        # Forged: artifact_paths point at a DIFFERENT run_id's files
+        entry["artifact_paths"] = {
+            "jsonl": "audit_artifacts/2026-04-30T15-22-04Z-ffff.jsonl",
+            "sidecar": "audit_artifacts/2026-04-30T15-22-04Z-ffff.meta.json",
+            "verdict": "audit_artifacts/2026-04-30T15-22-04Z-ffff.verdict.yaml",
+        }
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "B7" in captured.out
+        assert "artifact-paths forgery seam" in captured.out
+
+    def test_argparse_invalid_mode_returns_64(self):
+        # Codex round 4 P3: argparse-level failures must exit 64, not 2.
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
+             "--mode", "definitely_not_a_mode"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 64, (
+            f"argparse usage error returned {result.returncode}, expected 64\n"
+            f"stderr: {result.stderr}"
+        )
+
+    def test_argparse_unknown_flag_returns_64(self):
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
+             "--bogus-flag"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 64, (
+            f"unknown flag returned {result.returncode}, expected 64\n"
+            f"stderr: {result.stderr}"
+        )
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.

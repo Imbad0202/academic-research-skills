@@ -801,6 +801,33 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
             findings.append(LintError("B7",
                 f"{role} file basename stem={bare!r} != canonical run_id={canonical!r}",
                 location))
+
+    # Codex round 4 P2 closure: entry["artifact_paths"] is the contract the
+    # orchestrator follows post-merge. A hand-edited entry that points its
+    # artifact_paths at a different run's files (jsonl/sidecar/verdict)
+    # would forge the swap-one-artifact-file attack seam (§3.7 B7). The
+    # B7 cross-file check above only inspects the paths supplied to the
+    # CLI; an explicit basename validation of the recorded artifact_paths
+    # closes the gap regardless of how the lint was invoked.
+    artifact_paths = entry.get("artifact_paths") if isinstance(entry, dict) else None
+    if isinstance(artifact_paths, dict):
+        for key, ext in (("jsonl", ".jsonl"),
+                         ("sidecar", ".meta.json"),
+                         ("verdict", ".verdict.yaml")):
+            recorded = artifact_paths.get(key)
+            if not isinstance(recorded, str) or not recorded:
+                continue  # schema validation already covers missing/non-str
+            recorded_basename = recorded.rsplit("/", 1)[-1]
+            bare = _bare_run_id_from_basename(recorded_basename, ext)
+            if bare is None:
+                findings.append(LintError("B7",
+                    f"entry.artifact_paths.{key}={recorded!r} basename does not end with {ext!r}",
+                    location))
+            elif bare != canonical:
+                findings.append(LintError("B7",
+                    f"entry.artifact_paths.{key}={recorded!r} basename stem={bare!r} "
+                    f"!= canonical run_id={canonical!r} (artifact-paths forgery seam)",
+                    location))
     return findings
 
 
@@ -1612,8 +1639,24 @@ def _with_location(f: LintError, location: str) -> LintError:
 # ---------------------------------------------------------------------------
 
 
+class _ExUsageParser(argparse.ArgumentParser):
+    """ArgumentParser subclass enforcing the EX_USAGE=64 contract.
+
+    Codex round 4 P3 closure: stock argparse calls sys.exit(2) on any
+    parser-level failure (invalid --mode value, unknown option, missing
+    required arg). The CLI contract documented at the top of this module
+    promises 64 EX_USAGE for every bad-CLI-arg case. Override .error() so
+    the exit code matches the contract.
+    """
+
+    def error(self, message: str) -> None:  # type: ignore[override]
+        self.print_usage(sys.stderr)
+        print(f"{self.prog}: error: {message}", file=sys.stderr)
+        sys.exit(64)
+
+
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
+    p = _ExUsageParser(
         description="Lint audit-artifact contract per ARS v3.6.7 §3.7 invariants.")
     p.add_argument("--mode", choices=("proposal", "persisted", "jsonl-stream"))
     p.add_argument("--example-validation-harness", action="store_true",
