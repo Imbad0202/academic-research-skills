@@ -1350,7 +1350,16 @@ def run_checks(ctx: LintContext) -> list[LintError]:
     findings.extend(check_a5(ctx.verdict, location=verdict_loc))
     findings.extend(check_a6(ctx.verdict, location=verdict_loc))
     if ctx.jsonl_events is not None:
-        findings.extend(check_a7(ctx.jsonl_events, location=str(ctx.jsonl_path or "<jsonl>")))
+        # Codex round 6 P2 closure: A7 tool-event pairing is suspended for
+        # AUDIT_FAILED bundles. A failed audit's stream is legitimately
+        # truncated — codex may be killed after an item.started but before
+        # the matching item.completed — so unmatched starts are expected
+        # evidence, not pairing violations. §3.4 suspends Layer 3 cross-
+        # file rules for AUDIT_FAILED; the symmetric Layer 2 suspension
+        # for stream-shape (round 3 closure) applies to A7 too.
+        v_status_for_a7 = (ctx.verdict or {}).get("verdict_status")
+        if v_status_for_a7 != "AUDIT_FAILED":
+            findings.extend(check_a7(ctx.jsonl_events, location=str(ctx.jsonl_path or "<jsonl>")))
         # Codex round 3 P1 closure: A7 alone does not reject a JSONL that
         # ends after `thread.started + turn.started` (no item.started, so
         # no pairing violation). Phase 6.1's parse_audit_verdict.validate_
@@ -1935,14 +1944,18 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:
             print(f"ERROR: cannot load sidecar {sidecar}: {e}", file=sys.stderr)
             return 2
-        # Schema-validate the sidecar (codex round 1 P2: the verdict /
-        # sidecar / jsonl-row schemas were silently bypassed in CLI modes
-        # — only entry was validated. Defense-in-depth requires every
-        # loaded artifact to clear its own schema before B/C/D rules
-        # consume it).
+        # Codex round 6 P2 closure: a non-object companion artifact (e.g.,
+        # `[]` parsed as YAML) records a SCHEMA finding via
+        # validate_against_schema but `.get(...)` calls in cross-field
+        # checks would still raise AttributeError before the finding
+        # renders. Coerce non-dict to None so cross-field rules see "no
+        # companion" and skip cleanly; the SCHEMA finding still surfaces
+        # the rejection and exit code remains 1.
         schema_findings.extend(
             validate_against_schema(sidecar_data, SIDECAR_SCHEMA_PATH)
         )
+        if not isinstance(sidecar_data, dict):
+            sidecar_data = None
 
     verdict_data = None
     if verdict is not None and verdict.exists():
@@ -1954,6 +1967,8 @@ def main(argv: list[str] | None = None) -> int:
         schema_findings.extend(
             validate_against_schema(verdict_data, VERDICT_SCHEMA_PATH)
         )
+        if not isinstance(verdict_data, dict):
+            verdict_data = None
 
     events = None
     if jsonl is not None and jsonl.exists():

@@ -1530,6 +1530,103 @@ class TestCLI:
         assert result.returncode == 1, result.stdout + result.stderr
         assert "L2-3/L2-4" in result.stdout or "stream-shape" in result.stdout, result.stdout
 
+    def test_audit_failed_skips_a7_pairing(self, tmp_path: Path, capsys):
+        # Codex round 6 P2: AUDIT_FAILED bundles legitimately have truncated
+        # streams. A7 pairing must be suspended for them, mirroring the
+        # round-3 stream-shape suspension and §3.4 Layer 3 suspension.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        # AUDIT_FAILED jsonl_thread_id is allowed to be empty per §3.4
+        sidecar["stream"]["jsonl_thread_id"] = ""
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        # Entry needs to be a proposal (AUDIT_FAILED is proposal-only)
+        # — switch CLI mode to proposal for this test.
+        entry["verdict"].pop("verified_at", None)
+        entry["verdict"].pop("verified_by", None)
+        entry["verdict"]["status"] = "AUDIT_FAILED"
+        entry["verdict"]["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        entry["verdict"]["failure_reason"] = "synthetic — codex killed"
+        verdict = make_valid_verdict_file_minor()
+        verdict["verdict_status"] = "AUDIT_FAILED"
+        verdict["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
+        verdict["findings"] = []
+        verdict["failure_reason"] = "synthetic — codex killed"
+        # Truncated stream with unmatched item.started — would fail A7 if
+        # pairing weren't suspended for AUDIT_FAILED
+        truncated_events = [
+            {"type": "thread.started", "thread_id": VALID_THREAD_ID},
+            {"type": "turn.started"},
+            {"type": "item.started",
+             "item": {"id": "killed_tool", "type": "command_execution"}},
+        ]
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in truncated_events) + "\n")
+        rc = main([
+            "--mode", "proposal",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        # No A7 finding should appear — AUDIT_FAILED suspends pairing
+        assert "A7" not in captured.out, (
+            f"AUDIT_FAILED bundle should not produce A7 findings — got: {captured.out}"
+        )
+
+    def test_non_object_sidecar_no_traceback(self, tmp_path: Path, capsys):
+        # Codex round 6 P2: a non-object sidecar must surface as SCHEMA
+        # finding without crashing cross-field checks.
+        run_id = VALID_RUN_ID
+        entry = make_valid_persisted_entry_minor()
+        verdict = make_valid_verdict_file_minor()
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text("[]")  # non-object
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "SCHEMA" in captured.out, captured.out
+        # No traceback in stderr
+        assert "AttributeError" not in captured.err
+        assert "Traceback" not in captured.err
+
+    def test_non_object_verdict_no_traceback(self, tmp_path: Path, capsys):
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        (tmp_path / f"{run_id}.verdict.yaml").write_text("[]")  # non-object
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "SCHEMA" in captured.out, captured.out
+        assert "AttributeError" not in captured.err
+        assert "Traceback" not in captured.err
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.
