@@ -1434,6 +1434,102 @@ class TestCLI:
             f"stderr: {result.stderr}"
         )
 
+    def test_persisted_ack_without_prior_rejected(self, tmp_path: Path, capsys):
+        # Codex round 5 P1: a persisted ack entry whose copied fields don't
+        # match any prior MATERIAL entry must be rejected, not silently
+        # skipped. Previously `prior is None` skipped check_c3 entirely.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        # Build a MATERIAL ack entry with NO matching prior in the passport.
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        entry["verdict"]["status"] = "MATERIAL"
+        entry["verdict"]["finding_counts"] = {"p1": 1, "p2": 0, "p3": 0}
+        entry["acknowledgement"] = {
+            "finding_ids": ["F-001"],
+            "acknowledged_at": entry["verdict"]["verified_at"],
+            "acknowledged_by": "user",
+        }
+        verdict = make_valid_verdict_file_minor()
+        verdict["verdict_status"] = "MATERIAL"
+        verdict["finding_counts"] = {"p1": 1, "p2": 0, "p3": 0}
+        verdict["findings"] = [{
+            "id": "F-001", "severity": "P1", "dimension": "3.1",
+            "file": "x.md", "line": 1,
+            "description": "x", "suggested_fix": "y",
+        }]
+        events = make_valid_jsonl_events_no_tool()
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in events) + "\n")
+        # Empty passport — no prior MATERIAL entry to copy from
+        passport_path = tmp_path / "passport.yaml"
+        passport_path.write_text(_yaml.safe_dump({"audit_artifact": []}))
+        rc = main([
+            "--mode", "persisted",
+            "--output-dir", str(tmp_path),
+            "--run-id", run_id,
+            "--passport-path", str(passport_path),
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1, captured.out
+        assert "C3" in captured.out
+        assert "no prior MATERIAL entry" in captured.out
+
+    def test_non_dict_entry_returns_2(self, tmp_path: Path, capsys):
+        # Codex round 5 traceback closure: a non-object entry payload (e.g., `[]`)
+        # must surface as a clean error, not an AttributeError traceback.
+        entry_path = tmp_path / "entry.json"
+        entry_path.write_text("[]")
+        rc = main([
+            "--mode", "proposal",
+            "--entry", str(entry_path),
+            "--sidecar", str(tmp_path / "no.meta.json"),
+            "--verdict", str(tmp_path / "no.verdict.yaml"),
+            "--jsonl", str(tmp_path / "no.jsonl"),
+            "--repo-root", str(tmp_path),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 2
+        assert "is not a JSON object" in captured.err
+
+    def test_stream_shape_runs_via_importlib(self, tmp_path: Path, capsys):
+        # Codex round 5 P2: stream-shape gate must work via importlib, not
+        # depend on scripts/ being on sys.path. Import this module under a
+        # fresh `scripts` package qualifier and run main from there.
+        run_id = VALID_RUN_ID
+        sidecar = make_valid_sidecar()
+        entry = make_valid_persisted_entry_minor()
+        entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
+        verdict = make_valid_verdict_file_minor()  # MINOR — non-AUDIT_FAILED
+        truncated_events = [
+            {"type": "thread.started", "thread_id": VALID_THREAD_ID},
+            {"type": "turn.started"},
+        ]
+        (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
+        (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
+        import yaml as _yaml
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(truncated_events[0]))  # placeholder
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
+        (tmp_path / f"{run_id}.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in truncated_events) + "\n")
+        # Run via subprocess so we exercise the actual import path the gate
+        # uses (importlib loads parse_audit_verdict by file path).
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
+             "--mode", "persisted",
+             "--output-dir", str(tmp_path),
+             "--run-id", run_id,
+             "--repo-root", str(tmp_path)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 1, result.stdout + result.stderr
+        assert "L2-3/L2-4" in result.stdout or "stream-shape" in result.stdout, result.stdout
+
     def test_persisted_schema_invalid_sidecar_returns_1(self, tmp_path: Path, capsys):
         # Codex round 1 P2: schema-invalid sidecar must be rejected even when
         # cross-field rules don't cover the malformed field.

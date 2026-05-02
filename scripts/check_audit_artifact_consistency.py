@@ -88,6 +88,36 @@ VERDICT_SCHEMA_PATH = AUDIT_SCHEMAS / "audit_verdict.schema.json"
 AUDIT_TEMPLATE_PATH = "shared/templates/codex_audit_multifile_template.md"
 
 
+def _load_stream_shape_validator():
+    """Load parse_audit_verdict.validate_stream_shape + ParseError by file path.
+
+    Codex round 5 P2 closure: a bare `from parse_audit_verdict import …`
+    only resolves when scripts/ is on sys.path (typical for the CLI
+    invocation `python scripts/check_audit_artifact_consistency.py …`).
+    A package-style invocation `python -m
+    scripts.check_audit_artifact_consistency` or import-from-package
+    usage leaves scripts/ off sys.path, the import fails, and the
+    fallback silently disabled the L2-3/L2-4 stream-shape gate. Loading
+    by absolute file path via importlib makes the gate work in every
+    invocation context. The module is co-located by repo convention; if
+    it ever moves, this helper raises rather than degrading the gate.
+    """
+    import importlib.util as _ilu
+
+    here = Path(__file__).resolve().parent
+    target = here / "parse_audit_verdict.py"
+    spec = _ilu.spec_from_file_location("parse_audit_verdict", target)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(
+            f"could not load parse_audit_verdict from {target}; "
+            "Phase 6.1 dependency missing — Phase 6.3 gate cannot run "
+            "without the stream-shape validator"
+        )
+    module = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.validate_stream_shape, module.ParseError
+
+
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -1335,27 +1365,24 @@ def run_checks(ctx: LintContext) -> list[LintError]:
         # rules for them, and we apply the same suspension here.
         v_status = (ctx.verdict or {}).get("verdict_status")
         if v_status != "AUDIT_FAILED":
+            # Codex round 5 P2 closure: load parse_audit_verdict by file path
+            # via importlib so the stream-shape gate runs regardless of how
+            # this checker is invoked (CLI on sys.path, `python -m
+            # scripts.check_audit_artifact_consistency`, or imported as
+            # `scripts.check_audit_artifact_consistency` from elsewhere).
+            # Silent ImportError degrade was hiding the gate from package
+            # callers and letting truncated streams pass.
+            validate_stream_shape, ParseError = _load_stream_shape_validator()
             try:
-                from parse_audit_verdict import validate_stream_shape, ParseError
-            except ImportError:
-                # parse_audit_verdict.py lives in scripts/ alongside this
-                # file; ensure it's importable when scripts/ is on sys.path
-                # (the canonical invocation path) but degrade gracefully
-                # otherwise — A7 alone still catches the most common
-                # forgery shapes.
-                validate_stream_shape = None  # type: ignore
-                ParseError = Exception  # type: ignore
-            if validate_stream_shape is not None:
-                try:
-                    validate_stream_shape(ctx.jsonl_events)
-                except ParseError as e:
-                    findings.append(LintError(
-                        "L2-3/L2-4",
-                        f"jsonl stream-shape rejected: {e} — non-AUDIT_FAILED "
-                        f"verdict requires a complete stream (thread.started → "
-                        f"turn.started → … → turn.completed with valid usage)",
-                        str(ctx.jsonl_path or "<jsonl>"),
-                    ))
+                validate_stream_shape(ctx.jsonl_events)
+            except ParseError as e:
+                findings.append(LintError(
+                    "L2-3/L2-4",
+                    f"jsonl stream-shape rejected: {e} — non-AUDIT_FAILED "
+                    f"verdict requires a complete stream (thread.started → "
+                    f"turn.started → … → turn.completed with valid usage)",
+                    str(ctx.jsonl_path or "<jsonl>"),
+                ))
 
     # Family B
     findings.extend(check_b1(ctx.sidecar, ctx.jsonl_events, ctx.verdict, location=sidecar_loc))
@@ -1380,7 +1407,26 @@ def run_checks(ctx: LintContext) -> list[LintError]:
         if "acknowledgement" in ctx.entry:
             prior = _find_latest_material_entry_for_ack(
                 ctx.passport_audit_artifacts, ctx.entry)
-            if prior is not None:
+            if prior is None:
+                # Codex round 5 P1 closure: an ack entry without a prior
+                # MATERIAL entry of the same (stage, agent, deliverable_sha,
+                # run_id) tuple violates C3's copy contract by construction
+                # — there is nothing to copy from. A standalone ack or one
+                # whose copied fields were altered to break the tuple match
+                # would silently pass C3 if `prior is None` skipped the
+                # check. Surface as C3 finding.
+                findings.append(LintError(
+                    "C3",
+                    f"acknowledgement entry has no prior MATERIAL entry to copy "
+                    f"from: no passport entry matches "
+                    f"(stage={ctx.entry.get('stage')!r}, "
+                    f"agent={ctx.entry.get('agent')!r}, "
+                    f"deliverable_sha={ctx.entry.get('deliverable_sha')!r}, "
+                    f"run_id={ctx.entry.get('run_id')!r}) — §5.4 ack mechanism "
+                    f"requires the prior MATERIAL entry to exist before append",
+                    entry_loc,
+                ))
+            else:
                 findings.extend(check_c3(ctx.entry, prior, location=entry_loc))
     findings.extend(check_c4(ctx.entry, ctx.sidecar, location=entry_loc))
 
@@ -1783,6 +1829,21 @@ def main(argv: list[str] | None = None) -> int:
         entry_data = json.loads(entry.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         print(f"ERROR: cannot load entry {entry}: {e}", file=sys.stderr)
+        return 2
+
+    # Codex round 5 traceback closure: a non-object entry payload (caller
+    # passed `[]` / a scalar / null) would crash check_e3_e4 with
+    # AttributeError on `entry.get(...)`. Surface as a SCHEMA finding
+    # instead — schema validation below would also catch it, but bailing
+    # early avoids the cross-field rules running on a non-dict and
+    # producing tracebacks before the schema finding is rendered.
+    if not isinstance(entry_data, dict):
+        print(
+            f"ERROR: entry {entry} is not a JSON object "
+            f"(got {type(entry_data).__name__}); audit_artifact_entry must be "
+            "an object per audit_artifact_entry.schema.json",
+            file=sys.stderr,
+        )
         return 2
 
     # Schema validation on the entry first (defense in depth — the oneOf
