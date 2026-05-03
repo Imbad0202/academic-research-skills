@@ -137,16 +137,21 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
 
     # SC-5 measurement_procedure.reviewer_must_output_before_paper missing required outputs.
     # Schema enforces minItems:2 but cannot constrain which specific strings are present;
-    # SC-5 covers that semantic gap. mp hoisted here for SC-9 (Task 11) reuse.
+    # SC-5 covers that semantic gap. Reviewer-only per v3.6.6 §7.1: writer / evaluator
+    # contracts intentionally omit measurement_procedure (§3.3.1 reviewer-conditional),
+    # so firing SC-5 on every clean generator template is noise. Hoist mp here too so SC-9
+    # below can also detect the reviewer-mode field path.
+    mode = contract.get("mode", "")
     mp = contract.get("measurement_procedure", {})
-    outputs = mp.get("reviewer_must_output_before_paper", [])
-    required_outputs = {"contract_paraphrase", "scoring_plan"}
-    missing = required_outputs - set(outputs)
-    if missing:
-        warnings.append(
-            f"SC-5 WARNING: hard-gate protocol requires both 'contract_paraphrase' "
-            f"and 'scoring_plan' in reviewer_must_output_before_paper; missing: {sorted(missing)}"
-        )
+    if mode.startswith("reviewer_"):
+        outputs = mp.get("reviewer_must_output_before_paper", [])
+        required_outputs = {"contract_paraphrase", "scoring_plan"}
+        missing = required_outputs - set(outputs)
+        if missing:
+            warnings.append(
+                f"SC-5 WARNING: hard-gate protocol requires both 'contract_paraphrase' "
+                f"and 'scoring_plan' in reviewer_must_output_before_paper; missing: {sorted(missing)}"
+            )
 
     # SC-7 conflicting failure-condition actions at same severity.
     # Skip entries with missing severity — schema validation catches those upstream.
@@ -164,12 +169,35 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
                 "precedence tie-breaking falls back to ordinal position"
             )
 
-    # SC-9 impossible paraphrase_minimum_dimensions
-    pmd = mp.get("paraphrase_minimum_dimensions")
+    # SC-9 impossible paraphrase_minimum_dimensions.
+    # The paraphrase-count gate is mode-conditional per v3.6.6 §7.1: each mode reads its
+    # own field. Reviewer reads mp.paraphrase_minimum_dimensions; writer reads
+    # pre_commitment_artifacts.acceptance_criteria_paraphrase.minimum_dimensions;
+    # evaluator reads disagreement_handling.paraphrase_minimum_dimensions. The lint
+    # rule (paraphrase count must not exceed dimension count) is identical across
+    # all three modes — only the source field changes.
+    if mode.startswith("reviewer_"):
+        pmd = mp.get("paraphrase_minimum_dimensions")
+        pmd_source = "measurement_procedure.paraphrase_minimum_dimensions"
+        phase_label = "Phase 1"
+    elif mode == "writer_full":
+        pmd = (contract.get("pre_commitment_artifacts", {})
+               .get("acceptance_criteria_paraphrase", {})
+               .get("minimum_dimensions"))
+        pmd_source = "pre_commitment_artifacts.acceptance_criteria_paraphrase.minimum_dimensions"
+        phase_label = "Phase 4a"
+    elif mode == "evaluator_full":
+        pmd = contract.get("disagreement_handling", {}).get("paraphrase_minimum_dimensions")
+        pmd_source = "disagreement_handling.paraphrase_minimum_dimensions"
+        phase_label = "Phase 6a"
+    else:
+        pmd = None
+        pmd_source = None
+        phase_label = None
     if isinstance(pmd, int) and pmd > len(dims):
         warnings.append(
-            f"SC-9 WARNING: paraphrase_minimum_dimensions={pmd} exceeds dimension "
-            f"count {len(dims)}; Phase 1 lint will always fail"
+            f"SC-9 WARNING: {pmd_source}={pmd} exceeds dimension "
+            f"count {len(dims)}; {phase_label} lint will always fail"
         )
 
     # SC-10 unreferenced mandatory/high dimension.
@@ -202,20 +230,22 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
             "its score cannot influence the editorial decision"
         )
 
-    # SC-11 panel_size sanity
-    ps = contract.get("panel_size")
-    mode = contract.get("mode")
-    if ps == 1:
-        warnings.append(
-            "SC-11 WARNING: panel_size=1 means no cross-reviewer aggregation; "
-            "cross_reviewer_quantifier values collapse to pass-through"
-        )
-    expected_panel = {"reviewer_full": 5, "reviewer_methodology_focus": 2}
-    if mode in expected_panel and ps != expected_panel[mode]:
-        warnings.append(
-            f"SC-11 WARNING: panel_size={ps} inconsistent with mode={mode}; "
-            f"expected {expected_panel[mode]}"
-        )
+    # SC-11 panel_size sanity. Reviewer-only per v3.6.6 §7.1: writer / evaluator
+    # contracts intentionally omit panel_size (§3.3.5 reviewer-conditional). Each runs a
+    # single agent so panel cardinality has no semantic anchor in those modes.
+    if mode.startswith("reviewer_"):
+        ps = contract.get("panel_size")
+        if ps == 1:
+            warnings.append(
+                "SC-11 WARNING: panel_size=1 means no cross-reviewer aggregation; "
+                "cross_reviewer_quantifier values collapse to pass-through"
+            )
+        expected_panel = {"reviewer_full": 5, "reviewer_methodology_focus": 2}
+        if mode in expected_panel and ps != expected_panel[mode]:
+            warnings.append(
+                f"SC-11 WARNING: panel_size={ps} inconsistent with mode={mode}; "
+                f"expected {expected_panel[mode]}"
+            )
 
     return warnings
 
@@ -257,7 +287,7 @@ def main() -> int:
     for w in warn_suspicious(contract, args.ars_version):
         print(w, file=sys.stderr)
 
-    print(f"OK: {args.contract} is a valid sprint_contract (Schema 13)")
+    print(f"OK: {args.contract} is a valid sprint_contract (Schema 13.1)")
     return 0
 
 

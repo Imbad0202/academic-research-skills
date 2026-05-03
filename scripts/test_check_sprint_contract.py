@@ -1,4 +1,4 @@
-"""Unit tests for check_sprint_contract.py (Schema 13 validator)."""
+"""Unit tests for check_sprint_contract.py (Schema 13.1 validator)."""
 from __future__ import annotations
 
 import json
@@ -9,13 +9,18 @@ from tempfile import TemporaryDirectory
 from scripts._test_helpers import run_script
 
 SCRIPT = Path(__file__).resolve().parent / "check_sprint_contract.py"
-# SCHEMA / TEMPLATE_FULL / TEMPLATE_METHOD reserved for Tasks 15-16 (shipped-template assertions).
 SCHEMA = Path(__file__).resolve().parent.parent / "shared" / "sprint_contract.schema.json"
 TEMPLATE_FULL = (
     Path(__file__).resolve().parent.parent / "shared" / "contracts" / "reviewer" / "full.json"
 )
 TEMPLATE_METHOD = (
     Path(__file__).resolve().parent.parent / "shared" / "contracts" / "reviewer" / "methodology_focus.json"
+)
+TEMPLATE_WRITER_FULL = (
+    Path(__file__).resolve().parent.parent / "shared" / "contracts" / "writer" / "full.json"
+)
+TEMPLATE_EVALUATOR_FULL = (
+    Path(__file__).resolve().parent.parent / "shared" / "contracts" / "evaluator" / "full.json"
 )
 
 
@@ -603,6 +608,180 @@ class TestTemplateSemantics(unittest.TestCase):
         winning = max(fired, key=lambda x: x[0])
         self.assertEqual(winning[1], "F1")
         self.assertEqual(winning[2], "editorial_decision=reject_or_major_revision")
+
+
+def _valid_writer_full_contract() -> dict:
+    """Returns a fresh valid writer_full contract, loaded from the shipped template
+    so structural drift between the test and the live template surfaces as a test
+    failure rather than test-only divergence."""
+    return _load_template(TEMPLATE_WRITER_FULL)
+
+
+def _valid_evaluator_full_contract() -> dict:
+    """Returns a fresh valid evaluator_full contract, loaded from the shipped
+    template (same rationale as _valid_writer_full_contract)."""
+    return _load_template(TEMPLATE_EVALUATOR_FULL)
+
+
+class TestSchema131WriterEvaluatorPositive(unittest.TestCase):
+    """§7.3 schema-level positive fixtures: shipped writer/evaluator templates
+    must validate cleanly under Schema 13.1 + produce zero soft warnings."""
+
+    def test_shipped_writer_full_passes_schema_and_invariants(self):
+        from scripts.check_sprint_contract import validate, check_structural_invariants
+        c = _valid_writer_full_contract()
+        self.assertEqual(validate(c), [])
+        self.assertEqual(check_structural_invariants(c), [])
+
+    def test_shipped_writer_full_produces_zero_soft_warnings(self):
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_writer_full_contract()
+        self.assertEqual(warn_suspicious(c, "v3.6.6"), [])
+
+    def test_shipped_evaluator_full_passes_schema_and_invariants(self):
+        from scripts.check_sprint_contract import validate, check_structural_invariants
+        c = _valid_evaluator_full_contract()
+        self.assertEqual(validate(c), [])
+        self.assertEqual(check_structural_invariants(c), [])
+
+    def test_shipped_evaluator_full_produces_zero_soft_warnings(self):
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_evaluator_full_contract()
+        self.assertEqual(warn_suspicious(c, "v3.6.6"), [])
+
+
+class TestSchema131NegativeBranches(unittest.TestCase):
+    """§7.3 schema-level negative fixtures exercising the five v3.6.6 schema
+    branches the validator hard-fails (branches 4 / 5 / 6 / 11 / 12 per §3.5).
+    Cross-mode field leakage (R1) is intentionally NOT tested as a hard-fail
+    here per §7.1 settled decision; v3.7.x not-clause hardening covers that.
+    """
+
+    def test_branch_11_writer_full_missing_pre_commitment_artifacts_fails(self):
+        from scripts.check_sprint_contract import validate
+        c = _valid_writer_full_contract()
+        del c["pre_commitment_artifacts"]
+        errors = validate(c)
+        self.assertTrue(any("pre_commitment_artifacts" in e for e in errors))
+
+    def test_branch_12_evaluator_full_missing_disagreement_handling_fails(self):
+        from scripts.check_sprint_contract import validate
+        c = _valid_evaluator_full_contract()
+        del c["disagreement_handling"]
+        errors = validate(c)
+        self.assertTrue(any("disagreement_handling" in e for e in errors))
+
+    def test_branch_5_writer_full_action_pinned_to_writer_decision_enum(self):
+        """writer_full pinning failure_conditions[].action to an editorial_decision=*
+        value (the reviewer enum) must fail under allOf branch 5 + branch 8 (F0)."""
+        from scripts.check_sprint_contract import validate
+        c = _valid_writer_full_contract()
+        for fc in c["failure_conditions"]:
+            if fc["condition_id"] == "F1":
+                fc["action"] = "editorial_decision=reject_or_major_revision"
+                break
+        errors = validate(c)
+        self.assertTrue(any("action" in e or "enum" in e.lower() for e in errors))
+
+    def test_branch_6_evaluator_full_action_pinned_to_evaluator_decision_enum(self):
+        """evaluator_full pinning failure_conditions[].action to a writer_decision=*
+        value must fail under allOf branch 6 + branch 9 (F0)."""
+        from scripts.check_sprint_contract import validate
+        c = _valid_evaluator_full_contract()
+        for fc in c["failure_conditions"]:
+            if fc["condition_id"] == "F1":
+                fc["action"] = "writer_decision=revise_in_phase_4b"
+                break
+        errors = validate(c)
+        self.assertTrue(any("action" in e or "enum" in e.lower() for e in errors))
+
+    def test_branch_4_reviewer_action_mis_pinned_to_generator_enum_fails(self):
+        """reviewer_full pinning failure_conditions[].action to a writer_decision=* /
+        evaluator_decision=* value must fail under allOf branch 4. Completes the
+        cross-mode action-enum triplet coverage."""
+        from scripts.check_sprint_contract import validate
+        c = _valid_reviewer_full_contract()
+        for fc in c["failure_conditions"]:
+            if fc["condition_id"] == "F1":
+                fc["action"] = "writer_decision=revise_in_phase_4b"
+                break
+        errors = validate(c)
+        self.assertTrue(any("action" in e or "enum" in e.lower() for e in errors))
+
+
+class TestSchema131ReviewerZeroTouch(unittest.TestCase):
+    """§3.6 backward-compat proof: existing reviewer contracts validate identically
+    under Schema 13.1. These two test names are explicitly committed by §3.6."""
+
+    def test_existing_reviewer_contracts_still_valid_under_13_1(self):
+        """Loads both shipped reviewer templates against Schema 13.1 and asserts
+        validation success without modification. §3.6 zero-touch verification."""
+        from scripts.check_sprint_contract import validate, check_structural_invariants
+        for path in (TEMPLATE_FULL, TEMPLATE_METHOD):
+            with self.subTest(template=path.name):
+                c = _load_template(path)
+                self.assertEqual(validate(c), [])
+                self.assertEqual(check_structural_invariants(c), [])
+
+    def test_byte_equivalent_validation_for_reviewer_contracts(self):
+        """Asserts that running validate() on each shipped reviewer template under
+        Schema 13.1 produces an empty error list — the structural equivalent of
+        diffing against the (now-superseded) Schema 13 result, which was also
+        empty for these templates. §3.6 promised this regression test."""
+        from scripts.check_sprint_contract import validate, warn_suspicious
+        for path in (TEMPLATE_FULL, TEMPLATE_METHOD):
+            with self.subTest(template=path.name):
+                c = _load_template(path)
+                self.assertEqual(validate(c), [])
+                self.assertEqual(warn_suspicious(c, "v3.6.6"), [])
+
+
+class TestSC5SC9SC11ModeGating(unittest.TestCase):
+    """§7.1 implementation requirement: SC-5 (measurement_procedure missing
+    canonical outputs), SC-9 (paraphrase_minimum_dimensions exceeds dim count),
+    and SC-11 (panel_size sanity) are reviewer-mode-specific. They must NOT
+    fire on clean writer/evaluator templates that intentionally omit the
+    reviewer-only fields per §3.3.1 / §3.3.5. Mode-agnostic warnings (SC-1 /
+    SC-2 / SC-3 / SC-4 / SC-7 / SC-10) continue to fire across all modes."""
+
+    def test_sc5_does_not_fire_on_writer_full(self):
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_writer_full_contract()
+        self.assertFalse(any("SC-5" in w for w in warn_suspicious(c, "v3.6.6")))
+
+    def test_sc5_does_not_fire_on_evaluator_full(self):
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_evaluator_full_contract()
+        self.assertFalse(any("SC-5" in w for w in warn_suspicious(c, "v3.6.6")))
+
+    def test_sc11_does_not_fire_on_writer_full(self):
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_writer_full_contract()
+        self.assertFalse(any("SC-11" in w for w in warn_suspicious(c, "v3.6.6")))
+
+    def test_sc11_does_not_fire_on_evaluator_full(self):
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_evaluator_full_contract()
+        self.assertFalse(any("SC-11" in w for w in warn_suspicious(c, "v3.6.6")))
+
+    def test_sc9_writer_full_reads_pre_commitment_artifacts_path(self):
+        """SC-9 for writer_full should read pre_commitment_artifacts.acceptance_criteria_paraphrase.minimum_dimensions
+        and fire when that integer exceeds dim count; not read measurement_procedure
+        (which writer_full does not carry)."""
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_writer_full_contract()
+        # 7 writer dimensions D1-D7 in shipped template; set minimum_dimensions to 99
+        c["pre_commitment_artifacts"]["acceptance_criteria_paraphrase"]["minimum_dimensions"] = 99
+        warnings = warn_suspicious(c, "v3.6.6")
+        self.assertTrue(any("SC-9" in w and "pre_commitment_artifacts" in w for w in warnings))
+
+    def test_sc9_evaluator_full_reads_disagreement_handling_path(self):
+        """SC-9 for evaluator_full should read disagreement_handling.paraphrase_minimum_dimensions."""
+        from scripts.check_sprint_contract import warn_suspicious
+        c = _valid_evaluator_full_contract()
+        c["disagreement_handling"]["paraphrase_minimum_dimensions"] = 99
+        warnings = warn_suspicious(c, "v3.6.6")
+        self.assertTrue(any("SC-9" in w and "disagreement_handling" in w for w in warnings))
 
 
 if __name__ == "__main__":
