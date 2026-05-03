@@ -4,6 +4,140 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.6.8] - 2026-05-03
+
+> **Naming note**: this release ships the **v3.6.6 generator-evaluator contract**
+> spec (`docs/design/2026-04-27-ars-v3.6.6-generator-evaluator-contract-design.md`)
+> and its implementation. The v3.6.6 work landed after v3.6.7 due to project
+> sequencing; the design doc retains the v3.6.6 internal naming for the
+> contract gate version (`writer_full` / `evaluator_full` mode, Schema 13.1,
+> `pre_commitment_artifacts` + `disagreement_handling` schema fields), while
+> the suite release is tagged v3.6.8 to keep the CHANGELOG monotonic.
+
+### Added
+
+- **Schema 13.1 generator-evaluator contract gate** for `academic-paper full`
+  mode (`shared/sprint_contract.schema.json`, design doc §3): two new `mode`
+  enum values (`writer_full` + `evaluator_full`); two new optional top-level
+  fields (`pre_commitment_artifacts` writer-only with
+  `acceptance_criteria_paraphrase.minimum_dimensions`; `disagreement_handling`
+  evaluator-only with `paraphrase_minimum_dimensions` + `scoring_plan` +
+  `pre_commitment_check_protocol` + `disagreement_resolution`); 12 `allOf`
+  branches enforcing reviewer- / writer- / evaluator-conditional gates
+  (existing 2 + 10 new per design doc §3.5 table).
+- **Two new shipped contract templates**: `shared/contracts/writer/full.json`
+  (writer dimensions D1 section_completeness / D2 citation_density /
+  D3 argument_blueprint_fidelity / D4 total_word_count /
+  D5 per_section_word_count / D6 acknowledged_limitations /
+  D7 register_consistency; F-conditions F1/F4/F2/F3/F0; no `scoring_plan`)
+  and `shared/contracts/evaluator/full.json` (evaluator dimensions
+  D1 originality / D2 methodological_rigor / D3 evidence_sufficiency /
+  D4 argument_coherence / D5 writing_quality; F-conditions F1/F2/F3/F6/F4/F5/F0;
+  full `scoring_plan` + `disagreement_handling`). Templates already shipped on
+  the spec branch as design-time artefacts since 2026-04-28; this release
+  promotes them to live status atomically with the Schema 13.1 upgrade.
+- **Two-phase orchestration inside `academic-paper full` mode** (design doc §5):
+  Phase 4 splits into Phase 4a paper-blind writer pre-commitment + Phase 4b
+  paper-visible drafting + self-scoring. Phase 6 splits into Phase 6a
+  paper-blind evaluator pre-commitment + Phase 6b paper-visible scoring +
+  decision. Phase-numbered `<phase4a_output>` / `<phase6a_output>` data
+  delimiters mirror the v3.6.2 reviewer pattern. Lint counts: writer 3+4 /
+  evaluator 5+5 / reviewer 5+6 (reviewer surfaces remain zero-touch per §3.6).
+  `[GENERATOR-PHASE-ABORTED]` abort tag with 5% / three-month operational
+  monitor.
+- **`academic-paper/SKILL.md` `## v3.6.6 Generator-Evaluator Contract Protocol`
+  orchestration block** (101 lines): four-call structure with system-vs-user
+  content discipline, schema-vs-runtime emission distinction, per-phase lint,
+  abort handling, two valid Stage 3 entry paths (standard F0/F4 + exceptional
+  F5), cross-session resume scope. Plus a new `## Known limitations` section
+  carrying the graceful-degradation forward note (v3.6.7 candidate) + the
+  cross-session resume `pre_commitment_history[]` forward note (v3.6.7+
+  candidate) + in-pair Phase 6 evaluator vs external `academic-paper-reviewer`
+  tech debt.
+- **`academic-paper/agents/draft_writer_agent.md` + `peer_reviewer_agent.md`**
+  each gain a verbatim `## v3.6.6 Generator-Evaluator Contract Protocol`
+  section with the system-prompt sub-sections for Phase 4a/4b (writer) and
+  Phase 6a/6b (evaluator). The orchestrator includes the relevant sub-section
+  verbatim in the system prompt for the corresponding call; user content
+  carries contract JSON, paper metadata, delimiter blocks, and upstream
+  artefacts per the SKILL.md discipline.
+- **`scripts/check_sprint_contract.py` SC-* mode-gating audit** (per §7.1
+  implementation requirement): SC-5 (measurement_procedure canonical outputs)
+  and SC-11 (panel_size sanity) now mode-gated to
+  `mode.startswith("reviewer_")` so they do not noise on clean writer /
+  evaluator templates. SC-9 (paraphrase_minimum_dimensions exceeds dim count)
+  extended across all three mode families: reviewer reads
+  `mp.paraphrase_minimum_dimensions`, writer reads
+  `pre_commitment_artifacts.acceptance_criteria_paraphrase.minimum_dimensions`,
+  evaluator reads `disagreement_handling.paraphrase_minimum_dimensions`.
+  Mode-agnostic warnings (SC-1 baseline lag, SC-2 single dimension, SC-3 no
+  mandatory, SC-4 orphan dim ref, SC-7 conflicting actions, SC-10 unreferenced
+  mandatory/high) unchanged.
+- **17 new validator tests** (54 → 71 total): 4 writer/evaluator template
+  positive tests; 5 schema-branch negative tests covering branches 11 / 12 /
+  4 / 5 / 6 hard-fail (cross-mode field leakage intentionally NOT a v3.6.6
+  hard-fail per §7.1 R1 settled — v3.7.x `not`-clause hardening is the
+  long-term fix); 2 §3.6 reviewer regression tests
+  (`test_existing_reviewer_contracts_still_valid_under_13_1` +
+  `test_byte_equivalent_validation_for_reviewer_contracts`); 6 SC-5/SC-9/SC-11
+  mode-gating tests.
+- **`scripts/check_v3_6_6_ab_manifest.py`** (new) implements the §7.5 manifest
+  CI lint: schema-shape checks per §6.2 (top-level required fields with
+  declared types; per-paper required fields; paper_id uniqueness; aggregate
+  role counts 6+1; paper-A paper_type families 3 × 2; paper-A required
+  judge_output_baseline; paper-C must-have known_failure_mode +
+  failure_evidence; paper-C must-not-have judge / metrics fields);
+  path-existence checks (mode-conditional + populated-optional);
+  reverse-scan against fixture-orphans; exit-1-on-malformed-YAML mirrors
+  `check_sprint_contract.py` convention.
+- **`.github/workflows/spec-consistency.yml`** extends the "Validate sprint
+  contract templates" step to iterate writer + evaluator template directories
+  alongside the existing reviewer loop, and adds a new "Validate v3.6.6 A/B
+  fixture manifest" step running the new manifest CI lint script as an
+  additional step inside the existing `spec-consistency` job.
+- **`tests/fixtures/v3.6.6-ab/` A/B evidence fixture stub** (30 files):
+  manifest.yaml + README.md + 6 paper-A inputs/baseline + 1 paper-C
+  inputs/baseline + Stage 3 reviewer excerpt + 6 codex-judge baseline
+  placeholders. `manifest_lint_mode: spec_branch`, `fixture_version: 0.1.0`.
+  Each placeholder explains the expected populated content; real fixture data
+  (existing deep-research synthesis reports for paper-A; v3.6.5 session log
+  + Stage 3 reviewer excerpt for paper-C; codex gpt-5.5 + xhigh judge runs
+  against paper-A baseline) populates in follow-up commits before the
+  v3.6.6 implementation work fully completes.
+- **`academic-paper-reviewer/references/sprint_contract_protocol.md`
+  cross-reference** noting Schema 13.1 since v3.6.6 + pointing readers at
+  `academic-paper/SKILL.md` + design doc §5 for the parallel
+  generator-evaluator protocol. The reviewer protocol itself is byte-equivalent
+  across v3.6.2 → v3.6.8 (zero-touch promise per §3.6).
+
+### Changed
+
+- **Suite version**: v3.6.7 → v3.6.8 (per the naming note above; design doc
+  retains v3.6.6 for the contract gate version).
+- **`academic-pipeline` skill version** bumped from v3.6.7 to v3.6.8 in the
+  `.claude/CLAUDE.md` Skills Overview table.
+
+### Deferred
+
+- **Real fixture data populate** for `tests/fixtures/v3.6.6-ab/` (30
+  placeholders → real paper-A inputs + baseline + paper-C session log + codex
+  judge runs) lands in follow-up commits.
+- **Treatment runs** (writer Phase 4a/4b + evaluator Phase 6a/6b on the seven
+  fixtures), **codex judge against treatment**, and **metrics computation
+  + summary.md** require actual `academic-paper full` invocations + Semantic
+  Scholar API + codex CLI runs; deferred to follow-up commits before the
+  fixture-completeness work concludes.
+- **manifest_lint_mode flip** from `spec_branch` to `implementation_pr`
+  co-lands with the treatment population in the same atomic merge state per
+  §6.5 invariant 3.
+- **ROADMAP §3.6.4 description correction** per design doc §9.3 ("Extend
+  v3.6.2 sprint contract pattern to the existing `academic-paper`
+  writer/evaluator pair via contract-gated phase splits and Schema 13.1
+  conditional gates. No new agent files; existing `draft_writer_agent` and
+  `peer_reviewer_agent` gain per-phase sub-section instructions") lands in
+  the private ROADMAP.md (gitignored, lives in claude-memory-sync), not in
+  this repo PR.
+
 ## [3.6.7] - 2026-04-30
 
 ### Added

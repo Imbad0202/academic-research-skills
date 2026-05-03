@@ -9,7 +9,22 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.9.3 | 13-agent research team | full, quick, socratic, review, lit-review, fact-check, systematic-review |
 | `academic-paper` v3.1.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure |
 | `academic-paper-reviewer` v1.9.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.6.7 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.6.8 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.6.8 Key Additions
+
+> **Naming note**: this release ships the v3.6.6 generator-evaluator contract design (`docs/design/2026-04-27-ars-v3.6.6-generator-evaluator-contract-design.md`) and its implementation. The v3.6.6 spec/implementation work landed after v3.6.7 due to project sequencing (v3.6.7 downstream-agent pattern protection shipped first); the design doc retains the **v3.6.6 internal naming** for the contract gate version (`writer_full` / `evaluator_full` mode, Schema 13.1, `pre_commitment_artifacts` + `disagreement_handling` schema fields), while the suite release is tagged **v3.6.8** to keep the CHANGELOG monotonic.
+
+- **Schema 13.1 generator-evaluator contract gate** for `academic-paper full` mode. `shared/sprint_contract.schema.json` upgrades to Schema 13.1 with two new `mode` enum values (`writer_full` + `evaluator_full`), two new optional top-level fields (`pre_commitment_artifacts` writer-only, `disagreement_handling` evaluator-only), and 12 `allOf` branches enforcing reviewer-conditional / writer-conditional / evaluator-conditional gates. Existing reviewer contracts validate byte-equivalent under Schema 13.1 (§3.6 zero-touch promise).
+- **Two new shipped contract templates**: `shared/contracts/writer/full.json` (D1–D7 dimensions, F1/F4/F2/F3/F0 conditions, no `scoring_plan`) and `shared/contracts/evaluator/full.json` (D1–D5 dimensions, F1/F2/F3/F6/F4/F5/F0 conditions, full `scoring_plan` + `disagreement_handling`).
+- **Two-phase orchestration inside `academic-paper full` mode**: Phase 4 (writer drafting) splits into Phase 4a paper-blind pre-commitment + Phase 4b paper-visible drafting + self-scoring; Phase 6 (in-pair evaluator review) splits into Phase 6a paper-blind pre-commitment + Phase 6b paper-visible scoring + decision. Phase-numbered `<phase4a_output>` / `<phase6a_output>` data delimiters mirror the v3.6.2 reviewer pattern. Lint counts: writer 3+4 / evaluator 5+5 / reviewer 5+6 zero-touch. `[GENERATOR-PHASE-ABORTED]` abort tag with 5%/three-month operational monitor.
+- **`academic-paper/SKILL.md` `## v3.6.6 Generator-Evaluator Contract Protocol` orchestration block** (101 lines): four-call structure, system-vs-user content discipline, schema-vs-runtime emission distinction, per-phase lint, abort handling, two valid Stage 3 entry paths (standard F0/F4 + exceptional F5), cross-session resume scope. Plus `## Known limitations` section carrying graceful-degradation forward note + cross-session resume forward note + in-pair vs external reviewer tech debt.
+- **`draft_writer_agent.md` + `peer_reviewer_agent.md`** each gain a verbatim `## v3.6.6 Generator-Evaluator Contract Protocol` section with system-prompt sub-sections for Phase 4a/4b (writer) and Phase 6a/6b (evaluator).
+- **`scripts/check_sprint_contract.py` SC-* mode-gating audit**: SC-5 (measurement_procedure canonical outputs) and SC-11 (panel_size sanity) now mode-gated to `mode.startswith("reviewer_")`; SC-9 (paraphrase_minimum_dimensions exceeds dim count) extended across all three mode families with each mode reading its own field path. Mode-agnostic warnings (SC-1/2/3/4/7/10) unchanged.
+- **17 new validator tests** (54 → 71): 4 shipped writer/evaluator template positive tests, 5 schema-branch negative tests (branches 11/12/4/5/6 hard-fail; cross-mode field leakage intentionally NOT tested per §7.1 R1 settled), 2 §3.6 reviewer regression tests, 6 SC-5/SC-9/SC-11 mode-gating tests.
+- **`scripts/check_v3_6_6_ab_manifest.py` + workflow extension**: enforces §6.2 manifest schema + §6.5 git-tracked invariants on `tests/fixtures/v3.6.6-ab/manifest.yaml`. `.github/workflows/spec-consistency.yml` extends the sprint contract validation loop to iterate writer + evaluator template directories alongside the existing reviewer loop, plus runs the new manifest CI lint as an additional step.
+- **`tests/fixtures/v3.6.6-ab/` A/B evidence fixture stub** (30 files): manifest + README + 6 paper-A inputs/baseline + 1 paper-C inputs/baseline + Stage 3 reviewer excerpt + 6 codex-judge baseline placeholders. `manifest_lint_mode: spec_branch`, `fixture_version: 0.1.0`. Real fixture data populates in follow-up commits.
+- **`academic-paper-reviewer/references/sprint_contract_protocol.md` cross-reference** noting Schema 13.1 since v3.6.6 + pointing readers at `academic-paper/SKILL.md` + design doc §5 for the parallel generator-evaluator protocol.
 
 ## v3.6.7 Key Additions
 
@@ -132,7 +147,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.6.7 (per CHANGELOG.md)
-- **Last Updated**: 2026-04-30
+- **Suite version**: 3.6.8 (per CHANGELOG.md)
+- **Last Updated**: 2026-05-03
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

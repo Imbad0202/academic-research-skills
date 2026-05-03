@@ -12,23 +12,19 @@ Validator: `scripts/check_sprint_contract.py`.
 Spec: `docs/design/2026-04-23-ars-v3.6.2-sprint-contract-design.md`.
 Protocol: `academic-paper-reviewer/references/sprint_contract_protocol.md`.
 
-### Spec-branch status (v3.6.6 work in progress)
+### Shipped templates
 
-> **Active spec branch:** `spec/v3.6.6-generator-evaluator-contract` (not yet merged to `main`).
->
-> While that branch is active, the following directories carry **design-time artefacts** rather than live shipped templates:
->
-> - `writer/` — `writer_full` template, design-time only
-> - `evaluator/` — `evaluator_full` template, design-time only
->
-> Schema 13.1 has not yet landed in `shared/sprint_contract.schema.json`, so the current validator rejects these files by design (writer / evaluator modes not in the schema enum, `pre_commitment_artifacts` and `disagreement_handling` not yet declared, mode-specific action enums not yet expressible). Spec § 4.0 of `docs/design/2026-04-27-ars-v3.6.6-generator-evaluator-contract-design.md` covers the full sequencing rationale and lists each expected validator error against its closing §3 schema change.
->
-> Do not load these files as live contracts on the spec branch. Once the v3.6.6 implementation PR merges to `main`, both directories become live atomically with the Schema 13.1 upgrade, this notice is removed, and they are documented under "Shipped templates" alongside `reviewer/`.
-
-### Shipped templates (v3.6.2)
+**v3.6.2 (reviewer family)**:
 
 - `reviewer/full.json` — panel 5, 5 dimensions, 4 failure conditions
 - `reviewer/methodology_focus.json` — panel 2, 2 dimensions, 3 failure conditions
+
+**v3.6.6 / suite v3.6.8 (generator-evaluator family)**:
+
+- `writer/full.json` — single-agent writer, 7 dimensions (D1 section_completeness / D2 citation_density / D3 argument_blueprint_fidelity / D4 total_word_count / D5 per_section_word_count / D6 acknowledged_limitations / D7 register_consistency), 5 failure conditions (F1 / F4 / F2 / F3 / F0). No `scoring_plan` field.
+- `evaluator/full.json` — single-agent evaluator, 5 dimensions (D1 originality / D2 methodological_rigor / D3 evidence_sufficiency / D4 argument_coherence / D5 writing_quality), 7 failure conditions (F1 / F2 / F3 / F6 / F4 / F5 / F0). Carries full `scoring_plan` + `disagreement_handling`.
+
+Both writer + evaluator templates ship under Schema 13.1 (allOf branches 11/12 require `pre_commitment_artifacts` for `writer_full` and `disagreement_handling` for `evaluator_full`; branches 5/6 pin `failure_conditions[].action` to mode-specific enums; branches 8/9 pin F0 contains to the mode's accept variant). Orchestration block lives in `academic-paper/SKILL.md` § "v3.6.6 Generator-Evaluator Contract Protocol" + the writer/evaluator agent files.
 
 ### Reserved reviewer modes without shipped templates
 

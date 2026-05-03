@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.6.7-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.6.7)
+[![Version](https://img.shields.io/badge/version-v3.6.8-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.6.8)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -269,6 +269,20 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.6.8（2026-05-03）— Generator-Evaluator Contract Gate（v3.6.6 spec ship）
+
+> 命名說明：本次發行交付 **v3.6.6 generator-evaluator contract** spec 與實作。
+> v3.6.6 因專案排序晚於 v3.6.7 才落地；design doc 內仍保留 v3.6.6 內部命名作為
+> contract gate 版本，suite release 標 v3.6.8 維持 CHANGELOG 單調遞增。
+
+- **Schema 13.1**（`shared/sprint_contract.schema.json`）在 Schema 13 之上加兩個 `mode` enum 值（`writer_full` + `evaluator_full`）、兩個新 optional top-level 欄位（`pre_commitment_artifacts` writer-only、`disagreement_handling` evaluator-only）、12 條 `allOf` branch 強制 reviewer- / writer- / evaluator-conditional gate。既有 reviewer contract 在 Schema 13.1 下 byte-equivalent validate（§3.6 zero-touch promise）。
+- **兩個新 shipped contract template**：`shared/contracts/writer/full.json`（D1–D7、F1/F4/F2/F3/F0）+ `shared/contracts/evaluator/full.json`（D1–D5、F1/F2/F3/F6/F4/F5/F0）。Spec branch 上原是 design-time artefact，本次發行 atomically promote 為 live shipped。
+- **`academic-paper full` 模式內加入 two-phase orchestration**：Phase 4 拆成 Phase 4a（writer paper-blind 預先承諾）+ Phase 4b（writer paper-visible 撰稿 + 自評）；Phase 6 拆成 Phase 6a（evaluator paper-blind 預先承諾）+ Phase 6b（evaluator paper-visible 評分 + 決策）。phase-numbered `<phase4a_output>` / `<phase6a_output>` data delimiter 沿用 v3.6.2 reviewer pattern。Lint count summary：writer 3+4 / evaluator 5+5 / reviewer 5+6（reviewer 維持 zero-touch）。
+- **`academic-paper` SKILL + agent file 新增 `## v3.6.6 Generator-Evaluator Contract Protocol` 區塊**（SKILL.md 101 行 + `draft_writer_agent.md` 47 行 + `peer_reviewer_agent.md` 57 行）。SKILL.md 另加 `## Known limitations` 區塊承載 graceful-degradation + cross-session resume v3.6.7+ forward note。
+- **Validator 擴充**：`scripts/check_sprint_contract.py` 做 SC-* mode-gating audit（SC-5 + SC-11 reviewer-only；SC-9 跨三個 mode family 各讀對應欄位）。validator 單元測試從 54 條增加到 71 條（4 positive + 5 schema-branch negative + 2 §3.6 reviewer regression + 6 mode-gating）。
+- **Manifest CI lint**：`scripts/check_v3_6_6_ab_manifest.py` 強制 `tests/fixtures/v3.6.6-ab/manifest.yaml` 的 §6.2 manifest schema + §6.5 git-tracked invariant。`.github/workflows/spec-consistency.yml` 把 sprint contract validation loop 擴成同時跑 reviewer + writer + evaluator 三個 template directory，並加入新的 manifest CI lint 步驟。
+- **A/B evidence fixture stub**（`tests/fixtures/v3.6.6-ab/`，30 個檔案）：manifest + README + 6 paper-A inputs/baseline + 1 paper-C inputs/baseline + Stage 3 reviewer excerpt + 6 codex-judge baseline placeholder。真實 fixture data 在後續 commit populate。
 
 ### v3.6.7（2026-04-30）— 下游 agent pattern protection（Step 1+2）
 
