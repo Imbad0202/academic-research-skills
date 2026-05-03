@@ -81,6 +81,16 @@ jobs:
           for f in shared/contracts/reviewer/*.json; do
             python3 scripts/check_sprint_contract.py "$f" --ars-version "v${ARS_VERSION}"
           done
+          # v3.6.6: writer + evaluator template validation loops mirror reviewer loop above.
+          for f in shared/contracts/writer/*.json; do
+            python3 scripts/check_sprint_contract.py "$f" --ars-version "v${ARS_VERSION}"
+          done
+          for f in shared/contracts/evaluator/*.json; do
+            python3 scripts/check_sprint_contract.py "$f" --ars-version "v${ARS_VERSION}"
+          done
+
+      - name: Validate v3.6.6 A/B fixture manifest
+        run: python3 scripts/check_v3_6_6_ab_manifest.py
 
       - name: Validate literature_corpus schemas and examples
         run: python3 scripts/check_literature_corpus_schema.py
