@@ -633,6 +633,26 @@ def _simulate_round(
             ship_or_block = "block"
     else:
         ship_or_block = "ship"
+
+    # F-301 closure: each blocking agent at the round-cap MUST land at B11
+    # (escalation), not B10. Catches a round-3 MATERIAL fixture regressing to
+    # B10 silently — a contract violation §5.4 / B11 require us to surface.
+    for agent_name, agent_decision in per_agent_decisions.items():
+        if final_round and agent_decision["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
+            assert agent_decision["expected_phase"] == "B11", (
+                f"round {round_n} (= target_rounds) {agent_name} "
+                f"verdict={agent_decision['verdict_status']} but "
+                f"expected_phase={agent_decision['expected_phase']!r}; "
+                "must be B11 per §5.4 escalation"
+            )
+        elif (not final_round) and agent_decision["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
+            assert agent_decision["expected_phase"] == "B10", (
+                f"round {round_n} (< target_rounds) {agent_name} "
+                f"verdict={agent_decision['verdict_status']} but "
+                f"expected_phase={agent_decision['expected_phase']!r}; "
+                "must be B10 (B11 reserved for round-cap)"
+            )
+
     return {
         "round": round_n,
         "target_rounds": target_rounds,
@@ -730,6 +750,25 @@ def test_integration_state_runner_drives_full_pipeline():
     expected_outcome = _load_yaml(base / "escalation" / "expected_pipeline_outcome.yaml")
     assert expected_outcome["stage_outcome"] == "shipped_with_known_residue"
     assert expected_outcome["audit_gate_outcome"] == "ship_with_known_residue"
+
+    # F-302 closure: closed_findings and acknowledged_residue must be disjoint.
+    # A finding cannot simultaneously be closed (resolved) and acknowledged
+    # (residue accepted as-is) — these are exclusive lifecycle terminals.
+    summary = expected_outcome["final_verdict_summary"]
+    closed = set(summary.get("closed_findings", []))
+    acked = set(summary.get("acknowledged_residue", []))
+    overlap = closed & acked
+    assert not overlap, (
+        f"final_verdict_summary contradiction: findings appear in both "
+        f"closed_findings AND acknowledged_residue: {overlap}"
+    )
+    # Lineage check: every acked id must be a finding that surfaced in round-3
+    # MATERIAL verdicts (already enforced by test_integration_acknowledged_findings_exist_in_round_3,
+    # but reasserted here so the outcome file is self-consistent).
+    assert acked == set(user_response["acknowledged_finding_ids"]), (
+        f"acknowledged_residue {acked} != user_response acks "
+        f"{set(user_response['acknowledged_finding_ids'])}"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -143,7 +143,10 @@ jobs:
         run: |
           pip install pytest pyyaml jsonschema
           pytest scripts/test_check_pattern_eval_manifest.py -v
-          pytest scripts/test_pattern_eval_runtime.py -v -k "micro or run_id or coverage"
+          # Run micro/run_id/coverage tests + the inventory-coverage tests that
+          # are not keyword-tagged. F-301 closure: prior `-k` filter omitted
+          # test_phase_inventory_complete and test_every_fixture_phase_in_inventory.
+          pytest scripts/test_pattern_eval_runtime.py -v -k "micro or run_id or coverage or phase_inventory or fixture_phase"
 
       - name: Run v3.6.7 Step 8 pattern-eval-integration tests (Phase 6.8 integration fixture)
         env:
