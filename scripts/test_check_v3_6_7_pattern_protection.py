@@ -715,5 +715,32 @@ class CodexR3MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class CodexR4MutationTests(_MutationTestBase):
+    """Codex R4 (Phase 6.7 review, after R3 fixes) closure: 1 P2
+    finding restoring INV-2 coverage of post-bullet prose."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def test_r4_p2_inv2_post_bullet_prose_disclosure_fails(self) -> None:
+        # Codex R4 P2: R3's `_iter_block_segments` only iterated prose
+        # paragraphs in `block[:first_bullet]` — pre-first-bullet
+        # only. A Clause 2 disclosure appended as a paragraph AFTER
+        # the canonical bullet (or anywhere after the bullet list)
+        # was outside the segmentation window and silently passed
+        # lint. R4 closure rewrites segmentation to paragraph-split
+        # the entire block, distinguishing bullet groups (`- ...`
+        # paragraphs) from prose paragraphs uniformly. Append a
+        # forbidden disclosure as a trailing prose paragraph and
+        # assert lint catches it.
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            "Output metadata must not claim audit-passed state.\n",
+            "Output metadata must not claim audit-passed state.\n"
+            "\nThe orchestrator runs codex audit afterward.\n",
+        )
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()

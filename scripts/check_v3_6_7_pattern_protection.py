@@ -988,41 +988,51 @@ def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
 def _iter_block_segments(block: str) -> list[tuple[int, str, str]]:
     """Yield (offset, kind, normalized_text) tuples for every
     matched-content segment inside a PATTERN PROTECTION block. `kind`
-    is `"bullet"` for `^- ` items or `"prose"` for non-bullet prose
-    paragraphs (the intro paragraph and any future inline paragraph).
+    is `"bullet"` for `^- ` list items or `"prose"` for non-bullet
+    paragraphs (intro paragraph, paragraphs interleaved between bullet
+    runs, paragraphs appended after the last bullet — anywhere in the
+    block).
 
     Whitespace-normalised so soft-wrapped Markdown lines collapse into
-    single-space sentences. Codex R3 P2 closure: prior INV-2 only
-    iterated bullets, but the Phase 6.7 sweep removed Clause 2
-    disclosures that lived in the *intro paragraph* of each block
-    (e.g. `Cross-model audit follows ... codex_audit_multifile_template.md`).
-    Restricting INV-2 to bullets allowed those disclosures to be
-    re-introduced into the intro paragraph and silently pass lint.
-    Iterating prose paragraphs as well restores parity with the
-    spec §6.2 sweep scope.
+    single-space sentences. Codex R3 + R4 P2 closures: scanning must
+    cover ALL prose in the block, not just the intro paragraph (R3) or
+    just the pre-first-bullet region (R4). The spec §6.2 sweep promises
+    "zero Clause 2 violation in PATTERN PROTECTION block"; carving out
+    any sub-region (post-bullet trailers, between-bullet inserts) gives
+    a regression vector.
+
+    Algorithm: paragraph-split the block on blank lines. Each paragraph
+    starting with `- ` is treated as a bullet group and walked via
+    `_iter_bullets`; each non-bullet paragraph (excluding the section
+    heading) is reported as `"prose"`. This handles bullets-then-prose,
+    prose-then-bullets, and mixed orderings uniformly.
     """
     segments: list[tuple[int, str, str]] = []
-    bullet_starts = [m.start() for m in _BULLET_START_RE.finditer(block)]
-    first_bullet = bullet_starts[0] if bullet_starts else len(block)
-    # Strip the section heading line itself (`## PATTERN PROTECTION (v3.6.7)`)
-    # before paragraph-splitting — it is not contract content and ends with
-    # `\n\n` so the heading consistently lands as its own paragraph and is
-    # excluded by the paragraph filter below.
-    pre_bullet_region = block[:first_bullet]
-    paragraphs = re.split(r"\n\s*\n", pre_bullet_region)
     cursor = 0
+    paragraphs = re.split(r"\n\s*\n", block)
     for paragraph in paragraphs:
-        # Skip empty paragraphs; skip the protection-block heading.
+        offset = block.find(paragraph, cursor)
+        if offset < 0:
+            offset = cursor
+        # Advance the cursor past this paragraph and its trailing
+        # blank-line separator (`\n\n`) for the next find().
+        cursor = offset + len(paragraph) + 2
         stripped = paragraph.strip()
-        if stripped and not stripped.startswith("## "):
-            offset = pre_bullet_region.find(paragraph, cursor)
-            if offset < 0:
-                offset = cursor
+        if not stripped:
+            continue
+        # The block heading line (`## PATTERN PROTECTION (v3.6.7)`)
+        # is content marker, not contract content.
+        if stripped.startswith("## "):
+            continue
+        if stripped.startswith("- "):
+            # Bullet group — may be a single bullet or a wrapped multi-
+            # line bullet; delegate to `_iter_bullets` which knows how
+            # to walk `- ` markers and collapse soft wraps.
+            for bullet_local_offset, bullet_text in _iter_bullets(paragraph):
+                segments.append((offset + bullet_local_offset, "bullet", bullet_text))
+        else:
             normalized = " ".join(stripped.split())
             segments.append((offset, "prose", normalized))
-        cursor += len(paragraph) + 2  # account for `\n\n` separator
-    for bullet_offset, bullet_text in _iter_bullets(block):
-        segments.append((bullet_offset, "bullet", bullet_text))
     return segments
 
 
