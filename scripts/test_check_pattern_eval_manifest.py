@@ -77,6 +77,44 @@ def _well_formed_integration_doc() -> dict:
     }
 
 
+_BAD_VERDICT_YAML = """\
+run_id: 2026-04-30T10-00-00Z-0a01
+verdict_status: MATERIAL
+round: 1
+target_rounds: 3
+finding_counts:
+  p1: 1
+  p2: 0
+  p3: 0
+findings:
+  - id: F-001
+    severity: P1
+    dimension: "3.1"
+    file: bad_run/deliverable.md
+    line: 1
+    description: synthetic
+    suggested_fix: synthetic
+generated_at: "2026-04-30T10:00:00.123Z"
+generated_by: scripts/run_codex_audit.sh
+generator_version: 1.0.0
+"""
+
+_GOOD_VERDICT_YAML = """\
+run_id: 2026-04-30T11-00-00Z-0a02
+verdict_status: PASS
+round: 1
+target_rounds: 3
+finding_counts:
+  p1: 0
+  p2: 0
+  p3: 0
+findings: []
+generated_at: "2026-04-30T11:00:00.123Z"
+generated_by: scripts/run_codex_audit.sh
+generator_version: 1.0.0
+"""
+
+
 def _materialize_micro_dir(parent: Path, doc: dict) -> Path:
     """Create one well-formed micro fixture under <parent>/<pattern_id>/."""
     fixture_dir = parent / doc["pattern_id"]
@@ -86,10 +124,10 @@ def _materialize_micro_dir(parent: Path, doc: dict) -> Path:
     (fixture_dir / "manifest.json").write_text(json.dumps(doc), encoding="utf-8")
     (fixture_dir / "upstream_context" / "passport_snippet.yaml").write_text("schema_version: 9\n")
     (fixture_dir / "bad_run" / "deliverable.md").write_text("# bad\n")
-    (fixture_dir / "bad_run" / "expected_audit_findings.yaml").write_text("verdict_status: MATERIAL\n")
+    (fixture_dir / "bad_run" / "expected_audit_findings.yaml").write_text(_BAD_VERDICT_YAML)
     (fixture_dir / "bad_run" / "expected_orchestrator_action.yaml").write_text("expected_path: B\n")
     (fixture_dir / "good_run" / "deliverable.md").write_text("# good\n")
-    (fixture_dir / "good_run" / "expected_audit_findings.yaml").write_text("verdict_status: PASS\n")
+    (fixture_dir / "good_run" / "expected_audit_findings.yaml").write_text(_GOOD_VERDICT_YAML)
     (fixture_dir / "good_run" / "expected_orchestrator_action.yaml").write_text("expected_path: B\n")
     return fixture_dir
 
@@ -118,6 +156,11 @@ def _run_script(fixture_root: Path) -> subprocess.CompletedProcess:
     repo_clone.mkdir(exist_ok=True)
     (repo_clone / "scripts").mkdir(exist_ok=True)
     shutil.copy2(SCRIPT, repo_clone / "scripts" / SCRIPT.name)
+    # Copy audit_verdict schema so the validator's verdict-YAML check can resolve it.
+    schema_dir = repo_clone / "shared" / "contracts" / "audit"
+    schema_dir.mkdir(parents=True, exist_ok=True)
+    real_schema = REPO_ROOT / "shared" / "contracts" / "audit" / "audit_verdict.schema.json"
+    shutil.copy2(real_schema, schema_dir / "audit_verdict.schema.json")
     target = repo_clone / "tests" / "fixtures" / "v3_6_7_pattern_eval"
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists() or target.is_symlink():

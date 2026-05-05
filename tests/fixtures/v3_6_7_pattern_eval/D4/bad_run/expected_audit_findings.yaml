@@ -10,17 +10,10 @@ findings:
   - id: F-001
     severity: P1
     dimension: "4(f)"
-    pattern: D4
-    description: >
-      Word-count overcap (D4): abstract contains 255 words by the ARS canonical
-      whitespace-split algorithm, exceeding the Journal of Synthetic Studies hard
-      cap of 250 words by 5 words. The report_compiler_agent applied the
-      hyphenated-as-1 regex algorithm, which returned 226 — well within the
-      237–242 buffer target — masking the violation. Numeric tokens (e.g., '14',
-      '312', '78.4', '1,840') are whitespace-split tokens but are invisible to
-      the alpha-only regex, creating a 29-word differential. The deliverable must
-      be trimmed to ≤ 242 words (whitespace-split) to satisfy the 3–5% buffer
-      requirement, and must declare the algorithm used.
+    file: bad_run/deliverable.md
+    line: 7
+    description: "Word-count overcap (D4): abstract contains 255 words by ARS canonical whitespace-split algorithm, exceeding Journal of Synthetic Studies 250-word hard cap by 5 words. The report_compiler_agent applied the hyphenated-as-1 regex algorithm which returned 226 — within the 237–242 buffer target — masking the violation."
+    suggested_fix: "Trim abstract to <= 242 words (whitespace-split) per word_count_conventions.md 3–5% buffer rule, and declare the counting algorithm in the abstract metadata."
 generated_at: "2026-04-30T14:05:18.000Z"
 generated_by: scripts/run_codex_audit.sh
 generator_version: 1.0.0

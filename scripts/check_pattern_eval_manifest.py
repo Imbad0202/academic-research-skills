@@ -218,7 +218,11 @@ def _validate_micro_directory_id_match(
 
 
 def _validate_micro_paths_exist(manifest_path: Path, doc: dict) -> list[str]:
-    """All path fields in a micro manifest must resolve under the fixture dir."""
+    """All path fields in a micro manifest must resolve under the fixture dir.
+
+    Path safety (codex F-007): rejects absolute paths, `..` segments, and any
+    path that resolves outside the fixture directory.
+    """
     errors = []
     base = manifest_path.parent
     keys = [
@@ -235,6 +239,11 @@ def _validate_micro_paths_exist(manifest_path: Path, doc: dict) -> list[str]:
         rel = doc.get(parent_key, {}).get(child_key)
         if not rel:
             continue
+        for safety_err in _validate_fixture_path_safety(rel, base):
+            errors.append(
+                f"{manifest_path.relative_to(REPO_ROOT)}: "
+                f"{parent_key}.{child_key} {safety_err}"
+            )
         target = base / rel
         if not target.exists():
             errors.append(
@@ -242,6 +251,80 @@ def _validate_micro_paths_exist(manifest_path: Path, doc: dict) -> list[str]:
                 f"{parent_key}.{child_key}={rel!r} does not exist at {target}"
             )
     return errors
+
+
+def _validate_micro_verdict_files(manifest_path: Path, doc: dict) -> list[str]:
+    """Every fixture's expected_audit_findings.yaml MUST validate against
+    audit_verdict.schema.json (closes codex F-001).
+    """
+    errors = []
+    base = manifest_path.parent
+    for slot in ("bad_run", "good_run"):
+        rel = doc.get(slot, {}).get("expected_audit_findings_path")
+        if not rel:
+            continue
+        target = base / rel
+        if target.exists():
+            errors.extend(_validate_verdict_yaml(target))
+    return errors
+
+
+def _validate_integration_verdict_files(integration_root: Path) -> list[str]:
+    """Every per-round per-agent expected_audit_findings.yaml under the
+    integration fixture MUST also validate against audit_verdict.schema.json.
+    """
+    errors = []
+    for verdict in sorted(integration_root.rglob("expected_audit_findings.yaml")):
+        errors.extend(_validate_verdict_yaml(verdict))
+    return errors
+
+
+def _validate_verdict_yaml(yaml_path: Path) -> list[str]:
+    """Validate a fixture's expected_audit_findings.yaml against audit_verdict.schema.json.
+
+    Closes codex F-001: brief-driven fixtures had drift (rogue keys, finding IDs
+    not matching `^F-[0-9]{3,}$`, run_ids with non-hex suffix). The fixture set's
+    contract is that expected_audit_findings.yaml mirrors what codex would emit,
+    so it must validate against the live verdict schema.
+    """
+    try:
+        import yaml
+    except ImportError:
+        return [f"{yaml_path.relative_to(REPO_ROOT)}: pyyaml not installed"]
+    schema_path = REPO_ROOT / "shared" / "contracts" / "audit" / "audit_verdict.schema.json"
+    try:
+        with yaml_path.open("r", encoding="utf-8") as fp:
+            doc = yaml.safe_load(fp)
+    except (OSError, yaml.YAMLError) as exc:
+        return [f"{yaml_path.relative_to(REPO_ROOT)}: cannot parse YAML: {exc}"]
+    schema = json.loads(schema_path.read_text())
+    errors = []
+    for err in sorted(_validator(schema).iter_errors(doc), key=lambda e: e.path):
+        loc = "/".join(str(p) for p in err.absolute_path) or "<root>"
+        errors.append(
+            f"{yaml_path.relative_to(REPO_ROOT)}: verdict schema violation at {loc}: {err.message}"
+        )
+    return errors
+
+
+def _validate_fixture_path_safety(rel_path: str, base: Path) -> list[str]:
+    """Reject absolute paths and `..` segments per repo_relative_path semantics.
+
+    Closes codex F-007: micro path checks previously did `base / rel` + `exists()`
+    only, allowing absolute paths or `..` paths that exist outside the fixture
+    to pass despite the §7.2 self-contained directory contract.
+    """
+    if rel_path.startswith("/"):
+        return [f"path is absolute: {rel_path}"]
+    if ".." in Path(rel_path).parts:
+        return [f"path contains '..' segment: {rel_path}"]
+    target = (base / rel_path).resolve()
+    base_resolved = base.resolve()
+    try:
+        target.relative_to(base_resolved)
+    except ValueError:
+        return [f"path resolves outside fixture directory: {rel_path}"]
+    return []
 
 
 def _coverage_check(micro_manifests: dict[str, Path]) -> list[str]:
@@ -296,13 +379,16 @@ def main() -> int:
             continue
         all_errors.extend(_validate_micro_directory_id_match(manifest, doc))
         all_errors.extend(_validate_micro_paths_exist(manifest, doc))
+        all_errors.extend(_validate_micro_verdict_files(manifest, doc))
         micro_manifests[doc["pattern_id"]] = manifest
 
-    integration_manifest = FIXTURE_ROOT / "integration" / "chapter_level_run" / "manifest.json"
+    integration_root = FIXTURE_ROOT / "integration" / "chapter_level_run"
+    integration_manifest = integration_root / "manifest.json"
     if integration_manifest.exists():
         errors = _validate_manifest(integration_manifest)
         if errors:
             all_errors.extend(errors)
+        all_errors.extend(_validate_integration_verdict_files(integration_root))
     else:
         all_errors.append(
             f"{integration_manifest.relative_to(REPO_ROOT)}: missing"

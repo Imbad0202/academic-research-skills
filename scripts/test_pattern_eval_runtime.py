@@ -44,31 +44,37 @@ PATTERN_IDS = (
 )
 
 PATTERN_TO_DIMENSION = {
-    "A1": "3.1",
-    "A2": "3.3",
-    "A3": "3.2",
-    "A4": "3.1",
-    "A5": "3.4",
-    "B1": "3.5",
-    "B2": "3.5",
-    "B3": "3.5",
-    "B4": "3.5",
-    "B5": "3.5",
-    "C1": "4(f)",
-    "C2": "4(f)",
-    "C3": "3.6",
-    "D1": "3.1",
-    "D3": "3.7",
-    "D4": "4(f)",
+    # Anchored in shared/templates/codex_audit_multifile_template.md §3 "Patterns
+    # surfaced" lines per dimension. Brief drift in earlier draft was caught by
+    # codex review round 1 F-002.
+    "A1": "3.4",  # legal-effect drift / cross-section coherence
+    "A2": "3.2",  # pending-source assumed as fact / hallucination
+    "A3": "3.1",  # mis-anchored citation / cross-reference integrity
+    "A4": "3.3",  # quote scope creep / primary-source integrity
+    "A5": "3.2",  # sibling-document fabrication / hallucination
+    "B1": "3.5",  # IRB terminology
+    "B2": "3.5",  # pseudo-reverse-coded
+    "B3": "3.5",  # event-anchor missing
+    "B4": "3.5",  # leading items
+    "B5": "3.5",  # option-list mismatch (audit template lists B5 in 3.1 + 3.2; we keep 3.5 as the survey-mode aggregate)
+    "C1": "4(f)",  # compression overclaim — 4(f) sub-check (ii) protected hedge
+    "C2": "3.7",  # temporal ambiguity / COI disclosure
+    "C3": "3.2",  # output metadata audit-passed claim / hallucination
+    "D1": "3.4",  # multi-file deliverable cross-file inconsistency / coherence
+    "D3": "3.6",  # PARTIAL ≠ CLOSED / round framing
+    "D4": "4(f)",  # word-count cap bust — 4(f) sub-check (i)
     # D2 is convergence theatre — no finding, special handling.
 }
 
 # §7.4 criterion 4 — inventory-driven passport mutation rule.
-# expected_phase → expected_passport_mutation kind for fresh non-duplicate
-# proposals (the only kind exercised by Phase 6.8 fixtures).
+# Mirrors the §5.6 verification failure state inventory (24 rows: 7 P-PA-* + 17 P-PB-*)
+# plus the two happy-path phases (A7, B10). When §5.6's inventory grows in v3.6.8+,
+# new rows MUST extend this map; the inventory_coverage test below enforces sync.
+# Closes codex F-003: inventory was previously partial (omitted P-PB-dup-* / consume / crash).
 PHASE_TO_PASSPORT_MUTATION = {
-    "A7": "none",  # Path A success — entry already there
-    "B10": "appended",  # Path B success — fresh proposal merged
+    # Happy paths
+    "A7": "none",          # Path A success — entry already there
+    "B10": "appended",     # Path B success — fresh proposal merged
     # Path A failure phases — passport unchanged (silent fall-through to B)
     "P-PA-precond": "none",
     "P-PA-schema": "none",
@@ -90,7 +96,22 @@ PHASE_TO_PASSPORT_MUTATION = {
     "P-PB-snapshot": "none",
     "P-PB-persisted-schema": "none",
     "P-PB-passport-write": "none",
+    # Duplicate / consume / crash phases (continuation rows — final state checked,
+    # not intermediate). Each may yield "none" or "appended" depending on whether
+    # a subsequent candidate succeeds; the rule is the orchestrator commits at most
+    # one new persisted entry per successful merge, and B1a-recovery branches do NOT
+    # double-append. For success-path completion these reach B10 → "appended"; for
+    # short-circuit (B1a tuple-match supersession-false A3-A6 success) reach A7 →
+    # "none" reading the pre-existing entry.
+    "P-PB-dup-early": "conditional",     # depends on A3-A6 outcome + supersession_required
+    "P-PB-dup-other": "conditional",     # continues B1a/B2 with remaining candidates
+    "P-PB-dup-late": "conditional",      # GO TO B10 reading pre-existing entry; no new append in current session
+    "P-PB-consume-fail": "appended",     # B9 atomic-rename succeeded → entry committed
+    "P-PB-crash": "conditional",         # depends on whether B9 atomic-rename fired
 }
+
+# Total enumerated phases (must equal 24 inventory rows + 2 happy-path = 26).
+EXPECTED_PHASE_COUNT = 26
 
 RUN_ID_REGEX = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$"
@@ -250,13 +271,38 @@ def test_micro_bad_run_signal_matches_expectation(pattern_id):
     if expected_phase:
         assert decision["expected_phase"] == expected_phase
         expected_mutation = PHASE_TO_PASSPORT_MUTATION.get(expected_phase)
-        if expected_mutation is not None:
+        if expected_mutation not in (None, "conditional"):
             actual_mutation = expected_action.get("expected_passport_mutation")
             assert actual_mutation == expected_mutation, (
                 f"{pattern_id} BAD: expected_phase={expected_phase} maps to "
                 f"passport mutation {expected_mutation!r}, but fixture declares "
                 f"{actual_mutation!r}"
             )
+
+    # F-006 closure: assert expected_path matches phase semantics.
+    # Phases starting with "P-PA-" or "A" are Path A; "P-PB-" / "B" are Path B.
+    expected_path = expected_action.get("expected_path")
+    assert expected_path in {"A", "B"}, (
+        f"{pattern_id} BAD expected_path must be 'A' or 'B' (got {expected_path!r})"
+    )
+    if expected_phase:
+        if expected_phase.startswith("P-PA-") or expected_phase == "A7":
+            assert expected_path == "A", (
+                f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=A"
+            )
+        elif expected_phase.startswith("P-PB-") or expected_phase == "B10":
+            assert expected_path == "B", (
+                f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=B"
+            )
+
+    # F-006 closure: assert block_message non-empty for BLOCKING verdicts (MATERIAL/AUDIT_FAILED)
+    # and empty for non-blocking (PASS micro fixtures use Path B B10 with passport append + ship).
+    if pattern_id != "D2" and bad_verdict["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
+        msg = expected_action.get("expected_block_message", "")
+        assert "[AUDIT GATE" in msg, (
+            f"{pattern_id} BAD expected_block_message must include '[AUDIT GATE' "
+            f"substring per §5.6 BLOCK message format; got {msg!r}"
+        )
 
 
 @pytest.mark.parametrize("pattern_id", _all_micro_fixtures())
@@ -290,8 +336,19 @@ def test_micro_good_run_passes(pattern_id):
     if expected_phase:
         expected_mutation = PHASE_TO_PASSPORT_MUTATION.get(expected_phase)
         actual_mutation = expected_action.get("expected_passport_mutation")
-        if expected_mutation is not None:
+        if expected_mutation not in (None, "conditional"):
             assert actual_mutation == expected_mutation
+
+    # F-006 closure: GOOD case Path-B with PASS verdict should have empty block_message.
+    block_msg = expected_action.get("expected_block_message", "")
+    assert block_msg == "", (
+        f"{pattern_id} GOOD expected_block_message must be empty (PASS does not block); "
+        f"got {block_msg!r}"
+    )
+    expected_path = expected_action.get("expected_path")
+    assert expected_path in {"A", "B"}, (
+        f"{pattern_id} GOOD expected_path must be 'A' or 'B' (got {expected_path!r})"
+    )
 
 
 @pytest.mark.parametrize("pattern_id", _all_micro_fixtures())
@@ -382,6 +439,103 @@ def test_integration_patterns_triggered_subset(integration_manifest):
     )
 
 
+# F-004 closure: drive the §7.3 round/escalation scenario end-to-end against
+# the fixture's expected verdicts and pipeline state.
+
+@pytest.mark.parametrize("round_n", [1, 2, 3])
+def test_integration_round_per_agent_verdicts_validate(round_n):
+    """Each per-round per-agent expected_audit_findings.yaml validates against
+    audit_verdict.schema.json AND its declared verdict_status matches the
+    round's manifest.expected_verdict for at least one agent (since not every
+    agent fails in every round)."""
+    base = _integration_dir() / f"round_{round_n}"
+    seen_verdicts = set()
+    for agent in ("synthesis_agent", "research_architect_agent", "report_compiler_agent"):
+        verdict_file = base / agent / "expected_audit_findings.yaml"
+        action_file = base / agent / "expected_orchestrator_action.yaml"
+        assert verdict_file.exists(), f"missing round {round_n}/{agent}/expected_audit_findings.yaml"
+        assert action_file.exists(), f"missing round {round_n}/{agent}/expected_orchestrator_action.yaml"
+        verdict = _load_yaml(verdict_file)
+        _validate_status_count_consistency(verdict)
+        _validate_finding_counts_match(verdict)
+        assert verdict["round"] == round_n, (
+            f"round {round_n}/{agent} verdict.round={verdict['round']} mismatches directory"
+        )
+        assert verdict["target_rounds"] == 3
+        seen_verdicts.add(verdict["verdict_status"])
+    integration = _load_json(_integration_dir() / "manifest.json")
+    expected_round = next(r for r in integration["rounds"] if r["round"] == round_n)
+    assert expected_round["expected_verdict"] in seen_verdicts, (
+        f"round {round_n}: manifest declares verdict={expected_round['expected_verdict']} "
+        f"but no agent emits it (saw {seen_verdicts})"
+    )
+
+
+@pytest.mark.parametrize("round_n", [1, 2, 3])
+def test_integration_round_pipeline_state_consistent(round_n):
+    """expected_pipeline_state.yaml's audit_artifact_appended[].run_id must
+    match the per-agent expected_audit_findings.yaml run_ids for the same round."""
+    base = _integration_dir() / f"round_{round_n}"
+    state = _load_yaml(base / "expected_pipeline_state.yaml")
+    state_run_ids = {entry["run_id"] for entry in state["audit_artifact_appended"]}
+    actual_run_ids = set()
+    for agent in ("synthesis_agent", "research_architect_agent", "report_compiler_agent"):
+        verdict = _load_yaml(base / agent / "expected_audit_findings.yaml")
+        actual_run_ids.add(verdict["run_id"])
+    assert state_run_ids == actual_run_ids, (
+        f"round {round_n} pipeline_state.run_ids != per-agent run_ids: "
+        f"state={state_run_ids} actual={actual_run_ids}"
+    )
+
+
+def test_integration_escalation_passport_consistent():
+    """§7.3 escalation: expected_passport_state.yaml acknowledgement entries'
+    finding_ids must match user_response.acknowledged_finding_ids AND the
+    manifest's escalation.expected_acknowledgement_finding_ids."""
+    base = _integration_dir()
+    user_response = _load_yaml(base / "escalation" / "user_response.yaml")
+    passport = _load_yaml(base / "escalation" / "expected_passport_state.yaml")
+    manifest = _load_json(base / "manifest.json")
+
+    user_ids = set(user_response["acknowledged_finding_ids"])
+    manifest_ids = set(manifest["escalation"]["expected_acknowledgement_finding_ids"])
+    assert user_ids == manifest_ids, (
+        f"user_response acks {user_ids} != manifest acks {manifest_ids}"
+    )
+
+    passport_ack_ids = set()
+    for entry in passport["audit_artifact"]:
+        ack = entry.get("acknowledgement")
+        if ack:
+            passport_ack_ids.update(ack["finding_ids"])
+    assert passport_ack_ids == user_ids, (
+        f"passport acks {passport_ack_ids} != user_response acks {user_ids}"
+    )
+
+    assert user_response["user_choice"] == manifest["escalation"]["user_choice"]
+    assert user_response["user_choice"] == "ship_with_known_residue"
+
+
+def test_integration_acknowledged_findings_exist_in_round_3():
+    """§5.4: acknowledged finding_ids MUST appear as finding.id in the round-3
+    MATERIAL verdicts. Acknowledging a non-existent finding is a hand-edit
+    attack surface (§3.7 family A row A4 + B10 finding_ids cross-reference)."""
+    base = _integration_dir()
+    user_response = _load_yaml(base / "escalation" / "user_response.yaml")
+    acked = set(user_response["acknowledged_finding_ids"])
+
+    round_3_finding_ids = set()
+    for agent in ("synthesis_agent", "research_architect_agent", "report_compiler_agent"):
+        verdict = _load_yaml(base / "round_3" / agent / "expected_audit_findings.yaml")
+        for f in verdict.get("findings", []):
+            round_3_finding_ids.add(f["id"])
+    missing = acked - round_3_finding_ids
+    assert not missing, (
+        f"acknowledged finding_ids {missing} do not appear in any round-3 verdict; "
+        f"round 3 emits {round_3_finding_ids}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # §7.5 coverage cross-check (defense in depth — also covered by manifest validator)
 # ---------------------------------------------------------------------------
@@ -393,3 +547,30 @@ def test_inventory_coverage_17_of_17():
     assert seen == set(PATTERN_IDS), (
         f"missing: {set(PATTERN_IDS) - seen}; extra: {seen - set(PATTERN_IDS)}"
     )
+
+
+def test_phase_inventory_complete():
+    """§5.6 verification failure state inventory has 24 rows + 2 happy paths.
+    PHASE_TO_PASSPORT_MUTATION must enumerate all 26 phases. Closes codex F-003.
+    """
+    assert len(PHASE_TO_PASSPORT_MUTATION) == EXPECTED_PHASE_COUNT, (
+        f"PHASE_TO_PASSPORT_MUTATION has {len(PHASE_TO_PASSPORT_MUTATION)} rows; "
+        f"§5.6 inventory + happy paths require {EXPECTED_PHASE_COUNT}. "
+        "Either §5.6 grew (extend the map) or this assertion is stale."
+    )
+
+
+def test_every_fixture_phase_in_inventory():
+    """Every fixture's expected_phase must be a known §5.6 inventory row."""
+    fixture_root = FIXTURE_ROOT
+    if not fixture_root.exists():
+        pytest.skip("fixture root not present")
+    bad_phases = []
+    for verdict_file in sorted(fixture_root.rglob("expected_orchestrator_action.yaml")):
+        action = _load_yaml(verdict_file)
+        phase = action.get("expected_phase")
+        if phase and phase not in PHASE_TO_PASSPORT_MUTATION:
+            bad_phases.append(
+                f"{verdict_file.relative_to(REPO_ROOT)}: unknown expected_phase={phase!r}"
+            )
+    assert not bad_phases, "fixtures reference phases not in §5.6 inventory:\n" + "\n".join(bad_phases)

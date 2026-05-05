@@ -6,8 +6,8 @@
 
 user_choice: ship_with_known_residue
 acknowledged_finding_ids:
-  - A3-r3-finding-1
-  - D4-r3-finding-1
+  - F-301  # synthesis_agent A3 round-3 residue (mis-anchored citation)
+  - F-302  # report_compiler_agent D4 round-3 residue (1-word overage)
 acknowledged_at: "2026-04-30T16:05:00.000Z"
 acknowledged_by: user
 rationale: "Residue accepted: A3 mis-anchor will be corrected in copyedit pass; D4 1-word overage negotiable with publisher."

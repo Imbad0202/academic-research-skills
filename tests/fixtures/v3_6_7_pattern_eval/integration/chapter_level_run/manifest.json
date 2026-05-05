@@ -8,7 +8,7 @@
   ],
   "escalation": {
     "user_choice": "ship_with_known_residue",
-    "expected_acknowledgement_finding_ids": ["A3-r3-finding-1", "C2-r3-finding-1"]
+    "expected_acknowledgement_finding_ids": ["F-301", "F-302"]
   },
   "rationale_doc": "docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md#73-chapter-level-integration-fixture"
 }

@@ -6,11 +6,11 @@ final_verdict_summary:
   rounds_used: 3
   target_rounds: 3
   closed_findings:
-    - C2-r1-finding-1  # closed in round 2
-    - C1-r1-finding-1  # closed in round 2
-    - D4-r1-finding-1  # superseded by D4-r2-finding-1 → D4-r3-finding-1 (acknowledged)
+    - F-102  # closed in round 2
+    - F-104  # closed in round 2
+    - F-103  # superseded by F-202 → F-302 (acknowledged)
   acknowledged_residue:
-    - A3-r3-finding-1
-    - D4-r3-finding-1
+    - F-301
+    - F-302
   unaddressed: []
 audit_gate_outcome: ship_with_known_residue

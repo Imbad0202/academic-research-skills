@@ -1,4 +1,4 @@
-run_id: 2026-04-30T15-02-00Z-i103
+run_id: 2026-04-30T15-02-00Z-f103
 verdict_status: MATERIAL
 round: 1
 target_rounds: 3
@@ -7,21 +7,21 @@ finding_counts:
   p2: 0
   p3: 0
 findings:
-  - id: C2-r1-finding-1
+  - id: F-102
     severity: P1
-    dimension: "4(f)"
+    dimension: "3.7"
     file: round_1/report_compiler_agent/deliverable.md
     line: 9
     description: "Reflexivity disclosure carries deictic temporal phrase 'during this period' without explicit year range or past-tense disambiguating verb."
     suggested_fix: "Replace 'during this period' with 'between YYYY and YYYY' or prefix role with 'former' per C2 protection rule."
-  - id: D4-r1-finding-1
+  - id: F-103
     severity: P1
     dimension: "4(f)"
     file: round_1/report_compiler_agent/deliverable.md
     line: 7
     description: "Abstract whitespace-split word count is 268, exceeding 250 hard cap from journal_word_limit.md."
     suggested_fix: "Trim abstract to 237-242 word target window per word_count_conventions.md 3-5% buffer rule."
-  - id: C1-r1-finding-1
+  - id: F-104
     severity: P1
     dimension: "4(f)"
     file: round_1/report_compiler_agent/deliverable.md

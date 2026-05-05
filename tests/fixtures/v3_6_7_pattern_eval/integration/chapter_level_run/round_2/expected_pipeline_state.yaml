@@ -9,20 +9,20 @@ ship_or_block: block
 audit_artifact_appended:
   - agent: synthesis_agent
     verdict_status: MATERIAL
-    run_id: 2026-04-30T15-30-00Z-i201
+    run_id: 2026-04-30T15-30-00Z-f201
   - agent: research_architect_agent
     verdict_status: PASS
-    run_id: 2026-04-30T15-31-00Z-i202
+    run_id: 2026-04-30T15-31-00Z-f202
   - agent: report_compiler_agent
     verdict_status: MATERIAL
-    run_id: 2026-04-30T15-32-00Z-i203
+    run_id: 2026-04-30T15-32-00Z-f203
 findings_summary:
   total_p1: 2
   total_p2: 0
   total_p3: 0
 closed_in_this_round:
-  - C2-r1-finding-1
-  - C1-r1-finding-1
+  - F-102
+  - F-104
 expected_user_options:
   - "revise and re-audit at round 3 (final round before escalation prompt)"
   - "abort_stage"
