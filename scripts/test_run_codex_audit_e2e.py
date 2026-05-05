@@ -95,12 +95,14 @@ def _make_codex_mock(bin_dir: Path) -> Path:
         cat >/dev/null
 
         # Emit canonical 4-event clean-completion JSONL stream.
-        # The agent_message text follows audit template Section 6 format
-        # closely enough for parse_audit_verdict.py to produce a PASS verdict.
+        # The agent_message text follows audit template Section 6 format —
+        # parse_audit_verdict.py's _SUMMARY_B regex requires the convergence
+        # form "Round N: 0 findings of any severity. Convergence reached."
+        # as the LAST non-empty line of the verdict text.
         cat <<'JSONL'
         {"type":"thread.started","thread_id":"019de371-4c13-7521-8af7-fccf6bd23279"}
         {"type":"turn.started"}
-        {"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"## Section 6 — Final Verdict\\n\\nVerdict: PASS\\nRound: 1\\nTarget rounds: 3\\nFindings — P1: 0, P2: 0, P3: 0\\n\\n(synthetic mock verdict for Phase 6.1 E2E test)"}}
+        {"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Round 1: 0 findings of any severity. Convergence reached."}}
         {"type":"turn.completed","usage":{"input_tokens":100,"cached_input_tokens":0,"output_tokens":50,"reasoning_output_tokens":0}}
         JSONL
         """
