@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (v3.6.7 Step 6 Phase 6.8 — Step 8 evaluation case)
+
+- **17 micro-fixtures + 1 chapter-level integration fixture** under
+  `tests/fixtures/v3_6_7_pattern_eval/` exercising the 17 numbered downstream
+  -agent patterns (A1–A5, B1–B5, C1–C3, D1–D4) per spec §7. Each micro
+  fixture: `manifest.json` (`fixture_kind: "micro"`) + `upstream_context/`
+  (`passport_snippet.yaml` + `prior_artifacts/`) + `bad_run/` + `good_run/`
+  with `deliverable.md`, `expected_audit_findings.yaml`,
+  `expected_orchestrator_action.yaml`. Integration fixture under
+  `integration/chapter_level_run/` exercises A3+C2+D4+C1 across 3-round
+  MATERIAL escalation → ship_with_known_residue acknowledgement per §7.3.
+- **`scripts/check_pattern_eval_manifest.py`** — fixture_kind discriminator
+  routing micro (§7.2) vs integration (§7.3) JSON Schema 2020-12 manifest
+  schemas; `audit_verdict.schema.json` validation on every
+  `expected_audit_findings.yaml`; path-safety rejects absolute paths and `..`
+  segments; coverage cross-check enforces 17/17 numbered IDs covered (with
+  hard-fail on unknown directory names per §7.5).
+- **`scripts/test_pattern_eval_runtime.py`** — 112-test parametrized harness
+  reading expected verdicts as synthesized output and asserting against
+  expected orchestrator action. Per-pattern parametrized tests (BAD signal +
+  GOOD passes + run_id F1 regex + BAD/GOOD uniqueness); integration state
+  runner driving §7.3 5-step procedure (load verdicts → drive §5.6 → verify
+  pipeline state per round → feed escalation user_response → verify final
+  passport state); Path A re-verification axis (≥6 A7 happy-path legs at
+  rounds 2+3); finding-id lineage carry-forward per audit-template Section 6;
+  per-phase synthetic injections (24 of 26 PHASE_TO_PASSPORT_MUTATION rows
+  validated for "none" / "appended"); A1.5 supersession-preflight axis tests.
+- **`scripts/test_run_codex_audit_e2e.py`** — Phase 6.1 deferred end-to-end
+  dispatch test (Linux Bash 4+ only; macOS stock Bash 3.2 self-skips). Mocks
+  codex CLI via PATH-prefix shim emitting canonical Phase 2 JSONL stream.
+  Validates wrapper produces 4 contract files + 3 diagnostic files; proposal
+  entry validates against `audit_artifact_entry.schema.json --mode proposal`
+  (Pattern C3 defense — `verified_at`/`verified_by` absent); `--dry-run`
+  writes nothing; `--round=2` without `--previous-findings` rejected with
+  `EX_USAGE`.
+- **`.github/workflows/spec-consistency.yml`** — 4 new CI steps: Phase 6.8
+  manifest validation, pattern-eval-unit (micro fixtures + phase inventory +
+  synthetic non-supersession), pattern-eval-integration (integration fixture
+  + synthetic supersession), Phase 6.1 wrapper E2E (Linux runner only).
+- **`docs/design/TODO-l-doc-1-18-patterns-prose-retirement.md`** — files
+  L-doc-1 follow-up enumerating 8 retirement locations for the docs-only PR
+  retiring "18 patterns" prose to "17 patterns" per §9.2.
+- **Spec amendments** at `docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator
+  -hooks-spec.md`: §7.4 success criterion 1 prose updated for C2 MINOR
+  special case + D2 PASS convergence-policy assertion; §7.4 phase example
+  updated `escalation` → `B11`; §7.6 deployment note explaining named-step
+  CI deployment (vs literal "two separate jobs"); §9.2 L-doc-1 row points at
+  the TODO file; §7.3 example manifest snippet updated to F-101/F-103.
+
+### Notes
+
+- **11 codex review rounds converged to 0 findings**. Cumulative 24
+  findings closed (4 P1 + 18 P2 + 2 P3) across rounds 1-10.
+- 135 Phase 6.8-specific tests; total repo regression 742 pytest + 251
+  unittest = 993 green + 3 skipped (macOS Bash 3.2 wrapper E2E gate).
+- v3.6.7 Step 6 + Step 8 now structurally complete: prompt-level pattern
+  protection (Step 1+2) + version sweep (Step 7) + runtime audit-artifact
+  gate (Step 6 §1-§11 + Phases 6.1-6.7) + synthetic evaluation case
+  (Phase 6.8) deliver the §10 ship-quality target.
+
 ## [3.6.8] - 2026-05-03
 
 > **Naming note**: this release ships the **v3.6.6 generator-evaluator contract**
