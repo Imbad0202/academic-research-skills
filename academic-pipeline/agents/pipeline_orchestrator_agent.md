@@ -397,12 +397,12 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 
 **Trigger.** At every stage transition where a v3.6.7 downstream agent (`synthesis_agent`, `research_architect_agent` survey-designer mode, or `report_compiler_agent` abstract-only mode) just completed a deliverable.
 
-**Decision policy.** Read or merge an `audit_artifact[]` entry for the just-completed deliverable, validate against the eleven gating verification checks (spec §5.2), then apply ship/block per verdict status:
+**Decision policy.** First check verdict status. If `AUDIT_FAILED` (Path B5 short-circuit per spec §5.6), BLOCK without running the eleven gating checks; surface `verdict.failure_reason`; user must dispatch a fresh wrapper run. Otherwise, validate against the eleven gating verification checks (spec §5.2), then apply ship/block per verdict status (spec §5.3 — rows evaluated top-to-bottom, first matching row wins):
 
-- `PASS` → proceed to next stage; append audit line to FULL checkpoint.
-- `MINOR` → MANDATORY checkpoint; surface findings; user response: `iterate`.
-- `MATERIAL` → BLOCK; surface findings; user response: `another_round` / `ship_with_known_residue` / `abort_stage` (per spec §5.4).
-- `AUDIT_FAILED` → BLOCK; surface `verdict.failure_reason`; user must dispatch a fresh wrapper run.
+- `PASS` (`p1 == 0 AND p2 == 0 AND p3 == 0`) → proceed to next stage; append `[Audit: PASS at round N]` line to FULL checkpoint.
+- `MINOR` (`p1 == 0 AND p2 == 0 AND p3 <= 3`) → MANDATORY checkpoint with finding details; user choice required: `continue` (ship) / `iterate` (dispatch revision) / `pause` (stop).
+- `MATERIAL + acknowledgement` (latest entry's `verdict.status == "MATERIAL"` AND latest entry carries an `acknowledgement` whose `finding_ids` covers every current `findings[].id`) → proceed to next stage; emit FULL checkpoint with `[Audit: MATERIAL at round N, residue acknowledged by user at <acknowledged_at>]` line. This row has higher precedence than plain `MATERIAL`.
+- `MATERIAL` (`p1 > 0 OR p2 > 0 OR p3 > 3`, no acknowledgement) → BLOCK; surface findings; re-invoke producing agent with revision prompt; deployment runs the wrapper at `--round N+1 --previous-findings <prior verdict.yaml>` for the next round audit. **Only after `round == target_rounds` (spec §5.4 default 3) still MATERIAL** does the gate emit the ESCALATION block offering `ship_with_known_residue` / `another_round` (raises cap by 1) / `abort_stage` — these three choices are escalation-only, not the default MATERIAL response.
 
 **Procedure.** Path A → Path B fall-through. Full procedure (A1–A7, B1–B11, A1.5 supersession preflight, B1a tuple-match recovery, B8a/B8b/B8c late freshness barriers, F-067 / F-069 / F-070 / F-072 closures, the 24-row Failure State Inventory) is the implementation contract and lives in spec §5.6 — orchestrator follows that procedure exactly. The prompt's role is to declare the gate, name the decision policy, and reference §5.6.
 
