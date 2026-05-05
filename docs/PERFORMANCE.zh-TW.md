@@ -41,7 +41,7 @@
 
 意涵：**plugin agent 的 token 成本完全跟著上表各模式估算走，沒有額外加減**。dispatched agent 跟主 session 同一個模型，主 session 已經付的成本沒有再多一層 plugin agent 收費。如果 pipeline 中途換模型（例如 revision pass 改用 Sonnet 省成本），下一輪 agent 派工自動跟上。
 
-其他 ARS agent（`bibliography_agent`、`literature_strategist_agent` 等）在 v3.7.0 不暴露為 plugin agent；它們仍是 in-skill prompt template，由主 session 內聯執行，沒有獨立的模型路由層。更廣的 plugin agent 覆蓋是 v3.6.8+ 的工作。
+其他 ARS agent（`bibliography_agent`、`literature_strategist_agent` 等）在 v3.7.0 不暴露為 plugin agent；它們仍是 in-skill prompt template，由主 session 內聯執行，沒有獨立的模型路由層。更廣的 plugin agent 覆蓋留到後續版本。
 
 ## 長時間 session 管理
 

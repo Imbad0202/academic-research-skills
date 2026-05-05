@@ -41,7 +41,7 @@ When ARS is installed as a Claude Code plugin (`/plugin install academic-researc
 
 This means **plugin-agent token costs track the per-mode estimates above unchanged**; there is no separate plugin agent surcharge or discount, because dispatched agents inherit the same model the parent run already pays for. If you change the main session model mid-pipeline (e.g., downshift to Sonnet for a long revision pass), the next agent dispatch picks up the new floor automatically.
 
-Other ARS agents (`bibliography_agent`, `literature_strategist_agent`, etc.) are not plugin-exposed in v3.7.0; they remain in-skill prompt templates that the main session executes inline, with no separate model routing layer. Wider plugin-agent coverage is v3.6.8+ scope.
+Other ARS agents (`bibliography_agent`, `literature_strategist_agent`, etc.) are not plugin-exposed in v3.7.0; they remain in-skill prompt templates that the main session executes inline, with no separate model routing layer. Wider plugin-agent coverage is deferred to a future release.
 
 ## Long-running session management
 
