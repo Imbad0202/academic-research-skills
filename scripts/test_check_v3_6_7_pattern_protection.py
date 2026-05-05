@@ -105,10 +105,15 @@ class R2MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
     def test_c3_audit_passed_sentence_deleted_fails(self) -> None:
+        # Phase 6.7 merged line 178 into the canonical Clause 1 line
+        # bullet. The "audit-passed state" segment is now part of a single
+        # whole-line bullet, so the mutation deletes that segment from
+        # within the canonical line and asserts the now-incomplete bullet
+        # fails the C3 + INV-1 regex pair.
         _mutate(
             self._repo_dir,
             "deep-research/agents/report_compiler_agent.md",
-            "\n- Output metadata must not claim audit-passed state.",
+            " Output metadata must not claim audit-passed state.",
             "",
         )
         self.assert_mutation_fails()
