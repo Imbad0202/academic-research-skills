@@ -1,0 +1,16 @@
+# Final pipeline outcome after ship_with_known_residue acknowledgement.
+
+stage_outcome: shipped_with_known_residue
+proceed_to_next_stage: true
+final_verdict_summary:
+  rounds_used: 3
+  target_rounds: 3
+  closed_findings:
+    - C2-r1-finding-1  # closed in round 2
+    - C1-r1-finding-1  # closed in round 2
+    - D4-r1-finding-1  # superseded by D4-r2-finding-1 → D4-r3-finding-1 (acknowledged)
+  acknowledged_residue:
+    - A3-r3-finding-1
+    - D4-r3-finding-1
+  unaddressed: []
+audit_gate_outcome: ship_with_known_residue

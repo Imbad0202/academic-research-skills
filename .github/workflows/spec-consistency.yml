@@ -134,3 +134,29 @@ jobs:
           pip install pytest pyyaml jsonschema
           pytest scripts/test_check_audit_artifact_consistency.py -v
 
+      - name: Validate v3.6.7 Step 8 pattern-eval fixture manifests (Phase 6.8)
+        run: python3 scripts/check_pattern_eval_manifest.py
+
+      - name: Run v3.6.7 Step 8 pattern-eval-unit tests (Phase 6.8 micro fixtures)
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest pyyaml jsonschema
+          pytest scripts/test_check_pattern_eval_manifest.py -v
+          pytest scripts/test_pattern_eval_runtime.py -v -k "micro or run_id or coverage"
+
+      - name: Run v3.6.7 Step 8 pattern-eval-integration tests (Phase 6.8 integration fixture)
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest pyyaml jsonschema
+          pytest scripts/test_pattern_eval_runtime.py -v -k "integration"
+
+      - name: Run v3.6.7 Phase 6.1 wrapper end-to-end dispatch test (Linux Bash 4+)
+        if: runner.os == 'Linux'
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest pyyaml jsonschema
+          pytest scripts/test_run_codex_audit_e2e.py -v
+
