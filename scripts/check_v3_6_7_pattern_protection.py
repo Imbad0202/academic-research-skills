@@ -985,19 +985,57 @@ def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
     return True, "OK"
 
 
+def _iter_block_segments(block: str) -> list[tuple[int, str, str]]:
+    """Yield (offset, kind, normalized_text) tuples for every
+    matched-content segment inside a PATTERN PROTECTION block. `kind`
+    is `"bullet"` for `^- ` items or `"prose"` for non-bullet prose
+    paragraphs (the intro paragraph and any future inline paragraph).
+
+    Whitespace-normalised so soft-wrapped Markdown lines collapse into
+    single-space sentences. Codex R3 P2 closure: prior INV-2 only
+    iterated bullets, but the Phase 6.7 sweep removed Clause 2
+    disclosures that lived in the *intro paragraph* of each block
+    (e.g. `Cross-model audit follows ... codex_audit_multifile_template.md`).
+    Restricting INV-2 to bullets allowed those disclosures to be
+    re-introduced into the intro paragraph and silently pass lint.
+    Iterating prose paragraphs as well restores parity with the
+    spec §6.2 sweep scope.
+    """
+    segments: list[tuple[int, str, str]] = []
+    bullet_starts = [m.start() for m in _BULLET_START_RE.finditer(block)]
+    first_bullet = bullet_starts[0] if bullet_starts else len(block)
+    # Strip the section heading line itself (`## PATTERN PROTECTION (v3.6.7)`)
+    # before paragraph-splitting — it is not contract content and ends with
+    # `\n\n` so the heading consistently lands as its own paragraph and is
+    # excluded by the paragraph filter below.
+    pre_bullet_region = block[:first_bullet]
+    paragraphs = re.split(r"\n\s*\n", pre_bullet_region)
+    cursor = 0
+    for paragraph in paragraphs:
+        # Skip empty paragraphs; skip the protection-block heading.
+        stripped = paragraph.strip()
+        if stripped and not stripped.startswith("## "):
+            offset = pre_bullet_region.find(paragraph, cursor)
+            if offset < 0:
+                offset = cursor
+            normalized = " ".join(stripped.split())
+            segments.append((offset, "prose", normalized))
+        cursor += len(paragraph) + 2  # account for `\n\n` separator
+    for bullet_offset, bullet_text in _iter_bullets(block):
+        segments.append((bullet_offset, "bullet", bullet_text))
+    return segments
+
+
 def _inv2_check_file(rel_path: str) -> tuple[bool, list[str]]:
     """INV-2: zero Clause 2 violation hits across the four regex
-    patterns (a)-(d), evaluated per-bullet (after whitespace
-    normalization). Returns (ok, error_messages).
+    patterns (a)-(d), evaluated per segment (intro prose paragraphs +
+    bullets, both whitespace-normalized). Returns (ok, error_messages).
 
-    Per-bullet evaluation closes codex R2 P2: previously the four
-    patterns ran with re.DOTALL against raw block text, allowing the
-    `.*` wildcards in INV-2(a) and INV-2(b) to match across unrelated
-    bullets — e.g. a benign `the orchestrator` mention in one bullet
-    plus a benign `audit` mention in another would false-positive
-    INV-2(a). Switching to per-bullet match restricts each `.*` to one
-    bullet's text while still tolerating Markdown soft wraps because
-    the bullet text is whitespace-normalized first."""
+    Per-segment evaluation closes codex R2 P2 (cross-bullet `.*`
+    over-reach) AND codex R3 P2 (intro-paragraph regression): each
+    pattern runs against a single bullet OR a single prose paragraph,
+    never spanning unrelated text. Soft-wrap tolerance is preserved by
+    pre-normalizing each segment's whitespace."""
     target = REPO_ROOT / rel_path
     if not target.exists():
         return False, [f"file missing: {rel_path}"]
@@ -1010,24 +1048,25 @@ def _inv2_check_file(rel_path: str) -> tuple[bool, list[str]]:
         ]
     errors: list[str] = []
     block_offset = full.find(block)
-    for bullet_offset, bullet_text in _iter_bullets(block):
-        # Skip the canonical Clause 1 bullet itself — it inherently
-        # contains "audit" tokens but is not a disclosure violation.
-        if bullet_text == CANONICAL_CLAUSE_1_TEXT:
+    for segment_offset, kind, normalized in _iter_block_segments(block):
+        # Skip the canonical Clause 1 bullet — it inherently contains
+        # "audit step" / "audit-passed state" tokens but is the
+        # required prohibition, not a disclosure.
+        if kind == "bullet" and normalized == CANONICAL_CLAUSE_1_TEXT:
             continue
         for label, pat in INV2_PATTERNS:
-            m = pat.search(bullet_text)
+            m = pat.search(normalized)
             if m is None:
                 continue
-            absolute_pos = (block_offset + bullet_offset) if block_offset >= 0 else bullet_offset
+            absolute_pos = (block_offset + segment_offset) if block_offset >= 0 else segment_offset
             line_no = full.count("\n", 0, absolute_pos) + 1
             errors.append(
-                f"{rel_path}:{line_no}: {label} Clause 2 violation in bullet: "
-                f"{bullet_text!r}. Sentence must be removed per "
+                f"{rel_path}:{line_no}: {label} Clause 2 violation in {kind}: "
+                f"{normalized!r}. Sentence must be removed per "
                 f"docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md §6.2."
             )
-            # One label per bullet is enough; further labels on the same
-            # bullet would be redundant.
+            # One label per segment is enough; further labels on the
+            # same segment would be redundant.
             break
     return (len(errors) == 0), errors
 

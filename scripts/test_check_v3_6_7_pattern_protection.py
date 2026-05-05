@@ -685,5 +685,35 @@ class CodexR2MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class CodexR3MutationTests(_MutationTestBase):
+    """Codex R3 (Phase 6.7 review, after R2 fixes) closure: 1 P2
+    finding restoring INV-2 coverage of intro-paragraph prose, not
+    just bullets."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def test_r3_p2_inv2_intro_paragraph_disclosure_fails(self) -> None:
+        # Codex R3 P2: the Phase 6.7 sweep removed Clause 2 disclosure
+        # sentences that lived in the intro paragraph of each PATTERN
+        # PROTECTION block (e.g. "Cross-model audit follows ...
+        # codex_audit_multifile_template.md ..." in synthesis_agent.md
+        # line 164). After R2's per-bullet refactor, INV-2 only
+        # iterated bullets and the original disclosure could be
+        # silently re-added to the intro paragraph. Phase 6.7 R3
+        # closure adds prose-paragraph segments to INV-2's iteration
+        # via `_iter_block_segments`. Re-introduce the original
+        # `Cross-model audit follows ...` sentence into synthesis's
+        # intro paragraph and assert lint catches it as a prose
+        # violation.
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            "documented in `docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md` §3.1 (A1–A5).",
+            "documented in `docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md` §3.1 (A1–A5). "
+            "Cross-model audit follows `shared/templates/codex_audit_multifile_template.md` audit dimensions §3.1, §3.2, §3.3, §3.4.",
+        )
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()
