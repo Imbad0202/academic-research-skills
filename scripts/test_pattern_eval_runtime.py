@@ -285,8 +285,7 @@ def test_micro_bad_run_signal_matches_expectation(pattern_id):
                 f"{actual_mutation!r}"
             )
 
-    # F-006 closure: assert expected_path matches phase semantics.
-    # Phases starting with "P-PA-" or "A" are Path A; "P-PB-" / "B" are Path B.
+    # F-006 + F-801 closure: phase contract for micro BAD verdicts.
     expected_path = expected_action.get("expected_path")
     assert expected_path in {"A", "B"}, (
         f"{pattern_id} BAD expected_path must be 'A' or 'B' (got {expected_path!r})"
@@ -296,9 +295,21 @@ def test_micro_bad_run_signal_matches_expectation(pattern_id):
             assert expected_path == "A", (
                 f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=A"
             )
-        elif expected_phase.startswith("P-PB-") or expected_phase == "B10":
+        elif expected_phase.startswith("P-PB-") or expected_phase in {"B10", "B11"}:
             assert expected_path == "B", (
                 f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=B"
+            )
+        # F-801 closure: micro fixtures don't exercise round-cap, so B11 is rejected here.
+        bad_status = bad_verdict["verdict_status"]
+        if bad_status == "PASS":
+            # D2 convergence-theatre special case — verdict is PASS but pattern flagged.
+            assert expected_phase in {"B10", "A7"}, (
+                f"{pattern_id} BAD PASS verdict (D2 special) requires phase ∈ {{B10, A7}}; got {expected_phase!r}"
+            )
+        elif bad_status in {"MINOR", "MATERIAL", "AUDIT_FAILED"}:
+            assert expected_phase == "B10", (
+                f"{pattern_id} BAD {bad_status} verdict (micro fixture) requires phase=B10; got {expected_phase!r} "
+                "(B11 reserved for integration round-cap)"
             )
 
     # F-006 closure: assert block_message non-empty for BLOCKING verdicts (MATERIAL/AUDIT_FAILED)
@@ -345,7 +356,8 @@ def test_micro_good_run_passes(pattern_id):
         if expected_mutation not in (None, "conditional"):
             assert actual_mutation == expected_mutation
 
-    # F-006 closure: GOOD case Path-B with PASS verdict should have empty block_message.
+    # F-006 + F-801 closure: GOOD case Path-B with PASS verdict should have
+    # empty block_message AND phase ∈ {B10, A7} (B11 reserved for round-cap).
     block_msg = expected_action.get("expected_block_message", "")
     assert block_msg == "", (
         f"{pattern_id} GOOD expected_block_message must be empty (PASS does not block); "
@@ -355,6 +367,11 @@ def test_micro_good_run_passes(pattern_id):
     assert expected_path in {"A", "B"}, (
         f"{pattern_id} GOOD expected_path must be 'A' or 'B' (got {expected_path!r})"
     )
+    if expected_phase:
+        assert expected_phase in {"B10", "A7"}, (
+            f"{pattern_id} GOOD PASS verdict requires phase ∈ {{B10, A7}}; got {expected_phase!r} "
+            "(P-PB-* / B11 not legitimate for PASS)"
+        )
 
 
 @pytest.mark.parametrize("pattern_id", _all_micro_fixtures())
@@ -650,15 +667,28 @@ def _simulate_round(
                     f"round {round_n} {agent} expected_phase={expected_phase} requires "
                     f"passport mutation {expected_mutation!r}; fixture declares {actual_mutation!r}"
                 )
-        # Block-message shape contract: BLOCKING verdicts (MATERIAL/AUDIT_FAILED)
-        # carry "[AUDIT GATE" substring per §5.6 BLOCK format; non-blocking PASS
-        # has empty block_message (Phase 6.8 fixtures shape).
+        # F-802 closure: block-message shape per §5.6 / §5.4 split.
+        # B10 BLOCK (non-final MATERIAL/AUDIT_FAILED) carries "[AUDIT GATE" substring.
+        # B11 escalation (round-cap MATERIAL) carries "[ESCALATION]" + the three
+        # §5.4 user choice tokens (ship_with_known_residue / another_round / abort_stage).
+        # Non-blocking PASS has empty block_message.
         block_msg = action.get("expected_block_message", "")
         if verdict["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
-            assert "[AUDIT GATE" in block_msg, (
-                f"round {round_n} {agent} {verdict['verdict_status']} verdict requires "
-                f"'[AUDIT GATE' substring in block_message; got {block_msg!r}"
-            )
+            if expected_phase == "B11":
+                assert "[ESCALATION]" in block_msg, (
+                    f"round {round_n} {agent} B11 escalation requires "
+                    f"'[ESCALATION]' substring in block_message; got {block_msg!r}"
+                )
+                for choice in ("ship_with_known_residue", "another_round", "abort_stage"):
+                    assert choice in block_msg, (
+                        f"round {round_n} {agent} B11 escalation message must list §5.4 choice "
+                        f"{choice!r}; got {block_msg!r}"
+                    )
+            else:
+                assert "[AUDIT GATE" in block_msg, (
+                    f"round {round_n} {agent} {verdict['verdict_status']} B10 verdict requires "
+                    f"'[AUDIT GATE' substring in block_message; got {block_msg!r}"
+                )
         else:
             assert block_msg == "", (
                 f"round {round_n} {agent} {verdict['verdict_status']} verdict requires "

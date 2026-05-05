@@ -206,15 +206,26 @@ def _validate_manifest(path: Path) -> list[str]:
 def _validate_micro_directory_id_match(
     manifest_path: Path, doc: dict
 ) -> list[str]:
-    """Manifest's pattern_id must equal directory name."""
+    """Manifest's pattern_id must equal directory name AND directory name must
+    be a known pattern ID. Closes codex F-803 — without the second clause, an
+    extra `A1_copy/manifest.json` with `pattern_id: A1` would slip past coverage
+    while overwriting the legitimate A1 entry in the manifests dict.
+    """
     expected = manifest_path.parent.name
     actual = doc.get("pattern_id")
-    if expected in PATTERN_IDS and actual != expected:
-        return [
+    errors = []
+    if expected not in PATTERN_IDS:
+        errors.append(
+            f"{manifest_path.relative_to(REPO_ROOT)}: directory name "
+            f"{expected!r} is not a known pattern ID — micro fixtures MUST live in a "
+            f"directory matching their pattern_id (one of {', '.join(PATTERN_IDS)})"
+        )
+    elif actual != expected:
+        errors.append(
             f"{manifest_path.relative_to(REPO_ROOT)}: pattern_id "
             f"{actual!r} does not match directory name {expected!r}"
-        ]
-    return []
+        )
+    return errors
 
 
 def _validate_micro_paths_exist(manifest_path: Path, doc: dict) -> list[str]:
