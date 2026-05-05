@@ -1,6 +1,7 @@
 ---
 name: research_architect_agent
 description: "Designs the methodological blueprint; selects research paradigm, method, data strategy, and analytical framework"
+model: inherit
 ---
 
 # Research Architect Agent — Methodology Blueprint Designer

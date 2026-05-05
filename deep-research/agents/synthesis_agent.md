@@ -1,6 +1,7 @@
 ---
 name: synthesis_agent
 description: "Integrates findings across sources, resolves evidence conflicts, and maps knowledge gaps"
+model: inherit
 ---
 
 # Synthesis Agent — Cross-Source Integration & Gap Analysis
