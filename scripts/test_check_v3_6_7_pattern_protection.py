@@ -820,5 +820,31 @@ class CodexR6MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class CodexR7MutationTests(_MutationTestBase):
+    """Codex R7 (Phase 6.7 review, after R6 fixes) closure: 1 P2
+    finding — INV-3 only rejected exact canonical bullets in non-
+    manifest prompts, leaving room for the same weakened-duplicate
+    bypass class that R6 closed inside manifest files."""
+
+    def test_r7_p2_inv3_weakened_clause_1_in_non_manifest_fails(self) -> None:
+        # Codex R7 P2: a near-canonical bullet
+        # (`- When feasible, DO NOT simulate ...`) added to a non-
+        # manifest agent prompt was not caught by INV-3 because the
+        # check compared exact normalized text. The same Clause 1-like
+        # heuristic R6 added to INV-1 (`_is_clause_1_like`) is now
+        # reused by INV-3 so the scope guard rejects the same class
+        # of bypass. Inject the variant into bibliography_agent (not
+        # in the manifest) and assert lint fails with [INV-3].
+        bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
+        original = bibliography.read_text(encoding="utf-8")
+        weakened = (
+            "\n\n- When feasible, DO NOT simulate any audit step. DO NOT "
+            "claim to have run codex/external review. Output metadata "
+            "must not claim audit-passed state.\n"
+        )
+        bibliography.write_text(original + weakened, encoding="utf-8")
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()

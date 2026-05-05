@@ -1131,13 +1131,19 @@ INV3_SCAN_DIRS = [
 
 
 def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
-    """INV-3: canonical Clause 1 line MUST NOT appear as a bullet in any
-    agent prompt outside the manifest. Scans the entire file (not just a
-    PATTERN PROTECTION block) since an off-spec sweep widening could
-    paste the canonical bullet into any section. Bullet-level matching
-    (whitespace-normalized exact equality) keeps INV-3 consistent with
-    INV-1 and avoids false positives when a non-manifest prompt happens
-    to discuss the canonical wording in prose. Returns (ok, error_messages)."""
+    """INV-3: no canonical Clause 1 bullet — exact OR Clause 1-like
+    (weakened/near-canonical) — appears in any agent prompt outside
+    the manifest. Scans the entire file (not just PATTERN PROTECTION
+    blocks); a sweep widening could paste a Clause 1 variant anywhere.
+    Returns (ok, error_messages).
+
+    Codex R7 P2 closure: prior INV-3 only checked exact normalized
+    equality, so a non-manifest prompt could carry
+    `- When feasible, DO NOT simulate ...` and silently widen the
+    v3.6.7 prohibition scope outside the frozen manifest. Reuse
+    `_is_clause_1_like` (the same fragment heuristic INV-1 uses to
+    catch weakened duplicates inside manifest files) so the scope
+    guard rejects the same class of bypass."""
     manifest_set = {str(REPO_ROOT / p) for p in manifest_files}
     errors: list[str] = []
     for d in INV3_SCAN_DIRS:
@@ -1147,19 +1153,23 @@ def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
             if str(path) in manifest_set:
                 continue
             text = path.read_text(encoding="utf-8")
-            # Scan the whole file as if it were one block for bullet
-            # extraction. _iter_bullets only walks `- ` markers so prose
-            # mentions of the canonical wording (in headings or
-            # paragraphs) do not trip the check.
-            bullets = _iter_bullets(text)
-            if any(bt == CANONICAL_CLAUSE_1_TEXT for _o, bt in bullets):
+            # Walk all `- ` bullets in the file. Prose mentions of the
+            # canonical wording (in headings or paragraphs) still do not
+            # trip the check — the heuristic only fires on bullet form,
+            # which is the actual scope-widening attack surface.
+            offenders = [
+                bt for _o, bt in _iter_bullets(text) if _is_clause_1_like(bt)
+            ]
+            if offenders:
                 rel = path.relative_to(REPO_ROOT)
                 errors.append(
-                    f"{rel}: canonical Clause 1 line found as a bullet "
-                    f"outside the v3.6.7 inversion manifest. If this is "
-                    f"intentional widening, land a v3.6.8+ scope-tagged "
-                    f"manifest per spec §6.3 line 1807 and open the §9 L2 "
-                    f"question; do not retroactively widen v3.6.7's manifest."
+                    f"{rel}: canonical Clause 1 line (or a Clause 1-like "
+                    f"variant) found as a bullet outside the v3.6.7 "
+                    f"inversion manifest. If this is intentional widening, "
+                    f"land a v3.6.8+ scope-tagged manifest per spec §6.3 "
+                    f"line 1807 and open the §9 L2 question; do not "
+                    f"retroactively widen v3.6.7's manifest. "
+                    f"Offending bullet(s): {offenders!r}"
                 )
     return (len(errors) == 0), errors
 
