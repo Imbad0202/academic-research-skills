@@ -601,5 +601,89 @@ class CodexR1MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class CodexR2MutationTests(_MutationTestBase):
+    """Codex R2 (Phase 6.7 review, after R1 fixes) closures: 2 P2
+    findings against the bullet-text exactness contract and INV-2's
+    cross-bullet `.*` over-reach."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def test_r2_p2_inv1_bullet_prefix_weakener_fails(self) -> None:
+        # Codex R2 P2: a bullet of the form `- When feasible, DO NOT
+        # simulate ...` carries the canonical sentences as a substring
+        # but is NOT a verbatim canonical bullet. The pre-fix INV-1
+        # regex search-anywhere accepted this; the bullet-extraction +
+        # exact-match contract rejects it.
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/report_compiler_agent.md",
+            self.CANONICAL_BULLET,
+            "- When feasible, DO NOT simulate any audit step. DO NOT "
+            "claim to have run codex/external review. Output metadata "
+            "must not claim audit-passed state.",
+        )
+        self.assert_mutation_fails()
+
+    def test_r2_p2_inv1_softwrap_canonical_passes(self) -> None:
+        # Codex R2 P2 dual: a soft-wrapped canonical bullet (line break
+        # between `run` and `codex/external`) MUST still pass INV-1.
+        # This is the false-negative side of the regex anchor problem
+        # that the bullet-extraction + whitespace-normalization fix
+        # closes. Asserts that this specific Markdown reflow does not
+        # break baseline lint.
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            "DO NOT claim to have run codex/external review.",
+            "DO NOT claim to have run\n  codex/external review.",
+        )
+        # Mutation should leave lint passing — the soft-wrap is benign.
+        rc, _stdout, stderr = _run_lint(self._repo_dir)
+        self.assertEqual(
+            rc,
+            0,
+            f"soft-wrapped canonical bullet should still pass; stderr={stderr}",
+        )
+
+    def test_r2_p2_inv2_cross_bullet_no_false_positive(self) -> None:
+        # Codex R2 P2: prior INV-2(a) `\bthe orchestrator\b.*\baudit\b`
+        # with re.DOTALL applied to raw block text would match across
+        # bullets — a benign `the orchestrator` mention in one bullet
+        # plus the canonical bullet's `audit step` mention would
+        # false-positive even though no single bullet expresses the
+        # forbidden disclosure. Insert a benign orchestrator mention as
+        # a NEW bullet near the canonical bullet and assert lint still
+        # passes (no false positive).
+        benign_bullet = (
+            "- The orchestrator may supply the dispatch context for this "
+            "block when running this agent."
+        )
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            self.CANONICAL_BULLET,
+            benign_bullet + "\n" + self.CANONICAL_BULLET,
+        )
+        rc, _stdout, stderr = _run_lint(self._repo_dir)
+        self.assertEqual(
+            rc,
+            0,
+            f"benign cross-bullet 'orchestrator' mention should not "
+            f"false-positive INV-2; stderr={stderr}",
+        )
+
+    def test_r2_p2_inv2_in_bullet_violation_still_fails(self) -> None:
+        # Defense in depth on R2-002: the per-bullet INV-2 must STILL
+        # catch a real violation that lives inside a single bullet.
+        violation = "- The orchestrator runs codex audit afterward on the deliverable."
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/research_architect_agent.md",
+            self.CANONICAL_BULLET,
+            violation + "\n" + self.CANONICAL_BULLET,
+        )
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()

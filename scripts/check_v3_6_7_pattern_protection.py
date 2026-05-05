@@ -803,51 +803,38 @@ CANONICAL_CLAUSE_1_TEXT = (
     "Output metadata must not claim audit-passed state."
 )
 
-# Whitespace-normalised regex for the canonical line. `\s+` between
-# segments tolerates Markdown line wraps; `\.` at the segment boundaries
-# pins sentence ends so a partial match (e.g. only the first DO NOT clause)
-# does not satisfy. The trailing `state\.\s*$` (with re.MULTILINE applied
-# at match time) anchors the third sentence to a line end so a tail
-# weakener like ` if feasible.` or `; this is recommended.` cannot
-# coexist with INV-1 PASS — codex R1 P2 closure (a regex stopping at
-# `state\b` left INV-1 silently approving canonical+suffix).
-CANONICAL_CLAUSE_1_RE = re.compile(
-    r"DO NOT simulate any audit step\.\s+"
-    r"DO NOT claim to have run codex/external review\.\s+"
-    r"Output metadata must not claim audit-passed state\.\s*$",
-    re.MULTILINE,
-)
-
 # Spec §6.3 INV-2 regex set (a)-(d). Patterns are written as Python regex
 # literals here (`|` for alternation, no Markdown escaping) — the spec
 # table renders them as `\|` because raw `|` is the Markdown table-column
 # delimiter; the lint reads the underlying regex, not the rendered cell.
-# All four compile with re.IGNORECASE | re.DOTALL so `.` matches newlines:
-# a Markdown soft-wrap of a forbidden Clause 2 sentence (e.g. line break
-# between `Cross-model audit follows` and the template path) cannot
-# bypass INV-2. Codex R1 P2 closure — the prior non-DOTALL forms reported
-# PASS on multi-line wraps that still expressed the forbidden disclosure.
+# All four compile with re.IGNORECASE only — DOTALL is not needed because
+# patterns are applied to bullet text after whitespace normalization
+# (newlines collapsed to single spaces), which preserves Markdown
+# soft-wrap tolerance (codex R1 P2 closure) while bounding the `.*`
+# wildcard to a single bullet (codex R2 P2 closure: prior IGNORECASE |
+# DOTALL applied to raw block text let INV-2(a)/(b) match across
+# unrelated bullets).
 INV2_PATTERNS = [
-    ("INV-2(a)", re.compile(r"\bthe orchestrator\b.*\baudit\b", re.IGNORECASE | re.DOTALL)),
+    ("INV-2(a)", re.compile(r"\bthe orchestrator\b.*\baudit\b", re.IGNORECASE)),
     (
         "INV-2(b)",
         re.compile(
             r"\bcross-model audit (?:follows|covers)\b.*codex_audit_multifile_template",
-            re.IGNORECASE | re.DOTALL,
+            re.IGNORECASE,
         ),
     ),
     (
         "INV-2(c)",
         re.compile(
             r"\baudit (?:afterwards?|will be run|is dispatched)\b",
-            re.IGNORECASE | re.DOTALL,
+            re.IGNORECASE,
         ),
     ),
     (
         "INV-2(d)",
         re.compile(
             r"\bdownstream audit\b|\bthis output (?:is|will be) audited\b",
-            re.IGNORECASE | re.DOTALL,
+            re.IGNORECASE,
         ),
     ),
 ]
@@ -918,9 +905,64 @@ def _extract_block(text: str, marker: str) -> str | None:
     return rest[:end]
 
 
+# Bullet line — Markdown list item starting with `- ` at the start of a
+# line, optionally indented. Captures the bullet text including any
+# soft-wrapped continuation lines (lines indented more than the bullet
+# itself, by Markdown convention typically two spaces). Bullet text ends
+# at the next bullet, blank line, or block boundary.
+_BULLET_START_RE = re.compile(r"^(\s*)-\s+", re.MULTILINE)
+
+
+def _iter_bullets(block: str) -> list[tuple[int, str]]:
+    """Walk a PATTERN PROTECTION block and yield (line_offset, bullet_text)
+    pairs where bullet_text is the bullet's content (without the leading
+    `- ` marker) with all whitespace runs (including newlines from soft
+    wraps) collapsed to a single space.
+
+    Bullet boundaries: each bullet runs from its `- ` marker to the next
+    bullet, blank line (`\\n\\n`), or end of block. This makes INV-1
+    (canonical-line-as-bullet) and INV-2 (no-Clause-2-disclosure) operate
+    at bullet granularity, which is what the spec §6.3 means by "exactly
+    one bullet whose text matches the canonical Clause 1 line verbatim".
+
+    `line_offset` is the 0-indexed character position of the bullet's
+    `-` marker inside `block` (used to compute file-line diagnostics).
+    """
+    starts = list(_BULLET_START_RE.finditer(block))
+    bullets: list[tuple[int, str]] = []
+    for i, m in enumerate(starts):
+        bullet_start = m.start()
+        content_start = m.end()
+        if i + 1 < len(starts):
+            bullet_end = starts[i + 1].start()
+        else:
+            bullet_end = len(block)
+        # Trim at the first blank line within the bullet — a blank line
+        # ends the bullet even if no further `- ` appears in the block.
+        candidate = block[content_start:bullet_end]
+        blank = candidate.find("\n\n")
+        if blank >= 0:
+            candidate = candidate[:blank]
+        normalized = " ".join(candidate.split())
+        bullets.append((bullet_start, normalized))
+    return bullets
+
+
 def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
-    """INV-1: canonical Clause 1 line appears exactly once in the
-    PATTERN PROTECTION block. Returns (ok, message)."""
+    """INV-1: canonical Clause 1 line appears as exactly one bullet in
+    the PATTERN PROTECTION block. The bullet's whitespace-normalized
+    text MUST equal the canonical Clause 1 text byte-for-byte; prefix
+    weakeners (`When feasible, DO NOT simulate ...`), tail weakeners
+    (`... audit-passed state if feasible.`), or partial matches all
+    fail. Returns (ok, message).
+
+    Codex R2 P2 closure: prior implementation used a regex search with
+    only sentence-boundary whitespace normalization, which let bullet-
+    prefix injections (`- When feasible, DO NOT simulate ...`) silently
+    pass while rejecting harmless soft-wraps (e.g. line break between
+    `run` and `codex/external`). Switch to bullet-extraction +
+    full-text whitespace normalization + exact equality so soft wraps
+    are tolerated and any deviation from the canonical text fails."""
     target = REPO_ROOT / rel_path
     if not target.exists():
         return False, f"file missing: {rel_path}"
@@ -930,19 +972,32 @@ def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
             f"{rel_path}: PATTERN PROTECTION block missing "
             f"(marker {PROTECTION_BLOCK!r} not found)"
         )
-    hits = CANONICAL_CLAUSE_1_RE.findall(block)
-    if len(hits) != 1:
+    matches = sum(
+        1 for _offset, text in _iter_bullets(block) if text == CANONICAL_CLAUSE_1_TEXT
+    )
+    if matches != 1:
         return False, (
-            f"{rel_path}: PATTERN PROTECTION block has {len(hits)} "
-            f"canonical Clause 1 line(s); expected exactly 1. "
-            f"Expected wording: {CANONICAL_CLAUSE_1_TEXT!r}"
+            f"{rel_path}: PATTERN PROTECTION block has {matches} "
+            f"bullet(s) whose normalized text equals the canonical "
+            f"Clause 1 line; expected exactly 1. Expected wording: "
+            f"{CANONICAL_CLAUSE_1_TEXT!r}"
         )
     return True, "OK"
 
 
 def _inv2_check_file(rel_path: str) -> tuple[bool, list[str]]:
-    """INV-2: zero Clause 2 violation hits inside the PATTERN PROTECTION
-    block. Returns (ok, error_messages)."""
+    """INV-2: zero Clause 2 violation hits across the four regex
+    patterns (a)-(d), evaluated per-bullet (after whitespace
+    normalization). Returns (ok, error_messages).
+
+    Per-bullet evaluation closes codex R2 P2: previously the four
+    patterns ran with re.DOTALL against raw block text, allowing the
+    `.*` wildcards in INV-2(a) and INV-2(b) to match across unrelated
+    bullets — e.g. a benign `the orchestrator` mention in one bullet
+    plus a benign `audit` mention in another would false-positive
+    INV-2(a). Switching to per-bullet match restricts each `.*` to one
+    bullet's text while still tolerating Markdown soft wraps because
+    the bullet text is whitespace-normalized first."""
     target = REPO_ROOT / rel_path
     if not target.exists():
         return False, [f"file missing: {rel_path}"]
@@ -955,16 +1010,25 @@ def _inv2_check_file(rel_path: str) -> tuple[bool, list[str]]:
         ]
     errors: list[str] = []
     block_offset = full.find(block)
-    for label, pat in INV2_PATTERNS:
-        for m in pat.finditer(block):
-            # Compute approximate line number for the diagnostic.
-            absolute_pos = block_offset + m.start() if block_offset >= 0 else m.start()
+    for bullet_offset, bullet_text in _iter_bullets(block):
+        # Skip the canonical Clause 1 bullet itself — it inherently
+        # contains "audit" tokens but is not a disclosure violation.
+        if bullet_text == CANONICAL_CLAUSE_1_TEXT:
+            continue
+        for label, pat in INV2_PATTERNS:
+            m = pat.search(bullet_text)
+            if m is None:
+                continue
+            absolute_pos = (block_offset + bullet_offset) if block_offset >= 0 else bullet_offset
             line_no = full.count("\n", 0, absolute_pos) + 1
             errors.append(
-                f"{rel_path}:{line_no}: {label} Clause 2 violation: "
-                f"{m.group()!r}. Sentence must be removed per "
+                f"{rel_path}:{line_no}: {label} Clause 2 violation in bullet: "
+                f"{bullet_text!r}. Sentence must be removed per "
                 f"docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md §6.2."
             )
+            # One label per bullet is enough; further labels on the same
+            # bullet would be redundant.
+            break
     return (len(errors) == 0), errors
 
 
@@ -980,8 +1044,13 @@ INV3_SCAN_DIRS = [
 
 
 def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
-    """INV-3: canonical Clause 1 line MUST NOT appear in any agent prompt
-    outside the manifest. Returns (ok, error_messages)."""
+    """INV-3: canonical Clause 1 line MUST NOT appear as a bullet in any
+    agent prompt outside the manifest. Scans the entire file (not just a
+    PATTERN PROTECTION block) since an off-spec sweep widening could
+    paste the canonical bullet into any section. Bullet-level matching
+    (whitespace-normalized exact equality) keeps INV-3 consistent with
+    INV-1 and avoids false positives when a non-manifest prompt happens
+    to discuss the canonical wording in prose. Returns (ok, error_messages)."""
     manifest_set = {str(REPO_ROOT / p) for p in manifest_files}
     errors: list[str] = []
     for d in INV3_SCAN_DIRS:
@@ -991,13 +1060,19 @@ def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
             if str(path) in manifest_set:
                 continue
             text = path.read_text(encoding="utf-8")
-            if CANONICAL_CLAUSE_1_RE.search(text):
+            # Scan the whole file as if it were one block for bullet
+            # extraction. _iter_bullets only walks `- ` markers so prose
+            # mentions of the canonical wording (in headings or
+            # paragraphs) do not trip the check.
+            bullets = _iter_bullets(text)
+            if any(bt == CANONICAL_CLAUSE_1_TEXT for _o, bt in bullets):
                 rel = path.relative_to(REPO_ROOT)
                 errors.append(
-                    f"{rel}: canonical Clause 1 line found outside the "
-                    f"v3.6.7 inversion manifest. If this is intentional "
-                    f"widening, update scripts/v3_6_7_inversion_manifest.json "
-                    f"AND open the L2 question per §9."
+                    f"{rel}: canonical Clause 1 line found as a bullet "
+                    f"outside the v3.6.7 inversion manifest. If this is "
+                    f"intentional widening, land a v3.6.8+ scope-tagged "
+                    f"manifest per spec §6.3 line 1807 and open the §9 L2 "
+                    f"question; do not retroactively widen v3.6.7's manifest."
                 )
     return (len(errors) == 0), errors
 
