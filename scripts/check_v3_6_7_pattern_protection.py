@@ -742,35 +742,258 @@ def compiler_agent_checks() -> list[Check]:
                     "C1 protected hedges non-negotiable",
                     r"protected\s+hedg(?:e|ing)\s+phrases[^.\n]{0,200}\b(?:budget[- ]protected|non-negotiable|verbatim)\b",
                 ),
-                # C3 — anti-fake-audit guard. Both DO NOT clauses must appear
-                # in either order. The gap allows two short sentences (the
-                # natural "DO NOT simulate ... DO NOT claim ..." wording).
-                # This is itself a prohibition obligation, so allow the
-                # `DO NOT` imperative through the negation post-filter
-                # (R4-001 still applies — trailing "this is not required"
-                # is rejected by the adjective-targeted negation rules).
+                # C3 — canonical Clause 1 line per Step 6 §6.2. The line is
+                # one bullet carrying three prohibitions in fixed order:
+                # "DO NOT simulate any audit step. DO NOT claim to have run
+                # codex/external review. Output metadata must not claim
+                # audit-passed state." Phase 6.7 merged the prior two C3
+                # regexes (anti-fake-audit pair + output-metadata) into a
+                # single line so the bullet is whole-line verbatim — INV-1
+                # below enforces presence/uniqueness across all three
+                # in-scope prompts; this regex stays here to keep C1-C3
+                # mutation coverage intact (R2-001 inverted-must-not, R3-001
+                # trailing weakener, R4-001 advisory framing). Pattern is
+                # whole-line so all three prohibition tokens (DO NOT × 2 +
+                # must not) sit inside the matched span and the negation
+                # post-filter does not flag a sibling prohibition as a
+                # weakener (B2 R3-001 span-restricted exemption).
                 (
-                    "C3 anti-fake-audit guard pair",
-                    r"DO NOT simulate[^\n]{0,300}\.[^\n]{0,100}\bDO NOT claim to have run\b"
-                    r"|DO NOT claim to have run[^\n]{0,300}\.[^\n]{0,100}\bDO NOT simulate\b",
+                    "C3 canonical Clause 1 line (whole-line verbatim)",
+                    r"\bDO NOT simulate any audit step\.\s+DO NOT claim to have run codex/external review\.\s+Output metadata must not claim audit-passed state\b",
                     True,  # allow_prohibition: this IS the prohibition
-                ),
-                # C3 — output metadata prohibition. Spec §6.3 explicitly
-                # closes the loop: "Output metadata must not claim
-                # audit-passed state." Without this, an agent could
-                # honour the DO NOT pair while still surfacing fake
-                # audit-passed metadata (B2 codex R1-001). Uses `must not`
-                # as the prohibition expression — exemption is per-regex
-                # so it does not leak to C1's assertion-style obligation
-                # (B2 R2-001).
-                (
-                    "C3 output metadata audit-passed prohibition",
-                    r"\bOutput metadata must not claim audit-passed state\b",
-                    True,  # allow_prohibition: `must not` is the obligation
                 ),
             ],
         )
     ]
+
+
+# ---------------------------------------------------------------------------
+# Inversion sweep checks (Phase 6.7 — spec §6 partial inversion rule)
+# ---------------------------------------------------------------------------
+#
+# Spec §6.3 defines INV-1/INV-2/INV-3 as the lint enforcement of the
+# §6.2 sweep. These run alongside the keyword/regex Check pipeline above
+# but operate at file-list granularity (manifest-driven) rather than
+# per-Check, so they are implemented as standalone functions returning
+# (pattern_id, description, ok, message) tuples.
+#
+# - INV-1: each manifest file's PATTERN PROTECTION block carries the
+#   canonical Clause 1 line exactly once (presence + uniqueness).
+# - INV-2: each manifest file's PATTERN PROTECTION block contains zero
+#   sentences matching any of the four Clause 2 violation patterns.
+# - INV-3: no agent prompt file outside the manifest carries the canonical
+#   Clause 1 line (defends against accidental sweep widening per §9 L2).
+
+INVERSION_MANIFEST = REPO_ROOT / "scripts" / "v3_6_7_inversion_manifest.json"
+
+# Canonical Clause 1 line, byte-aligned with spec §6.2 line 1767. Whitespace
+# inside is tolerant (collapse whitespace runs to a single space) so a future
+# Markdown reflow that wraps the bullet across two lines does not break the
+# match; presence is what matters.
+CANONICAL_CLAUSE_1_TEXT = (
+    "DO NOT simulate any audit step. "
+    "DO NOT claim to have run codex/external review. "
+    "Output metadata must not claim audit-passed state."
+)
+
+# Whitespace-normalised regex for the canonical line. `\s+` between
+# segments tolerates Markdown line wraps; `\.` at the segment boundaries
+# pins sentence ends so a partial match (e.g. only the first DO NOT clause)
+# does not satisfy.
+CANONICAL_CLAUSE_1_RE = re.compile(
+    r"DO NOT simulate any audit step\.\s+"
+    r"DO NOT claim to have run codex/external review\.\s+"
+    r"Output metadata must not claim audit-passed state\b"
+)
+
+# Spec §6.3 INV-2 regex set (a)-(d). Patterns are written as Python regex
+# literals here (`|` for alternation, no Markdown escaping) — the spec
+# table renders them as `\|` because raw `|` is the Markdown table-column
+# delimiter; the lint reads the underlying regex, not the rendered cell.
+# All four compile with re.IGNORECASE.
+INV2_PATTERNS = [
+    ("INV-2(a)", re.compile(r"\bthe orchestrator\b.*\baudit\b", re.IGNORECASE)),
+    (
+        "INV-2(b)",
+        re.compile(
+            r"\bcross-model audit (?:follows|covers)\b.*codex_audit_multifile_template",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "INV-2(c)",
+        re.compile(
+            r"\baudit (?:afterwards?|will be run|is dispatched)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "INV-2(d)",
+        re.compile(
+            r"\bdownstream audit\b|\bthis output (?:is|will be) audited\b",
+            re.IGNORECASE,
+        ),
+    ),
+]
+
+
+def _load_inversion_manifest() -> tuple[list[str], str | None]:
+    """Return (file_list, error_message). file_list paths are repo-relative."""
+    if not INVERSION_MANIFEST.exists():
+        return [], f"manifest missing: scripts/v3_6_7_inversion_manifest.json"
+    try:
+        import json
+        data = json.loads(INVERSION_MANIFEST.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return [], f"manifest unreadable: {exc}"
+    if data.get("scope") != "v3.6.7-only":
+        return [], f"manifest 'scope' must be 'v3.6.7-only', got {data.get('scope')!r}"
+    files = data.get("files")
+    if not isinstance(files, list) or not all(isinstance(p, str) for p in files):
+        return [], "manifest 'files' must be a list of strings"
+    return files, None
+
+
+def _extract_block(text: str, marker: str) -> str | None:
+    """Return PATTERN PROTECTION block text, or None if marker missing."""
+    pos = text.lower().find(marker.lower())
+    if pos == -1:
+        return None
+    rest = text[pos:]
+    match = _HEADING_RE.search(rest, pos=len(marker))
+    end = match.start() if match else len(rest)
+    return rest[:end]
+
+
+def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
+    """INV-1: canonical Clause 1 line appears exactly once in the
+    PATTERN PROTECTION block. Returns (ok, message)."""
+    target = REPO_ROOT / rel_path
+    if not target.exists():
+        return False, f"file missing: {rel_path}"
+    block = _extract_block(target.read_text(encoding="utf-8"), PROTECTION_BLOCK)
+    if block is None:
+        return False, (
+            f"{rel_path}: PATTERN PROTECTION block missing "
+            f"(marker {PROTECTION_BLOCK!r} not found)"
+        )
+    hits = CANONICAL_CLAUSE_1_RE.findall(block)
+    if len(hits) != 1:
+        return False, (
+            f"{rel_path}: PATTERN PROTECTION block has {len(hits)} "
+            f"canonical Clause 1 line(s); expected exactly 1. "
+            f"Expected wording: {CANONICAL_CLAUSE_1_TEXT!r}"
+        )
+    return True, "OK"
+
+
+def _inv2_check_file(rel_path: str) -> tuple[bool, list[str]]:
+    """INV-2: zero Clause 2 violation hits inside the PATTERN PROTECTION
+    block. Returns (ok, error_messages)."""
+    target = REPO_ROOT / rel_path
+    if not target.exists():
+        return False, [f"file missing: {rel_path}"]
+    full = target.read_text(encoding="utf-8")
+    block = _extract_block(full, PROTECTION_BLOCK)
+    if block is None:
+        return False, [
+            f"{rel_path}: PATTERN PROTECTION block missing "
+            f"(marker {PROTECTION_BLOCK!r} not found)"
+        ]
+    errors: list[str] = []
+    block_offset = full.find(block)
+    for label, pat in INV2_PATTERNS:
+        for m in pat.finditer(block):
+            # Compute approximate line number for the diagnostic.
+            absolute_pos = block_offset + m.start() if block_offset >= 0 else m.start()
+            line_no = full.count("\n", 0, absolute_pos) + 1
+            errors.append(
+                f"{rel_path}:{line_no}: {label} Clause 2 violation: "
+                f"{m.group()!r}. Sentence must be removed per "
+                f"docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md §6.2."
+            )
+    return (len(errors) == 0), errors
+
+
+# Directories scanned by INV-3. Spec §6.3 limits scope to agent prompt
+# files under deep-research/agents/ and academic-pipeline/agents/. docs/,
+# scripts/, and tests/ are excluded — the canonical line legitimately
+# appears in the spec, the manifest checker, and test fixtures, and
+# scanning those would self-fail.
+INV3_SCAN_DIRS = [
+    REPO_ROOT / "deep-research" / "agents",
+    REPO_ROOT / "academic-pipeline" / "agents",
+]
+
+
+def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
+    """INV-3: canonical Clause 1 line MUST NOT appear in any agent prompt
+    outside the manifest. Returns (ok, error_messages)."""
+    manifest_set = {str(REPO_ROOT / p) for p in manifest_files}
+    errors: list[str] = []
+    for d in INV3_SCAN_DIRS:
+        if not d.is_dir():
+            continue
+        for path in sorted(d.glob("*.md")):
+            if str(path) in manifest_set:
+                continue
+            text = path.read_text(encoding="utf-8")
+            if CANONICAL_CLAUSE_1_RE.search(text):
+                rel = path.relative_to(REPO_ROOT)
+                errors.append(
+                    f"{rel}: canonical Clause 1 line found outside the "
+                    f"v3.6.7 inversion manifest. If this is intentional "
+                    f"widening, update scripts/v3_6_7_inversion_manifest.json "
+                    f"AND open the L2 question per §9."
+                )
+    return (len(errors) == 0), errors
+
+
+def inversion_sweep_results() -> list[tuple[str, str, bool, str]]:
+    """Run INV-1/INV-2/INV-3. Returns list of
+    (pattern_id, description, ok, message) tuples — one row per check ID,
+    aggregated across files for INV-2 and INV-3."""
+    results: list[tuple[str, str, bool, str]] = []
+    files, err = _load_inversion_manifest()
+    if err is not None:
+        results.append(("INV-manifest", "v3.6.7 inversion manifest readable", False, err))
+        return results
+
+    # INV-1: per-file presence/uniqueness check, aggregated.
+    inv1_errors: list[str] = []
+    for f in files:
+        ok, msg = _inv1_check_file(f)
+        if not ok:
+            inv1_errors.append(msg)
+    results.append((
+        "INV-1",
+        f"canonical Clause 1 line present exactly once in each of {len(files)} manifest file(s)",
+        len(inv1_errors) == 0,
+        "OK" if not inv1_errors else "; ".join(inv1_errors),
+    ))
+
+    # INV-2: aggregate Clause 2 violation hits across all manifest files.
+    inv2_errors: list[str] = []
+    for f in files:
+        ok, errs = _inv2_check_file(f)
+        if not ok:
+            inv2_errors.extend(errs)
+    results.append((
+        "INV-2",
+        "no Clause 2 disclosure phrases (a)-(d) inside PATTERN PROTECTION blocks",
+        len(inv2_errors) == 0,
+        "OK" if not inv2_errors else "; ".join(inv2_errors),
+    ))
+
+    # INV-3: canonical line restricted to manifest files.
+    ok, errs = _inv3_check(files)
+    results.append((
+        "INV-3",
+        f"canonical Clause 1 line confined to {len(files)} manifest file(s)",
+        ok,
+        "OK" if ok else "; ".join(errs),
+    ))
+    return results
 
 
 # Environment variable controlling whether agent-prompt checks run.
@@ -806,21 +1029,33 @@ def all_checks() -> list[Check]:
 
 def main(argv: list[str]) -> int:
     checks = all_checks()
-    passed: list[Check] = []
-    failed: list[tuple[Check, str]] = []
+    passed: list[tuple[str, str]] = []
+    failed: list[tuple[str, str, str]] = []
 
     for check in checks:
         ok, msg = check.run()
+        entry = (check.pattern_id, check.description)
         if ok:
-            passed.append(check)
+            passed.append(entry)
         else:
-            failed.append((check, msg))
+            failed.append((check.pattern_id, check.description, msg))
 
+    inv_results: list[tuple[str, str, bool, str]] = []
+    if _agent_checks_enabled():
+        inv_results = inversion_sweep_results()
+        for pid, desc, ok, msg in inv_results:
+            entry = (pid, desc)
+            if ok:
+                passed.append(entry)
+            else:
+                failed.append((pid, desc, msg))
+
+    total = len(checks) + len(inv_results)
     deferred_note = ""
     if not _agent_checks_enabled():
         deferred_note = " (agent-prompt checks skipped — ARS_V3_6_7_AGENT_CHECKS=0)"
     summary = (
-        f"v3.6.7 pattern-protection static audit: {len(passed)}/{len(checks)} "
+        f"v3.6.7 pattern-protection static audit: {len(passed)}/{total} "
         f"checks passed{deferred_note}"
     )
     print(summary)
@@ -828,8 +1063,8 @@ def main(argv: list[str]) -> int:
 
     if passed:
         print("PASS:")
-        for c in passed:
-            print(f"  [{c.pattern_id}] {c.description}")
+        for pid, desc in passed:
+            print(f"  [{pid}] {desc}")
         print()
 
     if failed:
@@ -837,8 +1072,8 @@ def main(argv: list[str]) -> int:
         # channel (matching scripts/check_corpus_consumer_protocol.py) surface
         # the diagnostics correctly.
         print("FAIL:", file=sys.stderr)
-        for c, msg in failed:
-            print(f"  [{c.pattern_id}] {c.description}", file=sys.stderr)
+        for pid, desc, msg in failed:
+            print(f"  [{pid}] {desc}", file=sys.stderr)
             print(f"      → {msg}", file=sys.stderr)
         print(file=sys.stderr)
         print(
@@ -847,6 +1082,10 @@ def main(argv: list[str]) -> int:
         )
         print(
             "  docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md",
+            file=sys.stderr,
+        )
+        print(
+            "  docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md (INV-1/2/3)",
             file=sys.stderr,
         )
         return 1

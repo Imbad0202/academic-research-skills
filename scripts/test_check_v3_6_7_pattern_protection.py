@@ -127,15 +127,6 @@ class R3MutationTests(_MutationTestBase):
         )
         self.assert_mutation_fails()
 
-    def test_r3_001_orchestrator_does_not_run_fails(self) -> None:
-        _mutate(
-            self._repo_dir,
-            "deep-research/agents/report_compiler_agent.md",
-            "The orchestrator runs codex audit afterward.",
-            "The orchestrator does not run codex audit afterward.",
-        )
-        self.assert_mutation_fails()
-
     def test_r3_002_a2_pending_verification_optional_fails(self) -> None:
         _mutate(
             self._repo_dir,
@@ -362,6 +353,164 @@ class R6MutationTests(_MutationTestBase):
             "For each substantive claim: include a one-line anchor justification.",
             "We recommend that each substantive claim include a one-line anchor justification.",
         )
+        self.assert_mutation_fails()
+
+
+class INV1MutationTests(_MutationTestBase):
+    """INV-1 (Phase 6.7 §6.3): canonical Clause 1 line MUST appear exactly
+    once in each manifest file's PATTERN PROTECTION block. Deleting the
+    line, duplicating it, or replacing it with a near-miss MUST fail lint."""
+
+    CANONICAL_BULLET = (
+        "- DO NOT simulate any audit step. DO NOT claim to have run "
+        "codex/external review. Output metadata must not claim audit-passed "
+        "state."
+    )
+
+    def test_inv1_synthesis_canonical_line_deleted_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            "\n" + self.CANONICAL_BULLET,
+            "",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv1_architect_canonical_line_deleted_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/research_architect_agent.md",
+            "\n" + self.CANONICAL_BULLET,
+            "",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv1_compiler_canonical_line_deleted_fails(self) -> None:
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/report_compiler_agent.md",
+            "\n" + self.CANONICAL_BULLET,
+            "",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv1_synthesis_canonical_line_duplicated_fails(self) -> None:
+        # Duplicating the bullet trips INV-1 uniqueness (`hits == 1`)
+        # without breaking the per-file C-style positive regex.
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            self.CANONICAL_BULLET,
+            self.CANONICAL_BULLET + "\n" + self.CANONICAL_BULLET,
+        )
+        self.assert_mutation_fails()
+
+
+class INV2MutationTests(_MutationTestBase):
+    """INV-2 (Phase 6.7 §6.3): four Clause 2 disclosure regex patterns
+    (a)-(d) MUST not match anything inside a PATTERN PROTECTION block.
+    Each test injects one canonical violation phrase as a new bullet
+    above the canonical Clause 1 line and asserts lint fails."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def _inject_violation(self, file_rel: str, violation: str) -> None:
+        """Insert a violation bullet immediately above the canonical line."""
+        new_block = f"- {violation}\n{self.CANONICAL_BULLET}"
+        _mutate(
+            self._repo_dir,
+            file_rel,
+            self.CANONICAL_BULLET,
+            new_block,
+        )
+
+    def test_inv2_a_orchestrator_audit_fails(self) -> None:
+        # Pattern (a): \bthe orchestrator\b.*\baudit\b
+        self._inject_violation(
+            "deep-research/agents/synthesis_agent.md",
+            "The orchestrator runs codex audit afterward.",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv2_b_cross_model_audit_template_fails(self) -> None:
+        # Pattern (b): \bcross-model audit (?:follows|covers)\b.*codex_audit_multifile_template
+        self._inject_violation(
+            "deep-research/agents/research_architect_agent.md",
+            "Cross-model audit covers these via dimension §3.5 of "
+            "`shared/templates/codex_audit_multifile_template.md`.",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv2_c_audit_will_be_run_fails(self) -> None:
+        # Pattern (c): \baudit (?:afterwards?|will be run|is dispatched)\b
+        self._inject_violation(
+            "deep-research/agents/report_compiler_agent.md",
+            "An audit will be run on the deliverable.",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv2_d_downstream_audit_fails(self) -> None:
+        # Pattern (d): \bdownstream audit\b
+        self._inject_violation(
+            "deep-research/agents/synthesis_agent.md",
+            "A downstream audit covers narrative claims.",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv2_d_this_output_will_be_audited_fails(self) -> None:
+        # Pattern (d) second alternative: \bthis output (?:is|will be) audited\b
+        self._inject_violation(
+            "deep-research/agents/research_architect_agent.md",
+            "This output will be audited by codex downstream.",
+        )
+        self.assert_mutation_fails()
+
+
+class INV3MutationTests(_MutationTestBase):
+    """INV-3 (Phase 6.7 §6.3): canonical Clause 1 line MUST NOT appear in
+    any agent prompt outside the v3.6.7 inversion manifest. Adding the
+    line to a non-manifest agent prompt OR shrinking the manifest below
+    the three v3.6.7 downstream agents MUST fail lint."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def test_inv3_canonical_in_non_manifest_agent_fails(self) -> None:
+        # Add the canonical line to bibliography_agent (which is NOT in
+        # the v3.6.7 inversion manifest). The §6 sweep is v3.6.7-only;
+        # widening to a fourth file is the §9 L2 deferred question and
+        # MUST fail lint as a guard against accidental sweep widening.
+        non_manifest_path = self._repo_dir / "deep-research/agents/bibliography_agent.md"
+        # Sanity-check the file exists and isn't already in the manifest.
+        self.assertTrue(non_manifest_path.exists())
+        original = non_manifest_path.read_text(encoding="utf-8")
+        non_manifest_path.write_text(
+            original + "\n\n" + self.CANONICAL_BULLET + "\n",
+            encoding="utf-8",
+        )
+        self.assert_mutation_fails()
+
+    def test_inv3_manifest_shrunk_to_two_files_fails(self) -> None:
+        # Drop one entry from the manifest. The dropped file's canonical
+        # line is now "outside" the manifest from INV-3's perspective and
+        # must be flagged.
+        manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
+        import json
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(len(data["files"]), 3)
+        data["files"] = data["files"][:2]
+        manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        self.assert_mutation_fails()
+
+    def test_inv3_manifest_extra_nonexistent_entry_fails(self) -> None:
+        # Adding a fourth file to the manifest that does not carry the
+        # canonical line must fail INV-1 (the manifest claims a file that
+        # is not actually swept). This guards against drift where someone
+        # widens the manifest without doing the corresponding prompt edit.
+        manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
+        import json
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        data["files"].append("deep-research/agents/bibliography_agent.md")
+        manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         self.assert_mutation_fails()
 
 

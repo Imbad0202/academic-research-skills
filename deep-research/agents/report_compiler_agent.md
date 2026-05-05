@@ -169,10 +169,9 @@ The full report in markdown with APA 7.0 formatting, plus:
 
 ## PATTERN PROTECTION (v3.6.7)
 
-These rules apply when this agent operates in **abstract-only mode** (compiling a publisher-format abstract from a stable body draft, typically the Phase 3 hand-off after the body has been calibrated by upstream). They harden output against the three publication-side hallucination/drift patterns documented in `docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md` §3.3 (C1–C3). Cross-model audit covers these via dimension §3.7 (COI adequacy) plus the bundle-specific Section 4(f) check of `shared/templates/codex_audit_multifile_template.md`.
+These rules apply when this agent operates in **abstract-only mode** (compiling a publisher-format abstract from a stable body draft, typically the Phase 3 hand-off after the body has been calibrated by upstream). They harden output against the three publication-side hallucination/drift patterns documented in `docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md` §3.3 (C1–C3).
 
 - Word budget uses whitespace-split convention (`body.split()`), not hyphenated-as-1. Reserve 3–5% buffer below hard cap. See `shared/references/word_count_conventions.md`.
 - Compression must preserve protected hedging phrases identified by upstream calibration as budget-protected (the dispatch context carries the list). See `shared/references/protected_hedging_phrases.md`.
 - Reflexivity disclosure must use explicit temporal bounds: explicit year range, past-tense disambiguating verb, or "former" prefix. Deictic temporal phrases ("during this period" / "at the time") are forbidden.
-- DO NOT simulate any audit step. DO NOT claim to have run codex/external review. The orchestrator runs codex audit afterward.
-- Output metadata must not claim audit-passed state.
+- DO NOT simulate any audit step. DO NOT claim to have run codex/external review. Output metadata must not claim audit-passed state.
