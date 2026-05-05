@@ -194,7 +194,9 @@ def test_wrapper_dispatches_end_to_end(tmp_path):
     repo = _stage_repo_clone(tmp_path)
     deliverable = _make_synthetic_deliverable(repo)
     deliverable_rel = deliverable.relative_to(repo)
-    output_dir = repo / "audit_artifacts"
+    # Wrapper rejects absolute --output-dir paths; pass repo-relative.
+    output_dir_rel = "audit_artifacts"
+    output_dir = repo / output_dir_rel
 
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
@@ -208,7 +210,7 @@ def test_wrapper_dispatches_end_to_end(tmp_path):
             "--deliverable", str(deliverable_rel),
             "--round", "1",
             "--target-rounds", "3",
-            "--output-dir", str(output_dir),
+            "--output-dir", output_dir_rel,
         ],
         cwd=repo,
         env=env,
@@ -295,7 +297,8 @@ def test_wrapper_dry_run_writes_nothing(tmp_path):
 
     repo = _stage_repo_clone(tmp_path)
     deliverable = _make_synthetic_deliverable(repo)
-    output_dir = repo / "audit_artifacts"
+    output_dir_rel = "audit_artifacts"
+    output_dir = repo / output_dir_rel
 
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
@@ -308,7 +311,7 @@ def test_wrapper_dry_run_writes_nothing(tmp_path):
             "--agent", "synthesis_agent",
             "--deliverable", str(deliverable.relative_to(repo)),
             "--round", "1",
-            "--output-dir", str(output_dir),
+            "--output-dir", output_dir_rel,
             "--dry-run",
         ],
         cwd=repo,
@@ -351,7 +354,7 @@ def test_wrapper_rejects_round_2_without_previous_findings(tmp_path):
             "--deliverable", str(deliverable.relative_to(repo)),
             "--round", "2",
             "--target-rounds", "3",
-            "--output-dir", str(repo / "audit_artifacts"),
+            "--output-dir", "audit_artifacts",
         ],
         cwd=repo,
         env=env,
