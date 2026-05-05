@@ -519,5 +519,87 @@ class INV3MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class CodexR1MutationTests(_MutationTestBase):
+    """Codex R1 (Phase 6.7 review) closures: 3 P2 findings against the
+    initial INV-1/INV-2/INV-3 implementation. Each test re-introduces the
+    bypass codex demonstrated and asserts lint now fails."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def test_r1_p2_inv2_wrapped_disclosure_fails(self) -> None:
+        # Codex R1 P2: INV-2 patterns compiled without re.DOTALL allow a
+        # forbidden Clause 2 sentence to be Markdown-soft-wrapped across
+        # newlines and slip past the regex. Inject a wrapped (a) violation
+        # ("the orchestrator" on one line, "audit" on the next) and
+        # assert lint fails. Phase 6.7 R1 closure compiles INV-2 with
+        # IGNORECASE | DOTALL so `.` crosses newlines.
+        wrapped_violation = (
+            "- The orchestrator dispatches against the\n"
+            "  template and codex audit covers each deliverable."
+        )
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            self.CANONICAL_BULLET,
+            wrapped_violation + "\n" + self.CANONICAL_BULLET,
+        )
+        self.assert_mutation_fails()
+
+    def test_r1_p2_inv1_canonical_with_tail_weakener_fails(self) -> None:
+        # Codex R1 P2: the prior CANONICAL_CLAUSE_1_RE stopped at
+        # `state\b` so a manifest prompt could keep the canonical
+        # sentence yet append ` if feasible.` and INV-1 still passed.
+        # Phase 6.7 R1 closure anchors the regex to `state\.\s*$` with
+        # re.MULTILINE so any tail content on the same bullet line
+        # breaks the match. Both INV-1 and the C3 regex must reject this
+        # mutation (defense in depth — the C3 negation post-filter also
+        # catches `if feasible` via _ALWAYS_NEGATION_PATTERNS).
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/report_compiler_agent.md",
+            "Output metadata must not claim audit-passed state.",
+            "Output metadata must not claim audit-passed state if feasible.",
+        )
+        self.assert_mutation_fails()
+
+    def test_r1_p2_manifest_widening_with_canonical_copy_fails(self) -> None:
+        # Codex R1 P2: a copy-paste widening attack — add a fourth file
+        # to the manifest AND copy the canonical bullet into that file's
+        # PATTERN PROTECTION block. Pre-fix INV-1 passed for all four
+        # (canonical line present everywhere) and INV-3 silently skipped
+        # the new file because it was now in `manifest_set`. Phase 6.7
+        # R1 closure validates manifest['files'] against the frozen
+        # EXPECTED_MANIFEST_FILES set (exact match, no superset / no
+        # drift); widening triggers L2 resolution per spec §6.3 line
+        # 1807, which requires landing a v3.6.8+ manifest, not editing
+        # the v3.6.7 one. Construct the attack and assert lint fails.
+        bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
+        original = bibliography.read_text(encoding="utf-8")
+        bibliography.write_text(
+            original
+            + "\n\n## PATTERN PROTECTION (v3.6.7)\n\n"
+            + self.CANONICAL_BULLET
+            + "\n",
+            encoding="utf-8",
+        )
+        manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
+        import json
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        data["files"].append("deep-research/agents/bibliography_agent.md")
+        manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        self.assert_mutation_fails()
+
+    def test_r1_p2_manifest_duplicate_entry_fails(self) -> None:
+        # Defense in depth on the same closure: a duplicate file path in
+        # `files` should also fail (per uniqueness check added in the
+        # R1 fix), even if the path is otherwise valid.
+        manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
+        import json
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        data["files"].append(data["files"][0])  # duplicate first entry
+        manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()

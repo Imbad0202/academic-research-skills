@@ -759,7 +759,14 @@ def compiler_agent_checks() -> list[Check]:
                 # weakener (B2 R3-001 span-restricted exemption).
                 (
                     "C3 canonical Clause 1 line (whole-line verbatim)",
-                    r"\bDO NOT simulate any audit step\.\s+DO NOT claim to have run codex/external review\.\s+Output metadata must not claim audit-passed state\b",
+                    # Anchor the trailing `state.` to whitespace or EOF
+                    # (`(?=\s|\Z)`) so a tail weakener like
+                    # ` if feasible.` cannot satisfy the regex while
+                    # still tripping the negation post-filter — defense
+                    # in depth alongside _ALWAYS_NEGATION_PATTERNS'
+                    # `\bif feasible\b` (codex R1 P2 closure parallel
+                    # to INV-1's MULTILINE `\.\s*$` anchor).
+                    r"\bDO NOT simulate any audit step\.\s+DO NOT claim to have run codex/external review\.\s+Output metadata must not claim audit-passed state\.(?=\s|\Z)",
                     True,  # allow_prohibition: this IS the prohibition
                 ),
             ],
@@ -799,46 +806,79 @@ CANONICAL_CLAUSE_1_TEXT = (
 # Whitespace-normalised regex for the canonical line. `\s+` between
 # segments tolerates Markdown line wraps; `\.` at the segment boundaries
 # pins sentence ends so a partial match (e.g. only the first DO NOT clause)
-# does not satisfy.
+# does not satisfy. The trailing `state\.\s*$` (with re.MULTILINE applied
+# at match time) anchors the third sentence to a line end so a tail
+# weakener like ` if feasible.` or `; this is recommended.` cannot
+# coexist with INV-1 PASS — codex R1 P2 closure (a regex stopping at
+# `state\b` left INV-1 silently approving canonical+suffix).
 CANONICAL_CLAUSE_1_RE = re.compile(
     r"DO NOT simulate any audit step\.\s+"
     r"DO NOT claim to have run codex/external review\.\s+"
-    r"Output metadata must not claim audit-passed state\b"
+    r"Output metadata must not claim audit-passed state\.\s*$",
+    re.MULTILINE,
 )
 
 # Spec §6.3 INV-2 regex set (a)-(d). Patterns are written as Python regex
 # literals here (`|` for alternation, no Markdown escaping) — the spec
 # table renders them as `\|` because raw `|` is the Markdown table-column
 # delimiter; the lint reads the underlying regex, not the rendered cell.
-# All four compile with re.IGNORECASE.
+# All four compile with re.IGNORECASE | re.DOTALL so `.` matches newlines:
+# a Markdown soft-wrap of a forbidden Clause 2 sentence (e.g. line break
+# between `Cross-model audit follows` and the template path) cannot
+# bypass INV-2. Codex R1 P2 closure — the prior non-DOTALL forms reported
+# PASS on multi-line wraps that still expressed the forbidden disclosure.
 INV2_PATTERNS = [
-    ("INV-2(a)", re.compile(r"\bthe orchestrator\b.*\baudit\b", re.IGNORECASE)),
+    ("INV-2(a)", re.compile(r"\bthe orchestrator\b.*\baudit\b", re.IGNORECASE | re.DOTALL)),
     (
         "INV-2(b)",
         re.compile(
             r"\bcross-model audit (?:follows|covers)\b.*codex_audit_multifile_template",
-            re.IGNORECASE,
+            re.IGNORECASE | re.DOTALL,
         ),
     ),
     (
         "INV-2(c)",
         re.compile(
             r"\baudit (?:afterwards?|will be run|is dispatched)\b",
-            re.IGNORECASE,
+            re.IGNORECASE | re.DOTALL,
         ),
     ),
     (
         "INV-2(d)",
         re.compile(
             r"\bdownstream audit\b|\bthis output (?:is|will be) audited\b",
-            re.IGNORECASE,
+            re.IGNORECASE | re.DOTALL,
         ),
     ),
 ]
 
+# Frozen v3.6.7 manifest contents per spec §6.3. The manifest file at
+# scripts/v3_6_7_inversion_manifest.json is the data; this constant is
+# the schema's expected value, used by `_load_inversion_manifest` to
+# refuse drifted manifests at lint time. Spec §6.3 line 1807 reserves
+# manifest widening for explicit v3.6.8+ work that lands "its own
+# version-tagged manifest rather than retroactively widening v3.6.7's";
+# this constant locks the v3.6.7 scope so a copy-paste widening
+# (codex R1 P2 closure: add fourth file + canonical bullet → INV-1
+# passes for all 4, INV-3 skips the new file because it is in
+# manifest_set, full pass) can no longer slip past lint.
+EXPECTED_MANIFEST_FILES = (
+    "deep-research/agents/synthesis_agent.md",
+    "deep-research/agents/research_architect_agent.md",
+    "deep-research/agents/report_compiler_agent.md",
+)
+
 
 def _load_inversion_manifest() -> tuple[list[str], str | None]:
-    """Return (file_list, error_message). file_list paths are repo-relative."""
+    """Return (file_list, error_message). file_list paths are repo-relative.
+
+    Validates that the manifest carries exactly the three v3.6.7-scoped
+    file paths (per spec §6.3 + EXPECTED_MANIFEST_FILES). Drift, addition,
+    deletion, or duplication of entries is rejected — widening to a
+    fourth file requires landing a v3.6.8+ manifest with its own scope
+    tag, not retroactive edits to this manifest (per spec §6.3 line
+    1807).
+    """
     if not INVERSION_MANIFEST.exists():
         return [], f"manifest missing: scripts/v3_6_7_inversion_manifest.json"
     try:
@@ -851,6 +891,19 @@ def _load_inversion_manifest() -> tuple[list[str], str | None]:
     files = data.get("files")
     if not isinstance(files, list) or not all(isinstance(p, str) for p in files):
         return [], "manifest 'files' must be a list of strings"
+    if len(files) != len(set(files)):
+        dupes = sorted({p for p in files if files.count(p) > 1})
+        return [], f"manifest 'files' contains duplicate entries: {dupes}"
+    if set(files) != set(EXPECTED_MANIFEST_FILES):
+        expected = sorted(EXPECTED_MANIFEST_FILES)
+        actual = sorted(files)
+        return [], (
+            f"manifest 'files' must match the v3.6.7 frozen scope. "
+            f"Expected (sorted): {expected}. Got (sorted): {actual}. "
+            f"To widen scope to additional agents, land a v3.6.8+ "
+            f"manifest with its own scope tag per spec §6.3 line 1807; "
+            f"do not edit v3.6.7's manifest retroactively."
+        )
     return files, None
 
 
