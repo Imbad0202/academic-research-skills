@@ -759,14 +759,18 @@ def compiler_agent_checks() -> list[Check]:
                 # weakener (B2 R3-001 span-restricted exemption).
                 (
                     "C3 canonical Clause 1 line (whole-line verbatim)",
-                    # Anchor the trailing `state.` to whitespace or EOF
-                    # (`(?=\s|\Z)`) so a tail weakener like
-                    # ` if feasible.` cannot satisfy the regex while
-                    # still tripping the negation post-filter — defense
-                    # in depth alongside _ALWAYS_NEGATION_PATTERNS'
-                    # `\bif feasible\b` (codex R1 P2 closure parallel
-                    # to INV-1's MULTILINE `\.\s*$` anchor).
-                    r"\bDO NOT simulate any audit step\.\s+DO NOT claim to have run codex/external review\.\s+Output metadata must not claim audit-passed state\.(?=\s|\Z)",
+                    # Whitespace-tolerant: every inter-token space inside
+                    # the canonical line accepts `\s+` so a Markdown
+                    # soft-wrap anywhere inside a sentence (e.g. between
+                    # `run` and `codex/external`) is treated as the
+                    # same canonical bullet — matches INV-1's
+                    # whitespace-normalization contract (codex R5 P2
+                    # closure). The trailing `\.(?=\s|\Z)` anchor still
+                    # rejects tail weakeners like ` if feasible.` (R1
+                    # P2 closure).
+                    r"\bDO\s+NOT\s+simulate\s+any\s+audit\s+step\.\s+"
+                    r"DO\s+NOT\s+claim\s+to\s+have\s+run\s+codex/external\s+review\.\s+"
+                    r"Output\s+metadata\s+must\s+not\s+claim\s+audit-passed\s+state\.(?=\s|\Z)",
                     True,  # allow_prohibition: this IS the prohibition
                 ),
             ],

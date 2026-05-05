@@ -742,5 +742,33 @@ class CodexR4MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class CodexR5MutationTests(_MutationTestBase):
+    """Codex R5 (Phase 6.7 review, after R4 fixes) closure: 1 P2
+    finding — C3 regex was not whitespace-tolerant inside sentences,
+    causing CI to fail on harmless Markdown soft-wraps that INV-1
+    correctly accepts."""
+
+    def test_r5_p2_compiler_softwrap_canonical_passes(self) -> None:
+        # Codex R5 P2: C3 regex used literal spaces inside sentences,
+        # so a soft-wrap between `run` and `codex/external` (the same
+        # benign Markdown reflow R2's INV-1 test verifies for synthesis)
+        # caused CI to fail on report_compiler. Phase 6.7 R5 closure
+        # rewrites every inter-token space inside the canonical regex
+        # to `\s+` so soft-wrap tolerance is uniform across INV-1 and
+        # the C3 Check regex. Mutation should leave lint passing.
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/report_compiler_agent.md",
+            "DO NOT claim to have run codex/external review.",
+            "DO NOT claim to have run\n  codex/external review.",
+        )
+        rc, _stdout, stderr = _run_lint(self._repo_dir)
+        self.assertEqual(
+            rc,
+            0,
+            f"compiler soft-wrap canonical bullet should pass; stderr={stderr}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
