@@ -674,23 +674,34 @@ def _simulate_round(
     else:
         ship_or_block = "ship"
 
-    # F-301 closure: each blocking agent at the round-cap MUST land at B11
-    # (escalation), not B10. Catches a round-3 MATERIAL fixture regressing to
-    # B10 silently — a contract violation §5.4 / B11 require us to surface.
+    # F-301 + F-702 closure: phase contract per verdict_status. PASS verdicts
+    # land at B10 (fresh merge) or A7 (Path A re-verify); MATERIAL/AUDIT_FAILED
+    # at B10 (non-final round) or B11 (round-cap escalation). Other phases
+    # belong to failure modes that this fixture set does not exercise.
     for agent_name, agent_decision in per_agent_decisions.items():
-        if final_round and agent_decision["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
-            assert agent_decision["expected_phase"] == "B11", (
-                f"round {round_n} (= target_rounds) {agent_name} "
-                f"verdict={agent_decision['verdict_status']} but "
-                f"expected_phase={agent_decision['expected_phase']!r}; "
-                "must be B11 per §5.4 escalation"
+        verdict_status = agent_decision["verdict_status"]
+        phase = agent_decision["expected_phase"]
+        if final_round and verdict_status in {"MATERIAL", "AUDIT_FAILED"}:
+            assert phase == "B11", (
+                f"round {round_n} (= target_rounds) {agent_name} {verdict_status} "
+                f"requires expected_phase=B11 per §5.4; got {phase!r}"
             )
-        elif (not final_round) and agent_decision["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
-            assert agent_decision["expected_phase"] == "B10", (
-                f"round {round_n} (< target_rounds) {agent_name} "
-                f"verdict={agent_decision['verdict_status']} but "
-                f"expected_phase={agent_decision['expected_phase']!r}; "
-                "must be B10 (B11 reserved for round-cap)"
+        elif (not final_round) and verdict_status in {"MATERIAL", "AUDIT_FAILED"}:
+            assert phase == "B10", (
+                f"round {round_n} (< target_rounds) {agent_name} {verdict_status} "
+                f"requires expected_phase=B10 (B11 reserved for round-cap); got {phase!r}"
+            )
+        elif verdict_status == "PASS":
+            # PASS only legitimate at B10 (fresh proposal merge success) or A7
+            # (Path A re-verify success). B11 is reserved for round-cap MATERIAL.
+            assert phase in {"B10", "A7"}, (
+                f"round {round_n} {agent_name} PASS verdict requires expected_phase∈{{B10, A7}}; "
+                f"got {phase!r}. B11 is reserved for round-cap MATERIAL escalation."
+            )
+        elif verdict_status == "MINOR":
+            # MINOR uses B10 (mandatory checkpoint with finding punchlist).
+            assert phase == "B10", (
+                f"round {round_n} {agent_name} MINOR verdict requires expected_phase=B10; got {phase!r}"
             )
 
     return {
@@ -831,7 +842,12 @@ def test_integration_state_runner_drives_full_pipeline():
                 f"{{ship_with_known_residue, another_round, abort_stage}}; got {expected_options}"
             )
         elif outcome["ship_or_block"] == "block":
-            # Non-final block: must include exactly one revise/re-audit string AND abort_stage.
+            # F-701 closure: non-final block options are EXACTLY two — one
+            # revise/re-audit option and abort_stage. Extras are rejected.
+            assert len(expected_options) == 2, (
+                f"round {round_n} block expected_user_options must be exactly 2 "
+                f"(one revise/re-audit + abort_stage); got {len(expected_options)}: {expected_options}"
+            )
             assert "abort_stage" in expected_options, (
                 f"round {round_n} block expected_user_options must include abort_stage; got {expected_options}"
             )
