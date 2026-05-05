@@ -952,26 +952,40 @@ def _iter_bullets(block: str) -> list[tuple[int, str]]:
     return bullets
 
 
-# Fragment markers that identify a "Clause 1-like" bullet. A bullet
-# carrying any of these (case-insensitive) but whose normalized text is
-# not exactly equal to CANONICAL_CLAUSE_1_TEXT is a weakened duplicate
-# and must fail INV-1 (codex R6 P2 closure). The fragments are
-# load-bearing pieces of the canonical sentence — no other v3.6.7
-# bullet legitimately carries them.
-_CLAUSE_1_LIKE_FRAGMENTS = (
+# Audit-specific fragment markers — load-bearing pieces of the canonical
+# Clause 1 sentence that uniquely tie a bullet to the v3.6.7 audit
+# prohibition (not generic anti-fabrication guidance). Any one of these
+# is sufficient to classify a bullet as Clause 1-like.
+_CLAUSE_1_AUDIT_FRAGMENTS = (
+    "audit step",
+    "audit-passed state",
+    "codex/external review",
+)
+
+# Generic prohibition fragments that, ALONE, are common anti-fabrication
+# language and DO NOT imply the v3.6.7 audit prohibition (codex R8 P2:
+# `- Do not simulate data or sources.` is legitimate non-audit
+# guidance). A bullet carrying one of these must ALSO carry an
+# audit-specific fragment to be classified as Clause 1-like.
+_CLAUSE_1_GENERIC_FRAGMENTS = (
     "do not simulate",
     "do not claim to have run",
-    "audit-passed state",
 )
 
 
 def _is_clause_1_like(bullet_text: str) -> bool:
     """True if bullet_text reads as a (possibly weakened) variant of
-    the canonical Clause 1 line. Uses fragment markers from the
-    canonical sentence — any single fragment is enough to flag the
-    bullet for byte-exact match against the canonical text."""
+    the canonical Clause 1 line.
+
+    A bullet is flagged Clause 1-like iff it carries at least one
+    audit-specific fragment (audit step / audit-passed state /
+    codex/external review). Generic prohibition fragments (`do not
+    simulate`, `do not claim to have run`) alone are insufficient —
+    they appear in legitimate non-audit anti-fabrication guidance.
+    Codex R8 P2 closure: tighten so non-manifest prompts can carry
+    `- Do not simulate data or sources.` without tripping INV-3."""
     lowered = bullet_text.lower()
-    return any(frag in lowered for frag in _CLAUSE_1_LIKE_FRAGMENTS)
+    return any(frag in lowered for frag in _CLAUSE_1_AUDIT_FRAGMENTS)
 
 
 def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
@@ -1131,19 +1145,25 @@ INV3_SCAN_DIRS = [
 
 
 def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
-    """INV-3: no canonical Clause 1 bullet — exact OR Clause 1-like
-    (weakened/near-canonical) — appears in any agent prompt outside
-    the manifest. Scans the entire file (not just PATTERN PROTECTION
-    blocks); a sweep widening could paste a Clause 1 variant anywhere.
+    """INV-3: no Clause 1 widening into non-manifest agent prompts —
+    detects:
+      (a) Clause 1-like bullets (audit-specific heuristic per
+          `_is_clause_1_like`) — catches weakened/exact variants that
+          smuggle the prohibition vocabulary into a fourth file.
+      (b) Exact canonical sentence appearing as non-bullet prose
+          (paragraph / standalone line) — catches the same widening
+          when the editor pastes the sentence outside list form.
     Returns (ok, error_messages).
 
-    Codex R7 P2 closure: prior INV-3 only checked exact normalized
-    equality, so a non-manifest prompt could carry
-    `- When feasible, DO NOT simulate ...` and silently widen the
-    v3.6.7 prohibition scope outside the frozen manifest. Reuse
-    `_is_clause_1_like` (the same fragment heuristic INV-1 uses to
-    catch weakened duplicates inside manifest files) so the scope
-    guard rejects the same class of bypass."""
+    Codex R7 P2 closure (bullet-level Clause 1-like detection); R8 P2
+    closure (a) tightening: audit-specific fragments only, generic
+    `do not simulate` is no longer enough to trip the check; (b)
+    prose-level scan via paragraph split + whitespace-normalized exact
+    match against CANONICAL_CLAUSE_1_TEXT. Prose match uses exact
+    equality (not the bullet heuristic) so a non-manifest prompt's
+    *discussion* of the canonical wording (e.g. quoting it in a
+    paragraph for context) only fails when the line is actually
+    re-introduced as a contract sentence."""
     manifest_set = {str(REPO_ROOT / p) for p in manifest_files}
     errors: list[str] = []
     for d in INV3_SCAN_DIRS:
@@ -1153,23 +1173,35 @@ def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
             if str(path) in manifest_set:
                 continue
             text = path.read_text(encoding="utf-8")
-            # Walk all `- ` bullets in the file. Prose mentions of the
-            # canonical wording (in headings or paragraphs) still do not
-            # trip the check — the heuristic only fires on bullet form,
-            # which is the actual scope-widening attack surface.
-            offenders = [
+            offending_bullets = [
                 bt for _o, bt in _iter_bullets(text) if _is_clause_1_like(bt)
             ]
-            if offenders:
+            # Paragraph-level exact match. Whitespace-normalize each
+            # paragraph that does not start with `- ` and compare
+            # against CANONICAL_CLAUSE_1_TEXT byte-for-byte.
+            offending_prose: list[str] = []
+            for paragraph in re.split(r"\n\s*\n", text):
+                stripped = paragraph.strip()
+                if not stripped or stripped.startswith("- ") or stripped.startswith("## "):
+                    continue
+                normalized = " ".join(stripped.split())
+                if normalized == CANONICAL_CLAUSE_1_TEXT:
+                    offending_prose.append(normalized)
+            if offending_bullets or offending_prose:
                 rel = path.relative_to(REPO_ROOT)
+                offenders = []
+                for bt in offending_bullets:
+                    offenders.append(f"bullet: {bt!r}")
+                for pr in offending_prose:
+                    offenders.append(f"prose: {pr!r}")
                 errors.append(
                     f"{rel}: canonical Clause 1 line (or a Clause 1-like "
-                    f"variant) found as a bullet outside the v3.6.7 "
-                    f"inversion manifest. If this is intentional widening, "
-                    f"land a v3.6.8+ scope-tagged manifest per spec §6.3 "
-                    f"line 1807 and open the §9 L2 question; do not "
+                    f"variant) found outside the v3.6.7 inversion "
+                    f"manifest. If this is intentional widening, land a "
+                    f"v3.6.8+ scope-tagged manifest per spec §6.3 line "
+                    f"1807 and open the §9 L2 question; do not "
                     f"retroactively widen v3.6.7's manifest. "
-                    f"Offending bullet(s): {offenders!r}"
+                    f"Offender(s): {offenders!r}"
                 )
     return (len(errors) == 0), errors
 

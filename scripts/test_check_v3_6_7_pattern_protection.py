@@ -846,5 +846,59 @@ class CodexR7MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
+class CodexR8MutationTests(_MutationTestBase):
+    """Codex R8 (Phase 6.7 review, after R7 fixes) closures: 2 P2
+    findings — `_is_clause_1_like` was over-broad (rejected legitimate
+    anti-fabrication guidance) AND INV-3 missed prose-form Clause 1
+    copies."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def test_r8_p2_generic_do_not_simulate_in_non_manifest_passes(self) -> None:
+        # Codex R8 P2 (a): the prior `_is_clause_1_like` flagged any
+        # bullet containing `do not simulate`, which is common
+        # anti-fabrication language. A legitimate non-manifest bullet
+        # like `- Do not simulate data or sources.` would
+        # false-positive INV-3 even though it has no audit-prohibition
+        # semantics. Phase 6.7 R8 closure narrows the heuristic to
+        # require an audit-specific fragment (`audit step`,
+        # `audit-passed state`, or `codex/external review`). Inject
+        # the generic bullet into bibliography_agent and assert lint
+        # passes (no false positive).
+        bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
+        original = bibliography.read_text(encoding="utf-8")
+        bibliography.write_text(
+            original + "\n\n- Do not simulate data or sources.\n",
+            encoding="utf-8",
+        )
+        rc, _stdout, stderr = _run_lint(self._repo_dir)
+        self.assertEqual(
+            rc,
+            0,
+            f"generic anti-fabrication bullet should not false-positive "
+            f"INV-3 after R8 audit-specific tightening; stderr={stderr}",
+        )
+
+    def test_r8_p2_inv3_canonical_as_prose_in_non_manifest_fails(self) -> None:
+        # Codex R8 P2 (b): the prior INV-3 only walked Markdown bullets.
+        # A non-manifest agent prompt that pasted the exact canonical
+        # sentence as a normal paragraph (not a `- ` bullet) silently
+        # passed lint, even though the v3.6.7 prohibition was now
+        # widened beyond the frozen manifest. Phase 6.7 R8 closure adds
+        # a paragraph-level scan that compares whitespace-normalized
+        # prose paragraphs against `CANONICAL_CLAUSE_1_TEXT` exactly.
+        # Inject the canonical sentence as a prose paragraph in
+        # bibliography_agent and assert lint fails.
+        bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
+        original = bibliography.read_text(encoding="utf-8")
+        canon_prose = (
+            "\n\nDO NOT simulate any audit step. DO NOT claim to have "
+            "run codex/external review. Output metadata must not claim "
+            "audit-passed state.\n"
+        )
+        bibliography.write_text(original + canon_prose, encoding="utf-8")
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()
