@@ -115,7 +115,7 @@ All notable changes to this project will be documented in this file.
 - **README + README.zh-TW** version badge bumped to v3.7.0; Pipeline section
   heading bumped to v3.7; CHANGELOG entry added.
 
-### Deferred (v3.6.8+)
+### Deferred (future release)
 
 - **SubagentStop → `run_codex_audit.sh` codex audit hook** (Phase 2.2 scope
   reduction). Two compounding reasons: (a) wrong invoker class —
@@ -124,7 +124,7 @@ All notable changes to this project will be documented in this file.
   matcher would fire from inside the producing session; (b) contract gap —
   the SubagentStop hook payload carries no stage/deliverable info, so a
   wrapper would have to half-infer those required arguments. Real
-  audit-hook integration deferred to v3.6.8+ when ARS gains a stage/deliverable
+  audit-hook integration deferred to a future release when ARS gains a stage/deliverable
   propagation contract. See
   `docs/design/2026-04-30-ars-v3.7.0-plugin-packaging-roadmap.md`
   Update note 2026-05-05 (Phase 2.2 scope reduction).
@@ -150,7 +150,7 @@ Existing 4.3k clone-install users see no breaking change.
 
 ### Codex review chain
 
-9 inline iterative rounds + 3 fresh PR-level rounds across the three
+8 inline iterative rounds + 3 fresh PR-level rounds across the three
 PRs (#68 / #69 / #70), all converging to 0 P0/P1/P2 findings before
 merge. The Phase 2.2 fresh PR review caught one P2 (unquoted
 `${CLAUDE_PLUGIN_ROOT}` breaking install paths with spaces) that the

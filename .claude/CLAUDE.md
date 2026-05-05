@@ -11,6 +11,14 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `academic-paper-reviewer` v1.9.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
 | `academic-pipeline` v3.7.0 | Full pipeline orchestrator | (coordinates all above) |
 
+## v3.7.0 Key Additions
+
+- **Claude Code plugin packaging**: ARS now installs in one line via `/plugin marketplace add Imbad0202/academic-research-skills` + `/plugin install academic-research-skills`. The traditional `git clone + symlink to ~/.claude/skills/` flow continues to work — both tracks are first-class. Repo gains four top-level directories: `.claude-plugin/`, `commands/`, `agents/`, `hooks/`, plus a `skills/` symlink dir; existing 4 skill directories untouched.
+- **10 slash commands** (`commands/ars-*.md`) mapping `MODE_REGISTRY.md` entries to `/ars-<mode>` triggers with model routing pinned in frontmatter — `opus` for `full` and `revision-coach`, `sonnet` for the other 8, no Haiku.
+- **3 plugin-shipped agents** (`agents/*_agent.md`) as relative symlinks to the v3.6.7-hardened downstream agents in `deep-research/agents/`. Source frontmatter gains `model: inherit` so an Opus session keeps Opus agents while the user's PreToolUse `warn-agent-no-model.sh` hook gates Haiku at dispatch.
+- **SessionStart announce hook** (`hooks/hooks.json` + `scripts/announce-ars-loaded.sh`) lists the 10 slash commands + 3 agents + token-budget pointer when the plugin loads. Bash 3.2 compatible.
+- **Phase 2.2 scope reduction note**: a `SubagentStop → run_codex_audit.sh` codex audit hook was scoped out for v3.7.0 (contract gap: hook payload carries no stage/deliverable; invoker boundary: same-session in-LLM Bash forbidden by the wrapper). Deferred to a future release.
+
 ## v3.6.8 Key Additions
 
 > **Naming note**: this release ships the v3.6.6 generator-evaluator contract design (`docs/design/2026-04-27-ars-v3.6.6-generator-evaluator-contract-design.md`) and its implementation. The v3.6.6 spec/implementation work landed after v3.6.7 due to project sequencing (v3.6.7 downstream-agent pattern protection shipped first); the design doc retains the **v3.6.6 internal naming** for the contract gate version (`writer_full` / `evaluator_full` mode, Schema 13.1, `pre_commitment_artifacts` + `disagreement_handling` schema fields), while the suite release is tagged **v3.6.8** to keep the CHANGELOG monotonic.
