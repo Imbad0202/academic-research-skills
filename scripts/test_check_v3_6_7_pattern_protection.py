@@ -770,5 +770,55 @@ class CodexR5MutationTests(_MutationTestBase):
         )
 
 
+class CodexR6MutationTests(_MutationTestBase):
+    """Codex R6 (Phase 6.7 review, after R5 fixes) closure: 1 P2
+    finding — INV-1 only counted exact canonical matches and ignored
+    weakened near-duplicates that preserved an exact canonical bullet
+    while adding a confusing variant alongside."""
+
+    CANONICAL_BULLET = INV1MutationTests.CANONICAL_BULLET
+
+    def test_r6_p2_inv1_weakened_duplicate_alongside_canonical_fails(self) -> None:
+        # Codex R6 P2: an attacker keeps the exact canonical bullet
+        # AND adds a second, weakened variant
+        # (`- When feasible, DO NOT simulate ...`). Pre-fix INV-1 used
+        # `count(exact) == 1` which stayed at 1; lint passed and the
+        # block was left in a state where the agent reads two
+        # contradictory bullets. Phase 6.7 R6 closure introduces
+        # `_is_clause_1_like` that flags any bullet carrying canonical
+        # fragment markers (`do not simulate`, `do not claim to have
+        # run`, `audit-passed state`); each flagged bullet must equal
+        # the canonical text byte-for-byte or lint fails.
+        weakened = (
+            "- When feasible, DO NOT simulate any audit step. DO NOT "
+            "claim to have run codex/external review. Output metadata "
+            "must not claim audit-passed state."
+        )
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/synthesis_agent.md",
+            self.CANONICAL_BULLET,
+            self.CANONICAL_BULLET + "\n" + weakened,
+        )
+        self.assert_mutation_fails()
+
+    def test_r6_p2_inv1_tail_weakened_duplicate_fails(self) -> None:
+        # Defense in depth on R6: tail-weakener variant of the same
+        # attack (`... audit-passed state if feasible.`) — preserves
+        # canonical, adds a near-duplicate with a tail weakener.
+        weakened = (
+            "- DO NOT simulate any audit step. DO NOT claim to have "
+            "run codex/external review. Output metadata must not "
+            "claim audit-passed state if feasible."
+        )
+        _mutate(
+            self._repo_dir,
+            "deep-research/agents/research_architect_agent.md",
+            self.CANONICAL_BULLET,
+            self.CANONICAL_BULLET + "\n" + weakened,
+        )
+        self.assert_mutation_fails()
+
+
 if __name__ == "__main__":
     unittest.main()

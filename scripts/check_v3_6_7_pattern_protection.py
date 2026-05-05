@@ -952,21 +952,43 @@ def _iter_bullets(block: str) -> list[tuple[int, str]]:
     return bullets
 
 
+# Fragment markers that identify a "Clause 1-like" bullet. A bullet
+# carrying any of these (case-insensitive) but whose normalized text is
+# not exactly equal to CANONICAL_CLAUSE_1_TEXT is a weakened duplicate
+# and must fail INV-1 (codex R6 P2 closure). The fragments are
+# load-bearing pieces of the canonical sentence — no other v3.6.7
+# bullet legitimately carries them.
+_CLAUSE_1_LIKE_FRAGMENTS = (
+    "do not simulate",
+    "do not claim to have run",
+    "audit-passed state",
+)
+
+
+def _is_clause_1_like(bullet_text: str) -> bool:
+    """True if bullet_text reads as a (possibly weakened) variant of
+    the canonical Clause 1 line. Uses fragment markers from the
+    canonical sentence — any single fragment is enough to flag the
+    bullet for byte-exact match against the canonical text."""
+    lowered = bullet_text.lower()
+    return any(frag in lowered for frag in _CLAUSE_1_LIKE_FRAGMENTS)
+
+
 def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
     """INV-1: canonical Clause 1 line appears as exactly one bullet in
-    the PATTERN PROTECTION block. The bullet's whitespace-normalized
-    text MUST equal the canonical Clause 1 text byte-for-byte; prefix
-    weakeners (`When feasible, DO NOT simulate ...`), tail weakeners
-    (`... audit-passed state if feasible.`), or partial matches all
-    fail. Returns (ok, message).
+    the PATTERN PROTECTION block, AND no other Clause 1-like bullet
+    exists. The bullet's whitespace-normalized text MUST equal the
+    canonical Clause 1 text byte-for-byte; prefix weakeners (`When
+    feasible, DO NOT simulate ...`), tail weakeners (`... audit-passed
+    state if feasible.`), or any near-canonical duplicate all fail.
+    Returns (ok, message).
 
-    Codex R2 P2 closure: prior implementation used a regex search with
-    only sentence-boundary whitespace normalization, which let bullet-
-    prefix injections (`- When feasible, DO NOT simulate ...`) silently
-    pass while rejecting harmless soft-wraps (e.g. line break between
-    `run` and `codex/external`). Switch to bullet-extraction +
-    full-text whitespace normalization + exact equality so soft wraps
-    are tolerated and any deviation from the canonical text fails."""
+    Codex R2 P2 closure (substring match → bullet-extract + exact
+    compare); R6 P2 closure (weakened-duplicate bypass — keep canonical
+    bullet, add `- When feasible, DO NOT simulate ...` second bullet,
+    exact-count stays 1 and lint passed). The R6 closure flags every
+    Clause 1-like bullet via _CLAUSE_1_LIKE_FRAGMENTS and demands each
+    one is byte-exact canonical."""
     target = REPO_ROOT / rel_path
     if not target.exists():
         return False, f"file missing: {rel_path}"
@@ -976,12 +998,24 @@ def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
             f"{rel_path}: PATTERN PROTECTION block missing "
             f"(marker {PROTECTION_BLOCK!r} not found)"
         )
-    matches = sum(
-        1 for _offset, text in _iter_bullets(block) if text == CANONICAL_CLAUSE_1_TEXT
-    )
-    if matches != 1:
+    bullets = list(_iter_bullets(block))
+    exact = [t for _o, t in bullets if t == CANONICAL_CLAUSE_1_TEXT]
+    weakened = [
+        t for _o, t in bullets
+        if _is_clause_1_like(t) and t != CANONICAL_CLAUSE_1_TEXT
+    ]
+    if weakened:
         return False, (
-            f"{rel_path}: PATTERN PROTECTION block has {matches} "
+            f"{rel_path}: PATTERN PROTECTION block contains "
+            f"{len(weakened)} Clause 1-like bullet(s) that do not "
+            f"match the canonical text byte-for-byte. Each must equal "
+            f"the canonical wording verbatim or be removed. Offending "
+            f"bullet(s): {weakened!r}. Expected canonical wording: "
+            f"{CANONICAL_CLAUSE_1_TEXT!r}"
+        )
+    if len(exact) != 1:
+        return False, (
+            f"{rel_path}: PATTERN PROTECTION block has {len(exact)} "
             f"bullet(s) whose normalized text equals the canonical "
             f"Clause 1 line; expected exactly 1. Expected wording: "
             f"{CANONICAL_CLAUSE_1_TEXT!r}"
