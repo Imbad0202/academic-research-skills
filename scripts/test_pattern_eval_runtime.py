@@ -625,6 +625,46 @@ def _simulate_round(
             "decision": decision,
         }
 
+        # F-602 closure: assert expected_path / expected_passport_mutation /
+        # expected_block_message contract per agent action file. Reuses the
+        # micro-fixture phase→path/mutation rules so an integration step
+        # declaring `expected_path: A` with `expected_phase: B11` is rejected.
+        expected_phase = action.get("expected_phase")
+        expected_path = action.get("expected_path")
+        assert expected_path in {"A", "B"}, (
+            f"round {round_n} {agent} expected_path must be 'A' or 'B'; got {expected_path!r}"
+        )
+        if expected_phase:
+            if expected_phase.startswith("P-PA-") or expected_phase == "A7":
+                assert expected_path == "A", (
+                    f"round {round_n} {agent} expected_phase={expected_phase} requires expected_path=A; got {expected_path!r}"
+                )
+            elif expected_phase.startswith("P-PB-") or expected_phase in {"B10", "B11"}:
+                assert expected_path == "B", (
+                    f"round {round_n} {agent} expected_phase={expected_phase} requires expected_path=B; got {expected_path!r}"
+                )
+            expected_mutation = PHASE_TO_PASSPORT_MUTATION.get(expected_phase)
+            actual_mutation = action.get("expected_passport_mutation")
+            if expected_mutation not in (None, "conditional"):
+                assert actual_mutation == expected_mutation, (
+                    f"round {round_n} {agent} expected_phase={expected_phase} requires "
+                    f"passport mutation {expected_mutation!r}; fixture declares {actual_mutation!r}"
+                )
+        # Block-message shape contract: BLOCKING verdicts (MATERIAL/AUDIT_FAILED)
+        # carry "[AUDIT GATE" substring per §5.6 BLOCK format; non-blocking PASS
+        # has empty block_message (Phase 6.8 fixtures shape).
+        block_msg = action.get("expected_block_message", "")
+        if verdict["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
+            assert "[AUDIT GATE" in block_msg, (
+                f"round {round_n} {agent} {verdict['verdict_status']} verdict requires "
+                f"'[AUDIT GATE' substring in block_message; got {block_msg!r}"
+            )
+        else:
+            assert block_msg == "", (
+                f"round {round_n} {agent} {verdict['verdict_status']} verdict requires "
+                f"empty block_message; got {block_msg!r}"
+            )
+
     final_round = round_n == target_rounds
     if any_blocking:
         if final_round:
@@ -781,16 +821,24 @@ def test_integration_state_runner_drives_full_pipeline():
                 f"vs declared={expected_state['escalation_prompt_emitted']}"
             )
 
-        # 3e (F-502 closure): user options match per §5.4 round-cap escalation.
-        # Round 1/2 (non-final blocking round) → revise/abort. Round 3 (final) → ship_with_known_residue/another_round/abort_stage per §5.4.
+        # 3e (F-502 + F-601 closure): user options match per §5.4 round-cap escalation
+        # with EXACT list equality where the contract is fixed.
         expected_options = expected_state.get("expected_user_options", [])
         if round_n == target_rounds and outcome["ship_or_block"] == "escalation_prompt":
-            assert set(expected_options) == {"ship_with_known_residue", "another_round", "abort_stage"}, (
-                f"round {round_n} escalation expected_user_options must be the §5.4 trio; got {expected_options}"
+            # §5.4 trio is a closed set — assert order-independent exact equality.
+            assert set(expected_options) == {"ship_with_known_residue", "another_round", "abort_stage"} and len(expected_options) == 3, (
+                f"round {round_n} escalation expected_user_options must be exactly the §5.4 trio "
+                f"{{ship_with_known_residue, another_round, abort_stage}}; got {expected_options}"
             )
         elif outcome["ship_or_block"] == "block":
-            assert any("re-audit" in opt or "revise" in opt for opt in expected_options), (
-                f"round {round_n} block expected_user_options should include a revise/re-audit option; got {expected_options}"
+            # Non-final block: must include exactly one revise/re-audit string AND abort_stage.
+            assert "abort_stage" in expected_options, (
+                f"round {round_n} block expected_user_options must include abort_stage; got {expected_options}"
+            )
+            revise_options = [o for o in expected_options if "re-audit" in o or "revise" in o]
+            assert len(revise_options) == 1, (
+                f"round {round_n} block expected_user_options must include exactly one "
+                f"revise/re-audit option; got {expected_options}"
             )
 
     # Step 4: at round-3 escalation, feed user_response.yaml.
@@ -872,9 +920,12 @@ def test_integration_state_runner_drives_full_pipeline():
     if "stage_outcome" in expected_passport:
         assert expected_passport["stage_outcome"] == "shipped_with_known_residue"
     if "proceed_to" in expected_passport:
-        # Path forward is to the next stage (synthesis_agent stage 2 → stage 3).
-        assert expected_passport["proceed_to"] in {"stage_3", "stage_4", "stage_5"}, (
-            f"passport.proceed_to {expected_passport['proceed_to']!r} must name a downstream stage"
+        # F-601: synthesis_agent stage 2 → stage 3 is the deterministic next stage
+        # for this fixture (the chapter's synthesis output gets passed to argument
+        # building / outline at stage 3). Exact equality, not range.
+        assert expected_passport["proceed_to"] == "stage_3", (
+            f"passport.proceed_to must equal 'stage_3' (synthesis_agent stage 2 → stage 3); "
+            f"got {expected_passport['proceed_to']!r}"
         )
 
     # F-501 closure: assert the Path A re-verification axis fired at least once.
