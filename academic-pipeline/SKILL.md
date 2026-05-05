@@ -2,8 +2,8 @@
 name: academic-pipeline
 description: "Orchestrator for the full academic research pipeline: research -> write -> integrity check -> review -> revise -> re-review -> re-revise -> final integrity check -> finalize. Coordinates deep-research, academic-paper, and academic-paper-reviewer into a seamless 10-stage workflow with mandatory integrity verification, two-stage peer review, and reproducible quality gates. Triggers on: academic pipeline, research to paper, full paper workflow, paper pipeline, end-to-end paper, research-to-publication, complete paper workflow."
 metadata:
-  version: "3.6.8"
-  last_updated: "2026-05-03"
+  version: "3.7.0"
+  last_updated: "2026-05-05"
   depends_on: "deep-research, academic-paper, academic-paper-reviewer"
   status: active
   data_access_level: verified_only
@@ -14,7 +14,7 @@ metadata:
     - academic-paper-reviewer
 ---
 
-# Academic Pipeline v3.6.8 — Full Academic Research Workflow Orchestrator
+# Academic Pipeline v3.7.0 — Full Academic Research Workflow Orchestrator
 
 A lightweight orchestrator that manages the complete academic pipeline from research exploration to final manuscript. It does not perform substantive work — it only detects stages, recommends modes, dispatches skills, manages transitions, and tracks state.
 
@@ -579,8 +579,8 @@ Stage 5: academic-paper (format-convert mode)
 
 | Item | Content |
 |------|---------|
-| Skill Version | 3.6.8 |
-| Last Updated | 2026-05-03 |
+| Skill Version | 3.7.0 |
+| Last Updated | 2026-05-05 |
 | Maintainer | Cheng-I Wu |
 | Dependent Skills | deep-research v2.0+, academic-paper v2.0+, academic-paper-reviewer v1.1+ |
 | Role | Full academic research workflow orchestrator |

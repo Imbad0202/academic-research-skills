@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.6.8-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.6.8)
+[![Version](https://img.shields.io/badge/version-v3.7.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.7.0)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -217,7 +217,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查團隊 vs. 精簡再審團隊的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.6)
+### Academic Pipeline (v3.7)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）不可跳過；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -276,6 +276,20 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.7.0（2026-05-05）— Claude Code Plugin 打包
+
+> Plugin 打包升級：ARS 現可在 Claude Code CLI / VS Code / JetBrains 一行裝（`/plugin marketplace add Imbad0202/academic-research-skills` + `/plugin install academic-research-skills`）。原本的 `git clone + symlink 到 ~/.claude/skills/` 安裝流程不變、繼續支援；雙軌都是一級公民。
+
+- **Plugin manifest 與 marketplace metadata**（Phase 1，PR #68）：`.claude-plugin/plugin.json` 宣告整個 suite（4 個 skill 透過 `skills/` 目錄相對 symlink 自動探索）；`.claude-plugin/marketplace.json` 註冊 plugin，使單一 GitHub-hosted endpoint 同時提供 marketplace listing 與 plugin 來源。README、`README.zh-TW.md`、`docs/SETUP.md` 都加入雙軌安裝指引。
+- **10 個 slash command** 在 `commands/ars-*.md`（Phase 2.1，PR #69）將 `MODE_REGISTRY.md` 的條目對映到 `/ars-<mode>` 觸發。每個 command frontmatter 釘住模型路由：`opus` 給 `full` 與 `revision-coach`（架構與審稿解讀深度），`sonnet` 給其他 8 個。任何情境不用 Haiku。
+- **3 個 plugin-shipped agent** 在 `agents/*_agent.md`（Phase 2.1，PR #69）以相對 symlink 指向 `deep-research/agents/` 內 v3.6.7 已 hardened 的下游 agent：`synthesis_agent`、`research_architect_agent`、`report_compiler_agent`。底線檔名保留以對齊 `scripts/check_v3_6_7_pattern_protection.py` hard-pin 路徑與 INV-3 manifest-confined Clause 1 不變式。Symlink（不複製）維持 single source of truth，避免 v3.6.7 §6 inversion sweep + INV-1/2/3 lint 已關閉的 Pattern C3 攻擊面再開。
+- **`model: inherit`** 加在這三個 source agent frontmatter 上。選 inherit 而非 pin `sonnet` 是為了讓 Opus session 跑 ARS full pipeline 時 agent 仍是 Opus（不被降）。使用者的 `~/.claude/hooks/warn-agent-no-model.sh` PreToolUse hook 在派工邊界已 gate Haiku，所以 inherit 解析到的是已經沒 Haiku 的模型。
+- **SessionStart announce hook** 在 `hooks/hooks.json` + `scripts/announce-ars-loaded.sh`（Phase 2.2，PR #70）。Plugin 載入時，hook 把 10 個 slash command、3 個 plugin agent、token 預算指引以 `additionalContext` 注入 LLM 第一輪。`startup` 與 `clear` 拿完整 announce；`resume` 與 `compact` 只拿一行確認，避免每次 resume 都燒 context。Bash 3.2 兼容 — macOS stock `/bin/bash` 直接跑，不需 `brew install bash`。
+- **Phase 2.2 範圍縮減**：原本規劃的 `SubagentStop → run_codex_audit.sh` codex audit hook 在 v3.7.0 被排除，因為 (a) contract gap：SubagentStop payload 沒帶 stage / deliverable，wrapper 必要參數無法從 hook 推出；(b) invoker 邊界：`run_codex_audit.sh` lines 4–7 明禁同 session in-LLM 呼叫，PostToolUse 在產出 deliverable 的 LLM session 內觸發。真正的 audit-hook 整合留到 v3.6.8+，等 ARS 有 stage / deliverable propagation contract 再做。詳見 `docs/design/2026-04-30-ars-v3.7.0-plugin-packaging-roadmap.md` Update note 2026-05-05（Phase 2.2 scope reduction）。
+- **`docs/PERFORMANCE.md` + `.zh-TW.md`** 新增「v3.7.0 Plugin agent 與模型路由」節，說明 inherit 語意與目前 3-agent scope 邊界。
+- **跨三個 PR 的 codex review chain**：9 輪 inline iterative review + 3 輪 fresh PR-level review，全部在 merge 前收斂到 0 個 P0/P1/P2 finding。Phase 2.2 fresh PR review 抓到一個 P2（`${CLAUDE_PLUGIN_ROOT}` 沒 quote，含空白的安裝路徑會 break）— inline 輪次抓不到，證實「實作 review（inline）」與「contract review（fresh）」分離的價值。
+- **沒動的東西**：4 個 skill 目錄、25 個 mode、agent prompt、schema 檔案、lint contract 全不變。Plugin 打包只**新增**頂層介面（`commands/`、`agents/`、`hooks/`、`.claude-plugin/`、`skills/` symlink dir、3 個 source agent frontmatter 加 `model: inherit`）。既有 4.3k clone 安裝用戶完全不破。
 
 ### v3.6.8（2026-05-03）— Generator-Evaluator Contract Gate（v3.6.6 spec ship）
 

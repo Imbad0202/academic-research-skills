@@ -64,6 +64,100 @@ All notable changes to this project will be documented in this file.
   gate (Step 6 §1-§11 + Phases 6.1-6.7) + synthetic evaluation case
   (Phase 6.8) deliver the §10 ship-quality target.
 
+## [3.7.0] - 2026-05-05
+
+> **Claude Code plugin packaging.** ARS now installs in one line on Claude Code
+> CLI / VS Code / JetBrains via `/plugin marketplace add Imbad0202/academic-research-skills`
+> + `/plugin install academic-research-skills`. The traditional
+> `git clone + symlink to ~/.claude/skills/` flow continues to work — both
+> tracks are first-class.
+
+### Added
+
+- **Plugin manifest + marketplace metadata** (Phase 1, PR #68).
+  `.claude-plugin/plugin.json` declares the suite. `.claude-plugin/marketplace.json`
+  registers the plugin so a single GitHub-hosted endpoint serves both the
+  marketplace listing and the plugin source. `skills/` directory carries
+  relative symlinks to the four existing skill directories so the plugin
+  loader auto-discovers them without moving repo layout.
+- **10 slash commands** at `commands/ars-*.md` (Phase 2.1, PR #69) mapping
+  `MODE_REGISTRY.md` entries to `/ars-<mode>` triggers. Model routing pinned
+  in each command's frontmatter — `opus` for `full` and `revision-coach`
+  (architectural / review-interpretation depth), `sonnet` for the other 8.
+  No Haiku per `feedback_no_haiku.md`.
+- **3 plugin-shipped agents** at `agents/*_agent.md` (Phase 2.1, PR #69)
+  as relative symlinks to the v3.6.7-hardened downstream agents in
+  `deep-research/agents/`: `synthesis_agent`, `research_architect_agent`,
+  `report_compiler_agent`. Underscore filenames preserved to match
+  `scripts/check_v3_6_7_pattern_protection.py` hard-pinned paths and the
+  INV-3 manifest-confined Clause 1 invariant. Symlinks (not copies) preserve
+  a single source of truth and prevent the Pattern C3 attack surface that
+  v3.6.7 §6 inversion sweep + INV-1/2/3 lint closes.
+- **`model: inherit`** added to those three source agent frontmatters
+  (PR #69 R1 codex finding). Inherit chosen over pinning `sonnet` so an
+  Opus session running the full pipeline keeps Opus agents (instead of
+  being capped) while the user's existing PreToolUse `warn-agent-no-model.sh`
+  hook gates Haiku at the dispatch boundary.
+- **SessionStart announce hook** at `hooks/hooks.json` +
+  `scripts/announce-ars-loaded.sh` (Phase 2.2, PR #70). When the plugin
+  loads, the hook injects `additionalContext` listing the 10 slash commands,
+  the 3 plugin agents, and a token-budget pointer into the LLM's first
+  turn. `startup` and `clear` source values get the full announce; `resume`
+  and `compact` get a one-line ack to avoid burning context on every
+  resume. Bash 3.2 compatible — runs on macOS stock `/bin/bash` with no
+  `brew install bash` requirement. `${CLAUDE_PLUGIN_ROOT}` quoted for
+  install paths containing spaces.
+- **`docs/PERFORMANCE.md` + `.zh-TW.md`** subsection
+  "v3.7.0 Plugin agents and model routing" explaining `model: inherit`
+  semantics and the current 3-agent scope boundary.
+- **`docs/ARCHITECTURE.md`** Evolution Timeline extended with v3.6.7 / v3.6.8 /
+  v3.7.0 entries.
+- **README + README.zh-TW** version badge bumped to v3.7.0; Pipeline section
+  heading bumped to v3.7; CHANGELOG entry added.
+
+### Deferred (v3.6.8+)
+
+- **SubagentStop → `run_codex_audit.sh` codex audit hook** (Phase 2.2 scope
+  reduction). Two compounding reasons: (a) wrong invoker class —
+  `run_codex_audit.sh` lines 4–7 forbid same-session in-LLM invocation
+  (Pattern C3 attack surface), and the original PostToolUse Write|Edit
+  matcher would fire from inside the producing session; (b) contract gap —
+  the SubagentStop hook payload carries no stage/deliverable info, so a
+  wrapper would have to half-infer those required arguments. Real
+  audit-hook integration deferred to v3.6.8+ when ARS gains a stage/deliverable
+  propagation contract. See
+  `docs/design/2026-04-30-ars-v3.7.0-plugin-packaging-roadmap.md`
+  Update note 2026-05-05 (Phase 2.2 scope reduction).
+
+### Changed
+
+- `academic-pipeline/SKILL.md` frontmatter `version: "3.7.0"` + H1 +
+  Version Info table.
+- `MODE_REGISTRY.md` Last updated bumped to `v3.7.0 (2026-05-05)`.
+- `.claude/CLAUDE.md` Skills Overview row + Suite version footer bumped
+  to 3.7.0.
+- `scripts/check_spec_consistency.py` lint pins (Suite version, README
+  badge, MODE_REGISTRY heading, CHANGELOG section heading) bumped to
+  v3.7.0.
+
+### Unchanged
+
+The four skill directories, all 25 modes, agent prompts, schema files,
+and lint contracts. Plugin packaging only adds new top-level surface
+(`commands/`, `agents/`, `hooks/`, `.claude-plugin/`, `skills/` symlink
+dir, three plugin-agent `model: inherit` frontmatter additions).
+Existing 4.3k clone-install users see no breaking change.
+
+### Codex review chain
+
+9 inline iterative rounds + 3 fresh PR-level rounds across the three
+PRs (#68 / #69 / #70), all converging to 0 P0/P1/P2 findings before
+merge. The Phase 2.2 fresh PR review caught one P2 (unquoted
+`${CLAUDE_PLUGIN_ROOT}` breaking install paths with spaces) that the
+inline rounds missed — confirms the value of separating implementation
+review (inline) from contract / install-time review (fresh).
+Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
+
 ## [3.6.8] - 2026-05-03
 
 > **Naming note**: this release ships the **v3.6.6 generator-evaluator contract**
