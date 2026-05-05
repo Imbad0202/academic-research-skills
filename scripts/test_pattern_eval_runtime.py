@@ -56,7 +56,7 @@ PATTERN_TO_DIMENSION = {
     "B2": "3.5",  # pseudo-reverse-coded
     "B3": "3.5",  # event-anchor missing
     "B4": "3.5",  # leading items
-    "B5": "3.5",  # option-list mismatch (audit template lists B5 in 3.1 + 3.2; we keep 3.5 as the survey-mode aggregate)
+    "B5": "3.1",  # primary-source list mismatch — audit template §3.1 explicitly lists B5 (line 76); §3.5 enumerates B1-B4 only (line 100)
     "C1": "4(f)",  # compression overclaim — 4(f) sub-check (ii) protected hedge
     "C2": "3.7",  # temporal ambiguity / COI disclosure
     "C3": "3.2",  # output metadata audit-passed claim / hallucination
@@ -108,10 +108,16 @@ PHASE_TO_PASSPORT_MUTATION = {
     "P-PB-dup-late": "conditional",      # GO TO B10 reading pre-existing entry; no new append in current session
     "P-PB-consume-fail": "appended",     # B9 atomic-rename succeeded → entry committed
     "P-PB-crash": "conditional",         # depends on whether B9 atomic-rename fired
+    # Round-cap escalation phase (§5.4 / B11) — append still happens (B10 ran
+    # for round-N MATERIAL) but the orchestrator additionally emits the
+    # escalation prompt and awaits user choice. Integration round_3 fixtures
+    # use this phase explicitly per F-201 closure.
+    "B11": "appended",                   # round == target_rounds MATERIAL → escalation
 }
 
-# Total enumerated phases (must equal 24 inventory rows + 2 happy-path = 26).
-EXPECTED_PHASE_COUNT = 26
+# Total enumerated phases (must equal 24 §5.6 inventory rows + 2 happy-path
+# B10/A7 + 1 round-cap escalation B11 = 27).
+EXPECTED_PHASE_COUNT = 27
 
 RUN_ID_REGEX = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$"
@@ -534,6 +540,196 @@ def test_integration_acknowledged_findings_exist_in_round_3():
         f"acknowledged finding_ids {missing} do not appear in any round-3 verdict; "
         f"round 3 emits {round_3_finding_ids}"
     )
+
+
+def test_integration_finding_id_lineage_carry_forward():
+    """Audit template Section 6 contract (line 157): cumulative numbered findings
+    carry forward IDs from round 1; new findings get next available ID. Closes codex F-202.
+
+    For the curated A3+C2+D4+C1 subset:
+    - A3 (synthesis_agent) round-1 finding gets ID X; same A3 partial-fix surfaces
+      at round 2 and 3 → MUST carry the same ID X. (A3 is the lineage with rounds 1+2+3.)
+    - D4 (report_compiler_agent) round-1 finding gets ID Y; same D4 word-cap residue
+      at rounds 2 and 3 → MUST carry the same ID Y.
+    - C2 / C1 close in round 2 (acknowledged by upstream fix) and never recur.
+    """
+    base = _integration_dir()
+    by_round_agent: dict[tuple[int, str], list[dict]] = {}
+    for r in (1, 2, 3):
+        for agent in ("synthesis_agent", "report_compiler_agent"):
+            verdict = _load_yaml(base / f"round_{r}" / agent / "expected_audit_findings.yaml")
+            by_round_agent[(r, agent)] = verdict.get("findings", [])
+
+    a3_round_ids = [
+        next((f["id"] for f in by_round_agent.get((r, "synthesis_agent"), []) if f), None)
+        for r in (1, 2, 3)
+    ]
+    a3_seen = [i for i in a3_round_ids if i]
+    assert len(set(a3_seen)) == 1, (
+        f"A3 (synthesis_agent) finding ID must be carried forward across rounds 1→2→3; "
+        f"got rounds {a3_round_ids}"
+    )
+
+    # D4 lineage: every D4 finding across rounds 1+2+3 (matched by description-substring
+    # 'word' or 'cap') shares one ID.
+    d4_round_ids = []
+    for r in (1, 2, 3):
+        for f in by_round_agent.get((r, "report_compiler_agent"), []):
+            if "word" in f.get("description", "").lower() or "cap" in f.get("description", "").lower():
+                d4_round_ids.append((r, f["id"]))
+    d4_unique_ids = set(fid for _, fid in d4_round_ids)
+    assert len(d4_unique_ids) == 1, (
+        f"D4 (report_compiler_agent) finding ID must be carried forward across rounds 1→2→3; "
+        f"got {d4_round_ids}"
+    )
+
+
+# F-201 closure: state runner driving the §7.3 5-step procedure.
+
+def _simulate_round(
+    base: Path,
+    round_n: int,
+    target_rounds: int,
+    accumulated_passport: list,
+) -> dict:
+    """Drive one round through §5.6 Path B for each of three agents.
+
+    Returns a dict carrying the round's overall outcome + per-agent decisions
+    + any escalation signal. Mutates accumulated_passport in-place by appending
+    each agent's persisted entry per §5.6 B10 (or B11 for round==target MATERIAL).
+    """
+    round_dir = base / f"round_{round_n}"
+    per_agent_decisions = {}
+    overall_findings = {"P1": 0, "P2": 0, "P3": 0}
+    any_blocking = False
+    for agent in ("synthesis_agent", "research_architect_agent", "report_compiler_agent"):
+        verdict = _load_yaml(round_dir / agent / "expected_audit_findings.yaml")
+        action = _load_yaml(round_dir / agent / "expected_orchestrator_action.yaml")
+
+        # B10/B11 always appends to passport per §5.6 — the harness emulates this.
+        accumulated_passport.append({
+            "run_id": verdict["run_id"],
+            "agent": agent,
+            "verdict_status": verdict["verdict_status"],
+            "round": verdict["round"],
+        })
+        for f in verdict.get("findings", []):
+            overall_findings[f["severity"]] += 1
+        if verdict["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
+            any_blocking = True
+
+        decision = _simulate_orchestrator_decision(verdict, action.get("expected_phase"))
+        per_agent_decisions[agent] = {
+            "verdict_status": verdict["verdict_status"],
+            "expected_phase": action["expected_phase"],
+            "decision": decision,
+        }
+
+    final_round = round_n == target_rounds
+    if any_blocking:
+        if final_round:
+            ship_or_block = "escalation_prompt"  # §5.4 + B11
+        else:
+            ship_or_block = "block"
+    else:
+        ship_or_block = "ship"
+    return {
+        "round": round_n,
+        "target_rounds": target_rounds,
+        "overall_findings": overall_findings,
+        "ship_or_block": ship_or_block,
+        "per_agent": per_agent_decisions,
+    }
+
+
+def test_integration_state_runner_drives_full_pipeline():
+    """§7.3 lines 2085-2092: 5-step harness procedure drives each round's verdict
+    through orchestrator §5.6, accumulates passport state, verifies expected
+    pipeline state, feeds round-3 escalation user_response, asserts final passport
+    matches expected_passport_state.yaml. Closes codex F-201.
+    """
+    base = _integration_dir()
+    manifest = _load_json(base / "manifest.json")
+    target_rounds = manifest["rounds"][0]["target_rounds"]
+
+    accumulated_passport: list = []
+
+    # Step 1+2: load each round's verdicts + drive §5.6 procedure.
+    rounds_outcome = []
+    for round_n in (1, 2, 3):
+        outcome = _simulate_round(base, round_n, target_rounds, accumulated_passport)
+        rounds_outcome.append(outcome)
+
+        # Step 3: assert expected_pipeline_state.yaml matches actual.
+        expected_state = _load_yaml(base / f"round_{round_n}" / "expected_pipeline_state.yaml")
+        actual_run_ids = {entry["run_id"] for entry in accumulated_passport if entry["round"] == round_n}
+        expected_run_ids = {entry["run_id"] for entry in expected_state["audit_artifact_appended"]}
+        assert actual_run_ids == expected_run_ids, (
+            f"round {round_n}: run_id mismatch — actual={actual_run_ids} expected={expected_run_ids}"
+        )
+
+        expected_outcome_label = expected_state.get("ship_or_block")
+        if expected_outcome_label:
+            assert outcome["ship_or_block"] == expected_outcome_label, (
+                f"round {round_n}: ship_or_block actual={outcome['ship_or_block']} "
+                f"vs declared={expected_outcome_label}"
+            )
+
+    # Step 4: at round-3 escalation, feed user_response.yaml.
+    final_round = rounds_outcome[-1]
+    assert final_round["ship_or_block"] == "escalation_prompt", (
+        "round 3 with MATERIAL must emit escalation prompt per §5.4"
+    )
+    user_response = _load_yaml(base / "escalation" / "user_response.yaml")
+    assert user_response["user_choice"] == "ship_with_known_residue"
+    acked_ids = set(user_response["acknowledged_finding_ids"])
+
+    # Append acknowledgement entries per §5.4 mechanics. The orchestrator
+    # appends a NEW persisted entry mirroring each acknowledged round-3 MATERIAL
+    # entry's run_id with an acknowledgement{} block.
+    for agent in ("synthesis_agent", "report_compiler_agent"):
+        round_3_verdict = _load_yaml(base / "round_3" / agent / "expected_audit_findings.yaml")
+        agent_finding_ids = {f["id"] for f in round_3_verdict.get("findings", [])}
+        agent_acked = acked_ids & agent_finding_ids
+        if agent_acked:
+            accumulated_passport.append({
+                "run_id": round_3_verdict["run_id"],
+                "agent": agent,
+                "verdict_status": "MATERIAL",
+                "round": 3,
+                "acknowledgement": {
+                    "finding_ids": sorted(agent_acked),
+                    "acknowledged_at": user_response["acknowledged_at"],
+                    "acknowledged_by": user_response["acknowledged_by"],
+                },
+            })
+
+    # Step 5: assert expected_passport_state.yaml matches actual.
+    expected_passport = _load_yaml(base / "escalation" / "expected_passport_state.yaml")
+    expected_run_id_seq = [e["run_id"] for e in expected_passport["audit_artifact"]]
+    actual_run_id_seq = [e["run_id"] for e in accumulated_passport]
+    assert actual_run_id_seq == expected_run_id_seq, (
+        f"final passport run_id sequence mismatch:\nactual={actual_run_id_seq}\nexpected={expected_run_id_seq}"
+    )
+
+    expected_ack_pairs = [
+        (e["run_id"], tuple(e["acknowledgement"]["finding_ids"]))
+        for e in expected_passport["audit_artifact"]
+        if e.get("acknowledgement")
+    ]
+    actual_ack_pairs = [
+        (e["run_id"], tuple(e["acknowledgement"]["finding_ids"]))
+        for e in accumulated_passport
+        if e.get("acknowledgement")
+    ]
+    assert actual_ack_pairs == expected_ack_pairs, (
+        f"acknowledgement entries mismatch:\nactual={actual_ack_pairs}\nexpected={expected_ack_pairs}"
+    )
+
+    # Final outcome check.
+    expected_outcome = _load_yaml(base / "escalation" / "expected_pipeline_outcome.yaml")
+    assert expected_outcome["stage_outcome"] == "shipped_with_known_residue"
+    assert expected_outcome["audit_gate_outcome"] == "ship_with_known_residue"
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ finding_counts:
 findings:
   - id: F-001
     severity: P1
-    dimension: "3.5"
+    dimension: "3.1"
     file: bad_run/deliverable.md
     line: 7
     description: >

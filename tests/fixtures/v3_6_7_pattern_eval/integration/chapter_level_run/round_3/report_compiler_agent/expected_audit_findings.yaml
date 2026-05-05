@@ -7,7 +7,7 @@ finding_counts:
   p2: 0
   p3: 0
 findings:
-  - id: F-302
+  - id: F-103
     severity: P1
     dimension: "4(f)"
     file: round_3/report_compiler_agent/deliverable.md

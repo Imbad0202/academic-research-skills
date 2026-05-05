@@ -51,7 +51,7 @@ audit_artifact:
     verdict_status: MATERIAL
     round: 3
     acknowledgement:
-      finding_ids: [F-301]
+      finding_ids: [F-101]
       acknowledged_at: "2026-04-30T16:05:00.000Z"
       acknowledged_by: user
   - run_id: 2026-04-30T16-02-00Z-f303
@@ -59,7 +59,7 @@ audit_artifact:
     verdict_status: MATERIAL
     round: 3
     acknowledgement:
-      finding_ids: [F-302]
+      finding_ids: [F-103]
       acknowledged_at: "2026-04-30T16:05:00.000Z"
       acknowledged_by: user
 

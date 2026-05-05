@@ -7,7 +7,7 @@ finding_counts:
   p2: 0
   p3: 0
 findings:
-  - id: F-201
+  - id: F-101
     severity: P1
     dimension: "3.1"
     file: round_2/synthesis_agent/deliverable.md
