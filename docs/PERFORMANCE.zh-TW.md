@@ -31,6 +31,18 @@
 
 > **⚠️ Skip Permissions 注意事項**：此旗標會停用所有工具使用的確認對話框。請自行斟酌使用 — 在可信任的長時間 pipeline 中非常方便，但會移除手動審核的安全機制。僅在你確定接受 Claude 自動執行檔案讀寫、shell 指令等操作時才啟用。
 
+### v3.7.0 Plugin agent 與模型路由
+
+當 ARS 以 Claude Code plugin 方式安裝（`/plugin install academic-research-skills`）時，會把三個下游 worker agent 暴露為 plugin-shipped subagent：`synthesis_agent`、`research_architect_agent`、`report_compiler_agent`。三個 agent frontmatter 都標 `model: inherit`，意思是它們**繼承派工 session 的模型**而非寫死特定 floor：
+
+- Opus session 跑完整 pipeline 時 agent 是 Opus，保留這三個 agent 設計的整合深度。
+- Sonnet session 取得 Sonnet agent，跟主 session cost / latency 對齊。
+- Agent 永遠不會默默掉到 Haiku — `inherit` 走的是主 session 模型，主 session 本身又被「ARS 全程不用 Haiku」政策守住。
+
+意涵：**plugin agent 的 token 成本完全跟著上表各模式估算走，沒有額外加減**。dispatched agent 跟主 session 同一個模型，主 session 已經付的成本沒有再多一層 plugin agent 收費。如果 pipeline 中途換模型（例如 revision pass 改用 Sonnet 省成本），下一輪 agent 派工自動跟上。
+
+其他 ARS agent（`bibliography_agent`、`literature_strategist_agent` 等）在 v3.7.0 不暴露為 plugin agent；它們仍是 in-skill prompt template，由主 session 內聯執行，沒有獨立的模型路由層。更廣的 plugin agent 覆蓋是 v3.6.8+ 的工作。
+
 ## 長時間 session 管理
 
 完整 pipeline 設計為 human-in-the-loop，每個階段都需使用者確認。實務上一次完整執行會跨越數小時到數天，遠長於 Anthropic 的 prompt cache TTL（5 分鐘）。兩項結果：
