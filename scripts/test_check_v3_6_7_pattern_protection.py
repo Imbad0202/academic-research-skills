@@ -820,21 +820,22 @@ class CodexR6MutationTests(_MutationTestBase):
         self.assert_mutation_fails()
 
 
-class CodexR7MutationTests(_MutationTestBase):
-    """Codex R7 (Phase 6.7 review, after R6 fixes) closure: 1 P2
-    finding — INV-3 only rejected exact canonical bullets in non-
-    manifest prompts, leaving room for the same weakened-duplicate
-    bypass class that R6 closed inside manifest files."""
+class CodexR7R9MutationTests(_MutationTestBase):
+    """Codex R7 → R9 architectural rewind: R7 originally extended INV-3
+    with `_is_clause_1_like` to catch weakened variants outside the
+    manifest. R9 surfaced that this over-extends: spec §6.3 INV-3
+    detects "the canonical Clause 1 line found outside the manifest"
+    (the actual sentence), not Clause 1-like variants. v3.6.7 does not
+    lint variants outside the manifest. Test updated to reflect the
+    correct contract: a weakened variant in a non-manifest agent
+    passes lint."""
 
-    def test_r7_p2_inv3_weakened_clause_1_in_non_manifest_fails(self) -> None:
-        # Codex R7 P2: a near-canonical bullet
-        # (`- When feasible, DO NOT simulate ...`) added to a non-
-        # manifest agent prompt was not caught by INV-3 because the
-        # check compared exact normalized text. The same Clause 1-like
-        # heuristic R6 added to INV-1 (`_is_clause_1_like`) is now
-        # reused by INV-3 so the scope guard rejects the same class
-        # of bypass. Inject the variant into bibliography_agent (not
-        # in the manifest) and assert lint fails with [INV-3].
+    def test_r9_inv3_weakened_clause_1_in_non_manifest_passes(self) -> None:
+        # Codex R9 P2 architectural rewind: a weakened canonical
+        # variant outside the manifest is NOT a v3.6.7 INV-3 violation.
+        # Only the exact canonical sentence (whitespace-normalized
+        # equal to CANONICAL_CLAUSE_1_TEXT) widens the scope. Variants
+        # are a v3.6.8+ concern if/when L2 is reopened.
         bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
         original = bibliography.read_text(encoding="utf-8")
         weakened = (
@@ -843,7 +844,14 @@ class CodexR7MutationTests(_MutationTestBase):
             "must not claim audit-passed state.\n"
         )
         bibliography.write_text(original + weakened, encoding="utf-8")
-        self.assert_mutation_fails()
+        rc, _stdout, stderr = _run_lint(self._repo_dir)
+        self.assertEqual(
+            rc,
+            0,
+            f"weakened Clause 1 variant outside manifest is not a "
+            f"v3.6.7 INV-3 violation per R9 architectural rewind; "
+            f"stderr={stderr}",
+        )
 
 
 class CodexR8MutationTests(_MutationTestBase):
@@ -897,6 +905,54 @@ class CodexR8MutationTests(_MutationTestBase):
             "audit-passed state.\n"
         )
         bibliography.write_text(original + canon_prose, encoding="utf-8")
+        self.assert_mutation_fails()
+
+
+class CodexR9MutationTests(_MutationTestBase):
+    """Codex R9 (Phase 6.7 review, after R8 fixes) architectural
+    rewind: R7+R8 had over-extended INV-3 with the
+    Clause 1-like heuristic (false-positives on legitimate audit-step
+    mentions in non-manifest agents) AND under-extended prose scan
+    (missed canonical-after-heading-no-blank-line). R9 closes both."""
+
+    def test_r9_p2_inv3_audit_fragment_unrelated_bullet_passes(self) -> None:
+        # Codex R9 P2 (a): a non-manifest agent prompt may legitimately
+        # discuss audit steps in process-flow guidance, e.g.
+        # `- Review each audit step before finalizing.`. R8's
+        # heuristic flagged this as Clause 1-like even though the
+        # bullet has no prohibition semantics. R9 closure scopes INV-3
+        # to exact canonical sentence only.
+        bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
+        original = bibliography.read_text(encoding="utf-8")
+        bibliography.write_text(
+            original + "\n\n- Review each audit step before finalizing.\n",
+            encoding="utf-8",
+        )
+        rc, _stdout, stderr = _run_lint(self._repo_dir)
+        self.assertEqual(
+            rc,
+            0,
+            f"unrelated audit-step bullet should not trip INV-3 after "
+            f"R9 architectural rewind; stderr={stderr}",
+        )
+
+    def test_r9_p2_inv3_canonical_after_heading_no_blank_line_fails(self) -> None:
+        # Codex R9 P2 (b): when the canonical sentence is pasted as
+        # prose immediately after a Markdown heading with no blank
+        # line, R8's `re.split(r"\n\s*\n", text)` kept the heading and
+        # sentence in one paragraph, and the `startswith("## ")`
+        # filter skipped the whole thing. R9 closure switches to
+        # line-level heading-strip + whitespace-collapse so heading
+        # adjacency does not bypass the prose scan.
+        bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
+        original = bibliography.read_text(encoding="utf-8")
+        injection = (
+            "\n\n## PATTERN PROTECTION (v3.6.7)\n"
+            "DO NOT simulate any audit step. DO NOT claim to have run "
+            "codex/external review. Output metadata must not claim "
+            "audit-passed state.\n"
+        )
+        bibliography.write_text(original + injection, encoding="utf-8")
         self.assert_mutation_fails()
 
 

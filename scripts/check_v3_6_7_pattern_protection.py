@@ -1145,25 +1145,33 @@ INV3_SCAN_DIRS = [
 
 
 def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
-    """INV-3: no Clause 1 widening into non-manifest agent prompts —
-    detects:
-      (a) Clause 1-like bullets (audit-specific heuristic per
-          `_is_clause_1_like`) — catches weakened/exact variants that
-          smuggle the prohibition vocabulary into a fourth file.
-      (b) Exact canonical sentence appearing as non-bullet prose
-          (paragraph / standalone line) — catches the same widening
-          when the editor pastes the sentence outside list form.
+    """INV-3: the EXACT canonical Clause 1 line MUST NOT appear in any
+    agent prompt outside the manifest. Detects:
+      (a) Bullets whose whitespace-normalized text equals
+          `CANONICAL_CLAUSE_1_TEXT` byte-for-byte.
+      (b) Prose runs whose whitespace-normalized text equals
+          `CANONICAL_CLAUSE_1_TEXT` byte-for-byte. Prose runs are
+          identified by sliding a 3-sentence window across non-bullet
+          text after stripping `^#` heading lines.
     Returns (ok, error_messages).
 
-    Codex R7 P2 closure (bullet-level Clause 1-like detection); R8 P2
-    closure (a) tightening: audit-specific fragments only, generic
-    `do not simulate` is no longer enough to trip the check; (b)
-    prose-level scan via paragraph split + whitespace-normalized exact
-    match against CANONICAL_CLAUSE_1_TEXT. Prose match uses exact
-    equality (not the bullet heuristic) so a non-manifest prompt's
-    *discussion* of the canonical wording (e.g. quoting it in a
-    paragraph for context) only fails when the line is actually
-    re-introduced as a contract sentence."""
+    Codex R9 P2 closures (architectural rewind on R7+R8 over-extension):
+    - The Clause 1-like heuristic is a manifest-internal weakened-
+      duplicate guard (INV-1), NOT a manifest-external detector.
+      Applied to non-manifest agents, it false-positives any bullet
+      mentioning `audit step` for unrelated reasons (e.g. process-
+      flow guidance like `- Review each audit step before
+      finalizing.`). Spec §6.3 INV-3 wording says "canonical Clause 1
+      line found outside the manifest" — that means the actual
+      sentence, not a Clause 1-like variant. Variants outside the
+      manifest are a separate concern that v3.6.7 does not lint.
+    - Prose detection no longer relies on `re.split(r"\\n\\s*\\n", ...)`
+      paragraphs (which mis-handle a heading immediately followed by
+      the canonical sentence with no blank line). Use line-level
+      heading-strip + whitespace-collapse + a 3-sentence sliding
+      window so the canonical sentence is detectable regardless of
+      surrounding Markdown structure.
+    """
     manifest_set = {str(REPO_ROOT / p) for p in manifest_files}
     errors: list[str] = []
     for d in INV3_SCAN_DIRS:
@@ -1174,19 +1182,24 @@ def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
                 continue
             text = path.read_text(encoding="utf-8")
             offending_bullets = [
-                bt for _o, bt in _iter_bullets(text) if _is_clause_1_like(bt)
+                bt
+                for _o, bt in _iter_bullets(text)
+                if bt == CANONICAL_CLAUSE_1_TEXT
             ]
-            # Paragraph-level exact match. Whitespace-normalize each
-            # paragraph that does not start with `- ` and compare
-            # against CANONICAL_CLAUSE_1_TEXT byte-for-byte.
+            # Line-level heading strip + whitespace collapse on the
+            # rest. Heading lines (start with `#`) and bullet lines
+            # (`- `) are excluded; remaining lines are joined with a
+            # single space. The canonical sentence is detected as a
+            # substring with proper sentence boundaries.
+            non_bullet_non_heading = "\n".join(
+                line for line in text.splitlines()
+                if not line.lstrip().startswith("#")
+                and not line.lstrip().startswith("- ")
+            )
+            normalized_prose = " ".join(non_bullet_non_heading.split())
             offending_prose: list[str] = []
-            for paragraph in re.split(r"\n\s*\n", text):
-                stripped = paragraph.strip()
-                if not stripped or stripped.startswith("- ") or stripped.startswith("## "):
-                    continue
-                normalized = " ".join(stripped.split())
-                if normalized == CANONICAL_CLAUSE_1_TEXT:
-                    offending_prose.append(normalized)
+            if CANONICAL_CLAUSE_1_TEXT in normalized_prose:
+                offending_prose.append(CANONICAL_CLAUSE_1_TEXT)
             if offending_bullets or offending_prose:
                 rel = path.relative_to(REPO_ROOT)
                 offenders = []
@@ -1195,12 +1208,11 @@ def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
                 for pr in offending_prose:
                     offenders.append(f"prose: {pr!r}")
                 errors.append(
-                    f"{rel}: canonical Clause 1 line (or a Clause 1-like "
-                    f"variant) found outside the v3.6.7 inversion "
-                    f"manifest. If this is intentional widening, land a "
-                    f"v3.6.8+ scope-tagged manifest per spec §6.3 line "
-                    f"1807 and open the §9 L2 question; do not "
-                    f"retroactively widen v3.6.7's manifest. "
+                    f"{rel}: canonical Clause 1 line found outside the "
+                    f"v3.6.7 inversion manifest. If this is intentional "
+                    f"widening, land a v3.6.8+ scope-tagged manifest per "
+                    f"spec §6.3 line 1807 and open the §9 L2 question; "
+                    f"do not retroactively widen v3.6.7's manifest. "
                     f"Offender(s): {offenders!r}"
                 )
     return (len(errors) == 0), errors
