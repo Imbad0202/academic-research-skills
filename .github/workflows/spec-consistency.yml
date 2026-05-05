@@ -143,17 +143,17 @@ jobs:
         run: |
           pip install pytest pyyaml jsonschema
           pytest scripts/test_check_pattern_eval_manifest.py -v
-          # Run micro/run_id/coverage tests + the inventory-coverage tests that
-          # are not keyword-tagged. F-301 closure: prior `-k` filter omitted
-          # test_phase_inventory_complete and test_every_fixture_phase_in_inventory.
-          pytest scripts/test_pattern_eval_runtime.py -v -k "micro or run_id or coverage or phase_inventory or fixture_phase"
+          # Includes micro/run_id/coverage + inventory-coverage + synthetic per-phase
+          # injection tests (F-301/F-1001 closures). Synthetic supersession lives in
+          # the integration step below.
+          pytest scripts/test_pattern_eval_runtime.py -v -k "micro or run_id or coverage or phase_inventory or fixture_phase or (synthetic and not supersession)"
 
       - name: Run v3.6.7 Step 8 pattern-eval-integration tests (Phase 6.8 integration fixture)
         env:
           PYTHONPATH: .
         run: |
           pip install pytest pyyaml jsonschema
-          pytest scripts/test_pattern_eval_runtime.py -v -k "integration"
+          pytest scripts/test_pattern_eval_runtime.py -v -k "integration or (synthetic and supersession)"
 
       - name: Run v3.6.7 Phase 6.1 wrapper end-to-end dispatch test (Linux Bash 4+)
         if: runner.os == 'Linux'
