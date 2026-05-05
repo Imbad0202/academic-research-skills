@@ -30,7 +30,14 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 ## Setup & installation
 
-**👉 [docs/SETUP.md](docs/SETUP.md)** — install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and four installation methods including claude.ai Project import.
+**Quick install for Claude Code CLI / IDE (v3.7.0+):**
+
+```text
+/plugin marketplace add Imbad0202/academic-research-skills
+/plugin install academic-research-skills
+```
+
+**👉 [docs/SETUP.md](docs/SETUP.md)** — full guide: install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and five installation methods (Plugin, project skills, global skills, claude.ai Project, repo-cloned).
 
 ## Performance & cost
 

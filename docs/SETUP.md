@@ -175,6 +175,24 @@ Claude discovers skills at `<install-root>/<skill-name>/SKILL.md`. This repo con
 
 Do not install the whole repository as one nested skill folder under `.claude/skills/academic-research-skills/`; that buries the four `SKILL.md` files one level too deep for discovery. See Anthropic's [Claude Code Skills documentation](https://code.claude.com/docs/en/skills).
 
+### Method 0: Claude Code Plugin (v3.7.0+, recommended for Claude Code CLI / IDE users)
+
+If you use Claude Code CLI, VS Code extension, or JetBrains extension, install ARS as a plugin:
+
+```text
+/plugin marketplace add Imbad0202/academic-research-skills
+/plugin install academic-research-skills
+```
+
+The four skills (`deep-research`, `academic-paper`, `academic-paper-reviewer`, `academic-pipeline`) are auto-discovered from the plugin's `skills/` directory.
+
+**Strongly recommended: open auto-update.** Open the `/plugin` UI, find `academic-research-skills`, and toggle auto-update on. ARS releases roughly every 1–2 weeks; auto-update keeps you in sync without manual refreshes. To refresh manually: `/plugin marketplace update academic-research-skills`.
+
+**Plugin platform scope:**
+- ✅ Claude Code CLI / VS Code extension / JetBrains extension — full support
+- ❌ claude.ai web / Claude for Work / Anthropic API direct calls — plugins not supported; use Method 1 / 2 / 3 below
+- ❌ Codex CLI — use the [`academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) fork
+
 ### Method 1: As project skills (recommended)
 
 Use this when you want ARS available inside an existing Claude Code project.

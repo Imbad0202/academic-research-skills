@@ -1,0 +1,23 @@
+{
+  "name": "academic-research-skills",
+  "version": "3.7.0",
+  "description": "Production-grade academic research pipeline for Claude Code: research → write → review → revise → finalize. Ships 4 skills (deep-research, academic-paper, academic-paper-reviewer, academic-pipeline) covering 35+ modes, 32-agent ensemble, Material Passport handoff schema, v3.6.7 cross-model audit gate (synthesis + research-architect + report-compiler pattern protection layer), and v3.6.8 generator-evaluator contract for paper drafting.",
+  "author": {
+    "name": "Cheng-I Wu",
+    "url": "https://github.com/Imbad0202"
+  },
+  "homepage": "https://github.com/Imbad0202/academic-research-skills",
+  "repository": "https://github.com/Imbad0202/academic-research-skills",
+  "license": "CC-BY-NC-4.0",
+  "keywords": [
+    "academic",
+    "research",
+    "writing",
+    "review",
+    "deep-research",
+    "literature-review",
+    "systematic-review",
+    "peer-review",
+    "scholarly-publishing"
+  ]
+}

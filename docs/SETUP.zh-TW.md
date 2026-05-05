@@ -175,6 +175,24 @@ Claude 會在 `<install-root>/<skill-name>/SKILL.md` 尋找 skills。這個 repo
 
 不要把整個 repository 當成單一巢狀 skill 資料夾安裝到 `.claude/skills/academic-research-skills/`。那會讓四個 `SKILL.md` 比 Claude 可發現的位置多埋一層。請參考 Anthropic 的 [Claude Code Skills documentation](https://code.claude.com/docs/en/skills)。
 
+### 方法零：Claude Code Plugin（v3.7.0+，Claude Code CLI / IDE 用戶推薦）
+
+如果你用的是 Claude Code CLI、VS Code extension 或 JetBrains extension，可以一行指令安裝 ARS：
+
+```text
+/plugin marketplace add Imbad0202/academic-research-skills
+/plugin install academic-research-skills
+```
+
+四個 skill（`deep-research`、`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`）會從 plugin 的 `skills/` 目錄自動載入。
+
+**強烈建議開啟 auto-update。** 進 `/plugin` UI 找到 `academic-research-skills`，把 auto-update 開起來。ARS 大約 1–2 週發新版，開了之後會自動同步。手動 refresh：`/plugin marketplace update academic-research-skills`。
+
+**Plugin 平台支援範圍：**
+- ✅ Claude Code CLI / VS Code extension / JetBrains extension — 完整支援
+- ❌ claude.ai 網頁版 / Claude for Work / Anthropic API 直呼 — 不支援 plugin，請改用方法一 / 二 / 三
+- ❌ Codex CLI — 改用 [`academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) fork
+
 ### 方法一：作為專案 Skills（推薦）
 
 當你希望 ARS 可在既有 Claude Code 專案內使用時，請用此方式。
