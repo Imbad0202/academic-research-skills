@@ -274,10 +274,10 @@ def test_extractor_includes_heading_prefix_bytes() -> None:
     backtracking so heading prefix bytes are in the hashed range.
     """
     from scripts.check_v3_6_8_pattern_protection import _extract_block_bytes
-    h2_text = "prelude\n\n## PATTERN PROTECTION (v3.6.7)\n\nbody1\n"
-    h3_text = "prelude\n\n### PATTERN PROTECTION (v3.6.7)\n\nbody1\n"
-    h2_bytes = _extract_block_bytes(h2_text)
-    h3_bytes = _extract_block_bytes(h3_text)
+    h2_bytes_in = "prelude\n\n## PATTERN PROTECTION (v3.6.7)\n\nbody1\n".encode("utf-8")
+    h3_bytes_in = "prelude\n\n### PATTERN PROTECTION (v3.6.7)\n\nbody1\n".encode("utf-8")
+    h2_bytes = _extract_block_bytes(h2_bytes_in)
+    h3_bytes = _extract_block_bytes(h3_bytes_in)
     assert h2_bytes is not None and h3_bytes is not None
     # The extractor must distinguish H2 vs H3 in its returned bytes.
     assert h2_bytes != h3_bytes, (
@@ -287,6 +287,60 @@ def test_extractor_includes_heading_prefix_bytes() -> None:
     # And the prefix bytes must literally be present.
     assert h2_bytes.startswith(b"## PATTERN")
     assert h3_bytes.startswith(b"### PATTERN")
+
+
+def test_extractor_strips_only_file_level_bom_not_block_level() -> None:
+    """Round-8 codex P2 closure: spec § Step 0 says "the FILE's BOM (if any)
+    is excluded". The exclusion is FILE-level (byte 0). A BOM inserted later
+    in the file (e.g. immediately before `## PATTERN PROTECTION`) is a real
+    content mutation and MUST stay in the hashed range so the gate detects it.
+    """
+    from scripts.check_v3_6_8_pattern_protection import _extract_block_bytes
+    BOM = b"\xef\xbb\xbf"
+    base = "prelude\n\n## PATTERN PROTECTION (v3.6.7)\n\nbody\n".encode("utf-8")
+    # Variant A: BOM at file start. This is a file-level BOM; spec says strip.
+    file_bom_in = BOM + base
+    # Variant B: BOM right before the heading (mid-file). NOT spec-stripped.
+    block_bom_in = (
+        "prelude\n\n".encode("utf-8")
+        + BOM
+        + "## PATTERN PROTECTION (v3.6.7)\n\nbody\n".encode("utf-8")
+    )
+    base_block = _extract_block_bytes(base)
+    file_bom_block = _extract_block_bytes(file_bom_in)
+    block_bom_block = _extract_block_bytes(block_bom_in)
+    assert base_block is not None
+    # File-level BOM stripped → block bytes equal to base.
+    assert file_bom_block == base_block, (
+        "File-level BOM (byte 0) MUST be stripped per spec § Step 0; got: "
+        f"file_bom_block={file_bom_block!r} vs base_block={base_block!r}"
+    )
+    # Block-level BOM NOT stripped → block bytes differ from base.
+    assert block_bom_block != base_block, (
+        "BOM inserted before the heading (mid-file) MUST stay in the hashed "
+        "range so the gate catches it (round-8 codex P2 closure). "
+        f"block_bom_block={block_bom_block!r} vs base_block={base_block!r}"
+    )
+
+
+def test_bom_before_heading_attack_caught_by_lint() -> None:
+    """End-to-end mutation test for the round-8 BOM attack: insert U+FEFF
+    immediately before the v3.6.7 heading on disk and verify the lint FAILS.
+    """
+    BOM = b"\xef\xbb\xbf"
+    with _Snapshot(TARGET_AGENT):
+        original = TARGET_AGENT.read_bytes()
+        marker = b"## PATTERN PROTECTION (v3.6.7)"
+        idx = original.find(marker)
+        assert idx >= 0, "fixture missing marker"
+        mutated = original[:idx] + BOM + original[idx:]
+        TARGET_AGENT.write_bytes(mutated)
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "BOM-before-heading mutation must be caught by the SHA gate "
+            "(round-8 codex P2 closure)."
+        )
+        assert "BYTE-EQUIVALENCE FAIL" in result.stdout
 
 
 def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr(monkeypatch) -> None:
@@ -396,12 +450,18 @@ def test_v3_6_7_marker_removed_at_head_fails() -> None:
 # ---------- Module-level smoke test for the SHA-normalization helpers ----------
 
 
-def test_normalize_strips_bom_only_when_present() -> None:
-    from scripts.check_v3_6_8_pattern_protection import _normalize_bytes
-    assert _normalize_bytes(b"\xef\xbb\xbfhello") == b"hello"
-    assert _normalize_bytes(b"hello") == b"hello"
+def test_strip_file_bom_only_at_byte_zero() -> None:
+    """File-level BOM stripping per spec § Step 0. Round-8 closure renamed
+    `_normalize_bytes` → `_strip_file_bom` to make the file-level scope
+    explicit (the old name was ambiguous about what it normalized).
+    """
+    from scripts.check_v3_6_8_pattern_protection import _strip_file_bom
+    assert _strip_file_bom(b"\xef\xbb\xbfhello") == b"hello"
+    assert _strip_file_bom(b"hello") == b"hello"
     # Multi-byte payloads with no BOM are passed through unchanged.
-    assert _normalize_bytes(b"\xe4\xb8\xad\xe6\x96\x87") == b"\xe4\xb8\xad\xe6\x96\x87"
+    assert _strip_file_bom(b"\xe4\xb8\xad\xe6\x96\x87") == b"\xe4\xb8\xad\xe6\x96\x87"
+    # BOM appearing in the middle of input is NOT stripped — only byte 0.
+    assert _strip_file_bom(b"hi\xef\xbb\xbfworld") == b"hi\xef\xbb\xbfworld"
 
 
 def test_sha256_helper_matches_hashlib() -> None:

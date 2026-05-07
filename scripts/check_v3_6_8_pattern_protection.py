@@ -251,25 +251,41 @@ def _v3_6_7_manifest_unchanged_in_pr() -> tuple[bool, str | None]:
     return True, None
 
 
-def _normalize_bytes(b: bytes) -> bytes:
-    """Strip a leading UTF-8 BOM if present; preserve everything else.
+def _strip_file_bom(file_bytes: bytes) -> bytes:
+    """Strip a UTF-8 BOM at byte 0 of the FILE, if present.
 
-    Per spec § Step 0 SHA normalization: bytes are read raw (no LF→CRLF
-    conversion); BOM (if any) is excluded; trailing whitespace of the last
-    block line is preserved.
+    Per spec § Step 0 SHA normalization: "the FILE's BOM (if any) is
+    excluded". This strips ONLY the file-level BOM, NOT BOMs that may
+    appear later in the file (e.g. inserted right before a protected
+    heading as a hidden mutation — round-8 codex P2 closure: spec
+    exclusion is file-level only, so block-level BOMs must remain in
+    the hashed range so heading-prefix attacks like inserting U+FEFF
+    before `## PATTERN PROTECTION (v3.6.7)` are caught).
     """
-    if b.startswith(_BOM):
-        return b[len(_BOM):]
-    return b
+    if file_bytes.startswith(_BOM):
+        return file_bytes[len(_BOM):]
+    return file_bytes
 
 
-def _extract_block_bytes(text: str) -> bytes | None:
+# Backward-compat alias for the old name used by the unit test that pins
+# BOM-stripping behaviour (test renamed in the round-8 closure commit).
+_normalize_bytes = _strip_file_bom
+
+
+def _extract_block_bytes(file_bytes: bytes) -> bytes | None:
     """Extract the v3.6.7 PATTERN PROTECTION block as bytes.
 
     Spec § 388 canonical range: "start at the line containing
     `## PATTERN PROTECTION (v3.6.7)` heading; end at the line before the
     next H1 / H2 / H3 heading or EOF". The `## ` heading prefix is part
     of the canonical byte range.
+
+    Spec § Step 0 SHA normalization: "bytes are read raw; the FILE's
+    BOM (if any) is excluded". File-level BOM stripping happens BEFORE
+    extraction (caller passes raw file bytes to this function); BOMs
+    that appear later in the file (e.g. inserted before a protected
+    heading) are NOT stripped — they're real content mutations the
+    gate must detect (round-8 codex P2 closure).
 
     The v3.6.7 lint's `_extract_block` finds the marker via case-
     insensitive substring match, so it starts the returned slice at
@@ -288,6 +304,12 @@ def _extract_block_bytes(text: str) -> bytes | None:
 
     Returns None when the marker is missing.
     """
+    # Strip file-level BOM (byte 0 only) per spec § Step 0. This is the
+    # ONLY BOM-stripping point in the pipeline; block-level BOMs stay in
+    # the hashed range (round-8 closure: BOM-before-heading mutation
+    # must be caught).
+    file_bytes = _strip_file_bom(file_bytes)
+    text = file_bytes.decode("utf-8", errors="replace")
     block = _v3_6_7_extract_block(text, V3_6_7_PROTECTION_BLOCK)
     if block is None:
         return None
@@ -301,7 +323,7 @@ def _extract_block_bytes(text: str) -> bytes | None:
     line_start = text.rfind("\n", 0, marker_start)
     line_start = 0 if line_start < 0 else line_start + 1
     block_with_prefix = text[line_start:line_start + (marker_start - line_start) + len(block)]
-    return _normalize_bytes(block_with_prefix.encode("utf-8"))
+    return block_with_prefix.encode("utf-8")
 
 
 def _read_blob_at_commit(commit: str, repo_relpath: str) -> tuple[bytes | None, str | None]:
@@ -430,7 +452,7 @@ def check_byte_equivalence(verbose: bool = True) -> int:
             )
             continue
         head_bytes_full = head_path.read_bytes()
-        head_block = _extract_block_bytes(head_bytes_full.decode("utf-8", errors="replace"))
+        head_block = _extract_block_bytes(head_bytes_full)
         if head_block is None:
             failures.append(
                 f"  [{rel}] PATTERN PROTECTION (v3.6.7) marker missing at "
@@ -442,7 +464,7 @@ def check_byte_equivalence(verbose: bool = True) -> int:
         if err is not None:
             failures.append(f"  [{rel}] {err}")
             continue
-        base_block = _extract_block_bytes(base_bytes_full.decode("utf-8", errors="replace"))
+        base_block = _extract_block_bytes(base_bytes_full)
         if base_block is None:
             failures.append(
                 f"  [{rel}] PATTERN PROTECTION (v3.6.7) marker missing at "
