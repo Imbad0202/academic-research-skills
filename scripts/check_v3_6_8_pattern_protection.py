@@ -133,6 +133,91 @@ def _v3_6_7_base_commit() -> tuple[str | None, str | None]:
     return out.strip(), None
 
 
+def _detect_pr_base_ref() -> str | None:
+    """Return a ref that names the PR's base for anti-self-baseline guard.
+
+    Order: $GITHUB_BASE_REF (CI fast path) → origin/<default-branch> (resolved
+    via the same ladder as the shallow-clone safety check). Returns None when
+    no remote / default branch is reachable (e.g. detached local check on a
+    fork without origin); callers treat that as "skip the guard, fall back to
+    derivation alone" — local-only attacks are out of scope (the user can see
+    their own diff).
+    """
+    env_base = os.environ.get("GITHUB_BASE_REF")
+    if env_base:
+        return f"origin/{env_base}"
+    default_branch, _ = _resolve_default_branch()
+    if default_branch:
+        return f"origin/{default_branch}"
+    return None
+
+
+def _v3_6_7_manifest_unchanged_in_pr() -> tuple[bool, str | None]:
+    """Anti-self-baseline guard (round-2 codex P2 closure).
+
+    Without this, a PR could mutate `scripts/v3_6_7_inversion_manifest.json`
+    AND a v3.6.7-tagged PATTERN PROTECTION block in the same commit; the
+    `git log -1` derivation would then resolve to that very commit, the SHA
+    comparison would hash modified content against itself, and the gate
+    would trivially pass.
+
+    This guard reads the manifest bytes at HEAD and at `merge-base <pr-base>
+    HEAD`, asserts byte-equality, and refuses to run the SHA gate on any PR
+    that mutates the manifest. Manifest amendments must land in a separate
+    PR (under a v3.7+ amendment process) so the next SHA gate run sees the
+    new manifest as its baseline.
+
+    Returns (True, None) on success or when the guard cannot be evaluated
+    (no PR base detectable — local detached state). Returns (False, msg)
+    when the manifest changed in the PR.
+    """
+    pr_base = _detect_pr_base_ref()
+    if pr_base is None:
+        # Local-only / detached state: treat as advisory — surface a note but
+        # don't block. The CI run will catch the attack.
+        return True, None
+    rc_mb, mb, _ = _run_git(["merge-base", pr_base, "HEAD"])
+    if rc_mb != 0 or not mb:
+        # Cannot compute merge-base (fork without origin?). Be conservative:
+        # warn but do not block — CI on the canonical repo will catch it.
+        return True, None
+    rel = "scripts/v3_6_7_inversion_manifest.json"
+    head_path = REPO_ROOT / rel
+    head_bytes = head_path.read_bytes() if head_path.exists() else None
+    base_bytes, err = _read_blob_at_commit(mb.strip(), rel)
+    if err is not None:
+        # The base commit may not have the file (very early history).
+        # Treat as "manifest is new in this PR" — a strong signal we should
+        # block, since v3.6.7 manifest creation is a v3.6.7-PR-era thing,
+        # not a v3.7.1-work-PR action.
+        return False, (
+            "[ARS-V3.7.1 LINT ERROR: anti-self-baseline guard tripped: "
+            "v3.6.7 manifest does not exist at PR base commit "
+            f"{mb.strip()[:12]}. Manifest creation / re-creation is not a "
+            "v3.7.1-work-PR action. Land manifest changes in a separate "
+            "amendment PR (round-2 codex P2 closure)]"
+        )
+    if head_bytes is None:
+        return False, (
+            "[ARS-V3.7.1 LINT ERROR: anti-self-baseline guard tripped: "
+            "v3.6.7 manifest is missing at PR HEAD but present at PR base. "
+            "Deletion is not a v3.7.1-work-PR action]"
+        )
+    if head_bytes != base_bytes:
+        return False, (
+            "[ARS-V3.7.1 LINT ERROR: anti-self-baseline guard tripped: "
+            "v3.6.7 manifest changed in this PR. The byte-equivalence SHA "
+            "gate uses the manifest's most recent modifying commit as its "
+            "baseline; allowing a PR to modify the manifest AND a v3.6.7 "
+            "protected block in the same commit would let the gate hash "
+            "modified content against itself. Land manifest amendments in "
+            "a separate PR under a v3.7+ amendment process so the next SHA "
+            "gate run sees the new manifest as its baseline. (round-2 "
+            "codex P2 closure)]"
+        )
+    return True, None
+
+
 def _normalize_bytes(b: bytes) -> bytes:
     """Strip a leading UTF-8 BOM if present; preserve everything else.
 
@@ -236,7 +321,17 @@ def check_byte_equivalence(verbose: bool = True) -> int:
         print(err)
         return 1
 
-    # 2. v3.6.7 base commit derivation (single source of truth)
+    # 2. Anti-self-baseline guard (round-2 codex P2 closure):
+    #    Refuse to run on PRs that mutate the v3.6.7 manifest. Without this,
+    #    `git log -1 -- v3_6_7_inversion_manifest.json` would resolve to the
+    #    PR's own commit and the SHA comparison would hash modified content
+    #    against itself.
+    ok, err = _v3_6_7_manifest_unchanged_in_pr()
+    if not ok:
+        print(err)
+        return 1
+
+    # 3. v3.6.7 base commit derivation (single source of truth)
     base_commit, err = _v3_6_7_base_commit()
     if err is not None:
         print(err)

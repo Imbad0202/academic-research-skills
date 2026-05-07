@@ -206,12 +206,25 @@ def test_pr1_initial_state_empty_files_list_is_ok() -> None:
 
 
 def test_v3_6_7_manifest_deletion_hard_fails() -> None:
-    """v3.6.7 manifest is the source of truth. Missing it → hard error."""
+    """v3.6.7 manifest is the source of truth. Missing it → hard error.
+
+    After the round-2 anti-self-baseline guard, deletion is caught earlier:
+    the guard's HEAD-vs-base comparison sees the file missing at HEAD but
+    present at the PR base and rejects with a deletion-specific message.
+    The guard message is more precise than the legacy "manifest missing"
+    bare error, so this test just asserts a hard failure with a v3.7.1 lint
+    error that mentions the manifest.
+    """
     with _Snapshot(V3_6_7_MANIFEST):
         V3_6_7_MANIFEST.unlink()
         result = _run_lint()
         assert result.returncode == 1
-        assert "v3.6.7 manifest missing" in result.stdout
+        # Either the guard catches it ("missing at PR HEAD") or the inner
+        # loader catches it ("v3.6.7 manifest missing"); both are correct.
+        assert (
+            "v3.6.7 manifest" in result.stdout
+            and ("missing" in result.stdout or "guard" in result.stdout)
+        ), f"Expected manifest-missing error; got: {result.stdout}"
 
 
 def test_v3_6_8_manifest_deletion_hard_fails() -> None:
@@ -221,6 +234,38 @@ def test_v3_6_8_manifest_deletion_hard_fails() -> None:
         result = _run_lint()
         assert result.returncode == 1
         assert "v3.6.8 manifest missing" in result.stdout
+
+
+def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr() -> None:
+    """Round-2 codex P2 closure: refuse to run on PRs that mutate the v3.6.7
+    manifest, because `git log -1 -- manifest` would otherwise resolve to the
+    PR's own commit and the SHA comparison would hash modified content against
+    itself.
+
+    The guard reads manifest bytes at `merge-base origin/<default> HEAD` and
+    compares against HEAD bytes. This test mutates the manifest in the
+    working tree (no commit needed — the lint reads the worktree at HEAD).
+    """
+    with _Snapshot(V3_6_7_MANIFEST):
+        text = V3_6_7_MANIFEST.read_text(encoding="utf-8")
+        # Mutate `rationale_doc` so the byte-equivalence check fires while
+        # leaving the schema valid (so the broken-schema branch isn't what
+        # triggers the failure).
+        mutated = text.replace(
+            '"rationale_doc"',
+            '"rationale_doc_mutated_for_test"',
+            1,
+        )
+        assert mutated != text, "mutation fixture failed to apply"
+        V3_6_7_MANIFEST.write_text(mutated, encoding="utf-8")
+
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Guard MUST refuse to run when v3.6.7 manifest is modified in the "
+            "PR (otherwise the SHA gate would self-baseline)."
+        )
+        assert "anti-self-baseline guard" in result.stdout
+        assert "manifest changed in this PR" in result.stdout
 
 
 def test_v3_6_7_marker_removed_at_head_fails() -> None:
