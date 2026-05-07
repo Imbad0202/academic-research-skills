@@ -12,8 +12,9 @@ This template fixes a single audit-prompt structure so the orchestrator's audit 
 
 ## Template structure
 
-A v3.6.7 multi-file audit prompt has seven sections in this order:
+A v3.7.1 multi-file audit prompt has eight sections in this order (Section 0 prepended additively per v3.7.1 D2; Sections 1–7 stay byte-equivalent to v3.6.7):
 
+0. Scope Report (mandatory; rides verbatim in every round; v3.7.1 D2)
 1. Round metadata
 2. Bundle inventory
 3. Audit dimensions (the 7 specified below)
@@ -22,7 +23,35 @@ A v3.6.7 multi-file audit prompt has seven sections in this order:
 6. Output format
 7. Anti-fake-audit guard (mandatory; rides verbatim in every audit dispatch)
 
-The orchestrator fills the placeholders in `{curly_braces}`. Everything else rides verbatim. Section 7 is non-negotiable — omitting it leaves sub-agents free to fake audit-passed metadata, which is the failure mode v3.6.7 spec §5.3 + Pattern C3 + `feedback_subagent_tool_hallucination.md` exist to prevent.
+The orchestrator fills the placeholders in `{curly_braces}`. Everything else rides verbatim. Section 0 is non-negotiable — its purpose is to disclose the audit's actual coverage so a "PASSED" verdict cannot mask un-retrieved sources (spec v3.7.1 §3.2 / Pattern D2). Section 7 is non-negotiable — omitting it leaves sub-agents free to fake audit-passed metadata, which is the failure mode v3.6.7 spec §5.3 + Pattern C3 + `feedback_subagent_tool_hallucination.md` exist to prevent.
+
+---
+
+## Section 0 — Scope Report (mandatory; v3.7.1 D2)
+
+Every audit round MUST open with a Scope Report that quantifies how many of the audited entries had a retrieved original source vs. were verified only against derivative bibliography or self-consistency. The block below rides verbatim in every audit dispatch, ahead of any pass/fail summary.
+
+```
+## Codex Audit Round N — Scope Report
+
+**Total entries audited:** <N_total>
+**Entries with retrieved original source:** <N_with_source> (verified against original publication)
+**Entries description-only (no retrieved source):** <N_without_source> (verified only against derivative bibliography or self-consistency)
+
+**Audit scope warning:** <N_without_source> entries cannot be independently verified by this audit round. Their `verified` status reflects internal consistency between entry .md and the derivative bibliography source, NOT correctness against the original publication. These entries should be treated as **unverifiable until original sources are retrieved**.
+
+**Affected refcodes (description-only):** <comma-separated list>
+```
+
+**Two firm rules (spec v3.7.1 §3.2):**
+
+- The Scope Report block must appear **before** any pass/fail summary in the audit output.
+- The aggregate verdict MUST be split into the following three reporting lines (the combined-aggregate "PASSED" verb is forbidden in the audit summary):
+  - `verified-against-source: PASS | FAIL` (over the retrieved-source subset)
+  - `description-internally-consistent: PASS | FAIL` (over the non-retrieved subset)
+  - `unaudited-due-to-missing-source: <count>` (always reported, never hidden)
+
+**Why this exists:** in the 2026-04-30 HEEACT chapter session, a codex round-3 report stated "ADDRESSED" without disclosing that only 22 of 53 entries had retrieved original sources; the remaining 31 description-only entries inherited the "verified" verdict by aggregation. The Scope Report renders that split first-class so a reader cannot conflate self-consistency with retrieval-grounded verification.
 
 ---
 

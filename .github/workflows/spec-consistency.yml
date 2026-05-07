@@ -152,6 +152,20 @@ jobs:
           pip install pytest pyyaml jsonschema
           pytest scripts/test_check_v3_6_8_frontmatter_trust_schema.py -v
 
+      - name: Validate v3.7.1 audit Scope Report block (Step 2 / D2)
+        # Step 2 of v3.7.1: enforces spec §3.2 Scope Report contract on the
+        # codex audit prompt template — Section 0 header + four required
+        # content fields + three aggregate-status splits + forbidden
+        # combined-aggregate "PASSED" verb (spec line 152).
+        run: python3 scripts/check_v3_6_8_audit_scope_block.py
+
+      - name: Run v3.7.1 audit Scope Report block mutation tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest
+          pytest scripts/test_check_v3_6_8_audit_scope_block.py -v
+
       - name: Run v3.6.7 Step 6 audit schema + helper tests (Phase 6.2 + 6.4)
         env:
           PYTHONPATH: .
