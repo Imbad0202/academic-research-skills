@@ -289,7 +289,7 @@ def test_extractor_includes_heading_prefix_bytes() -> None:
     assert h3_bytes.startswith(b"### PATTERN")
 
 
-def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr() -> None:
+def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr(monkeypatch) -> None:
     """Round-2 codex P2 closure: refuse to run on PRs that mutate the v3.6.7
     manifest, because `git log -1 -- manifest` would otherwise resolve to the
     PR's own commit and the SHA comparison would hash modified content against
@@ -298,8 +298,15 @@ def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr() -> None:
     The guard's BYTE-comparison backstop catches a worktree-level mutation
     (no commit needed). The round-4 history-scan layer catches the more
     subtle touch-and-revert pattern; that layer is exercised by the
-    `test_anti_self_baseline_guard_rejects_touch_and_revert` test below.
+    `test_anti_self_baseline_guard_history_scan_called` test below.
+
+    GITHUB_BASE_REF is set explicitly so the guard exits the "advisory mode"
+    branch (no PR base detectable → guard returns advisory pass). On
+    GitHub `push` event runs, GITHUB_BASE_REF is unset and origin/HEAD
+    resolution may fail; this test injects the env var so the guard's
+    real reject path is exercised regardless of trigger event.
     """
+    monkeypatch.setenv("GITHUB_BASE_REF", "main")
     with _Snapshot(V3_6_7_MANIFEST):
         text = V3_6_7_MANIFEST.read_text(encoding="utf-8")
         # Mutate `rationale_doc` so the byte-equivalence check fires while
@@ -338,9 +345,13 @@ def test_anti_self_baseline_guard_history_scan_called(monkeypatch) -> None:
     Reproducing the attack in a unit test would require building a fake git
     history; instead, this test patches `_run_git` to inject a synthetic
     `git log merge-base..HEAD -- manifest` result and asserts the guard
-    rejects when commits ARE listed (touch-and-revert simulation), and
-    passes when no commits are listed (clean PR).
+    rejects when commits ARE listed (touch-and-revert simulation).
+
+    GITHUB_BASE_REF is set so the guard's "no PR base detectable → advisory
+    pass" branch is bypassed (matters on `push` event CI where the env var
+    is normally absent).
     """
+    monkeypatch.setenv("GITHUB_BASE_REF", "main")
     from scripts import check_v3_6_8_pattern_protection as mod
 
     real_run_git = mod._run_git
