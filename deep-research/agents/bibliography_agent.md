@@ -229,14 +229,14 @@ source_acquisition_path:          <relative path>    # only meaningful when acqu
 source_verified_against_original: true | false       # AI cross-checked against original content
 source_verification_method:       codex_audit | manual_grep | vision_check | none
 description_source:               original_pdf | bibliography_v<n> | secondary_summary
-description_last_audit:           <round_id> | "none" | null
+description_last_audit:           <round_id> | "none" | null  # null only when source_acquired=true; rule-#2 case requires literal "none"
 ```
 
 ### Three firm rules
 
 1. **Verified ⇒ acquired AND real method.** `source_verified_against_original: true` REQUIRES `source_acquired: true` AND `source_verification_method ∈ {codex_audit, manual_grep, vision_check}`. The literal `none` is enumerated for shape uniformity but is FORBIDDEN here. If the original source is not on disk, do not claim verification — emit `source_verified_against_original: false` regardless of internal-consistency checks performed against derivative bibliographies.
 
-2. **Not acquired ⇒ no audit round.** `source_acquired: false` REQUIRES `description_last_audit` to be `null` or the literal string `"none"`. No original means an audit cannot be substantive; claiming a round id like `"round-3-codex"` would misrepresent the audit's depth.
+2. **Not acquired ⇒ literal `"none"` audit sentinel.** `source_acquired: false` REQUIRES `description_last_audit` to be the literal string `"none"`. Spec § 3.1 line 120 reads "REQUIRES description_last_audit: none" (sentinel); the yaml vocabulary at line 111 lists `<round_id> | none` with no null alternative. `null` is rejected by both the JSON Schema rule-#2 then-branch and the trust-chain lint when `source_acquired: false` (round-6 codex P2 closure). When `source_acquired: true` and the entry is unaudited, `null` is fine — the strict-`"none"` rule applies only to the rule-#2 case.
 
 3. **NEVER emit `human_read_source` or `human_read_at` on the entry.** Those keys are USER-OWNED and live in the §3.6 peer file `<session>_human_read_log.yaml`, set only by the user-issued `/ars-mark-read <citation_key>` command. The entry schema is `additionalProperties: false` and adapter-owned (per `academic-pipeline/references/literature_corpus_consumers.md`); emitting these keys from `bibliography_agent` would mutate `literature_corpus[]` and break the v3.6.5 corpus-consumer protocol. The orchestrator joins the peer file at frontmatter-read time to derive the human-read signal.
 

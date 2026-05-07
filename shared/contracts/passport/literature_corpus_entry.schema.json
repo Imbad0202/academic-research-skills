@@ -115,7 +115,7 @@
     },
     "description_last_audit": {
       "type": ["string", "null"],
-      "description": "v3.7.1 trust-chain field. Round identifier of the most recent codex / cross-model audit that examined this entry's description, or null / the literal string 'none' when no such audit has run. Per spec §3.1 firm rule #2, source_acquired=false REQUIRES description_last_audit to be null or 'none' (no original means audit cannot be substantive)."
+      "description": "v3.7.1 trust-chain field. Round identifier of the most recent codex / cross-model audit that examined this entry's description, or null / the literal string 'none' when no such audit has run. The field-level type permits both null and 'none' broadly, but per spec §3.1 firm rule #2 the rule-#2 then-branch in `allOf` tightens this to the LITERAL STRING 'none' only when source_acquired=false (no original means audit cannot be substantive — round-6 codex P2 closure). null remains valid only when source_acquired=true and the entry is simply unaudited."
     }
   },
 

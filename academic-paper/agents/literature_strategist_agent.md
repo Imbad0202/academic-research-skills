@@ -287,14 +287,14 @@ source_acquisition_path:          <relative path>    # only meaningful when acqu
 source_verified_against_original: true | false       # AI cross-checked against original content
 source_verification_method:       codex_audit | manual_grep | vision_check | none
 description_source:               original_pdf | bibliography_v<n> | secondary_summary
-description_last_audit:           <round_id> | "none" | null
+description_last_audit:           <round_id> | "none" | null  # null only when source_acquired=true; rule-#2 case requires literal "none"
 ```
 
 ### Three firm rules
 
 1. **Verified ⇒ acquired AND real method.** Treat `source_verified_against_original: true` as meaningful only when paired with `source_acquired: true` AND `source_verification_method ∈ {codex_audit, manual_grep, vision_check}`. Entries that violate this combination are spec-broken; surface them to the user rather than silently treating them as verified.
 
-2. **Not acquired ⇒ no substantive audit.** When `source_acquired: false`, `description_last_audit` MUST be `null` or `"none"`. If you encounter an entry with `source_acquired: false` and `description_last_audit: "round-3-codex"` (or similar), treat the audit claim as untrusted and surface the inconsistency.
+2. **Not acquired ⇒ literal `"none"` audit sentinel.** When `source_acquired: false`, `description_last_audit` MUST be the literal string `"none"` (round-6 codex P2 closure aligns this with spec § 3.1 line 120 + line 111 yaml vocabulary; null is rejected for the rule-#2 case). If you encounter an entry with `source_acquired: false` and `description_last_audit: "round-3-codex"` (or similar — including null), treat the audit claim as untrusted and surface the inconsistency. Such entries fail the trust-chain CI lint, so they are also a signal that the upstream adapter / `bibliography_agent` is producing spec-broken output.
 
 3. **NEVER emit `human_read_source` or `human_read_at` on the entry.** Those keys are USER-OWNED and derived at read-time from the §3.6 peer file `<session>_human_read_log.yaml`. The entry schema is `additionalProperties: false`; emitting these keys would break the v3.6.5 corpus-consumer protocol that this agent depends on. If you need the human-read signal, the orchestrator surfaces it via the §3.6 peer-file join — do not write it to the entry yourself.
 
