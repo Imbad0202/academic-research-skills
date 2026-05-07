@@ -14,6 +14,14 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          # v3.7.1 byte-equivalence SHA gate derives the v3.6.7 base commit
+          # via `git log -1 -- scripts/v3_6_7_inversion_manifest.json`. A
+          # shallow clone (default fetch-depth: 1) would render that lookup
+          # vacuous. Deepening the clone here lets the lint hash the base
+          # block directly without falling back to `git fetch --unshallow`.
+          # Spec: 2026-04-30-ars-v3.6.8-trust-provenance-and-drift-transparency-spec.md § Step 0 (round-6 R6-002 + round-7 R7-001).
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -116,6 +124,20 @@ jobs:
         env:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_v3_6_7_pattern_protection -v
+
+      - name: Validate v3.7.1 byte-equivalence SHA gate (v3.6.7 boundary)
+        # v3.7.1 work must NOT mutate v3.6.7-tagged PATTERN PROTECTION blocks.
+        # This lint hashes each block at PR HEAD and at the v3.6.7 base commit
+        # (derived via `git log -1 -- scripts/v3_6_7_inversion_manifest.json`)
+        # and asserts equality. Requires fetch-depth: 0 on the checkout step.
+        run: python3 scripts/check_v3_6_8_pattern_protection.py
+
+      - name: Run v3.7.1 SHA gate mutation tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest
+          pytest scripts/test_check_v3_6_8_pattern_protection.py -v
 
       - name: Run v3.6.7 Step 6 audit schema + helper tests (Phase 6.2 + 6.4)
         env:

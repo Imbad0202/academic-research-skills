@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""ARS v3.7.1 byte-equivalence SHA gate for v3.6.7-tagged PATTERN PROTECTION blocks.
+
+Spec: docs/design/2026-04-30-ars-v3.6.8-trust-provenance-and-drift-transparency-spec.md
+      § Step 0 — Lint manifest separation (round-1 codex F-004 amend)
+
+Boundary rule (per spec):
+- v3.7.1 work does NOT modify the v3.6.7-tagged PATTERN PROTECTION blocks in
+  synthesis_agent.md / research_architect_agent.md / report_compiler_agent.md.
+- v3.7.1 MAY add new prompt sections (e.g. "Two-Layer Citation Emission")
+  OUTSIDE those v3.6.7-tagged blocks; those v3.6.8-tagged invariants ride
+  this script's own manifest (scripts/v3_6_8_inversion_manifest.json), which
+  starts empty in PR-1 and is populated by Step 3a.
+
+Single source of truth (round-4 R4-002 + round-5 R5-001 + round-6 R6-002):
+- The v3.6.7 frozen manifest at scripts/v3_6_7_inversion_manifest.json is the
+  single source of truth for the protected file LIST.
+- The v3.6.7 protected CONTENT is whatever the v3.6.7-tagged block shows at
+  the v3.6.7 manifest's most recent modifying commit (derived via
+  `git log -1 --format=%H scripts/v3_6_7_inversion_manifest.json`).
+- v3.7.1 lint computes SHA on demand at runtime: hash(block at PR HEAD) ==
+  hash(block at v3.6.7 base commit). No stored expected SHAs; no dual truth.
+
+Shallow-clone safety (round-6 R6-002 + round-7 R7-001):
+- `actions/checkout@v4` defaults to fetch-depth: 1 in CI; that would render
+  `git log -1` vacuous. This lint detects shallow clones and either fetches
+  --unshallow against the default branch or hard-fails with a fix-it message.
+
+Exit codes: 0 on pass, 1 on any failure (including shallow-clone refusal).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+# Reuse v3.6.7 lint's heading-based block extractor for byte-equivalence.
+# The extractor must be byte-equivalent between the two lints; the spec
+# explicitly requires the SHARED function (see spec § Step 0 line ~389:
+# "The extractor is the byte-equivalent function shared between v3.6.7 lint
+# and v3.7.1 lint to guarantee identical results").
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_v3_6_7_pattern_protection import (  # noqa: E402
+    PROTECTION_BLOCK as V3_6_7_PROTECTION_BLOCK,
+    _extract_block as _v3_6_7_extract_block,
+)
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+V3_6_7_MANIFEST = REPO_ROOT / "scripts" / "v3_6_7_inversion_manifest.json"
+V3_6_8_MANIFEST = REPO_ROOT / "scripts" / "v3_6_8_inversion_manifest.json"
+
+# Byte-order mark stripped per spec § Step 0: "the file's BOM (if any) is
+# excluded; trailing whitespace of the last block line is preserved".
+_BOM = b"\xef\xbb\xbf"
+
+
+def _run_git(args: list[str], cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
+    """Run git and return (returncode, stdout, stderr) as decoded strings."""
+    result = subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.returncode, result.stdout.strip(), result.stderr.strip()
+
+
+def _resolve_default_branch() -> tuple[str | None, str | None]:
+    """Resolve the repo's default branch via the spec's three-step ladder.
+
+    (1) `git symbolic-ref --quiet --short refs/remotes/origin/HEAD` → strip 'origin/'
+    (2) `$GITHUB_DEFAULT_BRANCH` env (GitHub Actions fallback)
+    (3) None — caller must hard-fail.
+    """
+    rc, out, _ = _run_git(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
+    if rc == 0 and out.startswith("origin/"):
+        return out[len("origin/"):], None
+    env_default = os.environ.get("GITHUB_DEFAULT_BRANCH")
+    if env_default:
+        return env_default, None
+    return None, (
+        "[ARS-V3.7.1 LINT ERROR: default branch unresolvable; clone must "
+        "include origin/HEAD or set GITHUB_DEFAULT_BRANCH env]"
+    )
+
+
+def _ensure_full_clone() -> str | None:
+    """Return None on success, error string on hard-fail.
+
+    If the repo is a shallow clone, attempt `git fetch --unshallow origin
+    <default-branch>` first; if that itself fails, hard-fail.
+    """
+    rc, out, _ = _run_git(["rev-parse", "--is-shallow-repository"])
+    if rc != 0:
+        return f"[ARS-V3.7.1 LINT ERROR: cannot determine clone depth: {out!r}]"
+    if out.strip().lower() != "true":
+        return None  # full clone — proceed
+    default_branch, err = _resolve_default_branch()
+    if err is not None:
+        return err
+    rc, out, stderr = _run_git(["fetch", "--unshallow", "origin", default_branch])
+    if rc != 0:
+        return (
+            "[ARS-V3.7.1 LINT ERROR: shallow clone detected; set fetch-depth: "
+            f"0 in checkout step before running v3.7.1 byte-equivalence "
+            f"check (unshallow attempt failed: {stderr!r})]"
+        )
+    return None
+
+
+def _v3_6_7_base_commit() -> tuple[str | None, str | None]:
+    """Derive the v3.6.7 base commit via `git log -1` against the v3.6.7 manifest.
+
+    This is the single source of truth derivation per spec § Step 0
+    (round-4 R4-002 + round-5 R5-001 + round-6 R6-002 amend; no stored
+    base_commit field, no dual truth).
+    """
+    rc, out, stderr = _run_git([
+        "log", "-1", "--format=%H", "--",
+        "scripts/v3_6_7_inversion_manifest.json",
+    ])
+    if rc != 0 or not out:
+        return None, (
+            "[ARS-V3.7.1 LINT ERROR: cannot derive v3.6.7 base commit "
+            f"from `git log -1 -- scripts/v3_6_7_inversion_manifest.json`: "
+            f"rc={rc} stderr={stderr!r}]"
+        )
+    return out.strip(), None
+
+
+def _normalize_bytes(b: bytes) -> bytes:
+    """Strip a leading UTF-8 BOM if present; preserve everything else.
+
+    Per spec § Step 0 SHA normalization: bytes are read raw (no LF→CRLF
+    conversion); BOM (if any) is excluded; trailing whitespace of the last
+    block line is preserved.
+    """
+    if b.startswith(_BOM):
+        return b[len(_BOM):]
+    return b
+
+
+def _extract_block_bytes(text: str) -> bytes | None:
+    """Extract the v3.6.7 PATTERN PROTECTION block as bytes.
+
+    Wraps the v3.6.7 lint's `_extract_block` so the heading-based range is
+    byte-equivalent across lints. Returns None when the marker is missing
+    (caller treats this as a per-file hard error, since manifest files are
+    expected to carry the v3.6.7-tagged block).
+    """
+    block = _v3_6_7_extract_block(text, V3_6_7_PROTECTION_BLOCK)
+    if block is None:
+        return None
+    return _normalize_bytes(block.encode("utf-8"))
+
+
+def _read_blob_at_commit(commit: str, repo_relpath: str) -> tuple[bytes | None, str | None]:
+    """Return (raw bytes, error). Uses `git show <commit>:<path>`."""
+    result = subprocess.run(
+        ["git", "show", f"{commit}:{repo_relpath}"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.decode("utf-8", errors="replace").strip()
+        return None, (
+            f"[ARS-V3.7.1 LINT ERROR: `git show {commit}:{repo_relpath}` "
+            f"failed: {stderr!r}]"
+        )
+    return result.stdout, None
+
+
+def _sha256(b: bytes) -> str:
+    return hashlib.sha256(b).hexdigest()
+
+
+def _load_v3_6_7_manifest() -> tuple[list[str] | None, str | None]:
+    """Read the v3.6.7 manifest and return (file_list, error)."""
+    if not V3_6_7_MANIFEST.exists():
+        return None, (
+            "[ARS-V3.7.1 LINT ERROR: v3.6.7 manifest missing at "
+            f"{V3_6_7_MANIFEST.relative_to(REPO_ROOT)}]"
+        )
+    try:
+        data = json.loads(V3_6_7_MANIFEST.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return None, f"[ARS-V3.7.1 LINT ERROR: v3.6.7 manifest unreadable: {exc}]"
+    files = data.get("files")
+    if not isinstance(files, list) or not all(isinstance(p, str) for p in files):
+        return None, (
+            "[ARS-V3.7.1 LINT ERROR: v3.6.7 manifest 'files' must be a list "
+            "of strings]"
+        )
+    return files, None
+
+
+def _load_v3_6_8_manifest() -> tuple[dict | None, str | None]:
+    """Read the v3.6.8 manifest. PR-1 ships an empty list; Step 3a populates."""
+    if not V3_6_8_MANIFEST.exists():
+        return None, (
+            "[ARS-V3.7.1 LINT ERROR: v3.6.8 manifest missing at "
+            f"{V3_6_8_MANIFEST.relative_to(REPO_ROOT)}]"
+        )
+    try:
+        data = json.loads(V3_6_8_MANIFEST.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return None, f"[ARS-V3.7.1 LINT ERROR: v3.6.8 manifest unreadable: {exc}]"
+    if data.get("scope") != "v3.6.8-only":
+        return None, (
+            "[ARS-V3.7.1 LINT ERROR: v3.6.8 manifest 'scope' must be "
+            f"'v3.6.8-only', got {data.get('scope')!r}]"
+        )
+    files = data.get("files")
+    if not isinstance(files, list) or not all(isinstance(p, str) for p in files):
+        return None, (
+            "[ARS-V3.7.1 LINT ERROR: v3.6.8 manifest 'files' must be a list "
+            "of strings (may be empty until Step 3a populates)]"
+        )
+    return data, None
+
+
+def check_byte_equivalence(verbose: bool = True) -> int:
+    """Run the SHA byte-equivalence gate.
+
+    Returns 0 on PASS, 1 on FAIL. Side effect: prints diagnostic lines to stdout.
+    """
+    # 1. Shallow-clone gate (CI safety)
+    err = _ensure_full_clone()
+    if err is not None:
+        print(err)
+        return 1
+
+    # 2. v3.6.7 base commit derivation (single source of truth)
+    base_commit, err = _v3_6_7_base_commit()
+    if err is not None:
+        print(err)
+        return 1
+    if verbose:
+        print(f"[v3.7.1 SHA gate] v3.6.7 base commit: {base_commit[:12]}")
+
+    # 3. Load v3.6.7 manifest (file list = single source of truth)
+    files_v367, err = _load_v3_6_7_manifest()
+    if err is not None:
+        print(err)
+        return 1
+    if not files_v367:
+        # An empty v3.6.7 manifest would be a contract violation; fail loud.
+        print(
+            "[ARS-V3.7.1 LINT ERROR: v3.6.7 manifest carries empty file list; "
+            "expected the three v3.6.7-frozen agent files]"
+        )
+        return 1
+
+    # 4. Load v3.6.8 manifest (just for shape validation; entries unused here)
+    _, err = _load_v3_6_8_manifest()
+    if err is not None:
+        print(err)
+        return 1
+
+    # 5. For each v3.6.7 protected file: extract block at HEAD and at base
+    # commit, hash both, assert equality.
+    failures: list[str] = []
+    for rel in files_v367:
+        head_path = REPO_ROOT / rel
+        if not head_path.exists():
+            failures.append(
+                f"  [{rel}] missing at PR HEAD (deletion of v3.6.7-protected "
+                "file would re-open v3.6.7 convergence; restore the file)"
+            )
+            continue
+        head_bytes_full = head_path.read_bytes()
+        head_block = _extract_block_bytes(head_bytes_full.decode("utf-8", errors="replace"))
+        if head_block is None:
+            failures.append(
+                f"  [{rel}] PATTERN PROTECTION (v3.6.7) marker missing at "
+                "PR HEAD (the v3.6.7-tagged block was renamed or removed; "
+                "boundary rule violated — v3.7.1 must NOT mutate v3.6.7 blocks)"
+            )
+            continue
+        base_bytes_full, err = _read_blob_at_commit(base_commit, rel)
+        if err is not None:
+            failures.append(f"  [{rel}] {err}")
+            continue
+        base_block = _extract_block_bytes(base_bytes_full.decode("utf-8", errors="replace"))
+        if base_block is None:
+            failures.append(
+                f"  [{rel}] PATTERN PROTECTION (v3.6.7) marker missing at "
+                f"v3.6.7 base commit {base_commit[:12]} — manifest "
+                "derivation produced an inconsistent base"
+            )
+            continue
+        head_sha = _sha256(head_block)
+        base_sha = _sha256(base_block)
+        if head_sha != base_sha:
+            failures.append(
+                f"  [{rel}] BYTE-EQUIVALENCE FAIL\n"
+                f"      HEAD     SHA-256: {head_sha}\n"
+                f"      v3.6.7   SHA-256: {base_sha}\n"
+                f"      v3.6.7-tagged PATTERN PROTECTION block changed; "
+                f"v3.7.1 boundary rule violated. Restore the block or land "
+                f"a v3.6.7+ amendment manifest first."
+            )
+        elif verbose:
+            print(f"  [{rel}] PASS (sha256={head_sha[:12]})")
+
+    if failures:
+        print("[ARS-V3.7.1 LINT ERROR: v3.6.7 PATTERN PROTECTION block byte-equivalence failures]")
+        for line in failures:
+            print(line)
+        return 1
+    if verbose:
+        print(f"[v3.7.1 SHA gate] PASSED ({len(files_v367)} v3.6.7 protected file(s))")
+    return 0
+
+
+def main() -> int:
+    return check_byte_equivalence()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

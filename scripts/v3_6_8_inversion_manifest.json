@@ -1,0 +1,6 @@
+{
+  "scope": "v3.6.8-only",
+  "rationale_doc": "docs/design/2026-04-30-ars-v3.6.8-trust-provenance-and-drift-transparency-spec.md#step-0--lint-manifest-separation-round-1-codex-f-004-amend",
+  "_note_pr1": "Initial scope is empty. Step 3a (Two-Layer Citation Emission prompt block invariants on synthesis_agent / draft_writer_agent / report_compiler_agent) will populate this list. The manifest file ships in PR-1 alongside the v3.6.8 lint so the byte-equivalence SHA gate is wired and exercised against the v3.6.7 frozen manifest immediately; v3.6.8-tagged invariants land when their blocks land.",
+  "files": []
+}

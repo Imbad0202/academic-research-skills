@@ -1,0 +1,257 @@
+"""Mutation tests for ARS v3.7.1 byte-equivalence SHA gate.
+
+Spec: docs/design/2026-04-30-ars-v3.6.8-trust-provenance-and-drift-transparency-spec.md
+      § Step 0 — Lint manifest separation (round-1 codex F-004 amend)
+
+Tests verify that:
+  1. Happy path: untouched v3.6.7 PATTERN PROTECTION blocks pass.
+  2. Mutation: any byte change inside a v3.6.7-tagged block fails.
+  3. Additive boundary: edits OUTSIDE v3.6.7-tagged blocks (e.g. appending
+     a new "Two-Layer Citation Emission" section after the block) do NOT
+     trigger SHA mismatch.
+  4. v3.6.8 manifest shape validation (scope tag, files list).
+  5. PR-1 expected state (v3.6.8 manifest with empty 'files' list) is OK.
+  6. Boundary errors (v3.6.7 marker missing at HEAD; manifest absent).
+
+The lint runs git operations against the actual repo, so each mutation
+test backs up the file under test, mutates, runs the lint as a subprocess,
+and restores the file in `finally` to keep the working tree clean.
+"""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+LINT = REPO_ROOT / "scripts" / "check_v3_6_8_pattern_protection.py"
+V3_6_7_MANIFEST = REPO_ROOT / "scripts" / "v3_6_7_inversion_manifest.json"
+V3_6_8_MANIFEST = REPO_ROOT / "scripts" / "v3_6_8_inversion_manifest.json"
+
+# v3.6.7-protected agent files. We pick synthesis_agent.md as the canonical
+# mutation target throughout; the lint hashes all three so mutating any one
+# proves the gate works against the full manifest.
+TARGET_AGENT = REPO_ROOT / "deep-research" / "agents" / "synthesis_agent.md"
+PROTECTION_MARKER = "## PATTERN PROTECTION (v3.6.7)"
+
+
+def _run_lint() -> subprocess.CompletedProcess[str]:
+    """Run the v3.6.8 lint as a subprocess (so its sys.exit propagates)."""
+    return subprocess.run(
+        [sys.executable, str(LINT)],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+# ---------- Helpers for mutation + restore (file-level snapshot) ----------
+
+
+class _Snapshot:
+    """Backs up a file's bytes; restores on context exit."""
+    def __init__(self, path: Path):
+        self.path = path
+        self._bytes: bytes | None = None
+        self._existed: bool = False
+
+    def __enter__(self) -> "_Snapshot":
+        self._existed = self.path.exists()
+        if self._existed:
+            self._bytes = self.path.read_bytes()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if self._existed and self._bytes is not None:
+            self.path.write_bytes(self._bytes)
+        elif not self._existed and self.path.exists():
+            self.path.unlink()
+
+
+# ---------- Tests ----------
+
+
+def test_happy_path_passes_on_clean_tree() -> None:
+    """Untouched v3.6.7 blocks → SHA gate passes."""
+    result = _run_lint()
+    assert result.returncode == 0, (
+        f"Expected exit 0 on clean tree, got {result.returncode}.\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    assert "PASSED" in result.stdout
+    # All three v3.6.7-protected files reported.
+    assert "synthesis_agent.md" in result.stdout
+    assert "research_architect_agent.md" in result.stdout
+    assert "report_compiler_agent.md" in result.stdout
+
+
+def test_mutation_inside_v3_6_7_block_fails() -> None:
+    """Inject 1 byte inside the v3.6.7 PATTERN PROTECTION block → exit 1 + FAIL diagnostic."""
+    with _Snapshot(TARGET_AGENT):
+        text = TARGET_AGENT.read_text(encoding="utf-8")
+        pos = text.find(PROTECTION_MARKER)
+        assert pos != -1, "marker missing in test fixture (test would be vacuous)"
+        # Inject a stray space at end of the marker line (still inside block).
+        nl = text.index("\n", pos)
+        mutated = text[:nl] + " " + text[nl:]
+        TARGET_AGENT.write_text(mutated, encoding="utf-8")
+
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "BYTE-EQUIVALENCE FAIL" in result.stdout
+        assert "synthesis_agent.md" in result.stdout
+        assert "v3.7.1 boundary rule violated" in result.stdout
+
+
+def test_appending_new_h2_directly_after_eof_newline_passes() -> None:
+    """Append a new H2 directly after the file's trailing newline → SHA gate passes.
+
+    Boundary rule (spec §388): v3.7.1 MAY add new prompt sections OUTSIDE
+    the v3.6.7 PATTERN PROTECTION block. When the v3.6.7 block runs to EOF
+    (the case for all three current manifest files), the appended H2 must
+    be placed IMMEDIATELY after the file's trailing newline — no extra
+    blank line — so the heading-based extractor's range stays byte-equal
+    to the base commit's range. (The extractor terminates at the next
+    H1/H2/H3 line; the bytes inside the range are file[marker_pos:next_h_line].
+    Inserting a blank line between EOF and the new H2 would extend the
+    extracted range by those blank-line bytes and trigger SHA mismatch.)
+
+    This test pins the contract for Step 3a's "Two-Layer Citation Emission"
+    section addition: append directly, no blank-line separator.
+    """
+    with _Snapshot(TARGET_AGENT):
+        text = TARGET_AGENT.read_text(encoding="utf-8")
+        # File already ends with a trailing newline; append H2 immediately.
+        # NO leading "\n\n" — that would expand the v3.6.7 block range.
+        assert text.endswith("\n"), "fixture assumption (file ends with newline) violated"
+        appended = text + "## Two-Layer Citation Emission (v3.7.1 placeholder)\n\nbody\n"
+        TARGET_AGENT.write_text(appended, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 0, (
+            f"Appending H2 directly after EOF newline must keep byte-"
+            f"equivalence; lint should PASS.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+def test_appending_new_h2_with_blank_line_separator_fails() -> None:
+    """Adding a blank-line separator before the new H2 → SHA mismatch.
+
+    This is the dual of the test above: it pins the failure mode that
+    Step 3a's section-addition contract must avoid. If a contributor
+    accidentally adds `\\n\\n## New Section` (the natural Markdown idiom)
+    after the v3.6.7 block, the byte-equivalence gate catches it. Step 3a's
+    documentation will instruct contributors to elide the blank line for
+    EOF-terminating PATTERN PROTECTION blocks.
+    """
+    with _Snapshot(TARGET_AGENT):
+        text = TARGET_AGENT.read_text(encoding="utf-8")
+        # The natural Markdown idiom — blank line then H2 — must FAIL when
+        # the v3.6.7 block runs to EOF, because the blank line bytes get
+        # absorbed into the extractor's range.
+        appended = text + "\n## Two-Layer Citation Emission (v3.7.1 placeholder)\n\nbody\n"
+        TARGET_AGENT.write_text(appended, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Adding a blank-line separator before the new H2 must trigger "
+            "SHA mismatch (the blank line bytes fall inside the EOF-terminating "
+            "extractor range). If this test fails, the contract for Step 3a "
+            "section additions has weakened and v3.7.1 boundary rule is at risk."
+        )
+        assert "BYTE-EQUIVALENCE FAIL" in result.stdout
+
+
+def test_v3_6_8_manifest_scope_must_be_correct() -> None:
+    """Wrong scope tag → lint refuses to run (clear error)."""
+    with _Snapshot(V3_6_8_MANIFEST):
+        data = json.loads(V3_6_8_MANIFEST.read_text(encoding="utf-8"))
+        data["scope"] = "v3.6.7-only"  # wrong — this is v3.6.8 manifest
+        V3_6_8_MANIFEST.write_text(json.dumps(data), encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "v3.6.8-only" in result.stdout
+        assert "scope" in result.stdout
+
+
+def test_v3_6_8_manifest_files_must_be_list() -> None:
+    """'files' as non-list → reject."""
+    with _Snapshot(V3_6_8_MANIFEST):
+        V3_6_8_MANIFEST.write_text(
+            json.dumps({"scope": "v3.6.8-only", "files": "not-a-list"}),
+            encoding="utf-8",
+        )
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "list of strings" in result.stdout
+
+
+def test_pr1_initial_state_empty_files_list_is_ok() -> None:
+    """PR-1 ships v3.6.8 manifest with files: [] until Step 3a populates."""
+    with _Snapshot(V3_6_8_MANIFEST):
+        V3_6_8_MANIFEST.write_text(
+            json.dumps({"scope": "v3.6.8-only", "files": []}),
+            encoding="utf-8",
+        )
+        result = _run_lint()
+        assert result.returncode == 0, (
+            f"Empty v3.6.8 'files' list is the expected PR-1 state and must "
+            f"NOT block the lint.\nstdout:\n{result.stdout}"
+        )
+
+
+def test_v3_6_7_manifest_deletion_hard_fails() -> None:
+    """v3.6.7 manifest is the source of truth. Missing it → hard error."""
+    with _Snapshot(V3_6_7_MANIFEST):
+        V3_6_7_MANIFEST.unlink()
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "v3.6.7 manifest missing" in result.stdout
+
+
+def test_v3_6_8_manifest_deletion_hard_fails() -> None:
+    """Missing v3.6.8 manifest → hard error (lint configuration broken)."""
+    with _Snapshot(V3_6_8_MANIFEST):
+        V3_6_8_MANIFEST.unlink()
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "v3.6.8 manifest missing" in result.stdout
+
+
+def test_v3_6_7_marker_removed_at_head_fails() -> None:
+    """Removing the v3.6.7 marker line is a boundary violation; must hard-fail.
+
+    This catches an attempt to evade the SHA gate by renaming the heading
+    (which would make _extract_block return None at HEAD).
+    """
+    with _Snapshot(TARGET_AGENT):
+        text = TARGET_AGENT.read_text(encoding="utf-8")
+        # Replace marker text so the case-insensitive find returns -1.
+        mutated = text.replace(PROTECTION_MARKER, "## (former pattern protection heading)")
+        assert mutated != text, "test fixture failed to apply mutation"
+        TARGET_AGENT.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "marker missing at PR HEAD" in result.stdout
+
+
+# ---------- Module-level smoke test for the SHA-normalization helpers ----------
+
+
+def test_normalize_strips_bom_only_when_present() -> None:
+    from scripts.check_v3_6_8_pattern_protection import _normalize_bytes
+    assert _normalize_bytes(b"\xef\xbb\xbfhello") == b"hello"
+    assert _normalize_bytes(b"hello") == b"hello"
+    # Multi-byte payloads with no BOM are passed through unchanged.
+    assert _normalize_bytes(b"\xe4\xb8\xad\xe6\x96\x87") == b"\xe4\xb8\xad\xe6\x96\x87"
+
+
+def test_sha256_helper_matches_hashlib() -> None:
+    import hashlib
+    from scripts.check_v3_6_8_pattern_protection import _sha256
+    assert _sha256(b"abc") == hashlib.sha256(b"abc").hexdigest()
