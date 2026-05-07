@@ -236,6 +236,59 @@ def test_v3_6_8_manifest_deletion_hard_fails() -> None:
         assert "v3.6.8 manifest missing" in result.stdout
 
 
+def test_heading_prefix_mutation_is_caught() -> None:
+    """Round-3 codex P2 closure: spec § 388 says the canonical byte range
+    starts at the LINE containing `## PATTERN PROTECTION (v3.6.7)`, so the
+    `## ` heading prefix is part of the hashed bytes.
+
+    The v3.6.7 lint's underlying `_extract_block` does case-insensitive
+    substring search for the marker text and returns a slice starting at
+    `PATTERN...` — silently dropping the heading prefix. That's fine for
+    v3.6.7's invariant greps, but it would let the v3.7.1 SHA gate accept
+    a `## → ### ` mutation as byte-equivalent.
+
+    This test mutates `## PATTERN PROTECTION (v3.6.7)` to
+    `### PATTERN PROTECTION (v3.6.7)` and asserts the gate FAILS. The
+    v3.6.8 lint extends the extractor's start position backward to the
+    start of the marker's line specifically to close this gap.
+    """
+    with _Snapshot(TARGET_AGENT):
+        text = TARGET_AGENT.read_text(encoding="utf-8")
+        mutated = text.replace(
+            "## PATTERN PROTECTION (v3.6.7)",
+            "### PATTERN PROTECTION (v3.6.7)",
+            1,
+        )
+        assert mutated != text, "heading-mutation fixture failed to apply"
+        TARGET_AGENT.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Heading-prefix mutation must be caught by the SHA gate "
+            "(round-3 codex P2 closure)."
+        )
+        assert "BYTE-EQUIVALENCE FAIL" in result.stdout
+
+
+def test_extractor_includes_heading_prefix_bytes() -> None:
+    """Verify the v3.6.8 extractor wraps the v3.6.7 extractor with line-start
+    backtracking so heading prefix bytes are in the hashed range.
+    """
+    from scripts.check_v3_6_8_pattern_protection import _extract_block_bytes
+    h2_text = "prelude\n\n## PATTERN PROTECTION (v3.6.7)\n\nbody1\n"
+    h3_text = "prelude\n\n### PATTERN PROTECTION (v3.6.7)\n\nbody1\n"
+    h2_bytes = _extract_block_bytes(h2_text)
+    h3_bytes = _extract_block_bytes(h3_text)
+    assert h2_bytes is not None and h3_bytes is not None
+    # The extractor must distinguish H2 vs H3 in its returned bytes.
+    assert h2_bytes != h3_bytes, (
+        "heading prefix must be inside the byte range; H2 vs H3 "
+        "should produce different SHAs"
+    )
+    # And the prefix bytes must literally be present.
+    assert h2_bytes.startswith(b"## PATTERN")
+    assert h3_bytes.startswith(b"### PATTERN")
+
+
 def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr() -> None:
     """Round-2 codex P2 closure: refuse to run on PRs that mutate the v3.6.7
     manifest, because `git log -1 -- manifest` would otherwise resolve to the

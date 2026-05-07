@@ -233,15 +233,42 @@ def _normalize_bytes(b: bytes) -> bytes:
 def _extract_block_bytes(text: str) -> bytes | None:
     """Extract the v3.6.7 PATTERN PROTECTION block as bytes.
 
-    Wraps the v3.6.7 lint's `_extract_block` so the heading-based range is
-    byte-equivalent across lints. Returns None when the marker is missing
-    (caller treats this as a per-file hard error, since manifest files are
-    expected to carry the v3.6.7-tagged block).
+    Spec § 388 canonical range: "start at the line containing
+    `## PATTERN PROTECTION (v3.6.7)` heading; end at the line before the
+    next H1 / H2 / H3 heading or EOF". The `## ` heading prefix is part
+    of the canonical byte range.
+
+    The v3.6.7 lint's `_extract_block` finds the marker via case-
+    insensitive substring match, so it starts the returned slice at
+    `PATTERN...` and silently strips the `## ` (or any other) heading
+    prefix. That means a mutation of `## PATTERN...` to `### PATTERN...`
+    leaves the v3.6.7 lint's extracted block byte-identical, which is
+    fine for v3.6.7's invariant greps but DEFEATS the v3.7.1 byte-
+    equivalence gate's heading-prefix check (round-3 codex P2 closure).
+
+    This wrapper extends the start of the v3.6.7 extractor's range
+    backward to the start of the marker's line, so the hashed bytes
+    include the heading prefix exactly as the spec requires. The end
+    position and termination logic are untouched, so the byte range
+    stays byte-equivalent to the v3.6.7 extractor everywhere except the
+    heading prefix.
+
+    Returns None when the marker is missing.
     """
     block = _v3_6_7_extract_block(text, V3_6_7_PROTECTION_BLOCK)
     if block is None:
         return None
-    return _normalize_bytes(block.encode("utf-8"))
+    # v3.6.7 extractor returns the slice starting at `PATTERN...`. Find
+    # that exact starting position in the original text, then walk back
+    # to the start of its line so the heading prefix (e.g. `## `) is in
+    # the hashed range.
+    marker_start = text.lower().find(V3_6_7_PROTECTION_BLOCK.lower())
+    if marker_start < 0:
+        return None
+    line_start = text.rfind("\n", 0, marker_start)
+    line_start = 0 if line_start < 0 else line_start + 1
+    block_with_prefix = text[line_start:line_start + (marker_start - line_start) + len(block)]
+    return _normalize_bytes(block_with_prefix.encode("utf-8"))
 
 
 def _read_blob_at_commit(commit: str, repo_relpath: str) -> tuple[bytes | None, str | None]:
