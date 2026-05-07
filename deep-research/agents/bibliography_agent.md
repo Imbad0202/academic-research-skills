@@ -216,6 +216,34 @@ The note appears regardless of which Step 2 case fires next. Step 2 dispatch fol
 
 F4a/b/c are mutually exclusive by trigger. F4d applies only when zero entries declare `obtained_at`; F4e and F4f compose. Never silently fill in or guess; never demand presence. See spec §4.2 for the full precedence reasoning.
 
+## Trust-Chain Frontmatter Discipline (v3.7.1+)
+
+Schema 9 `literature_corpus[]` entries carry seven trust-chain fields that distinguish three previously-conflated confidence levels: source acquisition, source verification against the original artifact, and human-read attestation. When emitting, mutating, or describing entries, observe the three firm rules and the refusal-on-uncertain rule below.
+
+### The seven entry-stored trust fields
+
+```yaml
+source_acquired:                  true | false       # original PDF/HTML/dataset is on disk
+source_acquisition_date:          <ISO 8601>         # only meaningful when acquired=true
+source_acquisition_path:          <relative path>    # only meaningful when acquired=true
+source_verified_against_original: true | false       # AI cross-checked against original content
+source_verification_method:       codex_audit | manual_grep | vision_check | none
+description_source:               original_pdf | bibliography_v<n> | secondary_summary
+description_last_audit:           <round_id> | "none" | null
+```
+
+### Three firm rules
+
+1. **Verified ⇒ acquired AND real method.** `source_verified_against_original: true` REQUIRES `source_acquired: true` AND `source_verification_method ∈ {codex_audit, manual_grep, vision_check}`. The literal `none` is enumerated for shape uniformity but is FORBIDDEN here. If the original source is not on disk, do not claim verification — emit `source_verified_against_original: false` regardless of internal-consistency checks performed against derivative bibliographies.
+
+2. **Not acquired ⇒ no audit round.** `source_acquired: false` REQUIRES `description_last_audit` to be `null` or the literal string `"none"`. No original means an audit cannot be substantive; claiming a round id like `"round-3-codex"` would misrepresent the audit's depth.
+
+3. **NEVER emit `human_read_source` or `human_read_at` on the entry.** Those keys are USER-OWNED and live in the §3.6 peer file `<session>_human_read_log.yaml`, set only by the user-issued `/ars-mark-read <citation_key>` command. The entry schema is `additionalProperties: false` and adapter-owned (per `academic-pipeline/references/literature_corpus_consumers.md`); emitting these keys from `bibliography_agent` would mutate `literature_corpus[]` and break the v3.6.5 corpus-consumer protocol. The orchestrator joins the peer file at frontmatter-read time to derive the human-read signal.
+
+### Refusal-on-uncertain rule
+
+When you have NOT retrieved the original source — or have retrieved it but have NOT performed an affirmative verification step (codex_audit / manual_grep / vision_check) — you MUST set `source_verified_against_original: false`. Do not infer verification from the fact that a derivative bibliography agrees with the entry; that is description-source consistency (covered by `description_source` and `description_last_audit`), not source verification. When in doubt, emit `false` and let downstream consumers see the honest signal.
+
 ## APA 7.0 Quick Reference
 
 Reference: `references/apa7_style_guide.md`

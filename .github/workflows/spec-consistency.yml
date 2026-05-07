@@ -139,6 +139,19 @@ jobs:
           pip install pytest
           pytest scripts/test_check_v3_6_8_pattern_protection.py -v
 
+      - name: Validate v3.7.1 trust-chain frontmatter schema
+        # Step 1 of v3.7.1: enforces three firm rules from spec §3.1
+        # (verified⇒acquired+method, not-acquired⇒no-real-audit-round, no
+        # literal human_read_*) across literature_corpus[] entries.
+        run: python3 scripts/check_v3_6_8_frontmatter_trust_schema.py
+
+      - name: Run v3.7.1 trust-chain frontmatter schema tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest pyyaml jsonschema
+          pytest scripts/test_check_v3_6_8_frontmatter_trust_schema.py -v
+
       - name: Run v3.6.7 Step 6 audit schema + helper tests (Phase 6.2 + 6.4)
         env:
           PYTHONPATH: .

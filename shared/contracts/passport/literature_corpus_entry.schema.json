@@ -83,6 +83,39 @@
     "user_notes": {
       "type": "string",
       "description": "PRIVATE FIELD. User's own annotations from their KB. May contain copyrighted excerpts. Same sharing caveat as abstract."
+    },
+
+    "source_acquired": {
+      "type": "boolean",
+      "description": "v3.7.1 trust-chain field (spec § 3.1, D1). True when the original source artifact (PDF / HTML / dataset) is actually retrieved into the user's KB or workspace. Distinguishes 'we have the file' from 'we cite the bibliography record'. Adapter-set or AI-set; user-orthogonal (the user-set human-read signal is recorded in the §3.6 peer file, NOT here)."
+    },
+    "source_acquisition_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "v3.7.1 trust-chain field. ISO 8601 timestamp when the original source was acquired. Only meaningful when source_acquired=true."
+    },
+    "source_acquisition_path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "v3.7.1 trust-chain field. Repo-relative or absolute path to the acquired source file. Only meaningful when source_acquired=true."
+    },
+    "source_verified_against_original": {
+      "type": "boolean",
+      "description": "v3.7.1 trust-chain field. True when an AI agent has cross-checked the bibliography entry's authors / year / title / venue against the actual content of the acquired source (NOT just a derivative bibliography). Per spec §3.1 firm rule #1, this MUST NOT be true unless source_acquired=true AND source_verification_method names a real method (not 'none')."
+    },
+    "source_verification_method": {
+      "type": "string",
+      "enum": ["codex_audit", "manual_grep", "vision_check", "none"],
+      "description": "v3.7.1 trust-chain field. Method used to verify the entry against the original source. 'none' means no verification was performed; entries with 'none' MUST NOT set source_verified_against_original=true (spec §3.1 firm rule #1, round-2 R2-007 amend: 'none' is a valid enum but is forbidden in conjunction with verified=true)."
+    },
+    "description_source": {
+      "type": "string",
+      "enum": ["original_pdf", "bibliography_v1", "bibliography_v2", "bibliography_v3", "secondary_summary"],
+      "description": "v3.7.1 trust-chain field. Origin of the descriptive metadata (title / authors / abstract). 'original_pdf' = read directly off the acquired source; 'bibliography_v<n>' = lifted from a derivative bibliography revision; 'secondary_summary' = paraphrased from another work. Surfaces description provenance independently of source acquisition."
+    },
+    "description_last_audit": {
+      "type": ["string", "null"],
+      "description": "v3.7.1 trust-chain field. Round identifier of the most recent codex / cross-model audit that examined this entry's description, or null / the literal string 'none' when no such audit has run. Per spec §3.1 firm rule #2, source_acquired=false REQUIRES description_last_audit to be null or 'none' (no original means audit cannot be substantive)."
     }
   },
 
@@ -95,6 +128,39 @@
       },
       "then": {
         "required": ["adapter_name"]
+      }
+    },
+    {
+      "description": "v3.7.1 spec §3.1 firm rule #1 (round-2 R2-007 amend): source_verified_against_original=true REQUIRES source_acquired=true AND source_verification_method ∈ {codex_audit, manual_grep, vision_check}. The 'none' method is enumerated for shape uniformity but is FORBIDDEN in conjunction with verified=true.",
+      "if": {
+        "properties": { "source_verified_against_original": { "const": true } },
+        "required": ["source_verified_against_original"]
+      },
+      "then": {
+        "required": ["source_acquired", "source_verification_method"],
+        "properties": {
+          "source_acquired": { "const": true },
+          "source_verification_method": {
+            "enum": ["codex_audit", "manual_grep", "vision_check"]
+          }
+        }
+      }
+    },
+    {
+      "description": "v3.7.1 spec §3.1 firm rule #2: source_acquired=false REQUIRES description_last_audit ∈ {null, 'none'} — no original source means an audit cannot be substantive, so claiming a non-trivial audit round id would be misleading.",
+      "if": {
+        "properties": { "source_acquired": { "const": false } },
+        "required": ["source_acquired"]
+      },
+      "then": {
+        "properties": {
+          "description_last_audit": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "const": "none" }
+            ]
+          }
+        }
       }
     }
   ],

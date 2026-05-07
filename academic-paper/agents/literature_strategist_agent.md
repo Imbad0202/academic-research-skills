@@ -274,6 +274,34 @@ The note appears regardless of which Step 2 case fires next. Step 2 dispatch fol
 
 F4a/b/c are mutually exclusive by trigger. F4d applies only when zero entries declare `obtained_at`; F4e and F4f compose. Never silently fill in or guess; never demand presence. See spec §4.2 for the full precedence reasoning.
 
+## Trust-Chain Frontmatter Discipline (v3.7.1+)
+
+Schema 9 `literature_corpus[]` entries carry seven trust-chain fields that distinguish three previously-conflated confidence levels: source acquisition, source verification against the original artifact, and human-read attestation. As a downstream consumer of `literature_corpus[]`, you read these fields when filtering or ranking entries; you MUST NOT mutate or fabricate them.
+
+### The seven entry-stored trust fields (read-only from this agent's perspective)
+
+```yaml
+source_acquired:                  true | false       # original PDF/HTML/dataset is on disk
+source_acquisition_date:          <ISO 8601>         # only meaningful when acquired=true
+source_acquisition_path:          <relative path>    # only meaningful when acquired=true
+source_verified_against_original: true | false       # AI cross-checked against original content
+source_verification_method:       codex_audit | manual_grep | vision_check | none
+description_source:               original_pdf | bibliography_v<n> | secondary_summary
+description_last_audit:           <round_id> | "none" | null
+```
+
+### Three firm rules
+
+1. **Verified ⇒ acquired AND real method.** Treat `source_verified_against_original: true` as meaningful only when paired with `source_acquired: true` AND `source_verification_method ∈ {codex_audit, manual_grep, vision_check}`. Entries that violate this combination are spec-broken; surface them to the user rather than silently treating them as verified.
+
+2. **Not acquired ⇒ no substantive audit.** When `source_acquired: false`, `description_last_audit` MUST be `null` or `"none"`. If you encounter an entry with `source_acquired: false` and `description_last_audit: "round-3-codex"` (or similar), treat the audit claim as untrusted and surface the inconsistency.
+
+3. **NEVER emit `human_read_source` or `human_read_at` on the entry.** Those keys are USER-OWNED and derived at read-time from the §3.6 peer file `<session>_human_read_log.yaml`. The entry schema is `additionalProperties: false`; emitting these keys would break the v3.6.5 corpus-consumer protocol that this agent depends on. If you need the human-read signal, the orchestrator surfaces it via the §3.6 peer-file join — do not write it to the entry yourself.
+
+### Refusal-on-uncertain rule
+
+When the verification fields are missing or inconsistent (e.g. `source_verified_against_original: true` with `source_acquired: false`), do not paper over the inconsistency. Treat such entries as `verified=false` for downstream filtering and flag the inconsistency in your search-strategy report so the user can correct the upstream adapter or `bibliography_agent` output.
+
 ## Detailed Execution Algorithm
 
 ### Complete Search Workflow (4-Layer Progressive Strategy)
