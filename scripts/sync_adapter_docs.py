@@ -35,7 +35,11 @@ MARKERS = {
 def _short_type(prop_def: dict) -> str:
     t = prop_def.get("type")
     if isinstance(t, list):
-        return " | ".join(sorted(x for x in t if x))
+        # Markdown-table cells are pipe-delimited, so a JSON Schema
+        # union type rendered as `null | string` would split into extra
+        # columns. Escape the separator with `\|` so GitHub renders it
+        # as a literal pipe inside the cell.
+        return r" \| ".join(sorted(x for x in t if x))
     if t:
         return t
     if "oneOf" in prop_def:

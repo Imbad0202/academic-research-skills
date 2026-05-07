@@ -43,9 +43,16 @@ Refer to the [`literature_corpus_entry` schema](../../../shared/contracts/passpo
 | `abstract` | string | PRIVATE FIELD. |
 | `adapter_name` | string | Optional. |
 | `adapter_version` | string | — |
+| `description_last_audit` | null \| string | v3.7.1 trust-chain field. |
+| `description_source` | string | v3.7.1 trust-chain field. |
 | `doi` | string | DOI without leading 'doi:' or URL prefix. |
 | `obtained_at` | string | Strongly recommended. |
 | `obtained_via` | string | Strongly recommended. |
+| `source_acquired` | boolean | v3.7.1 trust-chain field (spec § 3.1, D1). |
+| `source_acquisition_date` | string | v3.7.1 trust-chain field. |
+| `source_acquisition_path` | string | v3.7.1 trust-chain field. |
+| `source_verification_method` | string | v3.7.1 trust-chain field. |
+| `source_verified_against_original` | boolean | v3.7.1 trust-chain field. |
 | `tags` | array | User-assigned tags from the source KB. |
 | `user_notes` | string | PRIVATE FIELD. |
 | `venue` | string | — |
