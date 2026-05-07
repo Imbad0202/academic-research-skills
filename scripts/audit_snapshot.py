@@ -111,15 +111,36 @@ def _extract_template_sections(template_str: str, section_numbers: list[int]) ->
     into prompts dispatched for non-synthesis agents, contradicting the real
     Section 4(f) we substituted above.
 
+    PR #78 codex round-1 P1: heading detection must skip headings inside
+    fenced code blocks (```/~~~). The v3.7.1 Section 0 Scope Report contains
+    a fenced sub-block whose first line starts with `## Codex Audit Round N
+    — Scope Report`; without fence-awareness, that line was treated as the
+    next H2 boundary and Section 0 was truncated mid-fence.
+
     Returns concatenated section text (with the leading `## Section N` header
     intact and the appendix excluded).
     """
     import re as _re
+
+    # Mask fenced code blocks (```...``` and ~~~...~~~) with whitespace so
+    # ## headings inside them don't count as section boundaries. Length is
+    # preserved so match offsets stay aligned with the original string.
+    def _mask_fences(s: str) -> str:
+        fence_re = _re.compile(
+            r"^([ \t]*)(```|~~~)[^\n]*\n.*?^\1\2[ \t]*$",
+            _re.DOTALL | _re.MULTILINE,
+        )
+        def _repl(m: _re.Match[str]) -> str:
+            return "".join(" " if ch != "\n" else "\n" for ch in m.group(0))
+        return fence_re.sub(_repl, s)
+
+    masked = _mask_fences(template_str)
+
     # Match either Section heading or any other top-level `## ` heading
     # (e.g. "## Worked example", "## Cross-references"); the latter terminate
     # the last extracted section.
     boundary_re = _re.compile(r"^## (?:Section (\d+)( —|$)|.+)", _re.MULTILINE)
-    matches = list(boundary_re.finditer(template_str))
+    matches = list(boundary_re.finditer(masked))
     if not matches:
         return template_str  # no headings found — fall back to verbatim
 
@@ -232,19 +253,25 @@ def render_prompt(
         "\n".join(f"- {p}" for p in supporting_paths) if supporting_paths else "- (none)"
     )
 
-    # Extract audit template Sections 3, 6, 7 (verbatim — describe codex's
-    # expected output / dimensions / anti-fake guard). Sections 1, 2, 4, 5 are
-    # rendered above with real values, so we skip the template's placeholder
-    # versions to avoid showing codex two copies of the same section (one with
-    # placeholders, one substituted) — F-023 closure also requires the
-    # placeholder text not appear.
+    # Extract audit template Sections 0, 3, 6, 7 (verbatim — Section 0 is the
+    # v3.7.1 D2 Scope Report block riding verbatim every round per spec §3.2;
+    # Sections 3 / 6 / 7 describe codex's expected output / dimensions /
+    # anti-fake guard). Sections 1, 2, 4, 5 are rendered below with real
+    # values, so we skip the template's placeholder versions to avoid showing
+    # codex two copies of the same section (one with placeholders, one
+    # substituted) — F-023 closure also requires the placeholder text not
+    # appear. Section 0 contains a `<N_total>` etc. placeholder set that codex
+    # is expected to fill from bundle inventory at audit time, so it rides
+    # verbatim alongside Sections 3 / 6 / 7 (codex round-1 PR #78 P1 closure).
     template_str = audit_template.decode("utf-8", errors="replace")
+    section_0 = _extract_template_sections(template_str, [0])
     section_3_to_7 = _extract_template_sections(template_str, [3, 6, 7])
 
     rendered_intro = (
         f"# ARS v3.6.7 cross-model audit — round {round_n} of {target_rounds}\n"
         f"# Stage: {stage} | Agent: {agent}\n"
         f"# Git SHA at audit start: {git_sha}\n\n"
+        f"{section_0}"
         f"## Section 1 — Round metadata\n\n"
         f"Audit round: {round_n} of {target_rounds}\n"
         f"Previous rounds: {prior_summary}\n"
