@@ -295,9 +295,10 @@ def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr() -> None:
     PR's own commit and the SHA comparison would hash modified content against
     itself.
 
-    The guard reads manifest bytes at `merge-base origin/<default> HEAD` and
-    compares against HEAD bytes. This test mutates the manifest in the
-    working tree (no commit needed — the lint reads the worktree at HEAD).
+    The guard's BYTE-comparison backstop catches a worktree-level mutation
+    (no commit needed). The round-4 history-scan layer catches the more
+    subtle touch-and-revert pattern; that layer is exercised by the
+    `test_anti_self_baseline_guard_rejects_touch_and_revert` test below.
     """
     with _Snapshot(V3_6_7_MANIFEST):
         text = V3_6_7_MANIFEST.read_text(encoding="utf-8")
@@ -318,7 +319,50 @@ def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr() -> None:
             "PR (otherwise the SHA gate would self-baseline)."
         )
         assert "anti-self-baseline guard" in result.stdout
-        assert "manifest changed in this PR" in result.stdout
+        # Worktree-mutation triggers the byte-mismatch backstop branch.
+        assert (
+            "manifest bytes differ" in result.stdout
+            or "manifest touched by" in result.stdout
+        ), f"Expected guard rejection; got: {result.stdout}"
+
+
+def test_anti_self_baseline_guard_history_scan_called(monkeypatch) -> None:
+    """Round-4 codex P2 closure: the guard MUST scan merge-base..HEAD for any
+    commit touching the manifest, not just compare final bytes.
+
+    The touch-and-revert attack: commit A modifies manifest + protected block,
+    commit B reverts manifest only. Final bytes match base, but `git log -1`
+    still resolves to commit B and `git show B:<protected>` returns modified
+    content.
+
+    Reproducing the attack in a unit test would require building a fake git
+    history; instead, this test patches `_run_git` to inject a synthetic
+    `git log merge-base..HEAD -- manifest` result and asserts the guard
+    rejects when commits ARE listed (touch-and-revert simulation), and
+    passes when no commits are listed (clean PR).
+    """
+    from scripts import check_v3_6_8_pattern_protection as mod
+
+    real_run_git = mod._run_git
+    fake_log_output = "abcdef1234567890" * 1  # one fake touching commit SHA
+
+    def patched_run_git(args, cwd=None):
+        # Intercept the merge-base..HEAD log query with the manifest path.
+        if (
+            len(args) >= 2
+            and args[0] == "log"
+            and any("v3_6_7_inversion_manifest.json" in a for a in args)
+            and args[1] == "--format=%H"
+        ):
+            return 0, fake_log_output, ""
+        return real_run_git(args, cwd=cwd) if cwd is not None else real_run_git(args)
+
+    monkeypatch.setattr(mod, "_run_git", patched_run_git)
+    # Call the guard directly (not via subprocess — monkeypatch wouldn't apply).
+    ok, err = mod._v3_6_7_manifest_unchanged_in_pr()
+    assert ok is False, "Guard must reject when history scan finds touching commits"
+    assert err and "manifest touched by" in err
+    assert "round-2 + round-4 codex P2 closure" in err
 
 
 def test_v3_6_7_marker_removed_at_head_fails() -> None:

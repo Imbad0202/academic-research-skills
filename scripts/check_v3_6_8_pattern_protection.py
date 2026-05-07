@@ -153,23 +153,27 @@ def _detect_pr_base_ref() -> str | None:
 
 
 def _v3_6_7_manifest_unchanged_in_pr() -> tuple[bool, str | None]:
-    """Anti-self-baseline guard (round-2 codex P2 closure).
+    """Anti-self-baseline guard (round-2 + round-4 codex P2 closure).
 
     Without this, a PR could mutate `scripts/v3_6_7_inversion_manifest.json`
-    AND a v3.6.7-tagged PATTERN PROTECTION block in the same commit; the
-    `git log -1` derivation would then resolve to that very commit, the SHA
-    comparison would hash modified content against itself, and the gate
-    would trivially pass.
+    AND a v3.6.7-tagged PATTERN PROTECTION block, causing the SHA gate to
+    hash modified content against itself.
 
-    This guard reads the manifest bytes at HEAD and at `merge-base <pr-base>
-    HEAD`, asserts byte-equality, and refuses to run the SHA gate on any PR
-    that mutates the manifest. Manifest amendments must land in a separate
-    PR (under a v3.7+ amendment process) so the next SHA gate run sees the
-    new manifest as its baseline.
+    Round-2 guard (initial): compare manifest bytes at HEAD vs at
+    `merge-base <pr-base> HEAD`; refuse to run on byte-difference.
+
+    Round-4 closure: byte-equality at HEAD is NOT sufficient. A PR with
+    commit A (modify manifest + modify protected block) followed by
+    commit B (revert manifest to original bytes; leave protected block
+    edit) leaves HEAD-vs-base manifest BYTES equal, but `git log -1
+    -- manifest` still resolves to commit B as the baseline, and
+    `git show B:<protected>` returns the modified content — self-baseline
+    attack reappears. Fix: also reject any commit that *touches* the
+    manifest in the `merge-base..HEAD` range, regardless of final bytes.
 
     Returns (True, None) on success or when the guard cannot be evaluated
     (no PR base detectable — local detached state). Returns (False, msg)
-    when the manifest changed in the PR.
+    when the manifest changed in the PR or was touched by any PR commit.
     """
     pr_base = _detect_pr_base_ref()
     if pr_base is None:
@@ -181,19 +185,53 @@ def _v3_6_7_manifest_unchanged_in_pr() -> tuple[bool, str | None]:
         # Cannot compute merge-base (fork without origin?). Be conservative:
         # warn but do not block — CI on the canonical repo will catch it.
         return True, None
+    mb = mb.strip()
     rel = "scripts/v3_6_7_inversion_manifest.json"
+
+    # Round-4 closure: scan merge-base..HEAD for ANY commit that touches the
+    # manifest, regardless of whether the final HEAD bytes equal the base
+    # bytes. This catches the "touch and revert" pattern where a PR commit
+    # modifies the manifest + a protected block, then a later PR commit
+    # reverts only the manifest.
+    rc_log, log_out, log_err = _run_git([
+        "log", "--format=%H", f"{mb}..HEAD", "--", rel,
+    ])
+    if rc_log != 0:
+        # Couldn't list touching commits — be loud, don't pass silently.
+        return False, (
+            "[ARS-V3.7.1 LINT ERROR: anti-self-baseline guard cannot list "
+            f"manifest-touching commits in {mb[:12]}..HEAD: rc={rc_log} "
+            f"stderr={log_err!r}]"
+        )
+    touching = [c for c in log_out.splitlines() if c.strip()]
+    if touching:
+        commits_str = ", ".join(c[:12] for c in touching[:5])
+        suffix = f" (and {len(touching) - 5} more)" if len(touching) > 5 else ""
+        return False, (
+            "[ARS-V3.7.1 LINT ERROR: anti-self-baseline guard tripped: "
+            f"v3.6.7 manifest touched by {len(touching)} commit(s) in "
+            f"{mb[:12]}..HEAD: {commits_str}{suffix}. The byte-equivalence "
+            "SHA gate uses the manifest's most recent modifying commit as "
+            "its baseline; allowing ANY manifest touch in the PR (even one "
+            "later reverted) would let the gate hash modified content "
+            "against itself. Land manifest amendments in a SEPARATE PR "
+            "under a v3.7+ amendment process so the next SHA gate run "
+            "sees the new manifest as its baseline. "
+            "(round-2 + round-4 codex P2 closure)]"
+        )
+
+    # Defense-in-depth: also verify final HEAD bytes match base bytes.
+    # If `git log` somehow under-reports touches (e.g. a corrupted history
+    # or a bug in the path filter), the byte comparison still catches the
+    # final-state mismatch. This is the round-2 guard, kept as backstop.
     head_path = REPO_ROOT / rel
     head_bytes = head_path.read_bytes() if head_path.exists() else None
-    base_bytes, err = _read_blob_at_commit(mb.strip(), rel)
+    base_bytes, err = _read_blob_at_commit(mb, rel)
     if err is not None:
-        # The base commit may not have the file (very early history).
-        # Treat as "manifest is new in this PR" — a strong signal we should
-        # block, since v3.6.7 manifest creation is a v3.6.7-PR-era thing,
-        # not a v3.7.1-work-PR action.
         return False, (
             "[ARS-V3.7.1 LINT ERROR: anti-self-baseline guard tripped: "
             "v3.6.7 manifest does not exist at PR base commit "
-            f"{mb.strip()[:12]}. Manifest creation / re-creation is not a "
+            f"{mb[:12]}. Manifest creation / re-creation is not a "
             "v3.7.1-work-PR action. Land manifest changes in a separate "
             "amendment PR (round-2 codex P2 closure)]"
         )
@@ -206,14 +244,9 @@ def _v3_6_7_manifest_unchanged_in_pr() -> tuple[bool, str | None]:
     if head_bytes != base_bytes:
         return False, (
             "[ARS-V3.7.1 LINT ERROR: anti-self-baseline guard tripped: "
-            "v3.6.7 manifest changed in this PR. The byte-equivalence SHA "
-            "gate uses the manifest's most recent modifying commit as its "
-            "baseline; allowing a PR to modify the manifest AND a v3.6.7 "
-            "protected block in the same commit would let the gate hash "
-            "modified content against itself. Land manifest amendments in "
-            "a separate PR under a v3.7+ amendment process so the next SHA "
-            "gate run sees the new manifest as its baseline. (round-2 "
-            "codex P2 closure)]"
+            "v3.6.7 manifest bytes differ between HEAD and PR base, but "
+            "no commit in merge-base..HEAD lists it as a path. This is a "
+            "history-shape anomaly — investigate before proceeding]"
         )
     return True, None
 
