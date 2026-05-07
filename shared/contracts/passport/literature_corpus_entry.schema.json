@@ -110,8 +110,8 @@
     },
     "description_source": {
       "type": "string",
-      "enum": ["original_pdf", "bibliography_v1", "bibliography_v2", "bibliography_v3", "secondary_summary"],
-      "description": "v3.7.1 trust-chain field. Origin of the descriptive metadata (title / authors / abstract). 'original_pdf' = read directly off the acquired source; 'bibliography_v<n>' = lifted from a derivative bibliography revision; 'secondary_summary' = paraphrased from another work. Surfaces description provenance independently of source acquisition."
+      "pattern": "^(original_pdf|bibliography_v[0-9]+|secondary_summary)$",
+      "description": "v3.7.1 trust-chain field. Origin of the descriptive metadata (title / authors / abstract). 'original_pdf' = read directly off the acquired source; 'bibliography_v<n>' (any non-negative integer n) = lifted from a derivative bibliography revision; 'secondary_summary' = paraphrased from another work. Surfaces description provenance independently of source acquisition. Spec § 3.1 yaml uses the literal `bibliography_v<n>` template, so the pattern accepts any integer n rather than hard-coding a finite revision count."
     },
     "description_last_audit": {
       "type": ["string", "null"],
@@ -147,12 +147,13 @@
       }
     },
     {
-      "description": "v3.7.1 spec §3.1 firm rule #2: source_acquired=false REQUIRES description_last_audit ∈ {null, 'none'} — no original source means an audit cannot be substantive, so claiming a non-trivial audit round id would be misleading.",
+      "description": "v3.7.1 spec §3.1 firm rule #2: source_acquired=false REQUIRES description_last_audit ∈ {null, 'none'} — no original source means an audit cannot be substantive, so claiming a non-trivial audit round id would be misleading. Round-1 codex P2 closure: REQUIRES is strict — the field MUST be present (the value may be null or 'none'); a missing field is NOT equivalent to null and is rejected.",
       "if": {
         "properties": { "source_acquired": { "const": false } },
         "required": ["source_acquired"]
       },
       "then": {
+        "required": ["description_last_audit"],
         "properties": {
           "description_last_audit": {
             "oneOf": [

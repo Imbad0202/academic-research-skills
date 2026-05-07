@@ -148,16 +148,29 @@ def check_entry(entry: dict[str, Any], label: str) -> list[str]:
                 f"enumerated for shape uniformity but is FORBIDDEN here."
             )
 
-    # Rule #2: source_acquired=false ⇒ description_last_audit ∈ {null, 'none'}
+    # Rule #2: source_acquired=false ⇒ description_last_audit MUST be present
+    # AND its value MUST be null or "none". Round-1 codex P2 closure: REQUIRES
+    # is strict — a missing field is NOT equivalent to null. Schema's `then`
+    # branch carries `required: ["description_last_audit"]` for the same reason;
+    # this lint mirrors that for defense in depth and friendlier diagnostics.
     if entry.get("source_acquired") is False:
-        last_audit = entry.get("description_last_audit", None)
-        if last_audit not in (None, "none"):
+        if "description_last_audit" not in entry:
             errors.append(
                 f"  [{label}] Rule #2 violated: source_acquired=false REQUIRES "
-                f"description_last_audit to be null or 'none' (got "
-                f"{last_audit!r}). Spec §3.1 firm rule #2: no original means "
-                f"audit cannot be substantive."
+                f"description_last_audit to be present (with value null or "
+                f"'none'). The field is missing. Spec §3.1 firm rule #2: no "
+                f"original means audit cannot be substantive, so the entry "
+                f"MUST explicitly carry description_last_audit ∈ {{null, 'none'}}."
             )
+        else:
+            last_audit = entry["description_last_audit"]
+            if last_audit not in (None, "none"):
+                errors.append(
+                    f"  [{label}] Rule #2 violated: source_acquired=false REQUIRES "
+                    f"description_last_audit to be null or 'none' (got "
+                    f"{last_audit!r}). Spec §3.1 firm rule #2: no original means "
+                    f"audit cannot be substantive."
+                )
 
     # Optional sanity for verification_method enumeration (catches typos
     # the schema would also catch, but with friendlier message + spec cite).

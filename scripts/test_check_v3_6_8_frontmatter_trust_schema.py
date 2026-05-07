@@ -139,11 +139,16 @@ def test_rule1_verified_true_missing_method_fails(validator) -> None:
 
 
 def test_rule1_verified_false_does_not_constrain_method(validator) -> None:
-    """When verified=false, method='none' is fine."""
+    """When verified=false, method='none' is fine.
+
+    Rule #2 still applies (source_acquired=false REQUIRES description_last_audit
+    to be present + null/'none'); we satisfy it here so the test isolates Rule #1.
+    """
     entry = _minimal_entry(
         source_acquired=False,
         source_verified_against_original=False,
         source_verification_method="none",
+        description_last_audit="none",  # Rule #2 strict-REQUIRES presence
     )
     assert list(validator.iter_errors(entry)) == []
     assert check_entry(entry, "smith2024") == []
@@ -178,6 +183,57 @@ def test_rule2_acquired_false_with_real_audit_round_fails(validator) -> None:
     assert any(validator.iter_errors(entry))
     errors = check_entry(entry, "smith2024")
     assert any("Rule #2" in e and "round-3-codex" in e for e in errors)
+
+
+def test_rule2_acquired_false_with_missing_audit_field_fails(validator) -> None:
+    """Round-1 codex P2 closure: REQUIRES is strict — the field MUST be present.
+
+    Schema-side `then.required` enforces this; lint-side mirrors with a
+    friendly 'field is missing' diagnostic.
+    """
+    entry = _minimal_entry(source_acquired=False)
+    # description_last_audit deliberately omitted
+    assert "description_last_audit" not in entry
+    schema_errs = list(validator.iter_errors(entry))
+    assert schema_errs, (
+        "Schema must reject source_acquired=false with missing "
+        "description_last_audit (Rule #2 REQUIRES is strict)"
+    )
+    lint_errs = check_entry(entry, "smith2024")
+    assert any(
+        "Rule #2" in e and "is missing" in e for e in lint_errs
+    ), f"Lint must surface missing-field violation; got: {lint_errs}"
+
+
+def test_description_source_accepts_arbitrary_bibliography_revision(validator) -> None:
+    """Round-1 codex P2 closure: spec § 3.1 yaml uses `bibliography_v<n>` as a
+    template (any non-negative integer n), not a hard-coded enum of v1..v3.
+    A revision number above the initial release range must validate.
+    """
+    for v in ["bibliography_v0", "bibliography_v4", "bibliography_v17", "bibliography_v999"]:
+        entry = _minimal_entry(description_source=v)
+        assert list(validator.iter_errors(entry)) == [], (
+            f"description_source={v!r} should validate against the "
+            f"`bibliography_v<n>` template"
+        )
+
+
+def test_description_source_still_accepts_canonical_values(validator) -> None:
+    """Sanity: the original_pdf / secondary_summary canonical values keep working."""
+    for v in ["original_pdf", "secondary_summary", "bibliography_v1"]:
+        entry = _minimal_entry(description_source=v)
+        assert list(validator.iter_errors(entry)) == [], (
+            f"description_source={v!r} (canonical) must validate"
+        )
+
+
+def test_description_source_rejects_unrelated_strings(validator) -> None:
+    """The pattern is anchored — typos and unrelated strings still fail."""
+    for v in ["bib_v1", "bibliography_vX", "bibliography", "other"]:
+        entry = _minimal_entry(description_source=v)
+        assert list(validator.iter_errors(entry)), (
+            f"description_source={v!r} should be rejected by the pattern"
+        )
 
 
 def test_rule2_acquired_true_with_real_audit_round_passes(validator) -> None:
