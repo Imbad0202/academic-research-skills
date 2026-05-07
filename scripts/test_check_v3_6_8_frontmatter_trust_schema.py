@@ -166,13 +166,25 @@ def test_rule2_acquired_false_with_audit_none_passes(validator) -> None:
     assert check_entry(entry, "smith2024") == []
 
 
-def test_rule2_acquired_false_with_audit_null_passes(validator) -> None:
+def test_rule2_acquired_false_with_audit_null_fails(validator) -> None:
+    """Round-6 codex P2 closure: spec §3.1 firm rule #2 says REQUIRES
+    description_last_audit: 'none' (literal sentinel). Spec yaml at line 111
+    lists the value vocabulary as `<round_id> | none` with no null alternative.
+    null in the rule-#2 case must be rejected by both schema and lint.
+    """
     entry = _minimal_entry(
         source_acquired=False,
         description_last_audit=None,
     )
-    assert list(validator.iter_errors(entry)) == []
-    assert check_entry(entry, "smith2024") == []
+    schema_errs = list(validator.iter_errors(entry))
+    assert schema_errs, (
+        "Schema must reject source_acquired=false + description_last_audit=null "
+        "(round-6 closure: only literal 'none' is allowed)"
+    )
+    lint_errs = check_entry(entry, "smith2024")
+    assert any(
+        "Rule #2" in e and "literal sentinel string" in e for e in lint_errs
+    ), f"Lint must surface literal-only enforcement; got: {lint_errs}"
 
 
 def test_rule2_acquired_false_with_real_audit_round_fails(validator) -> None:

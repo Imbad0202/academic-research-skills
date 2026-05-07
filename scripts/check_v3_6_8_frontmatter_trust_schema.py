@@ -149,27 +149,32 @@ def check_entry(entry: dict[str, Any], label: str) -> list[str]:
             )
 
     # Rule #2: source_acquired=false ⇒ description_last_audit MUST be present
-    # AND its value MUST be null or "none". Round-1 codex P2 closure: REQUIRES
-    # is strict — a missing field is NOT equivalent to null. Schema's `then`
-    # branch carries `required: ["description_last_audit"]` for the same reason;
-    # this lint mirrors that for defense in depth and friendlier diagnostics.
+    # AND its value MUST be the literal string "none". Round-1 codex P2 closure
+    # made the field strictly required (a missing field is NOT equivalent to
+    # null). Round-6 codex P2 closure tightened the value to the literal
+    # sentinel "none" only — null is rejected — because spec §3.1 firm rule #2
+    # reads "REQUIRES description_last_audit: none" (literal sentinel), and the
+    # spec's value vocabulary at §3.1 line 111 lists `<round_id> | none` with
+    # no null alternative.
     if entry.get("source_acquired") is False:
         if "description_last_audit" not in entry:
             errors.append(
                 f"  [{label}] Rule #2 violated: source_acquired=false REQUIRES "
-                f"description_last_audit to be present (with value null or "
-                f"'none'). The field is missing. Spec §3.1 firm rule #2: no "
-                f"original means audit cannot be substantive, so the entry "
-                f"MUST explicitly carry description_last_audit ∈ {{null, 'none'}}."
+                f"description_last_audit to be present (with value 'none'). "
+                f"The field is missing. Spec §3.1 firm rule #2: no original "
+                f"means audit cannot be substantive, so the entry MUST "
+                f"explicitly carry description_last_audit: 'none'."
             )
         else:
             last_audit = entry["description_last_audit"]
-            if last_audit not in (None, "none"):
+            if last_audit != "none":
                 errors.append(
                     f"  [{label}] Rule #2 violated: source_acquired=false REQUIRES "
-                    f"description_last_audit to be null or 'none' (got "
-                    f"{last_audit!r}). Spec §3.1 firm rule #2: no original means "
-                    f"audit cannot be substantive."
+                    f"description_last_audit: 'none' — the literal sentinel "
+                    f"string (got {last_audit!r}). Spec §3.1 firm rule #2 + "
+                    f"§3.1 yaml at line 111 (value vocabulary `<round_id> | "
+                    f"none`) — null is NOT an accepted alternative for the "
+                    f"rule-#2 case (round-6 codex P2 closure)."
                 )
 
     # Optional sanity for verification_method enumeration (catches typos

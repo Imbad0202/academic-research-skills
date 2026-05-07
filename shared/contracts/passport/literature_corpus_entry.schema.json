@@ -147,7 +147,7 @@
       }
     },
     {
-      "description": "v3.7.1 spec §3.1 firm rule #2: source_acquired=false REQUIRES description_last_audit ∈ {null, 'none'} — no original source means an audit cannot be substantive, so claiming a non-trivial audit round id would be misleading. Round-1 codex P2 closure: REQUIRES is strict — the field MUST be present (the value may be null or 'none'); a missing field is NOT equivalent to null and is rejected.",
+      "description": "v3.7.1 spec §3.1 firm rule #2 (round-6 codex P2 closure): source_acquired=false REQUIRES `description_last_audit: \"none\"` — the literal sentinel string, NOT null. Spec line 120 reads 'REQUIRES description_last_audit: none' (literal 'none'); spec line 111 yaml shows the value vocabulary as `<round_id> | none` with no null alternative. Round-1 closure made the field strictly required (presence enforced); round-6 closure removes the null alternative the field-level type permitted, since spec firm rule #2 mandates the literal sentinel. The top-level `type: [string, null]` on the field stays — null is still legal when source_acquired=true and the entry simply hasn't been audited yet — but the rule-#2 then-branch tightens to the literal string only.",
       "if": {
         "properties": { "source_acquired": { "const": false } },
         "required": ["source_acquired"]
@@ -156,10 +156,8 @@
         "required": ["description_last_audit"],
         "properties": {
           "description_last_audit": {
-            "oneOf": [
-              { "type": "null" },
-              { "type": "string", "const": "none" }
-            ]
+            "type": "string",
+            "const": "none"
           }
         }
       }
