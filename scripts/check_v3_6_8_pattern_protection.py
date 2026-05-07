@@ -34,6 +34,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -313,16 +314,41 @@ def _extract_block_bytes(file_bytes: bytes) -> bytes | None:
     block = _v3_6_7_extract_block(text, V3_6_7_PROTECTION_BLOCK)
     if block is None:
         return None
-    # v3.6.7 extractor returns the slice starting at `PATTERN...`. Find
-    # that exact starting position in the original text, then walk back
-    # to the start of its line so the heading prefix (e.g. `## `) is in
-    # the hashed range.
-    marker_start = text.lower().find(V3_6_7_PROTECTION_BLOCK.lower())
-    if marker_start < 0:
+    # v3.6.7 extractor returns the slice starting at `PATTERN...`. We need
+    # to find the corresponding heading LINE in the source text so the
+    # hashed range starts at the `## `, `### ` (etc.) prefix.
+    #
+    # Round-9 codex P3 closure: anchor the marker search to a Markdown
+    # heading line, not a free substring. A v3.7.1 PR may legitimately add
+    # prose before the protected block that mentions
+    # `PATTERN PROTECTION (v3.6.7)` (e.g. in a "Two-Layer Citation Emission"
+    # section's introductory paragraph). The pre-round-9 substring search
+    # would have matched that earlier prose mention, hashed the wrong range,
+    # and false-failed CI on a valid edit.
+    # Pattern: line start, optional indent, 1-3 `#`, whitespace, the marker
+    # text. We do NOT add `\b` after the marker because it ends with `)`
+    # (a non-word character) and `\b` would not match at that position.
+    # The `(?m)` MULTILINE flag makes `^` match line starts; `(?i)` makes
+    # the marker match case-insensitive (consistent with v3.6.7 lint).
+    heading_re = re.compile(
+        r"(?im)^[ \t]*#{1,3}[ \t]+" + re.escape(V3_6_7_PROTECTION_BLOCK)
+    )
+    match = heading_re.search(text)
+    if match is None:
+        # Heading-anchored search found nothing; the marker may exist only
+        # as prose (no `#` prefix). Treat as missing — same semantics as
+        # marker absence.
         return None
-    line_start = text.rfind("\n", 0, marker_start)
-    line_start = 0 if line_start < 0 else line_start + 1
-    block_with_prefix = text[line_start:line_start + (marker_start - line_start) + len(block)]
+    line_start = match.start()
+    # The block (returned by v3.6.7 extractor) starts at the marker text
+    # itself (`PATTERN...`). Find that within the matched heading line so
+    # we know how long the heading prefix is, then take the slice from
+    # line_start through line_start + prefix_len + len(block).
+    marker_in_line = text.find(V3_6_7_PROTECTION_BLOCK, line_start)
+    if marker_in_line < 0:
+        return None
+    prefix_len = marker_in_line - line_start
+    block_with_prefix = text[line_start:line_start + prefix_len + len(block)]
     return block_with_prefix.encode("utf-8")
 
 

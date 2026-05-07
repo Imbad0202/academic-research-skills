@@ -289,6 +289,47 @@ def test_extractor_includes_heading_prefix_bytes() -> None:
     assert h3_bytes.startswith(b"### PATTERN")
 
 
+def test_prose_mention_of_marker_does_not_misanchor_extractor() -> None:
+    """Round-9 codex P3 closure: anchor the marker search to a Markdown
+    heading line, not a free substring.
+
+    A v3.7.1 PR may legitimately add prose BEFORE the protected block that
+    mentions `PATTERN PROTECTION (v3.6.7)` — e.g. in a "Two-Layer Citation
+    Emission" section's introductory paragraph that explains how the new
+    invariants relate to the v3.6.7 PATTERN PROTECTION block. The pre-
+    round-9 substring search would have matched the prose mention first,
+    hashed the wrong byte range, and false-failed CI on a valid edit.
+
+    This test verifies that an extractor invocation against text containing
+    a prose mention of the marker before the actual heading still returns
+    the heading-anchored block.
+    """
+    from scripts.check_v3_6_8_pattern_protection import _extract_block_bytes
+    text = (
+        "## Two-Layer Citation Emission (v3.7.1)\n"
+        "\n"
+        "This section relates to the existing PATTERN PROTECTION (v3.6.7) "
+        "block by extending its invariant set. Note that the prose mention "
+        "above must NOT misanchor the v3.7.1 SHA gate's extractor.\n"
+        "\n"
+        "## PATTERN PROTECTION (v3.6.7)\n"
+        "\n"
+        "real block body\n"
+    ).encode("utf-8")
+    block = _extract_block_bytes(text)
+    assert block is not None
+    # The extracted block must START with the heading line, not the prose
+    # mention. The prose mention had no `## ` prefix so the bytes would
+    # differ obviously.
+    assert block.startswith(b"## PATTERN PROTECTION (v3.6.7)\n"), (
+        f"Extractor anchored on prose mention instead of heading; got: {block!r}"
+    )
+    assert b"real block body" in block
+    assert b"This section relates to" not in block, (
+        "Extractor swallowed prose; round-9 anchor regex broken"
+    )
+
+
 def test_extractor_strips_only_file_level_bom_not_block_level() -> None:
     """Round-8 codex P2 closure: spec § Step 0 says "the FILE's BOM (if any)
     is excluded". The exclusion is FILE-level (byte 0). A BOM inserted later
@@ -326,6 +367,15 @@ def test_extractor_strips_only_file_level_bom_not_block_level() -> None:
 def test_bom_before_heading_attack_caught_by_lint() -> None:
     """End-to-end mutation test for the round-8 BOM attack: insert U+FEFF
     immediately before the v3.6.7 heading on disk and verify the lint FAILS.
+
+    Round-9 anchored the marker search to a Markdown heading line. After
+    that change, a BOM injected directly before `## PATTERN PROTECTION`
+    breaks the heading line's `^[ \\t]*#{1,3}[ \\t]+...` shape (the BOM
+    bytes sit between the line start and the `#`), so the heading regex
+    no longer matches. The lint then takes the "marker missing at PR
+    HEAD" diagnostic path instead of "BYTE-EQUIVALENCE FAIL". Both are
+    correct — the gate rejects the mutation either way. This test
+    accepts either diagnostic.
     """
     BOM = b"\xef\xbb\xbf"
     with _Snapshot(TARGET_AGENT):
@@ -340,7 +390,10 @@ def test_bom_before_heading_attack_caught_by_lint() -> None:
             "BOM-before-heading mutation must be caught by the SHA gate "
             "(round-8 codex P2 closure)."
         )
-        assert "BYTE-EQUIVALENCE FAIL" in result.stdout
+        assert (
+            "BYTE-EQUIVALENCE FAIL" in result.stdout
+            or "marker missing at PR HEAD" in result.stdout
+        ), f"Expected gate rejection; got: {result.stdout}"
 
 
 def test_anti_self_baseline_guard_rejects_manifest_mutation_in_pr(monkeypatch) -> None:
