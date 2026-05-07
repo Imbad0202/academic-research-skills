@@ -47,7 +47,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_v3_6_7_pattern_protection import (  # noqa: E402
     PROTECTION_BLOCK as V3_6_7_PROTECTION_BLOCK,
-    _extract_block as _v3_6_7_extract_block,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -311,44 +310,42 @@ def _extract_block_bytes(file_bytes: bytes) -> bytes | None:
     # must be caught).
     file_bytes = _strip_file_bom(file_bytes)
     text = file_bytes.decode("utf-8", errors="replace")
-    block = _v3_6_7_extract_block(text, V3_6_7_PROTECTION_BLOCK)
-    if block is None:
-        return None
-    # v3.6.7 extractor returns the slice starting at `PATTERN...`. We need
-    # to find the corresponding heading LINE in the source text so the
-    # hashed range starts at the `## `, `### ` (etc.) prefix.
+
+    # Round-10 codex P2 closure: do NOT delegate to the v3.6.7 extractor.
+    # That extractor uses a substring search (`text.lower().find(marker)`),
+    # so when prose before the protected block mentions
+    # `PATTERN PROTECTION (v3.6.7)`, it returns the slice starting at the
+    # PROSE position. Earlier rounds tried to "correct" by anchoring the
+    # heading line afterward and reusing `len(block)`, but the slice
+    # length still came from the prose-to-heading fragment, not the real
+    # block — so the hashed range was wrong.
     #
-    # Round-9 codex P3 closure: anchor the marker search to a Markdown
-    # heading line, not a free substring. A v3.7.1 PR may legitimately add
-    # prose before the protected block that mentions
-    # `PATTERN PROTECTION (v3.6.7)` (e.g. in a "Two-Layer Citation Emission"
-    # section's introductory paragraph). The pre-round-9 substring search
-    # would have matched that earlier prose mention, hashed the wrong range,
-    # and false-failed CI on a valid edit.
+    # Round-9 + Round-10 fix: anchor the START at the heading line, AND
+    # compute the END independently by searching for the next H1/H2/H3
+    # heading after the marker line (or EOF). This mirrors the v3.6.7
+    # lint's heading-to-next-heading-or-EOF termination semantics, but
+    # with a true heading-anchored start.
+    #
     # Pattern: line start, optional indent, 1-3 `#`, whitespace, the marker
-    # text. We do NOT add `\b` after the marker because it ends with `)`
-    # (a non-word character) and `\b` would not match at that position.
-    # The `(?m)` MULTILINE flag makes `^` match line starts; `(?i)` makes
-    # the marker match case-insensitive (consistent with v3.6.7 lint).
+    # text. NO `\b` after the marker (ends with `)`, a non-word char).
+    # `(?m)` makes `^` match line starts; `(?i)` is the v3.6.7 convention.
     heading_re = re.compile(
         r"(?im)^[ \t]*#{1,3}[ \t]+" + re.escape(V3_6_7_PROTECTION_BLOCK)
     )
     match = heading_re.search(text)
     if match is None:
         # Heading-anchored search found nothing; the marker may exist only
-        # as prose (no `#` prefix). Treat as missing — same semantics as
-        # marker absence.
+        # as prose (no `#` prefix). Treat as missing.
         return None
     line_start = match.start()
-    # The block (returned by v3.6.7 extractor) starts at the marker text
-    # itself (`PATTERN...`). Find that within the matched heading line so
-    # we know how long the heading prefix is, then take the slice from
-    # line_start through line_start + prefix_len + len(block).
-    marker_in_line = text.find(V3_6_7_PROTECTION_BLOCK, line_start)
-    if marker_in_line < 0:
-        return None
-    prefix_len = marker_in_line - line_start
-    block_with_prefix = text[line_start:line_start + prefix_len + len(block)]
+
+    # Find block end at next H1/H2/H3 heading after the marker LINE, or EOF.
+    next_heading_re = re.compile(r"(?m)^[ \t]*#{1,3}[ \t]+")
+    eol = text.find("\n", match.end())
+    search_start = (eol + 1) if eol >= 0 else len(text)
+    next_match = next_heading_re.search(text, pos=search_start)
+    block_end = next_match.start() if next_match else len(text)
+    block_with_prefix = text[line_start:block_end]
     return block_with_prefix.encode("utf-8")
 
 

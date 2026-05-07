@@ -289,6 +289,50 @@ def test_extractor_includes_heading_prefix_bytes() -> None:
     assert h3_bytes.startswith(b"### PATTERN")
 
 
+def test_prose_mention_does_not_truncate_block_range() -> None:
+    """Round-10 codex P2 closure: not only must the START be heading-anchored
+    (round-9 closure), the END must also come from an independent search
+    after the heading line — not from the v3.6.7 legacy extractor's
+    substring-anchored slice length.
+
+    Scenario: prose mention BEFORE the heading mentions the marker. The
+    pre-round-10 implementation took `block` from the v3.6.7 extractor
+    (which used substring search, latching onto the prose mention), then
+    used `len(block)` as the slice length from the heading position. That
+    `len(block)` equalled "from prose to next heading", which (when added
+    to the heading line_start) covered the WRONG byte range — could be
+    truncated or could overshoot, depending on relative offsets.
+
+    This test pins the correct behaviour: the extracted block bytes must
+    be the bytes from the heading line through the next heading (or EOF),
+    inclusive of the heading prefix, regardless of whether prose mentions
+    appear earlier in the file.
+    """
+    from scripts.check_v3_6_8_pattern_protection import _extract_block_bytes
+    text = (
+        "## Two-Layer Citation Emission (v3.7.1)\n"
+        "\n"
+        "This relates to the existing PATTERN PROTECTION (v3.6.7) block.\n"
+        "\n"
+        "## PATTERN PROTECTION (v3.6.7)\n"
+        "\n"
+        "real block body line 1\n"
+        "real block body line 2\n"
+    ).encode("utf-8")
+    block = _extract_block_bytes(text)
+    assert block is not None
+    # The block must START at the real heading line.
+    assert block.startswith(b"## PATTERN PROTECTION (v3.6.7)\n"), (
+        f"Round-10 anchor broken; block doesn't start at heading: {block!r}"
+    )
+    # The block must contain the FULL real body, not a truncated fragment.
+    assert b"real block body line 1" in block
+    assert b"real block body line 2" in block
+    # And the prose paragraph from the v3.7.1 section must NOT be inside.
+    assert b"This relates to" not in block
+    assert b"Two-Layer Citation Emission" not in block
+
+
 def test_prose_mention_of_marker_does_not_misanchor_extractor() -> None:
     """Round-9 codex P3 closure: anchor the marker search to a Markdown
     heading line, not a free substring.
