@@ -304,18 +304,23 @@ def check(target: Path) -> tuple[int, list[str]]:
     # Spec line 146 ordering rule: the Scope Report content must appear
     # before any pass/fail summary surface.
     # Codex round-5 P2-6 broadened detection to bare-verdict lines.
-    # Codex round-9 P2b: "Section 0 H2 alone is not the Scope Report" —
-    # a verdict line inserted between the Section 0 heading and the
-    # canonical fenced Scope Report header still violates the ordering
-    # rule because it precedes the Scope Report CONTENT. Anchor the
-    # ordering scan on the canonical Scope Report header (or, if absent,
-    # the Section 1 heading as a coarse upper bound) and scan everything
-    # before that point. Scan runs on text_no_fences so a verdict-shaped
-    # line that lives inside a fenced reference / quoted documentation
-    # block does NOT trip the rule.
+    # Codex round-9 P2b: anchor on the canonical Scope Report header so
+    # a verdict line between Section 0 H2 and the canonical header is
+    # caught.
+    # Codex round-10 P2: search the FULL template text (including fenced
+    # content) for both the canonical header and the verdict prefix scan.
+    # Earlier rounds masked fences to keep documentation references in
+    # late-template appendices from tripping the rule. That is no longer
+    # needed: the prefix is bounded by the canonical header, which sits
+    # near the top of Section 0; documentation references live after
+    # Section 7 (well past the boundary) and do not appear in the scan
+    # range. Meanwhile the canonical header IS in a fence, so a
+    # text_no_fences search could never anchor on it — that hid every
+    # verdict injection that lived inside the same live Scope Report
+    # fence. Use text_full for both anchor discovery and prefix scan.
     scope_header_match = re.search(
         r"^##\s+Codex Audit Round N\s+—\s+Scope Report\b",
-        text_no_fences,
+        text_full,
         re.MULTILINE,
     )
     ordering_boundary: int | None = None
@@ -326,7 +331,7 @@ def check(target: Path) -> tuple[int, list[str]]:
     elif section_0_anchors:
         ordering_boundary = section_0_anchors[0]
     if ordering_boundary is not None:
-        prefix = text_no_fences[:ordering_boundary]
+        prefix = text_full[:ordering_boundary]
         for pattern in BARE_VERDICT_BEFORE_SECTION_0_PATTERNS:
             match = pattern.search(prefix)
             if match is not None:

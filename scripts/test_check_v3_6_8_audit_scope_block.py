@@ -30,6 +30,7 @@ runs the lint as a subprocess, and restores the file in `finally`
 """
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -361,6 +362,53 @@ def test_t11_target_relative_path_does_not_crash() -> None:
         f"Expected --target with relative path to be handled gracefully; "
         f"got Python traceback in stderr:\n{result.stderr}"
     )
+
+
+@pytest.mark.parametrize(
+    "verdict_line",
+    [
+        "verdict: PASS",
+        "result: FAIL",
+        "Final status: PASSED",
+    ],
+)
+def test_t24_verdict_inside_fenced_block_before_canonical_header_fails(
+    verdict_line: str,
+) -> None:
+    """T24 (codex round-10 P2): a verdict line inserted INSIDE the fenced
+    Scope Report block but BEFORE the canonical
+    `## Codex Audit Round N — Scope Report` header still violates spec
+    line 146. Round-9 ordering fix used text_no_fences for both anchor
+    discovery and prefix scan, which masked the live block entirely
+    (canonical header lives in fence, so it could not be found, and any
+    verdict line inside the same fence was hidden too).
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # Find the opening fence right after the Section 0 H2.
+        # In the canonical template this is `\n```\n## Codex Audit Round N — Scope Report`.
+        fence_open_match = re.search(r"^```\s*\n", text, re.MULTILINE)
+        assert fence_open_match is not None, (
+            "fixture assumption violated: opening fence not found"
+        )
+        fence_open_end = fence_open_match.end()
+        # Inject the verdict line right after the opening fence, BEFORE
+        # the canonical Scope Report header line.
+        mutated = (
+            text[:fence_open_end]
+            + verdict_line
+            + "\n\n"
+            + text[fence_open_end:]
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject verdict line ({verdict_line!r}) inside "
+            f"the fenced Scope Report block but before the canonical header. "
+            f"Spec line 146 firm rule applies regardless of fence framing — "
+            f"the fence IS the prompt content sent to codex.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
 
 def test_t22_affected_refcodes_field_required() -> None:
