@@ -92,7 +92,14 @@ REQUIRED_SPLITS: list[str] = [
 # verb form. The 80-char window after `audit summary` keeps the spec
 # self-explanation prose (`...forbidden in the audit summary.`) clear
 # of any PASSED token within reach.
-_VERDICT_KEY = r"(?:verdict|status|result|final|final[\s_-]?status|overall(?:[\s_-]?status)?)"
+# A verdict-shaped key word: any of the canonical verdict tokens, optionally
+# preceded by one or two short qualifier words (e.g. "Final verdict",
+# "Audit status", "Overall final result"). Codex round-6 P2-9 broadened
+# this so multi-word keys like `Final verdict: PASSED` are also caught.
+# Each qualifier is restricted to alphabetic characters of length 1-15
+# so the regex does not gobble unrelated text on the same line.
+_VERDICT_TOKEN = r"(?:verdict|status|result|final|outcome|overall)"
+_VERDICT_KEY = rf"(?:[A-Za-z]{{1,15}}\s+){{0,2}}{_VERDICT_TOKEN}"
 FORBIDDEN_AGGREGATE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"audit\s+summary[^\n]{0,80}\bPASSED\b", re.IGNORECASE),
     re.compile(rf"^\s*{_VERDICT_KEY}\s*:\s*PASSED\b", re.IGNORECASE | re.MULTILINE),
@@ -250,11 +257,20 @@ def check(target: Path) -> tuple[int, list[str]]:
     # (e.g. an "Appendix" or "historical reference" carrying the exact
     # header) cannot falsely satisfy R1 when the real Section 0 block
     # is missing the canonical header.
-    if SCOPE_REPORT_HEADER not in section_0_only:
+    # Codex round-6 P2-8: anchor to a real heading line. A prose mention
+    # of the header literal (`The required header is "## Codex Audit Round
+    # N — Scope Report"`) inside Section 0 must NOT satisfy the contract
+    # because the rendered audit prompt needs the actual heading line.
+    scope_header_line_re = re.compile(
+        r"^##\s+Codex Audit Round N\s+—\s+Scope Report\b",
+        re.MULTILINE,
+    )
+    if scope_header_line_re.search(section_0_only) is None:
         failed = True
         report.append(
-            f"  FAIL [R1]: Scope Report header literal {SCOPE_REPORT_HEADER!r} "
-            "missing from Section 0 (spec line 134)."
+            f"  FAIL [R1]: Scope Report header line {SCOPE_REPORT_HEADER!r} "
+            "missing from Section 0 (spec line 134; must appear as a real "
+            "heading line, not a prose mention)."
         )
 
     # ---- R6 firm-rule check: no pass/fail summary ahead of Section 0 ----

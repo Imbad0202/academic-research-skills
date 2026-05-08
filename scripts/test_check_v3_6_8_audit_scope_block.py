@@ -362,6 +362,86 @@ def test_t11_target_relative_path_does_not_crash() -> None:
     )
 
 
+def test_t18_scope_report_header_prose_mention_does_not_satisfy_r1() -> None:
+    """T18 (codex round-6 P2-8): SCOPE_REPORT_HEADER check must be
+    line-anchored, not substring. A prose mention like
+    `The required header is "## Codex Audit Round N — Scope Report"`
+    inside Section 0 must NOT satisfy R1 if the real header line is
+    missing or renamed.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        section_0_pos = text.find("## Section 0 — Scope Report")
+        section_1_pos = text.find("## Section 1 — Round metadata")
+        assert section_0_pos != -1 and section_1_pos != -1
+        section_0_block = text[section_0_pos:section_1_pos]
+        # Rename the real fenced header so it no longer matches the literal,
+        # then add a prose mention carrying the literal text.
+        section_0_mutated = section_0_block.replace(
+            "## Codex Audit Round N — Scope Report",
+            "## Codex Audit Round N — REDACTED",
+            1,
+        )
+        prose_mention = (
+            "\n\nNote: the required header line is "
+            '`## Codex Audit Round N — Scope Report` (do not literally embed in prose).\n\n'
+        )
+        section_0_mutated = section_0_mutated.replace(
+            "## Section 0 — Scope Report",
+            "## Section 0 — Scope Report" + prose_mention,
+            1,
+        )
+        mutated = (
+            text[:section_0_pos]
+            + section_0_mutated
+            + text[section_1_pos:]
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Expected lint to require the canonical Scope Report header to "
+            "be a real heading line (not a prose mention). Substring match "
+            "lets a documentation reference satisfy R1 even when the real "
+            "header is missing.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+@pytest.mark.parametrize(
+    "multi_word_summary",
+    [
+        # P2-9 (round-6): multi-word verdict keys before single-word PASSED.
+        "\n\nFinal verdict: PASSED\n\n",
+        "\n\nAudit status: PASSED\n\n",
+        "\n\nOverall verdict: PASSED\n\n",
+        "\n\nFinal status: PASSED\n\n",
+        "\n\nFinal Result: PASSED\n\n",
+    ],
+)
+def test_t19_multi_word_verdict_key_with_passed_fails(multi_word_summary: str) -> None:
+    """T19 (codex round-6 P2-9): R4 must catch multi-word verdict keys
+    (e.g. 'Final verdict: PASSED', 'Audit status: PASSED'). The combined-
+    aggregate verb is the violation regardless of the key word count.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # Inject after Section 0 / before Section 1 (anywhere outside the
+        # spec self-explanation prose).
+        mutated = text.replace(
+            SECTION_1_HEADING,
+            multi_word_summary + SECTION_1_HEADING,
+            1,
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject multi-word verdict-key + PASSED line "
+            f"({multi_word_summary!r}). Spec line 152 forbids the verb "
+            f"regardless of how many words the key has.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 @pytest.mark.parametrize(
     "summary_block",
     [
