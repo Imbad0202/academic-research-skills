@@ -363,6 +363,41 @@ def test_t11_target_relative_path_does_not_crash() -> None:
 
 
 @pytest.mark.parametrize(
+    "appended",
+    [
+        # P2 (round-8): Section 1 heading mutated by appending text.
+        " (renamed)",
+        " v2",
+        ": revised",
+        " — Round Metadata Override",
+    ],
+)
+def test_t21_section_1_heading_with_appended_text_fails(appended: str) -> None:
+    """T21 (codex round-8 P2): R5 Section 1 byte-equivalence sentinel must
+    reject heading lines mutated by appending text. find() previously
+    matched the canonical bytes as a prefix even when the line continued
+    with extra title text — that's a real heading change (rendered prompt
+    has different Section 1 framing) and must FAIL the byte-equivalence
+    invariant.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        mutated = text.replace(
+            SECTION_1_HEADING + "\n",
+            SECTION_1_HEADING + appended + "\n",
+            1,
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject Section 1 heading mutated by appending "
+            f"text ({appended!r}). The canonical bytes appear as a prefix only; "
+            f"the actual heading title has changed.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+@pytest.mark.parametrize(
     "summary_block",
     [
         # P2 (round-7): multi-line audit summary forms.

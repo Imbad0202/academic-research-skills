@@ -165,14 +165,19 @@ def _find_section_1_position(text_no_fences: str) -> int:
     a worked example) was previously accepted as the anchor. The check now
     runs against the fence-stripped text and requires line-start anchoring
     so a fenced occurrence of the exact heading bytes cannot satisfy R5.
+
+    Codex round-8 P2: byte-equivalence must hold for the WHOLE heading line.
+    A `find()` match treats the canonical bytes as a prefix and accepts
+    `## Section 1 — Round metadata (renamed)` as if it were the canonical
+    heading. Match a full line whose only content is the canonical heading,
+    optionally followed by trailing whitespace before the line break.
     """
-    pos = text_no_fences.find(SECTION_1_HEADING_EXACT)
-    if pos == -1:
-        return -1
-    # Must start at line beginning.
-    if pos > 0 and text_no_fences[pos - 1] != "\n":
-        return -1
-    return pos
+    line_re = re.compile(
+        rf"^{re.escape(SECTION_1_HEADING_EXACT)}[ \t]*(?:\n|\Z)",
+        re.MULTILINE,
+    )
+    match = line_re.search(text_no_fences)
+    return match.start() if match else -1
 
 
 def _format_target_for_report(target: Path) -> str:
