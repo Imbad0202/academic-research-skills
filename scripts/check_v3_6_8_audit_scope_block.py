@@ -125,6 +125,50 @@ def _find_section_1_position(text: str) -> int:
     return pos
 
 
+def _format_target_for_report(target: Path) -> str:
+    """Format target path for lint report.
+
+    Codex round-2 P2-2: when --target is a relative repo path or points
+    outside REPO_ROOT, `target.relative_to(REPO_ROOT)` raises ValueError.
+    Resolve to absolute first, then attempt relativization, falling back
+    to the raw path if the resolved path is not under REPO_ROOT.
+    """
+    try:
+        resolved = target.resolve()
+    except (OSError, RuntimeError):
+        return str(target)
+    try:
+        return str(resolved.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(resolved)
+
+
+def _section_0_block(text_full: str, text_no_fences: str) -> str:
+    """Slice the Section 0 block from the H2 anchor up to (but not including)
+    the next H2 boundary at top level. Returns "" if the anchor is missing.
+
+    Codex round-2 P2-1: required-field and aggregate-status-split checks
+    must scope to Section 0 only, not whole-file. Otherwise a marker that
+    appears in a later appendix or documentation block can falsely satisfy
+    the check while Section 0 itself is incomplete.
+
+    Boundary detection runs on the fence-stripped string so a fenced sub-
+    block inside Section 0 (e.g. the canonical Scope Report header) does
+    not terminate the slice. The returned slice is taken from the original
+    text so contents are byte-equivalent to the source.
+    """
+    import re as _re
+    section_0_match = _re.search(
+        r"^## Section 0\b", text_no_fences, _re.MULTILINE
+    )
+    if section_0_match is None:
+        return ""
+    start = section_0_match.start()
+    next_h2 = _re.search(r"^## ", text_no_fences[start + 1 :], _re.MULTILINE)
+    end = (start + 1 + next_h2.start()) if next_h2 else len(text_full)
+    return text_full[start:end]
+
+
 def check(target: Path) -> tuple[int, list[str]]:
     """Run all rules. Return (exit_code, report_lines)."""
     if not target.exists():
@@ -132,8 +176,9 @@ def check(target: Path) -> tuple[int, list[str]]:
 
     text = text_full = target.read_text(encoding="utf-8")
     text_no_fences = _strip_fenced_blocks(text)
+    section_0_only = _section_0_block(text_full, text_no_fences)
 
-    report: list[str] = [f"[v3.7.1 audit-scope-block] target: {target.relative_to(REPO_ROOT)}"]
+    report: list[str] = [f"[v3.7.1 audit-scope-block] target: {_format_target_for_report(target)}"]
     failed: bool = False
 
     # ---- R5: Section 1 byte-equivalence sentinel ----
@@ -214,20 +259,24 @@ def check(target: Path) -> tuple[int, list[str]]:
             )
 
     # ---- R2: required content fields ----
+    # Codex round-2 P2-1: scope to Section 0 only. A marker in an appendix
+    # or documentation block must NOT satisfy the contract — the audit
+    # prompt that gets sent to codex contains Section 0, not the appendix.
     for field in REQUIRED_FIELDS:
-        if field not in text_full:
+        if field not in section_0_only:
             failed = True
             report.append(
-                f"  FAIL [R2]: required Scope Report field missing: {field!r} "
-                "(spec lines 136-140)."
+                f"  FAIL [R2]: required Scope Report field missing from Section 0: "
+                f"{field!r} (spec lines 136-140)."
             )
 
     # ---- R3: aggregate-status three-way split ----
+    # Codex round-2 P2-1: same scoping fix as R2.
     for split in REQUIRED_SPLITS:
-        if split not in text_full:
+        if split not in section_0_only:
             failed = True
             report.append(
-                f"  FAIL [R3]: required aggregate-status split missing: "
+                f"  FAIL [R3]: required aggregate-status split missing from Section 0: "
                 f"{split!r} (spec lines 147-150)."
             )
 
