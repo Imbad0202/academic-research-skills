@@ -365,6 +365,78 @@ def test_t11_target_relative_path_does_not_crash() -> None:
 
 
 @pytest.mark.parametrize(
+    "passed_line",
+    [
+        # P2 (round-13): bare PASSED in output instructions (Section 6
+        # area or anywhere after Scope Report) without verdict-key or
+        # summary-heading framing.
+        "If zero findings, output exactly: PASSED",
+        "On success: PASSED",  # `success` would not match _VERDICT_TOKEN
+        "Mark the run PASSED in the manifest.",
+        "Emit a single token: PASSED.",
+    ],
+)
+def test_t27_unquoted_passed_post_section_0_fails(passed_line: str) -> None:
+    """T27 (codex round-13 P2 → architectural cap rule): any UNQUOTED
+    `PASSED` token appearing after the Scope Report content violates the
+    spec line 152 contract. Lexical pattern enumeration (rounds 5-7, 13)
+    cannot cover every future combination of verdict keys, summary
+    headings, and instruction phrasings. The cap rule denies any bare
+    PASSED on the post-Section-0 surface and allows only quoted forms
+    (`"PASSED"` or backtick `` `PASSED` ``) used in spec self-explanation.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # Inject after Section 0 / before Section 1.
+        injection = "\n\n" + passed_line + "\n\n"
+        mutated = text.replace(
+            SECTION_1_HEADING,
+            injection + SECTION_1_HEADING,
+            1,
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject bare PASSED token ({passed_line!r}) on "
+            f"post-Section-0 surface. Spec line 152 forbids the combined-"
+            f"aggregate verb regardless of phrasing.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+@pytest.mark.parametrize(
+    "self_explanation",
+    [
+        # Quoted forms used in spec self-explanation must NOT trip the cap rule.
+        '\n\nThe combined-aggregate "PASSED" verb is forbidden.\n\n',
+        "\n\nUse backtick form: `PASSED` is the literal token.\n\n",
+        '\n\nNote: "PASSED" appears as documentation only.\n\n',
+    ],
+)
+def test_t28_quoted_passed_self_explanation_allowed(self_explanation: str) -> None:
+    """T28 (codex round-13 cap rule, allow side): the cap rule must NOT
+    fire on PASSED tokens enclosed in straight quotes or backticks —
+    those are the spec self-explanation forms used in the canonical
+    template (lines 26 and 49) and must remain valid.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        mutated = text.replace(
+            SECTION_1_HEADING,
+            self_explanation + SECTION_1_HEADING,
+            1,
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 0, (
+            f"Expected lint to ACCEPT quoted PASSED self-explanation "
+            f"({self_explanation!r}). Cap rule must allow `\"PASSED\"` and "
+            f"backtick `PASSED` forms used in spec documentation prose.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+@pytest.mark.parametrize(
     "suffix",
     [
         " (draft)",

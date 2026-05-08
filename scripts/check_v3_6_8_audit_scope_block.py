@@ -369,21 +369,72 @@ def check(target: Path) -> tuple[int, list[str]]:
                 f"{split!r} (spec lines 147-150)."
             )
 
-    # ---- R4: forbidden combined-aggregate 'PASSED' verb ----
-    # Codex round-4 P2: fenced code blocks ARE the prompt content sent to
-    # codex (the canonical Scope Report header lives inside a fence). A
-    # forbidden 'verdict: PASSED' line in a fenced sub-block defeats the
-    # spec line 152 contract just as much as one outside a fence. Run the
-    # patterns against text_full so fence content is included.
-    for pattern in FORBIDDEN_AGGREGATE_PATTERNS:
-        match = pattern.search(text_full)
-        if match is not None:
-            failed = True
-            report.append(
-                f"  FAIL [R4]: forbidden combined-aggregate 'PASSED' verb in "
-                f"audit summary context: {match.group(0)!r} "
-                "(spec line 152: combined-aggregate 'PASSED' is forbidden)."
-            )
+    # ---- R4: forbidden combined-aggregate 'PASSED' verb (cap rule) ----
+    # Codex rounds 4-7 + 13 enumerated the forbidden surface lexically
+    # (verdict-key + same-line, multi-word keys, multi-line summary headings,
+    # bare verdict lines). Each round surfaced another shape codex could
+    # construct, signalling that pattern enumeration is unbounded.
+    #
+    # Round-13 architectural inflection (per
+    # `feedback_architectural_inflection_after_repeated_p1.md`): replace
+    # the enumeration with a cap rule. ANY unquoted `PASSED` token on the
+    # post-Section-0 surface violates the spec line 152 contract. Quoted
+    # forms (`"PASSED"`, `'PASSED'`, backtick `` `PASSED` ``) remain
+    # permitted because the canonical spec template uses them in self-
+    # explanation prose ("the combined-aggregate 'PASSED' verb is forbidden").
+    #
+    # Surface = template text after the Section 0 H2 anchor (or whole
+    # text if Section 0 anchor missing — already failed by R1). The
+    # legacy FORBIDDEN_AGGREGATE_PATTERNS still run as supplementary
+    # diagnostics on the pre-Section-0 surface (the upstream parts where
+    # an audit summary heading would be a structural violation).
+    cap_rule_surface_start = (
+        section_0_anchors[0] if section_0_anchors else 0
+    )
+    cap_rule_surface = text_full[cap_rule_surface_start:]
+    bare_passed_re = re.compile(r"\bPASSED\b")
+    for match in bare_passed_re.finditer(cap_rule_surface):
+        # Determine if this PASSED is quoted (allowed) or bare (forbidden).
+        start, end = match.start(), match.end()
+        # Look at the immediate surrounding character on each side. Quoted
+        # if both neighbours are matching quote characters or if either
+        # side is a backtick (Markdown inline code).
+        left = cap_rule_surface[start - 1] if start > 0 else ""
+        right = cap_rule_surface[end] if end < len(cap_rule_surface) else ""
+        is_quoted = (
+            (left == '"' and right == '"')
+            or (left == "'" and right == "'")
+            or (left == "`" and right == "`")
+            or (left == "“" and right == "”")
+        )
+        if is_quoted:
+            continue
+        failed = True
+        # Build a small context excerpt for the diagnostic.
+        ctx_start = max(0, start - 30)
+        ctx_end = min(len(cap_rule_surface), end + 30)
+        excerpt = cap_rule_surface[ctx_start:ctx_end].replace("\n", " ")
+        report.append(
+            f"  FAIL [R4]: unquoted PASSED token on post-Section-0 surface "
+            f"(spec line 152 cap rule). Context: …{excerpt}… "
+            "Use quoted form (\"PASSED\", `PASSED`) for self-explanation only."
+        )
+        break  # one diagnostic is enough; user fixes then re-runs
+
+    # Supplementary diagnostics: run the legacy patterns on the FULL text
+    # so any structural violations they specifically detect (audit-summary
+    # heading + verdict combinations) still surface even when the cap
+    # rule already fired. Skip if already failed to avoid noise.
+    if not failed:
+        for pattern in FORBIDDEN_AGGREGATE_PATTERNS:
+            match = pattern.search(text_full)
+            if match is not None:
+                failed = True
+                report.append(
+                    f"  FAIL [R4]: forbidden combined-aggregate 'PASSED' verb in "
+                    f"audit summary context: {match.group(0)!r} "
+                    "(spec line 152: combined-aggregate 'PASSED' is forbidden)."
+                )
 
     if failed:
         report.append("[v3.7.1 audit-scope-block] FAILED")
