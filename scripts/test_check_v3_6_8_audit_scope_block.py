@@ -364,6 +364,41 @@ def test_t11_target_relative_path_does_not_crash() -> None:
     )
 
 
+def test_t25_preamble_header_decoy_does_not_short_circuit_ordering() -> None:
+    """T25 (codex round-11 P2): if a preamble decoy of the canonical
+    `## Codex Audit Round N — Scope Report` line exists ahead of the
+    real Section 0 (e.g. inside a documentation block), a verdict line
+    placed BETWEEN that decoy and the real Scope Report content must
+    still FAIL. Round-10 derived ordering_boundary from the first
+    whole-file occurrence; with a preamble decoy that boundary lands too
+    early and the verdict escapes the scan. Boundary must instead derive
+    from the Section-0-validated header position.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        section_0_pos = text.find("## Section 0 — Scope Report")
+        assert section_0_pos != -1
+        # Inject (a) a preamble decoy header line before Section 0,
+        # (b) a verdict line between the decoy and Section 0.
+        decoy_block = (
+            "## Documentation reference\n\n"
+            "## Codex Audit Round N — Scope Report\n\n"
+            "(decoy header — purely informational, real block lives below)\n\n"
+            "verdict: PASS\n\n"
+            "---\n\n"
+        )
+        mutated = text[:section_0_pos] + decoy_block + text[section_0_pos:]
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Expected lint to reject verdict line between preamble decoy "
+            "header and the real Scope Report content. Boundary derivation "
+            "must use the Section-0-validated header, not first whole-file "
+            "occurrence.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 @pytest.mark.parametrize(
     "verdict_line",
     [
