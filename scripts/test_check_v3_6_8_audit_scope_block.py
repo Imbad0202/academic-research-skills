@@ -364,6 +364,37 @@ def test_t11_target_relative_path_does_not_crash() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "suffix",
+    [
+        " (draft)",
+        " v2",
+        ": revised",
+        " — Updated",
+    ],
+)
+def test_t26_scope_report_header_with_suffix_fails(suffix: str) -> None:
+    """T26 (codex round-12 P2): R1 Scope Report header must be a complete
+    canonical line, not a prefix. A suffixed form like
+    `## Codex Audit Round N — Scope Report (draft)` must FAIL because the
+    rendered prompt would carry a non-canonical header. Symmetric to T21
+    (round 8) which closed the same gap on Section 1.
+    """
+    canonical = "## Codex Audit Round N — Scope Report"
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # Mutate inside the live fenced Section 0 block.
+        mutated = text.replace(canonical + "\n", canonical + suffix + "\n", 1)
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject Scope Report header with suffix "
+            f"{suffix!r}. The canonical bytes appear as a prefix only; the "
+            f"actual heading title has changed.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 def test_t25_preamble_header_decoy_does_not_short_circuit_ordering() -> None:
     """T25 (codex round-11 P2): if a preamble decoy of the canonical
     `## Codex Audit Round N — Scope Report` line exists ahead of the

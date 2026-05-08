@@ -86,6 +86,18 @@ REQUIRED_SPLITS: list[str] = [
     "unaudited-due-to-missing-source",
 ]
 
+# Line-equality regex for the canonical Scope Report header. End-of-line
+# anchored so a suffixed form like "## Codex Audit Round N — Scope Report
+# (draft)" cannot satisfy R1 by prefix match (codex round-12 P2,
+# symmetric to round-8 P2 on Section 1). Optional trailing whitespace
+# before the line break is tolerated (invisible in rendered Markdown);
+# anything else after the canonical bytes — including a space + suffix —
+# fails. \Z covers EOF cases.
+_SCOPE_REPORT_HEADER_LINE_RE = re.compile(
+    rf"^{re.escape(SCOPE_REPORT_HEADER)}[ \t]*(?:\n|\Z)",
+    re.MULTILINE,
+)
+
 # Forbidden combined-aggregate "PASSED" verb in audit summary contexts.
 # Spec line 152: "The combined-aggregate 'PASSED' verb is forbidden in
 # audit summary." Codex round-4 forced fence-content scan; round-5 P2-5
@@ -286,13 +298,12 @@ def check(target: Path) -> tuple[int, list[str]]:
     # is missing the canonical header.
     # Codex round-6 P2-8: anchor to a real heading line. A prose mention
     # of the header literal (`The required header is "## Codex Audit Round
-    # N — Scope Report"`) inside Section 0 must NOT satisfy the contract
-    # because the rendered audit prompt needs the actual heading line.
-    scope_header_line_re = re.compile(
-        r"^##\s+Codex Audit Round N\s+—\s+Scope Report\b",
-        re.MULTILINE,
-    )
-    if scope_header_line_re.search(section_0_only) is None:
+    # N — Scope Report"`) inside Section 0 must NOT satisfy the contract.
+    # Codex round-12 P2: require line equality (not prefix) so a suffixed
+    # form like `... — Scope Report (draft)` cannot satisfy R1. Uses the
+    # module-level _SCOPE_REPORT_HEADER_LINE_RE shared with the ordering
+    # boundary derivation below.
+    if _SCOPE_REPORT_HEADER_LINE_RE.search(section_0_only) is None:
         failed = True
         report.append(
             f"  FAIL [R1]: Scope Report header line {SCOPE_REPORT_HEADER!r} "
@@ -315,11 +326,7 @@ def check(target: Path) -> tuple[int, list[str]]:
     ordering_boundary: int | None = None
     section_0_start = section_0_anchors[0] if section_0_anchors else None
     if section_0_start is not None:
-        scope_header_in_section_0 = re.search(
-            r"^##\s+Codex Audit Round N\s+—\s+Scope Report\b",
-            section_0_only,
-            re.MULTILINE,
-        )
+        scope_header_in_section_0 = _SCOPE_REPORT_HEADER_LINE_RE.search(section_0_only)
         if scope_header_in_section_0 is not None:
             ordering_boundary = section_0_start + scope_header_in_section_0.start()
     if ordering_boundary is None and section_1_pos != -1:
