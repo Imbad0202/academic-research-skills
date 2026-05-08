@@ -98,11 +98,29 @@ REQUIRED_SPLITS: list[str] = [
 # this so multi-word keys like `Final verdict: PASSED` are also caught.
 # Each qualifier is restricted to alphabetic characters of length 1-15
 # so the regex does not gobble unrelated text on the same line.
-_VERDICT_TOKEN = r"(?:verdict|status|result|final|outcome|overall)"
+_VERDICT_TOKEN = r"(?:verdict|status|result|final|outcome|overall|summary)"
 _VERDICT_KEY = rf"(?:[A-Za-z]{{1,15}}\s+){{0,2}}{_VERDICT_TOKEN}"
+# Heading-style summary token used for multi-line lookahead detection
+# (codex round-7 P2). Catches `## Audit Summary`, `## Final Verdict`,
+# `## Overall Outcome`, etc. — H2 headings whose title carries any
+# verdict-key token (bare PASSED on the next lines is the violation).
+_SUMMARY_HEADING = rf"^##\s+(?:[A-Za-z][\w-]*\s+){{0,3}}{_VERDICT_TOKEN}\b[^\n]*"
+
 FORBIDDEN_AGGREGATE_PATTERNS: list[re.Pattern[str]] = [
+    # Same-line: "audit summary ... PASSED" within 80 chars (legacy R4).
     re.compile(r"audit\s+summary[^\n]{0,80}\bPASSED\b", re.IGNORECASE),
+    # Same-line: `<key>: PASSED` (legacy + multi-word key).
     re.compile(rf"^\s*{_VERDICT_KEY}\s*:\s*PASSED\b", re.IGNORECASE | re.MULTILINE),
+    # Multi-line (codex round-7 P2): `## Summary heading` followed within
+    # ~5 lines (≤400 chars across newlines) by a `PASSED` token. Catches
+    # `## Audit Summary\n\nThis audit PASSED.` and `## Audit Summary\n\nPASSED`.
+    # DOTALL lets `.` cross newlines; the 400-char window stays tight enough
+    # that a much later unrelated PASSED in a separate section does not pair
+    # with the heading.
+    re.compile(
+        rf"{_SUMMARY_HEADING}.{{0,400}}?\bPASSED\b",
+        re.IGNORECASE | re.MULTILINE | re.DOTALL,
+    ),
 ]
 
 # Bare-verdict line patterns used to detect a pass/fail summary preceding

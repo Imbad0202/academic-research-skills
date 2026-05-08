@@ -362,6 +362,41 @@ def test_t11_target_relative_path_does_not_crash() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "summary_block",
+    [
+        # P2 (round-7): multi-line audit summary forms.
+        "\n## Audit Summary\n\nThis audit PASSED.\n\n",
+        "\n## Audit Summary\n\nPASSED\n\n",
+        "\n## Final Verdict\n\nThis run PASSED comprehensively.\n\n",
+        "\n## Audit Summary\n\nThe audit PASSED for all dimensions.\n\n",
+    ],
+)
+def test_t20_multi_line_audit_summary_with_passed_fails(summary_block: str) -> None:
+    """T20 (codex round-7 P2): R4 must catch multi-line audit summaries
+    where `## Audit Summary` (or similar heading) is followed on subsequent
+    lines by `PASSED` — bare or in prose like `This audit PASSED.`.
+    The combined-aggregate verb is the violation regardless of whether it
+    sits on the same line as the summary key.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # Inject after Section 0 / before Section 1.
+        mutated = text.replace(
+            SECTION_1_HEADING,
+            summary_block + SECTION_1_HEADING,
+            1,
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject multi-line audit summary with PASSED "
+            f"({summary_block!r}). Spec line 152 forbids the combined-aggregate "
+            f"verb across all audit-summary surfaces.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 def test_t18_scope_report_header_prose_mention_does_not_satisfy_r1() -> None:
     """T18 (codex round-6 P2-8): SCOPE_REPORT_HEADER check must be
     line-anchored, not substring. A prose mention like
