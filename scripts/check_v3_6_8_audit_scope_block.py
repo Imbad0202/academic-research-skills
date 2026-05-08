@@ -286,8 +286,13 @@ def check(target: Path) -> tuple[int, list[str]]:
             )
 
     # ---- R4: forbidden combined-aggregate 'PASSED' verb ----
+    # Codex round-4 P2: fenced code blocks ARE the prompt content sent to
+    # codex (the canonical Scope Report header lives inside a fence). A
+    # forbidden 'verdict: PASSED' line in a fenced sub-block defeats the
+    # spec line 152 contract just as much as one outside a fence. Run the
+    # patterns against text_full so fence content is included.
     for pattern in FORBIDDEN_AGGREGATE_PATTERNS:
-        match = pattern.search(text_no_fences)
+        match = pattern.search(text_full)
         if match is not None:
             failed = True
             report.append(

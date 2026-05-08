@@ -362,6 +362,43 @@ def test_t11_target_relative_path_does_not_crash() -> None:
     )
 
 
+def test_t15_forbidden_passed_verb_inside_fenced_block_fails() -> None:
+    """T15 (codex round-4 P2): combined-aggregate 'PASSED' inside a fenced
+    code block must FAIL. Fenced blocks are the actual prompt content sent
+    to codex (the canonical Scope Report header lives in a fence), so the
+    forbidden verb appearing there defeats the spec line 152 contract just
+    as much as outside a fence.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # Locate Section 0 fenced block and inject the forbidden verb there.
+        fence_start = text.find("```\n## Codex Audit Round N — Scope Report")
+        assert fence_start != -1, (
+            "fixture assumption violated: canonical fenced Scope Report header missing"
+        )
+        # Inject "verdict: PASSED" line right after the header. This is
+        # inside the fenced block — fence-strip would blank it, but the
+        # rendered prompt sent to codex preserves it verbatim.
+        injection_target = "## Codex Audit Round N — Scope Report\n\n"
+        injection_pos = text.find(injection_target, fence_start)
+        assert injection_pos != -1
+        insert_at = injection_pos + len(injection_target)
+        mutated = (
+            text[:insert_at]
+            + "verdict: PASSED\n\n"
+            + text[insert_at:]
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Expected lint to reject combined-aggregate 'PASSED' verb even "
+            "inside a fenced code block (the fenced content IS the prompt "
+            "codex sees). Spec line 152 forbids the combined-aggregate verb "
+            "anywhere in the audit summary surface.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 def test_t13_section_1_decoy_inside_fence_does_not_satisfy_invariant() -> None:
     """T13 (codex round-3 P2-3): a fenced-block decoy carrying the exact
     Section 1 heading text must NOT satisfy the byte-equivalence sentinel.
