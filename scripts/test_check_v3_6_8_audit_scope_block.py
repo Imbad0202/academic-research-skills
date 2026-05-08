@@ -362,6 +362,87 @@ def test_t11_target_relative_path_does_not_crash() -> None:
     )
 
 
+def test_t13_section_1_decoy_inside_fence_does_not_satisfy_invariant() -> None:
+    """T13 (codex round-3 P2-3): a fenced-block decoy carrying the exact
+    Section 1 heading text must NOT satisfy the byte-equivalence sentinel.
+    The real top-level Section 1 heading is removed/renamed; lint must FAIL.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # 1) Rename the real top-level Section 1 heading (capitalization swap).
+        # 2) Inject a fenced-code-block carrying the exact original heading
+        #    text so a whole-file find() would falsely satisfy R5.
+        renamed = text.replace(
+            "## Section 1 — Round metadata",
+            "## Section 1 — Round Metadata",  # title-case mutation
+            1,
+        )
+        decoy_fence = (
+            "\n\n## Appendix — historical example\n\n"
+            "```\n"
+            "## Section 1 — Round metadata\n"
+            "Sample round metadata content (decoy).\n"
+            "```\n"
+        )
+        TEMPLATE.write_text(renamed + decoy_fence, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Expected lint to enforce Section 1 byte-equivalence at top level, "
+            "rejecting decoy heading inside a fenced block.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+def test_t14_scope_report_header_decoy_in_preamble_does_not_satisfy_r1() -> None:
+    """T14 (codex round-3 P2-4): a decoy SCOPE_REPORT_HEADER appearing in
+    the preamble before Section 0 must NOT satisfy R1 if the real header
+    is missing from Section 0. The lint must check the canonical header
+    inside Section 0, not whole-file find().
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # 1) Inject the canonical Scope Report header into the preamble
+        #    (in a fenced block so it doesn't break Section 0 anchor detection).
+        # 2) Remove the canonical Scope Report header from Section 0.
+        preamble_decoy = (
+            "## Preamble historical reference\n\n"
+            "```\n"
+            "## Codex Audit Round N — Scope Report\n"
+            "(decoy: this is documentation, not the live block)\n"
+            "```\n\n"
+        )
+        # Find Section 0 so the decoy is inserted before it.
+        section_0_pos = text.find("## Section 0 — Scope Report")
+        assert section_0_pos != -1
+        # Remove the canonical header inside Section 0 (it lives in a fenced block).
+        section_1_pos = text.find("## Section 1 — Round metadata")
+        section_0_block = text[section_0_pos:section_1_pos]
+        section_0_mutated = section_0_block.replace(
+            "## Codex Audit Round N — Scope Report",
+            "## Codex Audit Round N — REDACTED",
+            1,
+        )
+        mutated = (
+            text[:section_0_pos]
+            + section_0_mutated
+            + text[section_1_pos:]
+        )
+        # Insert preamble decoy before Section 0.
+        section_0_pos_after = mutated.find("## Section 0 — Scope Report")
+        mutated = (
+            mutated[:section_0_pos_after]
+            + preamble_decoy
+            + mutated[section_0_pos_after:]
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Expected lint to enforce SCOPE_REPORT_HEADER presence inside "
+            "Section 0, rejecting preamble decoy that satisfies whole-file find().\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 def test_t12_target_outside_repo_does_not_crash(tmp_path) -> None:
     """T12 (codex round-2 P2-2): --target with an absolute path outside
     the repo must not crash. Lint should display the raw path and proceed.

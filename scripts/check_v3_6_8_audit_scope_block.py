@@ -114,13 +114,19 @@ def _strip_fenced_blocks(text: str) -> str:
     return pattern.sub(_replace, text)
 
 
-def _find_section_1_position(text: str) -> int:
-    """Return the byte offset of the exact Section 1 heading, or -1 if absent."""
-    pos = text.find(SECTION_1_HEADING_EXACT)
+def _find_section_1_position(text_no_fences: str) -> int:
+    """Return the byte offset of the exact top-level Section 1 heading, or -1 if absent.
+
+    Codex round-3 P2-3: a decoy heading inside a fenced code block (e.g. in
+    a worked example) was previously accepted as the anchor. The check now
+    runs against the fence-stripped text and requires line-start anchoring
+    so a fenced occurrence of the exact heading bytes cannot satisfy R5.
+    """
+    pos = text_no_fences.find(SECTION_1_HEADING_EXACT)
     if pos == -1:
         return -1
     # Must start at line beginning.
-    if pos > 0 and text[pos - 1] != "\n":
+    if pos > 0 and text_no_fences[pos - 1] != "\n":
         return -1
     return pos
 
@@ -182,7 +188,9 @@ def check(target: Path) -> tuple[int, list[str]]:
     failed: bool = False
 
     # ---- R5: Section 1 byte-equivalence sentinel ----
-    section_1_pos = _find_section_1_position(text_full)
+    # Codex round-3 P2-3: search the fence-stripped string so a decoy heading
+    # inside a fenced code block (e.g. worked example) cannot satisfy R5.
+    section_1_pos = _find_section_1_position(text_no_fences)
     if section_1_pos == -1:
         failed = True
         report.append(
@@ -218,19 +226,16 @@ def check(target: Path) -> tuple[int, list[str]]:
             f"pass/fail summary."
         )
 
-    # ---- R1 continued: Scope Report header literal must appear before Section 1 ----
-    scope_header_pos = text_full.find(SCOPE_REPORT_HEADER)
-    if scope_header_pos == -1:
+    # ---- R1 continued: Scope Report header literal must appear inside Section 0 ----
+    # Codex round-3 P2-4: scope to section_0_only so a preamble decoy
+    # (e.g. an "Appendix" or "historical reference" carrying the exact
+    # header) cannot falsely satisfy R1 when the real Section 0 block
+    # is missing the canonical header.
+    if SCOPE_REPORT_HEADER not in section_0_only:
         failed = True
         report.append(
             f"  FAIL [R1]: Scope Report header literal {SCOPE_REPORT_HEADER!r} "
-            "missing (spec line 134)."
-        )
-    elif section_1_pos != -1 and scope_header_pos >= section_1_pos:
-        failed = True
-        report.append(
-            f"  FAIL [R1]: Scope Report header (offset {scope_header_pos}) is "
-            f"not strictly before Section 1 heading (offset {section_1_pos})."
+            "missing from Section 0 (spec line 134)."
         )
 
     # ---- R6 firm-rule check: no synthetic 'audit summary' verdict before Section 0 ----
