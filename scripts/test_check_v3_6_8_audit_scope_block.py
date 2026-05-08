@@ -52,6 +52,7 @@ REQUIRED_FIELDS = [
     "**Entries with retrieved original source:**",
     "**Entries description-only (no retrieved source):**",
     "**Audit scope warning:**",
+    "**Affected refcodes (description-only):**",
 ]
 
 
@@ -360,6 +361,83 @@ def test_t11_target_relative_path_does_not_crash() -> None:
         f"Expected --target with relative path to be handled gracefully; "
         f"got Python traceback in stderr:\n{result.stderr}"
     )
+
+
+def test_t22_affected_refcodes_field_required() -> None:
+    """T22 (codex round-9 P2a): `**Affected refcodes (description-only):**`
+    is part of the spec line 142 contract and must be a required field.
+    Removing it from Section 0 must FAIL the lint.
+    """
+    field = "**Affected refcodes (description-only):**"
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        section_0_pos = text.find("## Section 0 — Scope Report")
+        section_1_pos = text.find("## Section 1 — Round metadata")
+        assert section_0_pos != -1 and section_1_pos != -1
+        section_0_block = text[section_0_pos:section_1_pos]
+        assert field in section_0_block, (
+            f"fixture assumption violated: field {field!r} not present in baseline Section 0"
+        )
+        # Drop the line carrying the field marker (within Section 0).
+        section_0_lines = section_0_block.splitlines(keepends=True)
+        section_0_mutated = "".join(
+            ln for ln in section_0_lines if field not in ln
+        )
+        mutated = (
+            text[:section_0_pos]
+            + section_0_mutated
+            + text[section_1_pos:]
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject Scope Report missing field {field!r} "
+            f"(spec line 142 — the required affected-refcodes disclosure).\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+@pytest.mark.parametrize(
+    "verdict_line",
+    [
+        # P2b (round-9): verdict line between Section 0 H2 and canonical header.
+        "verdict: PASS\n\n",
+        "result: FAIL\n\n",
+        "Final status: PASSED\n\n",
+    ],
+)
+def test_t23_verdict_between_section_0_h2_and_canonical_header_fails(
+    verdict_line: str,
+) -> None:
+    """T23 (codex round-9 P2b): a verdict line inserted AFTER `## Section 0`
+    but BEFORE the canonical `## Codex Audit Round N — Scope Report`
+    header still violates spec line 146 (Scope Report before any pass/fail
+    summary). The ordering check previously scoped to text before Section
+    0 H2; this layout slips through.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        section_0_h2 = "## Section 0 — Scope Report (mandatory; v3.7.1 D2)\n"
+        section_0_pos = text.find(section_0_h2)
+        assert section_0_pos != -1, "fixture assumption violated"
+        # Inject verdict line right after the Section 0 H2, before any
+        # other Section-0 content (and before the canonical fenced header).
+        insert_at = section_0_pos + len(section_0_h2)
+        mutated = (
+            text[:insert_at]
+            + "\n"
+            + verdict_line
+            + text[insert_at:]
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject verdict line ({verdict_line!r}) inserted "
+            f"between Section 0 H2 and the canonical Scope Report header. "
+            f"Spec line 146 requires Scope Report content to precede any "
+            f"pass/fail summary surface.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
 
 @pytest.mark.parametrize(

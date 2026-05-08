@@ -67,12 +67,16 @@ SCOPE_REPORT_HEADER = "## Codex Audit Round N — Scope Report"
 # The byte-equivalent Section 1 heading per Q5 invariant.
 SECTION_1_HEADING_EXACT = "## Section 1 — Round metadata"
 
-# Required Scope Report content fields (spec lines 136-140).
+# Required Scope Report content fields (spec lines 136-142).
+# Codex round-9 P2a: spec line 142 requires the Affected-refcodes
+# disclosure too — without it, an audit can hide which entries were
+# unaudited even if the count is published.
 REQUIRED_FIELDS: list[str] = [
     "**Total entries audited:**",
     "**Entries with retrieved original source:**",
     "**Entries description-only (no retrieved source):**",
     "**Audit scope warning:**",
+    "**Affected refcodes (description-only):**",
 ]
 
 # Required aggregate-status splits (spec lines 147-150).
@@ -296,23 +300,40 @@ def check(target: Path) -> tuple[int, list[str]]:
             "heading line, not a prose mention)."
         )
 
-    # ---- R6 firm-rule check: no pass/fail summary ahead of Section 0 ----
-    # Codex round-5 P2-6 broadened this to detect bare-verdict lines (e.g.
-    # `verdict: PASS`, `result: FAIL`) regardless of `## ... Summary`
-    # heading framing. Any pre-Section-0 verdict signal violates spec
-    # line 146 firm rule. Scan runs on text_no_fences so a verdict-shaped
+    # ---- R6 firm-rule check: no pass/fail summary ahead of Scope Report ----
+    # Spec line 146 ordering rule: the Scope Report content must appear
+    # before any pass/fail summary surface.
+    # Codex round-5 P2-6 broadened detection to bare-verdict lines.
+    # Codex round-9 P2b: "Section 0 H2 alone is not the Scope Report" —
+    # a verdict line inserted between the Section 0 heading and the
+    # canonical fenced Scope Report header still violates the ordering
+    # rule because it precedes the Scope Report CONTENT. Anchor the
+    # ordering scan on the canonical Scope Report header (or, if absent,
+    # the Section 1 heading as a coarse upper bound) and scan everything
+    # before that point. Scan runs on text_no_fences so a verdict-shaped
     # line that lives inside a fenced reference / quoted documentation
     # block does NOT trip the rule.
-    if section_0_anchors:
-        section_0_pos = section_0_anchors[0]
-        prefix = text_no_fences[:section_0_pos]
+    scope_header_match = re.search(
+        r"^##\s+Codex Audit Round N\s+—\s+Scope Report\b",
+        text_no_fences,
+        re.MULTILINE,
+    )
+    ordering_boundary: int | None = None
+    if scope_header_match is not None:
+        ordering_boundary = scope_header_match.start()
+    elif section_1_pos != -1:
+        ordering_boundary = section_1_pos
+    elif section_0_anchors:
+        ordering_boundary = section_0_anchors[0]
+    if ordering_boundary is not None:
+        prefix = text_no_fences[:ordering_boundary]
         for pattern in BARE_VERDICT_BEFORE_SECTION_0_PATTERNS:
             match = pattern.search(prefix)
             if match is not None:
                 failed = True
                 anchor = match.group(0).strip()
                 report.append(
-                    f"  FAIL [R1]: pass/fail summary detected ahead of Section 0 "
+                    f"  FAIL [R1]: pass/fail summary detected ahead of Scope Report content "
                     f"(anchor: {anchor!r}); spec line 146 requires Scope Report "
                     f"to appear BEFORE any pass/fail summary."
                 )
