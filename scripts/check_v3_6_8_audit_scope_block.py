@@ -84,12 +84,31 @@ REQUIRED_SPLITS: list[str] = [
 
 # Forbidden combined-aggregate "PASSED" verb in audit summary contexts.
 # Spec line 152: "The combined-aggregate 'PASSED' verb is forbidden in
-# audit summary." We match a summary-like context line carrying PASSED
-# (case-insensitive on the framing words; PASSED stays caps-only because
-# the verb itself is the violation).
+# audit summary." Codex round-4 forced fence-content scan; round-5 P2-5
+# broadened the verdict-key set (verdict / status / result / final /
+# overall) so the lint catches `Overall status: PASSED` etc., not only
+# `verdict: PASSED`. PASSED is matched case-insensitive on the surrounding
+# tokens but the verb itself stays caps-only — that IS the forbidden
+# verb form. The 80-char window after `audit summary` keeps the spec
+# self-explanation prose (`...forbidden in the audit summary.`) clear
+# of any PASSED token within reach.
+_VERDICT_KEY = r"(?:verdict|status|result|final|final[\s_-]?status|overall(?:[\s_-]?status)?)"
 FORBIDDEN_AGGREGATE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"audit\s+summary[^\n]{0,80}\bPASSED\b", re.IGNORECASE),
-    re.compile(r"^\s*\w*\s*verdict\s*:\s*PASSED\b", re.IGNORECASE | re.MULTILINE),
+    re.compile(rf"^\s*{_VERDICT_KEY}\s*:\s*PASSED\b", re.IGNORECASE | re.MULTILINE),
+]
+
+# Bare-verdict line patterns used to detect a pass/fail summary preceding
+# Section 0 (spec line 146 firm rule). Wider than R4 because here we want
+# to catch BOTH PASS and FAIL — anything resembling a verdict line counts
+# as a pass/fail summary, regardless of the verb.
+BARE_VERDICT_BEFORE_SECTION_0_PATTERNS: list[re.Pattern[str]] = [
+    # Heading-style pass/fail summary
+    re.compile(r"^##\s+[A-Za-z][^\n]{0,80}\b(Summary|Verdict)\b", re.MULTILINE),
+    # Existing first-aggregate-split line (kept from earlier rounds)
+    re.compile(r"^\s*verified-against-source\s*:\s*(PASS|FAIL)\b", re.MULTILINE),
+    # Bare `<key>: PASS|FAIL` line, no heading framing
+    re.compile(rf"^\s*{_VERDICT_KEY}\s*:\s*(PASS|FAIL|PASSED|FAILED)\b", re.IGNORECASE | re.MULTILINE),
 ]
 
 
@@ -238,30 +257,27 @@ def check(target: Path) -> tuple[int, list[str]]:
             "missing from Section 0 (spec line 134)."
         )
 
-    # ---- R6 firm-rule check: no synthetic 'audit summary' verdict before Section 0 ----
+    # ---- R6 firm-rule check: no pass/fail summary ahead of Section 0 ----
+    # Codex round-5 P2-6 broadened this to detect bare-verdict lines (e.g.
+    # `verdict: PASS`, `result: FAIL`) regardless of `## ... Summary`
+    # heading framing. Any pre-Section-0 verdict signal violates spec
+    # line 146 firm rule. Scan runs on text_no_fences so a verdict-shaped
+    # line that lives inside a fenced reference / quoted documentation
+    # block does NOT trip the rule.
     if section_0_anchors:
         section_0_pos = section_0_anchors[0]
         prefix = text_no_fences[:section_0_pos]
-        # Detect a pass/fail summary block ahead of Section 0. Markers are
-        # "## ... Summary" headings or "verdict:" lines outside fences.
-        summary_heading = re.search(
-            r"^##\s+[A-Za-z][^\n]{0,80}\b(Summary|Verdict)\b",
-            prefix,
-            re.MULTILINE,
-        )
-        verdict_line = re.search(
-            r"^\s*verified-against-source\s*:\s*(PASS|FAIL)\b",
-            prefix,
-            re.MULTILINE,
-        )
-        if summary_heading or verdict_line:
-            failed = True
-            anchor = (summary_heading or verdict_line).group(0).strip()
-            report.append(
-                f"  FAIL [R1]: pass/fail summary detected ahead of Section 0 "
-                f"(anchor: {anchor!r}); spec line 146 requires Scope Report "
-                f"to appear BEFORE any pass/fail summary."
-            )
+        for pattern in BARE_VERDICT_BEFORE_SECTION_0_PATTERNS:
+            match = pattern.search(prefix)
+            if match is not None:
+                failed = True
+                anchor = match.group(0).strip()
+                report.append(
+                    f"  FAIL [R1]: pass/fail summary detected ahead of Section 0 "
+                    f"(anchor: {anchor!r}); spec line 146 requires Scope Report "
+                    f"to appear BEFORE any pass/fail summary."
+                )
+                break  # one fail diagnostic per check is enough
 
     # ---- R2: required content fields ----
     # Codex round-2 P2-1: scope to Section 0 only. A marker in an appendix

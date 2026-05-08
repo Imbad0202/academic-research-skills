@@ -362,6 +362,73 @@ def test_t11_target_relative_path_does_not_crash() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "summary_block",
+    [
+        # P2-5 (round-5): non-`verdict` key followed by combined-aggregate PASSED.
+        "\n## Audit Summary\n\nOverall status: PASSED\n\n---\n",
+        "\n## Audit Summary\n\nResult: PASSED\n\n---\n",
+        "\n## Audit Summary\n\nFinal: PASSED\n\n---\n",
+    ],
+)
+def test_t16_non_verdict_key_with_passed_fails(summary_block: str) -> None:
+    """T16 (codex round-5 P2-5): R4 must reject combined-aggregate 'PASSED'
+    summaries that use any key, not just `verdict`. The spec line 152
+    contract is on the *verb*, not the surrounding key.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        # Inject the summary block just before Section 1 (after Section 0).
+        mutated = text.replace(
+            SECTION_1_HEADING,
+            summary_block + SECTION_1_HEADING,
+            1,
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject combined-aggregate 'PASSED' under non-verdict key "
+            f"({summary_block!r}). Spec line 152 forbids the verb regardless of the key.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+@pytest.mark.parametrize(
+    "bare_verdict_line",
+    [
+        # P2-6 (round-5): bare verdict line before Section 0 with no `## Summary` heading.
+        "verdict: PASS\n\n",
+        "overall: FAIL\n\n",
+        "result: PASSED\n\n",
+        "final status: PASS\n\n",
+    ],
+)
+def test_t17_bare_verdict_before_section_0_fails(bare_verdict_line: str) -> None:
+    """T17 (codex round-5 P2-6): R1 ordering check must reject ANY pass/fail
+    summary line ahead of Section 0, not only ones with a `## ... Summary`
+    heading. A bare `verdict: PASS` line still counts as a pass/fail summary
+    per spec line 146.
+    """
+    with _Snapshot(TEMPLATE):
+        text = _baseline_text()
+        section_0_pos = text.find("## Section 0 — Scope Report")
+        assert section_0_pos != -1
+        # Inject bare verdict line BEFORE Section 0 (no heading framing).
+        mutated = (
+            text[:section_0_pos]
+            + bare_verdict_line
+            + text[section_0_pos:]
+        )
+        TEMPLATE.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            f"Expected lint to reject bare verdict line before Section 0 "
+            f"({bare_verdict_line!r}). Spec line 146 firm rule: Scope Report "
+            f"must appear BEFORE any pass/fail summary, regardless of heading framing.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 def test_t15_forbidden_passed_verb_inside_fenced_block_fails() -> None:
     """T15 (codex round-4 P2): combined-aggregate 'PASSED' inside a fenced
     code block must FAIL. Fenced blocks are the actual prompt content sent
