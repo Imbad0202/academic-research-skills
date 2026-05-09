@@ -47,6 +47,15 @@ def _extract_finalizer_block(text: str) -> str | None:
 
     Block start: the canonical H2 heading line (line-anchored).
     Block end: next H1/H2/H3 heading line, or EOF.
+
+    Boundary discipline (R1 P3 acknowledged): nested H3 / H4 inside the
+    canonical H2 block would terminate the scan prematurely. This is
+    INTENTIONAL — the canonical Step 3b prose is flat (no nested
+    headings); a nested heading that gets clauses left UN-scanned will
+    fail the lint, surfacing the structural drift to the contributor.
+    A future Step 3b expansion that legitimately needs nested headings
+    must update this extractor's terminator regex (or remove the H3
+    terminator if appropriate). See R1 codex review for context.
     """
     # Anchor on a Markdown heading line (line-start, optional indent,
     # 1-3 hashes, the canonical title, optional trailing whitespace, EOL).
@@ -84,12 +93,24 @@ _REQUIRED_CLAUSES: list[tuple[str, str, str]] = [
         "[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]<!--ref:slug--> "
         "(spec §3.3 line 177)",
     ),
+    # R1 P2-1 closure: anchor on the matrix-row's two distinguishing
+    # tokens — the resolved marker form `<!--ref:slug LOW-WARN-->` AND
+    # the `per-section` checklist phrase. The bare `LOW-WARN` substring
+    # also appears in the LOW-WARN-promotion paragraph, so a matrix-row
+    # drift to e.g. `LOW-WARNING` while the paragraph still mentions
+    # `LOW-WARN` could pre-R1 false-pass. The two anchors must BOTH
+    # appear; the per-section phrase only ever appears in the matrix row.
     (
-        "matrix row 3 (LOW WARN)",
-        "LOW-WARN",
+        "matrix row 3 (LOW WARN) — resolved marker form",
+        "<!--ref:slug LOW-WARN-->",
         "Row 3 maps (acquired=true, verified=true, human=false) → "
-        "<!--ref:slug LOW-WARN--> + per-section pre-finalization "
-        "checklist append (spec §3.3 line 178)",
+        "<!--ref:slug LOW-WARN--> (spec §3.3 line 178)",
+    ),
+    (
+        "matrix row 3 (LOW WARN) — checklist append clause",
+        "per-section",
+        "Row 3 must also append the slug to a per-section "
+        "pre-finalization checklist artifact (spec §3.3 line 178)",
     ),
     (
         "matrix row 4 (OK)",

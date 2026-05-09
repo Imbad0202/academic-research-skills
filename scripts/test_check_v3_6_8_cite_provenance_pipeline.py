@@ -249,6 +249,48 @@ def test_revision_loop_preservation_clause_missing_fails() -> None:
 # =========================================================================
 
 
+def test_low_warn_matrix_drift_with_promotion_paragraph_intact_fails() -> None:
+    """R1 P2-1 closure: matrix-row drift to e.g. `LOW-WARNING` while the
+    promotion paragraph still mentions `LOW-WARN` must FAIL.
+
+    Pre-R1 the lint anchored on bare `LOW-WARN` substring, so the
+    promotion paragraph alone could satisfy the check while the matrix
+    row drifted. R1 anchors on TWO tokens: the resolved marker form
+    `<!--ref:slug LOW-WARN-->` AND the `per-section` checklist phrase.
+    This test mutates ONLY the matrix-row's `<!--ref:slug LOW-WARN-->`
+    marker (not the bare `LOW-WARN` references in surrounding prose) and
+    asserts the lint catches the drift.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        # The matrix-row marker is `<!--ref:slug LOW-WARN-->` exactly.
+        matrix_marker = "<!--ref:slug LOW-WARN-->"
+        assert matrix_marker in text, "fixture missing matrix-row LOW-WARN marker"
+        # Strip ALL occurrences of the resolved marker form. Bare
+        # `LOW-WARN` mentions in prose remain.
+        mutated = text.replace(matrix_marker, "<!--ref:slug LOW-WARNING-->")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R1 P2-1: matrix-row drift on LOW-WARN marker must fail "
+            "the lint even when promotion-paragraph LOW-WARN is intact"
+        )
+
+
+def test_low_warn_per_section_checklist_clause_missing_fails() -> None:
+    """R1 P2-1 closure: removing the `per-section` checklist phrase
+    from the LOW-WARN matrix row's resolution must FAIL.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "per-section"
+        assert marker in text, "fixture missing per-section phrase"
+        mutated = text.replace(marker, "global")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+
+
 def test_peer_file_join_clause_missing_fails() -> None:
     """The subsection must reference the peer-file
     `<session>_human_read_log.yaml` (or the canonical computed form

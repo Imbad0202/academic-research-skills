@@ -179,41 +179,100 @@ class Phase66HardRulesTest(unittest.TestCase):
         )
 
 
+def _measure_finalizer_block_lines(text: str) -> int:
+    """Return the number of lines in the v3.7.1 Step 3b finalizer
+    subsection (`## Cite-Time Provenance Finalizer (v3.7.1)` H2 block).
+
+    R1 P2-2 closure: keeps the v3.6.7 Phase 6.6 +60 budget test focused
+    on its own contract by subtracting the finalizer block lines before
+    applying the +60 ceiling. The Step 3b block has its own dedicated
+    budget test (`V371Step3bLineBudgetTest`) below.
+    """
+    import re as _re
+    anchor = _re.compile(
+        r"(?m)^[ \t]*##[ \t]+Cite-Time Provenance Finalizer \(v3\.7\.1\)[ \t]*$"
+    )
+    m = anchor.search(text)
+    if m is None:
+        return 0
+    next_h = _re.compile(r"(?m)^[ \t]*#{1,3}[ \t]+")
+    head_eol = text.find("\n", m.end())
+    search_start = (head_eol + 1) if head_eol >= 0 else len(text)
+    nm = next_h.search(text, search_start)
+    end = nm.start() if nm else len(text)
+    return len(text[m.start():end].splitlines())
+
+
 class Phase66LineBudgetTest(unittest.TestCase):
-    """Test 4 — Prompt size within layered line budgets.
+    """Test 4 — Prompt size within v3.6.7 Phase 6.6 +60 line budget,
+    measured EXCLUDING any v3.7.1+ subsections.
 
     Per spec §10 Phase 6.6 verification gate: orchestrator prompt is no
-    more than +60 lines vs pre-Step-6 baseline (R3 budget — the ~50-line
-    decision-policy summary plus 5–10 lines of headroom).
+    more than +60 lines vs pre-Step-6 baseline (the ~50-line decision-
+    policy summary plus 5–10 lines of headroom).
 
-    v3.7.1 Step 3b layers an additional +40 line budget for the
-    `## Cite-Time Provenance Finalizer (v3.7.1)` subsection (4-cell matrix
-    + idempotency + revision-loop preservation + peer-file join). This is
-    a separate spec contract (different design doc, different gate) and
-    so layers additively over the v3.6.7 Phase 6.6 budget rather than
-    consuming it.
+    R1 P2-2 closure: v3.7.1 Step 3b adds the `## Cite-Time Provenance
+    Finalizer (v3.7.1)` subsection. To preserve the v3.6.7 regression
+    signal, this test SUBTRACTS the v3.7.1 Step 3b block's line count
+    from the total before applying the +60 ceiling. v3.7.1+ subsections
+    have their own dedicated budget tests; the v3.6.7 contract is
+    measured against its own scope only.
 
     Baseline is BASELINE_LINE_COUNT (579 lines from main commit 02b87ae).
     """
 
     def test_prompt_size_within_budget(self) -> None:
         text = _read_prompt()
-        line_count = len(text.splitlines())
-        ceiling = (
-            BASELINE_LINE_COUNT
-            + LINE_BUDGET_OVER_BASELINE
-            + LINE_BUDGET_V3_7_1_STEP_3B
+        total_lines = len(text.splitlines())
+        step_3b_lines = _measure_finalizer_block_lines(text)
+        # v3.6.7-only line count: total minus the v3.7.1 Step 3b subsection.
+        v367_line_count = total_lines - step_3b_lines
+        ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
+        self.assertLessEqual(
+            v367_line_count,
+            ceiling,
+            f"Phase 6.6 line budget exceeded (v3.6.7-only scope): "
+            f"orchestrator prompt is {total_lines} lines, of which "
+            f"{step_3b_lines} are in the v3.7.1 Step 3b finalizer "
+            f"subsection; v3.6.7-attributed lines = {v367_line_count} "
+            f"exceeds {ceiling} (baseline {BASELINE_LINE_COUNT} + "
+            f"Phase 6.6 budget {LINE_BUDGET_OVER_BASELINE}). Tighten "
+            f"the §3.5 Audit Artifact Gate subsection.",
+        )
+
+
+class V371Step3bLineBudgetTest(unittest.TestCase):
+    """Test 5 — v3.7.1 Step 3b finalizer block within +40 line budget.
+
+    R1 P2-2 closure: dedicated budget test for the
+    `## Cite-Time Provenance Finalizer (v3.7.1)` subsection. Measures
+    ONLY the finalizer block's own lines, decoupled from the v3.6.7
+    Phase 6.6 budget. Spec § Step 3b (line 449) does not specify a
+    line cap; this test pins +40 lines as the contract for ARS prompt
+    hygiene (the canonical subsection at first ship measured 35 lines;
+    +40 leaves 5 lines of codex-round headroom).
+
+    If a future Step 3b cascade legitimately requires more lines, raise
+    `LINE_BUDGET_V3_7_1_STEP_3B` explicitly and document the rationale.
+    """
+
+    def test_step_3b_finalizer_block_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_finalizer_block_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "v3.7.1 Step 3b finalizer subsection missing from "
+            "pipeline_orchestrator_agent.md (expected H2 heading "
+            "'## Cite-Time Provenance Finalizer (v3.7.1)').",
         )
         self.assertLessEqual(
-            line_count,
-            ceiling,
-            f"Layered line budget exceeded: orchestrator prompt is "
-            f"{line_count} lines, exceeds {ceiling} (baseline "
-            f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "
-            f"{LINE_BUDGET_OVER_BASELINE} + v3.7.1 Step 3b budget "
-            f"{LINE_BUDGET_V3_7_1_STEP_3B}). Either tighten the §3.5 "
-            f"Audit Artifact Gate subsection or the v3.7.1 Cite-Time "
-            f"Provenance Finalizer subsection.",
+            block_lines,
+            LINE_BUDGET_V3_7_1_STEP_3B,
+            f"v3.7.1 Step 3b finalizer block exceeds "
+            f"{LINE_BUDGET_V3_7_1_STEP_3B} lines (measured: "
+            f"{block_lines}). Tighten the subsection or raise the "
+            f"`LINE_BUDGET_V3_7_1_STEP_3B` constant with rationale.",
         )
 
 
