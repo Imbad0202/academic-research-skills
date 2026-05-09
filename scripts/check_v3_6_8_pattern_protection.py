@@ -723,21 +723,24 @@ def check_step3a_invariants(verbose: bool = True) -> int:
         # got duplicated".
         positions = _find_all_two_layer_block_positions(text)
         drifts = _find_drift_titles(text)
-        if drifts:
-            for _, drift_line in drifts:
-                failures.append(
-                    f"  [{rel}] FAIL: heading-drift detected: "
-                    f"{drift_line.strip()!r}. Any heading whose title begins "
-                    f"with 'Two-Layer Citation Emission (v3.7.1)' but carries "
-                    f"trailing text is a duplicate-by-drift — its body sits "
-                    f"outside the canonical block scan range and could carry "
-                    f"contradictory instructions. Rename or remove."
-                )
-        if len(positions) > 1 and not drifts:
-            # Multiple exact-title headings (no drift suffix). The drift
-            # branch above already covers the drift case with a clearer msg.
+        # R4 P3-A closure: emit BOTH drift diagnostics AND exact-duplicate
+        # count when both conditions hold, so contributors see every problem
+        # at once (was: drift suppressed exact-duplicate report).
+        for _, drift_line in drifts:
             failures.append(
-                f"  [{rel}] FAIL: {len(positions)} canonical "
+                f"  [{rel}] FAIL: heading-drift detected: "
+                f"{drift_line.strip()!r}. Any heading whose title begins "
+                f"with 'Two-Layer Citation Emission (v3.7.1)' but carries "
+                f"trailing text is a duplicate-by-drift — its body sits "
+                f"outside the canonical block scan range and could carry "
+                f"contradictory instructions. Rename or remove."
+            )
+        # `positions` includes BOTH exact and drift entries (drift regex
+        # subsumes exact). Subtract drift count to get exact-title count.
+        exact_count = len(positions) - len(drifts)
+        if exact_count > 1:
+            failures.append(
+                f"  [{rel}] FAIL: {exact_count} exact-title "
                 f"'{TWO_LAYER_BLOCK_HEADING}' headings found; exactly one "
                 f"is required per Step 3a (duplicates risk contradictory "
                 f"instructions silently passing per-block invariants)"
