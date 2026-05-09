@@ -464,12 +464,25 @@ _FORBIDDEN_RESOLVER_TERMS = (
 # consult an entry's frontmatter. The agent must learn the slug ONLY from the
 # corpus context already in its prompt — never from frontmatter.
 #
-# Negation-aware: the block legitimately includes prohibitions like "Never
-# read frontmatter" — those must NOT trigger this check. Strategy: split the
-# block into sentences and only flag a sentence if it contains a frontmatter
-# read-token AND lacks a same-sentence negation marker.
+# R1 P1-3 closure: match `frontmatter` AND its common variants (`front matter`
+# two-word, `front-matter` hyphenated, and across line wraps in bullet text).
+# Whitespace between verb and target spans `\s` (newline + indent) not just
+# `[^.\n]`, so a wrapped bullet `read the entry\n  front matter` is caught.
+#
+# Negation: the block legitimately includes prohibitions like "Never read
+# frontmatter" — those must NOT trigger this check. R1 P1-2 closure: bare
+# same-sentence presence of any negation word is too permissive; an attacker
+# could write `Never guess, read the entry frontmatter` and slip past.
+# Negation must scope to the matched read-verb's neighborhood — i.e. the
+# negation must appear within ~80 chars BEFORE the verb (or anywhere in the
+# verb-and-target span). Implemented as a separate left-context match around
+# the verb position rather than a full-sentence wildcard.
+_FRONTMATTER_TARGET_RE = (
+    r"front[\s-]?matter"  # `frontmatter` / `front matter` / `front-matter`
+)
 _FRONTMATTER_READ_VERB_RE = re.compile(
-    r"\b(?:read|reads?|reading|"
+    r"\b(?P<verb>"
+    r"read|reads?|reading|"
     r"look\s*up|looks?\s*up|looking\s*up|"
     r"dereference|dereferences?|dereferencing|"
     r"consult|consults?|consulting|"
@@ -479,38 +492,105 @@ _FRONTMATTER_READ_VERB_RE = re.compile(
     r"access|accesses|accessing|"
     r"query|queries|querying|"
     r"fetch|fetches|fetching"
-    r")\b[^.\n]*?\bfrontmatter\b",
+    r")\b[\s\S]{0,80}?\b" + _FRONTMATTER_TARGET_RE + r"\b",
     re.IGNORECASE,
 )
-# Same negation set as v3.6.7 lint, narrowed to imperatives/modals that turn
-# "read frontmatter" into a prohibition.
-_FRONTMATTER_NEGATION_RE = re.compile(
+# Negation tokens that turn "read frontmatter" into a prohibition. Anchored
+# explicitly to direct preposition of the read verb (≤30 chars upstream)
+# rather than free-floating same-sentence presence — closes R1 P1-2.
+_FRONTMATTER_NEGATION_TOKENS_RE = re.compile(
     r"\b(?:never|do\s+not|don'?t|must\s+not|mustn'?t|"
     r"cannot|can'?t|may\s+not|shall\s+not|forbidden|"
     r"NEVER|DO\s+NOT|MUST\s+NOT)\b",
     re.IGNORECASE,
 )
+# The negation must apply to the read verb itself, not a different clause.
+# Window: 0..30 chars before the verb (covers "NEVER read", "must not read",
+# "do not look up", and "never read the entry's frontmatter"). Wider windows
+# leak across clauses ("Never guess; read frontmatter"); narrower windows
+# fail-stop on valid prose like "NEVER read the entry frontmatter" where
+# the verb is a few words after the negation.
+_FRONTMATTER_NEGATION_WINDOW = 30
+
+
+_SENTENCE_TERMINATOR_RE = re.compile(r"[.;!?]\s|[.;!?]$|\n\s*\n")
+
+
+def _negation_anchored_to_verb(block: str, verb_pos: int) -> bool:
+    """Return True iff a negation token appears in the ≤30-char window
+    immediately preceding `verb_pos` AND no sentence terminator separates
+    the negation from the verb.
+
+    R1 P1-2 closure: scope negation to the verb's left context within the
+    same clause. Unrelated negation words elsewhere in the same paragraph
+    (or in a preceding sentence the simple-window check would otherwise
+    catch) must not bless a positive read instruction.
+
+    Algorithm: take the ≤30-char left window; find the LAST sentence
+    terminator inside it; truncate the window to start AFTER that
+    terminator. Then run the negation-token regex against the truncated
+    window. This keeps `NEVER read frontmatter` (no terminator between
+    `NEVER` and `read`) but rejects `Never guess. Always read frontmatter`
+    (terminator `.` between `Never` and `read`).
+    """
+    window_start = max(0, verb_pos - _FRONTMATTER_NEGATION_WINDOW)
+    window = block[window_start:verb_pos]
+    # Find the rightmost sentence terminator in the window, truncate after it.
+    last_term = None
+    for m in _SENTENCE_TERMINATOR_RE.finditer(window):
+        last_term = m
+    if last_term is not None:
+        window = window[last_term.end():]
+    return _FRONTMATTER_NEGATION_TOKENS_RE.search(window) is not None
+
+
+def _find_all_two_layer_block_positions(text: str) -> list[int]:
+    """Return list of line-anchored positions of the canonical Two-Layer
+    heading. Excludes prose mentions (heading must start at a line and have
+    `## ` at column 0 / after indent).
+
+    R1 P2 closure: a contributor (or attacker) could append a duplicate
+    `## Two-Layer Citation Emission (v3.7.1)` block later in the file with
+    contradictory instructions; pre-R1 logic only inspected the first
+    occurrence. This helper enumerates ALL canonical block positions so
+    the lint can require exactly one per manifest file.
+    """
+    positions: list[int] = []
+    start = 0
+    while True:
+        pos = text.find(TWO_LAYER_BLOCK_HEADING, start)
+        if pos == -1:
+            break
+        line_start = text.rfind("\n", 0, pos) + 1
+        # Only count positions where the heading is line-anchored (no
+        # non-whitespace prefix on the same line).
+        if not text[line_start:pos].strip():
+            positions.append(line_start)
+        start = pos + len(TWO_LAYER_BLOCK_HEADING)
+    return positions
 
 
 def _extract_two_layer_block(text: str) -> tuple[str | None, int | None, int | None]:
-    """Return (block_text, start_offset, end_offset) for the Two-Layer block, or (None, None, None).
+    """Return (block_text, start_offset, end_offset) for the FIRST canonical
+    Two-Layer block in the file, or (None, None, None) if no line-anchored
+    occurrence exists.
 
     Block start: line containing the canonical H2 heading. Block end: next
     H1/H2/H3 heading line, or EOF. The returned text INCLUDES the heading
     line and ends just before the terminator.
+
+    Duplicate detection uses `_find_all_two_layer_block_positions`; this
+    function intentionally returns the first occurrence so the per-block
+    invariants can run; duplicates are flagged separately by the caller.
     """
-    pos = text.find(TWO_LAYER_BLOCK_HEADING)
-    if pos == -1:
+    positions = _find_all_two_layer_block_positions(text)
+    if not positions:
         return None, None, None
-    # Verify it's a real H2 (line-anchored), not a prose mention.
-    line_start = text.rfind("\n", 0, pos) + 1  # 0 if not found
-    if text[line_start:pos].strip():
-        # Heading is preceded by non-whitespace on the same line — prose
-        # mention. Step 3a's canonical form is a clean H2 line.
-        return None, None, None
+    line_start = positions[0]
     next_h_re = re.compile(r"(?m)^[ \t]*#{1,3}[ \t]+")
-    eol = text.find("\n", pos + len(TWO_LAYER_BLOCK_HEADING))
-    search_start = (eol + 1) if eol >= 0 else len(text)
+    # Find heading text length so search starts after it.
+    head_eol = text.find("\n", line_start + len(TWO_LAYER_BLOCK_HEADING))
+    search_start = (head_eol + 1) if head_eol >= 0 else len(text)
     next_match = next_h_re.search(text, pos=search_start)
     block_end = next_match.start() if next_match else len(text)
     return text[line_start:block_end], line_start, block_end
@@ -562,6 +642,19 @@ def check_step3a_invariants(verbose: bool = True) -> int:
             )
             continue
         text = agent_path.read_text(encoding="utf-8")
+        # R1 P2 closure: require exactly one canonical block per manifest
+        # file; duplicates risk contradictory instructions that pre-R1 logic
+        # silently ignored.
+        positions = _find_all_two_layer_block_positions(text)
+        if len(positions) > 1:
+            failures.append(
+                f"  [{rel}] FAIL: {len(positions)} canonical "
+                f"'{TWO_LAYER_BLOCK_HEADING}' headings found; exactly one "
+                f"is required per Step 3a (duplicates risk contradictory "
+                f"instructions silently passing per-block invariants)"
+            )
+            # Continue to the per-block invariants on the first occurrence so
+            # the operator gets a complete failure list, not just the count.
         block, _, _ = _extract_two_layer_block(text)
         if block is None:
             failures.append(
@@ -605,20 +698,25 @@ def check_step3a_invariants(verbose: bool = True) -> int:
                 )
 
         # Invariant (iii): no frontmatter-read instruction.
-        for sentence in _split_into_sentences(block):
-            verb_match = _FRONTMATTER_READ_VERB_RE.search(sentence)
-            if verb_match is None:
+        # R1 P1-2 closure: scan the ENTIRE block (not pre-split sentences),
+        # then for each verb-target match, check negation in the ≤30-char
+        # window preceding the verb. This eliminates false-pass on sentences
+        # like "Never guess, read the entry frontmatter" where the negation
+        # word doesn't apply to the read verb.
+        for verb_match in _FRONTMATTER_READ_VERB_RE.finditer(block):
+            verb_pos = verb_match.start("verb")
+            if _negation_anchored_to_verb(block, verb_pos):
                 continue
-            if _FRONTMATTER_NEGATION_RE.search(sentence):
-                # Sentence is a prohibition like "Never read frontmatter"
-                # — passes invariant (iii) by negation.
-                continue
+            # Diagnostic excerpt: 60 chars centered on the match.
+            excerpt_start = max(0, verb_pos - 30)
+            excerpt_end = min(len(block), verb_match.end() + 30)
+            excerpt = block[excerpt_start:excerpt_end].replace("\n", " ")
             failures.append(
                 f"  [{rel}] invariant (iii) FAIL: block instructs agent to "
                 f"'{verb_match.group(0).strip()}' frontmatter without "
-                f"negation. Agent must learn slug ONLY from corpus context "
-                f"in its prompt; frontmatter access is forbidden in this "
-                f"block. Sentence: {sentence[:120]!r}"
+                f"a directly anchored negation. Agent must learn slug ONLY "
+                f"from corpus context in its prompt; frontmatter access is "
+                f"forbidden in this block. Excerpt: {excerpt!r}"
             )
 
         if verbose and not any(rel in f for f in failures):

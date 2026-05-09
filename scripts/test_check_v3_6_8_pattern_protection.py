@@ -794,6 +794,127 @@ def test_step3a_block_missing_from_manifest_agent_fails() -> None:
         assert "Two-Layer Citation Emission" in result.stdout or "block missing" in result.stdout.lower()
 
 
+def test_step3a_invariant_iii_unrelated_negation_does_not_bless_read_instruction() -> None:
+    """R1 P1-2 closure: a negation token elsewhere in the same sentence must
+    NOT bless a positive frontmatter-read instruction.
+
+    Pre-R1 negation rule: any negation in the sentence → pass.
+    Post-R1 rule: negation must be within ≤30 chars BEFORE the read verb.
+
+    Mutation: insert a sentence like "Never guess; read the entry frontmatter
+    to find the slug" — a sloppy negation that would have slipped past R0.
+    """
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        # The "Never" applies to "guess", not to "read frontmatter". Pre-R1
+        # this slipped past; post-R1 it must FAIL invariant (iii).
+        injection = (
+            "\n\nNever guess. Always read the entry frontmatter "
+            "to find the slug.\n"
+        )
+        mutated = text[: nl] + injection + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R1 P1-2: a sentence with unrelated negation must NOT bless a "
+            f"positive read-frontmatter instruction; got rc={result.returncode}\n"
+            f"stdout:\n{result.stdout}"
+        )
+        assert "frontmatter" in result.stdout.lower()
+
+
+def test_step3a_invariant_iii_front_matter_two_word_variant_caught() -> None:
+    """R1 P1-3 closure: `front matter` (two-word) variant must be caught."""
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        injection = "\n\nIf needed, read the entry's front matter for the slug.\n"
+        mutated = text[: nl] + injection + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R1 P1-3: `front matter` (two-word) variant must be caught"
+        )
+        assert "front" in result.stdout.lower()
+
+
+def test_step3a_invariant_iii_front_dash_matter_variant_caught() -> None:
+    """R1 P1-3 closure: `front-matter` (hyphenated) variant must be caught."""
+    target = _agent_path("academic-paper/agents/draft_writer_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        injection = "\n\nIf needed, read the entry's front-matter for the slug.\n"
+        mutated = text[: nl] + injection + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R1 P1-3: `front-matter` (hyphenated) variant must be caught"
+        )
+
+
+def test_step3a_invariant_iii_wrapped_read_instruction_caught() -> None:
+    """R1 P1-3 closure: `read the entry\\nfrontmatter` (line-wrapped) must be caught."""
+    target = _agent_path("deep-research/agents/report_compiler_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        # A bullet that wraps the read verb away from the target.
+        injection = "\n\n- read the entry's full\n  frontmatter to find the slug\n"
+        mutated = text[: nl] + injection + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R1 P1-3: line-wrapped read-frontmatter instruction must be caught"
+        )
+
+
+def test_step3a_invariant_iii_canonical_negation_still_passes() -> None:
+    """R1 P1-2 sanity: the canonical `NEVER read the entry frontmatter`
+    prohibition (the actual block prose) must continue to pass invariant (iii).
+
+    This is the explicit happy-path test for the negation rule; before R1 it
+    was implicit in `test_step3a_lint_passes_on_clean_tree`.
+    """
+    # No mutation — just verify clean tree passes.
+    result = _run_lint()
+    assert result.returncode == 0, (
+        f"Canonical 'NEVER read the entry frontmatter' must pass invariant "
+        f"(iii); got rc={result.returncode}\nstdout:\n{result.stdout}"
+    )
+
+
+def test_step3a_duplicate_block_rejected() -> None:
+    """R1 P2 closure: a manifest agent file with two canonical Two-Layer
+    block headings must FAIL the lint."""
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        # Append a second canonical heading at EOF.
+        duplicate = (
+            "\n## Two-Layer Citation Emission (v3.7.1)\n\n"
+            "duplicate body — this should be caught\n"
+        )
+        target.write_text(text + duplicate, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R1 P2: duplicate canonical Two-Layer Citation Emission heading "
+            "must be rejected"
+        )
+        assert "exactly one" in result.stdout.lower() or "duplicate" in result.stdout.lower() or "headings found" in result.stdout.lower()
+
+
 def test_step3a_block_addition_does_not_break_v3_6_7_sha_gate() -> None:
     """Defense-in-depth: with Two-Layer Citation Emission blocks present in
     all three v3.6.7-protected files, the SHA gate must still pass.
