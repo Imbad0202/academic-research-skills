@@ -454,18 +454,21 @@ TWO_LAYER_BLOCK_HEADING = "## Two-Layer Citation Emission (v3.7.1)"
 # bare `finalizer` and `cite_provenance_finalizer_agent` substring matches.
 _NON_IDENT_BEFORE = r"(?<![A-Za-z0-9])"
 _NON_IDENT_AFTER = r"(?![A-Za-z0-9])"
+# R3 P1-B closure: plural-aware stems. `finalizers`/`orchestrators`/
+# `resolvers`/`stage gates`/`terminal gates` previously slipped past
+# because the right identifier boundary rejected the plural `s`.
 _FORBIDDEN_RESOLVER_TERMS = (
-    re.compile(_NON_IDENT_BEFORE + r"finalizer" + _NON_IDENT_AFTER, re.IGNORECASE),
-    re.compile(_NON_IDENT_BEFORE + r"orchestrator" + _NON_IDENT_AFTER, re.IGNORECASE),
-    re.compile(_NON_IDENT_BEFORE + r"stage[\s\-_]?gate" + _NON_IDENT_AFTER, re.IGNORECASE),
-    re.compile(_NON_IDENT_BEFORE + r"terminal[\s\-_]?gate" + _NON_IDENT_AFTER, re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"finalizers?" + _NON_IDENT_AFTER, re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"orchestrators?" + _NON_IDENT_AFTER, re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"stage[\s\-_]?gates?" + _NON_IDENT_AFTER, re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"terminal[\s\-_]?gates?" + _NON_IDENT_AFTER, re.IGNORECASE),
     # The block instructs the agent to NOT resolve markers; saying so is
     # legitimate self-knowledge ("emit bare; do not resolve"). It is the
     # MENTION of who DOES resolve that breaks partial-inversion. The token
     # "resolver" referring to a downstream entity is forbidden, but the verb
     # "resolve" used negatively ("never resolve") is allowed — handled by
-    # forbidding only the "resolver" noun, not the verb.
-    re.compile(_NON_IDENT_BEFORE + r"resolver" + _NON_IDENT_AFTER, re.IGNORECASE),
+    # forbidding only the "resolver" noun (and its plural), not the verb.
+    re.compile(_NON_IDENT_BEFORE + r"resolvers?" + _NON_IDENT_AFTER, re.IGNORECASE),
 )
 
 # Invariant (iii): a frontmatter-read instruction is any imperative or
@@ -487,10 +490,15 @@ _FORBIDDEN_RESOLVER_TERMS = (
 # verb-and-target span). Implemented as a separate left-context match around
 # the verb position rather than a full-sentence wildcard.
 _FRONTMATTER_TARGET_RE = (
-    r"front[\s-]?matter"  # `frontmatter` / `front matter` / `front-matter`
+    r"front[\s\-_]?matter"  # `frontmatter` / `front matter` / `front-matter` / `front_matter`
 )
+# R3 P1-C closure: identifier-aware boundary on the verb side. Python `\b`
+# treats `_` as a word char, so `read_frontmatter()` is one token and
+# `\bread\b` does not match. Use `(?<![A-Za-z0-9])` / `(?![A-Za-z0-9])` so
+# `_` IS a boundary; this catches `read_frontmatter()` style instructions.
+# The target side uses the same boundary for symmetry.
 _FRONTMATTER_READ_VERB_RE = re.compile(
-    r"\b(?P<verb>"
+    _NON_IDENT_BEFORE + r"(?P<verb>"
     r"read|reads?|reading|"
     r"look\s*up|looks?\s*up|looking\s*up|"
     r"dereference|dereferences?|dereferencing|"
@@ -501,7 +509,8 @@ _FRONTMATTER_READ_VERB_RE = re.compile(
     r"access|accesses|accessing|"
     r"query|queries|querying|"
     r"fetch|fetches|fetching"
-    r")\b[\s\S]{0,80}?\b" + _FRONTMATTER_TARGET_RE + r"\b",
+    r")" + _NON_IDENT_AFTER + r"[\s\S]{0,80}?" + _NON_IDENT_BEFORE
+    + _FRONTMATTER_TARGET_RE + _NON_IDENT_AFTER,
     re.IGNORECASE,
 )
 # Negation tokens that turn "read frontmatter" into a prohibition. Anchored
@@ -560,40 +569,77 @@ def _negation_anchored_to_verb(block: str, verb_pos: int) -> bool:
     return _FRONTMATTER_NEGATION_TOKENS_RE.search(window) is not None
 
 
-_TWO_LAYER_TITLE_RE = re.compile(
+_TWO_LAYER_TITLE_EXACT_RE = re.compile(
     r"(?m)^[ \t]*(?P<level>#{1,6})[ \t]+Two-Layer Citation Emission \(v3\.7\.1\)[ \t]*$"
+)
+# R3 P1-A closure: heading-DRIFT detector. Any heading at any level whose
+# title STARTS with `Two-Layer Citation Emission (v3.7.1)` but has trailing
+# non-whitespace (e.g., `### Two-Layer Citation Emission (v3.7.1) — extended`)
+# is a drift duplicate. Pre-R3 only exact-title headings counted; a drift
+# heading slipped past AND its body sat outside the scanned block range
+# (since `_extract_two_layer_block` stops at the next H1/H2/H3), so
+# forbidden text under it was invisible to per-block invariants.
+_TWO_LAYER_TITLE_DRIFT_RE = re.compile(
+    r"(?m)^[ \t]*(?P<level>#{1,6})[ \t]+Two-Layer Citation Emission \(v3\.7\.1\)"
+    r"(?P<trailing>[^\n]*)$"
 )
 
 
 def _find_all_two_layer_block_positions(text: str) -> list[int]:
-    """Return list of line-anchored positions of any heading whose title is
-    `Two-Layer Citation Emission (v3.7.1)`, regardless of heading level.
+    """Return positions of every heading whose title is or BEGINS WITH
+    `Two-Layer Citation Emission (v3.7.1)`.
 
-    R1 P2 + R2 P2 closure: any heading-level same-title duplicate is
-    rejected. The canonical form is H2 (`## Two-Layer Citation Emission
-    (v3.7.1)`). H3/H4 same-title additions are duplicates that previously
-    slipped past because the `_extract_two_layer_block` slice ends at the
-    next H1/H2/H3 line, so an H3 same-title heading immediately after the
-    canonical H2 sat OUTSIDE the scanned block and could carry contradictory
-    instructions silently. Counting ALL same-title headings (H2 + H3 etc.)
-    closes that gap.
+    R1 P2 + R2 P2 + R3 P1-A closure: counts H1–H6 exact AND drift
+    (trailing-text-bearing) titles as duplicates. The canonical form is
+    H2 (`## Two-Layer Citation Emission (v3.7.1)`); any other heading
+    that begins the same title but at a different level or with extra
+    trailing text is a contradiction-vector.
 
     The canonical-block-presence check (`_extract_two_layer_block`) still
-    requires the FIRST canonical heading to be H2 — see that function's
+    requires the FIRST canonical EXACT-title H2 — see that function's
     docstring.
     """
-    return [m.start() for m in _TWO_LAYER_TITLE_RE.finditer(text)]
+    positions: list[int] = []
+    for m in _TWO_LAYER_TITLE_DRIFT_RE.finditer(text):
+        # Trailing text after the title must be stripped; a string of
+        # whitespace is fine, but anything else marks a drift heading.
+        trailing = m.group("trailing")
+        if trailing.strip() == "":
+            positions.append(m.start())
+        else:
+            # Drift heading: report the position too. `_check_block_count`
+            # relies on the count comparison; presence of drift implies >1.
+            positions.append(m.start())
+    return positions
+
+
+def _find_drift_titles(text: str) -> list[tuple[int, str]]:
+    """Return (position, full_heading_line) of headings that begin with the
+    canonical title but carry trailing non-whitespace text (e.g.
+    `## Two-Layer Citation Emission (v3.7.1) — extended`).
+
+    Used by the duplicate check to emit a more specific failure message
+    when a drift heading is detected (R3 P1-A closure).
+    """
+    drifts: list[tuple[int, str]] = []
+    for m in _TWO_LAYER_TITLE_DRIFT_RE.finditer(text):
+        trailing = m.group("trailing")
+        if trailing.strip() != "":
+            line = text[m.start(): m.end()]
+            drifts.append((m.start(), line))
+    return drifts
 
 
 def _find_canonical_h2_position(text: str) -> int | None:
-    """Return the position of the FIRST canonical H2 (`## Two-Layer ...`)
-    heading, or None if no exact-H2 match exists.
+    """Return the position of the FIRST canonical EXACT-title H2
+    (`## Two-Layer Citation Emission (v3.7.1)`), or None if no exact-H2
+    match exists.
 
     Used by `_extract_two_layer_block` so the per-block invariants run
-    against the canonical (H2) instance even when same-title duplicates
-    of other heading levels precede it.
+    against the canonical (H2 EXACT) instance even when same-title
+    duplicates of other heading levels or drift trailing text exist.
     """
-    for m in _TWO_LAYER_TITLE_RE.finditer(text):
+    for m in _TWO_LAYER_TITLE_EXACT_RE.finditer(text):
         if m.group("level") == "##":
             return m.start()
     return None
@@ -670,11 +716,26 @@ def check_step3a_invariants(verbose: bool = True) -> int:
             )
             continue
         text = agent_path.read_text(encoding="utf-8")
-        # R1 P2 closure: require exactly one canonical block per manifest
-        # file; duplicates risk contradictory instructions that pre-R1 logic
-        # silently ignored.
+        # R1 P2 + R2 P2 + R3 P1-A closure: require exactly one canonical
+        # block per manifest file. Counts EXACT and DRIFT (trailing-text)
+        # titles at any heading level; drift titles get a dedicated
+        # diagnostic so contributors don't waste time looking for "what
+        # got duplicated".
         positions = _find_all_two_layer_block_positions(text)
-        if len(positions) > 1:
+        drifts = _find_drift_titles(text)
+        if drifts:
+            for _, drift_line in drifts:
+                failures.append(
+                    f"  [{rel}] FAIL: heading-drift detected: "
+                    f"{drift_line.strip()!r}. Any heading whose title begins "
+                    f"with 'Two-Layer Citation Emission (v3.7.1)' but carries "
+                    f"trailing text is a duplicate-by-drift — its body sits "
+                    f"outside the canonical block scan range and could carry "
+                    f"contradictory instructions. Rename or remove."
+                )
+        if len(positions) > 1 and not drifts:
+            # Multiple exact-title headings (no drift suffix). The drift
+            # branch above already covers the drift case with a clearer msg.
             failures.append(
                 f"  [{rel}] FAIL: {len(positions)} canonical "
                 f"'{TWO_LAYER_BLOCK_HEADING}' headings found; exactly one "

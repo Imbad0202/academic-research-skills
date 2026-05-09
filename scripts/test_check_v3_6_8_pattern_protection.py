@@ -1032,6 +1032,98 @@ def test_step3a_h3_same_title_duplicate_rejected() -> None:
         )
 
 
+def test_step3a_invariant_ii_plural_finalizers_caught() -> None:
+    """R3 P1-B closure: `finalizers` (plural) must be caught."""
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        _inject_into_block_body(
+            target,
+            "\nThe finalizers will resolve markers downstream.\n",
+        )
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "finalizer" in result.stdout.lower() or "partial-inversion" in result.stdout.lower()
+
+
+def test_step3a_invariant_ii_plural_orchestrators_caught() -> None:
+    """R3 P1-B closure: `orchestrators` (plural) must be caught."""
+    target = _agent_path("academic-paper/agents/draft_writer_agent.md")
+    with _Snapshot(target):
+        _inject_into_block_body(
+            target,
+            "\nMultiple orchestrators dispatch the next stage.\n",
+        )
+        result = _run_lint()
+        assert result.returncode == 1
+
+
+def test_step3a_invariant_ii_plural_resolvers_caught() -> None:
+    """R3 P1-B closure: `resolvers` (plural) must be caught."""
+    target = _agent_path("deep-research/agents/report_compiler_agent.md")
+    with _Snapshot(target):
+        _inject_into_block_body(
+            target,
+            "\nThe resolvers process this output.\n",
+        )
+        result = _run_lint()
+        assert result.returncode == 1
+
+
+def test_step3a_invariant_iii_function_call_read_frontmatter_caught() -> None:
+    """R3 P1-C closure: `read_frontmatter()` function-style call must be caught.
+
+    Python `\\b` treats `_` as a word char, so the bare `\\bread\\b` regex
+    did NOT match `read_frontmatter` (one token). R3 switches to
+    identifier-aware boundaries so `_` IS a boundary; the function name
+    is now caught.
+    """
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        _inject_into_block_body(
+            target,
+            "\nCall read_frontmatter() to discover the slug.\n",
+        )
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R3 P1-C: function-style `read_frontmatter()` must be flagged "
+            f"under invariant (iii); got rc={result.returncode}\n"
+            f"stdout:\n{result.stdout}"
+        )
+        assert "frontmatter" in result.stdout.lower() or "front" in result.stdout.lower()
+
+
+def test_step3a_heading_drift_with_trailing_text_rejected() -> None:
+    """R3 P1-A closure: a heading with trailing text after the canonical
+    title must be rejected as drift duplicate.
+
+    Pre-R3, `### Two-Layer Citation Emission (v3.7.1) — extended` slipped
+    past because:
+    1. The exact-title regex required `[ \\t]*$` EOL, so this drift
+       heading was NOT counted as a duplicate.
+    2. `_extract_two_layer_block` stops at the next H1/H2/H3, so the H3
+       drift heading sat OUTSIDE the canonical block range and any
+       forbidden text under it was invisible to per-block invariants.
+
+    R3 introduces a drift detector that catches headings whose title
+    BEGINS with the canonical title but has trailing non-whitespace.
+    """
+    target = _agent_path("academic-paper/agents/draft_writer_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        drift_block = (
+            "\n### Two-Layer Citation Emission (v3.7.1) — extended\n\n"
+            "The finalizer will resolve markers.\n"
+        )
+        target.write_text(text + drift_block, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R3 P1-A: heading drift `### Two-Layer ... — extended` must be "
+            f"rejected as duplicate-by-drift; got rc={result.returncode}\n"
+            f"stdout:\n{result.stdout}"
+        )
+        assert "drift" in result.stdout.lower() or "duplicate" in result.stdout.lower()
+
+
 def test_step3a_block_addition_does_not_break_v3_6_7_sha_gate() -> None:
     """Defense-in-depth: with Two-Layer Citation Emission blocks present in
     all three v3.6.7-protected files, the SHA gate must still pass.
