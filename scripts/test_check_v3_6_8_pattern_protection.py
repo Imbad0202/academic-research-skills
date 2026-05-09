@@ -140,29 +140,49 @@ def test_appending_new_h2_directly_after_eof_newline_passes() -> None:
         )
 
 
-def test_appending_new_h2_with_blank_line_separator_fails() -> None:
-    """Adding a blank-line separator before the new H2 → SHA mismatch.
+def test_inserting_blank_line_between_v367_and_step3a_blocks_fails() -> None:
+    """Inserting a blank line between the v3.6.7 PATTERN PROTECTION block and
+    the Step 3a Two-Layer Citation Emission block → SHA mismatch.
 
-    This is the dual of the test above: it pins the failure mode that
-    Step 3a's section-addition contract must avoid. If a contributor
-    accidentally adds `\\n\\n## New Section` (the natural Markdown idiom)
-    after the v3.6.7 block, the byte-equivalence gate catches it. Step 3a's
-    documentation will instruct contributors to elide the blank line for
-    EOF-terminating PATTERN PROTECTION blocks.
+    Pins the contract: the Step 3a block heading must directly follow the
+    v3.6.7 block's last byte (no blank-line separator), otherwise the
+    blank-line bytes get absorbed into the v3.6.7 extractor's range and
+    break byte-equivalence.
+
+    Step 3a populated the v3.6.7-protected files with a `## Two-Layer
+    Citation Emission (v3.7.1)` block immediately following the
+    `## PATTERN PROTECTION (v3.6.7)` block (no blank line). This test
+    inserts a single blank line at the boundary and asserts the SHA gate
+    catches it.
+
+    Pre-Step-3a, the v3.6.7 block ran to EOF; the analogous test was
+    `test_appending_new_h2_with_blank_line_separator_fails`. Step 3a's
+    arrival means the v3.6.7 block now ends at the Two-Layer heading line,
+    so the failure mode shifts from "blank line absorbed at EOF" to "blank
+    line absorbed at the boundary between two H2 sections" — same lint
+    behaviour, updated geometry.
     """
     with _Snapshot(TARGET_AGENT):
         text = TARGET_AGENT.read_text(encoding="utf-8")
-        # The natural Markdown idiom — blank line then H2 — must FAIL when
-        # the v3.6.7 block runs to EOF, because the blank line bytes get
-        # absorbed into the extractor's range.
-        appended = text + "\n## Two-Layer Citation Emission (v3.7.1 placeholder)\n\nbody\n"
-        TARGET_AGENT.write_text(appended, encoding="utf-8")
+        marker_step3a = "## Two-Layer Citation Emission (v3.7.1)"
+        idx = text.find(marker_step3a)
+        assert idx != -1, (
+            "fixture missing Step 3a block; cannot test boundary contract"
+        )
+        # Insert a single blank line right before the Step 3a heading.
+        # Pre-mutation: ...state.\n## Two-Layer...
+        # Post-mutation: ...state.\n\n## Two-Layer...
+        # The extra "\n" falls inside the v3.6.7 extractor's range
+        # (v3.6.7 block is text[v367_pos : step3a_heading_line_start]).
+        mutated = text[:idx] + "\n" + text[idx:]
+        TARGET_AGENT.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1, (
-            "Adding a blank-line separator before the new H2 must trigger "
-            "SHA mismatch (the blank line bytes fall inside the EOF-terminating "
-            "extractor range). If this test fails, the contract for Step 3a "
-            "section additions has weakened and v3.7.1 boundary rule is at risk."
+            "Inserting a blank line between v3.6.7 and Step 3a blocks must "
+            "trigger SHA mismatch (the blank line bytes fall inside the "
+            "v3.6.7 extractor range). If this test fails, the contract for "
+            "Step 3a's no-blank-line boundary has weakened and v3.7.1 "
+            "boundary rule is at risk."
         )
         assert "BYTE-EQUIVALENCE FAIL" in result.stdout
 
@@ -565,3 +585,224 @@ def test_sha256_helper_matches_hashlib() -> None:
     import hashlib
     from scripts.check_v3_6_8_pattern_protection import _sha256
     assert _sha256(b"abc") == hashlib.sha256(b"abc").hexdigest()
+
+
+# =============================================================================
+# Step 3a — Two-Layer Citation Emission invariant tests (v3.7.1)
+# =============================================================================
+#
+# Spec § Step 3a (line 439): the v3.7.1 lint enforces three invariants on the
+# Two-Layer Citation Emission prompt block in each manifest-listed agent:
+#   (i)   two-layer form regex on emitted citations in agent test fixtures
+#   (ii)  absence of "finalizer / orchestrator / stage gate" prose inside the
+#         Two-Layer Citation Emission prompt blocks
+#   (iii) absence of any frontmatter-read instruction in those blocks
+#
+# Manifest after Step 3a populates:
+#   - deep-research/agents/synthesis_agent.md
+#   - academic-paper/agents/draft_writer_agent.md
+#   - deep-research/agents/report_compiler_agent.md
+#
+# The block is added OUTSIDE the v3.6.7 PATTERN PROTECTION block (boundary
+# rule), with no blank-line separator on EOF-terminating files (per the
+# `test_appending_new_h2_directly_after_eof_newline_passes` contract).
+
+TWO_LAYER_BLOCK_MARKER = "## Two-Layer Citation Emission (v3.7.1)"
+
+STEP3A_AGENT_PATHS = [
+    "deep-research/agents/synthesis_agent.md",
+    "academic-paper/agents/draft_writer_agent.md",
+    "deep-research/agents/report_compiler_agent.md",
+]
+
+
+def _agent_path(rel: str) -> Path:
+    return REPO_ROOT / rel
+
+
+def test_step3a_each_manifest_agent_carries_two_layer_block() -> None:
+    """All three Step 3a manifest agents must carry the canonical block heading."""
+    for rel in STEP3A_AGENT_PATHS:
+        text = _agent_path(rel).read_text(encoding="utf-8")
+        assert TWO_LAYER_BLOCK_MARKER in text, (
+            f"{rel} missing '{TWO_LAYER_BLOCK_MARKER}' heading; Step 3a "
+            f"requires every manifest-listed agent to carry the prompt block"
+        )
+
+
+def test_step3a_lint_passes_on_clean_tree() -> None:
+    """Clean tree (after Step 3a populates) → lint passes invariants AND SHA gate."""
+    result = _run_lint()
+    assert result.returncode == 0, (
+        f"Step 3a invariants must pass on clean tree.\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    # Both layers exercised: SHA gate (existing) + Step 3a invariants (new).
+    assert "PASSED" in result.stdout
+    # Step 3a lint must report each manifest file by name.
+    for rel in STEP3A_AGENT_PATHS:
+        agent_basename = Path(rel).name
+        assert agent_basename in result.stdout, (
+            f"Step 3a lint output must mention {agent_basename}; got:\n{result.stdout}"
+        )
+
+
+def test_step3a_v3_6_8_manifest_lists_three_agents() -> None:
+    """v3.6.8 inversion manifest 'files' list must populate with the 3 agent paths."""
+    data = json.loads(V3_6_8_MANIFEST.read_text(encoding="utf-8"))
+    assert data["scope"] == "v3.6.8-only"
+    files = data["files"]
+    for rel in STEP3A_AGENT_PATHS:
+        assert rel in files, (
+            f"v3.6.8 manifest 'files' must contain {rel} after Step 3a populates"
+        )
+
+
+def test_step3a_invariant_i_two_layer_form_required() -> None:
+    """Invariant (i): block must specify the two-layer form including the
+    `<!--ref:slug-->` HTML comment and `<author-year>` visible form.
+
+    Removing the `<!--ref:` token from the block must make the lint fail.
+    """
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        # Replace every `<!--ref:` literal inside the block scope with a
+        # placeholder that doesn't carry the two-layer form contract.
+        # Find block scope first so we don't accidentally mutate prose
+        # outside the block.
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1, "fixture missing two-layer block (test vacuous)"
+        # Block ends at next H1/H2/H3 or EOF.
+        import re as _re
+        next_h_re = _re.compile(r"(?m)^[ \t]*#{1,3}[ \t]+")
+        next_h = next_h_re.search(text, block_pos + len(TWO_LAYER_BLOCK_MARKER))
+        block_end = next_h.start() if next_h else len(text)
+        block_scope = text[block_pos:block_end]
+        # Mutate: drop every `<!--ref:` literal in the block.
+        mutated_scope = block_scope.replace("<!--ref:", "<!--XXXX:")
+        assert mutated_scope != block_scope, (
+            "block must contain at least one `<!--ref:` literal (invariant i)"
+        )
+        target.write_text(text[:block_pos] + mutated_scope + text[block_end:], encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Removing `<!--ref:` from the block must trigger invariant (i) "
+            f"failure; got rc={result.returncode}\nstdout:\n{result.stdout}"
+        )
+        assert "two-layer" in result.stdout.lower() or "<!--ref:" in result.stdout
+
+
+def test_step3a_invariant_ii_finalizer_mention_forbidden() -> None:
+    """Invariant (ii): block must NOT mention 'finalizer'.
+
+    Inserting the word 'finalizer' inside the block must make the lint fail
+    (strict partial-inversion: agent must not know about the resolver layer).
+    """
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        # Insert the forbidden word at end of marker line, still inside block.
+        nl = text.index("\n", block_pos)
+        mutated = text[: nl] + " (the finalizer will resolve these)" + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Inserting 'finalizer' inside the block must trigger invariant "
+            f"(ii) failure; got rc={result.returncode}\nstdout:\n{result.stdout}"
+        )
+        assert "finalizer" in result.stdout.lower() or "partial-inversion" in result.stdout.lower()
+
+
+def test_step3a_invariant_ii_orchestrator_mention_forbidden() -> None:
+    """Invariant (ii): block must NOT mention 'orchestrator'."""
+    target = _agent_path("academic-paper/agents/draft_writer_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        mutated = text[: nl] + " (the orchestrator dispatches the next stage)" + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "orchestrator" in result.stdout.lower() or "partial-inversion" in result.stdout.lower()
+
+
+def test_step3a_invariant_ii_stage_gate_mention_forbidden() -> None:
+    """Invariant (ii): block must NOT mention 'stage gate'."""
+    target = _agent_path("deep-research/agents/report_compiler_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        mutated = text[: nl] + " (the stage gate inspects this output)" + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "stage gate" in result.stdout.lower() or "partial-inversion" in result.stdout.lower()
+
+
+def test_step3a_invariant_iii_frontmatter_read_instruction_forbidden() -> None:
+    """Invariant (iii): block must NOT instruct the agent to read frontmatter."""
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        # Insert a frontmatter-read instruction.
+        mutated = (
+            text[: nl]
+            + "\n\nBefore emitting, read the entry frontmatter to look up the slug.\n"
+            + text[nl:]
+        )
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "A frontmatter-read instruction inside the block must trigger "
+            f"invariant (iii) failure; got rc={result.returncode}\nstdout:\n{result.stdout}"
+        )
+        assert "frontmatter" in result.stdout.lower()
+
+
+def test_step3a_block_missing_from_manifest_agent_fails() -> None:
+    """Removing the entire block from a manifest-listed agent → lint fails.
+
+    Mutates synthesis_agent by replacing the block heading with a non-marker
+    heading; lint must report block absence for that file.
+    """
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        assert TWO_LAYER_BLOCK_MARKER in text
+        # Replace marker so the block cannot be located.
+        mutated = text.replace(
+            TWO_LAYER_BLOCK_MARKER,
+            "## (former two-layer block heading)",
+            1,
+        )
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Block absence from manifest agent must hard-fail; "
+            f"got rc={result.returncode}\nstdout:\n{result.stdout}"
+        )
+        assert "Two-Layer Citation Emission" in result.stdout or "block missing" in result.stdout.lower()
+
+
+def test_step3a_block_addition_does_not_break_v3_6_7_sha_gate() -> None:
+    """Defense-in-depth: with Two-Layer Citation Emission blocks present in
+    all three v3.6.7-protected files, the SHA gate must still pass.
+
+    This is the existing `test_happy_path_passes_on_clean_tree` invariant
+    re-asserted under the post-Step-3a tree (the SHA gate hashes only the
+    v3.6.7 PATTERN PROTECTION block, not the appended Step 3a block).
+    """
+    result = _run_lint()
+    assert result.returncode == 0
+    # SHA gate must still report all 3 v3.6.7 files passing.
+    assert "[v3.7.1 SHA gate] PASSED" in result.stdout

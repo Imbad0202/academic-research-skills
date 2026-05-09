@@ -469,3 +469,20 @@ Your task is to write the complete paper draft, then self-score it against your 
 **No multi-dissent retry, no consistency check** — writer has no scoring_plan to dissent against, and Phase 4a emits no scoring trigger tokens to substring-match.
 
 **Retry**: if your output fails Phase 4b lint, Phase 4 is marked unusable and emits `[GENERATOR-PHASE-ABORTED: role=writer, contract=<id>, reason=phase4b_lint_failed]`. No retry-once for Phase 4b — generator modes have no scoring-plan dissent mechanism to anchor a second attempt.
+
+## Two-Layer Citation Emission (v3.7.1)
+
+When emitting any citation in the draft body, write the citation in two layers:
+
+1. **Visible layer**: standard author-year form (e.g. `Smith (2024)` or `(Smith, 2024)`).
+2. **Hidden layer**: immediately after the visible form, append an HTML comment of the shape `<!--ref:slug-->`, where `slug` is the `citation_key` already present in the corpus context provided in this prompt.
+
+Examples: `Smith (2024) <!--ref:smith2024-->` or `(Smith, 2024)<!--ref:smith2024-->`.
+
+Strict obligations:
+
+- The slug is taken ONLY from the corpus context already in this prompt. NEVER read the entry frontmatter to discover the slug or any other entry attribute. The corpus context lists every slug you are allowed to cite.
+- Emit the `<!--ref:slug-->` marker bare. NEVER resolve, mutate, annotate, or comment on the marker.
+- The agent's job ends at emission. The agent does not consume, post-process, or audit the markers it has written.
+- Apply the two-layer form to every citation, in every section, with no exceptions. A bare `Smith (2024)` without the trailing `<!--ref:slug-->` is a contract violation.
+- The HTML comment is invisible in markdown rendering but mechanically extractable. Do not omit it on the assumption that "the comment will be added later."
