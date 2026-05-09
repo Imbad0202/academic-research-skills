@@ -619,7 +619,7 @@ When `academic-pipeline` mode is active, the orchestrator runs the **Cite-Time P
 | `source_acquired` | `source_verified_against_original` | `human_read_source` | Resolution |
 |-------------------|-----------------------------------|---------------------|------------|
 | false             | —                                  | —                   | **HIGH WARN**: cite has no original source on file. Replace `<!--ref:slug-->` with `[UNVERIFIED CITATION — NO ORIGINAL]<!--ref:slug-->` |
-| true              | false                             | false               | **MED WARN**: PDF in repo but AI has not cross-checked. Replace with `[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]<!--ref:slug-->` |
+| true              | false                             | —                   | **MED WARN**: PDF in repo but AI has not cross-checked (regardless of whether the user has read it; AI verification is the gating condition). Replace with `[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]<!--ref:slug-->` |
 | true              | true                              | false               | **LOW WARN**: AI cross-checked, user has not. Replace with `<!--ref:slug LOW-WARN-->`; also append the slug to a per-section pre-finalization checklist artifact for the user. |
 | true              | true                              | true                | **OK**: replace with `<!--ref:slug ok-->` |
 

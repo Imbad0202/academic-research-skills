@@ -117,11 +117,21 @@ _REQUIRED_CLAUSES: list[tuple[str, str, str]] = [
         "Row 3 must also append the slug to a per-section "
         "pre-finalization checklist artifact (spec §3.3 line 178)",
     ),
+    # R3 P2-1 closure: bare `<!--ref:slug ok-->` appears in BOTH the
+    # matrix row and the LOW-WARN-promotion paragraph (and idempotency
+    # discussion). Anchor on the unique matrix-row phrase
+    # `**OK**: replace with` to disambiguate matrix-row drift.
     (
-        "matrix row 4 (OK)",
+        "matrix row 4 (OK) — resolved marker form",
         "<!--ref:slug ok-->",
         "Row 4 maps all-true triple → <!--ref:slug ok--> "
         "(spec §3.3 line 179)",
+    ),
+    (
+        "matrix row 4 (OK) — canonical row clause",
+        "**OK**: replace with",
+        "Row 4's canonical row clause is `**OK**: replace with "
+        "<!--ref:slug ok-->` (spec §3.3 line 179)",
     ),
     (
         "peer-file join reference",
@@ -142,6 +152,27 @@ _REQUIRED_CLAUSES: list[tuple[str, str, str]] = [
         "On revision loops the finalizer re-resolves any newly-emitted "
         "bare `<!--ref:slug-->` comments; resolved markers do not "
         "invalidate (spec §3.3 line 181 + Step 3b acceptance line 457)",
+    ),
+    # R3 P2-2 closure: R2 closed a P1 specifically about /ars-unmark-read
+    # rescind semantics (`ok` is NOT a fixed point; can be demoted). The
+    # bidirectional contract MUST stay in the prose; lint must enforce
+    # both the rescind affordance and demotion-language so future edits
+    # cannot silently drop them.
+    (
+        "rescind affordance clause",
+        "/ars-unmark-read",
+        "Spec §3.6 line 302 defines /ars-unmark-read as the rescind "
+        "affordance; the canonical block must mention it so demotion "
+        "semantics survive prose edits (R2 P1 closure)",
+    ),
+    # R3 P2-2: anchor on `demot` stem so both `demote` (verb) and
+    # `demotion` (noun) satisfy the clause.
+    (
+        "bidirectional matrix re-evaluation clause",
+        "demot",
+        "R2 P1 closure: the canonical block must explicitly describe "
+        "demotion (e.g. `ok` → `LOW-WARN` after /ars-unmark-read) so "
+        "the bidirectional contract survives prose edits",
     ),
 ]
 

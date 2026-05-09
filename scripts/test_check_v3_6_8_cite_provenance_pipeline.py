@@ -306,6 +306,104 @@ def test_low_warn_per_section_checklist_clause_missing_fails() -> None:
         )
 
 
+def test_ok_matrix_row_canonical_clause_drift_caught() -> None:
+    """R3 P2-1 closure: mutate ONLY the matrix-row's `**OK**: replace with`
+    canonical clause (leaving `<!--ref:slug ok-->` in the LOW-WARN-promotion
+    paragraph intact). Pre-R3 lint anchored only on bare `<!--ref:slug ok-->`,
+    so matrix-row drift was not detected when the promotion paragraph still
+    mentioned the marker.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "**OK**: replace with"
+        assert marker in text, "fixture missing OK matrix-row clause"
+        # Mutate ONLY the canonical clause; leave bare `<!--ref:slug ok-->`
+        # in the surrounding prose.
+        mutated = text.replace(marker, "OK: clear with")
+        # Sanity: bare `<!--ref:slug ok-->` must survive elsewhere in the
+        # block to prove R3 P2-1 (otherwise the test isn't proving its claim).
+        assert "<!--ref:slug ok-->" in mutated, (
+            "fixture invariant violated: promotion paragraph lost"
+        )
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R3 P2-1: matrix-row OK canonical clause drift must fail "
+            f"the lint; got rc={result.returncode}"
+        )
+
+
+def test_rescind_affordance_clause_missing_fails() -> None:
+    """R3 P2-2 closure: the canonical block must mention `/ars-unmark-read`
+    so the bidirectional rescind contract survives prose edits.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "/ars-unmark-read"
+        assert marker in text, "fixture missing /ars-unmark-read mention"
+        mutated = text.replace(marker, "/ars-rescind")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R3 P2-2: removing /ars-unmark-read must fail the lint"
+        )
+
+
+def test_demote_language_clause_missing_fails() -> None:
+    """R3 P2-2 closure: the canonical block must explicitly describe
+    demotion (e.g. `ok` → `LOW-WARN`). Anchor is the `demot` stem so
+    both `demote` and `demotion` count.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "demot"
+        assert marker in text, "fixture missing demot* language"
+        # Strip ALL occurrences (covers `demote`, `demotion`, `demoted`).
+        mutated = text.replace(marker, "REDACT")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R3 P2-2: removing demote/demotion language must fail the lint"
+        )
+
+
+def test_med_warn_row_wildcard_human_read_caught() -> None:
+    """R3 P1 closure: spec line 177 wrote `(true, false, false)` for MED
+    WARN, leaving `(true, false, true)` undefined. R3 changed the prompt
+    prose to use `—` (wildcard) for `human_read_source` in row 2 so the
+    matrix is total over the 8 input combinations. The MED WARN canonical
+    phrase `UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED` is unchanged;
+    this test pins that the MED WARN row's third column carries `—`
+    rather than `false` (or any non-wildcard token), so the totality
+    contract is enforced at the prose level.
+    """
+    text = TARGET.read_text(encoding="utf-8")
+    # The MED WARN row in the canonical block has the phrase
+    # `UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED`. Locate that
+    # phrase, walk back to the start of its table row, and assert the
+    # third column is `—` (em-dash) and not any other token.
+    import re as _re
+    # Find the MED-WARN row by anchor on its unique phrase.
+    pos = text.find("UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED")
+    assert pos != -1, "fixture missing MED WARN phrase"
+    # Walk back to the line start.
+    line_start = text.rfind("\n", 0, pos) + 1
+    line_end = text.index("\n", pos)
+    row = text[line_start:line_end]
+    # Row format: `| true              | false                             | <COL3>               | **MED WARN**: ...`
+    # Split by `|` and find columns.
+    parts = [p.strip() for p in row.split("|")]
+    # parts[0]='', parts[1]='true', parts[2]='false', parts[3]=col3, parts[4]=resolution
+    assert len(parts) >= 5, f"expected ≥5 |-delimited parts in MED row, got {parts}"
+    col3 = parts[3]
+    assert col3 == "—", (
+        f"R3 P1: MED WARN row's `human_read_source` column must be `—` "
+        f"(wildcard) so the matrix is total over the 8 input combinations; "
+        f"got {col3!r}. Spec line 177 wrote `false` but that leaves "
+        f"`(true, false, true)` undefined — the wildcard fix is intentional."
+    )
+
+
 def test_low_warn_promotion_paragraph_alone_does_not_satisfy_matrix_row() -> None:
     """R2 P2 closure: prove the matrix-row-only mutation does NOT
     accidentally pass when the promotion paragraph still mentions
