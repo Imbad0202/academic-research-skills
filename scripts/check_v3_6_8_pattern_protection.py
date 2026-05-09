@@ -443,20 +443,29 @@ def _load_v3_6_8_manifest() -> tuple[dict | None, str | None]:
 
 TWO_LAYER_BLOCK_HEADING = "## Two-Layer Citation Emission (v3.7.1)"
 
-# Invariant (ii): forbidden terms (case-insensitive substring; word-boundary
-# avoids matching legitimate prose tokens that happen to share a substring).
+# Invariant (ii): forbidden terms.
+#
+# R2 P1-B closure: Python `\b` treats `_` as a word character. That means
+# `\bfinalizer\b` does NOT match `cite_provenance_finalizer_agent` (the agent
+# name introduced by Step 3c). Step 3a must reject those exact identifiers
+# because the spec explicitly forbids naming the downstream resolver layer.
+# Use identifier-aware boundaries `(?<![A-Za-z0-9])` / `(?![A-Za-z0-9])`
+# instead of `\b` so underscores DO act as a boundary; this catches both
+# bare `finalizer` and `cite_provenance_finalizer_agent` substring matches.
+_NON_IDENT_BEFORE = r"(?<![A-Za-z0-9])"
+_NON_IDENT_AFTER = r"(?![A-Za-z0-9])"
 _FORBIDDEN_RESOLVER_TERMS = (
-    re.compile(r"\bfinalizer\b", re.IGNORECASE),
-    re.compile(r"\borchestrator\b", re.IGNORECASE),
-    re.compile(r"\bstage[\s-]?gate\b", re.IGNORECASE),
-    re.compile(r"\bterminal[\s-]?gate\b", re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"finalizer" + _NON_IDENT_AFTER, re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"orchestrator" + _NON_IDENT_AFTER, re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"stage[\s\-_]?gate" + _NON_IDENT_AFTER, re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"terminal[\s\-_]?gate" + _NON_IDENT_AFTER, re.IGNORECASE),
     # The block instructs the agent to NOT resolve markers; saying so is
     # legitimate self-knowledge ("emit bare; do not resolve"). It is the
     # MENTION of who DOES resolve that breaks partial-inversion. The token
     # "resolver" referring to a downstream entity is forbidden, but the verb
     # "resolve" used negatively ("never resolve") is allowed — handled by
     # forbidding only the "resolver" noun, not the verb.
-    re.compile(r"\bresolver\b", re.IGNORECASE),
+    re.compile(_NON_IDENT_BEFORE + r"resolver" + _NON_IDENT_AFTER, re.IGNORECASE),
 )
 
 # Invariant (iii): a frontmatter-read instruction is any imperative or
@@ -513,7 +522,14 @@ _FRONTMATTER_NEGATION_TOKENS_RE = re.compile(
 _FRONTMATTER_NEGATION_WINDOW = 30
 
 
-_SENTENCE_TERMINATOR_RE = re.compile(r"[.;!?]\s|[.;!?]$|\n\s*\n")
+# R2 P1-A closure: `\n- ` (bullet boundary) is a clause boundary in
+# Markdown prose. Without this, `- NEVER omit markers\n- read the entry
+# frontmatter` lets `NEVER` (in the previous bullet) leak into the
+# next-bullet's negation window. Treat the bullet boundary as a hard
+# clause terminator alongside `.` / `;` / `!` / `?` and blank lines.
+_SENTENCE_TERMINATOR_RE = re.compile(
+    r"[.;!?]\s|[.;!?]$|\n\s*\n|\n[ \t]*[-*+][ \t]+|\n[ \t]*\d+\.[ \t]+"
+)
 
 
 def _negation_anchored_to_verb(block: str, verb_pos: int) -> bool:
@@ -544,49 +560,61 @@ def _negation_anchored_to_verb(block: str, verb_pos: int) -> bool:
     return _FRONTMATTER_NEGATION_TOKENS_RE.search(window) is not None
 
 
-def _find_all_two_layer_block_positions(text: str) -> list[int]:
-    """Return list of line-anchored positions of the canonical Two-Layer
-    heading. Excludes prose mentions (heading must start at a line and have
-    `## ` at column 0 / after indent).
+_TWO_LAYER_TITLE_RE = re.compile(
+    r"(?m)^[ \t]*(?P<level>#{1,6})[ \t]+Two-Layer Citation Emission \(v3\.7\.1\)[ \t]*$"
+)
 
-    R1 P2 closure: a contributor (or attacker) could append a duplicate
-    `## Two-Layer Citation Emission (v3.7.1)` block later in the file with
-    contradictory instructions; pre-R1 logic only inspected the first
-    occurrence. This helper enumerates ALL canonical block positions so
-    the lint can require exactly one per manifest file.
+
+def _find_all_two_layer_block_positions(text: str) -> list[int]:
+    """Return list of line-anchored positions of any heading whose title is
+    `Two-Layer Citation Emission (v3.7.1)`, regardless of heading level.
+
+    R1 P2 + R2 P2 closure: any heading-level same-title duplicate is
+    rejected. The canonical form is H2 (`## Two-Layer Citation Emission
+    (v3.7.1)`). H3/H4 same-title additions are duplicates that previously
+    slipped past because the `_extract_two_layer_block` slice ends at the
+    next H1/H2/H3 line, so an H3 same-title heading immediately after the
+    canonical H2 sat OUTSIDE the scanned block and could carry contradictory
+    instructions silently. Counting ALL same-title headings (H2 + H3 etc.)
+    closes that gap.
+
+    The canonical-block-presence check (`_extract_two_layer_block`) still
+    requires the FIRST canonical heading to be H2 — see that function's
+    docstring.
     """
-    positions: list[int] = []
-    start = 0
-    while True:
-        pos = text.find(TWO_LAYER_BLOCK_HEADING, start)
-        if pos == -1:
-            break
-        line_start = text.rfind("\n", 0, pos) + 1
-        # Only count positions where the heading is line-anchored (no
-        # non-whitespace prefix on the same line).
-        if not text[line_start:pos].strip():
-            positions.append(line_start)
-        start = pos + len(TWO_LAYER_BLOCK_HEADING)
-    return positions
+    return [m.start() for m in _TWO_LAYER_TITLE_RE.finditer(text)]
+
+
+def _find_canonical_h2_position(text: str) -> int | None:
+    """Return the position of the FIRST canonical H2 (`## Two-Layer ...`)
+    heading, or None if no exact-H2 match exists.
+
+    Used by `_extract_two_layer_block` so the per-block invariants run
+    against the canonical (H2) instance even when same-title duplicates
+    of other heading levels precede it.
+    """
+    for m in _TWO_LAYER_TITLE_RE.finditer(text):
+        if m.group("level") == "##":
+            return m.start()
+    return None
 
 
 def _extract_two_layer_block(text: str) -> tuple[str | None, int | None, int | None]:
     """Return (block_text, start_offset, end_offset) for the FIRST canonical
-    Two-Layer block in the file, or (None, None, None) if no line-anchored
-    occurrence exists.
+    H2 Two-Layer block in the file, or (None, None, None) if no canonical
+    H2 instance exists.
 
     Block start: line containing the canonical H2 heading. Block end: next
     H1/H2/H3 heading line, or EOF. The returned text INCLUDES the heading
     line and ends just before the terminator.
 
-    Duplicate detection uses `_find_all_two_layer_block_positions`; this
-    function intentionally returns the first occurrence so the per-block
-    invariants can run; duplicates are flagged separately by the caller.
+    Same-title duplicates at other heading levels (H3, H4, etc.) are
+    enumerated separately via `_find_all_two_layer_block_positions` and
+    flagged by the duplicate-count check.
     """
-    positions = _find_all_two_layer_block_positions(text)
-    if not positions:
+    line_start = _find_canonical_h2_position(text)
+    if line_start is None:
         return None, None, None
-    line_start = positions[0]
     next_h_re = re.compile(r"(?m)^[ \t]*#{1,3}[ \t]+")
     # Find heading text length so search starts after it.
     head_eol = text.find("\n", line_start + len(TWO_LAYER_BLOCK_HEADING))

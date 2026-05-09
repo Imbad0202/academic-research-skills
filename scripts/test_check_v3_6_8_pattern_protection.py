@@ -693,21 +693,39 @@ def test_step3a_invariant_i_two_layer_form_required() -> None:
         assert "two-layer" in result.stdout.lower() or "<!--ref:" in result.stdout
 
 
-def test_step3a_invariant_ii_finalizer_mention_forbidden() -> None:
-    """Invariant (ii): block must NOT mention 'finalizer'.
+def _inject_into_block_body(target: Path, injection: str) -> None:
+    """Inject `injection` into the body of the Two-Layer block (after the
+    heading line), not into the heading line itself.
 
-    Inserting the word 'finalizer' inside the block must make the lint fail
-    (strict partial-inversion: agent must not know about the resolver layer).
+    R2 P2 closure tightened the canonical-heading regex to require a clean
+    EOL anchor; mutations that appended text on the heading line caused the
+    heading to no longer match the canonical form (so the block was reported
+    "missing" instead of the intended "invariant violated"). This helper
+    targets the BODY of the block, which is the right place for the
+    invariant-ii / -iii mutations.
+    """
+    text = target.read_text(encoding="utf-8")
+    block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+    assert block_pos != -1, (
+        f"fixture missing two-layer block in {target.name}"
+    )
+    eol = text.index("\n", block_pos)
+    target.write_text(text[: eol + 1] + injection + text[eol + 1:], encoding="utf-8")
+
+
+def test_step3a_invariant_ii_finalizer_mention_forbidden() -> None:
+    """Invariant (ii): block body must NOT mention 'finalizer'.
+
+    Inserting the word 'finalizer' inside the block body (not the heading
+    line) must make the lint fail (strict partial-inversion: agent must
+    not know about the resolver layer).
     """
     target = _agent_path("deep-research/agents/synthesis_agent.md")
     with _Snapshot(target):
-        text = target.read_text(encoding="utf-8")
-        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
-        assert block_pos != -1
-        # Insert the forbidden word at end of marker line, still inside block.
-        nl = text.index("\n", block_pos)
-        mutated = text[: nl] + " (the finalizer will resolve these)" + text[nl:]
-        target.write_text(mutated, encoding="utf-8")
+        _inject_into_block_body(
+            target,
+            "\nThe finalizer will resolve these markers downstream.\n",
+        )
         result = _run_lint()
         assert result.returncode == 1, (
             "Inserting 'finalizer' inside the block must trigger invariant "
@@ -717,30 +735,26 @@ def test_step3a_invariant_ii_finalizer_mention_forbidden() -> None:
 
 
 def test_step3a_invariant_ii_orchestrator_mention_forbidden() -> None:
-    """Invariant (ii): block must NOT mention 'orchestrator'."""
+    """Invariant (ii): block body must NOT mention 'orchestrator'."""
     target = _agent_path("academic-paper/agents/draft_writer_agent.md")
     with _Snapshot(target):
-        text = target.read_text(encoding="utf-8")
-        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
-        assert block_pos != -1
-        nl = text.index("\n", block_pos)
-        mutated = text[: nl] + " (the orchestrator dispatches the next stage)" + text[nl:]
-        target.write_text(mutated, encoding="utf-8")
+        _inject_into_block_body(
+            target,
+            "\nThe orchestrator dispatches the next stage of the pipeline.\n",
+        )
         result = _run_lint()
         assert result.returncode == 1
         assert "orchestrator" in result.stdout.lower() or "partial-inversion" in result.stdout.lower()
 
 
 def test_step3a_invariant_ii_stage_gate_mention_forbidden() -> None:
-    """Invariant (ii): block must NOT mention 'stage gate'."""
+    """Invariant (ii): block body must NOT mention 'stage gate'."""
     target = _agent_path("deep-research/agents/report_compiler_agent.md")
     with _Snapshot(target):
-        text = target.read_text(encoding="utf-8")
-        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
-        assert block_pos != -1
-        nl = text.index("\n", block_pos)
-        mutated = text[: nl] + " (the stage gate inspects this output)" + text[nl:]
-        target.write_text(mutated, encoding="utf-8")
+        _inject_into_block_body(
+            target,
+            "\nThe stage gate inspects this output before publication.\n",
+        )
         result = _run_lint()
         assert result.returncode == 1
         assert "stage gate" in result.stdout.lower() or "partial-inversion" in result.stdout.lower()
@@ -913,6 +927,109 @@ def test_step3a_duplicate_block_rejected() -> None:
             "must be rejected"
         )
         assert "exactly one" in result.stdout.lower() or "duplicate" in result.stdout.lower() or "headings found" in result.stdout.lower()
+
+
+def test_step3a_invariant_iii_bullet_boundary_is_clause_terminator() -> None:
+    """R2 P1-A closure: a `\\n- ` bullet boundary must act as a clause
+    terminator so `NEVER` in the previous bullet does not bless a positive
+    `read frontmatter` instruction in the next bullet.
+
+    Pre-R2: bullets were not terminators; `- NEVER omit markers\\n- read the
+    entry frontmatter` slipped past because `NEVER` sat in the 30-char
+    left window.
+    """
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        # Two adjacent bullets, no period, `NEVER` in bullet 1 leaks into
+        # bullet 2's left window pre-R2 (≤30 chars from `read`).
+        injection = (
+            "\n\n- NEVER skip\n"
+            "- read the entry frontmatter to find the slug\n"
+        )
+        mutated = text[: nl] + injection + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R2 P1-A: bullet boundary must terminate the negation window; "
+            "got rc=" + str(result.returncode) + "\nstdout:\n" + result.stdout
+        )
+
+
+def test_step3a_invariant_ii_finalizer_agent_substring_caught() -> None:
+    """R2 P1-B closure: `cite_provenance_finalizer_agent` must be caught.
+
+    Python `\\b` treats `_` as a word char, so `\\bfinalizer\\b` does NOT
+    match the agent identifier introduced by Step 3c. R2 switches to
+    identifier-aware boundaries `(?<![A-Za-z0-9])` / `(?![A-Za-z0-9])`
+    which DO treat `_` as a word boundary, catching this attack surface.
+    """
+    target = _agent_path("deep-research/agents/synthesis_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        injection = (
+            "\n\nThe markers are consumed by cite_provenance_finalizer_agent "
+            "downstream.\n"
+        )
+        mutated = text[: nl] + injection + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R2 P1-B: `cite_provenance_finalizer_agent` must be flagged "
+            "(identifier-aware boundary, underscore as boundary)"
+        )
+        assert "finalizer" in result.stdout.lower() or "partial-inversion" in result.stdout.lower()
+
+
+def test_step3a_invariant_ii_terminal_gate_agent_substring_caught() -> None:
+    """R2 P1-B closure: `cite_provenance_terminal_gate_agent` must be caught."""
+    target = _agent_path("academic-paper/agents/draft_writer_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        block_pos = text.find(TWO_LAYER_BLOCK_MARKER)
+        assert block_pos != -1
+        nl = text.index("\n", block_pos)
+        injection = (
+            "\n\nThe `cite_provenance_terminal_gate_agent` will inspect "
+            "this output before publication.\n"
+        )
+        mutated = text[: nl] + injection + text[nl:]
+        target.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R2 P1-B: `cite_provenance_terminal_gate_agent` must be flagged"
+        )
+
+
+def test_step3a_h3_same_title_duplicate_rejected() -> None:
+    """R2 P2 closure: an H3 same-title heading is a duplicate and must
+    be rejected. Pre-R2 this slipped past because `_extract_two_layer_block`
+    stops at H3 headings (the H3 same-title sat outside the canonical block
+    scan range and could carry contradictory instructions).
+    """
+    target = _agent_path("deep-research/agents/report_compiler_agent.md")
+    with _Snapshot(target):
+        text = target.read_text(encoding="utf-8")
+        # Append an H3 same-title heading at EOF.
+        duplicate_h3 = (
+            "\n### Two-Layer Citation Emission (v3.7.1)\n\n"
+            "duplicate body — H3 typo or attack\n"
+        )
+        target.write_text(text + duplicate_h3, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R2 P2: H3 same-title heading must be rejected as a duplicate"
+        )
+        assert (
+            "headings found" in result.stdout.lower()
+            or "exactly one" in result.stdout.lower()
+        )
 
 
 def test_step3a_block_addition_does_not_break_v3_6_7_sha_gate() -> None:
