@@ -278,14 +278,59 @@ def test_low_warn_matrix_drift_with_promotion_paragraph_intact_fails() -> None:
 
 
 def test_low_warn_per_section_checklist_clause_missing_fails() -> None:
-    """R1 P2-1 closure: removing the `per-section` checklist phrase
-    from the LOW-WARN matrix row's resolution must FAIL.
+    """R1 P2-1 + R2 P2 closure: removing the matrix-row-unique phrase
+    `per-section pre-finalization checklist` must FAIL the lint.
+
+    R2 P2 closure: the bare `per-section` substring appears in BOTH the
+    matrix row AND the LOW-WARN-promotion paragraph (`per-section
+    checklist artifact`). The R2 anchor uses the fuller canonical phrase
+    that is unique to the matrix row, so mutating ONLY the matrix-row
+    occurrence (leaving the promotion paragraph intact) is sufficient
+    to make the lint fail.
     """
     with _Snapshot(TARGET):
         text = TARGET.read_text(encoding="utf-8")
-        marker = "per-section"
-        assert marker in text, "fixture missing per-section phrase"
-        mutated = text.replace(marker, "global")
+        marker = "per-section pre-finalization checklist"
+        assert marker in text, "fixture missing matrix-row checklist phrase"
+        # Mutate the FULL phrase so the matrix row no longer carries the
+        # canonical clause; the promotion paragraph's `per-section
+        # checklist artifact` (no `pre-finalization`) is left intact, so
+        # if the lint anchored on bare `per-section` the test would
+        # pre-R2 false-pass.
+        mutated = text.replace(marker, "global checklist")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "R2 P2: matrix-row-only `per-section pre-finalization "
+            "checklist` mutation must fail the lint"
+        )
+
+
+def test_low_warn_promotion_paragraph_alone_does_not_satisfy_matrix_row() -> None:
+    """R2 P2 closure: prove the matrix-row-only mutation does NOT
+    accidentally pass when the promotion paragraph still mentions
+    `per-section` (without `pre-finalization`).
+
+    Mutates the matrix row's full anchor phrase but leaves the
+    promotion paragraph's bare `per-section` reference intact. This
+    pins the canonical phrase as the sole matrix-row anchor.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        # Confirm both occurrences exist before mutation.
+        assert "per-section pre-finalization checklist" in text
+        # Strip ONLY the full phrase; bare `per-section` in the
+        # promotion paragraph (`per-section checklist artifact`) stays.
+        mutated = text.replace(
+            "per-section pre-finalization checklist",
+            "global checklist",
+        )
+        # Sanity: the promotion paragraph's `per-section` reference must
+        # survive the mutation (otherwise the test isn't proving what
+        # it claims).
+        assert "per-section checklist" in mutated, (
+            "fixture invariant violated: promotion paragraph lost"
+        )
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1

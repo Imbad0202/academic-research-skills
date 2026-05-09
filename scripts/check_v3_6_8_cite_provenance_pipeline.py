@@ -106,9 +106,14 @@ _REQUIRED_CLAUSES: list[tuple[str, str, str]] = [
         "Row 3 maps (acquired=true, verified=true, human=false) → "
         "<!--ref:slug LOW-WARN--> (spec §3.3 line 178)",
     ),
+    # R2 P2 closure: `per-section` alone appears in BOTH the matrix row
+    # and the LOW-WARN-promotion paragraph (twice in the canonical block),
+    # so anchoring on the bare token doesn't actually catch matrix-row
+    # drift. Anchor on the FULL canonical phrase that is unique to the
+    # matrix row's checklist-append clause.
     (
         "matrix row 3 (LOW WARN) — checklist append clause",
-        "per-section",
+        "per-section pre-finalization checklist",
         "Row 3 must also append the slug to a per-section "
         "pre-finalization checklist artifact (spec §3.3 line 178)",
     ),
