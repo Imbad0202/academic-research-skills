@@ -46,6 +46,14 @@ BASELINE_LINE_COUNT = 579
 # baseline. The ~50-line decision-policy summary plus 5–10 lines of headroom.
 LINE_BUDGET_OVER_BASELINE = 60
 
+# v3.7.1 Step 3b additionally ships the `## Cite-Time Provenance Finalizer
+# (v3.7.1)` subsection per spec § Step 3b (line 449). The subsection adds
+# the §3.3 4-cell matrix + idempotency + revision-loop preservation +
+# peer-file join semantics. Measured at first-write: 35 content lines
+# (heading + matrix rows + bullets) + horizontal rule + paragraph breaks.
+# Budget includes 5 lines of headroom for codex-round prose adjustments.
+LINE_BUDGET_V3_7_1_STEP_3B = 40
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -172,11 +180,18 @@ class Phase66HardRulesTest(unittest.TestCase):
 
 
 class Phase66LineBudgetTest(unittest.TestCase):
-    """Test 4 — Prompt size within +60 line budget over pre-Step-6 baseline.
+    """Test 4 — Prompt size within layered line budgets.
 
     Per spec §10 Phase 6.6 verification gate: orchestrator prompt is no
     more than +60 lines vs pre-Step-6 baseline (R3 budget — the ~50-line
     decision-policy summary plus 5–10 lines of headroom).
+
+    v3.7.1 Step 3b layers an additional +40 line budget for the
+    `## Cite-Time Provenance Finalizer (v3.7.1)` subsection (4-cell matrix
+    + idempotency + revision-loop preservation + peer-file join). This is
+    a separate spec contract (different design doc, different gate) and
+    so layers additively over the v3.6.7 Phase 6.6 budget rather than
+    consuming it.
 
     Baseline is BASELINE_LINE_COUNT (579 lines from main commit 02b87ae).
     """
@@ -184,16 +199,21 @@ class Phase66LineBudgetTest(unittest.TestCase):
     def test_prompt_size_within_budget(self) -> None:
         text = _read_prompt()
         line_count = len(text.splitlines())
-        ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
+        ceiling = (
+            BASELINE_LINE_COUNT
+            + LINE_BUDGET_OVER_BASELINE
+            + LINE_BUDGET_V3_7_1_STEP_3B
+        )
         self.assertLessEqual(
             line_count,
             ceiling,
-            f"Phase 6.6 line budget exceeded: orchestrator prompt is "
+            f"Layered line budget exceeded: orchestrator prompt is "
             f"{line_count} lines, exceeds {ceiling} (baseline "
-            f"{BASELINE_LINE_COUNT} + budget {LINE_BUDGET_OVER_BASELINE}). "
-            f"Per spec §10 Phase 6.6 verification gate, the §3.5 Audit "
-            f"Artifact Gate subsection must add no more than +60 lines "
-            f"(the ~50-line decision-policy summary plus headroom).",
+            f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "
+            f"{LINE_BUDGET_OVER_BASELINE} + v3.7.1 Step 3b budget "
+            f"{LINE_BUDGET_V3_7_1_STEP_3B}). Either tighten the §3.5 "
+            f"Audit Artifact Gate subsection or the v3.7.1 Cite-Time "
+            f"Provenance Finalizer subsection.",
         )
 
 

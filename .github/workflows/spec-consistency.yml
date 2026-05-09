@@ -166,6 +166,20 @@ jobs:
           pip install pytest
           pytest scripts/test_check_v3_6_8_audit_scope_block.py -v
 
+      - name: Validate v3.7.1 Cite-Time Provenance Finalizer (Step 3b)
+        # Step 3b of v3.7.1: enforces spec §3.3 4-cell matrix + §3.6 peer-file
+        # join + idempotency + revision-loop preservation on the
+        # `## Cite-Time Provenance Finalizer (v3.7.1)` subsection of
+        # academic-pipeline/agents/pipeline_orchestrator_agent.md.
+        run: python3 scripts/check_v3_6_8_cite_provenance_pipeline.py
+
+      - name: Run v3.7.1 Cite-Time Provenance Finalizer mutation tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest
+          pytest scripts/test_check_v3_6_8_cite_provenance_pipeline.py -v
+
       - name: Run v3.7.1 audit_snapshot render-side Section 0 regression tests
         # PR #78 codex round-5 P2-7: lint enforces the static template
         # contract, but render_prompt is the runtime path that actually

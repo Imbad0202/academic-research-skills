@@ -600,6 +600,41 @@ Mid-Entry Material Passport Check:
 
 ---
 
+## Cite-Time Provenance Finalizer (v3.7.1)
+
+When `academic-pipeline` mode is active, the orchestrator runs the **Cite-Time Provenance Finalizer** at every Stage 4 → Stage 5 transition (and on every revision loop pass back through Stage 4) to resolve the two-layer citation markers emitted by `synthesis_agent`, `draft_writer_agent`, and `report_compiler_agent` per Step 3a.
+
+**Trigger boundary:** Stage transition from drafting (Stage 4) to formatting (Stage 5), mirroring the v3.6.7 Step 6 audit_artifact gate. The finalizer runs BEFORE `formatter_agent`'s hard-gate check.
+
+**Inputs (read-only):**
+
+- The current draft markdown containing `<!--ref:slug-->` HTML-comment markers (one per emitted citation, per Step 3a's two-layer form).
+- The Material Passport `literature_corpus[]` entries (each carries `citation_key`, `source_acquired`, `source_verified_against_original`).
+- The peer-file `<session>_human_read_log.yaml` (path computed as `<passport-path-parent>/<passport-stem>_human_read_log.yaml` per §3.6 round-5 R5-003 amend) — provides `human_read_source: true` for every `citation_key` the user has explicitly marked via `/ars-mark-read`.
+
+**Join semantics:** for each `<!--ref:slug-->` marker, the finalizer dereferences `slug` against `literature_corpus[]` to obtain `(source_acquired, source_verified_against_original)`, then joins on `citation_key` against the read-log to derive `human_read_source`. The `literature_corpus[]` schema is NOT mutated (per §3.6 firm rule #1: derived keys are not stored).
+
+**4-cell resolution matrix (from spec §3.3 lines 174-179):**
+
+| `source_acquired` | `source_verified_against_original` | `human_read_source` | Resolution |
+|-------------------|-----------------------------------|---------------------|------------|
+| false             | —                                  | —                   | **HIGH WARN**: cite has no original source on file. Replace `<!--ref:slug-->` with `[UNVERIFIED CITATION — NO ORIGINAL]<!--ref:slug-->` |
+| true              | false                             | false               | **MED WARN**: PDF in repo but AI has not cross-checked. Replace with `[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]<!--ref:slug-->` |
+| true              | true                              | false               | **LOW WARN**: AI cross-checked, user has not. Replace with `<!--ref:slug LOW-WARN-->`; also append the slug to a per-section pre-finalization checklist artifact for the user. |
+| true              | true                              | true                | **OK**: replace with `<!--ref:slug ok-->` |
+
+**Idempotency:** each finalizer pass is idempotent on its own resolved markers — re-running on an already-resolved `<!--ref:slug ok-->` is a no-op, and the same applies to `<!--ref:slug LOW-WARN-->` and the `[UNVERIFIED CITATION ...]` visible warnings. The finalizer mutates only bare `<!--ref:slug-->` markers; resolved markers are skipped.
+
+**Revision loops:** on revision loops (Stage 4 → reviewer → Stage 4 revise; or `academic-paper` Phase 6 → Phase 4 loops), the finalizer re-runs against the current draft and resolves any newly-emitted bare `<!--ref:slug-->` comments introduced in the revision pass. Previously resolved markers (`ok`, `LOW-WARN`, the `[UNVERIFIED CITATION ...]` visible warnings) **do not invalidate** — they are preserved byte-for-byte across passes. This guarantees that user actions like `/ars-mark-read <refcode>` taken between revision passes promote `<!--ref:slug LOW-WARN-->` to `<!--ref:slug ok-->` on the next pass without rewriting the rest of the draft.
+
+**LOW-WARN promotion:** when the user runs `/ars-mark-read <refcode>` between finalizer passes, the next pass observes `human_read_source: true` for that slug via the read-log join and resolves the marker to row 4 (`<!--ref:slug ok-->`). The finalizer does not delete the LOW-WARN entry from the per-section checklist artifact; that artifact is informational and the user clears it manually (or it falls out at the next checklist regeneration).
+
+**Hard-gate handoff:** the finalizer never blocks pipeline progress on its own. It mutates the draft in place, then the orchestrator advances to Stage 5 where `formatter_agent` carries the hard-gate refusal rule (any `[UNVERIFIED CITATION ...]` literal or any unresolved `<!--ref:slug-->` whose status is neither `ok` nor LOW-WARN-acknowledged forces a refusal at format time per spec §3.3 line 185).
+
+**Audit trail:** the finalizer's per-pass resolution counts (HIGH WARN / MED WARN / LOW WARN / OK / unresolved) are logged via `state_tracker` for the pipeline audit trail and surface in the Stage 4.5 integrity-check report.
+
+---
+
 ## Communication Style
 
 - Direct and precise — state decisions and rationale without filler

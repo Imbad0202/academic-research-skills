@@ -1,0 +1,269 @@
+"""Mutation tests for ARS v3.7.1 Step 3b — Cite-Time Provenance Finalizer.
+
+Spec: docs/design/2026-04-30-ars-v3.6.8-trust-provenance-and-drift-transparency-spec.md
+      § Step 3b — Pipeline finalizer (academic-pipeline mode)
+
+Step 3b acceptance (spec lines 454-457):
+- Orchestrator subsection present
+- Mutation test: removing any of the 4 matrix rows fails lint
+- Revision-loop test: a draft passed through finalizer twice produces
+  identical resolved markers; new bare `<!--ref:slug-->` comments in the
+  revised pass are resolved correctly without invalidating prior `ok`
+  markers (round-1 codex P2 finding 11)
+
+The lint runs grep-class checks against the actual repo file. Each
+mutation test backs up `pipeline_orchestrator_agent.md`, mutates,
+runs the lint as a subprocess, and restores the file in `finally`.
+"""
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+LINT = REPO_ROOT / "scripts" / "check_v3_6_8_cite_provenance_pipeline.py"
+TARGET = REPO_ROOT / "academic-pipeline" / "agents" / "pipeline_orchestrator_agent.md"
+
+FINALIZER_HEADING = "## Cite-Time Provenance Finalizer (v3.7.1)"
+
+
+def _run_lint() -> subprocess.CompletedProcess[str]:
+    """Run the v3.6.8 cite-provenance pipeline lint."""
+    return subprocess.run(
+        [sys.executable, str(LINT)],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+class _Snapshot:
+    """Backs up a file's bytes; restores on context exit (exception-safe)."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self._bytes: bytes | None = None
+        self._existed: bool = False
+
+    def __enter__(self) -> "_Snapshot":
+        self._existed = self.path.exists()
+        if self._existed:
+            self._bytes = self.path.read_bytes()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if self._existed and self._bytes is not None:
+            self.path.write_bytes(self._bytes)
+        elif not self._existed and self.path.exists():
+            self.path.unlink()
+
+
+# =========================================================================
+# Happy path
+# =========================================================================
+
+
+def test_happy_path_passes_on_clean_tree() -> None:
+    """Untouched pipeline_orchestrator (with finalizer subsection) → lint passes."""
+    result = _run_lint()
+    assert result.returncode == 0, (
+        f"Expected exit 0 on clean tree, got {result.returncode}.\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    assert "PASSED" in result.stdout
+    assert "pipeline_orchestrator_agent.md" in result.stdout
+
+
+# =========================================================================
+# Subsection presence (spec acceptance: Orchestrator subsection present)
+# =========================================================================
+
+
+def test_finalizer_subsection_missing_fails() -> None:
+    """Removing the entire `## Cite-Time Provenance Finalizer (v3.7.1)`
+    subsection from pipeline_orchestrator_agent.md must hard-fail."""
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        assert FINALIZER_HEADING in text, "fixture missing finalizer heading"
+        # Replace the canonical heading with a non-marker heading so the
+        # extractor returns None.
+        mutated = text.replace(
+            FINALIZER_HEADING,
+            "## (former finalizer heading)",
+            1,
+        )
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1, (
+            "Removing the finalizer subsection must hard-fail; "
+            f"got rc={result.returncode}\nstdout:\n{result.stdout}"
+        )
+        assert "Cite-Time Provenance Finalizer" in result.stdout or "finalizer" in result.stdout.lower()
+
+
+# =========================================================================
+# 4-cell matrix rows (spec lines 174-179)
+# =========================================================================
+#
+# Each row is keyed by its WARN level / status:
+#   Row 1: HIGH WARN  → `[UNVERIFIED CITATION — NO ORIGINAL]`
+#   Row 2: MED WARN   → `[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]`
+#   Row 3: LOW WARN   → `<!--ref:slug LOW-WARN-->` + per-section pre-finalization checklist
+#   Row 4: ok         → `<!--ref:slug ok-->`
+
+
+def test_high_warn_row_missing_fails() -> None:
+    """Row 1 (HIGH WARN — NO ORIGINAL) must be present.
+
+    Spec line 176: HIGH WARN row maps source_acquired=false to
+    `[UNVERIFIED CITATION — NO ORIGINAL]<!--ref:slug-->`.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        # Replace the row's canonical phrase so the lint can't find it.
+        marker = "UNVERIFIED CITATION — NO ORIGINAL"
+        assert marker in text, f"fixture missing row-1 marker {marker!r}"
+        mutated = text.replace(marker, "REDACTED-ROW-1", 1)
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "HIGH" in result.stdout or "row 1" in result.stdout.lower() or "NO ORIGINAL" in result.stdout
+
+
+def test_med_warn_row_missing_fails() -> None:
+    """Row 2 (MED WARN — AI HAS NOT CROSS-CHECKED) must be present.
+
+    Spec line 177: MED WARN row maps (acquired=true, verified=false,
+    human=false) to `[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]`.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED"
+        assert marker in text, f"fixture missing row-2 marker {marker!r}"
+        mutated = text.replace(marker, "REDACTED-ROW-2", 1)
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "MED" in result.stdout or "CROSS-CHECKED" in result.stdout or "row 2" in result.stdout.lower()
+
+
+def test_low_warn_row_missing_fails() -> None:
+    """Row 3 (LOW WARN — `<!--ref:slug LOW-WARN-->`) must be present.
+
+    Spec line 178: LOW WARN row maps (acquired=true, verified=true,
+    human=false) to `<!--ref:slug LOW-WARN-->`.
+
+    Note: the finalizer subsection mentions LOW-WARN multiple times
+    (matrix row, prose discussion, LOW-WARN-promotion paragraph). This
+    mutation strips ALL occurrences so the canonical phrase is fully
+    absent from the block.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "LOW-WARN"
+        assert marker in text, f"fixture missing row-3 marker {marker!r}"
+        # Strip ALL occurrences to make mutation effective; replace_all=False
+        # would leave later mentions standing and the lint would still pass.
+        mutated = text.replace(marker, "REDACTED-ROW-3")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "LOW" in result.stdout or "row 3" in result.stdout.lower() or "LOW-WARN" in result.stdout
+
+
+def test_ok_row_missing_fails() -> None:
+    """Row 4 (`<!--ref:slug ok-->`) must be present.
+
+    Spec line 179: OK row maps all-true triple to `<!--ref:slug ok-->`.
+
+    Note: the canonical OK marker `<!--ref:slug ok-->` appears in both
+    the matrix row and the idempotency / LOW-WARN-promotion prose. Strip
+    ALL occurrences for an effective mutation.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "<!--ref:slug ok-->"
+        assert marker in text, f"fixture missing row-4 marker {marker!r}"
+        mutated = text.replace(marker, "<!--ref:slug-redacted-->")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "ok" in result.stdout.lower() or "row 4" in result.stdout.lower() or "<!--ref:slug ok-->" in result.stdout
+
+
+# =========================================================================
+# Idempotency clause (spec line 181)
+# =========================================================================
+
+
+def test_idempotency_clause_missing_fails() -> None:
+    """The subsection must state that the finalizer pass is idempotent on
+    its own resolved markers (re-running on `<!--ref:slug ok-->` is a no-op).
+
+    Spec line 181 sentence: 'Each finalizer pass is idempotent on its own
+    resolved markers'.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        marker = "idempotent"
+        assert marker in text, "fixture missing idempotency marker"
+        # Strip every occurrence — heading "Idempotency" and prose use of
+        # "idempotent" both must go for the lint to flag the absence.
+        mutated = text.replace(marker, "non-deterministic")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "idempot" in result.stdout.lower()
+
+
+# =========================================================================
+# Revision-loop preservation (spec line 181 + acceptance line 457)
+# =========================================================================
+
+
+def test_revision_loop_preservation_clause_missing_fails() -> None:
+    """The subsection must state that on revision loops, resolved markers
+    do not invalidate; new bare markers are resolved on the next pass.
+
+    Spec line 181: 'On revision loops ... the finalizer re-runs against
+    the current draft and re-resolves any newly-emitted bare
+    `<!--ref:slug-->` comments; resolved markers do not invalidate.'
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        # The canonical sentence carries the phrase "do not invalidate"
+        # immediately after the revision-loop description.
+        marker = "do not invalidate"
+        assert marker in text, "fixture missing revision-loop preservation phrase"
+        mutated = text.replace(marker, "are reset and re-resolved", 1)
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "revision" in result.stdout.lower() or "invalidate" in result.stdout.lower()
+
+
+# =========================================================================
+# Peer-file join (spec line 172)
+# =========================================================================
+
+
+def test_peer_file_join_clause_missing_fails() -> None:
+    """The subsection must reference the peer-file
+    `<session>_human_read_log.yaml` (or the canonical computed form
+    `<passport-stem>_human_read_log.yaml` per §3.6 round-5 R5-003 amend)
+    as the join source for `human_read_source`.
+    """
+    with _Snapshot(TARGET):
+        text = TARGET.read_text(encoding="utf-8")
+        # Canonical token: `human_read_log.yaml` (may appear in both the
+        # shorthand `<session>_human_read_log.yaml` form and the §3.6
+        # computed form within the same paragraph). Strip ALL occurrences.
+        marker = "human_read_log.yaml"
+        assert marker in text, f"fixture missing peer-file marker {marker!r}"
+        mutated = text.replace(marker, "human_read_data.json")
+        TARGET.write_text(mutated, encoding="utf-8")
+        result = _run_lint()
+        assert result.returncode == 1
+        assert "human_read" in result.stdout.lower() or "peer" in result.stdout.lower() or "human_read_log" in result.stdout
