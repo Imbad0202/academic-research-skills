@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Backlog — gbrain harness borrow analysis (2026-05-10, post codex review)
+
+Source: 2026-05-10 analysis of `garrytan/gbrain` (14.2k★ agent harness for OpenClaw/Hermes), with codex cross-model review same day. Two candidates surfaced; they have different risk profiles and are tracked separately.
+
+**Candidate A — Shared `shared/_invariants.md` cross-skill rules file** (gbrain pattern P3). Status: backlog, low-risk.
+
+ARS cross-cutting rules are scattered today: Iron Rules in adapter overview, hedging contract in `protected_hedging_phrases.md`, citation precedence in agents' frontmatter, integrity gates referenced from multiple SKILL.md. When a rule evolves (e.g. v3.6.5 corpus protocol Iron Rules), secondary mentions drift.
+
+Shape if adopted:
+- `shared/_invariants.md` enumerating **positive invariants only** (no rejected-reasoning column; that was the contamination vector in the 2026-05-10 anti-pattern-table evaluation)
+- File stays short, normative, and example-free — additional examples turn invariants into demonstrations and re-introduce few-shot drift
+- Each SKILL.md references it via a stronger convention than `## See Also` (which reads as optional reading); proposed wording at adoption time
+- Frontmatter `validated_against: <version>` enables a stale-reference grep job on minor bumps. **The grep job detects version drift only — it does NOT validate semantic compliance.** Semantic checks remain a human / codex review responsibility.
+
+**Candidate B — Declarative `shared/_review_pairs.yaml` cross-model review config** (gbrain pattern P6). Status: **needs design spike before becoming a real candidate**, higher-risk.
+
+ARS cross-model review is currently invoked imperatively: `ARS_CROSS_MODEL=1` env flag + manual codex review per phase. A declarative `(deliverable_kind, reviewer_model, dimensions, when_to_invoke)` map could improve reproducibility for Stage 2.5 / 4.5 integrity gates and Phase 6 in-pair evaluator review.
+
+Three open problems before this is shippable:
+1. **Refusal-routing semantics conflict.** gbrain's chain (primary → DeepSeek → Qwen → Groq, silent switch) routes past refusal; ARS treats reviewer disagreement as signal. Borrowing the YAML format without resolving this imports the wrong invariant. Likely answer is "borrow the declarative-pairing shape, drop the refusal-routing chain entirely."
+2. **Embedding governance in config.** A YAML that decides "this deliverable triggers this reviewer with these dimensions" is workflow policy. Wrong shape locks in a bad routing decision across all phases. Needs a usage survey of existing manual invocations before designing the schema.
+3. **Lower confidence than Candidate A.** ARS already has review phases and cross-model invocation working manually; the missing piece is reproducibility, not the capability. If manual invocation isn't causing missed reviews or inconsistent reviews in practice, this should drop too.
+
+Rejected from same gbrain analysis: P1 RESOLVER.md dispatcher (10 slash commands serve dispatch), P4 trust boundary (research tool, no untrusted caller class), P5 pain-triggered subagent routing (covered in user CLAUDE.md, repo-level not relevant). **P2 friction protocol** is a soft reject — codex review pointed out a first-class friction CLI captures pain at the moment of pain, which 5+ round codex review at deliverable-time does not. Re-examine if ARS skill development surfaces recurring author-time pain that retrospective review doesn't capture.
+
+Meta-lesson from this analysis: "we already do something adjacent" is weaker than it sounds as a reject reason. The test is whether the existing mechanism captures the same signal at the same time with the same enforcement strength.
+
 ### Added (v3.6.7 Step 6 Phase 6.8 — Step 8 evaluation case)
 
 - **17 micro-fixtures + 1 chapter-level integration fixture** under
