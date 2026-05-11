@@ -42,6 +42,16 @@ Open an issue first before submitting a PR for these:
 - **Handoff schema changes** — modifications to `shared/handoff_schemas.md`
 - **New skills or modes** — additions to the pipeline
 
+### Platform ports (community-maintained only)
+
+ARS is built for Claude Code and dogfooded there exclusively. Ports to other agent platforms (Opencode, Cursor, Continue, Aider, etc.) are accepted as community-maintained contributions under these conditions:
+
+- **Wrapper layer, not a fork.** Keep `skills/*/SKILL.md`, `agents/*.md`, `shared/`, and `scripts/` as the source of truth. Add a top-level `<platform>/` directory (e.g. `opencode/`) for the manifest, plugin entry, and dispatch shims. PRs that modify core skill files to accommodate a target platform will be declined.
+- **Named maintainer.** The PR description must identify who will keep the port in sync with ARS minor releases (~6-week cadence) and triage platform-specific bug reports. Platform-specific issues will be redirected to that maintainer.
+- **End-to-end evidence.** Include at least one full `academic-pipeline` run on the target platform, committed under `examples/<platform>/`, so regressions are detectable.
+- **Model-portability note.** ARS prompts are calibrated against Claude (Opus for architecture/review, Sonnet for execution; never Haiku). The PR must document which providers/models were tested and where downstream-agent behavior diverged from the Claude baseline.
+- **Open a design issue first** before submitting the PR.
+
 ---
 
 ## PR guidelines
