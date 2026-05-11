@@ -224,7 +224,7 @@ def test_input_source_round_trip():
         "adapter_name": "x",
         "adapter_version": "1",
         "generated_at": "2026-04-23T00:00:00Z",
-        "input_source": "/Users/u/refs",
+        "input_source": "/path/to/refs",
         "rejected": [],
     }
     _validator(schema).validate(log)

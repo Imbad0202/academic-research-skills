@@ -141,7 +141,7 @@ SIDECAR_CLEAN: dict[str, Any] = {
     "run_id": "2026-04-30T15-22-04Z-d8f3",
     "codex_cli_version": "0.125.0",
     "runner": {
-        "hostname": "imbad-mbp.local",
+        "hostname": "runner.example.local",
         "cwd": "/path/to/academic-research-skills",
         "git_sha": "b4fbffd",
         "git_dirty": False,

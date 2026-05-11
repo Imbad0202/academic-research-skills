@@ -177,7 +177,7 @@ def make_valid_sidecar(template_sha: str = "1" * 64) -> dict[str, Any]:
         "run_id": VALID_RUN_ID,
         "codex_cli_version": "0.128.0",
         "runner": {
-            "hostname": "imbad-mbp.local",
+            "hostname": "runner.example.local",
             "cwd": "/path/to/academic-research-skills",
             "git_sha": "b4fbffd",
             "git_dirty": False,

@@ -274,10 +274,10 @@ def test_write_rejection_log_with_input_source(tmp_path: Path):
         adapter_name="x",
         adapter_version="1",
         rejected=[],
-        input_source="/Users/u/refs",
+        input_source="/path/to/refs",
     )
     loaded = yaml.safe_load(p.read_text())
-    assert loaded["input_source"] == "/Users/u/refs"
+    assert loaded["input_source"] == "/path/to/refs"
 
 
 def test_write_rejection_log_with_summary_totals(tmp_path: Path):
