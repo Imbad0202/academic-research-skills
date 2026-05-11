@@ -44,13 +44,17 @@ Open an issue first before submitting a PR for these:
 
 ### Platform ports (community-maintained only)
 
-ARS is built for Claude Code and dogfooded there exclusively. Ports to other agent platforms (Opencode, Cursor, Continue, Aider, etc.) are accepted as community-maintained contributions under these conditions:
+This repository is the reference distribution of ARS, built for Claude Code. Ports to other agent platforms (Opencode, Cursor, Continue, Aider, etc.) are accepted as community-maintained contributions. Two structural shapes are acceptable — both keep core ARS content as the source of truth:
 
-- **Wrapper layer, not a fork.** Keep `skills/*/SKILL.md`, `agents/*.md`, `shared/`, and `scripts/` as the source of truth. Add a top-level `<platform>/` directory (e.g. `opencode/`) for the manifest, plugin entry, and dispatch shims. PRs that modify core skill files to accommodate a target platform will be declined.
-- **Named maintainer.** The PR description must identify who will keep the port in sync with ARS minor releases (~6-week cadence) and triage platform-specific bug reports. Platform-specific issues will be redirected to that maintainer.
-- **End-to-end evidence.** Include at least one full `academic-pipeline` run on the target platform, committed under `examples/<platform>/`, so regressions are detectable.
+- **In-tree wrapper.** Add a top-level `<platform>/` directory in this repo (e.g. `opencode/`) containing the manifest, plugin entry, and dispatch shims. Core ARS files (`skills/*/SKILL.md`, `agents/*.md`, `shared/`, `scripts/`) remain unmodified.
+- **Sibling distribution.** A separate repository that vendors ARS workflow content with: (1) upstream commit hash pinned (e.g. in a `manifest.json`); (2) a written update / sync policy; (3) vendored content unmodified — only the outer routing / adapter layer is platform-specific.
+
+Either shape is accepted under the same maintainer-facing conditions:
+
+- **Named maintainer.** The PR description (in-tree) or repo README (sibling) must identify who will keep the port in sync with ARS minor releases (~6-week cadence) and triage platform-specific bug reports. Platform-specific issues will be redirected to that maintainer.
+- **End-to-end evidence.** Include at least one full `academic-pipeline` run on the target platform, committed under `examples/<platform>/` (in-tree) or under an `examples/` path in the sibling repo, so regressions are detectable.
 - **Model-portability note.** ARS prompts are calibrated against Claude (Opus for architecture/review, Sonnet for execution; never Haiku). The PR must document which providers/models were tested and where downstream-agent behavior diverged from the Claude baseline.
-- **Open a design issue first** before submitting the PR.
+- **Open a design issue first** before submitting the PR (for in-tree) or before requesting sibling-distribution recognition in this repo's README.
 
 ---
 
