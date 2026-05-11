@@ -191,7 +191,7 @@ Claude 會在 `<install-root>/<skill-name>/SKILL.md` 尋找 skills。這個 repo
 **Plugin 平台支援範圍：**
 - ✅ Claude Code CLI / VS Code extension / JetBrains extension — 完整支援
 - ❌ claude.ai 網頁版 / Claude for Work / Anthropic API 直呼 — 不支援 plugin，請改用方法一 / 二 / 三
-- ❌ Codex CLI — 改用 [`academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) fork
+- ➡️ Codex CLI — 改裝姊妹版 [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex)（同一套 workflow 內容、Codex 原生包裝）
 
 ### 方法一：作為專案 Skills（推薦）
 

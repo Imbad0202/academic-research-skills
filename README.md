@@ -56,7 +56,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 **👉 [docs/SETUP.md](docs/SETUP.md)** — full guide: install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and five installation methods (Plugin, project skills, global skills, claude.ai Project, repo-cloned).
 
-**Codex sibling distribution:** [academic-research-skills-codex](https://github.com/Imbad0202/academic-research-skills-codex).
+**Using Codex CLI?** Install the sibling distribution instead: [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) — same workflow content, Codex-native packaging as a single `$academic-research-suite` skill with `ars-*` aliases.
 
 ## Performance & cost
 
