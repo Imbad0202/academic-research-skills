@@ -142,7 +142,7 @@ SIDECAR_CLEAN: dict[str, Any] = {
     "codex_cli_version": "0.125.0",
     "runner": {
         "hostname": "imbad-mbp.local",
-        "cwd": "/Users/imbad/Projects/academic-research-skills",
+        "cwd": "/path/to/academic-research-skills",
         "git_sha": "b4fbffd",
         "git_dirty": False,
     },
