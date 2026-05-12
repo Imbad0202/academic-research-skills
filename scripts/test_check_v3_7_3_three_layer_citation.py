@@ -446,3 +446,56 @@ def test_anchor_after_well_formed_ref_still_passes(tmp_path: Path):
         "Smith (2024) <!--ref:smith2024 ok CONTAMINATED-PREPRINT--><!--anchor:page:1-->",
     )
     assert lint_file(p) == []
+
+
+# --- v3.7.3 codex round-5 F14 closure: malformed ref without anchor ----
+
+def test_malformed_ref_3_tokens_no_anchor_caught(tmp_path: Path):
+    """v3.7.3 F14: ref with 3 status tokens exceeds the {0,2} cap.
+    Without trailing anchor, both the main ref_anchor_pattern AND the
+    orphan scan miss it. Broad scan must catch the malformed ref."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024 ok CONTAMINATED-PREPRINT EXTRA-->.",
+    )
+    violations = lint_file(p)
+    assert any("malformed ref" in v and "F14" in v for v in violations), \
+        f"violations={violations}"
+
+
+def test_malformed_ref_with_invalid_slug_caught(tmp_path: Path):
+    """v3.7.3 F14: slug starting with a digit fails the strict pattern;
+    must still be flagged as malformed."""
+    p = write(
+        tmp_path,
+        "(2024) <!--ref:2024smith ok-->.",
+    )
+    violations = lint_file(p)
+    assert any("malformed ref" in v for v in violations), \
+        f"violations={violations}"
+
+
+def test_malformed_ref_4_tokens_with_anchor_caught(tmp_path: Path):
+    """v3.7.3 F14: even when an anchor follows the malformed ref,
+    the malformed ref itself is reported (separate violation from
+    F12 orphan-anchor)."""
+    p = write(
+        tmp_path,
+        "<!--ref:smith2024 ok CONTAMINATED-PREPRINT EXTRA TOKEN--><!--anchor:page:1-->",
+    )
+    violations = lint_file(p)
+    # Both F14 (malformed ref) and F12 (orphan anchor — because the
+    # malformed ref is not a well-formed preceding ref) fire here.
+    assert any("malformed ref" in v for v in violations), \
+        f"violations={violations}"
+
+
+def test_well_formed_ref_with_2_tokens_does_not_trigger_malformed(tmp_path: Path):
+    """v3.7.3 F14 boundary: 2-token ref (slug + ok + contamination)
+    is the legitimate v3.7.3 contamination-annotation shape; must
+    NOT trigger malformed-ref violation."""
+    p = write(
+        tmp_path,
+        "<!--ref:smith2024 ok CONTAMINATED-PREPRINT--><!--anchor:page:1-->",
+    )
+    assert lint_file(p) == []

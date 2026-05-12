@@ -217,6 +217,38 @@ def lint_file(path: Path) -> list[str]:
                     f"comment termination"
                 )
 
+    # Malformed ref markers (any `<!--ref:...-->` that the strict
+    # ref_anchor_pattern did not match) must be reported. v3.7.3 F14
+    # closure (codex round-5): a ref with 3+ status suffix tokens like
+    # `<!--ref:slug ok CONTAMINATED-PREPRINT EXTRA-->` exceeds the
+    # {0,2} cap on the strict pattern and is silently skipped. If it
+    # also has no trailing anchor, the orphan scan has nothing to
+    # report, and the lint declares success on a contract violation.
+    # Fix: broad-scan EVERY `<!--ref:...-->` opening, then check whether
+    # it overlaps with any strict ref_anchor_pattern match. Any ref
+    # opening NOT covered by a strict match is malformed.
+    strict_ref_ranges: list[tuple[int, int]] = []
+    for m in ref_anchor_pattern.finditer(text):
+        # Record the bytes covered by the strict ref portion (up to
+        # the first `-->` of the ref marker). The anchor portion is
+        # optional; we only need the ref range to detect malformed
+        # refs that fall outside it.
+        ref_open = m.start()
+        ref_close = text.find("-->", ref_open) + 3
+        strict_ref_ranges.append((ref_open, ref_close))
+    broad_ref_pattern = re.compile(r"<!--ref:([^>]*?)-->")
+    for m in broad_ref_pattern.finditer(text):
+        start = m.start()
+        covered = any(s <= start < e for (s, e) in strict_ref_ranges)
+        if not covered:
+            line_no = text.count("\n", 0, start) + 1
+            violations.append(
+                f"{path}:{line_no}: malformed ref marker — does not "
+                f"match the v3.7.3 ref shape "
+                f"(slug + 0-2 status tokens): {m.group(0)!r}; "
+                f"v3.7.3 F14 — fix the ref or remove it"
+            )
+
     # Orphan anchor markers (anchor without a preceding REF marker) are a
     # violation. v3.7.3 F12 closure (codex round-4): the earlier
     # implementation used a `(?<!-->)` lookbehind to skip anchors that
