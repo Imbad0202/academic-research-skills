@@ -85,6 +85,9 @@ ALLOWLIST_LINE_SUBSTRINGS = [
     # Plan-doc grep pattern that TEACHES boundary scanning (the pattern
     # naturally contains the banned keyword as a search target)
     'grep -iE "(?:10|172|192)\\.[0-9]+\\.[0-9]+\\.[0-9]+|\\.local|hei-platform',
+    # Review-protocol prompt template that TEACHES which patterns codex
+    # should flag — the example list necessarily contains the keywords
+    "(b) named private downstream repos (e.g. `hei-platform`",
 ]
 
 # File patterns to scan. Markdown / YAML / Python / JSON.

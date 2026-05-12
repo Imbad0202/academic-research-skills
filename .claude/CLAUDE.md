@@ -154,6 +154,22 @@ Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-sou
 - AI disclosure in all reports
 - Default output language matches user input (Traditional Chinese or English)
 
+## Review Protocol (ship gate)
+
+When running `/codex review`, `/codex challenge`, or any cross-model review against ARS changes, the review prompt MUST include a **public-repo boundary axis** in addition to technical correctness. ARS is a public repo. Default codex review prompt scope is technical correctness only — it will NOT catch private-project context leakage unless explicitly instructed.
+
+**Mandatory review prompt addendum** (append to every `/codex review` invocation against this repo):
+
+> Additionally scan for public-repo boundary violations: (a) named institution + named publisher co-occurrence indicating a specific private maintainer session (e.g. `<institution> <publisher> <doc-type> session` patterns), (b) named private downstream repos (e.g. `hei-platform`, `<project-codename>`), (c) internal directory paths revealing private file structure, (d) specific session identifiers + named org names co-occurring. Generic mention of a public institution or publisher in educational content (citation guides, IRB discussion, accreditation framework explanation) is fine. The boundary lint `scripts/check_public_repo_boundary.py` blocks the pure mechanical cases at CI; codex covers the contextual cases the lint cannot pattern-match.
+
+**Ship-gate parallel reviews:** before any v3.x ship:
+
+1. `/codex review` with the addendum above
+2. `/security-review` (separate pass — privacy / PII / public-repo PII)
+3. Both must return 0 P1 / 0 P2 before merging
+
+**Why this is here:** 2026-05-12 v3.7.3 ship retrospective. 10 rounds of `/codex review` (technical-correctness scope) missed a `<institution> <publisher> chapter session` phrase reuse from v3.6.8 spec. The author had a memory rule to grep before writing but bypassed it. The mechanical CI lint `check_public_repo_boundary.py` (PR #99) blocks the recurring pattern; this Review Protocol section makes sure codex reviews also cover the contextual variant that the lint can't pattern-match (e.g. a new institution + publisher pairing the lint hasn't seen before).
+
 ## Full Academic Pipeline
 
 ```
