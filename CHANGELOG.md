@@ -27,14 +27,27 @@ All notable changes to this project will be documented in this file.
 - New 6 contamination_signals tests in `scripts/adapters/tests/test_literature_corpus_entry_schema.py`: absence / empty / both-false / both-true / unknown-subfield-rejected / non-boolean-rejected.
 - New `V373ExtensionLineBudgetTest` in `scripts/test_v3_6_7_phase_6_6.py`: 60-line budget for `## Cite-Time Provenance Finalizer — v3.7.3 extension` block; existing Phase 6.6 +60 v3.6.7 budget test updated to subtract both v3.7.1 Step 3b AND v3.7.3 extension lines.
 
-**Regression status:** 948 tests pass, 3 skipped, 0 failed (23 new tests across rounds 1+2 fixes; pre-review baseline was 925). v3.6.7 + v3.6.8 + v3.7.1 + v3.7.2 lints all PASS unmodified. v3.6.7 PATTERN PROTECTION blocks remain byte-equivalent (SHA gate v2 unchanged). Material Passport literature_corpus_entry schema backward compatible (new contamination_signals field optional; cross-field rule only fires when explicitly set).
+**Regression status (final, post round-10 convergence):** 967 tests pass, 3 skipped, 0 failed (42 new tests across rounds 1-10 fixes; pre-review baseline was 925). v3.6.7 + v3.6.8 + v3.7.1 + v3.7.2 lints all PASS unmodified. v3.6.7 PATTERN PROTECTION blocks remain byte-equivalent (SHA gate v2 unchanged). Material Passport literature_corpus_entry schema backward compatible (new contamination_signals field optional; cross-field rules only fire when explicitly set). New v3.7.3 lint wired into spec-consistency.yml CI workflow per F18.
 
-**Cross-model review closure (2026-05-12):**
+**Cross-model review closure (2026-05-12, 11 rounds total — 10 codex + 1 gemini cross-model):**
 
-- **Codex review round 1:** 0 P1 / 2 P2 → F3 (untracked artifacts) closed at commit; F4 (NO-LOCATOR acknowledgment design contradiction) closed by removing the unimplementable `/ars-mark-read` promise from formatter_agent + finalizer + spec Q5.
-- **Gemini cross-model review:** 2 P1 / 2 P2 / 1 P3 → F1 (hyphen-encode `-` as `%2D` to prevent premature HTML comment termination) closed in 3 agent prompts + lint + 3 new tests; F2 (whitespace/newline tolerance between ref + anchor markers) closed by finalizer prompt clarification + 4 new whitespace tests; F5 (year<2024 cross-field schema rule) closed by schema `allOf` if/then + 4 new tests; F6 (preprint venue list expanded from 6 to 10 — added ChemRxiv / EarthArXiv / OSF Preprints / TechRxiv) closed in bibliography_agent + spec; F7 (fenced code block isolation in lint) closed by `_strip_fenced_code_blocks()` helper + 4 new tests.
-- **Codex review round 2 (post-commit):** 0 P1 / 2 P2 → F8 (lint regex only allowed 0-1 status suffix tokens on ref markers, so v3.7.3 contamination markers carrying 2 tokens like `<!--ref:slug ok CONTAMINATED-PREPRINT-->` were skipped entirely by `finditer` — any missing/invalid anchor on a contaminated ref escaped detection) closed by widening the regex to `{0,2}` + 3 new tests including a regression test showing the missing-anchor case is now caught. F9 (empty value on non-`none` anchor kind, e.g. `<!--anchor:page:-->`, bypassed the NO-LOCATOR gate while pretending to satisfy the locator contract) closed by adding an explicit empty-value check that rejects all non-`none` kinds with whitespace-stripped empty payloads + 5 new tests.
-- No cross-finding overlap across reviewers — clean complementary coverage. Codex round 1 (contract gaps) → Gemini round 1 (parsing edge cases) → Codex round 2 (regex completeness on contract types Codex itself introduced) is the canonical review-vs-challenge cascade per `feedback_codex_workflow_consolidated.md`.
+| Round | Reviewer | Findings | Closures |
+|---|---|---|---|
+| 1 (initial) | Codex | 0 P1 / 2 P2 | F3 (untracked artifacts → closed at commit), F4 (NO-LOCATOR acknowledgment contradiction → removed `/ars-mark-read` promise from formatter+finalizer+spec Q5) |
+| 1 (initial) | Gemini 3.1-pro-preview | 2 P1 / 2 P2 / 1 P3 | F1 (hyphen-encode → 3 prompts + lint + 3 tests), F2 (whitespace/newline tolerance → finalizer clarification + 4 tests), F5 (year<2024 schema cross-field → allOf + 4 tests), F6 (venue list 6 → 10 added ChemRxiv / EarthArXiv / OSF Preprints / TechRxiv), F7 (fenced code block isolation → helper + 4 tests) |
+| 2 | Codex | 0 P1 / 2 P2 | F8 (lint regex widened to {0,2} suffix tokens → 3 tests), F9 (empty non-`none` anchor value rejection → 5 tests) |
+| 3 | Codex | 0 P1 / 2 P2 | F10 (premature HTML comment terminator sentinel scan → 3 tests), F11 (schema manual-entry exemption → 4 tests) |
+| 4 | Codex | 0 P1 / 1 P2 / 1 P3 | F12 (orphan_pattern lookbehind removed → 3 tests), F13 (schema venue list description sync 6 → 10) |
+| 5 | Codex | 0 P1 / 1 P2 | F14 (malformed ref broad-scan detector → 4 tests) |
+| 6 | Codex | 0 P1 / 1 P2 | F15 (prompt-vs-lint alignment on `--` rule → 2 tests; prompts loosened to match lint's narrower contract) |
+| 7 | Codex | 0 P1 / 3 P2 | F16 (finalizer status-suffix-tolerant for revision-loop reruns), F17 (standalone deep-research self-gate), F18 (CI workflow wires v3.7.3 lint into spec-consistency.yml) |
+| 8 | Codex | 0 P1 / 3 P2 | F19 (decode value before empty check → 3 tests), F20 (formatter raw `anchor:none` gate), F21 (F17 self-gate scoped to standalone mode only via prompt mode-detection) |
+| 9 | Codex | 0 P1 / 1 P2 | F22 (self-gate also rejects bare refs without anchor — parity with pipeline finalizer's precedence-zero "no anchor = anchor=none" rule) |
+| **10 (final)** | **Codex** | **0 findings** | **Convergence achieved.** |
+
+- **No cross-finding overlap across reviewers.** Codex and Gemini found complementary defect classes — Codex caught contract gaps + regex completeness + architectural integration; Gemini caught HTML comment parsing edge cases + cross-field schema rules + venue completeness. This is the canonical value split documented in `feedback_codex_workflow_consolidated.md`.
+- **Cascade pattern:** each round's closure introduced no new defects in its OWN scope, but interactions with other v3.7.3 surfaces surfaced new layers — F19 was an F9 layer (encoded-whitespace bypass after the F9 raw-value fix), F21 was a F17 regression (self-gate ran in pipeline mode and interfered with finalizer), F22 was an F17+F21 boundary (only catching explicit `none` markers missed bare-ref legacy form). The 10-round convergence trajectory is consistent with the v3.6.8 18-round implementation precedent and `feedback_complex_spec_review_inventory_pattern.md`.
+- **F23+ not yet observed.** Round 10 returned no findings on the 9th amended branch state, providing the convergence signal. Future codex challenge mode (adversarial scope) may surface architecturally deeper gaps; tracked separately as a v3.7.4+ concern.
 
 **Out of v3.7.3 scope (tracked as follow-up issues):**
 
