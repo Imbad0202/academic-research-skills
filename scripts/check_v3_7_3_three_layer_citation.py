@@ -182,16 +182,21 @@ def lint_file(path: Path) -> list[str]:
                 f"must be one of {sorted(VALID_KINDS)}"
             )
             continue
-        # v3.7.3 F9 closure (codex round-2): empty value on a non-`none`
-        # anchor kind bypasses the NO-LOCATOR gate while pretending to
-        # satisfy the locator contract. Only `none` may have an empty
-        # value; every other kind MUST have a non-empty locator payload.
-        if kind != "none" and value.strip() == "":
+        # v3.7.3 F9 closure (codex round-2) + F19 closure (codex round-8):
+        # empty value on a non-`none` anchor kind bypasses the NO-LOCATOR
+        # gate while pretending to satisfy the locator contract. Only
+        # `none` may have an empty value; every other kind MUST have a
+        # non-empty locator payload. F19 additionally URL-decodes the
+        # value before the emptiness check, so encoded-whitespace
+        # payloads like `<!--anchor:page:%20%20-->` (which look
+        # non-empty as raw bytes) are correctly identified as empty
+        # after decoding.
+        if kind != "none" and unquote(value).strip() == "":
             violations.append(
                 f"{path}:{line_no}: empty anchor value for kind "
-                f"{kind!r}; v3.7.3 F9 — only `none` may have an empty "
-                f"value, every other kind requires a non-empty locator "
-                f"payload"
+                f"{kind!r} (decoded; v3.7.3 F9+F19); only `none` may "
+                f"have an empty value, every other kind requires a "
+                f"non-empty locator payload"
             )
             continue
         if kind == "quote":

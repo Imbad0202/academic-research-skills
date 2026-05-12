@@ -271,6 +271,7 @@ Before emitting any final converted artifact (LaTeX / DOCX / PDF), scan the inpu
 2. A literal `[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]` marker (MED-WARN; v3.7.1).
 3. A literal `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]` marker (MED-WARN-NO-LOCATOR; v3.7.3).
 4. Any `<!--ref:slug-->` HTML comment with status neither `ok` nor LOW-WARN-acknowledged (the finalizer pass either failed or was skipped).
+5. **Any `<!--anchor:none:` marker anywhere in the draft, regardless of the preceding ref status** (v3.7.3 codex round-8 F20 closure). A stale or skipped finalizer pass can leave `<!--ref:slug ok--><!--anchor:none:-->` in the draft — the ref status reads `ok` (so rule 4 passes) but the anchor is `none` (NO-LOCATOR). Since v3.7.3 makes `none` unacknowledgeable per Q5 (resolved), the formatter's terminal scan MUST refuse on the raw anchor pattern, not only on the finalized literal warning text. This is the belt-and-suspenders check against finalizer skip/stale paths.
 
 External motivation for rule 3: Zhao et al. arXiv:2605.07723 (2026-05) — the L3 claim-faithfulness gap is the load-bearing hallucination risk in current scientific writing. Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md` §3.1.
 

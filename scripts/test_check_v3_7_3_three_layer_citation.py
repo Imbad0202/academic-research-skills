@@ -526,3 +526,41 @@ def test_quote_with_triple_hyphen_must_encode_first_double(tmp_path: Path):
     )
     violations = lint_file(p)
     assert any("raw `--`" in v for v in violations), f"violations={violations}"
+
+
+# --- v3.7.3 codex round-8 F19 closure: decode before empty check -------
+
+def test_url_encoded_whitespace_page_anchor_caught(tmp_path: Path):
+    """v3.7.3 F19: `<!--anchor:page:%20%20-->` looks non-empty as raw
+    bytes but decodes to two spaces — functionally no locator. F9
+    pre-decode check missed this; F19 closure adds unquote() before
+    the strip() emptiness check."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:page:%20%20-->",
+    )
+    violations = lint_file(p)
+    assert any("empty anchor value" in v for v in violations), \
+        f"violations={violations}"
+
+
+def test_url_encoded_single_space_quote_anchor_caught(tmp_path: Path):
+    """v3.7.3 F19: same logic for quote kind — decoded `%20` is one
+    space, no actual quoted content."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:quote:%20-->",
+    )
+    violations = lint_file(p)
+    assert any("empty anchor value" in v for v in violations), \
+        f"violations={violations}"
+
+
+def test_url_encoded_real_content_passes(tmp_path: Path):
+    """v3.7.3 F19 boundary: encoded value with real content (e.g.
+    `An%20excerpt` = `An excerpt`) decodes to non-empty and passes."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:quote:An%20excerpt-->",
+    )
+    assert lint_file(p) == []
