@@ -11,6 +11,31 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `academic-paper-reviewer` v1.9.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
 | `academic-pipeline` v3.7.0 | Full pipeline orchestrator | (coordinates all above) |
 
+## v3.7.3 Key Additions (in progress)
+
+**External motivation:** Zhao et al. arXiv:2605.07723 (2026-05). The paper documents 146,932 hallucinated citations across arXiv / bioRxiv / SSRN / PMC in 2025 alone, with inflection at mid-2024 and 85.3% of preprint hallucinations surviving into the published record. It names the L3 (claim faithfulness) gap explicitly as the load-bearing unsolved problem. v3.7.3 closes the locator-channel half of that gap and adds contamination advisory signals.
+
+**L3-1 — Three-Layer Citation Emission (claim faithfulness locator):**
+
+- `synthesis_agent`, `draft_writer_agent`, `report_compiler_agent` gain `## Three-Layer Citation Emission (v3.7.3)` H2 sections. Extends v3.7.1 Two-Layer with `<!--anchor:<kind>:<value>-->` after `<!--ref:slug-->`, `<kind>` ∈ `{quote, page, section, paragraph, none}`. Quote anchors capped at 25 words; URL-encoded values; no frontmatter reads (v3.6.7 partial-inversion preserved).
+- `pipeline_orchestrator_agent` finalizer becomes 5-cell with precedence-zero NO-LOCATOR check. `formatter_agent` gains explicit hard-gate refusal for `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]`.
+
+**L3-2 — Contaminated-source advisory signals:**
+
+- `literature_corpus_entry.schema.json` adds optional `contamination_signals: { preprint_post_llm_inflection, semantic_scholar_unmatched }` object. Backward compat: entries without the field stay valid.
+- `bibliography_agent` computes both signals at ingest time. Preprint signal: `year >= 2024 AND venue ∈ closed-list-of-6`. SS-unmatched signal: existing Semantic Scholar protocol returns no match; exempted for `obtained_via: manual`; omitted on API degradation.
+- Finalizer annotates `ok` / `LOW-WARN` markers with `CONTAMINATED-PREPRINT` / `CONTAMINATED-UNMATCHED` / `CONTAMINATED-PREPRINT+UNMATCHED`. Advisory only — does NOT change gate decision.
+
+**Lint + tests:**
+
+- New `scripts/check_v3_7_3_three_layer_citation.py` + 14 tests.
+- New 6 contamination_signals tests in existing literature_corpus schema test file.
+- New v3.7.3 line-budget test; v3.6.7 Phase 6.6 budget test updated to subtract v3.7.3 extension lines alongside v3.7.1 Step 3b.
+
+**Regression status (post review):** 940 pass / 3 skipped / 0 failed (pre-review baseline 925; +15 tests from F1/F2/F5/F7 closures). v3.6.7 PATTERN PROTECTION + v3.7.1 / v3.7.2 lints unchanged. Codex review 0 P1 / 2 P2 → all closed. Gemini cross-model review 2 P1 / 2 P2 / 1 P3 → all closed (no overlap between reviewers — clean complementary coverage).
+
+Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md`.
+
 ## v3.7.0 Key Additions
 
 - **Claude Code plugin packaging**: ARS now installs in one line via `/plugin marketplace add Imbad0202/academic-research-skills` + `/plugin install academic-research-skills`. The traditional `git clone + symlink to ~/.claude/skills/` flow continues to work — both tracks are first-class. Repo gains four top-level directories: `.claude-plugin/`, `commands/`, `agents/`, `hooks/`, plus a `skills/` symlink dir; existing 4 skill directories untouched.

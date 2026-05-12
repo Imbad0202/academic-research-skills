@@ -261,6 +261,28 @@ Before delivering the output, verify:
 - [ ] CRediT author contribution statement included (if multi-author)
 - [ ] Funding statement included (with or without funding)
 
+## Cite-Time Provenance Hard Gate (v3.7.1 + v3.7.3)
+
+Before emitting any final converted artifact (LaTeX / DOCX / PDF), scan the input markdown for unresolved citation-provenance markers per `pipeline_orchestrator_agent.md` § Cite-Time Provenance Finalizer. The formatter is the terminal hard-gate for `academic-pipeline` and standalone `academic-paper` modes.
+
+**REFUSE to emit final output** when the draft contains any of:
+
+1. A literal `[UNVERIFIED CITATION — NO ORIGINAL]` marker (HIGH-WARN; v3.7.1).
+2. A literal `[UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED]` marker (MED-WARN; v3.7.1).
+3. A literal `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]` marker (MED-WARN-NO-LOCATOR; v3.7.3).
+4. Any `<!--ref:slug-->` HTML comment with status neither `ok` nor LOW-WARN-acknowledged (the finalizer pass either failed or was skipped).
+
+External motivation for rule 3: Zhao et al. arXiv:2605.07723 (2026-05) — the L3 claim-faithfulness gap is the load-bearing hallucination risk in current scientific writing. Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md` §3.1.
+
+When refusing, surface the unresolved markers to the user with their per-section locations and the remediation paths:
+
+- HIGH-WARN: acquire the original source (set `source_acquired: true` on the entry).
+- MED-WARN (cross-check): run cross-check audit (set `source_verified_against_original: true` with `source_verification_method` ∈ {codex_audit, manual_grep, vision_check}).
+- MED-WARN-NO-LOCATOR: re-emit the citation with a `<!--anchor:<kind>:<value>-->` where `<kind>` ≠ `none`. This is the ONLY remediation path. `/ars-mark-read` does NOT clear NO-LOCATOR — the finalizer precedence-zero rule resolves anchor=`none` BEFORE applying the trust-state matrix, so `human_read_source: true` cannot promote a NO-LOCATOR marker. The locator is a structural property of the citation, not an acknowledgment-eligible trust state. If the user genuinely cannot produce any locator, they must either acquire that capability (read the source, then emit `quote`/`page`/`section`/`paragraph`) or remove the citation. v3.7.3 codex review P2-2 closure.
+- LOW-WARN: run `/ars-mark-read <slug>` to acknowledge.
+
+**Contamination annotations (`CONTAMINATED-PREPRINT`, `CONTAMINATED-UNMATCHED`, `CONTAMINATED-PREPRINT+UNMATCHED`) on `ok` or `LOW-WARN` markers DO NOT trigger refusal.** They are advisory per v3.5 Collaboration Depth Observer precedent — surface them in the output package's `provenance_summary.md`, but do not block the conversion.
+
 ## Output Format
 
 ```markdown

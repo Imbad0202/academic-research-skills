@@ -54,6 +54,18 @@ LINE_BUDGET_OVER_BASELINE = 60
 # Budget includes 5 lines of headroom for codex-round prose adjustments.
 LINE_BUDGET_V3_7_1_STEP_3B = 40
 
+# v3.7.3 additionally ships the `## Cite-Time Provenance Finalizer —
+# v3.7.3 extension` subsection per spec
+#   docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md
+# §3.1+§3.2. The subsection adds the L3-1 precedence-zero NO-LOCATOR check
+# + L3-2 contamination annotation matrix + updated resolution order +
+# audit-trail columns. External motivation: Zhao et al. arXiv:2605.07723
+# (2026-05). Measured at first-write: 44 lines (heading + two H3 subs +
+# matrix rows + bullets + audit-trail paragraph). Budget includes ~15
+# lines of headroom for codex-round prose adjustments since the v3.7.3
+# section is larger than v3.7.1 Step 3b.
+LINE_BUDGET_V3_7_3_EXTENSION = 60
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -203,6 +215,40 @@ def _measure_finalizer_block_lines(text: str) -> int:
     return len(text[m.start():end].splitlines())
 
 
+def _measure_v3_7_3_extension_block_lines(text: str) -> int:
+    """Return the number of lines in the v3.7.3 finalizer extension
+    subsection (`## Cite-Time Provenance Finalizer — v3.7.3 extension ...`
+    H2 block).
+
+    v3.7.3 adds an L3-1 + L3-2 extension to the finalizer (NO-LOCATOR
+    precedence-zero check + contamination annotation). Like the v3.7.1
+    Step 3b block, this v3.7.3 block has its own scope and MUST be
+    subtracted from the v3.6.7 Phase 6.6 +60 budget. Spec:
+      docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md §3.1+§3.2
+
+    Returns 0 if the v3.7.3 H2 heading is absent.
+
+    The v3.7.3 section uses H3 (`### ...`) subsections internally, so the
+    block-end anchor matches the next H1 (`# `) or H2 (`## `) only — NOT
+    H3 — distinct from `_measure_finalizer_block_lines()` which uses
+    `#{1,3}` because the v3.7.1 Step 3b block has no internal H3.
+    """
+    import re as _re
+    anchor = _re.compile(
+        r"(?m)^[ \t]*##[ \t]+Cite-Time Provenance Finalizer "
+        r"[—-]+[ \t]*v3\.7\.3 extension[^\n]*$"
+    )
+    m = anchor.search(text)
+    if m is None:
+        return 0
+    next_h = _re.compile(r"(?m)^[ \t]*#{1,2}[ \t]+")
+    head_eol = text.find("\n", m.end())
+    search_start = (head_eol + 1) if head_eol >= 0 else len(text)
+    nm = next_h.search(text, search_start)
+    end = nm.start() if nm else len(text)
+    return len(text[m.start():end].splitlines())
+
+
 class Phase66LineBudgetTest(unittest.TestCase):
     """Test 4 — Prompt size within v3.6.7 Phase 6.6 +60 line budget,
     measured EXCLUDING any v3.7.1+ subsections.
@@ -225,8 +271,11 @@ class Phase66LineBudgetTest(unittest.TestCase):
         text = _read_prompt()
         total_lines = len(text.splitlines())
         step_3b_lines = _measure_finalizer_block_lines(text)
-        # v3.6.7-only line count: total minus the v3.7.1 Step 3b subsection.
-        v367_line_count = total_lines - step_3b_lines
+        v3_7_3_lines = _measure_v3_7_3_extension_block_lines(text)
+        # v3.6.7-only line count: total minus v3.7.1 Step 3b AND v3.7.3
+        # finalizer extension subsections (each has its own dedicated
+        # budget test).
+        v367_line_count = total_lines - step_3b_lines - v3_7_3_lines
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
             v367_line_count,
@@ -234,10 +283,12 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"Phase 6.6 line budget exceeded (v3.6.7-only scope): "
             f"orchestrator prompt is {total_lines} lines, of which "
             f"{step_3b_lines} are in the v3.7.1 Step 3b finalizer "
-            f"subsection; v3.6.7-attributed lines = {v367_line_count} "
-            f"exceeds {ceiling} (baseline {BASELINE_LINE_COUNT} + "
-            f"Phase 6.6 budget {LINE_BUDGET_OVER_BASELINE}). Tighten "
-            f"the §3.5 Audit Artifact Gate subsection.",
+            f"subsection and {v3_7_3_lines} are in the v3.7.3 finalizer "
+            f"extension subsection; v3.6.7-attributed lines = "
+            f"{v367_line_count} exceeds {ceiling} (baseline "
+            f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "
+            f"{LINE_BUDGET_OVER_BASELINE}). Tighten the §3.5 Audit "
+            f"Artifact Gate subsection.",
         )
 
 
@@ -273,6 +324,42 @@ class V371Step3bLineBudgetTest(unittest.TestCase):
             f"{LINE_BUDGET_V3_7_1_STEP_3B} lines (measured: "
             f"{block_lines}). Tighten the subsection or raise the "
             f"`LINE_BUDGET_V3_7_1_STEP_3B` constant with rationale.",
+        )
+
+
+class V373ExtensionLineBudgetTest(unittest.TestCase):
+    """Test 6 — v3.7.3 finalizer extension block within
+    `LINE_BUDGET_V3_7_3_EXTENSION` line budget.
+
+    Dedicated budget test for the `## Cite-Time Provenance Finalizer —
+    v3.7.3 extension` subsection. Measures ONLY this block's lines,
+    decoupled from both the v3.6.7 Phase 6.6 budget and the v3.7.1
+    Step 3b budget. External motivation: Zhao et al. arXiv:2605.07723
+    (2026-05). Spec:
+      docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md
+      §3.1+§3.2
+
+    If a future v3.7.3 cascade legitimately requires more lines, raise
+    `LINE_BUDGET_V3_7_3_EXTENSION` explicitly and document the rationale.
+    """
+
+    def test_v3_7_3_extension_block_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_v3_7_3_extension_block_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "v3.7.3 finalizer extension subsection missing from "
+            "pipeline_orchestrator_agent.md (expected H2 heading "
+            "'## Cite-Time Provenance Finalizer — v3.7.3 extension ...').",
+        )
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_V3_7_3_EXTENSION,
+            f"v3.7.3 finalizer extension block exceeds "
+            f"{LINE_BUDGET_V3_7_3_EXTENSION} lines (measured: "
+            f"{block_lines}). Tighten the subsection or raise the "
+            f"`LINE_BUDGET_V3_7_3_EXTENSION` constant with rationale.",
         )
 
 

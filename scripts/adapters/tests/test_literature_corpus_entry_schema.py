@@ -233,3 +233,120 @@ def test_valid_obtained_at_format_passes():
         "obtained_at": "2026-04-25T10:30:00Z",
     }
     _validator(schema).validate(entry)
+
+
+# --- v3.7.3 contamination_signals (L3-2) -------------------------------
+# Motivation: Zhao et al. arXiv:2605.07723 (2026-05).
+
+def _base_entry():
+    return {
+        "citation_key": "chen2024",
+        "title": "T",
+        "authors": [{"family": "C"}],
+        "year": 2024,
+        "source_pointer": "file:///x.pdf",
+    }
+
+
+def test_contamination_signals_absent_is_valid():
+    """v3.7.3: contamination_signals is optional; legacy entries stay valid."""
+    schema = _load_schema()
+    _validator(schema).validate(_base_entry())
+
+
+def test_contamination_signals_empty_object_is_valid():
+    """Both sub-fields optional within the object."""
+    schema = _load_schema()
+    entry = _base_entry() | {"contamination_signals": {}}
+    _validator(schema).validate(entry)
+
+
+def test_contamination_signals_both_false_is_valid():
+    """Computed and no contamination evidence."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {
+            "preprint_post_llm_inflection": False,
+            "semantic_scholar_unmatched": False,
+        }
+    }
+    _validator(schema).validate(entry)
+
+
+def test_contamination_signals_both_true_is_valid():
+    """Maximum contamination — still valid; advisory not blocking."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {
+            "preprint_post_llm_inflection": True,
+            "semantic_scholar_unmatched": True,
+        }
+    }
+    _validator(schema).validate(entry)
+
+
+def test_contamination_signals_unknown_subfield_rejected():
+    """additionalProperties: false on contamination_signals."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {"unknown_signal": True}
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_contamination_signals_non_boolean_rejected():
+    """Sub-fields are strict booleans, not truthy strings."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {"preprint_post_llm_inflection": "yes"}
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+# --- v3.7.3 gemini review F5 closure: year < 2024 cross-field rule -----
+
+def test_preprint_flag_true_with_year_before_2024_rejected():
+    """v3.7.3 F5: setting preprint_post_llm_inflection=true with year<2024
+    is logically contradictory and schema must reject it."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "year": 2022,
+        "contamination_signals": {"preprint_post_llm_inflection": True},
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_preprint_flag_true_with_year_2024_passes():
+    """v3.7.3 F5: year=2024 (the threshold) + flag=true is valid."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "year": 2024,
+        "contamination_signals": {"preprint_post_llm_inflection": True},
+    }
+    _validator(schema).validate(entry)
+
+
+def test_preprint_flag_false_with_pre_2024_year_passes():
+    """v3.7.3 F5: reverse direction is legal — pre-2024 entries can
+    have flag=false (e.g., they computed the signal and found no
+    contamination because the venue is not a preprint server)."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "year": 2020,
+        "contamination_signals": {"preprint_post_llm_inflection": False},
+    }
+    _validator(schema).validate(entry)
+
+
+def test_preprint_flag_absent_with_pre_2024_year_passes():
+    """v3.7.3 F5: cross-field rule only fires when flag is true.
+    Absent flag = signal not computed; pre-2024 year still valid."""
+    schema = _load_schema()
+    entry = _base_entry() | {"year": 2020}
+    _validator(schema).validate(entry)

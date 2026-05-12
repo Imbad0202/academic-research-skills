@@ -192,3 +192,35 @@ Strict obligations:
 - The agent's job ends at emission. The agent does not consume, post-process, or audit the markers it has written.
 - Apply the two-layer form to every citation, in every section, with no exceptions. A bare `Smith (2024)` without the trailing `<!--ref:slug-->` is a contract violation.
 - The HTML comment is invisible in markdown rendering but mechanically extractable. Do not omit it on the assumption that "the comment will be added later."
+
+## Three-Layer Citation Emission (v3.7.3)
+
+Extends Two-Layer with a structured claim-faithfulness anchor. External motivation: Zhao et al. arXiv:2605.07723 (2026-05) — corpus-scale audit finds the L3 "real citations deployed to support claims the cited references do not actually make" problem unaddressed by existing safeguards. Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md` §3.1.
+
+Every visible citation in the compiled report MUST be followed by BOTH a slug marker AND an anchor marker:
+
+```
+<visible> <!--ref:slug--><!--anchor:<kind>:<value>-->
+```
+
+Anchor kinds (closed enum):
+
+| kind | value | example |
+|---|---|---|
+| `quote` | URL-encoded verbatim text from the cited source, ≤25 words | `<!--anchor:quote:When%20publishers%20bypass%20moderation-->` |
+| `page` | page number or range from the cited source | `<!--anchor:page:12-14-->` |
+| `section` | section identifier from the cited source | `<!--anchor:section:3.2-->` |
+| `paragraph` | 1-based paragraph index within section | `<!--anchor:paragraph:3-->` |
+| `none` | explicit no-anchor declaration | `<!--anchor:none:-->` |
+
+Full example: `Smith (2024) <!--ref:smith2024--><!--anchor:page:14-->`.
+
+Three firm rules:
+
+- **R-L3-1-A (production-mandatory locator):** During compilation, every visible citation MUST carry an anchor with `<kind>` ≠ `none`. The finalizer treats `<!--anchor:none:-->` as MED-WARN-NO-LOCATOR (gate-refused). Emitting `none` does NOT bypass the gate — it triggers it. Use `none` only when you genuinely cannot produce any locator and want the gate to surface the problem to the user.
+- **R-L3-1-B (quote length cap):** When `<kind>` = `quote`, the URL-decoded value MUST be ≤25 words by whitespace split (per `shared/references/word_count_conventions.md`). Quotes exceeding 25 words MUST be replaced by `page` or `section` locator.
+- **R-L3-1-C (no anchor reading by emitting agents):** Generate the `<!--anchor:...-->` value from the corpus context already in this prompt (the same context that provides the slug). You MUST NOT read entry frontmatter to discover anchor candidates — that breaks the v3.6.7 partial-inversion discipline that keeps the compiler narrative-side and the finalizer audit-side separate. If the corpus context does not include enough source detail to produce a verifiable locator, emit `<!--anchor:none:-->` and let the gate surface it.
+
+URL-encoding for `quote:` values uses standard percent-encoding (`%20` for space, `%2C` for comma, `%3A` for colon, etc.) **AND additionally percent-encodes the hyphen character `-` as `%2D`**. Standard RFC 3986 encoding treats `-` as an unreserved character and does NOT encode it, but a quote containing `--` (e.g., from an em-dash, a divider, or a nested HTML comment opener) would leave a literal `--` in the anchor value that can prematurely close the HTML comment in some parsers. Always percent-encode space, comma, colon, AND hyphen. Never rely on the absence of `-->` in the quoted text. v3.7.3 gemini review F1 closure.
+
+The compiler's job still ends at emission. The compiler does NOT post-process or audit its own anchors. The cite_provenance_finalizer_agent reads `<!--anchor:...-->` markers downstream, applies the 5-cell matrix, and mutates them in place.

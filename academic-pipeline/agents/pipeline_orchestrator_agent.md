@@ -638,6 +638,51 @@ In other words: the resolved status is a pure function of the current input trip
 
 **Audit trail:** the finalizer's per-pass resolution counts (HIGH WARN / MED WARN / LOW WARN / OK / unresolved) are logged via `state_tracker` for the pipeline audit trail and surface in the Stage 4.5 integrity-check report.
 
+## Cite-Time Provenance Finalizer — v3.7.3 extension (5-cell + contamination annotation)
+
+Extends the v3.7.1 4-cell matrix above with two additive checks. External motivation: Zhao et al. arXiv:2605.07723 (2026-05). Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md` §3.1 + §3.2.
+
+### Precedence-zero check: locator presence (L3-1)
+
+Before applying the 4-cell matrix on `(source_acquired, source_verified_against_original, human_read_source)`, the finalizer inspects the trailing `<!--anchor:<kind>:<value>-->` comment that follows each `<!--ref:slug-->` marker. **Optional whitespace and newlines between the ref marker and the anchor marker are allowed and consumed** — the finalizer regex matches `<!--ref:slug-->\s*<!--anchor:...-->` (where `\s` covers space, tab, and newline). An LLM that emits the two markers across lines must not be treated as having no anchor; the finalizer pairs them by adjacency-modulo-whitespace, not strict adjacency. v3.7.3 gemini review F2 closure.
+
+- If the citation has no `<!--anchor:...-->` marker at all (legacy v3.7.1 Two-Layer prose, or contract violation), the finalizer treats it as `<!--anchor:none:-->`.
+- If `<kind>` = `none`, the finalizer resolves the citation to **MED-WARN-NO-LOCATOR** regardless of the underlying trust state. Replace the marker pair with `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]<!--ref:slug--><!--anchor:none:-->`.
+- If `<kind>` ∈ `{quote, page, section, paragraph}`, the finalizer proceeds to the 4-cell matrix above.
+
+NO-LOCATOR is MED severity (not HIGH) because the citation may still point at a real verified source — only the claim-anchor is missing. Treating it as HIGH would conflate two distinct defects (no source vs no anchor). The fix is locator emission by re-running the upstream agent or manual editing, not source acquisition.
+
+**`/ars-mark-read` does NOT clear NO-LOCATOR.** The precedence-zero rule stops BEFORE applying the trust-state matrix on `(source_acquired, source_verified_against_original, human_read_source)`. Acknowledgment via `/ars-mark-read` only affects `human_read_source`, which is part of the 4-cell matrix that NO-LOCATOR bypasses. The only remediation is re-emitting the citation with a valid (`<kind>` ≠ `none`) anchor. This asymmetry is intentional: a locator is a structural property of the prose, not an evidence-state property of the source. v3.7.3 codex review P2-2 closure.
+
+### Contamination annotation (L3-2)
+
+After the 4-cell matrix resolves a citation to `ok` or `LOW-WARN`, the finalizer reads the entry's `contamination_signals` object from `literature_corpus[]` (if present) and appends an annotation suffix:
+
+| Base resolution | contamination_signals state | Annotated marker |
+|---|---|---|
+| `ok` or `LOW-WARN` | object absent OR both fields false / missing | unchanged (`<!--ref:slug ok-->` or `<!--ref:slug LOW-WARN-->`) |
+| `ok` or `LOW-WARN` | `preprint_post_llm_inflection: true` only | append `CONTAMINATED-PREPRINT` |
+| `ok` or `LOW-WARN` | `semantic_scholar_unmatched: true` only | append `CONTAMINATED-UNMATCHED` |
+| `ok` or `LOW-WARN` | both fields true | append `CONTAMINATED-PREPRINT+UNMATCHED` |
+
+Example: `<!--ref:smith2024 LOW-WARN CONTAMINATED-PREPRINT-->` or `<!--ref:smith2024 ok CONTAMINATED-PREPRINT+UNMATCHED-->`.
+
+**Advisory only.** The contamination annotation does NOT change the gate decision. `ok CONTAMINATED-...` still passes the formatter hard-gate; `LOW-WARN CONTAMINATED-...` is acknowledgeable via `/ars-mark-read <slug>` exactly like plain LOW-WARN. The annotation surfaces the contamination signal so the user can choose to verify the source more carefully or remove the citation.
+
+The contamination annotation does NOT apply to HIGH-WARN / MED-WARN / MED-WARN-NO-LOCATOR rows — those already block at the gate and the user must address the higher-severity problem before contamination becomes relevant.
+
+### Updated 5-cell + annotation resolution order
+
+For each `<!--ref:slug--><!--anchor:<kind>:<value>-->` marker pair:
+
+1. **Precedence-zero (L3-1):** if `<kind>` = `none`, resolve to MED-WARN-NO-LOCATOR. Stop.
+2. **4-cell matrix (v3.7.1):** apply the existing trust-state matrix on `(source_acquired, source_verified_against_original, human_read_source)`. Get base resolution: HIGH-WARN / MED-WARN-NOT-CROSS-CHECKED / LOW-WARN / OK.
+3. **Contamination annotation (L3-2):** if base resolution is `ok` or `LOW-WARN`, look up `contamination_signals` on the entry; append `CONTAMINATED-...` suffix if any field is true.
+
+### Audit trail (v3.7.3 update)
+
+Per-pass resolution counts gain four new columns: NO-LOCATOR (precedence-zero hits), CONTAMINATED-PREPRINT (annotation count), CONTAMINATED-UNMATCHED (annotation count), CONTAMINATED-BOTH (annotation count). All four surface in the Stage 4.5 integrity-check report alongside the existing HIGH / MED / LOW / OK counts.
+
 ---
 
 ## Communication Style

@@ -116,6 +116,21 @@
     "description_last_audit": {
       "type": ["string", "null"],
       "description": "v3.7.1 trust-chain field. Round identifier of the most recent codex / cross-model audit that examined this entry's description, or null / the literal string 'none' when no such audit has run. The field-level type permits both null and 'none' broadly, but per spec §3.1 firm rule #2 the rule-#2 then-branch in `allOf` tightens this to the LITERAL STRING 'none' only when source_acquired=false (no original means audit cannot be substantive — round-6 codex P2 closure). null remains valid only when source_acquired=true and the entry is simply unaudited."
+    },
+    "contamination_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "v3.7.3 contaminated-source advisory field (spec §3.2, L3-2). Two boolean signals computed at ingest time by bibliography_agent. Surfaces at cite-time finalizer as CONTAMINATED-... marker annotation suffix; advisory only — does NOT block emission. Absence of the object means signals were not computed (legacy entries or check skipped); presence with both fields false means computed and no contamination evidence. External motivation: Zhao et al. arXiv:2605.07723 (2026-05) documents post-2024-mid hallucination inflection in preprint corpora and rising Google Scholar citation-only entries.",
+      "properties": {
+        "preprint_post_llm_inflection": {
+          "type": "boolean",
+          "description": "True when entry year >= 2024 AND venue is a preprint server (arXiv / bioRxiv / medRxiv / SSRN / Research Square / Preprints.org). Per spec §3.2 Vector 1; threshold year derived from Zhao et al. 2026-05 mid-2024 inflection point analysis."
+        },
+        "semantic_scholar_unmatched": {
+          "type": "boolean",
+          "description": "True when a Semantic Scholar API lookup (per references/semantic_scholar_api_protocol.md) returned no match by either DOI or title. The check fires only when obtained_via != 'manual' (user-curated entries are exempted; user has vouched). Per spec §3.2 Vector 2."
+        }
+      }
     }
   },
 
@@ -159,6 +174,26 @@
             "type": "string",
             "const": "none"
           }
+        }
+      }
+    },
+    {
+      "description": "v3.7.3 spec §3.2 cross-field rule (gemini review F5 closure): preprint_post_llm_inflection=true REQUIRES year>=2024. The flag's definition is `year >= 2024 AND venue is a preprint server`, so setting the flag true with a pre-2024 year is logically contradictory and the schema rejects it. The reverse (year>=2024 AND flag=false) is legal — flag may be false because the venue is not a preprint server.",
+      "if": {
+        "properties": {
+          "contamination_signals": {
+            "type": "object",
+            "properties": {
+              "preprint_post_llm_inflection": { "const": true }
+            },
+            "required": ["preprint_post_llm_inflection"]
+          }
+        },
+        "required": ["contamination_signals"]
+      },
+      "then": {
+        "properties": {
+          "year": { "minimum": 2024 }
         }
       }
     }
