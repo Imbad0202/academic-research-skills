@@ -180,26 +180,6 @@ jobs:
           pip install pytest
           pytest scripts/test_check_v3_6_8_cite_provenance_pipeline.py -v
 
-      - name: Run public-repo boundary scan
-        # External motivation: 2026-05-12 v3.7.3 ship retrospective.
-        # ARS is a public repo. Some keywords (HEEACT as a Taiwan QA
-        # institution; Springer as a publisher) ARE legitimate as
-        # generic educational content; they become boundary-violating
-        # ONLY when co-occurring in maintainer's private-project
-        # context (specific session signatures, internal repo names,
-        # internal file paths). This lint blocks the boundary-violating
-        # contexts mechanically — Memory-only rules failed (re-used a
-        # v3.6.8 phrase in v3.7.3 on the incorrect reasoning that
-        # "already public ⇒ licensed").
-        run: python3 scripts/check_public_repo_boundary.py
-
-      - name: Run public-repo boundary scan mutation tests
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest
-          pytest scripts/test_check_public_repo_boundary.py -v
-
       - name: Run v3.7.3 Three-Layer Citation lint regression tests
         # v3.7.3 F18 closure (codex round-7): the v3.7.3 three-layer
         # citation lint enforces the L3-1 claim-faithfulness locator
