@@ -134,7 +134,7 @@
     "decision": { "enum": ["block", "warn", "pass"] },
     "principle_status": { "enum": ["pass", "warn", "fail"] },
     "protocol_maturity": {
-      "description": "Optional maturity-disclosure context for the PRISMA-trAIce protocol authority backing this report. Populated by compliance_agent from shared/prisma_trAIce_protocol.md (frontmatter + § Status disclaimer). See issue #95.",
+      "description": "Optional maturity-disclosure context for the PRISMA-trAIce protocol authority backing this report. Populated by compliance_agent from shared/prisma_trAIce_protocol.md: frontmatter `citation` and `snapshot_date` are the deterministic source for upstream_citation and snapshot_date; `status` is derived from the protocol authors' self-description (currently foundational_proposal per Holst et al. 2025); `caveat_summary` is composed from the protocol's framing (issue #93 / PR #94 add a `§ Status disclaimer` section as the canonical prose source — until that PR lands, agents derive the summary from the Holst 2025 framing). See handoff_schemas.md § Schema 12 and issue #95 for the contract narrative.",
       "type": "object",
       "additionalProperties": false,
       "required": ["status", "upstream_citation", "snapshot_date", "caveat_summary"],
