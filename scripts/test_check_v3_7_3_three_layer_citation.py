@@ -271,3 +271,94 @@ def test_nested_html_comment_marker_in_quote_value_handled(tmp_path: Path):
         "Smith (2024) <!--ref:smith2024--><!--anchor:quote:%3C%21%2D%2Dtag%2D%2D%3E-->",
     )
     assert lint_file(p) == []
+
+
+# --- v3.7.3 codex round-2 F8 closure: 2-token ref suffix (contamination) ---
+
+def test_contamination_2_token_suffix_with_valid_anchor_passes(tmp_path: Path):
+    """v3.7.3 F8: ref carrying `ok CONTAMINATED-PREPRINT` is the
+    v3.7.3 finalizer-resolved shape for `ok` + preprint contamination.
+    Must still pair correctly with the trailing anchor marker."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024 ok CONTAMINATED-PREPRINT--><!--anchor:page:14-->",
+    )
+    assert lint_file(p) == []
+
+
+def test_contamination_2_token_low_warn_combined_with_anchor_passes(tmp_path: Path):
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024 LOW-WARN CONTAMINATED-PREPRINT+UNMATCHED--><!--anchor:page:14-->",
+    )
+    assert lint_file(p) == []
+
+
+def test_contamination_2_token_ref_without_anchor_caught(tmp_path: Path):
+    """v3.7.3 F8: previously the 2-token regex skipped these refs
+    entirely, so missing-anchor violations went undetected. Lint must
+    now catch them."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024 ok CONTAMINATED-PREPRINT-->.",
+    )
+    violations = lint_file(p)
+    assert len(violations) == 1
+    assert "without trailing anchor" in violations[0]
+
+
+# --- v3.7.3 codex round-2 F9 closure: empty non-none anchor values -----
+
+def test_empty_page_anchor_fails(tmp_path: Path):
+    """v3.7.3 F9: `<!--anchor:page:-->` carries no locator payload but
+    is non-`none`. Must trigger violation, not bypass the gate."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:page:-->",
+    )
+    violations = lint_file(p)
+    assert len(violations) == 1
+    assert "empty anchor value" in violations[0]
+    assert "F9" in violations[0]
+
+
+def test_empty_quote_anchor_fails(tmp_path: Path):
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:quote:-->",
+    )
+    violations = lint_file(p)
+    assert len(violations) == 1
+    assert "empty anchor value" in violations[0]
+
+
+def test_empty_section_anchor_fails(tmp_path: Path):
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:section:-->",
+    )
+    violations = lint_file(p)
+    assert len(violations) == 1
+    assert "empty anchor value" in violations[0]
+
+
+def test_whitespace_only_value_fails(tmp_path: Path):
+    """v3.7.3 F9: a value of just whitespace is functionally empty."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:page:   -->",
+    )
+    violations = lint_file(p)
+    assert len(violations) == 1
+    assert "empty anchor value" in violations[0]
+
+
+def test_empty_none_anchor_still_passes_lint(tmp_path: Path):
+    """v3.7.3 F9: `none` is the one kind that legitimately has an
+    empty value (it's the explicit no-anchor declaration). Lint must
+    not flag it — finalizer's precedence-zero rule catches it later."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:none:-->",
+    )
+    assert lint_file(p) == []

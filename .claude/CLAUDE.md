@@ -32,7 +32,7 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 - New 6 contamination_signals tests in existing literature_corpus schema test file.
 - New v3.7.3 line-budget test; v3.6.7 Phase 6.6 budget test updated to subtract v3.7.3 extension lines alongside v3.7.1 Step 3b.
 
-**Regression status (post review):** 940 pass / 3 skipped / 0 failed (pre-review baseline 925; +15 tests from F1/F2/F5/F7 closures). v3.6.7 PATTERN PROTECTION + v3.7.1 / v3.7.2 lints unchanged. Codex review 0 P1 / 2 P2 → all closed. Gemini cross-model review 2 P1 / 2 P2 / 1 P3 → all closed (no overlap between reviewers — clean complementary coverage).
+**Regression status (post review rounds 1+2):** 948 pass / 3 skipped / 0 failed (pre-review baseline 925; +23 tests across F1/F2/F5/F7/F8/F9). v3.6.7 PATTERN PROTECTION + v3.7.1 / v3.7.2 lints unchanged. Codex round 1: 0 P1 / 2 P2 → all closed. Gemini cross-model: 2 P1 / 2 P2 / 1 P3 → all closed. Codex round 2 (post-commit): 0 P1 / 2 P2 → F8 (2-token contamination ref suffix bypassed lint regex) + F9 (empty non-`none` anchor value bypassed NO-LOCATOR gate) closed. Three rounds, no cross-reviewer overlap — canonical review-vs-challenge cascade.
 
 Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md`.
 

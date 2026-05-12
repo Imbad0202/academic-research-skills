@@ -89,9 +89,18 @@ def lint_file(path: Path) -> list[str]:
     violations: list[str] = []
 
     # Find every ref marker; the very next non-whitespace token MUST be an
-    # anchor marker. Allow optional whitespace between ref and anchor.
+    # anchor marker. Allow optional whitespace/newline between ref and
+    # anchor (F2). The ref marker can carry 0-2 status suffix tokens:
+    #   `<!--ref:slug-->`                                  (0 — pre-finalizer)
+    #   `<!--ref:slug ok-->` / `<!--ref:slug LOW-WARN-->`  (1 — post-finalizer v3.7.1)
+    #   `<!--ref:slug ok CONTAMINATED-PREPRINT-->`         (2 — v3.7.3 contamination annotation)
+    # v3.7.3 F8 closure (codex round-2): regex previously allowed only 0-1
+    # tokens, causing finditer to skip 2-token contamination markers
+    # entirely — violations on those refs went undetected.
     ref_anchor_pattern = re.compile(
-        r"<!--ref:[A-Za-z][A-Za-z0-9_:-]*(?:\s+[\w-]+(?:\+[\w-]+)*)?\s*-->"
+        r"<!--ref:[A-Za-z][A-Za-z0-9_:-]*"
+        r"(?:\s+[\w-]+(?:\+[\w-]+)*){0,2}"
+        r"\s*-->"
         r"(\s*<!--anchor:([^:>]*):([^>]*?)-->)?"
     )
     for m in ref_anchor_pattern.finditer(text):
@@ -109,6 +118,18 @@ def lint_file(path: Path) -> list[str]:
             violations.append(
                 f"{path}:{line_no}: invalid anchor kind {kind!r}; "
                 f"must be one of {sorted(VALID_KINDS)}"
+            )
+            continue
+        # v3.7.3 F9 closure (codex round-2): empty value on a non-`none`
+        # anchor kind bypasses the NO-LOCATOR gate while pretending to
+        # satisfy the locator contract. Only `none` may have an empty
+        # value; every other kind MUST have a non-empty locator payload.
+        if kind != "none" and value.strip() == "":
+            violations.append(
+                f"{path}:{line_no}: empty anchor value for kind "
+                f"{kind!r}; v3.7.3 F9 — only `none` may have an empty "
+                f"value, every other kind requires a non-empty locator "
+                f"payload"
             )
             continue
         if kind == "quote":
@@ -144,7 +165,7 @@ def lint_file(path: Path) -> list[str]:
         # Check if the previous text ends with a ref marker.
         preceding = text[: m.start()]
         if not re.search(
-            r"<!--ref:[A-Za-z][A-Za-z0-9_:-]*(?:\s+[\w-]+(?:\+[\w-]+)*)?\s*-->\s*$",
+            r"<!--ref:[A-Za-z][A-Za-z0-9_:-]*(?:\s+[\w-]+(?:\+[\w-]+)*){0,2}\s*-->\s*$",
             preceding,
         ):
             line_no = text.count("\n", 0, m.start()) + 1
