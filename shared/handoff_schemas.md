@@ -729,6 +729,7 @@ Mode-aware output of [`compliance_agent`](agents/compliance_agent.md). Three top
 - `mode`: dispatches payload (see [`shared/agents/compliance_agent.md`](agents/compliance_agent.md) §Dispatch logic)
 - `stage`: `"2.5"` or `"4.5"`
 - `prisma_trAIce`: `null` when `mode != "systematic_review"`; otherwise tier-bucketed item results
+- `prisma_trAIce.protocol_maturity` *(optional, added per issue #95)*: snapshot of the upstream protocol's self-described maturity status (`foundational_proposal` / `delphi_consensus` / `empirically_validated`) plus citation, snapshot date, and a one-paragraph caveat summary. Populated by `compliance_agent` from [`shared/prisma_trAIce_protocol.md`](prisma_trAIce_protocol.md) frontmatter + § Status disclaimer. Omittable for byte-equivalent compatibility with pre-v3.x entries (zero-touch).
 - `raise.mode`: `"full"` (SR + other_evidence_synthesis) or `"principles_only"` (primary_research)
 - `raise.principles`: 4 keys, each with `pass` / `warn` / `fail`
 - `raise.roles`: 8 keys, populated only when `raise.mode == "full"`

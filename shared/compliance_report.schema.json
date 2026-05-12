@@ -38,7 +38,8 @@
                 "optional": { "$ref": "#/$defs/tier_bucket" }
               }
             },
-            "block_decision": { "$ref": "#/$defs/decision" }
+            "block_decision": { "$ref": "#/$defs/decision" },
+            "protocol_maturity": { "$ref": "#/$defs/protocol_maturity" }
           }
         }
       ]
@@ -132,6 +133,33 @@
   "$defs": {
     "decision": { "enum": ["block", "warn", "pass"] },
     "principle_status": { "enum": ["pass", "warn", "fail"] },
+    "protocol_maturity": {
+      "description": "Optional maturity-disclosure context for the PRISMA-trAIce protocol authority backing this report. Populated by compliance_agent from shared/prisma_trAIce_protocol.md (frontmatter + § Status disclaimer). See issue #95.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "upstream_citation", "snapshot_date", "caveat_summary"],
+      "properties": {
+        "status": {
+          "description": "Authors' self-described maturity stage. 'foundational_proposal' = pre-Delphi, immediately-adoptable-but-unvalidated (current Holst et al. 2025 status). 'delphi_consensus' = post-formal-consensus. 'empirically_validated' = items validated across diverse research contexts.",
+          "enum": ["foundational_proposal", "delphi_consensus", "empirically_validated"]
+        },
+        "upstream_citation": {
+          "description": "Citation string matching shared/prisma_trAIce_protocol.md frontmatter `citation` field.",
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshot_date": {
+          "description": "ISO 8601 date of the protocol snapshot consulted; matches shared/prisma_trAIce_protocol.md frontmatter `snapshot_date`.",
+          "type": "string",
+          "format": "date"
+        },
+        "caveat_summary": {
+          "description": "One-paragraph summary of the maturity caveat, suitable for inclusion in the block message and the AI Self-Reflection Report compliance summary.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "tier_bucket": {
       "type": "object",
       "additionalProperties": false,

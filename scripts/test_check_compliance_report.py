@@ -276,6 +276,90 @@ class TestComplianceReportValidator(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn("CA-4", result.stderr)
 
+    # --- Issue #95: protocol_maturity optional field ---
+
+    def test_protocol_maturity_omitted_passes(self) -> None:
+        """Zero-touch: existing reports without protocol_maturity continue to validate."""
+        # _valid_sr_report() does not include protocol_maturity; this asserts the baseline.
+        report = _valid_sr_report()
+        self.assertNotIn("protocol_maturity", report["prisma_trAIce"])
+        result = _run_with(report)
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_protocol_maturity_valid_shape_passes(self) -> None:
+        """Schema accepts protocol_maturity object with all four required fields."""
+        report = _valid_sr_report()
+        report["prisma_trAIce"]["protocol_maturity"] = {
+            "status": "foundational_proposal",
+            "upstream_citation": (
+                "Holst D, et al. Transparent Reporting of AI in Systematic "
+                "Literature Reviews: Development of the PRISMA-trAIce "
+                "Checklist. JMIR AI. 2025. doi:10.2196/80247"
+            ),
+            "snapshot_date": "2025-12-10",
+            "caveat_summary": (
+                "PRISMA-trAIce is a foundational proposal developed via "
+                "systematic adaptation; items have not yet been empirically "
+                "validated across diverse research contexts."
+            ),
+        }
+        result = _run_with(report)
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_protocol_maturity_invalid_status_enum_fails(self) -> None:
+        """Invalid status enum (e.g. 'beta') must fail validation."""
+        report = _valid_sr_report()
+        report["prisma_trAIce"]["protocol_maturity"] = {
+            "status": "beta",  # not in enum
+            "upstream_citation": "Holst D, et al. JMIR AI. 2025. doi:10.2196/80247",
+            "snapshot_date": "2025-12-10",
+            "caveat_summary": "Test.",
+        }
+        result = _run_with(report)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("status", result.stdout + result.stderr)
+
+    def test_protocol_maturity_missing_required_subfield_fails(self) -> None:
+        """All four sub-fields are required when protocol_maturity is present.
+
+        The schema uses oneOf at the prisma_trAIce level, so the error surfaces
+        as "not valid under any of the given schemas" rather than naming the
+        specific missing subfield. We only assert that validation fails.
+        """
+        report = _valid_sr_report()
+        report["prisma_trAIce"]["protocol_maturity"] = {
+            "status": "foundational_proposal",
+            "upstream_citation": "Holst D, et al. JMIR AI. 2025. doi:10.2196/80247",
+            "snapshot_date": "2025-12-10",
+            # caveat_summary intentionally omitted
+        }
+        result = _run_with(report)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("prisma_trAIce", result.stdout + result.stderr)
+
+    def test_missing_maturity_warning_off_by_default(self) -> None:
+        """Without ARS_WARN_MISSING_MATURITY=1, no warning when maturity is omitted."""
+        report = _valid_sr_report()
+        report["prisma_trAIce"].pop("protocol_maturity", None)
+        result = _run_with(report)
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertNotIn("protocol_maturity", result.stderr)
+
+    def test_missing_maturity_warning_opt_in(self) -> None:
+        """With ARS_WARN_MISSING_MATURITY=1, warn when prisma_trAIce lacks protocol_maturity."""
+        from scripts._test_helpers import run_script as _run_with_env
+        report = _valid_sr_report()
+        report["prisma_trAIce"].pop("protocol_maturity", None)
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "r.json"
+            _write(p, report)
+            result = _run_with_env(
+                SCRIPT, str(p),
+                extra_env={"ARS_WARN_MISSING_MATURITY": "1"},
+            )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("protocol_maturity", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

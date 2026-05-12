@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -56,6 +57,20 @@ def warn_suspicious(report: dict) -> list[str]:
             warnings.append(
                 f"WARNING: RAISE principle '{name}' marked 'pass' but principle_evidence is empty. "
                 "CA-4 should have downgraded this to 'warn [weak evidence]'."
+            )
+
+    # #95 maturity disclosure: when prisma_trAIce subtree is present but
+    # protocol_maturity is missing, suggest the agent populate it.
+    # Opt-in (ARS_WARN_MISSING_MATURITY=1) to preserve the zero-touch
+    # promise for entries authored before Schema 12's protocol_maturity
+    # field landed.
+    if os.environ.get("ARS_WARN_MISSING_MATURITY") == "1":
+        if isinstance(pt, dict) and "protocol_maturity" not in pt:
+            warnings.append(
+                "WARNING: prisma_trAIce subtree is present but protocol_maturity is missing. "
+                "Per issue #95, compliance_agent should populate protocol_maturity from "
+                "shared/prisma_trAIce_protocol.md. This warning is opt-in "
+                "(ARS_WARN_MISSING_MATURITY=1) and does not fail validation."
             )
     return warnings
 
