@@ -51,7 +51,7 @@ Every audit round MUST open with a Scope Report that quantifies how many of the 
   - `description-internally-consistent: PASS | FAIL` (over the non-retrieved subset)
   - `unaudited-due-to-missing-source: <count>` (always reported, never hidden)
 
-**Why this exists:** in the 2026-04-30 HEEACT chapter session, a codex round-3 report stated "ADDRESSED" without disclosing that only 22 of 53 entries had retrieved original sources; the remaining 31 description-only entries inherited the "verified" verdict by aggregation. The Scope Report renders that split first-class so a reader cannot conflate self-consistency with retrieval-grounded verification.
+**Why this exists:** in the 2026-04-30 production session, a codex round-3 report stated "ADDRESSED" without disclosing that only 22 of 53 entries had retrieved original sources; the remaining 31 description-only entries inherited the "verified" verdict by aggregation. The Scope Report renders that split first-class so a reader cannot conflate self-consistency with retrieval-grounded verification.
 
 ---
 

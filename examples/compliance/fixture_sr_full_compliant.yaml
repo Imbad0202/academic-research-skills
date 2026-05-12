@@ -61,7 +61,7 @@ raise:
     trainers:
       - "Internal journal club session on AI-assisted SR conducted 2026-01-15 (slides archived)."
     organisations:
-      - "HEEACT IRB waiver obtained (HE-2026-012); institutional AI use policy version 3.1 applied."
+      - "Institutional IRB waiver obtained (REF-2026-012); institutional AI use policy version 3.1 applied."
     funders:
       - "Grant NSC-2026-0045: funder aware of AI assistance; no restrictions on disclosure."
   block_decision: pass
