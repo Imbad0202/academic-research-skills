@@ -124,7 +124,7 @@
       "properties": {
         "preprint_post_llm_inflection": {
           "type": "boolean",
-          "description": "True when entry year >= 2024 AND venue is a preprint server (arXiv / bioRxiv / medRxiv / SSRN / Research Square / Preprints.org). Per spec §3.2 Vector 1; threshold year derived from Zhao et al. 2026-05 mid-2024 inflection point analysis."
+          "description": "True when entry year >= 2024 AND venue is a preprint server. The v3.7.3 closed list of 10 servers (expanded from 6 to 10 per codex F6 / gemini review closure): arXiv, bioRxiv, medRxiv, SSRN, Research Square, Preprints.org, ChemRxiv, EarthArXiv, OSF Preprints (covers SocArXiv / PsyArXiv / other OSF-hosted services), TechRxiv. Per spec §3.2 Vector 1; threshold year derived from Zhao et al. 2026-05 mid-2024 inflection point analysis. Adapters that compute this signal MUST use the full 10-venue list; partial implementations from the schema description alone would suppress CONTAMINATED-PREPRINT advisories on the 4 newer venues (v3.7.3 codex round-4 F13 closure)."
         },
         "semantic_scholar_unmatched": {
           "type": "boolean",

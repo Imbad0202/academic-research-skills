@@ -217,14 +217,22 @@ def lint_file(path: Path) -> list[str]:
                     f"comment termination"
                 )
 
-    # Orphan anchor markers (anchor without preceding ref) are also a
-    # violation. Detect anchor markers that are NOT immediately preceded
-    # by a ref marker (allowing whitespace).
+    # Orphan anchor markers (anchor without a preceding REF marker) are a
+    # violation. v3.7.3 F12 closure (codex round-4): the earlier
+    # implementation used a `(?<!-->)` lookbehind to skip anchors that
+    # immediately followed any HTML comment close, on the assumption
+    # that such anchors were paired with their ref. But `-->` ends ANY
+    # HTML comment, not just refs — so `<!--note--><!--anchor:page:1-->`
+    # or a malformed ref like `<!--ref:slug ok CONTAMINATED-PREPRINT EXTRA-->`
+    # (3 tokens, exceeding the {0,2} cap on the main regex) followed by
+    # an anchor would silently slip through the orphan scan. The fix:
+    # remove the lookbehind, scan EVERY anchor in the file, and inside
+    # the loop verify that the preceding text ends with a well-formed
+    # ref marker per the same regex used by the main ref_anchor_pattern.
     orphan_pattern = re.compile(
-        r"(?<!-->)\s*<!--anchor:([^:>]*):([^>]*?)-->"
+        r"<!--anchor:([^:>]*):([^>]*?)-->"
     )
     for m in orphan_pattern.finditer(text):
-        # Check if the previous text ends with a ref marker.
         preceding = text[: m.start()]
         if not re.search(
             r"<!--ref:[A-Za-z][A-Za-z0-9_:-]*(?:\s+[\w-]+(?:\+[\w-]+)*){0,2}\s*-->\s*$",

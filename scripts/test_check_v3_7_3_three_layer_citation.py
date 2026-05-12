@@ -407,3 +407,42 @@ def test_quote_with_single_arrow_ambiguous_passes(tmp_path: Path):
     # actual remediation is the encoded form `<!--anchor:quote:foo%2D%2Dbar-->`
     # which would unambiguously include both intent + safety.
     assert lint_file(p) == []
+
+
+# --- v3.7.3 codex round-4 F12 closure: orphan after non-ref comment ----
+
+def test_anchor_after_arbitrary_html_comment_caught(tmp_path: Path):
+    """v3.7.3 F12: an anchor preceded by a non-ref HTML comment is an
+    orphan — the `<!--note-->` is not a ref marker. The earlier
+    `(?<!-->)` lookbehind incorrectly skipped this case."""
+    p = write(
+        tmp_path,
+        "<!--note--><!--anchor:page:1-->",
+    )
+    violations = lint_file(p)
+    assert any("orphan anchor" in v for v in violations), f"violations={violations}"
+
+
+def test_anchor_after_3_token_malformed_ref_caught(tmp_path: Path):
+    """v3.7.3 F12: a ref with 3 status tokens exceeds the {0,2} cap on
+    the main ref_anchor_pattern. The malformed ref is not matched by
+    the main loop AND was previously skipped by orphan scan because
+    its `-->` close fooled the lookbehind. Now the orphan scan walks
+    every anchor and checks for a well-formed preceding ref."""
+    p = write(
+        tmp_path,
+        "<!--ref:slug ok CONTAMINATED-PREPRINT EXTRA--><!--anchor:page:1-->",
+    )
+    violations = lint_file(p)
+    assert any("orphan anchor" in v for v in violations), f"violations={violations}"
+
+
+def test_anchor_after_well_formed_ref_still_passes(tmp_path: Path):
+    """v3.7.3 F12 boundary: legitimate ref+anchor pairs (1 or 2 status
+    tokens, valid slug pattern) must still pass — removing the
+    lookbehind cannot regress the happy path."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024 ok CONTAMINATED-PREPRINT--><!--anchor:page:1-->",
+    )
+    assert lint_file(p) == []
