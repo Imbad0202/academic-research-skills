@@ -80,6 +80,63 @@ def _strip_fenced_code_blocks(text: str) -> str:
     return "\n".join(out_lines)
 
 
+def _check_quote_premature_terminator(text: str, path: Path) -> list[str]:
+    """v3.7.3 F10 closure (codex round-3): an unencoded `-->` inside a
+    `quote` anchor value prematurely terminates the HTML comment at the
+    FIRST `-->`, leaving the rest of the intended quote as visible
+    trailing prose. The main ref-anchor regex stops at that first `-->`,
+    so the `"--" in value` check (F1) never sees the dangerous bytes.
+
+    This sentinel scan walks each `<!--anchor:quote:` opening, finds the
+    first `-->`, and checks the bytes between that close and the next
+    `<!--` opening (or end-of-text). If those bytes contain another
+    `-->` token, the original quote was malformed — at least two
+    HTML-comment terminators were emitted into what should have been one
+    URL-encoded payload.
+
+    Walks raw text (NOT stripped text) because the bug is about HTML
+    comment parsing, not about block context."""
+    violations: list[str] = []
+    pos = 0
+    open_marker = "<!--anchor:quote:"
+    while True:
+        start = text.find(open_marker, pos)
+        if start == -1:
+            break
+        # First `-->` after the opening marker — this is where the HTML
+        # parser thinks the comment ends.
+        first_close = text.find("-->", start + len(open_marker))
+        if first_close == -1:
+            # Unterminated comment — separate violation outside this
+            # check's scope. Skip.
+            pos = start + len(open_marker)
+            continue
+        after_close = first_close + 3
+        # Find the next `<!--` opener (or end of text) — that's the
+        # right edge of the trailing-text region to inspect.
+        next_open = text.find("<!--", after_close)
+        if next_open == -1:
+            next_open = len(text)
+        trailing = text[after_close:next_open]
+        # The dangerous signal is finding another `-->` in the trailing
+        # text — that proves the quote value itself contained at least
+        # two HTML-comment terminators, so the user clearly emitted a
+        # raw `-->` inside what should have been a percent-encoded
+        # payload. Legitimate trailing prose between two citations
+        # (whitespace + words + punctuation) does NOT contain `-->`
+        # tokens and must not false-positive.
+        if "-->" in trailing:
+            line_no = text.count("\n", 0, start) + 1
+            violations.append(
+                f"{path}:{line_no}: quote anchor contains unencoded "
+                f"`-->` (HTML comment terminator) inside its value, "
+                f"causing premature comment close at byte {first_close}; "
+                f"v3.7.3 F10 — percent-encode `-` as `%2D` per F1 rule"
+            )
+        pos = after_close
+    return violations
+
+
 def lint_file(path: Path) -> list[str]:
     """Return a list of violation strings; empty list = PASS."""
     if not path.exists():
@@ -87,6 +144,11 @@ def lint_file(path: Path) -> list[str]:
     raw_text = path.read_text(encoding="utf-8")
     text = _strip_fenced_code_blocks(raw_text)
     violations: list[str] = []
+
+    # v3.7.3 F10: sentinel scan for premature HTML comment terminators
+    # inside quote anchor values. Runs BEFORE the main regex match so
+    # malformed quote payloads cannot slip through.
+    violations.extend(_check_quote_premature_terminator(text, path))
 
     # Find every ref marker; the very next non-whitespace token MUST be an
     # anchor marker. Allow optional whitespace/newline between ref and

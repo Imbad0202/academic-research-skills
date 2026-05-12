@@ -196,6 +196,24 @@
           "year": { "minimum": 2024 }
         }
       }
+    },
+    {
+      "description": "v3.7.3 spec §3.2 manual-entry exemption (codex round-3 F11 closure): when obtained_via='manual' the bibliography_agent SKIPS the Semantic Scholar lookup and OMITS the semantic_scholar_unmatched field (user has already vouched for the entry). The schema enforces this contract: a manual entry MUST NOT carry semantic_scholar_unmatched at all (either absent or omitted from the contamination_signals object). Setting it to true on a manual entry would surface CONTAMINATED-UNMATCHED on a user-vouched reference downstream, contradicting the exemption.",
+      "if": {
+        "properties": { "obtained_via": { "const": "manual" } },
+        "required": ["obtained_via"]
+      },
+      "then": {
+        "not": {
+          "properties": {
+            "contamination_signals": {
+              "type": "object",
+              "required": ["semantic_scholar_unmatched"]
+            }
+          },
+          "required": ["contamination_signals"]
+        }
+      }
     }
   ],
 

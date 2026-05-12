@@ -350,3 +350,62 @@ def test_preprint_flag_absent_with_pre_2024_year_passes():
     schema = _load_schema()
     entry = _base_entry() | {"year": 2020}
     _validator(schema).validate(entry)
+
+
+# --- v3.7.3 codex round-3 F11 closure: manual-entry exemption ----------
+
+def test_manual_entry_with_ss_unmatched_field_rejected():
+    """v3.7.3 F11: obtained_via=manual + semantic_scholar_unmatched
+    present is a contract violation — bibliography_agent SKIPS the
+    Semantic Scholar check on user-curated entries and OMITS the
+    field. Schema must reject either true or false on manual."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "obtained_via": "manual",
+        "contamination_signals": {"semantic_scholar_unmatched": True},
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_manual_entry_with_ss_unmatched_false_also_rejected():
+    """v3.7.3 F11: even semantic_scholar_unmatched=false on a manual
+    entry is wrong — the field MUST be absent, since 'false' would
+    imply 'checked and found' which contradicts the skip-the-check
+    exemption."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "obtained_via": "manual",
+        "contamination_signals": {"semantic_scholar_unmatched": False},
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_manual_entry_with_only_preprint_flag_passes():
+    """v3.7.3 F11: manual entries CAN still set
+    preprint_post_llm_inflection (the year+venue check doesn't
+    depend on the SS API), they just can't carry the unmatched
+    field. preprint_post_llm_inflection=true is allowed when
+    year>=2024 per F5."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "year": 2024,
+        "obtained_via": "manual",
+        "contamination_signals": {"preprint_post_llm_inflection": True},
+    }
+    _validator(schema).validate(entry)
+
+
+def test_non_manual_entry_with_ss_unmatched_passes():
+    """v3.7.3 F11: the exemption applies only to obtained_via=manual.
+    A folder-scan or zotero-bbt-export entry CAN carry the
+    semantic_scholar_unmatched field."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "obtained_via": "folder-scan",
+        "contamination_signals": {"semantic_scholar_unmatched": True},
+    }
+    _validator(schema).validate(entry)

@@ -362,3 +362,48 @@ def test_empty_none_anchor_still_passes_lint(tmp_path: Path):
         "Smith (2024) <!--ref:smith2024--><!--anchor:none:-->",
     )
     assert lint_file(p) == []
+
+
+# --- v3.7.3 codex round-3 F10 closure: premature comment terminator ----
+
+def test_quote_with_raw_arrow_close_caught(tmp_path: Path):
+    """v3.7.3 F10: `<!--anchor:quote:foo-->bar-->` looks like a valid
+    anchor to the main regex (which stops at the first `-->`), but the
+    HTML parser sees the comment close at byte 24 and treats `bar-->`
+    as visible trailing prose. The main F1 check on `--` in value
+    never sees the second `-->` because the regex stopped early.
+    Sentinel scan must catch this."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:quote:foo-->bar-->",
+    )
+    violations = lint_file(p)
+    assert any("F10" in v for v in violations), f"violations={violations}"
+
+
+def test_quote_followed_by_normal_ref_still_passes(tmp_path: Path):
+    """v3.7.3 F10: trailing whitespace + next `<!--ref:` is legitimate,
+    not a leak. Sentinel scan must not false-positive here."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:quote:short--> "
+        "and Jones (2025) <!--ref:jones2025--><!--anchor:page:1-->",
+    )
+    assert lint_file(p) == []
+
+
+def test_quote_with_single_arrow_ambiguous_passes(tmp_path: Path):
+    """v3.7.3 F10 boundary: a single `-->` followed by prose like
+    `bar.` is statically indistinguishable from a legitimate
+    anchor-close + normal trailing prose. The sentinel scan only
+    catches DEFINITE leaks (trailing `-->` proves a second
+    comment-terminator was emitted inside what should have been one
+    encoded payload). Single-terminator + ambiguous prose passes."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:quote:foo-->bar.",
+    )
+    # Lint cannot statically decide leak vs legit; passes here. The
+    # actual remediation is the encoded form `<!--anchor:quote:foo%2D%2Dbar-->`
+    # which would unambiguously include both intent + safety.
+    assert lint_file(p) == []
