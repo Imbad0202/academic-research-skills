@@ -499,3 +499,30 @@ def test_well_formed_ref_with_2_tokens_does_not_trigger_malformed(tmp_path: Path
         "<!--ref:smith2024 ok CONTAMINATED-PREPRINT--><!--anchor:page:1-->",
     )
     assert lint_file(p) == []
+
+
+# --- v3.7.3 codex round-6 F15 closure: prompt-vs-lint alignment --------
+
+def test_quote_with_single_hyphen_explicitly_allowed(tmp_path: Path):
+    """v3.7.3 F15: prompts and lint align on "encode consecutive `--`,
+    raw single `-` is fine". `AI-generated` survives raw. This is
+    the post-round-6 weak rule (lint was always weak; prompts had
+    been written as strong "encode every `-`" and were the
+    inconsistent party — adjusted in F15 commit)."""
+    p = write(
+        tmp_path,
+        "Chen (2024) <!--ref:chen2024--><!--anchor:quote:AI-generated%20text-->",
+    )
+    assert lint_file(p) == []
+
+
+def test_quote_with_triple_hyphen_must_encode_first_double(tmp_path: Path):
+    """v3.7.3 F15 boundary: `---` contains `--`. The lint rejects
+    any consecutive `--` regardless of length. Three hyphens
+    (`---`) MUST encode at least the first two."""
+    p = write(
+        tmp_path,
+        "Smith (2024) <!--ref:smith2024--><!--anchor:quote:foo---bar-->",
+    )
+    violations = lint_file(p)
+    assert any("raw `--`" in v for v in violations), f"violations={violations}"
