@@ -235,13 +235,22 @@ In `academic-pipeline` mode the pipeline_orchestrator runs the v3.7.3 finalizer 
 - **Standalone mode signal:** the invocation prompt does NOT reference any orchestrator / stage / downstream handoff. The compiler is being called directly to produce a deliverable. In this case, RUN the self-gate before emission.
 - **Default when ambiguous:** if you cannot determine the mode confidently, RUN the self-gate. The pipeline orchestrator's prompt is always explicit about pipeline context (per v3.6.7 Step 6 audit-artifact gate + this section); ambiguous invocation defaults to safer, gate-on behavior.
 
-**Self-gate rule (standalone mode only):** scan your own emitted report for any `<!--anchor:none:-->` marker. If ANY such marker is present, refuse the emission with this exact message:
+**Self-gate rule (standalone mode only).** The gate is a two-part check on the compiled report — failing EITHER part refuses emission. v3.7.3 codex round-9 F22 closure (the round-7 single-part check missed bare-ref bypass).
+
+**Part 1 — explicit `none` anchors:** scan for any `<!--anchor:none:-->` marker. Each is a citation the compiler tagged as "no locator available".
+
+**Part 2 — bare refs (no adjacent anchor):** enumerate EVERY `<!--ref:slug-->` marker (in all 0/1/2-token suffix shapes per F8/F16) in the report. For each ref, check that the IMMEDIATELY FOLLOWING non-whitespace token is an `<!--anchor:<kind>:<value>-->` marker with `<kind>` ≠ `none` AND non-empty decoded value. Legacy v3.7.1 Two-Layer citations like `Smith (2024) <!--ref:smith2024-->` (no anchor at all) match this part — pipeline mode's 5-cell finalizer treats missing anchor as anchor=`none` per the precedence-zero rule, and standalone mode needs the same parity here.
+
+**If EITHER part fires**, refuse the emission with this message:
 
 ```
-[v3.7.3 NO-LOCATOR SELF-GATE] N citations carry `<!--anchor:none:-->` (no quote or page locator). Per R-L3-1-A this is gate-refused output. Action required: either supply a verifiable anchor (`quote` / `page` / `section` / `paragraph`) for each citation listed below, or remove the citation. Affected slugs: [list].
+[v3.7.3 NO-LOCATOR SELF-GATE]
+- N citations carry explicit `<!--anchor:none:-->` (Part 1).
+- M citations have no adjacent anchor at all — bare ref markers per legacy Two-Layer form (Part 2).
+Per R-L3-1-A all (N+M) violations are gate-refused. Action required: either supply a verifiable non-`none` anchor (`quote` / `page` / `section` / `paragraph`) for each citation listed below, or remove the citation. Affected slugs: Part 1 = [list], Part 2 = [list].
 ```
 
-This is the deep-research analogue of the academic-paper formatter_agent's `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]` refusal. It does NOT inspect frontmatter (v3.6.7 partial-inversion preserved); it only inspects markers the compiler emitted itself. The check is mechanical: regex-scan for `<!--anchor:none:-->` over the compiled report, count occurrences, list the preceding ref slugs. If count is zero, emit normally.
+This is the deep-research analogue of the academic-paper formatter_agent's `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]` refusal. It does NOT inspect frontmatter (v3.6.7 partial-inversion preserved); it only inspects markers the compiler emitted itself. The Part-2 enumeration uses the same ref shape regex as the v3.7.3 lint (`scripts/check_v3_7_3_three_layer_citation.py`) — that is, the strict 0/1/2-token suffix form so malformed refs are NOT auto-paired; pair only when the following non-whitespace token is a well-formed anchor.
 
 **Scope of the self-gate:** anchor-presence-and-kind only. The compiler does NOT validate quote content, page-number existence, or any other anchor-value semantics — those are downstream audit concerns (v3.8 L3 audit scope). The self-gate's purpose is to ensure the locator CHANNEL is populated in standalone mode where no other gate exists; verifying the channel CONTENT is faithful to the cited source is out of scope.
 
