@@ -180,6 +180,21 @@ jobs:
           pip install pytest
           pytest scripts/test_check_v3_6_8_cite_provenance_pipeline.py -v
 
+      - name: Run v3.7.3 Three-Layer Citation lint regression tests
+        # v3.7.3 F18 closure (codex round-7): the v3.7.3 three-layer
+        # citation lint enforces the L3-1 claim-faithfulness locator
+        # contract (per-citation `<!--anchor:<kind>:<value>-->` marker,
+        # hyphen-encoding for quote values, malformed-ref detection,
+        # empty-value rejection, fenced-code-block isolation). Without
+        # this CI step, prompt-vs-lint regressions could ship without
+        # PR checks flagging them. Spec:
+        # docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest
+          pytest scripts/test_check_v3_7_3_three_layer_citation.py -v
+
       - name: Run v3.7.1 audit_snapshot render-side Section 0 regression tests
         # PR #78 codex round-5 P2-7: lint enforces the static template
         # contract, but render_prompt is the runtime path that actually

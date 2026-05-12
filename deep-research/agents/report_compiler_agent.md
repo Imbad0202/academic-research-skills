@@ -224,3 +224,21 @@ Three firm rules:
 URL-encoding for `quote:` values uses standard percent-encoding (`%20` for space, `%2C` for comma, `%3A` for colon, etc.) **AND additionally percent-encodes any consecutive run of two or more hyphen characters: `--` MUST be written as `%2D%2D`** (and `---` as `%2D%2D%2D`, etc.). Standard RFC 3986 encoding treats `-` as an unreserved character and does NOT encode it, but a quote containing `--` (e.g., from an em-dash, a divider, or a nested HTML comment opener) would leave a literal `--` in the anchor value that prematurely closes the HTML comment. A single hyphen between word characters (e.g., `AI-generated`, `well-known`) is safe and may remain raw. Always percent-encode space, comma, colon, AND any consecutive-hyphen run. Never rely on the absence of `-->` in the quoted text. v3.7.3 gemini review F1 + codex round-6 F15 closure (prompt-vs-lint alignment).
 
 The compiler's job still ends at emission. The compiler does NOT post-process or audit its own anchors. The cite_provenance_finalizer_agent reads `<!--anchor:...-->` markers downstream, applies the 5-cell matrix, and mutates them in place.
+
+## Standalone-Mode Self-Gate (v3.7.3 codex round-7 F17 closure)
+
+In `academic-pipeline` mode the pipeline_orchestrator runs the v3.7.3 finalizer extension + the formatter_agent hard-gate after the compiler emits its draft. In **standalone `deep-research` mode there is no downstream finalizer or formatter** — `report_compiler_agent` is the terminal step that the user receives directly. To prevent the NO-LOCATOR contract from being silently bypassed in standalone mode, the compiler applies a single self-gate check before emitting its final report.
+
+**Self-gate rule:** scan your own emitted report for any `<!--anchor:none:-->` marker. If ANY such marker is present, refuse the emission with this exact message:
+
+```
+[v3.7.3 NO-LOCATOR SELF-GATE] N citations carry `<!--anchor:none:-->` (no quote or page locator). Per R-L3-1-A this is gate-refused output. Action required: either supply a verifiable anchor (`quote` / `page` / `section` / `paragraph`) for each citation listed below, or remove the citation. Affected slugs: [list].
+```
+
+This is the deep-research analogue of the academic-paper formatter_agent's `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]` refusal. It does NOT inspect frontmatter (v3.6.7 partial-inversion preserved); it only inspects markers the compiler emitted itself. The check is mechanical: regex-scan for `<!--anchor:none:-->` over the compiled report, count occurrences, list the preceding ref slugs. If count is zero, emit normally.
+
+**Scope of the self-gate:** anchor-presence-and-kind only. The compiler does NOT validate quote content, page-number existence, or any other anchor-value semantics — those are downstream audit concerns (v3.8 L3 audit scope). The self-gate's purpose is to ensure the locator CHANNEL is populated; verifying the channel CONTENT is faithful to the cited source is out of scope.
+
+**Pipeline-mode behavior unchanged:** when running under `academic-pipeline`, the compiler's emission flows into pipeline_orchestrator's v3.7.3 finalizer extension (5-cell matrix) and then the formatter hard-gate. The self-gate is redundant but cheap there; it stays in place as defense-in-depth without changing the pipeline contract.
+
+This closes the standalone-mode bypass: codex round-7 F17 observed that standalone deep-research output had no NO-LOCATOR enforcement layer — the v3.7.3 hard-gate lived only in the pipeline + academic-paper paths. The self-gate is the minimum mechanism that brings parity without requiring a new dedicated finalizer agent for deep-research standalone.
