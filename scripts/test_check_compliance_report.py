@@ -338,10 +338,26 @@ class TestComplianceReportValidator(unittest.TestCase):
         self.assertIn("prisma_trAIce", result.stdout + result.stderr)
 
     def test_missing_maturity_warning_off_by_default(self) -> None:
-        """Without ARS_WARN_MISSING_MATURITY=1, no warning when maturity is omitted."""
+        """Without ARS_WARN_MISSING_MATURITY=1, no warning when maturity is omitted.
+
+        Explicitly drop the env var from the subprocess environment so the
+        test is deterministic regardless of the developer / CI shell state.
+        """
+        import os as _os
+        import sys as _sys
         report = _valid_sr_report()
         report["prisma_trAIce"].pop("protocol_maturity", None)
-        result = _run_with(report)
+        env = _os.environ.copy()
+        env.pop("ARS_WARN_MISSING_MATURITY", None)
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "r.json"
+            _write(p, report)
+            result = subprocess.run(
+                [_sys.executable, str(SCRIPT), str(p)],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertNotIn("protocol_maturity", result.stderr)
 
