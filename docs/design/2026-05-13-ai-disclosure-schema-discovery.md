@@ -15,8 +15,8 @@ This discovery is split into three execution phases. Each phase ships as a PR co
 
 | Phase | Deliverable | Status |
 |---|---|---|
-| Phase 1 | Doc scaffold + 4 anchor snapshots locked (Wayback + SHA-256) + manifest | **In progress** (this commit) |
-| Phase 2 | Fill cells for PRISMA-trAIce + ICMJE (32 of 64 cells minimum) | pending |
+| Phase 1 | Doc scaffold + 4 anchor snapshots locked (Wayback + SHA-256) + manifest | shipped (PR #107 c1) |
+| Phase 2 | Fill cells for PRISMA-trAIce + ICMJE (32 of 64 cells) | **In progress** (this commit) |
 | Phase 3 | Fill cells for Nature + IEEE (remaining 32) + Deliverable 2 design space + Deliverable 3 open questions | pending |
 
 **Phase 1 explicitly does NOT fill any cells.** Cells carry `phase: 1-scaffold` placeholder until Phase 2/3. This is intentional — Phase 1 builds the provenance infrastructure so Phase 2/3 cell-filling can cite verbatim with byte-level integrity.
@@ -118,48 +118,58 @@ These 16 fields anchor the 4×16 = 64-cell minimum matrix. Additional fields may
 ### 4.3 Per-anchor matrix — PRISMA-trAIce
 
 **Snapshot:** [`prisma-trAIce` @ wayback 20260513075443](https://web.archive.org/web/20260513075443/https://ai.jmir.org/2025/1/e80247/)
+**Source-strength caveat:** PRISMA-trAIce is a **pre-Delphi proposal** (Holst et al. 2025, §Methods: *"this work is explicitly intended as a well-founded proposal that provides an immediate solution and can serve as the foundation for a subsequent, community-driven formal consensus process"*). It has not undergone formal consensus. **No item carries `explicit-mandate` strength** — the framework explicitly invites community refinement. Items within the framework use reporting-guideline directive verbs ("describe", "report", "include") classified here as `explicit-recommend` *within the proposed framework*. The framework itself is `conditional-mandate` on "AI tool used as methodological tool in an SLR" — outside that condition the framework does not apply. Cells below distinguish item-level recommend from framework-level conditional via the `conditional_trigger` column.
 
-| # | Field | Source strength | Verbatim quote / inference passage | Locator | Value type | Conditional trigger |
+| # | Field | Source strength | Verbatim quote (or inference passage) | Locator | Value type | Conditional trigger |
 |---|---|---|---|---|---|---|
-| 1 | AI tool name | _phase-2_ | — | — | — | — |
-| 2 | AI tool version | _phase-2_ | — | — | — | — |
-| 3 | AI tool developer / manufacturer | _phase-2_ | — | — | — | — |
-| 4 | Stage / phase of use | _phase-2_ | — | — | — | — |
-| 5 | Specific task within stage | _phase-2_ | — | — | — | — |
-| 6 | Affected manuscript sections / content locator | _phase-2_ | — | — | — | — |
-| 7 | Date(s) of use | _phase-2_ | — | — | — | — |
-| 8 | Prompts | _phase-2_ | — | — | — | — |
-| 9 | Human oversight method | _phase-2_ | — | — | — | — |
-| 10 | Human responsibility statement | _phase-2_ | — | — | — | — |
-| 11 | Performance evaluation method | _phase-2_ | — | — | — | — |
-| 12 | Performance evaluation results | _phase-2_ | — | — | — | — |
-| 13 | Limitations / known failure modes | _phase-2_ | — | — | — | — |
-| 14 | Disclosure location | _phase-2_ | — | — | — | — |
-| 15 | Copyediting exemption predicate | _phase-2_ | — | — | — | — |
-| 16 | AI-generated image / figure / content rights | _phase-2_ | — | — | — | — |
+| 1 | AI tool name | explicit-recommend | "For each AI tool or system used: a. Specify the name, version number (if applicable), and developer/provider." | Table 1, M2.a | narrative | AI tool used in SLR |
+| 2 | AI tool version | explicit-recommend | "Specify the name, version number (if applicable), and developer/provider." | Table 1, M2.a | narrative | AI tool used in SLR; "if applicable" softens to recommend-when-versioned |
+| 3 | AI tool developer / manufacturer | explicit-recommend | "Specify the name, version number (if applicable), and developer/provider." | Table 1, M2.a | narrative | AI tool used in SLR |
+| 4 | Stage / phase of use | explicit-recommend | "For each AI tool, clearly describe: a. The specific SLR stage(s) where it was applied (e.g., search, screening, data extraction, Risk of Bias assessment, synthesis, drafting)." | Table 1, M3.a | structured (SLR stage enum) + narrative | AI tool used in SLR |
+| 5 | Specific task within stage | explicit-recommend | "b. The precise task(s) the AI was intended to perform at each stage." | Table 1, M3.b | narrative | AI tool used in SLR |
+| 6 | Affected manuscript sections / content locator | implicit | (inference passage) Items T1, A1, I1, R1, D1, D2 each prescribe a *manuscript section* for disclosure but the framework does not require an explicit per-task content-locator field. | Table 1 row headings (Title / Abstract / Introduction / Results / Discussion) | narrative | — |
+| 7 | Date(s) of use | not-addressed | (Read entire checklist Table 1 + Methods §; no item requests date-of-use disclosure. Confirmed against M1–M10, R1–R2, D1–D2, T1, A1, I1.) | — | — | — |
+| 8 | Prompts | explicit-recommend | "For each LLM/GenAI tool used, report: a. The full prompt(s) employed for each specific task. If prompts are extensive, provide a detailed description of their structure, key instructions, context provided..." | Table 1, M6.a | narrative (or repository link) | LLM/GenAI tool used (M6 header: "Prompt Engineering (if any)") |
+| 9 | Human oversight method | explicit-recommend | "Describe the process of human interaction with and oversight of the AI tool(s) at each stage: a. How many reviewers interacted with/validated the AI outputs for each task? b. Did reviewers work independently when validating AI outputs? c. What were the qualifications or training of reviewers..." | Table 1, M8.a–g | narrative | AI tool used in SLR |
+| 10 | Human responsibility statement | not-addressed | (Read entire Methods §; M8 covers oversight process but no item assigns explicit author-responsibility statement for AI output correctness. Distinct from ICMJE which mandates this separately.) | — | — | — |
+| 11 | Performance evaluation method | explicit-recommend | "Describe methods used to evaluate the AI tool(s) performance for the specific tasks within the review (if applicable and feasible). This may include: a. The reference standard used for evaluation... b. The metrics used..." | Table 1, M9 | narrative | AI tool used in SLR; "if applicable and feasible" softens further |
+| 12 | Performance evaluation results | explicit-recommend | "Report the results of any performance evaluations of the AI tool(s) for the specific tasks within the review (as described in P-trAIce M9). Include quantitative results (see M9) and measures of agreement between AI and human reviewers if assessed." | Table 1, R2 | structured (quantitative metrics) + narrative | M9 performance evaluation was conducted |
+| 13 | Limitations / known failure modes | explicit-recommend | "Discuss any limitations encountered in using the AI tool(s) (eg, technical issues, biases identified, challenges in prompt engineering, unexpected outputs, limitations in AI performance for specific sub-tasks)." | Table 1, D1 | narrative | AI tool used in SLR |
+| 14 | Disclosure location | implicit | (inference passage) Each Table 1 item is row-categorized by manuscript section (Title / Abstract / Introduction / Methods / Results / Discussion), implying section-of-record per item. No single "disclosure_location" field; location is structural property of the checklist itself. | Table 1 row groupings | structured (manuscript section enum) | — |
+| 15 | Copyediting exemption predicate | not-addressed | (Read entire checklist; PRISMA-trAIce scope is "AI as methodological tool in an SLR"; copyediting exemption is not in scope — distinct concern handled by venue-level policies, not this framework.) | — | — | — |
+| 16 | AI-generated image / figure / content rights | implicit | (inference passage) "Describe how data handled by AI tools (input, output, intermediate data) was managed and stored, and any measures taken to ensure data privacy, security, and compliance with copyright or terms of service, especially when using third-party cloud-based AI tools." M10 covers copyright/terms-of-service compliance for *data handled by AI tools* — touches AI-generated content rights indirectly without dedicated field. | Table 1, M10 | narrative | AI tool used in SLR |
+
+**Snapshot ref:** all explicit-recommend / implicit cells above cite `prisma-trAIce:wayback=20260513075443` (`sha256: f95fc59f…`).
+**Cell count:** 16 cells filled; source-strength distribution: 0 explicit-mandate / 10 explicit-recommend / 0 conditional-mandate / 3 implicit / 3 not-addressed / 0 unknown.
 
 ### 4.4 Per-anchor matrix — ICMJE
 
 **Snapshot:** [`icmje` @ wayback 20260513075516](https://web.archive.org/web/20260513075516/https://www.icmje.org/recommendations/browse/artificial-intelligence/ai-use-by-authors.html)
+**Source-strength caveat:** ICMJE Recommendations are **adopted** (not draft) and used by 1000+ journals as baseline. Strength language is consistent: "should require", "should describe", "must ensure", "is not acceptable". The page on AI Use by Authors (§V.A) is short — just two paragraphs — and is deliberately framework-level, not field-by-field. Many disclosure fields ARS tracks (tool version, prompts, performance metrics, date of use) are **not addressed** by ICMJE because ICMJE delegates section-level detail to individual journals. Where ICMJE uses "should require" addressed at *journals*, the effective strength to *authors* (post journal adoption) is `explicit-mandate`; where it addresses authors directly with "should describe" / "must ensure" / "is not acceptable", strength is recorded as written.
 
-| # | Field | Source strength | Verbatim quote / inference passage | Locator | Value type | Conditional trigger |
+| # | Field | Source strength | Verbatim quote (or inference passage) | Locator | Value type | Conditional trigger |
 |---|---|---|---|---|---|---|
-| 1 | AI tool name | _phase-2_ | — | — | — | — |
-| 2 | AI tool version | _phase-2_ | — | — | — | — |
-| 3 | AI tool developer / manufacturer | _phase-2_ | — | — | — | — |
-| 4 | Stage / phase of use | _phase-2_ | — | — | — | — |
-| 5 | Specific task within stage | _phase-2_ | — | — | — | — |
-| 6 | Affected manuscript sections / content locator | _phase-2_ | — | — | — | — |
-| 7 | Date(s) of use | _phase-2_ | — | — | — | — |
-| 8 | Prompts | _phase-2_ | — | — | — | — |
-| 9 | Human oversight method | _phase-2_ | — | — | — | — |
-| 10 | Human responsibility statement | _phase-2_ | — | — | — | — |
-| 11 | Performance evaluation method | _phase-2_ | — | — | — | — |
-| 12 | Performance evaluation results | _phase-2_ | — | — | — | — |
-| 13 | Limitations / known failure modes | _phase-2_ | — | — | — | — |
-| 14 | Disclosure location | _phase-2_ | — | — | — | — |
-| 15 | Copyediting exemption predicate | _phase-2_ | — | — | — | — |
-| 16 | AI-generated image / figure / content rights | _phase-2_ | — | — | — | — |
+| 1 | AI tool name | implicit | (inference passage) "the journal should require authors to disclose at submission whether they used AI-assisted technologies (such as LLMs, chatbots, or image creators)". Tool identity is implied by "such technology... how they used it" but no field-level requirement to name the specific tool. | §V.A, paragraph 1 | narrative | AI-assisted technology used |
+| 2 | AI tool version | not-addressed | (Read entire §V.A; no mention of version-level granularity. ICMJE delegates this detail to individual journal instructions.) | — | — | — |
+| 3 | AI tool developer / manufacturer | not-addressed | (Read entire §V.A; no mention of developer/manufacturer disclosure.) | — | — | — |
+| 4 | Stage / phase of use | implicit | (inference passage) "Authors who use such technology should describe... how they used it". "How they used it" implies stage but no enumerated stage taxonomy. | §V.A, paragraph 1 | narrative | AI-assisted technology used |
+| 5 | Specific task within stage | implicit | (inference passage — same source as #4) "how they used it" implies task-level description without explicit field. | §V.A, paragraph 1 | narrative | AI-assisted technology used |
+| 6 | Affected manuscript sections / content locator | not-addressed | (Read entire §V.A; "the submitted work in the appropriate section if applicable" prescribes a disclosure section but not per-content-affected-location.) | — | — | — |
+| 7 | Date(s) of use | not-addressed | (Read entire §V.A; no date-of-use disclosure required.) | — | — | — |
+| 8 | Prompts | not-addressed | (Read entire §V.A; no prompt-disclosure requirement. ICMJE delegates this to journal-level policy.) | — | — | — |
+| 9 | Human oversight method | explicit-recommend | "Authors should carefully review and edit the AI-generated content as the output can be incorrect, incomplete, or biased." | §V.A, paragraph 1 | narrative | AI-assisted technology used |
+| 10 | Human responsibility statement | explicit-mandate | "Therefore, humans are responsible for any submitted material that included the use of AI-assisted technologies." | §V.A, paragraph 1 | narrative or boolean | AI-assisted technology used |
+| 11 | Performance evaluation method | not-addressed | (Read entire §V.A; no performance-evaluation method disclosure required.) | — | — | — |
+| 12 | Performance evaluation results | not-addressed | (Read entire §V.A; no performance-evaluation results disclosure required.) | — | — | — |
+| 13 | Limitations / known failure modes | not-addressed | (Read entire §V.A; output limitations *mentioned* in oversight context — "output can be incorrect, incomplete, or biased" — but no requirement to disclose specific limitations encountered.) | — | — | — |
+| 14 | Disclosure location | explicit-recommend | "Authors who use such technology should describe, in both the cover letter and the submitted work in the appropriate section if applicable, how they used it" | §V.A, paragraph 1 | structured (closed enum: cover-letter + manuscript-section) | AI-assisted technology used. Note: ICMJE's "should describe" reads as recommend at the language layer; adopting journals may upgrade to mandate via their own instructions. |
+| 15 | Copyediting exemption predicate | not-addressed | (Read entire §V.A; no copyediting carve-out. ICMJE treats all AI-assisted technologies uniformly within §V.A — distinct from Nature/IEEE which may carve out basic copyediting. To be verified against those anchors in Phase 3.) | — | — | — |
+| 16 | AI-generated image / figure / content rights | explicit-mandate | "Humans must ensure there is appropriate attribution of all quoted material, including full citations." + "Referencing AI-generated material as the primary source is not acceptable." | §V.A, paragraph 1 | narrative + negative-constraint flag | AI-assisted technology used (text or image). Both clauses are mandate strength ("must ensure" + "is not acceptable"). |
+
+**Snapshot ref:** all explicit-mandate / explicit-recommend / implicit cells above cite `icmje:wayback=20260513075516` (`sha256: 52f9e6bc…`).
+**Cell count:** 16 cells filled; source-strength distribution: 2 explicit-mandate / 2 explicit-recommend / 3 implicit / 9 not-addressed / 0 unknown.
+
+**Cross-anchor observation:** ICMJE's distribution skews toward `not-addressed` (9/16) by design — it's deliberately framework-level, delegating field-level granularity to adopting journals. This contrasts with PRISMA-trAIce (9 explicit-recommend) which provides item-level granularity within its SLR-only scope. The two anchors are complementary, not competitive: ICMJE sets the *policy floor* (must disclose, must take responsibility); PRISMA-trAIce sets the *content ceiling* (these are the specific things to report when AI is used).
 
 ### 4.5 Per-anchor matrix — Nature Portfolio
 
@@ -242,16 +252,42 @@ A GitHub Discussions thread will be linked from #106 when Phase 3 ships.
 
 ---
 
-## 7. Phase 1 closure note
+## 7. Phase closure notes
 
-Phase 1 is **scaffold + provenance** only. It deliberately fills zero cells. The infrastructure it locks:
+### 7.1 Phase 1 (shipped)
+
+Phase 1 was **scaffold + provenance** only. It deliberately filled zero cells. The infrastructure it locked:
 
 - 4 anchor URLs Wayback-archived (capture timestamps recorded in §3)
 - 4 local HTML mirrors with SHA-256 hashes (in `snapshots/manifest.yaml`)
 - Document structure for Deliverable 1 (4 × 16 = 64 cell placeholders) + Deliverable 2 (5 dimensions) + Deliverable 3 (6 open questions)
 - Verification protocol for downstream cell-fillers
 
-**Acceptance for Phase 1** (this commit): the four snapshots verify against their manifest SHAs, the document parses as valid Markdown, and no cell carries a non-placeholder value yet. Cell-filling acceptance criteria (per #106) apply at Phase 2/3 closure.
+### 7.2 Phase 2 (this commit)
+
+Phase 2 fills **32 of 64 cells**: PRISMA-trAIce (§4.3) and ICMJE (§4.4). Both anchors fully read end-to-end before any `not-addressed` cell was emitted.
+
+**Cell distribution summary** (32 cells total across two anchors):
+
+| Anchor | explicit-mandate | explicit-recommend | conditional-mandate | implicit | not-addressed | unknown |
+|---|---|---|---|---|---|---|
+| PRISMA-trAIce | 0 | 10 | 0 | 3 | 3 | 0 |
+| ICMJE | 2 | 2 | 0 | 3 | 9 | 0 |
+| **Phase 2 total** | **2** | **12** | **0** | **6** | **12** | **0** |
+
+**Key observations** (advisory; Deliverable 2/3 will weigh these):
+
+1. **Anchor complementarity**: ICMJE sets the *policy floor* (must-disclose, human-responsibility, no-plagiarism); PRISMA-trAIce sets the *content ceiling* (tool name, version, prompts, performance metrics — SLR-specific granularity). Neither anchor alone covers ARS's 16-field aspiration.
+2. **Zero `unknown` cells**: both anchors were fully readable in single sessions (PRISMA-trAIce 14 checklist items + Methods §; ICMJE §V.A two paragraphs). The 10-cell `unknown` ceiling from §4.1 stays available for Nature + IEEE in Phase 3 if needed.
+3. **`not-addressed` skew on ICMJE** (9/16): expected given ICMJE's deliberate framework-level scope. This is a discovery signal, not a flaw in ICMJE — it means a schema chasing ICMJE-only alignment would have a small core (mandate-only) and large optional space.
+4. **No `explicit-mandate` in PRISMA-trAIce**: by design, the proposal is pre-Delphi. Any schema that treats PRISMA-trAIce items as hard requirements would be over-reading the source.
+5. **Tool-type-conditioned recommendation** in PRISMA-trAIce M6 (Prompts): "if any" / "LLM/GenAI tool used" → this is the only cell where applicability shifts based on tool *type*, not just AI-use binary. Strength stays explicit-recommend (consistent with the pre-Delphi no-mandate rule); the conditioning is on whether the field *applies*, not on whether it is mandatory. Suggests stage-taxonomy Dimension B (Phase 3) may need to handle tool-type-conditioned fields independent of mandate strength.
+
+**Acceptance for Phase 2** (this commit): 32 cells filled with source-strength classification + verbatim quote (or inference passage) + locator; SHA-256 of 4 snapshot HTML files unchanged from Phase 1; document parses as valid Markdown.
+
+### 7.3 Phase 3 (pending)
+
+Phase 3 fills remaining 32 cells (Nature + IEEE) and completes Deliverables 2 (design space) + 3 (open questions). Phase 2 observations above will inform Dimension B (stage taxonomy) and Dimension C (policy expression) options.
 
 ---
 
