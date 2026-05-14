@@ -100,7 +100,16 @@ Inputs: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-s
 
 **Cited §5.2 row:** B4 alignment-depth **H** / schema-simplicity **L** / backward-compat-burden **M** / integration-cost **M**.
 
-**Weakness named:** the discovery doc's own §5.2 row text: *"Schema is most complex — two enums in one schema gated by mode. Mode-detection logic must be reliable."* In this Decision Doc's G1-defer direction, **the complexity moves from schema to renderer**, which mitigates but does not eliminate the cost — the renderer must implement two enums and pick correctly per mode. The track-selection input is the **Material Passport `origin_mode` field** (Schema 9 required field per `shared/handoff_schemas.md` §Schema 9): the renderer reads `origin_mode` and picks the PRISMA-trAIce track when the value is the SLR mode identifier (e.g., `systematic-review`), the general track otherwise. The residual weakness: renderer-internal duplication — any anchor policy update that changes the SLR stage list (e.g., a future PRISMA-trAIce Delphi consensus revising M3.a) must be reflected in both the SLR track and any cross-references in the general track. A drift-detection lint at the renderer level is the mitigation that should accompany B4 implementation. If the renderer is invoked outside a pipeline run (no passport present), an explicit `mode=<value>` input parameter is required — falling back silently to the general track on missing `origin_mode` would hide the SLR-vs-general decision.
+**Weakness named:** the discovery doc's own §5.2 row text: *"Schema is most complex — two enums in one schema gated by mode. Mode-detection logic must be reliable."* In this Decision Doc's G1-defer direction, **the complexity moves from schema to renderer**, which mitigates but does not eliminate the cost — the renderer must implement two enums and pick correctly per mode.
+
+The track-selection input cannot be the directly-producing `origin_mode` alone. The documented ARS handoff path `deep-research systematic-review → academic-paper full` produces a paper-stage artifact whose `origin_mode` is `full`, not `systematic-review`; reading `origin_mode` in isolation would route a systematic review's manuscript to the general track and skip the PRISMA-trAIce stages that the SLR work product actually warrants. The renderer therefore reads **both** Schema 9 fields:
+
+1. `origin_mode` (required; per `shared/handoff_schemas.md` §Schema 9) — the directly-producing skill's mode.
+2. `upstream_dependencies` (optional; list of version labels of artifacts this one depends on) — chased through the passport ledger to detect upstream SLR lineage (e.g., a `synthesis_v1` produced by `deep-research systematic-review` mode).
+
+The PRISMA-trAIce track applies when **either** signal indicates SLR; the general track applies only when neither does. When the renderer runs outside a pipeline (no passport at all), an explicit `mode=<value>` input parameter is mandatory — silent fallback to the general track on missing input would hide the SLR-vs-general decision.
+
+The residual weakness after the two-signal check: renderer-internal duplication — any anchor policy update that changes the SLR stage list (e.g., a future PRISMA-trAIce Delphi consensus revising M3.a) must be reflected in both the SLR track and any cross-references in the general track. A drift-detection lint at the renderer level is the mitigation that should accompany B4 implementation.
 
 **Why not the other §5.2 options:**
 
@@ -199,7 +208,17 @@ The six questions below shape the renderer's field set but are not first-order d
 
 **Decision:** Silence is default-OK. Explicit `ai_used: false` is optional opt-in (renderer-input field).
 
-**Rationale.** §5.4 evidence bullet 4 confirms the matrix is silent on this — all 4 anchors describe forward-looking obligations conditional on AI use. ARS's current entry schema does not carry any AI-disclosure field at all (G1 fact-check baseline), so silence is the de facto default by data shape; the G1 defer + G3 D3 combination preserves this. Forcing all authors to actively claim "no AI used" would (a) over-read the anchors (none require positive no-use statements), (b) impose disclosure labour on the majority of corpus entries which involve no AI use, and (c) require adding the very entry-level field this Decision Doc just opted not to add. The opt-in path remains available at the renderer-input layer: an author who wants the surface text to read "no AI was used in preparing this paper" supplies `ai_used: false` to the renderer; the renderer emits the explicit statement. Absence of the input means the renderer says nothing about AI use, matching ARS's existing behaviour.
+**Rationale.** §5.4 evidence bullet 4 confirms the matrix is silent on this — all 4 anchors describe forward-looking obligations conditional on AI use. ARS's current entry schema does not carry any AI-disclosure field at all (G1 fact-check baseline). The G1 defer + G3 D3 combination keeps the no-AI case from being an entry-level concern; what remains is the **renderer-input** semantics, where G3 and G10 must compose cleanly.
+
+**Three-state renderer-input contract (resolves G3 ↔ G10 composition):**
+
+| Renderer input | Renderer output | Source |
+|---|---|---|
+| `ai_used` not supplied AND no pipeline-log AI-usage categories detected | Honest "AI-disclosure status not supplied for this run" annotation | G3 D3 cold-start case |
+| `ai_used: false` supplied explicitly (opt-in) | "No AI was used in preparing this paper" statement | G10 opt-in path |
+| `ai_used: true` supplied OR pipeline log has detected categories | Full anchor-specific disclosure render | G4 E2 + G5–G9 normal path |
+
+Row 1 ≠ row 2: missing input does **not** mean "no AI"; it means "status not supplied". The honest annotation surfaces the gap so reviewers and authors can distinguish "we ran the pipeline with AI assistance but did not categorize it" from "we affirmatively used no AI". Forcing every author to set `ai_used: false` would (a) over-read the anchors (none require positive no-use statements), (b) impose disclosure labour on the majority of corpus entries which involve no AI use, and (c) require adding the very entry-level field this Decision Doc just opted not to add. The opt-in path keeps the explicit-no-use statement available to authors who want it.
 
 ---
 
@@ -207,16 +226,16 @@ The six questions below shape the renderer's field set but are not first-order d
 
 #108's provisional implementation surface list (7 items, "depends on direction chosen at G1–G4") is now narrowed by the G1 defer decision. The revised surface:
 
-1. **`shared/contracts/passport/literature_corpus_entry.schema.json` — NO CHANGE.** No `ai_disclosure` field is added. The current schema (`additionalProperties: false`) does not carry one today and will not gain one at this issue. The renderer (§4 item 6) does not depend on entry-level AI-usage data; its inputs are (a) the active ARS mode (Material Passport `origin_mode`, Schema 9 required field), (b) the user-supplied policy-anchor or venue selection, (c) the paper-level AI-usage categories already used by the v3.2 `disclosure` mode (per `academic-paper/references/disclosure_mode_protocol.md` Phase 2 categorization).
-2. **`shared/handoff_schemas.md` — NO CHANGE.** No schema doc update needed; the existing legacy-shape documentation is correct under G3 D3.
-3. **`bibliography_agent.md` + `literature_strategist_agent.md` — NO CHANGE.** Producers continue to emit the legacy field. New renderer reads it as-is.
+1. **`shared/contracts/passport/literature_corpus_entry.schema.json` — NO CHANGE.** No `ai_disclosure` field is added. The current schema (`additionalProperties: false`) does not carry one today and will not gain one at this issue. The renderer (§4 item 6) does not depend on entry-level AI-usage data; its inputs are (a) a track-selection mode value (sourced per §4 item 2 below), (b) the user-supplied policy-anchor or venue selection, (c) the paper-level AI-usage categories already used by the v3.2 `disclosure` mode (per `academic-paper/references/disclosure_mode_protocol.md` Phase 2 categorization).
+2. **`shared/handoff_schemas.md` — NO CHANGE.** Schema 9 already carries `origin_mode` (required) and `upstream_dependencies` (optional, list of version labels). The renderer uses these as-is without adding fields. Per §2.2 weakness, the renderer must check both: `origin_mode` for the directly-producing skill (e.g., `academic-paper full`) and `upstream_dependencies` for upstream `systematic-review` lineage; if either signals SLR, the PRISMA-trAIce track applies. When the renderer runs outside a pipeline (no passport) an explicit `mode=<value>` parameter is mandatory.
+3. **`bibliography_agent.md` + `literature_strategist_agent.md` — NO CHANGE.** No entry-level disclosure field exists for these producers to emit; G1 explicitly opted not to add one. The renderer (§4 item 6) does not read corpus entry properties for AI-usage data; it reads only the existing fields these producers already populate (citation_key / authors / year / etc.).
 4. **`scripts/check_ai_disclosure_schema.py` — NOT CREATED.** No new schema-level validator. The 0 new lint surface on the schema side is correct under G1 defer.
-5. **Migration tooling — NOT NEEDED.** G3 D3 indefinite legacy support means no migration script is required for entries created before this issue.
+5. **Migration tooling — NOT NEEDED.** There is no entry-level `ai_disclosure` field today and none is being added; therefore no entries to migrate.
 6. **Renderer surface — NEW.** Per G1 + G4, the new investment goes here:
    - **New:** `academic-paper/references/policy_anchor_disclosure_protocol.md` parallel to existing `disclosure_mode_protocol.md`. Describes the 4 anchor-conditioned renderers (PRISMA-trAIce / ICMJE / Nature / IEEE), their lookup mechanism, and the de-dup mandate against v3.2 Nature venue renderer.
    - **New:** `academic-paper/references/policy_anchor_table.md` (or equivalent — final filename per implementation). 4 anchor tables, each carrying snapshot ref from discovery doc §3, verbatim policy quotes per field, and per-anchor renderer rules. Snapshot verification step in renderer tests.
    - **Extended:** `academic-paper/references/disclosure_mode_protocol.md`. v3.2 venue path stays; new policy-anchor path adds parallel lookup. Both paths converge to the same render-time `level_of_involvement` + stage + carve-out + image-rights handling per G7 / G8 / G9.
-   - **New:** renderer tests covering all 4 anchor render paths, snapshot-verification step, B4 mode-gating test (`systematic-review` → PRISMA-trAIce stage enum; other modes → general 4-stage enum), G3 legacy-detection test, G7 carve-out strength test, G9 image-rights anchor-specific test.
+   - **New:** renderer tests covering all 4 anchor render paths, snapshot-verification step, B4 mode-gating test (origin_mode=`systematic-review` OR `systematic-review` in upstream_dependencies → PRISMA-trAIce stage enum; otherwise general 4-stage enum), G3 "missing input → 'not supplied' annotation" test, G7 carve-out strength test, G9 image-rights anchor-specific test.
 7. **`disclosure` mode in `academic-paper` — EXTEND.** v3.2 venue-lookup path stays unchanged. New policy-anchor lookup path added: `disclosure --venue=<v>` continues to work; `disclosure --policy-anchor=<a>` is the new entry. If both are passed, the mode resolves to venue (more specific). Cross-track de-dup: Nature anchor renderer and v3.2 Nature venue renderer share a single underlying policy table; updates to either propagate to both.
 
 **Out of scope for #108 (deferred to future issues):**
