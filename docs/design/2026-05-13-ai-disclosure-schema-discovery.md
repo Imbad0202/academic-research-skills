@@ -16,8 +16,9 @@ This discovery is split into three execution phases. Each phase ships as a PR co
 | Phase | Deliverable | Status |
 |---|---|---|
 | Phase 1 | Doc scaffold + 4 anchor snapshots locked (Wayback + SHA-256) + manifest | shipped (PR #107 c1) |
-| Phase 2 | Fill cells for PRISMA-trAIce + ICMJE (32 of 64 cells) | **In progress** (this commit) |
-| Phase 3 | Fill cells for Nature + IEEE (remaining 32) + Deliverable 2 design space + Deliverable 3 open questions | pending |
+| Phase 2 | Fill cells for PRISMA-trAIce + ICMJE (32 of 64 cells) | shipped (PR #107 c2) |
+| Phase 3a | Fill cells for Nature Portfolio (16 of remaining 32 cells; 48 of 64 total) | **In progress** (this commit) |
+| Phase 3b | Fill cells for IEEE (remaining 16 cells; 64 of 64 total) + Deliverable 2 design space + Deliverable 3 open questions | pending |
 
 **Phase 1 explicitly does NOT fill any cells.** Cells carry `phase: 1-scaffold` placeholder until Phase 2/3. This is intentional — Phase 1 builds the provenance infrastructure so Phase 2/3 cell-filling can cite verbatim with byte-level integrity.
 
@@ -174,25 +175,31 @@ These 16 fields anchor the 4×16 = 64-cell minimum matrix. Additional fields may
 ### 4.5 Per-anchor matrix — Nature Portfolio
 
 **Snapshot:** [`nature` @ wayback 20260513075542](https://web.archive.org/web/20260513075542/https://www.nature.com/nature-portfolio/editorial-policies/ai)
+**Source-strength caveat:** The Nature Portfolio AI editorial policy is **adopted** (not draft) and applies across all Nature Portfolio journals. The author-facing surface is structured as four short sections: AI authorship, Generative AI images, AI use by peer reviewers, Editorial use. ARS's matrix covers author-side obligations only (sections §AI authorship + §Generative AI images); peer-reviewer-side use and Springer Nature's own editorial use are out of scope per §2.2. Strength language is mixed: "do not currently satisfy our authorship criteria" + "unable to permit" + "must be labelled" carry mandate strength; "should be properly documented" + "should be disclosed" + "does not need to be declared" carry recommend strength. The policy is **framework-level for text** (Methods-section documentation is called for via should-language, with no field-level granularity — no version / no developer / no prompt / no performance metric requirement) and **prohibition-level for images** (generative AI images banned by default with three carve-outs; non-generative ML manipulations carry a recommend-strength caption-disclosure rule). Many text-side disclosure fields ARS tracks are therefore `not-addressed`; image-side rights field carries a hard `explicit-mandate` carrying a negative-constraint + labelling-mandate composite.
 
-| # | Field | Source strength | Verbatim quote / inference passage | Locator | Value type | Conditional trigger |
+| # | Field | Source strength | Verbatim quote (or inference passage) | Locator | Value type | Conditional trigger |
 |---|---|---|---|---|---|---|
-| 1 | AI tool name | _phase-3_ | — | — | — | — |
-| 2 | AI tool version | _phase-3_ | — | — | — | — |
-| 3 | AI tool developer / manufacturer | _phase-3_ | — | — | — | — |
-| 4 | Stage / phase of use | _phase-3_ | — | — | — | — |
-| 5 | Specific task within stage | _phase-3_ | — | — | — | — |
-| 6 | Affected manuscript sections / content locator | _phase-3_ | — | — | — | — |
-| 7 | Date(s) of use | _phase-3_ | — | — | — | — |
-| 8 | Prompts | _phase-3_ | — | — | — | — |
-| 9 | Human oversight method | _phase-3_ | — | — | — | — |
-| 10 | Human responsibility statement | _phase-3_ | — | — | — | — |
-| 11 | Performance evaluation method | _phase-3_ | — | — | — | — |
-| 12 | Performance evaluation results | _phase-3_ | — | — | — | — |
-| 13 | Limitations / known failure modes | _phase-3_ | — | — | — | — |
-| 14 | Disclosure location | _phase-3_ | — | — | — | — |
-| 15 | Copyediting exemption predicate | _phase-3_ | — | — | — | — |
-| 16 | AI-generated image / figure / content rights | _phase-3_ | — | — | — | — |
+| 1 | AI tool name | implicit | (inference passage) "Use of an LLM should be properly documented in the Methods section (and if a Methods section is not available, in a suitable alternative part) of the manuscript." Documentation requirement implies tool identity disclosure but no field-level name requirement. | §AI authorship | narrative | LLM used (non-copyediting) |
+| 2 | AI tool version | not-addressed | (Read entire §AI authorship + §Generative AI images; no version-level granularity required. Nature delegates Methods-section detail to author and journal-level instructions.) | — | — | — |
+| 3 | AI tool developer / manufacturer | not-addressed | (Read entire §AI authorship + §Generative AI images; no developer/manufacturer disclosure required.) | — | — | — |
+| 4 | Stage / phase of use | implicit | (inference passage) "Use of an LLM should be properly documented in the Methods section". "Use" implies stage/task description in Methods but no explicit stage taxonomy. | §AI authorship | narrative | LLM used (non-copyediting) |
+| 5 | Specific task within stage | implicit | (inference passage — same source as #4) "properly documented in the Methods section" implies task-level description without dedicated field. | §AI authorship | narrative | LLM used (non-copyediting) |
+| 6 | Affected manuscript sections / content locator | implicit | (inference passage) "in the relevant caption upon submission" for non-generative ML image tools; for LLM text use, Methods-section documentation implies which sections used AI but no per-content-affected-location requirement. | §Generative AI images (caption rule); §AI authorship (Methods rule) | narrative | AI tool used |
+| 7 | Date(s) of use | not-addressed | (Read entire §AI authorship + §Generative AI images; no date-of-use disclosure required.) | — | — | — |
+| 8 | Prompts | not-addressed | (Read entire §AI authorship + §Generative AI images; no prompt disclosure required. Methods-section documentation requirement does not enumerate prompts as a required element.) | — | — | — |
+| 9 | Human oversight method | explicit-mandate | "In all cases, there must be human accountability for the final version of the text and agreement from the authors that the edits reflect their original work." | §AI authorship | narrative | LLM / AI-tool used in manuscript text ("In all cases" generalizes the rule beyond the copyediting carve-out) |
+| 10 | Human responsibility statement | explicit-mandate | "an attribution of authorship carries with it accountability for the work, which cannot be effectively applied to LLMs" + "there must be human accountability for the final version of the text" | §AI authorship | narrative or boolean | LLM used in manuscript |
+| 11 | Performance evaluation method | not-addressed | (Read entire §AI authorship + §Generative AI images; no performance-evaluation method disclosure required.) | — | — | — |
+| 12 | Performance evaluation results | not-addressed | (Read entire §AI authorship + §Generative AI images; no performance-evaluation results disclosure required.) | — | — | — |
+| 13 | Limitations / known failure modes | not-addressed | (Read entire §AI authorship + §Generative AI images; §Generative AI images mentions general legal-copyright and research-integrity risks but does not require authors to disclose tool-specific limitations or failure modes. AI-tool limitations are characterized in §AI use by peer reviewers — out of scope for author-side matrix.) | — | — | — |
+| 14 | Disclosure location | explicit-recommend | "Use of an LLM should be properly documented in the Methods section (and if a Methods section is not available, in a suitable alternative part) of the manuscript." + (for non-generative ML on images) "should be disclosed in the relevant caption upon submission" | §AI authorship + §Generative AI images | structured (closed enum: Methods + image-caption + suitable-alternative) | AI tool used; location varies by use type |
+| 15 | Copyediting exemption predicate | explicit-recommend | (carve-out) "The use of an LLM (or other AI-tool) for "AI assisted copy editing" purposes does not need to be declared." (predicate, partial verbatim) "AI-assisted improvements to human-generated texts for readability and style... [but] do not include generative editorial work and autonomous content creation." | §AI authorship | structured (boolean carve-out + predicate definition) | AI use limited to copyediting-as-defined |
+| 16 | AI-generated image / figure / content rights | explicit-mandate | "Springer Nature journals are unable to permit its use for publication." + "All exceptions must be labelled clearly as generated by AI within the image field." | §Generative AI images | structured (default-prohibit + 3-carve-out enum + labelling-required flag) | Generative AI image/video proposed for publication (default-deny); non-generative ML caption rule handled at #14 as recommend-strength |
+
+**Snapshot ref:** all explicit-mandate / explicit-recommend / implicit cells above cite `nature:wayback=20260513075542` (`sha256: cf691cba…`).
+**Cell count:** 16 cells filled; source-strength distribution: 3 explicit-mandate / 2 explicit-recommend / 0 conditional-mandate / 4 implicit / 7 not-addressed / 0 unknown.
+
+**Cross-anchor observation:** Nature Portfolio's distribution skews to `not-addressed` (7/16) for the same structural reason as ICMJE — it is a framework-level policy that delegates field-level granularity to Methods-section author practice and journal instructions, not a reporting-guideline with item-level disclosure schema. Nature's distinctive contribution to the 4-anchor set is the **image-rights mandate package** (#16: default-deny + 3 carve-outs + labelling-required), which is more prescriptive than ICMJE's text-only attribution rule (ICMJE #16 forbids citing AI as primary source; Nature #16 forbids publishing the image at all unless a carve-out applies). The **copyediting exemption predicate (#15)** is the second distinctive contribution: Nature is the first anchor in the matrix to define an explicit carve-out boundary ("AI assisted copy editing" with prose definition) — PRISMA-trAIce and ICMJE both leave this `not-addressed`. Three-anchor hybrid emerging: ICMJE = policy floor (must disclose + must take responsibility), PRISMA-trAIce = SLR content ceiling (item-level granularity), Nature = section-of-record + carve-out shape (Methods location + copyediting predicate + image-rights regime).
 
 ### 4.6 Per-anchor matrix — IEEE
 
