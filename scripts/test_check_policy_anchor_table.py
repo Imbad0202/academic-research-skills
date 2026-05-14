@@ -207,6 +207,17 @@ class CheckPolicyAnchorTableMutationTests(unittest.TestCase):
             msg=f"expected ordering violation; got {violations}",
         )
 
+    def test_duplicate_anchor_section_fails(self) -> None:
+        # Codex round-3 P2 #2 closure: a second `## Anchor: ieee` heading
+        # silently overwrote the first in the dict-based section split,
+        # passing slug coverage. The validator now flags duplicates.
+        bad = _GOOD_TABLE + "\n\n## Anchor: ieee\n\nduplicate section\n"
+        violations = cpat.lint_text(bad)
+        self.assertTrue(
+            any("duplicate anchor section" in v for v in violations),
+            msg=f"expected duplicate-section violation; got {violations}",
+        )
+
 
 class CheckPolicyAnchorTableNatureSourceOfTruthTest(unittest.TestCase):
     """De-dup guard: Nature anchor verbatim quotes and the v3.2 venue

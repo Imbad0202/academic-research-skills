@@ -140,8 +140,16 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
             uncertain_facets=tuple(sorted(uncertain)),
         )
 
-    # Row 4: (ai_used=true OR ≥1 USED) AND row 1 didn't match
+    # Row 4: (ai_used=true OR ≥1 USED) AND row 1 didn't match.
+    # When the anchor is IEEE, enforce the G8 paired-mandate invariant
+    # before returning anchor_render — emitting one of (level, sections)
+    # without the other is non-conformant (codex round-3 P2 #1 closure).
     if (ri.ai_used is True or used) and not (ri.ai_used is False and used):
+        if ri.policy_anchor == "ieee":
+            assert_ieee_pairing_conformant(
+                level_of_involvement=ri.level_of_involvement,
+                affected_sections=ri.affected_sections,
+            )
         return DisclosureDecision(
             row=4,
             kind="anchor_render",

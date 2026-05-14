@@ -280,6 +280,52 @@ class G8InvariantTest(unittest.TestCase):
             affected_sections=["Methods"],
         )
 
+    def test_ieee_row_4_render_enforces_pairing(self) -> None:
+        # Codex round-3 P2 #1 closure: previously row 4 returned
+        # anchor_render for IEEE even when only level_of_involvement was
+        # supplied (no affected_sections). The decision function must
+        # raise PairedMandateViolation in that case.
+        with self.assertRaises(referee.PairedMandateViolation):
+            referee.decide_disclosure_output(
+                _inp(
+                    ai_used=True,
+                    categories={"drafting": "USED"},
+                    policy_anchor="ieee",
+                    level_of_involvement="full drafting",
+                    # affected_sections=None
+                )
+            )
+
+    def test_ieee_row_4_render_passes_when_both_inputs_present(self) -> None:
+        result = referee.decide_disclosure_output(
+            _inp(
+                ai_used=True,
+                categories={"drafting": "USED"},
+                policy_anchor="ieee",
+                level_of_involvement="full drafting",
+                affected_sections=["Methods"],
+            )
+        )
+        self.assertEqual(result.row, 4)
+        self.assertEqual(result.kind, "anchor_render")
+
+    def test_ieee_row_4_render_passes_when_neither_pairing_input_present(self) -> None:
+        # When neither IEEE-pairing input is supplied, the renderer still
+        # proceeds — the missing pairing surfaces as a per-facet "not
+        # supplied" annotation downstream (per protocol §3.4); it is not
+        # a hard violation at the decision-table level.
+        result = referee.decide_disclosure_output(
+            _inp(
+                ai_used=True,
+                categories={"drafting": "USED"},
+                policy_anchor="ieee",
+                level_of_involvement=None,
+                affected_sections=None,
+            )
+        )
+        self.assertEqual(result.row, 4)
+        self.assertEqual(result.kind, "anchor_render")
+
 
 # ============================================================================
 # §4.3 G9 invariant — anchor-specific image-rights regimes

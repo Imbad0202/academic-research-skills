@@ -71,16 +71,24 @@ ROW_LINE = re.compile(
 ELISION_MARKERS = {"(quote elided)", "(snapshot deleted)", "—"}
 
 
-def _split_anchor_sections(text: str) -> dict[str, str]:
-    """Split the doc into per-anchor markdown bodies keyed by slug."""
+def _split_anchor_sections(text: str) -> tuple[dict[str, str], list[str]]:
+    """Split the doc into per-anchor markdown bodies keyed by slug. Also
+    return the list of duplicate anchor slugs so the caller can flag a
+    duplicated `## Anchor: <slug>` heading as a violation. Closes codex
+    round-3 P2 #2: silent dict overwrite let a duplicated anchor pass."""
     sections: dict[str, str] = {}
+    duplicates: list[str] = []
+    seen: list[str] = []
     matches = list(ANCHOR_HEADING.finditer(text))
     for idx, match in enumerate(matches):
         slug = match.group(1)
         start = match.end()
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+        if slug in seen:
+            duplicates.append(slug)
+        seen.append(slug)
         sections[slug] = text[start:end]
-    return sections
+    return sections, duplicates
 
 
 def _parse_rows(section: str) -> list[tuple[int, str, str, str, str, str]]:
@@ -123,7 +131,7 @@ def _has_verbatim_quote(quote_cell: str) -> bool:
 def lint_text(text: str) -> list[str]:
     """Run all structural checks; return violation messages list (empty=pass)."""
     violations: list[str] = []
-    sections = _split_anchor_sections(text)
+    sections, duplicates = _split_anchor_sections(text)
 
     # Check 1: anchor slug coverage
     found_slugs = set(sections.keys())
@@ -134,6 +142,12 @@ def lint_text(text: str) -> list[str]:
         violations.append(f"missing anchor section: {slug}")
     for slug in sorted(extra):
         violations.append(f"unknown anchor section: {slug}")
+    # Duplicate-section guard (codex round-3 P2 #2)
+    for slug in duplicates:
+        violations.append(
+            f"duplicate anchor section: {slug} appears more than once "
+            "(second occurrence silently overwrites the first)"
+        )
 
     # Check 2 + 3 + 4 + 5: per-anchor structure
     for slug in CANONICAL_ANCHOR_SLUGS:
