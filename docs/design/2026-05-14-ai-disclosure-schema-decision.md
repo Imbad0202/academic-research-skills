@@ -1,0 +1,247 @@
+# AI Disclosure Schema — Decision Document
+
+**Status:** DRAFT — pending codex `gpt-5.5` xhigh 2-round 0 P1/P2 (per #108 Acceptance #4)
+**Date:** 2026-05-14
+**Issue:** [#108](https://github.com/Imbad0202/academic-research-skills/issues/108)
+**Author:** Cheng-I Wu
+**Blocked-by:** discovery doc shipped 2026-05-13 ([commit 299c4b6](https://github.com/Imbad0202/academic-research-skills/commit/299c4b6), PR #107, closed #106)
+**Scope:** Decision — answers G1–G4 load-bearing gates + G5–G10 secondary questions for the implementation issue (#108). Does NOT itself implement.
+
+---
+
+## 0. How to read this document
+
+This document **decides** the implementation direction the discovery deliberately left open. It does not re-litigate the matrix or the design space; both are owned by the discovery doc (`docs/design/2026-05-13-ai-disclosure-schema-discovery.md`). For every decision below the doc:
+
+1. Cites the §5 trade-off table row(s) chosen.
+2. Names the weakness of the chosen option (per #108 Anti-goals — choosing an option without naming its weakness is a design regression).
+3. Names why the alternative §5 options were not chosen, including their respective weaknesses (so the asymmetry is auditable).
+4. States the implementation-surface impact at the end (§4) so #108's provisional surface list can be confirmed or trimmed.
+
+**Honest about uncertainty:** the discovery doc kept four credible outcomes on the table (single-anchor verbatim alignment / hybrid / defer to renderer / retain minimal). The decision below selects **one** of those outcomes as the primary direction and explicitly classifies the others as not chosen. The decision is **not** "hybrid by default"; per #108 Anti-goals, that assumption is explicitly disallowed.
+
+---
+
+## 1. Framing context
+
+Three framing questions had to be settled before the G-gates could be answered without bias. They are stated here so reviewers can see the inputs feeding each decision.
+
+### 1.1 Who is ARS's primary user?
+
+Inputs: `.claude/CLAUDE.md` skill matrix; `deep-research` 7 modes; `academic-paper` 10 modes; pipeline orchestrator topology.
+
+**Finding:** ARS spans three audience surfaces — SLR researcher (deep-research `systematic-review` mode, one of seven modes), academic-paper author (the dominant downstream surface across plan / full / revision / disclosure / abstract / format-convert / citation-check modes), and reviewer / methodologist (`academic-paper-reviewer`). The **majority workflow is general writing**, not SLR-specific. SLR mode is a single mode in deep-research; every other ARS mode is venue-agnostic with respect to disclosure.
+
+**Implication for the G-gates:** an SLR-centric schema or stage taxonomy would over-fit a minority workflow. The discovery's 4-anchor matrix already encodes this asymmetry — PRISMA-trAIce is the only anchor with item-level granularity, but it carries 0 mandate cells (pre-Delphi) and applies only when the AI tool is methodological-in-SLR (conditional-mandate framework-level; §4.3 caveat).
+
+### 1.2 How does v3.2 `disclosure` mode integrate?
+
+Inputs: `academic-paper/references/disclosure_mode_protocol.md`; v3.2 entry in `.claude/CLAUDE.md`.
+
+**Finding:** v3.2 `disclosure` mode is already a **venue-aware narrative renderer**, not a schema. Its inputs are (a) the paper draft, (b) target venue, (c) AI usage categories detected from the pipeline log; its output is a venue-specific disclosure paragraph plus placement instructions. The v1 policy database covers six venues (ICLR / NeurIPS / Nature / Science / ACL / EMNLP). The lookup axis is **venue**, not **policy anchor** — only Nature overlaps with the 4-anchor matrix.
+
+**Implication for the G-gates:** v3.2 occupies the **render layer**, not the data layer. A new `ai_disclosure` schema in the corpus / bibliography entries would operate at a different layer (per-entry AI usage records inside the literature corpus). The two are not in competition; they can coexist or one can absorb the other. The G1 decision must say which.
+
+### 1.3 Does v3.7.3 trust-chain infrastructure complement or constrain this?
+
+Inputs: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md`; v3.7.3 entry in `.claude/CLAUDE.md`.
+
+**Finding:** v3.7.3 ships `<!--anchor:<kind>:<value>-->` annotations after `<!--ref:slug-->` for **claim-level provenance** (which sentence in the source backs this claim). Its `<kind>` enum is `{quote, page, section, paragraph, none}` — none of which is `ai_stage` or `tool_id`. v3.7.3's spec explicitly defers "AI disclosure schema split" to a separate disclosure-protocol PR (`docs/design/2026-05-12-…v3.7.3…-spec.md` line 236).
+
+**Implication for the G-gates:** v3.7.3 is **available infrastructure**, not a precondition. A G1 answer that uses Dimension A5 (event-log linked to v3.7.x trust-chain anchors) is supported by v3.7.3; a G1 answer that does not is unaffected by it. The discovery doc §1 point 1 phrases this as "hypothesized as a complement on the production side, but should be tested rather than assumed" — the decision below tests it explicitly.
+
+---
+
+## 2. Load-bearing decisions (G1–G4)
+
+### 2.1 G1 — Single-anchor vs hybrid vs deferred vs status-quo?
+
+**Question source:** #106 §2 + Q1 + Q6.
+
+**Matrix evidence (recap; full evidence in discovery doc §4.3–4.6 + §5.1, §5.3):**
+
+- 4 anchors disagree at the field level: PRISMA-trAIce 0 mandate / 10 recommend (pre-Delphi); ICMJE 2/2 with 9 not-addressed; Nature 3/2 with 7 not-addressed; IEEE 4/1 with 9 not-addressed. **No single anchor covers 16 of 16 fields at mandate strength.**
+- 4-anchor #14 disclosure-location enums have **empty intersection** (§4.5 + §4.6 cross-anchor observation; §5.3 matrix evidence).
+- Per §5.3 evidence bullet 4, the copyediting carve-out has anchor-specific strength semantics (Nature eliminate vs IEEE downgrade).
+- Per framing §1.1, ARS users are predominantly venue-targeting, not anchor-targeting.
+
+**Decision: Defer policy mapping to a renderer layer (Dimension C, option C4).** Corpus entry schema retains the current minimal `ai_disclosure: boolean | string` shape (corresponds to outcome 4 from #106 §2 at the schema layer); new investment goes into renderer-side policy expression (corresponds to outcome 3 from #106 §2 at the render layer). This is **outcome 3 + outcome 4 split across layers**, not an unprincipled "hybrid".
+
+**Cited §5.3 row:** C4 alignment-depth H / schema-simplicity H / backward-compat-burden H / integration-cost M.
+
+**Weakness named (per Anti-goals):** the discovery doc's own §5.3 wording: *"Audit-quality depends on renderer correctness, not data correctness — bug in renderer breaks all venue alignments at once."* The schema-layer audit becomes weaker because the data does not encode which anchor's policy is being satisfied; correctness moves to the renderer artifact. This is a real cost, partially mitigated by the ARS post-v3.7.3 codex review discipline (11-round convergence on v3.7.3 spec; 967-test regression baseline) but not eliminated by it. A future renderer regression that silently misroutes anchor policy would not be caught by schema-layer validation; renderer-layer tests have to bear that load instead.
+
+**Why not the other §5.3 options:**
+
+- **C1 (single declaration_mode)**: §5.3 weakness — *"strict / lenient hides which anchor's strictness; ambiguous at audit time. Copyediting carve-out is one bit, losing eliminate-vs-downgrade distinction."* Trade-off table row C1 alignment-depth **L**. Loses the §4.5 #15 / §4.6 #15 split entirely.
+- **C2 (carve-out list)**: §5.3 weakness — *"Cannot express Nature #16 default-deny regime — that is a mandate, not a carve-out."* Trade-off row C2 alignment-depth **M** at the carve-out facet, but **L** for the image-rights regime (§4.5 #16) which is mandate-strength in Nature.
+- **C3 (multi-field separation)**: §5.3 weakness — *"Schema has 4+ correlated fields that may drift … Validator burden is high."* Trade-off row C3 schema-simplicity **L**. Buys some auditability at high schema cost; the cost is not justified when the matrix already lacks intersection across anchor location enums.
+- **C5 (versioned policy-profile)**: §5.3 weakness — *"Profile registry is a separate artifact to maintain."* Trade-off row C5 alignment-depth H but schema-simplicity **M**. C5 is **plausible** and the closest credible alternative to C4 — it preserves the deferred policy mapping but pins it to a named, versioned profile. Not chosen at this gate because the framing §1.2 finding (v3.2 already supplies a venue-keyed lookup) means policy-profile pinning at the **corpus entry level** would duplicate the renderer-side policy registry. Adding a per-entry `policy_profile` field also reintroduces schema change, contradicting the G1 outcome 4 component. **Contingent reservation:** if a future ARS user reports that anchor pinning at entry-level is needed for audit (e.g., compliance reporting), C5 is the documented upgrade path — see also §4 out-of-scope item 3 and §5 closure notes.
+
+**Why not the other #106 §2 outcomes:**
+
+- **Single-anchor verbatim alignment**: per §5.5 matrix evidence and §5.3 location-enum-disjoint finding, picking one anchor loses the others' mandate cells. Whichever anchor is picked, the schema misaligns with the other three at the location level — and in the case of ICMJE / Nature / IEEE, also at mandate-level fields the unchosen anchors uniquely require (Nature #16 image rights, IEEE #6 section locator, ICMJE #10 human-responsibility statement). Weakness severe enough that no single-anchor alignment satisfies more than 1 of 4 anchors' #14 location enum.
+- **Status-quo only (retain minimal)**: this is the schema-layer component of the chosen direction. As a *complete* outcome it is rejected because it would leave the discovery doc's §4 evidence stranded — 9 mandate cells across ICMJE / Nature / IEEE document real disclosure obligations that ARS authors face, and providing no rendering support is an under-response to that evidence. The chosen direction (defer policy to renderer) extends status-quo at the data layer by adding renderer-side investment; pure status-quo does not.
+- **Hybrid (Dimension A / B / C / D / E composite chosen up-front)**: per #108 Anti-goals, "Do not assume the answer is 'hybrid'". The decision pattern that emerges from this Decision Doc is **multi-axis** (defer policy at C, two-track at B, soft legacy at D, multi-per-anchor at E) — but each axis is chosen on its own §5 evidence and each weakness named, which is the path #108 demands. Calling the resulting composite "hybrid" is a description after the fact, not an a priori commitment.
+
+### 2.2 G2 — Stage taxonomy approach (B1–B5)?
+
+**Question source:** Q2.
+
+**Matrix evidence:**
+
+- §5.2 evidence bullets 1–4: PRISMA-trAIce explicit 6-stage enum; ICMJE / Nature / IEEE use unstructured stage language; IEEE #4 "level" reads as degree-of-involvement, not workflow stage; PRISMA-trAIce M6 prompt rule is tool-type-conditioned independent of stage.
+- §4.6 IEEE matrix #4 / #5 distinction: #5 ("specific sections … and a brief explanation regarding the level") is explicit-mandate; #4 ("level at which the AI system was used") is implicit because "level" semantically diverges from workflow stage (degree-of-involvement vs stage). A schema that conflates the two misaligns with IEEE at the semantic layer.
+- Per framing §1.1, SLR-only stage taxonomy would over-fit minority workflow.
+
+**Decision: Two-track by mode (Dimension B, option B4).** `systematic-review` mode renders with the PRISMA-trAIce 6-stage enum (search / screening / data extraction / Risk of Bias / synthesis / drafting); all other modes render with a 4-stage general taxonomy (research / drafting / revision / copyediting). The track decision is made at **renderer entry**, gated by the active ARS mode (already available in the pipeline orchestration layer; no new mode-detection logic).
+
+**Cited §5.2 row:** B4 alignment-depth **H** / schema-simplicity **L** / backward-compat-burden **M** / integration-cost **M**.
+
+**Weakness named:** the discovery doc's own §5.2 row text: *"Schema is most complex — two enums in one schema gated by mode. Mode-detection logic must be reliable."* In this Decision Doc's G1-defer direction, **the complexity moves from schema to renderer**, which mitigates but does not eliminate the cost — the renderer must implement two enums and pick correctly per mode. Mode-detection reliability is high in ARS today (mode is set explicitly at skill invocation, propagated via Material Passport Schema 9 `current_mode` field), so the residual weakness is renderer-internal duplication: any anchor policy update that changes the SLR stage list (e.g., a future PRISMA-trAIce Delphi consensus revising M3.a) must be reflected in both the SLR track and any cross-references in the general track. A drift-detection lint at the renderer level is the mitigation that should accompany B4 implementation.
+
+**Why not the other §5.2 options:**
+
+- **B1 (closed enum, PRISMA-shaped)**: §5.2 row weakness — *"Aligns with PRISMA-trAIce only; ICMJE/Nature/IEEE are agnostic so any closed enum is compatible at the policy layer, but a PRISMA-shaped enum may surprise non-SLR authors."* Trade-off alignment-depth **M** and would force non-SLR authors into SLR vocabulary. Per framing §1.1 finding (majority workflow is non-SLR), B1 violates the user-population reading.
+- **B2 (open enum)**: §5.2 row weakness — *"Auditability low — same stage may appear under 5 different labels across the corpus."* Alignment-depth **L–M**. Defeats the renderer's ability to map stage → anchor location.
+- **B3 (closed enum + `other_label` escape hatch)**: §5.2 row weakness — *"escape hatch encourages unsystematic use."* Alignment-depth **M**. Carries B1's PRISMA-shape but with an audit-loss safety valve; the safety valve undoes the audit gain.
+- **B5 (hierarchical)**: §5.2 row weakness — *"Schema complexity is highest of the five options."* Schema-simplicity **L**. Alignment-depth M–H. B5 is the **closest credible alternative to B4** — the top-level (research / production / review) would satisfy ICMJE / Nature / IEEE without committing to PRISMA-trAIce, and substage aliases would absorb SLR. Not chosen at this gate because (a) B5's added expansion surface (top-level + substage + future anchor groups) is unmotivated at the current 4-anchor scope, and (b) B4's two-track semantics is **simpler to validate per-mode** (renderer chooses one enum; B5 renderer must consistently resolve top-level + substage joins). B5 becomes attractive only if a fifth or sixth anchor group is added (COPE / CSE / WAME); see §3 Q3-related notes.
+
+**Note on IEEE #5 "level":** B4 does not model degree-of-involvement separately from stage. IEEE #5 mandate is handled at G8 below — the proposal there is to add `level_of_involvement` as a renderer-side annotation, orthogonal to the B-dimension stage track.
+
+**Note on the framing §1.1 tension:** giving SLR its own track when framing §1.1 reads SLR as a minority workflow is *not* a contradiction. PRISMA-trAIce supplies item-level granularity (M2.a–M10) that none of the other three anchors provide; not surfacing it for `systematic-review` mode would discard a content-ceiling resource. B4 is therefore "minority workflow gets its own renderer track on its own evidence", not "minority workflow upgraded to majority". The majority general track does not pay any cost for the SLR track's existence beyond the renderer's mode-gate dispatch logic.
+
+### 2.3 G3 — Failure mode for incomplete disclosure (D1–D4)?
+
+**Question source:** Q4.
+
+**Matrix evidence:**
+
+- §5.4 evidence bullet 2: *"The 4 anchors all describe forward-looking policy: none of them obligate retrospective disclosure of past AI use."*
+- §5.4 evidence bullet 4: *"PRISMA-trAIce has zero mandate strength because it is pre-Delphi. A schema that rejects entries lacking PRISMA-shaped fields would treat a not-yet-formal-consensus framework as binding. Over-strict."*
+- Framing §1.2: v3.2 disclosure mode operates at render time on a paper-level basis; corpus-level entries carry legacy boolean / narrative `ai_disclosure` from before this issue was opened.
+
+**Decision: Soft + legacy marker (Dimension D, option D3).** Existing literature_corpus entries continue to validate. The renderer (G1) treats entries lacking new-shape disclosure as **legacy** and surfaces a transparent `[legacy disclosure: <verbatim boolean | narrative>]` annotation when rendering. No pipeline halt, no forced backfill, no silent skip. Authors editing legacy entries can opt to refresh disclosure but are not required to.
+
+**Cited §5.4 row:** D3 alignment-depth **M** / schema-simplicity **M** / backward-compat-burden **H** / integration-cost **H**.
+
+**Weakness named:** the discovery doc's own §5.4 row text: *"All entries survive, renderer surfaces 'legacy disclosure unavailable' honestly. Schema adds 1 boolean + acknowledgment text."* In G1-defer direction the "schema adds 1 boolean" change is **not adopted** — the renderer detects legacy entries from the existing `ai_disclosure: boolean | string` shape (presence of structured fields → new; absence → legacy). This eliminates the schema delta but **shifts the legacy-detection burden to renderer heuristics**. The residual weakness: a future schema upgrade (e.g., contingent C5 adoption per §2.1) would have to revisit legacy-detection rules, because the same boolean field would no longer be a reliable legacy signal. Defense-in-depth mitigation: the renderer-side legacy detection should log the entry's structural shape (legacy fingerprint) at render time so any future schema migration can audit the transition.
+
+**Why not the other §5.4 options:**
+
+- **D1 (strict reject)**: §5.4 row weakness — *"Breaks existing pipelines until users migrate every entry. Over-strict relative to anchor scope (no anchor requires retrospective disclosure)."* Alignment-depth **M**, but the operational cost is paid by every existing user and the alignment benefit is illusory because the anchors do not require retrospective fill. Rejected because the cost is not earned.
+- **D2 (hybrid storage-yes / render-no)**: §5.4 row weakness — *"Renderer output may be misleading — looks like no AI use when in fact disclosure status is unknown."* Alignment-depth **L**. Silently hiding ambiguity violates the discovery doc's "honest about uncertainty" stance; rejected on principle.
+- **D4 (forced backfill)**: §5.4 row weakness — *"Most likely to produce fabricated retrospective disclosures, which violates ICMJE #10 (human-responsibility) in spirit."* Alignment-depth **L**. Worst option in the table — actively incentivizes guessing about past AI use. Rejected categorically.
+
+### 2.4 G4 — Renderer target (E1–E4)?
+
+**Question source:** Q6 + image-rights asymmetry.
+
+**Matrix evidence:**
+
+- §5.5 evidence bullet 1: *"4-anchor #14 enums do not intersect"*. Verbatim PRISMA-trAIce 6-section / ICMJE cover-letter+section / Nature Methods+caption+alt / IEEE acknowledgments-only.
+- §5.5 evidence bullet 2: Nature #16 in-image-field labelling requires per-image annotation integrating with figure metadata; pure JSON/YAML output cannot satisfy it.
+- §5.5 evidence bullet 3 + framing §1.2: v3.2 disclosure mode already ships 6 venue renderers (Nature is the only overlap with the 4-anchor matrix).
+
+**Decision: Multiple per-anchor renders (Dimension E, option E2), at the policy-anchor level, parallel to v3.2's venue level.** ARS produces 4 anchor-conditioned renderers (PRISMA-trAIce / ICMJE / Nature / IEEE). v3.2's existing 6 venue renderers (ICLR / NeurIPS / Nature / Science / ACL / EMNLP) stay; the new policy-anchor renderers add a parallel lookup track keyed by anchor (not venue). Authors specify either a venue or a policy-anchor; renderer picks the matching path. Cross-track integration (Nature overlap): the Nature anchor renderer and the v3.2 Nature venue renderer share a single source-of-truth policy table (de-duplication mandate).
+
+**Cited §5.5 row:** E2 alignment-depth **H** / schema-simplicity **M** / backward-compat-burden **H** / integration-cost **L**.
+
+**Weakness named:** the discovery doc's own §5.5 row text: *"Maintenance burden grows with anchor set (4 today; if expansion adds 5 candidates from §4.7, that's 9 renderers). Each renderer is a separate code path that can drift from anchor policy updates."* The drift risk is real and not eliminated by the chosen direction. Mitigation: each renderer must cite a snapshot ref (mirror §3 provenance pattern from discovery) and the renderer test suite must include a snapshot-verification step that re-fetches anchor pages and diffs verbatim quotes (similar to v3.7.3's tested-content discipline). The §4.7 expansion (COPE / CSE / WAME / JAMA / PLOS) is **explicitly out of scope** for this issue; if added in a future issue, each addition must reproduce the snapshot + renderer + test bundle. Until then E2 is sized for 4 renderers, not 9.
+
+**Why not the other §5.5 options:**
+
+- **E1 (single ARS-native render)**: §5.5 row weakness — *"Aligns with at most one anchor — others see render that mismatches their location/format requirements."* Alignment-depth **L**. Picks one location/format and misroutes the other three. Same failure mode as G1 single-anchor: information loss disproportionate to schema savings.
+- **E3 (ARS render + user template)**: §5.5 row weakness — *"Two-track UX may confuse users into thinking default render is universally venue-safe (it isn't)."* Alignment-depth **M**. The default-render risk is structurally a worse UX than E2's explicit "specify anchor or venue" — E2 forces the choice; E3 hides it behind a default that authors may accept without verification.
+- **E4 (no renderer, schema-only)**: §5.5 row weakness — *"alignment-depth in delivered manuscripts is unverifiable at the ARS layer. Honest about the fact that no single render fits all venues."* Alignment-depth **M**. Honest, but pushes the entire render cost to every author for every submission. Given v3.2 already invested in venue rendering, walking that back is sunk-cost negative.
+
+**Note on Nature #16 image rights:** the chosen E2 direction does not by itself solve the in-image-field labelling problem (the renderer would still emit a separate disclosure text block, not modify figure metadata). The renderer for the Nature anchor must additionally produce **per-image annotation instructions** (separate output channel) that the author applies manually to the manuscript source. This is a renderer-side scope decision and is explicitly flagged here so the #108 implementation does not silently drop the image-side mandate.
+
+---
+
+## 3. Secondary questions (G5–G10)
+
+The six questions below shape the renderer's field set but are not first-order decisions per #108. Each is answered with a §5 / §4 / §6 cite and a one-paragraph rationale.
+
+### G5 — Q3: Is per-stage prompt disclosure mandatory or conditional on policy choice?
+
+**Decision:** Conditional on `mode == systematic-review` AND `tool_type ∈ {LLM, GenAI}`. Mandatory only when both conditions hold.
+
+**Rationale.** §4.3 PRISMA-trAIce M6 has explicit-recommend strength gated to "LLM/GenAI tool used" (Phase 2 closure note 5: tool-type-conditioned independent of mandate strength). §4.4 ICMJE, §4.5 Nature, §4.6 IEEE all leave prompt-disclosure not-addressed. A schema that mandates prompts unconditionally would over-read PRISMA-trAIce (pre-Delphi, recommend not mandate); a schema that always omits prompts loses the SLR content ceiling. The two-track gate composes with the G2 B4 decision: PRISMA-trAIce mode-track surfaces prompts; general mode-track does not. Q3 in §6.1 phrased the open question as exactly this gate; the answer here matches that framing.
+
+### G6 — Q5: Backward-compatibility horizon for legacy boolean entries?
+
+**Decision:** Indefinite (no deprecation date).
+
+**Rationale.** §5.4 evidence bullet 2 confirms no anchor obligates retrospective disclosure. Setting a deprecation date would create a fabricated forcing function unmotivated by the source policies. The G3 D3 decision already accommodates legacy entries via renderer-side detection; no schema-level deprecation is required. If future ARS evolution (e.g., adopting C5 versioned policy-profile per the §2.1 contingent reservation) introduces a schema change, a deprecation horizon for the old shape can be set at that time. Until then the legacy shape stays valid.
+
+### G7 — Q7: Does the copyediting carve-out have semantics distinct from boolean exemption?
+
+**Decision:** Yes — carve-out is a structured object preserving strength + location; not a boolean. The renderer-side data model: `copyediting_carveout: { strength: "eliminate" | "downgrade", preserves_location: bool, preserves_content: bool }`.
+
+**Rationale.** §4.5 #15 (Nature, eliminate) and §4.6 #15 (IEEE, downgrade-not-eliminate) define the same field with structurally different policies — Nature drops disclosure entirely; IEEE keeps location and content but lowers strength. §6.1 Q7 specifically calls this out. A boolean `exempted_uses: [copyediting]` would silently collapse the two policies into one. The structured form documented above is sufficient to render either anchor correctly. The schema-layer impact is **none** under the G1 defer decision (the structured form lives in the renderer's anchor table, not in the corpus entry). The renderer that picks IEEE preserves location and content; the renderer that picks Nature applies eliminate.
+
+### G8 — Q8: Should the schema model "level of involvement" separately from stage?
+
+**Decision:** Yes, as a renderer-side annotation. New field `level_of_involvement` is added at the renderer-input level (not the corpus entry schema). Accepted values: open string (rendered verbatim) with recommended exemplars `"full drafting" | "outline only" | "paragraph-level suggestion" | "factual check" | "stylistic revision"`.
+
+**Rationale.** §4.6 IEEE #5 is mandate strength on "a brief explanation regarding the level at which the AI system was used"; §4.6 #4 confirms "level" semantically means degree-of-involvement, not workflow stage. A renderer for the IEEE anchor that omits this field misses an explicit mandate. The G1 defer decision keeps the field out of the corpus entry schema — it lives in renderer input alongside the stage track (G2). Recommended exemplars are not a closed enum because IEEE's "brief explanation" language explicitly invites narrative; closing the enum would over-constrain. PRISMA-trAIce / ICMJE / Nature renderers may pass the field through optionally; only IEEE renders it as mandate-strength.
+
+### G9 — Q9: Should image-rights regimes be unified or anchor-specific?
+
+**Decision:** Anchor-specific. Each renderer carries its own image-rights policy table. No unified data model.
+
+**Rationale.** §4.4 ICMJE #16 (text-attribution rule, no-AI-as-primary-source — mandate), §4.5 Nature #16 (default-prohibit publication + 3 carve-outs + labelling — mandate), §4.6 IEEE #16 (fold into general acknowledgments — implicit), §4.3 PRISMA-trAIce #16 (data-handling adjacency — implicit). The §4.5 cross-anchor observation states *"the 'AI-generated image rights' field is anchor-specific enum-of-policies, not a flat boolean"*. A unified field would either (a) flatten Nature's default-deny regime into a boolean, losing the 3 carve-outs and the labelling-required flag; or (b) inflate to a max-of-anchors super-schema that over-fits authors targeting venues with lighter rules. The G1 defer + G4 E2 combination supports anchor-specific tables natively; the renderer for the Nature anchor produces the default-deny check + labelling instruction, the renderer for IEEE folds image disclosure into the acknowledgments output, the renderer for ICMJE produces the text-attribution clause, the renderer for PRISMA-trAIce passes through the data-handling note. Q9 §6.2 phrased the choice as "unify or anchor-specific"; anchor-specific is the policy-faithful answer.
+
+### G10 — Q10: Is "no AI use" itself a disclosable statement, or is silence default-OK?
+
+**Decision:** Silence is default-OK. Explicit `ai_used: false` is optional opt-in (renderer-input field).
+
+**Rationale.** §5.4 evidence bullet 4 confirms the matrix is silent on this — all 4 anchors describe forward-looking obligations conditional on AI use. ARS's current schema treats absence as silence; the G1 defer + G3 D3 combination preserves this. Forcing all authors to actively claim "no AI used" would (a) over-read the anchors (none require positive no-use statements), (b) misclassify legacy entries where AI-use status is genuinely unknown rather than positively absent, and (c) impose disclosure labour on the majority of corpus entries which involve no AI use. The opt-in path is left open for authors who want to surface the absence (e.g., for transparency at venues that scrutinize AI use); the renderer surfaces the explicit `false` when present.
+
+---
+
+## 4. Implementation surface impact
+
+#108's provisional implementation surface list (7 items, "depends on direction chosen at G1–G4") is now narrowed by the G1 defer decision. The revised surface:
+
+1. **`shared/contracts/passport/literature_corpus_entry.schema.json` — NO CHANGE.** The minimal `ai_disclosure: boolean | string` field stays. G1 places new investment at the renderer layer, not the schema.
+2. **`shared/handoff_schemas.md` — NO CHANGE.** No schema doc update needed; the existing legacy-shape documentation is correct under G3 D3.
+3. **`bibliography_agent.md` + `literature_strategist_agent.md` — NO CHANGE.** Producers continue to emit the legacy field. New renderer reads it as-is.
+4. **`scripts/check_ai_disclosure_schema.py` — NOT CREATED.** No new schema-level validator. The 0 new lint surface on the schema side is correct under G1 defer.
+5. **Migration tooling — NOT NEEDED.** G3 D3 indefinite legacy support means no migration script is required for entries created before this issue.
+6. **Renderer surface — NEW.** Per G1 + G4, the new investment goes here:
+   - **New:** `academic-paper/references/policy_anchor_disclosure_protocol.md` parallel to existing `disclosure_mode_protocol.md`. Describes the 4 anchor-conditioned renderers (PRISMA-trAIce / ICMJE / Nature / IEEE), their lookup mechanism, and the de-dup mandate against v3.2 Nature venue renderer.
+   - **New:** `academic-paper/references/policy_anchor_table.md` (or equivalent — final filename per implementation). 4 anchor tables, each carrying snapshot ref from discovery doc §3, verbatim policy quotes per field, and per-anchor renderer rules. Snapshot verification step in renderer tests.
+   - **Extended:** `academic-paper/references/disclosure_mode_protocol.md`. v3.2 venue path stays; new policy-anchor path adds parallel lookup. Both paths converge to the same render-time `level_of_involvement` + stage + carve-out + image-rights handling per G7 / G8 / G9.
+   - **New:** renderer tests covering all 4 anchor render paths, snapshot-verification step, B4 mode-gating test (`systematic-review` → PRISMA-trAIce stage enum; other modes → general 4-stage enum), G3 legacy-detection test, G7 carve-out strength test, G9 image-rights anchor-specific test.
+7. **`disclosure` mode in `academic-paper` — EXTEND.** v3.2 venue-lookup path stays unchanged. New policy-anchor lookup path added: `disclosure --venue=<v>` continues to work; `disclosure --policy-anchor=<a>` is the new entry. If both are passed, the mode resolves to venue (more specific). Cross-track de-dup: Nature anchor renderer and v3.2 Nature venue renderer share a single underlying policy table; updates to either propagate to both.
+
+**Out of scope for #108 (deferred to future issues):**
+
+- §4.7 expansion anchors (COPE / CSE / WAME / JAMA / PLOS): each addition reproduces the renderer + snapshot + test bundle described in item 6.
+- Dimension A5 (event-log model linked to v3.7.x trust-chain anchors): not adopted at this decision per G1 framing §1.3. May be revisited if a future use case (e.g., per-claim AI provenance for #103 v3.8 L3 audit agent) provides motivating evidence.
+- C5 versioned policy-profile pinning at corpus entry level: held in reserve per §2.1 contingent reservation. Triggered only if compliance reporting at the entry level becomes a documented user need.
+
+---
+
+## 5. Closure notes
+
+This Decision Doc selects one direction from the four discovery outcomes (defer policy to renderer, with corpus schema retained at minimal shape) and answers G1–G10 with §5 / §4 / §6 cites and named weaknesses per #108 Anti-goals. The chosen direction is **not** an unprincipled hybrid; each axis is decided on its own evidence. The composite shape that emerges (defer at C, two-track at B, soft legacy at D, multi-per-anchor at E) is a description of the result, not a pre-commitment.
+
+The discovery doc's §6 open questions Q1–Q10 are answered here at the maintainer level. Per the framing note in #108 (single-maintainer repo, no community thread), the open-questions thread is replaced by this Decision Doc — Q1 maps to G1, Q2 to G2, Q3 to G5, Q4 to G3, Q5 to G6, Q6 (hybrid axis) is resolved by §2.1's multi-axis decision pattern, Q7 to G7, Q8 to G8, Q9 to G9, Q10 to G10.
+
+**Decision acceptance:** per #108 Acceptance criterion #4, this doc must pass codex `gpt-5.5` xhigh review ≥ 2 rounds with 0 P1/P2 before implementation work on the renderer surface begins.
+
+---
+
+## 6. Related
+
+- Discovery doc: `docs/design/2026-05-13-ai-disclosure-schema-discovery.md` (commit 299c4b6, PR #107)
+- #106 (discovery issue, closed via #107)
+- #108 (implementation issue, blocked-by this Decision Doc)
+- v3.2 disclosure mode protocol: `academic-paper/references/disclosure_mode_protocol.md`
+- v3.7.3 spec (locator infrastructure prior art): `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md`
+- #102 (v3.7.4 triangulation) — orthogonal advisory pattern
+- #103 (v3.8 L3 audit agent) — disclosure granularity may feed audit signal
+- #105 (v3.7.3 migration tool) — orthogonal pattern reference (not invoked since G3 D3 needs no migration)
