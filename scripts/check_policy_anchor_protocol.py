@@ -57,7 +57,13 @@ REQUIRED_INVARIANTS = (
 REQUIRED_CONCERNS = tuple(f"concern #{i}" for i in range(1, 12))
 REQUIRED_ANCHOR_SLUGS = ("prisma-trAIce", "icmje", "nature", "ieee")
 DEDUP_POINTER = "shared/policy_data/nature_policy.md"
-AUTO_PROMOTION_KEYWORDS = ("auto-promotion", "MUST NOT be rendered as though USED")
+# Both tokens MUST be present. The auto-promotion clause is the load-
+# bearing G3/G10 invariant; the prior `any(...)` check let one token
+# satisfy the lint when the other was deleted. Closes codex round-2 P2 #3.
+AUTO_PROMOTION_REQUIRED_TOKENS = (
+    "auto-promotion",
+    "MUST NOT be rendered as though USED",
+)
 
 
 def lint_text(text: str) -> list[str]:
@@ -87,11 +93,13 @@ def lint_text(text: str) -> list[str]:
                 f"missing G10 7-row precedence row {row} (no `| {row} |` markdown row found)"
             )
 
-    # Check 4: auto-promotion forbiddance
-    if not any(kw in text for kw in AUTO_PROMOTION_KEYWORDS):
-        violations.append(
-            "missing auto-promotion forbiddance clause (G3/G10 UNCERTAIN-not-USED invariant)"
-        )
+    # Check 4: auto-promotion forbiddance — require ALL tokens
+    for token in AUTO_PROMOTION_REQUIRED_TOKENS:
+        if token not in text:
+            violations.append(
+                "missing auto-promotion forbiddance clause "
+                f"(G3/G10 UNCERTAIN-not-USED invariant); token missing: '{token}'"
+            )
 
     # Check 5: anchor slug coverage
     for slug in REQUIRED_ANCHOR_SLUGS:

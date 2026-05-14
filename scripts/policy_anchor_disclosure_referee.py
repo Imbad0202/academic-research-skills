@@ -27,7 +27,17 @@ from typing import Iterable
 
 CANONICAL_ANCHORS = ("prisma-trAIce", "icmje", "nature", "ieee")
 SLR_MODES = ("systematic-review", "slr")
-NATURE_VENUE_NAMES = ("Nature", "Nature Portfolio")
+# Includes the exact label the v3.2 policy database uses
+# (venue_disclosure_policies.md §"Venue: Nature (Nature Publishing Group)")
+# so consistent pair detection works against the canonical entry name.
+# Closes codex round-2 P2 #1.
+NATURE_VENUE_NAMES = (
+    "Nature",
+    "Nature Portfolio",
+    "Nature (Nature Publishing Group)",
+    "Nature Publishing Group",
+)
+VALID_CATEGORY_STATES = frozenset({"USED", "NOT USED", "UNCERTAIN"})
 
 
 class TrackGateError(RuntimeError):
@@ -53,6 +63,11 @@ class VenueAnchorConflict(RuntimeError):
 class InvalidPolicyAnchor(ValueError):
     """Raised when policy_anchor is outside the canonical 4-anchor enum.
     Closes codex round-1 P2 #3."""
+
+
+class InvalidCategoryState(ValueError):
+    """Raised when a category state value is outside {USED, NOT USED,
+    UNCERTAIN}. Closes codex round-2 P2 #2."""
 
 
 @dataclass(frozen=True)
@@ -93,6 +108,7 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
     row 4 admits the input.
     """
     _check_policy_anchor_enum(ri)
+    _check_category_states(ri)
     _check_venue_anchor_conflict(ri)
     _check_track_gate(ri)
 
@@ -156,6 +172,21 @@ def _check_policy_anchor_enum(ri: RendererInput) -> None:
             f"policy_anchor='{ri.policy_anchor}' is not in the canonical "
             f"closed enum {CANONICAL_ANCHORS}. Selectors are case-sensitive "
             "and must match exactly."
+        )
+
+
+def _check_category_states(ri: RendererInput) -> None:
+    """Validate every v3.2 category state against the closed
+    {USED, NOT USED, UNCERTAIN} enum. Silent fall-through to row 6/7 on a
+    lowercase typo would change the disclosure decision; the protocol
+    requires explicit rejection. Closes codex round-2 P2 #2."""
+    invalid = {
+        k: v for k, v in ri.categories.items() if v not in VALID_CATEGORY_STATES
+    }
+    if invalid:
+        raise InvalidCategoryState(
+            f"category states must be in {sorted(VALID_CATEGORY_STATES)}; "
+            f"got invalid entries {invalid}"
         )
 
 

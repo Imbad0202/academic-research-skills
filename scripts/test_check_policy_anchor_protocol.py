@@ -129,6 +129,34 @@ class CheckPolicyAnchorProtocolMutationTests(unittest.TestCase):
             msg=f"expected auto-promotion forbiddance violation; got {violations}",
         )
 
+    def test_partial_auto_promotion_token_loss_still_fails(self) -> None:
+        # Codex round-2 P2 #3: dropping the load-bearing MUST NOT sentence
+        # while keeping the "auto-promotion" heading should still fail. The
+        # protocol's invariant is the prohibition itself; the heading word
+        # alone is insufficient.
+        bad = _GOOD_PROTOCOL.replace(
+            "A still-UNCERTAIN category MUST NOT be rendered as though USED in any of\n"
+            "the four anchor outputs.",
+            "",
+        )
+        violations = cpap.lint_text(bad)
+        self.assertTrue(
+            any("MUST NOT" in v for v in violations),
+            msg=f"expected forbiddance-token violation; got {violations}",
+        )
+
+    def test_partial_keyword_loss_still_fails(self) -> None:
+        # Inverse mutation: keep the prohibition sentence but drop the
+        # "auto-promotion" anchor heading. The lint should still fail
+        # because both tokens are load-bearing.
+        bad = _GOOD_PROTOCOL.replace("auto-promotion forbiddance", "(removed clause)")
+        bad = bad.replace("Auto-promotion forbiddance", "Removed clause")
+        violations = cpap.lint_text(bad)
+        self.assertTrue(
+            any("auto-promotion" in v for v in violations),
+            msg=f"expected auto-promotion-token violation; got {violations}",
+        )
+
     def test_missing_dedup_pointer_fails(self) -> None:
         bad = _GOOD_PROTOCOL.replace("shared/policy_data/nature_policy.md", "elsewhere.md")
         violations = cpap.lint_text(bad)

@@ -406,6 +406,46 @@ class Concern7Test(unittest.TestCase):
                 )
             )
 
+    def test_nature_db_label_with_nature_anchor_passes(self) -> None:
+        # Codex round-2 P2 #1 closure: the v3.2 venue_disclosure_policies
+        # entry uses "Nature (Nature Publishing Group)" as its label.
+        # That exact string + policy_anchor='nature' must be treated as a
+        # consistent pair (not raised). Without this, every author using
+        # the existing policy database name would be blocked.
+        result = referee.decide_disclosure_output(
+            _inp(
+                ai_used=True,
+                categories={"drafting": "USED"},
+                policy_anchor="nature",
+                venue="Nature (Nature Publishing Group)",
+            )
+        )
+        self.assertEqual(result.row, 4)
+
+
+# ============================================================================
+# Category state enum validation (codex round-2 P2 #2)
+# ============================================================================
+class CategoryStateEnumValidationTest(unittest.TestCase):
+    def test_lowercase_used_raises(self) -> None:
+        with self.assertRaises(referee.InvalidCategoryState):
+            referee.decide_disclosure_output(
+                _inp(ai_used=None, categories={"drafting": "used"})
+            )
+
+    def test_typo_category_state_raises(self) -> None:
+        with self.assertRaises(referee.InvalidCategoryState):
+            referee.decide_disclosure_output(
+                _inp(ai_used=None, categories={"drafting": "USE D"})
+            )
+
+    def test_valid_states_pass(self) -> None:
+        # All three canonical states pass without raising; smoke check.
+        for state in ("USED", "NOT USED", "UNCERTAIN"):
+            referee.decide_disclosure_output(
+                _inp(ai_used=None, categories={"drafting": state})
+            )
+
 
 # ============================================================================
 # Policy anchor enum validation (codex round-1 P2 #3)
