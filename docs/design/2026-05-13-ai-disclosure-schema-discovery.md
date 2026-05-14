@@ -1,6 +1,6 @@
 # AI Disclosure Schema — Discovery Document
 
-**Status:** DRAFT — Phase 3b in progress (IEEE cells filled; Deliverable 2 + 3 next)
+**Status:** DRAFT — Phase 3b.3 in progress (matrix complete, Deliverable 2 shipped, Deliverable 3 this commit)
 **Date:** 2026-05-13
 **Issue:** [#106](https://github.com/Imbad0202/academic-research-skills/issues/106)
 **Author:** Cheng-I Wu
@@ -19,8 +19,8 @@ This discovery is split into three execution phases. Each phase ships as a PR co
 | Phase 2 | Fill cells for PRISMA-trAIce + ICMJE (32 of 64 cells) | shipped (PR #107 c2) |
 | Phase 3a | Fill cells for Nature Portfolio (16 of remaining 32 cells; 48 of 64 total) | shipped (PR #107 c3) |
 | Phase 3b.1 | Fill cells for IEEE (remaining 16 cells; 64 of 64 total) | shipped (PR #107 c4) |
-| Phase 3b.2 | Deliverable 2 design space (5 dimensions A–E + trade-off matrix) | **In progress** (this commit) |
-| Phase 3b.3 | Deliverable 3 open questions | pending |
+| Phase 3b.2 | Deliverable 2 design space (5 dimensions A–E + trade-off matrix) | shipped (PR #107 c5) |
+| Phase 3b.3 | Deliverable 3 open questions (6 baseline + 4 surfaced) | **In progress** (this commit) |
 
 **Phase 1 explicitly does NOT fill any cells.** Cells carry `phase: 1-scaffold` placeholder until Phase 2/3. This is intentional — Phase 1 builds the provenance infrastructure so Phase 2/3 cell-filling can cite verbatim with byte-level integrity.
 
@@ -428,18 +428,66 @@ The 13 pairs are not exhaustive — the implementation issue (deferred) would ne
 
 ---
 
-## 6. Deliverable 3: Open questions for community feedback _(Phase 3)_
+## 6. Deliverable 3: Open questions for community feedback
 
-To be surfaced after Deliverables 1+2 close. Six baseline questions from #106:
+These questions are open by design — Deliverable 2 enumerated credible options without choosing among them; Deliverable 3 names the questions whose answers should drive that choice. The 6 baseline questions from #106 are kept verbatim and given matrix-derived framing context. Phase 2/3 cell-filling surfaced 4 additional questions that were not in the baseline set and are added below. **No question here is rhetorical.** Each one is a genuine open issue where the matrix evidence supports more than one defensible answer.
 
-1. Should ARS schema force a single declaration policy, or be policy-agnostic?
-2. Should stage taxonomy be SLR-centric, general, or hierarchical?
-3. Is per-stage prompt disclosure mandatory or conditional on policy choice?
-4. What's the failure mode if disclosure is incomplete? (Pipeline halt / warning / silent log)
-5. Backward compatibility horizon: how long do we accept legacy boolean entries?
-6. Is a hybrid schema warranted? This is itself a hypothesis to test.
+A GitHub Discussions thread will be linked from #106 when this PR merges. Discovery closure requires the thread to be **linked and open**, not "answered" or "consensus reached" (per #106 acceptance criteria).
 
-A GitHub Discussions thread will be linked from #106 when Phase 3 ships.
+### 6.1 Baseline questions from #106 (with matrix context)
+
+**Q1 — Should ARS schema force a single declaration policy, or be policy-agnostic?**
+
+The 4-anchor matrix gives no clear answer. The four anchors' disclosure-location enums do not intersect (PRISMA-trAIce 6-section / ICMJE cover-letter+section / Nature Methods+caption+alt / IEEE acknowledgments-only). Forcing a single policy means picking one anchor and losing the others; staying policy-agnostic means deferring policy semantics to a renderer layer (Dimension C option C4) and trusting downstream correctness. The matrix is silent on whether ARS authors target named journals — if they do, ICMJE's policy-routed strength (adopting journals upgrade) would make a journal-aware schema preferable to either pure single-policy or pure policy-agnostic.
+
+**Q2 — Should stage taxonomy be SLR-centric, general, or hierarchical?**
+
+PRISMA-trAIce specifies a 6-stage SLR taxonomy (M3.a); ICMJE / Nature / IEEE all use unstructured stage language. The matrix supports SLR-centric (B1) only for `systematic-review` mode; for other ARS modes (deep-research / academic-paper), a B2/B3/B4/B5 option may serve better. Open question: should ARS treat `systematic-review` mode as a special case, or unify under one hierarchical taxonomy (B5) that absorbs SLR as a sub-tree?
+
+**Q3 — Is per-stage prompt disclosure mandatory or conditional on policy choice?**
+
+PRISMA-trAIce M6 calls for prompts (or detailed structure) when LLM/GenAI is used, but at explicit-recommend strength only (pre-Delphi). ICMJE / Nature / IEEE do not mandate prompts. A schema that mandates prompts unconditionally over-aligns with PRISMA-trAIce (and treats a pre-consensus framework as binding). A schema that omits prompts loses the SLR-specific content ceiling. Open question: should the schema gate prompts on `mode == systematic-review` AND `tool_type ∈ {LLM, GenAI}`, or leave both gates to user/renderer?
+
+**Q4 — What's the failure mode if disclosure is incomplete? (Pipeline halt / warning / silent log)**
+
+This is a runtime-policy question that ties to Dimension D options. D1 / D4 mean pipeline halt or forced backfill (strictest). D2 means render skip (silent). D3 means warning surfaced with a `legacy: true` marker. None of the 4 anchors specifies a failure mode — they describe what to disclose, not what happens when disclosure is absent. Open question: does ARS prefer to be strict (halt + force user attention), defensive (silent log + audit later), or transparent (warning + render the gap)?
+
+**Q5 — Backward compatibility horizon: how long do we accept legacy boolean entries?**
+
+ARS has existing literature_corpus entries with boolean/narrative `ai_disclosure`. The matrix does not impose retrospective disclosure obligation (Dimension D evidence). Open question: is "indefinite" the right horizon (D3 soft acceptance forever), or should the implementation issue set a deprecation date (e.g., 12 months from schema-issue close → reject legacy)? Implementation cost trades off audit honesty.
+
+**Q6 — Is a hybrid schema warranted? This is itself a hypothesis to test.**
+
+The 4-anchor matrix surfaces three structural facts that argue for some form of hybrid:
+- ICMJE / Nature / IEEE all skew to `not-addressed` (9, 7, 9 of 16) but each contributes a distinct shape no other anchor provides. A single-anchor schema loses two-thirds of the design space.
+- PRISMA-trAIce field-rich content does not transfer cleanly outside SLR.
+- 4-anchor #14 location enums have empty intersection.
+
+These three facts make "single-anchor verbatim alignment" hard to defend. But "hybrid" itself can mean Dimension A2 (Structured object covering ICMJE/Nature/IEEE text-side) OR A5 (Event-log with anchor-conditional applicability) OR B4 (Two-track by mode) OR C5 (Versioned policy profile). Open question: which hybrid axis (data model / stage taxonomy / policy expression) is the load-bearing one?
+
+### 6.2 Additional questions surfaced by Phase 2/3 cell-filling
+
+These questions did not appear in the #106 baseline. They emerged from specific matrix patterns observed during cell-filling.
+
+**Q7 — Does the copyediting carve-out have semantics distinct from boolean exemption?**
+
+Two of the 4 anchors address the copyediting carve-out (Nature, IEEE); the other two (PRISMA-trAIce, ICMJE) leave it `not-addressed`. Among the two addressed anchors, Nature **eliminates** disclosure ("does not need to be declared") and IEEE **downgrades** strength while preserving location and content ("disclosure as noted above is recommended"). If ARS schema supports the carve-out, it must choose whether `exempted_uses: [copyediting]` means "boolean off" (matches Nature) or "strength downgrade preserving location/content" (matches IEEE). Open question: should the carve-out be a single field or a struct with strength + location preserved?
+
+**Q8 — Should the schema model "level of involvement" separately from stage?**
+
+IEEE #5 carries explicit-mandate strength for a "brief explanation regarding the level at which the AI system was used to generate the content"; §4.6 #4 interprets that level language as degree-of-involvement rather than workflow stage (and classifies #4 as implicit on this basis). The distinction matters because degree-of-involvement (e.g., "full drafting" vs "outline only" vs "paragraph-level suggestion") is not the same axis as workflow stage. None of Dimensions A–E's options model degree-of-involvement separately from stage. If IEEE #5's mandate is in scope, the schema needs a 17th field (`level_of_involvement` or similar) that may or may not belong in Dimension A.
+
+**Q9 — Should image-rights regimes be unified or anchor-specific?**
+
+ICMJE #16 (text attribution + no-AI-as-primary-source) and Nature #16 (default-prohibit publication + 3 carve-outs + labelling) handle the same field by structurally different policies. IEEE #16 folds images into the general acknowledgments mandate. PRISMA-trAIce #16 is implicit. Open question: does ARS unify image-rights into a single field (losing Nature's regime-specific shape) or carry per-anchor variants (with anchor-conditional rendering)?
+
+**Q10 — Is "no AI use" itself a disclosable statement, or is silence default-OK?**
+
+The matrix is silent on whether legacy entries with no AI disclosure should be interpreted as "no AI was used" (positive fact) or "disclosure status unknown" (epistemic gap). All 4 anchors describe forward-looking obligations conditional on AI use. ARS's current schema treats absence of disclosure as silence. Open question: does the new schema require an explicit `ai_used: false` for the no-AI case, or accept silence as backward-compatible default?
+
+### 6.3 Notes on scope
+
+These 10 questions are **input to the implementation issue**, not closure gates for this discovery. Discovery closes when the matrix + design space + open-questions thread are linked. Whether the implementation issue answers all 10, a subset, or reframes them entirely is a separate decision the community + maintainer thread will surface.
 
 ---
 
@@ -498,7 +546,7 @@ Phase 3a fills **16 more cells** (Nature Portfolio §4.5), bringing the running 
 
 **Acceptance for Phase 3a** (commit 3 of PR #107): 48 cells filled cumulatively; Nature SHA-256 unchanged from Phase 1; document parses; codex gpt-5.5 xhigh review converged to 0 findings in 2 rounds.
 
-### 7.4 Phase 3b.1 (this commit)
+### 7.4 Phase 3b.1 (shipped — commit 4 of PR #107)
 
 Phase 3b.1 fills the **final 16 cells** for IEEE (§4.6), bringing the matrix to **64 of 64 cells complete**. IEEE was fully read end-to-end — the substantive policy text is 2 short paragraphs (~150 words combined) inside `<div itemprop="articleBody">`. The 212 KB snapshot HTML is mostly IEEE.org site chrome / menu / footer. The webinar reference and Author Center pointer carry no normative content; the linked video is out of scope as a separate medium without byte-stable transcript.
 
@@ -521,11 +569,19 @@ Phase 3b.1 fills the **final 16 cells** for IEEE (§4.6), bringing the matrix to
 5. **`not-addressed` count converges at 9 for both framework-level anchors (ICMJE, IEEE)** by different delegation routes. PRISMA-trAIce (3 not-addressed) and Nature (7 not-addressed) sit below this floor because they specify more fields directly. This suggests there is a **structural ceiling on what framework-level brevity can specify**, independent of which audience the policy delegates to. Dimension B (Phase 3) stage taxonomy can leverage this: a stage taxonomy that aligns with framework-level scope will be `not-addressed`-heavy regardless of which framework is chosen.
 6. **No `unknown` cells across the entire matrix**: All four anchors were fully read end-to-end. The 10-cell `unknown` ceiling from §4.1 went unused.
 
-**Acceptance for Phase 3b.1** (this commit): 64 of 64 cells filled cumulatively; IEEE SHA-256 (`3ab8db50…`) unchanged from Phase 1; document parses; codex gpt-5.5 xhigh review converged to 0 findings in 2 rounds (Round 1 P1 = cross-anchor "mandate in ICMJE and Nature" overstatement fixed to "at least one of ICMJE/Nature treats at mandate strength").
+**Acceptance for Phase 3b.1** (commit 4 of PR #107): 64 of 64 cells filled cumulatively; IEEE SHA-256 (`3ab8db50…`) unchanged from Phase 1; document parses; codex gpt-5.5 xhigh review converged to 0 findings in 2 rounds (Round 1 P1 = cross-anchor "mandate in ICMJE and Nature" overstatement fixed to "at least one of ICMJE/Nature treats at mandate strength").
 
-### 7.5 Phase 3b.2 + 3b.3 (pending)
+### 7.5 Phase 3b.2 (shipped — commit 5 of PR #107)
 
-Phase 3b.2 builds the Deliverable 2 design space (5 dimensions A–E with trade-off matrix ≥ 4 axes). Phase 3b.3 surfaces Deliverable 3 open questions (6 baseline questions from #106, plus any new questions discovered during cell-filling). The matrix observations above will inform the dimension options without prescribing a choice.
+Phase 3b.2 builds §5 Deliverable 2 design space: 5 dimensions A–E (Value-type / Stage taxonomy / Policy expression / Legacy handling / Renderer target), each with 4–5 credible options enumerated, each option scored across 4 trade-off axes (alignment depth / schema simplicity / backward-compat burden / integration cost). §5.6 consolidates 13 distinct option-pairs surfaced as load-bearing in the per-dimension Interaction notes. No option is selected.
+
+**Acceptance for Phase 3b.2** (commit 5 of PR #107): 5 dimensions, 23 options, 4-axis scoring per option, 13-pair interaction inventory; document parses; codex gpt-5.5 xhigh review converged to 0 findings in 3 rounds (Round 1 = 6 findings incl. 3 P1; Round 2 = 2 P2; Round 3 = 0).
+
+### 7.6 Phase 3b.3 (this commit)
+
+Phase 3b.3 surfaces §6 Deliverable 3 open questions: 6 baseline questions from #106 (Q1–Q6) verbatim with matrix-derived framing context, plus 4 additional questions (Q7–Q10) surfaced from Phase 2/3 cell-filling patterns not in the baseline set. §6.3 scope note clarifies these 10 questions are input to the implementation issue, not closure gates for this discovery.
+
+**Acceptance for Phase 3b.3** (this commit): 6 baseline questions verbatim + 4 surfaced; each question has matrix-evidence context paragraph and remains genuinely open (more than one defensible answer per matrix); no implicit option selection. Discovery acceptance criterion from #106 is "thread linked and open" — the GitHub Discussions thread will be linked when this PR merges.
 
 ---
 
