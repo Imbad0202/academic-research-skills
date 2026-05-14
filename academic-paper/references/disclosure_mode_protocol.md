@@ -55,7 +55,7 @@ The v3.2 venue track closes the venue-specific gap. The #108 anchor track closes
 ### Phase 1: Intake + lookup (selector-aware)
 
 **Step 1a — selector dispatch:**
-- Both `--venue=<v>` and `--policy-anchor=<a>` supplied → check policy compatibility per the Two-parallel-tracks section above. Consistent pair → proceed to step 1b on the venue path; conflicting pair → reject with explicit error.
+- Both `--venue=<v>` and `--policy-anchor=<a>` supplied → check policy compatibility per the Two-parallel-tracks section above. **Consistent pair (currently only any Nature Portfolio venue + `--policy-anchor=nature`, where "Nature Portfolio venue" includes canonical labels {"Nature", "Nature Portfolio", "Nature (Nature Publishing Group)", "Nature Publishing Group"} and the journal-family prefix `"Nature "` matching e.g. "Nature Medicine", "Nature Communications", "Nature Climate Change", etc.) → route the consistent pair to **step 1c (anchor path)** so the shared canonical source `shared/policy_data/nature_policy.md` drives rendering; step 1b's v1 venue database does not need to contain every Nature Portfolio journal**. Conflicting pair → reject with explicit error.
 - `--venue=<v>` only → step 1b (venue path).
 - `--policy-anchor=<a>` only → step 1c (anchor path).
 - Neither supplied → prompt the user to specify selector.

@@ -620,11 +620,26 @@ class Concern10Test(unittest.TestCase):
 
     def test_bare_ai_used_true_all_not_used_triggers_categorization_flow(self) -> None:
         # ai_used=true contradicts everything-NOT-USED; row 1 doesn't apply
-        # (row 1 needs USED) → caught by concern #10 gate
+        # (row 1 needs USED) → caught by concern #10 gate. Codex round-5
+        # P2 #2: protocol §3 G10 row 4 sub-gate spec extended to cover
+        # this case (was bare-flag only previously). Referee already
+        # handled it correctly; protocol doc now aligned.
         result = referee.decide_disclosure_output(
             _inp(
                 ai_used=True,
                 categories={"drafting": "NOT USED", "revision": "NOT USED"},
+            )
+        )
+        self.assertEqual(result.kind, "prompt_for_categorization")
+
+    def test_ai_used_true_with_uncertain_only_triggers_categorization(self) -> None:
+        # Edge case from round-5 P2 #2: ai_used=true + only UNCERTAIN
+        # categories should also trigger categorization flow rather than
+        # a row-4 render (no USED facets means no substantive content).
+        result = referee.decide_disclosure_output(
+            _inp(
+                ai_used=True,
+                categories={"drafting": "UNCERTAIN"},
             )
         )
         self.assertEqual(result.kind, "prompt_for_categorization")

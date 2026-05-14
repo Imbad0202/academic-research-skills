@@ -74,9 +74,17 @@ def lint_text(text: str) -> list[str]:
         if inv not in text:
             violations.append(f"missing required invariant reference: {inv}")
 
-    # Check 2: required concern resolutions
+    # Check 2: required concern resolutions — use regex word-boundary so
+    # `concern #1` is not matched against `concern #10` or `concern #11`.
+    # Closes codex round-5 P2 #3.
     for concern in REQUIRED_CONCERNS:
-        if concern not in text:
+        # Extract the numeric part — `concern #1` → "1"
+        try:
+            number = concern.split("#")[1]
+        except IndexError:
+            continue
+        pattern = re.compile(rf"concern\s+#{re.escape(number)}\b")
+        if not pattern.search(text):
             violations.append(f"missing §4.4 {concern} resolution clause")
 
     # Check 3: G10 7-row precedence table — match actual markdown table rows

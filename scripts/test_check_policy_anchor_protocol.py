@@ -157,6 +157,20 @@ class CheckPolicyAnchorProtocolMutationTests(unittest.TestCase):
             msg=f"expected auto-promotion-token violation; got {violations}",
         )
 
+    def test_concern_number_boundary_matching(self) -> None:
+        # Codex round-5 P2 #3 closure: removing `concern #1` from a doc that
+        # still mentions `concern #10` and `concern #11` should still fail.
+        # Previous substring-membership check would let the document pass.
+        bad = _GOOD_PROTOCOL.replace("concern #1 —", "deleted-clause —", 1)
+        # Confirm the bad text still contains concern #10 / #11
+        self.assertIn("concern #10", bad)
+        self.assertIn("concern #11", bad)
+        violations = cpap.lint_text(bad)
+        self.assertTrue(
+            any("concern #1 " in v or "concern #1\b" in v.lower() for v in violations),
+            msg=f"expected concern #1 violation; got {violations}",
+        )
+
     def test_missing_dedup_pointer_fails(self) -> None:
         bad = _GOOD_PROTOCOL.replace("shared/policy_data/nature_policy.md", "elsewhere.md")
         violations = cpap.lint_text(bad)
