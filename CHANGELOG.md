@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### #108 — AI disclosure policy-anchor renderer (2026-05-14, audit-trail-shipped)
+
+**Parent docs:** Decision Doc (`docs/design/2026-05-14-ai-disclosure-schema-decision.md`, PR #109, merged commit 20ed72d) + implementation spec (`docs/design/2026-05-14-ai-disclosure-impl-spec.md`).
+
+**Migration note (G1 + G6 invariants):** **no migration required**. Decision Doc §2.1 G1 invariant: no `ai_disclosure` field is added to `shared/contracts/passport/literature_corpus_entry.schema.json`. Decision Doc §3 G6: no deprecation horizon — legacy entries (which by §1 fact-check do not carry any AI-disclosure field today) stay byte-equivalent. The implementation extends the runtime renderer path, not the data schema.
+
+**New files added:**
+
+- `academic-paper/references/policy_anchor_table.md` — 4-anchor (PRISMA-trAIce / ICMJE / Nature / IEEE) × 16-field source-of-truth reference table carrying verbatim policy quotes lifted from discovery doc §4.3-4.6 (PR #107, commit 299c4b6) + per-anchor renderer rules.
+- `academic-paper/references/policy_anchor_disclosure_protocol.md` — LLM-prose runtime protocol for the new `--policy-anchor=<a>` track: 7-section flow covering inputs / G10 7-row precedence table / per-anchor render flows / auto-promotion forbiddance / venue-anchor conflict resolution / three-state completeness flag / 11-concern resolution map.
+- `shared/policy_data/nature_policy.md` — canonical Nature substantive policy source; both the policy-anchor track and the v3.2 venue track cross-reference this path for the G4 dedup invariant.
+- `scripts/check_policy_anchor_table.py` + `scripts/test_check_policy_anchor_table.py` — anchor table structural lint with 13 mutation tests + Nature dedup guard wired into the main lint command.
+- `scripts/check_policy_anchor_protocol.py` + `scripts/test_check_policy_anchor_protocol.py` — protocol doc lint with 12 mutation tests covering §4.3 8 invariants + §4.4 11 concerns + G10 7-row precedence table + auto-promotion forbiddance + anchor inventory closed-enum.
+- `scripts/policy_anchor_disclosure_referee.py` + `scripts/test_policy_anchor_disclosure.py` — executable specification (referee) of §3 G10 7-row decision table + 8 invariant predicates; 61 conformance tests covering every (input × expected output) combination + forbidden-path negative fixtures.
+
+**Modified files:**
+
+- `academic-paper/references/disclosure_mode_protocol.md` — `--policy-anchor=<a>` track added in parallel to v3.2 `--venue=<v>` track. Phase 1 dispatch becomes selector-aware (step 1a / step 1b venue / step 1c anchor). Venue-only flow unchanged; anchor flow delegates Phase 3+4 to `policy_anchor_disclosure_protocol.md`. Concern #7 venue+anchor conflict resolution enforced.
+- `academic-paper/references/venue_disclosure_policies.md` — Nature entry gains derivation note + dedup pointer to `shared/policy_data/nature_policy.md`. v3.2 venue rendering content unchanged (derived view, manual sync to canonical source until future refactor).
+- `.github/workflows/spec-consistency.yml` — 5 new CI steps wiring the new validators and conformance test suite into the existing spec-consistency job.
+
+**§4.4 11 open concerns resolved** (4 user-chosen, 7 inline; full table in impl spec §3):
+1. Track-selection lookup: explicit `slr_lineage` input from pipeline orchestrator (user-chosen).
+2. Tool identity collection: auto-detect from session metadata (mirror v3.2 Phase 4).
+3. Prompt scope: per-(tool × task) tuple per PRISMA M6.a.
+4. IEEE section locator: free-form list with recommended IMRaD exemplars.
+5. Nature image metadata: hybrid output channel (annotation block + suggested inline patches) (user-chosen).
+6. UNCERTAIN per-facet finalization: USED-full + per-facet annotation alongside still-UNCERTAIN (user-chosen).
+7. Venue+anchor conflict: reject conflicting selectors with explicit error.
+8. Three-state completeness flag: full computation logic encoded in §6 of protocol doc.
+9. Test set scope: 86 new tests covering 8 invariants + 10 concerns × {positive, negative}.
+10. `ai_used:true` substantive-content gate: force v3.2 categorization flow (user-chosen).
+11. G1 invariant scope: data layer untouched; non-renderer pipeline plumbing permitted.
+
+**Known follow-up (out of #108 scope):** the academic-pipeline orchestrator does not yet emit `slr_lineage` on the documented `systematic-review → academic-paper full` handoff. Authors targeting `--policy-anchor=prisma-trAIce` must supply `mode=systematic-review` manually until that plumbing lands in a separate PR (touches `academic-pipeline/` + `shared/handoff_schemas.md`, outside §4.1 items 1-5 NO-CHANGE boundary).
+
+**Regression status:** 967 baseline + 86 new tests = 1053 passing / 3 skipped / 0 failed. Public-repo boundary clean. Eight rounds of codex gpt-5.5 xhigh review (R1 4 P2 → R8 2 P2); shipped audit-trail-complete per user decision rather than pushing past Decision Doc 11-round high water mark. R8 P2 #1 captured as the known follow-up above.
+
 ### v3.7.3 — claim faithfulness locator + contaminated-source advisory (2026-05-12, in progress)
 
 **External motivation:** Zhao, Wang, Stuart, De Vaan, Ginsparg, Yin "LLM hallucinations in the wild: Large-scale evidence from non-existent citations" (arXiv:2605.07723, 2026-05). Corpus-scale audit of 111M references across 2.5M papers across arXiv / bioRxiv / SSRN / PMC finds 146,932 hallucinated citations estimated for 2025 alone, with the inflection point at mid-2024, 85.3% of preprint hallucinations surviving into the published record, and Google Scholar increasingly indexing citation-only entries. The paper names the L3 (claim faithfulness) gap explicitly: *"real citations deployed to support claims the cited references do not actually make ... remains an open challenge for which reliable detection methods remain under active development."* v3.7.3 closes the locator-channel half of that gap (anchor infrastructure for future L3 audit) and surfaces two contamination signals (preprint post-LLM-inflection + Semantic Scholar unmatched) as advisory cite-time markers.
