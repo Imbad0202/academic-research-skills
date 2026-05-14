@@ -44,6 +44,8 @@ If the venue is not listed here, the mode halts and asks the user to paste the c
 
 ## Venue: Nature (Nature Publishing Group)
 
+**Policy-source dedup pointer:** Nature's substantive AI policy text is co-cited by the #108 policy-anchor renderer (`policy_anchor_table.md` Nature section, verbatim quotes per 16 fields). Both consumers reference the canonical source pointer `shared/policy_data/nature_policy.md` so a future single-source-of-truth refactor can extract Nature's policy text without breaking either consumer's substantive content. Dedup invariant lint: `verify_nature_dedup_with_venue` in `scripts/check_policy_anchor_table.py`.
+
 | Field | Value |
 |---|---|
 | Source URL | https://www.nature.com/nature/editorial-policies/ai |
