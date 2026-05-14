@@ -21,6 +21,8 @@ _GOOD_PROTOCOL = textwrap.dedent(
     """\
     # Policy-Anchor Disclosure Protocol (#108)
 
+    **Anchor inventory**: `prisma-trAIce, icmje, nature, ieee`
+
     ## Frozen invariants from Decision Doc §4.3
 
     - G1 invariant — no ai_disclosure field added to corpus entry schema
@@ -180,11 +182,31 @@ class CheckPolicyAnchorProtocolMutationTests(unittest.TestCase):
         )
 
     def test_missing_anchor_slug_fails(self) -> None:
-        bad = _GOOD_PROTOCOL.replace("prisma-trAIce, icmje, nature, ieee", "icmje, nature, ieee")
+        # Codex round-6 P2 #2 closure: dropping slug from the
+        # **Anchor inventory** line must fail even if the slug name
+        # appears elsewhere (e.g., in a per-anchor render section).
+        bad = _GOOD_PROTOCOL.replace(
+            "**Anchor inventory**: `prisma-trAIce, icmje, nature, ieee`",
+            "**Anchor inventory**: `icmje, nature, ieee`",
+        )
+        # Add a stray prisma-trAIce mention to confirm the inventory check
+        # is strict (the global substring would catch this and pass).
+        bad += "\n\nNote: prisma-trAIce renders are mentioned in §3.1.\n"
         violations = cpap.lint_text(bad)
         self.assertTrue(
             any("prisma-trAIce" in v or "anchor slug" in v.lower() for v in violations),
             msg=f"expected anchor slug violation; got {violations}",
+        )
+
+    def test_missing_anchor_inventory_line_fails(self) -> None:
+        bad = _GOOD_PROTOCOL.replace(
+            "**Anchor inventory**: `prisma-trAIce, icmje, nature, ieee`",
+            "(inventory line removed)",
+        )
+        violations = cpap.lint_text(bad)
+        self.assertTrue(
+            any("Anchor inventory" in v for v in violations),
+            msg=f"expected Anchor inventory violation; got {violations}",
         )
 
 

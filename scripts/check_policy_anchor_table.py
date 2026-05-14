@@ -61,7 +61,11 @@ STRENGTHS_REQUIRING_QUOTE = {
     "explicit-recommend",
     "conditional-mandate",
 }
-ANCHOR_HEADING = re.compile(r"^##\s+Anchor:\s+([A-Za-z0-9-]+)\s*$", re.MULTILINE)
+# Capture any non-empty trailing identifier so invalid anchor headings
+# (underscores, spaces, punctuation) surface in the "unknown anchor section"
+# check instead of being silently folded into the previous section. Closes
+# codex round-6 P2 #1.
+ANCHOR_HEADING = re.compile(r"^##\s+Anchor:\s+(\S.*?)\s*$", re.MULTILINE)
 SNAPSHOT_LINE = re.compile(
     r"\*\*Snapshot:\*\*\s+`([A-Za-z0-9-]+):wayback=([0-9]+)`"
 )

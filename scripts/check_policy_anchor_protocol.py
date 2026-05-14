@@ -109,10 +109,23 @@ def lint_text(text: str) -> list[str]:
                 f"(G3/G10 UNCERTAIN-not-USED invariant); token missing: '{token}'"
             )
 
-    # Check 5: anchor slug coverage
-    for slug in REQUIRED_ANCHOR_SLUGS:
-        if slug not in text:
-            violations.append(f"missing canonical anchor slug reference: {slug}")
+    # Check 5: anchor slug coverage — parse the **Anchor inventory** line
+    # specifically, not a global substring scan. Closes codex round-6 P2 #2.
+    inventory_line = re.search(
+        r"^\*\*Anchor inventory\*\*:\s*`([^`]+)`", text, re.MULTILINE
+    )
+    if not inventory_line:
+        violations.append("missing `**Anchor inventory**: ...` line in protocol doc")
+    else:
+        inventory_slugs = {
+            s.strip() for s in inventory_line.group(1).split(",") if s.strip()
+        }
+        for slug in REQUIRED_ANCHOR_SLUGS:
+            if slug not in inventory_slugs:
+                violations.append(
+                    f"missing canonical anchor slug from inventory: {slug} "
+                    f"(found inventory: {sorted(inventory_slugs)})"
+                )
 
     # Check 6: dedup pointer
     if DEDUP_POINTER not in text:

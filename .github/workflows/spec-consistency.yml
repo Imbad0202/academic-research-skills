@@ -253,23 +253,23 @@ jobs:
           pip install pytest pyyaml jsonschema
           pytest scripts/test_run_codex_audit_e2e.py -v
 
-      - name: Check #108 policy anchor table structural lint
+      - name: "Check policy anchor table structural lint (#108)"
         run: python3 scripts/check_policy_anchor_table.py
 
-      - name: Run #108 policy anchor table validator unit tests
+      - name: "Run policy anchor table validator unit tests (#108)"
         env:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_policy_anchor_table -v
 
-      - name: Check #108 policy anchor disclosure protocol lint
+      - name: "Check policy anchor disclosure protocol lint (#108)"
         run: python3 scripts/check_policy_anchor_protocol.py
 
-      - name: Run #108 policy anchor protocol validator unit tests
+      - name: "Run policy anchor protocol validator unit tests (#108)"
         env:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_policy_anchor_protocol -v
 
-      - name: Run #108 policy anchor disclosure conformance suite (referee)
+      - name: "Run policy anchor disclosure conformance suite — referee (#108)"
         env:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_policy_anchor_disclosure -v
