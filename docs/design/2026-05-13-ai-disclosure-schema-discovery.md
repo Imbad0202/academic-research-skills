@@ -1,6 +1,6 @@
 # AI Disclosure Schema — Discovery Document
 
-**Status:** DRAFT — Phase 3b.3 in progress (matrix complete, Deliverable 2 shipped, Deliverable 3 this commit)
+**Status:** COMPLETE — all 6 phases shipped; PR #107 ready for merge (matrix 64/64 + design space 5 dimensions + 10 open questions + 4-anchor snapshot integrity verified)
 **Date:** 2026-05-13
 **Issue:** [#106](https://github.com/Imbad0202/academic-research-skills/issues/106)
 **Author:** Cheng-I Wu
@@ -20,7 +20,7 @@ This discovery is split into three execution phases. Each phase ships as a PR co
 | Phase 3a | Fill cells for Nature Portfolio (16 of remaining 32 cells; 48 of 64 total) | shipped (PR #107 c3) |
 | Phase 3b.1 | Fill cells for IEEE (remaining 16 cells; 64 of 64 total) | shipped (PR #107 c4) |
 | Phase 3b.2 | Deliverable 2 design space (5 dimensions A–E + trade-off matrix) | shipped (PR #107 c5) |
-| Phase 3b.3 | Deliverable 3 open questions (6 baseline + 4 surfaced) | **In progress** (this commit) |
+| Phase 3b.3 | Deliverable 3 open questions (6 baseline + 4 surfaced) | shipped (PR #107 c6) |
 
 **Phase 1 explicitly does NOT fill any cells.** Cells carry `phase: 1-scaffold` placeholder until Phase 2/3. This is intentional — Phase 1 builds the provenance infrastructure so Phase 2/3 cell-filling can cite verbatim with byte-level integrity.
 
@@ -88,10 +88,10 @@ Each cell carries:
 | `source_strength` | yes | `explicit-mandate` / `explicit-recommend` / `conditional-mandate` / `implicit` / `not-addressed` / `unknown` |
 | `verbatim_quote` | yes for mandate/recommend/conditional cells | Paraphrase forbidden; ≤ 50 words verbatim from primary source |
 | `inference_passage` | yes for `implicit` cells | The passage(s) used for inference, verbatim |
-| `locator` | yes for non-`unknown` cells | Section / item / heading within source (e.g., "PRISMA-trAIce Table 1 M6.a") |
-| `expected_value_type` | yes | boolean / structured / narrative |
+| `locator` | yes for mandate / recommend / conditional / implicit cells | Section / item / heading within source (e.g., "PRISMA-trAIce Table 1 M6.a"). `not-addressed` cells use `—` because the read scope is the entire source (per the `not-addressed` rule below); `unknown` cells use `—` because the source was not fully read. |
+| `expected_value_type` | yes for mandate / recommend / conditional / implicit cells | boolean / structured / narrative. `not-addressed` / `unknown` cells use `—`. |
 | `conditional_trigger` | required for `conditional-mandate` | Plain-text trigger description |
-| `snapshot_ref` | required for non-`unknown` cells | `{anchor_slug}:wayback={wayback_id}` |
+| `snapshot_ref` | required for mandate / recommend / conditional / implicit cells | `{anchor_slug}:wayback={wayback_id}`. `not-addressed` / `unknown` cells do not require snapshot_ref (the read-scope is the full snapshot, recorded once at the per-anchor matrix header). |
 
 **`not-addressed` rule:** a cell may be `not-addressed` only when the matrix author has read the **entire** primary source AND can affirmatively state the field is absent. Cells where the source has not been fully read must be `unknown`.
 
@@ -577,11 +577,11 @@ Phase 3b.2 builds §5 Deliverable 2 design space: 5 dimensions A–E (Value-type
 
 **Acceptance for Phase 3b.2** (commit 5 of PR #107): 5 dimensions, 23 options, 4-axis scoring per option, 13-pair interaction inventory; document parses; codex gpt-5.5 xhigh review converged to 0 findings in 3 rounds (Round 1 = 6 findings incl. 3 P1; Round 2 = 2 P2; Round 3 = 0).
 
-### 7.6 Phase 3b.3 (this commit)
+### 7.6 Phase 3b.3 (shipped — commit 6 of PR #107)
 
 Phase 3b.3 surfaces §6 Deliverable 3 open questions: 6 baseline questions from #106 (Q1–Q6) verbatim with matrix-derived framing context, plus 4 additional questions (Q7–Q10) surfaced from Phase 2/3 cell-filling patterns not in the baseline set. §6.3 scope note clarifies these 10 questions are input to the implementation issue, not closure gates for this discovery.
 
-**Acceptance for Phase 3b.3** (this commit): 6 baseline questions verbatim + 4 surfaced; each question has matrix-evidence context paragraph and remains genuinely open (more than one defensible answer per matrix); no implicit option selection. Discovery acceptance criterion from #106 is "thread linked and open" — the GitHub Discussions thread will be linked when this PR merges.
+**Acceptance for Phase 3b.3** (commit 6 of PR #107): 6 baseline questions verbatim + 4 surfaced; each question has matrix-evidence context paragraph and remains genuinely open (more than one defensible answer per matrix); no implicit option selection. Discovery acceptance criterion from #106 is "thread linked and open" — the GitHub Discussions thread will be linked when this PR merges.
 
 ---
 
