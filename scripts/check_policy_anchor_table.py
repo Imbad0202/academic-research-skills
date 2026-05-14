@@ -244,13 +244,24 @@ def main(argv: list[str] | None = None) -> int:
         default="academic-paper/references/policy_anchor_table.md",
         help="path to policy_anchor_table.md (default: %(default)s)",
     )
+    parser.add_argument(
+        "--venue-policies",
+        default="academic-paper/references/venue_disclosure_policies.md",
+        help="path to venue_disclosure_policies.md for the Nature dedup guard",
+    )
     args = parser.parse_args(argv)
     target = Path(args.path)
+    venue_path = Path(args.venue_policies)
     if not target.exists():
         print(f"error: file not found: {target}", file=sys.stderr)
         return 2
     text = target.read_text(encoding="utf-8")
     violations = lint_text(text)
+    # Run the Nature dedup guard from the main lint path so removing the
+    # shared source file or either pointer fails CI directly. Closes
+    # codex round-7 P3 #1.
+    dedup_violations = verify_nature_dedup_with_venue(target, venue_path)
+    violations.extend(dedup_violations)
     if violations:
         for v in violations:
             print(f"{target}: {v}", file=sys.stderr)

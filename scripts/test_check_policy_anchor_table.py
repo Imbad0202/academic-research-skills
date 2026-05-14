@@ -248,6 +248,32 @@ class CheckPolicyAnchorTableNatureSourceOfTruthTest(unittest.TestCase):
             "consumers cite this path so the file must exist",
         )
 
+    def test_main_command_invokes_dedup_helper(self) -> None:
+        # Codex round-7 P3 #1 closure: removing the canonical Nature source
+        # file should fail the main lint command (not just the unit test).
+        import shutil, tempfile
+        with tempfile.TemporaryDirectory() as td:
+            tdir = Path(td)
+            anchor = REPO_ROOT / "academic-paper/references/policy_anchor_table.md"
+            venue = REPO_ROOT / "academic-paper/references/venue_disclosure_policies.md"
+            # Build a working subtree mirror without the canonical Nature source
+            # to confirm main() surfaces the dedup violation.
+            (tdir / "academic-paper/references").mkdir(parents=True)
+            (tdir / "shared/policy_data").mkdir(parents=True)
+            shutil.copy(anchor, tdir / "academic-paper/references/policy_anchor_table.md")
+            shutil.copy(venue, tdir / "academic-paper/references/venue_disclosure_policies.md")
+            # Deliberately do NOT copy shared/policy_data/nature_policy.md
+            exit_code = cpat.main(
+                argv=[
+                    str(tdir / "academic-paper/references/policy_anchor_table.md"),
+                    "--venue-policies",
+                    str(tdir / "academic-paper/references/venue_disclosure_policies.md"),
+                ]
+            )
+            self.assertEqual(
+                exit_code, 1, "main() must fail when canonical Nature source is missing"
+            )
+
 
 class CheckPolicyAnchorTableInvariantTest(unittest.TestCase):
     """The table must reference 16 canonical disclosure fields per anchor and

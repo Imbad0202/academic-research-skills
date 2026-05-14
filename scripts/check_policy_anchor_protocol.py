@@ -110,7 +110,8 @@ def lint_text(text: str) -> list[str]:
             )
 
     # Check 5: anchor slug coverage — parse the **Anchor inventory** line
-    # specifically, not a global substring scan. Closes codex round-6 P2 #2.
+    # specifically, not a global substring scan. Closes codex round-6 P2 #2
+    # (presence check) + round-7 P3 #2 (closed-enum exact-match).
     inventory_line = re.search(
         r"^\*\*Anchor inventory\*\*:\s*`([^`]+)`", text, re.MULTILINE
     )
@@ -120,12 +121,20 @@ def lint_text(text: str) -> list[str]:
         inventory_slugs = {
             s.strip() for s in inventory_line.group(1).split(",") if s.strip()
         }
-        for slug in REQUIRED_ANCHOR_SLUGS:
-            if slug not in inventory_slugs:
-                violations.append(
-                    f"missing canonical anchor slug from inventory: {slug} "
-                    f"(found inventory: {sorted(inventory_slugs)})"
-                )
+        canonical = set(REQUIRED_ANCHOR_SLUGS)
+        missing = canonical - inventory_slugs
+        extra = inventory_slugs - canonical
+        for slug in sorted(missing):
+            violations.append(
+                f"missing canonical anchor slug from inventory: {slug} "
+                f"(found inventory: {sorted(inventory_slugs)})"
+            )
+        for slug in sorted(extra):
+            violations.append(
+                f"unexpected anchor slug in inventory: {slug} (closed enum is "
+                f"{sorted(canonical)}; remove it from the inventory line or "
+                "expand the canonical enum first)"
+            )
 
     # Check 6: dedup pointer
     if DEDUP_POINTER not in text:

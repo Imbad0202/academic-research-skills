@@ -209,6 +209,20 @@ class CheckPolicyAnchorProtocolMutationTests(unittest.TestCase):
             msg=f"expected Anchor inventory violation; got {violations}",
         )
 
+    def test_extra_anchor_in_inventory_fails(self) -> None:
+        # Codex round-7 P3 #2 closure: inventory advertising a slug
+        # outside the canonical closed enum (e.g., `cope`) must fail.
+        # Previously the lint only checked presence, not extras.
+        bad = _GOOD_PROTOCOL.replace(
+            "**Anchor inventory**: `prisma-trAIce, icmje, nature, ieee`",
+            "**Anchor inventory**: `prisma-trAIce, icmje, nature, ieee, cope`",
+        )
+        violations = cpap.lint_text(bad)
+        self.assertTrue(
+            any("cope" in v and "unexpected" in v for v in violations),
+            msg=f"expected unexpected-anchor violation; got {violations}",
+        )
+
 
 class CheckPolicyAnchorProtocolInvariantTest(unittest.TestCase):
     def test_invariant_names_count(self) -> None:
