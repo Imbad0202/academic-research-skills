@@ -1,6 +1,6 @@
 # AI Disclosure Schema — Discovery Document
 
-**Status:** DRAFT — Phase 1 scaffold only (cell-filling deferred to Phase 2/3)
+**Status:** DRAFT — Phase 3b in progress (IEEE cells filled; Deliverable 2 + 3 next)
 **Date:** 2026-05-13
 **Issue:** [#106](https://github.com/Imbad0202/academic-research-skills/issues/106)
 **Author:** Cheng-I Wu
@@ -17,8 +17,10 @@ This discovery is split into three execution phases. Each phase ships as a PR co
 |---|---|---|
 | Phase 1 | Doc scaffold + 4 anchor snapshots locked (Wayback + SHA-256) + manifest | shipped (PR #107 c1) |
 | Phase 2 | Fill cells for PRISMA-trAIce + ICMJE (32 of 64 cells) | shipped (PR #107 c2) |
-| Phase 3a | Fill cells for Nature Portfolio (16 of remaining 32 cells; 48 of 64 total) | **In progress** (this commit) |
-| Phase 3b | Fill cells for IEEE (remaining 16 cells; 64 of 64 total) + Deliverable 2 design space + Deliverable 3 open questions | pending |
+| Phase 3a | Fill cells for Nature Portfolio (16 of remaining 32 cells; 48 of 64 total) | shipped (PR #107 c3) |
+| Phase 3b.1 | Fill cells for IEEE (remaining 16 cells; 64 of 64 total) | **In progress** (this commit) |
+| Phase 3b.2 | Deliverable 2 design space (5 dimensions A–E + trade-off matrix) | pending |
+| Phase 3b.3 | Deliverable 3 open questions | pending |
 
 **Phase 1 explicitly does NOT fill any cells.** Cells carry `phase: 1-scaffold` placeholder until Phase 2/3. This is intentional — Phase 1 builds the provenance infrastructure so Phase 2/3 cell-filling can cite verbatim with byte-level integrity.
 
@@ -164,7 +166,7 @@ These 16 fields anchor the 4×16 = 64-cell minimum matrix. Additional fields may
 | 12 | Performance evaluation results | not-addressed | (Read entire §V.A; no performance-evaluation results disclosure required.) | — | — | — |
 | 13 | Limitations / known failure modes | not-addressed | (Read entire §V.A; output limitations *mentioned* in oversight context — "output can be incorrect, incomplete, or biased" — but no requirement to disclose specific limitations encountered.) | — | — | — |
 | 14 | Disclosure location | explicit-recommend | "Authors who use such technology should describe, in both the cover letter and the submitted work in the appropriate section if applicable, how they used it" | §V.A, paragraph 1 | structured (closed enum: cover-letter + manuscript-section) | AI-assisted technology used. Note: ICMJE's "should describe" reads as recommend at the language layer; adopting journals may upgrade to mandate via their own instructions. |
-| 15 | Copyediting exemption predicate | not-addressed | (Read entire §V.A; no copyediting carve-out. ICMJE treats all AI-assisted technologies uniformly within §V.A — distinct from Nature/IEEE which may carve out basic copyediting. To be verified against those anchors in Phase 3.) | — | — | — |
+| 15 | Copyediting exemption predicate | not-addressed | (Read entire §V.A; no copyediting carve-out. ICMJE treats all AI-assisted technologies uniformly within §V.A — distinct from Nature §AI authorship which carves out "AI assisted copy editing" at no-disclosure strength, and from IEEE Paragraph 2 which carves out editing/grammar-enhancement at downgrade-to-recommend strength. Both Phase 3a/3b verifications confirmed the carve-out is anchor-specific.) | — | — | — |
 | 16 | AI-generated image / figure / content rights | explicit-mandate | "Humans must ensure there is appropriate attribution of all quoted material, including full citations." + "Referencing AI-generated material as the primary source is not acceptable." | §V.A, paragraph 1 | narrative + negative-constraint flag | AI-assisted technology used (text or image). Both clauses are mandate strength ("must ensure" + "is not acceptable"). |
 
 **Snapshot ref:** all explicit-mandate / explicit-recommend / implicit cells above cite `icmje:wayback=20260513075516` (`sha256: 52f9e6bc…`).
@@ -204,25 +206,31 @@ These 16 fields anchor the 4×16 = 64-cell minimum matrix. Additional fields may
 ### 4.6 Per-anchor matrix — IEEE
 
 **Snapshot:** [`ieee` @ wayback 20260513075605](https://web.archive.org/web/20260513075605/https://open.ieee.org/author-guidelines-for-artificial-intelligence-ai-generated-text/)
+**Source-strength caveat:** IEEE's guideline page (dated April 16, 2024) is **adopted** (not draft) and applies across IEEE publications. The snapshot HTML mirror is 212 KB, but the substantive policy text is **two short paragraphs** (~150 words combined; webinar reference and Author Center pointer carry no normative content, video content is out of scope as it is a separate medium without byte-stable transcript). The policy is therefore the **tersest of the four anchors**: it makes 3 stacked mandates within the opening paragraph (Claim A: disclosure-in-acknowledgments mandate carrying images/figures/code in scope; Claim B: tool-identity-mandate; Claim C: section-locator + level-of-use mandate), then 1 recommend (Claim D: copyediting carve-out with disclosure-still-recommended). Many fields ARS tracks are `not-addressed` because IEEE delegates field-level granularity to author practice within the acknowledgments section. Notable absences vs the other three anchors: **no explicit human-responsibility statement** (no ICMJE-style "humans are responsible" sentence), **no human-oversight requirement** (no Nature-style "human accountability for the final version"), and **no image-rights regime distinct from text** (images/figures/code fold into the same acknowledgments-disclosure mandate; Nature-style default-deny on generative images is absent). The disclosure-location mandate is **closed-enum tighter than Nature/ICMJE** (acknowledgments only; no Methods / no cover letter / no caption alternatives).
 
-| # | Field | Source strength | Verbatim quote / inference passage | Locator | Value type | Conditional trigger |
+| # | Field | Source strength | Verbatim quote (or inference passage) | Locator | Value type | Conditional trigger |
 |---|---|---|---|---|---|---|
-| 1 | AI tool name | _phase-3_ | — | — | — | — |
-| 2 | AI tool version | _phase-3_ | — | — | — | — |
-| 3 | AI tool developer / manufacturer | _phase-3_ | — | — | — | — |
-| 4 | Stage / phase of use | _phase-3_ | — | — | — | — |
-| 5 | Specific task within stage | _phase-3_ | — | — | — | — |
-| 6 | Affected manuscript sections / content locator | _phase-3_ | — | — | — | — |
-| 7 | Date(s) of use | _phase-3_ | — | — | — | — |
-| 8 | Prompts | _phase-3_ | — | — | — | — |
-| 9 | Human oversight method | _phase-3_ | — | — | — | — |
-| 10 | Human responsibility statement | _phase-3_ | — | — | — | — |
-| 11 | Performance evaluation method | _phase-3_ | — | — | — | — |
-| 12 | Performance evaluation results | _phase-3_ | — | — | — | — |
-| 13 | Limitations / known failure modes | _phase-3_ | — | — | — | — |
-| 14 | Disclosure location | _phase-3_ | — | — | — | — |
-| 15 | Copyediting exemption predicate | _phase-3_ | — | — | — | — |
-| 16 | AI-generated image / figure / content rights | _phase-3_ | — | — | — | — |
+| 1 | AI tool name | explicit-mandate | "The AI system used shall be identified" | Paragraph 1, sentence 2 | narrative | AI-generated content used in article |
+| 2 | AI tool version | not-addressed | (Read entire policy page — 2 paragraphs of substantive content; no version-level granularity required. IEEE delegates Acknowledgments-section detail to author practice.) | — | — | — |
+| 3 | AI tool developer / manufacturer | not-addressed | (Read entire policy page; no developer/manufacturer disclosure required.) | — | — | — |
+| 4 | Stage / phase of use | implicit | (inference passage) "accompanied by a brief explanation regarding the level at which the AI system was used to generate the content". "Level at which the AI system was used" implies stage/extent description but no enumerated stage taxonomy; "level" reads as degree-of-involvement rather than SLR-style stage enum. | Paragraph 1, sentence 2 | narrative | AI-generated content used in article |
+| 5 | Specific task within stage | explicit-mandate | "specific sections of the article that use AI-generated content shall be identified and accompanied by a brief explanation regarding the level at which the AI system was used to generate the content" | Paragraph 1, sentence 2 | narrative | AI-generated content used in article |
+| 6 | Affected manuscript sections / content locator | explicit-mandate | "specific sections of the article that use AI-generated content shall be identified" | Paragraph 1, sentence 2 | structured (per-section locator) + narrative | AI-generated content used in article |
+| 7 | Date(s) of use | not-addressed | (Read entire policy page; no date-of-use disclosure required.) | — | — | — |
+| 8 | Prompts | not-addressed | (Read entire policy page; no prompt disclosure required. "Brief explanation" of usage level does not enumerate prompts as a required element.) | — | — | — |
+| 9 | Human oversight method | not-addressed | (Read entire policy page; no human-oversight method requirement. IEEE is silent on reviewer count, qualifications, or validation workflow — contrasts with Nature §AI authorship "In all cases, there must be human accountability" and PRISMA-trAIce M8 a–g.) | — | — | — |
+| 10 | Human responsibility statement | not-addressed | (Read entire policy page; no explicit author-responsibility statement for AI output correctness. Contrasts with ICMJE "humans are responsible for any submitted material that included the use of AI-assisted technologies" and Nature "there must be human accountability for the final version of the text".) | — | — | — |
+| 11 | Performance evaluation method | not-addressed | (Read entire policy page; no performance-evaluation method disclosure required.) | — | — | — |
+| 12 | Performance evaluation results | not-addressed | (Read entire policy page; no performance-evaluation results disclosure required.) | — | — | — |
+| 13 | Limitations / known failure modes | not-addressed | (Read entire policy page; no limitations / failure-modes disclosure required. IEEE makes no general statement about AI output reliability — contrasts with ICMJE "output can be incorrect, incomplete, or biased".) | — | — | — |
+| 14 | Disclosure location | explicit-mandate | "shall be disclosed in the acknowledgments section of any article submitted to an IEEE publication" | Paragraph 1, sentence 1 | structured (closed enum: acknowledgments-section only) | AI-generated content used in article. Note: IEEE's enum is tighter than Nature (Methods or alternative) and tighter than ICMJE (cover letter + manuscript section). |
+| 15 | Copyediting exemption predicate | explicit-recommend | "The use of AI systems for editing and grammar enhancement is common practice and, as such, is generally outside the intent of the above policy. In this case, disclosure as noted above is recommended." | Paragraph 2 | structured (boolean carve-out + predicate definition) + downgrade-strength flag | AI use limited to editing-and-grammar-enhancement-as-defined. Note: the carve-out **does not eliminate** disclosure — it downgrades strength from mandate to recommend while keeping location/content rules intact. |
+| 16 | AI-generated image / figure / content rights | implicit | (inference passage) "The use of content generated by artificial intelligence (AI) in an article (including but not limited to text, figures, images, and code) shall be disclosed in the acknowledgments section" — images/figures/code fold into the same acknowledgments-disclosure mandate as text; no separate image-rights regime, no default-prohibition (contrasts with Nature §Generative AI images "unable to permit its use for publication"), no labelling-required flag distinct from the general acknowledgments rule. | Paragraph 1, sentence 1 | narrative (within general acknowledgments disclosure) | AI-generated content (text/figures/images/code) used in article |
+
+**Snapshot ref:** all explicit-mandate / explicit-recommend / implicit cells above cite `ieee:wayback=20260513075605` (`sha256: 3ab8db50…`).
+**Cell count:** 16 cells filled; source-strength distribution: 4 explicit-mandate / 1 explicit-recommend / 0 conditional-mandate / 2 implicit / 9 not-addressed / 0 unknown.
+
+**Cross-anchor observation:** IEEE's distribution skews to `not-addressed` (9/16) on a different basis from ICMJE — ICMJE is framework-level *delegating to adopting journals*; IEEE is framework-level *delegating to author practice within the acknowledgments section*. The two converge on the same `not-addressed` count by very different routes, which is itself a discovery signal: framework-level brevity reaches the same `not-addressed` floor regardless of delegation target. IEEE's distinctive contribution to the 4-anchor set is **disclosure-location closed enum** (#14: acknowledgments-only — the tightest enum across all four anchors; PRISMA-trAIce uses 6-section row enum across the checklist, ICMJE uses cover-letter + appropriate-section, Nature uses Methods + image-caption + suitable-alternative). The **copyediting carve-out (#15)** is also distinctive in its downgrade-not-eliminate construction: IEEE explicitly says disclosure is **still recommended** under the carve-out, whereas Nature says the carve-out use "does not need to be declared". This is the cleanest split in the 4-anchor set on whether copyediting carve-out means *no disclosure* (Nature) or *softer-strength disclosure at the same location* (IEEE). The **absence** of human-oversight (#9), human-responsibility (#10), and image-rights-regime (#16) means a schema chasing IEEE-only alignment would omit three fields that at least one of ICMJE / Nature treats at mandate strength: #9 is mandate only in Nature (ICMJE #9 is recommend, PRISMA-trAIce #9 is recommend); #10 is mandate in both ICMJE and Nature (PRISMA-trAIce leaves it `not-addressed`); #16 is mandate in both ICMJE (text-attribution clause) and Nature (default-deny + labelling). IEEE-only alignment loses all three at mandate strength. 4-anchor hybrid emerging: ICMJE = policy floor (must-disclose + must-take-responsibility) / PRISMA-trAIce = SLR content ceiling (item-level granularity) / Nature = section-of-record + carve-out shape (Methods location + copyediting predicate + image-rights regime) / IEEE = location closed-enum tightener + carve-out downgrade-not-eliminate construction.
 
 ### 4.7 Expansion anchors (Phase 3, optional)
 
@@ -270,7 +278,7 @@ Phase 1 was **scaffold + provenance** only. It deliberately filled zero cells. T
 - Document structure for Deliverable 1 (4 × 16 = 64 cell placeholders) + Deliverable 2 (5 dimensions) + Deliverable 3 (6 open questions)
 - Verification protocol for downstream cell-fillers
 
-### 7.2 Phase 2 (this commit)
+### 7.2 Phase 2 (shipped — commit 2 of PR #107)
 
 Phase 2 fills **32 of 64 cells**: PRISMA-trAIce (§4.3) and ICMJE (§4.4). Both anchors fully read end-to-end before any `not-addressed` cell was emitted.
 
@@ -290,11 +298,58 @@ Phase 2 fills **32 of 64 cells**: PRISMA-trAIce (§4.3) and ICMJE (§4.4). Both 
 4. **No `explicit-mandate` in PRISMA-trAIce**: by design, the proposal is pre-Delphi. Any schema that treats PRISMA-trAIce items as hard requirements would be over-reading the source.
 5. **Tool-type-conditioned recommendation** in PRISMA-trAIce M6 (Prompts): "if any" / "LLM/GenAI tool used" → this is the only cell where applicability shifts based on tool *type*, not just AI-use binary. Strength stays explicit-recommend (consistent with the pre-Delphi no-mandate rule); the conditioning is on whether the field *applies*, not on whether it is mandatory. Suggests stage-taxonomy Dimension B (Phase 3) may need to handle tool-type-conditioned fields independent of mandate strength.
 
-**Acceptance for Phase 2** (this commit): 32 cells filled with source-strength classification + verbatim quote (or inference passage) + locator; SHA-256 of 4 snapshot HTML files unchanged from Phase 1; document parses as valid Markdown.
+**Acceptance for Phase 2** (commit 2 of PR #107): 32 cells filled with source-strength classification + verbatim quote (or inference passage) + locator; SHA-256 of 4 snapshot HTML files unchanged from Phase 1; document parses as valid Markdown.
 
-### 7.3 Phase 3 (pending)
+### 7.3 Phase 3a (shipped — commit 3 of PR #107)
 
-Phase 3 fills remaining 32 cells (Nature + IEEE) and completes Deliverables 2 (design space) + 3 (open questions). Phase 2 observations above will inform Dimension B (stage taxonomy) and Dimension C (policy expression) options.
+Phase 3a fills **16 more cells** (Nature Portfolio §4.5), bringing the running total to **48 of 64 cells**. Nature was fully read end-to-end across §AI authorship and §Generative AI images before any `not-addressed` cell was emitted. Sections §AI use by peer reviewers and §Editorial use are out of scope per §2.2 (author-side obligations only).
+
+**Cell distribution after Phase 3a** (48 cells across three anchors):
+
+| Anchor | explicit-mandate | explicit-recommend | conditional-mandate | implicit | not-addressed | unknown |
+|---|---|---|---|---|---|---|
+| PRISMA-trAIce | 0 | 10 | 0 | 3 | 3 | 0 |
+| ICMJE | 2 | 2 | 0 | 3 | 9 | 0 |
+| Nature Portfolio | 3 | 2 | 0 | 4 | 7 | 0 |
+| **Phase 3a total** | **5** | **14** | **0** | **10** | **19** | **0** |
+
+**Key observations from Nature** (advisory; Deliverable 2/3 will weigh these):
+
+1. **3-anchor hybrid emerging**: ICMJE = policy floor (must-disclose + must-take-responsibility); PRISMA-trAIce = SLR content ceiling (item-level granularity); Nature = section-of-record + carve-out shape (Methods location + copyediting predicate + image-rights regime). Each anchor contributes a distinct shape no other anchor provides.
+2. **#15 (copyediting exemption predicate) lights up for the first time**: PRISMA-trAIce and ICMJE both leave this `not-addressed`. Nature is the first anchor to define an explicit carve-out boundary with prose definition. Dimension C (Phase 3) needs to handle whether copyediting carve-out is in scope.
+3. **#16 (image rights) is anchor-specific enum-of-policies, not a single boolean**: ICMJE #16 = text-attribution rule (forbids citing AI as primary source); Nature #16 = default-prohibit publication + 3 carve-outs + labelling-required. The two anchors handle the same field by structurally different policies. Dimension A (Phase 3) value-type design space needs to accommodate per-policy structure, not a flat boolean.
+4. **Same source sentence reused across cells (#9 + #10)**: Nature's "In all cases, there must be human accountability for the final version of the text" sentence is cited from both #9 (oversight method) and #10 (responsibility) because it carries both facets simultaneously. This pattern (one source sentence → multiple cell facets) is allowed under §4.1 and is informative for Dimension A (data model): a single disclosure clause may map to multiple structured fields.
+
+**Acceptance for Phase 3a** (commit 3 of PR #107): 48 cells filled cumulatively; Nature SHA-256 unchanged from Phase 1; document parses; codex gpt-5.5 xhigh review converged to 0 findings in 2 rounds.
+
+### 7.4 Phase 3b.1 (this commit)
+
+Phase 3b.1 fills the **final 16 cells** for IEEE (§4.6), bringing the matrix to **64 of 64 cells complete**. IEEE was fully read end-to-end — the substantive policy text is 2 short paragraphs (~150 words combined) inside `<div itemprop="articleBody">`. The 212 KB snapshot HTML is mostly IEEE.org site chrome / menu / footer. The webinar reference and Author Center pointer carry no normative content; the linked video is out of scope as a separate medium without byte-stable transcript.
+
+**Cell distribution after Phase 3b.1** (64 cells across four anchors):
+
+| Anchor | explicit-mandate | explicit-recommend | conditional-mandate | implicit | not-addressed | unknown |
+|---|---|---|---|---|---|---|
+| PRISMA-trAIce | 0 | 10 | 0 | 3 | 3 | 0 |
+| ICMJE | 2 | 2 | 0 | 3 | 9 | 0 |
+| Nature Portfolio | 3 | 2 | 0 | 4 | 7 | 0 |
+| IEEE | 4 | 1 | 0 | 2 | 9 | 0 |
+| **Matrix total** | **9** | **15** | **0** | **12** | **28** | **0** |
+
+**Key observations from IEEE** (advisory; Deliverable 2/3 will weigh these):
+
+1. **4-anchor hybrid complete**: ICMJE = policy floor / PRISMA-trAIce = SLR content ceiling / Nature = section-of-record + carve-out shape / IEEE = location closed-enum tightener + carve-out downgrade-not-eliminate construction. Each anchor contributes a distinct shape, but **the four shapes do not perfectly compose** — Dimension A and Dimension C (Phase 3) must decide whether to merge or preserve the divergences.
+2. **Length is not a reliable signal of normative density**: IEEE's snapshot is 212 KB (largest of the four anchors as a file), but its substantive policy is 2 paragraphs — shorter than PRISMA-trAIce's Table 1 (longest) and equal to ICMJE in paragraph count. The opposite is also true: PRISMA-trAIce is the longest as a document but pre-Delphi, so it has zero mandate strength. A schema designer comparing anchors must read substance, not byte count.
+3. **Disclosure-location closed enum widens to 4 distinct options across the matrix**: PRISMA-trAIce (6-section row enum) / ICMJE (cover-letter + appropriate-section) / Nature (Methods + image-caption + suitable-alternative) / IEEE (acknowledgments-only). None of the 4 enums match. Dimension C (policy expression) must decide whether ARS prescribes one location, accepts a venue-supplied location, or carries policy-aware location resolution.
+4. **Two carve-out shapes for copyediting (#15)**: Nature ("does not need to be declared" — eliminate) vs IEEE ("disclosure as noted above is recommended" — downgrade-not-eliminate). PRISMA-trAIce and ICMJE leave #15 `not-addressed`. This is the cleanest binary split across the 4 anchors and informs Dimension D (legacy disclosure handling): how should ARS treat copyediting-only AI use?
+5. **`not-addressed` count converges at 9 for both framework-level anchors (ICMJE, IEEE)** by different delegation routes. PRISMA-trAIce (3 not-addressed) and Nature (7 not-addressed) sit below this floor because they specify more fields directly. This suggests there is a **structural ceiling on what framework-level brevity can specify**, independent of which audience the policy delegates to. Dimension B (Phase 3) stage taxonomy can leverage this: a stage taxonomy that aligns with framework-level scope will be `not-addressed`-heavy regardless of which framework is chosen.
+6. **No `unknown` cells across the entire matrix**: All four anchors were fully read end-to-end. The 10-cell `unknown` ceiling from §4.1 went unused.
+
+**Acceptance for Phase 3b.1** (this commit): 64 of 64 cells filled cumulatively; IEEE SHA-256 (`3ab8db50…`) unchanged from Phase 1; document parses; codex gpt-5.5 xhigh review converged to 0 findings in 2 rounds (Round 1 P1 = cross-anchor "mandate in ICMJE and Nature" overstatement fixed to "at least one of ICMJE/Nature treats at mandate strength").
+
+### 7.5 Phase 3b.2 + 3b.3 (pending)
+
+Phase 3b.2 builds the Deliverable 2 design space (5 dimensions A–E with trade-off matrix ≥ 4 axes). Phase 3b.3 surfaces Deliverable 3 open questions (6 baseline questions from #106, plus any new questions discovered during cell-filling). The matrix observations above will inform the dimension options without prescribing a choice.
 
 ---
 
