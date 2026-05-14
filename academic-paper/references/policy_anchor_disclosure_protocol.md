@@ -132,9 +132,12 @@ The test suite covers this forbiddance with negative fixtures asserting that an 
 
 ## 5. Venue + anchor conflict resolution (concern #7)
 
-When the user passes both `--venue=<v>` and `--policy-anchor=<a>`, the renderer evaluates whether the two map to compatible policies. If `--venue=Nature` and `--policy-anchor=nature` → consistent, proceed (both target Nature's substantive policy via the shared source pointer). If `--venue=Nature` and `--policy-anchor=IEEE` → conflicting (Nature requires Methods placement; IEEE requires acknowledgments-only) → **reject with explicit error** listing the policy conflict.
+When the user passes both `--venue=<v>` and `--policy-anchor=<a>`, the renderer evaluates whether the two map to compatible policies. The consistent-pair recognition for the Nature track covers the full Nature Portfolio venue family:
 
-Silent precedence is **forbidden** (Decision Doc §4.4 #7 + concern #7 resolution). The renderer must surface the conflict to the user and require an explicit selector choice.
+- **Consistent — Nature Portfolio venue + `--policy-anchor=nature`**: includes canonical labels `{"Nature", "Nature Portfolio", "Nature (Nature Publishing Group)", "Nature Publishing Group"}` **and** any venue whose name starts with the prefix `"Nature "` (e.g., `Nature Medicine`, `Nature Communications`, `Nature Climate Change`, `Nature Energy`, `Nature Methods`, ...). All Nature Portfolio journals inherit the same parent AI policy, so each of these venue strings + `--policy-anchor=nature` proceeds via the shared source pointer.
+- **Conflicting — any other (venue, anchor) pair**: e.g., `--venue=Nature` + `--policy-anchor=IEEE`, `--venue=ICLR` + `--policy-anchor=icmje`, or a Nature Portfolio venue with a non-nature anchor → **reject with explicit error** listing the policy conflict and the canonical Nature consistent-pair definition above.
+
+Silent precedence is **forbidden** (Decision Doc §4.4 #7 + concern #7 resolution). The renderer must surface the conflict to the user and require an explicit selector choice. The recognition logic above is mirrored by the conformance referee's `is_nature_portfolio_venue()` helper in `scripts/policy_anchor_disclosure_referee.py` — when this protocol text drifts from that helper, the alignment is a non-conformance.
 
 ---
 

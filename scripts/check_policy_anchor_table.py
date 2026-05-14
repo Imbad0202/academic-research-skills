@@ -197,19 +197,11 @@ def verify_nature_dedup_with_venue(
     """De-dup guard helper: confirm the Nature anchor section and the v3.2
     venue_disclosure_policies.md Nature entry both reference the canonical
     `shared/policy_data/nature_policy.md` source, and that the canonical
-    source file actually exists.
-
-    The two consumers extract content at different layers (anchor table =
-    verbatim quotes per 16 fields; venue policies = summary form), so a
-    byte-equivalence comparison between them is not the right contract —
-    both layers legitimately differ in shape. The G4 invariant the lint
-    enforces instead is **shared-source presence**: the canonical file
-    exists AND both consumers cite its path, so a future refactor can
-    extract the substantive content there without breaking either
-    downstream layer. Closes codex round-4 P2 #4 (previous version only
-    checked path-string presence without confirming the canonical file
-    existed).
-    """
+    source file actually exists. The pointer must appear **within the
+    Nature-specific section** of each consumer — a global substring match
+    elsewhere in the file (e.g., a citation list at the bottom) does not
+    satisfy the invariant. Closes codex round-7 P3 #1 (main wiring) +
+    round-8 P3 (section-specific check)."""
     expected_source_pointer = "shared/policy_data/nature_policy.md"
     violations: list[str] = []
     if not anchor_table_path.exists():
@@ -223,15 +215,32 @@ def verify_nature_dedup_with_venue(
             f"{canonical_source_path}. Both consumers cite the path but the "
             "source file does not exist; either create it or remove the pointers."
         )
+    # Anchor table: pointer must appear inside `## Anchor: nature` section.
     anchor_text = anchor_table_path.read_text(encoding="utf-8")
-    venue_text = venue_policies_path.read_text(encoding="utf-8")
-    if expected_source_pointer not in anchor_text:
+    nature_section = re.search(
+        r"^##\s+Anchor:\s+nature\s*$(.*?)(?=^##\s+Anchor:|\Z)",
+        anchor_text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if not nature_section:
+        violations.append("anchor table missing `## Anchor: nature` section")
+    elif expected_source_pointer not in nature_section.group(1):
         violations.append(
-            f"anchor table missing dedup pointer to {expected_source_pointer}"
+            f"anchor table Nature section missing dedup pointer to {expected_source_pointer}"
         )
-    if expected_source_pointer not in venue_text:
+    # Venue policies: pointer must appear inside `## Venue: Nature ...` section.
+    venue_text = venue_policies_path.read_text(encoding="utf-8")
+    nature_venue_section = re.search(
+        r"^##\s+Venue:\s+Nature[^\n]*$(.*?)(?=^##\s+Venue:|\Z)",
+        venue_text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if not nature_venue_section:
+        violations.append("venue policies missing `## Venue: Nature ...` section")
+    elif expected_source_pointer not in nature_venue_section.group(1):
         violations.append(
-            f"venue policies file missing dedup pointer to {expected_source_pointer}"
+            f"venue policies Nature section missing dedup pointer to "
+            f"{expected_source_pointer}"
         )
     return violations
 
