@@ -237,6 +237,17 @@ class CheckPolicyAnchorTableNatureSourceOfTruthTest(unittest.TestCase):
         violations = cpat.verify_nature_dedup_with_venue(anchor_path, venue_path)
         self.assertEqual(violations, [], msg=f"dedup integration failed: {violations}")
 
+    def test_canonical_nature_source_file_exists(self) -> None:
+        # Codex round-4 P2 #4 closure: the dedup helper now confirms the
+        # shared source file actually exists, not just that the path
+        # string appears in both consumers.
+        canonical = REPO_ROOT / "shared/policy_data/nature_policy.md"
+        self.assertTrue(
+            canonical.exists(),
+            f"canonical Nature policy source missing at {canonical}; both "
+            "consumers cite this path so the file must exist",
+        )
+
 
 class CheckPolicyAnchorTableInvariantTest(unittest.TestCase):
     """The table must reference 16 canonical disclosure fields per anchor and

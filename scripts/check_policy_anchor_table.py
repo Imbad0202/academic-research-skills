@@ -191,15 +191,20 @@ def verify_nature_dedup_with_venue(
     anchor_table_path: Path, venue_policies_path: Path
 ) -> list[str]:
     """De-dup guard helper: confirm the Nature anchor section and the v3.2
-    venue_disclosure_policies.md Nature entry import their substantive
-    policy content from the same canonical source.
+    venue_disclosure_policies.md Nature entry both reference the canonical
+    `shared/policy_data/nature_policy.md` source, and that the canonical
+    source file actually exists.
 
-    The current lint enforces only the **presence** of the cross-reference:
-    both files must mention the shared canonical-source path
-    `shared/policy_data/nature_policy.md`. When that shared file exists,
-    a follow-up lint can byte-compare imported substrings; today the
-    contract is presence-of-shared-source-cite (see impl spec §4.4 #4 dedup
-    invariant).
+    The two consumers extract content at different layers (anchor table =
+    verbatim quotes per 16 fields; venue policies = summary form), so a
+    byte-equivalence comparison between them is not the right contract —
+    both layers legitimately differ in shape. The G4 invariant the lint
+    enforces instead is **shared-source presence**: the canonical file
+    exists AND both consumers cite its path, so a future refactor can
+    extract the substantive content there without breaking either
+    downstream layer. Closes codex round-4 P2 #4 (previous version only
+    checked path-string presence without confirming the canonical file
+    existed).
     """
     expected_source_pointer = "shared/policy_data/nature_policy.md"
     violations: list[str] = []
@@ -207,6 +212,13 @@ def verify_nature_dedup_with_venue(
         return [f"anchor table file not found: {anchor_table_path}"]
     if not venue_policies_path.exists():
         return [f"venue policies file not found: {venue_policies_path}"]
+    canonical_source_path = anchor_table_path.parent.parent.parent / expected_source_pointer
+    if not canonical_source_path.exists():
+        violations.append(
+            f"canonical Nature policy source file missing: "
+            f"{canonical_source_path}. Both consumers cite the path but the "
+            "source file does not exist; either create it or remove the pointers."
+        )
     anchor_text = anchor_table_path.read_text(encoding="utf-8")
     venue_text = venue_policies_path.read_text(encoding="utf-8")
     if expected_source_pointer not in anchor_text:

@@ -27,17 +27,30 @@ from typing import Iterable
 
 CANONICAL_ANCHORS = ("prisma-trAIce", "icmje", "nature", "ieee")
 SLR_MODES = ("systematic-review", "slr")
-# Includes the exact label the v3.2 policy database uses
-# (venue_disclosure_policies.md §"Venue: Nature (Nature Publishing Group)")
-# so consistent pair detection works against the canonical entry name.
-# Closes codex round-2 P2 #1.
+# Exact-match labels that always count as Nature Portfolio venues for the
+# consistent-pair check. Includes the v3.2 policy database label
+# `venue_disclosure_policies.md §"Venue: Nature (Nature Publishing Group)"`.
 NATURE_VENUE_NAMES = (
     "Nature",
     "Nature Portfolio",
     "Nature (Nature Publishing Group)",
     "Nature Publishing Group",
 )
+# Prefix patterns matching the full Nature Portfolio journal family:
+# Nature Medicine, Nature Communications, Nature Climate Change, etc.
+# All Nature Portfolio journals inherit the same parent AI policy, so
+# venue=<any Nature Portfolio journal> + policy_anchor=nature is a
+# consistent pair. Closes codex round-4 P2 #3.
+NATURE_VENUE_PREFIXES = ("Nature ",)
 VALID_CATEGORY_STATES = frozenset({"USED", "NOT USED", "UNCERTAIN"})
+
+
+def is_nature_portfolio_venue(venue: str) -> bool:
+    """Return True for any Nature Portfolio venue, including
+    `Nature Medicine`, `Nature Climate Change`, etc."""
+    if venue in NATURE_VENUE_NAMES:
+        return True
+    return any(venue.startswith(p) for p in NATURE_VENUE_PREFIXES)
 
 
 class TrackGateError(RuntimeError):
@@ -70,13 +83,26 @@ class InvalidCategoryState(ValueError):
     UNCERTAIN}. Closes codex round-2 P2 #2."""
 
 
+class SelectorUnsupplied(ValueError):
+    """Raised when neither venue nor policy_anchor is supplied (the
+    disclosure mode requires the user to specify one or the other).
+    Closes codex round-4 P2 #2."""
+
+
 @dataclass(frozen=True)
 class RendererInput:
-    """Flat runtime input — no corpus-entry-level fields per G1 invariant."""
+    """Flat runtime input — no corpus-entry-level fields per G1 invariant.
+
+    Both `policy_anchor` and `venue` default to None (selector unsupplied).
+    The referee surfaces SelectorUnsupplied when both are unset rather
+    than silently defaulting to a single anchor — closes codex round-4
+    P2 #2 (`RendererInput()` previously defaulted to `policy_anchor='icmje'`
+    which produced an ICMJE render for no-selector inputs).
+    """
 
     ai_used: bool | None = None
     categories: dict[str, str] = field(default_factory=dict)
-    policy_anchor: str = "icmje"
+    policy_anchor: str | None = None
     venue: str | None = None
     slr_lineage: bool = False
     mode_param: str | None = None
@@ -107,6 +133,7 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
     bottom; first match wins. Concern #10 bare-flag gate evaluated before
     row 4 admits the input.
     """
+    _check_selector_supplied(ri)
     _check_policy_anchor_enum(ri)
     _check_category_states(ri)
     _check_venue_anchor_conflict(ri)
@@ -116,7 +143,17 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
     uncertain = {k for k, v in ri.categories.items() if v == "UNCERTAIN"}
     not_used = {k for k, v in ri.categories.items() if v == "NOT USED"}
 
-    track = "prisma-trAIce" if ri.policy_anchor == "prisma-trAIce" else ri.policy_anchor
+    # If only --venue is supplied, this referee does not decide a row; the
+    # venue-only path is owned by v3.2's existing flow. Track is the
+    # venue name for downstream telemetry; the row decision is delegated.
+    if ri.policy_anchor is None:
+        return DisclosureDecision(
+            row=0,
+            kind="delegated_to_venue_path",
+            track=ri.venue or "<unset>",
+        )
+
+    track = ri.policy_anchor
 
     # Row 1: ai_used=false AND ≥1 USED (contradiction)
     if ri.ai_used is False and used:
@@ -170,11 +207,30 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
     return DisclosureDecision(row=7, kind="not_supplied_annotation", track=track)
 
 
+def _check_selector_supplied(ri: RendererInput) -> None:
+    """At least one of (policy_anchor, venue) must be set. Closes codex
+    round-4 P2 #2: a bare RendererInput() previously defaulted to
+    policy_anchor='icmje' and silently rendered as ICMJE for no-selector
+    inputs that should have prompted the user."""
+    if ri.policy_anchor is None and ri.venue is None:
+        raise SelectorUnsupplied(
+            "neither policy_anchor nor venue supplied; the disclosure mode "
+            "requires the user to specify one selector."
+        )
+
+
 def _check_policy_anchor_enum(ri: RendererInput) -> None:
     """Validate policy_anchor membership against the canonical closed enum
     before any other decision logic runs. Closes codex round-1 P2 #3:
     invalid anchor values must not fall through to a render path that has
-    no table / protocol entry."""
+    no table / protocol entry.
+
+    When policy_anchor is None (venue-only invocation), skip the enum
+    check — the venue path is governed by v3.2's existing
+    venue_disclosure_policies.md flow, not this referee.
+    """
+    if ri.policy_anchor is None:
+        return
     if ri.policy_anchor not in CANONICAL_ANCHORS:
         raise InvalidPolicyAnchor(
             f"policy_anchor='{ri.policy_anchor}' is not in the canonical "
@@ -200,24 +256,24 @@ def _check_category_states(ri: RendererInput) -> None:
 
 def _check_venue_anchor_conflict(ri: RendererInput) -> None:
     """Concern #7 resolution: reject conflicting selectors with explicit
-    error; the only currently defined consistent pair is Nature venue with
-    nature anchor. Every other (venue, anchor) combination raises so silent
-    precedence is impossible. Closes codex round-1 P2 #2."""
+    error; the only currently defined consistent pair is any Nature
+    Portfolio venue (canonical labels + Nature Portfolio journal prefix
+    family per `is_nature_portfolio_venue`) with `policy_anchor='nature'`.
+    Every other (venue, anchor) combination raises. Silent precedence is
+    forbidden per §4.4 #7. Closes codex round-1 P2 #2 + round-4 P2 #3."""
     if ri.venue is None or ri.policy_anchor is None:
         return
-    # Consistent: Nature venue with nature anchor.
-    if ri.venue in NATURE_VENUE_NAMES and ri.policy_anchor == "nature":
+    # Consistent: any Nature Portfolio venue with nature anchor.
+    if is_nature_portfolio_venue(ri.venue) and ri.policy_anchor == "nature":
         return
     # All other combinations where both selectors are supplied are
-    # rejected by default. To add a new compatible pair, extend the
-    # consistent-pair check above explicitly. Silent precedence is
-    # forbidden per §4.4 #7.
+    # rejected by default.
     raise VenueAnchorConflict(
         f"venue='{ri.venue}' and --policy-anchor='{ri.policy_anchor}' map to "
         "different (or unmapped) placement / phrasing requirements. The only "
-        "currently defined consistent pair is venue ∈ "
-        f"{NATURE_VENUE_NAMES!r} with policy_anchor='nature'. Drop one "
-        "selector or reconcile."
+        "currently defined consistent pair is any Nature Portfolio venue "
+        "(canonical labels or `Nature ` prefix) with policy_anchor='nature'. "
+        "Drop one selector or reconcile."
     )
 
 

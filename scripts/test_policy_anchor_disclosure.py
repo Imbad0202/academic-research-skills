@@ -32,6 +32,9 @@ import policy_anchor_disclosure_referee as referee  # noqa: E402
 
 
 # Convenience constructors mirroring referee.RendererInput shape.
+# Default policy_anchor='icmje' so existing tests still pass without
+# extra wiring; tests that exercise the unset-selector path supply
+# policy_anchor=None explicitly.
 def _inp(
     *,
     ai_used=None,
@@ -490,6 +493,92 @@ class CategoryStateEnumValidationTest(unittest.TestCase):
         for state in ("USED", "NOT USED", "UNCERTAIN"):
             referee.decide_disclosure_output(
                 _inp(ai_used=None, categories={"drafting": state})
+            )
+
+
+# ============================================================================
+# Selector-unsupplied + venue-only paths (codex round-4 P2 #2)
+# ============================================================================
+class SelectorUnsuppliedTest(unittest.TestCase):
+    def test_no_selector_at_all_raises(self) -> None:
+        with self.assertRaises(referee.SelectorUnsupplied):
+            referee.decide_disclosure_output(
+                _inp(ai_used=None, categories={}, policy_anchor=None, venue=None)
+            )
+
+    def test_venue_only_delegates_to_venue_path(self) -> None:
+        # Codex round-4 P2 #2: RendererInput(venue="ICLR", policy_anchor=None)
+        # used to default policy_anchor to "icmje" and produce a conflict
+        # error. Now the referee delegates the venue-only case to v3.2.
+        result = referee.decide_disclosure_output(
+            _inp(
+                ai_used=True,
+                categories={"drafting": "USED"},
+                policy_anchor=None,
+                venue="ICLR",
+            )
+        )
+        self.assertEqual(result.row, 0)
+        self.assertEqual(result.kind, "delegated_to_venue_path")
+        self.assertEqual(result.track, "ICLR")
+
+
+# ============================================================================
+# Nature Portfolio venue variants (codex round-4 P2 #3)
+# ============================================================================
+class NaturePortfolioVariantTest(unittest.TestCase):
+    def test_nature_medicine_with_nature_anchor_passes(self) -> None:
+        # Codex round-4 P2 #3: Nature Portfolio journals (Nature Medicine,
+        # Nature Climate Change, Nature Communications, …) all inherit
+        # the parent Nature AI policy. Pairing any of them with
+        # policy_anchor='nature' is a consistent pair, not a conflict.
+        result = referee.decide_disclosure_output(
+            _inp(
+                ai_used=True,
+                categories={"drafting": "USED"},
+                policy_anchor="nature",
+                venue="Nature Medicine",
+            )
+        )
+        self.assertEqual(result.row, 4)
+
+    def test_nature_communications_with_nature_anchor_passes(self) -> None:
+        result = referee.decide_disclosure_output(
+            _inp(
+                ai_used=True,
+                categories={"drafting": "USED"},
+                policy_anchor="nature",
+                venue="Nature Communications",
+            )
+        )
+        self.assertEqual(result.row, 4)
+
+    def test_unrelated_journal_with_nature_anchor_still_rejects(self) -> None:
+        # Non-Nature-prefixed venue + nature anchor remains a conflict.
+        with self.assertRaises(referee.VenueAnchorConflict):
+            referee.decide_disclosure_output(
+                _inp(
+                    ai_used=True,
+                    categories={"drafting": "USED"},
+                    policy_anchor="nature",
+                    venue="Cell",
+                )
+            )
+
+    def test_helper_returns_true_for_canonical_names(self) -> None:
+        for v in referee.NATURE_VENUE_NAMES:
+            self.assertTrue(referee.is_nature_portfolio_venue(v))
+
+    def test_helper_returns_true_for_prefix_journals(self) -> None:
+        for v in ("Nature Medicine", "Nature Climate Change", "Nature Energy"):
+            self.assertTrue(referee.is_nature_portfolio_venue(v))
+
+    def test_helper_returns_false_for_unrelated_journals(self) -> None:
+        for v in ("Science", "Cell", "PLOS ONE", "Nature"):
+            self.assertEqual(
+                referee.is_nature_portfolio_venue(v),
+                v in referee.NATURE_VENUE_NAMES,
+                msg=f"{v} miscategorized",
             )
 
 
