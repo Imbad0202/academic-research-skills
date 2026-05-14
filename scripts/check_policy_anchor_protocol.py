@@ -54,54 +54,48 @@ REQUIRED_INVARIANTS = (
     "G8 invariant",
     "G9 invariant",
 )
-REQUIRED_CONCERNS = tuple(f"concern #{i}" for i in range(1, 12))
+REQUIRED_CONCERN_NUMBERS = tuple(range(1, 12))
+REQUIRED_CONCERNS = tuple(f"concern #{i}" for i in REQUIRED_CONCERN_NUMBERS)
 REQUIRED_ANCHOR_SLUGS = ("prisma-trAIce", "icmje", "nature", "ieee")
 DEDUP_POINTER = "shared/policy_data/nature_policy.md"
-# Both tokens MUST be present. The auto-promotion clause is the load-
-# bearing G3/G10 invariant; the prior `any(...)` check let one token
-# satisfy the lint when the other was deleted. Closes codex round-2 P2 #3.
+# The auto-promotion clause is the load-bearing G3/G10 invariant; both
+# tokens MUST be present so a partial deletion (heading word but not the
+# prohibition sentence, or vice versa) cannot silently satisfy the lint.
 AUTO_PROMOTION_REQUIRED_TOKENS = (
     "auto-promotion",
     "MUST NOT be rendered as though USED",
+)
+
+CONCERN_PATTERN = re.compile(r"concern\s+#(\d+)\b")
+TABLE_ROW_PATTERN = re.compile(r"^\s*\|\s*(\d+)\s*\|", re.MULTILINE)
+ANCHOR_INVENTORY_PATTERN = re.compile(
+    r"^\*\*Anchor inventory\*\*:\s*`([^`]+)`", re.MULTILINE
 )
 
 
 def lint_text(text: str) -> list[str]:
     violations: list[str] = []
 
-    # Check 1: required invariants
     for inv in REQUIRED_INVARIANTS:
         if inv not in text:
             violations.append(f"missing required invariant reference: {inv}")
 
-    # Check 2: required concern resolutions — use regex word-boundary so
-    # `concern #1` is not matched against `concern #10` or `concern #11`.
-    # Closes codex round-5 P2 #3.
-    for concern in REQUIRED_CONCERNS:
-        # Extract the numeric part — `concern #1` → "1"
-        try:
-            number = concern.split("#")[1]
-        except IndexError:
-            continue
-        pattern = re.compile(rf"concern\s+#{re.escape(number)}\b")
-        if not pattern.search(text):
-            violations.append(f"missing §4.4 {concern} resolution clause")
+    # Word-boundary match prevents `concern #1` from matching against
+    # `concern #10` / `concern #11`.
+    found_concern_numbers = {int(m.group(1)) for m in CONCERN_PATTERN.finditer(text)}
+    for n in REQUIRED_CONCERN_NUMBERS:
+        if n not in found_concern_numbers:
+            violations.append(f"missing §4.4 concern #{n} resolution clause")
 
-    # Check 3: G10 7-row precedence table — match actual markdown table rows
-    # (start-of-line `| N |` after stripping leading whitespace). The earlier
-    # version accepted any `row N` mention anywhere in the doc, which let prose
-    # references satisfy the check even when the markdown row itself was
-    # deleted (codex round-1 P2 #1 closure).
+    # Match real markdown table rows (`| N |` at line start); a prose
+    # `row 4` mention elsewhere in the doc does not satisfy the check.
+    found_rows = {int(m.group(1)) for m in TABLE_ROW_PATTERN.finditer(text)}
     for row in range(1, 8):
-        table_row_pattern = re.compile(
-            rf"^\s*\|\s*{row}\s*\|", re.MULTILINE
-        )
-        if not table_row_pattern.search(text):
+        if row not in found_rows:
             violations.append(
                 f"missing G10 7-row precedence row {row} (no `| {row} |` markdown row found)"
             )
 
-    # Check 4: auto-promotion forbiddance — require ALL tokens
     for token in AUTO_PROMOTION_REQUIRED_TOKENS:
         if token not in text:
             violations.append(
@@ -109,12 +103,7 @@ def lint_text(text: str) -> list[str]:
                 f"(G3/G10 UNCERTAIN-not-USED invariant); token missing: '{token}'"
             )
 
-    # Check 5: anchor slug coverage — parse the **Anchor inventory** line
-    # specifically, not a global substring scan. Closes codex round-6 P2 #2
-    # (presence check) + round-7 P3 #2 (closed-enum exact-match).
-    inventory_line = re.search(
-        r"^\*\*Anchor inventory\*\*:\s*`([^`]+)`", text, re.MULTILINE
-    )
+    inventory_line = ANCHOR_INVENTORY_PATTERN.search(text)
     if not inventory_line:
         violations.append("missing `**Anchor inventory**: ...` line in protocol doc")
     else:
@@ -136,7 +125,6 @@ def lint_text(text: str) -> list[str]:
                 "expand the canonical enum first)"
             )
 
-    # Check 6: dedup pointer
     if DEDUP_POINTER not in text:
         violations.append(
             f"missing Nature ↔ v3.2 venue dedup pointer: {DEDUP_POINTER}"

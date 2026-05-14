@@ -62,10 +62,17 @@ STRENGTHS_REQUIRING_QUOTE = {
     "conditional-mandate",
 }
 # Capture any non-empty trailing identifier so invalid anchor headings
-# (underscores, spaces, punctuation) surface in the "unknown anchor section"
-# check instead of being silently folded into the previous section. Closes
-# codex round-6 P2 #1.
+# (underscore, space, punctuation) surface as "unknown anchor section"
+# rather than being silently folded into the previous section.
 ANCHOR_HEADING = re.compile(r"^##\s+Anchor:\s+(\S.*?)\s*$", re.MULTILINE)
+NATURE_ANCHOR_SECTION = re.compile(
+    r"^##\s+Anchor:\s+nature\s*$(.*?)(?=^##\s+Anchor:|\Z)",
+    flags=re.MULTILINE | re.DOTALL,
+)
+NATURE_VENUE_SECTION = re.compile(
+    r"^##\s+Venue:\s+Nature[^\n]*$(.*?)(?=^##\s+Venue:|\Z)",
+    flags=re.MULTILINE | re.DOTALL,
+)
 SNAPSHOT_LINE = re.compile(
     r"\*\*Snapshot:\*\*\s+`([A-Za-z0-9-]+):wayback=([0-9]+)`"
 )
@@ -74,15 +81,17 @@ ROW_LINE = re.compile(
 )
 ELISION_MARKERS = {"(quote elided)", "(snapshot deleted)", "—"}
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+NATURE_POLICY_POINTER = "shared/policy_data/nature_policy.md"
+
 
 def _split_anchor_sections(text: str) -> tuple[dict[str, str], list[str]]:
-    """Split the doc into per-anchor markdown bodies keyed by slug. Also
-    return the list of duplicate anchor slugs so the caller can flag a
-    duplicated `## Anchor: <slug>` heading as a violation. Closes codex
-    round-3 P2 #2: silent dict overwrite let a duplicated anchor pass."""
+    """Split the doc into per-anchor sections keyed by slug. Returns
+    (sections, duplicates) so the caller can flag duplicated headings —
+    a plain dict overwrite would silently drop them."""
     sections: dict[str, str] = {}
     duplicates: list[str] = []
-    seen: list[str] = []
+    seen: set[str] = set()
     matches = list(ANCHOR_HEADING.finditer(text))
     for idx, match in enumerate(matches):
         slug = match.group(1)
@@ -90,7 +99,7 @@ def _split_anchor_sections(text: str) -> tuple[dict[str, str], list[str]]:
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
         if slug in seen:
             duplicates.append(slug)
-        seen.append(slug)
+        seen.add(slug)
         sections[slug] = text[start:end]
     return sections, duplicates
 
@@ -146,7 +155,6 @@ def lint_text(text: str) -> list[str]:
         violations.append(f"missing anchor section: {slug}")
     for slug in sorted(extra):
         violations.append(f"unknown anchor section: {slug}")
-    # Duplicate-section guard (codex round-3 P2 #2)
     for slug in duplicates:
         violations.append(
             f"duplicate anchor section: {slug} appears more than once "
@@ -192,55 +200,49 @@ def lint_text(text: str) -> list[str]:
 
 
 def verify_nature_dedup_with_venue(
-    anchor_table_path: Path, venue_policies_path: Path
+    anchor_table_path: Path,
+    venue_policies_path: Path,
+    *,
+    anchor_text: str | None = None,
+    venue_text: str | None = None,
+    repo_root: Path | None = None,
 ) -> list[str]:
-    """De-dup guard helper: confirm the Nature anchor section and the v3.2
-    venue_disclosure_policies.md Nature entry both reference the canonical
-    `shared/policy_data/nature_policy.md` source, and that the canonical
-    source file actually exists. The pointer must appear **within the
-    Nature-specific section** of each consumer — a global substring match
-    elsewhere in the file (e.g., a citation list at the bottom) does not
-    satisfy the invariant. Closes codex round-7 P3 #1 (main wiring) +
-    round-8 P3 (section-specific check)."""
-    expected_source_pointer = "shared/policy_data/nature_policy.md"
+    """Confirm both Nature consumers cite shared/policy_data/nature_policy.md
+    inside their Nature-specific section AND the canonical source file
+    exists. The pointer must live inside the Nature section of each
+    consumer — a citation list at the file bottom would otherwise satisfy
+    a plain substring match without representing the dedup invariant."""
     violations: list[str] = []
     if not anchor_table_path.exists():
         return [f"anchor table file not found: {anchor_table_path}"]
     if not venue_policies_path.exists():
         return [f"venue policies file not found: {venue_policies_path}"]
-    canonical_source_path = anchor_table_path.parent.parent.parent / expected_source_pointer
+    root = repo_root if repo_root is not None else REPO_ROOT
+    canonical_source_path = root / NATURE_POLICY_POINTER
     if not canonical_source_path.exists():
         violations.append(
             f"canonical Nature policy source file missing: "
             f"{canonical_source_path}. Both consumers cite the path but the "
             "source file does not exist; either create it or remove the pointers."
         )
-    # Anchor table: pointer must appear inside `## Anchor: nature` section.
-    anchor_text = anchor_table_path.read_text(encoding="utf-8")
-    nature_section = re.search(
-        r"^##\s+Anchor:\s+nature\s*$(.*?)(?=^##\s+Anchor:|\Z)",
-        anchor_text,
-        flags=re.MULTILINE | re.DOTALL,
-    )
+    if anchor_text is None:
+        anchor_text = anchor_table_path.read_text(encoding="utf-8")
+    if venue_text is None:
+        venue_text = venue_policies_path.read_text(encoding="utf-8")
+    nature_section = NATURE_ANCHOR_SECTION.search(anchor_text)
     if not nature_section:
         violations.append("anchor table missing `## Anchor: nature` section")
-    elif expected_source_pointer not in nature_section.group(1):
+    elif NATURE_POLICY_POINTER not in nature_section.group(1):
         violations.append(
-            f"anchor table Nature section missing dedup pointer to {expected_source_pointer}"
+            f"anchor table Nature section missing dedup pointer to {NATURE_POLICY_POINTER}"
         )
-    # Venue policies: pointer must appear inside `## Venue: Nature ...` section.
-    venue_text = venue_policies_path.read_text(encoding="utf-8")
-    nature_venue_section = re.search(
-        r"^##\s+Venue:\s+Nature[^\n]*$(.*?)(?=^##\s+Venue:|\Z)",
-        venue_text,
-        flags=re.MULTILINE | re.DOTALL,
-    )
+    nature_venue_section = NATURE_VENUE_SECTION.search(venue_text)
     if not nature_venue_section:
         violations.append("venue policies missing `## Venue: Nature ...` section")
-    elif expected_source_pointer not in nature_venue_section.group(1):
+    elif NATURE_POLICY_POINTER not in nature_venue_section.group(1):
         violations.append(
             f"venue policies Nature section missing dedup pointer to "
-            f"{expected_source_pointer}"
+            f"{NATURE_POLICY_POINTER}"
         )
     return violations
 
@@ -266,10 +268,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     text = target.read_text(encoding="utf-8")
     violations = lint_text(text)
-    # Run the Nature dedup guard from the main lint path so removing the
-    # shared source file or either pointer fails CI directly. Closes
-    # codex round-7 P3 #1.
-    dedup_violations = verify_nature_dedup_with_venue(target, venue_path)
+    # Derive repo root from the anchor table path so tests using temp
+    # subtree mirrors also exercise the canonical-source existence check.
+    derived_repo_root = target.resolve().parent.parent.parent
+    dedup_violations = verify_nature_dedup_with_venue(
+        target, venue_path, anchor_text=text, repo_root=derived_repo_root
+    )
     violations.extend(dedup_violations)
     if violations:
         for v in violations:

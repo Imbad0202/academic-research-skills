@@ -27,78 +27,86 @@ from typing import Iterable
 
 CANONICAL_ANCHORS = ("prisma-trAIce", "icmje", "nature", "ieee")
 SLR_MODES = ("systematic-review", "slr")
-# Exact-match labels that always count as Nature Portfolio venues for the
-# consistent-pair check. Includes the v3.2 policy database label
-# `venue_disclosure_policies.md §"Venue: Nature (Nature Publishing Group)"`.
 NATURE_VENUE_NAMES = (
     "Nature",
     "Nature Portfolio",
     "Nature (Nature Publishing Group)",
     "Nature Publishing Group",
 )
-# Prefix patterns matching the full Nature Portfolio journal family:
-# Nature Medicine, Nature Communications, Nature Climate Change, etc.
-# All Nature Portfolio journals inherit the same parent AI policy, so
-# venue=<any Nature Portfolio journal> + policy_anchor=nature is a
-# consistent pair. Closes codex round-4 P2 #3.
+# Prefix family for Nature Portfolio journals (Nature Medicine, Nature
+# Communications, Nature Climate Change, ...). All inherit the same
+# parent AI policy, so venue=<any Nature Portfolio journal> +
+# policy_anchor=nature is the only consistent (venue, anchor) pair.
 NATURE_VENUE_PREFIXES = ("Nature ",)
 VALID_CATEGORY_STATES = frozenset({"USED", "NOT USED", "UNCERTAIN"})
 
+# G7 invariant: anchor-specific copyediting carve-out semantics.
+# 'eliminate' = no disclosure under carve-out; 'downgrade' = disclosure
+# preserved at same location with weaker strength; 'out_of_scope' =
+# anchor framework does not address copyediting; 'not_addressed' =
+# anchor policy explicitly silent on copyediting.
+COPYEDITING_CARVEOUT_SEMANTICS: dict[str, str] = {
+    "nature": "eliminate",
+    "ieee": "downgrade",
+    "prisma-trAIce": "out_of_scope",
+    "icmje": "not_addressed",
+}
+
+# G9 invariant: each anchor's image-rights regime stays distinct; the
+# renderer must not unify them into a single boolean.
+IMAGE_RIGHTS_REGIMES: dict[str, str] = {
+    "prisma-trAIce": "data_handling_adjacency",
+    "icmje": "text_attribution_no_ai_primary",
+    "nature": "default_deny_with_carveouts",
+    "ieee": "acknowledgments_only",
+}
+
 
 def is_nature_portfolio_venue(venue: str) -> bool:
-    """Return True for any Nature Portfolio venue, including
-    `Nature Medicine`, `Nature Climate Change`, etc."""
     if venue in NATURE_VENUE_NAMES:
         return True
     return any(venue.startswith(p) for p in NATURE_VENUE_PREFIXES)
 
 
 class TrackGateError(RuntimeError):
-    """Raised when --policy-anchor=prisma-trAIce is selected without
-    slr_lineage=true / mode=<slr>. G2 invariant."""
+    """G2 invariant: --policy-anchor=prisma-trAIce requires slr_lineage=true
+    or mode=<slr> input."""
 
 
 class AutoPromotionForbidden(RuntimeError):
-    """Raised when caller attempts to render a still-UNCERTAIN category as
-    USED. G3/G10 invariant."""
+    """G3/G10 invariant: a still-UNCERTAIN category must not be rendered
+    as though USED in any anchor output."""
 
 
 class PairedMandateViolation(RuntimeError):
-    """Raised when IEEE render is asked to emit level_of_involvement
-    without affected_sections (or vice versa). G8 invariant."""
+    """G8 invariant: IEEE render emits level_of_involvement and
+    affected_sections together, or neither — emitting one without the
+    other is non-conformant."""
 
 
 class VenueAnchorConflict(RuntimeError):
-    """Raised when --venue and --policy-anchor map to incompatible
-    placement / phrasing requirements. §4.4 #7."""
+    """§4.4 #7: --venue and --policy-anchor that map to incompatible
+    placement / phrasing requirements must be rejected with explicit
+    error; silent precedence is forbidden."""
 
 
 class InvalidPolicyAnchor(ValueError):
-    """Raised when policy_anchor is outside the canonical 4-anchor enum.
-    Closes codex round-1 P2 #3."""
+    """policy_anchor outside CANONICAL_ANCHORS (closed enum)."""
 
 
 class InvalidCategoryState(ValueError):
-    """Raised when a category state value is outside {USED, NOT USED,
-    UNCERTAIN}. Closes codex round-2 P2 #2."""
+    """Category state outside {USED, NOT USED, UNCERTAIN}."""
 
 
 class SelectorUnsupplied(ValueError):
-    """Raised when neither venue nor policy_anchor is supplied (the
-    disclosure mode requires the user to specify one or the other).
-    Closes codex round-4 P2 #2."""
+    """Neither venue nor policy_anchor supplied — disclosure mode
+    requires one selector. Default to None on both fields so a bare
+    RendererInput() does not silently render under a single anchor."""
 
 
 @dataclass(frozen=True)
 class RendererInput:
-    """Flat runtime input — no corpus-entry-level fields per G1 invariant.
-
-    Both `policy_anchor` and `venue` default to None (selector unsupplied).
-    The referee surfaces SelectorUnsupplied when both are unset rather
-    than silently defaulting to a single anchor — closes codex round-4
-    P2 #2 (`RendererInput()` previously defaulted to `policy_anchor='icmje'`
-    which produced an ICMJE render for no-selector inputs).
-    """
+    """Flat runtime input — no corpus-entry-level fields per G1 invariant."""
 
     ai_used: bool | None = None
     categories: dict[str, str] = field(default_factory=dict)
@@ -139,13 +147,13 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
     _check_venue_anchor_conflict(ri)
     _check_track_gate(ri)
 
-    used = {k for k, v in ri.categories.items() if v == "USED"}
-    uncertain = {k for k, v in ri.categories.items() if v == "UNCERTAIN"}
-    not_used = {k for k, v in ri.categories.items() if v == "NOT USED"}
+    buckets: dict[str, set[str]] = {s: set() for s in VALID_CATEGORY_STATES}
+    for k, v in ri.categories.items():
+        buckets[v].add(k)
+    used, uncertain, not_used = buckets["USED"], buckets["UNCERTAIN"], buckets["NOT USED"]
 
-    # If only --venue is supplied, this referee does not decide a row; the
-    # venue-only path is owned by v3.2's existing flow. Track is the
-    # venue name for downstream telemetry; the row decision is delegated.
+    # Venue-only invocation: defer to v3.2 flow. The referee's row
+    # decision is meaningful only when an anchor is selected.
     if ri.policy_anchor is None:
         return DisclosureDecision(
             row=0,
@@ -155,20 +163,18 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
 
     track = ri.policy_anchor
 
-    # Row 1: ai_used=false AND ≥1 USED (contradiction)
     if ri.ai_used is False and used:
         return DisclosureDecision(row=1, kind="conflict_annotation", track=track)
 
-    # Row 2: ai_used=false AND no USED AND no UNCERTAIN
     if ri.ai_used is False and not used and not uncertain:
         return DisclosureDecision(row=2, kind="no_ai_statement", track=track)
 
-    # Row 3: ai_used=false AND ≥1 UNCERTAIN AND no USED
     if ri.ai_used is False and uncertain and not used:
         return DisclosureDecision(row=3, kind="tension_annotation", track=track)
 
-    # Concern #10 substantive-content gate: bare ai_used=true with no USED
-    # category supplied → force v3.2 categorization flow rather than row 4
+    # Concern #10 substantive-content gate: ai_used=true with no USED
+    # category forces v3.2 categorization rather than rendering an
+    # anchor disclosure with no facts to render.
     if ri.ai_used is True and not used:
         return DisclosureDecision(
             row=4,
@@ -177,10 +183,6 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
             uncertain_facets=tuple(sorted(uncertain)),
         )
 
-    # Row 4: (ai_used=true OR ≥1 USED) AND row 1 didn't match.
-    # When the anchor is IEEE, enforce the G8 paired-mandate invariant
-    # before returning anchor_render — emitting one of (level, sections)
-    # without the other is non-conformant (codex round-3 P2 #1 closure).
     if (ri.ai_used is True or used) and not (ri.ai_used is False and used):
         if ri.policy_anchor == "ieee":
             assert_ieee_pairing_conformant(
@@ -195,23 +197,16 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
             uncertain_facets=tuple(sorted(uncertain)),
         )
 
-    # Row 5: ≥1 UNCERTAIN AND no USED AND ai_used unset
     if uncertain and not used and ri.ai_used is None:
         return DisclosureDecision(row=5, kind="not_supplied_annotation", track=track)
 
-    # Row 6: All NOT USED AND no UNCERTAIN AND ai_used unset (silence)
     if not_used and not uncertain and not used and ri.ai_used is None:
         return DisclosureDecision(row=6, kind="silence", track=track)
 
-    # Row 7: empty input across every dimension
     return DisclosureDecision(row=7, kind="not_supplied_annotation", track=track)
 
 
 def _check_selector_supplied(ri: RendererInput) -> None:
-    """At least one of (policy_anchor, venue) must be set. Closes codex
-    round-4 P2 #2: a bare RendererInput() previously defaulted to
-    policy_anchor='icmje' and silently rendered as ICMJE for no-selector
-    inputs that should have prompted the user."""
     if ri.policy_anchor is None and ri.venue is None:
         raise SelectorUnsupplied(
             "neither policy_anchor nor venue supplied; the disclosure mode "
@@ -220,15 +215,7 @@ def _check_selector_supplied(ri: RendererInput) -> None:
 
 
 def _check_policy_anchor_enum(ri: RendererInput) -> None:
-    """Validate policy_anchor membership against the canonical closed enum
-    before any other decision logic runs. Closes codex round-1 P2 #3:
-    invalid anchor values must not fall through to a render path that has
-    no table / protocol entry.
-
-    When policy_anchor is None (venue-only invocation), skip the enum
-    check — the venue path is governed by v3.2's existing
-    venue_disclosure_policies.md flow, not this referee.
-    """
+    # Venue-only invocation: enum check does not apply; v3.2 owns it.
     if ri.policy_anchor is None:
         return
     if ri.policy_anchor not in CANONICAL_ANCHORS:
@@ -240,10 +227,6 @@ def _check_policy_anchor_enum(ri: RendererInput) -> None:
 
 
 def _check_category_states(ri: RendererInput) -> None:
-    """Validate every v3.2 category state against the closed
-    {USED, NOT USED, UNCERTAIN} enum. Silent fall-through to row 6/7 on a
-    lowercase typo would change the disclosure decision; the protocol
-    requires explicit rejection. Closes codex round-2 P2 #2."""
     invalid = {
         k: v for k, v in ri.categories.items() if v not in VALID_CATEGORY_STATES
     }
@@ -255,12 +238,9 @@ def _check_category_states(ri: RendererInput) -> None:
 
 
 def _check_venue_anchor_conflict(ri: RendererInput) -> None:
-    """Concern #7 resolution: reject conflicting selectors with explicit
-    error; the only currently defined consistent pair is any Nature
-    Portfolio venue (canonical labels + Nature Portfolio journal prefix
-    family per `is_nature_portfolio_venue`) with `policy_anchor='nature'`.
-    Every other (venue, anchor) combination raises. Silent precedence is
-    forbidden per §4.4 #7. Closes codex round-1 P2 #2 + round-4 P2 #3."""
+    """§4.4 #7: the only consistent pair is any Nature Portfolio venue
+    + policy_anchor='nature'; every other pair raises so silent
+    precedence is impossible."""
     if ri.venue is None or ri.policy_anchor is None:
         return
     # Consistent: any Nature Portfolio venue with nature anchor.
@@ -324,21 +304,8 @@ def prompt_disclosure_required(
     return True
 
 
-# ---------------------------------------------------------------------------
-# G7 invariant — anchor-specific carve-out semantics
-# ---------------------------------------------------------------------------
 def copyediting_carveout_semantics(anchor: str) -> str:
-    """Return the per-anchor copyediting carve-out semantics tag.
-
-    Values: 'eliminate' (Nature) / 'downgrade' (IEEE) / 'out_of_scope'
-    (PRISMA-trAIce) / 'not_addressed' (ICMJE).
-    """
-    return {
-        "nature": "eliminate",
-        "ieee": "downgrade",
-        "prisma-trAIce": "out_of_scope",
-        "icmje": "not_addressed",
-    }[anchor]
+    return COPYEDITING_CARVEOUT_SEMANTICS[anchor]
 
 
 # ---------------------------------------------------------------------------
@@ -358,33 +325,14 @@ def assert_ieee_pairing_conformant(
         )
 
 
-# ---------------------------------------------------------------------------
-# G9 invariant — anchor-specific image-rights regimes (distinct, not unified)
-# ---------------------------------------------------------------------------
 def image_rights_regime(anchor: str) -> str:
-    """Return the per-anchor image-rights regime tag."""
-    return {
-        "prisma-trAIce": "data_handling_adjacency",
-        "icmje": "text_attribution_no_ai_primary",
-        "nature": "default_deny_with_carveouts",
-        "ieee": "acknowledgments_only",
-    }[anchor]
+    return IMAGE_RIGHTS_REGIMES[anchor]
 
 
-# ---------------------------------------------------------------------------
-# §4.4 #5 Nature hybrid image outputs
-# ---------------------------------------------------------------------------
 def nature_image_outputs(images: Iterable[dict]) -> dict[str, list[dict]]:
-    """Return the hybrid two-channel output structure for the Nature anchor.
-
-    Channel 1: annotation_block — per-image instructions describing carve-out
-    classification and required Nature label text.
-    Channel 2: suggested_patch — patch diff against manuscript source figure
-    metadata (caption / alt-text / image-field caption).
-
-    The renderer does NOT emit inline_modification — ARS does not modify
-    manuscript source autonomously per impl spec concern #5 resolution.
-    """
+    """§4.4 #5: Nature image disclosure emits two output channels (annotation
+    block + suggested patch); ARS does not modify manuscript source
+    autonomously, so no inline_modification channel exists."""
     images = list(images)
     annotation_block = []
     suggested_patch = []
