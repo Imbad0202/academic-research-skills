@@ -40,6 +40,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -72,12 +73,19 @@ def lint_text(text: str) -> list[str]:
         if concern not in text:
             violations.append(f"missing §4.4 {concern} resolution clause")
 
-    # Check 3: G10 7-row precedence table (rows 1..7 present)
+    # Check 3: G10 7-row precedence table — match actual markdown table rows
+    # (start-of-line `| N |` after stripping leading whitespace). The earlier
+    # version accepted any `row N` mention anywhere in the doc, which let prose
+    # references satisfy the check even when the markdown row itself was
+    # deleted (codex round-1 P2 #1 closure).
     for row in range(1, 8):
-        marker_a = f"| {row} |"
-        marker_b = f"row {row}"
-        if marker_a not in text and marker_b not in text.lower():
-            violations.append(f"missing G10 7-row precedence row {row}")
+        table_row_pattern = re.compile(
+            rf"^\s*\|\s*{row}\s*\|", re.MULTILINE
+        )
+        if not table_row_pattern.search(text):
+            violations.append(
+                f"missing G10 7-row precedence row {row} (no `| {row} |` markdown row found)"
+            )
 
     # Check 4: auto-promotion forbiddance
     if not any(kw in text for kw in AUTO_PROMOTION_KEYWORDS):

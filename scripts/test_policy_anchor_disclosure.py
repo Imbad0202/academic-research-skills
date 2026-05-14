@@ -379,6 +379,58 @@ class Concern7Test(unittest.TestCase):
                 )
             )
 
+    def test_unmapped_venue_with_anchor_rejected(self) -> None:
+        # Codex round-1 P2 #2 closure: unmapped venue (ICLR) with anchor
+        # must reject, not silently fall through.
+        with self.assertRaises(referee.VenueAnchorConflict):
+            referee.decide_disclosure_output(
+                _inp(
+                    ai_used=True,
+                    categories={"drafting": "USED"},
+                    policy_anchor="ieee",
+                    venue="ICLR",
+                )
+            )
+
+    def test_nature_spelling_variant_with_non_nature_anchor_rejected(self) -> None:
+        # Codex round-1 P2 #2 secondary case: even a Nature-shaped venue
+        # string outside the canonical set must reject when paired with a
+        # non-nature anchor.
+        with self.assertRaises(referee.VenueAnchorConflict):
+            referee.decide_disclosure_output(
+                _inp(
+                    ai_used=True,
+                    categories={"drafting": "USED"},
+                    policy_anchor="ieee",
+                    venue="Nature (Nature Publishing Group)",
+                )
+            )
+
+
+# ============================================================================
+# Policy anchor enum validation (codex round-1 P2 #3)
+# ============================================================================
+class PolicyAnchorEnumValidationTest(unittest.TestCase):
+    def test_typo_anchor_value_raises(self) -> None:
+        with self.assertRaises(referee.InvalidPolicyAnchor):
+            referee.decide_disclosure_output(
+                _inp(
+                    ai_used=True,
+                    categories={"drafting": "USED"},
+                    policy_anchor="ICMJE",  # uppercase typo
+                )
+            )
+
+    def test_unknown_anchor_value_raises(self) -> None:
+        with self.assertRaises(referee.InvalidPolicyAnchor):
+            referee.decide_disclosure_output(
+                _inp(
+                    ai_used=True,
+                    categories={"drafting": "USED"},
+                    policy_anchor="cope",  # not in canonical 4
+                )
+            )
+
 
 # ============================================================================
 # §4.4 #10 — ai_used:true substantive-content gate

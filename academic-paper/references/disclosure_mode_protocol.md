@@ -16,11 +16,15 @@ The `disclosure` mode dispatches on the author-supplied selector:
 | `--venue=<v>` (v3.2, default) | Venue track | `venue_disclosure_policies.md` v1 database (ICLR / NeurIPS / Nature / Science / ACL / EMNLP) | Single venue-tailored disclosure paragraph + placement instruction |
 | `--policy-anchor=<a>` (#108) | Anchor track | `policy_anchor_table.md` 4-anchor × 16-field matrix | 4-anchor-conditioned render per `policy_anchor_disclosure_protocol.md` |
 
-The two tracks are **mutually exclusive**; supplying both selectors in the same invocation is non-conformant per the §4.4 #7 resolution (concern #7: reject conflicting selectors with explicit error). See [policy_anchor_disclosure_protocol.md §5](policy_anchor_disclosure_protocol.md) for the conflict resolution detail.
+The two tracks are **selector-mutually-exclusive by default** — one selector picks one track. When the author supplies **both** selectors in the same invocation, the renderer evaluates compatibility per concern #7 rules: a consistent pair (Nature venue + nature anchor, both sourced from `shared/policy_data/nature_policy.md`) proceeds; any other pair is **rejected with an explicit error** listing the policy conflict. Silent precedence between selectors is forbidden. See [policy_anchor_disclosure_protocol.md §5](policy_anchor_disclosure_protocol.md) for the full conflict-resolution detail.
 
 If neither selector is supplied and the pipeline orchestrator does not infer one from upstream context, the mode prompts the user to specify which selector applies. The venue track remains the default for explicit journal submissions; the anchor track applies when targeting policy frameworks (e.g., compliance reporting to ICMJE-adopting journals collectively, or pre-submission alignment to IEEE author guidelines).
 
-**Conflict resolution (concern #7):** if `--venue=Nature` and `--policy-anchor=nature` are supplied together, the two are **consistent** (both target Nature substantive policy via the shared source `shared/policy_data/nature_policy.md`) — proceed. If `--venue=Nature` and `--policy-anchor=IEEE` (or any other policy-incompatible combination), the renderer **rejects** with an explicit error listing the policy conflict and prompts the user to choose one. Silent precedence between selectors is forbidden.
+**Conflict resolution (concern #7) — exhaustive cases:**
+- Supplied both, **consistent pair** (only currently defined case): `--venue=Nature` (any Nature Portfolio variant string) **and** `--policy-anchor=nature` → both target Nature substantive policy via the shared source pointer → **proceed**.
+- Supplied both, **any other combination** (e.g., `--venue=Nature` + `--policy-anchor=ieee`; `--venue=ICLR` + `--policy-anchor=icmje`; or a Nature-venue spelling that does not match the canonical set with a non-nature anchor) → **reject** with explicit error citing the policy conflict; require the user to drop one selector. Silent precedence is forbidden by §4.4 #7.
+- Supplied only one selector → run that track.
+- Supplied neither selector → prompt the user to specify.
 
 ---
 

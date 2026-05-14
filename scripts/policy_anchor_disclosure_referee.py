@@ -50,6 +50,11 @@ class VenueAnchorConflict(RuntimeError):
     placement / phrasing requirements. §4.4 #7."""
 
 
+class InvalidPolicyAnchor(ValueError):
+    """Raised when policy_anchor is outside the canonical 4-anchor enum.
+    Closes codex round-1 P2 #3."""
+
+
 @dataclass(frozen=True)
 class RendererInput:
     """Flat runtime input — no corpus-entry-level fields per G1 invariant."""
@@ -87,6 +92,7 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
     bottom; first match wins. Concern #10 bare-flag gate evaluated before
     row 4 admits the input.
     """
+    _check_policy_anchor_enum(ri)
     _check_venue_anchor_conflict(ri)
     _check_track_gate(ri)
 
@@ -140,26 +146,40 @@ def decide_disclosure_output(ri: RendererInput) -> DisclosureDecision:
     return DisclosureDecision(row=7, kind="not_supplied_annotation", track=track)
 
 
+def _check_policy_anchor_enum(ri: RendererInput) -> None:
+    """Validate policy_anchor membership against the canonical closed enum
+    before any other decision logic runs. Closes codex round-1 P2 #3:
+    invalid anchor values must not fall through to a render path that has
+    no table / protocol entry."""
+    if ri.policy_anchor not in CANONICAL_ANCHORS:
+        raise InvalidPolicyAnchor(
+            f"policy_anchor='{ri.policy_anchor}' is not in the canonical "
+            f"closed enum {CANONICAL_ANCHORS}. Selectors are case-sensitive "
+            "and must match exactly."
+        )
+
+
 def _check_venue_anchor_conflict(ri: RendererInput) -> None:
     """Concern #7 resolution: reject conflicting selectors with explicit
-    error; consistent pairs proceed; silent precedence forbidden."""
+    error; the only currently defined consistent pair is Nature venue with
+    nature anchor. Every other (venue, anchor) combination raises so silent
+    precedence is impossible. Closes codex round-1 P2 #2."""
     if ri.venue is None or ri.policy_anchor is None:
         return
-    # Consistent: Nature venue with nature anchor
+    # Consistent: Nature venue with nature anchor.
     if ri.venue in NATURE_VENUE_NAMES and ri.policy_anchor == "nature":
         return
-    # Any other (venue, anchor) pair where venue is "Nature" but anchor
-    # is not nature → conflict.
-    if ri.venue in NATURE_VENUE_NAMES and ri.policy_anchor != "nature":
-        raise VenueAnchorConflict(
-            f"venue '{ri.venue}' maps to Nature substantive policy; "
-            f"--policy-anchor='{ri.policy_anchor}' maps to a different placement. "
-            "Choose one selector or reconcile."
-        )
-    # Other venues (ICLR, NeurIPS, Science, ACL, EMNLP) don't have direct
-    # 4-anchor mapping; if user supplies both, conservative behavior is
-    # to require explicit choice. For now, only Nature has a defined
-    # cross-track mapping. Future venues can extend this check.
+    # All other combinations where both selectors are supplied are
+    # rejected by default. To add a new compatible pair, extend the
+    # consistent-pair check above explicitly. Silent precedence is
+    # forbidden per §4.4 #7.
+    raise VenueAnchorConflict(
+        f"venue='{ri.venue}' and --policy-anchor='{ri.policy_anchor}' map to "
+        "different (or unmapped) placement / phrasing requirements. The only "
+        "currently defined consistent pair is venue ∈ "
+        f"{NATURE_VENUE_NAMES!r} with policy_anchor='nature'. Drop one "
+        "selector or reconcile."
+    )
 
 
 def _check_track_gate(ri: RendererInput) -> None:
