@@ -18,8 +18,8 @@ This discovery is split into three execution phases. Each phase ships as a PR co
 | Phase 1 | Doc scaffold + 4 anchor snapshots locked (Wayback + SHA-256) + manifest | shipped (PR #107 c1) |
 | Phase 2 | Fill cells for PRISMA-trAIce + ICMJE (32 of 64 cells) | shipped (PR #107 c2) |
 | Phase 3a | Fill cells for Nature Portfolio (16 of remaining 32 cells; 48 of 64 total) | shipped (PR #107 c3) |
-| Phase 3b.1 | Fill cells for IEEE (remaining 16 cells; 64 of 64 total) | **In progress** (this commit) |
-| Phase 3b.2 | Deliverable 2 design space (5 dimensions A–E + trade-off matrix) | pending |
+| Phase 3b.1 | Fill cells for IEEE (remaining 16 cells; 64 of 64 total) | shipped (PR #107 c4) |
+| Phase 3b.2 | Deliverable 2 design space (5 dimensions A–E + trade-off matrix) | **In progress** (this commit) |
 | Phase 3b.3 | Deliverable 3 open questions | pending |
 
 **Phase 1 explicitly does NOT fill any cells.** Cells carry `phase: 1-scaffold` placeholder until Phase 2/3. This is intentional — Phase 1 builds the provenance infrastructure so Phase 2/3 cell-filling can cite verbatim with byte-level integrity.
@@ -238,17 +238,193 @@ COPE / CSE / WAME / JAMA / PLOS — partial expansion allowed; each cell column 
 
 ---
 
-## 5. Deliverable 2: Design space document _(Phase 3)_
+## 5. Deliverable 2: Design space document
 
-Enumeration of design choices across 5 dimensions (A–E), with trade-off matrix per option across at least 4 axes (alignment depth / schema simplicity / backward-compat burden / integration cost). Per #106, options are credible alternatives — not a quota — and choosing among them is OUT of scope for this discovery.
+Enumeration of design choices across 5 dimensions (A–E), with trade-off matrix per option across at least 4 axes (alignment depth / schema simplicity / backward-compat burden / integration cost). Per #106, **options are credible alternatives — not a quota — and choosing among them is OUT of scope for this discovery.**
 
-Dimension placeholders:
+Each dimension below presents the §4-matrix evidence that bears on the option set (advisory, not prescriptive), then enumerates options, then offers a trade-off table. Where the matrix gives an asymmetric signal across the four anchors, the asymmetry is noted but not resolved.
 
-- **Dimension A: Value-type / event model** (A1–A5 from #106) — _phase-3_
-- **Dimension B: Stage taxonomy** (B1–B5) — _phase-3_
-- **Dimension C: Disclosure policy expression** (C1–C5) — _phase-3_
-- **Dimension D: Legacy disclosure handling** (D1–D4) — _phase-3_
-- **Dimension E: Renderer target** (E1–E4) — _phase-3_
+**Trade-off rubric (consistent across all 5 dimensions):**
+
+- **Alignment depth**: how many of the 4 anchors does the option satisfy at mandate strength? `H` (3–4) / `M` (2) / `L` (0–1).
+- **Schema simplicity**: complexity at the JSON/YAML schema level. `H` simple (single field / closed enum), `M` moderate (structured object), `L` complex (event log / multi-field separation).
+- **Backward-compat burden**: cost to existing ARS users whose data is boolean/narrative legacy. `H` low burden (legacy stays valid), `M` moderate (migration tool with auto-mapping), `L` high (mass-edit required).
+- **Integration cost**: cost to ARS internal infrastructure (literature_corpus_entry schema, citation emission, validators, downstream agents). `H` low cost (fits existing schemas), `M` moderate (one schema/agent touched), `L` high (multi-component change).
+
+Higher letter = better trade-off on that axis. No option is universally `H/H/H/H` — that is the discovery point. The dimensions are largely orthogonal but some option pairs interact (noted under each table).
+
+### 5.1 Dimension A: Value-type / event model
+
+**Matrix evidence:**
+
+- Nature #9 and #10 cite the same source sentence at different facets — a single disclosure clause may map to multiple structured fields (one-to-many at the value level).
+- ICMJE #16 = text-attribution clause; Nature #16 = default-prohibit + 3 carve-outs + labelling-required; IEEE #16 = fold into general acknowledgments rule. The "AI-generated image rights" field is **anchor-specific enum-of-policies, not a flat boolean**. A schema flat enough to be a boolean would lose all three anchor-specific policy shapes; a schema rich enough to carry the Nature regime alone would be over-engineered for IEEE.
+- PRISMA-trAIce M9 (`if applicable and feasible`) and M6 (`if any`) attach **conditional applicability** to a recommend-strength field. Conditional structure exists in the matrix even before mandate strength.
+- IEEE #15 carve-out is **downgrade-not-eliminate** (recommend stays at the same location); Nature #15 carve-out is **eliminate** ("does not need to be declared"). Carve-outs carry **strength semantics**, not just boolean exemption.
+
+**Options:**
+
+- **A1: Pure boolean per stage** — `ai_used: true | false` for each stage. Tool name / version / prompt / etc. are not modeled.
+- **A2: Structured object per stage** — `{ ai_used: bool, tool_name: str, version: str?, prompts: [str]?, oversight_method: str?, … }` with required sub-fields gated by `ai_used: true`.
+- **A3: Hybrid — boolean required, narrative description optional** — `{ ai_used: bool, narrative: str? }`. ARS's current shape extended with structured boolean.
+- **A4: Per-stage tier** — `disclosure_tier: none | minimal | extensive` with tier→fields mapping defined externally.
+- **A5: Event-log model** — `disclosure_events: [{ stage_id, tool_id, task, timestamp, claim_anchor_id?, performance_metric_ref?, … }]` linked to v3.7.x trust-chain anchors.
+
+**Trade-off table:**
+
+| Option | Alignment depth | Schema simplicity | Backward-compat burden | Integration cost | Notes |
+|---|:---:|:---:|:---:|:---:|---|
+| A1 Boolean per stage | L | H | H | H | Satisfies no mandate beyond "ai used yes/no"; cannot carry IEEE #5/#6 task+section locator, ICMJE #10 responsibility statement, Nature #16 image rights. Renderer would have to invent fields. |
+| A2 Structured object | M | M | L | M | Carries ICMJE/IEEE/Nature text-side mandates. Cannot carry one-sentence-→-many-facets pattern without redundancy (Nature #9 = #10). Required sub-fields gated by ai_used create flat schema with 8–12 optional fields. |
+| A3 Hybrid bool+narrative | L | H | H | H | Today's ARS shape. Auditability low — narrative is free text. Satisfies no anchor at mandate strength beyond #14 location (only if narrative happens to include location). |
+| A4 Per-stage tier | L–M | M | M | M | Tier mapping captures Nature `not-addressed`-heavy vs PRISMA-trAIce field-rich asymmetry, but the tier→fields rule lives outside the data — auditability depends on the external rule being versioned. Tier semantics drift if not pinned. |
+| A5 Event-log | H | L | L | L | Carries v3.7.x trust-chain alignment, one-sentence-→-many-facets pattern natural (one event, multiple `facet_ids`), conditional applicability via `applies_when` predicate, IEEE #6 section locator native (event linked to claim anchor). High cost everywhere: schema is the most complex, migration from legacy boolean is mass-edit. |
+
+**Interaction notes:** A1↔C1 (Boolean per stage + single policy field) collapses 4-anchor matrix to a single bit + a single string. A5↔E1 (Event-log + single ARS render) creates a renderer whose output may exceed what venue policy requires; an A5↔E4 (Event-log + schema-only) combination keeps the audit trail rich and lets the user format for venue manually — at the cost of no native render.
+
+**Matrix asymmetry not resolved by this dimension:** the 4 anchors disagree at the field level about which structured sub-fields belong in the schema (PRISMA-trAIce demands version + developer + prompts + performance evaluation; ICMJE/Nature/IEEE all leave version + developer `not-addressed`). A1 underfits, A2/A5 risk overfit to PRISMA-trAIce-shaped data, A4 only works if `tier` is pinned to a specific anchor.
+
+### 5.2 Dimension B: Stage taxonomy
+
+**Matrix evidence:**
+
+- PRISMA-trAIce explicitly enumerates SLR-specific stages (M3.a: search, screening, data extraction, Risk of Bias assessment, synthesis, drafting). Closed enum. Domain-specific.
+- ICMJE / Nature / IEEE all use "stage" implicitly via "how they used it" / "level at which" / "Methods" language — no enumerated taxonomy.
+- IEEE #4 "level at which the AI system was used" reads as **degree-of-involvement** not stage. A stage taxonomy that conflates degree-of-involvement with workflow-stage will misalign with IEEE at the semantic level.
+- PRISMA-trAIce M6 prompt rule applies "if LLM/GenAI" — tool-type-conditioned, independent of stage.
+
+**Options:**
+
+- **B1: Closed enum (canonical stage_id)** — one fixed list (e.g., PRISMA-trAIce 6 stages + a "drafting" alias) applied universally.
+- **B2: Open enum (any string, recommended values per ARS mode)** — user supplies stage label freely; ARS validates against recommended-list per mode (deep-research / academic-paper / etc.) but does not reject novel values.
+- **B3: Closed enum + `other_label` escape hatch** — fixed list with a single fallback bucket carrying user-provided free text.
+- **B4: Two-track schema (PRISMA-trAIce SLR stages vs general writing stages, by mode)** — `systematic-review` mode uses PRISMA-trAIce 6-stage enum; other modes use a 4-stage writing enum (research / drafting / revision / copyediting).
+- **B5: Hierarchical taxonomy (controlled top-level + mode-specific substage aliases)** — top-level (research / production / review) with mode-specific aliases (`research → search → screening` for SLR; `production → outlining → drafting` for academic-paper).
+
+**Trade-off table:**
+
+| Option | Alignment depth | Schema simplicity | Backward-compat burden | Integration cost | Notes |
+|---|:---:|:---:|:---:|:---:|---|
+| B1 Closed enum | M | H | L | M | Aligns with PRISMA-trAIce only; ICMJE/Nature/IEEE are agnostic so any closed enum is compatible at the policy layer, but a PRISMA-shaped enum may surprise non-SLR authors. Migration from legacy free-text narrative requires mass-classification. |
+| B2 Open enum | L–M | H | H | H | Maximally compatible — every anchor is agnostic, every legacy entry survives. Auditability low — same stage may appear under 5 different labels across the corpus. |
+| B3 Enum + escape hatch | M | M | M | M | Captures PRISMA-trAIce 6-stage alignment for SLR mode while letting other modes use `other_label`. Audit still soft because escape hatch encourages unsystematic use. |
+| B4 Two-track by mode | H | L | M | M | Highest alignment depth: SLR mode satisfies PRISMA-trAIce field-by-field; other modes satisfy ICMJE/Nature/IEEE's stage-agnostic policy. Schema is most complex — two enums in one schema gated by mode. Mode-detection logic must be reliable. |
+| B5 Hierarchical | M–H | L | L | L | Top-level satisfies ICMJE/Nature/IEEE; substage satisfies PRISMA-trAIce. Schema complexity is highest of the five options. Future expansion (COPE / WAME / JAMA) plugs in as new substage groups. |
+
+**Interaction notes:** B1↔A2 (PRISMA-shaped closed enum + Structured object) keeps both dimensions at their simplest, and aligns well *inside* SLR mode; outside SLR the alignment comes from A2's anchor-mandate coverage, not from B1 (B1's stage labels do not match ICMJE/Nature/IEEE language). B4↔C5 (Two-track + Versioned policy profile) is the highest alignment depth combination — but introduces two cross-cutting axes (mode + policy profile) that must compose without conflict.
+
+**Matrix asymmetry not resolved by this dimension:** the IEEE "level" semantics (degree-of-involvement, not stage) is not addressed by any of the 5 stage-taxonomy options. A schema that needs to satisfy IEEE #4/#5 at mandate strength must add a separate `level_of_involvement` field independent of stage taxonomy. This may belong in Dimension A (value model) rather than B.
+
+### 5.3 Dimension C: Disclosure policy expression
+
+**Matrix evidence:**
+
+- 4-anchor disclosure-location enum has no intersection: PRISMA-trAIce (6 manuscript sections) ∩ ICMJE (cover-letter + appropriate-section) ∩ Nature (Methods + image-caption + suitable-alternative) ∩ IEEE (acknowledgments-only) = ∅.
+- Copyediting carve-out splits 2-2: Nature/IEEE define it (eliminate vs downgrade); PRISMA-trAIce/ICMJE leave `not-addressed`. A schema that supports the carve-out without specifying which anchor variant is in force is ambiguous; a schema that hardcodes one variant under-aligns with the other.
+- Nature #16 image-rights regime (default-prohibit + 3 carve-outs + labelling) is structurally different from ICMJE #16 (text-attribution clause). The two cannot be merged into a single boolean without information loss.
+- ICMJE's "should require" language is **policy-routed** — addressed at journals, who upgrade to mandate via their own instructions. The same source text can have different effective strength depending on which adopting journal applies it.
+
+**Options:**
+
+- **C1: Single field `declaration_mode: strict | lenient | none`** — schema records the policy stance, not field-level structure.
+- **C2: Pure carve-out list `exempted_uses: ["copyediting", …]`** — schema records what is exempted, not what is required.
+- **C3: Multi-field separation** — `{ ai_used_any: bool, disclosure_required: bool, exempted_uses: [], policy_aligned_with: anchor_id }`. Each axis a separate field.
+- **C4: Defer policy semantics entirely to renderer** — schema records facts (tool name, stage, task, prompts, locator); a renderer layer applies anchor-specific policy to decide what to surface.
+- **C5: Versioned policy-profile / ruleset mapping** — `{ policy_profile: anchor_slug, profile_version: date, profile_source: locator_url }`. Policy is named, versioned, and source-anchored.
+
+**Trade-off table:**
+
+| Option | Alignment depth | Schema simplicity | Backward-compat burden | Integration cost | Notes |
+|---|:---:|:---:|:---:|:---:|---|
+| C1 Single declaration_mode | L | H | H | H | "strict / lenient" hides which anchor's strictness; ambiguous at audit time. Copyediting carve-out is one bit, losing eliminate-vs-downgrade distinction. |
+| C2 Carve-out list | M | H | H | M | Captures Nature/IEEE #15 carve-out shape natively. Cannot express Nature #16 default-deny regime — that is a mandate, not a carve-out. |
+| C3 Multi-field separation | M | L | M | L | Each axis explicit; carve-outs + alignment anchor + strictness composable. Schema has 4+ correlated fields that may drift (`exempted_uses` set without `disclosure_required: false` is inconsistent). Validator burden is high. |
+| C4 Defer to renderer | H | H | H | M | Schema stays minimal; policy mapping lives in renderer skill. Aligns with all 4 anchors simultaneously because schema does not commit to one. **Audit-quality depends on renderer correctness, not data correctness** — bug in renderer breaks all venue alignments at once. |
+| C5 Versioned policy-profile | H | M | M | L | Each entry pins to a named profile (`icmje-v2024` / `nature-2025-01` / `ieee-2024-04` / `prisma-traice-pre-delphi`); changes traceable. New profiles plug in. Profile registry is a separate artifact to maintain. |
+
+**Interaction notes:** C4↔E2 (Defer + multiple per-policy renders) is the most policy-faithful combination — facts in data, policy in renderer, one renderer per anchor. C4↔E1 (single render) hides the policy choice behind a single rendered output. C5↔A5 (Versioned profile + Event log) gives temporal + policy provenance simultaneously; cost is the most complex schema in the design space.
+
+**Matrix asymmetry not resolved by this dimension:** ICMJE's policy-routed strength (adopting journals upgrade) is not addressable by C1–C5 alone. A schema may need an `effective_strength_via` field separate from the `policy_aligned_with` field to distinguish ICMJE's source-level recommend from a specific journal's mandate uptake. Whether this matters for ARS depends on whether ARS authors target named journals (which would override anchor defaults).
+
+### 5.4 Dimension D: Legacy disclosure handling
+
+**Matrix evidence:**
+
+- ARS's current `ai_disclosure` field is boolean/narrative. Existing literature_corpus entries and bibliography entries may carry no AI disclosure at all.
+- The 4 anchors all describe **forward-looking** policy: none of them obligate retrospective disclosure of past AI use. A migration tool that requires backfill would over-reach beyond anchor scope.
+- Matrix #14 (disclosure location) has 4 distinct enums none of which is "no disclosure". A legacy entry with empty narrative satisfies no anchor.
+- Phase 2 observation #4: PRISMA-trAIce has zero mandate strength because it is pre-Delphi. A schema that **rejects** entries lacking PRISMA-shaped fields would treat a not-yet-formal-consensus framework as binding. Over-strict.
+
+**Options:**
+
+- **D1: Strict (reject legacy entries)** — pipeline refuses to process entries without the new disclosure structure.
+- **D2: Hybrid (accept for storage, exclude from renderer output)** — legacy entries stored as-is, but renderer skips them (no disclosure surfaced).
+- **D3: Soft (accept everywhere, `legacy: true` marker, renderers degrade gracefully)** — legacy entries flagged, renderer emits a "legacy disclosure" note.
+- **D4: Forced backfill (pipeline refuses to run on legacy entries)** — pipeline halts; user must edit existing data before continuing.
+
+**Trade-off table:**
+
+| Option | Alignment depth | Schema simplicity | Backward-compat burden | Integration cost | Notes |
+|---|:---:|:---:|:---:|:---:|---|
+| D1 Strict reject | M | H | L | M | Forces clean data from day-1. Breaks existing pipelines until users migrate every entry. Over-strict relative to anchor scope (no anchor requires retrospective disclosure). |
+| D2 Hybrid (storage-yes / render-no) | L | M | M | M | Data survives; render hides legacy. Renderer output may be misleading — looks like no AI use when in fact disclosure status is unknown. |
+| D3 Soft + legacy marker | M | M | H | H | All entries survive, renderer surfaces "legacy disclosure unavailable" honestly. Schema adds 1 boolean + acknowledgment text. **Closest to anchor scope** — forward-looking policy with explicit unknown surfacing. |
+| D4 Forced backfill | L | H | L | L | Even more disruptive than D1; backfilling AI use that happened months ago may not be reliably recoverable. Most likely to produce **fabricated** retrospective disclosures, which violates ICMJE #10 (human-responsibility) in spirit. |
+
+**Interaction notes:** D3↔A1/A3 (Soft + Boolean or Hybrid bool-narrative) lets ARS keep current shape and add the legacy marker as a single new field. D1/D4↔A2/A5 (Strict or Forced + Structured / Event-log) creates the harshest migration — schema change + retroactive data fill.
+
+**Matrix asymmetry not resolved by this dimension:** the matrix is silent on whether *no AI use* is itself a disclosable statement. PRISMA-trAIce M1 implies "if AI tool used"; ICMJE/Nature/IEEE all condition on AI use. A schema that defaults to `ai_used: false` for legacy entries may be assigning a positive fact (no AI used) that was never recorded by the original author. Dimension D options interact with this concern: D3's `legacy: true` marker partially addresses it; D1/D4 do not; D2 hides the ambiguity.
+
+### 5.5 Dimension E: Renderer target
+
+**Matrix evidence:**
+
+- 4-anchor #14 enums do not intersect — a single ARS-native render format cannot satisfy all four anchors at the location level. The four enums are: PRISMA-trAIce (6 manuscript-section row labels across Table 1) / ICMJE (cover letter + appropriate manuscript section) / Nature (Methods + image-caption + suitable-alternative) / IEEE (acknowledgments-only).
+- Nature #16 image-rights regime requires labelling text "generated by AI" at the location "within the image field" (verbatim, §4.5 #16). Distinct from Nature #14's caption-disclosure rule for non-generative ML tools. A pure JSON/YAML output cannot satisfy either Nature image-side rule — the schema must produce per-image annotation that integrates with the figure metadata.
+- The four anchors call for different surface placements (cover letter, Methods, Acknowledgments, caption, image-field metadata). The same data renders correctly across all of them only if the renderer knows the venue.
+- Authors submit to venues with venue-specific templates. If ARS renderer output does not match venue template, the author edits it manually anyway.
+
+**Options:**
+
+- **E1: Single ARS-native render format** — one canonical rendered output, applied to all venues.
+- **E2: Multiple per-policy renders (one per anchor)** — ARS provides 4 distinct rendered outputs (one each for PRISMA-trAIce / ICMJE / Nature / IEEE); user picks venue.
+- **E3: ARS render + user-supplied template format** — ARS provides one canonical render, plus a template-substitution mode where the user supplies a venue-specific format string.
+- **E4: No renderer (schema only, user manually formats for target venue)** — ARS outputs structured data, user is responsible for venue rendering.
+
+**Trade-off table:**
+
+| Option | Alignment depth | Schema simplicity | Backward-compat burden | Integration cost | Notes |
+|---|:---:|:---:|:---:|:---:|---|
+| E1 Single ARS-native | L | H | H | M | Aligns with at most one anchor — others see render that mismatches their location/format requirements. Lowest user friction once user accepts ARS format. |
+| E2 Multiple per-anchor | H | M | H | L | Each anchor's renderer is correct. Maintenance burden grows with anchor set (4 today; if expansion adds 5 candidates from §4.7, that's 9 renderers). Each renderer is a separate code path that can drift from anchor policy updates. |
+| E3 ARS render + user template | M | M | H | M | Default render satisfies one anchor; advanced users override per-venue. Two-track UX may confuse users into thinking default render is universally venue-safe (it isn't). |
+| E4 No renderer (schema only) | M | H | H | H | Schema-only output can in principle support any anchor (since user does mapping), but in practice depends entirely on author labour — alignment-depth in delivered manuscripts is unverifiable at the ARS layer. Honest about the fact that no single render fits all venues. **Lowest cost** to ARS infrastructure, but every user reimplements rendering per venue. |
+
+**Interaction notes:** E4↔C4 (No renderer + Defer policy) is the **most discovery-honest** combination: schema records facts, user maps facts to venue. E2↔C5 (Multiple renders + Versioned policy profile) gives the **most venue-correct** combination but at the highest maintenance cost. E1↔A1 (Single render + Boolean per stage) is the **lowest-cost** combination but aligns with no anchor at mandate strength beyond bare disclosure presence.
+
+**Matrix asymmetry not resolved by this dimension:** Nature #16's in-image-field labelling and #14's caption-disclosure cannot be produced by a schema-only output without a renderer — yet a renderer that touches image-field metadata or captions has to integrate with the manuscript-production pipeline (LaTeX / Word / Markdown source), not just emit a separate rendered text block. This is a **scope question** for the implementation issue (deferred): does ARS render into the manuscript source or produce a separate disclosure artifact?
+
+### 5.6 Dimension-pair interactions (advisory)
+
+The 5 dimensions are largely orthogonal, but the per-dimension Interaction notes (§5.1–§5.5) surfaced **13 distinct option-pairs** with load-bearing properties. They are consolidated here for easy reference, in the order they first appeared. Pairs labelled X↔Y and Y↔X are treated as the same pair (e.g. C5↔A5 in §5.3 is the same pair regardless of which dimension surfaces it).
+
+| Pair | Source § | Interaction |
+|---|---|---|
+| A1↔C1 | §5.1 | Boolean per stage + single policy field = collapses 4-anchor matrix to a single bit + a single string; lowest-information combination in the space. |
+| A5↔E1 | §5.1 | Event-log + Single ARS render = renderer may emit more disclosure than the venue requires; under-aligns by overshooting. |
+| A5↔E4 | §5.1 | Event-log + No renderer = keeps audit trail rich but pushes all rendering to user. |
+| B1↔A2 | §5.2 | Closed enum + Structured object = simplest combined schema; alignment outside SLR comes from A2's anchor-mandate coverage, not from B1. |
+| B4↔C5 | §5.2 | Two-track + Versioned profile = highest alignment-depth pairing; introduces two cross-cutting axes (mode + policy profile) that must compose without conflict. |
+| C4↔E2 | §5.3 | Defer policy + Multiple per-anchor renders = most policy-faithful pairing (facts in data, policy in renderer, one renderer per anchor). |
+| C4↔E1 | §5.3 | Defer policy + Single ARS render = hides the policy choice inside a single rendered output; auditability degraded. |
+| C5↔A5 | §5.3 | Versioned profile + Event-log = temporal + policy provenance simultaneously; highest schema complexity in the space. |
+| D3↔A1/A3 | §5.4 | Soft legacy + Boolean / Hybrid = lowest-friction migration path that preserves current ARS shape; adds the `legacy: true` marker as a single new field. |
+| D1/D4↔A2/A5 | §5.4 | Strict / Forced legacy + Structured / Event-log = harshest migration; schema change combined with retroactive data fill. |
+| E4↔C4 | §5.5 | No renderer + Defer policy = most discovery-honest combination; schema records facts, user maps facts to venue. |
+| E2↔C5 | §5.5 | Multiple renders + Versioned policy profile = highest venue-correctness; highest maintenance cost (one renderer per profile per anchor). |
+| E1↔A1 | §5.5 | Single render + Boolean per stage = lowest-cost combination but aligns with no anchor at mandate strength beyond bare disclosure presence. |
+
+The 13 pairs are not exhaustive — the implementation issue (deferred) would need to enumerate the full Cartesian space (5×5×5×4×4 = 2,000 option combinations) only if a non-orthogonal interaction surfaces during selection.
 
 ---
 
