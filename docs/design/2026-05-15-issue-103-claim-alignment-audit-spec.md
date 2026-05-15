@@ -18,8 +18,8 @@ Numbered list aligned to the implementation surfaces in #103 issue body + decisi
 3. **`shared/contracts/passport/claim_intent_manifest.schema.json`** — per-agent-invocation manifest entry schema.
 3a. **`shared/contracts/passport/uncited_assertion.schema.json`** — per uncited-sentence finding entry schema (separate from `claim_audit_result` because there's no `ref_slug` to bind).
 3b. **`shared/contracts/passport/claim_drift.schema.json`** — per claim-intent-drift finding entry schema (separate from `claim_audit_result` because drift is detected by manifest set-diff, not by judge invocation; see §3.4 rationale).
-4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 9-row + advisory tier.
-5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with FOUR new HIGH-WARN refusal classes mirroring §5 finalizer 9-row matrix: HIGH-WARN-CLAIM-NOT-SUPPORTED, HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION, HIGH-WARN-FABRICATED-REFERENCE, HIGH-WARN-CLAIM-AUDIT-ANCHORLESS. The formatter's existing v3.7.1/v3.7.3 refusal rules remain unchanged; new classes append to the existing REFUSE list. §5 matrix is the source of truth — any new HIGH-WARN class added to the matrix in future revisions MUST be mirrored here, enforced by a §6 lint rule.
+4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 8-row + advisory tier.
+5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with FOUR new HIGH-WARN refusal classes mirroring §5 finalizer 8-row matrix: HIGH-WARN-CLAIM-NOT-SUPPORTED, HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION, HIGH-WARN-FABRICATED-REFERENCE, HIGH-WARN-CLAIM-AUDIT-ANCHORLESS. The formatter's existing v3.7.1/v3.7.3 refusal rules remain unchanged; new classes append to the existing REFUSE list. §5 matrix is the source of truth — any new HIGH-WARN class added to the matrix in future revisions MUST be mirrored here, enforced by a §6 lint rule.
 6. **`academic-paper/agents/draft_writer_agent.md`** + **`deep-research/agents/synthesis_agent.md`** + **`deep-research/agents/report_compiler_agent.md`** — new "Claim Intent Manifest Emission (v3.8)" sibling heading following the existing v3.7.3 "Three-Layer Citation Emission" heading. PATTERN PROTECTION (v3.6.7) blocks stay byte-equivalent.
 7. **`academic-pipeline/references/claim_audit_calibration_protocol.md`** — new file (modeled on `shared/contracts/reviewer/` calibration convention).
 8. **`scripts/check_claim_audit_consistency.py`** — new lint enforcing per-claim invariants (anchor presence, defect_stage presence, precedence rules, audit_status/defect_stage coherence).
@@ -273,7 +273,12 @@ The separate schema exists because `uncited_assertion` findings have no `ref_slu
     "manifest_claim_id": {
       "type": ["string", "null"],
       "pattern": "^C-[0-9]{3,}$",
-      "description": "When the uncited sentence corresponds to a claim_id in the active claim_intent_manifest. Per D4-c last paragraph: manifest membership does NOT exempt a sentence from being flagged."
+      "description": "When the uncited sentence corresponds to a claim_id in the active claim_intent_manifest. Per D4-c last paragraph: manifest membership does NOT exempt a sentence from being flagged. When present, MUST be paired with scoped_manifest_id to disambiguate against C-001 collision across manifests."
+    },
+    "scoped_manifest_id": {
+      "type": ["string", "null"],
+      "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$",
+      "description": "Points to the claim_intent_manifest.manifest_id owning the referenced manifest_claim_id. The (scoped_manifest_id, manifest_claim_id) pair uniquely identifies which manifest's claim this uncited finding corresponds to, since C-001 may collide across manifests in the same passport. Required when manifest_claim_id ≠ null (U-INV-4 cross-array integrity). Null when manifest_claim_id is null (the uncited sentence does not correspond to any manifest claim)."
     }
   }
 }
@@ -283,7 +288,7 @@ The separate schema exists because `uncited_assertion` findings have no `ref_slu
 - U-INV-1: `finding_id` uniqueness across `uncited_assertions[]` in one passport
 - U-INV-2: `trigger_tokens` non-empty (rule fires only when condition 1 matches)
 - U-INV-3: `rule_version` must equal `D4-c-v1` for v3.8.0 release; future rule revisions bump the const and require re-lint
-- U-INV-4: When `manifest_claim_id ≠ null`, the referenced `C-{n}` MUST exist in the active manifest (cross-array consistency check)
+- U-INV-4: When `manifest_claim_id ≠ null`, `scoped_manifest_id ≠ null` AND the `(scoped_manifest_id, manifest_claim_id)` pair MUST match some `claim_intent_manifests[].manifest_id == scoped_manifest_id` whose `claims[].claim_id` contains the manifest_claim_id (cross-array consistency). When `manifest_claim_id = null`, `scoped_manifest_id MUST also = null` (no orphan manifest pointer).
 
 ### 3.4 `claim_drift.schema.json`
 
@@ -315,7 +320,12 @@ The separate schema exists because **claim-intent drift is detected by manifest 
     "manifest_claim_id": {
       "type": ["string", "null"],
       "pattern": "^C-[0-9]{3,}$",
-      "description": "For INTENDED_NOT_EMITTED, the dropped manifest claim_id (REQUIRED, conditional on drift_kind — enforced by D-INV-2). For EMITTED_NOT_INTENDED, null (drifted claim has no manifest_claim_id since it was never in the manifest)."
+      "description": "For INTENDED_NOT_EMITTED, the dropped manifest claim_id (REQUIRED, conditional on drift_kind — enforced by D-INV-2). For EMITTED_NOT_INTENDED, null (drifted claim has no manifest_claim_id since it was never in the manifest). When present, MUST be paired with scoped_manifest_id."
+    },
+    "scoped_manifest_id": {
+      "type": ["string", "null"],
+      "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$",
+      "description": "Points to the claim_intent_manifest.manifest_id owning the referenced manifest_claim_id. Required when drift_kind=INTENDED_NOT_EMITTED (paired with manifest_claim_id per D-INV-2 cross-array integrity, disambiguating C-001 collision across manifests). Null when drift_kind=EMITTED_NOT_INTENDED (the drifted claim has no manifest origin)."
     },
     "section_path": {
       "type": ["string", "null"],
@@ -333,7 +343,7 @@ The separate schema exists because **claim-intent drift is detected by manifest 
 
 **Cross-field invariants** (lint-enforced in `check_claim_audit_consistency.py`):
 - D-INV-1: `finding_id` uniqueness across `claim_drifts[]` in one passport.
-- D-INV-2: `drift_kind=INTENDED_NOT_EMITTED` → `manifest_claim_id ≠ null` AND the referenced `C-{n}` MUST exist in some `claim_intent_manifests[].claims[].claim_id` (cross-array integrity). `drift_kind=EMITTED_NOT_INTENDED` → `manifest_claim_id = null` AND `section_path ≠ null`.
+- D-INV-2: `drift_kind=INTENDED_NOT_EMITTED` → `manifest_claim_id ≠ null` AND `scoped_manifest_id ≠ null` AND the `(scoped_manifest_id, manifest_claim_id)` pair MUST match some `claim_intent_manifests[].manifest_id == scoped_manifest_id` whose `claims[].claim_id` contains the manifest_claim_id (cross-array integrity, disambiguates C-001 collision across manifests). `drift_kind=EMITTED_NOT_INTENDED` → `manifest_claim_id = null` AND `scoped_manifest_id = null` AND `section_path ≠ null`.
 - D-INV-3: `rule_version` must equal `D4-a-v1` for v3.8.0 release; future rule revisions bump the const and require re-lint.
 - D-INV-4: A given emitted sentence may produce AT MOST ONE finding across `uncited_assertions[]` and `claim_drifts[]` combined. When a sentence is both uncited AND drifted, the `uncited_assertions[]` entry takes precedence (per §5 finalizer precedence rule 3 restated from issue body) — no companion `claim_drifts[]` entry emits for the same sentence.
 
@@ -415,7 +425,7 @@ The audit agent receives:
 **Outputs feeding Stage 6 self-reflection:**
 - Per-stage `defect_stage` histogram appendix (renders when ≥ 5 completed entries) — added to the existing Stage 6 AI Self-Reflection Report after gate pass
 
-**Finalizer matrix extension (9-row):**
+**Finalizer matrix extension (8-row):**
 
 Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new finalizer pass that overlays per-citation audit annotations from `claim_audit_results[]`. The matrix discriminates the previously-conflated paywall vs anchorless cases by reading `ref_retrieval_method` alongside `(judgment, defect_stage)`. Rows are evaluated top-to-bottom, first match wins:
 
@@ -434,7 +444,7 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 
 **`uncited_assertion` entries** (separate aggregate `uncited_assertions[]`) emit at LOW-WARN tier with annotation `[UNCITED-ASSERTION]` next to the offending sentence. Always advisory; gate-refuse reserved for citation-level defects. See §3.3 for entry schema.
 
-**Why `claim_drifts[]` is separate from the 9-row matrix (per D4-a):** The decision doc rejected "manifest authority blocking" because normal drafting routinely refines claims away from manifest, and gate-refusing on drift would block valid revision passes. The §3.4 schema houses drift findings; they emit a `[LOW-WARN-CLAIM-DRIFT — kind={EMITTED_NOT_INTENDED|INTENDED_NOT_EMITTED}]` annotation next to the offending sentence (for EMITTED_NOT_INTENDED) or in the manifest-coverage appendix (for INTENDED_NOT_EMITTED). Always advisory; never gate-refusing. Source-level defects (source_description / metadata / citation_anchor / synthesis_overclaim) remain HIGH-WARN in the matrix because they indicate the prose is misrepresenting the cited source — the L3 faithfulness failure the audit exists to catch. Constraint violations remain HIGH-WARN because the author explicitly declared "MUST NOT".
+**Why `claim_drifts[]` is separate from the 8-row matrix (per D4-a):** The decision doc rejected "manifest authority blocking" because normal drafting routinely refines claims away from manifest, and gate-refusing on drift would block valid revision passes. The §3.4 schema houses drift findings; they emit a `[LOW-WARN-CLAIM-DRIFT — kind={EMITTED_NOT_INTENDED|INTENDED_NOT_EMITTED}]` annotation next to the offending sentence (for EMITTED_NOT_INTENDED) or in the manifest-coverage appendix (for INTENDED_NOT_EMITTED). Always advisory; never gate-refusing. Source-level defects (source_description / metadata / citation_anchor / synthesis_overclaim) remain HIGH-WARN in the matrix because they indicate the prose is misrepresenting the cited source — the L3 faithfulness failure the audit exists to catch. Constraint violations remain HIGH-WARN because the author explicitly declared "MUST NOT".
 
 **Uncited-assertion** results emit at LOW-WARN tier with annotation `[UNCITED-ASSERTION]` next to the offending sentence. Always advisory; gate-refuse reserved for citation-level defects.
 
@@ -446,14 +456,15 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 
 Coverage:
 
-1. **Schema validation** — `claim_audit_result.schema.json`, `claim_intent_manifest.schema.json`, `uncited_assertion.schema.json` all valid JSON Schema; sample passports validate.
+1. **Schema validation** — `claim_audit_result.schema.json`, `claim_intent_manifest.schema.json`, `uncited_assertion.schema.json`, `claim_drift.schema.json` all valid JSON Schema; sample passports validate.
 2. **Cross-field invariants INV-1 through INV-15** — one test case per invariant, each with positive + negative fixture.
-3. **Manifest invariants M-INV-1 through M-INV-3**.
-4. **Uncited-assertion invariants U-INV-1 through U-INV-4** — including cross-array `manifest_claim_id` integrity (uncited entry's referenced C-{n} must exist in active manifest).
+3. **Manifest invariants M-INV-1 through M-INV-4** — including M-INV-4 manifest_id uniqueness across passport (duplicate manifest_id rejected).
+4. **Uncited-assertion invariants U-INV-1 through U-INV-4** — including cross-array `(scoped_manifest_id, manifest_claim_id)` integrity (uncited entry's referenced (M-*, C-*) pair must match some active manifest's claim).
+4a. **Claim-drift invariants D-INV-1 through D-INV-4** — including cross-array integrity for `drift_kind=INTENDED_NOT_EMITTED` (the `(scoped_manifest_id, manifest_claim_id)` pair must match some `claim_intent_manifests[]` entry) and exclusivity rule D-INV-4 (a sentence cannot appear in both `uncited_assertions[]` and `claim_drifts[]`).
 5. **Allowed-matrix coverage** — every `(judgment, audit_status, defect_stage)` triple outside §3.1 table rejected; representative disallowed combinations (≥ 5) tested explicitly.
 6. **Precedence rules** — negative_constraint_violation (HIGH-WARN claim_audit_result) > claim_drift (LOW-WARN claim_drifts[] entry) — per issue body rule 1; citation_anchor distinct from source_description (rule 2); uncited-sentence cases produce `uncited_assertions[]` entry, not a `claim_audit_result` row (rule 3 — uncited has no ref to evaluate). D-INV-4 also enforces: a sentence that's both uncited AND drifted emits only the `uncited_assertion` entry, no companion `claim_drift` entry.
 7. **Acceptance check** — for any passport with ≥ 1 completed `claim_audit_result` whose `judgment=UNSUPPORTED`, ALL such rows must emit a `defect_stage` ≠ null AND ≠ not_applicable (100% emission per #103 acceptance criterion). AMBIGUOUS-with-null is explicitly permitted per INV-3 (judge unable to classify a related-but-unclear support level is a valid outcome); the issue body's "100% non-SUPPORTED" intent is narrower than literal reading suggests — it targets the UNSUPPORTED rows because those are the gate-refusing path, not the advisory tier.
-8. **Coverage check** — sample passport with full 9-row finalizer matrix coverage (per §5); each annotation tier exercised at least once.
+8. **Coverage check** — sample passport with full 8-row finalizer matrix coverage (per §5); each annotation tier exercised at least once.
 
 Lint exit codes: 0 (pass), 1 (one or more invariant violations; prints which + offending entry).
 
@@ -503,7 +514,15 @@ Tests written BEFORE production code per `superpowers:test-driven-development`. 
 
 ### 7.5 Finalizer integration tests (`tests/test_claim_audit_finalizer.py`)
 
-- T-F1: 9-row matrix coverage — each (judgment, defect_stage) pair maps to correct annotation
+- T-F1: 8-row matrix coverage keyed by the FULL 3-tuple (judgment, defect_stage, ref_retrieval_method) — each row maps to its specific annotation + severity tier + gate behavior. CRITICAL: `RETRIEVAL_FAILED + not_applicable` admits three distinct rows discriminated by `ref_retrieval_method` ∈ {not_attempted, failed, audit_tool_failure} — a test keyed only on (judgment, defect_stage) would let an implementation collapse these three into one and apply the wrong gate behavior. The test MUST assert each ref_retrieval_method value independently against its expected outcome:
+  - T-F1a: SUPPORTED + null + any → no annotation, pass
+  - T-F1b: AMBIGUOUS + {source_description, citation_anchor, synthesis_overclaim, null} + any → CLAIM-AUDIT-AMBIGUOUS, LOW-WARN advisory, pass
+  - T-F1c: UNSUPPORTED + {source_description, metadata, citation_anchor, synthesis_overclaim} + any → HIGH-WARN-CLAIM-NOT-SUPPORTED, gate-refuse
+  - T-F1d: UNSUPPORTED + negative_constraint_violation + any → HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION, gate-refuse
+  - T-F1e: RETRIEVAL_FAILED + retrieval_existence + not_found → HIGH-WARN-FABRICATED-REFERENCE, gate-refuse
+  - T-F1f: RETRIEVAL_FAILED + not_applicable + **not_attempted** → HIGH-WARN-CLAIM-AUDIT-ANCHORLESS, **gate-refuse** (defense-in-depth; distinguishes from row T-F1g/T-F1h)
+  - T-F1g: RETRIEVAL_FAILED + not_applicable + **failed** → LOW-WARN-CLAIM-AUDIT-UNVERIFIED, **pass** (paywall)
+  - T-F1h: RETRIEVAL_FAILED + not_applicable + **audit_tool_failure** → MED-WARN-CLAIM-AUDIT-TOOL-FAILURE, **pass** (retry-next-pass)
 - T-F2: HIGH-WARN-CLAIM-NOT-SUPPORTED triggers terminal gate refuse
 - T-F3: `/ars-mark-read` does NOT clear HIGH-WARN-CLAIM-NOT-SUPPORTED (asymmetry preservation)
 - T-F4: LOW-WARN-CLAIM-AUDIT-UNVERIFIED passes gate
@@ -540,7 +559,7 @@ Files that may need touch:
 | File | Why | Risk |
 |---|---|---|
 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` | New §3.6 dispatch wiring | HIGH — already 712 lines; PATTERN PROTECTION block must stay byte-equivalent |
-| `academic-paper/agents/formatter_agent.md` | Gate matrix extended to 9-row + HIGH-WARN classes | MED — 785 lines; v3.7.3 anchor logic preserved |
+| `academic-paper/agents/formatter_agent.md` | Gate matrix extended to 8-row + HIGH-WARN classes | MED — 785 lines; v3.7.3 anchor logic preserved |
 | `deep-research/agents/synthesis_agent.md` | New "Claim Intent Manifest Emission" sibling heading | MED — 220 lines; v3.7.3 Three-Layer heading stays |
 | `deep-research/agents/report_compiler_agent.md` | Same | MED |
 | `academic-paper/agents/draft_writer_agent.md` | Same | MED — 520 lines |
@@ -566,7 +585,7 @@ Issue body acceptance + decision-doc-derived additions:
 - [ ] Calibration mode tested with synthetic gold set (≥ 20 tuples) achieving FNR < 0.15 and FPR < 0.10
 - [ ] End-to-end test (§7.6 above) passes
 - [ ] Zero regression on existing 1107+ unittest + 201 pytest baseline
-- [ ] All 15 cross-field invariants (INV-1..INV-15) + 4 manifest invariants (M-INV-1..M-INV-4) + 4 uncited-assertion invariants (U-INV-1..U-INV-4) covered by paired positive/negative fixture
+- [ ] All 15 cross-field invariants (INV-1..INV-15) + 4 manifest invariants (M-INV-1..M-INV-4) + 4 uncited-assertion invariants (U-INV-1..U-INV-4) + 4 claim-drift invariants (D-INV-1..D-INV-4) covered by paired positive/negative fixture
 - [ ] Allowed-matrix exhaustive test: every §3.1 table row positive + ≥5 disallowed combinations rejected
 - [ ] `claim_intent_manifest` absent → `MANIFEST-MISSING` advisory + fallback flow exercised in test
 - [ ] `audit_status=inconclusive` paths emit `defect_stage=not_applicable` (NOT `null`) — INV-4
@@ -599,7 +618,7 @@ Per session handoff harness data:
 
 Strategy: split into two PRs if Round-5 still has open P1/P2:
 - PR-A: schemas + lint + agent prompt + tests (no orchestrator/formatter/synthesis_agent touch yet)
-- PR-B: orchestrator §3.6 + finalizer 9-row + downstream agent integration
+- PR-B: orchestrator §3.6 + finalizer 8-row + downstream agent integration
 
 This mirrors #105 → #115 split pattern (production module first, integration follow-up).
 
@@ -620,7 +639,7 @@ After ship, update:
 5. Write `claim_ref_alignment_audit_agent.md` Steps 1-6 — minimal text to pass pipeline tests via fixture-driven dispatch
 6. Write `tests/test_uncited_assertion.py` + token-rule detector module
 7. Write `tests/test_claim_intent_manifest.py` + emission helpers
-8. Write `tests/test_claim_audit_finalizer.py` + orchestrator §3.6 + formatter 9-row extension
+8. Write `tests/test_claim_audit_finalizer.py` + orchestrator §3.6 + formatter 8-row extension
 9. Write `tests/test_e2e_claim_audit.py` + synthetic 5-citation paper fixture
 10. Write `tests/test_claim_audit_calibration.py` + calibration protocol doc
 11. Regression run on full baseline; zero failures

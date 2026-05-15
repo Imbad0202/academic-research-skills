@@ -53,7 +53,7 @@ The audit agent treats any received `anchor_kind=none` as a contract-violation s
 
 **Consequence:**
 - Agent prompt: "STEP 1 — Anchor presence check. If anchor_kind=none, emit RETRIEVAL_FAILED + defect_stage=not_applicable + audit_status=inconclusive + rationale='v3.7.3 R-L3-1-A violation — upstream emission had no locator'. SKIP judge invocation."
-- Backward compat: legacy v3.7.1 prose without anchors gates as MED-WARN-NO-LOCATOR at finalizer (per v3.7.3); the audit agent is never asked to process such prose because the gate refuses output before audit dispatch.
+- Backward compat: legacy v3.7.1 prose without anchors will surface `anchor_kind=none` to the audit agent (since audit dispatches at Stage 4→5 AFTER the v3.7.1/v3.7.3 cite finalizer pass but BEFORE the formatter hard gate, per spec §5 trigger boundary). When the audit agent sees `anchor_kind=none`, it does NOT call the judge — it emits the contract-violation claim_audit_result per Step 1 above. That result reaches the finalizer matrix, which routes it to the HIGH-WARN-CLAIM-AUDIT-ANCHORLESS row (defense-in-depth against v3.7.3 finalizer skip/stale paths — see spec §5 8-row matrix, the `(RETRIEVAL_FAILED, not_applicable, not_attempted)` row). The formatter hard gate then refuses output for that HIGH-WARN annotation. In practice, well-behaved v3.7.3+ prose never reaches this state because the v3.7.3 finalizer pass converts `anchor=none` markers into `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]` before audit dispatch — but the audit layer keeps the defense-in-depth row regardless.
 
 ### D2 — Paywall retrieval failures are LOW-WARN advisory (OQ2 closed)
 
