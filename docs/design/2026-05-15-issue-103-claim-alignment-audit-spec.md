@@ -1,0 +1,463 @@
+# ARS v3.8 — Issue #103 `claim_ref_alignment_audit_agent` Implementation Spec
+
+**Date:** 2026-05-15
+**Issue:** [#103](https://github.com/Imbad0202/academic-research-skills/issues/103)
+**Companion decision doc:** `2026-05-15-issue-103-claim-alignment-audit-decision.md`
+**Target release:** v3.8
+
+This spec implements the eight decisions in the companion decision doc. Read the decision doc first — it carries the load-bearing reasons; this spec carries the executable surface.
+
+---
+
+## 1. In-scope deliverables
+
+Numbered list aligned to the implementation surfaces in #103 issue body + decision-doc adjustments.
+
+1. **`academic-pipeline/agents/claim_ref_alignment_audit_agent.md`** — new agent prompt. Estimated 350-500 lines.
+2. **`shared/contracts/passport/claim_audit_result.schema.json`** — per-claim audit result entry schema.
+3. **`shared/contracts/passport/claim_intent_manifest.schema.json`** — per-agent-invocation manifest entry schema.
+4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 6-cell + advisory tier.
+5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with HIGH-WARN-CLAIM-NOT-SUPPORTED + HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION tiers.
+6. **`academic-paper/agents/draft_writer_agent.md`** + **`deep-research/agents/synthesis_agent.md`** + **`deep-research/agents/report_compiler_agent.md`** — new "Claim Intent Manifest Emission (v3.8)" sibling heading following the existing v3.7.3 "Three-Layer Citation Emission" heading. PATTERN PROTECTION (v3.6.7) blocks stay byte-equivalent.
+7. **`academic-pipeline/references/claim_audit_calibration_protocol.md`** — new file (modeled on `shared/contracts/reviewer/` calibration convention).
+8. **`scripts/check_claim_audit_consistency.py`** — new lint enforcing per-claim invariants (anchor presence, defect_stage presence, precedence rules, audit_status/defect_stage coherence).
+9. **CI wiring** — extend `.github/workflows/spec-consistency.yml` (or matching workflow) to call the new lint.
+10. **Tests** — `scripts/test_check_claim_audit_consistency.py` (lint coverage), schema validation tests against fixture passports, end-to-end synthetic-paper test (5 citations, 1 intentionally fabricated, audit catches).
+11. **CHANGELOG entry** + ROADMAP §3.8 anchor + decision-log entry.
+
+## 2. Out of scope
+
+Restated from decision doc §4, for cross-reference:
+
+- RubricEM reflection meta-policy (post-v3.8)
+- Evolving rubric buffer (post-v3.8)
+- Rubric discrimination-power audit (→ #89)
+- `defect_stage` accuracy measurement (→ #89 / gold fixtures)
+- L3-2 contamination signals (→ #105 closed / #102 v3.7.4)
+- Cross-paper claim-graph analysis (no issue yet; post-v3.8)
+
+## 3. Schemas
+
+### 3.1 `claim_audit_result.schema.json`
+
+Per-claim audit result. One entry per audited citation in the passport `claim_audit_results[]` aggregate array.
+
+**Required fields:**
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/claim_audit_result.schema.json",
+  "title": "Material Passport Claim Audit Result Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "claim_text",
+    "ref_slug",
+    "anchor_kind",
+    "anchor_value",
+    "judgment",
+    "audit_status",
+    "defect_stage",
+    "rationale",
+    "judge_model",
+    "judge_run_at",
+    "ref_retrieval_method"
+  ],
+  "properties": {
+    "claim_id": { "type": "string", "pattern": "^C-[0-9]{3,}$" },
+    "claim_text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "ref_slug": { "type": "string", "minLength": 1 },
+    "anchor_kind": { "enum": ["quote", "page", "section", "paragraph", "none"] },
+    "anchor_value": { "type": "string" },
+    "judgment": { "enum": ["SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "RETRIEVAL_FAILED"] },
+    "audit_status": { "enum": ["completed", "inconclusive"] },
+    "defect_stage": {
+      "enum": [
+        "retrieval_existence",
+        "metadata",
+        "source_description",
+        "claim_intent",
+        "citation_anchor",
+        "synthesis_overclaim",
+        "negative_constraint_violation",
+        "uncited_assertion",
+        "not_applicable",
+        null
+      ]
+    },
+    "rationale": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "judge_model": { "type": "string", "minLength": 1 },
+    "judge_run_at": { "type": "string", "format": "date-time" },
+    "ref_retrieval_method": { "enum": ["api", "manual_pdf", "failed"] },
+    "upstream_owner_agent": {
+      "enum": [
+        "bibliography_agent",
+        "synthesis_agent",
+        "draft_writer_agent",
+        "report_compiler_agent",
+        null
+      ]
+    },
+    "violated_constraint_id": {
+      "type": ["string", "null"],
+      "pattern": "^(NC-C[0-9]{3,}-[0-9]+|MNC-[0-9]+)$"
+    },
+    "upstream_dispute": {
+      "type": ["string", "null"],
+      "maxLength": 1000
+    },
+    "audit_run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$"
+    }
+  }
+}
+```
+
+**Cross-field invariants (enforced in `check_claim_audit_consistency.py`, NOT in schema):**
+
+- INV-1: `judgment=SUPPORTED` → `defect_stage=null` AND `violated_constraint_id=null`
+- INV-2: `judgment=UNSUPPORTED` → `defect_stage ∈ {source_description, citation_anchor, synthesis_overclaim, claim_intent}` AND `defect_stage ≠ null`
+- INV-3: `judgment=AMBIGUOUS` → `defect_stage ∈ {source_description, citation_anchor, synthesis_overclaim} ∪ {null}` (claim_intent excluded — drift is unambiguous when manifest exists)
+- INV-4: `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive` → `defect_stage=not_applicable`
+- INV-5: `judgment=RETRIEVAL_FAILED` AND `audit_status=completed` → `defect_stage=retrieval_existence` (reference genuinely does not exist, distinct from tool failure)
+- INV-6: `anchor_kind=none` → `judgment=RETRIEVAL_FAILED`, `audit_status=inconclusive`, `defect_stage=not_applicable`, rationale begins with `v3.7.3 R-L3-1-A violation` (per D1)
+- INV-7: `defect_stage=negative_constraint_violation` → `violated_constraint_id ≠ null`
+- INV-8: `defect_stage=negative_constraint_violation` ↔ `judgment=UNSUPPORTED` (negative-constraint violations are always classified UNSUPPORTED, never AMBIGUOUS — explicit author rules are binary)
+- INV-9: `upstream_dispute ≠ null` → `defect_stage ≠ null` AND `defect_stage ≠ not_applicable` (disputes are only meaningful for substantive defect classifications)
+- INV-10: `ref_retrieval_method=failed` → `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive`
+
+### 3.2 `claim_intent_manifest.schema.json`
+
+One entry per generating-agent invocation. Emitted by `synthesis_agent` / `draft_writer_agent` / `report_compiler_agent` after paper-visible context loads but before prose generation.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/claim_intent_manifest.schema.json",
+  "title": "Material Passport Claim Intent Manifest Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "emitted_by",
+    "emitted_at",
+    "claims",
+    "manifest_negative_constraints"
+  ],
+  "properties": {
+    "manifest_version": { "const": "1.0" },
+    "emitted_by": { "enum": ["synthesis_agent", "draft_writer_agent", "report_compiler_agent"] },
+    "emitted_at": { "type": "string", "format": "date-time" },
+    "session_id": { "type": "string" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "claim_text", "intended_evidence_kind", "planned_refs"],
+        "properties": {
+          "claim_id": { "type": "string", "pattern": "^C-[0-9]{3,}$" },
+          "claim_text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "intended_evidence_kind": { "enum": ["empirical", "theoretical", "definitional", "normative"] },
+          "planned_refs": { "type": "array", "items": { "type": "string" }, "minItems": 0 },
+          "negative_constraints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["constraint_id", "rule"],
+              "properties": {
+                "constraint_id": { "type": "string", "pattern": "^NC-C[0-9]{3,}-[0-9]+$" },
+                "rule": { "type": "string", "minLength": 1, "maxLength": 500 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "manifest_negative_constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["constraint_id", "rule"],
+        "properties": {
+          "constraint_id": { "type": "string", "pattern": "^MNC-[0-9]+$" },
+          "rule": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      }
+    }
+  }
+}
+```
+
+**Cross-field invariants** (lint-enforced):
+- M-INV-1: `claim_id` uniqueness across all `claims[].claim_id` in one manifest
+- M-INV-2: `constraint_id` of `NC-C{n}-{m}` form MUST appear under `claims[]` entry where `claim_id=C-{n}` (i.e., claim-level constraint scoping)
+- M-INV-3: `MNC-{m}` constraints in `manifest_negative_constraints` are globally applied; cannot be overridden by claim-level NC (claim-level can ADD, never DROP global)
+
+## 4. Agent prompt structure: `claim_ref_alignment_audit_agent.md`
+
+Sections (in order):
+
+1. **Purpose & v3.8 placement** — single paragraph naming L3 audit role, dependency on v3.7.3 anchor input, audit-not-arbitration boundary.
+2. **PATTERN PROTECTION (v3.6.7)** — byte-equivalent block to existing audited-agents pattern protection convention. Prevents cascading edits.
+3. **Input contract** — exact passport fields read; `claim_audit_config` keys consumed (max_claims_per_paper, judge_model, gold_set_path, cache_dir).
+4. **Audit pipeline (6 steps)**:
+   - Step 1 — Anchor presence check (D1, INV-6 firm rule).
+   - Step 2 — Cache lookup keyed by `(claim_text_hash, ref_slug, anchor_kind, anchor_value_hash, judge_model)`.
+   - Step 3 — Reference retrieval (`api` → `manual_pdf` → `failed`). LOW-WARN on `failed` (D2).
+   - Step 4 — Passage location using anchor_value (quote = exact match; page/section/paragraph = scoped retrieval).
+   - Step 5 — Judge invocation with prompt template. Output one of SUPPORTED/UNSUPPORTED/AMBIGUOUS, with rationale.
+   - Step 6 — Defect_stage classification (8-category matrix + precedence rules, restated from issue body).
+5. **Manifest cross-reference (D6)** — three-set diff: `intended_claims` ∩ `emitted_claims` ∩ `supported_claims`. Drift/dropped/violation classification. Advisory (D4-a).
+6. **Uncited-assertion detector (D4-c)** — 3-condition token rule. Pseudocode included.
+7. **Output emission** — one `claim_audit_result` entry per audited citation, plus aggregate counts emitted in pipeline-orchestrator Stage 6 reflection report.
+8. **Calibration mode** — opt-in flow per `claim_audit_calibration_protocol.md`. Gold-set ingestion → judge run → FNR/FPR computation → user-facing report.
+9. **Error handling** — judge timeout / API failure / cache corruption. Fall back to RETRIEVAL_FAILED with rationale.
+10. **Cross-references** — Zhao 2026 §1, RubricEM Borrows 1+2, v3.7.3 anchor input contract, v3.6.7 PATTERN PROTECTION convention.
+
+**Judge prompt template** (canonical form, embedded in agent prompt):
+
+> Given this claim from a paper draft and this excerpt from the cited reference, does the reference support the claim?
+>
+> CLAIM: {claim_text}
+> CITED REFERENCE EXCERPT: {retrieved_excerpt}
+> ANCHOR KIND: {anchor_kind}
+> ANCHOR VALUE: {anchor_value}
+>
+> Output ONE of:
+> - SUPPORTED — the reference directly supports the claim
+> - UNSUPPORTED — the reference does NOT support the claim (the cited source says something different or contradictory)
+> - AMBIGUOUS — the reference is related but does not clearly support or contradict the claim
+>
+> Then output ONE SENTENCE rationale.
+>
+> Format: `JUDGMENT: <one-of>\nRATIONALE: <one sentence>`
+
+**Negative-constraint judge prompt template** (extended form):
+
+> Given this claim and the author's declared negative constraint, does the claim violate the constraint?
+>
+> CLAIM: {claim_text}
+> CONSTRAINT: {constraint_rule}
+>
+> Output ONE of: VIOLATED, NOT_VIOLATED
+> Then output ONE SENTENCE rationale.
+
+VIOLATED → `judgment=UNSUPPORTED, defect_stage=negative_constraint_violation, violated_constraint_id={constraint_id}` per INV-8.
+
+## 5. Orchestrator integration: `pipeline_orchestrator_agent.md` §3.6
+
+New section "Claim-Faithfulness Audit Gate (v3.8)". Mirrors §3.5 Audit Artifact Gate structure but for claim-level audit.
+
+**Trigger boundary:** Stage 5→Stage 6 transition. AFTER finalizer pass (which already resolves anchor-presence per v3.7.3 §3.1), BEFORE terminal gate emission. The audit agent receives:
+- All in-text citations with their `<!--anchor:...-->` markers
+- The `claim_intent_manifests[]` aggregate from the writing-stage agents
+- The `literature_corpus[]` aggregate (for retrieval)
+
+**Outputs feeding finalizer:**
+- `claim_audit_results[]` array (one per audited citation)
+- Stage 6 AI Self-Reflection Report appendix: per-stage `defect_stage` histogram (renders when ≥ 5 completed entries)
+
+**Finalizer matrix extension (6-cell):**
+
+Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new finalizer pass that overlays per-citation audit annotations from `claim_audit_results[]`:
+
+| `judgment` | `defect_stage` | Annotation | Severity Tier | Gate behavior |
+|---|---|---|---|---|
+| SUPPORTED | null | (no annotation) | — | pass |
+| AMBIGUOUS | (any) | `[CLAIM-AUDIT-AMBIGUOUS]` | LOW-WARN advisory | pass |
+| UNSUPPORTED | source_description / citation_anchor / synthesis_overclaim / claim_intent | `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` | HIGH-WARN | gate-refuse |
+| UNSUPPORTED | negative_constraint_violation | `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION ({violated_constraint_id})]` | HIGH-WARN | gate-refuse |
+| RETRIEVAL_FAILED | retrieval_existence | `[HIGH-WARN-FABRICATED-REFERENCE]` | HIGH-WARN | gate-refuse (escapes v3.7.4 Vector 3 surfaces here) |
+| RETRIEVAL_FAILED | not_applicable | `[CLAIM-AUDIT-UNVERIFIED — REFERENCE FULL-TEXT NOT RETRIEVABLE]` | LOW-WARN advisory | pass |
+
+**Uncited-assertion** results emit at LOW-WARN tier with annotation `[UNCITED-ASSERTION]` next to the offending sentence. Always advisory; gate-refuse reserved for citation-level defects.
+
+**`/ars-mark-read` behavior:** Does NOT acknowledge HIGH-WARN-CLAIM-NOT-SUPPORTED or HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION. Remediation: user fixes the prose (re-cites, drops claim, revises). Mirrors v3.7.3 R-L3-1-A asymmetry (locator is structural, not evidence-state).
+
+**Mode flag:** Audit agent dispatch is **opt-in** per pipeline run, configurable in `academic-pipeline/SKILL.md` mode flags. Default OFF for v3.8.0; ramp-on plan deferred to post-calibration calibration evidence.
+
+## 6. Lint: `scripts/check_claim_audit_consistency.py`
+
+Coverage:
+
+1. **Schema validation** — `claim_audit_result.schema.json` valid JSON Schema; sample passports validate.
+2. **Cross-field invariants INV-1 through INV-10** — one test case per invariant, each with positive + negative fixture.
+3. **Manifest invariants M-INV-1 through M-INV-3**.
+4. **Precedence rules** — negative_constraint_violation > claim_intent > synthesis_overclaim (per issue body precedence rule 1); citation_anchor distinct from source_description (rule 2); uncited_assertion applies before source-level (rule 3).
+5. **Acceptance check** — for any passport with ≥ 1 completed non-SUPPORTED audit result, ALL must emit a `defect_stage` ≠ null AND ≠ not_applicable (100% emission per #103 acceptance criterion).
+6. **Coverage check** — sample passport with full 6-cell matrix coverage; each annotation tier exercised at least once.
+
+Lint exit codes: 0 (pass), 1 (one or more invariant violations; prints which + offending entry).
+
+CI: invoked from `.github/workflows/spec-consistency.yml` (or matching workflow). Failure blocks merge.
+
+## 7. TDD test plan
+
+Tests written BEFORE production code per `superpowers:test-driven-development`. Order:
+
+### 7.1 Schema validation tests (`tests/test_claim_audit_schema.py`)
+
+- T-S1: Valid minimal entry validates (SUPPORTED, all required fields)
+- T-S2: Each invariant INV-1..INV-10 covered by paired positive/negative fixture
+- T-S3: `anchor_kind=none` entry that doesn't follow INV-6 fails lint (rationale missing prefix)
+- T-S4: Manifest M-INV-1 duplicate claim_id rejected
+- T-S5: Manifest M-INV-2 dangling NC-C{n}-{m} (no parent claim) rejected
+- T-S6: Manifest M-INV-3 claim-level constraint attempting to override MNC rejected
+
+### 7.2 Audit-pipeline unit tests (`tests/test_claim_audit_pipeline.py`)
+
+- T-P1: Step 1 — anchor=none input emits RETRIEVAL_FAILED/inconclusive/not_applicable with INV-6 rationale prefix, skips judge
+- T-P2: Step 2 — cache hit returns previously-judged result without invoking judge
+- T-P3: Step 2 — cache miss invokes judge then writes back
+- T-P4: Step 3 — `ref_retrieval_method=failed` → LOW-WARN advisory path (D2)
+- T-P5: Step 3 — `ref_retrieval_method=manual_pdf` accepted
+- T-P6: Step 5 — judge VIOLATED → UNSUPPORTED + defect_stage=negative_constraint_violation + violated_constraint_id populated
+- T-P7: Step 6 — 8 defect_stage classifications each have a fixture mapping (synthetic claim → expected defect_stage)
+- T-P8: Precedence rule 1 — claim that drifts AND violates a constraint → defect_stage=negative_constraint_violation (not claim_intent)
+- T-P9: Precedence rule 2 — citation_anchor distinct from source_description (anchor wrong, source description correct)
+- T-P10: Precedence rule 3 — uncited claim that also drifts → defect_stage=uncited_assertion (source-level not evaluated)
+
+### 7.3 Manifest tests (`tests/test_claim_intent_manifest.py`)
+
+- T-M1: Three-set diff — emitted ∩ intended ∩ supported, drift detection
+- T-M2: Missing manifest → MANIFEST-MISSING advisory + claim-extraction-from-draft fallback, all defect_stages still emit
+- T-M3: Constraint inheritance — MNC applies even when not redeclared at claim level
+
+### 7.4 Uncited-assertion tests (`tests/test_uncited_assertion.py`)
+
+- T-U1: Sentence with quantifier + no ref → uncited_assertion candidate
+- T-U2: Definition sentence (contains "refers to") → NOT candidate
+- T-U3: Methods boilerplate list → NOT candidate
+- T-U4: Empirical claim ("showed X%") without ref → candidate
+- T-U5: Claim in manifest but no ref → still candidate (D4-c last paragraph)
+
+### 7.5 Finalizer integration tests (`tests/test_claim_audit_finalizer.py`)
+
+- T-F1: 6-cell matrix coverage — each (judgment, defect_stage) pair maps to correct annotation
+- T-F2: HIGH-WARN-CLAIM-NOT-SUPPORTED triggers terminal gate refuse
+- T-F3: `/ars-mark-read` does NOT clear HIGH-WARN-CLAIM-NOT-SUPPORTED (asymmetry preservation)
+- T-F4: LOW-WARN-CLAIM-AUDIT-UNVERIFIED passes gate
+- T-F5: Stage 6 reflection report renders histogram when ≥ 5 completed entries
+
+### 7.6 End-to-end test (`tests/test_e2e_claim_audit.py`)
+
+Synthetic 5-citation paper:
+- Citation 1: real, SUPPORTED → no annotation
+- Citation 2: real, AMBIGUOUS → LOW-WARN
+- Citation 3: real but misused (source says inverse) → HIGH-WARN-CLAIM-NOT-SUPPORTED, gate refuses
+- Citation 4: paywalled, retrieval fails → LOW-WARN-UNVERIFIED, passes gate
+- Citation 5: violates declared negative constraint → HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION, gate refuses
+
+Test asserts: gate refuses output; only citations 3+5 are blockers; correcting them clears refusal.
+
+### 7.7 Calibration mode test (`tests/test_claim_audit_calibration.py`)
+
+Synthetic 20-tuple gold set covering SUPPORTED/UNSUPPORTED/AMBIGUOUS/violated-constraint judgments. Test asserts FNR < 0.15 and FPR < 0.10 thresholds are reported (not enforced; reporting is the unit of acceptance).
+
+### 7.8 Regression test
+
+Run existing 967+ test baseline (1107 unittest + 201 pytest adapters per session handoff). Zero regression required.
+
+## 8. Cascade impact assessment
+
+Files that may need touch:
+
+| File | Why | Risk |
+|---|---|---|
+| `academic-pipeline/agents/pipeline_orchestrator_agent.md` | New §3.6 dispatch wiring | HIGH — already 712 lines; PATTERN PROTECTION block must stay byte-equivalent |
+| `academic-paper/agents/formatter_agent.md` | Gate matrix extended to 6-cell + HIGH-WARN classes | MED — 785 lines; v3.7.3 anchor logic preserved |
+| `deep-research/agents/synthesis_agent.md` | New "Claim Intent Manifest Emission" sibling heading | MED — 220 lines; v3.7.3 Three-Layer heading stays |
+| `deep-research/agents/report_compiler_agent.md` | Same | MED |
+| `academic-paper/agents/draft_writer_agent.md` | Same | MED — 520 lines |
+| `shared/contracts/passport/audit_artifact_entry.schema.json` | **NO TOUCH** (D5) | — |
+| `shared/contracts/material_passport*` | No root schema exists; aggregate referenced through orchestrator | — |
+| `shared/sprint_contract.schema.json` (Schema 13.1) | **NO TOUCH** (D6 zero-touch) | — |
+| `scripts/check_audit_artifact_consistency.py` | **NO TOUCH** (D5 — separate lint) | — |
+| `README.md` + `README.zh-TW.md` | v3.8 anchor + Zhao 2026 + RubricEM cite | LOW |
+| `CHANGELOG.md` | v3.8 entry | LOW |
+| `MODE_REGISTRY.md` | New mode flag for opt-in audit | LOW |
+
+Boundary preservation lints (run as part of PR checks):
+- `scripts/check_v3_6_7_pattern_protection.py` — verify PATTERN PROTECTION blocks unchanged
+- `git diff main..HEAD -- shared/sprint_contract.schema.json` MUST be empty (v3.6.6 zero-touch)
+- `git diff main..HEAD -- shared/contracts/passport/audit_artifact_entry.schema.json` MUST be empty (D5)
+
+## 9. Acceptance criteria
+
+Issue body acceptance + decision-doc-derived additions:
+
+- [ ] Agent prompt passes ≥ 5 codex review rounds → 0 P1/P2 (new tool + IO, per harness convergence pattern)
+- [ ] Schema + integration passes ≥ 1 gemini cross-model review round (docs-heavy fraction; see Codex 0.130 docs-review broken caveat — verify before invoking)
+- [ ] Calibration mode tested with synthetic gold set (≥ 20 tuples) achieving FNR < 0.15 and FPR < 0.10
+- [ ] End-to-end test (§7.6 above) passes
+- [ ] Zero regression on existing 1107+ unittest + 201 pytest baseline
+- [ ] All 10 cross-field invariants (INV-1..INV-10) + 3 manifest invariants (M-INV-1..M-INV-3) covered by paired positive/negative fixture
+- [ ] `claim_intent_manifest` absent → `MANIFEST-MISSING` advisory + fallback flow exercised in test
+- [ ] `audit_status=inconclusive` paths emit `defect_stage=not_applicable` (NOT `null`) — INV-4
+- [ ] 100% of completed non-SUPPORTED findings emit a `defect_stage` (stage accuracy deferred to #89)
+- [ ] Stage 6 reflection report renders per-stage histogram when ≥ 5 completed audit results
+- [ ] v3.6.6 Schema 13.1 zero-touch promise verified by git diff lint
+- [ ] D5 `audit_artifact_entry.schema.json` zero-touch promise verified by git diff lint
+- [ ] Precedence rules (3 rules per issue body) covered by test fixtures
+- [ ] Public-repo boundary clean per personal-boundary deny list (run boundary scan before push)
+
+## 10. Risks and open questions
+
+The decision doc closed 8 OQs. Spec-level OQs (resolve during codex rounds, NOT before TDD):
+
+- **S-OQ1** (codex round-1 candidate): cache eviction policy beyond manual rm. Tentative: rely on `judge_model` in cache key — model bumps naturally invalidate; users prune `${ARS_CACHE_DIR}/claim_audit_v1/` as needed.
+- **S-OQ2** (codex round-1): retrieval API selection order (Semantic Scholar vs Crossref vs OpenAlex) and fallback ladder. Tentative: SS → Crossref → OpenAlex → manual_pdf, matching v3.6.x convention.
+- **S-OQ3** (codex round-2): `claim_id` allocation — sequential per manifest or session-scoped UUID-prefix? Tentative: sequential per manifest (`C-001`, `C-002`...), uniqueness scope = single manifest entry. Cross-manifest collision tolerated (different agent invocations).
+- **S-OQ4** (codex round-2): `audit_run_id` collision handling when two audits run within same second. Tentative: 4-hex random suffix (already in schema pattern) gives ~65k uniqueness per second; assume sufficient for ARS scale.
+- **S-OQ5** (codex round-2+): manifest emission timing — exact lifecycle hook in `synthesis_agent` and `draft_writer_agent`. Tentative: emit AFTER `literature_corpus[]` consumption, BEFORE first prose block. Confirm during prompt-design rounds.
+
+## 11. Convergence cost projection
+
+Per session handoff harness data:
+- doc-only PR = 1 round
+- plumbing PR = 3-4 rounds
+- new tool + IO PR = **5 rounds**
+- scope-frozen follow-up = 3 rounds
+
+#103 is **new tool + IO + new agent + 2 new schemas + new lint + 6 prompt edits**, larger than #105 (which was "new tool + IO migration"). Expected codex rounds: **5-7**.
+
+Strategy: split into two PRs if Round-5 still has open P1/P2:
+- PR-A: schemas + lint + agent prompt + tests (no orchestrator/formatter/synthesis_agent touch yet)
+- PR-B: orchestrator §3.6 + finalizer 6-cell + downstream agent integration
+
+This mirrors #105 → #115 split pattern (production module first, integration follow-up).
+
+## 12. Memory anchors
+
+After ship, update:
+
+- `~/.claude/projects/-Users-imbad/memory/project_ars_106_ai_disclosure_discovery.md` — lesson #22 (8-OQ compressed decision-doc pattern when issue body already has frozen design)
+- `~/.claude/projects/-Users-imbad/memory/feedback_codex_round_convergence_by_scope.md` — new memory if not exists, record "new tool + IO + new agent" data point
+- Consider new memory `feedback_audit_results_vs_audit_artifact_semantic_split.md` documenting D5 boundary
+
+## 13. Implementation order (TDD-driven)
+
+1. Write schema files (3.1 + 3.2) — these are referenced by all later tests
+2. Write `tests/test_claim_audit_schema.py` — failing because schema not yet validated by lint
+3. Write `scripts/check_claim_audit_consistency.py` — minimal code to pass schema tests
+4. Write `tests/test_claim_audit_pipeline.py` (T-P1..T-P10) — failing, no agent yet
+5. Write `claim_ref_alignment_audit_agent.md` Steps 1-6 — minimal text to pass pipeline tests via fixture-driven dispatch
+6. Write `tests/test_uncited_assertion.py` + token-rule detector module
+7. Write `tests/test_claim_intent_manifest.py` + emission helpers
+8. Write `tests/test_claim_audit_finalizer.py` + orchestrator §3.6 + formatter 6-cell extension
+9. Write `tests/test_e2e_claim_audit.py` + synthetic 5-citation paper fixture
+10. Write `tests/test_claim_audit_calibration.py` + calibration protocol doc
+11. Regression run on full baseline; zero failures
+12. `/simplify` parallel (reuse + quality + efficiency); fix findings
+13. `/codex review --base=main`; iterate to 0 P1/P2
+14. gemini cross-model round (verify Codex 0.130 docs-heavy caveat first per `feedback_codex_0_130_docs_review_broken.md`)
+15. Public-repo boundary scan
+16. Squash merge
+
+Steps 4-5 are the highest-risk: agent prompt + pipeline are the load-bearing intersection. Plan for 2-3 codex rounds focused there.
