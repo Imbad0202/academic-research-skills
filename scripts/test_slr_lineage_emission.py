@@ -191,5 +191,40 @@ class EndToEndPipelineHandoffTest(unittest.TestCase):
             referee.decide_disclosure_output(ri)
 
 
+# ============================================================================
+# §4 Monotonic OR — preserve already-persisted slr_lineage across resume
+# ============================================================================
+class EmitMonotonicOrTest(unittest.TestCase):
+    """Codex round-1 [P2]: a `resume_from_passport=<hash>` session has an
+    empty `state_tracker.stages` (reconstructed from ledger only); recomputing
+    `slr_lineage` from stages alone would overwrite a persisted `true` and
+    defeat #111's auto-dispatch goal. The OR wrapper preserves any already-
+    persisted lineage signal."""
+
+    def test_resume_preserves_true_when_stages_empty(self) -> None:
+        # Empty stages (fresh resume), but passport already carries the SLR signal
+        self.assertTrue(slr_lineage.emit({}, incoming_slr_lineage=True))
+
+    def test_in_session_new_slr_flips_false_to_true(self) -> None:
+        stages = {"1": {"skill": "deep-research", "mode": "systematic-review"}}
+        self.assertTrue(slr_lineage.emit(stages, incoming_slr_lineage=False))
+
+    def test_no_evidence_anywhere_returns_false(self) -> None:
+        # Empty stages + no incoming signal = honest false
+        self.assertFalse(slr_lineage.emit({}, incoming_slr_lineage=False))
+
+    def test_none_incoming_treated_as_false(self) -> None:
+        """Pre-#111 passport (incoming field absent / None) + non-SLR stages
+        = false, identical to pre-#111 behavior."""
+        stages = {"1": {"skill": "deep-research", "mode": "full"}}
+        self.assertFalse(slr_lineage.emit(stages, incoming_slr_lineage=None))
+
+    def test_default_incoming_is_none_safe(self) -> None:
+        """Default arg ergonomics: omitting incoming_slr_lineage should not
+        crash and should treat it as no-prior-signal."""
+        stages = {"1": {"skill": "deep-research", "mode": "systematic-review"}}
+        self.assertTrue(slr_lineage.emit(stages))
+
+
 if __name__ == "__main__":
     unittest.main()

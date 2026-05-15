@@ -14,8 +14,8 @@ Closes the pipeline-plumbing gap surfaced by #108: `disclosure --policy-anchor=p
 
 **New files added:**
 
-- `scripts/slr_lineage.py` — pure resolver function `resolve_from_stages(stages)` over a `state_tracker.stages` snapshot. Returns `True` iff any stage was produced by `deep-research` in systematic-review mode. Bound to the deep-research producer specifically (a non-deep-research stage carrying mode='systematic-review' does NOT trigger SLR lineage).
-- `scripts/test_slr_lineage_emission.py` — 12 conformance tests covering resolver semantics (7 cases: positive / non-SLR / mid-entry / empty / alias `slr` / non-deep-research / missing-mode), renderer integration (3 cases: pipeline-emitted dispatches without `mode_param` / non-SLR still blocks / pre-#111 cold-start fallback preserved), and end-to-end pipeline handoff (2 cases).
+- `scripts/slr_lineage.py` — two pure functions: (a) `resolve_from_stages(stages)` returns `True` iff any stage was produced by `deep-research` in systematic-review mode (bound to the deep-research producer specifically — a non-deep-research stage carrying mode='systematic-review' does NOT trigger SLR lineage); (b) `emit(stages, incoming_slr_lineage)` is the monotonic-OR wrapper the orchestrator calls at every handoff. The OR preserves any signal already persisted on the incoming passport (load-bearing for `resume_from_passport=<hash>` sessions whose `state_tracker.stages` is empty — codex round-1 [P2] closure).
+- `scripts/test_slr_lineage_emission.py` — 17 conformance tests: resolver semantics (7 cases: positive / non-SLR / mid-entry / empty / alias `slr` / non-deep-research / missing-mode), renderer integration (3 cases: pipeline-emitted dispatches without `mode_param` / non-SLR still blocks / pre-#111 cold-start fallback preserved), end-to-end pipeline handoff (2 cases), and monotonic-OR emit semantics (5 cases: resume preserves true / in-session false-to-true / no-evidence false / None incoming / default arg ergonomics).
 
 **Modified files:**
 
@@ -34,7 +34,7 @@ Closes the pipeline-plumbing gap surfaced by #108: `disclosure --policy-anchor=p
 
 **Backward compat:** passports written by pre-v3.7.4 runs lack the `slr_lineage` field; renderer treats absence as `false` (cold-start path requiring explicit `mode_param='systematic-review'`). Identical to pre-v3.7.4 behavior.
 
-**Regression status:** 1053-baseline frozen (no #108 contract drift); +12 new tests cover this issue's acceptance criteria #1-#3.
+**Regression status:** 1053-baseline frozen (no #108 contract drift); +17 new tests cover this issue's acceptance criteria #1-#3 plus codex round-1 [P2] (monotonic-OR emit across resume).
 
 ### #108 — AI disclosure policy-anchor renderer (2026-05-14, audit-trail-shipped)
 

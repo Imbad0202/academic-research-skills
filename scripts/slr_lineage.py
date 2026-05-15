@@ -30,3 +30,19 @@ def resolve_from_stages(stages: Mapping[str, Mapping]) -> bool:
         and (stage.get("mode") in SLR_MODES)
         for stage in stages.values()
     )
+
+
+def emit(
+    stages: Mapping[str, Mapping],
+    incoming_slr_lineage: bool | None = None,
+) -> bool:
+    """Compute the outgoing passport's `slr_lineage` via monotonic OR.
+
+    Resume-from-passport / mid-entry passports may already carry
+    `slr_lineage: true` even when the live `state_tracker.stages` is
+    empty (reconstructed from ledger only). Recomputing from stages
+    alone would overwrite that signal and defeat the auto-dispatch
+    goal. The OR preserves any prior signal; a true never flips back
+    to false.
+    """
+    return bool(incoming_slr_lineage) or resolve_from_stages(stages)

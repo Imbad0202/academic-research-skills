@@ -42,9 +42,16 @@ Backward compat: passports written by pre-#111 runs lack the field; renderer def
 
 ### 4.2 Emission point
 
-`pipeline_orchestrator_agent.md` emits `slr_lineage=true` on the `state_tracker.stages["1"].mode == "systematic-review"` AND `state_tracker.stages["2"].skill == "academic-paper" AND stages["2"].mode in {"full", ...}` transition.
+`pipeline_orchestrator_agent.md` emits `slr_lineage` at the Stage 1 → Stage 2 handoff (the only transition where new deep-research lineage can enter the run). After Stage 1/2/3 schema validation, the orchestrator computes:
 
-Concretely: in the existing handoff schema validation step (Stage 1 → Stage 2, §4 Transition Management), after schema 1/2/3 validation, the orchestrator computes `slr_lineage = any(stages[i].skill == "deep-research" and stages[i].mode == "systematic-review" for i in stages.keys())` and writes it to the outgoing passport before dispatch.
+```
+slr_lineage_out = bool(incoming_passport.slr_lineage) or any(
+    stage.skill == "deep-research" and stage.mode in {"systematic-review", "slr"}
+    for stage in state_tracker.stages.values()
+)
+```
+
+The OR with `incoming_passport.slr_lineage` is **load-bearing** (codex round-1 [P2] closure): a `resume_from_passport=<hash>` session has an empty `state_tracker.stages` (reconstructed from ledger only); recomputing from stages alone would overwrite a persisted `true` and defeat #111's auto-dispatch goal. A monotonic flag never flips back to `false`. Reference helper: `scripts/slr_lineage.py` `emit(stages, incoming_slr_lineage)`.
 
 `origin_mode` on each artifact's passport remains as today (records the *directly-producing* skill's mode). `slr_lineage` is run-level provenance, not artifact-level, so it sits at passport top-level alongside `origin_skill` / `version_label`.
 
