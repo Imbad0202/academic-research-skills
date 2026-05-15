@@ -24,7 +24,9 @@ on:
       - 'deep-research/agents/bibliography_agent.md'
 
 concurrency:
-  group: pytest-${{ github.ref }}
+  # Suffix by event_name so push (branches: [main]) and pull_request
+  # events don't fight over the same group on the rare case both fire.
+  group: pytest-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

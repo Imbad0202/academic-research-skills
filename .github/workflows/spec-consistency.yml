@@ -5,7 +5,12 @@ on:
   pull_request:
 
 concurrency:
-  group: spec-consistency-${{ github.ref }}
+  # Suffix by event_name so push and pull_request events on the same ref
+  # don't fight over the same group. Without the suffix, GHA cancels one
+  # of the two — usually leaving the cancelled run in a `failure` / stuck
+  # `queued` state that triggers GitHub failure-notification emails to
+  # subscribers even though the latest push event run actually succeeded.
+  group: spec-consistency-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
