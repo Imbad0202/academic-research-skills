@@ -14,11 +14,12 @@ This spec implements the eight decisions in the companion decision doc. Read the
 Numbered list aligned to the implementation surfaces in #103 issue body + decision-doc adjustments.
 
 1. **`academic-pipeline/agents/claim_ref_alignment_audit_agent.md`** — new agent prompt. Estimated 350-500 lines.
-2. **`shared/contracts/passport/claim_audit_result.schema.json`** — per-claim audit result entry schema.
+2. **`shared/contracts/passport/claim_audit_result.schema.json`** — per-claim audit result entry schema (judge-evaluated citation-bound findings).
 3. **`shared/contracts/passport/claim_intent_manifest.schema.json`** — per-agent-invocation manifest entry schema.
 3a. **`shared/contracts/passport/uncited_assertion.schema.json`** — per uncited-sentence finding entry schema (separate from `claim_audit_result` because there's no `ref_slug` to bind).
+3b. **`shared/contracts/passport/claim_drift.schema.json`** — per claim-intent-drift finding entry schema (separate from `claim_audit_result` because drift is detected by manifest set-diff, not by judge invocation; see §3.4 rationale).
 4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 9-row + advisory tier.
-5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with FOUR new HIGH-WARN refusal classes mirroring §5 finalizer matrix: HIGH-WARN-CLAIM-NOT-SUPPORTED, HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION, HIGH-WARN-FABRICATED-REFERENCE, HIGH-WARN-CLAIM-AUDIT-ANCHORLESS. The formatter's existing v3.7.1/v3.7.3 refusal rules remain unchanged; new classes append to the existing REFUSE list. §5 matrix is the source of truth — any new HIGH-WARN class added to the matrix in future revisions MUST be mirrored here, enforced by a §6 lint rule.
+5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with FOUR new HIGH-WARN refusal classes mirroring §5 finalizer 9-row matrix: HIGH-WARN-CLAIM-NOT-SUPPORTED, HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION, HIGH-WARN-FABRICATED-REFERENCE, HIGH-WARN-CLAIM-AUDIT-ANCHORLESS. The formatter's existing v3.7.1/v3.7.3 refusal rules remain unchanged; new classes append to the existing REFUSE list. §5 matrix is the source of truth — any new HIGH-WARN class added to the matrix in future revisions MUST be mirrored here, enforced by a §6 lint rule.
 6. **`academic-paper/agents/draft_writer_agent.md`** + **`deep-research/agents/synthesis_agent.md`** + **`deep-research/agents/report_compiler_agent.md`** — new "Claim Intent Manifest Emission (v3.8)" sibling heading following the existing v3.7.3 "Three-Layer Citation Emission" heading. PATTERN PROTECTION (v3.6.7) blocks stay byte-equivalent.
 7. **`academic-pipeline/references/claim_audit_calibration_protocol.md`** — new file (modeled on `shared/contracts/reviewer/` calibration convention).
 8. **`scripts/check_claim_audit_consistency.py`** — new lint enforcing per-claim invariants (anchor presence, defect_stage presence, precedence rules, audit_status/defect_stage coherence).
@@ -81,12 +82,11 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
     "judgment": { "enum": ["SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "RETRIEVAL_FAILED"] },
     "audit_status": { "enum": ["completed", "inconclusive"] },
     "defect_stage": {
-      "comment": "uncited_assertion is intentionally NOT in this enum — uncited findings have no ref_slug and use the separate §3.3 uncited_assertion.schema.json. 9 values total.",
+      "comment": "Three categories of finding are intentionally NOT defect_stages of claim_audit_result and use their own §3.3/§3.4 entry-type schemas: (a) uncited_assertion findings — no ref_slug to evaluate, see uncited_assertion.schema.json; (b) claim_intent drift — detected by manifest set-diff not by judge, see claim_drift.schema.json (§3.4) — claim_intent drift never produces a claim_audit_result row, because the judge is never invoked for these (the only signal is intended ≠ emitted manifest-set difference). 8 values total.",
       "enum": [
         "retrieval_existence",
         "metadata",
         "source_description",
-        "claim_intent",
         "citation_anchor",
         "synthesis_overclaim",
         "negative_constraint_violation",
@@ -133,7 +133,6 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
 | UNSUPPORTED | completed | metadata | reference exists but author/year/title wrong |
 | UNSUPPORTED | completed | citation_anchor | source correct, anchor points to wrong passage |
 | UNSUPPORTED | completed | synthesis_overclaim | source correct, draft over-strengthens claim |
-| UNSUPPORTED | completed | claim_intent | drift from `claim_intent_manifest`; severity tier handled by finalizer mapping (see §5) — schema admits both LOW-WARN-CLAIM-DRIFT and HIGH-WARN-CLAIM-NOT-SUPPORTED outcomes downstream |
 | UNSUPPORTED | completed | negative_constraint_violation | INV-8, requires `violated_constraint_id` |
 | RETRIEVAL_FAILED | completed | retrieval_existence | reference genuinely does not exist (fabricated) |
 | RETRIEVAL_FAILED | inconclusive | not_applicable | covers (a) anchor=none INV-6 and (b) paywalled INV-10 |
@@ -143,7 +142,7 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
 **Cross-field invariants:**
 
 - INV-1: `judgment=SUPPORTED` → `defect_stage=null` AND `violated_constraint_id=null` AND `audit_status=completed`
-- INV-2: `judgment=UNSUPPORTED` → `defect_stage` ∈ `{source_description, metadata, citation_anchor, synthesis_overclaim, claim_intent, negative_constraint_violation}` AND `defect_stage ≠ null` AND `audit_status=completed`
+- INV-2: `judgment=UNSUPPORTED` → `defect_stage` ∈ `{source_description, metadata, citation_anchor, synthesis_overclaim, negative_constraint_violation}` AND `defect_stage ≠ null` AND `audit_status=completed` (claim_intent intentionally absent — drift detection is set-diff over manifest, never a judge verdict; drift findings emit into `claim_drifts[]` per §3.4, not into `claim_audit_results[]`)
 - INV-3: `judgment=AMBIGUOUS` → `defect_stage` ∈ `{source_description, citation_anchor, synthesis_overclaim, null}` AND `audit_status=completed` (drift excluded — drift is unambiguous when manifest exists; metadata excluded — bibliographic correctness is binary; constraint violations excluded — INV-8 binary)
 - INV-4: `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive` → `defect_stage=not_applicable`
 - INV-5: `judgment=RETRIEVAL_FAILED` AND `audit_status=completed` → `defect_stage=retrieval_existence` (reference genuinely does not exist, distinct from tool failure)
@@ -155,7 +154,7 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
 - INV-11: `ref_retrieval_method=not_attempted` ↔ `anchor_kind=none` AND INV-6 holds (anchor=none skips retrieval)
 - INV-12: `ref_retrieval_method=not_found` ↔ `judgment=RETRIEVAL_FAILED` AND `audit_status=completed` AND `defect_stage=retrieval_existence` (fabricated reference path)
 - INV-13: `defect_stage=metadata` → `judgment=UNSUPPORTED` AND `audit_status=completed` AND `ref_retrieval_method` ∈ `{api, manual_pdf}` (retrieval succeeded but metadata mismatch identified during judging)
-- INV-14: `ref_retrieval_method=audit_tool_failure` ↔ `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive` AND `defect_stage=not_applicable` AND rationale begins with a fault-class tag in `{judge_timeout, judge_api_error, judge_parse_error, cache_corruption}` followed by a colon and free-form detail (audit-infrastructure failure distinct from retrieval failure; finalizer emits MED-WARN advisory; gate passes — retry-next-pass remediation)
+- INV-14: `ref_retrieval_method=audit_tool_failure` ↔ `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive` AND `defect_stage=not_applicable` AND rationale begins with a fault-class tag in `{judge_timeout, judge_api_error, judge_parse_error, cache_corruption}` followed by a colon and free-form detail (audit-infrastructure failure distinct from retrieval failure; finalizer emits `[CLAIM-AUDIT-TOOL-FAILURE]` MED-WARN advisory; gate passes — retry-next-pass remediation)
 - INV-15: For every `claim_audit_result` entry, `(scoped_manifest_id, claim_id)` MUST either (a) match some `claims[].claim_id` in the `claim_intent_manifests[]` entry whose `manifest_id == scoped_manifest_id`, or (b) carry the sentinel `scoped_manifest_id = M-0000-00-00T00:00:00Z-0000` indicating the MANIFEST-MISSING fallback path. Dangling references (scoped_manifest_id present but no matching manifest entry, with non-sentinel value) are a lint violation.
 
 ### 3.2 `claim_intent_manifest.schema.json`
@@ -286,6 +285,58 @@ The separate schema exists because `uncited_assertion` findings have no `ref_slu
 - U-INV-3: `rule_version` must equal `D4-c-v1` for v3.8.0 release; future rule revisions bump the const and require re-lint
 - U-INV-4: When `manifest_claim_id ≠ null`, the referenced `C-{n}` MUST exist in the active manifest (cross-array consistency check)
 
+### 3.4 `claim_drift.schema.json`
+
+Per claim-intent-drift finding. One entry per emitted claim that the manifest set-diff in §4 step 5 flagged as having drifted away from the `claim_intent_manifests[]` baseline. Aggregated as `claim_drifts[]` in the orchestrator passport-tracking, parallel to `claim_audit_results[]` and `uncited_assertions[]`.
+
+The separate schema exists because **claim-intent drift is detected by manifest set-diff, not by judge invocation** — no `judgment` / `audit_status` / `rationale` field would carry meaning for these entries, and the judge is never run for the drift detection path. Embedding drift findings as a `defect_stage` of `claim_audit_result` would force `judgment=UNSUPPORTED` to be recorded without the judge ever evaluating that claim, contaminating both the schema semantics (UNSUPPORTED means "judge said UNSUPPORTED") and the calibration FNR/FPR metrics (which are scoped to the judge's own SUPPORTED/UNSUPPORTED/AMBIGUOUS judgments).
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/claim_drift.schema.json",
+  "title": "Material Passport Claim Drift Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "finding_id",
+    "drift_kind",
+    "claim_text",
+    "detected_at",
+    "rule_version"
+  ],
+  "properties": {
+    "finding_id": { "type": "string", "pattern": "^CD-[0-9]{3,}$" },
+    "drift_kind": {
+      "enum": ["EMITTED_NOT_INTENDED", "INTENDED_NOT_EMITTED"],
+      "description": "EMITTED_NOT_INTENDED: an emitted claim that was not in the manifest (the drafted prose introduced a claim the writer did not pre-commit to). INTENDED_NOT_EMITTED: a manifest claim that did not appear in the emitted prose (the writer dropped a pre-committed claim during drafting). Both are advisory — gate-refuse is reserved for negative_constraint_violation."
+    },
+    "claim_text": { "type": "string", "minLength": 1, "maxLength": 2000, "description": "For EMITTED_NOT_INTENDED, the emitted sentence; for INTENDED_NOT_EMITTED, the manifest claim_text." },
+    "manifest_claim_id": {
+      "type": ["string", "null"],
+      "pattern": "^C-[0-9]{3,}$",
+      "description": "For INTENDED_NOT_EMITTED, the dropped manifest claim_id (REQUIRED, conditional on drift_kind — enforced by D-INV-2). For EMITTED_NOT_INTENDED, null (drifted claim has no manifest_claim_id since it was never in the manifest)."
+    },
+    "section_path": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "For EMITTED_NOT_INTENDED, hierarchical path from document root to the section containing the drifted sentence (mirrors uncited_assertion.section_path). Null for INTENDED_NOT_EMITTED (dropped claim has no draft location)."
+    },
+    "detected_at": { "type": "string", "format": "date-time" },
+    "rule_version": { "const": "D4-a-v1" },
+    "upstream_owner_agent": {
+      "enum": ["synthesis_agent", "draft_writer_agent", "report_compiler_agent", null]
+    }
+  }
+}
+```
+
+**Cross-field invariants** (lint-enforced in `check_claim_audit_consistency.py`):
+- D-INV-1: `finding_id` uniqueness across `claim_drifts[]` in one passport.
+- D-INV-2: `drift_kind=INTENDED_NOT_EMITTED` → `manifest_claim_id ≠ null` AND the referenced `C-{n}` MUST exist in some `claim_intent_manifests[].claims[].claim_id` (cross-array integrity). `drift_kind=EMITTED_NOT_INTENDED` → `manifest_claim_id = null` AND `section_path ≠ null`.
+- D-INV-3: `rule_version` must equal `D4-a-v1` for v3.8.0 release; future rule revisions bump the const and require re-lint.
+- D-INV-4: A given emitted sentence may produce AT MOST ONE finding across `uncited_assertions[]` and `claim_drifts[]` combined. When a sentence is both uncited AND drifted, the `uncited_assertions[]` entry takes precedence (per §5 finalizer precedence rule 3 restated from issue body) — no companion `claim_drifts[]` entry emits for the same sentence.
+
 ## 4. Agent prompt structure: `claim_ref_alignment_audit_agent.md`
 
 Sections (in order):
@@ -303,8 +354,8 @@ Sections (in order):
      On hit: load cached judge-verdict + source-bound block; assemble a complete `claim_audit_result` by joining with current-run identifiers (current `claim_id`, current `audit_run_id`, current `upstream_owner_agent`). On miss: proceed to Step 4-5; write only the judge-verdict + source-bound block into the cache; emit the joined entry. The filesystem KV is `${ARS_CACHE_DIR}/claim_audit_v1/<cache_key_sha256>.json`. Cache-side metadata (mtime) lives on the filesystem, never inside the JSON body.
    - Step 4 — Passage location using anchor_value (quote = exact match; page/section/paragraph = scoped retrieval).
    - Step 5 — Judge invocation with prompt template. Output one of SUPPORTED/UNSUPPORTED/AMBIGUOUS, with rationale.
-   - Step 6 — Defect_stage classification. Citation-bound results emit `claim_audit_result` entries with `defect_stage` ∈ 7 substantive categories `{retrieval_existence, metadata, source_description, claim_intent, citation_anchor, synthesis_overclaim, negative_constraint_violation}` plus 2 non-substantive `{not_applicable, null}`. Uncited-sentence findings emit `uncited_assertion` entries instead (no `defect_stage`; see §3.3 + §6 dedicated detector). Precedence rules from issue body restated in §5 finalizer integration.
-5. **Manifest cross-reference (D6)** — three-set diff: `intended_claims` ∩ `emitted_claims` ∩ `supported_claims`. Drift/dropped/violation classification. Advisory (D4-a).
+   - Step 6 — Defect_stage classification. Citation-bound results emit `claim_audit_result` entries with `defect_stage` ∈ 6 substantive categories `{retrieval_existence, metadata, source_description, citation_anchor, synthesis_overclaim, negative_constraint_violation}` plus 2 non-substantive `{not_applicable, null}`. Three out-of-band finding categories use separate entry types: (a) uncited-sentence findings emit `uncited_assertion` entries (§3.3); (b) claim-intent drift findings emit `claim_drift` entries (§3.4); (c) constraint violations from manifest-set evaluation still emit `claim_audit_result` because the judge runs on the constraint pair. Precedence rules from issue body restated in §5 finalizer integration.
+5. **Manifest cross-reference (D6)** — three-set diff of `intended_claims` (manifest) vs `emitted_claims` (extracted from draft) vs `supported_claims` (post-judge SUPPORTED subset). The diff produces three streams: (a) `EMITTED_NOT_INTENDED` — emitted claims missing from manifest → `claim_drifts[]` entry with `drift_kind=EMITTED_NOT_INTENDED`, advisory LOW-WARN at finalizer. (b) `INTENDED_NOT_EMITTED` — manifest claims dropped from draft → `claim_drifts[]` entry with `drift_kind=INTENDED_NOT_EMITTED`, advisory LOW-WARN. (c) Manifest negative-constraint matches — pass to judge via §4 negative-constraint prompt; VIOLATED outcomes emit `claim_audit_result` entries with `defect_stage=negative_constraint_violation` (judge IS invoked here, distinct from drift). Per D4-a, only (c) escalates to HIGH-WARN; (a) and (b) are pure manifest-set-diff signals never seen by the judge.
 6. **Uncited-assertion detector (D4-c)** — 3-condition token rule. Pseudocode included.
 7. **Output emission** — one `claim_audit_result` entry per audited citation, plus aggregate counts emitted in pipeline-orchestrator Stage 6 reflection report.
 8. **Calibration mode** — opt-in flow per `claim_audit_calibration_protocol.md`. Gold-set ingestion → judge run → FNR/FPR computation → user-facing report.
@@ -372,9 +423,8 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 |---|---|---|---|---|---|
 | SUPPORTED | `null` | (any) | (no annotation) | — | pass |
 | AMBIGUOUS | source_description / citation_anchor / synthesis_overclaim / null | (any) | `[CLAIM-AUDIT-AMBIGUOUS]` | LOW-WARN advisory | pass |
-| UNSUPPORTED | claim_intent | (any) | `[LOW-WARN-CLAIM-DRIFT]` | LOW-WARN advisory | pass (per D4-a — manifest drift is advisory, not blocking) |
 | UNSUPPORTED | source_description / metadata / citation_anchor / synthesis_overclaim | (any) | `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` | HIGH-WARN | gate-refuse |
-| UNSUPPORTED | negative_constraint_violation | (any) | `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION ({violated_constraint_id})]` | HIGH-WARN | gate-refuse (per D4-a — explicit author rules are stronger than drift) |
+| UNSUPPORTED | negative_constraint_violation | (any) | `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION ({violated_constraint_id})]` | HIGH-WARN | gate-refuse (per D4-a — explicit author rules are HIGH-WARN; drift findings emit into `claim_drifts[]` at LOW-WARN advisory tier — see below) |
 | RETRIEVAL_FAILED | retrieval_existence | not_found | `[HIGH-WARN-FABRICATED-REFERENCE]` | HIGH-WARN | gate-refuse (escapes v3.7.4 Vector 3 surfaces here) |
 | RETRIEVAL_FAILED | not_applicable | **not_attempted** | `[HIGH-WARN-CLAIM-AUDIT-ANCHORLESS — v3.7.3 R-L3-1-A VIOLATION REACHED AUDIT]` | HIGH-WARN | gate-refuse (anchor=none should have been blocked by v3.7.3 finalizer; this row is a defense-in-depth surface against finalizer skip/stale paths) |
 | RETRIEVAL_FAILED | not_applicable | **failed** | `[CLAIM-AUDIT-UNVERIFIED — REFERENCE FULL-TEXT NOT RETRIEVABLE]` | LOW-WARN advisory | pass (paywall — D2) |
@@ -384,7 +434,7 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 
 **`uncited_assertion` entries** (separate aggregate `uncited_assertions[]`) emit at LOW-WARN tier with annotation `[UNCITED-ASSERTION]` next to the offending sentence. Always advisory; gate-refuse reserved for citation-level defects. See §3.3 for entry schema.
 
-**Why claim_intent → LOW-WARN (per D4-a):** The decision doc rejected "manifest authority blocking" because normal drafting routinely refines claims away from manifest, and gate-refusing on drift would block valid revision passes. The matrix preserves that decision: claim_intent defects are detected and annotated (so the user sees them) but never block. Source-level defects (source_description / metadata / citation_anchor / synthesis_overclaim) remain HIGH-WARN because they indicate the prose is misrepresenting the cited source, which is the L3 faithfulness failure the audit exists to catch. Constraint violations remain HIGH-WARN because the author explicitly declared "MUST NOT".
+**Why `claim_drifts[]` is separate from the 9-row matrix (per D4-a):** The decision doc rejected "manifest authority blocking" because normal drafting routinely refines claims away from manifest, and gate-refusing on drift would block valid revision passes. The §3.4 schema houses drift findings; they emit a `[LOW-WARN-CLAIM-DRIFT — kind={EMITTED_NOT_INTENDED|INTENDED_NOT_EMITTED}]` annotation next to the offending sentence (for EMITTED_NOT_INTENDED) or in the manifest-coverage appendix (for INTENDED_NOT_EMITTED). Always advisory; never gate-refusing. Source-level defects (source_description / metadata / citation_anchor / synthesis_overclaim) remain HIGH-WARN in the matrix because they indicate the prose is misrepresenting the cited source — the L3 faithfulness failure the audit exists to catch. Constraint violations remain HIGH-WARN because the author explicitly declared "MUST NOT".
 
 **Uncited-assertion** results emit at LOW-WARN tier with annotation `[UNCITED-ASSERTION]` next to the offending sentence. Always advisory; gate-refuse reserved for citation-level defects.
 
@@ -401,7 +451,7 @@ Coverage:
 3. **Manifest invariants M-INV-1 through M-INV-3**.
 4. **Uncited-assertion invariants U-INV-1 through U-INV-4** — including cross-array `manifest_claim_id` integrity (uncited entry's referenced C-{n} must exist in active manifest).
 5. **Allowed-matrix coverage** — every `(judgment, audit_status, defect_stage)` triple outside §3.1 table rejected; representative disallowed combinations (≥ 5) tested explicitly.
-6. **Precedence rules** — negative_constraint_violation > claim_intent (per issue body precedence rule 1); citation_anchor distinct from source_description (rule 2); uncited-sentence cases produce `uncited_assertions[]` entry, not a `claim_audit_result` row (rule 3 — uncited has no ref to evaluate).
+6. **Precedence rules** — negative_constraint_violation (HIGH-WARN claim_audit_result) > claim_drift (LOW-WARN claim_drifts[] entry) — per issue body rule 1; citation_anchor distinct from source_description (rule 2); uncited-sentence cases produce `uncited_assertions[]` entry, not a `claim_audit_result` row (rule 3 — uncited has no ref to evaluate). D-INV-4 also enforces: a sentence that's both uncited AND drifted emits only the `uncited_assertion` entry, no companion `claim_drift` entry.
 7. **Acceptance check** — for any passport with ≥ 1 completed `claim_audit_result` whose `judgment=UNSUPPORTED`, ALL such rows must emit a `defect_stage` ≠ null AND ≠ not_applicable (100% emission per #103 acceptance criterion). AMBIGUOUS-with-null is explicitly permitted per INV-3 (judge unable to classify a related-but-unclear support level is a valid outcome); the issue body's "100% non-SUPPORTED" intent is narrower than literal reading suggests — it targets the UNSUPPORTED rows because those are the gate-refusing path, not the advisory tier.
 8. **Coverage check** — sample passport with full 9-row finalizer matrix coverage (per §5); each annotation tier exercised at least once.
 
@@ -432,8 +482,8 @@ Tests written BEFORE production code per `superpowers:test-driven-development`. 
 - T-P4: Step 2 — `ref_retrieval_method=failed` → LOW-WARN advisory path (D2 paywall)
 - T-P5: Step 2 — `ref_retrieval_method=manual_pdf` accepted; `not_found` triggers `defect_stage=retrieval_existence`
 - T-P6: Step 5 — judge VIOLATED → UNSUPPORTED + defect_stage=negative_constraint_violation + violated_constraint_id populated
-- T-P7: Step 6 — 7 in-table defect_stage classifications each have a fixture mapping (`retrieval_existence`, `metadata`, `source_description`, `claim_intent`, `citation_anchor`, `synthesis_overclaim`, `negative_constraint_violation`). `uncited_assertion` is tested separately in §7.4 (it's a separate entry-type, not a defect_stage of `claim_audit_result`); `not_applicable` is tested in T-P1 and T-P4.
-- T-P8: Precedence rule 1 — claim that drifts AND violates a constraint → defect_stage=negative_constraint_violation (not claim_intent)
+- T-P7: Step 6 — 6 in-table defect_stage classifications each have a fixture mapping (`retrieval_existence`, `metadata`, `source_description`, `citation_anchor`, `synthesis_overclaim`, `negative_constraint_violation`). `uncited_assertion` is tested in §7.4 and `claim_drift` in a new §7.4a (both separate entry-types, not defect_stages of `claim_audit_result`); `not_applicable` is tested in T-P1 and T-P4.
+- T-P8: Precedence rule 1 — claim that drifts AND violates a constraint → emits `claim_audit_result` with `defect_stage=negative_constraint_violation` (judge-evaluated, HIGH-WARN); the same claim does NOT additionally emit a `claim_drifts[]` entry — constraint violation absorbs the drift signal per D4 (a) explicit author rules > advisory drift surfaces.
 - T-P9: Precedence rule 2 — citation_anchor distinct from source_description (anchor wrong, source description correct)
 - T-P10: Precedence rule 3 — sentence that would be both an uncited_assertion AND a drifted manifest claim emits an `uncited_assertions[]` entry (no source-level evaluation, since there's no ref to evaluate). The same sentence may still appear in manifest diff diagnostics but does NOT produce a `claim_audit_result` row.
 
