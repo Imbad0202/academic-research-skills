@@ -219,6 +219,16 @@ class SemanticScholarClient:
                 # transient I/O failures during resp.read() must be
                 # treated as API degradation per spec — never let them
                 # abort the migration. Codex R4-2 closure.
+                #
+                # Also latch the client (codex #115 R2 closure): the
+                # protocol §"On API failure" rule "skip S2 for remaining
+                # batch on network error" covers transport-level
+                # failures, which include connection resets / socket
+                # read timeouts that surface during resp.read(), not
+                # only URLError at urlopen() time. Without this latch,
+                # a real network outage produces 30s read-timeout per
+                # entry × N entries.
+                self._latched_unavailable = True
                 raise SemanticScholarUnavailable(
                     f"S2 API I/O failure during response read: {e}"
                 ) from e

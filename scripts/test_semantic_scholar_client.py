@@ -460,6 +460,27 @@ class OutageLatchTest(unittest.TestCase):
         self.assertEqual(result, {"matched": True, "paperId": "x"})
         self.assertEqual(urlopen_good.call_count, 1)
 
+    def test_response_read_oserror_also_latches(self) -> None:
+        """Codex R2 closure: protocol §"On API failure" treats transport-
+        level network failures uniformly, regardless of which urllib
+        boundary surfaces them. A socket read timeout during resp.read()
+        must latch the batch just like URLError at urlopen() time —
+        otherwise a real outage retries 30s per entry × N."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        resp = MagicMock()
+        resp.read.side_effect = OSError("socket read timeout")
+        resp.__enter__ = MagicMock(return_value=resp)
+        resp.__exit__ = MagicMock(return_value=False)
+        urlopen = MagicMock(return_value=resp)
+        with patch("urllib.request.urlopen", urlopen):
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "T", "doi": "10.1/y"})
+            self.assertEqual(urlopen.call_count, 1)
+            # Second call should short-circuit — no second urlopen
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "Other", "doi": "10.1/z"})
+            self.assertEqual(urlopen.call_count, 1, "latched after read-timeout")
+
     def test_http_error_does_not_latch(self) -> None:
         """HTTP 5xx is a server-side error, not a transport-level outage.
         The protocol §"On API failure" says network errors skip the
