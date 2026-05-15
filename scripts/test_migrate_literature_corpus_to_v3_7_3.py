@@ -146,12 +146,12 @@ class SinglePassportMigrationTest(unittest.TestCase):
                 "re-run on migrated passport must be byte-identical",
             )
 
-    def test_insufficient_data_missing_venue_skipped(self) -> None:
-        """An entry missing venue cannot have Signal 1 reliably emitted
-        as False — that would be a half-truth (we don't know if the
-        venue is a preprint server). Per spec §3.2 emission rules,
-        'computed and clean' must be distinguished from 'not computed'.
-        v3.7.3 codex F3 closure (simplify round)."""
+    def test_missing_venue_does_not_skip_entry(self) -> None:
+        """Codex R1-2 closure: venue is schema-optional. When absent,
+        Signal 1 correctly evaluates to False (venue not in PREPRINT_VENUES)
+        and emission proceeds — that's a defined computation, not half-
+        truth. Signal 2 (SS API) is still attempted. Skipping on venue
+        absence would prevent the migration from filling in usable data."""
         yaml_no_venue = """\
 origin_skill: deep-research
 literature_corpus:
@@ -170,8 +170,84 @@ literature_corpus:
             report = mig.migrate_passport(
                 p, ss_client=_make_ss_client(), dry_run=False
             )
+            self.assertEqual(report["patched"], 1)
+            self.assertEqual(report["skipped_insufficient_data"], 0)
+            doc = mig.load_passport(p)
+            sig = doc["literature_corpus"][0]["contamination_signals"]
+            self.assertEqual(sig["preprint_post_llm_inflection"], False)
+            self.assertIn("semantic_scholar_unmatched", sig)
+
+    def test_partial_fill_recovery_fills_unmatched_field(self) -> None:
+        """Codex R1-3 closure: a previous run hit API degradation and
+        wrote contamination_signals with only preprint_post_llm_inflection.
+        Re-running with a healthy API must fill in semantic_scholar_unmatched
+        without overwriting the original backfilled_at timestamp."""
+        partial_yaml = """\
+origin_skill: deep-research
+literature_corpus:
+  - citation_key: chen2024ai
+    title: AI in education
+    authors:
+      - family: Chen
+        given: A
+    year: 2024
+    venue: arXiv
+    doi: 10.1234/abc
+    obtained_via: folder-scan
+    source_pointer: file:///refs/chen2024.pdf
+    contamination_signals:
+      preprint_post_llm_inflection: true
+    contamination_signals_backfilled_at: '2026-05-15T10:30:00Z'
+"""
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(partial_yaml)
+            report = mig.migrate_passport(
+                p, ss_client=_make_ss_client(unmatched_for_keys=["chen2024ai"]),
+                dry_run=False,
+            )
+            self.assertEqual(report["patched"], 1)
+            doc = mig.load_passport(p)
+            entry = doc["literature_corpus"][0]
+            self.assertEqual(
+                entry["contamination_signals"],
+                {"preprint_post_llm_inflection": True, "semantic_scholar_unmatched": True},
+            )
+            # Original timestamp preserved (no re-stamping on partial fill)
+            self.assertEqual(
+                entry["contamination_signals_backfilled_at"],
+                "2026-05-15T10:30:00Z",
+            )
+
+    def test_manual_entry_with_only_preprint_signal_is_complete(self) -> None:
+        """A manual entry permanently omits semantic_scholar_unmatched
+        (per spec §3.2 + schema allOf rule #4). An object with only
+        preprint_post_llm_inflection on a manual entry is COMPLETE, not
+        partial — re-running must skip."""
+        manual_yaml = """\
+origin_skill: deep-research
+literature_corpus:
+  - citation_key: lopez2024manual
+    title: Manual entry
+    authors:
+      - family: Lopez
+        given: C
+    year: 2024
+    venue: bioRxiv
+    obtained_via: manual
+    source_pointer: file:///refs/lopez2024.pdf
+    contamination_signals:
+      preprint_post_llm_inflection: true
+    contamination_signals_backfilled_at: '2026-05-15T10:30:00Z'
+"""
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(manual_yaml)
+            report = mig.migrate_passport(
+                p, ss_client=_make_ss_client(), dry_run=False
+            )
             self.assertEqual(report["patched"], 0)
-            self.assertEqual(report["skipped_insufficient_data"], 1)
+            self.assertEqual(report["skipped_already_migrated"], 1)
 
     def test_insufficient_data_entry_skipped(self) -> None:
         """An entry missing year cannot have Signal 1 computed reliably

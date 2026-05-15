@@ -61,18 +61,42 @@ def discover_passports(directory: Path) -> Iterable[Path]:
     return [p for p in directory.iterdir() if p.is_file() and p.suffix == ".yaml"]
 
 
+def _is_complete(signals: Mapping[str, Any], entry: Mapping[str, Any]) -> bool:
+    """An existing contamination_signals object is "complete" iff every
+    field that COULD be computed for this entry is already present.
+
+    `preprint_post_llm_inflection` is always computable when the entry
+    has year+venue, so its presence is required.
+
+    `semantic_scholar_unmatched` is required UNLESS the entry is exempt
+    (obtained_via='manual', where the field is permanently omitted per
+    spec §3.2). For non-manual entries lacking this field, an earlier
+    migration must have hit API degradation; re-running fills it in.
+
+    This is the codex R1-3 closure: presence-only idempotency was
+    correct for first-time migrations but blocked partial-fill recovery.
+    """
+    if "preprint_post_llm_inflection" not in signals:
+        return False
+    if entry.get("obtained_via") == "manual":
+        return True
+    return "semantic_scholar_unmatched" in signals
+
+
 def _is_insufficient(entry: Mapping[str, Any]) -> bool:
-    """An entry missing either `year` or `venue` cannot have Signal 1
-    computed reliably (both are in the spec AND). Without venue, Signal 1
-    would silently emit `preprint_post_llm_inflection: false` on an entry
-    where we genuinely don't know — half-truth the migration tool must
-    avoid (spec §3.2 emission rules distinguish "computed and clean" from
-    "not computed"). Real corpora won't hit this since schema requires
-    both fields; defensive against hand-edited YAML."""
-    return (
-        not isinstance(entry.get("year"), int)
-        or not isinstance(entry.get("venue"), str)
-    )
+    """An entry missing `year` cannot have Signal 1 computed at all (year
+    is the unconditional gate of the AND; without it, both branches of
+    the spec rule are undefined). Schema marks `year` as required so this
+    only fires on hand-edited YAML.
+
+    `venue` is INTENTIONALLY not in this check (codex R1-2 closure).
+    venue is schema-optional. When absent, `compute_preprint_signal`
+    correctly returns False (venue not in PREPRINT_VENUES) — that's a
+    defined emission ("computed and the venue isn't a preprint server"),
+    not half-truth. Skipping on venue absence would prevent Signal 2 from
+    running on schema-valid entries that simply omitted the optional
+    field, which is the bug codex R1-2 caught."""
+    return not isinstance(entry.get("year"), int)
 
 
 def migrate_passport(
@@ -98,15 +122,26 @@ def migrate_passport(
     mutated = False
     for entry in corpus:
         report["processed"] += 1
-        if "contamination_signals" in entry:
+        existing = entry.get("contamination_signals")
+        if existing is not None and _is_complete(existing, entry):
             report[_SKIP_ALREADY_MIGRATED] += 1
             continue
         if _is_insufficient(entry):
             report[_SKIP_INSUFFICIENT_DATA] += 1
             continue
         signals = cs.build_signals_object(entry, ss_client)
-        entry["contamination_signals"] = signals
-        entry["contamination_signals_backfilled_at"] = now_iso()
+        if existing is not None:
+            # Partial-fill recovery (codex R1-3 closure): an earlier run
+            # that hit API degradation wrote contamination_signals with
+            # only `preprint_post_llm_inflection`. Merge any newly-
+            # computable fields without overwriting the original
+            # backfilled_at timestamp.
+            for key, value in signals.items():
+                if key not in existing:
+                    existing[key] = value
+        else:
+            entry["contamination_signals"] = signals
+            entry["contamination_signals_backfilled_at"] = now_iso()
         report["patched"] += 1
         if entry.get("obtained_via") == "manual":
             report[_MANUAL_UNMATCHED_OMITTED] += 1
@@ -134,17 +169,12 @@ def migrate_directory(
 
 
 def _build_default_ss_client() -> cs.SemanticScholarClient:
-    """Production SS client following references/semantic_scholar_api_protocol.md
-    (429 → 2s backoff × 3, DOI-first then title-similarity). Intentionally
-    fails loudly when called from a context that hasn't supplied a real
-    client — the migration CLI imports its production wiring lazily so
-    test runs (which inject a mock) don't require network."""
-    raise NotImplementedError(
-        "Production Semantic Scholar client wiring is not part of #105 scope. "
-        "Tests inject a mock; real-world callers should import from "
-        "deep-research/references/semantic_scholar_api_protocol.md once that "
-        "module is exposed as a Python helper. See migration guide doc."
-    )
+    """Production SS client per deep-research/references/semantic_scholar_api_protocol.md
+    (DOI-first then title-similarity, 429 → 2s backoff × 3, S2_API_KEY env
+    var optional). Lazy-imported so test code (which injects a mock)
+    doesn't trigger a network-dependent module load."""
+    from semantic_scholar_client import SemanticScholarClient
+    return SemanticScholarClient()
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
