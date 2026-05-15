@@ -17,7 +17,7 @@ Numbered list aligned to the implementation surfaces in #103 issue body + decisi
 2. **`shared/contracts/passport/claim_audit_result.schema.json`** — per-claim audit result entry schema.
 3. **`shared/contracts/passport/claim_intent_manifest.schema.json`** — per-agent-invocation manifest entry schema.
 3a. **`shared/contracts/passport/uncited_assertion.schema.json`** — per uncited-sentence finding entry schema (separate from `claim_audit_result` because there's no `ref_slug` to bind).
-4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 7-row + advisory tier.
+4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 8-row + advisory tier.
 5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with HIGH-WARN-CLAIM-NOT-SUPPORTED + HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION tiers.
 6. **`academic-paper/agents/draft_writer_agent.md`** + **`deep-research/agents/synthesis_agent.md`** + **`deep-research/agents/report_compiler_agent.md`** — new "Claim Intent Manifest Emission (v3.8)" sibling heading following the existing v3.7.3 "Three-Layer Citation Emission" heading. PATTERN PROTECTION (v3.6.7) blocks stay byte-equivalent.
 7. **`academic-pipeline/references/claim_audit_calibration_protocol.md`** — new file (modeled on `shared/contracts/reviewer/` calibration convention).
@@ -281,7 +281,11 @@ Sections (in order):
 4. **Audit pipeline (6 steps)**:
    - Step 1 — Anchor presence check (D1, INV-6 firm rule).
    - Step 2 — Reference retrieval (`api` → `manual_pdf` → `failed`/`not_found`). LOW-WARN on `failed` (D2 paywall). Sets `ref_retrieval_method` + carries `retrieved_excerpt` forward.
-   - Step 3 — Cache lookup keyed by `(claim_text_hash, ref_slug, anchor_kind, anchor_value_hash, retrieved_excerpt_hash, active_constraints_hash, judge_model)`. The `active_constraints_hash` is SHA-256 over the JCS-encoded set of manifest constraints applicable to this claim at audit time (manifest_negative_constraints[] ∪ matched claim's negative_constraints[], sorted by constraint_id). Lookup runs AFTER retrieval so the cached judgment is bound to the exact source text the judge will see, AND to the exact constraint set the judge would evaluate — if the user re-runs after uploading a manual PDF, correcting the corpus entry, OR adding/changing a negative constraint, the relevant hash changes and the cache miss forces fresh judging. On hit: return the full cached value (a complete `claim_audit_result` entry including `judge_run_at` from the original judge invocation, NOT the cache-replay time). Step 7 emits the entry unchanged. On miss: proceed to Step 4-5, write the resulting `claim_audit_result` entry into the cache verbatim, then emit. The filesystem KV is `${ARS_CACHE_DIR}/claim_audit_v1/<cache_key_sha256>.json`; the file body IS a valid `claim_audit_result` entry; cache-side metadata (mtime, filesystem `cached_at`) lives on the filesystem, never inside the JSON body.
+   - Step 3 — Cache lookup keyed by `(claim_text_hash, ref_slug, anchor_kind, anchor_value_hash, retrieved_excerpt_hash, active_constraints_hash, judge_model)`. The `active_constraints_hash` is SHA-256 over the JCS-encoded set of manifest constraints applicable to this claim at audit time (manifest_negative_constraints[] ∪ matched claim's negative_constraints[], sorted by constraint_id). Lookup runs AFTER retrieval so the cached judgment is bound to the exact source text the judge will see, AND to the exact constraint set the judge would evaluate — if the user re-runs after uploading a manual PDF, correcting the corpus entry, OR adding/changing a negative constraint, the relevant hash changes and the cache miss forces fresh judging.
+
+     **The cache stores only judge-verdict + source-bound fields, never run-local identifiers.** Cached fields: `judgment`, `audit_status`, `defect_stage`, `rationale`, `judge_model`, `judge_run_at`, `ref_retrieval_method`, `violated_constraint_id`. Excluded (must be rebuilt from current-run context on replay): `claim_id` (new manifest position), `audit_run_id` (new run), `upstream_owner_agent` (different emitting agent on a different draft), `upstream_dispute` (run-specific dispute log), `anchor_value` (already keyed but re-emitted from current marker). This separation is what allows a verdict for the same `(claim_text, ref, anchor, source-excerpt, constraint-set, judge_model)` to be reused across different drafts / manifests without misattribution.
+
+     On hit: load cached judge-verdict + source-bound block; assemble a complete `claim_audit_result` by joining with current-run identifiers (current `claim_id`, current `audit_run_id`, current `upstream_owner_agent`). On miss: proceed to Step 4-5; write only the judge-verdict + source-bound block into the cache; emit the joined entry. The filesystem KV is `${ARS_CACHE_DIR}/claim_audit_v1/<cache_key_sha256>.json`. Cache-side metadata (mtime) lives on the filesystem, never inside the JSON body.
    - Step 4 — Passage location using anchor_value (quote = exact match; page/section/paragraph = scoped retrieval).
    - Step 5 — Judge invocation with prompt template. Output one of SUPPORTED/UNSUPPORTED/AMBIGUOUS, with rationale.
    - Step 6 — Defect_stage classification. Citation-bound results emit `claim_audit_result` entries with `defect_stage` ∈ 7 substantive categories `{retrieval_existence, metadata, source_description, claim_intent, citation_anchor, synthesis_overclaim, negative_constraint_violation}` plus 2 non-substantive `{not_applicable, null}`. Uncited-sentence findings emit `uncited_assertion` entries instead (no `defect_stage`; see §3.3 + §6 dedicated detector). Precedence rules from issue body restated in §5 finalizer integration.
@@ -342,19 +346,22 @@ The audit agent receives:
 **Outputs feeding Stage 6 self-reflection:**
 - Per-stage `defect_stage` histogram appendix (renders when ≥ 5 completed entries) — added to the existing Stage 6 AI Self-Reflection Report after gate pass
 
-**Finalizer matrix extension (7-row):**
+**Finalizer matrix extension (8-row):**
 
-Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new finalizer pass that overlays per-citation audit annotations from `claim_audit_results[]`. Rows are evaluated top-to-bottom, first match wins:
+Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new finalizer pass that overlays per-citation audit annotations from `claim_audit_results[]`. The matrix discriminates the previously-conflated paywall vs anchorless cases by reading `ref_retrieval_method` alongside `(judgment, defect_stage)`. Rows are evaluated top-to-bottom, first match wins:
 
-| `judgment` | `defect_stage` | Annotation | Severity Tier | Gate behavior |
-|---|---|---|---|---|
-| SUPPORTED | `null` | (no annotation) | — | pass |
-| AMBIGUOUS | source_description / citation_anchor / synthesis_overclaim / null | `[CLAIM-AUDIT-AMBIGUOUS]` | LOW-WARN advisory | pass |
-| UNSUPPORTED | claim_intent | `[LOW-WARN-CLAIM-DRIFT]` | LOW-WARN advisory | pass (per D4-a — manifest drift is advisory, not blocking) |
-| UNSUPPORTED | source_description / metadata / citation_anchor / synthesis_overclaim | `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` | HIGH-WARN | gate-refuse |
-| UNSUPPORTED | negative_constraint_violation | `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION ({violated_constraint_id})]` | HIGH-WARN | gate-refuse (per D4-a — explicit author rules are stronger than drift) |
-| RETRIEVAL_FAILED | retrieval_existence | `[HIGH-WARN-FABRICATED-REFERENCE]` | HIGH-WARN | gate-refuse (escapes v3.7.4 Vector 3 surfaces here) |
-| RETRIEVAL_FAILED | not_applicable | `[CLAIM-AUDIT-UNVERIFIED — REFERENCE FULL-TEXT NOT RETRIEVABLE]` | LOW-WARN advisory | pass |
+| `judgment` | `defect_stage` | `ref_retrieval_method` | Annotation | Severity Tier | Gate behavior |
+|---|---|---|---|---|---|
+| SUPPORTED | `null` | (any) | (no annotation) | — | pass |
+| AMBIGUOUS | source_description / citation_anchor / synthesis_overclaim / null | (any) | `[CLAIM-AUDIT-AMBIGUOUS]` | LOW-WARN advisory | pass |
+| UNSUPPORTED | claim_intent | (any) | `[LOW-WARN-CLAIM-DRIFT]` | LOW-WARN advisory | pass (per D4-a — manifest drift is advisory, not blocking) |
+| UNSUPPORTED | source_description / metadata / citation_anchor / synthesis_overclaim | (any) | `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` | HIGH-WARN | gate-refuse |
+| UNSUPPORTED | negative_constraint_violation | (any) | `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION ({violated_constraint_id})]` | HIGH-WARN | gate-refuse (per D4-a — explicit author rules are stronger than drift) |
+| RETRIEVAL_FAILED | retrieval_existence | not_found | `[HIGH-WARN-FABRICATED-REFERENCE]` | HIGH-WARN | gate-refuse (escapes v3.7.4 Vector 3 surfaces here) |
+| RETRIEVAL_FAILED | not_applicable | **not_attempted** | `[HIGH-WARN-CLAIM-AUDIT-ANCHORLESS — v3.7.3 R-L3-1-A VIOLATION REACHED AUDIT]` | HIGH-WARN | gate-refuse (anchor=none should have been blocked by v3.7.3 finalizer; this row is a defense-in-depth surface against finalizer skip/stale paths) |
+| RETRIEVAL_FAILED | not_applicable | **failed** | `[CLAIM-AUDIT-UNVERIFIED — REFERENCE FULL-TEXT NOT RETRIEVABLE]` | LOW-WARN advisory | pass (paywall — D2) |
+
+**Why two rows for `(RETRIEVAL_FAILED, not_applicable)`:** anchor=none (INV-6) and paywall (INV-10) both emit this `(judgment, defect_stage)` pair, but mean very different things — anchorless is a contract violation that already should have been gate-refused upstream by v3.7.3, while paywall is a legitimate tool/access failure. The `ref_retrieval_method` field distinguishes them: `not_attempted` (anchor=none) → gate-refuse as v3.7.3 violation defense-in-depth; `failed` (paywall) → advisory. INV-11 and INV-10 ensure these two are the only `(not_applicable)` paths and they're mutually exclusive on `ref_retrieval_method`.
 
 **`uncited_assertion` entries** (separate aggregate `uncited_assertions[]`) emit at LOW-WARN tier with annotation `[UNCITED-ASSERTION]` next to the offending sentence. Always advisory; gate-refuse reserved for citation-level defects. See §3.3 for entry schema.
 
@@ -376,8 +383,8 @@ Coverage:
 4. **Uncited-assertion invariants U-INV-1 through U-INV-4** — including cross-array `manifest_claim_id` integrity (uncited entry's referenced C-{n} must exist in active manifest).
 5. **Allowed-matrix coverage** — every `(judgment, audit_status, defect_stage)` triple outside §3.1 table rejected; representative disallowed combinations (≥ 5) tested explicitly.
 6. **Precedence rules** — negative_constraint_violation > claim_intent (per issue body precedence rule 1); citation_anchor distinct from source_description (rule 2); uncited-sentence cases produce `uncited_assertions[]` entry, not a `claim_audit_result` row (rule 3 — uncited has no ref to evaluate).
-7. **Acceptance check** — for any passport with ≥ 1 completed non-SUPPORTED `claim_audit_result`, ALL must emit a `defect_stage` ≠ null AND ≠ not_applicable (100% emission per #103 acceptance criterion).
-8. **Coverage check** — sample passport with full 7-row finalizer matrix coverage (per §5); each annotation tier exercised at least once.
+7. **Acceptance check** — for any passport with ≥ 1 completed `claim_audit_result` whose `judgment=UNSUPPORTED`, ALL such rows must emit a `defect_stage` ≠ null AND ≠ not_applicable (100% emission per #103 acceptance criterion). AMBIGUOUS-with-null is explicitly permitted per INV-3 (judge unable to classify a related-but-unclear support level is a valid outcome); the issue body's "100% non-SUPPORTED" intent is narrower than literal reading suggests — it targets the UNSUPPORTED rows because those are the gate-refusing path, not the advisory tier.
+8. **Coverage check** — sample passport with full 8-row finalizer matrix coverage (per §5); each annotation tier exercised at least once.
 
 Lint exit codes: 0 (pass), 1 (one or more invariant violations; prints which + offending entry).
 
@@ -427,7 +434,7 @@ Tests written BEFORE production code per `superpowers:test-driven-development`. 
 
 ### 7.5 Finalizer integration tests (`tests/test_claim_audit_finalizer.py`)
 
-- T-F1: 7-row matrix coverage — each (judgment, defect_stage) pair maps to correct annotation
+- T-F1: 8-row matrix coverage — each (judgment, defect_stage) pair maps to correct annotation
 - T-F2: HIGH-WARN-CLAIM-NOT-SUPPORTED triggers terminal gate refuse
 - T-F3: `/ars-mark-read` does NOT clear HIGH-WARN-CLAIM-NOT-SUPPORTED (asymmetry preservation)
 - T-F4: LOW-WARN-CLAIM-AUDIT-UNVERIFIED passes gate
@@ -459,7 +466,7 @@ Files that may need touch:
 | File | Why | Risk |
 |---|---|---|
 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` | New §3.6 dispatch wiring | HIGH — already 712 lines; PATTERN PROTECTION block must stay byte-equivalent |
-| `academic-paper/agents/formatter_agent.md` | Gate matrix extended to 7-row + HIGH-WARN classes | MED — 785 lines; v3.7.3 anchor logic preserved |
+| `academic-paper/agents/formatter_agent.md` | Gate matrix extended to 8-row + HIGH-WARN classes | MED — 785 lines; v3.7.3 anchor logic preserved |
 | `deep-research/agents/synthesis_agent.md` | New "Claim Intent Manifest Emission" sibling heading | MED — 220 lines; v3.7.3 Three-Layer heading stays |
 | `deep-research/agents/report_compiler_agent.md` | Same | MED |
 | `academic-paper/agents/draft_writer_agent.md` | Same | MED — 520 lines |
@@ -489,7 +496,7 @@ Issue body acceptance + decision-doc-derived additions:
 - [ ] Allowed-matrix exhaustive test: every §3.1 table row positive + ≥5 disallowed combinations rejected
 - [ ] `claim_intent_manifest` absent → `MANIFEST-MISSING` advisory + fallback flow exercised in test
 - [ ] `audit_status=inconclusive` paths emit `defect_stage=not_applicable` (NOT `null`) — INV-4
-- [ ] 100% of completed non-SUPPORTED findings emit a `defect_stage` (stage accuracy deferred to #89)
+- [ ] 100% of completed UNSUPPORTED findings emit a `defect_stage` ≠ null AND ≠ not_applicable (per #103 issue body acceptance criterion; AMBIGUOUS-null is permitted per INV-3 — stage accuracy deferred to #89)
 - [ ] Stage 6 reflection report renders per-stage histogram when ≥ 5 completed audit results
 - [ ] v3.6.6 Schema 13.1 zero-touch promise verified by git diff lint
 - [ ] D5 `audit_artifact_entry.schema.json` zero-touch promise verified by git diff lint
@@ -518,7 +525,7 @@ Per session handoff harness data:
 
 Strategy: split into two PRs if Round-5 still has open P1/P2:
 - PR-A: schemas + lint + agent prompt + tests (no orchestrator/formatter/synthesis_agent touch yet)
-- PR-B: orchestrator §3.6 + finalizer 7-row + downstream agent integration
+- PR-B: orchestrator §3.6 + finalizer 8-row + downstream agent integration
 
 This mirrors #105 → #115 split pattern (production module first, integration follow-up).
 
@@ -539,7 +546,7 @@ After ship, update:
 5. Write `claim_ref_alignment_audit_agent.md` Steps 1-6 — minimal text to pass pipeline tests via fixture-driven dispatch
 6. Write `tests/test_uncited_assertion.py` + token-rule detector module
 7. Write `tests/test_claim_intent_manifest.py` + emission helpers
-8. Write `tests/test_claim_audit_finalizer.py` + orchestrator §3.6 + formatter 7-row extension
+8. Write `tests/test_claim_audit_finalizer.py` + orchestrator §3.6 + formatter 8-row extension
 9. Write `tests/test_e2e_claim_audit.py` + synthetic 5-citation paper fixture
 10. Write `tests/test_claim_audit_calibration.py` + calibration protocol doc
 11. Regression run on full baseline; zero failures
