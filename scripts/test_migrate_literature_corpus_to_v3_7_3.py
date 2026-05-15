@@ -219,6 +219,29 @@ literature_corpus:
                 "2026-05-15T10:30:00Z",
             )
 
+    def test_verbose_emits_per_entry_decisions(self) -> None:
+        """Codex R3-2 closure: --verbose must produce per-entry lines on
+        stderr so users can audit what got patched / skipped / why."""
+        import io
+        from contextlib import redirect_stderr
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(SAMPLE_PASSPORT_YAML)
+            buf = io.StringIO()
+            with redirect_stderr(buf):
+                mig.migrate_passport(
+                    p,
+                    ss_client=_make_ss_client(unmatched_for_keys=["chen2024ai"]),
+                    dry_run=True,
+                    verbose=True,
+                )
+            output = buf.getvalue()
+            # Per-entry citation_key tags surface for all 3 entries
+            self.assertIn("chen2024ai", output)
+            self.assertIn("smith2020old", output)
+            self.assertIn("lopez2024manual", output)
+            self.assertIn("patch", output)
+
     def test_partial_fill_with_persistent_api_degradation_does_not_re_patch(self) -> None:
         """Codex R2-3 closure: when a partial entry's missing field
         STILL cannot be computed (API still degraded), the merge loop

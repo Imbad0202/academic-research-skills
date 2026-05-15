@@ -39,6 +39,11 @@ jobs:
       - name: Check PREPRINT_VENUES list consistency (#105)
         run: python3 scripts/check_preprint_venues_consistency.py
 
+      - name: Run #105 migration unit tests
+        env:
+          PYTHONPATH: .
+        run: python3 -m unittest scripts.test_contamination_signals scripts.test_migrate_literature_corpus_to_v3_7_3 scripts.test_semantic_scholar_client -v
+
       - name: Check data_access_level declarations
         env:
           PYTHONPATH: scripts

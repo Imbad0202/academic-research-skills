@@ -104,9 +104,14 @@ def migrate_passport(
     *,
     ss_client: cs.SemanticScholarClient,
     dry_run: bool,
+    verbose: bool = False,
 ) -> dict[str, int]:
     """Migrate a single passport file. Returns a report dict counting
-    processed / patched / various skip categories."""
+    processed / patched / various skip categories.
+
+    `verbose=True` emits per-entry decision lines to stderr (codex R3-2
+    closure). Quiet by default; the CLI's --verbose flag wires this up.
+    """
     doc = load_passport(path)
     corpus = doc.get("literature_corpus") if doc else None
     report = {
@@ -119,15 +124,22 @@ def migrate_passport(
     if not corpus:
         return report
 
+    def _log(msg: str) -> None:
+        if verbose:
+            print(f"[{path}] {msg}", file=sys.stderr)
+
     mutated = False
     for entry in corpus:
         report["processed"] += 1
+        key = entry.get("citation_key", "<no-citation-key>")
         existing = entry.get("contamination_signals")
         if existing is not None and _is_complete(existing, entry):
             report[_SKIP_ALREADY_MIGRATED] += 1
+            _log(f"{key}: skip (already migrated)")
             continue
         if _is_insufficient(entry):
             report[_SKIP_INSUFFICIENT_DATA] += 1
+            _log(f"{key}: skip (insufficient data — missing year)")
             continue
         signals = cs.build_signals_object(entry, ss_client)
         if existing is not None:
@@ -140,16 +152,19 @@ def migrate_passport(
             # otherwise dry-run misreports + non-dry-run rewrites a
             # byte-identical passport.
             added_any = False
-            for key, value in signals.items():
-                if key not in existing:
-                    existing[key] = value
+            for sig_key, value in signals.items():
+                if sig_key not in existing:
+                    existing[sig_key] = value
                     added_any = True
             if not added_any:
                 report[_SKIP_ALREADY_MIGRATED] += 1
+                _log(f"{key}: skip (partial entry, no new fields computable)")
                 continue
+            _log(f"{key}: patch (partial-fill recovery, fields added)")
         else:
             entry["contamination_signals"] = signals
             entry["contamination_signals_backfilled_at"] = now_iso()
+            _log(f"{key}: patch (signals={dict(signals)})")
         report["patched"] += 1
         if entry.get("obtained_via") == "manual":
             report[_MANUAL_UNMATCHED_OMITTED] += 1
@@ -165,12 +180,15 @@ def migrate_directory(
     *,
     ss_client: cs.SemanticScholarClient,
     dry_run: bool,
+    verbose: bool = False,
 ) -> dict[str, int]:
     """Migrate every passport YAML in `directory` (non-recursive)."""
     agg = {"files_processed": 0, "entries_processed": 0, "entries_patched": 0}
     for path in discover_passports(directory):
         agg["files_processed"] += 1
-        r = migrate_passport(path, ss_client=ss_client, dry_run=dry_run)
+        r = migrate_passport(
+            path, ss_client=ss_client, dry_run=dry_run, verbose=verbose
+        )
         agg["entries_processed"] += r["processed"]
         agg["entries_patched"] += r["patched"]
     return agg
@@ -211,7 +229,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
     if args.path.is_dir():
-        agg = migrate_directory(args.path, ss_client=client, dry_run=args.dry_run)
+        agg = migrate_directory(
+            args.path,
+            ss_client=client,
+            dry_run=args.dry_run,
+            verbose=args.verbose,
+        )
         print(
             f"files_processed={agg['files_processed']} "
             f"entries_processed={agg['entries_processed']} "
@@ -220,7 +243,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     else:
         report = migrate_passport(
-            args.path, ss_client=client, dry_run=args.dry_run
+            args.path,
+            ss_client=client,
+            dry_run=args.dry_run,
+            verbose=args.verbose,
         )
         print(
             f"processed={report['processed']} patched={report['patched']} "
