@@ -219,6 +219,78 @@ literature_corpus:
                 "2026-05-15T10:30:00Z",
             )
 
+    def test_partial_fill_without_provenance_sets_backfilled_at(self) -> None:
+        """Codex R5-1 closure: an ingest-time partial entry (v3.7.3
+        bibliography_agent wrote contamination_signals during S2
+        degradation) lacks backfilled_at. When the migration fills in
+        the missing field post-hoc, record provenance — otherwise the
+        post-hoc mutation is indistinguishable from ingest-time data."""
+        ingest_partial_yaml = """\
+origin_skill: deep-research
+literature_corpus:
+  - citation_key: chen2024ai
+    title: AI in education
+    authors:
+      - family: Chen
+        given: A
+    year: 2024
+    venue: arXiv
+    doi: 10.1234/abc
+    obtained_via: folder-scan
+    source_pointer: file:///refs/chen2024.pdf
+    contamination_signals:
+      preprint_post_llm_inflection: true
+"""
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(ingest_partial_yaml)
+            mig.migrate_passport(
+                p,
+                ss_client=_make_ss_client(unmatched_for_keys=["chen2024ai"]),
+                dry_run=False,
+            )
+            doc = mig.load_passport(p)
+            entry = doc["literature_corpus"][0]
+            self.assertEqual(
+                entry["contamination_signals"],
+                {"preprint_post_llm_inflection": True, "semantic_scholar_unmatched": True},
+            )
+            self.assertIn("contamination_signals_backfilled_at", entry)
+
+    def test_partial_fill_with_existing_provenance_preserves_timestamp(self) -> None:
+        """R5-1 closure (companion): when partial entry already has
+        backfilled_at (R1-3 case: prior migration run that hit API
+        degradation), DON'T overwrite — the original timestamp is the
+        canonical backfill record."""
+        partial_with_ts = """\
+origin_skill: deep-research
+literature_corpus:
+  - citation_key: chen2024ai
+    title: AI in education
+    authors:
+      - family: Chen
+        given: A
+    year: 2024
+    venue: arXiv
+    doi: 10.1234/abc
+    obtained_via: folder-scan
+    source_pointer: file:///refs/chen2024.pdf
+    contamination_signals:
+      preprint_post_llm_inflection: true
+    contamination_signals_backfilled_at: '2025-01-01T00:00:00Z'
+"""
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(partial_with_ts)
+            mig.migrate_passport(
+                p, ss_client=_make_ss_client(), dry_run=False
+            )
+            doc = mig.load_passport(p)
+            self.assertEqual(
+                doc["literature_corpus"][0]["contamination_signals_backfilled_at"],
+                "2025-01-01T00:00:00Z",
+            )
+
     def test_verbose_emits_per_entry_decisions(self) -> None:
         """Codex R3-2 closure: --verbose must produce per-entry lines on
         stderr so users can audit what got patched / skipped / why."""

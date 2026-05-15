@@ -160,6 +160,14 @@ def migrate_passport(
                 report[_SKIP_ALREADY_MIGRATED] += 1
                 _log(f"{key}: skip (partial entry, no new fields computable)")
                 continue
+            # Codex R5-1 closure: if the partial entry pre-dates the
+            # backfilled_at field (e.g., v3.7.3 ingest-time partial that
+            # came from a degraded S2 lookup), record provenance now so
+            # the post-hoc mutation is distinguishable from ingest-time
+            # data. Preserve any existing timestamp — that's the original
+            # backfill record per the R1-3 contract.
+            if "contamination_signals_backfilled_at" not in entry:
+                entry["contamination_signals_backfilled_at"] = now_iso()
             _log(f"{key}: patch (partial-fill recovery, fields added)")
         else:
             entry["contamination_signals"] = signals
