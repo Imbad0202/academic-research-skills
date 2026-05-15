@@ -17,8 +17,8 @@ Numbered list aligned to the implementation surfaces in #103 issue body + decisi
 2. **`shared/contracts/passport/claim_audit_result.schema.json`** — per-claim audit result entry schema.
 3. **`shared/contracts/passport/claim_intent_manifest.schema.json`** — per-agent-invocation manifest entry schema.
 3a. **`shared/contracts/passport/uncited_assertion.schema.json`** — per uncited-sentence finding entry schema (separate from `claim_audit_result` because there's no `ref_slug` to bind).
-4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 8-row + advisory tier.
-5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with HIGH-WARN-CLAIM-NOT-SUPPORTED + HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION tiers.
+4. **`academic-pipeline/agents/pipeline_orchestrator_agent.md`** — new §3.6 "Claim-Faithfulness Audit Gate (v3.8)". Dispatch wiring for the new agent. Finalizer integration extended to 9-row + advisory tier.
+5. **`academic-paper/agents/formatter_agent.md`** — Cite-Time Provenance Hard Gate extended with FOUR new HIGH-WARN refusal classes mirroring §5 finalizer matrix: HIGH-WARN-CLAIM-NOT-SUPPORTED, HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION, HIGH-WARN-FABRICATED-REFERENCE, HIGH-WARN-CLAIM-AUDIT-ANCHORLESS. The formatter's existing v3.7.1/v3.7.3 refusal rules remain unchanged; new classes append to the existing REFUSE list. §5 matrix is the source of truth — any new HIGH-WARN class added to the matrix in future revisions MUST be mirrored here, enforced by a §6 lint rule.
 6. **`academic-paper/agents/draft_writer_agent.md`** + **`deep-research/agents/synthesis_agent.md`** + **`deep-research/agents/report_compiler_agent.md`** — new "Claim Intent Manifest Emission (v3.8)" sibling heading following the existing v3.7.3 "Three-Layer Citation Emission" heading. PATTERN PROTECTION (v3.6.7) blocks stay byte-equivalent.
 7. **`academic-pipeline/references/claim_audit_calibration_protocol.md`** — new file (modeled on `shared/contracts/reviewer/` calibration convention).
 8. **`scripts/check_claim_audit_consistency.py`** — new lint enforcing per-claim invariants (anchor presence, defect_stage presence, precedence rules, audit_status/defect_stage coherence).
@@ -54,6 +54,7 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
   "additionalProperties": false,
   "required": [
     "claim_id",
+    "scoped_manifest_id",
     "claim_text",
     "ref_slug",
     "anchor_kind",
@@ -68,6 +69,11 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
   ],
   "properties": {
     "claim_id": { "type": "string", "pattern": "^C-[0-9]{3,}$" },
+    "scoped_manifest_id": {
+      "type": "string",
+      "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$",
+      "description": "Points to the owning claim_intent_manifest.manifest_id. The (scoped_manifest_id, claim_id) pair uniquely identifies the claim, since C-001 may collide across manifests in the same run. Enforced by INV-15 (cross-array integrity). For audits running in MANIFEST-MISSING fallback (no manifest present), scoped_manifest_id is the sentinel `M-0000-00-00T00:00:00Z-0000`."
+    },
     "claim_text": { "type": "string", "minLength": 1, "maxLength": 2000 },
     "ref_slug": { "type": "string", "minLength": 1 },
     "anchor_kind": { "enum": ["quote", "page", "section", "paragraph", "none"] },
@@ -91,7 +97,7 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
     "rationale": { "type": "string", "minLength": 1, "maxLength": 2000 },
     "judge_model": { "type": "string", "minLength": 1 },
     "judge_run_at": { "type": "string", "format": "date-time" },
-    "ref_retrieval_method": { "enum": ["api", "manual_pdf", "failed", "not_attempted", "not_found"] },
+    "ref_retrieval_method": { "enum": ["api", "manual_pdf", "failed", "not_attempted", "not_found", "audit_tool_failure"] },
     "upstream_owner_agent": {
       "enum": [
         "bibliography_agent",
@@ -149,6 +155,8 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
 - INV-11: `ref_retrieval_method=not_attempted` ↔ `anchor_kind=none` AND INV-6 holds (anchor=none skips retrieval)
 - INV-12: `ref_retrieval_method=not_found` ↔ `judgment=RETRIEVAL_FAILED` AND `audit_status=completed` AND `defect_stage=retrieval_existence` (fabricated reference path)
 - INV-13: `defect_stage=metadata` → `judgment=UNSUPPORTED` AND `audit_status=completed` AND `ref_retrieval_method` ∈ `{api, manual_pdf}` (retrieval succeeded but metadata mismatch identified during judging)
+- INV-14: `ref_retrieval_method=audit_tool_failure` ↔ `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive` AND `defect_stage=not_applicable` AND rationale begins with a fault-class tag in `{judge_timeout, judge_api_error, judge_parse_error, cache_corruption}` followed by a colon and free-form detail (audit-infrastructure failure distinct from retrieval failure; finalizer emits MED-WARN advisory; gate passes — retry-next-pass remediation)
+- INV-15: For every `claim_audit_result` entry, `(scoped_manifest_id, claim_id)` MUST either (a) match some `claims[].claim_id` in the `claim_intent_manifests[]` entry whose `manifest_id == scoped_manifest_id`, or (b) carry the sentinel `scoped_manifest_id = M-0000-00-00T00:00:00Z-0000` indicating the MANIFEST-MISSING fallback path. Dangling references (scoped_manifest_id present but no matching manifest entry, with non-sentinel value) are a lint violation.
 
 ### 3.2 `claim_intent_manifest.schema.json`
 
@@ -163,6 +171,7 @@ One entry per generating-agent invocation. Emitted by `synthesis_agent` / `draft
   "additionalProperties": false,
   "required": [
     "manifest_version",
+    "manifest_id",
     "emitted_by",
     "emitted_at",
     "claims",
@@ -170,6 +179,11 @@ One entry per generating-agent invocation. Emitted by `synthesis_agent` / `draft
   ],
   "properties": {
     "manifest_version": { "const": "1.0" },
+    "manifest_id": {
+      "type": "string",
+      "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$",
+      "description": "Discriminator scoping all claim_id values inside this manifest. Format: M-<ISO-8601-Z>-<4-hex>. Required because a single passport may contain multiple claim_intent_manifests[] entries (e.g., one from synthesis_agent and one from draft_writer_agent on the same run); bare C-001 alone would collide. The pair (manifest_id, claim_id) is the joinable key — see claim_audit_result.scoped_manifest_id + INV-15 / D-INV-2 cross-array integrity."
+    },
     "emitted_by": { "enum": ["synthesis_agent", "draft_writer_agent", "report_compiler_agent"] },
     "emitted_at": { "type": "string", "format": "date-time" },
     "session_id": { "type": "string" },
@@ -216,9 +230,10 @@ One entry per generating-agent invocation. Emitted by `synthesis_agent` / `draft
 ```
 
 **Cross-field invariants** (lint-enforced):
-- M-INV-1: `claim_id` uniqueness across all `claims[].claim_id` in one manifest
+- M-INV-1: `claim_id` uniqueness within ONE manifest (scoped by `manifest_id`). Cross-manifest collision (C-001 in both manifest A and manifest B) is permitted — the joinable discriminator is the `(manifest_id, claim_id)` pair.
 - M-INV-2: `constraint_id` of `NC-C{n}-{m}` form MUST appear under `claims[]` entry where `claim_id=C-{n}` (i.e., claim-level constraint scoping)
 - M-INV-3: `MNC-{m}` constraints in `manifest_negative_constraints` are globally applied; cannot be overridden by claim-level NC (claim-level can ADD, never DROP global)
+- M-INV-4: `manifest_id` uniqueness across ALL `claim_intent_manifests[]` in one passport. Two manifests sharing the same `manifest_id` is a lint violation — the orchestrator must allocate fresh M-* identifiers per agent invocation.
 
 ### 3.3 `uncited_assertion.schema.json`
 
@@ -293,7 +308,10 @@ Sections (in order):
 6. **Uncited-assertion detector (D4-c)** — 3-condition token rule. Pseudocode included.
 7. **Output emission** — one `claim_audit_result` entry per audited citation, plus aggregate counts emitted in pipeline-orchestrator Stage 6 reflection report.
 8. **Calibration mode** — opt-in flow per `claim_audit_calibration_protocol.md`. Gold-set ingestion → judge run → FNR/FPR computation → user-facing report.
-9. **Error handling** — judge timeout / API failure / cache corruption. Fall back to RETRIEVAL_FAILED with rationale.
+9. **Error handling** — three failure surfaces with distinct semantics, so retrieval failures and audit-tool failures don't collapse:
+   - **Retrieval network failure (paywall, API down, no full-text available):** emit `claim_audit_result` with `judgment=RETRIEVAL_FAILED`, `audit_status=inconclusive`, `defect_stage=not_applicable`, `ref_retrieval_method=failed`. INV-10 / D2 — LOW-WARN advisory.
+   - **Retrieval succeeded but judge/cache failed (judge timeout, judge API error AFTER retrieval, cache corruption, JSON parse failure):** emit `claim_audit_result` with `judgment=RETRIEVAL_FAILED`, `audit_status=inconclusive`, `defect_stage=not_applicable`, `ref_retrieval_method=audit_tool_failure`. Per INV-14 — MED-WARN advisory at finalizer (`[CLAIM-AUDIT-TOOL-FAILURE — <fault-class>]`), surfaces the audit infrastructure problem distinctly from a paywall, but does NOT gate-refuse — retry on next pipeline pass is the remediation. Rationale MUST begin with a fault-class tag in `{judge_timeout, judge_api_error, judge_parse_error, cache_corruption}` followed by `: <detail>`.
+   - **Fabricated reference (retrieval API reports not_found):** per INV-12 — `ref_retrieval_method=not_found`, `defect_stage=retrieval_existence`, `audit_status=completed`. HIGH-WARN gate-refuse.
 10. **Cross-references** — Zhao 2026 §1, RubricEM Borrows 1+2, v3.7.3 anchor input contract, v3.6.7 PATTERN PROTECTION convention.
 
 **Judge prompt template** (canonical form, embedded in agent prompt):
@@ -346,7 +364,7 @@ The audit agent receives:
 **Outputs feeding Stage 6 self-reflection:**
 - Per-stage `defect_stage` histogram appendix (renders when ≥ 5 completed entries) — added to the existing Stage 6 AI Self-Reflection Report after gate pass
 
-**Finalizer matrix extension (8-row):**
+**Finalizer matrix extension (9-row):**
 
 Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new finalizer pass that overlays per-citation audit annotations from `claim_audit_results[]`. The matrix discriminates the previously-conflated paywall vs anchorless cases by reading `ref_retrieval_method` alongside `(judgment, defect_stage)`. Rows are evaluated top-to-bottom, first match wins:
 
@@ -360,6 +378,7 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 | RETRIEVAL_FAILED | retrieval_existence | not_found | `[HIGH-WARN-FABRICATED-REFERENCE]` | HIGH-WARN | gate-refuse (escapes v3.7.4 Vector 3 surfaces here) |
 | RETRIEVAL_FAILED | not_applicable | **not_attempted** | `[HIGH-WARN-CLAIM-AUDIT-ANCHORLESS — v3.7.3 R-L3-1-A VIOLATION REACHED AUDIT]` | HIGH-WARN | gate-refuse (anchor=none should have been blocked by v3.7.3 finalizer; this row is a defense-in-depth surface against finalizer skip/stale paths) |
 | RETRIEVAL_FAILED | not_applicable | **failed** | `[CLAIM-AUDIT-UNVERIFIED — REFERENCE FULL-TEXT NOT RETRIEVABLE]` | LOW-WARN advisory | pass (paywall — D2) |
+| RETRIEVAL_FAILED | not_applicable | **audit_tool_failure** | `[CLAIM-AUDIT-TOOL-FAILURE — <fault-class>]` | MED-WARN advisory | pass (audit infrastructure failure after retrieval succeeded; surfaced distinctly from paywall per INV-14; retry next pipeline pass) |
 
 **Why two rows for `(RETRIEVAL_FAILED, not_applicable)`:** anchor=none (INV-6) and paywall (INV-10) both emit this `(judgment, defect_stage)` pair, but mean very different things — anchorless is a contract violation that already should have been gate-refused upstream by v3.7.3, while paywall is a legitimate tool/access failure. The `ref_retrieval_method` field distinguishes them: `not_attempted` (anchor=none) → gate-refuse as v3.7.3 violation defense-in-depth; `failed` (paywall) → advisory. INV-11 and INV-10 ensure these two are the only `(not_applicable)` paths and they're mutually exclusive on `ref_retrieval_method`.
 
@@ -378,13 +397,13 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 Coverage:
 
 1. **Schema validation** — `claim_audit_result.schema.json`, `claim_intent_manifest.schema.json`, `uncited_assertion.schema.json` all valid JSON Schema; sample passports validate.
-2. **Cross-field invariants INV-1 through INV-13** — one test case per invariant, each with positive + negative fixture.
+2. **Cross-field invariants INV-1 through INV-15** — one test case per invariant, each with positive + negative fixture.
 3. **Manifest invariants M-INV-1 through M-INV-3**.
 4. **Uncited-assertion invariants U-INV-1 through U-INV-4** — including cross-array `manifest_claim_id` integrity (uncited entry's referenced C-{n} must exist in active manifest).
 5. **Allowed-matrix coverage** — every `(judgment, audit_status, defect_stage)` triple outside §3.1 table rejected; representative disallowed combinations (≥ 5) tested explicitly.
 6. **Precedence rules** — negative_constraint_violation > claim_intent (per issue body precedence rule 1); citation_anchor distinct from source_description (rule 2); uncited-sentence cases produce `uncited_assertions[]` entry, not a `claim_audit_result` row (rule 3 — uncited has no ref to evaluate).
 7. **Acceptance check** — for any passport with ≥ 1 completed `claim_audit_result` whose `judgment=UNSUPPORTED`, ALL such rows must emit a `defect_stage` ≠ null AND ≠ not_applicable (100% emission per #103 acceptance criterion). AMBIGUOUS-with-null is explicitly permitted per INV-3 (judge unable to classify a related-but-unclear support level is a valid outcome); the issue body's "100% non-SUPPORTED" intent is narrower than literal reading suggests — it targets the UNSUPPORTED rows because those are the gate-refusing path, not the advisory tier.
-8. **Coverage check** — sample passport with full 8-row finalizer matrix coverage (per §5); each annotation tier exercised at least once.
+8. **Coverage check** — sample passport with full 9-row finalizer matrix coverage (per §5); each annotation tier exercised at least once.
 
 Lint exit codes: 0 (pass), 1 (one or more invariant violations; prints which + offending entry).
 
@@ -397,7 +416,7 @@ Tests written BEFORE production code per `superpowers:test-driven-development`. 
 ### 7.1 Schema validation tests (`tests/test_claim_audit_schema.py`)
 
 - T-S1: Valid minimal entry validates (SUPPORTED, all required fields)
-- T-S2: Each invariant INV-1..INV-13 covered by paired positive/negative fixture
+- T-S2: Each invariant INV-1..INV-15 covered by paired positive/negative fixture
 - T-S3: `anchor_kind=none` entry that doesn't follow INV-6 fails lint (rationale missing prefix; `ref_retrieval_method ≠ not_attempted`)
 - T-S4: Manifest M-INV-1 duplicate claim_id rejected
 - T-S5: Manifest M-INV-2 dangling NC-C{n}-{m} (no parent claim) rejected
@@ -434,7 +453,7 @@ Tests written BEFORE production code per `superpowers:test-driven-development`. 
 
 ### 7.5 Finalizer integration tests (`tests/test_claim_audit_finalizer.py`)
 
-- T-F1: 8-row matrix coverage — each (judgment, defect_stage) pair maps to correct annotation
+- T-F1: 9-row matrix coverage — each (judgment, defect_stage) pair maps to correct annotation
 - T-F2: HIGH-WARN-CLAIM-NOT-SUPPORTED triggers terminal gate refuse
 - T-F3: `/ars-mark-read` does NOT clear HIGH-WARN-CLAIM-NOT-SUPPORTED (asymmetry preservation)
 - T-F4: LOW-WARN-CLAIM-AUDIT-UNVERIFIED passes gate
@@ -453,7 +472,12 @@ Test asserts: gate refuses output; only citations 3+5 are blockers; correcting t
 
 ### 7.7 Calibration mode test (`tests/test_claim_audit_calibration.py`)
 
-Synthetic 20-tuple gold set covering SUPPORTED/UNSUPPORTED/AMBIGUOUS/violated-constraint judgments. Test asserts FNR < 0.15 and FPR < 0.10 thresholds are reported (not enforced; reporting is the unit of acceptance).
+Synthetic 20-tuple gold set covering SUPPORTED/UNSUPPORTED/AMBIGUOUS/violated-constraint judgments. Two-tier assertion:
+
+- **T-C1 (threshold enforcement):** Test assert `FNR < 0.15 AND FPR < 0.10` against the synthetic gold set. Test FAILS when either threshold is exceeded. This is the unit of acceptance and aligns with reviewer-calibration convention (FNR/FPR thresholds are gates, not advisory). When the threshold is exceeded, CI fails — author must either curate a better gold set, tighten judge prompts, or update `judge_model`. (Issue body acceptance criterion + §9 acceptance bullet are binding.)
+- **T-C2 (per-class FNR/FPR reporting):** Test asserts that FNR/FPR are computed AND surfaced per judgment-class (SUPPORTED vs UNSUPPORTED, AMBIGUOUS, violated-constraint) in the calibration report output. Reporting failure ≠ threshold failure — this catches calibration tooling regressions distinct from gold-set degradation.
+
+Why two tiers: T-C2 catches infrastructure bugs (calibration script doesn't compute / doesn't write report) without conflating them with T-C1 acceptance-threshold breaches. Both must pass.
 
 ### 7.8 Regression test
 
@@ -466,7 +490,7 @@ Files that may need touch:
 | File | Why | Risk |
 |---|---|---|
 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` | New §3.6 dispatch wiring | HIGH — already 712 lines; PATTERN PROTECTION block must stay byte-equivalent |
-| `academic-paper/agents/formatter_agent.md` | Gate matrix extended to 8-row + HIGH-WARN classes | MED — 785 lines; v3.7.3 anchor logic preserved |
+| `academic-paper/agents/formatter_agent.md` | Gate matrix extended to 9-row + HIGH-WARN classes | MED — 785 lines; v3.7.3 anchor logic preserved |
 | `deep-research/agents/synthesis_agent.md` | New "Claim Intent Manifest Emission" sibling heading | MED — 220 lines; v3.7.3 Three-Layer heading stays |
 | `deep-research/agents/report_compiler_agent.md` | Same | MED |
 | `academic-paper/agents/draft_writer_agent.md` | Same | MED — 520 lines |
@@ -492,7 +516,7 @@ Issue body acceptance + decision-doc-derived additions:
 - [ ] Calibration mode tested with synthetic gold set (≥ 20 tuples) achieving FNR < 0.15 and FPR < 0.10
 - [ ] End-to-end test (§7.6 above) passes
 - [ ] Zero regression on existing 1107+ unittest + 201 pytest baseline
-- [ ] All 13 cross-field invariants (INV-1..INV-13) + 3 manifest invariants (M-INV-1..M-INV-3) + 4 uncited-assertion invariants (U-INV-1..U-INV-4) covered by paired positive/negative fixture
+- [ ] All 15 cross-field invariants (INV-1..INV-15) + 4 manifest invariants (M-INV-1..M-INV-4) + 4 uncited-assertion invariants (U-INV-1..U-INV-4) covered by paired positive/negative fixture
 - [ ] Allowed-matrix exhaustive test: every §3.1 table row positive + ≥5 disallowed combinations rejected
 - [ ] `claim_intent_manifest` absent → `MANIFEST-MISSING` advisory + fallback flow exercised in test
 - [ ] `audit_status=inconclusive` paths emit `defect_stage=not_applicable` (NOT `null`) — INV-4
@@ -525,7 +549,7 @@ Per session handoff harness data:
 
 Strategy: split into two PRs if Round-5 still has open P1/P2:
 - PR-A: schemas + lint + agent prompt + tests (no orchestrator/formatter/synthesis_agent touch yet)
-- PR-B: orchestrator §3.6 + finalizer 8-row + downstream agent integration
+- PR-B: orchestrator §3.6 + finalizer 9-row + downstream agent integration
 
 This mirrors #105 → #115 split pattern (production module first, integration follow-up).
 
@@ -546,7 +570,7 @@ After ship, update:
 5. Write `claim_ref_alignment_audit_agent.md` Steps 1-6 — minimal text to pass pipeline tests via fixture-driven dispatch
 6. Write `tests/test_uncited_assertion.py` + token-rule detector module
 7. Write `tests/test_claim_intent_manifest.py` + emission helpers
-8. Write `tests/test_claim_audit_finalizer.py` + orchestrator §3.6 + formatter 8-row extension
+8. Write `tests/test_claim_audit_finalizer.py` + orchestrator §3.6 + formatter 9-row extension
 9. Write `tests/test_e2e_claim_audit.py` + synthetic 5-citation paper fixture
 10. Write `tests/test_claim_audit_calibration.py` + calibration protocol doc
 11. Regression run on full baseline; zero failures
