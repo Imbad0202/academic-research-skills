@@ -159,6 +159,7 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
 - INV-15: For every `claim_audit_result` entry, `(scoped_manifest_id, claim_id)` MUST either (a) match some `claims[].claim_id` in the `claim_intent_manifests[]` entry whose `manifest_id == scoped_manifest_id`, or (b) carry the sentinel `scoped_manifest_id = M-0000-00-00T00:00:00Z-0000` indicating the MANIFEST-MISSING fallback path. Dangling references (scoped_manifest_id present but no matching manifest entry, with non-sentinel value) are a lint violation.
 - INV-16: For every `claim_audit_result` entry with `anchor_kind ≠ none`, the URL-decoded `anchor_value` MUST be non-empty (after stripping leading/trailing whitespace). A stale or malformed marker like `<!--anchor:page:-->` would otherwise validate as an auditable locator and bypass the anchorless gate, but v3.7.3 §3.1 firm rule R-L3-1-A treats empty non-`none` anchors as semantically equivalent to `none`. Empty non-`none` `anchor_value` is a lint violation. Per `anchor_kind=none` the value is `""` (sentinel) and INV-6 governs — INV-16 only applies when `anchor_kind ∈ {quote, page, section, paragraph}`.
 - INV-17: Constraint id parse rule (canonical). `NC-C{n}-{m}` where `{n}` is the **same** digit sequence used in the corresponding `claim_id` (`C-{n}`). Example: `claim_id=C-001` pairs with constraint ids `NC-C001-1`, `NC-C001-2`, etc. The pattern intentionally does NOT include a hyphen between `C` and `{n}` (i.e., `NC-C001-1`, NOT `NC-C-001-1`) because the canonical claim_id form `C-001` already establishes `001` as the joinable key — lint splits the NC string on the SECOND `-` (after `NC`), strips the leading `C`, then matches against the claim_id digit suffix. M-INV-2 / CV-INV-2 / CV-INV-3 all resolve through this parse rule. Zero-padding is consistent across both forms (`C-001` ↔ `NC-C001-1`); pattern `^NC-C[0-9]{3,}-[0-9]+$` enforces ≥3 digits matching the claim_id zero-padding.
+- INV-18 (inverse-rule for inconclusive not_applicable paths): When `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive` AND `defect_stage=not_applicable`, `ref_retrieval_method` MUST be exactly one of `{not_attempted, failed, audit_tool_failure}`. Any other value (`api`, `manual_pdf`, `not_found`) is a lint violation. This is the **inverse-direction** check complementing INV-10/INV-11/INV-14: those three each guarantee their own method value implies the (RETRIEVAL_FAILED, inconclusive, not_applicable) row, but they don't collectively guarantee that any entry hitting that row uses one of those three methods. Without INV-18, a malformed entry with `(RETRIEVAL_FAILED, inconclusive, not_applicable, api)` passes the 3-tuple allowed-matrix check, passes INV-10/11/14 (none fire), but matches no finalizer row — silently losing its annotation. INV-18 closes that.
 
 ### 3.2 `claim_intent_manifest.schema.json`
 
@@ -447,7 +448,7 @@ Sections (in order):
 4. **Audit pipeline (6 steps)**:
    - Step 1 — Anchor presence check (D1, INV-6 firm rule).
    - Step 2 — Reference retrieval (`api` → `manual_pdf` → `failed`/`not_found`). LOW-WARN on `failed` (D2 paywall). Sets `ref_retrieval_method` + carries `retrieved_excerpt` forward.
-   - Step 3 — Cache lookup keyed by `(claim_text_hash, ref_slug, anchor_kind, anchor_value_hash, retrieved_excerpt_hash, active_constraints_hash, judge_model)`. The `active_constraints_hash` is SHA-256 over the JCS-encoded set of manifest constraints applicable to this claim at audit time (manifest_negative_constraints[] ∪ matched claim's negative_constraints[], sorted by constraint_id). Lookup runs AFTER retrieval so the cached judgment is bound to the exact source text the judge will see, AND to the exact constraint set the judge would evaluate — if the user re-runs after uploading a manual PDF, correcting the corpus entry, OR adding/changing a negative constraint, the relevant hash changes and the cache miss forces fresh judging.
+   - Step 3 — Cache lookup keyed by `(claim_text_hash, ref_slug, anchor_kind, anchor_value_hash, retrieved_excerpt_hash, active_constraints_hash, judge_model)`. The `active_constraints_hash` is SHA-256 over the JCS-encoded set of manifest constraints applicable to this claim at audit time. **Selection is scoped by `(scoped_manifest_id, claim_id)`, NOT bare `claim_id`** — per M-INV-1, cross-manifest C-001 collision is permitted, so selecting by bare claim_id would pick constraints from the wrong manifest. The set: top-level `manifest_negative_constraints[]` of the **specific** manifest whose `manifest_id == scoped_manifest_id` ∪ that manifest's `claims[].negative_constraints[]` entry whose `claim_id` matches the current claim, sorted by `constraint_id`. Lookup runs AFTER retrieval so the cached judgment is bound to the exact source text the judge will see, AND to the exact constraint set the judge would evaluate — if the user re-runs after uploading a manual PDF, correcting the corpus entry, OR adding/changing a negative constraint, the relevant hash changes and the cache miss forces fresh judging.
 
      **The cache stores only judge-verdict + source-bound fields, never run-local identifiers.** Cached fields: `judgment`, `audit_status`, `defect_stage`, `rationale`, `judge_model`, `judge_run_at`, `ref_retrieval_method`, `violated_constraint_id`. Excluded (must be rebuilt from current-run context on replay): `claim_id` (new manifest position), `audit_run_id` (new run), `upstream_owner_agent` (different emitting agent on a different draft), `upstream_dispute` (run-specific dispute log), `anchor_value` (already keyed but re-emitted from current marker). This separation is what allows a verdict for the same `(claim_text, ref, anchor, source-excerpt, constraint-set, judge_model)` to be reused across different drafts / manifests without misattribution.
 
@@ -509,8 +510,12 @@ The audit agent receives:
 - The `literature_corpus[]` aggregate (for retrieval)
 
 **Outputs feeding formatter hard gate (same Stage 5 pass):**
-- `claim_audit_results[]` array (one per audited citation) — consumed by `formatter_agent`'s extended hard gate
-- Per-citation annotations injected adjacent to the existing v3.7.1 finalizer annotations (HIGH-WARN classes block; LOW-WARN advisory passes)
+- `claim_audit_results[]` array (one per audited citation) — drives the 8-row matrix annotations
+- `constraint_violations[]` array (one per uncited-but-violates-MNC/NC sentence) — drives `[HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED ({violated_constraint_id})]` annotation. **MUST be passed to formatter alongside `claim_audit_results[]`** — without this, uncited HIGH-WARN gate-refuse path silently disappears since no claim_audit_result row exists for uncited constraint violations (per §3.5 split). The formatter's REFUSE list per §1 deliverable 5 includes HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED — this handoff is what makes that REFUSE check observable.
+- `uncited_assertions[]` array — drives `[UNCITED-ASSERTION]` LOW-WARN advisory annotation (formatter renders, does NOT refuse).
+- `claim_drifts[]` array — drives `[LOW-WARN-CLAIM-DRIFT — kind=...]` LOW-WARN advisory annotation (formatter renders, does NOT refuse).
+- `audit_sampling_summaries[]` array — drives paper-level `[CLAIM-AUDIT-SAMPLED — k/N audited]` annotation when audited_count < total_citation_count (formatter renders in the AI Self-Reflection Report appendix; does NOT refuse).
+- Per-citation/per-sentence annotations injected adjacent to the existing v3.7.1 finalizer annotations (HIGH-WARN classes block; MED/LOW-WARN advisory passes).
 
 **Outputs feeding Stage 6 self-reflection:**
 - Per-stage `defect_stage` histogram appendix (renders when ≥ 5 completed entries) — added to the existing Stage 6 AI Self-Reflection Report after gate pass
@@ -549,7 +554,7 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 Coverage:
 
 1. **Schema validation** — `claim_audit_result.schema.json`, `claim_intent_manifest.schema.json`, `uncited_assertion.schema.json`, `claim_drift.schema.json`, `constraint_violation.schema.json` all valid JSON Schema; sample passports validate. Inline `audit_sampling_summary` entry schema (§4 step 3) also validated.
-2. **Cross-field invariants INV-1 through INV-17** — one test case per invariant, each with positive + negative fixture.
+2. **Cross-field invariants INV-1 through INV-18** — one test case per invariant, each with positive + negative fixture.
 3. **Manifest invariants M-INV-1 through M-INV-4** — including M-INV-4 manifest_id uniqueness across passport (duplicate manifest_id rejected).
 4. **Uncited-assertion invariants U-INV-1 through U-INV-4** — including cross-array `(scoped_manifest_id, manifest_claim_id)` integrity (uncited entry's referenced (M-*, C-*) pair must match some active manifest's claim).
 4a. **Claim-drift invariants D-INV-1 through D-INV-4** — including cross-array integrity for `drift_kind=INTENDED_NOT_EMITTED` (the `(scoped_manifest_id, manifest_claim_id)` pair must match some `claim_intent_manifests[]` entry) and exclusivity rule D-INV-4 (a sentence cannot appear in both `uncited_assertions[]` and `claim_drifts[]`).
@@ -571,7 +576,7 @@ Tests written BEFORE production code per `superpowers:test-driven-development`. 
 ### 7.1 Schema validation tests (`tests/test_claim_audit_schema.py`)
 
 - T-S1: Valid minimal entry validates (SUPPORTED, all required fields)
-- T-S2: Each invariant INV-1..INV-17 covered by paired positive/negative fixture
+- T-S2: Each invariant INV-1..INV-18 covered by paired positive/negative fixture
 - T-S3: `anchor_kind=none` entry that doesn't follow INV-6 fails lint (rationale missing prefix; `ref_retrieval_method ≠ not_attempted`)
 - T-S4: Manifest M-INV-1 duplicate claim_id rejected
 - T-S5: Manifest M-INV-2 dangling NC-C{n}-{m} (no parent claim) rejected
@@ -681,7 +686,7 @@ Issue body acceptance + decision-doc-derived additions:
 - [ ] Calibration mode tested with synthetic gold set (≥ 20 tuples) achieving FNR < 0.15 and FPR < 0.10
 - [ ] End-to-end test (§7.6 above) passes
 - [ ] Zero regression on existing 1107+ unittest + 201 pytest baseline
-- [ ] All 17 cross-field invariants (INV-1..INV-17) + 4 manifest invariants (M-INV-1..M-INV-4) + 4 uncited-assertion invariants (U-INV-1..U-INV-4) + 4 claim-drift invariants (D-INV-1..D-INV-4) + 4 constraint-violation invariants (CV-INV-1..CV-INV-4) + 4 sampling invariants (S-INV-1..S-INV-4) covered by paired positive/negative fixture
+- [ ] All 18 cross-field invariants (INV-1..INV-18) + 4 manifest invariants (M-INV-1..M-INV-4) + 4 uncited-assertion invariants (U-INV-1..U-INV-4) + 4 claim-drift invariants (D-INV-1..D-INV-4) + 4 constraint-violation invariants (CV-INV-1..CV-INV-4) + 4 sampling invariants (S-INV-1..S-INV-4) covered by paired positive/negative fixture
 - [ ] Allowed-matrix exhaustive test: every §3.1 table row positive + ≥5 disallowed combinations rejected
 - [ ] `claim_intent_manifest` absent → `MANIFEST-MISSING` advisory + fallback flow exercised in test
 - [ ] `audit_status=inconclusive` paths emit `defect_stage=not_applicable` (NOT `null`) — INV-4
@@ -728,7 +733,7 @@ After ship, update:
 
 ## 13. Implementation order (TDD-driven)
 
-1. Write schema files (3.1 + 3.2) — these are referenced by all later tests
+1. Write all 5 schema files up front (§3.1 claim_audit_result + §3.2 claim_intent_manifest + §3.3 uncited_assertion + §3.4 claim_drift + §3.5 constraint_violation) plus the inline `audit_sampling_summary` schema (§4 step 3). All five + inline are referenced by §6 schema-validation lint rule 1 + §7.1 schema tests; writing only §3.1/§3.2 first would make T-S1..T-S8 fail with "schema not found" diagnostics for the missing 3.
 2. Write `tests/test_claim_audit_schema.py` — failing because schema not yet validated by lint
 3. Write `scripts/check_claim_audit_consistency.py` — minimal code to pass schema tests
 4. Write `tests/test_claim_audit_pipeline.py` (T-P1..T-P11) — failing, no agent yet
