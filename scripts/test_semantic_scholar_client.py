@@ -24,14 +24,19 @@ import semantic_scholar_client as ssc  # noqa: E402
 from contamination_signals import SemanticScholarUnavailable  # noqa: E402
 
 
-def _mock_urlopen_returning(payload: dict) -> MagicMock:
-    """Build a urlopen mock that returns `payload` JSON as the response body."""
+def _mock_response(payload: dict) -> MagicMock:
+    """Build a urlopen-style response context manager returning `payload`."""
     body = json.dumps(payload).encode("utf-8")
     resp = MagicMock()
     resp.read.return_value = body
     resp.__enter__ = MagicMock(return_value=resp)
     resp.__exit__ = MagicMock(return_value=False)
-    return MagicMock(return_value=resp)
+    return resp
+
+
+def _mock_urlopen_returning(payload: dict) -> MagicMock:
+    """Build a urlopen mock that returns `payload` JSON as the response body."""
+    return MagicMock(return_value=_mock_response(payload))
 
 
 class DoiLookupTest(unittest.TestCase):
@@ -257,6 +262,204 @@ class ResponseReadTimeoutTest(unittest.TestCase):
         with patch("urllib.request.urlopen", MagicMock(return_value=resp)):
             with self.assertRaises(SemanticScholarUnavailable):
                 client.lookup({"title": "X", "doi": "10.1/y"})
+
+
+class RateLimitThrottleTest(unittest.TestCase):
+    """#115 R5-2: back-to-back successful lookups must respect the
+    protocol's 1 req/s unauthenticated rate limit so the client doesn't
+    proactively hit 429 and exhaust retries on healthy corpora."""
+
+    def _good_resp(self, payload: dict) -> MagicMock:
+        return _mock_response(payload)
+
+    def test_first_request_does_not_sleep(self) -> None:
+        """First request after construction has no prior call to pace
+        against; the throttle should pass through immediately."""
+        sleep = MagicMock()
+        clock = MagicMock(return_value=1000.0)
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        with patch(
+            "urllib.request.urlopen",
+            MagicMock(return_value=self._good_resp({"paperId": "x", "title": "T"})),
+        ):
+            client.lookup({"title": "T", "doi": "10.1/y"})
+        # Throttle sleep must NOT fire on first call (only on subsequent)
+        self.assertEqual(sleep.call_count, 0)
+
+    def test_back_to_back_calls_throttle_to_one_req_per_second(self) -> None:
+        """Default unauthenticated tier: 1.0s min interval between calls.
+        Second call within the interval should sleep the remainder."""
+        sleep = MagicMock()
+        # clock: first request at t=1000.0, second at t=1000.3 (0.3s later
+        # — throttle should sleep 0.7s before issuing second request)
+        clock = MagicMock(side_effect=[1000.0, 1000.3, 1000.3])
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
+        with patch(
+            "urllib.request.urlopen",
+            MagicMock(side_effect=[resp_factory(), resp_factory()]),
+        ):
+            client.lookup({"title": "T", "doi": "10.1/y"})
+            client.lookup({"title": "T", "doi": "10.1/z"})
+        # One sleep call between the two requests
+        self.assertEqual(sleep.call_count, 1)
+        slept = sleep.call_args[0][0]
+        self.assertAlmostEqual(slept, 0.7, places=2)
+
+    def test_back_to_back_calls_past_interval_do_not_sleep(self) -> None:
+        """If enough time elapsed naturally between calls, no extra sleep
+        is needed — the throttle is a floor, not a ceiling."""
+        sleep = MagicMock()
+        # Second call 2.5s after first; no throttle sleep needed
+        clock = MagicMock(side_effect=[1000.0, 1002.5, 1002.5])
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
+        with patch(
+            "urllib.request.urlopen",
+            MagicMock(side_effect=[resp_factory(), resp_factory()]),
+        ):
+            client.lookup({"title": "T", "doi": "10.1/y"})
+            client.lookup({"title": "T", "doi": "10.1/z"})
+        # No throttle-sleep calls (429 retry sleeps would also count but
+        # we don't hit any 429 here)
+        self.assertEqual(sleep.call_count, 0)
+
+    def test_api_key_lowers_interval_to_authenticated_tier(self) -> None:
+        """Per protocol line 6: authenticated tier is 10 req/s = 0.1s
+        interval. When S2_API_KEY is set, throttle drops accordingly."""
+        sleep = MagicMock()
+        clock = MagicMock(side_effect=[1000.0, 1000.03, 1000.03])
+        client = ssc.SemanticScholarClient(
+            api_key="test-key", sleep=sleep, clock=clock
+        )
+        resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
+        with patch(
+            "urllib.request.urlopen",
+            MagicMock(side_effect=[resp_factory(), resp_factory()]),
+        ):
+            client.lookup({"title": "T", "doi": "10.1/y"})
+            client.lookup({"title": "T", "doi": "10.1/z"})
+        # 0.1 - 0.03 = 0.07s sleep on authenticated tier
+        self.assertEqual(sleep.call_count, 1)
+        slept = sleep.call_args[0][0]
+        self.assertAlmostEqual(slept, 0.07, places=2)
+
+    def test_429_retry_refreshes_throttle_anchor(self) -> None:
+        """F5 closure (simplify efficiency): if `_last_request_at` is not
+        refreshed after a 429 backoff, the next outer call paces against
+        entry time + N × backoff already elapsed, then under-sleeps and
+        re-triggers 429. After fix: anchor refreshes to actual wake time."""
+        sleep = MagicMock()
+        # Clock sequence:
+        # call 1 entry elapsed check (none, first call) - not used
+        # call 1 entry write t=1000.0
+        # call 1 429-retry write t=1002.0 (after 2s backoff)
+        # call 2 entry elapsed check t=1002.0 (no extra sleep, 0s elapsed
+        #   from anchor with 1s interval = sleep 1.0s)
+        # call 2 entry write t=1003.0
+        clock = MagicMock(side_effect=[1000.0, 1002.0, 1002.0, 1003.0])
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        good = _mock_response({"paperId": "x", "title": "T"})
+
+        def urlopen_side(*args, **kwargs):
+            urlopen_side.count += 1
+            if urlopen_side.count == 1:
+                raise urllib.error.HTTPError(
+                    "u", 429, "Too Many", {}, io.BytesIO(b"")
+                )
+            return good
+        urlopen_side.count = 0
+
+        with patch("urllib.request.urlopen", urlopen_side):
+            client.lookup({"title": "T", "doi": "10.1/y"})
+            client.lookup({"title": "T", "doi": "10.1/z"})
+        # Sleeps: one 2s backoff for the 429, one 1s for the throttle on
+        # the 2nd outer call (anchor is fresh at t=1002 so elapsed=0,
+        # remaining=1.0)
+        self.assertEqual(sleep.call_count, 2)
+        self.assertAlmostEqual(sleep.call_args_list[0][0][0], 2.0, places=2)
+        self.assertAlmostEqual(sleep.call_args_list[1][0][0], 1.0, places=2)
+
+    def test_explicit_min_interval_override(self) -> None:
+        """Caller can override the throttle interval (e.g., for tests or
+        for a hypothetical higher tier)."""
+        sleep = MagicMock()
+        clock = MagicMock(side_effect=[1000.0, 1000.0, 1000.0])
+        client = ssc.SemanticScholarClient(
+            sleep=sleep, clock=clock, min_interval_seconds=0.0
+        )
+        resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
+        with patch(
+            "urllib.request.urlopen",
+            MagicMock(side_effect=[resp_factory(), resp_factory()]),
+        ):
+            client.lookup({"title": "T", "doi": "10.1/y"})
+            client.lookup({"title": "T", "doi": "10.1/z"})
+        # min_interval=0 means never throttle
+        self.assertEqual(sleep.call_count, 0)
+
+
+class OutageLatchTest(unittest.TestCase):
+    """#115 R5-3: when urlopen raises URLError (network down), the client
+    must latch into unavailable mode so subsequent calls fail fast
+    without waiting on a known-dead service. Reset method allows
+    long-running tools to retry recovery between passports."""
+
+    def test_url_error_latches_client_unavailable(self) -> None:
+        """First call hits URLError → SemanticScholarUnavailable. Second
+        call must raise immediately WITHOUT invoking urlopen — the
+        latch short-circuits the network entirely."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        urlopen = MagicMock(
+            side_effect=urllib.error.URLError("connection refused")
+        )
+        with patch("urllib.request.urlopen", urlopen):
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "T", "doi": "10.1/y"})
+            # urlopen was called once for the first lookup
+            self.assertEqual(urlopen.call_count, 1)
+            # Second lookup must NOT call urlopen — latched short-circuit
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "Other", "doi": "10.1/z"})
+            self.assertEqual(urlopen.call_count, 1, "latched call must skip network")
+
+    def test_reset_outage_latch_restores_normal_behavior(self) -> None:
+        """A long-running tool between passport batches can call
+        reset_outage_latch() to retry the network."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        # First call latches
+        urlopen = MagicMock(side_effect=urllib.error.URLError("down"))
+        with patch("urllib.request.urlopen", urlopen):
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "T", "doi": "10.1/y"})
+
+        # Reset latch
+        client.reset_outage_latch()
+
+        # Subsequent call should re-attempt urlopen (and succeed in this
+        # mock scenario)
+        urlopen_good = MagicMock(
+            return_value=_mock_response({"paperId": "x", "title": "T"})
+        )
+        with patch("urllib.request.urlopen", urlopen_good):
+            result = client.lookup({"title": "T", "doi": "10.1/y"})
+        self.assertEqual(result, {"matched": True, "paperId": "x"})
+        self.assertEqual(urlopen_good.call_count, 1)
+
+    def test_http_error_does_not_latch(self) -> None:
+        """HTTP 5xx is a server-side error, not a transport-level outage.
+        The protocol §"On API failure" says network errors skip the
+        remaining batch; HTTP failures don't. Make sure 5xx doesn't
+        falsely latch the client."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        urlopen = MagicMock(side_effect=[
+            urllib.error.HTTPError("u", 503, "Service Unavailable", {}, io.BytesIO(b"")),
+        ])
+        with patch("urllib.request.urlopen", urlopen):
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "T", "doi": "10.1/y"})
+        # 5xx fired but client should not be latched
+        self.assertFalse(client._latched_unavailable)
 
 
 class CLIWiringTest(unittest.TestCase):

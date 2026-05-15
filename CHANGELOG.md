@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### #115 — Semantic Scholar client maturity: throttle + outage latch (2026-05-15)
+
+**Parent issue:** [#115](https://github.com/Imbad0202/academic-research-skills/issues/115) — follow-up to #105 PR codex round-5 [P2]×2 findings (R5-2 throttle + R5-3 outage latch). Both deferred during #105 ship per architectural-inflection discipline; this entry closes the SS-client maturity gap.
+
+**Modified files:**
+
+- `scripts/semantic_scholar_client.py` — two additions:
+  - **Throttle** (#115 R5-2): new ctor params `clock` + `min_interval_seconds`. Defaults: 1.0s unauthenticated (1 req/s per protocol), auto-drops to 0.1s when `S2_API_KEY` detected (authenticated 10 req/s tier). Pre-request pacing tracks `_last_request_at`; sleeps `max(0, min_interval - elapsed)` before each call. First request passes through.
+  - **Outage latch** (#115 R5-3): `_latched_unavailable` flag set on `URLError`. Subsequent `lookup()` calls short-circuit with `SemanticScholarUnavailable` without invoking urlopen. New `reset_outage_latch()` method lets long-running tools retry between passport batches. HTTP 5xx does NOT latch (server-side error ≠ transport outage).
+- `scripts/test_semantic_scholar_client.py` — 9 new tests (5 throttle: first-no-sleep / back-to-back / past-interval / authenticated-tier / override; 3 latch: URLError short-circuits / reset restores / 5xx does not latch; 1 efficiency: 429-retry refreshes throttle anchor).
+- `scripts/contamination_signals.py` — new `reset_client_outage_latch(client)` helper. Production clients implementing the outage-latch pattern expose `reset_outage_latch()`; mocks may not. Helper invokes when present, no-ops when absent — avoids AttributeError when callers swap clients. 2 new tests.
+- `scripts/migrate_literature_corpus_to_v3_7_3.py` — `migrate_directory` resets the SS client's outage latch between passports so a transient network blip on one passport doesn't permanently disable lookups for the rest of the directory. Within a single passport the latch still short-circuits to protect a dead service from N retry waves.
+
+**Production behavior change:**
+
+- `_build_default_ss_client()` API unchanged (`SemanticScholarClient()` no-arg). New throttle is automatic per protocol — no migration tool changes required.
+- For a 5000-entry unauthenticated migration: same ~1.5hr runtime (already constrained by 1 req/s); now achieves it via deterministic pacing rather than 429-retry exhaustion.
+- For an authenticated migration (`S2_API_KEY` set): drops to 0.1s/call = ~8min for 5000 entries.
+- Network outage during large corpus: previously retried every entry independently (up to 30s timeout per entry on the slow path); now the first URLError latches the client and subsequent entries short-circuit until the next batch boundary calls `reset_outage_latch()`. The `migrate_directory` helper does this reset automatically between passports.
+
+**Out of scope:** migration tool (`migrate_literature_corpus_to_v3_7_3.py`) — #105 partial-fill / provenance contract correct as shipped. Protocol doc — already correct; this issue is implementation alignment.
+
+**Regression:** 472 unittest (+8 #115 tests) + 201 pytest adapters + spec_consistency + preprint_venues all green.
+
 ### #105 — v3.7.3 contamination_signals backfill migration tool (2026-05-15)
 
 **Parent issue:** [#105](https://github.com/Imbad0202/academic-research-skills/issues/105). Spec anchor: v3.7.3 §3.2 R-L3-2-B (the deferred batch operation; bibliography_agent computes signals at ingest, this tool delivers post-hoc backfill on legacy corpora). Design: `docs/design/2026-05-15-issue-105-contamination-signals-backfill-design.md`.

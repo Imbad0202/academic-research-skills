@@ -263,5 +263,22 @@ class EmissionRulesTest(unittest.TestCase):
         self.assertNotIn("semantic_scholar_unmatched", result)
 
 
+class ResetClientOutageLatchHelperTest(unittest.TestCase):
+    """#115 R5-3 helper: production clients implementing the outage-latch
+    pattern expose `reset_outage_latch()`; minimal mocks may not. The
+    helper invokes when present, no-ops when absent. Avoids
+    AttributeError for callers that swap in test mocks."""
+
+    def test_helper_invokes_reset_when_present(self) -> None:
+        client = MagicMock()
+        cs.reset_client_outage_latch(client)
+        client.reset_outage_latch.assert_called_once()
+
+    def test_helper_no_ops_when_method_absent(self) -> None:
+        client = MagicMock(spec=["lookup"])  # only the Protocol's lookup
+        # Should NOT raise AttributeError
+        cs.reset_client_outage_latch(client)
+
+
 if __name__ == "__main__":
     unittest.main()

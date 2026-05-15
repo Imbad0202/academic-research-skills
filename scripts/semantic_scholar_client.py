@@ -38,6 +38,12 @@ _FIELDS = "title,authors,year,externalIds,venue,publicationDate"
 _BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
 
+# Per protocol line 6: unauthenticated tier is ~1 req/s, authenticated
+# (S2_API_KEY) tier is 10 req/s. Default throttle interval defends
+# against proactive rate limiting before a 429 fires (#115 R5-2).
+_UNAUTHENTICATED_MIN_INTERVAL = 1.0
+_AUTHENTICATED_MIN_INTERVAL = 0.1
+
 # Per PaperOrchestra (Song et al. 2026 Appx D.3) + protocol §"Query
 # Patterns" Pattern 1: title-similarity threshold for "matched" verdict.
 _TITLE_SIMILARITY_THRESHOLD = 0.70
@@ -62,14 +68,58 @@ class SemanticScholarClient:
 
     Satisfies `contamination_signals.SemanticScholarClient` Protocol.
     Tests inject MagicMocks; production callers use this concrete class.
+
+    Concurrency note: rate-limit pacing is per-instance. A migration tool
+    that spawns N concurrent clients will issue N × (1 req/s) outbound
+    even though each instance respects the throttle, blowing past the
+    protocol's 1 req/s unauthenticated limit and triggering 429s. Share
+    a single instance across a migration run.
     """
 
-    def __init__(self, api_key: str | None = None, sleep: Any = time.sleep) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        sleep: Any = time.sleep,
+        clock: Any = time.monotonic,
+        min_interval_seconds: float | None = None,
+    ) -> None:
         self._api_key = api_key or os.environ.get(_API_KEY_ENV)
         self._sleep = sleep
+        self._clock = clock
+        if min_interval_seconds is None:
+            # Auto-pick tier from API key presence (#115 R5-2).
+            self._min_interval = (
+                _AUTHENTICATED_MIN_INTERVAL if self._api_key
+                else _UNAUTHENTICATED_MIN_INTERVAL
+            )
+        else:
+            self._min_interval = min_interval_seconds
+        # Pacing state: timestamp of last request. None = no prior call.
+        self._last_request_at: float | None = None
+        # Outage latch (#115 R5-3): once URLError fires, short-circuit
+        # subsequent calls until reset_outage_latch() is invoked.
+        self._latched_unavailable: bool = False
+
+    def reset_outage_latch(self) -> None:
+        """Clear the outage latch so the next lookup retries the network.
+
+        Long-running tools (e.g., per-passport-batch migration runs) can
+        call this between batches to attempt recovery. Per protocol
+        §"On API failure": network errors skip the remaining batch;
+        this method is the explicit "next batch starts fresh" signal.
+        """
+        self._latched_unavailable = False
 
     def lookup(self, entry: Mapping[str, Any]) -> Mapping[str, Any]:
         """Return {"matched": bool, "paperId": str | None}.
+
+        Failure semantics:
+        - HTTP 5xx → SemanticScholarUnavailable for THIS reference only
+          (server-side error; subsequent lookups retry normally).
+        - URLError (network-level) → SemanticScholarUnavailable AND
+          latches the client unavailable. Subsequent lookups short-
+          circuit without invoking urlopen until reset_outage_latch().
+          Per protocol §"On API failure": skip S2 for remaining batch.
 
         Per protocol §"Query Patterns" + §"Response Handling":
         `semantic_scholar_unmatched` is True only when NEITHER DOI nor
@@ -103,6 +153,28 @@ class SemanticScholarClient:
         return {"matched": False, "paperId": None}
 
     def _request(self, path: str) -> dict[str, Any]:
+        # Latch short-circuit (#115 R5-3): if a prior URLError marked
+        # the network dead, fail fast without trying again.
+        if self._latched_unavailable:
+            raise SemanticScholarUnavailable(
+                "S2 API latched unavailable after prior network failure; "
+                "call reset_outage_latch() to retry."
+            )
+
+        # Throttle (#115 R5-2): pace requests at the protocol's rate
+        # limit. First call passes through (no prior timestamp). Update
+        # `_last_request_at` to "now" before issuing the request so all
+        # exit paths (success, 404, 5xx, HTTPError, 429-retry) leave a
+        # fresh anchor for the next outer call. 429 retries below
+        # re-update after their backoff sleep so the anchor reflects
+        # actual wall time even when retries land in a slow second.
+        if self._last_request_at is not None and self._min_interval > 0:
+            elapsed = self._clock() - self._last_request_at
+            remaining = self._min_interval - elapsed
+            if remaining > 0:
+                self._sleep(remaining)
+        self._last_request_at = self._clock()
+
         url = f"{_API_BASE}{path}"
         headers = {"User-Agent": "ARS-migration/1.0"}
         if self._api_key:
@@ -119,6 +191,13 @@ class SemanticScholarClient:
                     return {}
                 if e.code == 429 and attempt < _MAX_RETRIES:
                     self._sleep(_BACKOFF_SECONDS)
+                    # F5 closure (simplify efficiency): refresh anchor
+                    # after each 429 backoff so the next outer _request
+                    # paces against actual wake time, not entry time.
+                    # Without this the next outer call may under-sleep
+                    # (because elapsed counts the 2s × N backoff time)
+                    # and re-trigger 429.
+                    self._last_request_at = self._clock()
                     continue
                 if 500 <= e.code < 600:
                     raise SemanticScholarUnavailable(
@@ -128,6 +207,11 @@ class SemanticScholarClient:
                     f"S2 API HTTP {e.code} after {_MAX_RETRIES} retries"
                 ) from e
             except urllib.error.URLError as e:
+                # Network-level failure: latch the client so subsequent
+                # lookups in the same batch fail fast (#115 R5-3).
+                # Per protocol §"On API failure": skip S2 for remaining
+                # batch on network error.
+                self._latched_unavailable = True
                 raise SemanticScholarUnavailable(f"S2 API network error: {e}") from e
             except (OSError, TimeoutError) as e:
                 # Response-body read timeouts (socket.timeout subclasses

@@ -190,7 +190,13 @@ def migrate_directory(
     dry_run: bool,
     verbose: bool = False,
 ) -> dict[str, int]:
-    """Migrate every passport YAML in `directory` (non-recursive)."""
+    """Migrate every passport YAML in `directory` (non-recursive).
+
+    Between passports, reset the SS client's outage latch (#115 R5-3) so
+    a network blip on one passport doesn't permanently disable lookups
+    for the rest of the directory. Within a single passport, the latch
+    short-circuits to protect against hammering a dead service.
+    """
     agg = {"files_processed": 0, "entries_processed": 0, "entries_patched": 0}
     for path in discover_passports(directory):
         agg["files_processed"] += 1
@@ -199,6 +205,7 @@ def migrate_directory(
         )
         agg["entries_processed"] += r["processed"]
         agg["entries_patched"] += r["patched"]
+        cs.reset_client_outage_latch(ss_client)
     return agg
 
 

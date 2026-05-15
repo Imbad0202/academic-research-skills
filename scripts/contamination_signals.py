@@ -86,6 +86,16 @@ class SemanticScholarClient(Protocol):
         ...
 
 
+def reset_client_outage_latch(client: SemanticScholarClient) -> None:
+    """Best-effort latch reset (#115 R5-3): production clients implementing
+    the outage-latch pattern expose `reset_outage_latch()`; minimal mocks
+    in tests may not. This helper invokes it when present, no-ops when
+    absent. Long-running tools call this between passport batches."""
+    reset = getattr(client, "reset_outage_latch", None)
+    if callable(reset):
+        reset()
+
+
 def compute_preprint_signal(entry: Mapping[str, Any]) -> bool:
     """Signal 1 per v3.7.3 spec §3.2 Vector 1.
 
