@@ -409,3 +409,43 @@ def test_non_manual_entry_with_ss_unmatched_passes():
         "contamination_signals": {"semantic_scholar_unmatched": True},
     }
     _validator(schema).validate(entry)
+
+
+# --- #105 contamination_signals_backfilled_at -------------------------
+
+
+def test_contamination_signals_backfilled_at_valid_iso8601_passes():
+    """#105: scalar ISO-8601 timestamp recording when post-hoc backfill ran."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {
+            "preprint_post_llm_inflection": False,
+            "semantic_scholar_unmatched": False,
+        },
+        "contamination_signals_backfilled_at": "2026-05-15T10:30:00Z",
+    }
+    _validator(schema).validate(entry)
+
+
+def test_contamination_signals_backfilled_at_absent_passes():
+    """#105 backward compat: ingest-time entries (computed by
+    bibliography_agent v3.7.3+) lack this field, which is valid."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {
+            "preprint_post_llm_inflection": False,
+            "semantic_scholar_unmatched": False,
+        },
+    }
+    _validator(schema).validate(entry)
+
+
+def test_contamination_signals_backfilled_at_non_string_rejected():
+    """#105: field type is string (date-time format); integers / objects
+    are rejected by JSON Schema validation."""
+    import jsonschema
+
+    schema = _load_schema()
+    entry = _base_entry() | {"contamination_signals_backfilled_at": 1234567890}
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        _validator(schema).validate(entry)

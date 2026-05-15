@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### #105 — v3.7.3 contamination_signals backfill migration tool (2026-05-15)
+
+**Parent issue:** [#105](https://github.com/Imbad0202/academic-research-skills/issues/105). Spec anchor: v3.7.3 §3.2 R-L3-2-B (the deferred batch operation; bibliography_agent computes signals at ingest, this tool delivers post-hoc backfill on legacy corpora). Design: `docs/design/2026-05-15-issue-105-contamination-signals-backfill-design.md`.
+
+**New files:**
+
+- `scripts/contamination_signals.py` — two pure-function resolvers + emission rules + `SemanticScholarClient` protocol. `compute_preprint_signal()` (Signal 1, deterministic year+venue check against 10-server closed list). `compute_ss_unmatched_signal()` (Signal 2, dependency-injected SS client, returns `None` on manual exemption + API degradation per spec).
+- `scripts/migrate_literature_corpus_to_v3_7_3.py` — CLI tool: `[--dry-run] [--verbose] <passport_or_dir>`. Uses `ruamel.yaml` round-trip to preserve comments + key order + quoting style. Reports `processed / patched / skipped_already_migrated / skipped_insufficient_data` counts. Idempotent.
+- `scripts/test_contamination_signals.py` — 25 unit tests covering Signal 1 (15 cases: 10 preprint venues × year boundary, non-preprint venue, missing year, missing venue), Signal 2 (6 cases: manual exemption / match / no-match / API degradation × 2 paths / unexpected exception), emission rules (4 cases).
+- `scripts/test_migrate_literature_corpus_to_v3_7_3.py` — 9 unittest cases covering dry-run, full migration per emission rules, idempotency, insufficient-data skip, empty-corpus passport, directory scan (non-recursive), comment preservation.
+- `docs/migration/v3.7.3-contamination-signals-backfill.md` — user-facing migration guide (when to run, dry-run workflow, idempotency, SS API rate-limit considerations, what's out of scope).
+
+**Modified files:**
+
+- `shared/contracts/passport/literature_corpus_entry.schema.json` — purely additive: new optional `contamination_signals_backfilled_at` field (ISO-8601 date-time string). Existing v3.7.3 ingest-time entries (which lack this field) remain valid; pre-v3.7.3 entries (which lack both this field and `contamination_signals`) remain valid.
+- `scripts/adapters/tests/test_literature_corpus_entry_schema.py` — 3 new tests for the additive field (valid present / absent / non-string rejected).
+- `requirements-dev.txt` — add `ruamel.yaml>=0.17`.
+
+**Open-question resolutions (user-chosen 2026-05-15):**
+
+- Q1 API rate-limit handling: backoff-only via existing SS protocol (429 → 2s × 3); no resumable checkpoint (YAGNI per minimal scope)
+- Q2 schema field naming: scalar `contamination_signals_backfilled_at` ISO-8601 timestamp; strictly additive upgrade path if v3.7.4 needs structured provenance
+- Q3 multi-passport batch mode: directory-scan only; no `--input-list` (YAGNI)
+- Q4 YAML library: `ruamel.yaml` round-trip to preserve user-owned passport formatting (memory `feedback_toml_duplicate_table_corruption` spirit)
+
+**Spec discipline (per v3.7.3 R-L3-2-B):**
+
+- Migration is offline + opt-in: user explicitly invokes; pipeline doesn't auto-trigger
+- Idempotency keyed on `contamination_signals` presence: first-migration timestamp preserved across re-runs
+- `obtained_via=manual` exemption preserved at migration time (semantic_scholar_unmatched field omitted, matches the v3.7.3 schema cross-field rule)
+- API degradation → field omitted (NOT set to False, per "absence ≠ negative confirmation" rule)
+
+**Files explicitly NOT touched:**
+
+- `deep-research/agents/bibliography_agent.md` — v3.7.3 ingest-time computation frozen
+- `academic-pipeline/agents/pipeline_orchestrator_agent.md` — finalizer behavior unchanged
+- Existing `scripts/adapters/*` — adapters produce ingest-time entries; migration is downstream
+
+**Regression status:** 1053 #108 baseline + 17 #111 baseline + 25 resolver + 9 migration + 3 schema = 1107 total. All green. No regression on the existing 4 `allOf` cross-field invariants (manual exemption + preprint year=2024 boundary verified by adapter pytest).
+
 ### #104 — README motivation: add Zhao et al. corpus-scale evidence anchor (2026-05-15)
 
 **Parent issue:** [#104](https://github.com/Imbad0202/academic-research-skills/issues/104). Doc-only — no code changes.

@@ -117,6 +117,11 @@
       "type": ["string", "null"],
       "description": "v3.7.1 trust-chain field. Round identifier of the most recent codex / cross-model audit that examined this entry's description, or null / the literal string 'none' when no such audit has run. The field-level type permits both null and 'none' broadly, but per spec §3.1 firm rule #2 the rule-#2 then-branch in `allOf` tightens this to the LITERAL STRING 'none' only when source_acquired=false (no original means audit cannot be substantive — round-6 codex P2 closure). null remains valid only when source_acquired=true and the entry is simply unaudited."
     },
+    "contamination_signals_backfilled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "v3.7.3 backfill provenance (issue #105). ISO-8601 UTC timestamp set by scripts/migrate_literature_corpus_to_v3_7_3.py when contamination_signals was computed post-hoc on a pre-v3.7.3 entry rather than at ingest time. Absence means signals were either computed at ingest by bibliography_agent v3.7.3+ or have not been computed yet. Backward compat: pre-v3.7.3 entries lack both contamination_signals and this field; ingest-time entries (v3.7.3+) lack only this field."
+    },
     "contamination_signals": {
       "type": "object",
       "additionalProperties": false,
