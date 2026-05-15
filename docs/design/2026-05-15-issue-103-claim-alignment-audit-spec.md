@@ -75,6 +75,7 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
     "judgment": { "enum": ["SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "RETRIEVAL_FAILED"] },
     "audit_status": { "enum": ["completed", "inconclusive"] },
     "defect_stage": {
+      "comment": "uncited_assertion is intentionally NOT in this enum — uncited findings have no ref_slug and use the separate §3.3 uncited_assertion.schema.json. 9 values total.",
       "enum": [
         "retrieval_existence",
         "metadata",
@@ -83,7 +84,6 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
         "citation_anchor",
         "synthesis_overclaim",
         "negative_constraint_violation",
-        "uncited_assertion",
         "not_applicable",
         null
       ]
@@ -143,7 +143,7 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
 - INV-5: `judgment=RETRIEVAL_FAILED` AND `audit_status=completed` → `defect_stage=retrieval_existence` (reference genuinely does not exist, distinct from tool failure)
 - INV-6: `anchor_kind=none` → `judgment=RETRIEVAL_FAILED`, `audit_status=inconclusive`, `defect_stage=not_applicable`, `ref_retrieval_method=not_attempted`, rationale begins with `v3.7.3 R-L3-1-A violation` (per D1)
 - INV-7: `defect_stage=negative_constraint_violation` → `violated_constraint_id ≠ null`
-- INV-8: `defect_stage=negative_constraint_violation` ↔ `judgment=UNSUPPORTED` (negative-constraint violations are always classified UNSUPPORTED, never AMBIGUOUS — explicit author rules are binary)
+- INV-8: `defect_stage=negative_constraint_violation` → `judgment=UNSUPPORTED` (one-way; negative-constraint violations are always classified UNSUPPORTED, never AMBIGUOUS — explicit author rules are binary. The converse does NOT hold: UNSUPPORTED admits 6 other defect_stages per INV-2.)
 - INV-9: `upstream_dispute ≠ null` → `defect_stage ≠ null` AND `defect_stage ≠ not_applicable` (disputes are only meaningful for substantive defect classifications)
 - INV-10: `ref_retrieval_method=failed` → `judgment=RETRIEVAL_FAILED` AND `audit_status=inconclusive` AND `defect_stage=not_applicable` (paywall path)
 - INV-11: `ref_retrieval_method=not_attempted` ↔ `anchor_kind=none` AND INV-6 holds (anchor=none skips retrieval)
@@ -281,10 +281,10 @@ Sections (in order):
 4. **Audit pipeline (6 steps)**:
    - Step 1 — Anchor presence check (D1, INV-6 firm rule).
    - Step 2 — Reference retrieval (`api` → `manual_pdf` → `failed`/`not_found`). LOW-WARN on `failed` (D2 paywall). Sets `ref_retrieval_method` + carries `retrieved_excerpt` forward.
-   - Step 3 — Cache lookup keyed by `(claim_text_hash, ref_slug, anchor_kind, anchor_value_hash, retrieved_excerpt_hash, judge_model)`. Lookup runs AFTER retrieval so the cached judgment is bound to the exact source text the judge will see — if the user re-runs after uploading a manual PDF or correcting the corpus entry, the excerpt hash changes and the cache miss forces fresh judging. On hit: return cached judgment + rationale + judge_model + cached_at. On miss: proceed to Step 4-5 then write back.
+   - Step 3 — Cache lookup keyed by `(claim_text_hash, ref_slug, anchor_kind, anchor_value_hash, retrieved_excerpt_hash, active_constraints_hash, judge_model)`. The `active_constraints_hash` is SHA-256 over the JCS-encoded set of manifest constraints applicable to this claim at audit time (manifest_negative_constraints[] ∪ matched claim's negative_constraints[], sorted by constraint_id). Lookup runs AFTER retrieval so the cached judgment is bound to the exact source text the judge will see, AND to the exact constraint set the judge would evaluate — if the user re-runs after uploading a manual PDF, correcting the corpus entry, OR adding/changing a negative constraint, the relevant hash changes and the cache miss forces fresh judging. On hit: return the full cached value (a complete `claim_audit_result` entry including `judge_run_at` from the original judge invocation, NOT the cache-replay time). Step 7 emits the entry unchanged. On miss: proceed to Step 4-5, write the resulting `claim_audit_result` entry into the cache verbatim, then emit. The filesystem KV is `${ARS_CACHE_DIR}/claim_audit_v1/<cache_key_sha256>.json`; the file body IS a valid `claim_audit_result` entry; cache-side metadata (mtime, filesystem `cached_at`) lives on the filesystem, never inside the JSON body.
    - Step 4 — Passage location using anchor_value (quote = exact match; page/section/paragraph = scoped retrieval).
    - Step 5 — Judge invocation with prompt template. Output one of SUPPORTED/UNSUPPORTED/AMBIGUOUS, with rationale.
-   - Step 6 — Defect_stage classification (8-category matrix + precedence rules, restated from issue body).
+   - Step 6 — Defect_stage classification. Citation-bound results emit `claim_audit_result` entries with `defect_stage` ∈ 7 substantive categories `{retrieval_existence, metadata, source_description, claim_intent, citation_anchor, synthesis_overclaim, negative_constraint_violation}` plus 2 non-substantive `{not_applicable, null}`. Uncited-sentence findings emit `uncited_assertion` entries instead (no `defect_stage`; see §3.3 + §6 dedicated detector). Precedence rules from issue body restated in §5 finalizer integration.
 5. **Manifest cross-reference (D6)** — three-set diff: `intended_claims` ∩ `emitted_claims` ∩ `supported_claims`. Drift/dropped/violation classification. Advisory (D4-a).
 6. **Uncited-assertion detector (D4-c)** — 3-condition token rule. Pseudocode included.
 7. **Output emission** — one `claim_audit_result` entry per audited citation, plus aggregate counts emitted in pipeline-orchestrator Stage 6 reflection report.
