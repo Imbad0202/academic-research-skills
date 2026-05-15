@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### #111 — slr_lineage emission on systematic-review → academic-paper full handoff (2026-05-15)
+
+**Parent issue:** [#111](https://github.com/Imbad0202/academic-research-skills/issues/111), follow-up to #108 (PR #110, merged 70c8678) round-8 P2 #1. Design: `docs/design/2026-05-15-issue-111-slr-lineage-emission-design.md`.
+
+Closes the pipeline-plumbing gap surfaced by #108: `disclosure --policy-anchor=prisma-trAIce` now dispatches automatically when the documented `deep-research systematic-review → academic-paper full → disclosure` path runs, without the user manually supplying `mode=systematic-review` at cold-start.
+
+**New files added:**
+
+- `scripts/slr_lineage.py` — pure resolver function `resolve_from_stages(stages)` over a `state_tracker.stages` snapshot. Returns `True` iff any stage was produced by `deep-research` in systematic-review mode. Bound to the deep-research producer specifically (a non-deep-research stage carrying mode='systematic-review' does NOT trigger SLR lineage).
+- `scripts/test_slr_lineage_emission.py` — 12 conformance tests covering resolver semantics (7 cases: positive / non-SLR / mid-entry / empty / alias `slr` / non-deep-research / missing-mode), renderer integration (3 cases: pipeline-emitted dispatches without `mode_param` / non-SLR still blocks / pre-#111 cold-start fallback preserved), and end-to-end pipeline handoff (2 cases).
+
+**Modified files:**
+
+- `shared/handoff_schemas.md` — Schema 9 Material Passport gains optional top-level `slr_lineage: boolean` row + dedicated "Run-level lineage signal (v3.7.4)" subsection documenting semantics, producer, consumer, backward compat, and G1 boundary note (passport-level vs corpus-entry-level distinction).
+- `academic-pipeline/agents/pipeline_orchestrator_agent.md` — §4 Transition Management gains a "Run-level lineage emission (v3.7.4+)" step computed at every handoff transition before dispatch. Passport carry-line updated to reference `slr_lineage` from v3.7.4+.
+
+**Files explicitly NOT touched (matches #111 §Scope out-of-scope):**
+
+- `scripts/policy_anchor_disclosure_referee.py` — #108 referee, contract unchanged
+- `academic-paper/references/policy_anchor_disclosure_protocol.md` — #108 protocol, unchanged
+- `academic-paper/references/policy_anchor_table.md` — #108 anchor table, unchanged
+- `academic-paper/references/disclosure_mode_protocol.md` — already references `slr_lineage` as pipeline-supplied
+- `shared/contracts/passport/literature_corpus_entry.schema.json` — G1 invariant frozen (corpus entry schema, not passport schema)
+
+**G1 boundary clarification:** Decision Doc §4.4 #11 G1 invariant scope is `literature_corpus_entry.schema.json` (corpus entry data schema). Schema 9 Material Passport top-level extensions follow the v3.6.3 (`reset_boundary[]`) / v3.6.4 (`literature_corpus[]`) / v3.6.7 (`audit_artifact[]`) precedent and are permitted per Decision Doc §4.4 #11's "non-renderer code changes for §4.4 concerns are permitted" provision.
+
+**Backward compat:** passports written by pre-v3.7.4 runs lack the `slr_lineage` field; renderer treats absence as `false` (cold-start path requiring explicit `mode_param='systematic-review'`). Identical to pre-v3.7.4 behavior.
+
+**Regression status:** 1053-baseline frozen (no #108 contract drift); +12 new tests cover this issue's acceptance criteria #1-#3.
+
 ### #108 — AI disclosure policy-anchor renderer (2026-05-14, audit-trail-shipped)
 
 **Parent docs:** Decision Doc (`docs/design/2026-05-14-ai-disclosure-schema-decision.md`, PR #109, merged commit 20ed72d) + implementation spec (`docs/design/2026-05-14-ai-disclosure-impl-spec.md`).

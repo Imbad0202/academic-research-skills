@@ -437,6 +437,8 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 5. If validation passes -> proceed with transition
 ```
 
+**Run-level lineage emission (v3.7.4+):** at every handoff transition, before the dispatched skill is invoked, the orchestrator computes `slr_lineage = any(stages[i].skill == "deep-research" and stages[i].mode in {"systematic-review", "slr"} for i in state_tracker.stages)` and writes the boolean to the outgoing Material Passport's `slr_lineage` field. This is run-level provenance — distinct from each artifact's `origin_mode` (which records the directly-producing skill's mode). The flag persists so the `disclosure` mode renderer can dispatch `--policy-anchor=prisma-trAIce` automatically per the §4.3 G2 invariant track gate (`policy_anchor_disclosure_protocol.md` §3.1), without the user manually supplying `mode=systematic-review` at cold-start. Reference resolver: `scripts/slr_lineage.py` `resolve_from_stages(stages)`. Pre-v3.7.4 passports lack the field and the renderer treats absence as `false` (cold-start fallback identical to pre-v3.7.4 behavior). See `shared/handoff_schemas.md` §"Run-level lineage signal (v3.7.4)" for the field contract, and `docs/design/2026-05-15-issue-111-slr-lineage-emission-design.md` for the design.
+
 **Handoff material transfer rules:**
 
 | Transition | Transferred Materials | Schema Reference | Transfer Method |
@@ -450,7 +452,7 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 | Stage 4/4' -> 4.5 | Revised/Re-Revised Draft | Schema 4 (revised) | Pass to integrity_verification_agent (final verification) |
 | Stage 4.5 -> 5 | Final Verified Draft + Final Integrity Report | Schema 4 + Schema 5 (Integrity Report) | Produce MD -> DOCX via Pandoc when available (otherwise instructions) -> ask about LaTeX -> confirm -> PDF |
 
-**All artifacts must carry a Material Passport (Schema 9)** with `origin_skill`, `origin_mode`, `origin_date`, `verification_status`, and `version_label`.
+**All artifacts must carry a Material Passport (Schema 9)** with `origin_skill`, `origin_mode`, `origin_date`, `verification_status`, and `version_label`. From v3.7.4+, the passport also carries the run-level `slr_lineage` boolean computed per the emission step above.
 
 **Style Profile carry-through**: If a Style Profile (Schema 10) was produced during `academic-paper` intake (Step 10), carry it through all stages in the Material Passport. The Style Profile is consumed by `draft_writer_agent` (Stage 2) and optionally by `report_compiler_agent` (Stage 1, if applicable). The Style Profile does not affect integrity verification or review stages.
 
