@@ -14,7 +14,18 @@ from __future__ import annotations
 
 from typing import Mapping
 
-from policy_anchor_disclosure_referee import SLR_MODES
+# Dual-path import: when this module is loaded via `from scripts.slr_lineage
+# import emit` from the repo root (the namespace-package style used by
+# test_check_sprint_contract.py, _test_helpers.py, etc.), the sibling import
+# needs the `scripts.` prefix. When loaded via `import slr_lineage` after a
+# sys.path.insert (the style used by scripts/test_slr_lineage_emission.py),
+# the bare name works. Try the package form first; fall back to the sibling
+# form. Either path resolves to the same module — single source of truth for
+# SLR_MODES preserved.
+try:
+    from scripts.policy_anchor_disclosure_referee import SLR_MODES
+except ImportError:
+    from policy_anchor_disclosure_referee import SLR_MODES
 
 
 def resolve_from_stages(stages: Mapping[str, Mapping]) -> bool:
