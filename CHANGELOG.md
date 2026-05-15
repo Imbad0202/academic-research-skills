@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### #104 — README motivation: add Zhao et al. corpus-scale evidence anchor (2026-05-15)
+
+**Parent issue:** [#104](https://github.com/Imbad0202/academic-research-skills/issues/104). Doc-only — no code changes.
+
+Adds a third evidence anchor to the `### Why human-in-the-loop, not full automation?` README section, between the ARS positioning paragraph and the PaperOrchestra paragraph. Closes the gap where v3.7.x trust-and-locator machinery appeared in the codebase without its corpus-scale motivation surfaced in the public-facing README.
+
+**Modified files:**
+
+- `README.md` — new Zhao et al. paragraph
+- `README.zh-TW.md` — translated equivalent
+
+**Three motivation anchors now read in sequence:**
+
+- Lu et al. (Nature 651:914-919) — case-study evidence of autonomous-pipeline failure modes
+- Zhao et al. (arXiv:2605.07723) — corpus-scale evidence of the citation-faithfulness problem (111M references / 2.5M papers / 146,932 conservative 2025 estimate / mid-2024 inflection / 85.3% bioRxiv-to-PMC persistence)
+- PaperOrchestra (Song et al., arXiv:2604.05018) — method-level technique source
+
+**Discipline (#104 acceptance criteria):**
+
+- Statistics verified directly against Zhao et al. abstract (111M / 2.5M / 146,932 / conservative qualifier) + v3.7.3 spec which carries the body-level numbers (85.3% bioRxiv→PMC specificity, mid-2024 inflection) through prior 10-round codex + gemini cross-model review.
+- No claims that v3.7.x "closes" L3 — only "adds locator infrastructure" / "advisory risk signals".
+- L3 attributed to ARS terminology, not the paper's.
+- "Motivated by" not "responds to".
+
 ### #111 — slr_lineage emission on systematic-review → academic-paper full handoff (2026-05-15, unreleased)
 
 **Parent issue:** [#111](https://github.com/Imbad0202/academic-research-skills/issues/111), follow-up to #108 (PR #110, merged 70c8678) round-8 P2 #1. Design: `docs/design/2026-05-15-issue-111-slr-lineage-emission-design.md`.
