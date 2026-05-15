@@ -219,6 +219,41 @@ literature_corpus:
                 "2026-05-15T10:30:00Z",
             )
 
+    def test_partial_fill_with_persistent_api_degradation_does_not_re_patch(self) -> None:
+        """Codex R2-3 closure: when a partial entry's missing field
+        STILL cannot be computed (API still degraded), the merge loop
+        adds nothing. Don't claim it was patched, don't mark mutated."""
+        partial_yaml = """\
+origin_skill: deep-research
+literature_corpus:
+  - citation_key: chen2024ai
+    title: AI in education
+    authors:
+      - family: Chen
+        given: A
+    year: 2024
+    venue: arXiv
+    doi: 10.1234/abc
+    obtained_via: folder-scan
+    source_pointer: file:///refs/chen2024.pdf
+    contamination_signals:
+      preprint_post_llm_inflection: true
+    contamination_signals_backfilled_at: '2026-05-15T10:30:00Z'
+"""
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(partial_yaml)
+            before = p.read_text()
+            # Simulate API still degraded — SS lookup raises
+            from contamination_signals import SemanticScholarUnavailable
+            bad_client = MagicMock()
+            bad_client.lookup.side_effect = SemanticScholarUnavailable("still down")
+            report = mig.migrate_passport(p, ss_client=bad_client, dry_run=False)
+            after = p.read_text()
+            self.assertEqual(report["patched"], 0)
+            self.assertEqual(report["skipped_already_migrated"], 1)
+            self.assertEqual(before, after, "no rewrite when nothing was added")
+
     def test_manual_entry_with_only_preprint_signal_is_complete(self) -> None:
         """A manual entry permanently omits semantic_scholar_unmatched
         (per spec §3.2 + schema allOf rule #4). An object with only

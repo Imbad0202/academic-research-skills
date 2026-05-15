@@ -46,17 +46,69 @@ class DoiLookupTest(unittest.TestCase):
             )
         self.assertEqual(result, {"matched": True, "paperId": "abc123"})
 
-    def test_doi_match_with_title_mismatch_counts_as_no_match(self) -> None:
-        """Per protocol §"Query Patterns": DOI_MISMATCH (title differs
-        despite DOI hit) is a known hallucination pattern. For the binary
-        contamination signal we map it to no-match."""
-        client = ssc.SemanticScholarClient()
-        payload = {"paperId": "abc123", "title": "Totally unrelated paper"}
-        with patch(
-            "urllib.request.urlopen", _mock_urlopen_returning(payload)
-        ):
+    def test_doi_404_falls_back_to_title_search(self) -> None:
+        """Codex R2-2 closure: v3.7.3 Vector 2 says unmatched=true only
+        when NEITHER DOI nor title yields a hit. DOI 404 alone is not
+        sufficient — must fall through to title search."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        # DOI lookup 404s; title search finds match
+        title_payload = {
+            "data": [
+                {"paperId": "title-hit", "title": "AI in education", "year": 2024}
+            ]
+        }
+        title_body = json.dumps(title_payload).encode("utf-8")
+        title_resp = MagicMock()
+        title_resp.read.return_value = title_body
+        title_resp.__enter__ = MagicMock(return_value=title_resp)
+        title_resp.__exit__ = MagicMock(return_value=False)
+        urlopen = MagicMock(side_effect=[
+            urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
+            title_resp,
+        ])
+        with patch("urllib.request.urlopen", urlopen):
+            result = client.lookup(
+                {"title": "AI in education", "doi": "10.9999/bogus", "year": 2024}
+            )
+        self.assertEqual(result, {"matched": True, "paperId": "title-hit"})
+
+    def test_doi_title_mismatch_falls_back_to_title_search(self) -> None:
+        """Codex R2-2 closure: DOI returns wrong paper (title mismatch).
+        Still must try title search before declaring unmatched."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        doi_payload = {"paperId": "wrong-paper", "title": "Totally unrelated"}
+        title_payload = {
+            "data": [
+                {"paperId": "title-hit", "title": "AI in education", "year": 2024}
+            ]
+        }
+        doi_body = json.dumps(doi_payload).encode("utf-8")
+        title_body = json.dumps(title_payload).encode("utf-8")
+        doi_resp = MagicMock()
+        doi_resp.read.return_value = doi_body
+        doi_resp.__enter__ = MagicMock(return_value=doi_resp)
+        doi_resp.__exit__ = MagicMock(return_value=False)
+        title_resp = MagicMock()
+        title_resp.read.return_value = title_body
+        title_resp.__enter__ = MagicMock(return_value=title_resp)
+        title_resp.__exit__ = MagicMock(return_value=False)
+        urlopen = MagicMock(side_effect=[doi_resp, title_resp])
+        with patch("urllib.request.urlopen", urlopen):
             result = client.lookup(
                 {"title": "AI in education", "doi": "10.1234/xyz", "year": 2024}
+            )
+        self.assertEqual(result, {"matched": True, "paperId": "title-hit"})
+
+    def test_doi_404_and_title_404_returns_no_match(self) -> None:
+        """Both endpoints miss: now legitimate unmatched."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        urlopen = MagicMock(side_effect=[
+            urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
+            urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
+        ])
+        with patch("urllib.request.urlopen", urlopen):
+            result = client.lookup(
+                {"title": "Truly nonexistent", "doi": "10.0000/bogus", "year": 2024}
             )
         self.assertEqual(result, {"matched": False, "paperId": None})
 

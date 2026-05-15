@@ -57,12 +57,19 @@ class SemanticScholarClient:
     def lookup(self, entry: Mapping[str, Any]) -> Mapping[str, Any]:
         """Return {"matched": bool, "paperId": str | None}.
 
-        Per protocol §"Query Patterns":
+        Per protocol §"Query Patterns" + §"Response Handling":
+        `semantic_scholar_unmatched` is True only when NEITHER DOI nor
+        title lookup yields a hit. So:
+
         1. If `doi` present → GET /paper/DOI:{doi}; on hit, cross-check
-           returned title (Levenshtein ≥ 0.70) — DOI_MISMATCH (title
-           differs) counts as no-match in this binary semantic.
-        2. Else → GET /paper/search?query={url-encoded-title}; pick the
-           top result with title similarity ≥ 0.70, prefer matching year.
+           returned title (Levenshtein ≥ 0.70). DOI_MISMATCH (title
+           differs despite DOI hit) AND DOI-404 BOTH fall through to (2)
+           rather than returning no-match immediately — the v3.7.3
+           Vector 2 contract requires both DOI AND title to miss before
+           setting the signal. Codex R2-2 closure.
+        2. Title search: GET /paper/search?query={url-encoded-title};
+           pick the top result with title similarity ≥ 0.70, prefer
+           matching year.
 
         Raises SemanticScholarUnavailable on:
         - HTTP 429 after exhausting `_MAX_RETRIES` retries
@@ -72,7 +79,11 @@ class SemanticScholarClient:
         doi = entry.get("doi")
         title = entry.get("title") or ""
         if doi:
-            return self._lookup_by_doi(doi, title)
+            doi_result = self._lookup_by_doi(doi, title)
+            if doi_result["matched"]:
+                return doi_result
+            # DOI miss or DOI_MISMATCH: fall through to title search
+            # per protocol §Vector 2 "neither DOI nor title" rule.
         if title:
             return self._lookup_by_title(title, entry.get("year"))
         return {"matched": False, "paperId": None}

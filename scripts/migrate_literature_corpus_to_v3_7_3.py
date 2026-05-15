@@ -135,10 +135,18 @@ def migrate_passport(
             # that hit API degradation wrote contamination_signals with
             # only `preprint_post_llm_inflection`. Merge any newly-
             # computable fields without overwriting the original
-            # backfilled_at timestamp.
+            # backfilled_at timestamp. Codex R2-3 closure: only count
+            # this as a patch when a NEW field was actually added —
+            # otherwise dry-run misreports + non-dry-run rewrites a
+            # byte-identical passport.
+            added_any = False
             for key, value in signals.items():
                 if key not in existing:
                     existing[key] = value
+                    added_any = True
+            if not added_any:
+                report[_SKIP_ALREADY_MIGRATED] += 1
+                continue
         else:
             entry["contamination_signals"] = signals
             entry["contamination_signals_backfilled_at"] = now_iso()

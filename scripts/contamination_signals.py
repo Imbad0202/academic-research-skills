@@ -32,6 +32,37 @@ PREPRINT_VENUES = frozenset({
 })
 
 
+# source_pointer → venue inference table. Per v3.7.3 spec §3.2 + schema
+# rule, when `venue` is absent the resolver must check `source_pointer`
+# for a preprint-server URL/identifier. Substring match against
+# lower-cased pointer; keys must be lower-cased and unambiguous.
+_POINTER_VENUE_HINTS: tuple[tuple[str, str], ...] = (
+    ("arxiv.org", "arXiv"),
+    ("biorxiv.org", "bioRxiv"),
+    ("medrxiv.org", "medRxiv"),
+    ("ssrn.com", "SSRN"),
+    ("papers.ssrn.com", "SSRN"),
+    ("researchsquare.com", "Research Square"),
+    ("preprints.org", "Preprints.org"),
+    ("chemrxiv.org", "ChemRxiv"),
+    ("eartharxiv.org", "EarthArXiv"),
+    ("osf.io/preprints", "OSF Preprints"),
+    ("techrxiv.org", "TechRxiv"),
+)
+
+
+def _infer_venue_from_pointer(source_pointer: str) -> str | None:
+    """Return the preprint venue inferred from the source_pointer URL,
+    or None if no preprint-server hint is present. Per v3.7.3 spec §3.2
+    Vector 1: 'venue field (or, when venue is absent, inference from
+    source_pointer)'."""
+    pointer = source_pointer.lower()
+    for hint, venue in _POINTER_VENUE_HINTS:
+        if hint in pointer:
+            return venue
+    return None
+
+
 class SemanticScholarUnavailable(Exception):
     """SS API degraded (network failure / rate limit exhausted / 5xx).
 
@@ -58,17 +89,27 @@ class SemanticScholarClient(Protocol):
 def compute_preprint_signal(entry: Mapping[str, Any]) -> bool:
     """Signal 1 per v3.7.3 spec §3.2 Vector 1.
 
-    True iff `year >= 2024 AND venue in PREPRINT_VENUES`. Missing year
-    or missing venue resolves to False — both are required for the
-    spec's AND.
+    True iff `year >= 2024 AND venue resolves to a preprint server`.
+    Venue resolution per spec: prefer the explicit `venue` field; when
+    absent, infer from `source_pointer` (e.g., 'https://arxiv.org/abs/...'
+    → arXiv). Missing year, or venue that resolves to neither a preprint
+    server nor an inferable pointer, returns False.
+
+    Source-pointer inference is the codex R2-1 closure: legacy entries
+    that schema-validly omit `venue` but carry a preprint URL must still
+    surface CONTAMINATED-PREPRINT.
     """
     year = entry.get("year")
+    if not isinstance(year, int) or year < 2024:
+        return False
     venue = entry.get("venue")
-    if not isinstance(year, int):
-        return False
-    if venue not in PREPRINT_VENUES:
-        return False
-    return year >= 2024
+    if venue in PREPRINT_VENUES:
+        return True
+    if not isinstance(venue, str):
+        pointer = entry.get("source_pointer")
+        if isinstance(pointer, str):
+            return _infer_venue_from_pointer(pointer) in PREPRINT_VENUES
+    return False
 
 
 def compute_ss_unmatched_signal(

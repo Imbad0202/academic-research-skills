@@ -93,6 +93,58 @@ class PreprintSignalTest(unittest.TestCase):
         # Defensive: entries lacking year cannot satisfy the AND
         self.assertFalse(cs.compute_preprint_signal({"venue": "arXiv"}))
 
+    def test_source_pointer_infers_arxiv(self) -> None:
+        """Codex R2-1 closure: when venue is missing, source_pointer
+        URLs to preprint servers must satisfy Signal 1."""
+        self.assertTrue(
+            cs.compute_preprint_signal(
+                {"year": 2024, "source_pointer": "https://arxiv.org/abs/2401.12345"}
+            )
+        )
+
+    def test_source_pointer_infers_biorxiv(self) -> None:
+        self.assertTrue(
+            cs.compute_preprint_signal(
+                {"year": 2025, "source_pointer": "https://www.biorxiv.org/content/10.1101/2025.01.01.000000v1"}
+            )
+        )
+
+    def test_source_pointer_infers_osf_preprints(self) -> None:
+        self.assertTrue(
+            cs.compute_preprint_signal(
+                {"year": 2024, "source_pointer": "https://osf.io/preprints/socarxiv/xyz123"}
+            )
+        )
+
+    def test_source_pointer_non_preprint_returns_false(self) -> None:
+        """An arbitrary URL with no preprint-server hint stays False."""
+        self.assertFalse(
+            cs.compute_preprint_signal(
+                {"year": 2024, "source_pointer": "https://nature.com/articles/x"}
+            )
+        )
+
+    def test_source_pointer_ignored_when_venue_present(self) -> None:
+        """Explicit `venue` field takes precedence — Nature 2024 with an
+        arxiv source_pointer is still venue=Nature (Signal 1 false)."""
+        self.assertFalse(
+            cs.compute_preprint_signal(
+                {
+                    "year": 2024,
+                    "venue": "Nature",
+                    "source_pointer": "https://arxiv.org/abs/2401.x",
+                }
+            )
+        )
+
+    def test_source_pointer_pre_2024_returns_false(self) -> None:
+        """Year < 2024 short-circuits before pointer inference fires."""
+        self.assertFalse(
+            cs.compute_preprint_signal(
+                {"year": 2023, "source_pointer": "https://arxiv.org/abs/2301.x"}
+            )
+        )
+
 
 # ============================================================================
 # Signal 2 — semantic_scholar_unmatched
