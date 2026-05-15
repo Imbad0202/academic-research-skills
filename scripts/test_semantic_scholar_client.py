@@ -274,10 +274,13 @@ class RateLimitThrottleTest(unittest.TestCase):
 
     def test_first_request_does_not_sleep(self) -> None:
         """First request after construction has no prior call to pace
-        against; the throttle should pass through immediately."""
+        against; the throttle should pass through immediately. Hermetic
+        regardless of S2_API_KEY env (no comparison against tier)."""
         sleep = MagicMock()
         clock = MagicMock(return_value=1000.0)
-        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        client = ssc.SemanticScholarClient(
+            sleep=sleep, clock=clock, min_interval_seconds=1.0
+        )
         with patch(
             "urllib.request.urlopen",
             MagicMock(return_value=self._good_resp({"paperId": "x", "title": "T"})),
@@ -288,12 +291,17 @@ class RateLimitThrottleTest(unittest.TestCase):
 
     def test_back_to_back_calls_throttle_to_one_req_per_second(self) -> None:
         """Default unauthenticated tier: 1.0s min interval between calls.
-        Second call within the interval should sleep the remainder."""
+        Second call within the interval should sleep the remainder.
+
+        Explicit `min_interval_seconds=1.0` so the test is hermetic
+        against `S2_API_KEY` set in the environment (codex R1 P2)."""
         sleep = MagicMock()
         # clock: first request at t=1000.0, second at t=1000.3 (0.3s later
         # — throttle should sleep 0.7s before issuing second request)
         clock = MagicMock(side_effect=[1000.0, 1000.3, 1000.3])
-        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        client = ssc.SemanticScholarClient(
+            sleep=sleep, clock=clock, min_interval_seconds=1.0
+        )
         resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
         with patch(
             "urllib.request.urlopen",
@@ -308,11 +316,14 @@ class RateLimitThrottleTest(unittest.TestCase):
 
     def test_back_to_back_calls_past_interval_do_not_sleep(self) -> None:
         """If enough time elapsed naturally between calls, no extra sleep
-        is needed — the throttle is a floor, not a ceiling."""
+        is needed — the throttle is a floor, not a ceiling. Explicit
+        min_interval_seconds for env-hermeticity (codex R1 P2)."""
         sleep = MagicMock()
         # Second call 2.5s after first; no throttle sleep needed
         clock = MagicMock(side_effect=[1000.0, 1002.5, 1002.5])
-        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        client = ssc.SemanticScholarClient(
+            sleep=sleep, clock=clock, min_interval_seconds=1.0
+        )
         resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
         with patch(
             "urllib.request.urlopen",
@@ -348,7 +359,8 @@ class RateLimitThrottleTest(unittest.TestCase):
         """F5 closure (simplify efficiency): if `_last_request_at` is not
         refreshed after a 429 backoff, the next outer call paces against
         entry time + N × backoff already elapsed, then under-sleeps and
-        re-triggers 429. After fix: anchor refreshes to actual wake time."""
+        re-triggers 429. After fix: anchor refreshes to actual wake time.
+        Explicit min_interval_seconds for env-hermeticity (codex R1 P2)."""
         sleep = MagicMock()
         # Clock sequence:
         # call 1 entry elapsed check (none, first call) - not used
@@ -358,7 +370,9 @@ class RateLimitThrottleTest(unittest.TestCase):
         #   from anchor with 1s interval = sleep 1.0s)
         # call 2 entry write t=1003.0
         clock = MagicMock(side_effect=[1000.0, 1002.0, 1002.0, 1003.0])
-        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock)
+        client = ssc.SemanticScholarClient(
+            sleep=sleep, clock=clock, min_interval_seconds=1.0
+        )
         good = _mock_response({"paperId": "x", "title": "T"})
 
         def urlopen_side(*args, **kwargs):
