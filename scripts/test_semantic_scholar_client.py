@@ -207,6 +207,58 @@ class FailureHandlingTest(unittest.TestCase):
                 client.lookup({"title": "X", "doi": "10.1/y"})
 
 
+class TitleNormalizationTest(unittest.TestCase):
+    """Codex R4-1 closure: protocol §"Query Patterns" Pattern 1 says
+    title matching is 'case-insensitive, stripped of punctuation'."""
+
+    def test_acronym_punctuation_clears_threshold(self) -> None:
+        """'R.A.G.' vs 'RAG' originally scored below 0.70 because raw
+        SequenceMatcher penalized the punctuation. After normalize the
+        score clears the 0.70 protocol threshold."""
+        self.assertGreaterEqual(ssc._similarity("R.A.G.", "RAG"), 0.70)
+
+    def test_punctuation_stripped_before_similarity(self) -> None:
+        """Trailing colons / em-dashes / quotes should not penalize match."""
+        self.assertGreater(
+            ssc._similarity(
+                "Attention Is All You Need: A Transformers Story",
+                "attention is all you need a transformers story",
+            ),
+            0.95,
+        )
+
+    def test_title_normalize_collapses_whitespace(self) -> None:
+        """Multiple punctuation chars become spaces; collapse them."""
+        self.assertEqual(ssc._normalize_title("Foo,  Bar... Baz!"), "foo bar baz")
+
+
+class ResponseReadTimeoutTest(unittest.TestCase):
+    """Codex R4-2 closure: resp.read() can raise OSError/TimeoutError
+    (e.g. socket.timeout on the body read) outside the URLError handler.
+    Must be wrapped as SemanticScholarUnavailable so the migration
+    degrades gracefully rather than aborting mid-run."""
+
+    def test_response_read_oserror_raises_unavailable(self) -> None:
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        resp = MagicMock()
+        resp.read.side_effect = OSError("socket read timeout")
+        resp.__enter__ = MagicMock(return_value=resp)
+        resp.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", MagicMock(return_value=resp)):
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "X", "doi": "10.1/y"})
+
+    def test_response_read_timeout_error_raises_unavailable(self) -> None:
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        resp = MagicMock()
+        resp.read.side_effect = TimeoutError("body read timed out")
+        resp.__enter__ = MagicMock(return_value=resp)
+        resp.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", MagicMock(return_value=resp)):
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "X", "doi": "10.1/y"})
+
+
 class CLIWiringTest(unittest.TestCase):
     """Codex R1-1 closure: CLI was unrunnable because NotImplementedError
     fired before reading the passport. Verify the production wiring path

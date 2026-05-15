@@ -15,6 +15,7 @@ tool can switch over without code changes.
 from __future__ import annotations
 
 import os
+import string
 import time
 import urllib.error
 import urllib.parse
@@ -23,6 +24,9 @@ from difflib import SequenceMatcher
 from typing import Any, Mapping
 
 from contamination_signals import SemanticScholarUnavailable
+
+
+_PUNCT_TRANSLATION = str.maketrans({c: " " for c in string.punctuation})
 
 
 # Per protocol: api.semanticscholar.org/graph/v1, 1 req/s unauthenticated.
@@ -39,8 +43,18 @@ _MAX_RETRIES = 3
 _TITLE_SIMILARITY_THRESHOLD = 0.70
 
 
+def _normalize_title(s: str) -> str:
+    """Per protocol §"Query Patterns" Pattern 1: 'case-insensitive,
+    stripped of punctuation' before computing similarity. Punctuation
+    becomes whitespace so token boundaries are preserved, then collapse
+    runs of whitespace. Codex R4-1 closure: raw lowercased comparison
+    falsely scored 'R.A.G.' vs 'RAG' below the 0.70 threshold."""
+    cleaned = s.lower().translate(_PUNCT_TRANSLATION)
+    return " ".join(cleaned.split())
+
+
 def _similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
+    return SequenceMatcher(None, _normalize_title(a), _normalize_title(b)).ratio()
 
 
 class SemanticScholarClient:
@@ -115,6 +129,15 @@ class SemanticScholarClient:
                 ) from e
             except urllib.error.URLError as e:
                 raise SemanticScholarUnavailable(f"S2 API network error: {e}") from e
+            except (OSError, TimeoutError) as e:
+                # Response-body read timeouts (socket.timeout subclasses
+                # OSError; TimeoutError is the 3.10+ alias) and other
+                # transient I/O failures during resp.read() must be
+                # treated as API degradation per spec — never let them
+                # abort the migration. Codex R4-2 closure.
+                raise SemanticScholarUnavailable(
+                    f"S2 API I/O failure during response read: {e}"
+                ) from e
         raise SemanticScholarUnavailable(f"S2 API exhausted {_MAX_RETRIES} retries")
 
     def _lookup_by_doi(self, doi: str, expected_title: str) -> dict[str, Any]:
