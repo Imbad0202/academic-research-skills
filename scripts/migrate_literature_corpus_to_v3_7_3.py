@@ -17,7 +17,6 @@ Design: docs/design/2026-05-15-issue-105-contamination-signals-backfill-design.m
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import sys
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -25,6 +24,7 @@ from typing import Any, Iterable, Mapping
 from ruamel.yaml import YAML
 
 import contamination_signals as cs
+from adapters._common import now_iso
 
 
 # Single shared YAML round-tripper. ruamel.yaml preserves comments,
@@ -38,10 +38,10 @@ _yaml.indent(mapping=2, sequence=4, offset=2)
 # see what wasn't migrated and why.
 _SKIP_ALREADY_MIGRATED = "skipped_already_migrated"
 _SKIP_INSUFFICIENT_DATA = "skipped_insufficient_data"
-
-
-def _now_utc_iso() -> str:
-    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+# Counts entries where the manual exemption fired (the entry was still
+# patched, but `semantic_scholar_unmatched` was omitted per spec §3.2).
+# Distinct from skip categories above — these entries DO get patched.
+_MANUAL_UNMATCHED_OMITTED = "manual_unmatched_omitted"
 
 
 def load_passport(path: Path) -> Any:
@@ -62,10 +62,17 @@ def discover_passports(directory: Path) -> Iterable[Path]:
 
 
 def _is_insufficient(entry: Mapping[str, Any]) -> bool:
-    """An entry without `year` cannot have Signal 1 computed reliably
-    (year is in the spec AND). Real corpora won't hit this since schema
-    requires year; defensive against hand-edited YAML."""
-    return not isinstance(entry.get("year"), int)
+    """An entry missing either `year` or `venue` cannot have Signal 1
+    computed reliably (both are in the spec AND). Without venue, Signal 1
+    would silently emit `preprint_post_llm_inflection: false` on an entry
+    where we genuinely don't know — half-truth the migration tool must
+    avoid (spec §3.2 emission rules distinguish "computed and clean" from
+    "not computed"). Real corpora won't hit this since schema requires
+    both fields; defensive against hand-edited YAML."""
+    return (
+        not isinstance(entry.get("year"), int)
+        or not isinstance(entry.get("venue"), str)
+    )
 
 
 def migrate_passport(
@@ -83,7 +90,7 @@ def migrate_passport(
         "patched": 0,
         _SKIP_ALREADY_MIGRATED: 0,
         _SKIP_INSUFFICIENT_DATA: 0,
-        "skipped_manual_unmatched_omit": 0,
+        _MANUAL_UNMATCHED_OMITTED: 0,
     }
     if not corpus:
         return report
@@ -99,10 +106,10 @@ def migrate_passport(
             continue
         signals = cs.build_signals_object(entry, ss_client)
         entry["contamination_signals"] = signals
-        entry["contamination_signals_backfilled_at"] = _now_utc_iso()
+        entry["contamination_signals_backfilled_at"] = now_iso()
         report["patched"] += 1
         if entry.get("obtained_via") == "manual":
-            report["skipped_manual_unmatched_omit"] += 1
+            report[_MANUAL_UNMATCHED_OMITTED] += 1
         mutated = True
 
     if mutated and not dry_run:
@@ -160,7 +167,11 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv or sys.argv[1:])
-    client = _build_default_ss_client()
+    try:
+        client = _build_default_ss_client()
+    except NotImplementedError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     if args.path.is_dir():
         agg = migrate_directory(args.path, ss_client=client, dry_run=args.dry_run)
         print(

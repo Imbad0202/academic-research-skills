@@ -88,7 +88,7 @@ class SinglePassportMigrationTest(unittest.TestCase):
             after = p.read_text()
             self.assertEqual(before, after, "dry-run must not write")
             self.assertEqual(report["patched"], 3)
-            self.assertEqual(report["skipped_manual_unmatched_omit"], 1)
+            self.assertEqual(report["manual_unmatched_omitted"], 1)
 
     def test_patches_three_entries_per_emission_rules(self) -> None:
         """Per spec §3.2: emit object on every non-skipped entry, even
@@ -145,6 +145,33 @@ class SinglePassportMigrationTest(unittest.TestCase):
                 after_first, after_second,
                 "re-run on migrated passport must be byte-identical",
             )
+
+    def test_insufficient_data_missing_venue_skipped(self) -> None:
+        """An entry missing venue cannot have Signal 1 reliably emitted
+        as False — that would be a half-truth (we don't know if the
+        venue is a preprint server). Per spec §3.2 emission rules,
+        'computed and clean' must be distinguished from 'not computed'.
+        v3.7.3 codex F3 closure (simplify round)."""
+        yaml_no_venue = """\
+origin_skill: deep-research
+literature_corpus:
+  - citation_key: novenue2024
+    title: No venue
+    authors:
+      - family: X
+        given: Y
+    year: 2024
+    obtained_via: folder-scan
+    source_pointer: file:///refs/novenue.pdf
+"""
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(yaml_no_venue)
+            report = mig.migrate_passport(
+                p, ss_client=_make_ss_client(), dry_run=False
+            )
+            self.assertEqual(report["patched"], 0)
+            self.assertEqual(report["skipped_insufficient_data"], 1)
 
     def test_insufficient_data_entry_skipped(self) -> None:
         """An entry missing year cannot have Signal 1 computed reliably

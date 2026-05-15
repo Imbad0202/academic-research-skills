@@ -36,6 +36,9 @@ jobs:
       - name: Run spec consistency check
         run: python3 scripts/check_spec_consistency.py
 
+      - name: Check PREPRINT_VENUES list consistency (#105)
+        run: python3 scripts/check_preprint_venues_consistency.py
+
       - name: Check data_access_level declarations
         env:
           PYTHONPATH: scripts
