@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### #111 — slr_lineage emission on systematic-review → academic-paper full handoff (2026-05-15)
+### #111 — slr_lineage emission on systematic-review → academic-paper full handoff (2026-05-15, unreleased)
 
 **Parent issue:** [#111](https://github.com/Imbad0202/academic-research-skills/issues/111), follow-up to #108 (PR #110, merged 70c8678) round-8 P2 #1. Design: `docs/design/2026-05-15-issue-111-slr-lineage-emission-design.md`.
+
+> Version label `v3.7.4` below is provisional and will be confirmed at the next release sweep per `feedback_version_bump_sweep_checklist.md`. If this work ships as part of v3.7.3 (the in-progress release at writing time), the version stamps in this entry and the prose files below are swept to the final label at release tag.
 
 Closes the pipeline-plumbing gap surfaced by #108: `disclosure --policy-anchor=prisma-trAIce` now dispatches automatically when the documented `deep-research systematic-review → academic-paper full → disclosure` path runs, without the user manually supplying `mode=systematic-review` at cold-start.
 

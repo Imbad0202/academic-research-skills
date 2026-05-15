@@ -14,10 +14,7 @@ from __future__ import annotations
 
 from typing import Mapping
 
-
-# Mirrors policy_anchor_disclosure_referee.SLR_MODES — keep in sync.
-# Symmetric values: a stage carrying either alias counts as SLR lineage.
-SLR_MODES = frozenset({"systematic-review", "slr"})
+from policy_anchor_disclosure_referee import SLR_MODES
 
 
 def resolve_from_stages(stages: Mapping[str, Mapping]) -> bool:

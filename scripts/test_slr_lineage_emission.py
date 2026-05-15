@@ -135,15 +135,12 @@ class RendererIntegrationTest(unittest.TestCase):
                 self._inp(slr_lineage=False, mode_param=None)
             )
 
-    def test_pre_111_passport_falls_back_to_cold_start(self) -> None:
-        """Negative: pre-#111 passports lack the `slr_lineage` field;
-        renderer treats absence as False (cold-start path). User must
-        supply `mode_param` explicitly — identical to pre-#111 behavior."""
-        with self.assertRaises(referee.TrackGateError):
-            referee.decide_disclosure_output(
-                self._inp(slr_lineage=False, mode_param=None)
-            )
-        # ...but with mode_param, cold-start dispatches as before.
+    def test_pre_111_passport_with_mode_param_dispatches_cold_start(self) -> None:
+        """Pre-#111 passports lack the `slr_lineage` field (absence = False).
+        Cold-start path requires explicit `mode_param='systematic-review'`,
+        which dispatches anchor_render as before. The block-on-missing-signal
+        side of this contract is covered by
+        `test_non_slr_pipeline_passport_still_blocks_prisma_track`."""
         result = referee.decide_disclosure_output(
             self._inp(slr_lineage=False, mode_param="systematic-review")
         )

@@ -2,7 +2,7 @@
 
 **Date**: 2026-05-15
 **Issue**: #111 (parented to #108 PR #110 commit 70c8678)
-**Status**: design — pending user approval before implementation
+**Status**: implemented (commit 7a2f789 on feat/111-slr-lineage-emission; pending PR)
 **Scope**: pipeline plumbing only. NO change to #108 referee, anchor table, protocol doc, or v3.2 venue track.
 
 ---
