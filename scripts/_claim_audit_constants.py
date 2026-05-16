@@ -126,20 +126,20 @@ RE_VERSION_PREFIX = re.compile(r"v\s*$", re.IGNORECASE)
 # reference rather than a quantifier.
 RE_NUMERIC_LEFT_ATTACHED = re.compile(r"\d+\.$")
 
-# Condition 2: three-layer-citation ref-marker probe. Aligned with v3.7.3
-# canonical slug pattern `[A-Za-z][A-Za-z0-9_:-]*` and accepts up to 2
-# post-finalizer status tokens (`<!--ref:slug ok-->`,
-# `<!--ref:slug LOW-WARN-->`, `<!--ref:slug ok CONTAMINATED-PREPRINT-->`).
-# Pattern stays permissive (presence-probe, not strict validator): a
-# strict regex would reject malformed slugs and erroneously flag those
-# sentences as D4-c candidates. Source of truth lives at
-# scripts/check_v3_7_3_three_layer_citation.py REF_PATTERN; this clone
-# exists because the detector needs presence semantics, not validator
-# semantics, and importing across the module boundary would couple the
-# two readers' regex shapes.
-RE_REF_MARKER = re.compile(
-    r"<!--\s*ref:[A-Za-z][A-Za-z0-9_:-]*(?:\s+[\w+-]+){0,2}\s*-->"
-)
+# Condition 2: three-layer-citation ref-marker probe. True presence
+# probe — accepts ANY `<!--ref:...-->` shape regardless of slug
+# validity, status-token count, or surrounding whitespace. The D4-c
+# rule only needs to know "did the author intend to cite something
+# here?"; whether the citation is well-formed is the job of
+# scripts/check_v3_7_3_three_layer_citation.py REF_PATTERN + its
+# anchored validator (lines 41 + 275). A stricter shape here was
+# tried in R0 (`[^-]+`) and R1 (`[A-Za-z][A-Za-z0-9_:-]* + 0-2 status
+# tokens`) — both produced false-positive uncited findings against
+# perfectly-intentioned-but-malformed citations (`<!--ref:123bad-->`,
+# `<!--ref:slug ok CONTAMINATED-PREPRINT EXTRA-->`, `<!--ref:smith+bad-->`).
+# Codex R2 P2-NEW-1: leave shape validation to the strict validator,
+# keep this regex as pure presence detection.
+RE_REF_MARKER = re.compile(r"<!--\s*ref:[^>]*?-->")
 
 # Condition 3: definitional-phrase substrings (case-insensitive). Spec list:
 # `refers to`, `is defined as`, `we define`, `for the purposes of`.

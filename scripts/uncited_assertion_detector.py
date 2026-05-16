@@ -103,18 +103,21 @@ def _is_year_or_version_or_section(
         if RE_SECTION_CUE.search(left) or RE_VERSION_PREFIX.search(left):
             return True
     # Branch 4: reattach a left-side dotted-number prefix that Python's \b
-    # failed to separate. A 1-char window is enough — RE_NUMERIC_QUANTIFIER
-    # consumed every dotted segment to the right of the prefix already, so
-    # the only character that can sit immediately before match_start and
-    # still belong to the same logical token is `.`.
-    if match_start > 0 and sentence[match_start - 1] == ".":
-        # Walk left to capture the full prefix, then test against the
-        # left-attached pattern (`\d+(?:\.\d+)+\.`). This catches `v3.7.3`
-        # where the match is `7.3` but the prefix is `3.`.
-        left_search_start = max(0, match_start - _GUARD_LEFT_WINDOW)
-        left = sentence[left_search_start:match_start]
-        if RE_NUMERIC_LEFT_ATTACHED.search(left):
-            return True
+    # failed to separate. RE_NUMERIC_QUANTIFIER consumed every dotted
+    # segment to the right of the prefix already, so the only token that
+    # can sit immediately before match_start and still belong to the same
+    # logical version/section literal is `\d+\.`. Scan back through any
+    # intervening whitespace (handles line-wrapped `v3.\n7.3` per codex
+    # R2 P1-NEW) before testing the left-attached pattern.
+    if match_start > 0:
+        scan_idx = match_start - 1
+        while scan_idx > 0 and sentence[scan_idx].isspace():
+            scan_idx -= 1
+        if sentence[scan_idx] == ".":
+            left_search_start = max(0, scan_idx + 1 - _GUARD_LEFT_WINDOW)
+            left = sentence[left_search_start : scan_idx + 1]
+            if RE_NUMERIC_LEFT_ATTACHED.search(left):
+                return True
     return False
 
 

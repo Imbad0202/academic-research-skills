@@ -127,6 +127,64 @@ class TestDetectUncited(unittest.TestCase):
             is_candidate, msg="ref marker present must short-circuit candidate"
         )
 
+    def test_ref_marker_accepts_malformed_shapes(self) -> None:
+        """Any `<!--ref:...-->` shape short-circuits the candidate check.
+
+        Regression for codex R2 P2-NEW-1: D4-c only cares whether the
+        author intended to cite something. Shape validation is the strict
+        validator's job. A presence-probe that rejected malformed slugs
+        (digit-leading, plus-sign, or 3+ status tokens) silently flagged
+        the malformed-but-intentioned citations as uncited. The true
+        presence probe accepts every `<!--ref:...-->` shape; the strict
+        validator at scripts/check_v3_7_3_three_layer_citation.py handles
+        the malformed-shape audit independently.
+        """
+        malformed_but_intentioned = [
+            "Roughly 50% improved <!--ref:123bad-->.",
+            (
+                "Roughly 50% improved "
+                "<!--ref:smith2026 ok CONTAMINATED-PREPRINT EXTRA-->."
+            ),
+            "Roughly 50% improved <!--ref:smith+bad-->.",
+        ]
+        for sentence in malformed_but_intentioned:
+            with self.subTest(sentence=sentence):
+                is_candidate, _ = detect_uncited(sentence)
+                self.assertFalse(
+                    is_candidate,
+                    msg=(
+                        "presence probe must accept any ref shape — "
+                        "shape validation belongs to the strict validator"
+                    ),
+                )
+
+    def test_multiline_dotted_version_is_not_quantifier(self) -> None:
+        """Line-wrapped dotted version reference → NOT a quantifier.
+
+        Regression for codex R2 P1-NEW: branch 4 of the year/version/section
+        guard reattaches a left-side `.X.` prefix that Python's `\\b` cannot
+        separate from a leading letter (e.g. `v3.7.3` collapses to a `7.3`
+        match because `v3` is one `\\w` word). The R1 implementation only
+        checked the immediate left character. If the prefix was line-wrapped
+        (`v3.\\n7.3`) the guard saw `\\n`, missed `.`, and produced a false
+        positive. The R2 fix scans back through whitespace.
+        """
+        line_wrapped_examples = [
+            "We followed v3.\n7.3 for the audit.",
+            "We followed v3.\n  7.3 for the audit.",  # multiple ws
+            "We followed v3. 7.3 for the audit.",  # tab-class space
+        ]
+        for sentence in line_wrapped_examples:
+            with self.subTest(sentence=repr(sentence)):
+                is_candidate, tokens = detect_uncited(sentence)
+                self.assertFalse(
+                    is_candidate,
+                    msg=(
+                        "line-wrapped dotted version reference must be "
+                        f"rejected; got {tokens!r}"
+                    ),
+                )
+
     def test_ref_marker_accepts_hyphenated_slug_and_finalizer_status(
         self,
     ) -> None:
@@ -269,23 +327,86 @@ class TestDetectUncited(unittest.TestCase):
     def test_detect_uncited_assertions_raises_on_missing_sentence_text(
         self,
     ) -> None:
-        """Missing or non-string `sentence_text` raises ValueError.
+        """Missing or non-string `sentence_text` raises ValueError with index.
 
-        Regression for codex R1 P2-3: prior wrapper silently skipped raw
-        dicts that lacked `sentence_text`, returning `(False, [])`. Silent
-        skip for an audit pipeline is the worst failure mode — upstream
-        bugs masquerade as "no findings". The wrapper now raises so the
-        caller is forced to surface the bug.
+        Regression for codex R1 P2-3 + R2 P2-NEW-3: prior wrapper silently
+        skipped raw dicts that lacked `sentence_text`. Silent skip for an
+        audit pipeline is the worst failure mode — upstream bugs masquerade
+        as "no findings". The wrapper now raises with a grep-able diagnostic
+        that identifies the offending list index AND the actual failure
+        mode (missing key vs non-string type). Without pinning the message
+        text, a future refactor could drop the index from the diagnostic
+        and still pass a pure `assertRaises(ValueError)` check.
         """
-        with self.assertRaises(ValueError):
+        # Missing key: error must mention the index and the missing field.
+        with self.assertRaisesRegex(
+            ValueError, r"sentences\[0\] missing required 'sentence_text'"
+        ):
             detect_uncited_assertions([{"section_path": "1. Intro"}])
-        with self.assertRaises(ValueError):
+
+        # Non-string scalar: error must mention the index AND the type.
+        with self.assertRaisesRegex(
+            ValueError, r"sentences\[0\]\['sentence_text'\] must be str, got int"
+        ):
             detect_uncited_assertions([{"sentence_text": 42}])  # type: ignore[list-item]
-        # Non-string but truthy types also raise — silent coercion would
-        # be worse than a loud crash.
-        with self.assertRaises(ValueError):
+
+        # Non-string non-scalar: same index/type contract holds.
+        with self.assertRaisesRegex(
+            ValueError, r"sentences\[0\]\['sentence_text'\] must be str, got list"
+        ):
             detect_uncited_assertions(
                 [{"sentence_text": ["This sentence got list-ified somehow."]}]  # type: ignore[list-item]
+            )
+
+        # Iterator input: index reporting must survive the
+        # iterator-vs-list materialization (codex R2 P2-NEW-3).
+        def gen():
+            yield {"sentence_text": "Roughly 50% improved."}
+            yield {"section_path": "missing-key"}
+
+        with self.assertRaisesRegex(
+            ValueError, r"sentences\[1\] missing required 'sentence_text'"
+        ):
+            detect_uncited_assertions(gen())
+
+    def test_uncited_assertion_entry_raises_on_missing_trigger_tokens(
+        self,
+    ) -> None:
+        """_uncited_assertion_entry raises when trigger_tokens absent.
+
+        Regression for codex R2 P2-NEW-2: P1-4 implementation raised
+        ValueError when both the keyword arg and the sentence dict
+        lacked trigger_tokens, but no test directly pinned that raise
+        path — TP10 was modified to supply trigger_tokens, so a
+        regression that reinstated the prior `["uncited"]` fallback
+        would leave the pipeline test green. This test forces the
+        raise path with a grep-able diagnostic so the contract survives
+        future refactors and CI log review.
+        """
+        from scripts.claim_audit_pipeline import _uncited_assertion_entry
+
+        sentence = {"sentence_text": "Pilot data showed positive gains."}
+        with self.assertRaisesRegex(
+            ValueError,
+            r"_uncited_assertion_entry.*has no trigger_tokens",
+        ):
+            _uncited_assertion_entry(
+                sentence=sentence,
+                finding_id="UA-001",
+                now_iso="2026-05-16T00:00:00Z",
+            )
+
+        # Empty-list keyword arg also raises (falsy list short-circuits
+        # the `or` fallback so the dict lookup catches it).
+        with self.assertRaisesRegex(
+            ValueError,
+            r"_uncited_assertion_entry.*has no trigger_tokens",
+        ):
+            _uncited_assertion_entry(
+                sentence=sentence,
+                finding_id="UA-002",
+                now_iso="2026-05-16T00:00:00Z",
+                trigger_tokens=[],
             )
 
 
