@@ -158,6 +158,65 @@ class TestDetectUncited(unittest.TestCase):
                     ),
                 )
 
+    def test_ref_marker_rejects_non_citation_ref_comments(self) -> None:
+        """Non-citation `ref:` HTML comments do NOT short-circuit candidates.
+
+        Regression for codex R3 P2-NEW-A: the R2 broad presence probe
+        `<!--\\s*ref:[^>]*?-->` swallowed any HTML comment whose content
+        started with `ref:`, including internal/code references like
+        `<!-- ref: $analysis.notebook.cell -->`. That silently suppressed
+        D4-c findings on real quantitative claims that happened to share
+        a paragraph with a code comment. R3 narrows the slug payload to
+        non-whitespace start, distinguishing the v3.7.3 canonical citation
+        namespace from generic `ref:`-labelled HTML comments.
+        """
+        non_citation_ref_comments = [
+            "The pilot showed 50% completion <!-- ref: $analysis.notebook.cell_7 -->.",
+            "The pilot showed 50% completion <!--ref: $analysis.notebook.cell_7 -->.",
+            "Most studies showed gains <!-- ref:  internal_issue_103 -->.",
+        ]
+        for sentence in non_citation_ref_comments:
+            with self.subTest(sentence=sentence):
+                is_candidate, tokens = detect_uncited(sentence)
+                self.assertTrue(
+                    is_candidate,
+                    msg=(
+                        "non-citation `ref:` comment must NOT short-circuit "
+                        f"D4-c — sentence has quantifiers; got {tokens!r}"
+                    ),
+                )
+
+    def test_bare_integer_after_period_is_a_quantifier(self) -> None:
+        """Bare integer after `<digit>.<space>` boundary still fires.
+
+        Regression for codex R3 P2-NEW-B: the R2 whitespace-skip in
+        branch 4 of the year/version/section guard was too aggressive.
+        `"The protocol used v3. 7 participants withdrew."` is two
+        sentences glued by whitespace — `v3.` ends the first, `7
+        participants` opens a real quantitative claim in the second.
+        The guard was treating the `7` as part of `v3.7` and silencing
+        the participant count. R3 restricts whitespace-skip to dotted
+        right tails (`7.3`) — bare integers after whitespace are no
+        longer reattached.
+        """
+        bare_integer_after_period = [
+            ("The protocol used v3. 7 participants withdrew before follow-up.", "7"),
+            ("The protocol used v3.\n7 participants withdrew before follow-up.", "7"),
+            ("Model3. 7 participants withdrew before follow-up.", "7"),
+        ]
+        for sentence, expected_token in bare_integer_after_period:
+            with self.subTest(sentence=sentence):
+                is_candidate, tokens = detect_uncited(sentence)
+                self.assertTrue(
+                    is_candidate,
+                    msg=(
+                        f"bare integer {expected_token!r} after period+whitespace "
+                        "is a quantifier opening a new clause, not a version "
+                        f"continuation; got {tokens!r}"
+                    ),
+                )
+                self.assertIn(expected_token, tokens)
+
     def test_multiline_dotted_version_is_not_quantifier(self) -> None:
         """Line-wrapped dotted version reference → NOT a quantifier.
 

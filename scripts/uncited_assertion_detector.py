@@ -106,18 +106,39 @@ def _is_year_or_version_or_section(
     # failed to separate. RE_NUMERIC_QUANTIFIER consumed every dotted
     # segment to the right of the prefix already, so the only token that
     # can sit immediately before match_start and still belong to the same
-    # logical version/section literal is `\d+\.`. Scan back through any
-    # intervening whitespace (handles line-wrapped `v3.\n7.3` per codex
-    # R2 P1-NEW) before testing the left-attached pattern.
+    # logical version/section literal is `\d+\.`.
+    #
+    # Two reattachment shapes:
+    #   (i)  Immediate (no whitespace between prefix and match): the
+    #        canonical `v3.7.3` shape where the regex starts at `7.3`
+    #        because Python's \b cannot separate `v` and `3`.
+    #   (ii) Line-wrapped (whitespace between prefix and match): the
+    #        codex R2 P1-NEW shape `v3.\n7.3`.
+    #
+    # Shape (ii) is restricted to dotted matches only — a bare integer
+    # after whitespace after a period belongs to the NEXT sentence, not
+    # the version triple. `"v3. 7 participants withdrew."` is two
+    # statements: a version reference (the `v3.` is a section end) and
+    # a quantitative claim about 7 participants. Without this restriction
+    # branch 4 swallowed the legitimate 7-participant count (codex R3
+    # P2-NEW-B).
     if match_start > 0:
-        scan_idx = match_start - 1
-        while scan_idx > 0 and sentence[scan_idx].isspace():
-            scan_idx -= 1
-        if sentence[scan_idx] == ".":
-            left_search_start = max(0, scan_idx + 1 - _GUARD_LEFT_WINDOW)
-            left = sentence[left_search_start : scan_idx + 1]
+        # Shape (i) — immediate left `.` always reattaches.
+        if sentence[match_start - 1] == ".":
+            left_search_start = max(0, match_start - _GUARD_LEFT_WINDOW)
+            left = sentence[left_search_start:match_start]
             if RE_NUMERIC_LEFT_ATTACHED.search(left):
                 return True
+        # Shape (ii) — whitespace-separated only for dotted right tails.
+        elif "." in match_text and sentence[match_start - 1].isspace():
+            scan_idx = match_start - 1
+            while scan_idx > 0 and sentence[scan_idx].isspace():
+                scan_idx -= 1
+            if sentence[scan_idx] == ".":
+                left_search_start = max(0, scan_idx + 1 - _GUARD_LEFT_WINDOW)
+                left = sentence[left_search_start : scan_idx + 1]
+                if RE_NUMERIC_LEFT_ATTACHED.search(left):
+                    return True
     return False
 
 
