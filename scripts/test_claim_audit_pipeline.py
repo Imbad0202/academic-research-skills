@@ -803,6 +803,115 @@ class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
 # ---------------------------------------------------------------------------
 
 
+class TP21UncitedClaimLevelNC(_PipelineTestBase):
+    """T-P21: Step 13 R7 codex P1 — uncited stream (d) must include claim-level
+    NC-C constraints when the sentence binds a manifest_claim_id.
+
+    Pre-fix: only manifest_negative_constraints (MNC-) was passed to the
+    judge; NC-C... for the bound claim was silently dropped.
+    """
+
+    def test_nc_c_included_when_sentence_binds_claim_id(self) -> None:
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Bound claim.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                    "negative_constraints": [
+                        {
+                            "constraint_id": "NC-C001-1",
+                            "rule": "MUST NOT generalize beyond cohort.",
+                        }
+                    ],
+                }
+            ],
+            mncs=[],
+        )
+        sentence = {
+            "sentence_text": "All practitioners benefit.",
+            "section_path": "Discussion",
+            "manifest_claim_id": "C-001",
+            "scoped_manifest_id": MANIFEST_ID,
+        }
+        seen_ids: list[set[str]] = []
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            active = kwargs.get("active_constraints") or []
+            seen_ids.append({c["constraint_id"] for c in active})
+            return {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "NC-C001-1",
+                "rationale": "Generalizes beyond cohort.",
+            }
+
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=[],
+            all_uncited_sentences=[sentence],
+            judge_fn=judge_fn,
+        )
+        self.assertEqual(seen_ids, [{"NC-C001-1"}])
+        cv = out["constraint_violations"]
+        self.assertEqual(len(cv), 1)
+        self.assertEqual(cv[0]["violated_constraint_id"], "NC-C001-1")
+        self.assertEqual(cv[0]["scoped_manifest_id"], MANIFEST_ID)
+
+
+class TP22DuplicateMNCIdAcrossManifests(_PipelineTestBase):
+    """T-P22: Step 13 R7 codex P2 — when two manifests use the same MNC id
+    string (e.g. both have MNC-1), an uncited violation MUST be attributed
+    to the correct manifest. Per-manifest judge calls + scope binding by
+    construction (not by first-match-wins lookup).
+    """
+
+    def test_violation_attributed_to_correct_manifest(self) -> None:
+        manifest_a = _manifest(
+            manifest_id="M-2026-05-16T09:00:00Z-a111",
+            claims=[],
+            mncs=[{"constraint_id": "MNC-1", "rule": "MUST NOT use A-words"}],
+        )
+        manifest_b = _manifest(
+            manifest_id="M-2026-05-16T09:00:00Z-b222",
+            claims=[],
+            mncs=[{"constraint_id": "MNC-1", "rule": "MUST NOT use B-words"}],
+        )
+        sentence = {
+            "sentence_text": "Uses B-words.",
+            "section_path": "Discussion",
+        }
+
+        # judge_fn distinguishes by rule text: only violates manifest B's rule.
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            active = kwargs.get("active_constraints") or []
+            for c in active:
+                if "B-words" in c.get("rule", ""):
+                    return {
+                        "judgment": "VIOLATED",
+                        "violated_constraint_id": "MNC-1",
+                        "rationale": "Uses B-words.",
+                    }
+            return {"judgment": "NOT_VIOLATED", "rationale": "n/a"}
+
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest_a, manifest_b],
+            uncited_sentences=[],
+            all_uncited_sentences=[sentence],
+            judge_fn=judge_fn,
+        )
+        cv = out["constraint_violations"]
+        self.assertEqual(len(cv), 1, f"exactly one CV row; got {cv!r}")
+        # MUST be attributed to manifest B, NOT manifest A (alphabetic first).
+        self.assertEqual(
+            cv[0]["scoped_manifest_id"],
+            "M-2026-05-16T09:00:00Z-b222",
+            f"violation MUST attribute to the manifest whose rule the judge actually violated; got {cv[0]['scoped_manifest_id']!r}",
+        )
+
+
 class TP20UncitedSentenceWithoutScope(_PipelineTestBase):
     """T-P20: Step 13 R6 codex P1 — sentences in the documented all_uncited_sentences
     shape (sentence_text + section_path + optional adjacent_text only, NO

@@ -1116,93 +1116,108 @@ def run_audit_pipeline(
     # MNCs apply; otherwise the pipeline applies EVERY manifest's MNCs
     # (uncited sentences have no claim-level binding, so manifest-scoped
     # MNCs reach them universally per spec §3.5 D4-c stream (d) semantics).
-    all_manifest_mncs: list[tuple[str, dict[str, Any]]] = []
+    # Per-manifest constraint sets — MNCs (manifest-wide) PLUS, when the
+    # sentence carries a `manifest_claim_id`, that claim's NC-C entries.
+    # NC-C (claim-level) is the R7 codex P1 gap: spec §3.5 D4-c stream (d)
+    # covers BOTH MNC and NC-C for uncited violations, but the R6 closure
+    # only wired MNCs. We resolve NC-C from claim_by_mc_id at call time
+    # when the sentence binds a claim_id.
+    #
+    # Step 13 R7 codex P2 also applies here: when MNC ids collide across
+    # manifests (two manifests both have "MNC-1"), passing a flat list to
+    # one judge call makes the returned `violated_constraint_id` ambiguous
+    # — we'd have to first-match-wins which mis-attributes the row to the
+    # wrong manifest. Solution: run the judge ONCE PER MANIFEST, with that
+    # manifest's MNC + NC-C set. Each return is unambiguous by construction;
+    # cost is N judge calls per sentence (cf. cited path where each
+    # citation already takes one judge call).
+    manifest_mncs_by_id: dict[str, list[dict[str, Any]]] = {}
     for m in manifests:
         mid = m.get("manifest_id")
         if not mid:
             continue
+        mncs_for_mid: list[dict[str, Any]] = []
         for mnc in m.get("manifest_negative_constraints") or []:
             if mnc.get("constraint_id"):
-                all_manifest_mncs.append(
-                    (mid, {"constraint_id": mnc["constraint_id"], "rule": mnc["rule"], "scope": "MNC"})
+                mncs_for_mid.append(
+                    {"constraint_id": mnc["constraint_id"], "rule": mnc["rule"], "scope": "MNC"}
                 )
+        manifest_mncs_by_id[mid] = mncs_for_mid
 
     constraint_violation_texts: set[str] = set()
     cv_counter = 1
     for sentence in all_uncited_sentences:
         scoped_manifest_id_for_sentence = sentence.get("scoped_manifest_id")
-        applicable_constraints: list[dict[str, Any]] = []
-        applicable_pairs: list[tuple[str, str]] = []
-        if scoped_manifest_id_for_sentence:
-            # Caller-provided scope — restrict to that manifest's MNCs.
-            for mid, c in all_manifest_mncs:
-                if mid == scoped_manifest_id_for_sentence:
-                    applicable_constraints.append(c)
-                    applicable_pairs.append((mid, c["constraint_id"]))
-        else:
-            # No caller scope — apply every manifest's MNCs (R6 codex P1).
-            for mid, c in all_manifest_mncs:
-                applicable_constraints.append(c)
-                applicable_pairs.append((mid, c["constraint_id"]))
+        sentence_claim_id = sentence.get("manifest_claim_id")
 
-        if not applicable_constraints:
+        # Decide which manifests this sentence is constraint-judged against.
+        # Caller-pinned scope → that one manifest. Otherwise every manifest.
+        if scoped_manifest_id_for_sentence:
+            target_manifest_ids = [scoped_manifest_id_for_sentence] if scoped_manifest_id_for_sentence in manifest_mncs_by_id else []
+        else:
+            target_manifest_ids = list(manifest_mncs_by_id.keys())
+
+        if not target_manifest_ids:
             continue
 
-        applicable_ids: frozenset[str] = frozenset(
-            c["constraint_id"] for c in applicable_constraints if c.get("constraint_id")
-        )
-        # Wrap in `_invoke_judge` so transient failures don't abort the
-        # uncited stream. Current behaviour: failure → NOT_VIOLATED so
-        # the audit pass completes. NOTE: codex Step 13 R3 P2 #5 challenges
-        # this design choice — silently substituting NOT_VIOLATED on judge
-        # outage suppresses the HIGH-WARN constraint check. Proper fix is a
-        # schema-level decision on how to surface audit_tool_failure on the
-        # uncited path without polluting constraint_violations[] HIGH-WARN
-        # semantics. Tracked as follow-up issue #118; behaviour preserved
-        # in this round so the merge is not blocked on a spec change.
-        try:
-            judge_result = _invoke_judge(
-                judge_fn,
-                allowed_judgments=_UNCITED_PATH_JUDGMENTS,
-                active_constraint_ids=applicable_ids,
-                claim_text=sentence["sentence_text"],
-                retrieved_excerpt=None,
-                anchor_kind=None,
-                anchor_value=None,
-                active_constraints=applicable_constraints,
-                judge_model=judge_model,
-            )
-        except JudgeInvocationError:
-            judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission). See issue #118 for proper audit_tool_failure surfacing on uncited path."}
-        if judge_result.get("judgment") == "VIOLATED":
-            # CV row requires a concrete scoped_manifest_id (schema pattern,
-            # no MANIFEST-MISSING sentinel admitted per constraint_violation
-            # schema description). When the caller didn't pin sentence scope,
-            # derive it from the violated_constraint_id ↔ applicable_pairs
-            # mapping built above.
-            cv_scope: str | None = scoped_manifest_id_for_sentence
-            if cv_scope is None:
-                violated_id = judge_result.get("violated_constraint_id")
-                for mid, cid in applicable_pairs:
-                    if cid == violated_id:
-                        cv_scope = mid
-                        break
-            if cv_scope is None:
-                # _invoke_judge already validated violated_id ∈ applicable_ids,
-                # so this branch is unreachable in practice. Skip the emission
-                # rather than emit a schema-violating row.
+        # One judge call per (sentence, manifest) pair so MNC id collisions
+        # across manifests cannot misattribute the violation (R7 codex P2).
+        sentence_violation_recorded = False
+        for mid in target_manifest_ids:
+            per_manifest_constraints: list[dict[str, Any]] = list(manifest_mncs_by_id[mid])
+            # R7 codex P1: also include NC-C for this manifest's bound claim.
+            if sentence_claim_id:
+                claim = claim_by_mc_id.get((mid, sentence_claim_id))
+                if claim is not None:
+                    for nc in claim.get("negative_constraints") or []:
+                        if nc.get("constraint_id"):
+                            per_manifest_constraints.append(
+                                {"constraint_id": nc["constraint_id"], "rule": nc["rule"], "scope": "NC"}
+                            )
+
+            if not per_manifest_constraints:
                 continue
-            constraint_violations.append(
-                _constraint_violation_entry(
-                    sentence=sentence,
-                    judge_result=judge_result,
-                    scoped_manifest_id=cv_scope,
-                    finding_id=f"CV-{cv_counter:03d}",
-                    judge_model=judge_model,
-                    now_iso=now_iso,
-                )
+
+            applicable_ids: frozenset[str] = frozenset(
+                c["constraint_id"] for c in per_manifest_constraints if c.get("constraint_id")
             )
-            cv_counter += 1
+            # Wrap in `_invoke_judge` so transient failures don't abort the
+            # uncited stream. Current behaviour: failure → NOT_VIOLATED so
+            # the audit pass completes. NOTE: codex Step 13 R3 P2 #5
+            # challenges this design choice — silently substituting
+            # NOT_VIOLATED on judge outage suppresses the HIGH-WARN
+            # constraint check. Tracked as follow-up issue #118; behaviour
+            # preserved in this round so the merge is not blocked on a
+            # spec change.
+            try:
+                judge_result = _invoke_judge(
+                    judge_fn,
+                    allowed_judgments=_UNCITED_PATH_JUDGMENTS,
+                    active_constraint_ids=applicable_ids,
+                    claim_text=sentence["sentence_text"],
+                    retrieved_excerpt=None,
+                    anchor_kind=None,
+                    anchor_value=None,
+                    active_constraints=per_manifest_constraints,
+                    judge_model=judge_model,
+                )
+            except JudgeInvocationError:
+                judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission). See issue #118 for proper audit_tool_failure surfacing on uncited path."}
+            if judge_result.get("judgment") == "VIOLATED":
+                constraint_violations.append(
+                    _constraint_violation_entry(
+                        sentence=sentence,
+                        judge_result=judge_result,
+                        scoped_manifest_id=mid,
+                        finding_id=f"CV-{cv_counter:03d}",
+                        judge_model=judge_model,
+                        now_iso=now_iso,
+                    )
+                )
+                cv_counter += 1
+                sentence_violation_recorded = True
+
+        if sentence_violation_recorded:
             constraint_violation_texts.add(sentence["sentence_text"])
 
     # ---- Step 6 stream (uncited_assertion LOW-WARN advisory) ----

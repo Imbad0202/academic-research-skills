@@ -1089,6 +1089,27 @@ class TS9MalformedPassportGuard(_LintTestBase):
         self.assertNotIn("Traceback", err, msg=f"lint must not raise:\n{err}")
         self.assertIn("schema", out)
 
+    def test_non_object_passport_body_yields_clean_finding(self) -> None:
+        # Step 13 R7 codex P3: `[]`, `null`, scalar top-level JSON would
+        # previously crash with AttributeError on `.get()`. Validate that
+        # each surfaces as a schema finding without traceback.
+        for malformed_body in ([], None, 42, "passport"):
+            with self.subTest(body=malformed_body):
+                path = self.tmp / f"malformed_{type(malformed_body).__name__}.json"
+                path.write_text(json.dumps(malformed_body), encoding="utf-8")
+                code, out, err = run_lint(path)
+                self.assertEqual(
+                    code,
+                    1,
+                    msg=f"expected exit=1 for body={malformed_body!r}; got {code}\nstderr:\n{err}",
+                )
+                self.assertNotIn(
+                    "Traceback",
+                    err,
+                    msg=f"lint must not raise for body={malformed_body!r}:\n{err}",
+                )
+                self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
     def test_falsey_malformed_aggregate_does_not_bypass_schema(self) -> None:
         # Step 13 R5 codex P2 #1: `body.get(k, []) or []` would silently
         # convert a malformed `{}` / `null` / `0` / `""` value to an empty

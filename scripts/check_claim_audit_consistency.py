@@ -1007,8 +1007,19 @@ def _validate_against_schema(
 # ---------------------------------------------------------------------------
 
 
-def validate_passport(body: dict[str, Any]) -> list[Finding]:
+def validate_passport(body: Any) -> list[Finding]:
     """Run all 38 invariants + schema-shape against a passport body. Returns findings."""
+    # Step 13 R7 codex P3: a syntactically valid JSON top level can still
+    # be `[]`, `null`, or a scalar. `.get()` on those raises AttributeError;
+    # surface a clean schema finding instead so the CLI can return findings
+    # rather than tracing back.
+    if not isinstance(body, dict):
+        return [
+            Finding(
+                "schema",
+                f"passport body must be a JSON object; got {type(body).__name__}",
+            )
+        ]
     # Raw aggregates — preserved for schema-shape validation below (which
     # records findings on non-list / non-dict-entry inputs). MUST NOT use
     # `or []` because a falsey but malformed value such as `{}`, `null`, `0`,
