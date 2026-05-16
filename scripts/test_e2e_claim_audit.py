@@ -232,6 +232,23 @@ def _make_judge_fn(
                 "defect_stage_hint": "source_description",
             }
         if claim_text.startswith("C5:"):
+            # R4 codex P2 closure: pin the negative-constraint contract
+            # end-to-end. The c5 path REQUIRES `run_audit_pipeline` to
+            # resolve MNC-1 from the manifest's
+            # `manifest_negative_constraints[]` and pass it through to the
+            # judge via `active_constraints`. Without this assertion the
+            # stub would return VIOLATED regardless of whether the
+            # pipeline actually delivered the constraint, and a
+            # regression that silently dropped constraint resolution
+            # would still see e2e PASS because the row mapping
+            # (judgment=UNSUPPORTED + defect=negative_constraint_violation)
+            # is downstream of the stub.
+            active = kwargs.get("active_constraints", [])
+            active_ids = {c.get("constraint_id") for c in active if isinstance(c, dict)}
+            assert "MNC-1" in active_ids, (
+                "e2e contract: pipeline must pass MNC-1 to the c5 judge call "
+                f"via active_constraints; got {active!r}"
+            )
             if c5_judgment == "NOT_VIOLATED":
                 return {
                     "judgment": "SUPPORTED",
