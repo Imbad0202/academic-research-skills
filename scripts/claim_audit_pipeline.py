@@ -1104,18 +1104,46 @@ def run_audit_pipeline(
     # silently miss HIGH-WARN cases. We run constraint judging here on
     # `all_uncited_sentences` and emit LOW-WARN uncited_assertion rows
     # separately on `uncited_sentences` (the D4-c subset).
+    #
+    # Step 13 R6 codex P1: the documented Stage 4 draft sentence shape carries
+    # only `sentence_text` / `section_path` / optional `adjacent_text` — NOT
+    # a sentence-level `scoped_manifest_id`. Pre-fix this loop required the
+    # caller to populate scope on every sentence; absent that, the
+    # constraint judge was skipped and the HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED
+    # gate was a no-op for orchestrator callers following the contract.
+    # The runtime now derives a default scope set per sentence: if the caller
+    # provides `scoped_manifest_id` on the sentence dict, only that manifest's
+    # MNCs apply; otherwise the pipeline applies EVERY manifest's MNCs
+    # (uncited sentences have no claim-level binding, so manifest-scoped
+    # MNCs reach them universally per spec §3.5 D4-c stream (d) semantics).
+    all_manifest_mncs: list[tuple[str, dict[str, Any]]] = []
+    for m in manifests:
+        mid = m.get("manifest_id")
+        if not mid:
+            continue
+        for mnc in m.get("manifest_negative_constraints") or []:
+            if mnc.get("constraint_id"):
+                all_manifest_mncs.append(
+                    (mid, {"constraint_id": mnc["constraint_id"], "rule": mnc["rule"], "scope": "MNC"})
+                )
+
     constraint_violation_texts: set[str] = set()
     cv_counter = 1
     for sentence in all_uncited_sentences:
         scoped_manifest_id_for_sentence = sentence.get("scoped_manifest_id")
         applicable_constraints: list[dict[str, Any]] = []
+        applicable_pairs: list[tuple[str, str]] = []
         if scoped_manifest_id_for_sentence:
-            applicable_constraints = _active_constraints_for_claim(
-                scoped_manifest_id=scoped_manifest_id_for_sentence,
-                claim_id=sentence.get("manifest_claim_id", ""),
-                claim_by_mc_id=claim_by_mc_id,
-                mncs_by_manifest_id=mncs_by_manifest_id,
-            )
+            # Caller-provided scope — restrict to that manifest's MNCs.
+            for mid, c in all_manifest_mncs:
+                if mid == scoped_manifest_id_for_sentence:
+                    applicable_constraints.append(c)
+                    applicable_pairs.append((mid, c["constraint_id"]))
+        else:
+            # No caller scope — apply every manifest's MNCs (R6 codex P1).
+            for mid, c in all_manifest_mncs:
+                applicable_constraints.append(c)
+                applicable_pairs.append((mid, c["constraint_id"]))
 
         if not applicable_constraints:
             continue
@@ -1147,11 +1175,28 @@ def run_audit_pipeline(
         except JudgeInvocationError:
             judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission). See issue #118 for proper audit_tool_failure surfacing on uncited path."}
         if judge_result.get("judgment") == "VIOLATED":
+            # CV row requires a concrete scoped_manifest_id (schema pattern,
+            # no MANIFEST-MISSING sentinel admitted per constraint_violation
+            # schema description). When the caller didn't pin sentence scope,
+            # derive it from the violated_constraint_id ↔ applicable_pairs
+            # mapping built above.
+            cv_scope: str | None = scoped_manifest_id_for_sentence
+            if cv_scope is None:
+                violated_id = judge_result.get("violated_constraint_id")
+                for mid, cid in applicable_pairs:
+                    if cid == violated_id:
+                        cv_scope = mid
+                        break
+            if cv_scope is None:
+                # _invoke_judge already validated violated_id ∈ applicable_ids,
+                # so this branch is unreachable in practice. Skip the emission
+                # rather than emit a schema-violating row.
+                continue
             constraint_violations.append(
                 _constraint_violation_entry(
                     sentence=sentence,
                     judge_result=judge_result,
-                    scoped_manifest_id=scoped_manifest_id_for_sentence,
+                    scoped_manifest_id=cv_scope,
                     finding_id=f"CV-{cv_counter:03d}",
                     judge_model=judge_model,
                     now_iso=now_iso,

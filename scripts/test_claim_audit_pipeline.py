@@ -803,6 +803,95 @@ class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
 # ---------------------------------------------------------------------------
 
 
+class TP20UncitedSentenceWithoutScope(_PipelineTestBase):
+    """T-P20: Step 13 R6 codex P1 — sentences in the documented all_uncited_sentences
+    shape (sentence_text + section_path + optional adjacent_text only, NO
+    scoped_manifest_id) MUST still trigger the constraint judge.
+
+    Pre-fix: the loop required sentence.get("scoped_manifest_id") to resolve
+    constraints, so orchestrator callers following the contract never saw the
+    HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED gate fire. The runtime now applies
+    every manifest-level MNC when no caller scope is provided; constraint
+    violation rows derive their scoped_manifest_id from the violated_constraint_id
+    ↔ source-manifest mapping.
+    """
+
+    def test_uncited_sentence_no_scope_triggers_mnc_judge(self) -> None:
+        manifest = _manifest(
+            claims=[],
+            mncs=[
+                {
+                    "constraint_id": "MNC-1",
+                    "rule": "MUST NOT use causal language",
+                }
+            ],
+        )
+        sentence = {
+            "sentence_text": "The program caused outcome improvement.",
+            "section_path": "Discussion",
+            # No scoped_manifest_id — documented Stage 4 sentence shape.
+        }
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=[],  # not D4-c-flagged
+            all_uncited_sentences=[sentence],
+            judge_fn=lambda **kw: {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "MNC-1",
+                "rationale": "Causal language.",
+            },
+        )
+        cv = out["constraint_violations"]
+        self.assertEqual(
+            len(cv),
+            1,
+            f"R6 P1: uncited sentence without scope must reach MNC judge; got {cv!r}",
+        )
+        # Schema requires concrete scoped_manifest_id matching the M-pattern.
+        self.assertEqual(cv[0]["scoped_manifest_id"], MANIFEST_ID)
+        self.assertEqual(cv[0]["violated_constraint_id"], "MNC-1")
+
+    def test_caller_provided_scope_restricts_mnc_set(self) -> None:
+        # When the caller pins scoped_manifest_id, only that manifest's MNCs
+        # apply (cross-manifest leakage prevented).
+        manifest_a = _manifest(
+            manifest_id="M-aaaa-A",
+            claims=[],
+            mncs=[{"constraint_id": "MNC-1", "rule": "MUST NOT use A-words"}],
+        )
+        manifest_b = _manifest(
+            manifest_id="M-bbbb-B",
+            claims=[],
+            mncs=[{"constraint_id": "MNC-2", "rule": "MUST NOT use B-words"}],
+        )
+        # Sentence pinned to manifest A — judge should only see MNC-1.
+        sentence = {
+            "sentence_text": "Uses A-words.",
+            "section_path": "Discussion",
+            "scoped_manifest_id": "M-aaaa-A",
+        }
+        seen_constraint_ids: list[set[str]] = []
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            active = kwargs.get("active_constraints") or []
+            seen_constraint_ids.append({c["constraint_id"] for c in active})
+            return {"judgment": "NOT_VIOLATED", "rationale": "n/a"}
+
+        self.run_pipeline(
+            citations=[],
+            manifests=[manifest_a, manifest_b],
+            uncited_sentences=[],
+            all_uncited_sentences=[sentence],
+            judge_fn=judge_fn,
+        )
+        self.assertEqual(
+            seen_constraint_ids,
+            [{"MNC-1"}],
+            "caller-provided scope must restrict judge to that manifest's MNCs",
+        )
+
+
 class TP19ConstraintAbsorptionFullManifestScope(_PipelineTestBase):
     """T-P19: Step 13 R5 codex P3 — when a citation in manifest M violates a
     negative constraint, ALL of M's drift findings are absorbed, including

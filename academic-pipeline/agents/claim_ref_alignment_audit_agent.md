@@ -54,6 +54,8 @@ Read these passport fields:
 
   Without this stream the `[HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED]` row and the LOW-WARN `uncited_assertions[]` row cannot fire — both are operationally load-bearing per spec §3.3 + §3.5. In the Python runtime (`scripts/claim_audit_pipeline.py`), callers pass the FULL set as `all_uncited_sentences` and the D4-c output as `uncited_sentences`; legacy callers may pass only `uncited_sentences` and the pipeline falls back (narrower constraint surface, backwards-compatible).
 
+  **Sentence scope (Step 13 R6 codex P1):** the documented sentence shape is `sentence_text` + `section_path` + optional `adjacent_text` — sentences do NOT need to carry `scoped_manifest_id`. The pipeline derives constraint scope per sentence: if the caller pins `scoped_manifest_id` on the sentence dict (legacy / explicit-scope shape), only that manifest's MNCs apply. Otherwise the pipeline applies **every manifest's MNCs** (uncited sentences have no claim-level binding, so manifest-scoped MNCs reach them universally per spec §3.5 D4-c stream (d) semantics). The emitted `constraint_violation` row derives its `scoped_manifest_id` from the `violated_constraint_id` ↔ source-manifest mapping; no MANIFEST-MISSING sentinel is admitted per the schema's pattern constraint.
+
 Configuration (`claim_audit_config` block in `academic-pipeline/SKILL.md` mode flags):
 
 | Key | Type | Default | Purpose |
