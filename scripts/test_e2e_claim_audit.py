@@ -16,8 +16,13 @@ Acceptance:
     `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` (c3) and
     `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION (MNC-1)]` (c5); c1/c2/c4 do not
     contribute to gate_refuse_reasons.
-  - Scenario B (c3 corrected to SUPPORTED + c5 dropped from prose): gate
-    passes with no HIGH-WARN reasons. c2/c4 advisory annotations may remain.
+  - Scenario B (c3 corrected to SUPPORTED + c5 rewritten with hedged
+    language so the judge returns SUPPORTED instead of VIOLATED): gate
+    passes with no HIGH-WARN reasons. c2/c4 advisory annotations may
+    remain. The fixture keeps c5 as a cited claim — Scenario B
+    exercises the in-place-rewrite remediation path, not the
+    drop-from-prose path (which would invoke the manifest drift surface
+    pinned by scripts/test_claim_audit_pipeline.py T-P10).
 
 DEFERRED-CROSS-SENTENCE closure: this test also wires
 `detect_uncited_assertions` with the new `adjacent_text` field — a sentence
@@ -50,8 +55,14 @@ try:
         apply_finalizer,
     )
     from scripts.uncited_assertion_detector import detect_uncited_assertions
-    _MODULE_IMPORT_ERR: Exception | None = None
-except Exception as exc:  # pragma: no cover — exercised in RED state
+    _MODULE_IMPORT_ERR: ModuleNotFoundError | None = None
+# Narrow to ModuleNotFoundError per R2 codex P2-B: catching plain `Exception`
+# silently downgrades a real GREEN-state regression (e.g. apply_finalizer
+# removed from claim_audit_finalizer.py, an annotation constant renamed, a
+# new module-level import statement raising AttributeError) to a "skip"
+# instead of a fail. The RED-phase pathway is module-not-found only; any
+# other ImportError / AttributeError should surface as a test failure.
+except ModuleNotFoundError as exc:  # pragma: no cover — exercised in RED state
     _MODULE_IMPORT_ERR = exc
 
 
