@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### #103 — v3.8 claim ↔ reference faithfulness audit agent (2026-05-16)
+
+**Parent issue:** [#103](https://github.com/Imbad0202/academic-research-skills/issues/103) — closes the L3 (claim-faithfulness) gap left open by v3.7.3 (which closed the locator-channel half). Spec: `docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md` + decision doc `docs/design/2026-05-15-issue-103-claim-alignment-audit-decision.md` (D1-D6 settled).
+
+**Why:** Zhao et al. arXiv:2605.07723 (2026-05) shows 146,932 hallucinated citations across arXiv / bioRxiv / SSRN / PMC in 2025; v3.7.3 stopped the "no locator" path but a present-but-wrong claim ↔ source mismatch was still undetected. v3.8 adds a Stage 4→5 audit pass that judges every sampled citation against its retrieved excerpt, emits 5 new passport aggregates, and drives 5 new HIGH-WARN annotation classes through the formatter terminal hard gate.
+
+**New components:**
+
+- **`claim_ref_alignment_audit_agent`** (1 new agent, `academic-pipeline/agents/`) — opt-in (`ARS_CLAIM_AUDIT=1`, default OFF for v3.8.0) audit agent dispatched between v3.7.1 cite finalizer and formatter hard gate. Takes citations + manifests + corpus + Stage 4 draft sentence stream (full uncited + D4-c filtered subset).
+- **5 new passport schemas** (`shared/contracts/passport/`): `claim_audit_result`, `claim_intent_manifest`, `claim_drift`, `uncited_assertion`, `constraint_violation`. Cross-field invariants INV-1..INV-18 / M-INV-1..M-INV-4 / U-INV-1..U-INV-4 / D-INV-1..D-INV-4 / CV-INV-1..CV-INV-4 lint-enforced (JSON Schema can't express the conditional matrix relating judgment / audit_status / defect_stage / ref_retrieval_method).
+- **Runtime pipeline** (`scripts/claim_audit_pipeline.py`) — implements §4 step 1-6 + manifest set-diff (D6 set-of-text semantics). Per-citation judge wrapping (`_invoke_judge` + `_invoke_retrieve` translate transient failures to INV-14 `audit_tool_failure` rows: judge_timeout / judge_api_error / judge_parse_error / cache_corruption / retrieval_api_error / retrieval_timeout / retrieval_network_error). Cache hits re-validated through the same surface. Per-manifest uncited judge calls to prevent MNC id collisions across manifests.
+- **8-row finalizer matrix** (`scripts/claim_audit_finalizer.py`) — discriminates paywall (LOW-WARN advisory) / fabricated reference (HIGH-WARN gate-refuse) / anchorless (HIGH-WARN defense-in-depth) / audit_tool_failure (MED-WARN advisory) via `ref_retrieval_method` alongside `(judgment, defect_stage)`.
+- **5 new HIGH-WARN annotation classes** in `formatter_agent` REFUSE list: `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` / `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION]` / `[HIGH-WARN-FABRICATED-REFERENCE]` / `[HIGH-WARN-CLAIM-AUDIT-ANCHORLESS]` / `[HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED]`. Mirrors v3.7.3 R-L3-1-A asymmetry — `/ars-mark-read` does NOT clear; remediation is fixing the prose.
+- **"Claim Intent Manifest Emission" sibling section** added to `synthesis_agent` / `draft_writer_agent` / `report_compiler_agent` per v3.6.7 PATTERN PROTECTION pattern. The §3a SHA-pinned blocks stay byte-equivalent to commit `e7e775a0e1b4`.
+- **Calibration runner** (`scripts/claim_audit_calibration.py` + `scripts/test_claim_audit_calibration.py` + `scripts/fixtures/claim_audit_calibration/gold_set.json`) — 20-tuple gold set (12 alignment + 8 constraint); T-C1 threshold gate (FNR < 0.15 + FPR < 0.10), T-C2 per-class FNR/FPR, T-C3 gold-set shape integrity. Re-run: `PYTHONPATH=. python3 -m unittest scripts.test_claim_audit_calibration -v`.
+- **2 new lints + 1 new pytest module + 7 new unittest modules wired into CI** (`.github/workflows/spec-consistency.yml`): `check_claim_audit_consistency.py` (38 invariant checks + schema validation), `check_v3_8_annotation_literal_sync.py` (formatter-finalizer literal drift gate). Test suite: 194 unittest tests across the 7 modules.
+
+**Review trail (Step 13 dual-track, 2026-05-16):** 8 rounds codex (gpt-5.5 xhigh) + 1 round Gemini 3.1-pro-preview before Gemini quota exhausted. Trajectory R1 4P1+2P2 → R2 0P1+3P2 → R3 0P1+5P2 → R4 2P1+2P2 → R5 0P1+2P2+1P3 → R6 1P1+1P2 → R7 1P1+1P2+1P3 → **R8 0P1+4P2 → ship**. Per `feedback_codex_review_surface_loop_design_phase.md` design-phase P2 noise floor doesn't auto-converge; the user declared ship signal at R8 with all P0/P1 closed and 4 R8 P2 carried over to v3.8.1 ([#120](https://github.com/Imbad0202/academic-research-skills/issues/120)).
+
+**Carry-over follow-up issues:**
+
+- [#118](https://github.com/Imbad0202/academic-research-skills/issues/118) — uncited path NOT_VIOLATED swallow on judge failure (schema-level decision)
+- [#119](https://github.com/Imbad0202/academic-research-skills/issues/119) — nested schema-invalid shapes still crash invariant helpers
+- [#120](https://github.com/Imbad0202/academic-research-skills/issues/120) — 4 R8 P2 findings (CV-INV-4 dedupe scope / invariant walker short-circuit / judgment + method type-check before set membership)
+
+**Regression baseline (post-ship):**
+
+- pytest: 1356 passed, 3 skipped, 103 subtests (was 1107 pre-#103, +249 tests across schema / pipeline / detector / manifest / finalizer / e2e / calibration / lint coverage)
+- v3.x lints: 7/7 PASS (v3.6.7 / v3.6.8 ×4 / v3.7.3 / v3.8)
+- personal-boundary: 0 violations (614 files scanned)
+- SHA-pinned zero-touch: `shared/sprint_contract.schema.json` 0 lines diff, `shared/contracts/passport/audit_artifact_entry.schema.json` 0 lines diff against main
+
 ### #115 — Semantic Scholar client maturity: throttle + outage latch (2026-05-15)
 
 **Parent issue:** [#115](https://github.com/Imbad0202/academic-research-skills/issues/115) — follow-up to #105 PR codex round-5 [P2]×2 findings (R5-2 throttle + R5-3 outage latch). Both deferred during #105 ship per architectural-inflection discipline; this entry closes the SS-client maturity gap.
