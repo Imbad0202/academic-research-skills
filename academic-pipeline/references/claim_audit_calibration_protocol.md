@@ -60,7 +60,7 @@ Alignment tuples MUST NOT carry any of: `constraint_under_test_id`, `constraint_
 }
 ```
 
-Both rule sources are accepted because manifest-bound constraints sometimes carry domain-specific rule text that authors want versioned alongside the manifest; inline rule_text is the simpler default for synthetic gold tuples.
+Both rule sources are accepted by `validate_gold_set` because manifest-bound constraints sometimes carry domain-specific rule text that authors want versioned alongside the manifest. **The v3.8.0 calibration runner supports only the inline `constraint_under_test_rule_text` form.** A manifest-only tuple validates clean per rule (c) but `run_calibration` raises `NotImplementedError` at run time rather than reach the judge with an empty rule (R2 codex P1 closure on the silent-skip risk that T-C3 is meant to prevent). The manifest-fixture resolver is a post-v3.8 deliverable; until it ships, author calibration fixtures with inline rule text.
 
 ---
 

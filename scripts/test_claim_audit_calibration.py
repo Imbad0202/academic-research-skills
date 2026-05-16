@@ -116,6 +116,14 @@ def _perfect_judge() -> Callable[..., dict[str, Any]]:
     return fn
 
 
+_BAD_JUDGE_FLIP_ALIGNMENT: dict[str, str] = {
+    "SUPPORTED": "UNSUPPORTED",
+    "UNSUPPORTED": "SUPPORTED",
+    "AMBIGUOUS": "UNSUPPORTED",
+    "RETRIEVAL_FAILED": "SUPPORTED",
+}
+
+
 def _bad_judge() -> Callable[..., dict[str, Any]]:
     """Stub judge that intentionally returns wrong labels to drive non-zero
     FNR/FPR (R1 Gemini P1 / codex P2 closure on tautological T-C1).
@@ -131,44 +139,40 @@ def _bad_judge() -> Callable[..., dict[str, Any]]:
     and flip every VIOLATED expected to NOT_VIOLATED. Drives every tuple
     into FN/FP territory so aggregate FNR + FPR both massively exceed
     the thresholds.
+
+    R2 Gemini P3 closure: lookup tables are built ONCE at factory time
+    (not per fn() call) so the gold set isn't re-read from disk for every
+    judge invocation. Both alignment and constraint paths use the
+    composite key from `_tuple_lookup_key` so duplicate claim_text under
+    different (tuple_kind, constraint_id) never silently collapses
+    — same hardening _perfect_judge already carries.
     """
-    flip_alignment = {
-        "SUPPORTED": "UNSUPPORTED",
-        "UNSUPPORTED": "SUPPORTED",
-        "AMBIGUOUS": "UNSUPPORTED",
-        "RETRIEVAL_FAILED": "SUPPORTED",
+    tuples_by_key: dict[tuple[str, str, str | None], dict[str, Any]] = {
+        _tuple_lookup_key(t): t for t in _load_gold_set()
     }
 
     def fn(**kwargs: Any) -> dict[str, Any]:
+        claim_text = kwargs.get("claim_text", "")
         active = kwargs.get("active_constraints") or []
-        if not active:
-            # Alignment path — gather expected from gold set to know what
-            # to flip. Lookup by claim_text alone is fine here because
-            # the calibration runner only passes one alignment tuple per
-            # claim_text in the canonical fixture.
-            tuples_by_text = {
-                t["claim_text"]: t for t in _load_gold_set()
-                if t["tuple_kind"] == "alignment"
-            }
-            tup = tuples_by_text.get(kwargs.get("claim_text", ""))
-            assert tup is not None, "bad_judge: alignment tuple not found"
+        constraint_id = active[0]["constraint_id"] if active else None
+        kind = "constraint" if active else "alignment"
+        tup = tuples_by_key.get((kind, claim_text, constraint_id))
+        if tup is None:
+            raise AssertionError(
+                f"bad_judge: no gold tuple for kind={kind!r} "
+                f"claim_text={claim_text!r} constraint_id={constraint_id!r}"
+            )
+        if kind == "alignment":
             return {
-                "judgment": flip_alignment[tup["expected_judgment"]],
+                "judgment": _BAD_JUDGE_FLIP_ALIGNMENT[tup["expected_judgment"]],
                 "rationale": "bad-judge stub (flipped)",
             }
         # Constraint path — flip VIOLATED ↔ NOT_VIOLATED.
-        tuples_by_pair = {
-            (t["claim_text"], t["constraint_under_test_id"]): t
-            for t in _load_gold_set()
-            if t["tuple_kind"] == "constraint"
-        }
-        tup = tuples_by_pair.get((kwargs["claim_text"], active[0]["constraint_id"]))
-        assert tup is not None, "bad_judge: constraint tuple not found"
         if tup["expected_judgment"] == "VIOLATED":
             return {"judgment": "NOT_VIOLATED", "rationale": "bad-judge flip"}
         return {
             "judgment": "VIOLATED",
-            "violated_constraint_id": active[0]["constraint_id"],
+            "violated_constraint_id": constraint_id,
             "rationale": "bad-judge flip",
         }
 
@@ -359,6 +363,59 @@ class TC3GoldSetShape(unittest.TestCase):
     def test_validate_gold_set_accepts_canonical_gold_set(self) -> None:
         # Positive path — the shipped gold set MUST validate cleanly.
         self.assertIsNone(validate_gold_set(self.gold_set))
+
+    def test_run_calibration_rejects_manifest_only_constraint_tuple(self) -> None:
+        # R2 codex P1 closure: validate_gold_set accepts EITHER inline
+        # rule_text OR manifest_fixture_path per spec §7.7 rule (c), but
+        # the v3.8.0 runner only supports the inline form. A manifest-only
+        # tuple validating clean but reaching the judge with rule="" is
+        # exactly the silent-skip authoring bug T-C3 is supposed to
+        # prevent. The runner MUST raise NotImplementedError at run time
+        # rather than pass the empty rule through to the judge. We pin
+        # this against a minimal synthetic set (no stub lookup needed
+        # because run_calibration raises before any judge invocation
+        # for the constraint tuples).
+        def _never_called_judge(**kwargs: Any) -> dict[str, Any]:
+            raise AssertionError("judge MUST NOT be called when manifest_only tuple raises")
+
+        manifest_only = [
+            # constraint tuple using manifest_fixture_path only (rule (c)
+            # second branch). Validates clean but runner must refuse.
+            {
+                "tuple_kind": "constraint",
+                "claim_text": "manifest-only constraint",
+                "ref_text_excerpt": None,
+                "anchor": {"kind": "page", "value": "1"},
+                "expected_judgment": "VIOLATED",
+                "constraint_under_test_id": "MNC-3",
+                "manifest_fixture_path": "scripts/fixtures/claim_audit_calibration/nonexistent.json",
+            },
+            # Three NOT_VIOLATED constraint tuples to satisfy rule (d).
+            # Use inline rule_text so validate_gold_set passes; the
+            # NotImplementedError fires on the FIRST manifest-only
+            # tuple it encounters, before any of these run.
+            *[
+                {
+                    "tuple_kind": "constraint",
+                    "claim_text": f"nv-filler-{i}",
+                    "ref_text_excerpt": None,
+                    "anchor": {"kind": "page", "value": "1"},
+                    "expected_judgment": "NOT_VIOLATED",
+                    "constraint_under_test_id": "MNC-3",
+                    "constraint_under_test_rule_text": "filler rule",
+                }
+                for i in range(3)
+            ],
+        ]
+        # Step 1: validate_gold_set MUST accept the manifest-only tuple
+        # (spec §7.7 rule (c) second branch).
+        self.assertIsNone(validate_gold_set(manifest_only))
+        # Step 2: run_calibration MUST refuse it at run time.
+        with self.assertRaises(NotImplementedError) as ctx:
+            run_calibration(manifest_only, judge_fn=_never_called_judge)
+        msg = str(ctx.exception)
+        self.assertIn("manifest_fixture_path", msg)
+        self.assertIn("post-v3.8", msg.lower())
 
 
 # ---------------------------------------------------------------------------

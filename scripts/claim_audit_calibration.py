@@ -20,14 +20,16 @@ from __future__ import annotations
 import re
 from typing import Any, Callable
 
-# Constraint id shape per spec §3.2 + protocol doc gold-tuple schema.
+# Constraint id shape per spec §3.2 canonical parse rule (RE_NC_CONSTRAINT
+# + RE_MNC_CONSTRAINT in scripts/_claim_audit_constants.py).
+#
 # MNC-N is the manifest-level negative constraint (broadest scope);
 # NC-CN-M is the per-claim narrow constraint binding claim N constraint M.
-# The lint at scripts/check_claim_audit_consistency.py enforces these
-# patterns on emitted passport rows; calibration shares the regex so the
-# scope-derivation gate aligns with the production lint surface.
+# Claim ids are zero-padded to ≥3 digits, so NC-C[0-9]{3,}-[0-9]+ is the
+# canonical NC shape — accepting NC-C1-1 (R1 codex residual P2) would
+# silently violate the production lint that runs against emitted rows.
 _RE_MNC_ID = re.compile(r"^MNC-[0-9]+$")
-_RE_NC_ID = re.compile(r"^NC-C[0-9]+-[0-9]+$")
+_RE_NC_ID = re.compile(r"^NC-C[0-9]{3,}-[0-9]+$")
 
 # Spec §7.7 + §9 acceptance gates. Tightening these is a spec bump.
 DEFAULT_FNR_THRESHOLD = 0.15
@@ -125,6 +127,43 @@ def validate_gold_set(tuples: list[dict[str, Any]]) -> None:
             f"constraint tuple(s); rule (d) requires ≥3 so constraint FPR is "
             f"measurable and T-C1 can fail-on-threshold for the constraint line"
         )
+
+
+def _resolve_constraint_rule_text(tup: dict[str, Any]) -> str:
+    """Resolve a constraint tuple's rule text to the literal the judge receives.
+
+    R2 codex P1 closure: prior implementation passed
+    `tup.get("constraint_under_test_rule_text", "")` directly to the judge,
+    which meant a spec-valid manifest-only tuple (rule (c) accepts EITHER
+    inline rule_text OR manifest_fixture_path) silently reached the judge
+    with `rule=""` — the exact silent-skip authoring bug T-C3 was supposed
+    to prevent.
+
+    The v3.8.0 calibration runner supports inline rule_text only. Manifest-
+    resolver wiring is post-v3.8 (tracked by the protocol doc's "Resolved
+    design decisions" section). Until that ships, a manifest-only tuple
+    must fail loudly at run time, not pass quietly with an empty rule.
+    """
+    inline_rule = tup.get("constraint_under_test_rule_text")
+    if inline_rule:
+        return inline_rule
+    manifest_path = tup.get("manifest_fixture_path")
+    if manifest_path:
+        raise NotImplementedError(
+            f"constraint tuple references manifest_fixture_path={manifest_path!r} "
+            "but the v3.8.0 calibration runner does not yet resolve manifest "
+            "fixtures into rule text. Author the tuple with an inline "
+            "constraint_under_test_rule_text, or wait for the manifest resolver "
+            "(post-v3.8). validate_gold_set accepts both forms per spec §7.7 "
+            "rule (c), but the runner only supports the inline form today."
+        )
+    # Both inline and manifest_path are absent → validate_gold_set should have
+    # caught this. Defense-in-depth: surface as a logic error, not silent "".
+    raise GoldSetValidationError(
+        f"constraint tuple {tup.get('constraint_under_test_id')!r} reached "
+        "run_calibration with neither inline rule_text nor manifest_fixture_path; "
+        "validate_gold_set should have rejected this at ingestion (rule (c))"
+    )
 
 
 def _derive_constraint_scope(constraint_id: str) -> str:
@@ -259,6 +298,7 @@ def run_calibration(
             n_constraint += 1
             constraint_id = tup["constraint_under_test_id"]
             scope = _derive_constraint_scope(constraint_id)
+            rule_text = _resolve_constraint_rule_text(tup)
             response = judge_fn(
                 claim_text=tup["claim_text"],
                 retrieved_excerpt=tup.get("ref_text_excerpt"),
@@ -267,7 +307,7 @@ def run_calibration(
                 active_constraints=[
                     {
                         "constraint_id": constraint_id,
-                        "rule": tup.get("constraint_under_test_rule_text", ""),
+                        "rule": rule_text,
                         "scope": scope,
                     }
                 ],
