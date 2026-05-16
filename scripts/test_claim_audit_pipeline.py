@@ -654,6 +654,97 @@ class TP12JudgeFailureAuditToolFailure(_PipelineTestBase):
 
         self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
 
+    def test_unknown_judgment_value_rejected(self) -> None:
+        # Step 13 R2 codex P2: _invoke_judge must validate the judgment enum,
+        # not only check key presence. An unknown value MUST map to
+        # judge_parse_error rather than reach passport-lint stage.
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"judgment": "MAYBE_SUPPORTED", "rationale": "garbage"}
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+    def test_violated_without_constraint_id_rejected(self) -> None:
+        # Step 13 R2 codex P2: VIOLATED without a violated_constraint_id would
+        # otherwise emit an INV-7-failing negative_constraint_violation row.
+        # Reject at invocation boundary instead.
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"judgment": "VIOLATED", "rationale": "missing id"}
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+    def test_violated_with_blank_constraint_id_rejected(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "   ",
+                "rationale": "whitespace id",
+            }
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+
+# ---------------------------------------------------------------------------
+# T-P14 — retrieve_fn invocation failure mapping to INV-14 retrieval_* tags.
+# Spec §4 step 2 + INV-14; Step 13 R2 codex P2 finding (symmetric to TP12 —
+# transient retrieval errors must surface as audit_tool_failure rows).
+# ---------------------------------------------------------------------------
+
+
+class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
+    """T-P14: retrieve_fn exceptions / malformed output → audit_tool_failure row."""
+
+    def _run_one(self, retrieve_fn: Any) -> dict[str, Any]:
+        return self.run_pipeline(citations=[_citation()], retrieve_fn=retrieve_fn)
+
+    def _assert_audit_tool_failure(self, out: dict[str, Any], expected_tag: str) -> None:
+        results = out["claim_audit_results"]
+        self.assertEqual(len(results), 1)
+        e = results[0]
+        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED")
+        self.assertEqual(e["audit_status"], "inconclusive")
+        self.assertEqual(e["defect_stage"], "not_applicable")
+        self.assertEqual(e["ref_retrieval_method"], "audit_tool_failure")
+        self.assertTrue(
+            e["rationale"].startswith(expected_tag + ":"),
+            f"rationale must lead with INV-14 fault-class tag {expected_tag!r}; got {e['rationale']!r}",
+        )
+
+    def test_timeout_error_becomes_retrieval_timeout(self) -> None:
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            raise TimeoutError("retrieval exceeded 60s")
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_timeout")
+
+    def test_connection_error_becomes_retrieval_network_error(self) -> None:
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            raise ConnectionError("DNS resolution failed")
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_network_error")
+
+    def test_generic_exception_becomes_retrieval_api_error(self) -> None:
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            raise RuntimeError("upstream returned 503")
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
+
+    def test_malformed_return_non_dict(self) -> None:
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            return ["not a dict"]  # type: ignore[return-value]
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
+
+    def test_malformed_return_missing_ref_retrieval_method(self) -> None:
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            return {"retrieved_excerpt": "no method key"}
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
+
+    def test_malformed_return_unknown_method(self) -> None:
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            return {"ref_retrieval_method": "magic_protocol"}
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
+
 
 # ---------------------------------------------------------------------------
 # T-P13 — EMITTED_NOT_INTENDED set-dedup per D6 (Step 13 R1 codex P2).
@@ -665,6 +756,41 @@ class TP12JudgeFailureAuditToolFailure(_PipelineTestBase):
 
 class TP13EmittedNotIntendedDedupe(_PipelineTestBase):
     """T-P13: D6 set semantics — one drift row per drifted claim_text."""
+
+    def test_intended_not_emitted_text_match_under_renumbered_claim_id(self) -> None:
+        # Step 13 R2 codex P2: when the draft carries the manifest claim_text
+        # but under a different claim_id (claim_id was renumbered), the
+        # INTENDED_NOT_EMITTED side MUST use the same set-of-text semantics
+        # as the EMITTED_NOT_INTENDED side. Otherwise a benign renumbering
+        # produces false LOW-WARN drift findings.
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Renumbered manifest claim about Y.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                }
+            ]
+        )
+        # Drafter emits the same claim_text but assigns claim_id C-999 (e.g.
+        # the manifest was authored, then claim_ids reshuffled before prose).
+        citations = [
+            _citation(
+                claim_id="C-999",
+                claim_text="Renumbered manifest claim about Y.",
+                ref_slug="ref-a",
+            )
+        ]
+        out = self.run_pipeline(citations=citations, manifests=[manifest])
+        intended_not_emitted = [
+            d for d in out["claim_drifts"] if d["drift_kind"] == "INTENDED_NOT_EMITTED"
+        ]
+        self.assertEqual(
+            intended_not_emitted,
+            [],
+            "claim_text-match must short-circuit INTENDED_NOT_EMITTED per D6 set semantics",
+        )
 
     def test_two_refs_one_drift(self) -> None:
         # Manifest pre-commits to C-001 only; the drafter emits a different

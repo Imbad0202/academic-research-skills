@@ -113,10 +113,18 @@ def _cache_key(
 
 
 # ---------------------------------------------------------------------------
-# Judge invocation — wraps judge_fn so transient failures become INV-14 rows
-# instead of aborting the audit. Spec §4 step 2 + INV-14 + Step 13 R1 codex
-# finding (judge errors must surface as audit_tool_failure MED-WARN rows).
+# Judge + retrieval invocation — wraps callables so transient failures become
+# INV-14 audit_tool_failure rows instead of aborting the audit. Spec §4 step 2
+# + INV-14 + Step 13 R1+R2 codex findings (transient errors on either external
+# call must surface as MED-WARN advisory rows).
 # ---------------------------------------------------------------------------
+
+# Legal judge verdicts. claim_audit_result schema enum + constraint-side verdicts
+# (VIOLATED / NOT_VIOLATED never reach claim_audit_result.judgment, but they are
+# legal returns from judge_fn for the constraint stream §3.5).
+_LEGAL_JUDGMENTS: frozenset[str] = frozenset(
+    {"SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "RETRIEVAL_FAILED", "VIOLATED", "NOT_VIOLATED"}
+)
 
 
 class JudgeInvocationError(Exception):
@@ -134,18 +142,43 @@ class JudgeInvocationError(Exception):
         self.detail = detail
 
 
+class RetrievalInvocationError(Exception):
+    """Raised by `_invoke_retrieve` when retrieve_fn fails or returns malformed output.
+
+    Mirrors JudgeInvocationError but tags faults with the INV-14 retrieval_*
+    family (retrieval_api_error / retrieval_timeout / retrieval_network_error)
+    so a transient retrieval outage surfaces as audit_tool_failure rather than
+    aborting the audit pass (Step 13 R2 codex P2 finding).
+    """
+
+    def __init__(self, fault_class: str, detail: str) -> None:
+        super().__init__(f"{fault_class}: {detail}")
+        self.fault_class = fault_class
+        self.detail = detail
+
+
 def _invoke_judge(judge_fn: Callable[..., dict[str, Any]], **call_kwargs: Any) -> dict[str, Any]:
-    """Invoke `judge_fn` and translate transient failures into INV-14 tags.
+    """Invoke `judge_fn` and translate transient failures + malformed output into INV-14 tags.
 
     Exception → fault class mapping:
       - TimeoutError                          → judge_timeout
       - json.JSONDecodeError / ValueError     → judge_parse_error
       - any other Exception                   → judge_api_error
-      - return value missing judgment/rationale or non-dict → judge_parse_error
+
+    Return-value validation (Step 13 R2 codex P2 — reject malformed verdicts
+    before routing rather than letting INV-7 / INV-13 catch them at passport
+    lint time):
+      - non-dict                              → judge_parse_error
+      - missing required keys                 → judge_parse_error
+      - unknown `judgment` value              → judge_parse_error
+      - `VIOLATED` without `violated_constraint_id` → judge_parse_error
 
     Returns the judge dict on success; raises JudgeInvocationError otherwise so
     the caller can map it to a `_retrieval_failure_entry(method="audit_tool_failure")`
     row.
+
+    Does NOT swallow `SystemExit` / `KeyboardInterrupt` — those derive from
+    `BaseException`, not `Exception`, and propagate normally.
     """
     try:
         result = judge_fn(**call_kwargs)
@@ -165,6 +198,75 @@ def _invoke_judge(judge_fn: Callable[..., dict[str, Any]], **call_kwargs: Any) -
         raise JudgeInvocationError(
             "judge_parse_error",
             f"judge_fn returned dict missing required key(s); got keys={sorted(result)}",
+        )
+    judgment = result.get("judgment")
+    if judgment not in _LEGAL_JUDGMENTS:
+        raise JudgeInvocationError(
+            "judge_parse_error",
+            f"judge_fn returned unknown judgment={judgment!r}; expected one of {sorted(_LEGAL_JUDGMENTS)}",
+        )
+    if judgment == "VIOLATED":
+        vcid = result.get("violated_constraint_id")
+        if not isinstance(vcid, str) or not vcid.strip():
+            raise JudgeInvocationError(
+                "judge_parse_error",
+                f"judge_fn returned VIOLATED without a valid violated_constraint_id (got {vcid!r}); INV-7 requires non-null id",
+            )
+    return result
+
+
+def _invoke_retrieve(
+    retrieve_fn: Callable[[dict[str, Any]], dict[str, Any]],
+    citation: dict[str, Any],
+) -> dict[str, Any]:
+    """Invoke `retrieve_fn` and translate transient failures + malformed output into INV-14 retrieval_* tags.
+
+    Exception → fault class mapping (mirrors `_invoke_judge`):
+      - TimeoutError                          → retrieval_timeout
+      - OSError / ConnectionError             → retrieval_network_error
+      - json.JSONDecodeError / ValueError     → retrieval_api_error
+      - any other Exception                   → retrieval_api_error
+
+    Return-value validation:
+      - non-dict                              → retrieval_api_error
+      - missing `ref_retrieval_method` key    → retrieval_api_error
+      - unknown `ref_retrieval_method` value  → retrieval_api_error
+
+    Returns the retrieval dict on success; raises RetrievalInvocationError
+    otherwise so the caller can map it to an audit_tool_failure row.
+    """
+    try:
+        result = retrieve_fn(citation)
+    except TimeoutError as exc:
+        raise RetrievalInvocationError("retrieval_timeout", str(exc) or "retrieve_fn timed out") from exc
+    except (ConnectionError, OSError) as exc:
+        raise RetrievalInvocationError(
+            "retrieval_network_error",
+            f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__,
+        ) from exc
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise RetrievalInvocationError(
+            "retrieval_api_error",
+            str(exc) or "retrieve_fn returned malformed payload",
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 — translation boundary
+        raise RetrievalInvocationError("retrieval_api_error", f"{type(exc).__name__}: {exc}") from exc
+
+    if not isinstance(result, dict):
+        raise RetrievalInvocationError(
+            "retrieval_api_error",
+            f"retrieve_fn returned {type(result).__name__}, expected dict",
+        )
+    method = result.get("ref_retrieval_method")
+    if method is None:
+        raise RetrievalInvocationError(
+            "retrieval_api_error",
+            f"retrieve_fn return missing ref_retrieval_method; got keys={sorted(result)}",
+        )
+    if method not in {"api", "manual_pdf", "failed", "not_found", "audit_tool_failure"}:
+        raise RetrievalInvocationError(
+            "retrieval_api_error",
+            f"retrieve_fn returned unknown ref_retrieval_method={method!r}",
         )
     return result
 
@@ -492,12 +594,22 @@ def _detect_drifts(
     emitted_texts = {c["claim_text"] for c in emitted_citations}
 
     # INTENDED_NOT_EMITTED — manifest claims missing from emitted set.
+    # D6 defines Emitted as a set of claim_text values; the dropped-claim side
+    # MUST mirror that. A stale or re-numbered claim_id where the claim_text
+    # still appears in the draft would otherwise show up as INTENDED_NOT_EMITTED
+    # even though the prose carries the claim — a false drift signal
+    # (Step 13 R2 codex P2 finding).
     for m in manifests:
         mid = m.get("manifest_id")
         for claim in m.get("claims", []) or []:
             cid = claim.get("claim_id")
             claim_text = claim.get("claim_text", "")
             if (mid, cid) in emitted_pairs:
+                continue
+            if claim_text and claim_text in emitted_texts:
+                # The draft carries the claim under a different claim_id (e.g.
+                # claim_id was re-numbered between manifest emission and prose).
+                # D6 set-of-text semantics — not a drop.
                 continue
             if (mid, cid) in constraint_absorbed_claim_ids:
                 continue
@@ -712,8 +824,25 @@ def run_audit_pipeline(
             claim_audit_results.append(entry)
             continue
 
-        # Step 2 — retrieval.
-        retrieval = retrieve_fn(citation)
+        # Step 2 — retrieval. Wrap in `_invoke_retrieve` so transient failures
+        # surface as INV-14 retrieval_* audit_tool_failure rows instead of
+        # aborting the pass (Step 13 R2 codex P2 finding, symmetric to the
+        # R1 _invoke_judge wrapper).
+        try:
+            retrieval = _invoke_retrieve(retrieve_fn, citation)
+        except RetrievalInvocationError as ret_err:
+            entry = _retrieval_failure_entry(
+                citation,
+                method="audit_tool_failure",
+                audit_run_id=audit_run_id,
+                now_iso=now_iso,
+                judge_model=judge_model,
+                fault_class=ret_err.fault_class,
+            )
+            entry["rationale"] = f"{ret_err.fault_class}: {ret_err.detail}"
+            entry["scoped_manifest_id"] = written_scope
+            claim_audit_results.append(entry)
+            continue
         method = retrieval["ref_retrieval_method"]
         excerpt = retrieval.get("retrieved_excerpt")
 
