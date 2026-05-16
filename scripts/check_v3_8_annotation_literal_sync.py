@@ -177,7 +177,33 @@ def main() -> int:
     missing: list[tuple[str, str]] = []
     for name, literal in sorted(constants.items()):
         token = _annotation_match_token(literal)
-        if token not in refuse_block:
+        # Closed literals end in `]` and require exact byte-equivalent
+        # substring match (Step 8 codex R2 P2-1 closure).
+        # Interpolated/em-dash tokens (e.g. `[HIGH-WARN-NEGATIVE-
+        # CONSTRAINT-VIOLATION`) require a BOUNDARY character following
+        # the token in the formatter prose — otherwise a rename that
+        # appends text (`[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION-RENAMED`)
+        # would still substring-match the original prefix and false-pass
+        # the lint. Step 8 codex R3 P2 closure: require the token to be
+        # followed by ` ` (space-paren contract per canonical form) or
+        # `]` (no-variable closing bracket) — both are valid boundaries
+        # in the formatter REFUSE prose.
+        if token.endswith("]"):
+            present = token in refuse_block
+        else:
+            # Boundary characters that legitimately follow the token in
+            # formatter prose: ` ` (the canonical ` ({var})]` continuation),
+            # `]` (no-variable closing bracket), `` ` `` (markdown inline
+            # code close — rules 7/9/10 wrap the token in backticks). Any
+            # OTHER following character (a letter, digit, or hyphen)
+            # indicates a rename attack — e.g. `…VIOLATION-RENAMED]`
+            # should NOT satisfy `…VIOLATION` because the boundary is a
+            # hyphen-letter run that extends the identifier.
+            present = any(
+                f"{token}{boundary}" in refuse_block
+                for boundary in (" ", "]", "`")
+            )
+        if not present:
             missing.append((name, token))
 
     if missing:

@@ -134,6 +134,46 @@ class LintScriptTest(unittest.TestCase):
         )
         self.assertIn("PASS", result.stdout)
 
+    def test_lint_detects_dynamic_literal_substring_match_attack(self) -> None:
+        # Step 8 codex R3 P2 closure: interpolated/em-dash literals MUST
+        # also require a boundary character following the token in formatter
+        # prose, not raw substring match. A rename that appends text
+        # (`[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION-RENAMED`) would have
+        # passed the R1/R2 lint via prefix-substring containment.
+        import tempfile
+        import shutil
+
+        with tempfile.TemporaryDirectory() as td:
+            tmp_root = Path(td) / "repo"
+            shutil.copytree(REPO_ROOT, tmp_root, ignore=shutil.ignore_patterns(
+                ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
+            ))
+            tmp_formatter = tmp_root / "academic-paper" / "agents" / "formatter_agent.md"
+            text = tmp_formatter.read_text()
+            mutated = text.replace(
+                "`[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION`",
+                "`[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION-RENAMED`",
+            )
+            self.assertNotEqual(text, mutated, "mutation should replace the literal")
+            tmp_formatter.write_text(mutated)
+
+            result = subprocess.run(
+                [sys.executable, str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py")],
+                capture_output=True,
+                text=True,
+                cwd=str(tmp_root),
+            )
+            self.assertEqual(
+                result.returncode,
+                1,
+                f"expected lint to fail on dynamic-literal rename; "
+                f"stdout={result.stdout!r}",
+            )
+            self.assertIn(
+                "HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION",
+                result.stdout,
+            )
+
     def test_lint_detects_closed_literal_substring_match_attack(self) -> None:
         # Step 8 codex R2 P2-1 closure: the lint MUST NOT pass when the
         # formatter prose contains a SUPERSTRING of the finalizer literal
