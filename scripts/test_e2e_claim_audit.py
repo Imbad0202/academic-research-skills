@@ -9,7 +9,7 @@ against a synthetic 5-citation paper per the spec §7.6 contract:
 | c2  | real, AMBIGUOUS                         | judgment=AMBIGUOUS                                | LOW-WARN        |
 | c3  | real but misused (source says inverse)  | judgment=UNSUPPORTED, defect=source_description   | HIGH-WARN refuse |
 | c4  | paywall (retrieval fails)               | judgment=RETRIEVAL_FAILED, method=failed          | LOW-WARN pass   |
-| c5  | violates declared negative constraint   | judgment=VIOLATED → defect=negative_constraint    | HIGH-WARN refuse |
+| c5  | violates declared negative constraint   | judge VIOLATED → row judgment=UNSUPPORTED, defect=negative_constraint_violation | HIGH-WARN refuse |
 
 Acceptance:
   - Scenario A (all 5 untouched): gate refuses; reasons are exactly
@@ -45,25 +45,23 @@ from __future__ import annotations
 import unittest
 from typing import Any, Callable
 
-try:
-    from scripts.claim_audit_pipeline import run_audit_pipeline
-    from scripts.claim_audit_finalizer import (
-        ANNOTATION_CLAIM_AUDIT_AMBIGUOUS,
-        ANNOTATION_HIGH_WARN_CLAIM_NOT_SUPPORTED,
-        ANNOTATION_LOW_WARN_UNVERIFIED,
-        ANNOTATION_UNCITED_ASSERTION,
-        apply_finalizer,
-    )
-    from scripts.uncited_assertion_detector import detect_uncited_assertions
-    _MODULE_IMPORT_ERR: ModuleNotFoundError | None = None
-# Narrow to ModuleNotFoundError per R2 codex P2-B: catching plain `Exception`
-# silently downgrades a real GREEN-state regression (e.g. apply_finalizer
-# removed from claim_audit_finalizer.py, an annotation constant renamed, a
-# new module-level import statement raising AttributeError) to a "skip"
-# instead of a fail. The RED-phase pathway is module-not-found only; any
-# other ImportError / AttributeError should surface as a test failure.
-except ModuleNotFoundError as exc:  # pragma: no cover — exercised in RED state
-    _MODULE_IMPORT_ERR = exc
+# Step 9 RED → GREEN transition is complete: all three modules below now
+# exist. Per R3 codex P2 closure, removing the prior try/except-skip wrapper
+# means an import-time failure (transitive dependency, renamed symbol,
+# module-level statement raising) surfaces as a real test failure instead
+# of a silently green "skip". The earlier scripts/test_claim_audit_*.py
+# files keep their RED-phase skip because some of them shipped before the
+# pipeline module existed; this e2e file landed in the same commit that
+# completed the chain, so the skip wrapper was always transitional.
+from scripts.claim_audit_pipeline import run_audit_pipeline
+from scripts.claim_audit_finalizer import (
+    ANNOTATION_CLAIM_AUDIT_AMBIGUOUS,
+    ANNOTATION_HIGH_WARN_CLAIM_NOT_SUPPORTED,
+    ANNOTATION_LOW_WARN_UNVERIFIED,
+    ANNOTATION_UNCITED_ASSERTION,
+    apply_finalizer,
+)
+from scripts.uncited_assertion_detector import detect_uncited_assertions
 
 
 MANIFEST_ID = "M-2026-05-16T09:00:00Z-e2e1"
@@ -294,16 +292,15 @@ def _run_e2e(
 
 
 class _E2ETestBase(unittest.TestCase):
-    """RED-as-skip until module dependencies exist; matches the
-    `_PipelineTestBase` convention from scripts/test_claim_audit_pipeline.py."""
+    """Shared base for Step 9 e2e scenarios.
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        if _MODULE_IMPORT_ERR is not None:
-            raise unittest.SkipTest(
-                f"e2e dependencies not importable yet: {_MODULE_IMPORT_ERR!r} "
-                "(expected during RED phase — Step 9 deliverables land in §13 step 9)"
-            )
+    The earlier RED-phase skip protocol (matched in
+    scripts/test_claim_audit_pipeline.py::_PipelineTestBase) is removed
+    here per R3 codex P2 closure: Step 9 landed in the same commit that
+    made the detector / pipeline / finalizer modules importable, so the
+    skip wrapper was transitional and now masks GREEN-state regressions.
+    Import failures surface at module load and fail the suite instead.
+    """
 
 
 # ---------------------------------------------------------------------------
