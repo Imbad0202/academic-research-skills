@@ -53,28 +53,51 @@ def _load_gold_set() -> list[dict[str, Any]]:
         return json.load(fh)
 
 
+def _tuple_lookup_key(tup: dict[str, Any]) -> tuple[str, str, str | None]:
+    """Composite lookup key so identical claim_text on different tuple_kind /
+    constraint_id pairs disambiguate (R1 Gemini P2-b closure).
+
+    The canonical gold set currently has unique claim_text per tuple, but
+    future gold sets may evaluate the same claim under different MNC ids
+    (e.g. one alignment tuple + one constraint tuple sharing prose). A
+    claim_text-only key would silently overwrite earlier entries and
+    cause _perfect_judge to return the wrong stub response, falsely
+    triggering T-C1 failures.
+    """
+    return (
+        tup["tuple_kind"],
+        tup["claim_text"],
+        tup.get("constraint_under_test_id"),
+    )
+
+
 def _perfect_judge() -> Callable[..., dict[str, Any]]:
     """Stub judge that returns the gold-set expected_judgment verbatim.
 
     Used by T-C1 to verify the calibration script's FNR / FPR computation
     on a path where the judge perfectly matches the gold set. The stub
-    looks up the tuple by claim_text (which the calibration runner passes
-    through unchanged) and emits the canonical judge response shape for
-    that tuple kind. A real LLM judge would be wired here at operational
-    deployment time per the protocol doc.
+    looks up the tuple by composite key (tuple_kind, claim_text,
+    constraint_under_test_id) so duplicate claim_text under different
+    constraint scopes does not collapse. The dispatch infers tuple kind
+    from kwargs: a non-empty `active_constraints` list means the runner
+    is on the constraint code path. A real LLM judge wires here at
+    operational deployment per the protocol doc.
     """
-    tuples_by_text: dict[str, dict[str, Any]] = {
-        t["claim_text"]: t for t in _load_gold_set()
+    tuples_by_key: dict[tuple[str, str, str | None], dict[str, Any]] = {
+        _tuple_lookup_key(t): t for t in _load_gold_set()
     }
 
     def fn(**kwargs: Any) -> dict[str, Any]:
         claim_text = kwargs.get("claim_text", "")
-        tup = tuples_by_text.get(claim_text)
+        active = kwargs.get("active_constraints") or []
+        constraint_id = active[0]["constraint_id"] if active else None
+        kind = "constraint" if active else "alignment"
+        tup = tuples_by_key.get((kind, claim_text, constraint_id))
         if tup is None:
             raise AssertionError(
-                f"perfect_judge: claim_text {claim_text!r} not in gold set"
+                f"perfect_judge: no gold tuple for kind={kind!r} "
+                f"claim_text={claim_text!r} constraint_id={constraint_id!r}"
             )
-        kind = tup["tuple_kind"]
         expected = tup["expected_judgment"]
         if kind == "alignment":
             return {"judgment": expected, "rationale": "perfect-judge stub"}
@@ -88,6 +111,65 @@ def _perfect_judge() -> Callable[..., dict[str, Any]]:
         return {
             "judgment": "NOT_VIOLATED",
             "rationale": "perfect-judge stub",
+        }
+
+    return fn
+
+
+def _bad_judge() -> Callable[..., dict[str, Any]]:
+    """Stub judge that intentionally returns wrong labels to drive non-zero
+    FNR/FPR (R1 Gemini P1 / codex P2 closure on tautological T-C1).
+
+    Used by `TC1ThresholdEnforcementBadJudge` to verify that
+    `run_calibration` accurately COMPUTES FNR/FPR and that the threshold
+    gate WOULD fire when the judge degrades. Without this companion test
+    T-C1 only proves tooling correctness on a perfect-mirror stub;
+    pairing both proves tooling correctness AND threshold-gate
+    enforceability.
+
+    Strategy: flip every alignment expected label to its opposite class
+    and flip every VIOLATED expected to NOT_VIOLATED. Drives every tuple
+    into FN/FP territory so aggregate FNR + FPR both massively exceed
+    the thresholds.
+    """
+    flip_alignment = {
+        "SUPPORTED": "UNSUPPORTED",
+        "UNSUPPORTED": "SUPPORTED",
+        "AMBIGUOUS": "UNSUPPORTED",
+        "RETRIEVAL_FAILED": "SUPPORTED",
+    }
+
+    def fn(**kwargs: Any) -> dict[str, Any]:
+        active = kwargs.get("active_constraints") or []
+        if not active:
+            # Alignment path — gather expected from gold set to know what
+            # to flip. Lookup by claim_text alone is fine here because
+            # the calibration runner only passes one alignment tuple per
+            # claim_text in the canonical fixture.
+            tuples_by_text = {
+                t["claim_text"]: t for t in _load_gold_set()
+                if t["tuple_kind"] == "alignment"
+            }
+            tup = tuples_by_text.get(kwargs.get("claim_text", ""))
+            assert tup is not None, "bad_judge: alignment tuple not found"
+            return {
+                "judgment": flip_alignment[tup["expected_judgment"]],
+                "rationale": "bad-judge stub (flipped)",
+            }
+        # Constraint path — flip VIOLATED ↔ NOT_VIOLATED.
+        tuples_by_pair = {
+            (t["claim_text"], t["constraint_under_test_id"]): t
+            for t in _load_gold_set()
+            if t["tuple_kind"] == "constraint"
+        }
+        tup = tuples_by_pair.get((kwargs["claim_text"], active[0]["constraint_id"]))
+        assert tup is not None, "bad_judge: constraint tuple not found"
+        if tup["expected_judgment"] == "VIOLATED":
+            return {"judgment": "NOT_VIOLATED", "rationale": "bad-judge flip"}
+        return {
+            "judgment": "VIOLATED",
+            "violated_constraint_id": active[0]["constraint_id"],
+            "rationale": "bad-judge flip",
         }
 
     return fn
@@ -194,10 +276,27 @@ class TC3GoldSetShape(unittest.TestCase):
             f"got {len(not_violated)}",
         )
 
+    def test_validate_gold_set_rejects_invalid_tuple_kind(self) -> None:
+        # Rule (a) negative ingestion test — R1 codex P3 + Gemini P2
+        # closure on T-C3 rule coverage. Diagnostic must name rule (a).
+        broken = [
+            {
+                "tuple_kind": "comparison",  # not in {alignment, constraint}
+                "claim_text": "broken",
+                "expected_judgment": "SUPPORTED",
+            }
+        ]
+        with self.assertRaises(GoldSetValidationError) as ctx:
+            validate_gold_set(broken)
+        msg = str(ctx.exception)
+        self.assertIn("rule (a)", msg, f"diagnostic must name rule (a); got {msg!r}")
+        self.assertIn("tuple 0", msg, f"diagnostic must name offending index; got {msg!r}")
+
     def test_validate_gold_set_rejects_alignment_with_constraint_field(self) -> None:
         # validate_gold_set is the production entrypoint that the
         # calibration runner calls at ingestion time. It MUST raise the
-        # documented error on rule-(b) violation.
+        # documented error on rule-(b) violation. R1 codex P3 closure:
+        # also assert rule (b) name in diagnostic.
         broken = [
             {
                 "tuple_kind": "alignment",
@@ -208,7 +307,9 @@ class TC3GoldSetShape(unittest.TestCase):
         ]
         with self.assertRaises(GoldSetValidationError) as ctx:
             validate_gold_set(broken)
-        self.assertIn("alignment", str(ctx.exception).lower())
+        msg = str(ctx.exception)
+        self.assertIn("rule (b)", msg, f"diagnostic must name rule (b); got {msg!r}")
+        self.assertIn("alignment", msg.lower())
 
     def test_validate_gold_set_rejects_constraint_without_rule_text(self) -> None:
         # Rule (c) — constraint tuple missing both rule_text AND
@@ -224,8 +325,10 @@ class TC3GoldSetShape(unittest.TestCase):
         ]
         with self.assertRaises(GoldSetValidationError) as ctx:
             validate_gold_set(broken)
-        msg = str(ctx.exception).lower()
-        self.assertTrue("rule_text" in msg or "manifest_fixture_path" in msg)
+        msg = str(ctx.exception)
+        self.assertIn("rule (c)", msg, f"diagnostic must name rule (c); got {msg!r}")
+        msg_lower = msg.lower()
+        self.assertTrue("rule_text" in msg_lower or "manifest_fixture_path" in msg_lower)
 
     def test_validate_gold_set_rejects_under_three_not_violated(self) -> None:
         # Rule (d) — fewer than 3 NOT_VIOLATED constraint tuples.
@@ -249,7 +352,9 @@ class TC3GoldSetShape(unittest.TestCase):
         ]  # only 1 NOT_VIOLATED, need ≥3
         with self.assertRaises(GoldSetValidationError) as ctx:
             validate_gold_set(broken)
-        self.assertIn("NOT_VIOLATED", str(ctx.exception))
+        msg = str(ctx.exception)
+        self.assertIn("rule (d)", msg, f"diagnostic must name rule (d); got {msg!r}")
+        self.assertIn("NOT_VIOLATED", msg)
 
     def test_validate_gold_set_accepts_canonical_gold_set(self) -> None:
         # Positive path — the shipped gold set MUST validate cleanly.
@@ -295,6 +400,36 @@ class TC2PerClassReport(unittest.TestCase):
         for cls, payload in per_class.items():
             self.assertIn("FNR", payload, f"class {cls!r} missing FNR")
             self.assertIn("FPR", payload, f"class {cls!r} missing FPR")
+
+    def test_each_class_exposes_denominators(self) -> None:
+        # Protocol doc Phase 4 contract: each class entry carries
+        # n_positive + n_negative so 0.0 FNR on 0 positives is
+        # distinguishable from 0.0 FNR on N positives. R1 codex P3 +
+        # Gemini P3 closure — earlier test only asserted FNR/FPR keys.
+        per_class = self.report["per_class"]
+        for cls, payload in per_class.items():
+            self.assertIn("n_positive", payload, f"class {cls!r} missing n_positive")
+            self.assertIn("n_negative", payload, f"class {cls!r} missing n_negative")
+
+    def test_canonical_denominators_match_gold_set(self) -> None:
+        # Pin the expected one-vs-rest denominators against the canonical
+        # 12-alignment + 8-constraint gold set. R1 codex P3 closure on
+        # T-C2 contract pinning — without this a future gold-set
+        # rebalance could silently shift class distributions away from
+        # the documented Phase 4 example.
+        per_class = self.report["per_class"]
+        # Alignment gold set: 5 SUPPORTED + 3 UNSUPPORTED + 3 AMBIGUOUS
+        # + 1 RETRIEVAL_FAILED; one-vs-rest counts the SUPPORTED-as-
+        # positive case against the other 7 alignment tuples.
+        self.assertEqual(per_class["SUPPORTED"]["n_positive"], 5)
+        self.assertEqual(per_class["SUPPORTED"]["n_negative"], 7)
+        self.assertEqual(per_class["UNSUPPORTED"]["n_positive"], 3)
+        self.assertEqual(per_class["UNSUPPORTED"]["n_negative"], 9)
+        self.assertEqual(per_class["AMBIGUOUS"]["n_positive"], 3)
+        self.assertEqual(per_class["AMBIGUOUS"]["n_negative"], 9)
+        # Constraint gold set: 5 VIOLATED + 3 NOT_VIOLATED.
+        self.assertEqual(per_class["violated_constraint"]["n_positive"], 5)
+        self.assertEqual(per_class["violated_constraint"]["n_negative"], 3)
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +478,63 @@ class TC1ThresholdEnforcement(unittest.TestCase):
         # threshold tightening (spec bump). Spec §7.7 + §9 acceptance.
         self.assertEqual(self.report["thresholds"]["FNR"], 0.15)
         self.assertEqual(self.report["thresholds"]["FPR"], 0.10)
+
+
+class TC1ThresholdEnforcementBadJudge(unittest.TestCase):
+    """T-C1 companion — proves the threshold gate accurately fires on a
+    degraded judge.
+
+    R1 dual-track Gemini P1 / codex P2 closure: the canonical T-C1
+    perfect-judge path only proves tooling CORRECTNESS (FNR/FPR
+    computation works), not the threshold's ENFORCEABILITY (the gate
+    fires when the judge degrades). Without this companion, T-C1 could
+    silently pass on a future regression where the perfect-judge stub
+    decoupled from the real judge_fn signature and the gate became
+    structurally unreachable.
+
+    The bad-judge stub flips every gold-set expected_label to its
+    wrong-class counterpart so FNR + FPR both vastly exceed the spec
+    §7.7 thresholds (0.15 / 0.10). The test asserts run_calibration's
+    output is what an operator running CI on a degraded judge would
+    see: FNR ≥ 0.15 AND FPR ≥ 0.10. Operational deployment swaps
+    _bad_judge for a real judge_fn; the gate semantics are identical.
+    """
+
+    def setUp(self) -> None:
+        self.gold_set = _load_gold_set()
+        self.report = run_calibration(self.gold_set, judge_fn=_bad_judge())
+
+    def test_bad_judge_drives_fnr_over_threshold(self) -> None:
+        # Bad judge flips every alignment expected → opposite class +
+        # every VIOLATED → NOT_VIOLATED. Aggregate FNR must be >= 0.15.
+        self.assertGreaterEqual(
+            self.report["FNR"],
+            0.15,
+            f"bad_judge should drive FNR over threshold; got {self.report['FNR']!r}",
+        )
+
+    def test_bad_judge_drives_fpr_over_threshold(self) -> None:
+        # Same logic for FPR. The mirror-flip on alignment + the
+        # NOT_VIOLATED → VIOLATED flip on constraints both contribute.
+        self.assertGreaterEqual(
+            self.report["FPR"],
+            0.10,
+            f"bad_judge should drive FPR over threshold; got {self.report['FPR']!r}",
+        )
+
+    def test_bad_judge_per_class_fnr_non_zero(self) -> None:
+        # Per-class reporting must surface non-zero FNR on the flipped
+        # classes — confirms the per_class accumulator is wired to the
+        # judge output (not hardcoded zero) and would expose which
+        # class drove a real-judge regression.
+        per_class = self.report["per_class"]
+        for cls in ("SUPPORTED", "UNSUPPORTED", "violated_constraint"):
+            self.assertGreater(
+                per_class[cls]["FNR"],
+                0.0,
+                f"bad-judge flip should drive non-zero FNR on {cls!r}; "
+                f"got {per_class[cls]!r}",
+            )
 
 
 if __name__ == "__main__":  # pragma: no cover

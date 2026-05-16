@@ -17,7 +17,17 @@ Spec: docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Callable
+
+# Constraint id shape per spec §3.2 + protocol doc gold-tuple schema.
+# MNC-N is the manifest-level negative constraint (broadest scope);
+# NC-CN-M is the per-claim narrow constraint binding claim N constraint M.
+# The lint at scripts/check_claim_audit_consistency.py enforces these
+# patterns on emitted passport rows; calibration shares the regex so the
+# scope-derivation gate aligns with the production lint surface.
+_RE_MNC_ID = re.compile(r"^MNC-[0-9]+$")
+_RE_NC_ID = re.compile(r"^NC-C[0-9]+-[0-9]+$")
 
 # Spec §7.7 + §9 acceptance gates. Tightening these is a spec bump.
 DEFAULT_FNR_THRESHOLD = 0.15
@@ -115,6 +125,34 @@ def validate_gold_set(tuples: list[dict[str, Any]]) -> None:
             f"constraint tuple(s); rule (d) requires ≥3 so constraint FPR is "
             f"measurable and T-C1 can fail-on-threshold for the constraint line"
         )
+
+
+def _derive_constraint_scope(constraint_id: str) -> str:
+    """Derive the active-constraint scope tag from a constraint_id literal.
+
+    R1 codex P2-b + Gemini P3 closure: prior implementation used a bare
+    `startswith("MNC-")` fallback that mislabelled leading-whitespace
+    ids ("  MNC-1" → NC) and would silently accept malformed prefixes
+    ("bogus" → NC). The judge stub never read scope so the bug was
+    invisible at the canonical T-C1 path; a real judge that branches
+    on scope would receive the wrong tag.
+
+    The function rejects malformed ids with a diagnostic naming the
+    expected patterns. Spec §3.2 + protocol doc gold-tuple schema are
+    the source of truth; this regex pair mirrors them.
+    """
+    if not isinstance(constraint_id, str):
+        raise GoldSetValidationError(
+            f"constraint_under_test_id must be str; got {type(constraint_id).__name__}"
+        )
+    if _RE_MNC_ID.match(constraint_id):
+        return "MNC"
+    if _RE_NC_ID.match(constraint_id):
+        return "NC"
+    raise GoldSetValidationError(
+        f"constraint_under_test_id {constraint_id!r} does not match "
+        f"expected shape (MNC-N or NC-CN-M per spec §3.2)"
+    )
 
 
 def _zero_division_safe(numerator: int, denominator: int) -> float:
@@ -220,13 +258,7 @@ def run_calibration(
         else:  # constraint
             n_constraint += 1
             constraint_id = tup["constraint_under_test_id"]
-            # Derive scope from the constraint_id prefix per spec §3.2 +
-            # protocol doc gold-tuple schema: MNC-N → manifest-level
-            # negative constraint (broadest scope), NC-CN-M → per-claim
-            # narrow constraint. Hardcoding "MNC" mislabelled NC-CN
-            # tuples and the judge stub would not see the correct scope
-            # tag (/simplify quality Q-P2-b).
-            scope = "MNC" if constraint_id.startswith("MNC-") else "NC"
+            scope = _derive_constraint_scope(constraint_id)
             response = judge_fn(
                 claim_text=tup["claim_text"],
                 retrieved_excerpt=tup.get("ref_text_excerpt"),

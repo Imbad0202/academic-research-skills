@@ -73,8 +73,8 @@ Both rule sources are accepted because manifest-bound constraints sometimes carr
 ### Phase 1: Per-tuple judge invocation
 
 For each tuple, the calibration runner calls `judge_fn(...)` with kwargs matching the v3.8 judge interface:
-- Alignment tuples → `retrieved_excerpt = tuple.ref_text_excerpt`, `active_constraints=[]`.
-- Constraint tuples → `retrieved_excerpt = tuple.ref_text_excerpt` (typically `null`), `active_constraints=[{"constraint_id": ..., "rule": ..., "scope": "MNC"}]`.
+- Alignment tuples (all four `expected_judgment` values including `RETRIEVAL_FAILED`) → `retrieved_excerpt = tuple.ref_text_excerpt` (may be `null` for `RETRIEVAL_FAILED` tuples), `active_constraints=[]`. The runner does NOT pre-filter `RETRIEVAL_FAILED` tuples — the judge stub is responsible for returning the matching label.
+- Constraint tuples → `retrieved_excerpt = tuple.ref_text_excerpt` (typically `null`), `active_constraints=[{"constraint_id": ..., "rule": ..., "scope": "MNC" | "NC"}]`. Scope is derived from `constraint_under_test_id`: `MNC-N` → `"MNC"`, `NC-CN-M` → `"NC"`. Malformed ids are rejected by `_derive_constraint_scope` with a diagnostic naming the expected shape.
 
 No ensembling at this layer. Spec §7.7 does not require N-run majority voting (reviewer mode does, but reviewer-paper unit-of-analysis is heavier and benefits more from variance reduction; per-tuple alignment is a simpler call). Re-running the same tuple is the operator's responsibility if a high-variance judge_model warrants it.
 
@@ -85,7 +85,7 @@ The runner accumulates two confusion matrices:
 - **Aggregate** (the rates that T-C1 gates against): a tuple contributes a FN when `expected_judgment ≠ actual judgment`. For alignment, every mismatched tuple counts as both FN (for the expected class) and FP (for the wrongly-picked class), so aggregate FNR and FPR are symmetric. For constraint tuples, VIOLATED is the positive class (gate-refuse signal); the matrix is the standard binary form.
 - **Per-class one-vs-rest** (the report block that T-C2 checks): for each of `SUPPORTED`, `UNSUPPORTED`, `AMBIGUOUS`, `violated_constraint`, the runner computes FNR / FPR with that class as the positive label. `n_positive` / `n_negative` denominators are surfaced so a "0.0 FNR on n_positive=0" entry is distinguishable from "0.0 FNR on n_positive=8".
 
-The fourth alignment class `RETRIEVAL_FAILED` is intentionally NOT surfaced in `per_class` — it is set by the pipeline before the judge runs, so judge-quality FNR/FPR against it would be tautological (the gold tuple's `expected_judgment=RETRIEVAL_FAILED` is paired with `ref_text_excerpt=null`, which the runner does not pass to the judge).
+The fourth alignment class `RETRIEVAL_FAILED` is intentionally NOT surfaced in `per_class` — it is set by the pipeline before the judge runs at operational deployment, so judge-quality FNR/FPR against it is uninformative for tooling validation. The calibration runner still passes `RETRIEVAL_FAILED` tuples to `judge_fn` (no pre-filter) so the per-tuple call shape stays uniform; the stub or real judge is responsible for echoing the expected label, and the tuple contributes to aggregate FNR/FPR via the non-`per_class` aggregate path.
 
 ### Phase 3: Threshold check
 
