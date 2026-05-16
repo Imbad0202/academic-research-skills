@@ -110,6 +110,56 @@ class TestDetectUncited(unittest.TestCase):
             finding["scoped_manifest_id"], "M-2026-05-16T00:00:00Z-abcd"
         )
 
+    def test_t_u6_adjacent_text_with_ref_marker_filters_candidate(self) -> None:
+        """T-U6 — Step 9 closure (DEFERRED-CROSS-SENTENCE).
+
+        When the caller supplies `adjacent_text` carrying a
+        `<!--ref:slug-->` marker, the surrounding-clause window owns the
+        citation per spec line 251. The candidate must be filtered out
+        even though the sentence itself satisfies all three conditions.
+
+        Pairs with `test_t_u6b` below: the same sentence with an
+        adjacent_text that lacks a marker still becomes a candidate.
+        """
+        sentence_with_adjacent_ref = {
+            "sentence_text": "Two-thirds of respondents agreed with the policy proposal.",
+            "section_path": "3. Results > 3.1 Survey Outcomes",
+            "adjacent_text": "The poll was conducted by Smith et al. <!--ref:smith2024poll-->.",
+        }
+        findings = detect_uncited_assertions([sentence_with_adjacent_ref])
+        self.assertEqual(
+            findings,
+            [],
+            msg=(
+                "adjacent_text carrying a ref marker MUST suppress the "
+                "candidate (spec line 251 / Step 9 closure)"
+            ),
+        )
+
+    def test_t_u6b_adjacent_text_without_ref_marker_preserves_candidate(
+        self,
+    ) -> None:
+        """T-U6 companion — no marker in adjacent_text leaves candidate intact."""
+        sentence_clear_adjacent = {
+            "sentence_text": "Two-thirds of respondents agreed with the policy proposal.",
+            "section_path": "3. Results > 3.1 Survey Outcomes",
+            "adjacent_text": "The next paragraph describes the methodology in detail.",
+        }
+        findings = detect_uncited_assertions([sentence_clear_adjacent])
+        self.assertEqual(len(findings), 1)
+        self.assertGreater(len(findings[0]["trigger_tokens"]), 0)
+
+    def test_t_u6c_missing_adjacent_text_preserves_v3_8_step_6_behavior(
+        self,
+    ) -> None:
+        """T-U6 back-compat — no adjacent_text key behaves exactly like Step 6."""
+        sentence_no_adjacent = {
+            "sentence_text": "Two-thirds of respondents agreed with the policy proposal.",
+            "section_path": "3. Results > 3.1 Survey Outcomes",
+        }
+        findings = detect_uncited_assertions([sentence_no_adjacent])
+        self.assertEqual(len(findings), 1)
+
     def test_ref_marker_short_circuits_candidate(self) -> None:
         """Sentence with `<!--ref:slug-->` marker → NOT candidate (condition 2).
 

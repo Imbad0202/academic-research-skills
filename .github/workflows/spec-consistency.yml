@@ -246,6 +246,7 @@ jobs:
             scripts.test_uncited_assertion \
             scripts.test_claim_intent_manifest \
             scripts.test_claim_audit_finalizer \
+            scripts.test_e2e_claim_audit \
             -v
 
       - name: Run v3.7.1 audit_snapshot render-side Section 0 regression tests

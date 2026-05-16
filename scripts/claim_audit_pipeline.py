@@ -534,11 +534,11 @@ def run_audit_pipeline(
     is NOT invoked here. Callers are responsible for pre-processing raw
     draft sentences through `detect_uncited_assertions` BEFORE passing the
     candidate list to this function as `uncited_sentences`. This split is
-    intentional for v3.8 Step 6: the pipeline owns the cited / drift /
-    constraint-violation routing, the detector owns the D4-c three-condition
-    classification, and Step 9 e2e ties the two layers together with a
-    fixture that exercises the full chain. See spec §"Step 9 — wire
-    detector into e2e" for the wiring contract.
+    intentional: the pipeline owns the cited / drift / constraint-violation
+    routing, the detector owns the D4-c three-condition classification
+    (including the optional `adjacent_text` surrounding-clause filter
+    added in Step 9). `scripts/test_e2e_claim_audit.py` exercises the full
+    detector → pipeline → finalizer chain end-to-end.
 
     `uncited_sentences` items must be dicts with at least `sentence_text`,
     `section_path`, and `trigger_tokens` (non-empty per U-INV-2); when the

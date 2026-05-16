@@ -21,16 +21,14 @@ The wrapper `detect_uncited_assertions` preserves caller-supplied
 `manifest_claim_id` / `scoped_manifest_id` on every finding so the
 downstream pipeline can populate U-INV-4 cross-array integrity.
 
-DEFERRED-CROSS-SENTENCE: Spec line 251 also says "no marker on the
-immediately preceding or following clause that the slug could
-legitimately attach to". The adjacent-clause check is intentionally
-NOT implemented in v3.8 Step 6 — this module sees one sentence at a
-time, the pipeline's `uncited_sentences` parameter is caller-injected,
-and the Step 9 e2e wiring is where the surrounding-clause window
-becomes available. Until Step 9 lands, callers MUST pre-filter
-ref-marker-adjacent sentences themselves; otherwise the detector may
-produce false positives for sentences whose ref marker sits on the
-previous clause. Tracked by spec §"Step 9 — wire detector into e2e".
+Cross-sentence / adjacent-clause check (Step 9 closure): the wrapper
+`detect_uncited_assertions` accepts an optional `adjacent_text` field
+on each sentence dict. When supplied, that surrounding-clause window
+is scanned for a `<!--ref:slug-->` marker via the same condition-2
+regex; if found, the candidate is filtered out. Callers supply the
+window during the Step 9 e2e wiring (see
+`scripts/test_e2e_claim_audit.py`). Without `adjacent_text` the
+wrapper preserves the v3.8 Step 6 single-sentence behavior.
 
 Detector outputs feed into the existing pipeline routing in
 `scripts/claim_audit_pipeline.py::run_audit_pipeline`'s
@@ -238,6 +236,14 @@ def detect_uncited_assertions(
             )
         is_candidate, tokens = detect_uncited(sentence_text)
         if not is_candidate:
+            continue
+        # Step-9 adjacent-clause filter. When the caller supplies an
+        # `adjacent_text` window (the surrounding clause / preceding +
+        # following sentence text per spec line 251), a ref marker inside
+        # it owns the citation and the candidate is suppressed. Empty /
+        # missing windows preserve v3.8 Step-6 single-sentence behavior.
+        adjacent_text = raw.get("adjacent_text")
+        if isinstance(adjacent_text, str) and RE_REF_MARKER.search(adjacent_text):
             continue
         enriched = dict(raw)
         enriched["trigger_tokens"] = tokens
