@@ -60,7 +60,14 @@ try:
     )
 
     _FINALIZER_IMPORT_ERR: Exception | None = None
-except Exception as exc:  # pragma: no cover — RED phase
+# Step 8 codex R2 P2-2 closure: narrow the except clause to the genuine
+# RED-phase signal (`ModuleNotFoundError` on the module itself). Once
+# `claim_audit_finalizer` ships, an ImportError caused by a missing
+# export (e.g. a renamed function in the module) or a dependency import
+# failure SHOULD surface as a test-time error rather than silently
+# skipping every test in this file. The annotation-sync lint covers
+# constant-name drift; this except handles only the absent-module case.
+except ModuleNotFoundError as exc:  # pragma: no cover — RED phase only
     _FINALIZER_IMPORT_ERR = exc
 
     TIER_NONE = TIER_LOW_WARN = TIER_MED_WARN = TIER_HIGH_WARN = None  # type: ignore[assignment]

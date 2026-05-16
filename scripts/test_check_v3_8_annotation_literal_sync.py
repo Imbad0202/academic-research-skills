@@ -33,10 +33,15 @@ LINT_SCRIPT = REPO_ROOT / "scripts" / "check_v3_8_annotation_literal_sync.py"
 
 
 class AnnotationPrefixHelperTest(unittest.TestCase):
-    def test_plain_closed_literal_reduces_to_byte_equivalent_minus_bracket(self) -> None:
+    def test_plain_closed_literal_keeps_closing_bracket(self) -> None:
+        # Step 8 codex R2 P2-1 closure: closed literals require exact match
+        # INCLUDING the closing bracket. Cutting at `]` left the prefix without
+        # the bracket, so a renamed formatter rule
+        # `[HIGH-WARN-FABRICATED-REFERENCE-RENAMED]` would still satisfy the
+        # check for finalizer literal `[HIGH-WARN-FABRICATED-REFERENCE]`.
         self.assertEqual(
             _annotation_prefix("[HIGH-WARN-CLAIM-NOT-SUPPORTED]"),
-            "[HIGH-WARN-CLAIM-NOT-SUPPORTED",
+            "[HIGH-WARN-CLAIM-NOT-SUPPORTED]",
         )
 
     def test_interpolated_parenthesized_variable_cuts_at_space_paren(self) -> None:
@@ -64,9 +69,11 @@ class AnnotationPrefixHelperTest(unittest.TestCase):
         )
 
     def test_fabricated_reference_plain_literal(self) -> None:
+        # Closed plain literal keeps the closing bracket for exact match
+        # (Step 8 codex R2 P2-1 closure).
         self.assertEqual(
             _annotation_prefix("[HIGH-WARN-FABRICATED-REFERENCE]"),
-            "[HIGH-WARN-FABRICATED-REFERENCE",
+            "[HIGH-WARN-FABRICATED-REFERENCE]",
         )
 
 
@@ -126,6 +133,48 @@ class LintScriptTest(unittest.TestCase):
             f"stderr={result.stderr!r}",
         )
         self.assertIn("PASS", result.stdout)
+
+    def test_lint_detects_closed_literal_substring_match_attack(self) -> None:
+        # Step 8 codex R2 P2-1 closure: the lint MUST NOT pass when the
+        # formatter prose contains a SUPERSTRING of the finalizer literal
+        # (e.g. finalizer says `[HIGH-WARN-FABRICATED-REFERENCE]` but
+        # formatter REFUSE list was edited to `[HIGH-WARN-FABRICATED-
+        # REFERENCE-RENAMED]`). The closing bracket is the contract
+        # terminator for closed literals.
+        import tempfile
+        import shutil
+
+        with tempfile.TemporaryDirectory() as td:
+            tmp_root = Path(td) / "repo"
+            shutil.copytree(REPO_ROOT, tmp_root, ignore=shutil.ignore_patterns(
+                ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
+            ))
+            tmp_formatter = tmp_root / "academic-paper" / "agents" / "formatter_agent.md"
+            text = tmp_formatter.read_text()
+            # Replace the closed literal in the formatter REFUSE rule with a
+            # superstring that PRESERVES the original as a prefix. A naive
+            # `prefix in text` check would still pass; the exact-closing-
+            # bracket contract catches it.
+            mutated = text.replace(
+                "[HIGH-WARN-FABRICATED-REFERENCE]",
+                "[HIGH-WARN-FABRICATED-REFERENCE-RENAMED]",
+            )
+            self.assertNotEqual(text, mutated, "mutation should replace the literal")
+            tmp_formatter.write_text(mutated)
+
+            result = subprocess.run(
+                [sys.executable, str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py")],
+                capture_output=True,
+                text=True,
+                cwd=str(tmp_root),
+            )
+            self.assertEqual(
+                result.returncode,
+                1,
+                f"expected lint to fail on superstring formatter literal; "
+                f"stdout={result.stdout!r}",
+            )
+            self.assertIn("HIGH-WARN-FABRICATED-REFERENCE", result.stdout)
 
     def test_lint_detects_renamed_constant_missing_from_formatter(self) -> None:
         # Simulate the canonical drift scenario: the finalizer renames an

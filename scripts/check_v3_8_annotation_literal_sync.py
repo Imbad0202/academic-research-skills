@@ -64,32 +64,47 @@ def _extract_refuse_block(formatter_text: str) -> str | None:
     return formatter_text[start:end]
 
 
-def _annotation_prefix(annotation_literal: str) -> str:
-    """Return the matchable prefix of the annotation literal.
+def _annotation_match_token(annotation_literal: str) -> str:
+    """Return the search token the formatter REFUSE block must contain.
 
     Annotation literals follow three shapes:
       - Closed plain:        `[HIGH-WARN-CLAIM-NOT-SUPPORTED]`
       - Interpolated suffix: `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION ({violated_constraint_id})]`
       - Em-dash suffix:      `[HIGH-WARN-CLAIM-AUDIT-ANCHORLESS — v3.7.3 R-L3-1-A VIOLATION REACHED AUDIT]`
 
-    The prefix-match contract cuts at the first occurrence of any of:
-      `{` (runtime interpolation hole — the variable part the formatter
-      prose cannot duplicate verbatim);
-      ` (` (the space-paren opening a parenthesized variable carrier);
-      ` —` (the em-dash opening a contextual suffix that the formatter
-      prose may abbreviate);
-      `]` (closing bracket of a plain literal).
+    Closed plain literals MUST match byte-equivalently including the
+    closing bracket. Step 8 codex R2 P2-1 closure: cutting at `]` left
+    just the prefix without the bracket, so a renamed formatter rule
+    such as `[HIGH-WARN-FABRICATED-REFERENCE-RENAMED]` would still
+    contain `[HIGH-WARN-FABRICATED-REFERENCE` and false-pass the lint
+    while the terminal gate actually scans for the wrong literal.
 
-    Whichever appears first wins. Closed plain literals reduce to
-    byte-equivalent matching; interpolated and em-dash literals match
-    the formatter prose's prefix form (which omits the variable suffix).
+    Interpolated and em-dash literals match the formatter prose's
+    prefix form (which abbreviates the variable suffix). The search
+    token cuts at the first ` (`, ` —`, or `{` — whichever appears
+    first — and the formatter prose must contain that prefix exactly.
+
+    Decision: closed literals exact, interpolated/em-dash prefix.
     """
-    cut = len(annotation_literal)
-    for terminator in ("{", " (", " —", "]"):
+    # Detect interpolated/em-dash shapes first — these need prefix match.
+    # Use the earliest-occurring terminator (min idx across the three
+    # candidate cuts), not the list-order first hit — `{` and ` (` can
+    # both appear in the same literal and the earlier of the two is
+    # the semantic prefix boundary.
+    earliest = len(annotation_literal)
+    for terminator in ("{", " (", " —"):
         idx = annotation_literal.find(terminator)
-        if idx != -1 and idx < cut:
-            cut = idx
-    return annotation_literal[:cut].rstrip()
+        if idx != -1 and idx < earliest:
+            earliest = idx
+    if earliest < len(annotation_literal):
+        return annotation_literal[:earliest].rstrip()
+    # Closed plain literal — return the whole thing so the search hit
+    # requires byte-equivalent presence including the `]`.
+    return annotation_literal
+
+
+# Backwards-compat alias for tests written against the prior name.
+_annotation_prefix = _annotation_match_token
 
 
 def _extract_finalizer_high_warn_constants(source: str) -> dict[str, str]:
@@ -161,9 +176,9 @@ def main() -> int:
 
     missing: list[tuple[str, str]] = []
     for name, literal in sorted(constants.items()):
-        prefix = _annotation_prefix(literal)
-        if prefix not in refuse_block:
-            missing.append((name, prefix))
+        token = _annotation_match_token(literal)
+        if token not in refuse_block:
+            missing.append((name, token))
 
     if missing:
         print(
