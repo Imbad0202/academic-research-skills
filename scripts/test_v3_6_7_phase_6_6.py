@@ -114,8 +114,27 @@ REQUIRED_PHASE_IDS = (
 )
 
 
+_PROMPT_CACHE: str | None = None
+
+
 def _read_prompt() -> str:
-    return ORCHESTRATOR_PROMPT.read_text(encoding="utf-8")
+    """Read pipeline_orchestrator_agent.md once per test pass.
+
+    Module-level cache: the orchestrator prompt is treated as immutable
+    by every test in this file (no mutation, no fixture write). Step 8
+    /simplify advisory P2-1 closure — 10 test methods each calling
+    `read_text()` produced 10 disk reads of the same ~600-line file per
+    `python -m unittest` invocation. The cache collapses to 1× IO with
+    zero behavioral change.
+
+    To bust the cache during a debugger session (e.g. when iterating on
+    prompt text and re-running tests in the same process), set
+    `_PROMPT_CACHE = None` manually.
+    """
+    global _PROMPT_CACHE
+    if _PROMPT_CACHE is None:
+        _PROMPT_CACHE = ORCHESTRATOR_PROMPT.read_text(encoding="utf-8")
+    return _PROMPT_CACHE
 
 
 class Phase66SubsectionPresenceTest(unittest.TestCase):

@@ -86,11 +86,6 @@ _UNSUPPORTED_SOURCE_LEVEL_DEFECTS: frozenset[str] = frozenset(
     {"source_description", "metadata", "citation_anchor", "synthesis_overclaim"}
 )
 
-# Permitted defect_stages for the AMBIGUOUS row (T-F1b).
-_AMBIGUOUS_PERMITTED_DEFECTS: frozenset[str | None] = frozenset(
-    {"source_description", "citation_anchor", "synthesis_overclaim", None}
-)
-
 # Rationale prefix regex for audit_tool_failure rows — the fault-class tag is
 # the leading colon-terminated token per INV-14 (spec §"Error handling").
 _RATIONALE_FAULT_CLASS_RE = re.compile(r"^([a-z_]+):")
@@ -102,7 +97,17 @@ def _classify_retrieval_failed(
     ref_retrieval_method: str,
     rationale: str,
 ) -> dict[str, Any]:
-    """Discriminate the three (RETRIEVAL_FAILED, not_applicable) rows by method."""
+    """Discriminate the three (RETRIEVAL_FAILED, not_applicable) rows by method.
+
+    Raises ValueError on (defect_stage, ref_retrieval_method) combinations not
+    covered by the §5 matrix rows. The spec §6 consistency lint
+    (`check_claim_audit_consistency.py`) is the authoritative upstream gate
+    — it rejects malformed rows BEFORE they reach the finalizer. A raise
+    here signals that an out-of-contract row escaped lint (e.g. INV-10 /
+    INV-11 / INV-14 violation, or a passport assembled without lint
+    validation). Coercing such rows to a default tier would silently mask
+    the upstream bug; raising surfaces it.
+    """
     if defect_stage == "retrieval_existence" and ref_retrieval_method == "not_found":
         return {
             "annotation": ANNOTATION_HIGH_WARN_FABRICATED_REFERENCE,
@@ -155,12 +160,16 @@ def classify_claim_audit_result(entry: dict[str, Any]) -> dict[str, Any]:
         return {"annotation": None, "tier": TIER_NONE, "gate_refuse": False}
 
     if judgment == "AMBIGUOUS":
-        # Spec §3.1 INV-3 permits null defect_stage on AMBIGUOUS; coerce
-        # anything outside the permitted set to None (defense-in-depth — the
-        # schema validator already rejects, but the matrix must not crash on
-        # malformed input).
-        if defect_stage not in _AMBIGUOUS_PERMITTED_DEFECTS:
-            defect_stage = None
+        # Spec §3.1 INV-3 permits {source_description, citation_anchor,
+        # synthesis_overclaim, null} on AMBIGUOUS — the §6 consistency lint is
+        # the authoritative gate for the allowed-matrix invariant. The matrix
+        # row, however, ALWAYS emits the same annotation + tier regardless of
+        # which permitted defect_stage the judge picked, so the local
+        # `defect_stage` value never affects the return. The previous version
+        # of this branch reassigned out-of-set values to None but never read
+        # them back — dead code per Step 8 codex /simplify advisory.
+        # Validation stays the lint's responsibility (§6 rule 5); this branch
+        # produces the LOW-WARN advisory and trusts the schema-validated row.
         return {
             "annotation": ANNOTATION_CLAIM_AUDIT_AMBIGUOUS,
             "tier": TIER_LOW_WARN,
@@ -334,6 +343,15 @@ def ars_mark_read_clears(*, annotation: str, tier: str) -> bool:
         return False
     if tier == TIER_MED_WARN:
         return False
+    # The HIGH-WARN-prefix check below is defense-in-depth against
+    # caller bugs where a HIGH-WARN annotation arrives with mismatched
+    # tier=TIER_LOW_WARN (e.g. a passport hand-edit or a downstream
+    # consumer that lost the tier mapping). Well-formed inputs never
+    # trigger this branch — every HIGH-WARN prefix is produced only by
+    # the matrix paths that also set tier=TIER_HIGH_WARN. Keeping the
+    # check rather than dropping it preserves the safety surface; a
+    # silent True return on a mistyped HIGH-WARN would acknowledge a
+    # gate-refuse-class violation as cleared.
     return tier == TIER_LOW_WARN and not any(
         annotation.startswith(prefix) for prefix in _UNCLEARABLE_HIGH_WARN_PREFIXES
     )
