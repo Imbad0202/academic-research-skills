@@ -304,11 +304,27 @@ def _uncited_assertion_entry(
     now_iso: str,
     trigger_tokens: list[str] | None = None,
 ) -> dict[str, Any]:
+    # Resolve trigger_tokens with strict semantics: prefer the explicit
+    # keyword arg, fall back to the sentence dict, and raise if both are
+    # absent. The prior `["uncited"]` sentinel passed U-INV-2 minItems=1
+    # but carried no semantic content — callers who skipped the detector
+    # silently emitted meaningless tokens into the passport. Raise instead
+    # so the contract is enforced at write-time, not discovered at audit-
+    # read-time (per codex R1 P1-4).
+    tokens = trigger_tokens or sentence.get("trigger_tokens")
+    if not tokens:
+        raise ValueError(
+            f"_uncited_assertion_entry: finding_id={finding_id!r} has no "
+            "trigger_tokens. Caller must pre-process draft sentences "
+            "through detect_uncited_assertions (or supply trigger_tokens "
+            "explicitly); the schema's U-INV-2 minItems=1 invariant is "
+            "an audit-quality contract, not a placeholder slot."
+        )
     return {
         "finding_id": finding_id,
         "sentence_text": sentence["sentence_text"],
         "section_path": sentence.get("section_path", ""),
-        "trigger_tokens": trigger_tokens or sentence.get("trigger_tokens", ["uncited"]),
+        "trigger_tokens": tokens,
         "detected_at": now_iso,
         "rule_version": UNCITED_RULE_VERSION,
         "upstream_owner_agent": sentence.get("upstream_owner_agent"),
@@ -489,7 +505,23 @@ def run_audit_pipeline(
     cache: dict[str, Any] | None = None,
     uncited_sentences: list[dict[str, Any]] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Run §4 Step 1-6 + manifest set-diff + uncited token-rule detector.
+    """Run §4 Step 1-6 + manifest set-diff over caller-supplied inputs.
+
+    The uncited token-rule detector (`scripts/uncited_assertion_detector.py`,
+    §"Uncited-assertion detector (D4-c)" in claim_ref_alignment_audit_agent.md)
+    is NOT invoked here. Callers are responsible for pre-processing raw
+    draft sentences through `detect_uncited_assertions` BEFORE passing the
+    candidate list to this function as `uncited_sentences`. This split is
+    intentional for v3.8 Step 6: the pipeline owns the cited / drift /
+    constraint-violation routing, the detector owns the D4-c three-condition
+    classification, and Step 9 e2e ties the two layers together with a
+    fixture that exercises the full chain. See spec §"Step 9 — wire
+    detector into e2e" for the wiring contract.
+
+    `uncited_sentences` items must be dicts with at least `sentence_text`,
+    `section_path`, and `trigger_tokens` (non-empty per U-INV-2); when the
+    caller has run them through `detect_uncited_assertions`, every required
+    field is already populated.
 
     Returns:
         dict with six aggregate arrays keyed by passport-aggregate name:

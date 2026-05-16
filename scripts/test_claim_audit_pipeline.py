@@ -479,6 +479,12 @@ class TP10UncitedOverDrift(_PipelineTestBase):
                 "sentence_text": "Half of all submissions showed positive results.",
                 "section_path": "3. Results",
                 "manifest_claim_id": None,
+                # Detector-supplied per the v3.8 Step 6 contract: callers
+                # must pre-process raw sentences through
+                # detect_uncited_assertions (or surface explicit
+                # trigger_tokens). _uncited_assertion_entry raises if both
+                # the keyword arg and this field are missing.
+                "trigger_tokens": ["showed"],
             }
         ]
         out = self.run_pipeline(

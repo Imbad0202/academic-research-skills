@@ -159,15 +159,19 @@ class TestDetectUncited(unittest.TestCase):
                     ),
                 )
 
-    def test_trigger_tokens_dedup_preserving_order(self) -> None:
+    def test_trigger_tokens_dedup_preserving_document_order(self) -> None:
         """Repeated quantifier/verb tokens emit once each in document order.
 
-        Regression for /simplify P1-2: prior implementation appended every
-        match into trigger_tokens, producing `["50%","showed","showed","most","showed"]`
-        on a sentence with three `showed` occurrences. U-INV-2 accepts duplicates
-        but passport diffs are unstable when the same logical claim emits a
-        different-length token multiset across reruns. Dedup is order-preserving
-        (first occurrence wins).
+        Regression for codex R1 P2-2 and /simplify P1-2: prior implementation
+        appended every match into trigger_tokens, then sorted by collection
+        order (numeric pass first, then word pass) — producing token lists
+        that did not reflect left-to-right document order. The first iteration
+        of this test even encoded that bug as the assertion. Now the detector
+        sorts by source offset, then dedups preserving the first occurrence.
+        Document order matters because (a) passport diffs are more readable
+        when token order matches sentence order, and (b) human reviewers
+        expect the first token in the list to be the first phrase they hit
+        when reading the sentence.
         """
         sentence = (
             "Pilot data showed that 50% of cases showed improvement, "
@@ -176,22 +180,33 @@ class TestDetectUncited(unittest.TestCase):
         _, tokens = detect_uncited(sentence)
         self.assertEqual(
             tokens,
-            ["50%", "showed", "most"],
-            msg=f"expected order-preserving dedup; got {tokens!r}",
+            ["showed", "50%", "most"],
+            msg=(
+                "trigger_tokens must reflect left-to-right document order "
+                f"and dedup the three `showed`s; got {tokens!r}"
+            ),
         )
 
     def test_numeric_quantifier_excludes_year_and_version_strings(self) -> None:
         """Bare years / version triples / section numbers → NOT a quantifier.
 
-        Regression for /simplify P2-1: prior `\\b\\d+(?:\\.\\d+)?%?` regex
-        flagged `2026` and `3.7.3` substrings as quantifiers and produced
-        false-positive LOW-WARN advisories. The tightened pattern requires
-        either an explicit `%` or the `N of M` quantifier idiom.
+        Regression for /simplify P2-1 and codex R1 P1-3: the broad numeric
+        regex catches every digit run, but a guard pass rejects shapes that
+        identify the match as a year (1900-2099), a version triple
+        (X.Y.Z[.W…]), a dotted-pair preceded by a section cue or `v` literal,
+        OR a digit-run whose left neighbour is a `.` attached to another
+        digit run (handles `v3.7.3` where Python's `\\b` fails between `v`
+        and `3` and the regex only captures the tail `7.3`).
         """
         not_quantifier_examples = [
+            # codex R1 P2-1 examples: each had a sibling regex bug before
+            # the guard branches landed.
             "We follow ARS v3.7.3 in 2026 for the audit.",
             "See section 3.1.2 for the methodology.",
             "The dataset spans years 2018 through 2026.",
+            "In section 3.1 we examine completion rates.",
+            "Refer to Figure 3.2 for the trend.",
+            "Step 4.1 outlines the survey protocol.",
         ]
         for sentence in not_quantifier_examples:
             with self.subTest(sentence=sentence):
@@ -223,6 +238,55 @@ class TestDetectUncited(unittest.TestCase):
                         f"{sentence!r}; got {tokens!r}"
                     ),
                 )
+
+    def test_bare_number_quantifier_still_fires(self) -> None:
+        """Bare integers and one-decimal numbers fire D4-c condition 1.
+
+        Regression for codex R1 P1-3: spec line 250 lists 「numbers /
+        percentages / explicit quantifiers」 — the prior tightening that
+        rejected bare integers as a side-effect of removing year/version
+        false positives also stripped the spec's first quantifier class.
+        Bare numbers are restored with year/version/section guards;
+        these examples must fire.
+        """
+        bare_number_examples = [
+            ("The sample included 42 participants.", "42"),
+            ("Mean age was 21.4 years.", "21.4"),
+            ("We recruited 128 students.", "128"),
+        ]
+        for sentence, expected in bare_number_examples:
+            with self.subTest(sentence=sentence):
+                is_candidate, tokens = detect_uncited(sentence)
+                self.assertTrue(
+                    is_candidate,
+                    msg=(
+                        f"bare-number quantifier {expected!r} must fire "
+                        f"D4-c condition 1 for {sentence!r}; got {tokens!r}"
+                    ),
+                )
+                self.assertIn(expected, tokens)
+
+    def test_detect_uncited_assertions_raises_on_missing_sentence_text(
+        self,
+    ) -> None:
+        """Missing or non-string `sentence_text` raises ValueError.
+
+        Regression for codex R1 P2-3: prior wrapper silently skipped raw
+        dicts that lacked `sentence_text`, returning `(False, [])`. Silent
+        skip for an audit pipeline is the worst failure mode — upstream
+        bugs masquerade as "no findings". The wrapper now raises so the
+        caller is forced to surface the bug.
+        """
+        with self.assertRaises(ValueError):
+            detect_uncited_assertions([{"section_path": "1. Intro"}])
+        with self.assertRaises(ValueError):
+            detect_uncited_assertions([{"sentence_text": 42}])  # type: ignore[list-item]
+        # Non-string but truthy types also raise — silent coercion would
+        # be worse than a loud crash.
+        with self.assertRaises(ValueError):
+            detect_uncited_assertions(
+                [{"sentence_text": ["This sentence got list-ified somehow."]}]  # type: ignore[list-item]
+            )
 
 
 if __name__ == "__main__":

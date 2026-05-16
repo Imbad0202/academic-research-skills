@@ -8,9 +8,10 @@ Implements the three-condition rule pinned in
 A sentence becomes an `uncited_assertion` candidate iff ALL THREE hold:
 
   1. Quantifier-or-empirical-verb present
-     (numeric/percent quantifiers `50%`, fuzzy quantifiers `most`/`several`/
-     `two-thirds`, or empirical verbs `showed`/`demonstrated`/`observed`/
-     `proved`/`confirmed`).
+     (numbers `42 participants`, percentages `50%`, explicit quantifiers
+     `most`/`several`/`two-thirds`, empirical verbs `showed`/`demonstrated`/
+     `observed`/`proved`/`confirmed`). Bare-number matches are filtered by
+     a guard pass that rejects years, version triples, and section numbers.
   2. No `<!--ref:slug-->` marker on the sentence.
   3. Not a definitional sentence (`refers to`/`is defined as`/`we define`/
      `for the purposes of`).
@@ -20,13 +21,16 @@ The wrapper `detect_uncited_assertions` preserves caller-supplied
 `manifest_claim_id` / `scoped_manifest_id` on every finding so the
 downstream pipeline can populate U-INV-4 cross-array integrity.
 
-Cross-sentence ref-marker resolution (spec line 251: "no marker on the
+DEFERRED-CROSS-SENTENCE: Spec line 251 also says "no marker on the
 immediately preceding or following clause that the slug could
-legitimately attach to") is intentionally NOT handled here. This module
-sees one sentence at a time; the surrounding-clause check belongs to
-`scripts/claim_audit_pipeline.py::run_audit_pipeline`'s
-`uncited_sentences` pre-processing path, which has access to the
-adjacent-sentence window.
+legitimately attach to". The adjacent-clause check is intentionally
+NOT implemented in v3.8 Step 6 — this module sees one sentence at a
+time, the pipeline's `uncited_sentences` parameter is caller-injected,
+and the Step 9 e2e wiring is where the surrounding-clause window
+becomes available. Until Step 9 lands, callers MUST pre-filter
+ref-marker-adjacent sentences themselves; otherwise the detector may
+produce false positives for sentences whose ref marker sits on the
+previous clause. Tracked by spec §"Step 9 — wire detector into e2e".
 
 Detector outputs feed into the existing pipeline routing in
 `scripts/claim_audit_pipeline.py::run_audit_pipeline`'s
@@ -40,8 +44,14 @@ import re
 from typing import Any, Iterable
 
 from scripts._claim_audit_constants import (
+    RE_BARE_NUMERIC_YEAR,
+    RE_DOTTED_PAIR,
+    RE_DOTTED_TRIPLE_OR_MORE,
+    RE_NUMERIC_LEFT_ATTACHED,
     RE_NUMERIC_QUANTIFIER,
     RE_REF_MARKER,
+    RE_SECTION_CUE,
+    RE_VERSION_PREFIX,
     UNCITED_DEFINITION_PHRASES,
     UNCITED_EMPIRICAL_VERBS,
     UNCITED_FUZZY_QUANTIFIERS,
@@ -51,19 +61,70 @@ from scripts._claim_audit_constants import (
 # punctuation so `"showed."` and `"showed,"` both match.
 _RE_WORD = re.compile(r"[A-Za-z][A-Za-z-]*")
 
+# Left-context window length for guard pass cue detection. 24 chars covers
+# `cf. Section ` and `as shown in Figure ` while avoiding catching cue
+# words from a previous clause separated by punctuation.
+_GUARD_LEFT_WINDOW = 24
 
-def _extract_word_tokens(sentence: str) -> list[str]:
-    """Lower-cased alphabetic tokens (hyphens kept) for verb / fuzzy match."""
-    return [m.group(0).lower() for m in _RE_WORD.finditer(sentence)]
+
+def _is_year_or_version_or_section(
+    sentence: str, match_text: str, match_start: int
+) -> bool:
+    """Guard pass: return True when a bare-number match is NOT a quantifier.
+
+    Four disqualifying shapes:
+      1. 4-digit year in plausible academic range (1900-2099).
+      2. Dotted X.Y.Z[.W...] form — version triple OR deep section number.
+      3. Dotted X.Y form preceded by a section cue (`section`, `figure`,
+         `chapter`, `table`, `fig.`, `tbl.`, `step`, `appendix`, `§`) OR
+         by `v` (version literal).
+      4. Any match (bare or dotted) whose immediate left neighbour is a
+         dotted-number suffix like `3.` — handles the case where Python's
+         `\\b` does not fire between a letter and a digit (e.g. `v3.7.3`
+         has no \\b between `v` and `3`, so RE_NUMERIC_QUANTIFIER starts
+         from the SECOND segment `7.3`; this branch reattaches the prefix
+         and classifies the full token as a version/section reference).
+
+    Percent (`50%`) and `N of M` matches never reach this guard — the
+    caller is responsible for routing only bare-number matches through.
+    """
+    if RE_BARE_NUMERIC_YEAR.match(match_text):
+        return True
+    if RE_DOTTED_TRIPLE_OR_MORE.match(match_text):
+        # Three-or-more-segment dotted forms are unambiguously version
+        # triples or deep section numbers; no quantitative claim ever
+        # writes "50.3.1 of participants".
+        return True
+    if RE_DOTTED_PAIR.match(match_text):
+        # Two-segment X.Y is ambiguous — `21.4 years` is a quantifier,
+        # `section 3.1` is a section reference. Disambiguate by left
+        # context (window of 24 chars before the match).
+        left = sentence[max(0, match_start - _GUARD_LEFT_WINDOW) : match_start]
+        if RE_SECTION_CUE.search(left) or RE_VERSION_PREFIX.search(left):
+            return True
+    # Branch 4: reattach a left-side dotted-number prefix that Python's \b
+    # failed to separate. A 1-char window is enough — RE_NUMERIC_QUANTIFIER
+    # consumed every dotted segment to the right of the prefix already, so
+    # the only character that can sit immediately before match_start and
+    # still belong to the same logical token is `.`.
+    if match_start > 0 and sentence[match_start - 1] == ".":
+        # Walk left to capture the full prefix, then test against the
+        # left-attached pattern (`\d+(?:\.\d+)+\.`). This catches `v3.7.3`
+        # where the match is `7.3` but the prefix is `3.`.
+        left_search_start = max(0, match_start - _GUARD_LEFT_WINDOW)
+        left = sentence[left_search_start:match_start]
+        if RE_NUMERIC_LEFT_ATTACHED.search(left):
+            return True
+    return False
 
 
 def detect_uncited(sentence: str) -> tuple[bool, list[str]]:
     """Return `(is_candidate, trigger_tokens)` for one sentence.
 
-    Mirrors the pseudocode in the agent prompt. Returns trigger_tokens in
-    a deterministic order (numeric matches first in document order, then
-    fuzzy quantifiers / verbs in document order) so passport diffs stay
-    reproducible.
+    Trigger tokens are returned in document order (left-to-right in the
+    source sentence) so passport diffs and human review stay aligned with
+    reader expectations. Duplicates are dropped via order-preserving
+    dedup so `"showed ... showed ... showed"` produces one token.
     """
     # Condition 3 fires first — if the sentence is definitional we never
     # need to inspect quantifier tokens.
@@ -76,22 +137,31 @@ def detect_uncited(sentence: str) -> tuple[bool, list[str]]:
     if RE_REF_MARKER.search(sentence):
         return False, []
 
-    # Condition 1 — collect every quantifier / verb match in document order.
-    # Order is preserved across the two passes (numeric first, then word
-    # tokens left-to-right) and duplicates are dropped via order-preserving
-    # dedup so passport diffs stay stable when the same token appears
-    # twice in one sentence ("50% ... 50%", "showed ... showed").
-    matches: list[str] = []
-    # Numeric quantifiers preserve original-case substring so `50%` rides
-    # through to the passport entry verbatim.
-    matches.extend(m.group(0) for m in RE_NUMERIC_QUANTIFIER.finditer(sentence))
+    # Condition 1 — collect every quantifier / verb match with its byte
+    # offset so the final token list reflects document order regardless
+    # of which regex / pass produced it.
+    matches: list[tuple[int, str]] = []
+    for m in RE_NUMERIC_QUANTIFIER.finditer(sentence):
+        text = m.group(0)
+        # Percent and `N of M` matches always pass through; only bare-
+        # number matches need the year/version/section guard. The two
+        # qualified shapes are distinguishable by character content:
+        # percent ends with `%`, `N of M` contains ` of `.
+        if "%" not in text and " of " not in text:
+            if _is_year_or_version_or_section(sentence, text, m.start()):
+                continue
+        matches.append((m.start(), text))
+
     # Fuzzy quantifiers + empirical verbs match on lower-cased whole words.
     triggers = UNCITED_FUZZY_QUANTIFIERS | UNCITED_EMPIRICAL_VERBS
-    for token in _extract_word_tokens(sentence):
+    for m in _RE_WORD.finditer(sentence):
+        token = m.group(0).lower()
         if token in triggers:
-            matches.append(token)
+            matches.append((m.start(), token))
 
-    trigger_tokens = list(dict.fromkeys(matches))
+    # Sort by source offset, then dedup preserving first occurrence.
+    matches.sort(key=lambda pair: pair[0])
+    trigger_tokens = list(dict.fromkeys(token for _, token in matches))
     return (bool(trigger_tokens), trigger_tokens)
 
 
@@ -100,11 +170,17 @@ def detect_uncited_assertions(
 ) -> list[dict[str, Any]]:
     """Filter raw draft sentences down to D4-c candidates.
 
-    Each input dict must carry `sentence_text`; optional fields
-    (`section_path`, `manifest_claim_id`, `scoped_manifest_id`,
-    `upstream_owner_agent`) are passed through unchanged. The detector
-    enriches the dict with `trigger_tokens` (non-empty per U-INV-2) and
-    drops sentences that fail any of the three conditions.
+    Each input dict MUST carry a non-empty string `sentence_text`. Missing
+    or non-string `sentence_text` raises `ValueError` — silently treating
+    bad input as empty would let upstream bugs masquerade as
+    "no findings", which is the worst possible failure mode for an audit
+    pipeline.
+
+    Optional fields (`section_path`, `manifest_claim_id`,
+    `scoped_manifest_id`, `upstream_owner_agent`) pass through unchanged.
+    The detector enriches the candidate dict with `trigger_tokens`
+    (non-empty per U-INV-2) and drops sentences that fail any of the
+    three D4-c conditions.
 
     The wrapper does NOT mint `finding_id` / `detected_at` / `rule_version`
     — those are owned by `claim_audit_pipeline._uncited_assertion_entry`
@@ -112,8 +188,18 @@ def detect_uncited_assertions(
     schema-required fields.
     """
     candidates: list[dict[str, Any]] = []
-    for raw in sentences:
-        sentence_text = raw.get("sentence_text", "")
+    for index, raw in enumerate(sentences):
+        if "sentence_text" not in raw:
+            raise ValueError(
+                f"detect_uncited_assertions: sentences[{index}] missing "
+                "required 'sentence_text' key"
+            )
+        sentence_text = raw["sentence_text"]
+        if not isinstance(sentence_text, str):
+            raise ValueError(
+                f"detect_uncited_assertions: sentences[{index}]['sentence_text'] "
+                f"must be str, got {type(sentence_text).__name__}"
+            )
         is_candidate, tokens = detect_uncited(sentence_text)
         if not is_candidate:
             continue

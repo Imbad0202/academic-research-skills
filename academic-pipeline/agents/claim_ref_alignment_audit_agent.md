@@ -248,18 +248,31 @@ Diff streams:
 Three-condition token rule. A sentence in the emitted draft becomes an `uncited_assertion` candidate when ALL THREE of the following hold:
 
 1. **Quantifier or empirical-claim verb present**: numbers / percentages / explicit quantifiers (`50%`, `two-thirds`, `most`, `several`), OR verbs like `showed`, `demonstrated`, `observed`, `proved`, `confirmed`.
-2. **No `<!--ref:slug-->` marker on this sentence** (and no marker on the immediately preceding or following clause that the slug could legitimately attach to).
+2. **No `<!--ref:slug-->` marker on this sentence**. The spec also calls for inspecting the immediately preceding or following clause that the slug could legitimately attach to; that **adjacent-clause check is deferred to Step 9 e2e** (see DEFERRED-CROSS-SENTENCE note below) because the v3.8 Step 6 detector operates one sentence at a time and the surrounding-clause window only becomes available once the caller wires the detector into the e2e fixture. Until Step 9 lands, callers MUST pre-filter ref-marker-adjacent sentences themselves — otherwise this rule may produce false positives for sentences whose ref marker sits on the previous clause.
 3. **Not a definitional sentence** (sentences containing `refers to` / `is defined as` / `we define` / `for the purposes of` are excluded — definitions don't need refs).
 
-Pseudocode:
+Pseudocode (matches the production implementation at `scripts/uncited_assertion_detector.py`):
 
 ```
-def detect_uncited(sentence, trigger_tokens):
-  has_quantifier_or_verb = any(t in QUANTIFIERS_OR_VERBS for t in trigger_tokens)
-  has_ref_marker = re.search(r'<!--ref:[^-]+-->', sentence) is not None
-  is_definition = any(p in sentence for p in DEFINITION_PHRASES)
-  return has_quantifier_or_verb and not has_ref_marker and not is_definition
+def detect_uncited(sentence):
+  if any(p in sentence.lower() for p in DEFINITION_PHRASES): return (False, [])
+  if RE_REF_MARKER.search(sentence): return (False, [])
+  matches = []
+  for m in RE_NUMERIC_QUANTIFIER.finditer(sentence):
+    if is_bare_number(m) and is_year_or_version_or_section(sentence, m):
+      continue
+    matches.append((m.start(), m.group(0)))
+  for m in WORD_TOKEN_RE.finditer(sentence):
+    t = m.group(0).lower()
+    if t in QUANTIFIERS_OR_VERBS: matches.append((m.start(), t))
+  matches.sort(key=lambda p: p[0])
+  trigger_tokens = list(dict.fromkeys(t for _, t in matches))  # doc order, deduped
+  return (bool(trigger_tokens), trigger_tokens)
 ```
+
+The implementation diverges from the original 4-line pseudocode in three places: (a) bare-number matches go through a year/version/section guard before counting as quantifiers (the unguarded `\b\d+(?:\.\d+)?%?` shape produced false positives on `2026` / `v3.7.3` / `section 3.1.2`); (b) `RE_REF_MARKER` accepts the v3.7.3 canonical slug pattern `[A-Za-z][A-Za-z0-9_:-]*` + 0-2 post-finalizer status tokens (so hyphenated slugs like `smith-et-al-2026` and annotations like `<!--ref:slug ok-->` short-circuit correctly); (c) trigger tokens are returned in left-to-right document order. All three divergences are pinned by `scripts/test_uncited_assertion.py`.
+
+**DEFERRED-CROSS-SENTENCE (Step 9)**: the adjacent-clause check from condition 2 above is not yet executable. v3.8 Step 6 ships the single-sentence detector + the caller-supplied `uncited_sentences` pipeline contract; Step 9 wires the detector into the e2e fixture with a surrounding-clause window and adds the regression tests that pin the adjacent-clause rule. Until then the contract is "caller pre-filters ref-marker-adjacent sentences" — the agent prompt promises behavior the code does not yet implement, and removing this asterisk is part of Step 9's acceptance criteria.
 
 Per D4-c last paragraph: **manifest membership does NOT exempt a sentence from being flagged**. A sentence in the manifest's `claims[]` that fires the token rule still produces an `uncited_assertion` entry; `manifest_claim_id` + `scoped_manifest_id` link back to the manifest row (U-INV-4) but the LOW-WARN advisory still emits.
 
