@@ -331,26 +331,43 @@ def render_stage6_histogram(
 ) -> str | None:
     """Render the per-defect_stage histogram for the AI Self-Reflection Report.
 
-    Counts rows with `audit_status == "completed"` AND non-null `defect_stage`.
-    Returns None when fewer than `threshold` such rows exist — the histogram
-    is suppressed to avoid drawing conclusions from too-small samples (per
-    spec §"Outputs feeding Stage 6 self-reflection").
+    Threshold is on `audit_status == "completed"` rows (per spec §"Outputs
+    feeding Stage 6 self-reflection" literal "≥ 5 completed entries"). When
+    fewer than `threshold` completed rows exist, returns None.
+
+    When the threshold is met, the histogram counts rows by `defect_stage`,
+    excluding null values (SUPPORTED rows). If every completed row is
+    SUPPORTED (zero defects to plot), the histogram still emits — it
+    surfaces "No defect stages recorded across N completed entries." so
+    the Stage 6 appendix stays consistent and the user sees that the audit
+    ran clean rather than wondering whether the histogram was suppressed.
+
+    Step 8 codex R4 P2-1 closure: prior implementation gated the threshold
+    on completed-with-defect rows, suppressing the appendix when the
+    paper had ≥5 completed audits but ≤4 defect_stage entries. Spec
+    literal is "≥ 5 completed entries"; common mostly-SUPPORTED papers
+    must still surface the reflection block.
 
     The output is a stable plain-text rendering keyed by defect_stage; the
     orchestrator embeds it under the Stage 6 reflection appendix. Stage-6
     formatting (markdown headings, separators) is the orchestrator's
     responsibility; this module emits only the histogram block.
     """
-    completed = [
-        r
-        for r in claim_audit_results
-        if r.get("audit_status") == "completed" and r.get("defect_stage") is not None
-    ]
+    completed = [r for r in claim_audit_results if r.get("audit_status") == "completed"]
     if len(completed) < threshold:
         return None
 
-    counts = Counter(r["defect_stage"] for r in completed)
-    lines = [f"Claim-faithfulness defect_stage histogram (n={len(completed)} completed entries):"]
+    defects = [r["defect_stage"] for r in completed if r.get("defect_stage") is not None]
+    n_completed = len(completed)
+
+    if not defects:
+        return (
+            f"Claim-faithfulness defect_stage histogram (n={n_completed} completed entries):"
+            f"\n  - No defect stages recorded across {n_completed} completed entries."
+        )
+
+    counts = Counter(defects)
+    lines = [f"Claim-faithfulness defect_stage histogram (n={n_completed} completed entries):"]
     for stage in sorted(counts):
         lines.append(f"  - {stage}: {counts[stage]}")
     return "\n".join(lines)

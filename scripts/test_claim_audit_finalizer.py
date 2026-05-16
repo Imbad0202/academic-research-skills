@@ -456,6 +456,30 @@ class TF5Stage6Histogram(_FinalizerTestBase):
         report = render_stage6_histogram(results)
         self.assertIsNone(report, "<5 completed entries MUST suppress histogram")
 
+    def test_histogram_renders_for_all_supported_papers(self) -> None:
+        # Step 8 codex R4 P2-1 closure: spec literal is "≥5 completed
+        # entries". A mostly-SUPPORTED paper (5 completed citations,
+        # zero defect_stages) MUST still emit the histogram block so the
+        # Stage 6 appendix stays consistent. Prior implementation filtered
+        # to completed-with-defect rows, suppressing this common case.
+        results = [
+            _result(
+                judgment="SUPPORTED",
+                defect_stage=None,
+                ref_retrieval_method="api",
+                claim_id=f"C-{i:03d}",
+            )
+            for i in range(5)
+        ]
+        report = render_stage6_histogram(results)
+        self.assertIsNotNone(
+            report,
+            "5 SUPPORTED completed entries MUST emit histogram per spec "
+            "literal '≥5 completed entries'",
+        )
+        self.assertIn("n=5", report)
+        self.assertIn("No defect stages recorded", report)
+
     def test_histogram_excludes_inconclusive_rows(self) -> None:
         # 5 inconclusive + 0 completed → still suppressed (spec: "≥5 completed").
         results = [
