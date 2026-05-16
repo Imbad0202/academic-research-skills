@@ -36,13 +36,27 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
 from jsonschema import Draft202012Validator
+
+# Allow both CLI invocations (`python3 scripts/check_claim_audit_consistency.py`)
+# AND package-style invocations (`python -m unittest scripts.test_*`) to resolve
+# the shared constants module. The CLI path puts scripts/ on sys.path, the
+# unittest path puts repo root on sys.path — the insert below covers the gap.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _claim_audit_constants import (  # noqa: E402
+    INV6_RATIONALE_PREFIX,
+    INV14_FAULT_CLASS_TAGS,
+    RE_CLAIM_ID,
+    RE_MNC_CONSTRAINT,
+    RE_NC_CONSTRAINT,
+    RE_NC_INNER_HYPHEN,
+    SENTINEL_MANIFEST_ID,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PASSPORT_SCHEMAS = REPO_ROOT / "shared/contracts/passport"
@@ -86,9 +100,6 @@ AUDIT_SAMPLING_SUMMARY_SCHEMA: dict[str, Any] = {
     },
 }
 
-# Canonical sentinel for the MANIFEST-MISSING fallback path (INV-15).
-SENTINEL_MANIFEST_ID = "M-0000-00-00T00:00:00Z-0000"
-
 # Allowed (judgment, audit_status, defect_stage) triples — §3.1 table.
 # Negative-constraint-violation rows still permit any ref_retrieval_method
 # in this matrix; INV-7/INV-8 further restrict the surrounding shape.
@@ -106,29 +117,6 @@ ALLOWED_MATRIX: set[tuple[str, str, Any]] = {
     ("RETRIEVAL_FAILED", "completed", "retrieval_existence"),
     ("RETRIEVAL_FAILED", "inconclusive", "not_applicable"),
 }
-
-# INV-6 canonical rationale prefix (firm rule from v3.7.3 R-L3-1-A).
-INV6_RATIONALE_PREFIX = "v3.7.3 R-L3-1-A violation"
-
-# INV-14 fault-class tags allowed at the start of audit_tool_failure rationales.
-INV14_FAULT_CLASS_TAGS = (
-    "judge_timeout",
-    "judge_api_error",
-    "judge_parse_error",
-    "cache_corruption",
-    "retrieval_api_error",
-    "retrieval_timeout",
-    "retrieval_network_error",
-)
-
-# Constraint id patterns (spec §3.2 + INV-17).
-RE_NC_CONSTRAINT = re.compile(r"^NC-C([0-9]{3,})-([0-9]+)$")
-RE_MNC_CONSTRAINT = re.compile(r"^MNC-([0-9]+)$")
-RE_CLAIM_ID = re.compile(r"^C-([0-9]{3,})$")
-# Schema rejects this pattern, but for malformed-on-purpose fixtures the
-# lint surfaces INV-17 explicitly before schema validation runs.
-RE_NC_INNER_HYPHEN = re.compile(r"^NC-C-[0-9]+-[0-9]+$")
-
 
 @dataclass(frozen=True)
 class Finding:
