@@ -119,12 +119,16 @@ def _cache_key(
 # call must surface as MED-WARN advisory rows).
 # ---------------------------------------------------------------------------
 
-# Legal judge verdicts. claim_audit_result schema enum + constraint-side verdicts
-# (VIOLATED / NOT_VIOLATED never reach claim_audit_result.judgment, but they are
-# legal returns from judge_fn for the constraint stream §3.5).
-_LEGAL_JUDGMENTS: frozenset[str] = frozenset(
-    {"SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "RETRIEVAL_FAILED", "VIOLATED", "NOT_VIOLATED"}
+# Legal judge verdicts per path. claim_audit_result schema enum + constraint-side
+# verdicts (VIOLATED / NOT_VIOLATED). Cited and uncited paths route different
+# subsets — passing path-specific allow-lists into `_invoke_judge` rejects an
+# off-path verdict at the invocation boundary instead of letting it propagate
+# into _judge_result_entry where the ValueError would abort the audit
+# (Step 13 R3 codex P2 #2).
+_CITED_PATH_JUDGMENTS: frozenset[str] = frozenset(
+    {"SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "VIOLATED"}
 )
+_UNCITED_PATH_JUDGMENTS: frozenset[str] = frozenset({"VIOLATED", "NOT_VIOLATED"})
 
 
 class JudgeInvocationError(Exception):
@@ -157,7 +161,67 @@ class RetrievalInvocationError(Exception):
         self.detail = detail
 
 
-def _invoke_judge(judge_fn: Callable[..., dict[str, Any]], **call_kwargs: Any) -> dict[str, Any]:
+def _validate_judge_dict(
+    result: Any,
+    *,
+    allowed_judgments: frozenset[str],
+    active_constraint_ids: frozenset[str],
+    source: str = "judge_fn",
+) -> dict[str, Any]:
+    """Validate a judge-output dict (fresh or cache-hit).
+
+    Raises `JudgeInvocationError` with the appropriate fault-class tag for any
+    shape violation. Pulled out of `_invoke_judge` so cache hits can reuse the
+    same validation surface — without it a malformed cache entry would crash
+    `_judge_result_entry` and abort the audit (Step 13 R3 codex P2 #4).
+
+    Validation surface:
+      - non-dict                                  → judge_parse_error
+      - missing `judgment` or `rationale`         → judge_parse_error
+      - judgment not in `allowed_judgments`       → judge_parse_error
+      - VIOLATED without non-blank string id      → judge_parse_error
+      - VIOLATED id not in `active_constraint_ids`→ judge_parse_error
+        (Step 13 R3 codex P2 #1 — prevents formatter gate-refuse on a
+        hallucinated constraint the author never declared)
+    """
+    if not isinstance(result, dict):
+        raise JudgeInvocationError(
+            "judge_parse_error",
+            f"{source} returned {type(result).__name__}, expected dict",
+        )
+    if "judgment" not in result or "rationale" not in result:
+        raise JudgeInvocationError(
+            "judge_parse_error",
+            f"{source} returned dict missing required key(s); got keys={sorted(result)}",
+        )
+    judgment = result.get("judgment")
+    if judgment not in allowed_judgments:
+        raise JudgeInvocationError(
+            "judge_parse_error",
+            f"{source} returned judgment={judgment!r}; expected one of {sorted(allowed_judgments)} on this path",
+        )
+    if judgment == "VIOLATED":
+        vcid = result.get("violated_constraint_id")
+        if not isinstance(vcid, str) or not vcid.strip():
+            raise JudgeInvocationError(
+                "judge_parse_error",
+                f"{source} returned VIOLATED without a valid violated_constraint_id (got {vcid!r}); INV-7 requires non-null id",
+            )
+        if vcid not in active_constraint_ids:
+            raise JudgeInvocationError(
+                "judge_parse_error",
+                f"{source} returned VIOLATED with violated_constraint_id={vcid!r} outside the active constraint set {sorted(active_constraint_ids)}; rejecting hallucinated id (Step 13 R3 codex P2 #1)",
+            )
+    return result
+
+
+def _invoke_judge(
+    judge_fn: Callable[..., dict[str, Any]],
+    *,
+    allowed_judgments: frozenset[str],
+    active_constraint_ids: frozenset[str],
+    **call_kwargs: Any,
+) -> dict[str, Any]:
     """Invoke `judge_fn` and translate transient failures + malformed output into INV-14 tags.
 
     Exception → fault class mapping:
@@ -165,20 +229,20 @@ def _invoke_judge(judge_fn: Callable[..., dict[str, Any]], **call_kwargs: Any) -
       - json.JSONDecodeError / ValueError     → judge_parse_error
       - any other Exception                   → judge_api_error
 
-    Return-value validation (Step 13 R2 codex P2 — reject malformed verdicts
-    before routing rather than letting INV-7 / INV-13 catch them at passport
-    lint time):
-      - non-dict                              → judge_parse_error
-      - missing required keys                 → judge_parse_error
-      - unknown `judgment` value              → judge_parse_error
-      - `VIOLATED` without `violated_constraint_id` → judge_parse_error
+    Return-value validation delegates to `_validate_judge_dict` so cache hits
+    reuse the same surface (Step 13 R3 codex P2 #4).
 
-    Returns the judge dict on success; raises JudgeInvocationError otherwise so
-    the caller can map it to a `_retrieval_failure_entry(method="audit_tool_failure")`
-    row.
+    `allowed_judgments` is path-specific: cited path passes
+    `_CITED_PATH_JUDGMENTS`, uncited (constraint) path passes
+    `_UNCITED_PATH_JUDGMENTS`. RETRIEVAL_FAILED / NOT_VIOLATED on the cited
+    path is rejected here instead of crashing in `_judge_result_entry`
+    (Step 13 R3 codex P2 #2).
 
-    Does NOT swallow `SystemExit` / `KeyboardInterrupt` — those derive from
-    `BaseException`, not `Exception`, and propagate normally.
+    `active_constraint_ids` carries the in-scope MNC/NC ids for this call
+    so a VIOLATED with a hallucinated id is rejected at the boundary
+    (Step 13 R3 codex P2 #1).
+
+    Does NOT swallow `SystemExit` / `KeyboardInterrupt`.
     """
     try:
         result = judge_fn(**call_kwargs)
@@ -189,30 +253,12 @@ def _invoke_judge(judge_fn: Callable[..., dict[str, Any]], **call_kwargs: Any) -
     except Exception as exc:  # noqa: BLE001 — translation boundary; the source class is captured
         raise JudgeInvocationError("judge_api_error", f"{type(exc).__name__}: {exc}") from exc
 
-    if not isinstance(result, dict):
-        raise JudgeInvocationError(
-            "judge_parse_error",
-            f"judge_fn returned {type(result).__name__}, expected dict",
-        )
-    if "judgment" not in result or "rationale" not in result:
-        raise JudgeInvocationError(
-            "judge_parse_error",
-            f"judge_fn returned dict missing required key(s); got keys={sorted(result)}",
-        )
-    judgment = result.get("judgment")
-    if judgment not in _LEGAL_JUDGMENTS:
-        raise JudgeInvocationError(
-            "judge_parse_error",
-            f"judge_fn returned unknown judgment={judgment!r}; expected one of {sorted(_LEGAL_JUDGMENTS)}",
-        )
-    if judgment == "VIOLATED":
-        vcid = result.get("violated_constraint_id")
-        if not isinstance(vcid, str) or not vcid.strip():
-            raise JudgeInvocationError(
-                "judge_parse_error",
-                f"judge_fn returned VIOLATED without a valid violated_constraint_id (got {vcid!r}); INV-7 requires non-null id",
-            )
-    return result
+    return _validate_judge_dict(
+        result,
+        allowed_judgments=allowed_judgments,
+        active_constraint_ids=active_constraint_ids,
+        source="judge_fn",
+    )
 
 
 def _invoke_retrieve(
@@ -268,6 +314,18 @@ def _invoke_retrieve(
             "retrieval_api_error",
             f"retrieve_fn returned unknown ref_retrieval_method={method!r}",
         )
+    # Step 13 R3 codex P2 #3: a successful retrieval pathway MUST carry a
+    # non-empty excerpt — otherwise the judge would be invoked with
+    # `retrieved_excerpt=None`/empty and could mark a claim SUPPORTED with no
+    # source text. Map this shape violation to retrieval_api_error so it
+    # surfaces as audit_tool_failure instead of silently degrading the audit.
+    if method in {"api", "manual_pdf"}:
+        excerpt = result.get("retrieved_excerpt")
+        if not isinstance(excerpt, str) or not excerpt.strip():
+            raise RetrievalInvocationError(
+                "retrieval_api_error",
+                f"retrieve_fn returned ref_retrieval_method={method!r} with empty/missing retrieved_excerpt; successful retrievals must carry source text",
+            )
     return result
 
 
@@ -878,17 +936,37 @@ def run_audit_pipeline(
             active_constraints=active_constraints,
             judge_model=judge_model,
         )
+        # In-scope constraint ids for this call. Both fresh judge invocations
+        # AND cache hits validate VIOLATED ids against this set so a
+        # hallucinated id never reaches `_judge_result_entry` (Step 13 R3
+        # codex P2 #1).
+        active_ids: frozenset[str] = frozenset(
+            c["constraint_id"] for c in active_constraints if c.get("constraint_id")
+        )
+
         cached = cache.get(key)
-        if cached is not None:
-            judge_result = cached
-        else:
-            # Step 4-5 — passage location is implicit (excerpt is the located passage);
-            # invoke judge. Wrap in `_invoke_judge` so transient failures surface
-            # as INV-14 `audit_tool_failure` rows instead of aborting the audit
-            # (Step 13 R1 codex finding).
-            try:
+        try:
+            if cached is not None:
+                # Step 13 R3 codex P2 #4: cache may carry a corrupted/partial
+                # dict from a prior session. Re-validate every hit through the
+                # same surface as fresh invocations so a stale entry surfaces
+                # as cache_corruption instead of crashing in
+                # `_judge_result_entry`.
+                judge_result = _validate_judge_dict(
+                    cached,
+                    allowed_judgments=_CITED_PATH_JUDGMENTS,
+                    active_constraint_ids=active_ids,
+                    source="cache",
+                )
+            else:
+                # Step 4-5 — passage location is implicit (excerpt is the
+                # located passage); invoke judge. Wrap in `_invoke_judge` so
+                # transient failures surface as INV-14 `audit_tool_failure`
+                # rows instead of aborting the audit (Step 13 R1 codex).
                 judge_result = _invoke_judge(
                     judge_fn,
+                    allowed_judgments=_CITED_PATH_JUDGMENTS,
+                    active_constraint_ids=active_ids,
                     claim_text=citation["claim_text"],
                     retrieved_excerpt=excerpt,
                     anchor_kind=anchor_kind,
@@ -896,20 +974,22 @@ def run_audit_pipeline(
                     active_constraints=active_constraints,
                     judge_model=judge_model,
                 )
-            except JudgeInvocationError as judge_err:
-                entry = _retrieval_failure_entry(
-                    citation,
-                    method="audit_tool_failure",
-                    audit_run_id=audit_run_id,
-                    now_iso=now_iso,
-                    judge_model=judge_model,
-                    fault_class=judge_err.fault_class,
-                )
-                entry["rationale"] = f"{judge_err.fault_class}: {judge_err.detail}"
-                entry["scoped_manifest_id"] = written_scope
-                claim_audit_results.append(entry)
-                continue
-            cache[key] = judge_result
+                cache[key] = judge_result
+        except JudgeInvocationError as judge_err:
+            # Cache-hit validation failures map to cache_corruption per INV-14.
+            fault_class = "cache_corruption" if cached is not None else judge_err.fault_class
+            entry = _retrieval_failure_entry(
+                citation,
+                method="audit_tool_failure",
+                audit_run_id=audit_run_id,
+                now_iso=now_iso,
+                judge_model=judge_model,
+                fault_class=fault_class,
+            )
+            entry["rationale"] = f"{fault_class}: {judge_err.detail}"
+            entry["scoped_manifest_id"] = written_scope
+            claim_audit_results.append(entry)
+            continue
 
         # Step 6 — defect_stage routing + emission.
         entry = _judge_result_entry(
@@ -966,17 +1046,25 @@ def run_audit_pipeline(
             )
 
         if applicable_constraints:
+            applicable_ids: frozenset[str] = frozenset(
+                c["constraint_id"] for c in applicable_constraints if c.get("constraint_id")
+            )
             # Wrap in `_invoke_judge` so transient failures don't abort the
-            # uncited stream. A failed judge cannot positively VIOLATE — we
-            # treat it as a non-violation (the uncited_assertion row below
-            # still emits as a LOW-WARN advisory, which is the conservative
-            # surface). The audit_tool_failure tag is captured in `_telemetry`
-            # for visibility but does NOT produce a constraint_violation row
-            # because constraint_violation requires a positive VIOLATED
-            # verdict (spec §3.5 D4-c).
+            # uncited stream. Current behaviour: failure → NOT_VIOLATED so
+            # the audit pass completes; the uncited_assertion row still
+            # emits LOW-WARN. NOTE: codex Step 13 R3 P2 #5 challenges this
+            # design choice — silently substituting NOT_VIOLATED on judge
+            # outage suppresses the HIGH-WARN constraint check. The proper
+            # fix is a schema-level decision on how to surface
+            # audit_tool_failure on the uncited path without polluting
+            # constraint_violations[] HIGH-WARN semantics. Tracked as
+            # follow-up issue #118; behaviour preserved in this round so
+            # the merge is not blocked on a spec change.
             try:
                 judge_result = _invoke_judge(
                     judge_fn,
+                    allowed_judgments=_UNCITED_PATH_JUDGMENTS,
+                    active_constraint_ids=applicable_ids,
                     claim_text=sentence["sentence_text"],
                     retrieved_excerpt=None,
                     anchor_kind=None,
@@ -985,7 +1073,7 @@ def run_audit_pipeline(
                     judge_model=judge_model,
                 )
             except JudgeInvocationError:
-                judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission)."}
+                judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission). See issue #118 for proper audit_tool_failure surfacing on uncited path."}
             if judge_result.get("judgment") == "VIOLATED":
                 constraint_violations.append(
                     _constraint_violation_entry(

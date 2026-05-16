@@ -682,6 +682,34 @@ class TP12JudgeFailureAuditToolFailure(_PipelineTestBase):
 
         self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
 
+    def test_cited_path_rejects_retrieval_failed_verdict(self) -> None:
+        # Step 13 R3 codex P2 #2: cited path must not accept RETRIEVAL_FAILED
+        # / NOT_VIOLATED — they would crash in _judge_result_entry.
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"judgment": "RETRIEVAL_FAILED", "rationale": "wrong path"}
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+    def test_cited_path_rejects_not_violated_verdict(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"judgment": "NOT_VIOLATED", "rationale": "wrong path"}
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+    def test_violated_id_outside_active_set_rejected(self) -> None:
+        # Step 13 R3 codex P2 #1: VIOLATED with an id the author never declared
+        # would otherwise gate-refuse the formatter on a hallucinated rule.
+        # The default _citation() has no active constraints, so any nonblank
+        # id is outside the active set.
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "MNC-99",
+                "rationale": "hallucinated constraint",
+            }
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
 
 # ---------------------------------------------------------------------------
 # T-P14 — retrieve_fn invocation failure mapping to INV-14 retrieval_* tags.
@@ -745,6 +773,20 @@ class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
 
         self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
 
+    def test_api_method_without_excerpt_rejected(self) -> None:
+        # Step 13 R3 codex P2 #3 — api with empty excerpt would let the judge
+        # mark SUPPORTED with no source text.
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            return {"ref_retrieval_method": "api", "retrieved_excerpt": ""}
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
+
+    def test_manual_pdf_with_none_excerpt_rejected(self) -> None:
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            return {"ref_retrieval_method": "manual_pdf", "retrieved_excerpt": None}
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
+
 
 # ---------------------------------------------------------------------------
 # T-P13 — EMITTED_NOT_INTENDED set-dedup per D6 (Step 13 R1 codex P2).
@@ -752,6 +794,67 @@ class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
 # one sentence with two ref slugs), one drift row should emit, not one per
 # citation.
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# T-P15 — Malformed cache hit → cache_corruption audit_tool_failure row.
+# Step 13 R3 codex P2 #4: persistent or injected cache entries can carry
+# malformed values; revalidate every hit before routing.
+# ---------------------------------------------------------------------------
+
+
+class TP15CacheCorruption(_PipelineTestBase):
+    """T-P15: cache hit re-validated through _validate_judge_dict."""
+
+    def test_missing_judgment_key_in_cache(self) -> None:
+        # Pre-seed cache with a malformed entry that lacks `judgment`.
+        cache = {}
+        # First populate using a valid run so we know the key shape works.
+        invoked: list[Any] = []
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            invoked.append(kwargs)
+            return {"judgment": "SUPPORTED", "rationale": "fresh"}
+
+        # Run once to capture the cache_key the pipeline computes.
+        self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
+        self.assertEqual(len(cache), 1)
+        cache_key = next(iter(cache))
+
+        # Corrupt the cached value to simulate a stale / partial dump.
+        cache[cache_key] = {"rationale": "but no judgment key"}
+
+        out = self.run_pipeline(
+            citations=[_citation()],
+            judge_fn=lambda **_kw: {"judgment": "SUPPORTED", "rationale": "should not be called"},
+            cache=cache,
+        )
+        results = out["claim_audit_results"]
+        self.assertEqual(len(results), 1)
+        e = results[0]
+        self.assertEqual(e["ref_retrieval_method"], "audit_tool_failure")
+        self.assertTrue(
+            e["rationale"].startswith("cache_corruption:"),
+            f"cache hit failure must use INV-14 cache_corruption tag; got {e['rationale']!r}",
+        )
+
+    def test_unknown_judgment_in_cache(self) -> None:
+        cache = {}
+
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"judgment": "SUPPORTED", "rationale": "fresh"}
+
+        self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
+        cache_key = next(iter(cache))
+        cache[cache_key] = {"judgment": "GIBBERISH", "rationale": "stale"}
+
+        out = self.run_pipeline(
+            citations=[_citation()],
+            judge_fn=lambda **_kw: {"judgment": "SUPPORTED", "rationale": "n/a"},
+            cache=cache,
+        )
+        results = out["claim_audit_results"]
+        self.assertTrue(results[0]["rationale"].startswith("cache_corruption:"))
 
 
 class TP13EmittedNotIntendedDedupe(_PipelineTestBase):
