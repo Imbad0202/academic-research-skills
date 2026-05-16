@@ -37,6 +37,7 @@ import argparse
 import hashlib
 import json
 import sys
+import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -263,6 +264,17 @@ def _check_inv_6(e: dict[str, Any]) -> list[Finding]:
                 f"anchor=none row has ref_retrieval_method={e.get('ref_retrieval_method')!r}; must be not_attempted",
             )
         )
+    # Schema mandates the empty sentinel for anchor_value when anchor_kind=none.
+    # A residual stale anchor (e.g. "123") here violates the schema contract;
+    # pipeline _anchorless_entry pins "" but the lint must enforce it for
+    # passports authored outside the pipeline (manual fixtures, replays).
+    if e.get("anchor_value", "") != "":
+        findings.append(
+            Finding(
+                "INV-6",
+                f"anchor=none row has non-empty anchor_value={e.get('anchor_value')!r}; must be empty sentinel string",
+            )
+        )
     rationale = e.get("rationale") or ""
     if not rationale.startswith(INV6_RATIONALE_PREFIX):
         findings.append(
@@ -438,16 +450,29 @@ def _check_inv_15(
 
 
 def _check_inv_16(e: dict[str, Any]) -> list[Finding]:
-    """anchor_kind != none -> URL-decoded anchor_value non-empty after strip."""
+    """anchor_kind != none -> URL-decoded anchor_value non-empty after strip.
+
+    Schema mandates non-empty after URL-decoding so URL-encoded whitespace
+    (e.g. `%20`, `%09`) cannot bypass the firm rule. `.strip()` on the raw
+    string would accept `"%20"` as a non-empty anchor; decoding first makes
+    the check faithful to the contract.
+    """
     kind = e.get("anchor_kind")
     if kind in (None, "none"):
         return []
     value = e.get("anchor_value")
-    if not isinstance(value, str) or value.strip() == "":
+    if not isinstance(value, str):
         return [
             Finding(
                 "INV-16",
-                f"anchor_kind={kind!r} has empty anchor_value (whitespace-only or missing)",
+                f"anchor_kind={kind!r} has non-string anchor_value (type={type(value).__name__})",
+            )
+        ]
+    if urllib.parse.unquote(value).strip() == "":
+        return [
+            Finding(
+                "INV-16",
+                f"anchor_kind={kind!r} has empty anchor_value (URL-decoded whitespace-only or missing)",
             )
         ]
     return []

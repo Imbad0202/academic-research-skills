@@ -202,6 +202,22 @@ class TP1AnchorNoneShortCircuit(_PipelineTestBase):
             f"rationale must start with INV-6 firm-rule prefix; got {e['rationale']!r}",
         )
 
+    def test_anchor_none_pins_empty_sentinel_anchor_value(self) -> None:
+        # INV-6 sentinel: even if the caller passes a stale residual anchor_value
+        # on an anchor_kind=none citation, the pipeline MUST coerce it to the
+        # empty string per the schema contract (Step 13 R1 Gemini finding).
+        out = self.run_pipeline(
+            citations=[_citation(anchor_kind="none", anchor_value="123")],
+            judge_fn=lambda **_kw: {"judgment": "SUPPORTED", "rationale": "n/a"},
+        )
+        results = out["claim_audit_results"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(
+            results[0]["anchor_value"],
+            "",
+            "anchor_kind=none rows must carry the empty sentinel anchor_value per INV-6",
+        )
+
 
 # ---------------------------------------------------------------------------
 # T-P2 / T-P3 — Step 3 cache hit / miss.
@@ -580,6 +596,114 @@ class TP11CapSampling(_PipelineTestBase):
                 citations=[_citation()],
                 config=_config(max_claims_per_paper=0),
             )
+
+
+# ---------------------------------------------------------------------------
+# T-P12 — Judge invocation failure mapping to INV-14 audit_tool_failure rows.
+# Spec §4 step 2 + INV-14; Step 13 R1 codex P1 finding (judge errors must not
+# abort the audit pass — they MUST surface as MED-WARN audit_tool_failure rows).
+# ---------------------------------------------------------------------------
+
+
+class TP12JudgeFailureAuditToolFailure(_PipelineTestBase):
+    """T-P12: judge_fn exceptions / malformed output → audit_tool_failure row."""
+
+    def _run_one(self, judge_fn: Any) -> dict[str, Any]:
+        return self.run_pipeline(citations=[_citation()], judge_fn=judge_fn)
+
+    def _assert_audit_tool_failure(self, out: dict[str, Any], expected_tag: str) -> None:
+        results = out["claim_audit_results"]
+        self.assertEqual(len(results), 1, "exactly one row emitted on judge failure")
+        e = results[0]
+        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED")
+        self.assertEqual(e["audit_status"], "inconclusive")
+        self.assertEqual(e["defect_stage"], "not_applicable")
+        self.assertEqual(e["ref_retrieval_method"], "audit_tool_failure")
+        self.assertTrue(
+            e["rationale"].startswith(expected_tag + ":"),
+            f"rationale must lead with INV-14 fault-class tag {expected_tag!r}; got {e['rationale']!r}",
+        )
+
+    def test_timeout_error_becomes_judge_timeout(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            raise TimeoutError("judge call exceeded 30s")
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_timeout")
+
+    def test_value_error_becomes_judge_parse_error(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            raise ValueError("response payload was not parseable")
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+    def test_generic_exception_becomes_judge_api_error(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            raise RuntimeError("upstream returned 503")
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_api_error")
+
+    def test_malformed_return_missing_judgment_key(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"rationale": "shaped wrong"}
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+    def test_malformed_return_non_dict(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return "this is not a dict"  # type: ignore[return-value]
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+
+# ---------------------------------------------------------------------------
+# T-P13 — EMITTED_NOT_INTENDED set-dedup per D6 (Step 13 R1 codex P2).
+# When the same drifted claim_text carries multiple citation markers (e.g.
+# one sentence with two ref slugs), one drift row should emit, not one per
+# citation.
+# ---------------------------------------------------------------------------
+
+
+class TP13EmittedNotIntendedDedupe(_PipelineTestBase):
+    """T-P13: D6 set semantics — one drift row per drifted claim_text."""
+
+    def test_two_refs_one_drift(self) -> None:
+        # Manifest pre-commits to C-001 only; the drafter emits a different
+        # claim_text twice, once per citation marker (typical for a sentence
+        # like "X is correlated with Y (Ref1, Ref2)" where the drafter chose
+        # not to add this claim to the manifest).
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Manifest-intended claim about X.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                }
+            ]
+        )
+        drifted_text = "This claim was never in the manifest."
+        citations = [
+            _citation(
+                claim_id="C-001",
+                claim_text=drifted_text,
+                ref_slug="ref-a",
+                anchor_value="10",
+            ),
+            _citation(
+                claim_id="C-001",
+                claim_text=drifted_text,
+                ref_slug="ref-b",
+                anchor_value="20",
+            ),
+        ]
+        out = self.run_pipeline(citations=citations, manifests=[manifest])
+        drifts = [d for d in out["claim_drifts"] if d["drift_kind"] == "EMITTED_NOT_INTENDED"]
+        self.assertEqual(
+            len(drifts),
+            1,
+            f"D6 Emitted is a set of claim_text — one drifted text + two refs MUST yield 1 drift row; got {len(drifts)}",
+        )
+        self.assertEqual(drifts[0]["claim_text"], drifted_text)
 
 
 if __name__ == "__main__":

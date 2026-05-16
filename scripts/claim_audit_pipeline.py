@@ -113,19 +113,82 @@ def _cache_key(
 
 
 # ---------------------------------------------------------------------------
+# Judge invocation — wraps judge_fn so transient failures become INV-14 rows
+# instead of aborting the audit. Spec §4 step 2 + INV-14 + Step 13 R1 codex
+# finding (judge errors must surface as audit_tool_failure MED-WARN rows).
+# ---------------------------------------------------------------------------
+
+
+class JudgeInvocationError(Exception):
+    """Raised by `_invoke_judge` when judge_fn fails or returns malformed output.
+
+    Carries the INV-14 fault-class tag + detail so the caller can emit a
+    `RETRIEVAL_FAILED + inconclusive + not_applicable + audit_tool_failure`
+    row per spec §4 step 2 + INV-14 instead of letting the exception abort the
+    audit pass.
+    """
+
+    def __init__(self, fault_class: str, detail: str) -> None:
+        super().__init__(f"{fault_class}: {detail}")
+        self.fault_class = fault_class
+        self.detail = detail
+
+
+def _invoke_judge(judge_fn: Callable[..., dict[str, Any]], **call_kwargs: Any) -> dict[str, Any]:
+    """Invoke `judge_fn` and translate transient failures into INV-14 tags.
+
+    Exception → fault class mapping:
+      - TimeoutError                          → judge_timeout
+      - json.JSONDecodeError / ValueError     → judge_parse_error
+      - any other Exception                   → judge_api_error
+      - return value missing judgment/rationale or non-dict → judge_parse_error
+
+    Returns the judge dict on success; raises JudgeInvocationError otherwise so
+    the caller can map it to a `_retrieval_failure_entry(method="audit_tool_failure")`
+    row.
+    """
+    try:
+        result = judge_fn(**call_kwargs)
+    except TimeoutError as exc:
+        raise JudgeInvocationError("judge_timeout", str(exc) or "judge timed out") from exc
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise JudgeInvocationError("judge_parse_error", str(exc) or "judge returned malformed payload") from exc
+    except Exception as exc:  # noqa: BLE001 — translation boundary; the source class is captured
+        raise JudgeInvocationError("judge_api_error", f"{type(exc).__name__}: {exc}") from exc
+
+    if not isinstance(result, dict):
+        raise JudgeInvocationError(
+            "judge_parse_error",
+            f"judge_fn returned {type(result).__name__}, expected dict",
+        )
+    if "judgment" not in result or "rationale" not in result:
+        raise JudgeInvocationError(
+            "judge_parse_error",
+            f"judge_fn returned dict missing required key(s); got keys={sorted(result)}",
+        )
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Emission helpers — each builds one entry dict.
 # ---------------------------------------------------------------------------
 
 
 def _anchorless_entry(citation: dict[str, Any], *, audit_run_id: str, now_iso: str, judge_model: str) -> dict[str, Any]:
-    """§4 Step 1: anchor=none short-circuits to RETRIEVAL_FAILED+inconclusive+not_applicable+not_attempted."""
+    """§4 Step 1: anchor=none short-circuits to RETRIEVAL_FAILED+inconclusive+not_applicable+not_attempted.
+
+    INV-6 sentinel: anchor_kind=none MUST carry anchor_value="" (empty sentinel
+    per claim_audit_result.schema.json). We pin the empty string here rather
+    than passing through citation.anchor_value — a stale residual anchor like
+    "123" on an anchor_kind=none row violates the schema contract.
+    """
     return {
         "claim_id": citation["claim_id"],
         "scoped_manifest_id": citation["scoped_manifest_id"],
         "claim_text": citation["claim_text"],
         "ref_slug": citation["ref_slug"],
         "anchor_kind": "none",
-        "anchor_value": citation.get("anchor_value", ""),
+        "anchor_value": "",
         "judgment": "RETRIEVAL_FAILED",
         "audit_status": "inconclusive",
         "defect_stage": "not_applicable",
@@ -460,7 +523,11 @@ def _detect_drifts(
             )
 
     # EMITTED_NOT_INTENDED — emitted citations whose claim_text is not in any
-    # manifest's claim_text set.
+    # manifest's claim_text set. D6 defines Emitted as a SET of claim_text
+    # values, so a drifted claim that carries multiple citations (e.g. one
+    # sentence with two ref markers) MUST emit ONE drift row, not one per
+    # citation. We dedupe by claim_text here while keeping the first
+    # encountered section_path as the representative (Step 13 R1 codex P2).
     all_manifest_texts: set[str] = set()
     for m in manifests:
         for claim in m.get("claims", []) or []:
@@ -468,6 +535,7 @@ def _detect_drifts(
             if text:
                 all_manifest_texts.add(text)
 
+    seen_drift_texts: set[str] = set()
     for c in emitted_citations:
         text = c.get("claim_text", "")
         if text in all_manifest_texts:
@@ -477,6 +545,10 @@ def _detect_drifts(
         if text in uncited_sentence_texts:
             # Precedence rule 3 / D-INV-4 — uncited takes priority.
             continue
+        if text in seen_drift_texts:
+            # D6 set semantics — one drift row per drifted claim_text.
+            continue
+        seen_drift_texts.add(text)
         drifts.append(
             _claim_drift_entry(
                 drift_kind="EMITTED_NOT_INTENDED",
@@ -682,15 +754,32 @@ def run_audit_pipeline(
             judge_result = cached
         else:
             # Step 4-5 — passage location is implicit (excerpt is the located passage);
-            # invoke judge.
-            judge_result = judge_fn(
-                claim_text=citation["claim_text"],
-                retrieved_excerpt=excerpt,
-                anchor_kind=anchor_kind,
-                anchor_value=citation.get("anchor_value", ""),
-                active_constraints=active_constraints,
-                judge_model=judge_model,
-            )
+            # invoke judge. Wrap in `_invoke_judge` so transient failures surface
+            # as INV-14 `audit_tool_failure` rows instead of aborting the audit
+            # (Step 13 R1 codex finding).
+            try:
+                judge_result = _invoke_judge(
+                    judge_fn,
+                    claim_text=citation["claim_text"],
+                    retrieved_excerpt=excerpt,
+                    anchor_kind=anchor_kind,
+                    anchor_value=citation.get("anchor_value", ""),
+                    active_constraints=active_constraints,
+                    judge_model=judge_model,
+                )
+            except JudgeInvocationError as judge_err:
+                entry = _retrieval_failure_entry(
+                    citation,
+                    method="audit_tool_failure",
+                    audit_run_id=audit_run_id,
+                    now_iso=now_iso,
+                    judge_model=judge_model,
+                    fault_class=judge_err.fault_class,
+                )
+                entry["rationale"] = f"{judge_err.fault_class}: {judge_err.detail}"
+                entry["scoped_manifest_id"] = written_scope
+                claim_audit_results.append(entry)
+                continue
             cache[key] = judge_result
 
         # Step 6 — defect_stage routing + emission.
@@ -748,14 +837,26 @@ def run_audit_pipeline(
             )
 
         if applicable_constraints:
-            judge_result = judge_fn(
-                claim_text=sentence["sentence_text"],
-                retrieved_excerpt=None,
-                anchor_kind=None,
-                anchor_value=None,
-                active_constraints=applicable_constraints,
-                judge_model=judge_model,
-            )
+            # Wrap in `_invoke_judge` so transient failures don't abort the
+            # uncited stream. A failed judge cannot positively VIOLATE — we
+            # treat it as a non-violation (the uncited_assertion row below
+            # still emits as a LOW-WARN advisory, which is the conservative
+            # surface). The audit_tool_failure tag is captured in `_telemetry`
+            # for visibility but does NOT produce a constraint_violation row
+            # because constraint_violation requires a positive VIOLATED
+            # verdict (spec §3.5 D4-c).
+            try:
+                judge_result = _invoke_judge(
+                    judge_fn,
+                    claim_text=sentence["sentence_text"],
+                    retrieved_excerpt=None,
+                    anchor_kind=None,
+                    anchor_value=None,
+                    active_constraints=applicable_constraints,
+                    judge_model=judge_model,
+                )
+            except JudgeInvocationError:
+                judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission)."}
             if judge_result.get("judgment") == "VIOLATED":
                 constraint_violations.append(
                     _constraint_violation_entry(

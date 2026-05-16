@@ -48,6 +48,7 @@ Read these passport fields:
 - **`claim_intent_manifests[]`** — pre-commitment baseline emitted by synthesis_agent / draft_writer_agent / report_compiler_agent before prose generation (see "Claim Intent Manifest Emission (v3.8)" sibling sections on those agents). Used by §4 step 5 manifest set-diff.
 - **`literature_corpus[]`** — for retrieval.
 - **Resolved citation markers** post Cite-Time Provenance Finalizer — every in-text citation carries both `<!--ref:slug-->` (v3.7.1 two-layer) and `<!--anchor:<kind>:<value>-->` (v3.7.3 three-layer). `anchor_kind=none` rows should already have been gate-refused by v3.7.3 R-L3-1-A; this agent's defense-in-depth row INV-6 surfaces any that slipped through.
+- **Draft sentence stream (uncited)** — the Stage 4 draft sentence list, with each sentence carrying its `section_path` and optional `adjacent_text` (the surrounding 1-3 clauses for context). Sentences without an in-text citation marker are the input to the §4 step 6 D4-c uncited-assertion detector (`scripts/uncited_assertion_detector.py`) and the §4 step 5 stream (d) `constraint_violations[]` path. Without this stream the `[HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED]` row and the LOW-WARN `uncited_assertions[]` row cannot fire — both are operationally load-bearing per spec §3.3 + §3.5. In the Python runtime (`scripts/claim_audit_pipeline.py`), callers pre-process this stream through `detect_uncited_assertions` and pass the resulting candidate list via the `uncited_sentences` parameter.
 
 Configuration (`claim_audit_config` block in `academic-pipeline/SKILL.md` mode flags):
 
@@ -223,8 +224,8 @@ These coercions keep the §3.1 allowed-matrix invariant intact when the judge re
 After Steps 1-6 for every audited citation, run a three-set diff:
 
 - **Intended** = `claims[].claim_text` across all `claim_intent_manifests[]`
-- **Emitted** = `claim_text` from every audited citation
-- **Supported** = subset of emitted that produced `judgment=SUPPORTED`
+- **Emitted** = `claim_text` from **every emitted citation in the draft**, not just the audited subset. When `len(citations) > max_claims_per_paper` triggers sampling, the unsampled citations still count toward `Emitted` because they were emitted in the draft (sampling only caps judge invocations, not the membership query for set-diff). Building `Emitted` from the audited subset alone would mis-classify every unsampled-but-present manifest claim as `INTENDED_NOT_EMITTED`. **`Emitted` is a SET of `claim_text` values** (D6): a drifted claim carrying multiple citation markers produces ONE membership in `Emitted`, not one per ref slug — and therefore ONE `EMITTED_NOT_INTENDED` row, not duplicates. The Python pipeline enforces this in `_emit_drift` per `scripts/test_claim_audit_pipeline.py::TP13EmittedNotIntendedDedupe` + `::TCO4SamplingPreservesEmittedSet`.
+- **Supported** = subset of **audited** emitted that produced `judgment=SUPPORTED` (sampling does scope `Supported` because un-judged citations have no verdict).
 
 Diff streams:
 

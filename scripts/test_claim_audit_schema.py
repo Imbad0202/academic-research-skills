@@ -348,6 +348,23 @@ class TS2ClaimAuditInvariants(_LintTestBase):
         e["rationale"] = "anchor missing for this claim"  # no v3.7.3 prefix
         self.assertLintFinds(build_passport(results=[e]), invariant="INV-6")
 
+    def test_inv_6_anchor_none_with_non_empty_anchor_value(self) -> None:
+        # INV-6: anchor_kind=none MUST carry empty sentinel anchor_value.
+        # A stale residual value (e.g. "123") violates the schema contract.
+        # Step 13 R1 Gemini finding (a832d3f).
+        e = supported_entry()
+        e["anchor_kind"] = "none"
+        e["anchor_value"] = "123"  # stale residual — must be rejected
+        e["judgment"] = "RETRIEVAL_FAILED"
+        e["audit_status"] = "inconclusive"
+        e["defect_stage"] = "not_applicable"
+        e["ref_retrieval_method"] = "not_attempted"
+        e["rationale"] = (
+            "v3.7.3 R-L3-1-A violation: cited claim C-001 carries anchor=none; "
+            "v3.7.3 finalizer should have gate-refused upstream."
+        )
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-6")
+
     def test_inv_7_constraint_violation_without_violated_id(self) -> None:
         # INV-7: negative_constraint_violation -> violated_constraint_id != null
         e = supported_entry()
@@ -439,6 +456,21 @@ class TS2ClaimAuditInvariants(_LintTestBase):
         e = supported_entry()
         e["anchor_value"] = "   "  # whitespace only
         self.assertLintFinds(build_passport(results=[e]), invariant="INV-16")
+
+    def test_inv_16_url_encoded_whitespace_does_not_bypass(self) -> None:
+        # INV-16: URL-encoded whitespace (%20, %09) must NOT bypass the firm
+        # rule — docstring + schema both require non-empty *after* URL-decode.
+        # Step 13 R1 Gemini finding (a832d3f).
+        e = supported_entry()
+        e["anchor_value"] = "%20%20%09"
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-16")
+
+    def test_inv_16_url_encoded_non_whitespace_passes(self) -> None:
+        # INV-16: URL-encoded printable content must still satisfy the rule.
+        e = supported_entry()
+        e["anchor_kind"] = "quote"
+        e["anchor_value"] = "ten%20cited%20words"  # 'ten cited words' after decode
+        self.assertLintClean(build_passport(results=[e]))
 
     def test_inv_17_constraint_id_inner_hyphen_form(self) -> None:
         # INV-17: NC-C{n}-{m} parse rule — NO inner hyphen between C and digits
