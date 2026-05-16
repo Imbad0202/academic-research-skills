@@ -437,6 +437,7 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 - All in-text citations with their resolved `<!--ref:slug ...-->` + `<!--anchor:...-->` marker pairs (post-finalizer)
 - The `claim_intent_manifests[]` aggregate from the writing-stage agents (per spec §3.2 + the v3.8 "Claim Intent Manifest Emission" sibling sections on `synthesis_agent` / `draft_writer_agent` / `report_compiler_agent`)
 - The `literature_corpus[]` aggregate (retrieval input)
+- **The Stage 4 draft sentence stream — all uncited sentences with `sentence_text` + `section_path` + optional `adjacent_text`** (the surrounding 1–3 clauses for context). Required for the §4 step 5 stream (d) `constraint_violations[]` HIGH-WARN path (any uncited sentence whose scope matches an MNC/NC rule + judge returns VIOLATED) AND the §4 step 6 `uncited_assertions[]` LOW-WARN advisory path. Without this stream the `[HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED]` gate-refuse annotation cannot fire for author-declared MUST-NOT violations that carry no citation. See `claim_ref_alignment_audit_agent.md` Input contract for the full schema.
 
 **Outputs feeding formatter hard gate (same Stage 5 pass).**
 

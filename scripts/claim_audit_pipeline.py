@@ -344,7 +344,7 @@ def _anchorless_entry(citation: dict[str, Any], *, audit_run_id: str, now_iso: s
     """
     return {
         "claim_id": citation["claim_id"],
-        "scoped_manifest_id": citation["scoped_manifest_id"],
+        "scoped_manifest_id": citation.get("scoped_manifest_id", SENTINEL_MANIFEST_ID),
         "claim_text": citation["claim_text"],
         "ref_slug": citation["ref_slug"],
         "anchor_kind": "none",
@@ -404,7 +404,7 @@ def _retrieval_failure_entry(
 
     return {
         "claim_id": citation["claim_id"],
-        "scoped_manifest_id": citation["scoped_manifest_id"],
+        "scoped_manifest_id": citation.get("scoped_manifest_id", SENTINEL_MANIFEST_ID),
         "claim_text": citation["claim_text"],
         "ref_slug": citation["ref_slug"],
         "anchor_kind": citation["anchor_kind"],
@@ -456,7 +456,7 @@ def _judge_result_entry(
 
     entry: dict[str, Any] = {
         "claim_id": citation["claim_id"],
-        "scoped_manifest_id": citation["scoped_manifest_id"],
+        "scoped_manifest_id": citation.get("scoped_manifest_id", SENTINEL_MANIFEST_ID),
         "claim_text": citation["claim_text"],
         "ref_slug": citation["ref_slug"],
         "anchor_kind": citation["anchor_kind"],
@@ -645,11 +645,15 @@ def _detect_drifts(
     drifts: list[dict[str, Any]] = []
 
     # Index emitted citations by (scoped_manifest_id, claim_id) — these are
-    # the "supported" set candidates the prose actually produced.
+    # the "supported" set candidates the prose actually produced. Use
+    # .get(SENTINEL_MANIFEST_ID) so MANIFEST-MISSING callers that omit
+    # scoped_manifest_id still build a coherent emitted_pairs set per the
+    # sentinel fallback contract (Step 13 R4 codex P2 #3).
     emitted_pairs: set[tuple[str, str]] = {
-        (c["scoped_manifest_id"], c["claim_id"]) for c in emitted_citations
+        (c.get("scoped_manifest_id", SENTINEL_MANIFEST_ID), c.get("claim_id", ""))
+        for c in emitted_citations
     }
-    emitted_texts = {c["claim_text"] for c in emitted_citations}
+    emitted_texts = {c.get("claim_text", "") for c in emitted_citations}
 
     # INTENDED_NOT_EMITTED — manifest claims missing from emitted set.
     # D6 defines Emitted as a set of claim_text values; the dropped-claim side
@@ -710,7 +714,9 @@ def _detect_drifts(
         text = c.get("claim_text", "")
         if text in all_manifest_texts:
             continue
-        if (c["scoped_manifest_id"], c["claim_id"]) in constraint_absorbed_claim_ids:
+        c_scope = c.get("scoped_manifest_id", SENTINEL_MANIFEST_ID)
+        c_claim_id = c.get("claim_id", "")
+        if (c_scope, c_claim_id) in constraint_absorbed_claim_ids:
             continue
         if text in uncited_sentence_texts:
             # Precedence rule 3 / D-INV-4 — uncited takes priority.
@@ -756,24 +762,43 @@ def run_audit_pipeline(
     now_iso: str,
     cache: dict[str, Any] | None = None,
     uncited_sentences: list[dict[str, Any]] | None = None,
+    all_uncited_sentences: list[dict[str, Any]] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Run §4 Step 1-6 + manifest set-diff over caller-supplied inputs.
 
-    The uncited token-rule detector (`scripts/uncited_assertion_detector.py`,
-    §"Uncited-assertion detector (D4-c)" in claim_ref_alignment_audit_agent.md)
-    is NOT invoked here. Callers are responsible for pre-processing raw
-    draft sentences through `detect_uncited_assertions` BEFORE passing the
-    candidate list to this function as `uncited_sentences`. This split is
-    intentional: the pipeline owns the cited / drift / constraint-violation
-    routing, the detector owns the D4-c three-condition classification
-    (including the optional `adjacent_text` surrounding-clause filter
-    added in Step 9). `scripts/test_e2e_claim_audit.py` exercises the full
-    detector → pipeline → finalizer chain end-to-end.
+    Two uncited streams (Step 13 R4 codex P1 #2):
 
-    `uncited_sentences` items must be dicts with at least `sentence_text`,
-    `section_path`, and `trigger_tokens` (non-empty per U-INV-2); when the
-    caller has run them through `detect_uncited_assertions`, every required
-    field is already populated.
+    - `uncited_sentences`: D4-c detector positives — output of
+      `detect_uncited_assertions` (sentences matching the quantifier /
+      empirical-trigger filter). Drives `uncited_assertions[]` LOW-WARN
+      advisory emission only.
+    - `all_uncited_sentences`: the full uncited sentence set (every draft
+      sentence with no in-text citation marker). Drives stream (d) —
+      constraint judging for `constraint_violations[]` HIGH-WARN. The full
+      set is needed because a manifest negative constraint like "No causal
+      language" can be violated by a sentence ("The program caused
+      improvement") that the D4-c detector filters OUT (no quantifier, no
+      empirical trigger token). Routing constraint judging through the
+      D4-c-filtered subset silently drops those HIGH-WARN cases.
+
+    When `all_uncited_sentences` is omitted, it defaults to
+    `uncited_sentences` (legacy callers preserved — but a warning band:
+    those callers miss the R4 P1 expansion and should pass both).
+
+    The uncited token-rule detector
+    (`scripts/uncited_assertion_detector.py`, §"Uncited-assertion detector
+    (D4-c)" in claim_ref_alignment_audit_agent.md) is NOT invoked here.
+    Callers pre-process the full uncited set through
+    `detect_uncited_assertions` to get `uncited_sentences`; pass the raw
+    full set as `all_uncited_sentences`. `scripts/test_e2e_claim_audit.py`
+    exercises the full detector → pipeline → finalizer chain end-to-end.
+
+    Sentence-dict shape:
+      - `uncited_sentences[]`: `sentence_text` + `section_path` +
+        `trigger_tokens` (non-empty per U-INV-2). D4-c output guarantees
+        these fields.
+      - `all_uncited_sentences[]`: `sentence_text` + `section_path` only.
+        Constraint judging does not consult `trigger_tokens`.
 
     Returns:
         dict with six aggregate arrays keyed by passport-aggregate name:
@@ -817,6 +842,14 @@ def run_audit_pipeline(
     }
     cache = cache if cache is not None else {}
     uncited_sentences = uncited_sentences or []
+    # Step 13 R4 codex P1 #2: constraint judging needs the FULL uncited set,
+    # not the D4-c-filtered subset. When the caller omits the full set we
+    # fall back to the D4-c subset for backwards compatibility — but that
+    # path silently drops constraint violations on sentences outside D4-c
+    # trigger tokens. New callers should pass both.
+    all_uncited_sentences = (
+        all_uncited_sentences if all_uncited_sentences is not None else list(uncited_sentences)
+    )
 
     # ---- Sampling decision ----
     total = len(citations)
@@ -1025,16 +1058,18 @@ def run_audit_pipeline(
             # companion EMITTED_NOT_INTENDED row.
             constraint_absorbed_claim_ids.add((scoped_manifest_id, claim_id))
 
-    # ---- Uncited assertion + uncited constraint-violation routing ----
-    uncited_assertions: list[dict[str, Any]] = []
-    ua_counter = 1
+    # ---- Stream (d): uncited constraint judging over FULL uncited set ----
+    # Step 13 R4 codex P1 #2: constraint judging MUST see every uncited
+    # sentence (not just D4-c detector positives). An MNC like "No causal
+    # language" can be violated by an uncited sentence that the D4-c filter
+    # drops (no quantifier, no empirical trigger token), so routing
+    # constraint judging through the LOW-WARN advisory loop below would
+    # silently miss HIGH-WARN cases. We run constraint judging here on
+    # `all_uncited_sentences` and emit LOW-WARN uncited_assertion rows
+    # separately on `uncited_sentences` (the D4-c subset).
+    constraint_violation_texts: set[str] = set()
     cv_counter = 1
-    uncited_sentence_texts: set[str] = set()
-
-    for sentence in uncited_sentences:
-        uncited_sentence_texts.add(sentence["sentence_text"])
-
-        # Step 5 stream (d) — uncited claim AND MNC/NC scope match → run judge.
+    for sentence in all_uncited_sentences:
         scoped_manifest_id_for_sentence = sentence.get("scoped_manifest_id")
         applicable_constraints: list[dict[str, Any]] = []
         if scoped_manifest_id_for_sentence:
@@ -1045,51 +1080,60 @@ def run_audit_pipeline(
                 mncs_by_manifest_id=mncs_by_manifest_id,
             )
 
-        if applicable_constraints:
-            applicable_ids: frozenset[str] = frozenset(
-                c["constraint_id"] for c in applicable_constraints if c.get("constraint_id")
-            )
-            # Wrap in `_invoke_judge` so transient failures don't abort the
-            # uncited stream. Current behaviour: failure → NOT_VIOLATED so
-            # the audit pass completes; the uncited_assertion row still
-            # emits LOW-WARN. NOTE: codex Step 13 R3 P2 #5 challenges this
-            # design choice — silently substituting NOT_VIOLATED on judge
-            # outage suppresses the HIGH-WARN constraint check. The proper
-            # fix is a schema-level decision on how to surface
-            # audit_tool_failure on the uncited path without polluting
-            # constraint_violations[] HIGH-WARN semantics. Tracked as
-            # follow-up issue #118; behaviour preserved in this round so
-            # the merge is not blocked on a spec change.
-            try:
-                judge_result = _invoke_judge(
-                    judge_fn,
-                    allowed_judgments=_UNCITED_PATH_JUDGMENTS,
-                    active_constraint_ids=applicable_ids,
-                    claim_text=sentence["sentence_text"],
-                    retrieved_excerpt=None,
-                    anchor_kind=None,
-                    anchor_value=None,
-                    active_constraints=applicable_constraints,
-                    judge_model=judge_model,
-                )
-            except JudgeInvocationError:
-                judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission). See issue #118 for proper audit_tool_failure surfacing on uncited path."}
-            if judge_result.get("judgment") == "VIOLATED":
-                constraint_violations.append(
-                    _constraint_violation_entry(
-                        sentence=sentence,
-                        judge_result=judge_result,
-                        scoped_manifest_id=scoped_manifest_id_for_sentence,
-                        finding_id=f"CV-{cv_counter:03d}",
-                        judge_model=judge_model,
-                        now_iso=now_iso,
-                    )
-                )
-                cv_counter += 1
+        if not applicable_constraints:
+            continue
 
-        # Always emit uncited_assertion (LOW-WARN advisory). CV-INV-4 explicitly
-        # permits a sentence to appear in both uncited_assertions[] and
-        # constraint_violations[] simultaneously.
+        applicable_ids: frozenset[str] = frozenset(
+            c["constraint_id"] for c in applicable_constraints if c.get("constraint_id")
+        )
+        # Wrap in `_invoke_judge` so transient failures don't abort the
+        # uncited stream. Current behaviour: failure → NOT_VIOLATED so
+        # the audit pass completes. NOTE: codex Step 13 R3 P2 #5 challenges
+        # this design choice — silently substituting NOT_VIOLATED on judge
+        # outage suppresses the HIGH-WARN constraint check. Proper fix is a
+        # schema-level decision on how to surface audit_tool_failure on the
+        # uncited path without polluting constraint_violations[] HIGH-WARN
+        # semantics. Tracked as follow-up issue #118; behaviour preserved
+        # in this round so the merge is not blocked on a spec change.
+        try:
+            judge_result = _invoke_judge(
+                judge_fn,
+                allowed_judgments=_UNCITED_PATH_JUDGMENTS,
+                active_constraint_ids=applicable_ids,
+                claim_text=sentence["sentence_text"],
+                retrieved_excerpt=None,
+                anchor_kind=None,
+                anchor_value=None,
+                active_constraints=applicable_constraints,
+                judge_model=judge_model,
+            )
+        except JudgeInvocationError:
+            judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission). See issue #118 for proper audit_tool_failure surfacing on uncited path."}
+        if judge_result.get("judgment") == "VIOLATED":
+            constraint_violations.append(
+                _constraint_violation_entry(
+                    sentence=sentence,
+                    judge_result=judge_result,
+                    scoped_manifest_id=scoped_manifest_id_for_sentence,
+                    finding_id=f"CV-{cv_counter:03d}",
+                    judge_model=judge_model,
+                    now_iso=now_iso,
+                )
+            )
+            cv_counter += 1
+            constraint_violation_texts.add(sentence["sentence_text"])
+
+    # ---- Step 6 stream (uncited_assertion LOW-WARN advisory) ----
+    # D4-c detector positives only — uncited_sentences is the filtered set.
+    uncited_assertions: list[dict[str, Any]] = []
+    uncited_sentence_texts: set[str] = set()
+    ua_counter = 1
+
+    for sentence in uncited_sentences:
+        uncited_sentence_texts.add(sentence["sentence_text"])
+        # Always emit uncited_assertion (LOW-WARN advisory). CV-INV-4
+        # explicitly permits a sentence to appear in both uncited_assertions[]
+        # and constraint_violations[] simultaneously.
         uncited_assertions.append(
             _uncited_assertion_entry(
                 sentence=sentence,
@@ -1098,6 +1142,15 @@ def run_audit_pipeline(
             )
         )
         ua_counter += 1
+
+    # Also surface uncited_sentence_texts for any constraint-violation
+    # sentence text that wasn't a D4-c positive but did violate an MNC.
+    # The drift detector reads `uncited_sentence_texts` to apply the
+    # D-INV-4 uncited-takes-precedence rule; without including CV-text
+    # entries here, a sentence outside D4-c but matching a manifest claim
+    # would produce both a constraint_violation row AND a drift row,
+    # violating D-INV-4.
+    uncited_sentence_texts.update(constraint_violation_texts)
 
     # ---- Manifest set-diff drift detection ----
     cd_counter = 1

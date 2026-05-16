@@ -1050,5 +1050,45 @@ class TSSamplingInvariants(_LintTestBase):
         self.assertLintFinds(build_passport(samplings=[e]), invariant="S-INV-4")
 
 
+# ---------------------------------------------------------------------------
+# T-S9: Defensive guard against malformed passports.
+# Step 13 R4 codex P2 #4 — malformed aggregates (non-list / non-dict entries)
+# must surface as schema findings rather than crash the lint with an
+# AttributeError traceback.
+# ---------------------------------------------------------------------------
+
+
+class TS9MalformedPassportGuard(_LintTestBase):
+    """T-S9: passport with malformed aggregate yields schema finding, not crash."""
+
+    def test_claim_audit_results_with_non_dict_entry(self) -> None:
+        # Pre-R4: list of non-dict in claim_audit_results raised AttributeError
+        # because dict-only invariant loops ran .get() before noticing the shape.
+        body = build_passport()
+        body["claim_audit_results"] = ["this should be an object, not a string"]
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(
+            code,
+            1,
+            msg=f"expected clean lint failure on malformed aggregate; got exit={code}\nstderr:\n{err}",
+        )
+        self.assertNotIn(
+            "Traceback",
+            err,
+            msg=f"lint must not raise — got traceback:\n{err}",
+        )
+        self.assertIn("schema", out, msg=f"expected schema finding tag in stdout:\n{out}")
+
+    def test_claim_intent_manifests_as_dict_instead_of_list(self) -> None:
+        body = build_passport()
+        body["claim_intent_manifests"] = {"oops": "should be a list"}
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not raise:\n{err}")
+        self.assertIn("schema", out)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -797,6 +797,146 @@ class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
 
 
 # ---------------------------------------------------------------------------
+# T-P16 — Uncited stream split (Step 13 R4 codex P1 #2).
+# Constraint judging runs over the full uncited set; uncited_assertion[]
+# LOW-WARN advisory runs over the D4-c filtered subset.
+# ---------------------------------------------------------------------------
+
+
+class TP17ManifestMissingSentinelFallback(_PipelineTestBase):
+    """T-P17: MANIFEST-MISSING fallback path must not KeyError when caller
+    omits scoped_manifest_id from the citation dict.
+
+    Step 13 R4 codex P2 #3 — row builders previously did
+    `citation["scoped_manifest_id"]` directly; the caller's _written_scope_for
+    helper would default to SENTINEL_MANIFEST_ID but only AFTER row
+    construction, so the index lookup crashed before the sentinel could be
+    applied. Row builders now use .get(SENTINEL_MANIFEST_ID) so the fallback
+    path works end-to-end.
+    """
+
+    def test_citation_without_scoped_manifest_id_emits_sentinel_row(self) -> None:
+        citation = {
+            "claim_id": "C-001",
+            "claim_text": "Manifest-missing test claim.",
+            "ref_slug": "ref-1",
+            "anchor_kind": "page",
+            "anchor_value": "10",
+            # scoped_manifest_id deliberately omitted (MANIFEST-MISSING caller).
+        }
+        out = self.run_pipeline(
+            citations=[citation],
+            manifests=[],
+            judge_fn=_judge_supported(),
+        )
+        results = out["claim_audit_results"]
+        self.assertEqual(len(results), 1, "fallback row must emit, not KeyError")
+        # The caller's _written_scope_for would default to SENTINEL_MANIFEST_ID
+        # because no manifest binds this claim_id.
+        from scripts._claim_audit_constants import SENTINEL_MANIFEST_ID
+
+        self.assertEqual(results[0]["scoped_manifest_id"], SENTINEL_MANIFEST_ID)
+
+
+class TP16UncitedStreamSplit(_PipelineTestBase):
+    """T-P16: constraint stream (d) sees full uncited set; LOW-WARN sees D4-c only."""
+
+    def _build_manifest_with_mnc(self) -> dict[str, Any]:
+        return _manifest(
+            claims=[],
+            mncs=[
+                {
+                    "constraint_id": "MNC-1",
+                    "rule": "MUST NOT use causal language",
+                }
+            ],
+        )
+
+    def test_constraint_violation_outside_d4c_trigger_still_emitted(self) -> None:
+        # Sentence violates MNC ("caused improvement") but lacks D4-c trigger
+        # tokens (no quantifier, no "%", no "p<"). Pre-R4 the constraint stream
+        # would never see it.
+        manifest = self._build_manifest_with_mnc()
+        full_uncited = [
+            {
+                "sentence_text": "The program caused improvement.",
+                "section_path": "Discussion",
+                "scoped_manifest_id": MANIFEST_ID,
+            }
+        ]
+        d4c_uncited: list[dict[str, Any]] = []  # detector filtered this out
+
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=d4c_uncited,
+            all_uncited_sentences=full_uncited,
+            judge_fn=lambda **kw: {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "MNC-1",
+                "rationale": "Uses causal language 'caused'.",
+            },
+        )
+        cv = out["constraint_violations"]
+        self.assertEqual(len(cv), 1, "constraint judging must run over full uncited set")
+        self.assertEqual(cv[0]["violated_constraint_id"], "MNC-1")
+        # The LOW-WARN uncited_assertion is NOT emitted because the sentence
+        # was outside D4-c trigger filter.
+        self.assertEqual(out["uncited_assertions"], [])
+
+    def test_d4c_positive_emits_both_streams(self) -> None:
+        # Sentence is BOTH D4-c-positive AND violates MNC → both rows emit
+        # (CV-INV-4 explicitly permits the dual presence).
+        manifest = self._build_manifest_with_mnc()
+        d4c_sentence = {
+            "sentence_text": "The program caused 95% improvement.",
+            "section_path": "Discussion",
+            "scoped_manifest_id": MANIFEST_ID,
+            "trigger_tokens": ["95%"],
+        }
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=[d4c_sentence],
+            all_uncited_sentences=[d4c_sentence],
+            judge_fn=lambda **kw: {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "MNC-1",
+                "rationale": "Causal claim.",
+            },
+        )
+        self.assertEqual(len(out["constraint_violations"]), 1)
+        self.assertEqual(len(out["uncited_assertions"]), 1)
+
+    def test_backwards_compat_when_all_uncited_omitted(self) -> None:
+        # Legacy caller passes only uncited_sentences (the D4-c subset). The
+        # pipeline falls back to using that subset for stream (d) too — the
+        # constraint check is narrower than the R4 expansion, but the API
+        # surface still works.
+        manifest = self._build_manifest_with_mnc()
+        d4c_sentence = {
+            "sentence_text": "The program caused improvement (p<0.01).",
+            "section_path": "Discussion",
+            "scoped_manifest_id": MANIFEST_ID,
+            "trigger_tokens": ["p<0.01"],
+        }
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=[d4c_sentence],
+            # all_uncited_sentences intentionally omitted — defaults to
+            # uncited_sentences for backwards compat.
+            judge_fn=lambda **kw: {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "MNC-1",
+                "rationale": "Causal claim.",
+            },
+        )
+        self.assertEqual(len(out["constraint_violations"]), 1)
+        self.assertEqual(len(out["uncited_assertions"]), 1)
+
+
+# ---------------------------------------------------------------------------
 # T-P15 — Malformed cache hit → cache_corruption audit_tool_failure row.
 # Step 13 R3 codex P2 #4: persistent or injected cache entries can carry
 # malformed values; revalidate every hit before routing.

@@ -962,13 +962,36 @@ def _check_sampling_invariants(entries: list[dict[str, Any]]) -> list[Finding]:
 
 
 def _validate_against_schema(
-    entries: Iterable[dict[str, Any]],
+    entries: Any,
     schema_key: str,
     aggregate_label: str,
 ) -> list[Finding]:
+    """Validate every entry against the named schema.
+
+    Accepts `Any` rather than `Iterable[dict]` because callers may hand us a
+    malformed passport — `entries` could be non-list, or a list with
+    non-dict elements. Both must surface as a clean schema finding rather
+    than a TypeError / AttributeError traceback (Step 13 R4 codex P2 #4).
+    """
     findings: list[Finding] = []
+    if not isinstance(entries, list):
+        findings.append(
+            Finding(
+                "schema",
+                f"{aggregate_label}: aggregate must be a JSON array; got {type(entries).__name__}",
+            )
+        )
+        return findings
     validator = _validator(schema_key)
     for i, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            findings.append(
+                Finding(
+                    "schema",
+                    f"{aggregate_label}[{i}]: entry must be a JSON object; got {type(entry).__name__}",
+                )
+            )
+            continue
         for err in validator.iter_errors(entry):
             findings.append(
                 Finding(
@@ -986,23 +1009,46 @@ def _validate_against_schema(
 
 def validate_passport(body: dict[str, Any]) -> list[Finding]:
     """Run all 38 invariants + schema-shape against a passport body. Returns findings."""
-    manifests = body.get("claim_intent_manifests", []) or []
-    results = body.get("claim_audit_results", []) or []
-    uncited = body.get("uncited_assertions", []) or []
-    drifts = body.get("claim_drifts", []) or []
-    violations = body.get("constraint_violations", []) or []
-    samplings = body.get("audit_sampling_summaries", []) or []
+    # Raw aggregates — preserved for schema-shape validation below (which
+    # records findings on non-list / non-dict-entry inputs).
+    manifests_raw = body.get("claim_intent_manifests", []) or []
+    results_raw = body.get("claim_audit_results", []) or []
+    uncited_raw = body.get("uncited_assertions", []) or []
+    drifts_raw = body.get("claim_drifts", []) or []
+    violations_raw = body.get("constraint_violations", []) or []
+    samplings_raw = body.get("audit_sampling_summaries", []) or []
+
+    def _coerce_aggregate(value: Any) -> list[dict[str, Any]]:
+        """Reduce an aggregate to a list of dict entries.
+
+        Schema-shape failures are surfaced separately by
+        `_validate_against_schema` against the raw aggregate. The dict-only
+        invariant loops below attempt `.get()` / dictionary indexing —
+        passing a non-list or a list with non-dict entries would raise
+        AttributeError and crash the lint with a traceback instead of
+        returning a clean failure finding (Step 13 R4 codex P2 #4).
+        """
+        if not isinstance(value, list):
+            return []
+        return [e for e in value if isinstance(e, dict)]
+
+    manifests = _coerce_aggregate(manifests_raw)
+    results = _coerce_aggregate(results_raw)
+    uncited = _coerce_aggregate(uncited_raw)
+    drifts = _coerce_aggregate(drifts_raw)
+    violations = _coerce_aggregate(violations_raw)
+    samplings = _coerce_aggregate(samplings_raw)
 
     findings: list[Finding] = []
 
     # Schema-shape — gives the lint a chance to surface malformed entries with
     # an actionable rendering before cross-field checks fan out spurious tags.
-    findings.extend(_validate_against_schema(manifests, "claim_intent_manifest", "claim_intent_manifests"))
-    findings.extend(_validate_against_schema(results, "claim_audit_result", "claim_audit_results"))
-    findings.extend(_validate_against_schema(uncited, "uncited_assertion", "uncited_assertions"))
-    findings.extend(_validate_against_schema(drifts, "claim_drift", "claim_drifts"))
-    findings.extend(_validate_against_schema(violations, "constraint_violation", "constraint_violations"))
-    findings.extend(_validate_against_schema(samplings, "audit_sampling_summary", "audit_sampling_summaries"))
+    findings.extend(_validate_against_schema(manifests_raw, "claim_intent_manifest", "claim_intent_manifests"))
+    findings.extend(_validate_against_schema(results_raw, "claim_audit_result", "claim_audit_results"))
+    findings.extend(_validate_against_schema(uncited_raw, "uncited_assertion", "uncited_assertions"))
+    findings.extend(_validate_against_schema(drifts_raw, "claim_drift", "claim_drifts"))
+    findings.extend(_validate_against_schema(violations_raw, "constraint_violation", "constraint_violations"))
+    findings.extend(_validate_against_schema(samplings_raw, "audit_sampling_summary", "audit_sampling_summaries"))
 
     # Manifest invariants + index for downstream cross-array checks.
     findings.extend(_check_manifest_invariants(manifests))
