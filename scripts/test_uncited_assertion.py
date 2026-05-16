@@ -158,6 +158,41 @@ class TestDetectUncited(unittest.TestCase):
                     ),
                 )
 
+    def test_bare_integer_after_section_cue_is_not_quantifier(self) -> None:
+        """Bare integer after a section/table/figure cue → NOT a quantifier.
+
+        Regression for codex R4 P2-NEW-C: the R3 implementation only
+        applied the section-cue guard to dotted-pair matches like
+        `Section 3.1`. Bare-integer cue references like `Table 2`,
+        `Section 5`, `Figure 3`, `Step 4` slipped through and fired
+        false-positive LOW-WARN uncited findings. The agent prompt
+        section-cue list was the contract, the dotted-pair restriction
+        was a regression that R4 surfaced. R5 widens the cue guard to
+        bare integers, leaving only the version-prefix arm restricted
+        to dotted pairs (a bare `v 5 ...` is uncommon enough that
+        catching it would risk false negatives on real `version 5
+        showed gains` quantitative claims).
+        """
+        cue_ref_examples = [
+            "See Table 2 for descriptors.",
+            "Section 5 describes recruitment.",
+            "Refer to Figure 3 for the trend.",
+            "Step 4 outlines the survey protocol.",
+            "Chapter 2 introduces the framework.",
+            "Appendix 1 lists the excluded studies.",
+            "See § 7 for the calibration protocol.",
+        ]
+        for sentence in cue_ref_examples:
+            with self.subTest(sentence=sentence):
+                is_candidate, tokens = detect_uncited(sentence)
+                self.assertFalse(
+                    is_candidate,
+                    msg=(
+                        "section / table / figure / step cue + bare integer "
+                        f"is a structural ref, not a quantifier; got {tokens!r}"
+                    ),
+                )
+
     def test_ref_marker_rejects_non_citation_ref_comments(self) -> None:
         """Non-citation `ref:` HTML comments do NOT short-circuit candidates.
 

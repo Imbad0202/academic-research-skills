@@ -75,9 +75,18 @@ def _is_year_or_version_or_section(
     Four disqualifying shapes:
       1. 4-digit year in plausible academic range (1900-2099).
       2. Dotted X.Y.Z[.W...] form — version triple OR deep section number.
-      3. Dotted X.Y form preceded by a section cue (`section`, `figure`,
-         `chapter`, `table`, `fig.`, `tbl.`, `step`, `appendix`, `§`) OR
-         by `v` (version literal).
+      3. Bare integer OR dotted X.Y form preceded by a section cue
+         (`section`, `figure`, `chapter`, `table`, `fig.`, `tbl.`,
+         `step`, `appendix`, `§`) — covers `Table 2`, `Section 5`,
+         `Figure 3` (bare-integer cue refs) AND `Section 3.1`,
+         `Figure 3.2` (dotted-pair cue refs). The bare-integer arm was
+         missing in R3 and surfaced as codex R4 P2-NEW-C.
+      3b. Dotted X.Y form preceded by `v` (version literal) — distinct
+          from the section cue because a bare integer after `v ` is
+          ambiguous (`v 5 participants` is gibberish in academic prose,
+          so the version-prefix-bare-integer combination is not common
+          enough to warrant a guard arm; the dotted-pair branch keeps
+          `v3.7` rejection.
       4. Any match (bare or dotted) whose immediate left neighbour is a
          dotted-number suffix like `3.` — handles the case where Python's
          `\\b` does not fire between a letter and a digit (e.g. `v3.7.3`
@@ -95,13 +104,16 @@ def _is_year_or_version_or_section(
         # triples or deep section numbers; no quantitative claim ever
         # writes "50.3.1 of participants".
         return True
-    if RE_DOTTED_PAIR.match(match_text):
-        # Two-segment X.Y is ambiguous — `21.4 years` is a quantifier,
-        # `section 3.1` is a section reference. Disambiguate by left
-        # context (window of 24 chars before the match).
-        left = sentence[max(0, match_start - _GUARD_LEFT_WINDOW) : match_start]
-        if RE_SECTION_CUE.search(left) or RE_VERSION_PREFIX.search(left):
-            return True
+    # Branch 3: section cue applies to both bare integers and dotted pairs
+    # (`Table 2` and `Section 3.1` are both section refs); the version
+    # prefix applies only to dotted pairs (`v3.7` is a version literal,
+    # but bare `v 5` is uncommon enough that the false-negative cost
+    # outweighs the false-positive risk).
+    left = sentence[max(0, match_start - _GUARD_LEFT_WINDOW) : match_start]
+    if RE_SECTION_CUE.search(left):
+        return True
+    if RE_DOTTED_PAIR.match(match_text) and RE_VERSION_PREFIX.search(left):
+        return True
     # Branch 4: reattach a left-side dotted-number prefix that Python's \b
     # failed to separate. RE_NUMERIC_QUANTIFIER consumed every dotted
     # segment to the right of the prefix already, so the only token that
