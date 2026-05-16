@@ -208,6 +208,27 @@ jobs:
           pip install pytest
           pytest scripts/test_check_v3_7_3_three_layer_citation.py -v
 
+      - name: Run v3.8 claim_audit pipeline + schema + uncited-assertion + manifest tests (#103)
+        # Step 7 round-2 codex P2 closure: the v3.8 #103 test suite covers
+        # the L3 claim-faithfulness audit contract — schema validation
+        # (T-S1..T-S8 + the 4 manifest/uncited/drift/constraint invariant
+        # families), pipeline routing (T-P1..T-P11 §4 step 1-6), uncited
+        # token rule (T-U1..T-U5 D4-c three-condition detector), and
+        # manifest set-diff / constraint inheritance / MANIFEST-MISSING
+        # fallback (T-M1..T-M3 §7.3). Without this CI step the manifest
+        # emission contracts shipped in writing-stage agents could regress
+        # silently. Spec:
+        # docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md §7
+        env:
+          PYTHONPATH: .
+        run: |
+          python3 -m unittest \
+            scripts.test_claim_audit_schema \
+            scripts.test_claim_audit_pipeline \
+            scripts.test_uncited_assertion \
+            scripts.test_claim_intent_manifest \
+            -v
+
       - name: Run v3.7.1 audit_snapshot render-side Section 0 regression tests
         # PR #78 codex round-5 P2-7: lint enforces the static template
         # contract, but render_prompt is the runtime path that actually
