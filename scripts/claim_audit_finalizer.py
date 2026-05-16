@@ -27,7 +27,10 @@ import re
 from collections import Counter
 from typing import Any
 
-from scripts._claim_audit_constants import INV14_FAULT_CLASS_TAGS
+from scripts._claim_audit_constants import (
+    INV14_FAULT_CLASS_TAGS,
+    SENTINEL_MANIFEST_ID,
+)
 
 # ---------------------------------------------------------------------------
 # Severity tiers (per spec §5 finalizer matrix).
@@ -68,6 +71,10 @@ ANNOTATION_HIGH_WARN_CONSTRAINT_VIOLATION_UNCITED = (
 ANNOTATION_LOW_WARN_CLAIM_DRIFT = "[LOW-WARN-CLAIM-DRIFT — kind={drift_kind}]"
 ANNOTATION_SAMPLING = (
     "[CLAIM-AUDIT-SAMPLED — {audited_count}/{total_citation_count} audited]"
+)
+
+ANNOTATION_MANIFEST_MISSING = (
+    "[CLAIM-AUDIT-MANIFEST-MISSING — audit ran without pre-commitment baseline]"
 )
 
 # Set of annotation prefixes that `/ars-mark-read` CANNOT clear — structural
@@ -286,6 +293,29 @@ def apply_finalizer(passport: dict[str, list[dict[str, Any]]]) -> dict[str, Any]
             )
             if result["gate_refuse"]:
                 gate_refuse_reasons.append(result["annotation"])
+
+    # MANIFEST-MISSING paper-level advisory (spec §9 acceptance criterion;
+    # Step 8 codex R1 P2 closure). Fires when the audit ran without a
+    # pre-commitment baseline — both `claim_intent_manifests[]` is empty
+    # AND at least one claim_audit_result carries the sentinel scope. The
+    # second condition prevents firing on an empty passport (where there's
+    # nothing to surface a warning about). Always advisory; never
+    # gate-refuses (the audit completed, it just lacks the drift /
+    # constraint-inheritance signal a manifest would have provided).
+    if not passport.get("claim_intent_manifests"):
+        has_sentinel_row = any(
+            r.get("scoped_manifest_id") == SENTINEL_MANIFEST_ID
+            for r in passport.get("claim_audit_results", [])
+        )
+        if has_sentinel_row:
+            annotations.append(
+                {
+                    "aggregate": "paper_level",
+                    "entry": None,
+                    "annotation": ANNOTATION_MANIFEST_MISSING,
+                    "tier": TIER_LOW_WARN,
+                }
+            )
 
     return {
         "annotations": annotations,

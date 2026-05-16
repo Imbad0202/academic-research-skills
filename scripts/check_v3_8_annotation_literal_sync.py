@@ -42,6 +42,28 @@ FINALIZER_MODULE = REPO_ROOT / "scripts" / "claim_audit_finalizer.py"
 FORMATTER_AGENT = REPO_ROOT / "academic-paper" / "agents" / "formatter_agent.md"
 
 
+def _extract_refuse_block(formatter_text: str) -> str | None:
+    """Return the REFUSE-rules block text, or None if the marker is absent.
+
+    The block opens at the literal marker
+    `**REFUSE to emit final output**` (line bold in `formatter_agent.md`)
+    and ends at the next H2 or H1 heading. Numbered rules 1-10 live inside
+    this block — restricting the lint search here prevents the false PASS
+    where a HIGH-WARN literal appears in background prose / cross-reference
+    but is removed from the gate rules.
+    """
+    import re as _re
+
+    marker = "**REFUSE to emit final output**"
+    start = formatter_text.find(marker)
+    if start == -1:
+        return None
+    next_h = _re.compile(r"(?m)^#{1,2}[ \t]+")
+    nm = next_h.search(formatter_text, start + len(marker))
+    end = nm.start() if nm else len(formatter_text)
+    return formatter_text[start:end]
+
+
 def _annotation_prefix(annotation_literal: str) -> str:
     """Return the matchable prefix of the annotation literal.
 
@@ -120,10 +142,27 @@ def main() -> int:
         return 1
 
     formatter_text = FORMATTER_AGENT.read_text()
+    # Restrict the search to the REFUSE-list block so the lint actually
+    # proves the formatter's terminal hard gate refuses on each annotation
+    # — a literal that appears only in background prose or a cross-reference
+    # would not be enforced by the gate. Step 8 codex R1 P3 closure.
+    #
+    # The REFUSE block opens at `**REFUSE to emit final output**` and ends
+    # at the next H2 (`## `) or H1 (`# `) heading; numbered rules 1-10 live
+    # inside that block. If the marker is missing the lint fails closed.
+    refuse_block = _extract_refuse_block(formatter_text)
+    if refuse_block is None:
+        print(
+            f"[v3.8 annotation-sync] FAIL: REFUSE-list marker "
+            f"'**REFUSE to emit final output**' not found in {FORMATTER_AGENT.name}; "
+            f"cannot scope the sync check to the gate rules."
+        )
+        return 1
+
     missing: list[tuple[str, str]] = []
     for name, literal in sorted(constants.items()):
         prefix = _annotation_prefix(literal)
-        if prefix not in formatter_text:
+        if prefix not in refuse_block:
             missing.append((name, prefix))
 
     if missing:

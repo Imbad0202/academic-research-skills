@@ -469,6 +469,118 @@ class TF5Stage6Histogram(_FinalizerTestBase):
 
 
 # ---------------------------------------------------------------------------
+# T-F6 — MANIFEST-MISSING fallback emits a paper-level advisory annotation.
+# ---------------------------------------------------------------------------
+
+
+class TF6ManifestMissingAdvisory(_FinalizerTestBase):
+    """T-F6 (Step 8 codex R1 P2 closure): apply_finalizer surfaces the
+    MANIFEST-MISSING advisory when claim_intent_manifests is empty AND any
+    claim_audit_result row carries the sentinel scoped_manifest_id.
+
+    Spec §9 acceptance bullet: `claim_intent_manifest absent →
+    MANIFEST-MISSING advisory + fallback flow exercised in test`. Step 7
+    T-M2 pinned the pipeline-side invariants (sentinel propagation, all
+    six defect_stage paths still emit); the advisory surface itself lives
+    in the finalizer per spec §13 step 8 deliverable. Before this row, an
+    all-SUPPORTED MANIFEST-MISSING passport produced zero annotations —
+    the user lost the required warning that the audit ran without
+    pre-commitment baseline.
+    """
+
+    def test_empty_manifests_with_sentinel_rows_emits_advisory(self) -> None:
+        passport = {
+            "claim_intent_manifests": [],
+            "claim_audit_results": [
+                _result(
+                    judgment="SUPPORTED",
+                    defect_stage=None,
+                    ref_retrieval_method="api",
+                    scoped_manifest_id=SENTINEL_MANIFEST_ID,
+                )
+            ],
+            "uncited_assertions": [],
+            "claim_drifts": [],
+            "constraint_violations": [],
+            "audit_sampling_summaries": [],
+        }
+        out = apply_finalizer(passport)
+        manifest_missing_advisories = [
+            a for a in out["annotations"] if "MANIFEST-MISSING" in a["annotation"]
+        ]
+        self.assertEqual(
+            len(manifest_missing_advisories),
+            1,
+            "MANIFEST-MISSING fallback MUST emit exactly one paper-level advisory "
+            "when no manifests are present and at least one audit row carries the "
+            "sentinel scope (spec §9 acceptance criterion)",
+        )
+        advisory = manifest_missing_advisories[0]
+        self.assertEqual(advisory["tier"], TIER_LOW_WARN)
+        self.assertFalse(
+            out["gate_refuse"],
+            "MANIFEST-MISSING is advisory only — never gate-refuses",
+        )
+
+    def test_present_manifests_suppress_advisory(self) -> None:
+        # When manifests are present, the audit ran with a pre-commitment
+        # baseline — no MANIFEST-MISSING advisory should fire even if
+        # individual rows happen to carry sentinel scope (drifted-cited
+        # claims that the CO-2 fix sentinel-normalizes per row).
+        passport = {
+            "claim_intent_manifests": [
+                {
+                    "manifest_version": "1.0",
+                    "manifest_id": "M-2026-05-15T10:00:00Z-a1b2",
+                    "emitted_by": "synthesis_agent",
+                    "emitted_at": "2026-05-15T09:55:00Z",
+                    "claims": [],
+                    "manifest_negative_constraints": [],
+                }
+            ],
+            "claim_audit_results": [
+                _result(
+                    judgment="SUPPORTED",
+                    defect_stage=None,
+                    ref_retrieval_method="api",
+                    scoped_manifest_id=SENTINEL_MANIFEST_ID,
+                )
+            ],
+            "uncited_assertions": [],
+            "claim_drifts": [],
+            "constraint_violations": [],
+            "audit_sampling_summaries": [],
+        }
+        out = apply_finalizer(passport)
+        manifest_missing_advisories = [
+            a for a in out["annotations"] if "MANIFEST-MISSING" in a["annotation"]
+        ]
+        self.assertEqual(
+            manifest_missing_advisories,
+            [],
+            "MANIFEST-MISSING advisory MUST NOT fire when manifests are present "
+            "(even with individual sentinel rows from CO-2 normalization)",
+        )
+
+    def test_empty_manifests_no_results_no_advisory(self) -> None:
+        # MANIFEST-MISSING fires on the (empty manifests + sentinel rows
+        # exist) pair. If there are no audit rows at all, there's nothing
+        # to surface a warning about — the gate just sees an empty
+        # passport.
+        passport = {
+            "claim_intent_manifests": [],
+            "claim_audit_results": [],
+            "uncited_assertions": [],
+            "claim_drifts": [],
+            "constraint_violations": [],
+            "audit_sampling_summaries": [],
+        }
+        out = apply_finalizer(passport)
+        self.assertEqual(out["annotations"], [])
+        self.assertFalse(out["gate_refuse"])
+
+
+# ---------------------------------------------------------------------------
 # T-CO-1 — uncited sentence_text == manifest claim_text suppresses INTENDED_NOT_EMITTED.
 # ---------------------------------------------------------------------------
 

@@ -22,7 +22,10 @@ import textwrap
 import unittest
 from pathlib import Path
 
-from scripts.check_v3_8_annotation_literal_sync import _annotation_prefix
+from scripts.check_v3_8_annotation_literal_sync import (
+    _annotation_prefix,
+    _extract_refuse_block,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -65,6 +68,43 @@ class AnnotationPrefixHelperTest(unittest.TestCase):
             _annotation_prefix("[HIGH-WARN-FABRICATED-REFERENCE]"),
             "[HIGH-WARN-FABRICATED-REFERENCE",
         )
+
+
+class RefuseBlockExtractorTest(unittest.TestCase):
+    """Step 8 codex R1 P3 closure: lint scope restricted to REFUSE-rules block."""
+
+    def test_extracts_block_starting_at_refuse_marker(self) -> None:
+        sample = textwrap.dedent(
+            """\
+            ## Cite-Time Provenance Hard Gate
+
+            Some intro prose mentioning HIGH-WARN-CLAIM-NOT-SUPPORTED here.
+
+            **REFUSE to emit final output** when the draft contains any of:
+
+            1. Rule one.
+            6. A literal `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` annotation.
+
+            ## Output Format
+
+            Mentions HIGH-WARN-CLAIM-NOT-SUPPORTED outside the REFUSE block.
+            """
+        )
+        block = _extract_refuse_block(sample)
+        self.assertIsNotNone(block)
+        self.assertIn("[HIGH-WARN-CLAIM-NOT-SUPPORTED]", block)
+        # The intro mention before the REFUSE marker MUST be excluded.
+        self.assertNotIn(
+            "Some intro prose mentioning HIGH-WARN-CLAIM-NOT-SUPPORTED here.", block
+        )
+        # The Output Format mention after the next H2 MUST be excluded.
+        self.assertNotIn(
+            "Mentions HIGH-WARN-CLAIM-NOT-SUPPORTED outside the REFUSE block.", block
+        )
+
+    def test_returns_none_when_refuse_marker_absent(self) -> None:
+        sample = "## Some heading\n\nNo REFUSE-list marker anywhere.\n"
+        self.assertIsNone(_extract_refuse_block(sample))
 
 
 class LintScriptTest(unittest.TestCase):
