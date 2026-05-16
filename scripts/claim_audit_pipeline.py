@@ -630,18 +630,33 @@ def _detect_drifts(
     emitted_citations: list[dict[str, Any]],
     uncited_sentence_texts: set[str],
     constraint_absorbed_claim_ids: set[tuple[str, str]],
+    constraint_absorbed_manifest_scopes: set[str],
     now_iso: str,
     next_finding_id: Callable[[], str],
 ) -> list[dict[str, Any]]:
     """§4 step 5 manifest set-diff producing claim_drift entries.
 
     Precedence:
-      - T-P8: constraint-violation absorbs drift — no companion drift entry for
-        (scoped_manifest_id, claim_id) pairs already in
-        `constraint_absorbed_claim_ids`.
+      - T-P8 + Step 13 R5 codex P3: constraint-violation absorbs drift in
+        **full** for the violating manifest. `constraint_absorbed_claim_ids`
+        captures (manifest, declared-claim-id) pairs; `constraint_absorbed_manifest_scopes`
+        captures the manifest_id itself so a same-manifest citation with a
+        drifted (non-manifest) claim_id is also suppressed — preserves the
+        "absorbed in full" spec promise. A violation in manifest A does NOT
+        silence drift in manifest B.
       - T-P10 / D-INV-4: uncited sentence takes precedence over drift — no
         drift entry whose claim_text matches an uncited sentence_text.
+
+    MANIFEST-MISSING fallback (Step 13 R5 codex P2 #2): when no manifest
+    carries any claims, there's no pre-commitment baseline to drift FROM —
+    every emitted citation would be classified EMITTED_NOT_INTENDED, layering
+    spurious LOW-WARN noise on top of the MANIFEST-MISSING advisory the
+    formatter already surfaces. Short-circuit and return no drifts so the
+    fallback run remains audit-only.
     """
+    has_baseline = any((m.get("claims") or []) for m in manifests)
+    if not has_baseline:
+        return []
     drifts: list[dict[str, Any]] = []
 
     # Index emitted citations by (scoped_manifest_id, claim_id) — these are
@@ -663,6 +678,12 @@ def _detect_drifts(
     # (Step 13 R2 codex P2 finding).
     for m in manifests:
         mid = m.get("manifest_id")
+        # If this manifest had any constraint violation, absorb ALL of its
+        # drift — Step 13 R5 codex P3. The (mid, cid) pair-level absorption
+        # below is preserved for backwards compat, but the scope-level skip
+        # is the load-bearing rule per "absorbed in full".
+        if mid in constraint_absorbed_manifest_scopes:
+            continue
         for claim in m.get("claims", []) or []:
             cid = claim.get("claim_id")
             claim_text = claim.get("claim_text", "")
@@ -716,6 +737,12 @@ def _detect_drifts(
             continue
         c_scope = c.get("scoped_manifest_id", SENTINEL_MANIFEST_ID)
         c_claim_id = c.get("claim_id", "")
+        if c_scope in constraint_absorbed_manifest_scopes:
+            # Step 13 R5 codex P3 — manifest scope absorbed in full when any
+            # citation in it violated a negative constraint. Suppresses
+            # same-manifest drift for emitted citations whose claim_id was
+            # NOT in the manifest's declared claim set.
+            continue
         if (c_scope, c_claim_id) in constraint_absorbed_claim_ids:
             continue
         if text in uncited_sentence_texts:
@@ -875,6 +902,12 @@ def run_audit_pipeline(
     claim_audit_results: list[dict[str, Any]] = []
     constraint_violations: list[dict[str, Any]] = []
     constraint_absorbed_claim_ids: set[tuple[str, str]] = set()
+    # Step 13 R5 codex P3: track manifest_id scopes whose drift is absorbed
+    # "in full". A constraint violation in manifest M suppresses ALL of M's
+    # drift — declared claims (by id), the violating citation's pair (which
+    # may itself be drifted), AND any other emitted citation in M with a
+    # non-manifest claim_id.
+    constraint_absorbed_manifest_scopes: set[str] = set()
 
     def _written_scope_for(citation: dict[str, Any]) -> str:
         """Return the scoped_manifest_id that goes onto the claim_audit_result row.
@@ -1057,6 +1090,10 @@ def run_audit_pipeline(
             # so a drifted-yet-violated citation does not produce a
             # companion EMITTED_NOT_INTENDED row.
             constraint_absorbed_claim_ids.add((scoped_manifest_id, claim_id))
+            # Step 13 R5 codex P3 — record the full manifest scope so any
+            # other emitted citation in M with a drifted claim_id is also
+            # absorbed by the drift detector.
+            constraint_absorbed_manifest_scopes.add(scoped_manifest_id)
 
     # ---- Stream (d): uncited constraint judging over FULL uncited set ----
     # Step 13 R4 codex P1 #2: constraint judging MUST see every uncited
@@ -1172,6 +1209,7 @@ def run_audit_pipeline(
         emitted_citations=citations,
         uncited_sentence_texts=uncited_sentence_texts,
         constraint_absorbed_claim_ids=constraint_absorbed_claim_ids,
+        constraint_absorbed_manifest_scopes=constraint_absorbed_manifest_scopes,
         now_iso=now_iso,
         next_finding_id=_next_cd,
     )

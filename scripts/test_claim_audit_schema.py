@@ -1089,6 +1089,25 @@ class TS9MalformedPassportGuard(_LintTestBase):
         self.assertNotIn("Traceback", err, msg=f"lint must not raise:\n{err}")
         self.assertIn("schema", out)
 
+    def test_falsey_malformed_aggregate_does_not_bypass_schema(self) -> None:
+        # Step 13 R5 codex P2 #1: `body.get(k, []) or []` would silently
+        # convert a malformed `{}` / `null` / `0` / `""` value to an empty
+        # list and skip schema validation. Each falsey-but-malformed shape
+        # must surface as a schema finding.
+        for malformed in ({}, None, 0, ""):
+            with self.subTest(malformed=malformed):
+                body = build_passport()
+                body["claim_audit_results"] = malformed
+                path = write_passport(self.tmp, body)
+                code, out, err = run_lint(path)
+                self.assertEqual(
+                    code,
+                    1,
+                    msg=f"expected exit=1 for malformed={malformed!r}; got {code}\nstdout:\n{out}\nstderr:\n{err}",
+                )
+                self.assertIn("schema", out, msg=f"expected schema finding for malformed={malformed!r}:\n{out}")
+                self.assertNotIn("Traceback", err, msg=f"lint must not raise for malformed={malformed!r}:\n{err}")
+
 
 if __name__ == "__main__":
     unittest.main()

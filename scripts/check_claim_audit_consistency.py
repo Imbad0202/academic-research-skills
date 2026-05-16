@@ -1010,13 +1010,17 @@ def _validate_against_schema(
 def validate_passport(body: dict[str, Any]) -> list[Finding]:
     """Run all 38 invariants + schema-shape against a passport body. Returns findings."""
     # Raw aggregates — preserved for schema-shape validation below (which
-    # records findings on non-list / non-dict-entry inputs).
-    manifests_raw = body.get("claim_intent_manifests", []) or []
-    results_raw = body.get("claim_audit_results", []) or []
-    uncited_raw = body.get("uncited_assertions", []) or []
-    drifts_raw = body.get("claim_drifts", []) or []
-    violations_raw = body.get("constraint_violations", []) or []
-    samplings_raw = body.get("audit_sampling_summaries", []) or []
+    # records findings on non-list / non-dict-entry inputs). MUST NOT use
+    # `or []` because a falsey but malformed value such as `{}`, `null`, `0`,
+    # or `""` would silently be replaced with an empty list and bypass the
+    # schema gate (Step 13 R5 codex P2 #1). Only a missing key falls back to
+    # the empty-list default.
+    manifests_raw = body.get("claim_intent_manifests", [])
+    results_raw = body.get("claim_audit_results", [])
+    uncited_raw = body.get("uncited_assertions", [])
+    drifts_raw = body.get("claim_drifts", [])
+    violations_raw = body.get("constraint_violations", [])
+    samplings_raw = body.get("audit_sampling_summaries", [])
 
     def _coerce_aggregate(value: Any) -> list[dict[str, Any]]:
         """Reduce an aggregate to a list of dict entries.

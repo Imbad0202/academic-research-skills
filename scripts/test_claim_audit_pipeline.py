@@ -803,6 +803,176 @@ class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
 # ---------------------------------------------------------------------------
 
 
+class TP19ConstraintAbsorptionFullManifestScope(_PipelineTestBase):
+    """T-P19: Step 13 R5 codex P3 — when a citation in manifest M violates a
+    negative constraint, ALL of M's drift findings are absorbed, including
+    same-manifest citations whose claim_id is NOT in M's declared claim set.
+
+    Pre-fix: pair-level absorption (M, cid_in_manifest) plus the violating
+    citation's own pair. A different same-manifest emitted citation with
+    claim_id=C-999 (drifted) still produced EMITTED_NOT_INTENDED — that
+    contradicted the "absorbed in full" precedence rule.
+    """
+
+    def test_drifted_claim_id_in_same_manifest_as_violation_absorbed(self) -> None:
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Manifest claim about X.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                }
+            ],
+            mncs=[
+                {
+                    "constraint_id": "MNC-1",
+                    "rule": "MUST NOT use causal language",
+                }
+            ],
+        )
+        # Citation 1 violates the MNC on a declared claim_id (C-001).
+        violating = _citation(
+            claim_id="C-001",
+            claim_text="Manifest claim about X.",
+            ref_slug="ref-violator",
+        )
+        # Citation 2 is in the SAME manifest but has a drifted (non-manifest)
+        # claim_id. Pre-fix: produced an extra EMITTED_NOT_INTENDED row.
+        drifted_sibling = _citation(
+            claim_id="C-999",
+            claim_text="Sibling claim with drifted id.",
+            ref_slug="ref-sibling",
+        )
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            ct = kwargs.get("claim_text", "")
+            if "X" in ct:
+                return {
+                    "judgment": "VIOLATED",
+                    "violated_constraint_id": "MNC-1",
+                    "rationale": "Causal language violates MNC-1.",
+                }
+            return {"judgment": "SUPPORTED", "rationale": "Cited page supports."}
+
+        out = self.run_pipeline(
+            citations=[violating, drifted_sibling],
+            manifests=[manifest],
+            judge_fn=judge_fn,
+        )
+        drifts = [d for d in out["claim_drifts"] if d["drift_kind"] == "EMITTED_NOT_INTENDED"]
+        self.assertEqual(
+            drifts,
+            [],
+            f"Same-manifest drifted claim_id MUST be absorbed alongside the constraint violation; got {len(drifts)} drift row(s): {drifts!r}",
+        )
+        # The constraint violation itself still emits.
+        cv = [
+            r for r in out["claim_audit_results"]
+            if r.get("defect_stage") == "negative_constraint_violation"
+        ]
+        self.assertEqual(len(cv), 1, "constraint violation row MUST emit")
+
+    def test_drift_in_other_manifest_not_absorbed_by_violation_in_first(self) -> None:
+        # Cross-manifest absorption is forbidden — manifest A violation MUST
+        # NOT silence drift in manifest B.
+        manifest_a = _manifest(
+            manifest_id="M-aaaa-A",
+            claims=[],
+            mncs=[
+                {"constraint_id": "MNC-1", "rule": "MUST NOT use causal language"}
+            ],
+        )
+        manifest_b = _manifest(
+            manifest_id="M-bbbb-B",
+            claims=[
+                {
+                    "claim_id": "C-100",
+                    "claim_text": "Manifest B intended claim.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                }
+            ],
+        )
+        violating_a = _citation(
+            claim_id="C-001",
+            scoped_manifest_id="M-aaaa-A",
+            claim_text="Causal claim in A.",
+        )
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            ct = kwargs.get("claim_text", "")
+            if "A" in ct:
+                return {
+                    "judgment": "VIOLATED",
+                    "violated_constraint_id": "MNC-1",
+                    "rationale": "Causal.",
+                }
+            return {"judgment": "SUPPORTED", "rationale": "ok"}
+
+        out = self.run_pipeline(
+            citations=[violating_a],
+            manifests=[manifest_a, manifest_b],
+            judge_fn=judge_fn,
+        )
+        # Manifest B's C-100 is NOT emitted → INTENDED_NOT_EMITTED MUST still fire.
+        intended_drift_b = [
+            d for d in out["claim_drifts"]
+            if d["drift_kind"] == "INTENDED_NOT_EMITTED" and d.get("scoped_manifest_id") == "M-bbbb-B"
+        ]
+        self.assertEqual(
+            len(intended_drift_b),
+            1,
+            "manifest B drift MUST NOT be absorbed by violation in manifest A",
+        )
+
+
+class TP18ManifestMissingNoSpuriousDrift(_PipelineTestBase):
+    """T-P18: MANIFEST-MISSING run (manifests=[]) produces no claim_drifts[]
+    rows. There's no pre-commitment baseline to diff against; emitting
+    EMITTED_NOT_INTENDED for every citation would be spurious noise on top
+    of the MANIFEST-MISSING advisory the formatter already surfaces.
+    Step 13 R5 codex P2 #2.
+    """
+
+    def test_no_manifest_no_drift_rows(self) -> None:
+        from scripts._claim_audit_constants import SENTINEL_MANIFEST_ID
+
+        citation = {
+            "claim_id": "C-001",
+            "scoped_manifest_id": SENTINEL_MANIFEST_ID,
+            "claim_text": "Some supported claim.",
+            "ref_slug": "ref-1",
+            "anchor_kind": "page",
+            "anchor_value": "10",
+            "section_path": "Discussion",
+        }
+        out = self.run_pipeline(
+            citations=[citation],
+            manifests=[],
+            judge_fn=_judge_supported(),
+        )
+        self.assertEqual(
+            out["claim_drifts"],
+            [],
+            f"MANIFEST-MISSING run must not emit drift rows; got {out['claim_drifts']!r}",
+        )
+        # Audit row still emits — the fallback is audit-only, not no-op.
+        self.assertEqual(len(out["claim_audit_results"]), 1)
+
+    def test_manifest_present_but_empty_claims_no_drift(self) -> None:
+        # A manifest with zero claims is equivalent to no baseline; drift
+        # detection should still short-circuit.
+        empty_manifest = _manifest(claims=[])
+        citation = _citation(claim_text="Drifted claim text.")
+        out = self.run_pipeline(
+            citations=[citation],
+            manifests=[empty_manifest],
+            judge_fn=_judge_supported(),
+        )
+        self.assertEqual(out["claim_drifts"], [])
+
+
 class TP17ManifestMissingSentinelFallback(_PipelineTestBase):
     """T-P17: MANIFEST-MISSING fallback path must not KeyError when caller
     omits scoped_manifest_id from the citation dict.
