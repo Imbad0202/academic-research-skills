@@ -46,6 +46,7 @@ try:
         ANNOTATION_CLAIM_AUDIT_AMBIGUOUS,
         ANNOTATION_HIGH_WARN_CLAIM_NOT_SUPPORTED,
         ANNOTATION_LOW_WARN_UNVERIFIED,
+        ANNOTATION_UNCITED_ASSERTION,
         apply_finalizer,
     )
     from scripts.uncited_assertion_detector import detect_uncited_assertions
@@ -245,8 +246,13 @@ def _run_e2e(
     c5_judgment: str = "VIOLATED",
     paywall_claim_ids: tuple[str, ...] = ("C-004",),
     extra_sentences: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """Drive detector → pipeline → finalizer; return finalizer output."""
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Drive detector → pipeline → finalizer; return (passport, finalizer_out).
+
+    Returning both surfaces lets row-level contract assertions inspect the
+    underlying `claim_audit_results[]` while finalizer-level assertions
+    inspect the matrix outcome (codex Round-1 P2 contract-pinning closure).
+    """
     citations = _five_citations()
     manifests = [_manifest_with_5_claims_and_mnc()]
     retrieve_fn = _make_retrieve_fn(paywall_claim_ids=paywall_claim_ids)
@@ -255,7 +261,7 @@ def _run_e2e(
     # Spec §13 step 9 contract: every e2e scenario exercises the full
     # detector → pipeline → finalizer chain. Always invoke the detector even
     # when there are no extra sentences — passing through `[]` keeps Scenario
-    # A/B pinned to the wired path (advisory Q-P2-1).
+    # A/B pinned to the wired path (/simplify advisory Q-P2-1).
     raw_sentences = list(extra_sentences or [])
     uncited_sentences = detect_uncited_assertions(raw_sentences)
 
@@ -273,7 +279,7 @@ def _run_e2e(
     # apply_finalizer reads from the passport-shaped dict; the pipeline's
     # output is exactly that shape (claim_audit_results / uncited_assertions /
     # claim_drifts / constraint_violations / audit_sampling_summaries).
-    return apply_finalizer(passport)
+    return passport, apply_finalizer(passport)
 
 
 class _E2ETestBase(unittest.TestCase):
@@ -296,7 +302,7 @@ class _E2ETestBase(unittest.TestCase):
 
 class E2EScenarioARefuses(_E2ETestBase):
     def test_gate_refuses_when_c3_misused_and_c5_violates(self) -> None:
-        out = _run_e2e()
+        _, out = _run_e2e()
 
         self.assertTrue(
             out["gate_refuse"],
@@ -304,7 +310,7 @@ class E2EScenarioARefuses(_E2ETestBase):
         )
 
     def test_blockers_are_exactly_c3_and_c5(self) -> None:
-        out = _run_e2e()
+        _, out = _run_e2e()
         reasons = out["gate_refuse_reasons"]
 
         # c3 surfaces as [HIGH-WARN-CLAIM-NOT-SUPPORTED]; c5 as the
@@ -318,7 +324,7 @@ class E2EScenarioARefuses(_E2ETestBase):
         )
 
     def test_c1_emits_no_annotation_c2_and_c4_pass_gate(self) -> None:
-        out = _run_e2e()
+        _, out = _run_e2e()
         annotations = [a["annotation"] for a in out["annotations"]]
 
         # c1 SUPPORTED → no annotation row at all.
@@ -330,6 +336,54 @@ class E2EScenarioARefuses(_E2ETestBase):
         self.assertIn(ANNOTATION_LOW_WARN_UNVERIFIED, annotations)
         self.assertNotIn(ANNOTATION_LOW_WARN_UNVERIFIED, out["gate_refuse_reasons"])
 
+        # Round-1 codex P2 + Gemini P1 closure: pin the exact annotation
+        # count so a regression that emits an extra row for c1 SUPPORTED
+        # (or duplicates c2/c4 advisories) cannot pass this test silently.
+        # Expected 4 annotations: c2 AMBIGUOUS + c3 NOT-SUPPORTED +
+        # c4 UNVERIFIED + c5 NEGATIVE-CONSTRAINT.
+        self.assertEqual(
+            len(annotations),
+            4,
+            f"c1 SUPPORTED must emit zero annotations; got {annotations!r}",
+        )
+
+    def test_citation_row_contracts_match_spec_7_6_matrix(self) -> None:
+        """Round-1 codex P2 closure: pin each citation's underlying row.
+
+        Annotation-string parity is necessary but not sufficient — `C-003`
+        could regress from `defect_stage=source_description` to another
+        source-level UNSUPPORTED defect and still emit the same
+        `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` annotation. Assert the row
+        shape directly so the spec §7.6 (judgment, defect_stage,
+        ref_retrieval_method, violated_constraint_id) tuple is pinned
+        per-citation.
+        """
+        passport, _ = _run_e2e()
+        rows = {r["claim_id"]: r for r in passport["claim_audit_results"]}
+
+        self.assertEqual(set(rows), {"C-001", "C-002", "C-003", "C-004", "C-005"})
+
+        self.assertEqual(rows["C-001"]["judgment"], "SUPPORTED")
+        self.assertIsNone(rows["C-001"]["defect_stage"])
+        self.assertEqual(rows["C-001"]["ref_retrieval_method"], "api")
+
+        self.assertEqual(rows["C-002"]["judgment"], "AMBIGUOUS")
+        self.assertEqual(rows["C-002"]["defect_stage"], "source_description")
+        self.assertEqual(rows["C-002"]["ref_retrieval_method"], "api")
+
+        self.assertEqual(rows["C-003"]["judgment"], "UNSUPPORTED")
+        self.assertEqual(rows["C-003"]["defect_stage"], "source_description")
+        self.assertEqual(rows["C-003"]["ref_retrieval_method"], "api")
+
+        self.assertEqual(rows["C-004"]["judgment"], "RETRIEVAL_FAILED")
+        self.assertEqual(rows["C-004"]["defect_stage"], "not_applicable")
+        self.assertEqual(rows["C-004"]["ref_retrieval_method"], "failed")
+
+        self.assertEqual(rows["C-005"]["judgment"], "UNSUPPORTED")
+        self.assertEqual(rows["C-005"]["defect_stage"], "negative_constraint_violation")
+        self.assertEqual(rows["C-005"]["ref_retrieval_method"], "api")
+        self.assertEqual(rows["C-005"]["violated_constraint_id"], "MNC-1")
+
 
 # ---------------------------------------------------------------------------
 # Scenario B — corrected fixture passes the gate.
@@ -338,7 +392,7 @@ class E2EScenarioARefuses(_E2ETestBase):
 
 class E2EScenarioBPasses(_E2ETestBase):
     def test_correcting_c3_and_c5_clears_refusal(self) -> None:
-        out = _run_e2e(c3_judgment="SUPPORTED", c5_judgment="NOT_VIOLATED")
+        _, out = _run_e2e(c3_judgment="SUPPORTED", c5_judgment="NOT_VIOLATED")
 
         self.assertFalse(
             out["gate_refuse"],
@@ -348,13 +402,26 @@ class E2EScenarioBPasses(_E2ETestBase):
         self.assertEqual(out["gate_refuse_reasons"], [])
 
     def test_corrected_run_keeps_c2_advisory_and_c4_unverified(self) -> None:
-        out = _run_e2e(c3_judgment="SUPPORTED", c5_judgment="NOT_VIOLATED")
+        _, out = _run_e2e(c3_judgment="SUPPORTED", c5_judgment="NOT_VIOLATED")
         annotations = [a["annotation"] for a in out["annotations"]]
 
         # c2 AMBIGUOUS + c4 paywall persist independently of c3/c5 fixes —
         # the corrections only touch c3 + c5 judgments.
         self.assertIn(ANNOTATION_CLAIM_AUDIT_AMBIGUOUS, annotations)
         self.assertIn(ANNOTATION_LOW_WARN_UNVERIFIED, annotations)
+
+        # Round-1 Gemini P1 closure: pin the exact annotation count so a
+        # regression that re-emits c3/c5 annotations after correction (or
+        # spuriously adds rows for c1) cannot pass silently. After
+        # correction Scenario B carries exactly 2 annotations: c2
+        # AMBIGUOUS + c4 UNVERIFIED. c1/c3/c5 SUPPORTED → zero annotations.
+        self.assertEqual(
+            len(annotations),
+            2,
+            f"corrected fixture must emit exactly 2 advisory annotations; got {annotations!r}",
+        )
+        self.assertNotIn(ANNOTATION_HIGH_WARN_CLAIM_NOT_SUPPORTED, annotations)
+        self.assertNotIn(ANNOTATION_C5_GATE, annotations)
 
 
 # ---------------------------------------------------------------------------
@@ -399,22 +466,49 @@ class E2EAdjacentClauseFilter(_E2ETestBase):
         # assertion adds an advisory row but does not gate-refuse on its own;
         # c3 + c5 still drive the gate. This confirms detector wiring does
         # not regress the 5-citation contract.
+        filtered_text = "Of the corpus, 67% were preprints."
+        surviving_text = "Several teams reported similar gains."
         extra = [
             {
-                "sentence_text": "Of the corpus, 67% were preprints.",
+                "sentence_text": filtered_text,
                 "section_path": "3. Results > 3.1 Overview",
                 "adjacent_text": "Smith et al. <!--ref:smith2024preprints-->.",
             },
             {
-                "sentence_text": "Several teams reported similar gains.",
+                "sentence_text": surviving_text,
                 "section_path": "3. Results > 3.2 Replication",
             },
         ]
-        out = _run_e2e(extra_sentences=extra)
+        passport, out = _run_e2e(extra_sentences=extra)
         self.assertTrue(out["gate_refuse"])  # c3 + c5 still drive the gate
         # Exactly two HIGH-WARN reasons — uncited advisory does not promote
         # to gate-refuse.
         self.assertEqual(len(out["gate_refuse_reasons"]), 2)
+
+        # Round-1 codex P2 closure: pin that the detector → pipeline wiring
+        # actually consumed the surviving sentence and the finalizer emitted
+        # an [UNCITED-ASSERTION] row keyed off the right aggregate. Without
+        # these the test would still pass if `run_audit_pipeline` silently
+        # stopped processing `uncited_sentences` or `apply_finalizer`
+        # dropped its `classify_uncited_assertion` routing.
+        self.assertEqual(
+            len(passport["uncited_assertions"]),
+            1,
+            f"surviving sentence must produce exactly 1 uncited_assertion row; "
+            f"got {passport['uncited_assertions']!r}",
+        )
+        self.assertEqual(passport["uncited_assertions"][0]["sentence_text"], surviving_text)
+        # Filtered sentence MUST NOT appear in the passport.
+        for row in passport["uncited_assertions"]:
+            self.assertNotEqual(row["sentence_text"], filtered_text)
+        # Finalizer routes the row through classify_uncited_assertion with
+        # aggregate="uncited_assertions" and annotation [UNCITED-ASSERTION].
+        uncited_anns = [
+            a for a in out["annotations"]
+            if a.get("aggregate") == "uncited_assertions"
+        ]
+        self.assertEqual(len(uncited_anns), 1)
+        self.assertEqual(uncited_anns[0]["annotation"], ANNOTATION_UNCITED_ASSERTION)
 
 
 if __name__ == "__main__":  # pragma: no cover

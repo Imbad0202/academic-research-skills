@@ -248,7 +248,7 @@ Diff streams:
 Three-condition token rule. A sentence in the emitted draft becomes an `uncited_assertion` candidate when ALL THREE of the following hold:
 
 1. **Quantifier or empirical-claim verb present**: numbers / percentages / explicit quantifiers (`50%`, `two-thirds`, `most`, `several`), OR verbs like `showed`, `demonstrated`, `observed`, `proved`, `confirmed`.
-2. **No `<!--ref:slug-->` marker on this sentence OR its adjacent clause**. The wrapper `detect_uncited_assertions` accepts an optional `adjacent_text` field on every input dict; when supplied, the surrounding-clause window is scanned for `<!--ref:slug-->` markers with the same condition-2 regex. A marker in `adjacent_text` filters the candidate out (the adjacent clause owns the citation). Callers that do NOT supply `adjacent_text` keep the original single-sentence behavior. The Step 9 e2e wiring in `scripts/test_e2e_claim_audit.py` exercises both paths.
+2. **No `<!--ref:slug-->` marker on this sentence AND no marker on its adjacent clause**. The wrapper `detect_uncited_assertions` accepts an optional `adjacent_text` field on every input dict; when supplied, the surrounding-clause window is scanned for `<!--ref:slug-->` markers with the same condition-2 regex. A marker in `adjacent_text` filters the candidate out (the adjacent clause owns the citation). Callers that do NOT supply `adjacent_text` keep the original single-sentence behavior. The Step 9 e2e wiring in `scripts/test_e2e_claim_audit.py` exercises both paths.
 3. **Not a definitional sentence** (sentences containing `refers to` / `is defined as` / `we define` / `for the purposes of` are excluded — definitions don't need refs).
 
 Pseudocode (matches the production implementation at `scripts/uncited_assertion_detector.py`):
