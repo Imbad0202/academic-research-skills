@@ -645,15 +645,24 @@ Spec: [`docs/design/2026-05-15-issue-111-slr-lineage-emission-design.md`](../doc
 
 ### Claim-Faithfulness Audit Aggregates (v3.8)
 
-v3.8 introduces five passport aggregates capturing L3 (claim-faithfulness) audit output. They ride in their own arrays on the audit run record rather than under a root `material_passport` schema (per v3.8 spec §8 explicit scope), and are emitted only when `ARS_CLAIM_AUDIT=1` is set:
+v3.8 introduces six passport aggregates around the L3 (claim-faithfulness) audit. They ride in their own arrays on the audit run record rather than under a root `material_passport` schema (per v3.8 spec §8 explicit scope), and only the four audit-output aggregates are gated on `ARS_CLAIM_AUDIT=1`; the writer-side manifest aggregate and the sampling-summary record are independent.
+
+**Writer-side (pre-commitment baseline — NOT gated on ARS_CLAIM_AUDIT):**
+
+- [`shared/contracts/passport/claim_intent_manifest.schema.json`](contracts/passport/claim_intent_manifest.schema.json) — Stage-4 draft claim manifest. Producer: `synthesis_agent` / `draft_writer_agent` / `report_compiler_agent` emit one entry each. Consumer: the audit agent reads them for the D6 set-diff; adapters that preserve passports for a later audit pass MUST preserve this aggregate regardless of whether the audit ran in the producing session.
+
+**Audit output (gated on ARS_CLAIM_AUDIT=1):**
 
 - [`shared/contracts/passport/claim_audit_result.schema.json`](contracts/passport/claim_audit_result.schema.json) — per-citation judgment + retrieval method + defect stage
-- [`shared/contracts/passport/claim_intent_manifest.schema.json`](contracts/passport/claim_intent_manifest.schema.json) — Stage-4 draft claim manifest produced by `synthesis_agent` / `draft_writer_agent` / `report_compiler_agent`
 - [`shared/contracts/passport/claim_drift.schema.json`](contracts/passport/claim_drift.schema.json) — per-claim manifest set-diff records (D6 set-of-text semantics)
 - [`shared/contracts/passport/uncited_assertion.schema.json`](contracts/passport/uncited_assertion.schema.json) — assertions present in prose without citation anchor
 - [`shared/contracts/passport/constraint_violation.schema.json`](contracts/passport/constraint_violation.schema.json) — negative-constraint violations against retrieved excerpt
 
-Cross-field invariants (INV-1..INV-18 / M-INV-1..M-INV-4 / U-INV-1..U-INV-4 / D-INV-1..D-INV-4 / CV-INV-1..CV-INV-4) are lint-enforced by `scripts/check_claim_audit_consistency.py` because the conditional matrix relating judgment / audit_status / defect_stage / ref_retrieval_method exceeds what JSON Schema can express. Producer: `claim_ref_alignment_audit_agent` (`academic-pipeline/agents/`). Consumer: `formatter_agent` REFUSE rules 6-10 (see v3.8 spec §5 mode flag rationale). Default OFF for v3.8.0 — ramp-on plan deferred to post-calibration evidence.
+**Sampling transparency (when audited_count < total_citation_count):**
+
+- `audit_sampling_summaries[]` — one entry per audit pass when `len(citations) > max_claims_per_paper` triggers stratified sampling. S-INV-1..S-INV-4 invariants (audited_count == |audited_indices|, count ≤ cap, count ≤ total, indices strictly ascending without duplicates). Schema is inline in `scripts/check_claim_audit_consistency.py` (no separate shipped schema file at v3.8.0); drives the paper-level `[CLAIM-AUDIT-SAMPLED — k/N audited]` formatter annotation. Adapters preserving audit runs MUST keep these entries for the transparency record.
+
+Cross-field invariants (INV-1..INV-18 / M-INV-1..M-INV-4 / U-INV-1..U-INV-4 / D-INV-1..D-INV-4 / CV-INV-1..CV-INV-4 / S-INV-1..S-INV-4) are lint-enforced by `scripts/check_claim_audit_consistency.py` because the conditional matrix relating judgment / audit_status / defect_stage / ref_retrieval_method exceeds what JSON Schema can express. Audit-side producer: `claim_ref_alignment_audit_agent` (`academic-pipeline/agents/`). Consumer: `formatter_agent` REFUSE rules 6-10 (see v3.8 spec §5 mode flag rationale). Default OFF for v3.8.0 — ramp-on plan deferred to post-calibration evidence.
 
 Spec: [`docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md`](../docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md) + decision doc [`2026-05-15-issue-103-claim-alignment-audit-decision.md`](../docs/design/2026-05-15-issue-103-claim-alignment-audit-decision.md) (D1-D6 settled).
 
