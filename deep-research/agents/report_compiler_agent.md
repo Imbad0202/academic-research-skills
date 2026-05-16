@@ -255,3 +255,42 @@ This is the deep-research analogue of the academic-paper formatter_agent's `[UNV
 **Scope of the self-gate:** anchor-presence-and-kind only. The compiler does NOT validate quote content, page-number existence, or any other anchor-value semantics — those are downstream audit concerns (v3.8 L3 audit scope). The self-gate's purpose is to ensure the locator CHANNEL is populated in standalone mode where no other gate exists; verifying the channel CONTENT is faithful to the cited source is out of scope.
 
 This closes the standalone-mode bypass: codex round-7 F17 observed that standalone deep-research output had no NO-LOCATOR enforcement layer — the v3.7.3 hard-gate lived only in the pipeline + academic-paper paths. The round-8 F21 amendment restricts the self-gate to standalone mode so it does not interfere with the pipeline orchestrator's downstream finalizer behavior.
+
+## Claim Intent Manifest Emission (v3.8)
+
+Pre-commitment baseline read by the v3.8 `claim_ref_alignment_audit_agent`. External motivation: Zhao et al. arXiv:2605.07723 (2026-05) §1 + Li et al. RubricEM arXiv:2605.10899 (Borrows 1 + 2). Spec: `docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md` §3.2 + §4 step 5. Schema: `shared/contracts/passport/claim_intent_manifest.schema.json` (the source of truth — this section narrates only the emission protocol).
+
+Before compiling the first prose block of the report, append ONE `claim_intent_manifests[]` entry to the Material Passport listing the substantive claims the compiled report intends to make and any author-declared "must not" rules. The audit agent reads this baseline to run the three-set diff (intended ∩ emitted ∩ supported) per spec §4 step 5 (D6).
+
+Canonical example (single manifest with one MNC and one claim-level NC):
+
+```json
+{
+  "manifest_version": "1.0",
+  "manifest_id": "M-2026-05-15T10:15:00Z-e5f6",
+  "emitted_by": "report_compiler_agent",
+  "emitted_at": "2026-05-15T10:15:00Z",
+  "claims": [
+    {
+      "claim_id": "C-001",
+      "claim_text": "Preprint hallucinations survive into the published record at 85.3%.",
+      "intended_evidence_kind": "empirical",
+      "planned_refs": ["zhao2026"],
+      "negative_constraints": [
+        {"constraint_id": "NC-C001-1", "rule": "No causal claims about LLM authorship."}
+      ]
+    }
+  ],
+  "manifest_negative_constraints": [
+    {"constraint_id": "MNC-1", "rule": "No unqualified causal language across the report."}
+  ]
+}
+```
+
+Three firm rules:
+
+- **R-L3-2-A (one-shot pre-commitment):** Emit exactly ONE manifest entry per compiler invocation, BEFORE the first prose block. No later mutation, no append, no re-emission within the same invocation. Drafting that introduces a claim not in the manifest produces `claim_drifts[]` entry with `drift_kind=EMITTED_NOT_INTENDED` downstream — that is the design, not a contract violation. The manifest is the pre-commitment artifact the audit diffs against; rewriting it mid-draft erases the signal.
+- **R-L3-2-B (no audit responsibility):** The compiler emits manifests; it does NOT detect drift, re-judge supported / unsupported, or read other manifests. The §"Manifest cross-reference (D6)" set-diff lives in `claim_ref_alignment_audit_agent.md`. Mirrors the v3.6.7 partial-inversion discipline: narrative-side emits, audit-side reads. Standalone-mode runs (the previous section's self-gate path) still emit a manifest — the audit agent is the pipeline-mode consumer, but the manifest itself is mode-agnostic; the orchestrator drops it when no downstream audit runs.
+- **R-L3-2-C (no frontmatter reading):** Generate `claim_text`, `intended_evidence_kind`, `planned_refs`, and any `negative_constraints[].rule` values from the corpus + prompt context already provided. You MUST NOT read entry frontmatter to discover candidate claims — the same partial-inversion rule that gates anchor selection in v3.7.3 R-L3-1-C. The orchestrator allocates a fresh `manifest_id` per invocation (M-INV-4); never copy a `manifest_id` from a sibling manifest.
+
+The compiler's job still ends at emission. The audit agent reads the manifest downstream and runs the manifest set-diff, constraint-set assembly (§4 step 3), and drift / constraint-violation routing. Manifest-side mutation by this compiler would erase the pre-commitment signal the audit depends on.

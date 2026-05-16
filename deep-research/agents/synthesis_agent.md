@@ -218,3 +218,42 @@ Three firm rules:
 URL-encoding for `quote:` values uses standard percent-encoding (`%20` for space, `%2C` for comma, `%3A` for colon, etc.) **AND additionally percent-encodes any consecutive run of two or more hyphen characters: `--` MUST be written as `%2D%2D`** (and `---` as `%2D%2D%2D`, etc.). Standard RFC 3986 encoding treats `-` as an unreserved character and does NOT encode it, but a quote containing `--` (e.g., from an em-dash, a divider, or a nested HTML comment opener) would leave a literal `--` in the anchor value that prematurely closes the HTML comment. A single hyphen between word characters (e.g., `AI-generated`, `well-known`) is safe and may remain raw. Always percent-encode space, comma, colon, AND any consecutive-hyphen run. Never rely on the absence of `-->` in the quoted text. v3.7.3 gemini review F1 + codex round-6 F15 closure (prompt-vs-lint alignment).
 
 The agent's job still ends at emission. The agent does NOT post-process or audit its own anchors. The cite_provenance_finalizer_agent reads `<!--anchor:...-->` markers downstream, applies the 5-cell matrix, and mutates them in place.
+
+## Claim Intent Manifest Emission (v3.8)
+
+Pre-commitment baseline read by the v3.8 `claim_ref_alignment_audit_agent`. External motivation: Zhao et al. arXiv:2605.07723 (2026-05) §1 + Li et al. RubricEM arXiv:2605.10899 (Borrows 1 + 2). Spec: `docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md` §3.2 + §4 step 5. Schema: `shared/contracts/passport/claim_intent_manifest.schema.json` (the source of truth — this section narrates only the emission protocol).
+
+Before drafting the first prose block of the synthesis output, append ONE `claim_intent_manifests[]` entry to the Material Passport listing the substantive claims the synthesis intends to make and any author-declared "must not" rules. The audit agent reads this baseline to run the three-set diff (intended ∩ emitted ∩ supported) per spec §4 step 5 (D6).
+
+Canonical example (single manifest with one MNC and one claim-level NC):
+
+```json
+{
+  "manifest_version": "1.0",
+  "manifest_id": "M-2026-05-15T09:55:00Z-a1b2",
+  "emitted_by": "synthesis_agent",
+  "emitted_at": "2026-05-15T09:55:00Z",
+  "claims": [
+    {
+      "claim_id": "C-001",
+      "claim_text": "Preprint hallucinations survive into the published record at 85.3%.",
+      "intended_evidence_kind": "empirical",
+      "planned_refs": ["zhao2026"],
+      "negative_constraints": [
+        {"constraint_id": "NC-C001-1", "rule": "No causal claims about LLM authorship."}
+      ]
+    }
+  ],
+  "manifest_negative_constraints": [
+    {"constraint_id": "MNC-1", "rule": "No unqualified causal language across the synthesis."}
+  ]
+}
+```
+
+Three firm rules:
+
+- **R-L3-2-A (one-shot pre-commitment):** Emit exactly ONE manifest entry per agent invocation, BEFORE the first prose block. No later mutation, no append, no re-emission within the same invocation. Drafting that introduces a claim not in the manifest produces `claim_drifts[]` entry with `drift_kind=EMITTED_NOT_INTENDED` downstream — that is the design, not a contract violation. The manifest is the pre-commitment artifact the audit diffs against; rewriting it mid-draft erases the signal.
+- **R-L3-2-B (no audit responsibility):** The synthesis agent emits manifests; it does NOT detect drift, re-judge supported / unsupported, or read other manifests. The §"Manifest cross-reference (D6)" set-diff lives in `claim_ref_alignment_audit_agent.md`. Mirrors the v3.6.7 partial-inversion discipline: narrative-side emits, audit-side reads.
+- **R-L3-2-C (no frontmatter reading):** Generate `claim_text`, `intended_evidence_kind`, `planned_refs`, and any `negative_constraints[].rule` values from the corpus + prompt context already provided. You MUST NOT read entry frontmatter to discover candidate claims — the same partial-inversion rule that gates anchor selection in v3.7.3 R-L3-1-C. The orchestrator allocates a fresh `manifest_id` per invocation (M-INV-4); never copy a `manifest_id` from a sibling manifest.
+
+The agent's job still ends at emission. The audit agent reads the manifest downstream and runs the manifest set-diff, constraint-set assembly (§4 step 3), and drift / constraint-violation routing. Manifest-side mutation by this agent would erase the pre-commitment signal the audit depends on.
