@@ -66,6 +66,20 @@ LINE_BUDGET_V3_7_1_STEP_3B = 40
 # section is larger than v3.7.1 Step 3b.
 LINE_BUDGET_V3_7_3_EXTENSION = 60
 
+# v3.8 additionally ships the `### 3.6 Claim-Faithfulness Audit Gate
+# (v3.8)` subsection per spec
+#   docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md §5
+# The subsection adds the 8-row finalizer matrix + orchestrator dispatch
+# wiring + mode flag + Stage-6 histogram + cross-references for the v3.8
+# L3 claim-faithfulness audit. External motivation: Zhao et al.
+# arXiv:2605.07723 (2026-05). Measured at first-write: 53 lines (heading
+# + matrix + bullets + cross-refs). Budget includes ~7 lines headroom
+# for codex-round prose adjustments; v3.8 matrix prose is more compact
+# than v3.7.3 because the spec section already bears the full table
+# explanation — orchestrator §3.6 only restates the bare table + mode
+# flag + handoff bullets.
+LINE_BUDGET_V3_8_AUDIT_GATE = 60
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -215,6 +229,39 @@ def _measure_finalizer_block_lines(text: str) -> int:
     return len(text[m.start():end].splitlines())
 
 
+def _measure_v3_8_audit_gate_block_lines(text: str) -> int:
+    """Return the number of lines in the v3.8 §3.6 Claim-Faithfulness Audit
+    Gate subsection (`### 3.6 Claim-Faithfulness Audit Gate (v3.8)` H3 block).
+
+    v3.8 adds §3.6 as the orchestrator handoff slot between the v3.7.x
+    finalizer pass and the formatter hard gate. Like the v3.7.1 / v3.7.3
+    blocks, the v3.8 block has its own scope and MUST be subtracted from
+    the v3.6.7 Phase 6.6 +60 budget. Spec:
+      docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md §5
+
+    Returns 0 if the v3.8 H3 heading is absent (e.g. when Step 8 has not
+    yet shipped on a given branch).
+
+    The block-end anchor matches the next H1, H2, OR H3 (`#{1,3} `) so the
+    measurer reads exactly the §3.6 H3 block. v3.7.x extension measurers
+    use `#{1,2}` because those blocks are H2 — H3 internals are part of
+    their scope. §3.6 is itself an H3, so the next H3 closes it.
+    """
+    import re as _re
+    anchor = _re.compile(
+        r"(?m)^[ \t]*###[ \t]+3\.6[ \t]+Claim-Faithfulness Audit Gate[ \t]+\(v3\.8\)[^\n]*$"
+    )
+    m = anchor.search(text)
+    if m is None:
+        return 0
+    next_h = _re.compile(r"(?m)^[ \t]*#{1,3}[ \t]+")
+    head_eol = text.find("\n", m.end())
+    search_start = (head_eol + 1) if head_eol >= 0 else len(text)
+    nm = next_h.search(text, search_start)
+    end = nm.start() if nm else len(text)
+    return len(text[m.start():end].splitlines())
+
+
 def _measure_v3_7_3_extension_block_lines(text: str) -> int:
     """Return the number of lines in the v3.7.3 finalizer extension
     subsection (`## Cite-Time Provenance Finalizer — v3.7.3 extension ...`
@@ -272,10 +319,11 @@ class Phase66LineBudgetTest(unittest.TestCase):
         total_lines = len(text.splitlines())
         step_3b_lines = _measure_finalizer_block_lines(text)
         v3_7_3_lines = _measure_v3_7_3_extension_block_lines(text)
-        # v3.6.7-only line count: total minus v3.7.1 Step 3b AND v3.7.3
-        # finalizer extension subsections (each has its own dedicated
-        # budget test).
-        v367_line_count = total_lines - step_3b_lines - v3_7_3_lines
+        v3_8_lines = _measure_v3_8_audit_gate_block_lines(text)
+        # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
+        # finalizer extension, AND v3.8 §3.6 audit-gate subsections
+        # (each has its own dedicated budget test).
+        v367_line_count = total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
             v367_line_count,
@@ -283,8 +331,9 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"Phase 6.6 line budget exceeded (v3.6.7-only scope): "
             f"orchestrator prompt is {total_lines} lines, of which "
             f"{step_3b_lines} are in the v3.7.1 Step 3b finalizer "
-            f"subsection and {v3_7_3_lines} are in the v3.7.3 finalizer "
-            f"extension subsection; v3.6.7-attributed lines = "
+            f"subsection, {v3_7_3_lines} are in the v3.7.3 finalizer "
+            f"extension subsection, and {v3_8_lines} are in the v3.8 "
+            f"§3.6 audit-gate subsection; v3.6.7-attributed lines = "
             f"{v367_line_count} exceeds {ceiling} (baseline "
             f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "
             f"{LINE_BUDGET_OVER_BASELINE}). Tighten the §3.5 Audit "
@@ -360,6 +409,41 @@ class V373ExtensionLineBudgetTest(unittest.TestCase):
             f"{LINE_BUDGET_V3_7_3_EXTENSION} lines (measured: "
             f"{block_lines}). Tighten the subsection or raise the "
             f"`LINE_BUDGET_V3_7_3_EXTENSION` constant with rationale.",
+        )
+
+
+class V38AuditGateLineBudgetTest(unittest.TestCase):
+    """Test 7 — v3.8 §3.6 Claim-Faithfulness Audit Gate block within
+    `LINE_BUDGET_V3_8_AUDIT_GATE` line budget.
+
+    Dedicated budget test for the `### 3.6 Claim-Faithfulness Audit Gate
+    (v3.8)` H3 subsection. Measures ONLY this block's lines, decoupled
+    from the v3.6.7 Phase 6.6 budget AND the v3.7.x subsection budgets.
+    External motivation: Zhao et al. arXiv:2605.07723 (2026-05) +
+    Li et al. RubricEM arXiv:2605.10899. Spec:
+      docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md §5
+
+    If a future v3.8 cascade legitimately requires more lines, raise
+    `LINE_BUDGET_V3_8_AUDIT_GATE` explicitly and document the rationale.
+    """
+
+    def test_v3_8_audit_gate_block_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_v3_8_audit_gate_block_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "v3.8 §3.6 audit-gate subsection missing from "
+            "pipeline_orchestrator_agent.md (expected H3 heading "
+            "'### 3.6 Claim-Faithfulness Audit Gate (v3.8)').",
+        )
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_V3_8_AUDIT_GATE,
+            f"v3.8 §3.6 audit-gate block exceeds "
+            f"{LINE_BUDGET_V3_8_AUDIT_GATE} lines (measured: "
+            f"{block_lines}). Tighten the subsection or raise the "
+            f"`LINE_BUDGET_V3_8_AUDIT_GATE` constant with rationale.",
         )
 
 

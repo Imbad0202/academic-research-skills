@@ -320,6 +320,18 @@ def _uncited_assertion_entry(
             "explicitly); the schema's U-INV-2 minItems=1 invariant is "
             "an audit-quality contract, not a placeholder slot."
         )
+    manifest_claim_id = sentence.get("manifest_claim_id")
+    # Step 7 codex R1 CO-3 / U-INV-4 pair rule: scoped_manifest_id is the
+    # disambiguator for a specific manifest claim. When no claim_id is bound
+    # (the uncited sentence is in scope for a manifest-level MNC but is NOT
+    # itself a manifest claim — runtime contract for stream-d uncited
+    # constraint-violation routing), the uncited_assertion row MUST drop the
+    # manifest scope. The companion constraint_violations[] row owns the
+    # manifest pointer in that case; carrying scope on both rows would fail
+    # U-INV-4 (manifest_claim_id null ↔ scoped_manifest_id null).
+    scoped_manifest_id = (
+        sentence.get("scoped_manifest_id") if manifest_claim_id is not None else None
+    )
     return {
         "finding_id": finding_id,
         "sentence_text": sentence["sentence_text"],
@@ -328,8 +340,8 @@ def _uncited_assertion_entry(
         "detected_at": now_iso,
         "rule_version": UNCITED_RULE_VERSION,
         "upstream_owner_agent": sentence.get("upstream_owner_agent"),
-        "manifest_claim_id": sentence.get("manifest_claim_id"),
-        "scoped_manifest_id": sentence.get("scoped_manifest_id"),
+        "manifest_claim_id": manifest_claim_id,
+        "scoped_manifest_id": scoped_manifest_id,
     }
 
 
@@ -433,14 +445,24 @@ def _detect_drifts(
         mid = m.get("manifest_id")
         for claim in m.get("claims", []) or []:
             cid = claim.get("claim_id")
+            claim_text = claim.get("claim_text", "")
             if (mid, cid) in emitted_pairs:
                 continue
             if (mid, cid) in constraint_absorbed_claim_ids:
                 continue
+            if claim_text in uncited_sentence_texts:
+                # Step 7 codex R1 CO-1 / D-INV-4 cross-aggregate exclusivity:
+                # when a manifest claim appears as an uncited sentence in the
+                # draft, the uncited_assertion row takes priority. Emitting an
+                # INTENDED_NOT_EMITTED drift alongside would fail the D-INV-4
+                # consistency lint (one finding per sentence across both
+                # aggregates). Mirrors the EMITTED_NOT_INTENDED skip in the
+                # loop below.
+                continue
             drifts.append(
                 _claim_drift_entry(
                     drift_kind="INTENDED_NOT_EMITTED",
-                    claim_text=claim.get("claim_text", ""),
+                    claim_text=claim_text,
                     finding_id=next_finding_id(),
                     now_iso=now_iso,
                     manifest_claim_id=cid,
@@ -586,21 +608,43 @@ def run_audit_pipeline(
     constraint_violations: list[dict[str, Any]] = []
     constraint_absorbed_claim_ids: set[tuple[str, str]] = set()
 
+    def _written_scope_for(citation: dict[str, Any]) -> str:
+        """Return the scoped_manifest_id that goes onto the claim_audit_result row.
+
+        Step 7 codex R1 CO-2: a drifted-cited citation's `claim_id` is not in
+        any manifest, but the citation still arrives with the active
+        `scoped_manifest_id` for runtime constraint resolution (so global MNCs
+        still apply per M-INV-3). The row written to the passport, however,
+        MUST carry the sentinel manifest id whenever the (scope, claim_id)
+        pair is not present in the manifest index — otherwise INV-15 dangling
+        check rejects the passport. Runtime constraint lookup stays untouched
+        (it reads citation.scoped_manifest_id directly); only the persisted
+        row is normalized.
+        """
+        runtime_scope = citation.get("scoped_manifest_id", SENTINEL_MANIFEST_ID)
+        cid = citation.get("claim_id")
+        if runtime_scope == SENTINEL_MANIFEST_ID:
+            return SENTINEL_MANIFEST_ID
+        if (runtime_scope, cid) in claim_by_mc_id:
+            return runtime_scope
+        return SENTINEL_MANIFEST_ID
+
     for citation in audited_citations:
         anchor_kind = citation.get("anchor_kind")
         scoped_manifest_id = citation.get("scoped_manifest_id", SENTINEL_MANIFEST_ID)
         claim_id = citation.get("claim_id")
+        written_scope = _written_scope_for(citation)
 
         # Step 1 — anchor=none firm-rule short-circuit.
         if anchor_kind == "none":
-            claim_audit_results.append(
-                _anchorless_entry(
-                    citation,
-                    audit_run_id=audit_run_id,
-                    now_iso=now_iso,
-                    judge_model=judge_model,
-                )
+            entry = _anchorless_entry(
+                citation,
+                audit_run_id=audit_run_id,
+                now_iso=now_iso,
+                judge_model=judge_model,
             )
+            entry["scoped_manifest_id"] = written_scope
+            claim_audit_results.append(entry)
             continue
 
         # Step 2 — retrieval.
@@ -609,16 +653,16 @@ def run_audit_pipeline(
         excerpt = retrieval.get("retrieved_excerpt")
 
         if method in {"failed", "not_found", "audit_tool_failure"}:
-            claim_audit_results.append(
-                _retrieval_failure_entry(
-                    citation,
-                    method=method,
-                    audit_run_id=audit_run_id,
-                    now_iso=now_iso,
-                    judge_model=judge_model,
-                    fault_class=retrieval.get("fault_class"),
-                )
+            entry = _retrieval_failure_entry(
+                citation,
+                method=method,
+                audit_run_id=audit_run_id,
+                now_iso=now_iso,
+                judge_model=judge_model,
+                fault_class=retrieval.get("fault_class"),
             )
+            entry["scoped_manifest_id"] = written_scope
+            claim_audit_results.append(entry)
             continue
 
         if method not in {"api", "manual_pdf"}:
@@ -665,6 +709,7 @@ def run_audit_pipeline(
             now_iso=now_iso,
             judge_model=judge_model,
         )
+        entry["scoped_manifest_id"] = written_scope
         claim_audit_results.append(entry)
 
         # Precedence rule 1: cited constraint violation absorbs the drift signal.
@@ -754,9 +799,15 @@ def run_audit_pipeline(
         cd_counter += 1
         return out
 
+    # Step 7 codex R1 CO-4: drift detection's emitted-side index MUST use
+    # the FULL citation list, not the sampled subset. Sampling caps judge
+    # invocations (spec §4 step 3) — it does NOT shrink the prose visible to
+    # the manifest set-diff. Passing audited_citations here made every
+    # unsampled-but-present citation look dropped from manifest, producing
+    # false INTENDED_NOT_EMITTED rows in proportion to (total - cap).
     claim_drifts = _detect_drifts(
         manifests=manifests,
-        emitted_citations=audited_citations,
+        emitted_citations=citations,
         uncited_sentence_texts=uncited_sentence_texts,
         constraint_absorbed_claim_ids=constraint_absorbed_claim_ids,
         now_iso=now_iso,
