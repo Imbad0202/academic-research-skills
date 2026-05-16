@@ -326,12 +326,26 @@ class TM1ThreeSetDiff(_ManifestTestBase):
             "supported∩intended must equal the 1 SUPPORTED claim that is also in manifest",
         )
 
+        # Judge invocation count — one call per emitted citation. Pins
+        # idempotence: the same fixture should not silently re-judge the
+        # same (claim_text, ref, anchor) tuple twice in a single run.
+        self.assertEqual(
+            len(judge_fn.captured),
+            4,
+            "expected exactly one judge call per emitted citation (4 citations)",
+        )
+
         drifts = out["claim_drifts"]
         drift_kinds = sorted(d["drift_kind"] for d in drifts)
         self.assertIn("EMITTED_NOT_INTENDED", drift_kinds)
         self.assertIn("INTENDED_NOT_EMITTED", drift_kinds)
 
         # ---- INTENDED_NOT_EMITTED: C-003 dropped ----
+        # Cardinalities below are derived from setup (3 manifest claims;
+        # 4 emitted citations; 2 of them drift; 1 manifest claim dropped),
+        # NOT a policy on how many drifts may emit. The set assertions
+        # that follow pin the content invariant; exact counts only guard
+        # against over-emission of duplicate rows.
         intended_not_emitted = [
             d for d in drifts if d["drift_kind"] == "INTENDED_NOT_EMITTED"
         ]
