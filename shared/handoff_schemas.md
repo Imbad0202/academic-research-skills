@@ -643,6 +643,20 @@ slr_lineage: true   # any pipeline stage was deep-research in systematic-review 
 
 Spec: [`docs/design/2026-05-15-issue-111-slr-lineage-emission-design.md`](../docs/design/2026-05-15-issue-111-slr-lineage-emission-design.md). Conformance test: `scripts/test_slr_lineage_emission.py`.
 
+### Claim-Faithfulness Audit Aggregates (v3.8)
+
+v3.8 introduces five passport aggregates capturing L3 (claim-faithfulness) audit output. They ride in their own arrays on the audit run record rather than under a root `material_passport` schema (per v3.8 spec §8 explicit scope), and are emitted only when `ARS_CLAIM_AUDIT=1` is set:
+
+- [`shared/contracts/passport/claim_audit_result.schema.json`](contracts/passport/claim_audit_result.schema.json) — per-citation judgment + retrieval method + defect stage
+- [`shared/contracts/passport/claim_intent_manifest.schema.json`](contracts/passport/claim_intent_manifest.schema.json) — Stage-4 draft claim manifest produced by `synthesis_agent` / `draft_writer_agent` / `report_compiler_agent`
+- [`shared/contracts/passport/claim_drift.schema.json`](contracts/passport/claim_drift.schema.json) — per-claim manifest set-diff records (D6 set-of-text semantics)
+- [`shared/contracts/passport/uncited_assertion.schema.json`](contracts/passport/uncited_assertion.schema.json) — assertions present in prose without citation anchor
+- [`shared/contracts/passport/constraint_violation.schema.json`](contracts/passport/constraint_violation.schema.json) — negative-constraint violations against retrieved excerpt
+
+Cross-field invariants (INV-1..INV-18 / M-INV-1..M-INV-4 / U-INV-1..U-INV-4 / D-INV-1..D-INV-4 / CV-INV-1..CV-INV-4) are lint-enforced by `scripts/check_claim_audit_consistency.py` because the conditional matrix relating judgment / audit_status / defect_stage / ref_retrieval_method exceeds what JSON Schema can express. Producer: `claim_ref_alignment_audit_agent` (`academic-pipeline/agents/`). Consumer: `formatter_agent` REFUSE rules 6-10 (see v3.8 spec §5 mode flag rationale). Default OFF for v3.8.0 — ramp-on plan deferred to post-calibration evidence.
+
+Spec: [`docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md`](../docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md) + decision doc [`2026-05-15-issue-103-claim-alignment-audit-decision.md`](../docs/design/2026-05-15-issue-103-claim-alignment-audit-decision.md) (D1-D6 settled).
+
 ---
 
 ## Schema 10: Style Profile (intake -> draft_writer / report_compiler)

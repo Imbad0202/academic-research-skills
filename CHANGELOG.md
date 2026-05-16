@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+(empty — next development cycle)
+
+---
+
+## [3.8.0] - 2026-05-16 — L3 Claim-Faithfulness Locator + Audit (v3.7.3 + #103 paired milestone)
+
+v3.7.3 + v3.8 close the L3 (claim-faithfulness) gap end-to-end. v3.7.3 ships the locator infrastructure (every citation carries a three-layer anchor so the audit can fetch the cited passage); v3.8 ships the audit pass that consumes those anchors, judges whether the cited source supports the claim, and gate-refuses HIGH-WARN violations at the formatter terminal hard gate. The release also bundles 5 audit-trail-shipped feature PRs accumulated on main since v3.7.0 (#104 / #105 / #108 / #111 / #115). External motivation: Zhao et al. arXiv:2605.07723 (2026-05) — 146,932 hallucinated citations across arXiv / bioRxiv / SSRN / PMC in 2025.
+
 ### #103 — v3.8 claim ↔ reference faithfulness audit agent (2026-05-16)
 
 **Parent issue:** [#103](https://github.com/Imbad0202/academic-research-skills/issues/103) — closes the L3 (claim-faithfulness) gap left open by v3.7.3 (which closed the locator-channel half). Spec: `docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md` + decision doc `docs/design/2026-05-15-issue-103-claim-alignment-audit-decision.md` (D1-D6 settled).
