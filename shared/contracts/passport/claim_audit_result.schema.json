@@ -83,12 +83,12 @@
     },
     "upstream_owner_agent": {
       "enum": [
-        "bibliography_agent",
         "synthesis_agent",
         "draft_writer_agent",
         "report_compiler_agent",
         null
-      ]
+      ],
+      "description": "Prose-producing agent that owns the audited claim. Mirrors emitted_by in claim_intent_manifest.schema.json; bibliography_agent is excluded (it never emits claim_audit_results[] entries)."
     },
     "violated_constraint_id": {
       "type": ["string", "null"],

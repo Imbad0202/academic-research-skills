@@ -224,17 +224,27 @@ jobs:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_v3_8_annotation_literal_sync -v
 
-      - name: Run v3.8 claim_audit pipeline + schema + uncited-assertion + manifest + finalizer tests (#103)
-        # Step 7 round-2 codex P2 closure (manifest tests) + Step 8 (finalizer
-        # tests): the v3.8 #103 test suite covers the L3 claim-faithfulness
-        # audit contract — schema validation (T-S1..T-S8 + the 4
-        # manifest/uncited/drift/constraint invariant families), pipeline
-        # routing (T-P1..T-P11 §4 step 1-6), uncited token rule (T-U1..T-U5
-        # D4-c three-condition detector), manifest set-diff / constraint
-        # inheritance / MANIFEST-MISSING fallback (T-M1..T-M3 §7.3), and
-        # the 8-row finalizer matrix (T-F1a..h + T-F2..T-F5 §7.5) plus the
-        # T-CO-1..T-CO-4 carry-over fixes from Step 7 round 1 codex review.
-        # Without this CI step the audit contracts shipped from Step 4-8
+      - name: Run v3.8 claim_audit pipeline + schema + uncited-assertion + manifest + finalizer + e2e + calibration tests (#103)
+        # The v3.8 #103 test suite covers the L3 claim-faithfulness audit
+        # contract end-to-end:
+        #   - Step 4-6: schema validation (T-S1..T-S8 + the 4 manifest /
+        #     uncited / drift / constraint invariant families), pipeline
+        #     routing (T-P1..T-P11 §4 step 1-6), uncited token rule
+        #     (T-U1..T-U5 D4-c three-condition detector).
+        #   - Step 7 (round-2 codex P2 closure): manifest set-diff +
+        #     constraint inheritance + MANIFEST-MISSING fallback
+        #     (T-M1..T-M3 §7.3) + T-CO-1..T-CO-4 carry-overs.
+        #   - Step 8: 8-row finalizer matrix (T-F1a..h + T-F2..T-F5 §7.5).
+        #   - Step 9: end-to-end synthetic-paper test (5 citations, 1
+        #     fabricated; spec §7.6) — exercises detector → pipeline →
+        #     finalizer chain.
+        #   - Step 10: calibration gate (T-C1 FNR<0.15 + FPR<0.10 against
+        #     20-tuple gold set; T-C2 per-class reporting; T-C3 gold-set
+        #     shape integrity; spec §7.7).
+        #   - Step 11 (regression baseline): all 7 modules run together
+        #     against the full diff to guarantee zero regression before
+        #     codex review (spec §7.8 + §13 step 11).
+        # Without this CI step the audit contracts shipped from Steps 4-10
         # could regress silently. Spec:
         # docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md §7
         env:

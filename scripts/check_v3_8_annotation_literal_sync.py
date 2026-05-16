@@ -34,12 +34,15 @@ Lint exit codes:
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FINALIZER_MODULE = REPO_ROOT / "scripts" / "claim_audit_finalizer.py"
 FORMATTER_AGENT = REPO_ROOT / "academic-paper" / "agents" / "formatter_agent.md"
+
+_HEADING_AFTER_REFUSE = re.compile(r"(?m)^#{1,2}[ \t]+")
 
 
 def _extract_refuse_block(formatter_text: str) -> str | None:
@@ -52,14 +55,11 @@ def _extract_refuse_block(formatter_text: str) -> str | None:
     where a HIGH-WARN literal appears in background prose / cross-reference
     but is removed from the gate rules.
     """
-    import re as _re
-
     marker = "**REFUSE to emit final output**"
     start = formatter_text.find(marker)
     if start == -1:
         return None
-    next_h = _re.compile(r"(?m)^#{1,2}[ \t]+")
-    nm = next_h.search(formatter_text, start + len(marker))
+    nm = _HEADING_AFTER_REFUSE.search(formatter_text, start + len(marker))
     end = nm.start() if nm else len(formatter_text)
     return formatter_text[start:end]
 
@@ -110,10 +110,11 @@ _annotation_prefix = _annotation_match_token
 def _extract_finalizer_high_warn_constants(source: str) -> dict[str, str]:
     """Parse the finalizer module source for `ANNOTATION_HIGH_WARN_*` constants.
 
-    Uses runtime exec to evaluate the string literals as defined — the
-    constants are plain string assignments, so AST-walking + literal_eval
-    would also work. exec keeps the lint simple and matches the runtime
-    truth (the same string Python sees at import time).
+    Imports `scripts.claim_audit_finalizer` and reads each
+    `ANNOTATION_HIGH_WARN_*` attribute via `dir()` + `getattr()`. Reading the
+    runtime module (instead of AST-walking the source) ensures the lint
+    sees the exact string Python sees at import time, including any future
+    derived/templated values.
 
     Filters to `ANNOTATION_HIGH_WARN_*` names only. The five canonical
     HIGH-WARN classes are:

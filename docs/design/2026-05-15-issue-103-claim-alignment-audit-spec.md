@@ -25,7 +25,7 @@ Numbered list aligned to the implementation surfaces in #103 issue body + decisi
 7. **`academic-pipeline/references/claim_audit_calibration_protocol.md`** — new file (modeled on `shared/contracts/reviewer/` calibration convention).
 8. **`scripts/check_claim_audit_consistency.py`** — new lint enforcing per-claim invariants (anchor presence, defect_stage presence, precedence rules, audit_status/defect_stage coherence).
 9. **CI wiring** — extend `.github/workflows/spec-consistency.yml` (or matching workflow) to call the new lint.
-10. **Tests** — `scripts/test_check_claim_audit_consistency.py` (lint coverage), schema validation tests against fixture passports, end-to-end synthetic-paper test (5 citations, 1 intentionally fabricated, audit catches).
+10. **Tests** — `scripts/test_claim_audit_schema.py` covers both schema validation and `check_claim_audit_consistency.py` lint coverage via subprocess pattern (T-S1..T-S8 invariants); plus per-stage unittest modules (`scripts/test_claim_audit_pipeline.py`, `scripts/test_uncited_assertion.py`, `scripts/test_claim_intent_manifest.py`, `scripts/test_claim_audit_finalizer.py`, `scripts/test_e2e_claim_audit.py` for the 5-citation end-to-end synthetic-paper test, `scripts/test_claim_audit_calibration.py`).
 11. **CHANGELOG entry** + ROADMAP §3.8 anchor + decision-log entry.
 
 ## 2. Out of scope
@@ -101,7 +101,6 @@ Per-claim audit result. One entry per audited citation in the passport `claim_au
     "ref_retrieval_method": { "enum": ["api", "manual_pdf", "failed", "not_attempted", "not_found", "audit_tool_failure"] },
     "upstream_owner_agent": {
       "enum": [
-        "bibliography_agent",
         "synthesis_agent",
         "draft_writer_agent",
         "report_compiler_agent",
@@ -530,7 +529,7 @@ Existing v3.7.3 5-cell matrix (anchor presence + 4-cell trust state) gains a new
 | AMBIGUOUS | source_description / citation_anchor / synthesis_overclaim / null | (any) | `[CLAIM-AUDIT-AMBIGUOUS]` | LOW-WARN advisory | pass |
 | UNSUPPORTED | source_description / metadata / citation_anchor / synthesis_overclaim | (any) | `[HIGH-WARN-CLAIM-NOT-SUPPORTED]` | HIGH-WARN | gate-refuse |
 | UNSUPPORTED | negative_constraint_violation | (any) | `[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION ({violated_constraint_id})]` | HIGH-WARN | gate-refuse (per D4-a — explicit author rules are HIGH-WARN; drift findings emit into `claim_drifts[]` at LOW-WARN advisory tier — see below) |
-| RETRIEVAL_FAILED | retrieval_existence | not_found | `[HIGH-WARN-FABRICATED-REFERENCE]` | HIGH-WARN | gate-refuse (escapes v3.7.4 Vector 3 surfaces here) |
+| RETRIEVAL_FAILED | retrieval_existence | not_found | `[HIGH-WARN-FABRICATED-REFERENCE]` | HIGH-WARN | gate-refuse (retrieval-side detection — the cited reference does not exist in the retrieval API; fabrication is a retrieval finding, not a bibliographic-metadata finding) |
 | RETRIEVAL_FAILED | not_applicable | **not_attempted** | `[HIGH-WARN-CLAIM-AUDIT-ANCHORLESS — v3.7.3 R-L3-1-A VIOLATION REACHED AUDIT]` | HIGH-WARN | gate-refuse (anchor=none should have been blocked by v3.7.3 finalizer; this row is a defense-in-depth surface against finalizer skip/stale paths) |
 | RETRIEVAL_FAILED | not_applicable | **failed** | `[CLAIM-AUDIT-UNVERIFIED — REFERENCE FULL-TEXT NOT RETRIEVABLE]` | LOW-WARN advisory | pass (paywall — D2) |
 | RETRIEVAL_FAILED | not_applicable | **audit_tool_failure** | `[CLAIM-AUDIT-TOOL-FAILURE — <fault-class>]` | MED-WARN advisory | pass (audit infrastructure failure after retrieval succeeded; surfaced distinctly from paywall per INV-14; retry next pipeline pass) |

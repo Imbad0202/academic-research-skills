@@ -35,18 +35,6 @@ from _claim_audit_constants import (  # noqa: E402
     UNCITED_RULE_VERSION,
 )
 
-# Re-export for backwards-compat with anything that historically imported these
-# names from this module (e.g. notebooks). New code should import from
-# scripts._claim_audit_constants directly.
-__all__ = [
-    "run_audit_pipeline",
-    "DRIFT_RULE_VERSION",
-    "INV6_RATIONALE_PREFIX",
-    "SAMPLING_STRATEGY",
-    "SENTINEL_MANIFEST_ID",
-    "UNCITED_RULE_VERSION",
-]
-
 # Permitted UNSUPPORTED defect_stages for non-constraint paths (§3.1 matrix).
 _UNSUPPORTED_NON_CONSTRAINT_DEFECTS = {
     "source_description",
@@ -554,6 +542,11 @@ def run_audit_pipeline(
     Raises:
         ValueError: when config validation fails (e.g. max_claims_per_paper <= 0).
     """
+    # Intentional no-op: `corpus` is reserved for the production retrieval-driver
+    # wiring (spec §4 step 2). Mark as read so static analysers (ruff ARG002,
+    # mypy strict unused-arg) do not flag the forward-compat parameter.
+    _ = corpus
+
     # ---- Config sanity ----
     cap = config.get("max_claims_per_paper", 100)
     if not isinstance(cap, int) or cap <= 0:
@@ -754,7 +747,6 @@ def run_audit_pipeline(
                 mncs_by_manifest_id=mncs_by_manifest_id,
             )
 
-        constraint_violation_emitted = False
         if applicable_constraints:
             judge_result = judge_fn(
                 claim_text=sentence["sentence_text"],
@@ -776,7 +768,6 @@ def run_audit_pipeline(
                     )
                 )
                 cv_counter += 1
-                constraint_violation_emitted = True
 
         # Always emit uncited_assertion (LOW-WARN advisory). CV-INV-4 explicitly
         # permits a sentence to appear in both uncited_assertions[] and

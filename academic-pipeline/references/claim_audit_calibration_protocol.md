@@ -85,7 +85,7 @@ The runner accumulates two confusion matrices:
 - **Aggregate** (the rates that T-C1 gates against): a tuple contributes a FN when `expected_judgment ≠ actual judgment`. For alignment, every mismatched tuple counts as both FN (for the expected class) and FP (for the wrongly-picked class), so aggregate FNR and FPR are symmetric. For constraint tuples, VIOLATED is the positive class (gate-refuse signal); the matrix is the standard binary form.
 - **Per-class one-vs-rest** (the report block that T-C2 checks): for each of `SUPPORTED`, `UNSUPPORTED`, `AMBIGUOUS`, `violated_constraint`, the runner computes FNR / FPR with that class as the positive label. `n_positive` / `n_negative` denominators are surfaced so a "0.0 FNR on n_positive=0" entry is distinguishable from "0.0 FNR on n_positive=8".
 
-The fourth alignment class `RETRIEVAL_FAILED` is intentionally NOT surfaced in `per_class` — it is set by the pipeline before the judge runs at operational deployment, so judge-quality FNR/FPR against it is uninformative for tooling validation. The calibration runner still passes `RETRIEVAL_FAILED` tuples to `judge_fn` (no pre-filter) so the per-tuple call shape stays uniform; the stub or real judge is responsible for echoing the expected label, and the tuple contributes to aggregate FNR/FPR via the non-`per_class` aggregate path.
+The fourth alignment class `RETRIEVAL_FAILED` is intentionally NOT surfaced in `per_class`: the pipeline sets it pre-judge at operational deployment, so judge-quality FNR/FPR against this label is uninformative for tooling validation. To keep the per-tuple call shape uniform, the runner still passes `RETRIEVAL_FAILED` tuples to `judge_fn` (no pre-filter) — the stub or real judge echoes the expected label, and the tuple contributes to aggregate FNR/FPR via the non-`per_class` aggregate path.
 
 ### Phase 3: Threshold check
 
@@ -148,6 +148,16 @@ If a deploying operator brings a gold set that is itself biased (all tuples from
 - **Threshold values**: FNR < 0.15 + FPR < 0.10. Tightened from the reviewer-mode 0.17 / 0.50 Lu 2026 reference points because the audit unit (per-claim) is simpler than the reviewer unit (whole paper) — the gate should track the stricter end of plausible LLM-as-judge accuracy.
 - **Ensembling**: not in v3.8.0. Per-tuple alignment calls are short and the judge's response shape is constrained; majority-vote ensembling adds cost without obvious accuracy gain for this unit of analysis. Re-evaluate if calibration evidence in v3.8.x shows high variance.
 - **Cross-model verification**: out of scope for the calibration runner — `ARS_CROSS_MODEL` interacts with the audit agent dispatch path, not the calibration script. An operator wanting cross-model calibration runs the runner twice with different `judge_model` settings.
+
+---
+
+## Running locally
+
+```bash
+PYTHONPATH=. python3 -m unittest scripts.test_claim_audit_calibration -v
+```
+
+The CI-equivalent invocation lives in `.github/workflows/spec-consistency.yml` (the v3.8 `#103` unittest step). Both paths exercise T-C1 (threshold gates), T-C2 (per-class FNR/FPR reporting), and T-C3 (gold-set shape integrity).
 
 ---
 
