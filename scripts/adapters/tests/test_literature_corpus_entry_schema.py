@@ -449,3 +449,83 @@ def test_contamination_signals_backfilled_at_non_string_rejected():
     entry = _base_entry() | {"contamination_signals_backfilled_at": 1234567890}
     with pytest.raises(jsonschema.exceptions.ValidationError):
         _validator(schema).validate(entry)
+
+
+# --- v3.9.0 schema additions: openalex_unmatched + crossref_unmatched ----
+# Extended manual-entry not-rule (anyOf: ss / openalex / crossref).
+
+def test_v3_9_0_openalex_unmatched_field_accepted():
+    """v3.9.0 — schema accepts new openalex_unmatched optional boolean."""
+    import jsonschema
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {
+            "openalex_unmatched": True,
+        }
+    }
+    _validator(schema).validate(entry)  # should not raise
+
+
+def test_v3_9_0_crossref_unmatched_field_accepted():
+    """v3.9.0 — schema accepts new crossref_unmatched optional boolean."""
+    import jsonschema
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {
+            "crossref_unmatched": False,
+        }
+    }
+    _validator(schema).validate(entry)
+
+
+def test_v3_9_0_all_four_contamination_fields_accepted():
+    """v3.9.0 — schema accepts all four contamination fields together."""
+    import jsonschema
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {
+            "preprint_post_llm_inflection": False,
+            "semantic_scholar_unmatched": True,
+            "openalex_unmatched": True,
+            "crossref_unmatched": True,
+        },
+        "year": 2024,  # preprint flag false so no year constraint
+    }
+    _validator(schema).validate(entry)
+
+
+def test_v3_9_0_manual_entry_with_openalex_unmatched_rejected():
+    """v3.9.0 — manual entry MUST NOT carry openalex_unmatched (extended not-rule)."""
+    import jsonschema
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "obtained_via": "manual",
+        "contamination_signals": {"openalex_unmatched": True},
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_v3_9_0_manual_entry_with_crossref_unmatched_rejected():
+    """v3.9.0 — manual entry MUST NOT carry crossref_unmatched."""
+    import jsonschema
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "obtained_via": "manual",
+        "contamination_signals": {"crossref_unmatched": False},
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_v3_9_0_manual_entry_with_preprint_flag_passes():
+    """v3.9.0 — manual entry MAY carry preprint_post_llm_inflection (heuristic, not lookup)."""
+    import jsonschema
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "obtained_via": "manual",
+        "year": 2024,
+        "venue": "arXiv",
+        "contamination_signals": {"preprint_post_llm_inflection": True},
+    }
+    _validator(schema).validate(entry)  # should not raise

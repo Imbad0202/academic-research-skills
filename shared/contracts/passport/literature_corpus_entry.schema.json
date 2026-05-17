@@ -134,6 +134,14 @@
         "semantic_scholar_unmatched": {
           "type": "boolean",
           "description": "True when a Semantic Scholar API lookup (per references/semantic_scholar_api_protocol.md) returned no match by either DOI or title. The check fires only when obtained_via != 'manual' (user-curated entries are exempted; user has vouched). Per spec §3.2 Vector 2."
+        },
+        "openalex_unmatched": {
+          "type": "boolean",
+          "description": "True when an OpenAlex API lookup (per references/openalex_api_protocol.md) returned no match by DOI (with title cross-check) or title. Mirrors semantic_scholar_unmatched semantics. The check fires only when obtained_via != 'manual'. Per spec v3.9.0 §3.4."
+        },
+        "crossref_unmatched": {
+          "type": "boolean",
+          "description": "True when a Crossref API lookup (per references/crossref_api_protocol.md) returned no match by DOI (with title cross-check) or title. Mirrors semantic_scholar_unmatched semantics. The check fires only when obtained_via != 'manual'. Per spec v3.9.0 §3.5."
         }
       }
     }
@@ -203,7 +211,7 @@
       }
     },
     {
-      "description": "v3.7.3 spec §3.2 manual-entry exemption (codex round-3 F11 closure): when obtained_via='manual' the bibliography_agent SKIPS the Semantic Scholar lookup and OMITS the semantic_scholar_unmatched field (user has already vouched for the entry). The schema enforces this contract: a manual entry MUST NOT carry semantic_scholar_unmatched at all (either absent or omitted from the contamination_signals object). Setting it to true on a manual entry would surface CONTAMINATED-UNMATCHED on a user-vouched reference downstream, contradicting the exemption.",
+      "description": "v3.9.0 spec §3.1 extends v3.7.3 §3.2 manual-entry exemption (codex round-3 F11 closure) symmetrically: when obtained_via='manual' the bibliography_agent SKIPS all three lookups (Semantic Scholar / OpenAlex / Crossref) and OMITS the three *_unmatched fields. The schema enforces this contract: a manual entry MUST NOT carry any of semantic_scholar_unmatched / openalex_unmatched / crossref_unmatched. Setting any to true on a manual entry would surface CONTAMINATED-* on a user-vouched reference. The asymmetry: preprint_post_llm_inflection IS still computed for manual entries (pure heuristic, no lookup) and is not in the exemption scope.",
       "if": {
         "properties": { "obtained_via": { "const": "manual" } },
         "required": ["obtained_via"]
@@ -213,7 +221,11 @@
           "properties": {
             "contamination_signals": {
               "type": "object",
-              "required": ["semantic_scholar_unmatched"]
+              "anyOf": [
+                { "required": ["semantic_scholar_unmatched"] },
+                { "required": ["openalex_unmatched"] },
+                { "required": ["crossref_unmatched"] }
+              ]
             }
           },
           "required": ["contamination_signals"]
