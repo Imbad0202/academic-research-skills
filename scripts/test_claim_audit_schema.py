@@ -1239,6 +1239,77 @@ class TS9MalformedPassportGuard(_LintTestBase):
         self.assertNotIn("Traceback", err, msg=f"lint must not crash on mixed-type indices:\n{err}")
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
+    # v3.8.1 Round 2 codex review P2 + adjacent unhashable-id surfaces.
+    # Schema validator records the type mismatch separately; uniqueness loops
+    # and dedupe key construction must not crash on unhashable nested ids.
+
+    def test_unhashable_claim_id_does_not_crash_m_inv_1(self) -> None:
+        # codex round 2 P2: claim.get("claim_id") returns a list/dict
+        # (unhashable). M-INV-1 uniqueness `cid in claim_ids` crashes with
+        # TypeError. Schema records the type mismatch but the invariant walker
+        # still raises, masking the schema findings.
+        body = build_passport()
+        body["claim_intent_manifests"][0]["claims"][0]["claim_id"] = ["bad", "type"]
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not crash on unhashable claim_id:\n{err}")
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
+    def test_unhashable_finding_id_does_not_crash_cv_inv_1(self) -> None:
+        # CV-INV-1 finding_id uniqueness `fid in seen` crashes when finding_id
+        # is a list / dict (schema-invalid). Same surface class as the M-INV-1
+        # case codex flagged; included for parity coverage across all four
+        # finding_id uniqueness sites (M-INV-4 / U-INV-1 / D-INV-1 / CV-INV-1).
+        body = build_passport()
+        body["constraint_violations"] = [
+            {
+                "finding_id": ["unhashable"],
+                "claim_text": "x",
+                "section_path": "Results > Findings",
+                "violated_constraint_id": "MNC-1",
+                "scoped_manifest_id": MANIFEST_ID,
+                "manifest_claim_id": None,
+                "judge_verdict": "VIOLATED",
+                "rationale": "rationale",
+                "judge_model": "gpt-5.5-xhigh",
+                "judge_run_at": "2026-05-15T10:14:00Z",
+                "rule_version": "D4-a-v1",
+            }
+        ]
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not crash on unhashable finding_id:\n{err}")
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
+    def test_non_string_claim_text_does_not_crash_cv_inv_4_dedupe(self) -> None:
+        # CV-INV-4 dedupe key constructs hashlib.sha256((claim_text or "").encode())
+        # — if claim_text is a list / dict / int (schema-invalid), the `or ""`
+        # idiom passes the non-string through and .encode() raises AttributeError.
+        # Codex round 2 adversarial probing surfaced this same class.
+        body = build_passport()
+        body["constraint_violations"] = [
+            {
+                "finding_id": "CV-001",
+                "claim_text": ["not", "a", "string"],
+                "section_path": "Results > Findings",
+                "violated_constraint_id": "MNC-1",
+                "scoped_manifest_id": MANIFEST_ID,
+                "manifest_claim_id": None,
+                "judge_verdict": "VIOLATED",
+                "rationale": "rationale",
+                "judge_model": "gpt-5.5-xhigh",
+                "judge_run_at": "2026-05-15T10:14:00Z",
+                "rule_version": "D4-a-v1",
+            }
+        ]
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not crash on non-string claim_text:\n{err}")
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
 
 if __name__ == "__main__":
     unittest.main()

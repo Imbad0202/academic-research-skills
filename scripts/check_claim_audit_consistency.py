@@ -550,9 +550,13 @@ def _iter_dicts(value: Any) -> list[dict[str, Any]]:
 def _check_manifest_invariants(manifests: list[dict[str, Any]]) -> list[Finding]:
     findings: list[Finding] = []
     # M-INV-4: manifest_id uniqueness across passport.
+    # Skip non-string manifest_ids per v3.8.1 round 2 — schema records the
+    # type mismatch separately; unhashable list/dict would crash this loop.
     seen_ids: dict[str, int] = {}
     for i, m in enumerate(manifests):
         mid = m.get("manifest_id")
+        if not isinstance(mid, str):
+            continue
         if mid in seen_ids:
             findings.append(
                 Finding(
@@ -565,9 +569,15 @@ def _check_manifest_invariants(manifests: list[dict[str, Any]]) -> list[Finding]
 
     for i, m in enumerate(manifests):
         # M-INV-1: claim_id uniqueness within one manifest.
+        # Skip non-string claim_ids: schema validator records the type
+        # mismatch separately; treating an unhashable list/dict as a dict
+        # key here would raise TypeError and crash the lint instead of
+        # returning actionable findings (codex round 2 P2 / v3.8.1).
         claim_ids: dict[str, int] = {}
         for j, claim in enumerate(_iter_dicts(m.get("claims"))):
             cid = claim.get("claim_id")
+            if not isinstance(cid, str):
+                continue
             if cid in claim_ids:
                 findings.append(
                     Finding(
@@ -670,10 +680,12 @@ def _check_uncited_invariants(
     manifest_index: dict[str, set[str]],
 ) -> list[Finding]:
     findings: list[Finding] = []
-    # U-INV-1: finding_id uniqueness.
+    # U-INV-1: finding_id uniqueness. Non-string ids skipped per v3.8.1 round 2.
     seen: dict[str, int] = {}
     for i, e in enumerate(entries):
         fid = e.get("finding_id")
+        if not isinstance(fid, str):
+            continue
         if fid in seen:
             findings.append(
                 Finding("U-INV-1", f"duplicate finding_id={fid!r} (also at uncited_assertions[{seen[fid]}])")
@@ -741,10 +753,12 @@ def _check_drift_invariants(
 ) -> list[Finding]:
     findings: list[Finding] = []
 
-    # D-INV-1: finding_id uniqueness.
+    # D-INV-1: finding_id uniqueness. Non-string ids skipped per v3.8.1 round 2.
     seen: dict[str, int] = {}
     for i, e in enumerate(entries):
         fid = e.get("finding_id")
+        if not isinstance(fid, str):
+            continue
         if fid in seen:
             findings.append(
                 Finding("D-INV-1", f"duplicate finding_id={fid!r} (also at claim_drifts[{seen[fid]}])")
@@ -827,10 +841,12 @@ def _check_constraint_violation_invariants(
 ) -> list[Finding]:
     findings: list[Finding] = []
 
-    # CV-INV-1: finding_id uniqueness.
+    # CV-INV-1: finding_id uniqueness. Non-string ids skipped per v3.8.1 round 2.
     seen: dict[str, int] = {}
     for i, e in enumerate(entries):
         fid = e.get("finding_id")
+        if not isinstance(fid, str):
+            continue
         if fid in seen:
             findings.append(
                 Finding(
@@ -848,13 +864,18 @@ def _check_constraint_violation_invariants(
     # violated on the same sentence text — do not false-positive as duplicates.
     # M-INV-4 permits manifest_id uniqueness across passport but constraint_id
     # uniqueness only within a manifest; dedupe must respect the same scope.
+    # v3.8.1 round 2: coerce each key component to str so schema-invalid
+    # non-string values (lists/dicts) don't crash hashlib.encode() or hash().
+    def _safe_str(value: Any) -> str:
+        return value if isinstance(value, str) else ""
+
     dedup: dict[tuple[str, str, str, str], int] = {}
     for i, e in enumerate(entries):
         key = (
-            e.get("scoped_manifest_id") or "",
-            e.get("section_path") or "",
-            hashlib.sha256((e.get("claim_text") or "").encode("utf-8")).hexdigest(),
-            e.get("violated_constraint_id") or "",
+            _safe_str(e.get("scoped_manifest_id")),
+            _safe_str(e.get("section_path")),
+            hashlib.sha256(_safe_str(e.get("claim_text")).encode("utf-8")).hexdigest(),
+            _safe_str(e.get("violated_constraint_id")),
         )
         if key in dedup:
             findings.append(
