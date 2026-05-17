@@ -1204,6 +1204,11 @@ class TSUAFUncitedAuditFailureInvariants(_LintTestBase):
     def test_uaf_inv_1_duplicate_finding_id(self) -> None:
         a = uncited_audit_failure_entry()
         b = uncited_audit_failure_entry()  # same finding_id "UAF-001"
+        # Per Gemini cross-model review P2 (2026-05-17): keep this test
+        # isolated to UAF-INV-1 by giving b a different claim_text so the
+        # passport does NOT simultaneously trip UAF-INV-4 (per-(sentence,
+        # manifest) dedup). One test should target one invariant cleanly.
+        b["claim_text"] = "Different text so UAF-INV-4 dedup does not fire."
         passport = build_passport(
             manifests=[self._manifest_with_mnc_and_nc()],
             uaf=[a, b],

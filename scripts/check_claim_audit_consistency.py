@@ -1019,21 +1019,25 @@ def _check_uaf_invariants(
         row_fault = e.get("fault_class")
 
         # UAF-INV-2: scoped_manifest_id cross-array integrity.
-        if not isinstance(smid, str) or smid not in manifest_index:
+        manifest_resolved = isinstance(smid, str) and smid in manifest_index
+        if not manifest_resolved:
             findings.append(
                 Finding(
                     "UAF-INV-2",
                     f"finding_id={fid!r}: scoped_manifest_id={smid!r} not present in claim_intent_manifests[]",
                 )
             )
-            # Skip UAF-INV-3 when the manifest itself is missing; the pair
-            # check would always fire and we want a clean single line.
-            continue
+            # Don't `continue` here — UAF-INV-5 (rationale prefix) is
+            # orthogonal to manifest integrity and we want both findings
+            # to surface together so the user fixes both in one pass
+            # (Gemini cross-model review P1, 2026-05-17).
 
         # UAF-INV-3: (scoped_manifest_id, manifest_claim_id) pair integrity
         # when manifest_claim_id is non-null. Null is legitimate when the
-        # failure was against MNCs only (no claim binding).
-        if mcid is not None:
+        # failure was against MNCs only (no claim binding). Skip when the
+        # manifest itself failed to resolve — the pair check would
+        # otherwise always fire and double-report the same root cause.
+        if manifest_resolved and mcid is not None:
             claim_ids = manifest_index.get(smid, set())
             if mcid not in claim_ids:
                 findings.append(

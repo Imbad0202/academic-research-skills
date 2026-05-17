@@ -860,5 +860,84 @@ class TCO4SamplingPreservesEmittedSet(_PipelineCarryoverTestBase):
         self.assertEqual(out["audit_sampling_summaries"][0]["audited_count"], CAP)
 
 
+# ---------------------------------------------------------------------------
+# T-UAF-F1 — v3.8.2 / #118 finalizer wiring for uncited_audit_failures[].
+# Codex cross-model review (2026-05-17) flagged that the UAF aggregate was
+# emitted by the pipeline but never surfaced by apply_finalizer, so the
+# operational signal stayed silent in the final output. This test pins the
+# routing entry + classifier + annotation so a future refactor cannot
+# accidentally drop the UAF row from the finalizer dispatch table.
+# ---------------------------------------------------------------------------
+
+
+class TUAFFinalizerRouting(unittest.TestCase):
+    def test_uaf_row_emits_med_warn_annotation(self) -> None:
+        passport = {
+            "claim_audit_results": [],
+            "uncited_assertions": [],
+            "claim_drifts": [],
+            "constraint_violations": [],
+            "audit_sampling_summaries": [],
+            "uncited_audit_failures": [
+                {
+                    "finding_id": "UAF-001",
+                    "claim_text": "Uncited sentence under MNC scope.",
+                    "section_path": "3. Results > 3.1",
+                    "scoped_manifest_id": "M-2026-05-15T10:00:00Z-a1b2",
+                    "manifest_claim_id": None,
+                    "fault_class": "judge_timeout",
+                    "rationale": "judge_timeout: judge timed out after 30s",
+                    "judge_model": "gpt-5.5-xhigh",
+                    "judge_run_at": "2026-05-15T10:14:00Z",
+                    "rule_version": "D4-c-v1-uaf-v1",
+                }
+            ],
+        }
+        out = apply_finalizer(passport)
+        annotations = [a["annotation"] for a in out["annotations"]]
+        self.assertIn(
+            "[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — judge_timeout]",
+            annotations,
+            "UAF row must produce a MED-WARN annotation via apply_finalizer; "
+            "without the routing entry the operational signal stays silent.",
+        )
+        self.assertFalse(
+            out["gate_refuse"],
+            "UAF is MED-WARN advisory; gate must NOT refuse on it.",
+        )
+
+    def test_uaf_row_each_fault_class_renders(self) -> None:
+        """Every INV14 fault-class value must render through the annotation template."""
+        from scripts._claim_audit_constants import INV14_FAULT_CLASS_TAGS
+
+        for fault_class in INV14_FAULT_CLASS_TAGS:
+            with self.subTest(fault_class=fault_class):
+                passport = {
+                    "claim_audit_results": [],
+                    "uncited_assertions": [],
+                    "claim_drifts": [],
+                    "constraint_violations": [],
+                    "audit_sampling_summaries": [],
+                    "uncited_audit_failures": [
+                        {
+                            "finding_id": "UAF-001",
+                            "claim_text": "Uncited sentence.",
+                            "section_path": "3. Results",
+                            "scoped_manifest_id": "M-2026-05-15T10:00:00Z-a1b2",
+                            "manifest_claim_id": None,
+                            "fault_class": fault_class,
+                            "rationale": f"{fault_class}: synthetic",
+                            "judge_model": "gpt-5.5-xhigh",
+                            "judge_run_at": "2026-05-15T10:14:00Z",
+                            "rule_version": "D4-c-v1-uaf-v1",
+                        }
+                    ],
+                }
+                out = apply_finalizer(passport)
+                expected = f"[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — {fault_class}]"
+                annotations = [a["annotation"] for a in out["annotations"]]
+                self.assertIn(expected, annotations)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

@@ -33,6 +33,7 @@ except Exception as exc:  # pragma: no cover — import-time error pathway is ex
 
 
 MANIFEST_ID = "M-2026-05-15T10:00:00Z-a1b2"
+MANIFEST_ID_OTHER = "M-2026-05-15T10:05:00Z-c3d4"
 AUDIT_RUN_ID = "2026-05-15T10:10:00Z-9f8e"
 NOW = "2026-05-15T10:11:00Z"
 
@@ -1611,6 +1612,72 @@ class TP23UncitedJudgeOutageEmitsUAF(_PipelineTestBase):
         self.assertEqual(len(uaf), 1)
         self.assertEqual(uaf[0]["manifest_claim_id"], "C-001")
         self.assertEqual(uaf[0]["fault_class"], "judge_parse_error")
+
+    def test_uaf_multi_manifest_claim_id_polarity(self) -> None:
+        # Codex cross-model review P2-2 (2026-05-17): when sentence carries
+        # manifest_claim_id but is judged against MULTIPLE manifests (no
+        # scoped_manifest_id pin), the UAF row's manifest_claim_id must
+        # ONLY be set when the current (mid) actually owns the claim
+        # binding. Without this guard, a UAF row would inherit a claim_id
+        # that doesn't exist in this manifest's claims[], failing UAF-INV-3.
+        def failing_judge(**_kw: Any) -> dict[str, Any]:
+            raise TimeoutError("judge timed out")
+
+        # Two manifests in the passport. Sentence binds to C-001, which
+        # exists ONLY in manifest_a; manifest_b contributes MNCs only.
+        # When the sentence is judged against both manifests and BOTH
+        # judge calls fail, the UAF row for manifest_a should set
+        # manifest_claim_id="C-001"; the UAF row for manifest_b MUST set
+        # manifest_claim_id=None (no claim binding in that manifest).
+        manifest_a = _manifest(
+            manifest_id=MANIFEST_ID,
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Causal claim.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                    "negative_constraints": [
+                        {"constraint_id": "NC-C001-1", "rule": "No causal."}
+                    ],
+                }
+            ],
+        )
+        manifest_b = _manifest(
+            manifest_id=MANIFEST_ID_OTHER,
+            claims=[
+                {
+                    "claim_id": "C-002",  # different claim id; C-001 is NOT here
+                    "claim_text": "Unrelated claim in manifest_b.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                }
+            ],
+            mncs=[{"constraint_id": "MNC-1", "rule": "Global rule."}],
+        )
+        uncited_sentences = [
+            {
+                "sentence_text": "We observed causality between A and B.",
+                "section_path": "4. Discussion > 4.3",
+                "manifest_claim_id": "C-001",
+                # scoped_manifest_id absent → judge against ALL manifests
+                "trigger_tokens": ["observed"],
+            }
+        ]
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest_a, manifest_b],
+            uncited_sentences=uncited_sentences,
+            judge_fn=failing_judge,
+        )
+        uaf = out["uncited_audit_failures"]
+        self.assertEqual(len(uaf), 2, f"expected 2 UAF rows (one per manifest); got {uaf}")
+        by_mid = {row["scoped_manifest_id"]: row for row in uaf}
+        self.assertEqual(by_mid[MANIFEST_ID]["manifest_claim_id"], "C-001")
+        self.assertIsNone(
+            by_mid[MANIFEST_ID_OTHER]["manifest_claim_id"],
+            "manifest_b does not own C-001; UAF row MUST set manifest_claim_id=None to avoid UAF-INV-3 fail",
+        )
 
 
 if __name__ == "__main__":

@@ -63,6 +63,10 @@ ANNOTATION_LOW_WARN_UNVERIFIED = (
     "[CLAIM-AUDIT-UNVERIFIED — REFERENCE FULL-TEXT NOT RETRIEVABLE]"
 )
 ANNOTATION_MED_WARN_TOOL_FAILURE = "[CLAIM-AUDIT-TOOL-FAILURE — {fault_class}]"
+# v3.8.2 / #118 — UAF aggregate annotation. Same fault-class enum as the
+# cited-path INV-14 row but routed through `uncited_audit_failures[]`
+# because claim_audit_result.ref_slug is required.
+ANNOTATION_MED_WARN_TOOL_FAILURE_UNCITED = "[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — {fault_class}]"
 
 ANNOTATION_UNCITED_ASSERTION = "[UNCITED-ASSERTION]"
 ANNOTATION_HIGH_WARN_CONSTRAINT_VIOLATION_UNCITED = (
@@ -243,6 +247,24 @@ def classify_claim_drift(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def classify_uncited_audit_failure(entry: dict[str, Any]) -> dict[str, Any]:
+    """MED-WARN advisory for uncited-path judge outage (v3.8.2 / #118).
+
+    Mirrors INV-14 semantics on the uncited path: emits
+    `[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — <fault-class>]` next to the
+    offending sentence. Gate passes — retry-next-pass remediation.
+    UAF-INV-5 (lint) guarantees `fault_class` is one of the seven
+    INV14_FAULT_CLASS_TAGS values; we surface the row's literal here.
+    """
+    return {
+        "annotation": ANNOTATION_MED_WARN_TOOL_FAILURE_UNCITED.format(
+            fault_class=entry.get("fault_class", "?"),
+        ),
+        "tier": TIER_MED_WARN,
+        "gate_refuse": False,
+    }
+
+
 def classify_audit_sampling_summary(entry: dict[str, Any]) -> dict[str, Any]:
     """Paper-level LOW-WARN annotation when audited_count < total_citation_count (S-INV-3)."""
     if entry["audited_count"] >= entry["total_citation_count"]:
@@ -276,6 +298,13 @@ def apply_finalizer(passport: dict[str, list[dict[str, Any]]]) -> dict[str, Any]
         ("constraint_violations", classify_constraint_violation),
         ("claim_drifts", classify_claim_drift),
         ("audit_sampling_summaries", classify_audit_sampling_summary),
+        # v3.8.2 / #118 — UAF aggregate routes to MED-WARN advisory.
+        # Without this entry, the schema/lint accept UAF rows but the
+        # finalizer never surfaces them and the formatter never sees the
+        # [CLAIM-AUDIT-TOOL-FAILURE-UNCITED — ...] annotation, so the
+        # operational signal stays silent in final output. Codex cross-
+        # model review caught this gap, 2026-05-17.
+        ("uncited_audit_failures", classify_uncited_audit_failure),
     )
 
     for aggregate_key, classifier in routing:
