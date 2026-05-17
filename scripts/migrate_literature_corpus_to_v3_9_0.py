@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""#102 v3.9.0 cross-index triangulation backfill migration tool.
+
+Re-runs the v3.9.0 spec §3.4 + §3.5 OpenAlex + Crossref lookups post-hoc
+on v3.7.3 literature_corpus[] entries that have semantic_scholar_unmatched
+set but openalex_unmatched / crossref_unmatched absent.
+
+Scope: v3.7.3-onward entries only. Pre-v3.7.3 entries (no
+contamination_signals.semantic_scholar_unmatched) require the v3.7.3
+migration tool first — see scripts/migrate_literature_corpus_to_v3_7_3.py.
+This is daisy-chained migration per spec §3.7.
+
+Usage:
+    python migrate_literature_corpus_to_v3_9_0.py [--dry-run] [--verbose] PATH
+
+Design: docs/design/2026-05-17-ars-v3.9.0-cross-index-triangulation-measurement-spec.md §3.7
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from typing import Any, Mapping
+
+from ruamel.yaml import YAML
+
+
+# Single shared YAML round-tripper. ruamel.yaml preserves comments,
+# key order, and quoting style across read → mutate → write.
+_yaml = YAML()
+_yaml.preserve_quotes = True
+_yaml.indent(mapping=2, sequence=4, offset=2)
+
+
+# Skip-reason keys surface in the migration report.
+_SKIP_MANUAL = "skipped_manual"
+_SKIP_PRE_V3_7_3 = "skipped_pre_v3_7_3"
+_SKIP_COMPLETE = "skipped_complete"
+
+
+def load_passport(path: Path) -> Any:
+    """Round-trip load a passport YAML file. Returns the ruamel-yaml
+    representation (a CommentedMap), not a plain dict."""
+    with path.open("r", encoding="utf-8") as f:
+        return _yaml.load(f)
+
+
+def _dump_passport(path: Path, doc: Any) -> None:
+    with path.open("w", encoding="utf-8") as f:
+        _yaml.dump(doc, f)
+
+
+def _entry_in_v3_7_3_scope(entry: Mapping[str, Any]) -> bool:
+    """v3.9.0 migration scope: entry has v3.7.3 contamination_signals with
+    semantic_scholar_unmatched set (may be True, False, or absent-key).
+
+    Per spec §3.7 daisy-chain contract: entries that lack the v3.7.3
+    semantic_scholar_unmatched key were never processed by v3.7.3 migration
+    and are therefore out of v3.9.0 scope. They must go through
+    migrate_literature_corpus_to_v3_7_3.py first.
+
+    Note: manual entries have semantic_scholar_unmatched omitted by design
+    (spec §3.2 exemption) but they ARE in scope in the sense that they
+    carry the v3.7.3 contamination_signals object. However, the manual-skip
+    rule fires first, so these entries never reach the v3.9.0 fill logic.
+    The scope check here is purely for entries with NO contamination_signals
+    at all, or contamination_signals without semantic_scholar_unmatched on
+    a non-manual entry.
+    """
+    sig = entry.get("contamination_signals")
+    if sig is None:
+        return False
+    if entry.get("obtained_via") == "manual":
+        # Manual entries carry only preprint_post_llm_inflection by design.
+        # They're still v3.7.3-era entries (have contamination_signals)
+        # but the manual-skip fires before we get here in migrate_passport.
+        return True
+    return "semantic_scholar_unmatched" in sig
+
+
+def _is_complete(sig: Mapping[str, Any]) -> bool:
+    """Entry already has both v3.9.0 fields set — nothing to do."""
+    return "openalex_unmatched" in sig and "crossref_unmatched" in sig
+
+
+def migrate_passport(
+    path: Path,
+    *,
+    oa_client: Any,
+    cr_client: Any,
+    dry_run: bool,
+    verbose: bool = False,
+) -> dict[str, int]:
+    """Migrate a single passport file. Returns a report dict.
+
+    `oa_client`: OpenAlexClient (or mock) — must expose
+        doi_lookup_with_title_check(doi, title) and title_search(title).
+    `cr_client`: CrossrefClient (or mock) — same interface.
+
+    Mirrors migrate_literature_corpus_to_v3_7_3.migrate_passport() design:
+    accept injected clients for testability (no subprocess, no env-var mock).
+    """
+    import contamination_signals as cs
+    from openalex_client import OpenAlexUnavailable
+    from crossref_client import CrossrefUnavailable
+
+    doc = load_passport(path)
+    corpus = doc.get("literature_corpus") if doc else None
+    report: dict[str, int] = {
+        "processed": 0,
+        "patched": 0,
+        _SKIP_MANUAL: 0,
+        _SKIP_PRE_V3_7_3: 0,
+        _SKIP_COMPLETE: 0,
+        "degraded_openalex": 0,
+        "degraded_crossref": 0,
+    }
+    if not corpus:
+        return report
+
+    def _log(msg: str) -> None:
+        if verbose:
+            print(f"[{path}] {msg}", file=sys.stderr)
+
+    degradation_log: list[str] = []
+    mutated = False
+
+    for entry in corpus:
+        report["processed"] += 1
+        key = entry.get("citation_key", "<no-citation-key>")
+
+        # --- Skip: manual entry (v3.9.0 spec: exempt, never touch) ---
+        if entry.get("obtained_via") == "manual":
+            report[_SKIP_MANUAL] += 1
+            _log(f"{key}: skip (manual entry)")
+            continue
+
+        # --- Skip: pre-v3.7.3 (no contamination_signals or no SS field) ---
+        if not _entry_in_v3_7_3_scope(entry):
+            report[_SKIP_PRE_V3_7_3] += 1
+            _log(f"{key}: skip (pre-v3.7.3 — run v3.7.3 migration first)")
+            continue
+
+        sig = entry.get("contamination_signals", {})
+
+        # --- Skip: already complete (both fields set) ---
+        if _is_complete(sig):
+            report[_SKIP_COMPLETE] += 1
+            _log(f"{key}: skip (already complete)")
+            continue
+
+        # --- Backfill missing fields ---
+        entry_changed = False
+
+        if "openalex_unmatched" not in sig:
+            try:
+                result = cs.resolve_openalex_unmatched(entry, oa_client)
+                if result is not None:
+                    if not dry_run:
+                        sig["openalex_unmatched"] = result
+                        entry["contamination_signals"] = sig
+                    entry_changed = True
+                    _log(f"{key}: fill openalex_unmatched={result}")
+                # result=None means manual (already handled) or API down;
+                # API-down surfaces as OpenAlexUnavailable (caught below).
+            except OpenAlexUnavailable as e:
+                degradation_log.append(
+                    f"[CORPUS MIGRATION INCOMPLETE: openalex] {key}: {e}"
+                )
+                report["degraded_openalex"] += 1
+                _log(f"{key}: degraded (openalex) — {e}")
+        else:
+            _log(f"{key}: preserve openalex_unmatched (already set)")
+
+        if "crossref_unmatched" not in sig:
+            try:
+                result = cs.resolve_crossref_unmatched(entry, cr_client)
+                if result is not None:
+                    if not dry_run:
+                        sig["crossref_unmatched"] = result
+                        entry["contamination_signals"] = sig
+                    entry_changed = True
+                    _log(f"{key}: fill crossref_unmatched={result}")
+            except CrossrefUnavailable as e:
+                degradation_log.append(
+                    f"[CORPUS MIGRATION INCOMPLETE: crossref] {key}: {e}"
+                )
+                report["degraded_crossref"] += 1
+                _log(f"{key}: degraded (crossref) — {e}")
+        else:
+            _log(f"{key}: preserve crossref_unmatched (already set)")
+
+        if entry_changed:
+            report["patched"] += 1
+            mutated = True
+
+    if mutated and not dry_run:
+        _dump_passport(path, doc)
+
+    # Summary to stdout (mirrors v3.7.3 tool print-on-main pattern but
+    # here we always emit; caller may also call _print_report() below).
+    if degradation_log:
+        for line in degradation_log:
+            print(line, file=sys.stderr)
+
+    return report
+
+
+def _print_report(path: Path, report: dict[str, int], dry_run: bool) -> None:
+    mode = "(DRY RUN) " if dry_run else ""
+    would = "would-add" if dry_run else "patched"
+    print(
+        f"v3.9.0 migration {mode}{path}: "
+        f"processed={report['processed']} "
+        f"{would}={report['patched']} "
+        f"skipped_manual={report[_SKIP_MANUAL]} "
+        f"skipped_pre_v3_7_3={report[_SKIP_PRE_V3_7_3]} "
+        f"skipped_complete={report[_SKIP_COMPLETE]} "
+        f"degraded_openalex={report['degraded_openalex']} "
+        f"degraded_crossref={report['degraded_crossref']} "
+        f"dry_run={dry_run}"
+    )
+
+
+def _build_default_oa_client():
+    """Production OpenAlex client. Lazy-imported so tests that inject
+    mock clients never trigger a network-dependent module load."""
+    from openalex_client import OpenAlexClient
+    return OpenAlexClient()
+
+
+def _build_default_cr_client():
+    """Production Crossref client. Lazy-imported for the same reason."""
+    from crossref_client import CrossrefClient
+    return CrossrefClient()
+
+
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Backfill v3.9.0 openalex_unmatched + crossref_unmatched on "
+            "v3.7.3-onward literature_corpus[] entries. "
+            "See docs/design/2026-05-17-ars-v3.9.0-cross-index-triangulation-measurement-spec.md §3.7"
+        )
+    )
+    parser.add_argument("path", type=Path, help="Passport YAML file")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show proposed changes, write nothing"
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Per-entry logging to stderr"
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv or sys.argv[1:])
+    oa_client = _build_default_oa_client()
+    cr_client = _build_default_cr_client()
+    report = migrate_passport(
+        args.path,
+        oa_client=oa_client,
+        cr_client=cr_client,
+        dry_run=args.dry_run,
+        verbose=args.verbose,
+    )
+    _print_report(args.path, report, args.dry_run)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
