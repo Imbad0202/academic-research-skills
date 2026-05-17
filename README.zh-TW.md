@@ -304,6 +304,8 @@ https://github.com/Imbad0202/academic-research-skills
 
 > #102 收尾。v3.7.3 已完成單索引（Semantic Scholar）污染偵測；v3.9.0 延伸至三索引三角測量（S2 + OpenAlex + Crossref），定位為**純 advisory**。`contamination_signals` 新增兩個 optional boolean（`openalex_unmatched`、`crossref_unmatched`）；manual-entry not-rule 對稱延伸。Finalizer 加入 4-tier advisory matrix（k=0/1/2/3，計算範圍為現有 `*_unmatched` 欄位），v3.7.3 的 legacy `CONTAMINATED-UNMATCHED`（k=1/k_max=1、S2-only case）保留。Formatter pass-through allowlist 從 3 條延伸至 9 條；refusal rules 1-10 依 R-L3-2-E 不變。Policy layer（strict modes、hard-block tier、`venue_type` / `triangulation_policy`）依 spec §2.3 延至 v3.10。k=3 marker 為 `CONTAMINATED-TRIANGULATION-UNMATCHED`（描述可觀測現象，不推斷成因）。新增 3 條 firm rules：R-L3-2-C（k 計算範圍為現有欄位）、R-L3-2-D（不得 API 推斷分類）、R-L3-2-E（refusal list 不擴充；pass-through allowlist 須與 finalizer 同步延伸）。
 
+**遷移：** v3.7.3 corpus — 跑 `python scripts/migrate_literature_corpus_to_v3_9_0.py PATH` 補齊兩個新欄位。pre-v3.7.3 corpus — **先**跑 `migrate_literature_corpus_to_v3_7_3.py`，再跑 v3.9.0 遷移工具（spec §3.7 daisy-chain；v3.9.0 工具只動已有 `contamination_signals.semantic_scholar_unmatched` 的 entries）。
+
 ### v3.8.2（2026-05-17）— #118 uncited audit_tool_failure 補面
 
 > #118 收尾。`ARS_CLAIM_AUDIT=1` 的 uncited 約束判斷路徑原本碰到 `JudgeInvocationError` 會靜默替換成 `{"judgment": "NOT_VIOLATED"}`，把 HIGH-WARN 的 constraint check 在 transient judge 中斷時直接吞掉。v3.8.2 改走新的 `uncited_audit_failures[]` aggregate，MED-WARN advisory tier 對應 cited 路徑 INV-14 row，但用獨立 schema 因為 `claim_audit_result.ref_slug` 必填、uncited 路徑沒 ref 可綁。#118 issue body 四個 option 最後選了 option 2（新 aggregate）；option 4（re-raise 並 abort 整段 audit）因會嚴重折損 audit coverage（特別是 judge endpoint 不穩時）被否決。

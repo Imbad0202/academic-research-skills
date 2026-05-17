@@ -27,7 +27,7 @@ GET /works/doi:{doi}?select=id,title,authorships,publication_year,doi,primary_lo
 ### Pattern 2: Title Search (fallback when DOI absent or DOI_MISMATCH)
 
 ```
-GET /works?search={url_encoded_title}&per-page=5&select=id,title,authorships,publication_year,doi
+GET /works?search={url_encoded_title}&per-page=5&select=id,title,authorships,publication_year,doi,primary_location
 ```
 
 **Matching rule:** Compute Levenshtein similarity between query title and each result title (case-insensitive, punctuation stripped) per `_normalize_title` in the client. Accept if similarity >= 0.70 (matching PaperOrchestra threshold). If multiple candidates pass, prefer matching-year tiebreaker, then highest similarity, then candidate with populated DOI.
