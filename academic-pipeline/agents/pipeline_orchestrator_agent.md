@@ -444,6 +444,7 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 - `claim_audit_results[]` — drives the 8-row matrix annotations below
 - `constraint_violations[]` — drives `[HIGH-WARN-CONSTRAINT-VIOLATION-UNCITED ({violated_constraint_id})]` annotation. MUST be passed alongside `claim_audit_results[]` — without this the uncited HIGH-WARN gate-refuse path silently disappears (no claim_audit_result row exists for uncited constraint violations per §3.5 schema split)
 - `uncited_assertions[]` — drives `[UNCITED-ASSERTION]` LOW-WARN advisory
+- `uncited_audit_failures[]` (v3.8.2 / #118) — drives `[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — <fault-class>]` MED-WARN advisory annotation. MUST be passed alongside `claim_audit_results[]` so the formatter sees uncited-path judge outages — without this hand-off the operational signal stays silent in production (mirrors cited-path INV-14 but uses a dedicated aggregate because `claim_audit_result.ref_slug` is required). Gate passes; retry-next-pass remediation. See `claim_ref_alignment_audit_agent.md` Output emission table and spec §3.6.
 - `claim_drifts[]` — drives `[LOW-WARN-CLAIM-DRIFT — kind=...]` LOW-WARN advisory (per D4-a — drift never gate-refuses)
 - `audit_sampling_summaries[]` — drives paper-level `[CLAIM-AUDIT-SAMPLED — k/N audited]` annotation when audited_count < total_citation_count (S-INV-3)
 - Per-citation / per-sentence annotations injected adjacent to the existing v3.7.1 finalizer annotations. HIGH-WARN classes block; MED/LOW-WARN advisory passes.
