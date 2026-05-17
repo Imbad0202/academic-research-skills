@@ -1011,6 +1011,65 @@ class TSCVConstraintViolationInvariants(_LintTestBase):
 
 
 # ---------------------------------------------------------------------------
+# Step 13 R8 codex P2-1 — CV-INV-4 dedupe key extension. Two manifests in
+# the same passport can carry colliding MNC-* / NC-* ids; the same sentence
+# text may legitimately violate both. The pre-fix dedupe key
+# (section_path, claim_text_hash, violated_constraint_id) false-positives
+# these as duplicates. Extend the key to scope by manifest_id as well.
+# ---------------------------------------------------------------------------
+
+
+class TSCVDedupeManifestScope(_LintTestBase):
+    """T-SCV-DEDUPE: CV-INV-4 dedupe must scope by scoped_manifest_id."""
+
+    def _two_manifests_with_colliding_mnc(self) -> list[dict[str, Any]]:
+        # Two manifests each carrying the SAME constraint_id "MNC-1" but
+        # bound to different manifests (M-INV-4 permits — manifest_id is
+        # the joinable scope). Schema requires claims[] non-empty so we
+        # add a minimal claim to each manifest; the claim itself is not
+        # under test.
+        return [
+            manifest_entry(
+                manifest_id=MANIFEST_ID,
+                mncs=[{"constraint_id": "MNC-1", "rule": "No comparative claim."}],
+            ),
+            manifest_entry(
+                manifest_id=MANIFEST_ID_OTHER,
+                mncs=[{"constraint_id": "MNC-1", "rule": "No temporal claim."}],
+            ),
+        ]
+
+    def test_same_constraint_id_across_manifests_not_deduped(self) -> None:
+        # Two CV rows on the same sentence text + same constraint_id (MNC-1)
+        # but DIFFERENT scoped_manifest_id. Legitimate per M-INV-4 +
+        # manifest_negative_constraints scoping — dedupe must keep both.
+        a = constraint_violation_entry(constraint_id="MNC-1")
+        a["scoped_manifest_id"] = MANIFEST_ID
+        b = constraint_violation_entry(constraint_id="MNC-1")
+        b["finding_id"] = "CV-002"
+        b["scoped_manifest_id"] = MANIFEST_ID_OTHER
+        passport = build_passport(
+            manifests=self._two_manifests_with_colliding_mnc(),
+            violations=[a, b],
+        )
+        # Pre-fix: CV-INV-4 false-positives → lint reports CV-INV-4 line.
+        # Post-fix: lint MUST NOT fire CV-INV-4 on cross-manifest collision.
+        self.assertLintClean(passport)
+
+    def test_same_constraint_id_same_manifest_still_deduped(self) -> None:
+        # Negative test: dedupe still catches true within-manifest duplicates.
+        a = constraint_violation_entry(constraint_id="MNC-1")
+        b = constraint_violation_entry(constraint_id="MNC-1")
+        b["finding_id"] = "CV-002"
+        # Both rows reference the same manifest_id (default MANIFEST_ID).
+        passport = build_passport(
+            manifests=[self._two_manifests_with_colliding_mnc()[0]],  # single manifest
+            violations=[a, b],
+        )
+        self.assertLintFinds(passport, invariant="CV-INV-4")
+
+
+# ---------------------------------------------------------------------------
 # Spec §6.4c — S-INV-1..S-INV-4 audit_sampling_summary invariants.
 # ---------------------------------------------------------------------------
 

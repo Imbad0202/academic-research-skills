@@ -842,10 +842,16 @@ def _check_constraint_violation_invariants(
             seen[fid] = i
 
     # CV-INV-4: a sentence MUST NOT appear in constraint_violations[] more than once
-    # per (section_path, claim_text_hash, violated_constraint_id).
-    dedup: dict[tuple[str, str, str], int] = {}
+    # per (scoped_manifest_id, section_path, claim_text_hash, violated_constraint_id).
+    # Step 13 R8 codex P2-1: scope dedupe by manifest_id so two manifests in the
+    # same passport carrying colliding MNC-* / NC-* ids — each legitimately
+    # violated on the same sentence text — do not false-positive as duplicates.
+    # M-INV-4 permits manifest_id uniqueness across passport but constraint_id
+    # uniqueness only within a manifest; dedupe must respect the same scope.
+    dedup: dict[tuple[str, str, str, str], int] = {}
     for i, e in enumerate(entries):
         key = (
+            e.get("scoped_manifest_id") or "",
             e.get("section_path") or "",
             hashlib.sha256((e.get("claim_text") or "").encode("utf-8")).hexdigest(),
             e.get("violated_constraint_id") or "",
@@ -854,7 +860,7 @@ def _check_constraint_violation_invariants(
             findings.append(
                 Finding(
                     "CV-INV-4",
-                    f"finding_id={e.get('finding_id')!r}: duplicate (section, claim, constraint) with constraint_violations[{dedup[key]}]",
+                    f"finding_id={e.get('finding_id')!r}: duplicate (manifest, section, claim, constraint) with constraint_violations[{dedup[key]}]",
                 )
             )
         else:
