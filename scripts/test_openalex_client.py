@@ -273,3 +273,26 @@ def test_invalid_json_body_raises_unavailable(monkeypatch):
         client = OpenAlexClient()
         with pytest.raises(OpenAlexUnavailable):
             client.title_search("any title")
+
+
+def test_truncated_read_raises_unavailable(monkeypatch):
+    """http.client.IncompleteRead is the canonical mid-stream socket-drop
+    exception (200 status with truncated body). Inherits HTTPException, NOT
+    OSError — so an OSError-only handler still lets it escape. v3.9.1 codex
+    R1 P2: catch this explicitly to honor the v3.9.0 §3.7 per-API
+    degradation contract."""
+    import http.client
+
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.side_effect = http.client.IncompleteRead(
+        partial=b'{"results":', expected=200
+    )
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable):
+            client.title_search("any title")

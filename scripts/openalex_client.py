@@ -9,6 +9,7 @@ title cross-check (DOI_MISMATCH pattern), title-similarity fallback,
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import string
@@ -92,7 +93,16 @@ class OpenAlexClient:
                     try:
                         body = resp.read()
                         return json.loads(body.decode("utf-8"))
-                    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+                    except (
+                        OSError,
+                        http.client.HTTPException,
+                        UnicodeDecodeError,
+                        json.JSONDecodeError,
+                    ) as e:
+                        # http.client.HTTPException covers IncompleteRead
+                        # (truncated body — canonical mid-stream socket drop)
+                        # which inherits HTTPException, not OSError. Codex
+                        # review v3.9.1 R1 P2.
                         raise OpenAlexUnavailable(
                             f"OpenAlex response read/parse failed: {e}"
                         ) from e

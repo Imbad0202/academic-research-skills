@@ -277,3 +277,24 @@ def test_invalid_json_body_raises_unavailable(monkeypatch):
         client = CrossrefClient()
         with pytest.raises(CrossrefUnavailable):
             client.title_search("any title")
+
+
+def test_truncated_read_raises_unavailable(monkeypatch):
+    """http.client.IncompleteRead = mid-stream socket drop (200 + truncated
+    body). Inherits HTTPException not OSError. v3.9.1 codex R1 P2 — symmetric
+    to OpenAlex client."""
+    import http.client
+
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.side_effect = http.client.IncompleteRead(
+        partial=b'{"message":', expected=200
+    )
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable):
+            client.title_search("any title")

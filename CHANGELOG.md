@@ -14,16 +14,16 @@ Two-bug hotfix surfaced by codex review of `ars-codex` PR #13 (vendor sync to v3
 
 ### Fixed
 
-- **#129 — OpenAlex / Crossref response-read failures now translate to `*Unavailable`.** In `scripts/openalex_client.py:_get` and `scripts/crossref_client.py:_get`, `urlopen` succeeded but `resp.read()` / `body.decode("utf-8")` / `json.loads()` failures (socket drop mid-stream, garbled UTF-8 body, HTML 503 page returned with 200 status) escaped the client as raw `OSError` / `UnicodeDecodeError` / `JSONDecodeError`. `scripts/migrate_literature_corpus_to_v3_9_0.py` only catches `OpenAlexUnavailable` / `CrossrefUnavailable`, so one transient response failure during a 500-entry backfill aborted the whole migration instead of dropping just the affected field. Narrow except block around read+decode+parse now mirrors the existing 5xx-skip pattern: per-API tolerant per the v3.9.0 spec §3.7 documented degradation contract and `bibliography_agent.md` "Triangulation Extension".
+- **#129 — OpenAlex / Crossref response-read failures now translate to `*Unavailable`.** In `scripts/openalex_client.py:_get` and `scripts/crossref_client.py:_get`, `urlopen` succeeded but `resp.read()` / `body.decode("utf-8")` / `json.loads()` failures (socket drop mid-stream, truncated body, garbled UTF-8 body, HTML 503 page returned with 200 status) escaped the client as raw `OSError` / `http.client.IncompleteRead` / `UnicodeDecodeError` / `JSONDecodeError`. `scripts/migrate_literature_corpus_to_v3_9_0.py` only catches `OpenAlexUnavailable` / `CrossrefUnavailable`, so one transient response failure during a 500-entry backfill aborted the whole migration instead of dropping just the affected field. Narrow except block around read+decode+parse now catches `(OSError, http.client.HTTPException, UnicodeDecodeError, json.JSONDecodeError)` — `HTTPException` covers `IncompleteRead` (canonical mid-stream socket drop, inherits HTTPException not OSError, R1 codex P2 closure). Mirrors the existing 5xx-skip pattern: per-API tolerant per the v3.9.0 spec §3.7 documented degradation contract and `bibliography_agent.md` "Triangulation Extension".
 
 - **#130 — `check_claim_audit_consistency` non-string `manifest_id` guard.** `_build_manifest_index` (line 644) and `_build_manifest_constraint_index` (line 675) used `manifest_id` as a dict key via `setdefault(mid, set())` / `out[mid] = bucket` before checking type. For malformed passports where the schema validator already noted `manifest_id` as `array` / `object`, the index builder raised `TypeError: unhashable type: 'list'` and terminated lint with a traceback before `validate_passport()` could return the schema finding cleanly. Added `isinstance(mid, str) and mid` guard at both sites, matching the surrounding `_check_inv_17_for_manifest` / `claim_id` invariant-walker pattern. Schema validator still records the type mismatch — the guard just lets the lint surface findings cleanly instead of crashing.
 
 ### Tests
 
-- `scripts/test_openalex_client.py`: +3 tests covering OSError on `resp.read()`, invalid UTF-8 body, invalid JSON body.
-- `scripts/test_crossref_client.py`: +3 symmetric tests.
+- `scripts/test_openalex_client.py`: +4 tests covering OSError on `resp.read()`, invalid UTF-8 body, invalid JSON body, and `http.client.IncompleteRead` (R1 codex P2 closure).
+- `scripts/test_crossref_client.py`: +4 symmetric tests.
 - `scripts/test_claim_audit_schema.py`: new `TSManifestIdNonStringGuard` class with 2 tests (`manifest_id` as list / dict).
-- Regression baseline: 1453 → 1461 passed (+8), 3 skipped + 111 subtests unchanged, 0 failures.
+- Regression baseline: 1453 → 1463 passed (+10), 3 skipped + 111 subtests unchanged, 0 failures.
 
 ### Out of scope
 
