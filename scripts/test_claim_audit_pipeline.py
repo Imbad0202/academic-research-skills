@@ -1679,6 +1679,51 @@ class TP23UncitedJudgeOutageEmitsUAF(_PipelineTestBase):
             "manifest_b does not own C-001; UAF row MUST set manifest_claim_id=None to avoid UAF-INV-3 fail",
         )
 
+    def test_uaf_mnc_only_claim_stays_null_manifest_claim_id(self) -> None:
+        # Codex R2 P2-1 (2026-05-17): when sentence binds to a claim that
+        # exists in the manifest but the claim has NO negative_constraints,
+        # the judge call is MNC-only and the UAF row's manifest_claim_id
+        # MUST stay null. Pre-R2 fix would set manifest_claim_id to the
+        # sentence's claim_id any time the claim resolved, conflating
+        # MNC-only outages with NC-C outages for downstream consumers.
+        def failing_judge(**_kw: Any) -> dict[str, Any]:
+            raise TimeoutError("judge timed out")
+
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Claim with no negative_constraints.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                    # IMPORTANT: empty negative_constraints — judge call is MNC-only
+                    "negative_constraints": [],
+                }
+            ],
+            mncs=[{"constraint_id": "MNC-1", "rule": "Global rule."}],
+        )
+        uncited_sentences = [
+            {
+                "sentence_text": "Sentence bound to C-001 but tested vs MNC-1 only.",
+                "section_path": "3.1",
+                "manifest_claim_id": "C-001",
+                "scoped_manifest_id": MANIFEST_ID,
+                "trigger_tokens": ["showed"],
+            }
+        ]
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=uncited_sentences,
+            judge_fn=failing_judge,
+        )
+        uaf = out["uncited_audit_failures"]
+        self.assertEqual(len(uaf), 1)
+        self.assertIsNone(
+            uaf[0]["manifest_claim_id"],
+            "claim has no NC entries → judge call was MNC-only → manifest_claim_id must be null per spec §3.6",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

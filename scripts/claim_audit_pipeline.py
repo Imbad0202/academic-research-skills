@@ -1226,23 +1226,28 @@ def run_audit_pipeline(
         for mid in target_manifest_ids:
             per_manifest_constraints: list[dict[str, Any]] = list(manifest_mncs_by_id[mid])
             # R7 codex P1: also include NC-C for this manifest's bound claim.
-            # v3.8.2 / #118 codex P2-2: only set the UAF row's manifest_claim_id
-            # when THIS manifest actually owns the claim binding — when sentence
-            # carries a sentence_claim_id but the current manifest doesn't have
-            # that claim_id (or only contributed MNCs), the UAF row's
-            # (scoped_manifest_id, manifest_claim_id) pair would fail UAF-INV-3.
-            # Track per-manifest claim binding here so the except branch below
-            # has the right polarity.
+            # v3.8.2 / #118 codex P2-2 + R2 P2-1: only set the UAF row's
+            # manifest_claim_id when THIS manifest actually owns the claim
+            # binding AND at least one NC constraint was added. When sentence
+            # carries a sentence_claim_id but the current manifest doesn't
+            # have that claim_id, OR the claim exists but has no NC entries
+            # (so the failed judge call was MNC-only), the UAF row's
+            # manifest_claim_id MUST stay null — the failure is MNC-only at
+            # that point and a non-null binding would mislabel downstream
+            # consumers about which constraint set the outage hit.
             uaf_manifest_claim_id: str | None = None
             if sentence_claim_id:
                 claim = claim_by_mc_id.get((mid, sentence_claim_id))
                 if claim is not None:
-                    uaf_manifest_claim_id = sentence_claim_id
                     for nc in claim.get("negative_constraints") or []:
-                        if nc.get("constraint_id"):
+                        cid = nc.get("constraint_id")
+                        if cid:
                             per_manifest_constraints.append(
-                                {"constraint_id": nc["constraint_id"], "rule": nc["rule"], "scope": "NC"}
+                                {"constraint_id": cid, "rule": nc["rule"], "scope": "NC"}
                             )
+                            # Only mark NC-C binding when at least one NC
+                            # constraint actually entered the judge call.
+                            uaf_manifest_claim_id = sentence_claim_id
 
             if not per_manifest_constraints:
                 continue

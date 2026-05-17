@@ -1168,6 +1168,34 @@ class TSUAFUncitedAuditFailureInvariants(_LintTestBase):
         errors = list(validator.iter_errors(uncited_audit_failure_entry()))
         self.assertEqual(errors, [], msg=f"unexpected validation errors: {errors}")
 
+    def test_uaf_schema_fault_class_enum_matches_constants(self) -> None:
+        """The schema's fault_class enum MUST match INV14_FAULT_CLASS_TAGS exactly.
+
+        Without this guard, extending INV14_FAULT_CLASS_TAGS in the Python
+        constants module would silently produce UAF rows that fail schema
+        validation (the pipeline maps a new exception class to a new tag,
+        but the schema's closed enum hasn't been bumped). Per Gemini cross-
+        model review R2 P2 (2026-05-17): both surfaces must move together,
+        and a rule_version bump (D4-c-v1-uaf-v2 or later) should accompany
+        any enum extension.
+        """
+        from scripts._claim_audit_constants import INV14_FAULT_CLASS_TAGS
+
+        schema = load_json_schema(SCHEMA_PATHS["uncited_audit_failure"])
+        schema_enum = set(schema["properties"]["fault_class"]["enum"])
+        constants_set = set(INV14_FAULT_CLASS_TAGS)
+        self.assertEqual(
+            schema_enum,
+            constants_set,
+            msg=(
+                "uncited_audit_failure.schema.json `fault_class` enum drifted "
+                "from INV14_FAULT_CLASS_TAGS. Either align the schema with the "
+                "python constant, or if intentionally extending the taxonomy "
+                "bump `rule_version` (e.g., D4-c-v1-uaf-v2) and document the "
+                "ramp in spec §3.6."
+            ),
+        )
+
     def test_uaf_schema_rejects_missing_fault_class(self) -> None:
         schema = load_json_schema(SCHEMA_PATHS["uncited_audit_failure"])
         validator = build_schema_validator(schema)
@@ -1306,6 +1334,50 @@ class TSUAFUncitedAuditFailureInvariants(_LintTestBase):
             uaf=[uaf],
         )
         self.assertLintFinds(passport, invariant="UAF-INV-6")
+
+    # ----- Malformed-payload hardening (Codex R2 P2-2 + P2-3, 2026-05-17).
+    def test_uaf_malformed_manifest_claim_id_does_not_crash_lint(self) -> None:
+        # Schema validator flags type errors separately; lint walker must
+        # skip cleanly on unhashable values rather than raise TypeError.
+        e = uncited_audit_failure_entry()
+        e["manifest_claim_id"] = ["unhashable", "list", "as", "claim_id"]
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[e],
+        )
+        # Lint should report SOMETHING (schema-shape finding), exit 1, NOT crash.
+        path = write_passport(self.tmp, passport)
+        code, _, err = run_lint(path)
+        self.assertEqual(
+            code,
+            1,
+            msg=f"expected clean lint failure on malformed manifest_claim_id, got exit={code}\nstderr:\n{err}",
+        )
+        self.assertNotIn(
+            "Traceback",
+            err,
+            msg="lint MUST NOT crash with a traceback on malformed manifest_claim_id (Codex R2 P2-2)",
+        )
+
+    def test_uaf_malformed_rationale_does_not_crash_lint(self) -> None:
+        e = uncited_audit_failure_entry()
+        e["rationale"] = ["unhashable", "rationale"]
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[e],
+        )
+        path = write_passport(self.tmp, passport)
+        code, _, err = run_lint(path)
+        self.assertEqual(
+            code,
+            1,
+            msg=f"expected clean lint failure on malformed rationale, got exit={code}\nstderr:\n{err}",
+        )
+        self.assertNotIn(
+            "Traceback",
+            err,
+            msg="lint MUST NOT crash with a traceback on malformed rationale (Codex R2 P2-3)",
+        )
 
     # ----- Co-existence with uncited_assertions[] IS permitted.
     def test_uaf_coexists_with_uncited_assertion(self) -> None:

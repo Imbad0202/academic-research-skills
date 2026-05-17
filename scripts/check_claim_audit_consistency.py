@@ -1037,7 +1037,12 @@ def _check_uaf_invariants(
         # failure was against MNCs only (no claim binding). Skip when the
         # manifest itself failed to resolve — the pair check would
         # otherwise always fire and double-report the same root cause.
-        if manifest_resolved and mcid is not None:
+        # Guard `mcid` with isinstance(str) before set membership: a
+        # malformed passport with mcid as list/dict (schema flags this
+        # separately) would raise TypeError in `mcid not in ...` and crash
+        # the lint instead of returning a clean finding. Mirrors the v3.8.1
+        # round-2 hardening pattern (Codex R2 P2-2, 2026-05-17).
+        if manifest_resolved and mcid is not None and isinstance(mcid, str):
             claim_ids = manifest_index.get(smid, set())
             if mcid not in claim_ids:
                 findings.append(
@@ -1048,12 +1053,23 @@ def _check_uaf_invariants(
                 )
 
         # UAF-INV-5: rationale MUST begin with this row's own fault_class
-        # value followed by ": " and a free-form detail. Mirrors INV-14
-        # rationale prefix on the cited path. We check against the row's
-        # fault_class field (not any known tag) so a row with fault_class
-        # judge_timeout but rationale starting with "judge_api_error: ..."
-        # still trips this invariant — the prefix must match the row.
-        if isinstance(row_fault, str) and row_fault in INV14_FAULT_CLASS_TAGS:
+        # value followed by ":" (and " <detail>" when JudgeInvocationError
+        # carried a non-empty detail). Mirrors INV-14 rationale prefix on
+        # the cited path. We check against the row's fault_class field
+        # (not any known tag) so a row with fault_class judge_timeout but
+        # rationale starting with "judge_api_error: ..." still trips this
+        # invariant — the prefix must match the row.
+        # Guard `rationale` with isinstance(str): the row's raw rationale
+        # may be list/dict on a malformed passport — schema flags it
+        # separately and we should skip cleanly rather than crash on
+        # `.startswith()` (Codex R2 P2-3, 2026-05-17). The `or ""`
+        # initialization above only fallbacks on None/empty-string falsy
+        # values; a truthy dict/list slips through and needs this guard.
+        if (
+            isinstance(row_fault, str)
+            and row_fault in INV14_FAULT_CLASS_TAGS
+            and isinstance(rationale, str)
+        ):
             expected_prefix = f"{row_fault}:"
             if not rationale.startswith(expected_prefix):
                 findings.append(
