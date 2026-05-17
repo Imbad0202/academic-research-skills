@@ -195,6 +195,15 @@ def _validate_judge_dict(
             f"{source} returned dict missing required key(s); got keys={sorted(result)}",
         )
     judgment = result.get("judgment")
+    # Step 13 R8 codex P2-3: guard isinstance(str) before set membership so a
+    # malformed return like {"judgment": [1, 2], ...} surfaces as a clean
+    # judge_parse_error instead of bubbling TypeError("unhashable type") out
+    # past the translation boundary and aborting the audit.
+    if not isinstance(judgment, str):
+        raise JudgeInvocationError(
+            "judge_parse_error",
+            f"{source} returned non-string judgment={judgment!r} (type={type(judgment).__name__}); expected one of {sorted(allowed_judgments)}",
+        )
     if judgment not in allowed_judgments:
         raise JudgeInvocationError(
             "judge_parse_error",

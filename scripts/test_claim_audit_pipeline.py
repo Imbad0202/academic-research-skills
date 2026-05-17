@@ -710,6 +710,24 @@ class TP12JudgeFailureAuditToolFailure(_PipelineTestBase):
 
         self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
 
+    # Step 13 R8 codex P2-3 — judgment isinstance(str) guard before set
+    # membership. Pre-fix: a malformed return like {"judgment": [1, 2], ...}
+    # raised TypeError("unhashable type: 'list'") inside the set membership
+    # test, aborting the audit. Post-fix: translation boundary catches it
+    # as judge_parse_error → audit_tool_failure (#120 P2-3).
+
+    def test_judgment_non_string_list_becomes_judge_parse_error(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"judgment": [1, 2], "rationale": "unhashable list"}
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
+    def test_judgment_non_string_dict_becomes_judge_parse_error(self) -> None:
+        def judge_fn(**_kw: Any) -> dict[str, Any]:
+            return {"judgment": {"nested": "obj"}, "rationale": "unhashable dict"}
+
+        self._assert_audit_tool_failure(self._run_one(judge_fn), "judge_parse_error")
+
 
 # ---------------------------------------------------------------------------
 # T-P14 — retrieve_fn invocation failure mapping to INV-14 retrieval_* tags.
