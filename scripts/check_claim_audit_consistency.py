@@ -609,7 +609,12 @@ def _check_manifest_invariants(manifests: list[dict[str, Any]]) -> list[Finding]
                     )
 
         # M-INV-3: claim-level NC cannot reuse an MNC-* id (only ADD via NC-C{n}-{m}).
-        mnc_ids = {nc.get("constraint_id") for nc in _iter_dicts(m.get("manifest_negative_constraints"))}
+        # Per spec §3.2: "claim-level can ADD via NC-C{n}-{m}, never via MNC-*" —
+        # the check fires on any claim-level negative_constraint whose id matches
+        # the MNC-* pattern, regardless of whether that exact id appears in
+        # manifest_negative_constraints[]. (Previous revisions built an unused
+        # `mnc_ids` set here that also crashed on schema-invalid unhashable
+        # MNC ids — codex round 3 P2; removed in v3.8.1.)
         for j, claim in enumerate(_iter_dicts(m.get("claims"))):
             for nc in _iter_dicts(claim.get("negative_constraints")):
                 nc_id_raw = nc.get("constraint_id", "")

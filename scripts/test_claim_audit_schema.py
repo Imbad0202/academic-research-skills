@@ -1283,6 +1283,21 @@ class TS9MalformedPassportGuard(_LintTestBase):
         self.assertNotIn("Traceback", err, msg=f"lint must not crash on unhashable finding_id:\n{err}")
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
+    def test_unhashable_mnc_constraint_id_does_not_crash_m_inv_3(self) -> None:
+        # codex round 3 P2: manifest_negative_constraints[].constraint_id as
+        # list/dict crashes the `mnc_ids = {nc.get("constraint_id") for ...}`
+        # set comprehension when the implementation builds an (unused) set.
+        # Schema records the type mismatch but the lint still raises.
+        body = build_passport()
+        body["claim_intent_manifests"][0]["manifest_negative_constraints"] = [
+            {"constraint_id": ["unhashable"], "rule": "bad"}
+        ]
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not crash on unhashable MNC constraint_id:\n{err}")
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
     def test_non_string_claim_text_does_not_crash_cv_inv_4_dedupe(self) -> None:
         # CV-INV-4 dedupe key constructs hashlib.sha256((claim_text or "").encode())
         # — if claim_text is a list / dict / int (schema-invalid), the `or ""`
