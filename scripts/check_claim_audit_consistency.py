@@ -499,9 +499,10 @@ def _check_inv_18(e: dict[str, Any]) -> list[Finding]:
 # (schema also rejects the wrong shape; lint surfaces the explicit tag).
 def _check_inv_17_for_manifest(manifest: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
-    for claim in manifest.get("claims", []) or []:
-        for nc in claim.get("negative_constraints", []) or []:
-            cid = nc.get("constraint_id", "")
+    for claim in _iter_dicts(manifest.get("claims")):
+        for nc in _iter_dicts(claim.get("negative_constraints")):
+            cid_raw = nc.get("constraint_id", "")
+            cid = cid_raw if isinstance(cid_raw, str) else ""
             if RE_NC_INNER_HYPHEN.match(cid):
                 findings.append(
                     Finding(
@@ -529,6 +530,23 @@ def _check_matrix(e: dict[str, Any]) -> list[Finding]:
 # ---------------------------------------------------------------------------
 
 
+def _iter_dicts(value: Any) -> list[dict[str, Any]]:
+    """Filter a nested 'list of dict' field to actual dict entries.
+
+    Mirrors `_coerce_aggregate` (which protects top-level aggregates) at the
+    nested level: invariant walkers that descend into `claims[]`,
+    `negative_constraints[]`, `manifest_negative_constraints[]` etc. expect
+    a list of dicts. Schema validation surfaces the type mismatch separately
+    as a clean finding; this guard prevents the walker from crashing on a
+    string-instead-of-list (`for claim in "broken":`) or a non-dict entry
+    (`claim.get(...)`) so the CLI returns actionable lint findings rather
+    than a traceback (#119 + #120 P2-2 — Step 13 R6 codex P2).
+    """
+    if not isinstance(value, list):
+        return []
+    return [e for e in value if isinstance(e, dict)]
+
+
 def _check_manifest_invariants(manifests: list[dict[str, Any]]) -> list[Finding]:
     findings: list[Finding] = []
     # M-INV-4: manifest_id uniqueness across passport.
@@ -548,7 +566,7 @@ def _check_manifest_invariants(manifests: list[dict[str, Any]]) -> list[Finding]
     for i, m in enumerate(manifests):
         # M-INV-1: claim_id uniqueness within one manifest.
         claim_ids: dict[str, int] = {}
-        for j, claim in enumerate(m.get("claims", []) or []):
+        for j, claim in enumerate(_iter_dicts(m.get("claims"))):
             cid = claim.get("claim_id")
             if cid in claim_ids:
                 findings.append(
@@ -562,12 +580,14 @@ def _check_manifest_invariants(manifests: list[dict[str, Any]]) -> list[Finding]
                 claim_ids[cid] = j
 
         # M-INV-2: NC-C{n}-{m} must scope under a claims[] entry with C-{n}.
-        for j, claim in enumerate(m.get("claims", []) or []):
-            cid = claim.get("claim_id") or ""
+        for j, claim in enumerate(_iter_dicts(m.get("claims"))):
+            cid_raw = claim.get("claim_id") or ""
+            cid = cid_raw if isinstance(cid_raw, str) else ""
             cid_match = RE_CLAIM_ID.match(cid)
             cid_digits = cid_match.group(1) if cid_match else None
-            for nc in claim.get("negative_constraints", []) or []:
-                nc_id = nc.get("constraint_id", "")
+            for nc in _iter_dicts(claim.get("negative_constraints")):
+                nc_id_raw = nc.get("constraint_id", "")
+                nc_id = nc_id_raw if isinstance(nc_id_raw, str) else ""
                 nc_match = RE_NC_CONSTRAINT.match(nc_id)
                 if nc_match and nc_match.group(1) != cid_digits:
                     findings.append(
@@ -579,10 +599,11 @@ def _check_manifest_invariants(manifests: list[dict[str, Any]]) -> list[Finding]
                     )
 
         # M-INV-3: claim-level NC cannot reuse an MNC-* id (only ADD via NC-C{n}-{m}).
-        mnc_ids = {nc.get("constraint_id") for nc in m.get("manifest_negative_constraints", []) or []}
-        for j, claim in enumerate(m.get("claims", []) or []):
-            for nc in claim.get("negative_constraints", []) or []:
-                nc_id = nc.get("constraint_id", "")
+        mnc_ids = {nc.get("constraint_id") for nc in _iter_dicts(m.get("manifest_negative_constraints"))}
+        for j, claim in enumerate(_iter_dicts(m.get("claims"))):
+            for nc in _iter_dicts(claim.get("negative_constraints")):
+                nc_id_raw = nc.get("constraint_id", "")
+                nc_id = nc_id_raw if isinstance(nc_id_raw, str) else ""
                 if RE_MNC_CONSTRAINT.match(nc_id):
                     findings.append(
                         Finding(
@@ -605,9 +626,9 @@ def _build_manifest_index(manifests: list[dict[str, Any]]) -> dict[str, set[str]
         if mid is None:
             continue
         index.setdefault(mid, set())
-        for c in m.get("claims", []) or []:
+        for c in _iter_dicts(m.get("claims")):
             cid = c.get("claim_id")
-            if cid:
+            if isinstance(cid, str) and cid:
                 index[mid].add(cid)
     return index
 
@@ -625,15 +646,15 @@ def _build_manifest_constraint_index(
         if mid is None:
             continue
         bucket: dict[str, dict[str, Any]] = {}
-        for mnc in m.get("manifest_negative_constraints", []) or []:
+        for mnc in _iter_dicts(m.get("manifest_negative_constraints")):
             cid = mnc.get("constraint_id")
-            if cid:
+            if isinstance(cid, str) and cid:
                 bucket[cid] = {"kind": "MNC", "claim_id": None}
-        for claim in m.get("claims", []) or []:
+        for claim in _iter_dicts(m.get("claims")):
             parent = claim.get("claim_id")
-            for nc in claim.get("negative_constraints", []) or []:
+            for nc in _iter_dicts(claim.get("negative_constraints")):
                 cid = nc.get("constraint_id")
-                if cid:
+                if isinstance(cid, str) and cid:
                     bucket[cid] = {"kind": "NC", "claim_id": parent}
         out[mid] = bucket
     return out
@@ -940,15 +961,21 @@ def _check_sampling_invariants(entries: list[dict[str, Any]]) -> list[Finding]:
                     )
                 )
 
-        # S-INV-4: strictly ascending, no duplicates.
+        # S-INV-4: strictly ascending, no duplicates. Guard against mixed-type
+        # indices (#119 R6 codex P2 + Step 13 R8 P2-2) — schema records the
+        # type mismatch separately; if a non-int slips through we skip the
+        # comparison rather than raising TypeError on `<=` between str and int.
         if isinstance(indices, list):
             for i in range(1, len(indices)):
-                if indices[i] <= indices[i - 1]:
+                a, b = indices[i - 1], indices[i]
+                if not (isinstance(a, int) and isinstance(b, int)):
+                    continue
+                if b <= a:
                     findings.append(
                         Finding(
                             "S-INV-4",
                             f"audit_run_id={run_id!r}: audited_indices not strictly ascending at position {i} "
-                            f"({indices[i - 1]!r} -> {indices[i]!r})",
+                            f"({a!r} -> {b!r})",
                         )
                     )
                     break

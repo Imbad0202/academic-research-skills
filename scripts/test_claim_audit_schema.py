@@ -1129,6 +1129,57 @@ class TS9MalformedPassportGuard(_LintTestBase):
                 self.assertIn("schema", out, msg=f"expected schema finding for malformed={malformed!r}:\n{out}")
                 self.assertNotIn("Traceback", err, msg=f"lint must not raise for malformed={malformed!r}:\n{err}")
 
+    # Step 13 R6 codex P2 + R8 P2-2 — nested schema-invalid shapes must not
+    # crash the cross-field invariant walkers. Schema validator records the
+    # finding; the invariant helpers then iterate the malformed nested shape
+    # and previously hit TypeError/AttributeError. Issue #119 + #120 P2-2.
+
+    def test_manifest_claims_as_string_does_not_crash_invariant_walker(self) -> None:
+        # #119 + #120 P2-2: claim_intent_manifests[0].claims is a string,
+        # not a list. Schema validator records the finding; the cross-field
+        # invariant walker (M-INV-1..M-INV-4) must NOT iterate the string
+        # and crash. Expect clean exit=1 with schema finding, no traceback.
+        body = build_passport()
+        body["claim_intent_manifests"][0]["claims"] = "should be a list"
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not crash on nested string:\n{err}")
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
+    def test_manifest_claim_with_non_string_claim_id_does_not_crash(self) -> None:
+        # #119: manifest.claims[].claim_id is a non-string. Schema records
+        # the type mismatch; invariant walker must skip this manifest's
+        # cross-field checks instead of crashing on .get() / regex match.
+        body = build_passport()
+        body["claim_intent_manifests"][0]["claims"][0]["claim_id"] = 42
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not crash on non-string claim_id:\n{err}")
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
+    def test_audited_indices_mixed_types_does_not_crash_sampling_walker(self) -> None:
+        # #119: audit_sampling_summaries[].audited_indices contains mixed
+        # str/int types. Schema records the type mismatch; S-INV-4 walker
+        # (indices[i] <= indices[i-1]) must skip instead of raising
+        # TypeError on '<=' between str and int.
+        body = build_passport()
+        body["audit_sampling_summaries"] = [{
+            "audit_run_id": AUDIT_RUN_ID,
+            "max_claims_per_paper": 10,
+            "total_citation_count": 5,
+            "audited_count": 2,
+            "audited_indices": ["a", 1],
+            "sampling_strategy": "stratified_buckets_v1",
+            "emitted_at": "2026-05-15T10:15:00Z",
+        }]
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn("Traceback", err, msg=f"lint must not crash on mixed-type indices:\n{err}")
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
 
 if __name__ == "__main__":
     unittest.main()
