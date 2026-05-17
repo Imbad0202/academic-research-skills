@@ -791,6 +791,15 @@ class TP14RetrieveFailureAuditToolFailure(_PipelineTestBase):
 
         self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
 
+    def test_malformed_return_non_string_method(self) -> None:
+        # Step 13 R8 codex P2-4: ref_retrieval_method as a list raises
+        # TypeError on set membership outside the translation boundary;
+        # must surface as retrieval_api_error → audit_tool_failure.
+        def retrieve_fn(_c: dict[str, Any]) -> dict[str, Any]:
+            return {"ref_retrieval_method": ["api", "manual_pdf"], "retrieved_excerpt": "n/a"}
+
+        self._assert_audit_tool_failure(self._run_one(retrieve_fn), "retrieval_api_error")
+
     def test_api_method_without_excerpt_rejected(self) -> None:
         # Step 13 R3 codex P2 #3 — api with empty excerpt would let the judge
         # mark SUPPORTED with no source text.
