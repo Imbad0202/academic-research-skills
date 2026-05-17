@@ -114,8 +114,9 @@ def check_legacy_compat(subsection_text: str) -> list[str]:
     - preprint=true: suffix = CONTAMINATED-PREPRINT+UNMATCHED, NOT
       CONTAMINATED-PREPRINT+COVERAGE-NOISE
 
-    Additionally, both rows must be PRESENT. Deleting either row silently passes without
-    this check (codex R3-F2 finding, 2026-05-17).
+    Additionally, both rows must be PRESENT. Deleting either row silently passes
+    without this guard (absence-is-a-pass is a systematic false-negative per
+    v3.9.0 spec §3.6 coverage-noise invariant).
     """
     failures = []
     seen_bare_legacy = False

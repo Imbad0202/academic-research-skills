@@ -14,8 +14,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Protocol
 
 
-# 10-server closed list per v3.7.3 spec §3.2 + schema description.
-# Expanded from 6 to 10 venues per gemini review F6 / codex round-4 F13.
+# 10-venue closed list per v3.7.3 spec §3.2 + schema description.
 # This list is intentionally redundant with the bibliography_agent's
 # in-prose list — adapters and migration tools both need the literal set.
 PREPRINT_VENUES = frozenset({
@@ -105,9 +104,10 @@ def compute_preprint_signal(entry: Mapping[str, Any]) -> bool:
     → arXiv). Missing year, or venue that resolves to neither a preprint
     server nor an inferable pointer, returns False.
 
-    Source-pointer inference is the codex R2-1 closure: legacy entries
-    that schema-validly omit `venue` but carry a preprint URL must still
-    surface CONTAMINATED-PREPRINT.
+    Source-pointer inference: legacy entries that schema-validly omit
+    `venue` but carry a preprint URL in `source_pointer` must still surface
+    the CONTAMINATED-PREPRINT signal (per v3.7.3 §3.2 Vector 1 — `venue`
+    absence is not a negative).
     """
     year = entry.get("year")
     if not isinstance(year, int) or year < 2024:
@@ -198,6 +198,7 @@ def resolve_crossref_unmatched(entry: Mapping[str, Any], client) -> bool | None:
         hit = client.doi_lookup_with_title_check(doi, title)
         if hit is not None:
             return False
+        # DOI miss or MISMATCH — fall through to title search.
     hit = client.title_search(title)
     return hit is None
 

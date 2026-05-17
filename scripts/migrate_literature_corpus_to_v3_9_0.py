@@ -51,29 +51,30 @@ def _dump_passport(path: Path, doc: Any) -> None:
 
 
 def _entry_in_v3_7_3_scope(entry: Mapping[str, Any]) -> bool:
-    """v3.9.0 migration scope: entry has v3.7.3 contamination_signals with
-    semantic_scholar_unmatched set (may be True, False, or absent-key).
+    """Return True iff the entry has a v3.7.3-era `contamination_signals`
+    object (so v3.9.0 migration can act on it). Return False if
+    `contamination_signals` is absent entirely, or if it's present without
+    `semantic_scholar_unmatched` on a non-manual entry (out of v3.9.0
+    scope — needs `migrate_literature_corpus_to_v3_7_3.py` first per spec
+    §3.7 daisy-chain contract).
 
-    Per spec §3.7 daisy-chain contract: entries that lack the v3.7.3
-    semantic_scholar_unmatched key were never processed by v3.7.3 migration
-    and are therefore out of v3.9.0 scope. They must go through
-    migrate_literature_corpus_to_v3_7_3.py first.
-
-    Note: manual entries have semantic_scholar_unmatched omitted by design
-    (spec §3.2 exemption) but they ARE in scope in the sense that they
-    carry the v3.7.3 contamination_signals object. However, the manual-skip
-    rule fires first, so these entries never reach the v3.9.0 fill logic.
-    The scope check here is purely for entries with NO contamination_signals
-    at all, or contamination_signals without semantic_scholar_unmatched on
-    a non-manual entry.
+    Manual entries are reported as in-scope when they carry a
+    `contamination_signals` object, because they ARE v3.7.3-era (spec §3.2
+    manual exemption gives them only `preprint_post_llm_inflection`, not
+    `semantic_scholar_unmatched`). The caller (`migrate_passport`) skips
+    manual entries separately before invoking the v3.9.0 fill logic; this
+    function's manual-branch is therefore a defensive contract — it
+    accurately reports v3.7.3 scope membership even when the caller's
+    skip order might change later.
     """
     sig = entry.get("contamination_signals")
     if sig is None:
         return False
     if entry.get("obtained_via") == "manual":
-        # Manual entries carry only preprint_post_llm_inflection by design.
-        # They're still v3.7.3-era entries (have contamination_signals)
-        # but the manual-skip fires before we get here in migrate_passport.
+        # Manual entries are v3.7.3-era (carry contamination_signals)
+        # but the v3.7.3 §3.2 manual exemption means they have only
+        # preprint_post_llm_inflection, not semantic_scholar_unmatched.
+        # Caller's manual-skip handles the migration filter separately.
         return True
     return "semantic_scholar_unmatched" in sig
 
