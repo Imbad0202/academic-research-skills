@@ -129,10 +129,13 @@ def test_429_triggers_2s_backoff_3_retries(monkeypatch):
 
 
 def test_5xx_skips_immediately(monkeypatch):
-    """Per protocol: 5xx → no retry, raise OpenAlexUnavailable."""
+    """Per protocol: 5xx → no retry (call count == 1), raise OpenAlexUnavailable."""
     from openalex_client import OpenAlexClient, OpenAlexUnavailable
 
+    call_count = [0]
+
     def mock_urlopen(*args, **kwargs):
+        call_count[0] += 1
         raise urllib.error.HTTPError(
             url="https://api.openalex.org/works",
             code=503,
@@ -145,6 +148,8 @@ def test_5xx_skips_immediately(monkeypatch):
         client = OpenAlexClient()
         with pytest.raises(OpenAlexUnavailable):
             client.title_search("anything")
+
+    assert call_count[0] == 1  # no retry on 5xx
 
 
 def test_polite_pool_email_param(monkeypatch):
@@ -168,3 +173,48 @@ def test_polite_pool_email_param(monkeypatch):
         client.title_search("any title")
 
     assert any("mailto=test%40example.com" in url for url in captured_url)
+
+
+def test_doi_404_treated_as_miss_not_unavailable(monkeypatch):
+    """DOI not indexed in OpenAlex (404) → return None (miss), not raise OpenAlexUnavailable."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    def mock_urlopen(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            url="https://api.openalex.org/works/doi:10.5555/nonexistent",
+            code=404,
+            msg="Not Found",
+            hdrs={},
+            fp=None,
+        )
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = OpenAlexClient()
+        result = client.doi_lookup_with_title_check(
+            doi="10.5555/nonexistent",
+            expected_title="Anything",
+        )
+
+    assert result is None  # 404 = miss, falls through to title search at caller level
+
+
+def test_title_search_prefers_matching_year(monkeypatch):
+    """When two candidates have similar titles, prefer the one with matching year."""
+    from openalex_client import OpenAlexClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "results": [
+            {"title": "Attention Is All You Need", "publication_year": 1999},  # wrong year
+            {"title": "Attention Is All You Need", "publication_year": 2017},  # matching year
+        ]
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = OpenAlexClient()
+        result = client.title_search("Attention Is All You Need", year=2017)
+
+    assert result is not None
+    assert result["publication_year"] == 2017

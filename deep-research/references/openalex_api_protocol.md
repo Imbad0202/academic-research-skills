@@ -55,7 +55,7 @@ OpenAlex returns `host_venue.type` and other classification fields. **v3.9.0 ign
 
 ## Client implementation
 
-See `scripts/openalex_client.py`. The client class `OpenAlexClient` exposes `doi_lookup_with_title_check(doi, expected_title)` and `title_search(title)` methods. Both return `dict | None`. Both raise `OpenAlexUnavailable` on degradation per the table above.
+See `scripts/openalex_client.py`. The client class `OpenAlexClient` exposes `doi_lookup_with_title_check(doi, expected_title)` and `title_search(title, year=None)` methods. Both return `dict | None`. Both raise `OpenAlexUnavailable` on degradation per the table above. The optional `year` parameter in `title_search` enables a matching-year tiebreaker (+0.05 score bonus) mirroring the S2 client `_lookup_by_title` pattern.
 
 ## Cross-references
 

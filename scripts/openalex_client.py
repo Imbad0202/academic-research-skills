@@ -84,8 +84,15 @@ class OpenAlexClient:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     return json.loads(resp.read().decode("utf-8"))
             except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    return {}
                 if e.code == 429 and attempt < _MAX_RETRIES:
                     time.sleep(_BACKOFF_SECONDS)
+                    # Refresh anchor after backoff so the next _throttle()
+                    # paces against actual wake time, not entry time.
+                    # Without this the next call may under-sleep (elapsed
+                    # already counts the 2s × N backoff) and re-trigger 429.
+                    self._last_request_at = time.time()
                     continue
                 raise OpenAlexUnavailable(f"OpenAlex HTTP {e.code}: {e.reason}") from e
             except (urllib.error.URLError, TimeoutError) as e:
@@ -103,20 +110,27 @@ class OpenAlexClient:
             return data
         return None  # DOI_MISMATCH
 
-    def title_search(self, title: str) -> dict[str, Any] | None:
-        """Title search with 0.70 similarity threshold + matching-year tiebreaker."""
+    def title_search(self, title: str, year: int | None = None) -> dict[str, Any] | None:
+        """Title search with 0.70 similarity threshold + matching-year tiebreaker.
+
+        When *year* is provided, candidates whose ``publication_year`` matches
+        get a +0.05 score bonus (mirroring S2 client ``_lookup_by_title``).
+        """
         data = self._get("/works", {
             "search": title,
             "per-page": "5",
             "select": _FIELDS,
         })
         candidates = data.get("results", [])
-        scored = [
-            (cand, _similarity(cand.get("title") or "", title))
-            for cand in candidates
-        ]
-        passing = [(cand, sim) for cand, sim in scored if sim >= _TITLE_SIMILARITY_THRESHOLD]
-        if not passing:
+        scored = []
+        for cand in candidates:
+            sim = _similarity(cand.get("title") or "", title)
+            if sim < _TITLE_SIMILARITY_THRESHOLD:
+                continue
+            year_match = year is not None and cand.get("publication_year") == year
+            score = sim + (0.05 if year_match else 0.0)
+            scored.append((cand, score))
+        if not scored:
             return None
-        passing.sort(key=lambda cand_sim: (-cand_sim[1],))
-        return passing[0][0]
+        scored.sort(key=lambda cand_score: (-cand_score[1],))
+        return scored[0][0]
