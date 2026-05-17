@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""Minimal OpenAlex API client wrapper.
+
+Implements the lookup contract documented at
+`deep-research/references/openalex_api_protocol.md`. DOI-first with
+title cross-check (DOI_MISMATCH pattern), title-similarity fallback,
+429 → 2s backoff × 3 retries, 5xx → skip. Mirrors
+`semantic_scholar_client.py` structure for code locality.
+"""
+from __future__ import annotations
+
+import json
+import os
+import string
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from difflib import SequenceMatcher
+from typing import Any, Mapping
+
+
+_PUNCT_TRANSLATION = str.maketrans({c: " " for c in string.punctuation})
+
+_API_BASE = "https://api.openalex.org"
+_POLITE_EMAIL_ENV = "OPENALEX_POLITE_EMAIL"
+_FIELDS = "id,title,authorships,publication_year,doi,host_venue"
+
+_BACKOFF_SECONDS = 2.0
+_MAX_RETRIES = 3
+
+_POLITE_MIN_INTERVAL = 0.1
+_ANONYMOUS_MIN_INTERVAL = 1.0
+
+_TITLE_SIMILARITY_THRESHOLD = 0.70
+
+
+def _normalize_title(s: str) -> str:
+    cleaned = s.lower().translate(_PUNCT_TRANSLATION)
+    return " ".join(cleaned.split())
+
+
+def _similarity(a: str, b: str) -> float:
+    return SequenceMatcher(None, _normalize_title(a), _normalize_title(b)).ratio()
+
+
+class OpenAlexUnavailable(Exception):
+    """OpenAlex API degraded — caller MUST omit `openalex_unmatched`."""
+
+
+class OpenAlexClient:
+    """Production lookup-by-(doi-with-cross-check-then-title) client.
+
+    Concurrency note: rate-limit pacing is per-instance. Share a single
+    instance across a migration run.
+    """
+
+    def __init__(self, polite_email: str | None = None):
+        self._polite_email = polite_email or os.environ.get(_POLITE_EMAIL_ENV)
+        self._min_interval = (
+            _POLITE_MIN_INTERVAL if self._polite_email else _ANONYMOUS_MIN_INTERVAL
+        )
+        self._last_request_at: float | None = None
+
+    def _throttle(self) -> None:
+        if self._last_request_at is None:
+            return
+        elapsed = time.time() - self._last_request_at
+        if elapsed < self._min_interval:
+            time.sleep(self._min_interval - elapsed)
+
+    def _get(self, path: str, query: Mapping[str, str]) -> dict[str, Any]:
+        params = dict(query)
+        if self._polite_email:
+            params["mailto"] = self._polite_email
+        url = f"{_API_BASE}{path}?{urllib.parse.urlencode(params)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "ARS-v3.9.0"})
+
+        self._throttle()
+        self._last_request_at = time.time()
+
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                if e.code == 429 and attempt < _MAX_RETRIES:
+                    time.sleep(_BACKOFF_SECONDS)
+                    continue
+                raise OpenAlexUnavailable(f"OpenAlex HTTP {e.code}: {e.reason}") from e
+            except (urllib.error.URLError, TimeoutError) as e:
+                raise OpenAlexUnavailable(f"OpenAlex network error: {e}") from e
+
+        raise OpenAlexUnavailable("OpenAlex rate limit exhausted after retries")
+
+    def doi_lookup_with_title_check(
+        self, doi: str, expected_title: str,
+    ) -> dict[str, Any] | None:
+        """DOI lookup with mandatory Levenshtein 0.70 title cross-check."""
+        data = self._get(f"/works/doi:{doi}", {"select": _FIELDS})
+        title = data.get("title") or ""
+        if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
+            return data
+        return None  # DOI_MISMATCH
+
+    def title_search(self, title: str) -> dict[str, Any] | None:
+        """Title search with 0.70 similarity threshold + matching-year tiebreaker."""
+        data = self._get("/works", {
+            "search": title,
+            "per-page": "5",
+            "select": _FIELDS,
+        })
+        candidates = data.get("results", [])
+        scored = [
+            (cand, _similarity(cand.get("title") or "", title))
+            for cand in candidates
+        ]
+        passing = [(cand, sim) for cand, sim in scored if sim >= _TITLE_SIMILARITY_THRESHOLD]
+        if not passing:
+            return None
+        passing.sort(key=lambda cand_sim: (-cand_sim[1],))
+        return passing[0][0]
