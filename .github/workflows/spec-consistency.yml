@@ -208,6 +208,18 @@ jobs:
           pip install pytest
           pytest scripts/test_check_v3_7_3_three_layer_citation.py -v
 
+      - name: v3.9.0 cross-index triangulation lint
+        # §3.8 rules 5-6 (R3 P2 closure): verifies formatter pass-through
+        # allowlist equals the canonical 9-suffix set (exact-token extraction
+        # from backtick spans, not substring matching) and that refusal rules
+        # 1-10 contain no CONTAMINATED-* tokens (R-L3-2-E invariant).
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest
+          python scripts/check_v3_9_0_triangulation.py
+          pytest scripts/test_check_v3_9_0_triangulation.py -v
+
       - name: Run v3.8 annotation-literal sync lint (#103)
         # Step 8 /simplify reuse P2-1: lint pins that every
         # ANNOTATION_HIGH_WARN_* literal in scripts/claim_audit_finalizer.py
