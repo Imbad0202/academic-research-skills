@@ -1610,5 +1610,39 @@ class TS9MalformedPassportGuard(_LintTestBase):
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
 
+# v3.9.1 / #130 — manifest_id non-string guard in _build_manifest_index +
+# _build_manifest_constraint_index. Schema validator records the type
+# mismatch finding; the index builders must skip non-string IDs cleanly
+# instead of raising TypeError("unhashable type") on setdefault() / [mid]=.
+class TSManifestIdNonStringGuard(_LintTestBase):
+    """Issue #130: manifest_id of type list/dict must not crash index builders."""
+
+    def test_manifest_id_as_list_does_not_crash(self) -> None:
+        body = build_passport()
+        body["claim_intent_manifests"][0]["manifest_id"] = ["oops"]
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn(
+            "Traceback",
+            err,
+            msg=f"lint must not crash on list manifest_id (unhashable in setdefault):\n{err}",
+        )
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
+    def test_manifest_id_as_dict_does_not_crash(self) -> None:
+        body = build_passport()
+        body["claim_intent_manifests"][0]["manifest_id"] = {"oops": "dict id"}
+        path = write_passport(self.tmp, body)
+        code, out, err = run_lint(path)
+        self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
+        self.assertNotIn(
+            "Traceback",
+            err,
+            msg=f"lint must not crash on dict manifest_id (unhashable in setdefault):\n{err}",
+        )
+        self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
+
+
 if __name__ == "__main__":
     unittest.main()

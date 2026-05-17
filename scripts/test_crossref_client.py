@@ -223,3 +223,57 @@ def test_polite_pool_email_in_user_agent(monkeypatch):
         client.title_search("any title")
 
     assert any("mailto:test@example.com" in ua for ua in captured_headers)
+
+
+# ---------- v3.9.1: #129 response-read failure wrapping (Crossref) ----------
+
+
+def test_oserror_during_read_raises_unavailable(monkeypatch):
+    """urlopen succeeds, but resp.read() raises OSError (socket drop / timeout
+    mid-stream). Per v3.9.0 spec §3.7 degradation contract, this MUST be
+    translated to CrossrefUnavailable so migrate_literature_corpus_to_v3_9_0
+    omits crossref_unmatched instead of aborting the whole backfill."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.side_effect = OSError("socket dropped mid-read")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable):
+            client.title_search("any title")
+
+
+def test_invalid_utf8_body_raises_unavailable(monkeypatch):
+    """resp.read() returns bytes that aren't valid UTF-8. Per v3.9.0 spec §3.7,
+    translate to CrossrefUnavailable not bubble UnicodeDecodeError."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = b"\xff\xfe\xff garbage"
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable):
+            client.title_search("any title")
+
+
+def test_invalid_json_body_raises_unavailable(monkeypatch):
+    """resp.read() returns valid utf-8 but not valid JSON (truncated body /
+    HTML error page). Per v3.9.0 spec §3.7, translate to CrossrefUnavailable
+    not bubble JSONDecodeError."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = b"<html>503 backend unavailable</html>"
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable):
+            client.title_search("any title")

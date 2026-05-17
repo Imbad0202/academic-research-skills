@@ -8,6 +8,30 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.9.1] - 2026-05-18 — v3.9.0 client hardening (#129 + #130)
+
+Two-bug hotfix surfaced by codex review of `ars-codex` PR #13 (vendor sync to v3.9.0 `74413a4`). Both bugs exist in v3.9.0 main: #129 violates the v3.9.0 §3.7 per-API degradation contract; #130 crashes a defensive lint on malformed input. Neither changes the spec or schema.
+
+### Fixed
+
+- **#129 — OpenAlex / Crossref response-read failures now translate to `*Unavailable`.** In `scripts/openalex_client.py:_get` and `scripts/crossref_client.py:_get`, `urlopen` succeeded but `resp.read()` / `body.decode("utf-8")` / `json.loads()` failures (socket drop mid-stream, garbled UTF-8 body, HTML 503 page returned with 200 status) escaped the client as raw `OSError` / `UnicodeDecodeError` / `JSONDecodeError`. `scripts/migrate_literature_corpus_to_v3_9_0.py` only catches `OpenAlexUnavailable` / `CrossrefUnavailable`, so one transient response failure during a 500-entry backfill aborted the whole migration instead of dropping just the affected field. Narrow except block around read+decode+parse now mirrors the existing 5xx-skip pattern: per-API tolerant per the v3.9.0 spec §3.7 documented degradation contract and `bibliography_agent.md` "Triangulation Extension".
+
+- **#130 — `check_claim_audit_consistency` non-string `manifest_id` guard.** `_build_manifest_index` (line 644) and `_build_manifest_constraint_index` (line 675) used `manifest_id` as a dict key via `setdefault(mid, set())` / `out[mid] = bucket` before checking type. For malformed passports where the schema validator already noted `manifest_id` as `array` / `object`, the index builder raised `TypeError: unhashable type: 'list'` and terminated lint with a traceback before `validate_passport()` could return the schema finding cleanly. Added `isinstance(mid, str) and mid` guard at both sites, matching the surrounding `_check_inv_17_for_manifest` / `claim_id` invariant-walker pattern. Schema validator still records the type mismatch — the guard just lets the lint surface findings cleanly instead of crashing.
+
+### Tests
+
+- `scripts/test_openalex_client.py`: +3 tests covering OSError on `resp.read()`, invalid UTF-8 body, invalid JSON body.
+- `scripts/test_crossref_client.py`: +3 symmetric tests.
+- `scripts/test_claim_audit_schema.py`: new `TSManifestIdNonStringGuard` class with 2 tests (`manifest_id` as list / dict).
+- Regression baseline: 1453 → 1461 passed (+8), 3 skipped + 111 subtests unchanged, 0 failures.
+
+### Out of scope
+
+- Spec / schema / CHANGELOG narrative not touched — the degradation contract is already documented in spec §3.7; this just makes code honor it.
+- `ars-codex` adapter sibling: the same two fixes will surface on next vendor sync (v3.9.1 → ars-codex v0.1.8). No action needed in this release.
+
+---
+
 ## [3.9.0] - 2026-05-17
 
 ### Added

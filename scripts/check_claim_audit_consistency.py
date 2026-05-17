@@ -639,7 +639,11 @@ def _build_manifest_index(manifests: list[dict[str, Any]]) -> dict[str, set[str]
     index: dict[str, set[str]] = {}
     for m in manifests:
         mid = m.get("manifest_id")
-        if mid is None:
+        # #130: skip non-string manifest_id (list/dict would raise
+        # TypeError: unhashable type on setdefault). Schema validator
+        # already records the type mismatch as a separate finding;
+        # the cross-field invariant pass just needs to walk past it.
+        if not isinstance(mid, str) or not mid:
             continue
         index.setdefault(mid, set())
         for c in _iter_dicts(m.get("claims")):
@@ -659,7 +663,9 @@ def _build_manifest_constraint_index(
     out: dict[str, dict[str, dict[str, Any]]] = {}
     for m in manifests:
         mid = m.get("manifest_id")
-        if mid is None:
+        # #130: same guard as _build_manifest_index — non-string mid
+        # would raise TypeError on `out[mid] = bucket` (unhashable).
+        if not isinstance(mid, str) or not mid:
             continue
         bucket: dict[str, dict[str, Any]] = {}
         for mnc in _iter_dicts(m.get("manifest_negative_constraints")):

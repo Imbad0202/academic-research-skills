@@ -218,3 +218,58 @@ def test_title_search_prefers_matching_year(monkeypatch):
 
     assert result is not None
     assert result["publication_year"] == 2017
+
+
+# ---------- v3.9.1: #129 response-read failure wrapping ----------
+
+
+def test_oserror_during_read_raises_unavailable(monkeypatch):
+    """urlopen succeeds, but resp.read() raises OSError (socket drop / timeout
+    mid-stream). Per v3.9.0 spec §3.7 degradation contract, this MUST be
+    translated to OpenAlexUnavailable so migrate_literature_corpus_to_v3_9_0
+    omits openalex_unmatched instead of aborting the whole backfill."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.side_effect = OSError("socket dropped mid-read")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable):
+            client.title_search("any title")
+
+
+def test_invalid_utf8_body_raises_unavailable(monkeypatch):
+    """resp.read() returns bytes that aren't valid UTF-8 (garbled CDN response).
+    Per v3.9.0 spec §3.7, translate to OpenAlexUnavailable not bubble out as
+    UnicodeDecodeError."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = b"\xff\xfe\xff garbage"
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable):
+            client.title_search("any title")
+
+
+def test_invalid_json_body_raises_unavailable(monkeypatch):
+    """resp.read() returns valid utf-8 but not valid JSON (e.g. truncated body,
+    HTML error page slipped through). Per v3.9.0 spec §3.7, translate to
+    OpenAlexUnavailable not bubble JSONDecodeError."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = b"<html>503 backend unavailable</html>"
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable):
+            client.title_search("any title")

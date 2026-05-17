@@ -112,7 +112,20 @@ class CrossrefClient:
         for attempt in range(_MAX_RETRIES + 1):
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:
-                    return json.loads(resp.read().decode("utf-8"))
+                    # Wrap response body read + decode + parse in a narrow
+                    # except so transient socket drops mid-stream, garbled
+                    # bodies, or HTML error pages slipped through with 200
+                    # status surface as CrossrefUnavailable — honoring the
+                    # v3.9.0 spec §3.7 per-API degradation contract (one
+                    # transient failure must drop only crossref_unmatched,
+                    # not abort the whole backfill). Mirrors openalex_client.
+                    try:
+                        body = resp.read()
+                        return json.loads(body.decode("utf-8"))
+                    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+                        raise CrossrefUnavailable(
+                            f"Crossref response read/parse failed: {e}"
+                        ) from e
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     return {}
