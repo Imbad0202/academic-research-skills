@@ -1470,5 +1470,148 @@ class TP13EmittedNotIntendedDedupe(_PipelineTestBase):
         self.assertEqual(drifts[0]["claim_text"], drifted_text)
 
 
+# ---------------------------------------------------------------------------
+# T-P23 — v3.8.2 / #118: uncited path judge outage emits UAF row, not synthetic
+# NOT_VIOLATED. Validates the fix for the issue where JudgeInvocationError on
+# the uncited constraint-judging path was silently substituted as
+# {"judgment": "NOT_VIOLATED", ...}, suppressing HIGH-WARN constraint checks.
+# ---------------------------------------------------------------------------
+
+
+class TP23UncitedJudgeOutageEmitsUAF(_PipelineTestBase):
+    """T-P23 (v3.8.2 / #118): JudgeInvocationError on uncited path → UAF row."""
+
+    def _manifest_with_mnc(self) -> dict[str, Any]:
+        return _manifest(
+            mncs=[{"constraint_id": "MNC-1", "rule": "No causal language without RCT."}],
+        )
+
+    def test_uncited_judge_timeout_emits_uaf(self) -> None:
+        # judge_fn raises a raw TimeoutError; _invoke_judge maps it to
+        # JudgeInvocationError("judge_timeout", ...) per the exception
+        # translation layer at scripts/claim_audit_pipeline.py:_invoke_judge.
+        def failing_judge(**_kw: Any) -> dict[str, Any]:
+            raise TimeoutError("judge timed out after 30s")
+
+        uncited_sentences = [
+            {
+                "sentence_text": "We observed causality between A and B.",
+                "section_path": "4. Discussion > 4.3 Limitations",
+                "manifest_claim_id": None,
+                "trigger_tokens": ["observed"],
+            }
+        ]
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[self._manifest_with_mnc()],
+            uncited_sentences=uncited_sentences,
+            judge_fn=failing_judge,
+        )
+        uaf = out["uncited_audit_failures"]
+        self.assertEqual(
+            len(uaf),
+            1,
+            f"judge_timeout on uncited path MUST emit 1 UAF row; got {uaf}",
+        )
+        e = uaf[0]
+        self.assertEqual(e["fault_class"], "judge_timeout")
+        self.assertTrue(
+            e["rationale"].startswith("judge_timeout:"),
+            f"UAF rationale MUST begin with fault_class prefix; got {e['rationale']!r}",
+        )
+        # No fake NOT_VIOLATED leaked into constraint_violations[].
+        self.assertEqual(
+            out["constraint_violations"],
+            [],
+            "judge_timeout MUST NOT emit a constraint_violations[] row — that would be silent suppression of the HIGH-WARN check (pre-v3.8.2 bug)",
+        )
+        # No synthetic NOT_VIOLATED leaked into any aggregate either.
+        for agg_name in ("claim_audit_results", "constraint_violations"):
+            for entry in out.get(agg_name, []):
+                rationale = entry.get("rationale", "")
+                self.assertNotIn(
+                    "judge_fn failure on uncited path",
+                    rationale,
+                    f"pre-v3.8.2 synthetic NOT_VIOLATED rationale MUST NOT appear in {agg_name}",
+                )
+
+    def test_uncited_judge_outage_no_audit_abort(self) -> None:
+        # Coverage preservation: an outage on one sentence MUST NOT abort the
+        # whole audit. With 3 sentences + judge that fails on the second, we
+        # expect: rows for sentence 1, UAF for sentence 2, rows for sentence
+        # 3 unaffected. ConnectionError → judge_api_error per _invoke_judge's
+        # generic Exception translation branch.
+        call_count = [0]
+
+        def selectively_failing_judge(**kw: Any) -> dict[str, Any]:
+            call_count[0] += 1
+            if call_count[0] == 2:
+                raise ConnectionError("transient 5xx on call #2")
+            return {"judgment": "NOT_VIOLATED", "rationale": "fine"}
+
+        uncited_sentences = [
+            {
+                "sentence_text": f"Uncited sentence number {i}.",
+                "section_path": f"3. Results > 3.{i}",
+                "manifest_claim_id": None,
+                "trigger_tokens": ["showed"],
+            }
+            for i in range(1, 4)
+        ]
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[self._manifest_with_mnc()],
+            uncited_sentences=uncited_sentences,
+            judge_fn=selectively_failing_judge,
+        )
+        # Exactly 1 UAF row from the call #2 outage; the other two sentences
+        # judged fine (NOT_VIOLATED → no CV row, no UAF row).
+        self.assertEqual(len(out["uncited_audit_failures"]), 1)
+        self.assertEqual(out["uncited_audit_failures"][0]["fault_class"], "judge_api_error")
+        # Audit pass did NOT abort — 3 judge invocations attempted.
+        self.assertEqual(call_count[0], 3)
+
+    def test_uncited_judge_outage_nc_path_carries_manifest_claim_id(self) -> None:
+        # When the sentence is bound to a manifest claim (NC-C path), the UAF
+        # row MUST carry the manifest_claim_id so the failure can be traced
+        # back to which (manifest, claim) constraint set was being judged.
+        # ValueError → judge_parse_error per _invoke_judge translation.
+        def failing_judge(**_kw: Any) -> dict[str, Any]:
+            raise ValueError("malformed judge output: not JSON")
+
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Sample preprints accounted for 67% of corpus.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                    "negative_constraints": [
+                        {"constraint_id": "NC-C001-1", "rule": "No causal language."}
+                    ],
+                }
+            ],
+        )
+        uncited_sentences = [
+            {
+                "sentence_text": "Sample preprints accounted for 67% of corpus.",
+                "section_path": "3. Results > 3.1 Overview",
+                "manifest_claim_id": "C-001",
+                "scoped_manifest_id": MANIFEST_ID,
+                "trigger_tokens": ["67%"],
+            }
+        ]
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=uncited_sentences,
+            judge_fn=failing_judge,
+        )
+        uaf = out["uncited_audit_failures"]
+        self.assertEqual(len(uaf), 1)
+        self.assertEqual(uaf[0]["manifest_claim_id"], "C-001")
+        self.assertEqual(uaf[0]["fault_class"], "judge_parse_error")
+
+
 if __name__ == "__main__":
     unittest.main()

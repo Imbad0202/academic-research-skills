@@ -46,6 +46,7 @@ SCHEMA_PATHS: dict[str, Path] = {
     "uncited_assertion": PASSPORT / "uncited_assertion.schema.json",
     "claim_drift": PASSPORT / "claim_drift.schema.json",
     "constraint_violation": PASSPORT / "constraint_violation.schema.json",
+    "uncited_audit_failure": PASSPORT / "uncited_audit_failure.schema.json",
 }
 
 
@@ -177,6 +178,27 @@ def sampling_summary_entry(
     }
 
 
+def uncited_audit_failure_entry(
+    *,
+    finding_id: str = "UAF-001",
+    fault_class: str = "judge_timeout",
+    manifest_claim_id: str | None = None,
+) -> dict[str, Any]:
+    """Minimal UAF-INV-* positive baseline (v3.8.2 / #118)."""
+    return {
+        "finding_id": finding_id,
+        "claim_text": "We observed causality between A and B.",
+        "section_path": "4. Discussion > 4.3 Limitations",
+        "scoped_manifest_id": MANIFEST_ID,
+        "manifest_claim_id": manifest_claim_id,
+        "fault_class": fault_class,
+        "rationale": f"{fault_class}: judge invocation failed after 30s",
+        "judge_model": "gpt-5.5-xhigh",
+        "judge_run_at": "2026-05-15T10:14:00Z",
+        "rule_version": "D4-c-v1-uaf-v1",
+    }
+
+
 def build_passport(
     *,
     manifests: list[dict[str, Any]] | None = None,
@@ -185,8 +207,9 @@ def build_passport(
     drifts: list[dict[str, Any]] | None = None,
     violations: list[dict[str, Any]] | None = None,
     samplings: list[dict[str, Any]] | None = None,
+    uaf: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Build a minimal passport JSON wrapping the six aggregates the lint reads."""
+    """Build a minimal passport JSON wrapping the seven aggregates the lint reads (six pre-v3.8.2 + uncited_audit_failures[])."""
     return {
         "claim_intent_manifests": manifests if manifests is not None else [manifest_entry()],
         "claim_audit_results": results or [],
@@ -194,6 +217,7 @@ def build_passport(
         "claim_drifts": drifts or [],
         "constraint_violations": violations or [],
         "audit_sampling_summaries": samplings or [],
+        "uncited_audit_failures": uaf or [],
     }
 
 
@@ -1107,6 +1131,189 @@ class TSSamplingInvariants(_LintTestBase):
         e["audited_indices"] = [0, 1, 1, 3, 4, 5, 6, 7, 8, 9]
         e["audited_count"] = 10
         self.assertLintFinds(build_passport(samplings=[e]), invariant="S-INV-4")
+
+
+# ---------------------------------------------------------------------------
+# Spec §6.4d (v3.8.2 / #118) — UAF-INV-1..UAF-INV-5 uncited_audit_failure
+# cross-array integrity and dedup. Mirrors CV-INV pattern.
+# ---------------------------------------------------------------------------
+
+
+class TSUAFUncitedAuditFailureInvariants(_LintTestBase):
+    """Spec §6.4d: uncited_audit_failure UAF-INV-1..UAF-INV-5 (v3.8.2 / #118)."""
+
+    def _manifest_with_mnc_and_nc(self) -> dict[str, Any]:
+        return manifest_entry(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Causal claim.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                    "negative_constraints": [
+                        {
+                            "constraint_id": "NC-C001-1",
+                            "rule": "No causal language without RCT.",
+                        }
+                    ],
+                }
+            ],
+            mncs=[{"constraint_id": "MNC-1", "rule": "Global rule."}],
+        )
+
+    # ----- Schema-shape only.
+    def test_uaf_schema_valid_minimal_entry(self) -> None:
+        schema = load_json_schema(SCHEMA_PATHS["uncited_audit_failure"])
+        validator = build_schema_validator(schema)
+        errors = list(validator.iter_errors(uncited_audit_failure_entry()))
+        self.assertEqual(errors, [], msg=f"unexpected validation errors: {errors}")
+
+    def test_uaf_schema_rejects_missing_fault_class(self) -> None:
+        schema = load_json_schema(SCHEMA_PATHS["uncited_audit_failure"])
+        validator = build_schema_validator(schema)
+        e = uncited_audit_failure_entry()
+        del e["fault_class"]
+        errors = list(validator.iter_errors(e))
+        self.assertNotEqual(errors, [], msg="missing fault_class must fail schema validation")
+
+    def test_uaf_schema_rejects_unknown_fault_class(self) -> None:
+        schema = load_json_schema(SCHEMA_PATHS["uncited_audit_failure"])
+        validator = build_schema_validator(schema)
+        e = uncited_audit_failure_entry()
+        e["fault_class"] = "made_up_class"
+        errors = list(validator.iter_errors(e))
+        self.assertNotEqual(errors, [], msg="unknown fault_class must fail schema validation")
+
+    # ----- Lint baseline: clean passport with one UAF row passes.
+    def test_uaf_baseline_mnc_failure(self) -> None:
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[uncited_audit_failure_entry()],
+        )
+        self.assertLintClean(passport)
+
+    def test_uaf_baseline_nc_failure(self) -> None:
+        # NC-C path: judge failed on a claim-level constraint check; manifest_claim_id set.
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[uncited_audit_failure_entry(manifest_claim_id="C-001")],
+        )
+        self.assertLintClean(passport)
+
+    # ----- UAF-INV-1: finding_id uniqueness.
+    def test_uaf_inv_1_duplicate_finding_id(self) -> None:
+        a = uncited_audit_failure_entry()
+        b = uncited_audit_failure_entry()  # same finding_id "UAF-001"
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[a, b],
+        )
+        self.assertLintFinds(passport, invariant="UAF-INV-1")
+
+    # ----- UAF-INV-2: scoped_manifest_id must resolve in claim_intent_manifests[].
+    def test_uaf_inv_2_dangling_manifest_id(self) -> None:
+        e = uncited_audit_failure_entry()
+        e["scoped_manifest_id"] = SENTINEL_MANIFEST_ID  # not in manifests
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[e],
+        )
+        self.assertLintFinds(passport, invariant="UAF-INV-2")
+
+    # ----- UAF-INV-3: (scoped_manifest_id, manifest_claim_id) pair integrity.
+    def test_uaf_inv_3_dangling_claim_id(self) -> None:
+        e = uncited_audit_failure_entry(manifest_claim_id="C-999")  # no such claim in manifest
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[e],
+        )
+        self.assertLintFinds(passport, invariant="UAF-INV-3")
+
+    def test_uaf_inv_3_null_claim_id_allowed_when_mnc_only(self) -> None:
+        # manifest_claim_id=null is legitimate when the failure was against MNCs only.
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[uncited_audit_failure_entry(manifest_claim_id=None)],
+        )
+        self.assertLintClean(passport)
+
+    # ----- UAF-INV-4: per-(sentence, manifest) dedup.
+    def test_uaf_inv_4_same_sentence_same_manifest_dup(self) -> None:
+        a = uncited_audit_failure_entry()
+        b = uncited_audit_failure_entry(finding_id="UAF-002")
+        # b shares (scoped_manifest_id, section_path, claim_text) with a.
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[a, b],
+        )
+        self.assertLintFinds(passport, invariant="UAF-INV-4")
+
+    def test_uaf_inv_4_same_sentence_different_manifests_not_deduped(self) -> None:
+        # Two manifests both failing on the same sentence text emit two rows
+        # legitimately (mirrors CV-INV-4 cross-manifest reasoning).
+        other_manifest = manifest_entry(
+            manifest_id=MANIFEST_ID_OTHER,
+            mncs=[{"constraint_id": "MNC-1", "rule": "Different rule."}],
+        )
+        a = uncited_audit_failure_entry()
+        a["scoped_manifest_id"] = MANIFEST_ID
+        b = uncited_audit_failure_entry(finding_id="UAF-002")
+        b["scoped_manifest_id"] = MANIFEST_ID_OTHER
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc(), other_manifest],
+            uaf=[a, b],
+        )
+        self.assertLintClean(passport)
+
+    # ----- UAF-INV-5: rationale fault_class prefix.
+    def test_uaf_inv_5_rationale_missing_fault_prefix(self) -> None:
+        e = uncited_audit_failure_entry()
+        e["rationale"] = "Some narrative without the fault_class prefix"
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[e],
+        )
+        self.assertLintFinds(passport, invariant="UAF-INV-5")
+
+    def test_uaf_inv_5_rationale_wrong_fault_prefix(self) -> None:
+        # Rationale starts with "made_up_class:" — schema rejected via fault_class
+        # enum, but UAF-INV-5 also flags rationale prefix mismatch independently.
+        # Here we keep fault_class valid but flip rationale to a different valid
+        # tag — should still trip UAF-INV-5 (prefix must match the row's
+        # fault_class, not just any known tag).
+        e = uncited_audit_failure_entry(fault_class="judge_timeout")
+        e["rationale"] = "judge_api_error: wrong tag for this row"
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uaf=[e],
+        )
+        self.assertLintFinds(passport, invariant="UAF-INV-5")
+
+    # ----- Cross-aggregate exclusivity: UAF vs constraint_violation.
+    def test_uaf_cross_aggregate_exclusive_with_cv(self) -> None:
+        # Same (sentence, manifest) MUST NOT have both an audit_tool_failure (UAF)
+        # and a VIOLATED row (CV). They are mutually exclusive verdict states.
+        cv = constraint_violation_entry()
+        uaf = uncited_audit_failure_entry()
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            violations=[cv],
+            uaf=[uaf],
+        )
+        self.assertLintFinds(passport, invariant="UAF-INV-6")
+
+    # ----- Co-existence with uncited_assertions[] IS permitted.
+    def test_uaf_coexists_with_uncited_assertion(self) -> None:
+        # D4-c detector positive (UA) + judge failure (UAF) on the same sentence
+        # are independent signals; cross-aggregate exclusivity does NOT apply.
+        ua = uncited_assertion_entry()
+        uaf = uncited_audit_failure_entry()
+        passport = build_passport(
+            manifests=[self._manifest_with_mnc_and_nc()],
+            uncited=[ua],
+            uaf=[uaf],
+        )
+        self.assertLintClean(passport)
 
 
 # ---------------------------------------------------------------------------

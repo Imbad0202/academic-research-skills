@@ -39,6 +39,10 @@ SAMPLING_STRATEGY = "stratified_buckets_v1"
 # and require re-lint per spec §3.3 / §3.4 / §3.5.
 UNCITED_RULE_VERSION = "D4-c-v1"
 DRIFT_RULE_VERSION = "D4-a-v1"
+# v3.8.2 / #118 — uncited_audit_failure rule_version literal (§3.6).
+# Distinct prefix from D4-c-v1 (uncited_assertion D4-c detector) and
+# D4-a-v1 (constraint_violation) so the lint can route by literal.
+UAF_RULE_VERSION = "D4-c-v1-uaf-v1"
 
 # Constraint id parse rules (spec §3.2 + INV-17 canonical form).
 RE_NC_CONSTRAINT = re.compile(r"^NC-C([0-9]{3,})-([0-9]+)$")

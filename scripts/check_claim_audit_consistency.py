@@ -68,6 +68,7 @@ SCHEMA_FILES = {
     "uncited_assertion": PASSPORT_SCHEMAS / "uncited_assertion.schema.json",
     "claim_drift": PASSPORT_SCHEMAS / "claim_drift.schema.json",
     "constraint_violation": PASSPORT_SCHEMAS / "constraint_violation.schema.json",
+    "uncited_audit_failure": PASSPORT_SCHEMAS / "uncited_audit_failure.schema.json",
 }
 
 # Inline schema for audit_sampling_summary (spec §4 step 3) — not a shipped file.
@@ -954,6 +955,142 @@ def _check_constraint_violation_invariants(
 
 
 # ---------------------------------------------------------------------------
+# uncited_audit_failure invariants (UAF-INV-1..UAF-INV-6) — v3.8.2 / #118.
+# Surfaces transient judge outages on the uncited path that pre-v3.8.2 were
+# silently substituted as NOT_VIOLATED. Mirrors INV-14 semantics on the
+# cited path but uses a dedicated aggregate because claim_audit_result.ref_slug
+# is required. See docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md §3.6.
+# ---------------------------------------------------------------------------
+
+
+def _check_uaf_invariants(
+    entries: list[dict[str, Any]],
+    violations: list[dict[str, Any]],
+    manifest_index: dict[str, set[str]],
+) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def _safe_str(value: Any) -> str:
+        return value if isinstance(value, str) else ""
+
+    # UAF-INV-1: finding_id uniqueness. Non-string ids skipped per v3.8.1 round 2
+    # hardening pattern; schema validator surfaces type mismatch separately.
+    seen: dict[str, int] = {}
+    for i, e in enumerate(entries):
+        fid = e.get("finding_id")
+        if not isinstance(fid, str):
+            continue
+        if fid in seen:
+            findings.append(
+                Finding(
+                    "UAF-INV-1",
+                    f"duplicate finding_id={fid!r} (also at uncited_audit_failures[{seen[fid]}])",
+                )
+            )
+        else:
+            seen[fid] = i
+
+    # UAF-INV-4: per-(sentence, manifest) dedup with key
+    # (scoped_manifest_id, section_path, claim_text_hash). Two manifests both
+    # failing on the same sentence text emit two distinct rows legitimately
+    # (cross-manifest scope mirrors CV-INV-4).
+    dedup: dict[tuple[str, str, str], int] = {}
+    for i, e in enumerate(entries):
+        key = (
+            _safe_str(e.get("scoped_manifest_id")),
+            _safe_str(e.get("section_path")),
+            hashlib.sha256(_safe_str(e.get("claim_text")).encode("utf-8")).hexdigest(),
+        )
+        if key in dedup:
+            findings.append(
+                Finding(
+                    "UAF-INV-4",
+                    f"finding_id={e.get('finding_id')!r}: duplicate (manifest, section, claim) with uncited_audit_failures[{dedup[key]}]",
+                )
+            )
+        else:
+            dedup[key] = i
+
+    for e in entries:
+        fid = e.get("finding_id")
+        smid = e.get("scoped_manifest_id")
+        mcid = e.get("manifest_claim_id")
+        rationale = e.get("rationale") or ""
+        row_fault = e.get("fault_class")
+
+        # UAF-INV-2: scoped_manifest_id cross-array integrity.
+        if not isinstance(smid, str) or smid not in manifest_index:
+            findings.append(
+                Finding(
+                    "UAF-INV-2",
+                    f"finding_id={fid!r}: scoped_manifest_id={smid!r} not present in claim_intent_manifests[]",
+                )
+            )
+            # Skip UAF-INV-3 when the manifest itself is missing; the pair
+            # check would always fire and we want a clean single line.
+            continue
+
+        # UAF-INV-3: (scoped_manifest_id, manifest_claim_id) pair integrity
+        # when manifest_claim_id is non-null. Null is legitimate when the
+        # failure was against MNCs only (no claim binding).
+        if mcid is not None:
+            claim_ids = manifest_index.get(smid, set())
+            if mcid not in claim_ids:
+                findings.append(
+                    Finding(
+                        "UAF-INV-3",
+                        f"finding_id={fid!r}: (scoped_manifest_id={smid!r}, manifest_claim_id={mcid!r}) not present in any manifest's claims[]",
+                    )
+                )
+
+        # UAF-INV-5: rationale MUST begin with this row's own fault_class
+        # value followed by ": " and a free-form detail. Mirrors INV-14
+        # rationale prefix on the cited path. We check against the row's
+        # fault_class field (not any known tag) so a row with fault_class
+        # judge_timeout but rationale starting with "judge_api_error: ..."
+        # still trips this invariant — the prefix must match the row.
+        if isinstance(row_fault, str) and row_fault in INV14_FAULT_CLASS_TAGS:
+            expected_prefix = f"{row_fault}:"
+            if not rationale.startswith(expected_prefix):
+                findings.append(
+                    Finding(
+                        "UAF-INV-5",
+                        f"finding_id={fid!r}: rationale must begin with {expected_prefix!r} got {rationale[:60]!r}",
+                    )
+                )
+
+    # UAF-INV-6: cross-aggregate exclusivity with constraint_violations[].
+    # A sentence MUST NOT appear in both UAF and CV for the same
+    # (scoped_manifest_id, section_path, claim_text_hash). VIOLATED (positive
+    # verdict) and audit_tool_failure (no verdict) are mutually exclusive
+    # verdict states at per-(sentence, manifest) level.
+    cv_keys: set[tuple[str, str, str]] = set()
+    for cv in violations:
+        cv_keys.add(
+            (
+                _safe_str(cv.get("scoped_manifest_id")),
+                _safe_str(cv.get("section_path")),
+                hashlib.sha256(_safe_str(cv.get("claim_text")).encode("utf-8")).hexdigest(),
+            )
+        )
+    for uaf in entries:
+        key = (
+            _safe_str(uaf.get("scoped_manifest_id")),
+            _safe_str(uaf.get("section_path")),
+            hashlib.sha256(_safe_str(uaf.get("claim_text")).encode("utf-8")).hexdigest(),
+        )
+        if key in cv_keys:
+            findings.append(
+                Finding(
+                    "UAF-INV-6",
+                    f"finding_id={uaf.get('finding_id')!r}: (manifest, section, claim) overlaps a constraint_violations[] row — UAF and CV are mutually exclusive verdict states",
+                )
+            )
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # audit_sampling_summary invariants (S-INV-1..S-INV-4).
 # ---------------------------------------------------------------------------
 
@@ -1091,6 +1228,7 @@ def validate_passport(body: Any) -> list[Finding]:
     drifts_raw = body.get("claim_drifts", [])
     violations_raw = body.get("constraint_violations", [])
     samplings_raw = body.get("audit_sampling_summaries", [])
+    uaf_raw = body.get("uncited_audit_failures", [])
 
     def _coerce_aggregate(value: Any) -> list[dict[str, Any]]:
         """Reduce an aggregate to a list of dict entries.
@@ -1112,6 +1250,7 @@ def validate_passport(body: Any) -> list[Finding]:
     drifts = _coerce_aggregate(drifts_raw)
     violations = _coerce_aggregate(violations_raw)
     samplings = _coerce_aggregate(samplings_raw)
+    uaf = _coerce_aggregate(uaf_raw)
 
     findings: list[Finding] = []
 
@@ -1123,6 +1262,7 @@ def validate_passport(body: Any) -> list[Finding]:
     findings.extend(_validate_against_schema(drifts_raw, "claim_drift", "claim_drifts"))
     findings.extend(_validate_against_schema(violations_raw, "constraint_violation", "constraint_violations"))
     findings.extend(_validate_against_schema(samplings_raw, "audit_sampling_summary", "audit_sampling_summaries"))
+    findings.extend(_validate_against_schema(uaf_raw, "uncited_audit_failure", "uncited_audit_failures"))
 
     # Manifest invariants + index for downstream cross-array checks.
     findings.extend(_check_manifest_invariants(manifests))
@@ -1154,6 +1294,7 @@ def validate_passport(body: Any) -> list[Finding]:
     findings.extend(_check_drift_invariants(drifts, uncited, manifest_index))
     findings.extend(_check_constraint_violation_invariants(violations, constraint_index))
     findings.extend(_check_sampling_invariants(samplings))
+    findings.extend(_check_uaf_invariants(uaf, violations, manifest_index))
 
     return findings
 

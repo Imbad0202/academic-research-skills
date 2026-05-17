@@ -32,6 +32,7 @@ from _claim_audit_constants import (  # noqa: E402
     RE_NC_CONSTRAINT,
     SAMPLING_STRATEGY,
     SENTINEL_MANIFEST_ID,
+    UAF_RULE_VERSION,
     UNCITED_RULE_VERSION,
 )
 
@@ -493,6 +494,37 @@ def _judge_result_entry(
     if violated_id is not None:
         entry["violated_constraint_id"] = violated_id
     return entry
+
+
+def _uncited_audit_failure_entry(
+    *,
+    sentence: dict[str, Any],
+    scoped_manifest_id: str,
+    manifest_claim_id: str | None,
+    fault_class: str,
+    detail: str,
+    finding_id: str,
+    judge_model: str,
+    now_iso: str,
+) -> dict[str, Any]:
+    """§3.6 (v3.8.2 / #118): uncited sentence × manifest pair where the
+    constraint judge raised JudgeInvocationError. Mirrors INV-14 row on the
+    cited path but rides in the uncited_audit_failures[] aggregate because
+    claim_audit_result.ref_slug is required."""
+    rationale = f"{fault_class}: {detail}" if detail else f"{fault_class}:"
+    return {
+        "finding_id": finding_id,
+        "claim_text": sentence["sentence_text"],
+        "section_path": sentence.get("section_path", ""),
+        "scoped_manifest_id": scoped_manifest_id,
+        "manifest_claim_id": manifest_claim_id,
+        "fault_class": fault_class,
+        "rationale": rationale,
+        "judge_model": judge_model,
+        "judge_run_at": now_iso,
+        "rule_version": UAF_RULE_VERSION,
+        "upstream_owner_agent": sentence.get("upstream_owner_agent"),
+    }
 
 
 def _constraint_violation_entry(
@@ -1165,6 +1197,15 @@ def run_audit_pipeline(
 
     constraint_violation_texts: set[str] = set()
     cv_counter = 1
+    # v3.8.2 / #118 — uncited_audit_failures[] aggregate for JudgeInvocationError
+    # on the uncited constraint-judging path. Mirrors INV-14 audit_tool_failure
+    # on the cited path. Pre-v3.8.2 the failure was silently substituted as
+    # NOT_VIOLATED, suppressing HIGH-WARN constraint checks; the UAF aggregate
+    # surfaces the operational signal at MED-WARN advisory tier without
+    # dropping audit coverage (option 4 — re-raise and abort — was rejected
+    # for that exact coverage reason). See spec §3.6.
+    uncited_audit_failures: list[dict[str, Any]] = []
+    uaf_counter = 1
     for sentence in all_uncited_sentences:
         scoped_manifest_id_for_sentence = sentence.get("scoped_manifest_id")
         sentence_claim_id = sentence.get("manifest_claim_id")
@@ -1201,13 +1242,14 @@ def run_audit_pipeline(
                 c["constraint_id"] for c in per_manifest_constraints if c.get("constraint_id")
             )
             # Wrap in `_invoke_judge` so transient failures don't abort the
-            # uncited stream. Current behaviour: failure → NOT_VIOLATED so
-            # the audit pass completes. NOTE: codex Step 13 R3 P2 #5
-            # challenges this design choice — silently substituting
-            # NOT_VIOLATED on judge outage suppresses the HIGH-WARN
-            # constraint check. Tracked as follow-up issue #118; behaviour
-            # preserved in this round so the merge is not blocked on a
-            # spec change.
+            # uncited stream. v3.8.2 / #118 — JudgeInvocationError now routes
+            # to an uncited_audit_failures[] row (MED-WARN advisory, gate
+            # passes) instead of synthesising a NOT_VIOLATED verdict. The
+            # synthesis substitution shipped pre-v3.8.2 was silently
+            # suppressing HIGH-WARN constraint checks on transient judge
+            # outage — see spec §3.6 + §4 step 9 fourth bullet for routing,
+            # and the design memo at docs/superpowers/plans/2026-05-17-issue-118-*
+            # for the option 1-4 trade-off analysis.
             try:
                 judge_result = _invoke_judge(
                     judge_fn,
@@ -1220,8 +1262,21 @@ def run_audit_pipeline(
                     active_constraints=per_manifest_constraints,
                     judge_model=judge_model,
                 )
-            except JudgeInvocationError:
-                judge_result = {"judgment": "NOT_VIOLATED", "rationale": "judge_fn failure on uncited path; treated as non-violation per spec §3.5 D4-c (positive VIOLATED required for emission). See issue #118 for proper audit_tool_failure surfacing on uncited path."}
+            except JudgeInvocationError as judge_err:
+                uncited_audit_failures.append(
+                    _uncited_audit_failure_entry(
+                        sentence=sentence,
+                        scoped_manifest_id=mid,
+                        manifest_claim_id=sentence_claim_id,
+                        fault_class=judge_err.fault_class,
+                        detail=judge_err.detail,
+                        finding_id=f"UAF-{uaf_counter:03d}",
+                        judge_model=judge_model,
+                        now_iso=now_iso,
+                    )
+                )
+                uaf_counter += 1
+                continue  # no fake NOT_VIOLATED, no CV row, skip to next manifest
             if judge_result.get("judgment") == "VIOLATED":
                 constraint_violations.append(
                     _constraint_violation_entry(
@@ -1300,4 +1355,5 @@ def run_audit_pipeline(
         "claim_drifts": claim_drifts,
         "constraint_violations": constraint_violations,
         "audit_sampling_summaries": sampling_summaries,
+        "uncited_audit_failures": uncited_audit_failures,
     }
