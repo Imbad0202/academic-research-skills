@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""v3.9.0 spec lint: verify formatter pass-through allowlist + refusal-list-unchanged + suffix shape consistency.
+"""v3.9.0 spec lint: verify finalizer suffix table contract + formatter allowlist + refusal-list guard.
 
-Per spec v3.9.0 §3.8 rules 5-6 (R3 P2 closure: exact-token extraction,
-not substring matching).
+Per spec v3.9.0 §3.8 rules 1-7:
+  Rule 1 — marker syntax: 3 new v3.9.0 markers present in finalizer suffix table
+  Rule 2 — preprint composition order: PREPRINT before triangulation token
+  Rule 3 — v3.7.3 legacy compat: k=1 k_max=1 S2 row → CONTAMINATED-UNMATCHED (not COVERAGE-NOISE)
+  Rule 4 — no *-BLOCK tokens in v3.9.0 finalizer subsection (v3.10 policy-layer scope only)
+  Rule 5 — formatter pass-through allowlist set-equality (R-L3-2-E lint)
+  Rule 6 — refusal-list-unchanged guard
+  Rule 7 — CI integration (done in spec-consistency.yml)
 
 Usage:
     python scripts/check_v3_9_0_triangulation.py
-    python scripts/check_v3_9_0_triangulation.py --formatter-path PATH
+    python scripts/check_v3_9_0_triangulation.py --formatter-path PATH --orchestrator-path PATH
         (for test fixtures only)
 
 Exit codes:
@@ -24,7 +30,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FORMATTER = REPO_ROOT / "academic-paper/agents/formatter_agent.md"
+DEFAULT_ORCHESTRATOR = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
 
+V3_9_0_SECTION_HEADER = "## Cite-Time Provenance Finalizer — v3.9.0 extension"
+
+# Three new v3.9.0 markers that must appear in the finalizer suffix table.
+EXPECTED_NEW_V3_9_0_SUFFIXES = {
+    "CONTAMINATED-COVERAGE-NOISE",
+    "CONTAMINATED-PARTIAL-UNMATCH",
+    "CONTAMINATED-TRIANGULATION-UNMATCHED",
+}
 
 # Canonical 9-suffix allowlist per spec v3.9.0 §3.8 rule 5.
 EXPECTED_ALLOWLIST_TOKENS = {
@@ -41,6 +56,89 @@ EXPECTED_ALLOWLIST_TOKENS = {
     "CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED",
 }
 
+
+# ---------------------------------------------------------------------------
+# Orchestrator helpers (rules 1-4)
+# ---------------------------------------------------------------------------
+
+def extract_v3_9_0_finalizer_subsection(orchestrator_text: str) -> str:
+    """Return the v3.9.0 finalizer extension subsection (## header until next ## or EOF)."""
+    lines = orchestrator_text.splitlines()
+    in_section = False
+    collected: list[str] = []
+    for line in lines:
+        if line.startswith(V3_9_0_SECTION_HEADER):
+            in_section = True
+            collected.append(line)
+            continue
+        if in_section:
+            if line.startswith("## "):
+                break
+            collected.append(line)
+    return "\n".join(collected)
+
+
+def check_marker_syntax(subsection_text: str) -> list[str]:
+    """Rule 1: all 3 new v3.9.0 markers appear as backtick-quoted suffixes in subsection."""
+    tokens = set(re.findall(r"`(CONTAMINATED-[A-Z+\-]+)`", subsection_text))
+    missing = EXPECTED_NEW_V3_9_0_SUFFIXES - tokens
+    if missing:
+        return [
+            f"rule 1 (marker syntax): missing in v3.9.0 finalizer subsection: {sorted(missing)}"
+        ]
+    return []
+
+
+def check_preprint_composition_order(subsection_text: str) -> list[str]:
+    """Rule 2: any CONTAMINATED-PREPRINT+X composition has PREPRINT before X (not X+PREPRINT)."""
+    tokens = re.findall(r"`(CONTAMINATED-[A-Z+\-]+)`", subsection_text)
+    failures = []
+    for tok in tokens:
+        # Strip CONTAMINATED- prefix, then check composition ordering.
+        body = tok[len("CONTAMINATED-"):]
+        if "PREPRINT" in body and "+" in body:
+            parts = body.split("+")
+            if parts[0] != "PREPRINT":
+                failures.append(
+                    f"rule 2 (preprint composition order): {tok} has non-leading PREPRINT"
+                )
+    return failures
+
+
+def check_legacy_compat(subsection_text: str) -> list[str]:
+    """Rule 3: k=1 k_max=1 with semantic_scholar_unmatched must NOT produce COVERAGE-NOISE.
+
+    Both rows (preprint=false → CONTAMINATED-UNMATCHED; preprint=true →
+    CONTAMINATED-PREPRINT+UNMATCHED) are v3.7.3 legacy rows and must not be changed to
+    COVERAGE-NOISE or any other v3.9.0 suffix.  The invariant: neither row may contain
+    `CONTAMINATED-COVERAGE-NOISE`.
+    """
+    failures = []
+    for line in subsection_text.splitlines():
+        if "semantic_scholar_unmatched" in line and "| 1 | 1 |" in line:
+            if "CONTAMINATED-COVERAGE-NOISE" in line:
+                failures.append(
+                    f"rule 3 (legacy compat): k=1 k_max=1 semantic_scholar_unmatched row "
+                    f"uses CONTAMINATED-COVERAGE-NOISE instead of legacy suffix: "
+                    f"{line.strip()[:150]}"
+                )
+    return failures
+
+
+def check_no_high_block(subsection_text: str) -> list[str]:
+    """Rule 4: no backtick-quoted *-BLOCK tokens in v3.9.0 subsection (those are v3.10 scope)."""
+    block_tokens = re.findall(r"`([A-Z]+(?:-[A-Z]+)*-BLOCK)`", subsection_text)
+    if block_tokens:
+        return [
+            f"rule 4 (no HIGH-BLOCK): backtick-quoted *-BLOCK token in v3.9.0 subsection: "
+            f"{block_tokens}"
+        ]
+    return []
+
+
+# ---------------------------------------------------------------------------
+# Formatter helpers (rules 5-6)
+# ---------------------------------------------------------------------------
 
 def extract_allowlist_tokens(formatter_text: str) -> set[str]:
     """Parse the pass-through allowlist sentence (anchored at 'DO NOT trigger refusal').
@@ -90,6 +188,10 @@ def extract_refusal_rule_tokens(formatter_text: str) -> set[str]:
     return found
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="v3.9.0 triangulation spec lint")
     parser.add_argument(
@@ -97,28 +199,48 @@ def main() -> int:
         default=str(DEFAULT_FORMATTER),
         help="Path to formatter_agent.md (for test fixtures)",
     )
+    parser.add_argument(
+        "--orchestrator-path",
+        default=str(DEFAULT_ORCHESTRATOR),
+        help="Path to pipeline_orchestrator_agent.md (for test fixtures)",
+    )
     args = parser.parse_args()
 
     formatter_path = Path(args.formatter_path)
+    orchestrator_path = Path(args.orchestrator_path)
+
     if not formatter_path.exists():
         print(f"ERROR: formatter not found: {formatter_path}", file=sys.stderr)
         return 2
+    if not orchestrator_path.exists():
+        print(f"ERROR: orchestrator not found: {orchestrator_path}", file=sys.stderr)
+        return 2
+
     formatter_text = formatter_path.read_text(encoding="utf-8")
+    orchestrator_text = orchestrator_path.read_text(encoding="utf-8")
+    subsection = extract_v3_9_0_finalizer_subsection(orchestrator_text)
 
-    failures = []
+    failures: list[str] = []
 
+    # Rules 1-4: finalizer/orchestrator side
+    failures += check_marker_syntax(subsection)
+    failures += check_preprint_composition_order(subsection)
+    failures += check_legacy_compat(subsection)
+    failures += check_no_high_block(subsection)
+
+    # Rules 5-6: formatter side
     allowlist = extract_allowlist_tokens(formatter_text)
     missing = EXPECTED_ALLOWLIST_TOKENS - allowlist
     extra = allowlist - EXPECTED_ALLOWLIST_TOKENS
     if missing:
-        failures.append(f"allowlist missing tokens: {sorted(missing)}")
+        failures.append(f"rule 5 (allowlist missing tokens): {sorted(missing)}")
     if extra:
-        failures.append(f"allowlist has extra tokens: {sorted(extra)}")
+        failures.append(f"rule 5 (allowlist extra tokens): {sorted(extra)}")
 
     in_refusal = extract_refusal_rule_tokens(formatter_text)
     if in_refusal:
         failures.append(
-            f"CONTAMINATED-* found in refusal rules (R-L3-2-E violation): {sorted(in_refusal)}"
+            f"rule 6 (R-L3-2-E violation — CONTAMINATED-* in refusal rules): {sorted(in_refusal)}"
         )
 
     if failures:

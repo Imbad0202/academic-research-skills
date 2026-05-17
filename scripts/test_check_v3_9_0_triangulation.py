@@ -80,3 +80,119 @@ def test_lint_substring_collision_not_false_positive():
     """
     result = run_lint()
     assert result.returncode == 0
+
+
+# ---------------------------------------------------------------------------
+# Rule 1 — marker syntax
+# ---------------------------------------------------------------------------
+
+def test_rule1_all_markers_present_in_real_repo():
+    """Rule 1: real orchestrator has all 3 new v3.9.0 markers in subsection."""
+    result = run_lint()
+    assert result.returncode == 0
+
+
+def test_rule1_missing_marker_fails(tmp_path):
+    """Rule 1: remove CONTAMINATED-PARTIAL-UNMATCH from orchestrator subsection — lint fails."""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    broken = content.replace("`CONTAMINATED-PARTIAL-UNMATCH`", "`CONTAMINATED-XXX-PARTIAL`")
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 1
+    assert "rule 1" in result.stderr.lower() or "marker" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# Rule 2 — preprint composition order
+# ---------------------------------------------------------------------------
+
+def test_rule2_preprint_order_correct_in_real_repo():
+    """Rule 2: real orchestrator has all PREPRINT compositions with PREPRINT first."""
+    result = run_lint()
+    assert result.returncode == 0
+
+
+def test_rule2_preprint_order_violated_fails(tmp_path):
+    """Rule 2: inject CONTAMINATED-COVERAGE-NOISE+PREPRINT into orchestrator — lint fails."""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    broken = content.replace(
+        "## Cite-Time Provenance Finalizer — v3.9.0 extension",
+        "## Cite-Time Provenance Finalizer — v3.9.0 extension\n\nFAKE: `CONTAMINATED-COVERAGE-NOISE+PREPRINT` violates order.\n",
+        1,
+    )
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 1
+    assert "rule 2" in result.stderr.lower() or "preprint" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# Rule 3 — v3.7.3 legacy compat
+# ---------------------------------------------------------------------------
+
+def test_rule3_legacy_compat_preserved_in_real_repo():
+    """Rule 3: real orchestrator's k=1 k_max=1 S2 row produces CONTAMINATED-UNMATCHED."""
+    result = run_lint()
+    assert result.returncode == 0
+
+
+def test_rule3_legacy_compat_violated_fails(tmp_path):
+    """Rule 3: change the legacy row's suffix to COVERAGE-NOISE — lint fails."""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    broken = content.replace(
+        "| `semantic_scholar_unmatched` | `CONTAMINATED-UNMATCHED` (v3.7.3 legacy)",
+        "| `semantic_scholar_unmatched` | `CONTAMINATED-COVERAGE-NOISE` (BROKEN)",
+        1,
+    )
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 1
+    assert "rule 3" in result.stderr.lower() or "legacy" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# Rule 4 — no *-BLOCK in v3.9.0 subsection
+# ---------------------------------------------------------------------------
+
+def test_rule4_no_block_tokens_in_real_repo():
+    """Rule 4: real orchestrator's v3.9.0 subsection has no backtick-quoted *-BLOCK tokens."""
+    result = run_lint()
+    assert result.returncode == 0
+
+
+def test_rule4_high_block_injection_fails(tmp_path):
+    """Rule 4: inject `CONTAMINATED-HIGH-BLOCK` into v3.9.0 subsection — lint fails."""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    broken = content.replace(
+        "## Cite-Time Provenance Finalizer — v3.9.0 extension",
+        "## Cite-Time Provenance Finalizer — v3.9.0 extension\n\nFAKE: `CONTAMINATED-HIGH-BLOCK` policy-layer marker.\n",
+        1,
+    )
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 1
+    assert "rule 4" in result.stderr.lower() or "block" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# Invocation error handling
+# ---------------------------------------------------------------------------
+
+def test_orchestrator_path_missing_returns_2(tmp_path):
+    """Missing orchestrator file → exit 2 (invocation error)."""
+    result = run_lint(["--orchestrator-path", str(tmp_path / "nonexistent.md")])
+    assert result.returncode == 2
+
+
+def test_formatter_path_missing_returns_2(tmp_path):
+    """Missing formatter file → exit 2 (invocation error)."""
+    result = run_lint(["--formatter-path", str(tmp_path / "nonexistent.md")])
+    assert result.returncode == 2
