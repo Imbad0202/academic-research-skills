@@ -281,3 +281,55 @@ def test_default_mode_catches_bad_examples_fixture(tmp_path):
     finally:
         bad.unlink(missing_ok=True)
         fake_dir.rmdir()
+
+
+# --- v3.9.0 contamination_signals (openalex_unmatched + crossref_unmatched) ---
+
+def test_v3_9_0_passes_on_non_manual_with_openalex_and_crossref(tmp_path):
+    """v3.9.0 — lint accepts a non-manual entry with all three lookup fields."""
+    passport = {
+        "literature_corpus": [
+            {
+                "citation_key": "chen2024",
+                "title": "Real Paper",
+                "authors": [{"family": "Chen"}],
+                "year": 2024,
+                "source_pointer": "file:///x.pdf",
+                "obtained_via": "folder-scan",
+                "contamination_signals": {
+                    "preprint_post_llm_inflection": False,
+                    "semantic_scholar_unmatched": False,
+                    "openalex_unmatched": True,
+                    "crossref_unmatched": True,
+                },
+            }
+        ]
+    }
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    r = _run(["--passport", str(path)])
+    assert r.returncode == 0, f"stdout={r.stdout}\nstderr={r.stderr}"
+
+
+def test_v3_9_0_rejects_manual_entry_with_openalex_unmatched(tmp_path):
+    """v3.9.0 — lint rejects a manual entry carrying openalex_unmatched (extended not-rule)."""
+    passport = {
+        "literature_corpus": [
+            {
+                "citation_key": "manual1",
+                "title": "User curated",
+                "authors": [{"family": "User"}],
+                "year": 2024,
+                "source_pointer": "manual:1",
+                "obtained_via": "manual",
+                "contamination_signals": {
+                    "openalex_unmatched": False,
+                },
+            }
+        ]
+    }
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    r = _run(["--passport", str(path)])
+    assert r.returncode != 0, (
+        f"Expected validation failure for manual entry with openalex_unmatched. "
+        f"stdout={r.stdout}\nstderr={r.stderr}"
+    )
