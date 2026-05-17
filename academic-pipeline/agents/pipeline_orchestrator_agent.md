@@ -753,7 +753,44 @@ For each `<!--ref:slug--><!--anchor:<kind>:<value>-->` marker pair:
 
 ### Audit trail (v3.7.3 update)
 
-Per-pass resolution counts gain four new columns: NO-LOCATOR (precedence-zero hits), CONTAMINATED-PREPRINT (annotation count), CONTAMINATED-UNMATCHED (annotation count), CONTAMINATED-BOTH (annotation count). All four surface in the Stage 4.5 integrity-check report alongside the existing HIGH / MED / LOW / OK counts.
+Per-pass resolution counts gain ten new columns: NO-LOCATOR (precedence-zero hits, v3.7.3 §3.1), CONTAMINATED-PREPRINT (v3.7.3 §3.2), CONTAMINATED-UNMATCHED (v3.7.3 §3.2 legacy single-S2 case), CONTAMINATED-PREPRINT+UNMATCHED (v3.7.3 §3.2 legacy combination), CONTAMINATED-COVERAGE-NOISE (v3.9.0 §3.3 k=1 k_max≥2 OR k=1 k_max=1 with non-S2 single index), CONTAMINATED-PREPRINT+COVERAGE-NOISE (v3.9.0 composition), CONTAMINATED-PARTIAL-UNMATCH (v3.9.0 §3.3 k=2), CONTAMINATED-PREPRINT+PARTIAL-UNMATCH (v3.9.0 composition), CONTAMINATED-TRIANGULATION-UNMATCHED (v3.9.0 §3.3 k=3), CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED (v3.9.0 composition). All ten surface in the Stage 4.5 integrity-check report alongside the existing HIGH / MED / LOW / OK counts. Compatibility note: the v3.7.3 CONTAMINATED-BOTH column is renamed to CONTAMINATED-PREPRINT+UNMATCHED for naming consistency with v3.9.0 composition order.
+
+## Cite-Time Provenance Finalizer — v3.9.0 extension (triangulation tiers)
+
+Spec: `docs/design/2026-05-17-ars-v3.9.0-cross-index-triangulation-measurement-spec.md` §3.3.
+
+v3.9.0 extends the v3.7.3 contamination annotation channel with three new lookup-derived suffix shapes. The base 5-cell matrix is unchanged. The annotation rule expands as follows:
+
+**Trigger:** annotation fires when (base resolution ∈ {`ok`, `LOW-WARN`}) AND (`preprint_post_llm_inflection` is true OR any of `semantic_scholar_unmatched` / `openalex_unmatched` / `crossref_unmatched` is true). Entries with `contamination_signals` present but all fields false (computed-clean) produce no suffix — v3.7.3 behavior preserved.
+
+**Compute k (triangulation count):** k = count of `*_unmatched` fields with value `true`, over fields that are present. Absent fields are excluded (per spec R-L3-2-C: absent ≠ false). k_max = count of `*_unmatched` fields that are present (0-3).
+
+**Suffix shape table:**
+
+| Base | preprint flag | k | k_max | Present field if k_max=1 | Suffix |
+|---|---|---|---|---|---|
+| `ok` / `LOW-WARN` | false / absent | 0 | any | — | (no suffix) |
+| `ok` / `LOW-WARN` | true | 0 | any | — | `CONTAMINATED-PREPRINT` |
+| `ok` / `LOW-WARN` | false / absent | 1 | 1 | `semantic_scholar_unmatched` | `CONTAMINATED-UNMATCHED` (v3.7.3 legacy) |
+| `ok` / `LOW-WARN` | true | 1 | 1 | `semantic_scholar_unmatched` | `CONTAMINATED-PREPRINT+UNMATCHED` (v3.7.3 legacy) |
+| `ok` / `LOW-WARN` | false / absent | 1 | 1 | `openalex_unmatched` or `crossref_unmatched` | `CONTAMINATED-COVERAGE-NOISE` |
+| `ok` / `LOW-WARN` | true | 1 | 1 | `openalex_unmatched` or `crossref_unmatched` | `CONTAMINATED-PREPRINT+COVERAGE-NOISE` |
+| `ok` / `LOW-WARN` | false / absent | 1 | 2-3 | — | `CONTAMINATED-COVERAGE-NOISE` |
+| `ok` / `LOW-WARN` | true | 1 | 2-3 | — | `CONTAMINATED-PREPRINT+COVERAGE-NOISE` |
+| `ok` / `LOW-WARN` | false / absent | 2 | 2-3 | — | `CONTAMINATED-PARTIAL-UNMATCH` |
+| `ok` / `LOW-WARN` | true | 2 | 2-3 | — | `CONTAMINATED-PREPRINT+PARTIAL-UNMATCH` |
+| `ok` / `LOW-WARN` | false / absent | 3 | 3 | — | `CONTAMINATED-TRIANGULATION-UNMATCHED` |
+| `ok` / `LOW-WARN` | true | 3 | 3 | — | `CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED` |
+
+**Composition order:** `PREPRINT` token first, triangulation token second, joined by `+`. The canonical token order list is `[PREPRINT, UNMATCHED | COVERAGE-NOISE | PARTIAL-UNMATCH | TRIANGULATION-UNMATCHED]`.
+
+**Gate semantics:** All v3.9.0 suffixes are advisory. The terminal gate refusal list is NOT extended. `formatter_agent.md` pass-through allowlist MUST extend from 3 v3.7.3 suffixes to 9 (3 legacy + 6 v3.9.0) per R-L3-2-E. `/ars-mark-read` behavior is unchanged.
+
+Example markers:
+- `<!--ref:smith2024 LOW-WARN CONTAMINATED-COVERAGE-NOISE-->` — single-index unmatched, k_max ≥ 2.
+- `<!--ref:smith2024 ok CONTAMINATED-PARTIAL-UNMATCH-->` — two-of-three unmatched.
+- `<!--ref:smith2024 LOW-WARN CONTAMINATED-TRIANGULATION-UNMATCHED-->` — all three indexes unmatched.
+- `<!--ref:smith2024 LOW-WARN CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED-->` — preprint heuristic + k=3.
 
 ---
 
