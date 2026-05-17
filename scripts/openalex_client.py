@@ -24,7 +24,7 @@ _PUNCT_TRANSLATION = str.maketrans({c: " " for c in string.punctuation})
 
 _API_BASE = "https://api.openalex.org"
 _POLITE_EMAIL_ENV = "OPENALEX_POLITE_EMAIL"
-_FIELDS = "id,title,authorships,publication_year,doi,host_venue"
+_FIELDS = "id,title,authorships,publication_year,doi,primary_location"
 
 _BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3

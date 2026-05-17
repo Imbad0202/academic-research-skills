@@ -19,7 +19,7 @@ OpenAlex coverage complements Semantic Scholar for OA venues, monographs, and wo
 ### Pattern 1: DOI Lookup with Title Cross-Check (primary when DOI is available)
 
 ```
-GET /works/doi:{doi}?select=id,title,authorships,publication_year,doi,host_venue
+GET /works/doi:{doi}?select=id,title,authorships,publication_year,doi,primary_location
 ```
 
 **Matching rule (mirrors S2 `DOI_MISMATCH` pattern):** DOI lookup hits are gated by a Levenshtein 0.70 title cross-check. If the returned `title` field fails the threshold against the entry's canonical title, the DOI hit is rejected (DOI_MISMATCH — a known hallucination pattern where a fabricated DOI resolves to an unrelated paper). The caller falls through to title search.
@@ -51,7 +51,7 @@ The check fires only when `obtained_via != 'manual'` (manual entries are user-vo
 
 ## v3.9.0 R-L3-2-D constraint
 
-OpenAlex returns `host_venue.type` and other classification fields. **v3.9.0 ignores these.** They are not stored on the entry, not surfaced to the finalizer, and not used in any derivation. v3.10 will introduce `venue_type` as an explicit adapter-declared field; the OpenAlex-inferred classification is NOT a v3.10 acceptance provenance value because the k=3 case (where OpenAlex itself is unmatched) makes the classification untrusted.
+OpenAlex returns `primary_location.source.type` and other classification fields. **v3.9.0 ignores these.** They are not stored on the entry, not surfaced to the finalizer, and not used in any derivation. v3.10 will introduce `venue_type` as an explicit adapter-declared field; the OpenAlex-inferred classification is NOT a v3.10 acceptance provenance value because the k=3 case (where OpenAlex itself is unmatched) makes the classification untrusted.
 
 ## Client implementation
 
