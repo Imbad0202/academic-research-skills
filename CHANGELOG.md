@@ -8,6 +8,44 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.8.2] - 2026-05-17 — #118 uncited audit_tool_failure surface
+
+Fixes the #118 carry-over from #103 R3 codex P2 #5. The `ARS_CLAIM_AUDIT=1` uncited constraint-judging path used to silently substitute `{"judgment": "NOT_VIOLATED", "rationale": "..."}` on `JudgeInvocationError`, suppressing HIGH-WARN constraint checks on transient judge outage (judge timeout, API 5xx, network error, etc.). v3.8.2 routes those failures through a dedicated `uncited_audit_failures[]` aggregate at MED-WARN advisory tier, mirroring INV-14 semantics on the cited path but using a separate schema because `claim_audit_result.ref_slug` is required and the uncited path has no ref to bind.
+
+The #118 issue body listed four candidate options. Option 1 (extend `constraint_violation.schema.json`) would have broken the `judge_verdict: const VIOLATED` invariant and re-derived every CV-INV. Option 3 (overload `uncited_assertions[]` with a `fault_class` field) would have polluted the D4-c LOW-WARN advisory channel with audit-time infrastructure signal. Option 4 (re-raise `JudgeInvocationError` and abort the audit pass) would have dropped audit coverage for the entire run on a single transient outage — bad UX for N>50 papers running against flaky judge endpoints. Option 2 (new aggregate) ships here: structural honesty, schema integrity preserved, audit coverage preserved.
+
+### Added
+
+- **`shared/contracts/passport/uncited_audit_failure.schema.json`** — new aggregate per spec §3.6. Required fields: `finding_id` (`UAF-NNN`), `claim_text`, `section_path`, `scoped_manifest_id`, `fault_class` (closed enum mirroring INV-14), `rationale` (MUST begin with fault_class prefix), `judge_model`, `judge_run_at`, `rule_version: D4-c-v1-uaf-v1`. Optional `manifest_claim_id` (non-null when failure was against an NC-C claim-level constraint, null when against MNCs only).
+- **UAF-INV-1..UAF-INV-6** lint coverage in `scripts/check_claim_audit_consistency.py` rule 4d:
+  - UAF-INV-1: finding_id uniqueness across the aggregate
+  - UAF-INV-2: scoped_manifest_id cross-array integrity
+  - UAF-INV-3: (scoped_manifest_id, manifest_claim_id) pair integrity when manifest_claim_id non-null
+  - UAF-INV-4: per-(sentence, manifest) dedup with key `(scoped_manifest_id, section_path, claim_text_hash)`
+  - UAF-INV-5: rationale fault_class prefix matches the row's own `fault_class` field
+  - UAF-INV-6: cross-aggregate exclusivity vs `constraint_violations[]` (VIOLATED and audit_tool_failure are mutually exclusive verdict states at per-(sentence, manifest) level)
+- **Finalizer §5 MED-WARN advisory row**: annotation `[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — <fault-class>]` next to the offending sentence. Always advisory; gate passes — retry on next pipeline pass is the remediation. Formatter REFUSE list unchanged (UAF is advisory, not gate-refuse).
+- **`UAF_RULE_VERSION = "D4-c-v1-uaf-v1"`** constant in `scripts/_claim_audit_constants.py` for shared use by pipeline runtime and lint.
+- **18 new tests** keeping the regression baseline 0 (694 → 712 tests):
+  - 15 schema + lint tests in `scripts/test_claim_audit_schema.py::TSUAFUncitedAuditFailureInvariants`
+  - 3 pipeline integration tests in `scripts/test_claim_audit_pipeline.py::TP23UncitedJudgeOutageEmitsUAF` proving the swallow is replaced with UAF emit and no synthetic NOT_VIOLATED leaks into any aggregate
+
+### Changed
+
+- **`scripts/claim_audit_pipeline.py`**: swallow site at line 1211-1224 (the synthetic `NOT_VIOLATED` substitution) replaced with `_uncited_audit_failure_entry(...)` emission + `continue`. Pipeline return now includes `uncited_audit_failures` alongside the other five aggregates.
+- **`docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md`**: amended with new §3.6 (schema + UAF-INV-1..6 + co-emission rules), §4 step 5 stream (d) routing clause, §4 step 9 fourth error-handling bullet, §5 finalizer outputs list + advisory paragraph, §6 lint rule 4d + precedence rule 6 cross-aggregate exclusivity reference.
+- **`academic-pipeline/agents/claim_ref_alignment_audit_agent.md`**: Output emission table grows seventh row for `uncited_audit_failures[]`. Error handling table grows from 3 failure surfaces to 4 (the new uncited-path UAF row mirrors the cited-path `audit_tool_failure` row).
+
+### Fixed
+
+- **#118**: uncited judge failure no longer swallowed as NOT_VIOLATED; the HIGH-WARN constraint check path is now observable on transient outage. Pre-v3.8.2 a flaky judge endpoint could silently pass a draft with a real MUST-NOT violation; v3.8.2 surfaces the operational failure at MED-WARN advisory tier so a retry pass picks it up.
+
+### Review trail
+
+Single-PR ship after spec → TDD → impl. UAF schema design followed the design-phase brainstorming rule per `feedback_dual_track_design_phase_review_workflow.md`: option 1-4 trade-off analysis happened in conversation with the user before any code, decision memo in `docs/superpowers/plans/2026-05-17-issue-118-uncited-audit-tool-failure-design.md` (local, gitignored). Implementation followed strict TDD RED → GREEN — 15 schema/lint tests + 3 pipeline tests all failed in their intended way (no schema file, no lint logic, swallow site still active) before the schema, lint, helper, and pipeline change landed. No regression on the 694 pre-existing tests.
+
+---
+
 ## [3.8.1] - 2026-05-17 — claim_audit lint hardening (#119 + #120 4×P2 closure)
 
 Defense-in-depth patch on `ARS_CLAIM_AUDIT=1` opt-in lint paths. Five fixes carried over from #103 R6 + R8 codex review, consolidated into one v3.8.1 release. No schema semantic change, no behavior change for well-formed payloads — pre-fix surfaces all crashed the CLI with `TypeError` / `AttributeError` instead of returning actionable lint findings or routing through the INV-14 `audit_tool_failure` translation boundary.

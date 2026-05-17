@@ -296,6 +296,7 @@ Per audit run, populate the six aggregates:
 | `claim_drifts[]` | one per manifest set-diff finding | LOW-WARN advisory |
 | `constraint_violations[]` | one per uncited+VIOLATED finding | HIGH-WARN gate-refuse |
 | `audit_sampling_summaries[]` | zero or one per audit run | annotation only when audited_count < total |
+| `uncited_audit_failures[]` (v3.8.2 / #118) | one per uncited sentence × manifest where the constraint judge raised `JudgeInvocationError` | MED-WARN advisory `[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — <fault-class>]` |
 | `claim_intent_manifests[]` | passed through from writing-stage agents | input only — this agent does NOT emit manifests |
 
 Plus the AI Self-Reflection Report appendix (Stage 6) — a per-stage `defect_stage` histogram rendered when ≥ 5 completed entries exist.
@@ -318,15 +319,18 @@ All three tiers must pass for calibration to be considered shipped.
 
 ## Error handling
 
-Three failure surfaces with distinct semantics:
+Four failure surfaces with distinct semantics:
 
-| Surface | `ref_retrieval_method` | Rationale tag | Severity |
+| Surface | Aggregate / `ref_retrieval_method` | Rationale tag | Severity |
 |---|---|---|---|
-| Retrieval access restriction (verified paywall — HTTP 403/402, license-restricted, no full-text endpoint) | `failed` | "Reference full text not retrievable (paywall ...)" | LOW-WARN advisory |
-| Audit infrastructure / transient outage (judge timeout, judge API 5xx, retrieval API 5xx / timeout / network error / DNS failure, cache corruption, JSON parse failure) | `audit_tool_failure` | One of `{judge_timeout, judge_api_error, judge_parse_error, cache_corruption, retrieval_api_error, retrieval_timeout, retrieval_network_error}` + `: <detail>` | MED-WARN advisory |
-| Fabricated reference | `not_found` | "Retrieval API reports the cited reference does not exist (suspected fabrication)." | HIGH-WARN gate-refuse |
+| Retrieval access restriction (verified paywall — HTTP 403/402, license-restricted, no full-text endpoint) | `claim_audit_results[]` with `ref_retrieval_method=failed` | "Reference full text not retrievable (paywall ...)" | LOW-WARN advisory |
+| Audit infrastructure / transient outage on **cited** path (judge timeout, judge API 5xx, retrieval API 5xx / timeout / network error / DNS failure, cache corruption, JSON parse failure) | `claim_audit_results[]` with `ref_retrieval_method=audit_tool_failure` | One of `{judge_timeout, judge_api_error, judge_parse_error, cache_corruption, retrieval_api_error, retrieval_timeout, retrieval_network_error}` + `: <detail>` | MED-WARN advisory |
+| Audit infrastructure / transient outage on **uncited** path (v3.8.2 / #118 — same fault classes, but uncited sentence has no `ref_slug` so the INV-14 row cannot be used) | `uncited_audit_failures[]` row carrying the same `fault_class` enum | Same fault-class prefix as cited path, e.g. `judge_timeout: judge timed out after 30s` | MED-WARN advisory |
+| Fabricated reference | `claim_audit_results[]` with `ref_retrieval_method=not_found` | "Retrieval API reports the cited reference does not exist (suspected fabrication)." | HIGH-WARN gate-refuse |
 
 The permanence discriminator (paywall stable; tool failure transient) is the line between `failed` and `audit_tool_failure`. Both produce the same `(judgment, audit_status, defect_stage)` triple `(RETRIEVAL_FAILED, inconclusive, not_applicable)`; the `ref_retrieval_method` field is what the finalizer reads to assign the correct severity tier (INV-10 / INV-11 / INV-14).
+
+The cited / uncited split for `audit_tool_failure` (rows 2 vs 3) is a schema-integrity artifact, not a severity downgrade — both ride the MED-WARN advisory tier. Pre-v3.8.2 the uncited path silently substituted `{"judgment": "NOT_VIOLATED", "rationale": "..."}` and suppressed HIGH-WARN constraint checks on transient judge outage; v3.8.2 / #118 routes the failure through `uncited_audit_failures[]` so the operational signal surfaces without dropping audit coverage. See spec §3.6 + §4 step 9 fourth bullet for the routing rule.
 
 ---
 

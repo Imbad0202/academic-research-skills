@@ -1,6 +1,6 @@
 {
   "name": "academic-research-skills",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "description": "Production-grade academic research pipeline for Claude Code: research → write → review → revise → finalize. 4 skills, 35+ modes, 32-agent ensemble, v3.7.3 + v3.8 L3 claim-faithfulness gate.",
   "author": {
     "name": "Cheng-I Wu",

@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.8.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.8.1)
+[![Version](https://img.shields.io/badge/version-v3.8.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.8.2)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -299,6 +299,17 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.8.2（2026-05-17）— #118 uncited audit_tool_failure 補面
+
+> #118 收尾。`ARS_CLAIM_AUDIT=1` 的 uncited 約束判斷路徑原本碰到 `JudgeInvocationError` 會靜默替換成 `{"judgment": "NOT_VIOLATED"}`，把 HIGH-WARN 的 constraint check 在 transient judge 中斷時直接吞掉。v3.8.2 改走新的 `uncited_audit_failures[]` aggregate，MED-WARN advisory tier 對應 cited 路徑 INV-14 row，但用獨立 schema 因為 `claim_audit_result.ref_slug` 必填、uncited 路徑沒 ref 可綁。#118 issue body 四個 option 最後選了 option 2（新 aggregate）；option 4（re-raise 並 abort 整段 audit）因會嚴重折損 audit coverage（特別是 judge endpoint 不穩時）被否決。
+
+- **新 `uncited_audit_failure.schema.json` aggregate**（spec §3.6）：每筆 uncited sentence × manifest pair 一個 entry，記錄 constraint judge raise `JudgeInvocationError` 的情況。Fault-class enum 與 cited 路徑 INV-14 相同（`judge_timeout` / `judge_api_error` / `judge_parse_error` / `cache_corruption` / `retrieval_api_error` / `retrieval_timeout` / `retrieval_network_error`）。`rule_version: D4-c-v1-uaf-v1`。
+- **UAF-INV-1..UAF-INV-6 lint**（spec §6 rule 4d）：`finding_id` 唯一性、scoped_manifest_id 跨 aggregate integrity、(M, C) pair integrity（manifest_claim_id non-null 時）、per-(sentence, manifest) dedup、rationale fault_class 前綴、與 `constraint_violations[]` cross-aggregate exclusivity。
+- **Finalizer §5 MED-WARN advisory row**：annotation `[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — <fault-class>]`，gate 通過（retry-next-pass 為補救手段）。Formatter REFUSE list 不變 — UAF 是 advisory。
+- **Pipeline 整合**（`scripts/claim_audit_pipeline.py`）：line 1211-1224 的 swallow site 移除；`JudgeInvocationError` 改 emit UAF row + `continue` 到下個 (sentence, manifest) pair。`constraint_violations[]` 不會再被假 NOT_VIOLATED 污染。
+- **Tests**：新增 18 筆（15 筆 schema/lint TSUAFUncitedAuditFailureInvariants + 3 筆 pipeline integration TP23UncitedJudgeOutageEmitsUAF）。Baseline 694 → 712 tests、0 regression。
+- **Agent doc**（`academic-pipeline/agents/claim_ref_alignment_audit_agent.md`）：Output emission 表格新增第七列；Error handling 表格從 3 種 surface 擴成 4 種，新增 uncited 路徑 UAF 列。
 
 ### v3.8.0（2026-05-16）— L3 Claim-Faithfulness Locator + Audit（配對 milestone）
 
