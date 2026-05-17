@@ -8,6 +8,36 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.9.0] - 2026-05-17
+
+### Added
+- Cross-index triangulation as v3.7.3 contamination_signals Vector 3 (issue #102). Two new optional boolean fields (`openalex_unmatched`, `crossref_unmatched`) inside `literature_corpus_entry.schema.json`. Manual-entry not-rule extended symmetrically to forbid all three lookup fields (preprint flag remains exempt — heuristic, not lookup).
+- OpenAlex API protocol (`deep-research/references/openalex_api_protocol.md`) + production client (`scripts/openalex_client.py`).
+- Crossref API protocol (`deep-research/references/crossref_api_protocol.md`) + production client (`scripts/crossref_client.py`).
+- `bibliography_agent.md` Triangulation Extension subsection — parallel S2/OpenAlex/Crossref lookups, per-API degradation, manual exemption, R-L3-2-D constraint, per-entry ingest log format.
+- Finalizer 4-tier advisory annotation in `pipeline_orchestrator_agent.md`: k=1 → `CONTAMINATED-COVERAGE-NOISE` (or legacy `CONTAMINATED-UNMATCHED` for k_max=1 S2-only), k=2 → `CONTAMINATED-PARTIAL-UNMATCH`, k=3 → `CONTAMINATED-TRIANGULATION-UNMATCHED`. All tiers advisory; gate refusal list unchanged.
+- `formatter_agent.md` pass-through allowlist extends from 3 v3.7.3 suffixes to 9 (3 legacy + 6 v3.9.0). Refusal rules 1-10 unchanged.
+- v3.9.0 lint (`scripts/check_v3_9_0_triangulation.py`): set-equality on formatter allowlist, refusal-list-unchanged guard. Exact-token extraction prevents substring collisions (R3 P2 closure).
+- Migration tool (`scripts/migrate_literature_corpus_to_v3_9_0.py`): backfill v3.7.3 → v3.9.0; stable-fields idempotency; per-API degradation tolerant; dry-run mode; daisy-chained migration scope (pre-v3.7.3 entries require v3.7.3 migration first).
+- 3 new firm rules in spec §3.3: R-L3-2-C (k computed over present fields, absent ≠ false), R-L3-2-D (no OpenAlex/Crossref work-type used for v3.9.0 logic), R-L3-2-E (refusal list unchanged; pass-through allowlist extends).
+
+### Design philosophy
+- v3.9.0 is the **measurement layer** for cross-index triangulation. The **policy layer** (strict modes, hard-block tier, venue-type-scoped strict, `triangulation_policy` field, `venue_type` field) is deferred to v3.10 per spec §2.3.
+- The k=3 marker is `CONTAMINATED-TRIANGULATION-UNMATCHED` (describes observable condition), not `CONTAMINATED-LIKELY-FABRICATED` (would infer cause unsupportable on humanities / non-English / dissertation references where coverage gaps are real).
+- R-L3-2-A preserved verbatim: contamination signals never block emission on their own.
+
+### Migration path
+- v3.7.3 corpora: run `python scripts/migrate_literature_corpus_to_v3_9_0.py PATH` to backfill the two new fields.
+- Pre-v3.7.3 corpora: run `python scripts/migrate_literature_corpus_to_v3_7_3.py PATH` FIRST, then v3.9.0 migration (daisy-chained per spec §3.7).
+
+### Review trail
+- R1 (commit `d9280bf`): 15 findings (3 P0, 8 P1, 4 P2) — closed.
+- R2 (commit `7d51215`): 12 findings (0 P0, 3 P1, 9 P2) — closed.
+- R3 (commit `4297c27`): 4 P2 findings — closed in Task 1 of impl plan.
+- Both tracks (codex gpt-5.5 xhigh + Gemini 3.1-pro-preview) READY-FOR-IMPL after R3.
+
+---
+
 ## [3.8.2] - 2026-05-17 — #118 uncited audit_tool_failure surface
 
 Fixes the #118 carry-over from #103 R3 codex P2 #5. The `ARS_CLAIM_AUDIT=1` uncited constraint-judging path used to silently substitute `{"judgment": "NOT_VIOLATED", "rationale": "..."}` on `JudgeInvocationError`, suppressing HIGH-WARN constraint checks on transient judge outage (judge timeout, API 5xx, network error, etc.). v3.8.2 routes those failures through a dedicated `uncited_audit_failures[]` aggregate at MED-WARN advisory tier, mirroring INV-14 semantics on the cited path but using a separate schema because `claim_audit_result.ref_slug` is required and the uncited path has no ref to bind.
