@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""Tests for Crossref client per deep-research/references/crossref_api_protocol.md."""
+from __future__ import annotations
+
+import json
+import urllib.error
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+
+def test_title_search_match_at_threshold(monkeypatch):
+    """0.70 similarity threshold matches like S2/OpenAlex."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "items": [{
+                "title": ["Attention Is All You Need"],
+                "DOI": "10.5555/3295222.3295349",
+            }]
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.title_search("Attention Is All You Need")
+
+    assert result is not None
+    # Result should be the candidate dict from items list.
+    assert result["title"] == ["Attention Is All You Need"]
+
+
+def test_title_search_no_match_below_threshold(monkeypatch):
+    """No match if best candidate similarity < 0.70."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "items": [{"title": ["Completely Unrelated Paper Title"]}]
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.title_search("Attention Is All You Need")
+
+    assert result is None
+
+
+def test_doi_lookup_with_title_cross_check(monkeypatch):
+    """DOI hit MUST pass Levenshtein 0.70 title cross-check (DOI_MISMATCH)."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "title": ["Some Other Paper"],
+            "DOI": "10.5555/3295222.3295349",
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.doi_lookup_with_title_check(
+            doi="10.5555/3295222.3295349",
+            expected_title="Attention Is All You Need",
+        )
+
+    assert result is None  # DOI_MISMATCH
+
+
+def test_doi_lookup_with_matching_title(monkeypatch):
+    """DOI hit + matching title -> success."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "title": ["Attention Is All You Need"],
+            "DOI": "10.5555/3295222.3295349",
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.doi_lookup_with_title_check(
+            doi="10.5555/3295222.3295349",
+            expected_title="Attention Is All You Need",
+        )
+
+    assert result is not None
+    assert result["title"] == ["Attention Is All You Need"]
+
+
+def test_429_triggers_2s_backoff_3_retries(monkeypatch):
+    """Per protocol: 429 -> 2s backoff x 3 retries -> raise CrossrefUnavailable."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    call_count = [0]
+
+    def mock_urlopen(*args, **kwargs):
+        call_count[0] += 1
+        raise urllib.error.HTTPError(
+            url="https://api.crossref.org/works",
+            code=429, msg="Too Many Requests", hdrs={}, fp=None,
+        )
+
+    sleeps = []
+    monkeypatch.setattr("crossref_client.time.sleep", lambda s: sleeps.append(s))
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable):
+            client.title_search("anything")
+
+    assert call_count[0] == 4
+    assert sleeps == [2.0, 2.0, 2.0]
+
+
+def test_5xx_skips_immediately(monkeypatch):
+    """Per protocol: 5xx -> no retry, raise CrossrefUnavailable. Assert call_count == 1."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    call_count = [0]
+
+    def mock_urlopen(*args, **kwargs):
+        call_count[0] += 1
+        raise urllib.error.HTTPError(
+            url="https://api.crossref.org/works", code=503, msg="SU", hdrs={}, fp=None,
+        )
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable):
+            client.title_search("anything")
+
+    assert call_count[0] == 1
+
+
+def test_doi_404_treated_as_miss_not_unavailable(monkeypatch):
+    """DOI not indexed in Crossref (404) -> return None (miss), not raise CrossrefUnavailable."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    def mock_urlopen(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            url="https://api.crossref.org/works/10.5555/nope",
+            code=404, msg="Not Found", hdrs={}, fp=None,
+        )
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = CrossrefClient()
+        result = client.doi_lookup_with_title_check(
+            doi="10.5555/nope",
+            expected_title="Anything",
+        )
+
+    assert result is None
+
+
+def test_title_search_prefers_matching_year(monkeypatch):
+    """Two candidates same title - year-match wins via 0.05 score bonus."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    # Crossref year is nested: typically under `published-print` or `issued`.
+    # Use `issued.date-parts[0][0]` for the year value (standard Crossref shape).
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "items": [
+                {
+                    "title": ["Attention Is All You Need"],
+                    "issued": {"date-parts": [[1999]]},
+                },
+                {
+                    "title": ["Attention Is All You Need"],
+                    "issued": {"date-parts": [[2017]]},
+                },
+            ]
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.title_search("Attention Is All You Need", year=2017)
+
+    assert result is not None
+    assert result["issued"]["date-parts"][0][0] == 2017
+
+
+def test_polite_pool_email_in_user_agent(monkeypatch):
+    """CROSSREF_POLITE_EMAIL adds 'mailto:...' to User-Agent header (NOT query param)."""
+    from crossref_client import CrossrefClient
+
+    captured_headers = []
+
+    def mock_urlopen(req, *args, **kwargs):
+        # urllib.request.Request stores headers; access via get_header (case-insensitive)
+        ua = req.get_header("User-agent") or ""
+        captured_headers.append(ua)
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"message": {"items": []}}).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=None)
+        return mock_response
+
+    monkeypatch.setenv("CROSSREF_POLITE_EMAIL", "test@example.com")
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = CrossrefClient()
+        client.title_search("any title")
+
+    assert any("mailto:test@example.com" in ua for ua in captured_headers)

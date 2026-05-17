@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Minimal Crossref API client wrapper.
+
+Implements the lookup contract documented at
+`deep-research/references/crossref_api_protocol.md`. DOI-first with
+title cross-check (DOI_MISMATCH pattern), title-similarity fallback,
+429 -> 2s backoff x 3 retries, 404/5xx -> miss vs. skip. Mirrors
+`semantic_scholar_client.py` / `openalex_client.py` structure.
+
+Crossref-specific: DOI endpoint is /works/{doi} (no doi: prefix);
+title search is /works?query.title=...&rows=5; polite-pool email
+goes in User-Agent header (not query param); response shape is
+nested under `message`; title is a list (multi-language variants).
+"""
+from __future__ import annotations
+
+import json
+import os
+import string
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from difflib import SequenceMatcher
+from typing import Any, Mapping
+
+
+_PUNCT_TRANSLATION = str.maketrans({c: " " for c in string.punctuation})
+
+_API_BASE = "https://api.crossref.org"
+_POLITE_EMAIL_ENV = "CROSSREF_POLITE_EMAIL"
+
+_BACKOFF_SECONDS = 2.0
+_MAX_RETRIES = 3
+
+# Crossref polite pool: 50 req/s with mailto, ~5 req/s anonymous.
+_POLITE_MIN_INTERVAL = 0.02
+_ANONYMOUS_MIN_INTERVAL = 0.2
+
+_TITLE_SIMILARITY_THRESHOLD = 0.70
+
+
+def _normalize_title(s: str) -> str:
+    """Case-insensitive, punctuation-to-whitespace normalization. Matches
+    S2 / OpenAlex client to keep the threshold semantically aligned."""
+    cleaned = s.lower().translate(_PUNCT_TRANSLATION)
+    return " ".join(cleaned.split())
+
+
+def _similarity(a: str, b: str) -> float:
+    return SequenceMatcher(None, _normalize_title(a), _normalize_title(b)).ratio()
+
+
+def _extract_title(message_or_item: Mapping[str, Any]) -> str:
+    """Crossref returns `title` as a list of language variants. Take first or empty."""
+    titles = message_or_item.get("title") or []
+    return titles[0] if titles else ""
+
+
+def _extract_year(item: Mapping[str, Any]) -> int | None:
+    """Crossref year lives in `issued.date-parts[0][0]` (or `published-print` / `published-online`).
+    Prefer `issued` as canonical; fall through to alternatives."""
+    for key in ("issued", "published-print", "published-online"):
+        val = item.get(key)
+        if not isinstance(val, dict):
+            continue
+        date_parts = val.get("date-parts")
+        if date_parts and date_parts[0]:
+            return date_parts[0][0]
+    return None
+
+
+class CrossrefUnavailable(Exception):
+    """Crossref API degraded -- caller MUST omit `crossref_unmatched`."""
+
+
+class CrossrefClient:
+    """Production lookup-by-(doi-with-cross-check-then-title) client for Crossref.
+
+    Concurrency note: rate-limit pacing is per-instance.
+    """
+
+    def __init__(self, polite_email: str | None = None):
+        self._polite_email = polite_email or os.environ.get(_POLITE_EMAIL_ENV)
+        self._min_interval = (
+            _POLITE_MIN_INTERVAL if self._polite_email else _ANONYMOUS_MIN_INTERVAL
+        )
+        self._last_request_at: float | None = None
+        # Polite-pool email goes in User-Agent, not query param.
+        ua = "ARS-v3.9.0"
+        if self._polite_email:
+            ua += f" (mailto:{self._polite_email})"
+        self._user_agent = ua
+
+    def _throttle(self) -> None:
+        if self._last_request_at is None:
+            return
+        elapsed = time.time() - self._last_request_at
+        if elapsed < self._min_interval:
+            time.sleep(self._min_interval - elapsed)
+
+    def _get(self, path: str, query: Mapping[str, str]) -> dict[str, Any]:
+        url = f"{_API_BASE}{path}"
+        if query:
+            url += "?" + urllib.parse.urlencode(query)
+        req = urllib.request.Request(url, headers={"User-Agent": self._user_agent})
+
+        self._throttle()
+        self._last_request_at = time.time()
+
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    return {}
+                if e.code == 429 and attempt < _MAX_RETRIES:
+                    time.sleep(_BACKOFF_SECONDS)
+                    # Refresh throttle anchor after backoff so the next outer
+                    # _get call's _throttle() paces against actual wake time,
+                    # not the original entry time (mirrors openalex_client.py).
+                    self._last_request_at = time.time()
+                    continue
+                raise CrossrefUnavailable(f"Crossref HTTP {e.code}: {e.reason}") from e
+            except (urllib.error.URLError, TimeoutError) as e:
+                raise CrossrefUnavailable(f"Crossref network error: {e}") from e
+
+        raise CrossrefUnavailable("Crossref rate limit exhausted after retries")
+
+    def doi_lookup_with_title_check(
+        self, doi: str, expected_title: str,
+    ) -> dict[str, Any] | None:
+        """DOI lookup with mandatory Levenshtein 0.70 title cross-check.
+
+        Returns the `message` dict if DOI hit AND title cross-check passes;
+        None on 404 (miss), DOI_MISMATCH, or network success but no match.
+        """
+        data = self._get(f"/works/{doi}", {})
+        if not data:  # 404 -> empty dict from _get
+            return None
+        message = data.get("message", {})
+        title = _extract_title(message)
+        if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
+            return message
+        return None  # DOI_MISMATCH
+
+    def title_search(
+        self, title: str, year: int | None = None,
+    ) -> dict[str, Any] | None:
+        """Title search with 0.70 similarity threshold + matching-year tiebreaker.
+
+        Returns the best matching candidate dict from `message.items`,
+        or None if no candidate meets the threshold.
+        """
+        data = self._get("/works", {"query.title": title, "rows": "5"})
+        candidates = data.get("message", {}).get("items", [])
+        scored = []
+        for cand in candidates:
+            cand_title = _extract_title(cand)
+            sim = _similarity(cand_title, title)
+            if sim < _TITLE_SIMILARITY_THRESHOLD:
+                continue
+            year_match = year is not None and _extract_year(cand) == year
+            score = sim + (0.05 if year_match else 0.0)
+            scored.append((cand, score))
+        if not scored:
+            return None
+        scored.sort(key=lambda cand_score: (-cand_score[1],))
+        return scored[0][0]
