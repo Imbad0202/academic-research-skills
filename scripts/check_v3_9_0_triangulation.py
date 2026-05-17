@@ -106,21 +106,47 @@ def check_preprint_composition_order(subsection_text: str) -> list[str]:
 
 
 def check_legacy_compat(subsection_text: str) -> list[str]:
-    """Rule 3: k=1 k_max=1 with semantic_scholar_unmatched must NOT produce COVERAGE-NOISE.
+    """Rule 3: k=1 k_max=1 + present_field=semantic_scholar_unmatched preserves
+    v3.7.3 legacy CONTAMINATED-UNMATCHED suffix (NOT CONTAMINATED-COVERAGE-NOISE).
 
-    Both rows (preprint=false → CONTAMINATED-UNMATCHED; preprint=true →
-    CONTAMINATED-PREPRINT+UNMATCHED) are v3.7.3 legacy rows and must not be changed to
-    COVERAGE-NOISE or any other v3.9.0 suffix.  The invariant: neither row may contain
-    `CONTAMINATED-COVERAGE-NOISE`.
+    Both the preprint=false and preprint=true legacy rows must be guarded:
+    - preprint=false: suffix = CONTAMINATED-UNMATCHED, NOT CONTAMINATED-COVERAGE-NOISE
+    - preprint=true: suffix = CONTAMINATED-PREPRINT+UNMATCHED, NOT
+      CONTAMINATED-PREPRINT+COVERAGE-NOISE
     """
     failures = []
     for line in subsection_text.splitlines():
-        if "semantic_scholar_unmatched" in line and "| 1 | 1 |" in line:
-            if "CONTAMINATED-COVERAGE-NOISE" in line:
+        if "semantic_scholar_unmatched" not in line or "| 1 | 1 |" not in line:
+            continue
+        # Detect preprint variant: the table row has "| true |" in the preprint column.
+        # Rows with "false / absent" or no explicit "true" are the bare (non-preprint) row.
+        is_preprint = "| true |" in line
+        if is_preprint:
+            # Preprint legacy row must carry CONTAMINATED-PREPRINT+UNMATCHED.
+            if "`CONTAMINATED-PREPRINT+UNMATCHED`" not in line:
                 failures.append(
-                    f"rule 3 (legacy compat): k=1 k_max=1 semantic_scholar_unmatched row "
-                    f"uses CONTAMINATED-COVERAGE-NOISE instead of legacy suffix: "
-                    f"{line.strip()[:150]}"
+                    f"rule 3 (legacy compat — preprint variant): k=1 k_max=1 "
+                    f"semantic_scholar_unmatched preprint=true row does NOT preserve "
+                    f"`CONTAMINATED-PREPRINT+UNMATCHED` legacy suffix"
+                )
+            if "`CONTAMINATED-PREPRINT+COVERAGE-NOISE`" in line:
+                failures.append(
+                    f"rule 3 (legacy compat — preprint drift): preprint legacy row contains "
+                    f"`CONTAMINATED-PREPRINT+COVERAGE-NOISE` (should be "
+                    f"`CONTAMINATED-PREPRINT+UNMATCHED`)"
+                )
+        else:
+            # Bare (preprint=false / absent) legacy row must carry CONTAMINATED-UNMATCHED.
+            if "`CONTAMINATED-UNMATCHED`" not in line:
+                failures.append(
+                    f"rule 3 (legacy compat — bare variant): k=1 k_max=1 "
+                    f"semantic_scholar_unmatched preprint=false row does NOT preserve "
+                    f"`CONTAMINATED-UNMATCHED` legacy suffix"
+                )
+            if "`CONTAMINATED-COVERAGE-NOISE`" in line:
+                failures.append(
+                    f"rule 3 (legacy compat — bare drift): bare legacy row contains "
+                    f"`CONTAMINATED-COVERAGE-NOISE` (should be `CONTAMINATED-UNMATCHED`)"
                 )
     return failures
 

@@ -156,6 +156,22 @@ def test_rule3_legacy_compat_violated_fails(tmp_path):
     assert "rule 3" in result.stderr.lower() or "legacy" in result.stderr.lower()
 
 
+def test_rule3_preprint_legacy_drift_fails(tmp_path):
+    """Rule 3: drift preprint legacy row's suffix to CONTAMINATED-PREPRINT+COVERAGE-NOISE — lint fails."""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    broken = content.replace(
+        "`CONTAMINATED-PREPRINT+UNMATCHED` (v3.7.3 legacy)",
+        "`CONTAMINATED-PREPRINT+COVERAGE-NOISE` (BROKEN)",
+        1,
+    )
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 1
+    assert "rule 3" in result.stderr.lower() or "preprint" in result.stderr.lower()
+
+
 # ---------------------------------------------------------------------------
 # Rule 4 — no *-BLOCK in v3.9.0 subsection
 # ---------------------------------------------------------------------------

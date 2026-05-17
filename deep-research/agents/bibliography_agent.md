@@ -312,7 +312,7 @@ v3.9.0 extends contamination_signals from single-index (Semantic Scholar) to thr
 
 **Per-entry ingest log:** emit one line summarizing which indexes were queried, which matched, and which were degraded. Log format: `[CORPUS INGEST] <citation_key>: s2=<state>, openalex=<state>, crossref=<state>` where each state is `matched` / `unmatched` / `degraded` / `skipped(manual)`.
 
-**v3.9.0 R-L3-2-D constraint:** OpenAlex `host_venue.type` and Crossref `type` fields, even when returned by matched entries, MUST NOT be used to derive any classification (venue_type, scope category, hard-block eligibility) within v3.9.0. v3.10 will introduce adapter-declared `venue_type` with explicit provenance.
+**v3.9.0 R-L3-2-D constraint:** OpenAlex `primary_location.source.type` and Crossref `type` fields, even when returned by matched entries, MUST NOT be used to derive any classification (venue_type, scope category, hard-block eligibility) within v3.9.0. v3.10 will introduce adapter-declared `venue_type` with explicit provenance.
 
 ## APA 7.0 Quick Reference
 
