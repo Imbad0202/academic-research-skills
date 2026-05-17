@@ -146,6 +146,62 @@ def compute_ss_unmatched_signal(
     return not result.get("matched", False)
 
 
+def resolve_openalex_unmatched(entry: Mapping[str, Any], client) -> bool | None:
+    """Compute openalex_unmatched per spec v3.9.0 §3.4.
+
+    Mirrors resolve_semantic_scholar_unmatched semantics:
+    - Manual entry → return None (caller MUST omit field).
+    - API down → re-raise OpenAlexUnavailable (caller MUST omit field).
+    - DOI present + DOI hit (passes title cross-check) → return False.
+    - DOI present + DOI miss/MISMATCH → fall through to title search.
+    - DOI absent → title search only.
+    - No hit anywhere → return True (unmatched).
+
+    Returns:
+        True: OpenAlex returned no match by DOI (with title cross-check) or title.
+        False: OpenAlex found a match.
+        None: obtained_via='manual' → exempt, caller must omit field.
+
+    Raises:
+        OpenAlexUnavailable: API degraded, caller must omit field per R-L3-2-C.
+    """
+    if entry.get("obtained_via") == "manual":
+        return None
+    title = entry.get("title", "")
+    doi = entry.get("doi")
+    if doi:
+        hit = client.doi_lookup_with_title_check(doi, title)
+        if hit is not None:
+            return False
+        # DOI miss or MISMATCH — fall through to title search.
+    hit = client.title_search(title)
+    return hit is None
+
+
+def resolve_crossref_unmatched(entry: Mapping[str, Any], client) -> bool | None:
+    """Compute crossref_unmatched per spec v3.9.0 §3.5.
+
+    Mirrors resolve_openalex_unmatched / resolve_semantic_scholar_unmatched
+    semantics. See those functions for return / raise contract.
+
+    Returns:
+        True / False / None per the same contract as resolve_openalex_unmatched.
+
+    Raises:
+        CrossrefUnavailable: API degraded, caller must omit field per R-L3-2-C.
+    """
+    if entry.get("obtained_via") == "manual":
+        return None
+    title = entry.get("title", "")
+    doi = entry.get("doi")
+    if doi:
+        hit = client.doi_lookup_with_title_check(doi, title)
+        if hit is not None:
+            return False
+    hit = client.title_search(title)
+    return hit is None
+
+
 def build_signals_object(
     entry: Mapping[str, Any],
     client: SemanticScholarClient,

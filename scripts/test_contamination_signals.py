@@ -19,6 +19,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -282,3 +284,153 @@ class ResetClientOutageLatchHelperTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ============================================================================
+# v3.9.0 — resolve_openalex_unmatched
+# ============================================================================
+
+def test_resolve_openalex_unmatched_match():
+    """OpenAlex hit via DOI cross-check → False."""
+    from contamination_signals import resolve_openalex_unmatched
+
+    mock_client = MagicMock()
+    mock_client.doi_lookup_with_title_check.return_value = {"title": "X"}
+
+    entry = {
+        "title": "X",
+        "doi": "10.5555/abc",
+        "obtained_via": "zotero-bbt-export",
+    }
+    result = resolve_openalex_unmatched(entry, mock_client)
+    assert result is False
+
+
+def test_resolve_openalex_unmatched_no_match():
+    """OpenAlex no DOI hit + no title hit → True."""
+    from contamination_signals import resolve_openalex_unmatched
+
+    mock_client = MagicMock()
+    mock_client.doi_lookup_with_title_check.return_value = None
+    mock_client.title_search.return_value = None
+
+    entry = {
+        "title": "Nonexistent Paper",
+        "doi": "10.5555/fake",
+        "obtained_via": "folder-scan",
+    }
+    result = resolve_openalex_unmatched(entry, mock_client)
+    assert result is True
+
+
+def test_resolve_openalex_unmatched_manual_exempt():
+    """obtained_via='manual' → return None, no client calls."""
+    from contamination_signals import resolve_openalex_unmatched
+
+    mock_client = MagicMock()
+    entry = {"title": "X", "obtained_via": "manual"}
+    result = resolve_openalex_unmatched(entry, mock_client)
+    assert result is None
+    mock_client.doi_lookup_with_title_check.assert_not_called()
+    mock_client.title_search.assert_not_called()
+
+
+def test_resolve_openalex_unmatched_doi_absent_falls_through_to_title():
+    """DOI absent: title search alone, NO DOI lookup attempted."""
+    from contamination_signals import resolve_openalex_unmatched
+
+    mock_client = MagicMock()
+    mock_client.title_search.return_value = {"title": "X"}
+
+    entry = {"title": "X", "obtained_via": "zotero-bbt-export"}  # no doi
+    result = resolve_openalex_unmatched(entry, mock_client)
+    assert result is False
+    mock_client.doi_lookup_with_title_check.assert_not_called()
+
+
+def test_resolve_openalex_unmatched_api_down_raises():
+    """API degraded → re-raise OpenAlexUnavailable for caller to omit field."""
+    from contamination_signals import resolve_openalex_unmatched
+    from openalex_client import OpenAlexUnavailable
+
+    mock_client = MagicMock()
+    mock_client.doi_lookup_with_title_check.side_effect = OpenAlexUnavailable("down")
+
+    entry = {"title": "X", "doi": "10.5555/abc", "obtained_via": "folder-scan"}
+    with pytest.raises(OpenAlexUnavailable):
+        resolve_openalex_unmatched(entry, mock_client)
+
+
+# ============================================================================
+# v3.9.0 — resolve_crossref_unmatched
+# ============================================================================
+
+def test_resolve_crossref_unmatched_match():
+    """Crossref hit via DOI cross-check → False."""
+    from contamination_signals import resolve_crossref_unmatched
+
+    mock_client = MagicMock()
+    mock_client.doi_lookup_with_title_check.return_value = {"title": ["X"]}
+
+    entry = {
+        "title": "X",
+        "doi": "10.5555/abc",
+        "obtained_via": "zotero-bbt-export",
+    }
+    result = resolve_crossref_unmatched(entry, mock_client)
+    assert result is False
+
+
+def test_resolve_crossref_unmatched_no_match():
+    """Crossref no DOI hit + no title hit → True."""
+    from contamination_signals import resolve_crossref_unmatched
+
+    mock_client = MagicMock()
+    mock_client.doi_lookup_with_title_check.return_value = None
+    mock_client.title_search.return_value = None
+
+    entry = {
+        "title": "Nonexistent",
+        "doi": "10.5555/fake",
+        "obtained_via": "folder-scan",
+    }
+    result = resolve_crossref_unmatched(entry, mock_client)
+    assert result is True
+
+
+def test_resolve_crossref_unmatched_manual_exempt():
+    """obtained_via='manual' → return None, no client calls."""
+    from contamination_signals import resolve_crossref_unmatched
+
+    mock_client = MagicMock()
+    entry = {"title": "X", "obtained_via": "manual"}
+    result = resolve_crossref_unmatched(entry, mock_client)
+    assert result is None
+    mock_client.doi_lookup_with_title_check.assert_not_called()
+    mock_client.title_search.assert_not_called()
+
+
+def test_resolve_crossref_unmatched_doi_absent_falls_through_to_title():
+    """DOI absent: title search alone, NO DOI lookup attempted."""
+    from contamination_signals import resolve_crossref_unmatched
+
+    mock_client = MagicMock()
+    mock_client.title_search.return_value = {"title": ["X"]}
+
+    entry = {"title": "X", "obtained_via": "obsidian-vault"}  # no doi
+    result = resolve_crossref_unmatched(entry, mock_client)
+    assert result is False
+    mock_client.doi_lookup_with_title_check.assert_not_called()
+
+
+def test_resolve_crossref_unmatched_api_down_raises():
+    """API degraded → re-raise CrossrefUnavailable for caller to omit field."""
+    from contamination_signals import resolve_crossref_unmatched
+    from crossref_client import CrossrefUnavailable
+
+    mock_client = MagicMock()
+    mock_client.doi_lookup_with_title_check.side_effect = CrossrefUnavailable("down")
+
+    entry = {"title": "X", "doi": "10.5555/abc", "obtained_via": "folder-scan"}
+    with pytest.raises(CrossrefUnavailable):
+        resolve_crossref_unmatched(entry, mock_client)
