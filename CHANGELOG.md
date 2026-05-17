@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
 - `formatter_agent.md` pass-through allowlist extends from 3 v3.7.3 suffixes to 9 (3 legacy + 6 v3.9.0). Refusal rules 1-10 unchanged.
 - v3.9.0 lint (`scripts/check_v3_9_0_triangulation.py`): set-equality on formatter allowlist, refusal-list-unchanged guard. Exact-token extraction prevents substring collisions (R3 P2 closure).
 - Migration tool (`scripts/migrate_literature_corpus_to_v3_9_0.py`): backfill v3.7.3 → v3.9.0; stable-fields idempotency; per-API degradation tolerant; dry-run mode; daisy-chained migration scope (pre-v3.7.3 entries require v3.7.3 migration first).
-- 3 new firm rules in spec §3.3: R-L3-2-C (k computed over present fields, absent ≠ false), R-L3-2-D (no OpenAlex/Crossref work-type used for v3.9.0 logic), R-L3-2-E (refusal list unchanged; pass-through allowlist extends).
+- 3 new firm rules in spec §3.3: R-L3-2-C (k computed over present fields, absent ≠ false), R-L3-2-D (no OpenAlex `primary_location.source.type` / Crossref `type` used for v3.9.0 classification logic), R-L3-2-E (refusal list unchanged; pass-through allowlist extends).
 
 ### Design philosophy
 - v3.9.0 is the **measurement layer** for cross-index triangulation. The **policy layer** (strict modes, hard-block tier, venue-type-scoped strict, `triangulation_policy` field, `venue_type` field) is deferred to v3.10 per spec §2.3.

@@ -113,8 +113,13 @@ def check_legacy_compat(subsection_text: str) -> list[str]:
     - preprint=false: suffix = CONTAMINATED-UNMATCHED, NOT CONTAMINATED-COVERAGE-NOISE
     - preprint=true: suffix = CONTAMINATED-PREPRINT+UNMATCHED, NOT
       CONTAMINATED-PREPRINT+COVERAGE-NOISE
+
+    Additionally, both rows must be PRESENT. Deleting either row silently passes without
+    this check (codex R3-F2 finding, 2026-05-17).
     """
     failures = []
+    seen_bare_legacy = False
+    seen_preprint_legacy = False
     for line in subsection_text.splitlines():
         if "semantic_scholar_unmatched" not in line or "| 1 | 1 |" not in line:
             continue
@@ -122,6 +127,7 @@ def check_legacy_compat(subsection_text: str) -> list[str]:
         # Rows with "false / absent" or no explicit "true" are the bare (non-preprint) row.
         is_preprint = "| true |" in line
         if is_preprint:
+            seen_preprint_legacy = True
             # Preprint legacy row must carry CONTAMINATED-PREPRINT+UNMATCHED.
             if "`CONTAMINATED-PREPRINT+UNMATCHED`" not in line:
                 failures.append(
@@ -136,6 +142,7 @@ def check_legacy_compat(subsection_text: str) -> list[str]:
                     f"`CONTAMINATED-PREPRINT+UNMATCHED`)"
                 )
         else:
+            seen_bare_legacy = True
             # Bare (preprint=false / absent) legacy row must carry CONTAMINATED-UNMATCHED.
             if "`CONTAMINATED-UNMATCHED`" not in line:
                 failures.append(
@@ -148,6 +155,18 @@ def check_legacy_compat(subsection_text: str) -> list[str]:
                     f"rule 3 (legacy compat — bare drift): bare legacy row contains "
                     f"`CONTAMINATED-COVERAGE-NOISE` (should be `CONTAMINATED-UNMATCHED`)"
                 )
+    if not seen_bare_legacy:
+        failures.append(
+            "rule 3 (legacy compat): bare k=1 k_max=1 semantic_scholar_unmatched legacy row is "
+            "MISSING from the v3.9.0 finalizer subsection "
+            "(CONTAMINATED-UNMATCHED legacy coverage required)"
+        )
+    if not seen_preprint_legacy:
+        failures.append(
+            "rule 3 (legacy compat): preprint k=1 k_max=1 semantic_scholar_unmatched legacy row is "
+            "MISSING from the v3.9.0 finalizer subsection "
+            "(CONTAMINATED-PREPRINT+UNMATCHED legacy coverage required)"
+        )
     return failures
 
 

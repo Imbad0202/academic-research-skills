@@ -172,6 +172,32 @@ def test_rule3_preprint_legacy_drift_fails(tmp_path):
     assert "rule 3" in result.stderr.lower() or "preprint" in result.stderr.lower()
 
 
+def test_rule3_missing_legacy_rows_fails(tmp_path):
+    """Rule 3: delete BOTH legacy S2 rows from the table — lint must fail."""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    # Delete the bare legacy row.
+    broken = content.replace(
+        "| `ok` / `LOW-WARN` | false / absent | 1 | 1 | `semantic_scholar_unmatched` | `CONTAMINATED-UNMATCHED` (v3.7.3 legacy) |\n",
+        "",
+        1,
+    )
+    # Delete the preprint legacy row.
+    broken = broken.replace(
+        "| `ok` / `LOW-WARN` | true | 1 | 1 | `semantic_scholar_unmatched` | `CONTAMINATED-PREPRINT+UNMATCHED` (v3.7.3 legacy) |\n",
+        "",
+        1,
+    )
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 1
+    # Both row-missing messages should fire.
+    err = result.stderr.lower()
+    assert "missing" in err
+    assert "rule 3" in err
+
+
 # ---------------------------------------------------------------------------
 # Rule 4 — no *-BLOCK in v3.9.0 subsection
 # ---------------------------------------------------------------------------
