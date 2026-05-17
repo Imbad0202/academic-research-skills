@@ -33,8 +33,9 @@ _POLITE_EMAIL_ENV = "CROSSREF_POLITE_EMAIL"
 _BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
 
-# Crossref polite pool: 50 req/s with mailto, ~5 req/s anonymous.
-_POLITE_MIN_INTERVAL = 0.02
+# Crossref polite pool: 10 req/s with mailto, ~5 req/s anonymous (per
+# Crossref live response headers: x-rate-limit-limit=10, interval=1s).
+_POLITE_MIN_INTERVAL = 0.1
 _ANONYMOUS_MIN_INTERVAL = 0.2
 
 _TITLE_SIMILARITY_THRESHOLD = 0.70

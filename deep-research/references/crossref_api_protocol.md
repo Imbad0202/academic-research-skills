@@ -3,7 +3,7 @@
 **Status**: v3.9.0
 **Used by**: `bibliography_agent`, `migrate_literature_corpus_to_v3_9_0.py`
 **API base**: `https://api.crossref.org`
-**Rate limit**: 50 req/s (polite pool, with `mailto:` in User-Agent), ~5 req/s (anonymous, varies)
+**Rate limit**: 10 req/s (polite pool, with `mailto:` in User-Agent), ~5 req/s (anonymous, varies). Confirmed via live `x-rate-limit-limit` / `x-rate-limit-interval` response headers (2026-05).
 **Polite email env var**: `CROSSREF_POLITE_EMAIL` (optional)
 
 ---
