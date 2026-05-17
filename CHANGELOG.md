@@ -8,6 +8,31 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.8.1] - 2026-05-17 — claim_audit lint hardening (#119 + #120 4×P2 closure)
+
+Defense-in-depth patch on `ARS_CLAIM_AUDIT=1` opt-in lint paths. Five fixes carried over from #103 R6 + R8 codex review, consolidated into one v3.8.1 release. No schema semantic change, no behavior change for well-formed payloads — pre-fix surfaces all crashed the CLI with `TypeError` / `AttributeError` instead of returning actionable lint findings or routing through the INV-14 `audit_tool_failure` translation boundary.
+
+### Fixed
+
+- **#119 / #120 P2-2 — nested schema-invalid shapes no longer crash invariant walkers.** Added `_iter_dicts` helper and narrow `isinstance(str)` guards in `_check_inv_17_for_manifest`, `_check_manifest_invariants`, `_build_manifest_index`, `_build_manifest_constraint_index` so that nested `claim_intent_manifests[].claims` as string, `claims[].claim_id` non-string, or `audit_sampling_summaries[].audited_indices` mixed types now surface as clean schema findings instead of crashing on `for claim in "broken":`, regex against non-string, or `int <= str` comparison. The schema validator still records the type mismatch separately — narrow walker guards prevent the second-stage crash without masking schema-vs-invariant double coverage (option 2 refined, not aggregate-level skip).
+- **#120 P2-1 — CV-INV-4 dedupe scoped by `scoped_manifest_id`.** Dedupe key extended from `(section_path, claim_text_hash, violated_constraint_id)` to `(scoped_manifest_id, section_path, claim_text_hash, violated_constraint_id)`. Per M-INV-4, `manifest_id` is unique across the passport but constraint ids (`MNC-*` / `NC-*`) are only unique WITHIN a manifest — two manifests in the same passport may legitimately carry colliding constraint ids, and the same sentence may then violate both. Pre-fix, the dedupe false-positived these as duplicates. Spec wording in §3.5 + §7.1 4b updated.
+- **#120 P2-3 — judge `judgment` `isinstance(str)` guard before set membership.** `_validate_judge_dict` now rejects a non-string judgment (e.g. malformed `{"judgment": [1, 2], "rationale": "..."}`) as `judge_parse_error → audit_tool_failure` via the INV-14 translation boundary instead of bubbling `TypeError("unhashable type: 'list'")` out of the set-membership test.
+- **#120 P2-4 — retrieve `ref_retrieval_method` `isinstance(str)` guard before set membership.** Symmetric to P2-3 on the retrieval boundary. `_invoke_retrieve` rejects a non-string method as `retrieval_api_error → audit_tool_failure` instead of crashing on set membership.
+
+### Tests
+
+- `scripts/test_claim_audit_schema.py`: 3 new tests in `TS9MalformedPassportGuard` (nested string / non-string claim_id / mixed-type indices) + new test class `TSCVDedupeManifestScope` with 2 tests (cross-manifest collision must keep both; within-manifest true duplicate still caught).
+- `scripts/test_claim_audit_pipeline.py`: 2 new tests in `TP12JudgeFailureAuditToolFailure` (non-string list + dict judgment) + 1 new test in `TP14RetrieveFailureAuditToolFailure` (non-string list method).
+- Regression baseline: 682 → 690 tests (+8), 0 failures, 0 errors across full `scripts/test_*.py` discovery.
+
+### Design memo
+
+`docs/superpowers/plans/2026-05-17-v3.8.1-claim-audit-lint-hardening.md` (local; gitignored per ARS personal-workspace convention) carries the option-1 vs option-2 analysis, CV-INV-4 dedupe key shape rationale, and the release-framing decision.
+
+Closes [#119](https://github.com/Imbad0202/academic-research-skills/issues/119). Refs [#120](https://github.com/Imbad0202/academic-research-skills/issues/120) P2-1, P2-2, P2-3, P2-4 (all four R8 findings).
+
+---
+
 ## [3.8.0] - 2026-05-16 — L3 Claim-Faithfulness Locator + Audit (v3.7.3 + #103 paired milestone)
 
 v3.7.3 + v3.8 close the L3 (claim-faithfulness) gap end-to-end. v3.7.3 ships the locator infrastructure (every citation carries a three-layer anchor so the audit can fetch the cited passage); v3.8 ships the audit pass that consumes those anchors, judges whether the cited source supports the claim, and gate-refuses HIGH-WARN violations at the formatter terminal hard gate. The release also bundles 5 audit-trail-shipped feature PRs accumulated on main since v3.7.0 (#104 / #105 / #108 / #111 / #115). External motivation: Zhao et al. arXiv:2605.07723 (2026-05) — 146,932 hallucinated citations across arXiv / bioRxiv / SSRN / PMC in 2025.
