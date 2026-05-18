@@ -17,40 +17,29 @@ from __future__ import annotations
 import http.client
 import json
 import os
-import string
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from difflib import SequenceMatcher
 from typing import Any, Mapping
 
+from _text_similarity import (
+    _BACKOFF_SECONDS,
+    _MAX_RETRIES,
+    _PUNCT_TRANSLATION,
+    _TITLE_SIMILARITY_THRESHOLD,
+    _normalize_title,
+    _similarity,
+)
 
-_PUNCT_TRANSLATION = str.maketrans({c: " " for c in string.punctuation})
 
 _API_BASE = "https://api.crossref.org"
 _POLITE_EMAIL_ENV = "CROSSREF_POLITE_EMAIL"
-
-_BACKOFF_SECONDS = 2.0
-_MAX_RETRIES = 3
 
 # Crossref polite pool: 10 req/s with mailto, ~5 req/s anonymous (per
 # Crossref live response headers: x-rate-limit-limit=10, interval=1s).
 _POLITE_MIN_INTERVAL = 0.1
 _ANONYMOUS_MIN_INTERVAL = 0.2
-
-_TITLE_SIMILARITY_THRESHOLD = 0.70
-
-
-def _normalize_title(s: str) -> str:
-    """Case-insensitive, punctuation-to-whitespace normalization. Matches
-    S2 / OpenAlex client to keep the threshold semantically aligned."""
-    cleaned = s.lower().translate(_PUNCT_TRANSLATION)
-    return " ".join(cleaned.split())
-
-
-def _similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, _normalize_title(a), _normalize_title(b)).ratio()
 
 
 def _extract_title(message_or_item: Mapping[str, Any]) -> str:

@@ -15,18 +15,21 @@ tool can switch over without code changes.
 from __future__ import annotations
 
 import os
-import string
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from difflib import SequenceMatcher
 from typing import Any, Mapping
 
+from _text_similarity import (
+    _BACKOFF_SECONDS,
+    _MAX_RETRIES,
+    _PUNCT_TRANSLATION,
+    _TITLE_SIMILARITY_THRESHOLD,
+    _normalize_title,
+    _similarity,
+)
 from contamination_signals import SemanticScholarUnavailable
-
-
-_PUNCT_TRANSLATION = str.maketrans({c: " " for c in string.punctuation})
 
 
 # Per protocol: api.semanticscholar.org/graph/v1, 1 req/s unauthenticated.
@@ -34,33 +37,11 @@ _API_BASE = "https://api.semanticscholar.org/graph/v1"
 _API_KEY_ENV = "S2_API_KEY"
 _FIELDS = "title,authors,year,externalIds,venue,publicationDate"
 
-# Per protocol: 429 → 2s backoff × 3 retries.
-_BACKOFF_SECONDS = 2.0
-_MAX_RETRIES = 3
-
 # Per protocol line 6: unauthenticated tier is ~1 req/s, authenticated
 # (S2_API_KEY) tier is 10 req/s. Default throttle interval defends
 # against proactive rate limiting before a 429 fires (#115 R5-2).
 _UNAUTHENTICATED_MIN_INTERVAL = 1.0
 _AUTHENTICATED_MIN_INTERVAL = 0.1
-
-# Per PaperOrchestra (Song et al. 2026 Appx D.3) + protocol §"Query
-# Patterns" Pattern 1: title-similarity threshold for "matched" verdict.
-_TITLE_SIMILARITY_THRESHOLD = 0.70
-
-
-def _normalize_title(s: str) -> str:
-    """Per protocol §"Query Patterns" Pattern 1: 'case-insensitive,
-    stripped of punctuation' before computing similarity. Punctuation
-    becomes whitespace so token boundaries are preserved, then collapse
-    runs of whitespace. Codex R4-1 closure: raw lowercased comparison
-    falsely scored 'R.A.G.' vs 'RAG' below the 0.70 threshold."""
-    cleaned = s.lower().translate(_PUNCT_TRANSLATION)
-    return " ".join(cleaned.split())
-
-
-def _similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, _normalize_title(a), _normalize_title(b)).ratio()
 
 
 class SemanticScholarClient:
