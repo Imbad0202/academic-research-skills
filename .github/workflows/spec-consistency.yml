@@ -220,6 +220,29 @@ jobs:
           python scripts/check_v3_9_0_triangulation.py
           pytest scripts/test_check_v3_9_0_triangulation.py -v
 
+      - name: Run v3.9.2 Phase Boundary coverage lint (#133)
+        # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
+        # block, 16 Bucket B/C/D agents DON'T, and each Bucket A block
+        # contains the four load-bearing phrases (Phase Boundary v3.9.2,
+        # MUST NOT, MAY READ, Enforcement v3.9.2). See
+        # docs/design/2026-05-18-ars-v3.9.2-agent-phase-classification.md.
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest
+          python3 scripts/check_v3_9_2_phase_boundary.py
+          pytest scripts/test_check_v3_9_2_phase_boundary.py -v
+
+      - name: Run v3.9.2 pipeline integrity advisory verifier tests (#133)
+        # Tests for scripts/check_pipeline_integrity.py — the post-hoc
+        # advisory verifier that flags #133-pattern Phase 5 outputs
+        # missing independent reviewer attribution.
+        env:
+          PYTHONPATH: .
+        run: |
+          pip install pytest
+          pytest scripts/test_check_pipeline_integrity.py -v
+
       - name: Run v3.8 annotation-literal sync lint (#103)
         # Step 8 /simplify reuse P2-1: lint pins that every
         # ANNOTATION_HIGH_WARN_* literal in scripts/claim_audit_finalizer.py

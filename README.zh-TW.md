@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.9.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.0)
+[![Version](https://img.shields.io/badge/version-v3.9.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.2)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -299,6 +299,14 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.9.2（2026-05-18）— #133 phase boundary 熱修
+
+> #133 收尾（hot-fix 層）。長期架構修正以 v3.10 active conductor 在 #134 追蹤。新增：CLAUDE.md routing 釐清閘（跨 phase 素材 → 以 a-d 選項釐清，不靜默 dispatch）、22 個 single-phase agent 加 prompt 硬 fence（`## Phase Boundary (v3.9.2)`）、16 個 multi-phase / phase-orthogonal / cross-phase-meta agent 刻意不加 fence（誠實 framing：純 prose placebo 會造成假性 enforce 錯覺）、advisory verifier `scripts/check_pipeline_integrity.py` 事後偵測 #133 pattern。Behavioral smoke test 含 cross-model spot-check（Opus 4.7 100% / Sonnet + GPT-5.5 ≥75%）。
+
+### v3.9.1（2026-05-18）— #129 + #130 client hardening
+
+> v3.9.0 hot-fix。包 OpenAlex / Crossref response-read 失敗為 `*Unavailable`（#129）；`check_claim_audit_consistency` 對非字串 `manifest_id` 加 guard（#130）。無 spec 變動。
 
 ### v3.9.0（2026-05-17）— #102 跨索引三角測量
 

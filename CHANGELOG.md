@@ -8,6 +8,54 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.9.2] - 2026-05-18 — Phase boundary hot-fix (#133)
+
+Hot-fix for issue #133 (phase scope inflation). A user incident showed that ARS auto-dispatched a single-phase agent (`bibliography_agent`) when given ambiguous cross-phase input (pre-written abstract + pre-collected literature), and the dispatched agent then autonomously executed Phases 3-6, skipping mandatory independent crosschecks (DA / EIC / Ethics).
+
+This release ships the prompt-discipline + advisory-verifier hot-fix. The deterministic gate (PreToolUse hook + multi-phase task envelope schema + author provenance) is tracked separately as **v3.10 active conductor (#134)** — long-term architectural fix.
+
+Design history: 4 design rounds (v1-v4) + mid-impl review. Triple-track reviewer use cases (codex `review --base main` + inline opus subagent + self-review). Codex 0.130 broke on this repo context 5x consecutive per memory `feedback_codex_0_130_docs_review_broken.md` (49 files / 1529 lines on full branch is firmly in the broken corner); inline opus was the substantive reviewer throughout. Net effect: design has been challenged thoroughly; honest framing applied where prompt-only mitigation is known insufficient.
+
+### Added
+
+- **Routing Discipline (Phase L1)** — `.claude/CLAUDE.md` gains a new "Routing Discipline (v3.9.2)" section before existing Routing Rules 1-5. 3 routing classes: explicit intent → proceed directly; cross-phase materials → clarify with a-d options; no-materials ambiguous → clarify. `[direct-mode]` byte-0 escape hatch (case-insensitive; bracket-form strict). Anti-pattern explicitly named.
+- **Intent clarification protocol** — new `shared/references/intent_clarification_protocol.md` (~200 lines): trigger condition table, pipeline phase reference (Phase 0-7 marker conventions), clarification message template (a-d options, no AskUserQuestion tool), `[direct-mode]` mechanism spec with 5 worked examples, v3.10 carry-over notes.
+- **Phase Boundary block on 22 Bucket A agents (Phase 1)** — single-phase agents (deep-research × 9, academic-paper × 7, academic-paper-reviewer × 6) gain a `## Phase Boundary (v3.9.2)` block customized per agent: phase number, deliverable type, MUST-NOT cross-phase writes, MAY-READ upstream context (Phase 5 reviewers granted explicit cross-phase READ for review), explicit coexistence with skill-specific protocols (v3.6.2 / v3.6.5 / v3.6.6 / v3.6.7 / v3.7.1). 16 Bucket B/C/D agents (multi-phase / phase-orthogonal / cross-phase-meta) intentionally NOT fenced — honest framing per opus HIGH-2 (placebo prose creates false-enforcement illusion).
+- **Phase-by-phase invocation contract (Phase 3)** — 4 SKILL.md files gain a "Phase-by-phase Invocation Contract (v3.9.2)" section: Mode A (orchestrator-driven, default) vs Mode B (phase-by-phase cross-session resume), Bucket A enforcement scope, coexistence with skill-specific protocols.
+- **Advisory verifier (Phase 4)** — new `scripts/check_pipeline_integrity.py`: scans working directory for `phaseN_*/` (N=1-6), flags STRUCTURAL finding when phase5 dir lacks DA/EIC/Ethics filenames (the #133 pattern). HEURISTIC adjacent-phase-mtime rule (`--strict`, default OFF). Cross-platform, user-invokable, advisory output (exit 0 on findings), JSON + text output modes. Normative filename convention documented; v3.10 envelope provenance replaces filename matching.
+- **Phase Boundary coverage lint (Phase 5)** — new `scripts/check_v3_9_2_phase_boundary.py`: enforces 22 Bucket A agents have block, 16 Bucket B/C/D agents don't, and each Bucket A block contains 4 load-bearing phrases (Phase Boundary v3.9.2, MUST NOT, MAY READ, Enforcement v3.9.2). Wired to `.github/workflows/spec-consistency.yml`.
+- **Classification spec** — new `docs/design/2026-05-18-ars-v3.9.2-agent-phase-classification.md`: canonical 38-agent table with 4-bucket model (A=22, B=4, C=8, D=4) + per-agent out-of-scope inflation risk column.
+- **8 behavioral smoke test fixtures** — `tests/fixtures/issue_133_routing/`: cross-phase abstract+lit (the #133 root case), single-phase explicit, no-materials ambiguous, /ars-slash command, `[direct-mode]` byte-0 honored, mid-message NOT honored, case-insensitive accepted, full draft+abstract+lit+reviews. Honestly framed as LLM-behavior assertions with cross-model spot-check criterion (100% Opus 4.7, ≥75% Sonnet 4.6 + GPT-5.5).
+- **Plugin metadata bump** — `.claude-plugin/plugin.json` version 3.8.2 → 3.9.2 (was stale; also catches v3.9.0 + v3.9.1 deferrals); description updated for 38-agent ensemble and v3.9.2 phase boundary feature.
+
+### Fixed
+
+- **`.claude/CLAUDE.md` Suite version was stale at 3.9.0** — v3.9.1 ship missed bumping it (latent lint bug surfaced during v3.9.2 work). v3.9.2 atomic bump fixes this.
+
+### Tests
+
+- 12 new tests in `scripts/test_check_pipeline_integrity.py` (verifier).
+- 3 new tests in `scripts/test_check_v3_9_2_phase_boundary.py` (boundary coverage lint).
+- 4 additional tests after Phase 6 mid-impl review absorption (dotfiles ignored, multiple phase5 dirs independent, Unicode stem matching, nested subdir recursion).
+- Regression baseline: 1463 → 1482 passed (+19); 3 skipped + 111 subtests unchanged; 0 failures.
+
+### Out of scope (carry to v3.10 conductor, issue #134)
+
+- PreToolUse hook (Phase 0.1 verified Claude Code payload includes `agent_type` field; hook implementation requires multi-phase schema first — both deferred to v3.10).
+- Multi-phase `ars_phase_writes` + `ars_phase_reads` envelope schema (scalar `ars_phase` cannot represent agents like `devils_advocate_agent` at Phases 1/3/5 or `report_compiler_agent` at Phases 4/6 — design correctly with envelope, not retrofit scalar).
+- Deterministic verifier with author provenance (advisory v3.9.2 filename-heuristic version flagged FP-prone in docstring).
+- Orchestrator cross-phase intake capability (`pipeline_orchestrator_agent` currently keyword-matches user phrasing; cannot reconcile cross-phase artifacts without explicit user signal — this is the conductor's core feature).
+
+### Migration notes
+
+Existing in-flight projects: no break expected. v3.9.2 only adds prompt sections and an opt-in advisory verifier. Existing slash commands (`/ars-*`) continue to work without change.
+
+User-facing behavior change: if you previously dropped pre-existing materials (abstract + literature) into a fresh session without invoking a specific slash command, ARS may now clarify with a-d options instead of silent dispatch. To bypass clarification for direct agent dispatch, prefix your first message with `[direct-mode]`. To run the full pipeline on pre-existing materials, invoke `/ars-full`.
+
+If you see a Bucket B multi-phase agent (devils_advocate, report_compiler, argument_builder, visualization) producing out-of-scope content, this is a known v3.9.2 limitation — recurrence is expected for these 4 agents until v3.10 envelope ships. Remediation: switch to orchestrator-driven Mode A via `/ars-full` or report the case to issue #134 with transcript excerpt.
+
+---
+
 ## [3.9.1] - 2026-05-18 — v3.9.0 client hardening (#129 + #130)
 
 Two-bug hotfix surfaced by codex review of `ars-codex` PR #13 (vendor sync to v3.9.0 `74413a4`). Both bugs exist in v3.9.0 main: #129 violates the v3.9.0 §3.7 per-API degradation contract; #130 crashes a defensive lint on malformed input. Neither changes the spec or schema.
