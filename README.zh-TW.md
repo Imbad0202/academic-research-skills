@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.9.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.2)
+[![Version](https://img.shields.io/badge/version-v3.9.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.3)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -299,6 +299,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.9.3（2026-05-18）— #128 housekeeping（client utility 抽出 + resolver dedup）
+
+> 純 refactor + 一個 latent bug fix，從 v3.9.0 `/simplify` review backlog 結清。抽出 `scripts/_text_similarity.py`（3-way client dedup：normalize / similarity / threshold / retry 常數）+ `scripts/_passport_yaml.py`（2-way migration tool dedup：ruamel.yaml round-trip config）+ 私有 `_resolve_by_doi_then_title` helper（2-way resolver body dedup、§3.4 / §3.5 API surface 不變）。OpenAlex + Crossref 的 throttle 量測從 `time.time`（NTP 不安全）統一改用 `time.monotonic`，與 Semantic Scholar 對齊。5 個 module-level cross-import 都加 dual-path try/except（sibling-first、namespace-package fallback）保持 class identity；額外順手修了 2 個 latent-broken 的 `import scripts.X` 路徑。1505 passed（+23 新測試、0 regression）。#128 §4（OA + CR 平行化）carry-over 到 #138。
 
 ### v3.9.2（2026-05-18）— #133 phase boundary 熱修
 

@@ -8,6 +8,39 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.9.3] - 2026-05-18 — Housekeeping (#128 §1-3, §5-6)
+
+Pure refactor + one latent-bug fix carrying over from the v3.9.0 `/simplify` review backlog. The v3.9.0 cross-index triangulation client family (Semantic Scholar + OpenAlex + Crossref) shipped intentionally byte-equivalent across 3 client modules for code locality; now that the family is stable, the dedup prevents sibling drift when threshold tuning, normalization rules, or throttle measurement need adjustment.
+
+### Refactor — extracted helpers (no behavior change)
+
+- **`scripts/_text_similarity.py`** — extracts 4 helpers + 4 constants previously triple-implemented byte-equivalent in `semantic_scholar_client.py` / `openalex_client.py` / `crossref_client.py`: `_PUNCT_TRANSLATION`, `_normalize_title`, `_similarity`, `_TITLE_SIMILARITY_THRESHOLD = 0.70`, `_BACKOFF_SECONDS = 2.0`, `_MAX_RETRIES = 3`. 14 new tests on the shared module.
+- **`scripts/_passport_yaml.py`** — extracts ruamel.yaml round-trip config (`preserve_quotes = True`, `indent(mapping=2, sequence=4, offset=2)`) + `load_passport` / `dump_passport` functions previously duplicated byte-equivalent in `migrate_literature_corpus_to_v3_7_3.py` + `migrate_literature_corpus_to_v3_9_0.py`. 7 new tests on the shared module.
+- **`contamination_signals._resolve_by_doi_then_title`** — private helper for the identical DOI-then-title control flow shared by `resolve_openalex_unmatched` (§3.4) + `resolve_crossref_unmatched` (§3.5). Both public wrappers preserve the v3.9.0 spec API surface; exception-type differentiation stays at the wrapper. 10 existing resolver tests verify byte-equivalent behavior.
+
+### Latent-bug fix — throttle measurement standardized on `time.monotonic`
+
+- OpenAlex + Crossref clients now use `time.monotonic()` for `_throttle()` elapsed measurement + `_last_request_at` anchor refresh, matching Semantic Scholar (which had standardized on monotonic per #115 R5-2). NTP / manual clock adjustments could push `time.time()` backward, producing negative elapsed and either inflated sleep (negative compared less than min_interval) or zero sleep — latent throttle-bypass / API-spam bug. Documented as a "maintenance smell" in #128 §6.
+- New tests (`test_openalex_client::test_throttle_uses_monotonic_clock` + `test_crossref_client::test_throttle_uses_monotonic_clock`) lock NTP-safe semantics: throttle reads `time.monotonic` and never reads `time.time`.
+
+### Dual-path import infrastructure
+
+- All 5 module-level cross-imports in `openalex_client.py` / `crossref_client.py` / `semantic_scholar_client.py` / `migrate_literature_corpus_to_v3_7_3.py` / `migrate_literature_corpus_to_v3_9_0.py` use the dual-path try/except pattern (sibling-first, namespace-package fallback). Follows `scripts/slr_lineage.py` precedent but inverted for class-identity preservation (pytest uses sibling-path imports; `SemanticScholarUnavailable` from `scripts.contamination_signals` is a different class instance than `contamination_signals.SemanticScholarUnavailable`).
+- Latent fix: `scripts.semantic_scholar_client` + `scripts.migrate_literature_corpus_to_v3_7_3` are now `import scripts.X`-clean from repo root (were silently broken on main due to pre-existing absolute cross-imports). Caught by codex round-1 reasoning trace.
+
+### Deferred from #128
+
+- **§4 — parallelize OA + CR per-entry calls in v3.9.0 migration tool** carried to #138 (target v3.9.4 or v3.10). Introduces new behavior + ThreadPoolExecutor + test-rebuild scope; incompatible with v3.9.3 patch boundary.
+
+### Regression status
+
+- 1482 → **1505 passed** + 3 skipped + 111 subtests (+23 new tests, 0 regression).
+- `scripts/check_spec_consistency.py` + `scripts/check_version_consistency.py` green.
+- 6/6 `import scripts.X` paths verified clean from repo root (3 from-OK-to-OK, 2 latent-broken-now-OK, 1 OK throughout).
+- Cross-model review: codex round 1 + 2 both 0 explicit findings (one P1 self-caught from R1 trace, closed pre-R2). Gemini 3.1-pro-preview round 1: 0 findings.
+
+---
+
 ## [3.9.2] - 2026-05-18 — Phase boundary hot-fix (#133)
 
 Hot-fix for issue #133 (phase scope inflation). A user incident showed that ARS auto-dispatched a single-phase agent (`bibliography_agent`) when given ambiguous cross-phase input (pre-written abstract + pre-collected literature), and the dispatched agent then autonomously executed Phases 3-6, skipping mandatory independent crosschecks (DA / EIC / Ethics).

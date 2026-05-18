@@ -61,7 +61,7 @@ def check_relative_markdown_links(rel_path: str) -> None:
 def check_mode_registry() -> None:
     rel_path = "MODE_REGISTRY.md"
     text = read(rel_path)
-    expect_contains(rel_path, "Last updated: v3.9.2 (2026-05-18)")
+    expect_contains(rel_path, "Last updated: v3.9.3 (2026-05-18)")
     for heading in (
         "## deep-research (7 modes)",
         "## academic-paper (10 modes)",
@@ -75,7 +75,7 @@ def check_claude_md() -> None:
     rel_path = ".claude/CLAUDE.md"
     expect_contains(rel_path, "integrity check (Stage 2.5)")
     expect_contains(rel_path, "final integrity check (Stage 4.5)")
-    expect_contains(rel_path, "**Suite version**: 3.9.2")
+    expect_contains(rel_path, "**Suite version**: 3.9.3")
     for forbidden in (
         "6th independent reviewer",
         "Peer review gains 6th independent reviewer",
@@ -136,9 +136,9 @@ def check_readme_sections() -> None:
     rel_path = "README.md"
     text = read(rel_path)
 
-    expect_contains(rel_path, "version-v3.9.2-blue")
-    expect_contains(rel_path, "releases/tag/v3.9.2")
-    expect_contains(rel_path, "### v3.9.2 (2026-05-18)")
+    expect_contains(rel_path, "version-v3.9.3-blue")
+    expect_contains(rel_path, "releases/tag/v3.9.3")
+    expect_contains(rel_path, "### v3.9.3 (2026-05-18)")
     expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
     expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
     expect_contains(rel_path, "### v3.8.0 (2026-05-16)")
@@ -207,9 +207,9 @@ def check_readme_zh_sections() -> None:
     rel_path = "README.zh-TW.md"
     text = read(rel_path)
 
-    expect_contains(rel_path, "version-v3.9.2-blue")
-    expect_contains(rel_path, "releases/tag/v3.9.2")
-    expect_contains(rel_path, "### v3.9.2（2026-05-18）")
+    expect_contains(rel_path, "version-v3.9.3-blue")
+    expect_contains(rel_path, "releases/tag/v3.9.3")
+    expect_contains(rel_path, "### v3.9.3（2026-05-18）")
     expect_contains(rel_path, "### v3.9.1（2026-05-18）")
     expect_contains(rel_path, "### v3.9.0（2026-05-17）")
     expect_contains(rel_path, "### v3.8.0（2026-05-16）")

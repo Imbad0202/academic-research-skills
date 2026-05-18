@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.9.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.2)
+[![Version](https://img.shields.io/badge/version-v3.9.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.3)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -318,6 +318,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.9.3 (2026-05-18) — #128 housekeeping (shared client utilities + dedup resolvers)
+
+> Pure refactor + one latent-bug fix from the v3.9.0 `/simplify` review backlog. Extracts `scripts/_text_similarity.py` (3-way client dedup: normalize / similarity / threshold / retry constants) + `scripts/_passport_yaml.py` (2-way migration tool dedup: ruamel.yaml round-trip config) + private `_resolve_by_doi_then_title` helper (2-way resolver body dedup, §3.4 / §3.5 API surface preserved). Standardizes throttle measurement on `time.monotonic` across OpenAlex + Crossref (was `time.time`, NTP-unsafe), aligning with Semantic Scholar. Dual-path import infrastructure on all 5 module-level cross-imports (sibling-first, namespace-package fallback) preserves class identity for `SemanticScholarUnavailable` and bonus-fixes 2 latent-broken `import scripts.X` paths. 1505 passed (+23 new, 0 regression). #128 §4 (parallelize OA + CR per-entry) carried to #138.
 
 ### v3.9.2 (2026-05-18) — #133 phase boundary hot-fix
 
