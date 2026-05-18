@@ -308,6 +308,28 @@ Checkpoint: [MANDATORY/ADVISORY] — [What user needs to confirm]
 
 ---
 
+## Phase-by-phase Invocation Contract (v3.9.2)
+
+academic-pipeline is the orchestrator skill that coordinates the full ARS pipeline across 10 stages (delegating to deep-research, academic-paper, academic-paper-reviewer). Two invocation modes:
+
+**Mode A — orchestrator-driven (default):** `pipeline_orchestrator_agent` runs all stages end-to-end with state tracking via Material Passport. `state_tracker_agent`, `integrity_verification_agent`, `collaboration_depth_agent`, and `claim_ref_alignment_audit_agent` are dispatched by the orchestrator at the appropriate checkpoints.
+
+**Mode B — phase-by-phase (cross-session resume):** User invokes one phase agent at a time across sessions, typically via `ARS_PASSPORT_RESET=1` + `resume_from_passport=<hash>` (see `references/passport_as_reset_boundary.md`).
+
+In Mode B, **single-phase agents (Bucket A per `docs/design/2026-05-18-ars-v3.9.2-agent-phase-classification.md`) in the downstream skills (deep-research, academic-paper, academic-paper-reviewer) stay strictly within their assigned phase for writes**. The 5 agents in academic-pipeline itself are all cross-phase / meta by design (Bucket C/D) — they have no fence by design:
+
+- `pipeline_orchestrator_agent` (D — orchestrator, full pipeline visibility)
+- `state_tracker_agent` (D — meta state, all phases)
+- `integrity_verification_agent` (C — Stage 2.5 / 4.5 cross-skill gate)
+- `collaboration_depth_agent` (C — FULL/SLIM checkpoints + pipeline completion, advisory-only)
+- `claim_ref_alignment_audit_agent` (C — opt-in claim audit, phase-orthogonal)
+
+Routing into Mode B requires explicit user signal — `/ars-<mode>` slash command or `[direct-mode]` prefix. Ambiguous cross-phase input defaults to clarification per `.claude/CLAUDE.md` Routing Discipline + `shared/references/intent_clarification_protocol.md`. **Critically:** if `pipeline_orchestrator_agent` is dispatched on ambiguous cross-phase materials, the orchestrator itself currently cannot reconcile (this is the v3.10 conductor #134 work) — v3.9.2 routes such cases to clarification BEFORE the orchestrator runs.
+
+**Enforcement (v3.9.2):** prompt-level via Phase Boundary blocks on downstream Bucket A agents + advisory verifier (`scripts/check_pipeline_integrity.py`). Deterministic PreToolUse hook + multi-phase envelope + orchestrator structured intake deferred to v3.10 active conductor (#134).
+
+---
+
 ## Integrity Review Protocol
 
 Stage 2.5 (pre-review) and Stage 4.5 (post-revision) verification. 5-phase protocol: references → citation context → statistical data → originality → claims.
