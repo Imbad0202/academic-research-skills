@@ -22,32 +22,13 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-from ruamel.yaml import YAML
-
-
-# Single shared YAML round-tripper. ruamel.yaml preserves comments,
-# key order, and quoting style across read → mutate → write.
-_yaml = YAML()
-_yaml.preserve_quotes = True
-_yaml.indent(mapping=2, sequence=4, offset=2)
+from _passport_yaml import dump_passport as _dump_passport, load_passport
 
 
 # Skip-reason keys surface in the migration report.
 _SKIP_MANUAL = "skipped_manual"
 _SKIP_PRE_V3_7_3 = "skipped_pre_v3_7_3"
 _SKIP_COMPLETE = "skipped_complete"
-
-
-def load_passport(path: Path) -> Any:
-    """Round-trip load a passport YAML file. Returns the ruamel-yaml
-    representation (a CommentedMap), not a plain dict."""
-    with path.open("r", encoding="utf-8") as f:
-        return _yaml.load(f)
-
-
-def _dump_passport(path: Path, doc: Any) -> None:
-    with path.open("w", encoding="utf-8") as f:
-        _yaml.dump(doc, f)
 
 
 def _entry_in_v3_7_3_scope(entry: Mapping[str, Any]) -> bool:
