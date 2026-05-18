@@ -296,3 +296,34 @@ def test_truncated_read_raises_unavailable(monkeypatch):
         client = OpenAlexClient()
         with pytest.raises(OpenAlexUnavailable):
             client.title_search("any title")
+
+
+def test_throttle_uses_monotonic_clock(monkeypatch):
+    """time.monotonic for elapsed measurement (NTP-safe). time.time can
+    go backward on NTP adjustments, breaking elapsed calculation.
+    Aligns OA/CR with semantic_scholar_client.py (#128 §6)."""
+    from openalex_client import OpenAlexClient
+
+    monotonic_calls = []
+    time_calls = []
+
+    def fake_monotonic():
+        monotonic_calls.append(1)
+        return 100.0
+
+    def fake_time():
+        time_calls.append(1)
+        return 100.0
+
+    monkeypatch.setattr("openalex_client.time.monotonic", fake_monotonic)
+    monkeypatch.setattr("openalex_client.time.time", fake_time)
+
+    client = OpenAlexClient()
+    # Initial state: no prior request — _throttle short-circuits.
+    client._throttle()
+    # Set anchor, then check throttle uses monotonic, not time.time.
+    client._last_request_at = 90.0
+    client._throttle()
+
+    assert len(monotonic_calls) >= 1, "throttle must read time.monotonic"
+    assert len(time_calls) == 0, "throttle must NOT read time.time (NTP-unsafe)"

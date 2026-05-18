@@ -57,7 +57,11 @@ class OpenAlexClient:
     def _throttle(self) -> None:
         if self._last_request_at is None:
             return
-        elapsed = time.time() - self._last_request_at
+        # time.monotonic for elapsed measurement: NTP / manual clock
+        # adjustments can make time.time go backward, producing negative
+        # elapsed and either huge sleep (negative compared less than) or
+        # zero sleep (#128 §6). Aligns with semantic_scholar_client.py.
+        elapsed = time.monotonic() - self._last_request_at
         if elapsed < self._min_interval:
             time.sleep(self._min_interval - elapsed)
 
@@ -69,7 +73,7 @@ class OpenAlexClient:
         req = urllib.request.Request(url, headers={"User-Agent": "ARS-v3.9.0"})
 
         self._throttle()
-        self._last_request_at = time.time()
+        self._last_request_at = time.monotonic()
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
@@ -106,7 +110,7 @@ class OpenAlexClient:
                     # paces against actual wake time, not entry time.
                     # Without this the next call may under-sleep (elapsed
                     # already counts the 2s × N backoff) and re-trigger 429.
-                    self._last_request_at = time.time()
+                    self._last_request_at = time.monotonic()
                     continue
                 raise OpenAlexUnavailable(f"OpenAlex HTTP {e.code}: {e.reason}") from e
             except (urllib.error.URLError, TimeoutError) as e:

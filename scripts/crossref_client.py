@@ -86,7 +86,11 @@ class CrossrefClient:
     def _throttle(self) -> None:
         if self._last_request_at is None:
             return
-        elapsed = time.time() - self._last_request_at
+        # time.monotonic for elapsed measurement: NTP / manual clock
+        # adjustments can make time.time go backward, producing negative
+        # elapsed and either huge sleep or zero sleep (#128 §6). Aligns
+        # with semantic_scholar_client.py.
+        elapsed = time.monotonic() - self._last_request_at
         if elapsed < self._min_interval:
             time.sleep(self._min_interval - elapsed)
 
@@ -97,7 +101,7 @@ class CrossrefClient:
         req = urllib.request.Request(url, headers={"User-Agent": self._user_agent})
 
         self._throttle()
-        self._last_request_at = time.time()
+        self._last_request_at = time.monotonic()
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
@@ -133,7 +137,7 @@ class CrossrefClient:
                     # Refresh throttle anchor after backoff so the next outer
                     # _get call's _throttle() paces against actual wake time,
                     # not the original entry time (mirrors openalex_client.py).
-                    self._last_request_at = time.time()
+                    self._last_request_at = time.monotonic()
                     continue
                 raise CrossrefUnavailable(f"Crossref HTTP {e.code}: {e.reason}") from e
             except (urllib.error.URLError, TimeoutError) as e:
