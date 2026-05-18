@@ -21,7 +21,6 @@ from typing import Any, Mapping
 from _text_similarity import (
     _BACKOFF_SECONDS,
     _MAX_RETRIES,
-    _PUNCT_TRANSLATION,
     _TITLE_SIMILARITY_THRESHOLD,
     _normalize_title,
     _similarity,
@@ -59,8 +58,8 @@ class OpenAlexClient:
             return
         # time.monotonic for elapsed measurement: NTP / manual clock
         # adjustments can make time.time go backward, producing negative
-        # elapsed and either huge sleep (negative compared less than) or
-        # zero sleep (#128 §6). Aligns with semantic_scholar_client.py.
+        # elapsed and either huge sleep or zero sleep (#128 §6). Aligns
+        # with semantic_scholar_client.py.
         elapsed = time.monotonic() - self._last_request_at
         if elapsed < self._min_interval:
             time.sleep(self._min_interval - elapsed)

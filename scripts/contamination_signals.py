@@ -147,19 +147,9 @@ def compute_ss_unmatched_signal(
 
 
 def _resolve_by_doi_then_title(entry: Mapping[str, Any], client) -> bool | None:
-    """Shared resolver body for OpenAlex + Crossref clients (#128 §3 dedup).
-
-    Both clients expose the same `doi_lookup_with_title_check(doi, title)` +
-    `title_search(title)` Protocol shape, so the unmatched-resolution control
-    flow is identical between them. This helper carries that flow; the two
-    named public wrappers (`resolve_openalex_unmatched`,
-    `resolve_crossref_unmatched`) preserve the v3.9.0 §3.4 / §3.5 spec API
-    surface. Exception-type differentiation stays at the wrapper — this
-    helper never catches; caller catches the client-specific *Unavailable*.
-
-    Returns:
-        True / False / None per the contract documented on each public wrapper.
-    """
+    """Shared body for resolve_openalex_unmatched / resolve_crossref_unmatched.
+    See those wrappers for the spec contract. Exception-type differentiation
+    stays at the wrapper — this helper never catches."""
     if entry.get("obtained_via") == "manual":
         return None
     title = entry.get("title", "")

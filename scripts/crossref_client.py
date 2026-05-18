@@ -26,7 +26,6 @@ from typing import Any, Mapping
 from _text_similarity import (
     _BACKOFF_SECONDS,
     _MAX_RETRIES,
-    _PUNCT_TRANSLATION,
     _TITLE_SIMILARITY_THRESHOLD,
     _normalize_title,
     _similarity,

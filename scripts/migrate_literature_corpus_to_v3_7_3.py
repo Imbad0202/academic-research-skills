@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 import contamination_signals as cs
-from _passport_yaml import dump_passport as _dump_passport, load_passport
+from _passport_yaml import dump_passport, load_passport
 from adapters._common import now_iso
 
 
@@ -159,7 +159,7 @@ def migrate_passport(
         mutated = True
 
     if mutated and not dry_run:
-        _dump_passport(path, doc)
+        dump_passport(path, doc)
     return report
 
 

@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-from _passport_yaml import dump_passport as _dump_passport, load_passport
+from _passport_yaml import dump_passport, load_passport
 
 
 # Skip-reason keys surface in the migration report.
@@ -177,7 +177,7 @@ def migrate_passport(
             mutated = True
 
     if mutated and not dry_run:
-        _dump_passport(path, doc)
+        dump_passport(path, doc)
 
     # Summary to stdout (mirrors v3.7.3 tool print-on-main pattern but
     # here we always emit; caller may also call _print_report() below).
