@@ -146,6 +146,33 @@ def compute_ss_unmatched_signal(
     return not result.get("matched", False)
 
 
+def _resolve_by_doi_then_title(entry: Mapping[str, Any], client) -> bool | None:
+    """Shared resolver body for OpenAlex + Crossref clients (#128 §3 dedup).
+
+    Both clients expose the same `doi_lookup_with_title_check(doi, title)` +
+    `title_search(title)` Protocol shape, so the unmatched-resolution control
+    flow is identical between them. This helper carries that flow; the two
+    named public wrappers (`resolve_openalex_unmatched`,
+    `resolve_crossref_unmatched`) preserve the v3.9.0 §3.4 / §3.5 spec API
+    surface. Exception-type differentiation stays at the wrapper — this
+    helper never catches; caller catches the client-specific *Unavailable*.
+
+    Returns:
+        True / False / None per the contract documented on each public wrapper.
+    """
+    if entry.get("obtained_via") == "manual":
+        return None
+    title = entry.get("title", "")
+    doi = entry.get("doi")
+    if doi:
+        hit = client.doi_lookup_with_title_check(doi, title)
+        if hit is not None:
+            return False
+        # DOI miss or MISMATCH — fall through to title search.
+    hit = client.title_search(title)
+    return hit is None
+
+
 def resolve_openalex_unmatched(entry: Mapping[str, Any], client) -> bool | None:
     """Compute openalex_unmatched per spec v3.9.0 §3.4.
 
@@ -165,17 +192,7 @@ def resolve_openalex_unmatched(entry: Mapping[str, Any], client) -> bool | None:
     Raises:
         OpenAlexUnavailable: API degraded, caller must omit field per R-L3-2-C.
     """
-    if entry.get("obtained_via") == "manual":
-        return None
-    title = entry.get("title", "")
-    doi = entry.get("doi")
-    if doi:
-        hit = client.doi_lookup_with_title_check(doi, title)
-        if hit is not None:
-            return False
-        # DOI miss or MISMATCH — fall through to title search.
-    hit = client.title_search(title)
-    return hit is None
+    return _resolve_by_doi_then_title(entry, client)
 
 
 def resolve_crossref_unmatched(entry: Mapping[str, Any], client) -> bool | None:
@@ -190,17 +207,7 @@ def resolve_crossref_unmatched(entry: Mapping[str, Any], client) -> bool | None:
     Raises:
         CrossrefUnavailable: API degraded, caller must omit field per R-L3-2-C.
     """
-    if entry.get("obtained_via") == "manual":
-        return None
-    title = entry.get("title", "")
-    doi = entry.get("doi")
-    if doi:
-        hit = client.doi_lookup_with_title_check(doi, title)
-        if hit is not None:
-            return False
-        # DOI miss or MISMATCH — fall through to title search.
-    hit = client.title_search(title)
-    return hit is None
+    return _resolve_by_doi_then_title(entry, client)
 
 
 def build_signals_object(
