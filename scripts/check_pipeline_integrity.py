@@ -28,6 +28,23 @@ Detection rules (v3.9.2 lite):
    a single agent producing phase5_*/ output that looks like a review but was
    never actually crosschecked by independent reviewer agents.
 
+   **NORMATIVE FILENAME CONVENTION:** This rule is filename-based regex matching
+   over a closed set of agent stem names. For the verifier to recognize a
+   reviewer report, the filename MUST contain one of the canonical agent stems:
+   - `devils_advocate` (or `devil-s_advocate` / `devils-advocate`)
+   - `editor_in_chief` or `eic`
+   - `ethics_review` (the full stem; bare `ethics` does NOT match)
+   - `methodology_review` / `domain_review` / `perspective_review`
+   - `editorial_synth` (matches editorial_synthesizer family)
+
+   Orchestrator runs that emit terse filenames like `round1_ethics.md` (without
+   `_review` suffix) WILL produce a false-positive STRUCTURAL finding here.
+   Resolution options: (a) rename file to match convention, or (b) ignore the
+   advisory finding (verifier exits 0; advisory does not block). The verifier
+   trades filename-convention discipline for zero-dependency cross-platform
+   simplicity in v3.9.2. v3.10 conductor (#134) replaces filename matching
+   with task envelope author provenance.
+
 2. **Multi-phase same-call generation heuristic** (LOWER-VALUE, FP-prone)
    When files in phaseN_*/ and phase{N+1}_*/ share creation timestamps within
    a configurable window (default 5 minutes), flag as POSSIBLE same-call
@@ -122,7 +139,12 @@ def check_phase5_attribution(report: Report) -> None:
     for dir_path in phase5_dirs:
         path = Path(dir_path)
         try:
-            files = [p.name for p in path.rglob("*") if p.is_file()]
+            # Skip hidden files (.DS_Store, Thumbs.db, .gitkeep, etc.) — they're
+            # never reviewer reports and would clutter advisory output noise.
+            files = [
+                p.name for p in path.rglob("*")
+                if p.is_file() and not p.name.startswith(".")
+            ]
         except OSError as exc:
             report.findings.append(Finding(
                 rule="phase5_attribution_io_error",

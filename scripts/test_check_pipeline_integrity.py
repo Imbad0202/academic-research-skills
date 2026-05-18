@@ -171,6 +171,73 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("No advisory findings.", result.stdout)
 
+    def test_dotfiles_in_phase5_ignored(self) -> None:
+        """Hidden files (.DS_Store, .gitkeep, Thumbs.db) should not count as
+        review reports. They're noise from the OS/git, not authored content."""
+        with TemporaryDirectory() as td:
+            _build_workspace(Path(td), {
+                "phase5_review": [
+                    ".DS_Store",
+                    ".gitkeep",
+                    "devils_advocate_card.md",
+                    "eic_card.md",
+                    "ethics_review.md",
+                ],
+            })
+            result = _run(Path(td))
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("No advisory findings.", result.stdout)
+
+    def test_multiple_phase5_dirs_each_independently_checked(self) -> None:
+        """phase5_review_r1/ + phase5_review_r2/ (multi-round) should each be
+        evaluated independently. If one is complete and the other isn't, only
+        the incomplete one flags."""
+        with TemporaryDirectory() as td:
+            _build_workspace(Path(td), {
+                "phase5_review_r1": [
+                    "devils_advocate_card.md",
+                    "eic_card.md",
+                    "ethics_review.md",
+                ],
+                "phase5_review_r2": [
+                    "review.md",  # Incomplete — missing all 3 categories
+                ],
+            })
+            result = _run(Path(td))
+        self.assertEqual(result.returncode, 0)
+        # The complete dir produces no finding; the incomplete one does.
+        # The 'phase5_missing_independent_reviewer' rule should fire exactly once.
+        self.assertEqual(result.stdout.count("phase5_missing_independent_reviewer"), 1)
+        # Confirm only the r2 path is in the finding output, not r1.
+        self.assertIn("phase5_review_r2", result.stdout)
+
+    def test_unicode_filenames_with_canonical_stem_match(self) -> None:
+        """Filenames with non-ASCII characters but containing the canonical
+        agent stem in ASCII should still match. E.g., devils_advocate_報告.md"""
+        with TemporaryDirectory() as td:
+            _build_workspace(Path(td), {
+                "phase5_review": [
+                    "devils_advocate_報告.md",
+                    "editor_in_chief_決定.md",
+                    "ethics_review_報告.md",
+                ],
+            })
+            result = _run(Path(td))
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("No advisory findings.", result.stdout)
+
+    def test_nested_files_in_phase5_count(self) -> None:
+        """rglob recurses; reviewer card in a subdirectory should still match."""
+        with TemporaryDirectory() as td:
+            sub = Path(td) / "phase5_review" / "round1"
+            sub.mkdir(parents=True)
+            (sub / "devils_advocate.md").touch()
+            (sub / "editor_in_chief.md").touch()
+            (sub / "ethics_review.md").touch()
+            result = _run(Path(td))
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("No advisory findings.", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -70,11 +70,12 @@ Pick a-d, or describe the target deliverable. If you want me to dispatch a speci
 
 **Behavior:**
 
-- **Position:** Token must appear at byte-0 of the user's first message (optionally preceded by whitespace stripped on parse).
+- **Position:** Token must be the first non-whitespace token of the user's first message. Leading whitespace (spaces, tabs, newlines) is stripped on parse — `[direct-mode] ...`, `  [direct-mode] ...`, and `\n[direct-mode] ...` all qualify. Token appearing mid-message (after any non-whitespace character) does NOT qualify.
 - **Case:** Case-insensitive. `[direct-mode]`, `[Direct-Mode]`, `[DIRECT-MODE]` all accepted.
+- **Bracket form:** Only the literal `[direct-mode]` (square brackets, hyphen between words) is recognized. Variants like `(direct-mode)`, `<direct-mode>`, `[direct mode]` (space instead of hyphen), or `[directmode]` (no separator) are NOT recognized.
 - **Strip:** The literal `[direct-mode]` token (with surrounding whitespace) is stripped before any downstream agent sees the message. Dispatched agents receive only the post-strip content.
-- **Effect:** Skips Routing Discipline Steps 1-3. Main session routes the stripped message according to whatever literal skill / trigger / command it contains.
-- **Fallback:** If the stripped message itself is ambiguous (no clear skill named), the main session proceeds to Step 1 explicit-intent handling on the stripped content. (`[direct-mode]` is NOT a magic "always dispatch" flag — it bypasses clarification, not all routing.)
+- **Effect:** Bypasses Routing Discipline Step 2 (cross-phase clarification). Main session routes the stripped message via Step 1 (explicit-intent handling).
+- **Fallback:** If the stripped message itself has no clear skill named, Step 1 falls through to Step 3 clarification. (`[direct-mode]` is NOT a magic "always dispatch" flag — it bypasses cross-phase clarification, not all routing. If you want to bypass even ambiguous-intent clarification, you must name a specific skill or agent in the stripped message.)
 
 **Examples:**
 
