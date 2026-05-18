@@ -18,13 +18,26 @@ import urllib.parse
 import urllib.request
 from typing import Any, Mapping
 
-from _text_similarity import (
-    _BACKOFF_SECONDS,
-    _MAX_RETRIES,
-    _TITLE_SIMILARITY_THRESHOLD,
-    _normalize_title,
-    _similarity,
-)
+# Dual-path import: sibling-first (so module identity matches when callers
+# import via the sibling path, e.g. tests), namespace-package fallback (for
+# repo-root `import scripts.openalex_client`). See semantic_scholar_client.py
+# for the identity-matching rationale.
+try:
+    from _text_similarity import (
+        _BACKOFF_SECONDS,
+        _MAX_RETRIES,
+        _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
+        _similarity,
+    )
+except ImportError:
+    from scripts._text_similarity import (
+        _BACKOFF_SECONDS,
+        _MAX_RETRIES,
+        _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
+        _similarity,
+    )
 
 
 _API_BASE = "https://api.openalex.org"

@@ -21,9 +21,15 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-import contamination_signals as cs
-from _passport_yaml import dump_passport, load_passport
-from adapters._common import now_iso
+# Dual-path import: see openalex_client.py comment.
+try:
+    import contamination_signals as cs
+    from _passport_yaml import dump_passport, load_passport
+    from adapters._common import now_iso
+except ImportError:
+    from scripts import contamination_signals as cs
+    from scripts._passport_yaml import dump_passport, load_passport
+    from scripts.adapters._common import now_iso
 
 
 # Skip-reason categories surface in the migration report so users can

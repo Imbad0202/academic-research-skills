@@ -23,13 +23,23 @@ import urllib.parse
 import urllib.request
 from typing import Any, Mapping
 
-from _text_similarity import (
-    _BACKOFF_SECONDS,
-    _MAX_RETRIES,
-    _TITLE_SIMILARITY_THRESHOLD,
-    _normalize_title,
-    _similarity,
-)
+# Dual-path import: see openalex_client.py comment.
+try:
+    from _text_similarity import (
+        _BACKOFF_SECONDS,
+        _MAX_RETRIES,
+        _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
+        _similarity,
+    )
+except ImportError:
+    from scripts._text_similarity import (
+        _BACKOFF_SECONDS,
+        _MAX_RETRIES,
+        _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
+        _similarity,
+    )
 
 
 _API_BASE = "https://api.crossref.org"

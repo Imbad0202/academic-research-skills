@@ -21,14 +21,28 @@ import urllib.parse
 import urllib.request
 from typing import Any, Mapping
 
-from _text_similarity import (
-    _BACKOFF_SECONDS,
-    _MAX_RETRIES,
-    _TITLE_SIMILARITY_THRESHOLD,
-    _normalize_title,
-    _similarity,
-)
-from contamination_signals import SemanticScholarUnavailable
+# Dual-path import: try sibling-style first (scripts/-on-sys.path, used by
+# tests and direct CLI invocation) so module identity matches when callers
+# import via the sibling path. Fall back to `scripts.<module>` (namespace
+# package style, repo-root PYTHONPATH). Same pattern as scripts/slr_lineage.py.
+try:
+    from _text_similarity import (
+        _BACKOFF_SECONDS,
+        _MAX_RETRIES,
+        _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
+        _similarity,
+    )
+    from contamination_signals import SemanticScholarUnavailable
+except ImportError:
+    from scripts._text_similarity import (
+        _BACKOFF_SECONDS,
+        _MAX_RETRIES,
+        _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
+        _similarity,
+    )
+    from scripts.contamination_signals import SemanticScholarUnavailable
 
 
 # Per protocol: api.semanticscholar.org/graph/v1, 1 req/s unauthenticated.

@@ -22,7 +22,11 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-from _passport_yaml import dump_passport, load_passport
+# Dual-path import: see openalex_client.py comment.
+try:
+    from _passport_yaml import dump_passport, load_passport
+except ImportError:
+    from scripts._passport_yaml import dump_passport, load_passport
 
 
 # Skip-reason keys surface in the migration report.
