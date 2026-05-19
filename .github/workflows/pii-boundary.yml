@@ -2,24 +2,18 @@ name: PII Boundary Scan
 
 # Scan PR diff for private-project context (organization names, partner
 # names, internal project codenames) that must not appear in this public
-# repo. Implementation uses a private reusable action
-# (Imbad0202/personal-boundary-action) so the deny-list itself stays out
-# of public view.
+# repo. Uses a separate public action that takes the deny-list at runtime
+# from a repo secret — the rules themselves never enter any repo's tree.
 #
 # Why: a prior release shipped private-context strings to this public
 # repo. An earlier PR attempted an in-repo lint but the deny-list IS
 # the leak, so it was reverted to the operator's local environment.
-# This workflow restores the protection via reusable action — deny-list
-# lives in the private action repo, only the matching logic is invoked
-# here.
+# This workflow restores the protection via reusable action — scanner
+# logic is public (auditable), deny-list lives in a repo secret.
 #
-# Status: STUB — the private action repo
-# (github.com/Imbad0202/personal-boundary-action) does not yet exist.
-# Tracking issue will be opened with this PR.
-#
-# Until the action repo exists, this workflow is documentation only and
-# will skip with a notice. After creating the action repo, remove the
-# guard.
+# Setup: set repo secret PERSONAL_BOUNDARY_DENY_LIST to the YAML deny-list
+# content. See https://github.com/Imbad0202/personal-boundary-action for
+# the schema and security model.
 
 on:
   pull_request:
@@ -37,34 +31,30 @@ jobs:
   pii-scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Check action availability
+      - name: Probe deny-list availability
         id: probe
+        env:
+          DENY_PRESENT: ${{ secrets.PERSONAL_BOUNDARY_DENY_LIST != '' }}
         run: |
-          # Probe for the private action repo. When it exists, set found=true.
-          # For now, hard-code false until the repo is created.
-          echo "found=false" >> "$GITHUB_OUTPUT"
+          if [ "$DENY_PRESENT" = "true" ]; then
+            echo "has_deny_list=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_deny_list=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::PERSONAL_BOUNDARY_DENY_LIST secret not set — boundary scan skipped."
+            echo "::notice::Configure under Settings → Secrets and variables → Actions to enable."
+          fi
 
-      - name: Skip (action repo pending)
-        if: steps.probe.outputs.found == 'false'
-        run: |
-          echo "::notice::personal-boundary-action repo not yet created. See tracking issue."
-          echo "::notice::Until then, run scan locally before push:"
-          echo "::notice::  ~/.claude/personal-boundary/check_boundary.py <repo-path>"
-          exit 0
+      - name: Check out PR
+        if: steps.probe.outputs.has_deny_list == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # When the action exists, uncomment and use:
-      #
-      # - name: Check out repository
-      #   uses: actions/checkout@v4
-      #   with:
-      #     fetch-depth: 0
-      #
-      # - name: Scan PR diff for boundary terms
-      #   uses: Imbad0202/personal-boundary-action/.github/actions/scan@v1
-      #   with:
-      #     base-ref: ${{ github.event.pull_request.base.sha }}
-      #     head-ref: ${{ github.event.pull_request.head.sha }}
-      #     fail-on-match: true
-      #   # Deny-list lives inside the action repo (private). No secrets needed
-      #   # because the action uses GITHUB_TOKEN with read access from this repo
-      #   # combined with its own bundled deny-list.
+      - name: Scan PR diff for boundary terms
+        if: steps.probe.outputs.has_deny_list == 'true'
+        uses: Imbad0202/personal-boundary-action@v1
+        with:
+          deny-list: ${{ secrets.PERSONAL_BOUNDARY_DENY_LIST }}
+          base-ref: ${{ github.event.pull_request.base.sha }}
+          head-ref: ${{ github.event.pull_request.head.sha }}
+          fail-on-match: 'true'
