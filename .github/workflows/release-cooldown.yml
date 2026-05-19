@@ -80,12 +80,27 @@ jobs:
           ELAPSED_H=$((ELAPSED_S / 3600))
           echo "Elapsed since previous hotfix tag: ${ELAPSED_H}h"
 
-          # Override check
-          NEW_BODY=$(git log -1 --format=%B "$NEW_TAG")
-          if echo "$NEW_BODY" | grep -qF '[skip-cooldown]'; then
-            echo "Override token [skip-cooldown] present — cooldown bypassed."
+          # Override check — accept [skip-cooldown] token in either the pointed
+          # commit message OR the annotated tag message. Symmetry with hotfix
+          # detection (which reads both sources): for squash-merged hotfix PRs
+          # the commit message is fixed at merge time, so the only place the
+          # tagger can add the override is the tag annotation. Reading both
+          # avoids forcing a follow-up commit just to carry the override token.
+          NEW_COMMIT_BODY=$(git log -1 --format=%B "$NEW_TAG")
+          NEW_TAG_BODY=$(git for-each-ref "refs/tags/${NEW_TAG}" --format='%(contents)')
+          OVERRIDE_SOURCE=""
+          OVERRIDE_BODY=""
+          if echo "$NEW_COMMIT_BODY" | grep -qF '[skip-cooldown]'; then
+            OVERRIDE_SOURCE="commit message"
+            OVERRIDE_BODY="$NEW_COMMIT_BODY"
+          elif [ -n "$NEW_TAG_BODY" ] && echo "$NEW_TAG_BODY" | grep -qF '[skip-cooldown]'; then
+            OVERRIDE_SOURCE="annotated tag message"
+            OVERRIDE_BODY="$NEW_TAG_BODY"
+          fi
+          if [ -n "$OVERRIDE_SOURCE" ]; then
+            echo "Override token [skip-cooldown] present in ${OVERRIDE_SOURCE} — cooldown bypassed."
             echo "Justification (next non-empty line):"
-            echo "$NEW_BODY" | awk '/\[skip-cooldown\]/{found=1; next} found && NF{print; exit}'
+            echo "$OVERRIDE_BODY" | awk '/\[skip-cooldown\]/{found=1; next} found && NF{print; exit}'
             exit 0
           fi
 
