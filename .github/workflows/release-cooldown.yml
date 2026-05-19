@@ -37,22 +37,33 @@ jobs:
 
           echo "New tag: $NEW_TAG"
 
-          # Find previous tag (by creator date, exclude current)
-          PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${NEW_TAG}$" | head -1 || true)
+          # Find previous release tag (v*, by creator date, exclude current).
+          # Filtering to v* avoids non-release tags (e.g., test, internal markers)
+          # being picked as PREV_TAG and bypassing the cooldown classification.
+          PREV_TAG=$(git tag -l 'v*' --sort=-creatordate | grep -v "^${NEW_TAG}$" | head -1 || true)
           if [ -z "$PREV_TAG" ]; then
-            echo "No previous tag — first release, skip cooldown."
+            echo "No previous release tag — first release, skip cooldown."
             exit 0
           fi
           echo "Previous tag: $PREV_TAG"
 
           # Was the previous tag a hotfix?
-          # Heuristic: tag name has 4 dot-segments (v3.9.4.1) OR pointed commit subject matches hotfix pattern.
-          PREV_SUBJECT=$(git log -1 --format=%s "$PREV_TAG")
+          # Three signals (any one is sufficient):
+          #   a) Tag name has 4 dot-segments (e.g., v3.9.4.1)
+          #   b) Pointed commit subject matches hotfix pattern
+          #   c) Annotated tag subject (if any) matches hotfix pattern
+          # The regex accepts both 'hotfix' and 'hot-fix' spellings.
+          PREV_COMMIT_SUBJECT=$(git log -1 --format=%s "$PREV_TAG")
+          PREV_TAG_SUBJECT=$(git for-each-ref "refs/tags/${PREV_TAG}" --format='%(subject)')
+          HOTFIX_REGEX='(hot-?fix|post-ship|^fix\(v)'
           IS_HOTFIX="false"
           if [[ "$PREV_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             IS_HOTFIX="true"
           fi
-          if echo "$PREV_SUBJECT" | grep -qiE '(hotfix|post-ship|^fix\(v)'; then
+          if echo "$PREV_COMMIT_SUBJECT" | grep -qiE "$HOTFIX_REGEX"; then
+            IS_HOTFIX="true"
+          fi
+          if [ -n "$PREV_TAG_SUBJECT" ] && echo "$PREV_TAG_SUBJECT" | grep -qiE "$HOTFIX_REGEX"; then
             IS_HOTFIX="true"
           fi
           echo "Previous tag classified as hotfix: $IS_HOTFIX"

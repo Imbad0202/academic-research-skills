@@ -37,6 +37,7 @@ jobs:
       - name: Open audit tracking issue
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           MONTH: ${{ steps.month.outputs.label }}
         run: |
           set -euo pipefail
