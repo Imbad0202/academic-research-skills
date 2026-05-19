@@ -2,8 +2,8 @@
 name: academic-pipeline
 description: "Orchestrator for the full academic research pipeline: research -> write -> integrity check -> review -> revise -> re-review -> re-revise -> final integrity check -> finalize. Coordinates deep-research, academic-paper, and academic-paper-reviewer into a seamless 10-stage workflow with mandatory integrity verification, two-stage peer review, and reproducible quality gates. Triggers on: academic pipeline, research to paper, full paper workflow, paper pipeline, end-to-end paper, research-to-publication, complete paper workflow."
 metadata:
-  version: "3.9.4"
-  last_updated: "2026-05-18"
+  version: "3.9.4.1"
+  last_updated: "2026-05-19"
   depends_on: "deep-research, academic-paper, academic-paper-reviewer"
   status: active
   data_access_level: verified_only

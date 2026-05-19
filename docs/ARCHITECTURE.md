@@ -1,4 +1,4 @@
-# ARS Pipeline Architecture (v3.8.0)
+# ARS Pipeline Architecture (v3.9.4.1)
 
 Full pipeline view across stages × skills × artifacts × gates. Every completed stage requires a user-confirmation checkpoint (per `academic-pipeline/SKILL.md` and `pipeline_state_machine.md`); the diagrams below surface the **decision-heavy** checkpoints visually so they are easy to locate. The post-stage confirmation checkpoints at 2.5 and 4.5 are machine-verified first, then confirmed by the user — they are not skipped.
 
@@ -327,13 +327,36 @@ timeline
            : 8-row finalizer matrix + 5 new HIGH-WARN classes (formatter REFUSE rules 6-10)
            : Calibration runner (20-tuple gold set, FNR<0.15 + FPR<0.10 acceptance gate)
            : check_claim_audit_consistency.py (38 invariants) + check_v3_8_annotation_literal_sync.py
+    v3.8.1 : claim_audit lint hardening (#119 + #120 4×P2 closures)
+    v3.8.2 : uncited audit_tool_failure surface (#118)
+    v3.9.0 : cross-index triangulation measurement (S2 + OpenAlex + Crossref, 4-tier advisory)
+           : openalex_unmatched + crossref_unmatched contamination signals
+           : 4-tier advisory (CONTAMINATED-COVERAGE-NOISE / PARTIAL-UNMATCH / TRIANGULATION-UNMATCHED)
+    v3.9.1 : client hardening — wrap response-read failures (#129) + manifest_id guard (#130)
+    v3.9.2 : Phase scope inflation hot-fix (#133)
+           : phase-boundary blocks across 22 single-phase agents
+           : intent-clarification gate for ambiguous cross-phase materials
+    v3.9.3 : housekeeping — shared client utilities + dedup resolvers (#128)
+           : sibling-first dual-path import convention
+           : time.monotonic standardization
+    v3.9.4 : temporal verification advisory layer (#135)
+           : M1 timeline_extraction_agent (Phase 2 sibling)
+           : M2 5-pass verifier at Phase 4→5 boundary (P1 arithmetic / P2 anachronism / P3 comparator / P4 causal / P5 deictic)
+           : M3 Temporal Integrity Iron Rule in compiler+writer
+           : M6 first-party Crossref + pdftotext verification
+           : F2 invariant — bibliography_agent.md UNMODIFIED (sha256-guarded)
+    v3.9.4.1 : post-ship hotfix (4 codex findings: P1×2 + P2×2)
+             : audit() wires citation_provenance through to P2/P4 (spec §3.4 promise)
+             : _date_to_interval parses all schema-valid date shapes (YYYY-MM + interval)
+             : P4 binds direct-date captures (not only ref markers)
+             : citation_provenance.schema.json confidence:high requires presence
 ```
 
 ## 9. Skill Modes
 
 | Skill | Modes |
 |---|---|
-| `deep-research` v2.9.2 | full, quick, socratic, review, lit-review, fact-check, systematic-review (7) |
-| `academic-paper` v3.1.1 | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure (10) |
-| `academic-paper-reviewer` v1.9.0 | full, re-review, quick, methodology-focus, guided, calibration (6) |
-| `academic-pipeline` v3.8.0 | orchestrator (delegates to sub-skill modes) + `resume_from_passport=<hash>` (v3.6.3 — resume a prior pipeline run from a Material Passport reset boundary; no flag required to invoke. The producing session must have set `ARS_PASSPORT_RESET=1` to emit boundary entries.) + `ARS_CLAIM_AUDIT=1` (v3.8 — opt-in Stage 4→5 L3 claim-faithfulness audit gate; default OFF) |
+| `deep-research` v2.9.4 | full, quick, socratic, review, lit-review, fact-check, systematic-review (7) |
+| `academic-paper` v3.1.2 | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure (10) |
+| `academic-paper-reviewer` v1.9.1 | full, re-review, quick, methodology-focus, guided, calibration (6) |
+| `academic-pipeline` v3.9.4.1 | orchestrator (delegates to sub-skill modes) + `resume_from_passport=<hash>` (v3.6.3 — resume a prior pipeline run from a Material Passport reset boundary; no flag required to invoke. The producing session must have set `ARS_PASSPORT_RESET=1` to emit boundary entries.) + `ARS_CLAIM_AUDIT=1` (v3.8 — opt-in Stage 4→5 L3 claim-faithfulness audit gate; default OFF) + v3.9.4 temporal verification advisory layer (M1 timeline_extraction_agent + M2 5-pass verifier at Phase 4→5 + M3 IRON RULE + M6 first-party Crossref/pdftotext) |

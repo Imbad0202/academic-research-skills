@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.9.4-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4)
+[![Version](https://img.shields.io/badge/version-v3.9.4.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4.1)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -299,6 +299,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.9.4.1（2026-05-19）— v3.9.4 時序驗證 post-ship hotfix（#135 codex post-ship）
+
+> Codex post-ship review 抓到 4 個 per-task subagent reviewer 漏掉的真 bug。Hotfix 一次修齊：(1) `audit()` 把 `citation_provenance` 接到 P2 + P4，遇到 ref slug 在 provenance.yaml 是 `confidence: low` 或 `conflict` 時，驗證器改發 `TEMPORAL-METADATA-MISSING` 而不是直接用 timeline 日期當算術 ground truth（spec §3.4 第一手 safety check 原本沒接線）。(2) `_date_to_interval` 補齊全部 schema-valid 日期形狀，包括 `YYYY-MM`（Crossref 月精度）和 `YYYY-MM-DD..YYYY-MM-DD`（interval），v3.9.4 對這兩種 silently `ValueError` 跳過。(3) P4 在 ref marker 缺席時可 bind 直接 prose 日期 — 「The 2026 policy enabled the 2020 rollout」這種句現在會 trigger。(4) `citation_provenance.schema.json` `confidence:high` allOf 加 `then.required`，補 absent-property bypass 漏洞。1561 passed（+12 新測試、0 regression）。ARCHITECTURE.md 同步補齊（先前停在 v3.8.0）。
 
 ### v3.9.4（2026-05-18）— #135 時序驗證層（advisory）
 

@@ -8,6 +8,24 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.9.4.1] - 2026-05-19 — Post-ship hotfix for v3.9.4 temporal verification
+
+**Trigger:** Codex post-ship review of v3.9.4 squash commit `af09cf5` surfaced 4 real bugs that per-task subagent reviewers missed during v3.9.4 implementation. v3.9.4 tag remains immutable; v3.9.4.1 patches the verifier and schema layer + brings docs in alignment.
+
+**Bug fixes:**
+- **#135 P1 (audit wiring):** `audit()` now passes `citation_provenance` through to `_pass_2_anachronism` and `_pass_4_causal`. When a ref slug has `confidence: low` or `conflict` in citation_provenance.yaml, the verifier emits `TEMPORAL-METADATA-MISSING` instead of using timeline dates as arithmetic ground truth. v3.9.4 dropped citation_provenance on the floor — spec §3.4 first-party safety check was structurally broken.
+- **#135 P1 (date parser):** `_date_to_interval()` now parses all schema-valid date shapes including `YYYY-MM` (Crossref month-precision output) and `YYYY-MM-DD..YYYY-MM-DD` (interval precision used by effective_date_range). v3.9.4 only handled day/year/prose-month forms — schema-valid month/interval shapes raised ValueError and P2/P4 silently skipped the check via the existing `except ValueError: continue` guard.
+- **#135 P2 (P4 direct-date binding):** P4 now binds each side of a causal trigger to either a `<!--ref:slug-->` marker OR a direct date capture in the sentence. v3.9.4 required refs on both sides, silently dropping sentences like "The 2026 policy enabled the 2020 rollout." `bound_dates.source` distinguishes `timeline_ref` from `draft_capture`; `bound_refs` is empty when both sides came from direct date capture.
+- **#135 P2 (schema absent-property bypass):** `citation_provenance.schema.json` `confidence:high` allOf branch now requires both `crossref_issued` and `pdftotext_cover_first_line` to be present in addition to non-null (`then.required` added). v3.9.4 used `then.properties` only, which doesn't fire when a property is absent — so entries with `confidence:high` and both source fields omitted silently passed validation.
+
+**Documentation:**
+- `docs/ARCHITECTURE.md` updated from stale v3.8.0 baseline to v3.9.4.1; Section 8 Evolution Timeline filled in v3.8.1 / v3.8.2 / v3.9.0 / v3.9.1 / v3.9.2 / v3.9.3 / v3.9.4 / v3.9.4.1 entries; Section 9 Skill Modes table aligned to current versions.
+- Suite-version needles aligned across MODE_REGISTRY.md, README.md badge + tag URL + section heading, README.zh-TW.md badge + tag URL + section heading, academic-pipeline/SKILL.md frontmatter, `.claude-plugin/plugin.json`, `scripts/check_spec_consistency.py` expected-text constants, `.claude/CLAUDE.md` skill suite table.
+
+**Test count:** 1549 → **1561** (+12 net new tests covering all 4 fixes, 0 regression).
+
+---
+
 ## [3.9.4] - 2026-05-18 — Temporal Verification Layer (advisory)
 
 **External motivation:** Issue #135 — LLM next-token objectives are systematically blind to deterministic factual classes including temporal ordering. v3.9.4 adds a deterministic advisory verifier at the Phase 4 → 5 boundary covering 5 failure modes.
