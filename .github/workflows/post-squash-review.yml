@@ -1,0 +1,137 @@
+name: Post-Squash Codex Review (Advisory)
+
+# After a PR squash-merges to main, if the squash diff is non-trivial,
+# run codex review against the squash commit and auto-open an issue if
+# findings are detected. Advisory only — never blocks tags or merges.
+#
+# Why: v3.9.4 squash-merged 30 commits / 72 files / 3008 insertions.
+# Per-task subagent reviewers (sonnet x2 stage) ran during impl but
+# saw fragments. Codex on the squash commit later caught 4 spec
+# deviations (P1 x2 + P2 x2) -> v3.9.4.1 hotfix 6h later. Running
+# this review BEFORE the next tag would have caught them pre-ship.
+#
+# Threshold: 500 lines (additions + deletions) — matches v3.9.4 lower
+# end. Tunable via REVIEW_LINE_THRESHOLD env.
+#
+# Codex 0.130 known broken in ARS context (6 sample), so this is
+# advisory: any non-zero exit just opens an issue, never fails CI.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: post-squash-review-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  squash-review:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      REVIEW_LINE_THRESHOLD: '500'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Measure squash diff size
+        id: size
+        run: |
+          set -euo pipefail
+          STATS=$(git diff --shortstat HEAD~1 HEAD)
+          echo "Diff stats: $STATS"
+          ADD=$(echo "$STATS" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+          DEL=$(echo "$STATS" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo 0)
+          TOTAL=$((ADD + DEL))
+          echo "lines=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "Total lines changed: $TOTAL (threshold: $REVIEW_LINE_THRESHOLD)"
+
+      - name: Skip if below threshold
+        if: steps.size.outputs.lines < env.REVIEW_LINE_THRESHOLD
+        run: |
+          echo "Below threshold — no review needed."
+          exit 0
+
+      - name: Check codex CLI availability
+        id: codex
+        continue-on-error: true
+        run: |
+          if command -v codex >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::codex CLI not installed on runner — opening advisory issue without findings."
+          fi
+
+      - name: Run codex review on squash commit
+        if: steps.size.outputs.lines >= env.REVIEW_LINE_THRESHOLD && steps.codex.outputs.available == 'true'
+        id: review
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set +e
+          codex review \
+            --commit "${{ github.sha }}" \
+            --title "post-squash integration review (PR #${{ github.event.pull_request.number }})" \
+            --model gpt-5.5 \
+            --reasoning xhigh \
+            > codex-review.txt 2>&1
+          EC=$?
+          echo "exit_code=$EC" >> "$GITHUB_OUTPUT"
+          echo "Codex exit code: $EC"
+          head -200 codex-review.txt || true
+
+      - name: Open advisory issue
+        if: steps.size.outputs.lines >= env.REVIEW_LINE_THRESHOLD
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          LINES: ${{ steps.size.outputs.lines }}
+          CODEX_AVAILABLE: ${{ steps.codex.outputs.available }}
+          REVIEW_EXIT: ${{ steps.review.outputs.exit_code }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Post-squash review for PR #${PR_NUM}"
+            echo ""
+            echo "**PR**: ${PR_TITLE}"
+            echo "**Squash commit**: ${{ github.sha }}"
+            echo "**Lines changed**: ${LINES} (threshold ${REVIEW_LINE_THRESHOLD})"
+            echo "**Codex available**: ${CODEX_AVAILABLE}"
+            echo "**Codex exit**: ${REVIEW_EXIT:-N/A}"
+            echo ""
+            echo "### Review output"
+            echo ""
+            if [ -f codex-review.txt ]; then
+              echo '```'
+              head -500 codex-review.txt
+              echo '```'
+            else
+              echo "_(codex CLI not available on runner — review must be run locally)_"
+              echo ""
+              echo "Run locally:"
+              echo '```bash'
+              echo "codex review --commit ${{ github.sha }} \\"
+              echo "  --title 'post-squash integration review (PR #${PR_NUM})' \\"
+              echo "  --model gpt-5.5 --reasoning xhigh"
+              echo '```'
+            fi
+            echo ""
+            echo "---"
+            echo "_Auto-opened by post-squash-review.yml. Triage and close if no action needed; do NOT tag a new release until this issue is reviewed (advisory, not blocking)._"
+          } > issue-body.md
+
+          gh issue create \
+            --title "post-ship review: PR #${PR_NUM} squash commit" \
+            --label "post-ship-review" \
+            --body-file issue-body.md

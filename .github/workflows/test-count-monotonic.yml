@@ -1,0 +1,105 @@
+name: Test Count Monotonic
+
+# Verify the PR doesn't reduce pytest collection count vs. base.
+#
+# Why: 5 days from v3.9.0 to v3.9.4.1 added 1463 -> 1561 tests
+# (+98, 0 regression). Manual baseline tracking. This gate catches
+# any PR that silently drops tests (deletion, accidental skip,
+# fixture rename leaving orphans).
+#
+# Tolerance: net count must be >= base. Renames are fine; deletions
+# require explicit justification.
+#
+# Override: include [skip-test-count] in PR body with justification
+# (e.g., "removing dead suite X — N tests retired intentionally").
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: test-count-${{ github.event.pull_request.number }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  count-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install deps (PR head)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt pytest
+
+      - name: Count tests on PR head
+        id: head
+        run: |
+          set -euo pipefail
+          COUNT=$(pytest --collect-only -q 2>/dev/null | grep -c '::' || true)
+          echo "Head test count: $COUNT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Add base via worktree
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git worktree add ../base "$BASE_SHA"
+
+      - name: Install deps (base)
+        working-directory: ../base
+        run: |
+          # Reuse pip cache; requirements may differ
+          if [ -f requirements-dev.txt ]; then
+            pip install -r requirements-dev.txt pytest --quiet
+          else
+            pip install pytest --quiet
+          fi
+
+      - name: Count tests on base
+        id: base
+        working-directory: ../base
+        run: |
+          set -euo pipefail
+          COUNT=$(pytest --collect-only -q 2>/dev/null | grep -c '::' || true)
+          echo "Base test count: $COUNT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Compare
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_COUNT: ${{ steps.head.outputs.count }}
+          BASE_COUNT: ${{ steps.base.outputs.count }}
+        run: |
+          set -euo pipefail
+          DELTA=$((HEAD_COUNT - BASE_COUNT))
+          echo "Base: $BASE_COUNT  Head: $HEAD_COUNT  Delta: $DELTA"
+
+          if [ "$HEAD_COUNT" -ge "$BASE_COUNT" ]; then
+            echo "OK — test count monotonic ($DELTA)."
+            exit 0
+          fi
+
+          if echo "${PR_BODY:-}" | grep -qF '[skip-test-count]'; then
+            echo "::warning::Test count dropped by $((BASE_COUNT - HEAD_COUNT)) but [skip-test-count] override present."
+            exit 0
+          fi
+
+          echo "::error::Test count dropped: $BASE_COUNT -> $HEAD_COUNT (-$((BASE_COUNT - HEAD_COUNT)))."
+          echo "::error::Add [skip-test-count] + justification to PR body if intentional."
+          exit 1
