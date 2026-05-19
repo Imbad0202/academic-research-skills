@@ -50,7 +50,7 @@ jobs:
         id: head
         run: |
           set -euo pipefail
-          COUNT=$(pytest --collect-only -q 2>/dev/null | grep -c '::' || true)
+          COUNT=$(pytest --collect-only -q | grep -c '::')
           echo "Head test count: $COUNT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
