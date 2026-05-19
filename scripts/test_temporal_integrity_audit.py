@@ -369,3 +369,70 @@ def test_date_to_interval_rejects_invalid_month():
     """Defensive: YYYY-13 (month > 12) should raise, not produce garbage."""
     with pytest.raises(ValueError):
         _audit_mod._date_to_interval("2024-13")
+
+
+def test_p2_provenance_low_emits_metadata_missing_skips_anachronism(tmp_path):
+    """v3.9.4.1 fix #1: P2 must consult citation_provenance and emit METADATA-MISSING
+    (not ANACHRONISTIC-CITATION) when confidence is low — spec §3.4 first-party safety check."""
+    # Even though timeline says handbook-2026ed is way in the future, citation_provenance
+    # confidence:low must downgrade to METADATA-MISSING instead of anachronism finding.
+    timeline = {
+        "schema_version": "1.0",
+        "sources": [{
+            "citation_key": "handbook-2026ed",
+            "type": "institutional-document",
+            "effective_date_range": {
+                "start": {"value": "2026-09-15", "precision": "day", "open_ended": False,
+                          "provenance": {"method": "crossref_lookup", "confidence": "high"}},
+                "end": {"value": None, "precision": "unknown", "open_ended": True,
+                        "provenance": {"method": "user_override", "confidence": "high"}},
+            },
+        }],
+        "events": [],
+    }
+    citation_provenance = {
+        "schema_version": "1.0",
+        "audit_run_id": "2026-05-19T00:00:00Z-test",
+        "entries": [{
+            "citation_key": "handbook-2026ed",
+            "crossref_issued": None,
+            "pdftotext_cover_first_line": None,
+            "verification_method": "none",
+            "confidence": "low",
+            "notes": None,
+        }],
+    }
+    result = _run_audit(
+        tmp_path,
+        draft="The 2026 Handbook governed the 2022 review cycle.<!--ref:handbook-2026ed-->\n",
+        timeline=timeline,
+        citation_provenance=citation_provenance,
+    )
+    # No anachronism findings (the v3.9.4 silent-bypass bug would have emitted one).
+    anachronism = [f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-ANACHRONISTIC-CITATION"]
+    assert anachronism == [], f"v3.9.4.1 fix #1 broken — anachronism emitted despite confidence:low: {anachronism}"
+    # Exactly one METADATA-MISSING citing the provenance reason.
+    metadata_missing = [f for f in result["findings"]
+                        if f["finding_kind"] == "TEMPORAL-METADATA-MISSING"
+                        and "confidence=low" in f.get("rationale", "")]
+    assert len(metadata_missing) == 1, f"expected 1 METADATA-MISSING with provenance reason; got {result['findings']}"
+
+
+def test_p4_direct_date_causal_inversion_no_refs(tmp_path):
+    """v3.9.4.1 fix #3: P4 must bind to direct date captures when ref markers absent
+    (spec §3.2 P4: each side may bind to ref marker OR direct date capture)."""
+    # No ref markers; both sides are bare dates. "enabled" requires left.date < right.date.
+    # Here left=2026 right=2020 → violation.
+    result = _run_audit(
+        tmp_path,
+        draft="The 2026 policy enabled the 2020 rollout.\n",
+        timeline={"schema_version": "1.0", "sources": [], "events": []},
+    )
+    causal = [f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-CAUSAL-INVERSION"]
+    assert len(causal) == 1, f"expected 1 causal inversion via direct date binding; got {result['findings']}"
+    f0 = causal[0]
+    assert f0["bound_dates"] is not None
+    assert f0["bound_dates"]["left"]["source"] == "draft_capture"
+    assert f0["bound_dates"]["right"]["source"] == "draft_capture"
+    # bound_refs should be empty (no slugs bound).
+    assert f0["bound_refs"] == []

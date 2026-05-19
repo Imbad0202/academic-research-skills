@@ -166,6 +166,25 @@ def _compute_line_number(draft: str, char_pos: int) -> int:
     return draft[:char_pos].count("\n") + 1
 
 
+def _provenance_confidence(slug: str, citation_provenance: dict) -> str | None:
+    """v3.9.4.1 hotfix: look up citation_provenance.entries[*].confidence for a ref slug.
+
+    Returns the confidence string ('high' | 'medium' | 'low' | 'conflict') or None
+    if the slug has no provenance entry (treated as 'not first-party verified').
+
+    Per spec §3.4: when confidence is 'low' or 'conflict', P2/P4 must NOT use the
+    timeline dates for arithmetic; instead emit TEMPORAL-METADATA-MISSING. v3.9.4
+    audit() never threaded citation_provenance through to P2/P4, defeating this
+    safety check.
+    """
+    if not citation_provenance:
+        return None
+    for entry in citation_provenance.get("entries", []):
+        if entry.get("citation_key") == slug:
+            return entry.get("confidence")
+    return None
+
+
 def _pass_1_arithmetic(draft: str, findings: list[dict]) -> None:
     """P1 Mode 1 future-as-past arithmetic.
 
@@ -253,24 +272,50 @@ def _pass_1_arithmetic(draft: str, findings: list[dict]) -> None:
         })
 
 
-def _pass_2_anachronism(draft: str, timeline: dict, findings: list[dict]) -> None:
+def _pass_2_anachronism(draft: str, timeline: dict, citation_provenance: dict, findings: list[dict]) -> None:
     """P2 Mode 2 version-as-evidence-past anachronism.
 
     For each <!--ref:slug--> marker:
-    1. Lookup slug in timeline sources. Absent → emit TEMPORAL-METADATA-MISSING.
-    2. Lookup effective_date_range. Absent or start unverified/low → emit METADATA-MISSING.
-    3. Find nearest event date in ±200 chars around the ref marker.
-    4. Predicate (future-version): start > event.end → emit TEMPORAL-ANACHRONISTIC-CITATION.
-    5. Predicate (superseded-version): end < event.start (only when end.open_ended: false
+    1. v3.9.4.1 hotfix: Lookup slug in citation_provenance. If confidence is 'low' or
+       'conflict' → emit TEMPORAL-METADATA-MISSING and skip arithmetic (spec §3.4 promise:
+       first-party-unverified dates are NOT used as ground truth).
+    2. Lookup slug in timeline sources. Absent → emit TEMPORAL-METADATA-MISSING.
+    3. Lookup effective_date_range. Absent or start unverified/low → emit METADATA-MISSING.
+    4. Find nearest event date in ±200 chars around the ref marker.
+    5. Predicate (future-version): start > event.end → emit TEMPORAL-ANACHRONISTIC-CITATION.
+    6. Predicate (superseded-version): end < event.start (only when end.open_ended: false
        and end.value known and confidence high/medium) → emit TEMPORAL-ANACHRONISTIC-CITATION.
     """
     sources_by_key = {s["citation_key"]: s for s in timeline.get("sources", [])}
 
     for m_ref in REF_MARKER_PATTERN.finditer(draft):
         slug = m_ref.group(1)
-        source = sources_by_key.get(slug)
         ref_line_no = _compute_line_number(draft, m_ref.start())
 
+        # v3.9.4.1 hotfix: provenance confidence gate (spec §3.4)
+        prov_conf = _provenance_confidence(slug, citation_provenance)
+        if prov_conf in {"low", "conflict"}:
+            findings.append({
+                "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                "finding_kind": "TEMPORAL-METADATA-MISSING",
+                "severity": "LOW",
+                "mode": None,
+                "block_eligible": False,
+                "draft_locator": {
+                    "file": "phase4_composition/draft.md",
+                    "line": ref_line_no,
+                    "sentence": _sentence_around(draft, m_ref.start()),
+                },
+                "matched_span": None,
+                "bound_refs": [{"ref_slug": slug, "timeline_entry": None}],
+                "bound_event": None,
+                "bound_dates": None,
+                "rationale": f"<!--ref:{slug}--> citation_provenance confidence={prov_conf}; per spec §3.4 not used as arithmetic ground truth.",
+                "suggested_fix": None,
+            })
+            continue
+
+        source = sources_by_key.get(slug)
         if source is None:
             findings.append({
                 "finding_id": f"TF-{_next_finding_id(findings):03d}",
@@ -511,15 +556,21 @@ def _pass_3_comparator(draft: str, timeline: dict, findings: list[dict]) -> None
                     # do NOT break — spec allows one finding per match
 
 
-def _pass_4_causal(draft: str, timeline: dict, findings: list[dict]) -> None:
+def _pass_4_causal(draft: str, timeline: dict, citation_provenance: dict, findings: list[dict]) -> None:
     """P4 Mode 4 causal inversion.
 
-    For each causal trigger phrase, identifies the nearest <!--ref:slug--> on either side.
-    Looks up both refs' published_date and verifies the required ordering.
-    If violated, emits TEMPORAL-CAUSAL-INVERSION with bound_dates.left/right.
-    Direct date capture (without refs) deferred to v3.10 M8 relation manifest.
+    For each causal trigger phrase, identifies left and right arguments. Each side
+    may bind to either a <!--ref:slug--> marker (preferred) or a direct date capture
+    in the sentence (v3.9.4.1 hotfix: spec §3.2 P4 fallback).
+
+    v3.9.4.1 also adds citation_provenance gate (spec §3.4): if either bound slug has
+    confidence:low or conflict, emit TEMPORAL-METADATA-MISSING and skip predicate.
+
+    Looks up refs' published_date OR uses direct date capture, then verifies the
+    required ordering. If violated, emits TEMPORAL-CAUSAL-INVERSION.
     """
     sources_by_key = {s["citation_key"]: s for s in timeline.get("sources", [])}
+    date_pattern = re.compile(DATE_REGEX, re.IGNORECASE)
 
     pos = 0
     for sentence in re.split(r"(?<=[.!?])\s+", draft):
@@ -536,26 +587,103 @@ def _pass_4_causal(draft: str, timeline: dict, findings: list[dict]) -> None:
 
             pre = sentence[:m_trig.start()]
             post = sentence[m_trig.end():]
-            left_refs = list(REF_MARKER_PATTERN.finditer(pre))
-            right_refs = list(REF_MARKER_PATTERN.finditer(post))
-            if not left_refs or not right_refs:
-                continue  # ambiguous binding — no finding in v3.9.4
 
-            left_slug = left_refs[-1].group(1)
-            right_slug = right_refs[0].group(1)
-            left_src = sources_by_key.get(left_slug)
-            right_src = sources_by_key.get(right_slug)
-            if not (left_src and right_src):
+            # Bind left: nearest ref BEFORE trigger; else nearest direct date BEFORE
+            left_refs = list(REF_MARKER_PATTERN.finditer(pre))
+            left_slug = left_refs[-1].group(1) if left_refs else None
+            left_date_raw = None
+            if left_slug is None:
+                # v3.9.4.1 fix #3: direct date fallback (spec §3.2 P4)
+                left_dates = list(date_pattern.finditer(pre))
+                if left_dates:
+                    left_date_raw = left_dates[-1].group(0)
+
+            # Bind right: nearest ref AFTER trigger; else nearest direct date AFTER
+            right_refs = list(REF_MARKER_PATTERN.finditer(post))
+            right_slug = right_refs[0].group(1) if right_refs else None
+            right_date_raw = None
+            if right_slug is None:
+                right_dates = list(date_pattern.finditer(post))
+                if right_dates:
+                    right_date_raw = right_dates[0].group(0)
+
+            # At least one side must bind
+            if not (left_slug or left_date_raw) or not (right_slug or right_date_raw):
                 continue
-            left_pd = left_src.get("published_date", {}).get("value")
-            right_pd = right_src.get("published_date", {}).get("value")
-            if not (left_pd and right_pd):
+
+            # v3.9.4.1 hotfix: provenance gate for either slug
+            for chk_slug in [left_slug, right_slug]:
+                if chk_slug is None:
+                    continue
+                prov_conf = _provenance_confidence(chk_slug, citation_provenance)
+                if prov_conf in {"low", "conflict"}:
+                    findings.append({
+                        "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                        "finding_kind": "TEMPORAL-METADATA-MISSING",
+                        "severity": "LOW",
+                        "mode": None,
+                        "block_eligible": False,
+                        "draft_locator": {
+                            "file": "phase4_composition/draft.md", "line": line_no,
+                            "sentence": sentence.strip(),
+                        },
+                        "matched_span": None,
+                        "bound_refs": [{"ref_slug": chk_slug, "timeline_entry": None}],
+                        "bound_event": None,
+                        "bound_dates": None,
+                        "rationale": f"<!--ref:{chk_slug}--> citation_provenance confidence={prov_conf}; per spec §3.4 not used as arithmetic ground truth for P4.",
+                        "suggested_fix": None,
+                    })
+                    # Skip this trigger after emitting METADATA-MISSING for either side
+                    break
+            else:
+                pass  # no provenance issue, continue to predicate
+            # Re-check: if any prov gate fired, the for-else didn't run, we want to skip predicate
+            if any(
+                _provenance_confidence(s, citation_provenance) in {"low", "conflict"}
+                for s in [left_slug, right_slug] if s is not None
+            ):
                 continue
-            try:
-                left_start, _ = _date_to_interval(left_pd)
-                right_start, _ = _date_to_interval(right_pd)
-            except ValueError:
-                continue
+
+            # Resolve left date
+            if left_slug:
+                left_src = sources_by_key.get(left_slug)
+                if not left_src:
+                    continue
+                left_pd = left_src.get("published_date", {}).get("value")
+                if not left_pd:
+                    continue
+                try:
+                    left_start, _ = _date_to_interval(left_pd)
+                except ValueError:
+                    continue
+                left_source = "timeline_ref"
+            else:
+                try:
+                    left_start, _ = _date_to_interval(left_date_raw)
+                except ValueError:
+                    continue
+                left_source = "draft_capture"
+
+            # Resolve right date
+            if right_slug:
+                right_src = sources_by_key.get(right_slug)
+                if not right_src:
+                    continue
+                right_pd = right_src.get("published_date", {}).get("value")
+                if not right_pd:
+                    continue
+                try:
+                    right_start, _ = _date_to_interval(right_pd)
+                except ValueError:
+                    continue
+                right_source = "timeline_ref"
+            else:
+                try:
+                    right_start, _ = _date_to_interval(right_date_raw)
+                except ValueError:
+                    continue
+                right_source = "draft_capture"
 
             violated = (
                 (required_order == "left<right" and left_start >= right_start)
@@ -563,6 +691,13 @@ def _pass_4_causal(draft: str, timeline: dict, findings: list[dict]) -> None:
             )
             if not violated:
                 continue
+
+            # v3.9.4.1 hotfix: bound_refs and bound_dates.source vary by binding mode
+            bound_refs_list = []
+            if left_slug:
+                bound_refs_list.append({"ref_slug": left_slug, "timeline_entry": left_slug})
+            if right_slug:
+                bound_refs_list.append({"ref_slug": right_slug, "timeline_entry": right_slug})
 
             findings.append({
                 "finding_id": f"TF-{_next_finding_id(findings):03d}",
@@ -579,16 +714,13 @@ def _pass_4_causal(draft: str, timeline: dict, findings: list[dict]) -> None:
                     "char_start": m_trig.start(),
                     "char_end": m_trig.end(),
                 },
-                "bound_refs": [
-                    {"ref_slug": left_slug, "timeline_entry": left_slug},
-                    {"ref_slug": right_slug, "timeline_entry": right_slug},
-                ],
+                "bound_refs": bound_refs_list,
                 "bound_event": None,
                 "bound_dates": {
                     "left": {"role": "left_arg", "value": left_start,
-                             "source": "timeline_ref", "ref_slug": left_slug},
+                             "source": left_source, "ref_slug": left_slug},
                     "right": {"role": "right_arg", "value": right_start,
-                              "source": "timeline_ref", "ref_slug": right_slug},
+                              "source": right_source, "ref_slug": right_slug},
                 },
                 "rationale": (
                     f"Trigger '{m_trig.group(0)}' requires ordering {required_order}, "
@@ -633,12 +765,15 @@ def _pass_5_deictic(draft: str, findings: list[dict]) -> None:
 
 def audit(draft: str, timeline: dict, citation_provenance: dict,
           report_reference_date: str, audit_run_id: str) -> dict:
-    """Run the 5-pass verifier. Returns an aggregate matching temporal_audit_results.schema.json."""
+    """Run the 5-pass verifier. Returns an aggregate matching temporal_audit_results.schema.json.
+
+    v3.9.4.1 hotfix: citation_provenance now flows through to P2 and P4 (per spec §3.4).
+    """
     findings: list[dict] = []
     _pass_1_arithmetic(draft, findings)
-    _pass_2_anachronism(draft, timeline, findings)
+    _pass_2_anachronism(draft, timeline, citation_provenance, findings)
     _pass_3_comparator(draft, timeline, findings)
-    _pass_4_causal(draft, timeline, findings)
+    _pass_4_causal(draft, timeline, citation_provenance, findings)
     _pass_5_deictic(draft, findings)
     return {
         "schema_version": "1.0",
