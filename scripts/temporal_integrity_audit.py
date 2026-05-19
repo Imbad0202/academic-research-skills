@@ -93,19 +93,41 @@ LAST_DAY = {"01": "31", "02": "28", "03": "31", "04": "30", "05": "31", "06": "3
 def _date_to_interval(raw: str) -> tuple[str, str]:
     """Normalize a date capture into (start, end) ISO 8601 day strings.
 
-    Handles 3 forms:
-    - YYYY-MM-DD → (date, date) point interval
-    - 'MonthName YYYY' → first of month .. last of month
-    - YYYY → YYYY-01-01 .. YYYY-12-31
+    Handles all v3.9.4 schema-valid date shapes:
+    - YYYY-MM-DD → (date, date) point interval (day precision)
+    - YYYY-MM → YYYY-MM-01 .. YYYY-MM-last (month precision, v3.9.4.1 hotfix)
+    - YYYY-MM-DD..YYYY-MM-DD → parsed interval (interval precision, v3.9.4.1 hotfix)
+    - 'MonthName YYYY' → first of month .. last of month (prose form)
+    - YYYY → YYYY-01-01 .. YYYY-12-31 (year precision)
+
+    v3.9.4 only handled 3 prose forms — Crossref month-precision lookups from
+    bootstrap_timeline_yaml.py emit `YYYY-MM`, and effective_date_range with
+    precision:interval emits `YYYY-MM-DD..YYYY-MM-DD`. Both were schema-valid
+    but raised ValueError here, causing P2/P4 to silently skip the check.
     """
     raw = raw.strip()
+    # Day precision: YYYY-MM-DD
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
         return raw, raw
+    # Interval precision: YYYY-MM-DD..YYYY-MM-DD (v3.9.4.1 hotfix)
+    m_interval = re.fullmatch(r"(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})", raw)
+    if m_interval:
+        return m_interval.group(1), m_interval.group(2)
+    # Month precision: YYYY-MM (v3.9.4.1 hotfix)
+    m_month = re.fullmatch(r"(\d{4})-(\d{2})", raw)
+    if m_month:
+        yr = m_month.group(1)
+        mo = m_month.group(2)
+        if mo not in LAST_DAY:
+            raise ValueError(f"invalid month in date: {raw!r}")
+        return f"{yr}-{mo}-01", f"{yr}-{mo}-{LAST_DAY[mo]}"
+    # Prose form: "MonthName YYYY"
     m = re.fullmatch(r"(" + MONTH_NAMES + r")\s+(\d{4})", raw, re.IGNORECASE)
     if m:
         mo = MONTH_TO_NUM[m.group(1).lower()]
         yr = m.group(2)
         return f"{yr}-{mo}-01", f"{yr}-{mo}-{LAST_DAY[mo]}"
+    # Year precision: YYYY
     if re.fullmatch(r"(?:19|20)\d{2}", raw):
         return f"{raw}-01-01", f"{raw}-12-31"
     raise ValueError(f"unrecognized date format: {raw!r}")
