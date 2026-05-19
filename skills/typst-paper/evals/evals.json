@@ -1,0 +1,133 @@
+{
+  "skill_name": "typst-paper",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Compile my Typst paper and tell me whether the layout looks obviously wrong for an IEEE-style submission.",
+      "expected_output": "Route to compile and format modules, run uv-backed Typst checks, and return Typst-oriented comments.",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(compile|format)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "(typst|Typst)", "description": "Typst-specific handling"},
+        {"type": "regex", "pattern": "// .+\\[Severity:", "description": "Typst comment format used"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Validate the bibliography in main.typ, whether it uses BibTeX or Hayagriva, and point out any missing citations.",
+      "expected_output": "Choose the bibliography module correctly and surface Typst citation/bibliography mismatches.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "bibliography", "description": "bibliography module routed"},
+        {"type": "regex", "pattern": "(BibTeX|Hayagriva|@cite|#bibliography)", "description": "Typst bib format detected"},
+        {"type": "regex", "pattern": "(missing|unused|unresolved)", "description": "citation issues reported"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Polish the abstract wording in my Typst paper and help me translate one Chinese paragraph into academic English without breaking labels.",
+      "expected_output": "Route to expression and translation modules while preserving Typst syntax.",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(expression|translation)", "description": "correct modules routed"},
+        {"type": "not_contains", "text": "<label-rewritten>", "description": "Typst labels preserved"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "My Typst project uses a Hayagriva YAML bibliography. Validate it, then tell me whether any citations used in the paper are missing or unused.",
+      "expected_output": "Choose the bibliography path correctly for Hayagriva input, preserve Typst citation syntax, and surface missing, unused, or mismatched references.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "bibliography", "description": "bibliography module routed"},
+        {"type": "regex", "pattern": "(Hayagriva|YAML|\\.yml)", "description": "Hayagriva format recognized"},
+        {"type": "regex", "pattern": "(missing|unused|mismatch)", "description": "reference issues reported"}
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Review the related work section in main.typ for weak literature organization, missing gap derivation, and cross-section logic problems, but do not rewrite labels or math.",
+      "expected_output": "Route to the logic module, flag enumeration-heavy related work or missing gap statements, and keep Typst labels, cites, and math untouched.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(gap|enumerat|organization)", "description": "literature quality assessed"},
+        {"type": "not_contains", "text": "@cite-rewritten", "description": "@cite references preserved"}
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Check whether the introduction in my Typst paper jumps from broad background straight to our method without establishing the bottleneck and prior-work limitations.",
+      "expected_output": "Route to the logic module and flag introduction funnel breaks such as background-to-contribution jumps or missing literature-derived insufficiencies.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(funnel|gap|bottleneck|jump)", "description": "funnel analysis present"}
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Tell me whether the abstract, contribution claims, and conclusion in this Typst paper are aligned, or if they are saying different things.",
+      "expected_output": "Route to the logic module and report cross-section alignment issues involving problem, method, result, and contribution coverage.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(alignment|consistency|cross-section|drift)", "description": "cross-section analysis present"}
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "My Typst paper is in Chinese. Check the introduction for AI-sounding filler, repeated openings, and low-information paragraphs without breaking labels.",
+      "expected_output": "Route to the deai module with Chinese-aware heuristics and preserve Typst syntax while surfacing filler, parallel openings, and low-information density issues.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "deai", "description": "deai module routed"},
+        {"type": "regex", "pattern": "(AI.?痕迹|AI.?trace|filler|填充)", "description": "AI pattern detection present"},
+        {"type": "regex", "pattern": "[\\u4e00-\\u9fff]{5,}", "description": "Chinese-aware analysis present"}
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Review the discussion section in main.typ and tell me if it is just a data dump without mechanism, comparison, limitations, or implications.",
+      "expected_output": "Route to the experiment module and flag shallow or unlayered discussion structure for a Typst paper.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "experiment", "description": "experiment module routed"},
+        {"type": "regex", "pattern": "(layer|mechanism|limitation|implication|depth)", "description": "discussion depth assessed"}
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Review the algorithm-figure block in my IEEE-style Typst paper and tell me whether the caption, line numbers, and style-algorithm hook are in good shape.",
+      "expected_output": "Route to the pseudocode module, inspect algorithmic usage, and distinguish missing caption or wrapper issues from line-number recommendations.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "pseudocode", "description": "pseudocode module routed"},
+        {"type": "regex", "pattern": "(algorithm-figure|style-algorithm|caption)", "description": "Typst pseudocode details checked"},
+        {"type": "regex", "pattern": "(recommended|not required|IEEE-like)", "description": "advisory distinction present"}
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "I used lovelace for a custom pseudocode block in main.typ. Tell me whether I still need a figure wrapper and caption for an IEEE-like submission.",
+      "expected_output": "Route to the pseudocode module, identify lovelace usage, and explain when figure wrapping and captions become mandatory for IEEE-like output.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "pseudocode", "description": "pseudocode module routed"},
+        {"type": "regex", "pattern": "(lovelace|figure|caption)", "description": "lovelace wrapper guidance present"},
+        {"type": "regex", "pattern": "\\[Severity: (Critical|Major|Minor)\\]", "description": "severity format correct"}
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Rewrite the Related Work in my Typst paper so it sounds like a synthesis instead of a citation list. Keep every @cite anchor and show me the consensus-disagreement-gap chain.",
+      "expected_output": "Route to the literature module, preserve Typst citation anchors, diagnose missing comparison or gap derivation, and provide a rewrite chain from consensus to gap.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "literature", "description": "literature module routed"},
+        {"type": "regex", "pattern": "(consensus|disagreement|gap|limitation)", "description": "rewrite chain present"},
+        {"type": "not_contains", "text": "@cite-rewritten", "description": "@cite references preserved"}
+      ]
+    }
+  ]
+}

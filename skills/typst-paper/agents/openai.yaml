@@ -1,0 +1,4 @@
+interface:
+  display_name: "Typst Paper"
+  short_description: "Compile and audit Typst papers with inference-first routing, bibliography-format detection, and Typst-safe review output"
+  default_prompt: "Review my Typst paper project, infer the right module from the request, detect BibTeX versus Hayagriva when needed, sequence compatible modules, ask only for missing file or venue details, run the relevant uv-backed scripts, and return Typst-friendly findings."

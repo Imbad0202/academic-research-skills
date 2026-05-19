@@ -1,0 +1,134 @@
+{
+  "skill_name": "latex-paper-en",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Compile my IEEE paper in main.tex, then explain why two citations are unresolved after BibTeX.",
+      "expected_output": "Select compile and bibliography modules, run the correct commands in sequence, and report the build plus citation findings in LaTeX-oriented review format with exact failing steps, exit codes, or unresolved keys.",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(compile|bibliography)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "\\\\cite\\{", "description": "\\cite{} references preserved"},
+        {"type": "regex", "pattern": "(exit code|error|unresolved)", "description": "build diagnostics reported"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review the introduction section for grammar, sentence length, and logic, but do not touch equations or citation keys.",
+      "expected_output": "Route to grammar, sentences, and logic modules with source-preserving comments, keeping equations, citation keys, labels, and math untouched.",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(grammar|sentences|logic)", "description": "correct modules routed"},
+        {"type": "not_contains", "text": "\\cite{", "description": "citation keys not rewritten"},
+        {"type": "regex", "pattern": "% .+\\[Severity:", "description": "LaTeX comment format used"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Before I submit to ACM, check whether my figures are publication-ready and whether the title sounds too generic.",
+      "expected_output": "Route to figures and title modules and return concrete pre-submission findings about figure readiness, missing assets, resolution risks, caption problems, or weak title wording.",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(figures|title)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "(DPI|resolution|caption|figure)", "description": "figure quality assessed"},
+        {"type": "regex", "pattern": "\\[Severity: (Critical|Major|Minor)\\]", "description": "severity format correct"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Translate this Chinese methods paragraph into academic English, but keep \\\\cite{zhang2024} and $L_{pred}$ unchanged and use deep-learning terminology.",
+      "expected_output": "Route to the translation module, preserve LaTeX fragments verbatim, surface terminology choices, and avoid silently rewriting citations, labels, or math.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "translation", "description": "translation module routed"},
+        {"type": "contains", "text": "\\cite{zhang2024}", "description": "citation key preserved verbatim"},
+        {"type": "contains", "text": "$L_{pred}$", "description": "math expression preserved"}
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Check the introduction section for AI-sounding phrases and tell me what to revise, but do not rewrite labels, citations, or equations.",
+      "expected_output": "Route to the deai module and return source-preserving findings, risk notes, and revision targets without editing labels, citations, or math environments.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "deai", "description": "deai module routed"},
+        {"type": "regex", "pattern": "(AI.?writing|AI.?trace|AI.?pattern)", "description": "AI pattern detection present"},
+        {"type": "not_contains", "text": "\\label{", "description": "labels not rewritten"}
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review the experiments section for weak baselines, unsupported claims, missing ablations, and absent significance reporting, but do not draft a replacement paragraph.",
+      "expected_output": "Route to the experiment module and return reviewer-style LaTeX comments about comparator specificity, metric evidence, ablation coverage, significance reporting, efficiency comparisons, results discussion, and overclaiming.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "experiment", "description": "experiment module routed"},
+        {"type": "regex", "pattern": "(ablation|baseline|significance)", "description": "experiment criteria covered"},
+        {"type": "regex", "pattern": "\\[Severity: (Critical|Major|Minor)\\]", "description": "severity format correct"}
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Check whether the introduction jumps from background directly to our method without establishing the technical bottleneck or prior-work limitations.",
+      "expected_output": "Route to the logic module and flag introduction funnel breaks such as background-to-contribution jumps or missing prior-work insufficiency derivation.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(funnel|gap|bottleneck|jump)", "description": "funnel analysis present"}
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Tell me whether the abstract, the contribution claims in the introduction, and the conclusion are saying the same core story or drifting apart.",
+      "expected_output": "Route to the logic module and return a cross-section consistency finding about problem, method, key result, and contribution alignment.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(cross-section|alignment|consistency|drift)", "description": "cross-section analysis present"}
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Review the discussion section and tell me whether it is layered enough, or if it just repeats results without mechanism, comparison, limitations, or implications.",
+      "expected_output": "Route to the experiment module and report shallow or unlayered discussion structure with concrete section-level comments.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "experiment", "description": "experiment module routed"},
+        {"type": "regex", "pattern": "(layer|mechanism|limitation|implication)", "description": "discussion depth assessed"}
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Check whether the pseudocode in my IEEE LaTeX paper still uses a floating algorithm environment or misses the caption and label conventions reviewers expect.",
+      "expected_output": "Route to the pseudocode module, apply IEEE-aware checks, and separate hard float violations from caption, label, or reference hygiene issues.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "pseudocode", "description": "pseudocode module routed"},
+        {"type": "regex", "pattern": "(IEEE|algorithm|caption|label)", "description": "IEEE-aware pseudocode review present"},
+        {"type": "regex", "pattern": "\\[Severity: (Critical|Major|Minor)\\]", "description": "severity format correct"}
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Rewrite the guidance around this algorithm2e block so it becomes IEEE-safe, and tell me whether line numbers or Require/Ensure are mandatory or only recommended.",
+      "expected_output": "Route to the pseudocode module, explain that floating algorithm environments are the hard issue, and clearly distinguish line numbers or Require/Ensure as IEEE-safe defaults rather than official mandates.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "pseudocode", "description": "pseudocode module routed"},
+        {"type": "regex", "pattern": "(recommended|not required|IEEE-safe)", "description": "advisory distinction present"},
+        {"type": "regex", "pattern": "(algorithm2e|figure)", "description": "migration guidance present"}
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "My Related Work reads like a paper-by-paper list. Keep every citation anchor, but show me how to rewrite it into consensus, disagreement, limitations, and the research gap.",
+      "expected_output": "Route to the literature module, diagnose enumeration or missing comparison, preserve citation anchors, and provide a rewrite blueprint that moves from consensus to research gap.",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "literature", "description": "literature module routed"},
+        {"type": "regex", "pattern": "(consensus|disagreement|limitation|gap)", "description": "rewrite blueprint present"},
+        {"type": "not_contains", "text": "\\cite{fabricated", "description": "no fabricated citations"}
+      ]
+    }
+  ]
+}

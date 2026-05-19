@@ -1,0 +1,72 @@
+# AI Tone Threshold Configuration (Typst, bilingual)
+#
+# Typst 模板被中英双语论文共用，本文件同时承载英文与中文阈值。
+# 由 `scripts/deai_check.py` 读取；缺失时使用脚本内 DEFAULT_THRESHOLDS。
+# 所有触发走 [Script] LOW provenance。
+#
+# 约定：
+# - term_thresholds 中，key 全部 ASCII 字母时按 word-boundary（大小写不敏感）计数；
+#   含非 ASCII 字符时按 substring 直接计数。
+# - opening_token_count 单位是"段首字符数"（去前导空白），对中英文同样适用。
+
+term_thresholds:
+  # English
+  significant: 5
+  comprehensive: 3
+  effective: 5
+  novel: 4
+  robust: 4
+  important: 5
+  various: 5
+  several: 5
+  numerous: 3
+  furthermore: 3
+  moreover: 3
+  notably: 3
+  obviously: 3
+  clearly: 4
+  # 中文
+  首先: 4
+  其次: 4
+  然而: 5
+  因此: 6
+  显然: 3
+  显著: 5
+  全面: 3
+  深入: 3
+  重要: 5
+  关键: 5
+  核心: 4
+
+burstiness:
+  consecutive_paragraphs: 3
+  # 前 K 个字符相同视为同款段首；英文 "Furtherm" / 中文 "首先，我" 均可触发
+  opening_token_count: 8
+
+throat_clearing:
+  patterns:
+    # English
+    - "^In order to better\\b"
+    - "^In this (?:section|chapter|paper|work),\\s+we\\b"
+    - "^It is worth (?:noting|mentioning) that\\b"
+    - "^It should be noted that\\b"
+    - "^As (?:mentioned|stated|discussed) (?:earlier|before|above|previously)\\b"
+    - "^Notably,"
+    - "^Furthermore,"
+    - "^Moreover,"
+    - "^In summary,"
+    - "^To summarize,"
+    # 中文
+    - "^综上所述"
+    - "^总而言之"
+    - "^由此可见"
+    - "^值得(?:指出|注意)的是"
+    - "^需要(?:指出|说明)的是"
+    - "^不难(?:发现|看出)"
+    - "^众所周知"
+    - "^首先[,，]"
+    - "^其次[,，]"
+
+punctuation:
+  max_em_dashes_per_doc: 5
+  ban_exclamation_in_body: true

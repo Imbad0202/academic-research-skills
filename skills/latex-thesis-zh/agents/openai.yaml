@@ -1,0 +1,4 @@
+interface:
+  display_name: "LaTeX Thesis ZH"
+  short_description: "Compile and inspect Chinese LaTeX theses with inference-first routing across template, structure, consistency, logic, and experiment review"
+  default_prompt: "Review my Chinese LaTeX thesis project, infer the right module from the request, sequence compatible modules when needed, ask only for missing entry-file or context details, run the relevant uv-backed scripts, and return thesis-focused findings."

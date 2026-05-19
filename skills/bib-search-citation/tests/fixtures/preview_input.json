@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "query": "photovoltaic",
+    "sort": "relevance",
+    "returned_entries": 1,
+    "matched_entries": 3,
+    "total_entries": 3,
+    "applied_filters": {}
+  },
+  "results": [
+    {
+      "key": "Lee2025Photovoltaic",
+      "title": "Photovoltaic Forecasting with Hybrid Mamba Models",
+      "author": "Min Lee",
+      "year": 2025,
+      "venue": "Solar Analytics Letters",
+      "doi": "10.1000/pv-mamba",
+      "eprint": "",
+      "keywords": "keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword keyword",
+      "annotation": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "abstract": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "entry_type": "article",
+      "score": 73.75,
+      "flags": {
+        "abstract": true,
+        "annotation": true,
+        "code": true,
+        "doi": true,
+        "keywords": true
+      },
+      "raw_bib": "@article{Lee2025Photovoltaic, title={Photovoltaic Forecasting with Hybrid Mamba Models}}"
+    }
+  ]
+}

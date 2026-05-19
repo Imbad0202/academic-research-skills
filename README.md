@@ -80,6 +80,24 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 ---
 
+## Post-writing polish & validation (merged from academic-writing-skills, MIT)
+
+The four ARS pipeline skills above focus on **research → write → review** with a heavy emphasis on producing new manuscripts. The five skills below — merged from [bahayonghang/academic-writing-skills](https://github.com/bahayonghang/academic-writing-skills) (MIT) — cover the complementary post-writing layer: format/compile diagnosis, bibliography hygiene, AI-tone removal on already-written prose. They sit alongside the ARS core in `skills/` and route by file extension or prompt intent.
+
+| Skill | Input | What it does | Triggers when |
+|---|---|---|---|
+| [`latex-paper-en`](skills/latex-paper-en/SKILL.md) | `.tex` | English LaTeX manuscript audit — ChkTeX lint, latexmk compile, AXES paragraph coherence, related-work synthesis, CrossRef + Semantic Scholar bib verification, anti-citation-stacking | "proofread my paper", "fix my LaTeX", "rewrite related work", "research gap", "三线表" on an existing `.tex` project |
+| [`latex-thesis-zh`](skills/latex-thesis-zh/SKILL.md) | `.tex` | Chinese degree thesis — GB/T 7714-2015, thuthesis / pkuthss / ustcthesis / fduthesis auto-detection, bilingual captions, oral-expression detection, chapter mainline checks | "毕业论文", "学位论文", "国标格式", "thuthesis", "三线表", "检查摘要" |
+| [`typst-paper`](skills/typst-paper/SKILL.md) | `.typ` | Typst paper polish with millisecond compile, Hayagriva/BibTeX checks, AXES coherence, bilingual title/captions | any `.typ` project mention, typst compile/export error, typst bibliography, lovelace/algorithmic |
+| [`bib-search-citation`](skills/bib-search-citation/SKILL.md) | `.bib` | Search/filter local BibTeX or BibLaTeX libraries (including Zotero exports) with compact expressions: `author:`, `year-gte`, `type:`, `has:` | "搜文献库", "查 BibTeX", "在文献库里找 Mamba 论文", "整理参考文献" |
+| [`aiwei-zh`](skills/aiwei-zh/SKILL.md) | `.md` `.txt` `.tex` `.typ` `.docx` | Detect and remove "AI tone" from Chinese academic prose — Huangfu 2026 six-dimension framework + three typographic hard gates (em-dash, JP/HK/TW quotes, Chinese straight quotes) | "去 AI 味", "读起来像 AI 写的", "破折号太多", "答辩稿/投稿前最后清一遍", "人机感", "活人感" |
+
+**Routing note:** These five do not overlap with the ARS core's *writing* function. `academic-paper` produces a draft from scratch; `latex-paper-en` / `latex-thesis-zh` / `typst-paper` polish a draft you already have. `aiwei-zh` is a Chinese-specific hard-gate complement to `academic-paper`'s general-purpose `writing_quality_check.md`. `bib-search-citation` complements `academic-paper`'s citation-check mode by searching your local `.bib` library before citing.
+
+**Not merged** from academic-writing-skills (intentional): `paper-audit` overlaps with `academic-paper-reviewer`; `industrial-ai-research` is a vertical subset of `deep-research`. See [`NOTICE.md`](NOTICE.md) for the full attribution and what was excluded and why.
+
+---
+
 ## Showcase: real pipeline output
 
 See the complete artifacts from a real 10-stage pipeline run — peer review reports, integrity verification reports, and the final paper:

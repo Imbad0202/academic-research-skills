@@ -1,0 +1,65 @@
+# AI Tone Threshold Configuration (Chinese thesis)
+#
+# 与 `AI_TONE_TERMS_ZH.md` 配对。`deai_check.py` 读取本文件，
+# 文件缺失时使用脚本内 DEFAULT_THRESHOLDS。
+#
+# 触发全部走 [Script] LOW provenance。
+# “每篇”指整份输入文件经 parser.extract_visible_text 抽取后的可见正文。
+
+term_thresholds:
+  # 字符串 -> 每篇出现次数上限。中文不分词，按 substring 计数。
+  首先: 4
+  其次: 4
+  然而: 5
+  此外: 4
+  因此: 6
+  另外: 3
+  进而: 3
+  而且: 4
+  显然: 3
+  通常: 4
+  一般: 5
+  尤其: 3
+  显著: 5
+  全面: 3
+  深入: 3
+  大量: 3
+  众多: 3
+  重要: 5
+  关键: 5
+  核心: 4
+  基本: 4
+  主要: 5
+  最为: 3
+  极为: 3
+  尤为: 3
+
+burstiness:
+  # 连续 N 段段首前 K 个中文字符完全相同时触发。
+  consecutive_paragraphs: 3
+  opening_token_count: 4
+
+throat_clearing:
+  # 段首正则；匹配每段第一条非空可见行，大小写不敏感。
+  patterns:
+    - "^综上所述"
+    - "^总而言之"
+    - "^总的来说"
+    - "^由此可见"
+    - "^值得(?:指出|注意)的是"
+    - "^需要(?:指出|说明)的是"
+    - "^不难(?:发现|看出)"
+    - "^众所周知"
+    - "^毋庸讳言"
+    - "^首先[,，]"
+    - "^其次[,，]"
+    - "^然而[,，]"
+    - "^此外[,，]"
+    - "^一方面"
+    - "^另一方面"
+
+punctuation:
+  # 整篇 “——” 出现总数上限。
+  max_em_dashes_per_doc: 5
+  # 中文感叹号 “！” 与英文 “!” 都视为正文不当。
+  ban_exclamation_in_body: true

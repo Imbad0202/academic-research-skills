@@ -1,0 +1,132 @@
+{
+  "skill_name": "latex-thesis-zh",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我定位这个中文学位论文 main.tex 为什么 XeLaTeX 一直编译失败，并判断是不是 thuthesis 模板。",
+      "expected_output": "先识别模板，再走 compile 模块，返回模板结论和编译排障建议。",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(template|compile|模板|编译)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "(thuthesis|pkuthss|ctexbook)", "description": "template detection attempted"},
+        {"type": "regex", "pattern": "[\\u4e00-\\u9fff]{5,}", "description": "Chinese output present"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "请梳理这篇硕士论文的章节结构，并检查术语和缩略语是否前后统一。",
+      "expected_output": "路由到 structure 和 consistency 模块，并给出结构概览与一致性问题。",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(structure|consistency|结构|一致)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "(术语|缩略|abbreviat)", "description": "terminology consistency checked"},
+        {"type": "regex", "pattern": "[\\u4e00-\\u9fff]{5,}", "description": "Chinese output present"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "按 GB/T 7714 帮我检查参考文献，再看看绪论是不是有明显 AI 腔。",
+      "expected_output": "路由到 bibliography 和 deai 模块，分别输出格式问题和去 AI 化建议。",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(bibliography|deai|参考文献|去AI)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "(GB.?T.?7714|国标)", "description": "GB/T standard referenced"},
+        {"type": "not_contains", "text": "\\cite{fabricated", "description": "no fabricated citations"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "请检查 related work 的逻辑链条，尤其是有没有只按作者年份罗列文献、以及有没有把研究空白推导出来。",
+      "expected_output": "路由到 logic 模块，指出文献综述的罗列式写法、研究空白缺失或跨章节闭合问题，但不改引用和公式。",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(罗列|研究空白|gap|A1|A3)", "description": "literature review quality checked"},
+        {"type": "not_contains", "text": "\\cite{fabricated", "description": "no fabricated citations"}
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "帮我看看实验章节和论文标题：实验写法是否像学位论文而不是项目汇报，标题是否过于空泛。",
+      "expected_output": "同时覆盖 title 和 experiment 两类问题，返回标题建议以及实验章节在论证深度、结果讨论和结论闭合上的审阅意见。",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(title|experiment|标题|实验)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "(建议|修改|优化)", "description": "actionable suggestions present"},
+        {"type": "regex", "pattern": "[\\u4e00-\\u9fff]{5,}", "description": "Chinese output present"}
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "请检查这篇中文学位论文是不是每一章、每一节、甚至四级标题后都写了导语；我担心很多地方标题后直接开始列点和公式。",
+      "expected_output": "路由到 logic 模块，检查标题后是否缺少导语段落，重点标出直接进入列表、图表、公式或下一级标题的地方。",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(导语|lead-in|S1)", "description": "heading lead-in check performed"},
+        {"type": "regex", "pattern": "[\\u4e00-\\u9fff]{5,}", "description": "Chinese output present"}
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "帮我看看章节衔接是不是太生硬，尤其是小节标题下面经常只有一句短话就马上开始表格和条目，这样像不像大论文规范问题？",
+      "expected_output": "识别为 logic/structure 相关问题，指出导语缺失或导语过短的标题层级，并说明这是中文学位论文的结构与逻辑衔接问题。",
+      "files": [],
+      "assertions": [
+        {"type": "regex", "pattern": "(logic|structure|逻辑|结构)", "description": "correct modules routed"},
+        {"type": "regex", "pattern": "(导语|衔接|过渡)", "description": "transition quality assessed"}
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "请检查绪论是不是像剥洋葱一样，从研究背景、技术瓶颈、前人不足再落到本文方法；我担心现在直接跳到了本文工作。",
+      "expected_output": "路由到 logic 模块，指出绪论漏斗链是否缺少技术瓶颈或前人不足推导，并保留引用与公式。",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(漏斗|funnel|瓶颈|bottleneck)", "description": "intro funnel analysis present"}
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "请检查摘要、创新点和结论是不是三胞胎：核心问题、方法、结果和增量贡献有没有对齐。",
+      "expected_output": "路由到 logic 模块，检查摘要、创新点/主要贡献、结论之间的三方一致性，并指出缺项或错位。",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(对齐|一致|alignment|C3)", "description": "cross-section closure checked"}
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "帮我看看这几章是不是在围绕同一个科学问题递进展开，还是只是把几个工作并排罗列出来。",
+      "expected_output": "路由到 logic 模块，给出章节主线关系的判断，重点标出缺少'基于上一章……本章进一步……'桥接的章节。",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "logic", "description": "logic module routed"},
+        {"type": "regex", "pattern": "(主线|递进|mainline|桥接)", "description": "chapter mainline assessed"}
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "请检查讨论部分是不是大锅炖，是否缺少机理解释、与前人比较、局限性和启示这些分层内容。",
+      "expected_output": "路由到 experiment 模块，报告讨论部分是否缺少分层结构，而不是只重复表格和数值。",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "experiment", "description": "experiment module routed"},
+        {"type": "regex", "pattern": "(分层|机理|局限|layer|mechanism|limitation)", "description": "discussion depth assessed"}
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "我的文献综述太像按作者年份点名了。请保留原有引用，只给我一个“共识-分歧-局限-空白-本文切入点”的重写蓝图。",
+      "expected_output": "路由到 literature 模块，指出罗列式写法或比较分析不足，并给出不新增引用的重写蓝图。",
+      "files": [],
+      "assertions": [
+        {"type": "contains", "text": "literature", "description": "literature module routed"},
+        {"type": "regex", "pattern": "(共识|分歧|局限|空白|切入点)", "description": "rewrite blueprint present"},
+        {"type": "not_contains", "text": "\\cite{fabricated", "description": "no fabricated citations"}
+      ]
+    }
+  ]
+}

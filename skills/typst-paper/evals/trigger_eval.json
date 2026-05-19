@@ -1,0 +1,90 @@
+{
+  "skill_name": "typst-paper",
+  "queries": [
+    {
+      "query": "Fix my Typst paper main.typ — typst compile is failing on the abstract block.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Check my .typ manuscript for Hayagriva bibliography errors and missing citations.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Polish the related-work section of my Typst paper and derive a sharper research gap.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "My Typst paper has too many long sentences — help me tighten them and check logic flow.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Reformat my .typ paper for an ACM venue and verify the three-line table style.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Convert my lovelace algorithm in Typst to look more like algpseudocodex.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "帮我润色这篇用 typst 写的中文论文，去掉明显的 AI 表达。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Translate the experiment section of my Chinese .typ paper into academic English.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Optimize the title of my Typst submission to make the contribution clearer.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Run a submission-readiness check on my .typ manuscript before I send it.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Proofread my IEEE conference paper main.tex and fix biber issues.",
+      "should_trigger": false,
+      "category": "negative-overlap-en"
+    },
+    {
+      "query": "检查我的中文学位论文 GB/T 7714 参考文献格式。",
+      "should_trigger": false,
+      "category": "negative-overlap-zh"
+    },
+    {
+      "query": "Act as a strict reviewer and produce a peer-review report with major/minor issues.",
+      "should_trigger": false,
+      "category": "negative-overlap-audit"
+    },
+    {
+      "query": "Search references.bib for papers on industrial anomaly detection.",
+      "should_trigger": false,
+      "category": "negative-overlap-bib"
+    },
+    {
+      "query": "Write a literature survey on smart manufacturing and digital twin.",
+      "should_trigger": false,
+      "category": "negative-overlap-research"
+    },
+    {
+      "query": "Set up a CI pipeline for my Node.js project on GitHub Actions.",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    },
+    {
+      "query": "Recommend a good Italian restaurant near downtown.",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    }
+  ]
+}

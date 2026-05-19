@@ -1,0 +1,90 @@
+{
+  "skill_name": "latex-thesis-zh",
+  "queries": [
+    {
+      "query": "检查我的硕士学位论文，看 GB/T 7714 参考文献格式有没有问题。",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "我的博士论文用的是 thuthesis 模板，章节结构有点乱，帮我梳理一下。",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "中文学位论文里的术语前后不一致，跑一下一致性检查。",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "帮我重新组织硕士论文第二章的文献综述，给出 research gap。",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "审一下我的中文摘要结构，看是不是缺了背景/方法/结果/结论某一块。",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "pkuthss 模板 XeLaTeX 编译卡住了，看看是不是 bib 出了问题。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "我的硕士论文段落都太长了，帮我做去 AI 化的轻润色。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "实验章节的描述太啰嗦，能不能帮我精简一下表达。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "帮我优化博士论文标题，让它更聚焦贡献。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "三线表格式不对，正文也没引用 Table 标号，帮我检查全文。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Proofread my IEEE conference paper written in English LaTeX.",
+      "should_trigger": false,
+      "category": "negative-overlap-en"
+    },
+    {
+      "query": "Fix my Typst thesis compile error and check Hayagriva bibliography.",
+      "should_trigger": false,
+      "category": "negative-overlap-typst"
+    },
+    {
+      "query": "审稿一下这篇中文论文，给出主要/次要问题清单。",
+      "should_trigger": false,
+      "category": "negative-overlap-audit"
+    },
+    {
+      "query": "搜一下我的 BibTeX 文献库里张文 2023 年关于 Mamba 的论文。",
+      "should_trigger": false,
+      "category": "negative-overlap-bib"
+    },
+    {
+      "query": "帮我写一篇关于工业 AI 异常检测的综述初稿。",
+      "should_trigger": false,
+      "category": "negative-overlap-research"
+    },
+    {
+      "query": "帮我把这段 Python 代码翻译成 Java。",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    },
+    {
+      "query": "帮我订一张明天去上海的高铁票。",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    }
+  ]
+}

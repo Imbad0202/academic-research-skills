@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bib Search Citation"
+  short_description: "Search, filter, and format BibTeX/BibLaTeX entries with compact query syntax and LaTeX/Typst citation generation"
+  default_prompt: "Search the user's .bib file using the compact query language or JSON spec, apply filters (author, year, type, has), rank by relevance, and return research-oriented fields with citation snippets."

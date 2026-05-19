@@ -1,7 +1,7 @@
 {
   "name": "academic-research-skills",
-  "version": "3.7.0",
-  "description": "Production-grade academic research pipeline for Claude Code: research → write → review → revise → finalize. Ships 4 skills (deep-research, academic-paper, academic-paper-reviewer, academic-pipeline) covering 35+ modes, 32-agent ensemble, Material Passport handoff schema, v3.6.7 cross-model audit gate (synthesis + research-architect + report-compiler pattern protection layer), and v3.6.8 generator-evaluator contract for paper drafting.",
+  "version": "3.7.0-merged",
+  "description": "Production-grade academic research pipeline for Claude Code: research → write → review → revise → finalize. Ships 9 skills covering 35+ modes, 32-agent ensemble, Material Passport handoff schema, v3.6.7 cross-model audit gate, and v3.6.8 generator-evaluator contract. ARS core (CC-BY-NC-4.0): deep-research, academic-paper, academic-paper-reviewer, academic-pipeline. Post-writing polish (merged from bahayonghang/academic-writing-skills, MIT): latex-paper-en (English LaTeX), latex-thesis-zh (Chinese degree thesis GB/T 7714 + thuthesis/pkuthss), typst-paper (Typst), bib-search-citation (local .bib search), aiwei-zh (Chinese AI-tone removal, Huangfu 2026 six-dim + em-dash hard gate).",
   "author": {
     "name": "Cheng-I Wu",
     "url": "https://github.com/Imbad0202"
@@ -18,6 +18,14 @@
     "literature-review",
     "systematic-review",
     "peer-review",
-    "scholarly-publishing"
+    "scholarly-publishing",
+    "latex",
+    "typst",
+    "bibtex",
+    "gb-t-7714",
+    "chinese-thesis",
+    "de-ai",
+    "polish",
+    "submission-gate"
   ]
 }

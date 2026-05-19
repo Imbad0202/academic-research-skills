@@ -1,0 +1,4 @@
+interface:
+  display_name: "LaTeX Paper EN"
+  short_description: "Compile and review English LaTeX papers with inference-first module routing, multi-module sequencing, and source-preserving findings"
+  default_prompt: "Review my English LaTeX paper project, infer the smallest matching module from the request, sequence compatible modules when needed, ask only for missing file or section details, run the relevant uv-backed checks, and return LaTeX-friendly findings."

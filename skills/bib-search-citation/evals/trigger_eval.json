@@ -1,0 +1,90 @@
+{
+  "skill_name": "bib-search-citation",
+  "queries": [
+    {
+      "query": "Search my references.bib for Cheng papers after 2024 on Mamba forecasting and give me the BibTeX entries.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Find every entry in library.bib whose abstract mentions photovoltaic and annotation has CodeAvailable.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "List the newest article-type entries in my Zotero export, sorted by year descending.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "搜一下我的 BibTeX 文献库里 2024 年以后的工业异常检测论文。",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "查一下 Cheng 2024 那篇文章在我的 .bib 里有没有，给我 LaTeX 引用片段。",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Filter my bibliography by venue:NeurIPS year>=2023 and return both LaTeX and Typst cite snippets.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "整理一下我从 Zotero 导出的参考文献，按主题分组列出来。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "查一下我的 .bib 里有没有 Mamba 相关的论文，最好按年份排序。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Look up by arXiv ID 2401.04081 in my library.bib and return the raw entry.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "导出我 .bib 里 type:article 且 has:doi 的所有条目。",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Verify the BibTeX entries in my paper compile correctly and fix any biber errors.",
+      "should_trigger": false,
+      "category": "negative-overlap-en"
+    },
+    {
+      "query": "帮我写一段关于工业大模型的相关工作章节，配引用。",
+      "should_trigger": false,
+      "category": "negative-overlap-research"
+    },
+    {
+      "query": "Proofread my .tex paper and improve the related-work section.",
+      "should_trigger": false,
+      "category": "negative-overlap-en"
+    },
+    {
+      "query": "审稿一下我的论文，告诉我引用的文献够不够全。",
+      "should_trigger": false,
+      "category": "negative-overlap-audit"
+    },
+    {
+      "query": "Search the web for the latest Mamba paper on arXiv.",
+      "should_trigger": false,
+      "category": "negative-overlap-online"
+    },
+    {
+      "query": "帮我设计一个数据库表结构存储论文元数据。",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    },
+    {
+      "query": "What's the weather forecast for tomorrow in Beijing?",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    }
+  ]
+}

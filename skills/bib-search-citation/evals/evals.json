@@ -1,0 +1,60 @@
+{
+  "skill_name": "bib-search-citation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Search references.bib for Cheng papers after 2024 on Mamba forecasting and return both LaTeX and Typst citations.",
+      "expected_output": "Route to the query module, use compact filters for author, year, has:code, cite:both, and return matched entries with LaTeX and Typst citation snippets without inventing metadata.",
+      "files": ["tests/fixtures/library.bib"],
+      "assertions": [
+        {"type": "contains", "text": "query", "description": "query module selected"},
+        {"type": "regex", "pattern": "(author:Cheng|Cheng)", "description": "author filter preserved"},
+        {"type": "regex", "pattern": "(cite:both|LaTeX.*Typst|Typst.*LaTeX)", "description": "both citation modes requested"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Find the best TimeMachine match in library.bib and return one raw BibTeX entry plus cite snippets.",
+      "expected_output": "Route to the query module with raw:true, cite:both, and limit:1, preserve the raw BibTeX exactly, and include citation snippets only for the matched entry.",
+      "files": ["tests/fixtures/library.bib"],
+      "assertions": [
+        {"type": "contains", "text": "raw:true", "description": "raw export requested"},
+        {"type": "regex", "pattern": "(limit:1|one raw)", "description": "single-entry limit preserved"},
+        {"type": "not_contains", "text": "fabricated", "description": "no fabricated metadata"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Show entries whose annotation contains CodeAvailable and whose abstract mentions photovoltaic, but do not include raw BibTeX.",
+      "expected_output": "Use field filters for annotation and abstract, keep raw BibTeX disabled, and report matches with only the requested research fields.",
+      "files": ["tests/fixtures/library.bib"],
+      "assertions": [
+        {"type": "regex", "pattern": "(annotation:CodeAvailable|field_contains)", "description": "annotation filter used"},
+        {"type": "contains", "text": "photovoltaic", "description": "abstract/topic term preserved"},
+        {"type": "not_contains", "text": "raw_bib", "description": "raw BibTeX not exposed"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "List the newest article entries in references.bib even if I provide only filters and no topic words.",
+      "expected_output": "Handle the filter-only query by using type:article with sort:year_desc, explain that equal relevance scores are expected, and order results by year.",
+      "files": ["tests/fixtures/library.bib"],
+      "assertions": [
+        {"type": "contains", "text": "sort:year_desc", "description": "newest-first sort used"},
+        {"type": "regex", "pattern": "(filter-only|only filters|no topic)", "description": "filter-only behavior explained"},
+        {"type": "contains", "text": "type:article", "description": "entry type filter used"}
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "My query author:Nonexistent year>=2030 returns nothing. Tell me how to recover without making up references.",
+      "expected_output": "Report the empty result, avoid fabricating references, and suggest relaxing has constraints, widening years, shortening topic terms, or checking author spelling.",
+      "files": ["tests/fixtures/library.bib"],
+      "assertions": [
+        {"type": "regex", "pattern": "(empty|zero|no entries|no matches)", "description": "empty result stated"},
+        {"type": "regex", "pattern": "(widen|relax|spelling|broaden)", "description": "recovery advice given"},
+        {"type": "not_contains", "text": "invented", "description": "no invented references"}
+      ]
+    }
+  ]
+}

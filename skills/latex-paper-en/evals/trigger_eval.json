@@ -1,0 +1,95 @@
+{
+  "skill_name": "latex-paper-en",
+  "queries": [
+    {
+      "query": "Proofread my IEEE conference paper main.tex and tighten the abstract.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Fix my LaTeX manuscript — there are some grammar issues and the related work needs polishing.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Check my .tex file for booktabs three-line table compliance and Algorithm 1 formatting.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Improve the writing of my NeurIPS submission — sentences are too long and the logic flow is weak.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Help me derive the research gap from my related work section in this LaTeX paper.",
+      "should_trigger": true,
+      "category": "core"
+    },
+    {
+      "query": "Convert my algorithm2e block to algpseudocodex and make Require/Ensure consistent.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "My ACM submission won't compile — fix the BibTeX/biber errors and verify citations.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Adapt this Springer LNCS template paper for IEEE Access submission.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Run a de-AI pass on my .tex paper to remove obvious AI tone words.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Translate the experiment section of my Chinese paper into academic English LaTeX.",
+      "should_trigger": true,
+      "category": "edge"
+    },
+    {
+      "query": "Search my references.bib for Mamba forecasting papers after 2024.",
+      "should_trigger": false,
+      "category": "negative-overlap-bib"
+    },
+    {
+      "query": "Act as a strict reviewer and write a peer-review report on my paper with major/minor issues.",
+      "should_trigger": false,
+      "category": "negative-overlap-audit"
+    },
+    {
+      "query": "Gate-check this submission and tell me whether it is ready to submit.",
+      "should_trigger": false,
+      "category": "negative-overlap-audit"
+    },
+    {
+      "query": "Polish my Chinese master's thesis chapter on literature review.",
+      "should_trigger": false,
+      "category": "negative-overlap-zh"
+    },
+    {
+      "query": "Fix my Typst paper compilation error in main.typ.",
+      "should_trigger": false,
+      "category": "negative-overlap-typst"
+    },
+    {
+      "query": "Write a survey on industrial anomaly detection with Industry 4.0 framing.",
+      "should_trigger": false,
+      "category": "negative-overlap-research"
+    },
+    {
+      "query": "Help me draft a vacation request email to my manager.",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    },
+    {
+      "query": "Debug this Python script that crashes on numpy import.",
+      "should_trigger": false,
+      "category": "negative-unrelated"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+# AI Tone Threshold Configuration (English papers)
+#
+# These thresholds drive the four data-driven checkers added to deai_check.py:
+#   term_threshold / burstiness / throat_clearing / punctuation
+#
+# All triggers emit LOW severity with [Script] provenance.
+# A user can override any field by editing this file; the script falls back to
+# the in-file defaults when this YAML is missing or unparseable.
+#
+# "Per doc" counts use the entire visible prose of the input file (after
+# parser.extract_visible_text strips citations, refs, math, and comments).
+
+term_thresholds:
+  # word -> max allowed occurrences per document (case-insensitive, word boundary)
+  significant: 5
+  comprehensive: 3
+  effective: 5
+  novel: 4
+  robust: 4
+  important: 5
+  various: 5
+  several: 5
+  numerous: 3
+  furthermore: 3
+  moreover: 3
+  notably: 3
+  remarkable: 3
+  remarkably: 3
+  obvious: 3
+  obviously: 3
+  clearly: 4
+
+burstiness:
+  # Trigger when N consecutive paragraphs start with the same opening tokens.
+  consecutive_paragraphs: 3
+  opening_token_count: 2
+
+throat_clearing:
+  # Paragraph-leading boilerplate that adds no information.
+  # Each entry is a regex; matched at the start of the first non-empty line
+  # of a paragraph (case-insensitive).
+  patterns:
+    - "^In order to better\\b"
+    - "^In this (?:section|chapter|paper|work),\\s+we\\b"
+    - "^It is worth (?:noting|mentioning) that\\b"
+    - "^It should be noted that\\b"
+    - "^As (?:mentioned|stated|discussed) (?:earlier|before|above|previously)\\b"
+    - "^Notably,"
+    - "^Furthermore,"
+    - "^Moreover,"
+    - "^In summary,"
+    - "^To summarize,"
+
+punctuation:
+  # Em-dash overuse: count of "---" plus "—" across the document.
+  max_em_dashes_per_doc: 5
+  # Body-level "!" is non-academic; abstract / intro / methods / results / discussion / conclusion.
+  ban_exclamation_in_body: true
