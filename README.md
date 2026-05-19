@@ -1,4 +1,5 @@
-# 随便加一行
+# 随便加一行wo men yesorno
+zaijia dierxhang
 # Academic Research Skills for Claude Code
 
 [![Version](https://img.shields.io/badge/version-v3.9.4.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4.1)
