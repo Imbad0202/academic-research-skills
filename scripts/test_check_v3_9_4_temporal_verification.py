@@ -169,6 +169,29 @@ def test_citation_provenance_high_requires_both_sources():
         jsonschema.validate(bad, schema)
 
 
+def test_citation_provenance_high_rejects_absent_sources():
+    """v3.9.4.1 hotfix: confidence:high MUST also reject entries that OMIT crossref_issued
+    and pdftotext_cover_first_line entirely. The v3.9.4 allOf used `then.properties` only,
+    which does not fire when the property is absent — so an entry with confidence:high and
+    no source fields silently passed validation. v3.9.4.1 adds `then.required` to enforce presence."""
+    schema = _load_schema("citation_provenance.schema.json")
+    bad = {
+        "schema_version": "1.0",
+        "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
+        "entries": [
+            {
+                "citation_key": "x",
+                # Both crossref_issued AND pdftotext_cover_first_line absent.
+                "verification_method": "crossref_and_pdftotext",
+                "confidence": "high",
+                "notes": None,
+            }
+        ],
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, schema)
+
+
 @pytest.mark.parametrize("finding_kind,mode,severity,bound_refs,bound_event,bound_dates,matched_span", [
     ("TEMPORAL-ARITHMETIC-IMPOSSIBLE", 1, "HIGH", [], None,
      {"left": {"role": "anchor", "value": "2025-03", "source": "draft_capture", "ref_slug": None},

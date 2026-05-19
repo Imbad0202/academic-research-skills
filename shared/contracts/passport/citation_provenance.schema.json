@@ -88,12 +88,13 @@
       },
       "allOf": [
         {
-          "description": "confidence:high requires both crossref_issued AND pdftotext_cover_first_line non-null (spec §3.4 agreement table row 1).",
+          "description": "confidence:high requires both crossref_issued AND pdftotext_cover_first_line PRESENT and non-null (spec §3.4 agreement table row 1). v3.9.4.1 hotfix: also require the properties so absent ones don't bypass the non-null check.",
           "if": {
             "properties": { "confidence": { "const": "high" } },
             "required": ["confidence"]
           },
           "then": {
+            "required": ["crossref_issued", "pdftotext_cover_first_line"],
             "properties": {
               "crossref_issued": { "not": { "type": "null" } },
               "pdftotext_cover_first_line": { "not": { "type": "null" } }
