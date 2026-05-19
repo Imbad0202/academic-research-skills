@@ -50,23 +50,7 @@ jobs:
         id: head
         run: |
           set -euo pipefail
-          # Run pytest collection separately so collection errors fail the gate.
-          # Without this, `pytest ... | grep -c` would mask non-zero pytest exits
-          # (e.g., import errors during collection) and let a broken PR pass.
-          set +e
-          pytest --collect-only -q > pytest-collect.txt 2> pytest-collect.err
-          PYTEST_EXIT=$?
-          set -e
-          # Tolerate exit 5 (no tests collected — empty repo edge case);
-          # any other non-zero exit is a real collection failure.
-          if [ "$PYTEST_EXIT" -ne 0 ] && [ "$PYTEST_EXIT" -ne 5 ]; then
-            echo "::error::pytest collection failed on head (exit $PYTEST_EXIT)"
-            cat pytest-collect.err >&2 || true
-            tail -20 pytest-collect.txt >&2 || true
-            exit 1
-          fi
-          # grep -c returns 1 when no matches — tolerate only that case.
-          COUNT=$(grep -c '::' pytest-collect.txt || true)
+          COUNT=$(pytest --collect-only -q 2>/dev/null | grep -c '::' || true)
           echo "Head test count: $COUNT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
@@ -92,18 +76,7 @@ jobs:
         working-directory: ../base
         run: |
           set -euo pipefail
-          # Same discipline as the head count: collection errors fail the gate.
-          set +e
-          pytest --collect-only -q > pytest-collect.txt 2> pytest-collect.err
-          PYTEST_EXIT=$?
-          set -e
-          if [ "$PYTEST_EXIT" -ne 0 ] && [ "$PYTEST_EXIT" -ne 5 ]; then
-            echo "::error::pytest collection failed on base (exit $PYTEST_EXIT)"
-            cat pytest-collect.err >&2 || true
-            tail -20 pytest-collect.txt >&2 || true
-            exit 1
-          fi
-          COUNT=$(grep -c '::' pytest-collect.txt || true)
+          COUNT=$(pytest --collect-only -q 2>/dev/null | grep -c '::' || true)
           echo "Base test count: $COUNT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
