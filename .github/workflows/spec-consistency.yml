@@ -121,7 +121,10 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s globstar nullglob
-          ARS_VERSION=$(grep -m1 -oE '## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+          # Widened from 3-segment to N-segment so 4+ segment hotfix entries
+          # (e.g. ## [3.9.4.2]) match without falling through to a predecessor.
+          # Same defect class as #169 (closed by PR #173).
+          ARS_VERSION=$(grep -m1 -oE '## \[[0-9]+(\.[0-9]+)+\]' CHANGELOG.md | grep -oE '[0-9]+(\.[0-9]+)+' || true)
           if [[ -z "$ARS_VERSION" ]]; then
             echo "ERROR: could not extract ARS version from CHANGELOG.md (need '## [X.Y.Z]' heading)" >&2
             exit 1
