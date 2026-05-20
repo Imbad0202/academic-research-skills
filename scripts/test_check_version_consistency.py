@@ -397,6 +397,45 @@ class TestVersionConsistency(unittest.TestCase):
             self.assertIn("3.9.4.1", result.stdout)
             self.assertIn("3.9.4.2", result.stdout)
 
+    def test_five_segment_token_rejected_as_non_canonical(self) -> None:
+        """Regression for #178: post-ship codex review of PR #173 flagged that
+        SEMVER_STRICT_RE used `{2,}` (3 or more dot segments) with no upper
+        bound, so a 5-segment token like 3.9.4.2.1 passed the canonical check
+        even though the file-level docstrings and #173 design defined canonical
+        as N.N.N or N.N.N.N. If a 5-segment typo were copied consistently to
+        CLAUDE.md, CHANGELOG.md, and the pipeline table, the lint would have
+        passed despite the malformed shape. Cap to {2,3}: 4 segments max."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # All four sources self-consistent on a 5-segment typo. Pre-fix:
+            # all three regexes captured "3.9.4.2.1" verbatim, _is_strict_semver
+            # returned True (matched {2,} = 3 or more segments), and every
+            # invariant compared two identical strings — lint reported PASS
+            # even though the shape was malformed. Post-fix: SEMVER_STRICT_RE
+            # rejects 5+ segments, so the suite, table row, and CHANGELOG
+            # entry all surface as "canonical" violations.
+            skills_5seg = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.2.1"),
+            ]
+            for name, ver in skills_5seg:
+                _write_skill(root, name, ver)
+            _write_claude_md(
+                root, suite_version="3.9.4.2.1", table_rows=skills_5seg
+            )
+            _write_changelog(
+                root, latest_version="3.9.4.2.1", prior_versions=["3.9.4.2"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertIn("3.9.4.2.1", result.stdout)
+            self.assertIn("canonical", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

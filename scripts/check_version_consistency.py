@@ -33,7 +33,7 @@ SUITE_TOKEN_RE = re.compile(
     r"^\s*-\s*\*\*Suite version\*\*:\s*([A-Za-z0-9.\-_+]+)", re.MULTILINE
 )
 CHANGELOG_TOKEN_RE = re.compile(r"^##\s*\[([A-Za-z0-9.\-_+]+)\]", re.MULTILINE)
-SEMVER_STRICT_RE = re.compile(r"^\d+(?:\.\d+){2,}$")  # 3 or more segments
+SEMVER_STRICT_RE = re.compile(r"^\d+(?:\.\d+){2,3}$")  # exactly 3 or 4 segments (N.N.N or N.N.N.N)
 
 NON_VERSION_CHANGELOG_TOKENS = frozenset({"Unreleased"})
 
