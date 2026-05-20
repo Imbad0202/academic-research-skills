@@ -1,4 +1,4 @@
-# ARS Pipeline Architecture (v3.9.4.1)
+# ARS Pipeline Architecture (v3.9.4.2)
 
 Full pipeline view across stages × skills × artifacts × gates. Every completed stage requires a user-confirmation checkpoint (per `academic-pipeline/SKILL.md` and `pipeline_state_machine.md`); the diagrams below surface the **decision-heavy** checkpoints visually so they are easy to locate. The post-stage confirmation checkpoints at 2.5 and 4.5 are machine-verified first, then confirmed by the user — they are not skipped.
 
@@ -350,6 +350,12 @@ timeline
              : _date_to_interval parses all schema-valid date shapes (YYYY-MM + interval)
              : P4 binds direct-date captures (not only ref markers)
              : citation_provenance.schema.json confidence:high requires presence
+    v3.9.4.2 : CI discipline hardening (PR #149 + #153 + #157; codex post-ship 3 of 4 P2)
+             : F1 harness-retirement-monthly adds GH_REPO for scheduled runs
+             : F2 release-cooldown filters PREV_TAG lookup to v* tags only
+             : F3 release-cooldown reads annotated tag subject + accepts hot-fix spelling
+             : [skip-cooldown] override now read from both commit message and tag message
+             : F4 test-count-monotonic harden reverted (surfaced #154; re-attempt #155)
 ```
 
 ## 9. Skill Modes
@@ -359,4 +365,4 @@ timeline
 | `deep-research` v2.9.4 | full, quick, socratic, review, lit-review, fact-check, systematic-review (7) |
 | `academic-paper` v3.1.2 | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure (10) |
 | `academic-paper-reviewer` v1.9.1 | full, re-review, quick, methodology-focus, guided, calibration (6) |
-| `academic-pipeline` v3.9.4.1 | orchestrator (delegates to sub-skill modes) + `resume_from_passport=<hash>` (v3.6.3 — resume a prior pipeline run from a Material Passport reset boundary; no flag required to invoke. The producing session must have set `ARS_PASSPORT_RESET=1` to emit boundary entries.) + `ARS_CLAIM_AUDIT=1` (v3.8 — opt-in Stage 4→5 L3 claim-faithfulness audit gate; default OFF) + v3.9.4 temporal verification advisory layer (M1 timeline_extraction_agent + M2 5-pass verifier at Phase 4→5 + M3 IRON RULE + M6 first-party Crossref/pdftotext) |
+| `academic-pipeline` v3.9.4.2 | orchestrator (delegates to sub-skill modes) + `resume_from_passport=<hash>` (v3.6.3 — resume a prior pipeline run from a Material Passport reset boundary; no flag required to invoke. The producing session must have set `ARS_PASSPORT_RESET=1` to emit boundary entries.) + `ARS_CLAIM_AUDIT=1` (v3.8 — opt-in Stage 4→5 L3 claim-faithfulness audit gate; default OFF) + v3.9.4 temporal verification advisory layer (M1 timeline_extraction_agent + M2 5-pass verifier at Phase 4→5 + M3 IRON RULE + M6 first-party Crossref/pdftotext) |

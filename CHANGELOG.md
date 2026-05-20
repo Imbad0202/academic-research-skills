@@ -8,6 +8,23 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.9.4.2] - 2026-05-19 — Post-ship hotfix for PR #149 CI discipline gates
+
+**Trigger:** Codex post-ship review of PR #149 (7 CI discipline gates mechanizing the release-cycle review chain) surfaced 4 P2 findings. v3.9.4.2 hardens 3 of 4; the 4th (test-count-monotonic harden) was reverted because it surfaced a pre-existing `scripts/` package issue, tracked as #154 (since fixed by PR #158) and re-attempt #155.
+
+**CI gate hardening (PR #149 + #153):**
+- **F1 — harness-retirement scheduler context:** `harness-retirement-monthly.yml` adds `GH_REPO` so scheduled runs have repo context for `gh issue create` (workflow was silently failing on cron without it).
+- **F2 — release-cooldown tag filter:** `release-cooldown.yml` filters `PREV_TAG` lookup to `v*` tags so non-release tags (e.g., legacy plugin tags) cannot bypass the cooldown gate.
+- **F3 — release-cooldown hot-fix detection:** `release-cooldown.yml` also reads annotated tag subject + accepts the `hot-fix` spelling variant; v3.9.2 was previously a false-negative hotfix under the old detector.
+- **F4 (reverted):** `test-count-monotonic.yml` harden landed in 8121dfa and reverted in 4abf9de when it surfaced `scripts/` package import errors (`ModuleNotFoundError: No module named 'scripts'`) — pre-existing latent defect masked by the prior `2>/dev/null | || true` pattern. Tracked as #154 (now closed by PR #158) and re-attempt #155.
+
+**Release-cooldown symmetry follow-up (PR #157):**
+- Override token `[skip-cooldown]` now read from both the commit message AND the annotated tag message. This v3.9.4.2 tag itself is the self-bootstrapping fix — the gate correctly identified v3.9.4.1 (3h prior) as the previous hotfix and fired the 24h cooldown, proving F2+F3 work end-to-end. The override symmetry patch makes the tag shippable.
+
+**Closes:** #152. **Follow-ups:** #154 (closed by PR #158), #155, #156.
+
+---
+
 ## [3.9.4.1] - 2026-05-19 — Post-ship hotfix for v3.9.4 temporal verification
 
 **Trigger:** Codex post-ship review of v3.9.4 squash commit `af09cf5` surfaced 4 real bugs that per-task subagent reviewers missed during v3.9.4 implementation. v3.9.4 tag remains immutable; v3.9.4.1 patches the verifier and schema layer + brings docs in alignment.

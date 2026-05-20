@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.9.4.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4.1)
+[![Version](https://img.shields.io/badge/version-v3.9.4.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4.2)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -320,6 +320,12 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.9.4.2 (2026-05-19) — PR #149 CI 規律ゲートのポストシップホットフィックス（codex post-ship）
+
+> *[machine-translated, pending native review by @eltociear]*
+>
+> PR #149（7 つの CI 規律ゲート）の Codex post-ship レビューが 4 つの P2 finding を検出。v3.9.4.2 は 4 つのうち 3 つを強化。F1：`harness-retirement-monthly.yml` に `GH_REPO` を追加し、スケジュール実行が `gh issue create` のための repo context を取得できるようにする。F2：`release-cooldown.yml` が `PREV_TAG` ルックアップを `v*` タグにフィルタリングし、非リリースタグ（例：レガシー plugin タグ）がクールダウンゲートをバイパスできないようにする。F3：`release-cooldown.yml` が annotated タグの subject も読み取り、`hot-fix` スペル変種を受け入れる（v3.9.2 は以前の検出器では false-negative hotfix だった）。PR #157 follow-up：`[skip-cooldown]` override が commit message と annotated タグ message の両方から読み取られるようになる（self-bootstrapping fix — 本タグのクールダウンバイパスが F2+F3 がエンドツーエンドで機能することを実証）。F4（test-count-monotonic 強化）は事前存在する `scripts/` パッケージ問題を surface したため revert され、#154（PR #158 で修正済み）+ 再試行 #155 として追跡。Closes #152。Follow-ups：#155、#156。
 
 ### v3.9.4.1 (2026-05-19) — v3.9.4 temporal verification のポストシップホットフィックス（#135 codex post-ship）
 

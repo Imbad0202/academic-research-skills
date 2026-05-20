@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.9.4.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4.1)
+[![Version](https://img.shields.io/badge/version-v3.9.4.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4.2)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -301,6 +301,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.9.4.2（2026-05-19）— PR #149 CI 紀律 gate post-ship hotfix（codex post-ship）
+
+> Codex post-ship review 對 PR #149（7 道 CI 紀律 gate）抓到 4 個 P2 finding；v3.9.4.2 修齊其中 3 個。F1：`harness-retirement-monthly.yml` 補 `GH_REPO`，讓排程跑能取到 repo context 給 `gh issue create`。F2：`release-cooldown.yml` 把 `PREV_TAG` 查詢 filter 到 `v*` tag，避免非 release tag（如舊 plugin tag）繞過 cooldown gate。F3：`release-cooldown.yml` 加讀 annotated tag subject + 接受 `hot-fix` 拼寫變體（v3.9.2 在舊偵測器下是 false-negative hotfix）。PR #157 follow-up：`[skip-cooldown]` override 改從 commit message 跟 annotated tag message 雙處讀取（self-bootstrapping fix — 本 tag 的 cooldown 繞過正好證明 F2+F3 端到端可用）。F4（test-count-monotonic 強化）被 revert，因為它 surface 了 `scripts/` package 預存問題，追蹤為 #154（已由 PR #158 修復）+ 再次嘗試 #155。Closes #152。Follow-ups：#155、#156。
 
 ### v3.9.4.1（2026-05-19）— v3.9.4 時序驗證 post-ship hotfix（#135 codex post-ship）
 
