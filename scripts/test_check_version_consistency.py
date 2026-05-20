@@ -259,6 +259,108 @@ class TestVersionConsistency(unittest.TestCase):
             self.assertIn("3.9.4.1", result.stdout)
             self.assertIn("CHANGELOG", result.stdout)
 
+    def test_five_segment_changelog_does_not_silently_fall_through(self) -> None:
+        """Regression for dual-track review of #169: an N+1 segment latest
+        entry (e.g. 3.9.4.2.1) must not silently skip to the next valid
+        3-or-4 segment predecessor. Pre-fix CHANGELOG_ENTRY_RE failed on
+        the 5-segment heading and `re.search` fell through to a predecessor;
+        if that predecessor happened to equal the suite version, the lint
+        reported PASS even though the actual latest release was a different
+        version."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            skills = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.2"),
+            ]
+            for name, ver in skills:
+                _write_skill(root, name, ver)
+            _write_claude_md(root, suite_version="3.9.4.2", table_rows=skills)
+            _write_changelog(
+                root, latest_version="3.9.4.2.1", prior_versions=["3.9.4.2"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertIn("3.9.4.2.1", result.stdout)
+            # Either path is acceptable surfacing: either the suite-vs-CHANGELOG
+            # mismatch (if the new 5-seg token is itself accepted as canonical
+            # under the broadened validator) or an invalid-token report.
+            self.assertTrue(
+                "does not match CHANGELOG latest entry" in result.stdout
+                or "canonical" in result.stdout,
+                msg=f"expected either drift or invalid-token surface: {result.stdout!r}",
+            )
+
+    def test_invalid_table_row_token_is_reported(self) -> None:
+        """Regression for dual-track review of #169: a table row carrying a
+        non-canonical version token (e.g. v3.9.4.2-alpha or v3.9.4.2.1) must
+        surface as an error. Pre-fix: TABLE_ROW_RE failed and the row silently
+        vanished from table_versions, so invariant 3 (pipeline tracks suite)
+        was skipped because `pipeline_in_table` ended up None."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            skills_on_disk = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.2"),
+            ]
+            for name, ver in skills_on_disk:
+                _write_skill(root, name, ver)
+            table_rows_with_junk = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.2-alpha"),  # invalid token
+            ]
+            _write_claude_md(
+                root, suite_version="3.9.4.2", table_rows=table_rows_with_junk
+            )
+            _write_changelog(
+                root, latest_version="3.9.4.2", prior_versions=["3.9.4"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertIn("academic-pipeline", result.stdout)
+            self.assertIn("3.9.4.2-alpha", result.stdout)
+            self.assertIn("canonical", result.stdout)
+
+    def test_invalid_suite_token_is_reported(self) -> None:
+        """Regression for dual-track review of #169: a non-canonical suite
+        version token (e.g. 3.9.4.2-alpha) must surface as an error rather
+        than being partially captured as 3.9.4.2 via prefix match."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            skills = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.2"),
+            ]
+            for name, ver in skills:
+                _write_skill(root, name, ver)
+            _write_claude_md(
+                root, suite_version="3.9.4.2-alpha", table_rows=skills
+            )
+            _write_changelog(
+                root, latest_version="3.9.4.2", prior_versions=["3.9.4"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertIn("3.9.4.2-alpha", result.stdout)
+            self.assertIn("canonical", result.stdout)
+
     def test_four_segment_table_row_drift_fails(self) -> None:
         """Regression for #169: the Skills table row regex must also see the 4th
         segment, so a pipeline row v3.9.4.1 vs suite version 3.9.4.2 is caught."""

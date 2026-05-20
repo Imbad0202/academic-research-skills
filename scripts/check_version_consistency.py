@@ -21,31 +21,84 @@ from pathlib import Path
 from _skill_lint import parse_frontmatter, FrontmatterError
 
 
-SEMVER = r"\d+\.\d+\.\d+(?:\.\d+)?"
-TABLE_ROW_RE = re.compile(
-    rf"^\|\s*`([a-z0-9-]+)`\s+v({SEMVER})(?!\.\d)\s*\|", re.MULTILINE
+# Broad token captures: anything that looks like an identifier inside the
+# expected position. The strict validator below then decides whether the raw
+# token is a canonical semver. Using the regex as a filter (the pre-#169
+# pattern) silently dropped invalid tokens and hid the very drift this lint
+# is meant to surface; see dual-track review on PR for that class of bug.
+TABLE_TOKEN_RE = re.compile(
+    r"^\|\s*`([a-z0-9-]+)`\s+v([A-Za-z0-9.\-_+]+)\s*\|", re.MULTILINE
 )
-SUITE_VERSION_RE = re.compile(
-    rf"^\s*-\s*\*\*Suite version\*\*:\s*({SEMVER})(?!\.\d)", re.MULTILINE
+SUITE_TOKEN_RE = re.compile(
+    r"^\s*-\s*\*\*Suite version\*\*:\s*([A-Za-z0-9.\-_+]+)", re.MULTILINE
 )
-CHANGELOG_ENTRY_RE = re.compile(rf"^##\s*\[({SEMVER})\]", re.MULTILINE)  # `]` delimiter blocks 5-segment prefix match without a lookahead
+CHANGELOG_TOKEN_RE = re.compile(r"^##\s*\[([A-Za-z0-9.\-_+]+)\]", re.MULTILINE)
+SEMVER_STRICT_RE = re.compile(r"^\d+(?:\.\d+){2,}$")  # 3 or more segments
+
+NON_VERSION_CHANGELOG_TOKENS = frozenset({"Unreleased"})
 
 PIPELINE_SKILL_NAME = "academic-pipeline"
 
 
-def _parse_table_versions(claude_md_text: str) -> dict[str, str]:
-    """Return mapping skill_name -> version from the Skills Overview table."""
-    return dict(TABLE_ROW_RE.findall(claude_md_text))
+def _is_strict_semver(token: str) -> bool:
+    return bool(SEMVER_STRICT_RE.match(token))
 
 
-def _parse_suite_version(claude_md_text: str) -> str | None:
-    m = SUITE_VERSION_RE.search(claude_md_text)
-    return m.group(1) if m else None
+def _parse_table_versions(
+    claude_md_text: str,
+) -> tuple[dict[str, str], list[tuple[str, str]]]:
+    """Return (valid_versions, invalid_rows) from the Skills Overview table.
+
+    `valid_versions` maps skill_name -> version for rows whose v-token is a
+    canonical N.N.N(.N)+ string. `invalid_rows` collects (skill_name, raw_token)
+    for rows where the v-token is present but not a canonical version; the
+    caller surfaces these as errors so a malformed table row does not silently
+    drop out of downstream invariants.
+    """
+    valid: dict[str, str] = {}
+    invalid: list[tuple[str, str]] = []
+    for skill, raw in TABLE_TOKEN_RE.findall(claude_md_text):
+        if _is_strict_semver(raw):
+            valid[skill] = raw
+        else:
+            invalid.append((skill, raw))
+    return valid, invalid
 
 
-def _parse_changelog_latest(changelog_text: str) -> str | None:
-    m = CHANGELOG_ENTRY_RE.search(changelog_text)
-    return m.group(1) if m else None
+def _parse_suite_version(claude_md_text: str) -> tuple[str | None, str | None]:
+    """Return (valid_version, invalid_raw_token).
+
+    Exactly one of the two is non-None when a Suite version line is present.
+    Both are None when the line is missing entirely.
+    """
+    m = SUITE_TOKEN_RE.search(claude_md_text)
+    if m is None:
+        return None, None
+    raw = m.group(1)
+    if _is_strict_semver(raw):
+        return raw, None
+    return None, raw
+
+
+def _parse_changelog_latest(
+    changelog_text: str,
+) -> tuple[str | None, str | None]:
+    """Return (valid_latest, invalid_raw_token).
+
+    Walks `## [TOKEN]` headings in document order, skipping pseudo-entries
+    like `[Unreleased]`. The first remaining heading is the latest release.
+    If that heading's token is not a canonical version, it is returned as
+    `invalid_raw_token` so the caller flags it instead of silently falling
+    through to a predecessor and hiding the malformed release entry.
+    """
+    for m in CHANGELOG_TOKEN_RE.finditer(changelog_text):
+        raw = m.group(1)
+        if raw in NON_VERSION_CHANGELOG_TOKENS:
+            continue
+        if _is_strict_semver(raw):
+            return raw, None
+        return None, raw
+    return None, None
 
 
 def check(root: Path) -> list[str]:
@@ -57,26 +110,43 @@ def check(root: Path) -> list[str]:
         return errors
     claude_text = claude_md.read_text(encoding="utf-8")
 
-    table_versions = _parse_table_versions(claude_text)
-    if not table_versions:
+    table_versions, invalid_table_rows = _parse_table_versions(claude_text)
+    if not table_versions and not invalid_table_rows:
         errors.append(
             f"{claude_md}: Skills Overview table has no parseable "
             "`<skill>` vX.Y.Z rows"
         )
+    for skill, raw in invalid_table_rows:
+        errors.append(
+            f"{claude_md}: table row {skill!r} has invalid version "
+            f"token v{raw!r} (expected canonical N.N.N or N.N.N.N)"
+        )
 
-    suite_version = _parse_suite_version(claude_text)
-    if suite_version is None:
+    suite_version, invalid_suite_token = _parse_suite_version(claude_text)
+    if suite_version is None and invalid_suite_token is None:
         errors.append(
             f"{claude_md}: missing '**Suite version**: X.Y.Z' line"
+        )
+    elif invalid_suite_token is not None:
+        errors.append(
+            f"{claude_md}: Suite version token {invalid_suite_token!r} is "
+            "not a canonical N.N.N or N.N.N.N version"
         )
 
     changelog = root / "CHANGELOG.md"
     if not changelog.is_file():
         errors.append(f"{changelog}: not found")
     else:
-        latest = _parse_changelog_latest(changelog.read_text(encoding="utf-8"))
-        if latest is None:
+        latest, invalid_latest = _parse_changelog_latest(
+            changelog.read_text(encoding="utf-8")
+        )
+        if latest is None and invalid_latest is None:
             errors.append(f"{changelog}: no '## [X.Y.Z]' entry found")
+        elif invalid_latest is not None:
+            errors.append(
+                f"{changelog}: latest entry token {invalid_latest!r} is "
+                "not a canonical N.N.N or N.N.N.N version"
+            )
         elif suite_version is not None and latest != suite_version:
             errors.append(
                 f"{claude_md}: Suite version {suite_version!r} does not match "
