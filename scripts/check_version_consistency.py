@@ -21,11 +21,14 @@ from pathlib import Path
 from _skill_lint import parse_frontmatter, FrontmatterError
 
 
-TABLE_ROW_RE = re.compile(r"^\|\s*`([a-z0-9-]+)`\s+v(\d+\.\d+\.\d+)\s*\|", re.MULTILINE)
-SUITE_VERSION_RE = re.compile(
-    r"^\s*-\s*\*\*Suite version\*\*:\s*(\d+\.\d+\.\d+)", re.MULTILINE
+SEMVER = r"\d+\.\d+\.\d+(?:\.\d+)?"
+TABLE_ROW_RE = re.compile(
+    rf"^\|\s*`([a-z0-9-]+)`\s+v({SEMVER})(?!\.\d)\s*\|", re.MULTILINE
 )
-CHANGELOG_ENTRY_RE = re.compile(r"^##\s*\[(\d+\.\d+\.\d+)\]", re.MULTILINE)
+SUITE_VERSION_RE = re.compile(
+    rf"^\s*-\s*\*\*Suite version\*\*:\s*({SEMVER})(?!\.\d)", re.MULTILINE
+)
+CHANGELOG_ENTRY_RE = re.compile(rf"^##\s*\[({SEMVER})\]", re.MULTILINE)
 
 PIPELINE_SKILL_NAME = "academic-pipeline"
 

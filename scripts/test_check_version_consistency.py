@@ -65,18 +65,17 @@ def _write_claude_md(
     (claude_dir / "CLAUDE.md").write_text(text, encoding="utf-8")
 
 
-def _write_changelog(root: Path, latest_version: str) -> None:
+def _write_changelog(
+    root: Path,
+    latest_version: str,
+    prior_versions: list[str] | None = None,
+) -> None:
+    """Write fixture CHANGELOG with `latest_version` first, then any `prior_versions`."""
+    entries = [f"## [{latest_version}] - 2026-04-22\n\n### Added\n- fixture entry\n"]
+    for prev in prior_versions or []:
+        entries.append(f"## [{prev}] - 2026-04-15\n\n### Added\n- prior fixture entry\n")
     (root / "CHANGELOG.md").write_text(
-        textwrap.dedent(
-            f"""\
-            # Changelog
-
-            ## [{latest_version}] - 2026-04-22
-
-            ### Added
-            - fixture entry
-            """
-        ),
+        "# Changelog\n\n" + "\n".join(entries),
         encoding="utf-8",
     )
 
@@ -227,6 +226,74 @@ class TestVersionConsistency(unittest.TestCase):
             result = _run(root)
             self.assertEqual(result.returncode, 1)
             self.assertIn("Suite version", result.stdout)
+
+    def test_four_segment_suite_vs_changelog_drift_fails(self) -> None:
+        """Regression for #169: 4-segment hotfix versions (e.g. 3.9.4.1 vs 3.9.4.2)
+        must not be silently parsed as a shared 3-segment prefix.
+
+        Scenario: suite claims v3.9.4.2 but CHANGELOG's latest entry is v3.9.4.1.
+        Pre-fix behavior: both got truncated to "3.9.4" and the lint passed silently.
+        """
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            skills = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.2"),
+            ]
+            for name, ver in skills:
+                _write_skill(root, name, ver)
+            _write_claude_md(root, suite_version="3.9.4.2", table_rows=skills)
+            # Include the 3-segment ancestor so the pre-fix regex would still find
+            # *something* and silently report a passing 3.9.4 == 3.9.4 comparison.
+            _write_changelog(
+                root, latest_version="3.9.4.1", prior_versions=["3.9.4"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertIn("3.9.4.2", result.stdout)
+            self.assertIn("3.9.4.1", result.stdout)
+            self.assertIn("CHANGELOG", result.stdout)
+
+    def test_four_segment_table_row_drift_fails(self) -> None:
+        """Regression for #169: the Skills table row regex must also see the 4th
+        segment, so a pipeline row v3.9.4.1 vs suite version 3.9.4.2 is caught."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # Pipeline SKILL.md and CHANGELOG both at 3.9.4.2, but the table row
+            # in CLAUDE.md still says v3.9.4.1 (forgot to bump one place).
+            skills_on_disk = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.2"),
+            ]
+            for name, ver in skills_on_disk:
+                _write_skill(root, name, ver)
+            table_rows_drifted = [
+                ("deep-research", "2.9.4"),
+                ("academic-paper", "3.1.2"),
+                ("academic-paper-reviewer", "1.9.1"),
+                ("academic-pipeline", "3.9.4.1"),  # drift inside the 4th segment
+            ]
+            _write_claude_md(
+                root, suite_version="3.9.4.2", table_rows=table_rows_drifted
+            )
+            _write_changelog(
+                root, latest_version="3.9.4.2", prior_versions=["3.9.4"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertIn("academic-pipeline", result.stdout)
+            self.assertIn("3.9.4.1", result.stdout)
+            self.assertIn("3.9.4.2", result.stdout)
 
 
 if __name__ == "__main__":
