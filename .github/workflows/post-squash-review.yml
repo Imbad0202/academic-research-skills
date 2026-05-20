@@ -15,6 +15,12 @@ name: Post-Squash Codex Review (Advisory)
 #
 # Codex 0.130 known broken in ARS context (6 sample), so this is
 # advisory: any non-zero exit just opens an issue, never fails CI.
+#
+# Numeric gate: step `if` expressions use fromJSON() on both sides
+# because GitHub Actions does lexicographic comparison on bare
+# `outputs.x < env.y` (both are strings). Without fromJSON, "73" < "500"
+# evaluates to false and small PRs trip the threshold. fromJSON()
+# parses the string as a JSON number, forcing numeric comparison.
 
 on:
   pull_request:
@@ -54,13 +60,8 @@ jobs:
           echo "lines=$TOTAL" >> "$GITHUB_OUTPUT"
           echo "Total lines changed: $TOTAL (threshold: $REVIEW_LINE_THRESHOLD)"
 
-      - name: Skip if below threshold
-        if: steps.size.outputs.lines < env.REVIEW_LINE_THRESHOLD
-        run: |
-          echo "Below threshold — no review needed."
-          exit 0
-
       - name: Check codex CLI availability
+        if: fromJSON(steps.size.outputs.lines) >= fromJSON(env.REVIEW_LINE_THRESHOLD)
         id: codex
         continue-on-error: true
         run: |
@@ -72,7 +73,7 @@ jobs:
           fi
 
       - name: Run codex review on squash commit
-        if: steps.size.outputs.lines >= env.REVIEW_LINE_THRESHOLD && steps.codex.outputs.available == 'true'
+        if: fromJSON(steps.size.outputs.lines) >= fromJSON(env.REVIEW_LINE_THRESHOLD) && steps.codex.outputs.available == 'true'
         id: review
         continue-on-error: true
         env:
@@ -91,7 +92,7 @@ jobs:
           head -200 codex-review.txt || true
 
       - name: Open advisory issue
-        if: steps.size.outputs.lines >= env.REVIEW_LINE_THRESHOLD
+        if: fromJSON(steps.size.outputs.lines) >= fromJSON(env.REVIEW_LINE_THRESHOLD)
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUM: ${{ github.event.pull_request.number }}
