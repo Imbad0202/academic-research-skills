@@ -50,7 +50,26 @@ jobs:
         id: head
         run: |
           set -euo pipefail
-          COUNT=$(pytest --collect-only -q | grep -c '::')
+          # Capture pytest exit code separately from grep so a collection
+          # error (broken import, missing fixture file, etc.) fails the gate
+          # instead of being swallowed by the pipe (#155 / re-attempt of F4
+          # from the v3.9.4.2 cycle, originally in PR #153 commit 8121dfa
+          # before being reverted in 4abf9de while #154 was still open).
+          set +e
+          pytest --collect-only -q > pytest-collect.txt 2> pytest-collect.err
+          PYTEST_EXIT=$?
+          set -e
+          # Exit 5 = pytest "no tests collected"; tolerable for degenerate
+          # cases (empty repo, path filter that matches nothing). Any other
+          # non-zero exit is a real collection failure and must fail the gate.
+          if [ "$PYTEST_EXIT" -ne 0 ] && [ "$PYTEST_EXIT" -ne 5 ]; then
+            echo "::error::pytest collection failed on PR head (exit $PYTEST_EXIT)"
+            cat pytest-collect.err >&2 || true
+            tail -20 pytest-collect.txt >&2 || true
+            exit 1
+          fi
+          # grep -c exits 1 when there are zero matches — tolerate only that.
+          COUNT=$(grep -c '::' pytest-collect.txt || true)
           echo "Head test count: $COUNT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
@@ -76,7 +95,22 @@ jobs:
         working-directory: ../base
         run: |
           set -euo pipefail
-          COUNT=$(pytest --collect-only -q 2>/dev/null | grep -c '::' || true)
+          # Symmetric strict collection — mirrors the PR-head step above.
+          # The previous `2>/dev/null | grep -c '::' || true` pattern would
+          # set BASE_COUNT to 0 on any collection error, making the
+          # monotonic comparison (head >= base) vacuously pass and hiding
+          # genuine drift. Fail the gate on real collection errors instead.
+          set +e
+          pytest --collect-only -q > pytest-collect.txt 2> pytest-collect.err
+          PYTEST_EXIT=$?
+          set -e
+          if [ "$PYTEST_EXIT" -ne 0 ] && [ "$PYTEST_EXIT" -ne 5 ]; then
+            echo "::error::pytest collection failed on base (exit $PYTEST_EXIT)"
+            cat pytest-collect.err >&2 || true
+            tail -20 pytest-collect.txt >&2 || true
+            exit 1
+          fi
+          COUNT=$(grep -c '::' pytest-collect.txt || true)
           echo "Base test count: $COUNT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 

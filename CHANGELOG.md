@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 
 - **#156 — Unified pytest invocation manifest.** Twelve `pytest scripts/test_*.py` invocations in `.github/workflows/spec-consistency.yml` are now declared in `scripts/_ci_pytest_manifest.toml` and run via `scripts/run_ci_pytest_manifest.py`. Drift guard `scripts/check_ci_pytest_manifest.py` rejects (a) missing `path`, (b) duplicate `id`, (c) duplicate `(path, args)`, (d) malformed `args`, (e) any `pytest scripts/test_*.py` re-introduced in the workflow outside the runner. `pip install pytest` consolidates from 12 redundant installs to one. 17 unit tests for runner + lint. `python3 -m unittest scripts.test_*` invocations stay inline (out of scope for #156). 41 disk `test_*.py` files that the manifest does not list remain unclassified — separate follow-up.
 
+- **#155 — Re-attempt F4: harden `test-count-monotonic.yml` to fail on pytest collection errors.** Both head and base count steps now capture pytest's exit code separately from the pipe, treat exit 5 (no tests collected) as a tolerable degenerate case, and fail the gate on any other non-zero exit. Previously, a `2>/dev/null | grep -c '::' || true` swallow on the base step would silently set BASE_COUNT to 0 on a broken-import or fixture-missing error in the base commit, making the head-vs-base monotonic check vacuously pass. The original F4 fix landed in PR #153 commit 8121dfa during the v3.9.4.2 cycle but was reverted in 4abf9de when it surfaced #154 (now closed by PR #158). With #154 fixed and #156 keeping CI test discovery clean, F4 v2 ships symmetrically across head and base.
+
 ---
 
 ## [3.9.4.2] - 2026-05-19 — Post-ship hotfix for PR #149 CI discipline gates
