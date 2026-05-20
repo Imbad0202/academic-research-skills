@@ -222,10 +222,27 @@ def check_readme_ja_sections() -> None:
     expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
     expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
     expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
+    expect_contains(rel_path, "### v3.8.0 (2026-05-16)")
+    expect_contains(rel_path, "### v3.7.0 (2026-05-05)")
+    expect_contains(rel_path, "### v3.6.8 (2026-05-03)")
+    expect_contains(rel_path, "### v3.6.7 (2026-04-30)")
+    expect_contains(rel_path, "### v3.6.5 (2026-04-27)")
+    expect_contains(rel_path, "### v3.6.4 (2026-04-25)")
+    expect_contains(rel_path, "### v3.6.3 (2026-04-23)")
+    expect_contains(rel_path, "### v3.6.2 (2026-04-23)")
+    expect_contains(rel_path, "### v3.5.1 (2026-04-22)")
+    expect_contains(rel_path, "### v3.5.0 (2026-04-21)")
+    expect_contains(rel_path, "### v3.4.0 (2026-04-20)")
+    expect_contains(rel_path, "### v3.3.6 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.5 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.4 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
     for heading in (
         "#### Deep Research（7 モード）",
         "#### Academic Paper（10 モード）",
         "#### Academic Paper Reviewer（6 モード）",
+        "#### Academic Pipeline（オーケストレーター）",
         "### Deep Research（v2.8）",
         "### Academic Paper（v3.0）",
         "### Academic Paper Reviewer（v1.8）",
