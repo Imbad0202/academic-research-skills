@@ -36,10 +36,32 @@ jobs:
           cache-dependency-path: requirements-dev.txt
 
       - name: Install lint dependencies
-        run: pip install -r requirements-dev.txt
+        # pytest is installed once here so the unified manifest runner (#156)
+        # and the legacy `python3 -m unittest scripts.test_*` steps share one
+        # pip install. Previously each pytest step did its own `pip install
+        # pytest [pyyaml] [jsonschema]`; consolidating saves ~12 redundant
+        # installs per workflow run.
+        run: pip install -r requirements-dev.txt pytest
 
       - name: Run spec consistency check
         run: python3 scripts/check_spec_consistency.py
+
+      - name: Lint CI pytest manifest (#156)
+        # Drift guard for scripts/_ci_pytest_manifest.toml — verifies entry
+        # path existence, id/(path,args) uniqueness, args shape, and that
+        # spec-consistency.yml contains no direct `pytest scripts/test_*.py`
+        # outside the runner. Runs before the runner so a malformed manifest
+        # fails fast.
+        run: python3 scripts/check_ci_pytest_manifest.py
+
+      - name: Run CI pytest manifest (#156)
+        # Single entry point for the 12 pytest invocations spec-consistency.yml
+        # used to run file-by-file. Each manifest entry is wrapped in a
+        # `::group::<id>` annotation so the GitHub UI collapses one block
+        # per invocation. Manifest at scripts/_ci_pytest_manifest.toml.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/run_ci_pytest_manifest.py
 
       - name: Check PREPRINT_VENUES list consistency (#105)
         run: python3 scripts/check_preprint_venues_consistency.py
@@ -145,25 +167,11 @@ jobs:
         # and asserts equality. Requires fetch-depth: 0 on the checkout step.
         run: python3 scripts/check_v3_6_8_pattern_protection.py
 
-      - name: Run v3.7.1 SHA gate mutation tests
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest
-          pytest scripts/test_check_v3_6_8_pattern_protection.py -v
-
       - name: Validate v3.7.1 trust-chain frontmatter schema
         # Step 1 of v3.7.1: enforces three firm rules from spec §3.1
         # (verified⇒acquired+method, not-acquired⇒no-real-audit-round, no
         # literal human_read_*) across literature_corpus[] entries.
         run: python3 scripts/check_v3_6_8_frontmatter_trust_schema.py
-
-      - name: Run v3.7.1 trust-chain frontmatter schema tests
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest pyyaml jsonschema
-          pytest scripts/test_check_v3_6_8_frontmatter_trust_schema.py -v
 
       - name: Validate v3.7.1 audit Scope Report block (Step 2 / D2)
         # Step 2 of v3.7.1: enforces spec §3.2 Scope Report contract on the
@@ -172,13 +180,6 @@ jobs:
         # combined-aggregate "PASSED" verb (spec line 152).
         run: python3 scripts/check_v3_6_8_audit_scope_block.py
 
-      - name: Run v3.7.1 audit Scope Report block mutation tests
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest
-          pytest scripts/test_check_v3_6_8_audit_scope_block.py -v
-
       - name: Validate v3.7.1 Cite-Time Provenance Finalizer (Step 3b)
         # Step 3b of v3.7.1: enforces spec §3.3 4-cell matrix + §3.6 peer-file
         # join + idempotency + revision-loop preservation on the
@@ -186,39 +187,16 @@ jobs:
         # academic-pipeline/agents/pipeline_orchestrator_agent.md.
         run: python3 scripts/check_v3_6_8_cite_provenance_pipeline.py
 
-      - name: Run v3.7.1 Cite-Time Provenance Finalizer mutation tests
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest
-          pytest scripts/test_check_v3_6_8_cite_provenance_pipeline.py -v
-
-      - name: Run v3.7.3 Three-Layer Citation lint regression tests
-        # v3.7.3 F18 closure (codex round-7): the v3.7.3 three-layer
-        # citation lint enforces the L3-1 claim-faithfulness locator
-        # contract (per-citation `<!--anchor:<kind>:<value>-->` marker,
-        # hyphen-encoding for quote values, malformed-ref detection,
-        # empty-value rejection, fenced-code-block isolation). Without
-        # this CI step, prompt-vs-lint regressions could ship without
-        # PR checks flagging them. Spec:
-        # docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest
-          pytest scripts/test_check_v3_7_3_three_layer_citation.py -v
-
       - name: v3.9.0 cross-index triangulation lint
         # §3.8 rules 5-6 (R3 P2 closure): verifies formatter pass-through
         # allowlist equals the canonical 9-suffix set (exact-token extraction
         # from backtick spans, not substring matching) and that refusal rules
         # 1-10 contain no CONTAMINATED-* tokens (R-L3-2-E invariant).
+        # The pytest companion `test_check_v3_9_0_triangulation.py` runs via
+        # the unified manifest (#156).
         env:
           PYTHONPATH: .
-        run: |
-          pip install pytest
-          python scripts/check_v3_9_0_triangulation.py
-          pytest scripts/test_check_v3_9_0_triangulation.py -v
+        run: python scripts/check_v3_9_0_triangulation.py
 
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
@@ -226,22 +204,12 @@ jobs:
         # contains the four load-bearing phrases (Phase Boundary v3.9.2,
         # MUST NOT, MAY READ, Enforcement v3.9.2). See
         # docs/design/2026-05-18-ars-v3.9.2-agent-phase-classification.md.
+        # The pytest companion `test_check_v3_9_2_phase_boundary.py` and the
+        # #133 pipeline-integrity advisory verifier tests run via the unified
+        # manifest (#156).
         env:
           PYTHONPATH: .
-        run: |
-          pip install pytest
-          python3 scripts/check_v3_9_2_phase_boundary.py
-          pytest scripts/test_check_v3_9_2_phase_boundary.py -v
-
-      - name: Run v3.9.2 pipeline integrity advisory verifier tests (#133)
-        # Tests for scripts/check_pipeline_integrity.py — the post-hoc
-        # advisory verifier that flags #133-pattern Phase 5 outputs
-        # missing independent reviewer attribution.
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest
-          pytest scripts/test_check_pipeline_integrity.py -v
+        run: python3 scripts/check_v3_9_2_phase_boundary.py
 
       - name: Run v3.9.4 temporal verification lint (#135)
         # Verifies check_v3_9_4_temporal_verification.py against all bundled
@@ -315,18 +283,6 @@ jobs:
             scripts.test_claim_audit_calibration \
             -v
 
-      - name: Run v3.7.1 audit_snapshot render-side Section 0 regression tests
-        # PR #78 codex round-5 P2-7: lint enforces the static template
-        # contract, but render_prompt is the runtime path that actually
-        # builds the codex prompt. Without this CI step, render_prompt
-        # could drop Section 0 again silently while the template lint
-        # stays green — exactly the failure mode round-1 P1 closed.
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest
-          pytest scripts/test_audit_snapshot_render_section_0.py -v
-
       - name: Run v3.6.7 Step 6 audit schema + helper tests (Phase 6.2 + 6.4)
         env:
           PYTHONPATH: .
@@ -337,41 +293,8 @@ jobs:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_v3_6_7_phase_6_6 -v
 
-      - name: Run v3.6.7 Step 6 Phase 6.3 lint script tests (pytest)
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest pyyaml jsonschema
-          pytest scripts/test_check_audit_artifact_consistency.py -v
-
       - name: Validate v3.6.7 Step 8 pattern-eval fixture manifests (Phase 6.8)
         run: python3 scripts/check_pattern_eval_manifest.py
-
-      - name: Run v3.6.7 Step 8 pattern-eval-unit tests (Phase 6.8 micro fixtures)
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest pyyaml jsonschema
-          pytest scripts/test_check_pattern_eval_manifest.py -v
-          # Includes micro/run_id/coverage + inventory-coverage + synthetic per-phase
-          # injection tests (F-301/F-1001 closures). Synthetic supersession lives in
-          # the integration step below.
-          pytest scripts/test_pattern_eval_runtime.py -v -k "micro or run_id or coverage or phase_inventory or fixture_phase or (synthetic and not supersession)"
-
-      - name: Run v3.6.7 Step 8 pattern-eval-integration tests (Phase 6.8 integration fixture)
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest pyyaml jsonschema
-          pytest scripts/test_pattern_eval_runtime.py -v -k "integration or (synthetic and supersession)"
-
-      - name: Run v3.6.7 Phase 6.1 wrapper end-to-end dispatch test (Linux Bash 4+)
-        if: runner.os == 'Linux'
-        env:
-          PYTHONPATH: .
-        run: |
-          pip install pytest pyyaml jsonschema
-          pytest scripts/test_run_codex_audit_e2e.py -v
 
       - name: "Check policy anchor table structural lint (#108)"
         run: python3 scripts/check_policy_anchor_table.py

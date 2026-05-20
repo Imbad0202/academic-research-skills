@@ -1,0 +1,83 @@
+# CI pytest invocation manifest (issue #156)
+#
+# Single source of truth for the pytest invocations spec-consistency.yml runs
+# file-by-file. The workflow consumes this via `python scripts/run_ci_pytest_manifest.py`.
+#
+# Drift guard: scripts/check_ci_pytest_manifest.py validates:
+#   - every `path` exists on disk
+#   - `id` values unique
+#   - (path, args) tuples unique (so the manifest stays a single source, not a
+#     parallel list)
+#   - `args` is a list of strings
+#   - spec-consistency.yml has no direct `pytest scripts/test_*.py` outside the runner
+#
+# Out of scope (deliberate):
+#   - whether every `scripts/test_*.py` on disk is listed here (41 currently
+#     unlisted; that's a separate policy decision, see #156 follow-up)
+#   - `python3 -m unittest scripts.test_*` invocations (different runner family;
+#     stays inline in spec-consistency.yml)
+#
+# Adding a new entry:
+#   1. add a [[pytest]] block with a unique `id`, the test file `path`, and
+#      optional `args` (list of strings, passed to pytest verbatim).
+#   2. run `python scripts/check_ci_pytest_manifest.py` to validate.
+#   3. run `python scripts/run_ci_pytest_manifest.py --id <id>` to smoke-test
+#      locally before opening a PR.
+
+[[pytest]]
+id = "v3.7.1-sha-gate"
+path = "scripts/test_check_v3_6_8_pattern_protection.py"
+
+[[pytest]]
+id = "v3.7.1-trust-chain-frontmatter"
+path = "scripts/test_check_v3_6_8_frontmatter_trust_schema.py"
+
+[[pytest]]
+id = "v3.7.1-audit-scope-block"
+path = "scripts/test_check_v3_6_8_audit_scope_block.py"
+
+[[pytest]]
+id = "v3.7.1-cite-time-provenance"
+path = "scripts/test_check_v3_6_8_cite_provenance_pipeline.py"
+
+[[pytest]]
+id = "v3.7.3-three-layer-citation"
+path = "scripts/test_check_v3_7_3_three_layer_citation.py"
+
+[[pytest]]
+id = "v3.9.0-triangulation"
+path = "scripts/test_check_v3_9_0_triangulation.py"
+
+[[pytest]]
+id = "v3.9.2-phase-boundary"
+path = "scripts/test_check_v3_9_2_phase_boundary.py"
+
+[[pytest]]
+id = "v3.9.2-pipeline-integrity"
+path = "scripts/test_check_pipeline_integrity.py"
+
+[[pytest]]
+id = "v3.7.1-audit-snapshot-section-0"
+path = "scripts/test_audit_snapshot_render_section_0.py"
+
+[[pytest]]
+id = "v3.6.7-phase-6.3-lint"
+path = "scripts/test_check_audit_artifact_consistency.py"
+
+[[pytest]]
+id = "v3.6.7-pattern-eval-manifest"
+path = "scripts/test_check_pattern_eval_manifest.py"
+
+[[pytest]]
+id = "v3.6.7-pattern-eval-unit"
+path = "scripts/test_pattern_eval_runtime.py"
+args = ["-k", "micro or run_id or coverage or phase_inventory or fixture_phase or (synthetic and not supersession)"]
+
+[[pytest]]
+id = "v3.6.7-pattern-eval-integration"
+path = "scripts/test_pattern_eval_runtime.py"
+args = ["-k", "integration or (synthetic and supersession)"]
+
+[[pytest]]
+id = "v3.6.7-wrapper-e2e"
+path = "scripts/test_run_codex_audit_e2e.py"
