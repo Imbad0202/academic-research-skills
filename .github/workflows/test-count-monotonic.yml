@@ -68,10 +68,20 @@ jobs:
             tail -20 pytest-collect.txt >&2 || true
             exit 1
           fi
-          # grep -c exits 1 when there are zero matches — tolerate only that.
-          COUNT=$(grep -c '::' pytest-collect.txt || true)
+          # grep -c exits 1 when there are zero matches — tolerate ONLY that;
+          # any other non-zero exit from grep is a real error (unreadable
+          # file, missing binary) and must propagate.
+          set +e
+          COUNT=$(grep -c '::' pytest-collect.txt)
+          GREP_EXIT=$?
+          set -e
+          if [ "$GREP_EXIT" -ne 0 ] && [ "$GREP_EXIT" -ne 1 ]; then
+            echo "::error::grep failed unexpectedly (exit $GREP_EXIT)"
+            exit 1
+          fi
           echo "Head test count: $COUNT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          rm -f pytest-collect.txt pytest-collect.err
 
       - name: Add base via worktree
         env:
@@ -110,9 +120,17 @@ jobs:
             tail -20 pytest-collect.txt >&2 || true
             exit 1
           fi
-          COUNT=$(grep -c '::' pytest-collect.txt || true)
+          set +e
+          COUNT=$(grep -c '::' pytest-collect.txt)
+          GREP_EXIT=$?
+          set -e
+          if [ "$GREP_EXIT" -ne 0 ] && [ "$GREP_EXIT" -ne 1 ]; then
+            echo "::error::grep failed unexpectedly (exit $GREP_EXIT)"
+            exit 1
+          fi
           echo "Base test count: $COUNT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          rm -f pytest-collect.txt pytest-collect.err
 
       - name: Compare
         env:
