@@ -27,7 +27,25 @@ import tomllib
 from pathlib import Path
 
 
-DIRECT_PYTEST_RE = re.compile(r"\bpytest\s+scripts/test_[A-Za-z0-9_]+\.py\b")
+# Drift guard regex: catches direct pytest invocations on `scripts/test_*.py`
+# files outside the manifest runner. Built to tolerate the bypass paths
+# observed in dual-track review (gemini P1 + codex empirical probe):
+#   - intermediate flags: `pytest -v scripts/test_x.py`, `pytest --tb=short ...`
+#   - quoted paths: `pytest "scripts/test_x.py"`, `pytest 'scripts/...'`
+#   - explicit relative prefix: `pytest ./scripts/test_x.py`
+#   - alt invocation: `python -m pytest scripts/...`, `python3 -m pytest scripts/...`,
+#     `py.test scripts/...`, `uv run pytest scripts/...`
+# Line continuations (`pytest \<newline>scripts/...`) are handled by collapsing
+# backslash-newline sequences before scanning (see `_validate_workflow`).
+DIRECT_PYTEST_RE = re.compile(
+    r"\b(?:py\.test|pytest)\b"      # invocation token (pytest or py.test)
+    r"(?:\s+(?:-[^\s]+|--[^\s]+))*"  # zero or more flag args (short -x or long --x=y)
+    r"\s+"                           # whitespace before path
+    r"['\"]?"                        # optional quote
+    r"(?:\./)?"                      # optional ./ prefix
+    r"scripts/test_[A-Za-z0-9_]+\.py"
+    r"['\"]?"                        # optional closing quote
+)
 
 
 def _fail(msg: str, errors: list[str]) -> None:
@@ -50,6 +68,9 @@ def _load_manifest(path: Path, errors: list[str]) -> list[dict] | None:
     return entries
 
 
+ALLOWED_ENTRY_KEYS = {"id", "path", "args"}
+
+
 def _validate_entries(entries: list[dict], root: Path, errors: list[str]) -> None:
     seen_ids: dict[str, int] = {}
     seen_invocations: dict[tuple, int] = {}
@@ -57,6 +78,14 @@ def _validate_entries(entries: list[dict], root: Path, errors: list[str]) -> Non
         if not isinstance(entry, dict):
             _fail(f"entry #{idx}: not a table", errors)
             continue
+        extra_keys = set(entry.keys()) - ALLOWED_ENTRY_KEYS
+        if extra_keys:
+            _fail(
+                f"entry #{idx}: unknown keys {sorted(extra_keys)!r} "
+                f"(allowed: {sorted(ALLOWED_ENTRY_KEYS)!r}). "
+                f"Likely a typo — e.g. `arg` for `args` would silently broaden the test run.",
+                errors,
+            )
         entry_id = entry.get("id")
         entry_path = entry.get("path")
         entry_args = entry.get("args", [])
@@ -117,6 +146,10 @@ def _validate_workflow(workflow_path: Path, errors: list[str]) -> None:
             raw_line = raw_line[:comment_idx]
         stripped_lines.append(raw_line)
     stripped = "\n".join(stripped_lines)
+    # Normalize bash line continuations (`pytest \<newline>scripts/...`) so the
+    # regex sees one logical command per scan. Without this a developer could
+    # split a bypass across two YAML lines and slip past the guard.
+    stripped = stripped.replace("\\\n", " ")
     matches = DIRECT_PYTEST_RE.findall(stripped)
     if matches:
         for m in matches:

@@ -5,14 +5,15 @@ entry. Behavior contract:
 
 - runs `python -m pytest <path> <args...> -v` per entry
 - wraps each invocation in `::group::<id>` / `::endgroup::` annotations
-- fails on first failing entry (or runs all and reports? — we chose
-  fail-fast: stop on first non-zero exit and propagate)
+- runs ALL entries even when some fail (accumulate-failures, not fail-fast)
+  so CI surfaces every broken suite in one PR
 - supports `--id <id>` to run a single named entry (local debug)
 - supports `--manifest <path>` and `--root <dir>` overrides for tests
 """
 from __future__ import annotations
 
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -28,7 +29,7 @@ def _run(
     root: Path | None = None,
     only_id: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    cmd = ["python3", str(SCRIPT), "--manifest", str(manifest_path)]
+    cmd = [sys.executable, str(SCRIPT), "--manifest", str(manifest_path)]
     if root is not None:
         cmd.extend(["--root", str(root)])
     if only_id is not None:
@@ -83,6 +84,8 @@ def test_runs_all_passing_entries(workdir: Path) -> None:
 
 
 def test_fails_when_any_entry_fails(workdir: Path) -> None:
+    """Runner accumulates failures: every entry runs even if an earlier one
+    failed, then the aggregate exit code reports the failure."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
     _write(manifest, """
     [[pytest]]
@@ -102,7 +105,12 @@ def test_fails_when_any_entry_fails(workdir: Path) -> None:
 
     assert result.returncode != 0
     combined = result.stdout + result.stderr
+    assert "::group::pass-a" in combined
     assert "::group::fail" in combined
+    # The runner must NOT stop at the first failure. `pass-b` runs after
+    # `fail` in the manifest; this assertion pins the accumulate-failures
+    # contract so a future refactor to fail-fast would fail this test.
+    assert "::group::pass-b" in combined
 
 
 def test_args_passed_through_to_pytest(workdir: Path) -> None:

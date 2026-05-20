@@ -1,13 +1,16 @@
 """Unit tests for scripts/check_ci_pytest_manifest.py (issue #156).
 
-Lint guards 5 failure modes on the unified pytest manifest:
+Lint guards 6 failure modes on the unified pytest manifest:
 1. manifest entry path does not exist on disk
 2. duplicate `id` across entries
 3. duplicate exact (path, args) invocation across entries (unless an explicit
    allowlist marker is present)
 4. malformed `args` (not a list, or list elements not strings)
-5. `.github/workflows/spec-consistency.yml` contains a direct
-   `pytest scripts/test_*.py` invocation outside the runner
+5. unknown keys in a manifest entry (catches typos like `arg` for `args`)
+6. `.github/workflows/spec-consistency.yml` contains a direct
+   `pytest scripts/test_*.py` invocation outside the runner — including
+   bypass variants with flags, quotes, `./` prefix, `python -m pytest`,
+   `py.test`, and backslash line continuations
 
 The lint reads the manifest at scripts/_ci_pytest_manifest.toml by default and
 the workflow at .github/workflows/spec-consistency.yml.
@@ -15,6 +18,7 @@ the workflow at .github/workflows/spec-consistency.yml.
 from __future__ import annotations
 
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -32,7 +36,7 @@ def _run(
     extra_args: list[str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     cmd = [
-        "python3",
+        sys.executable,
         str(SCRIPT),
         "--manifest",
         str(manifest_path),
@@ -269,3 +273,153 @@ def test_missing_workflow_fails(workdir: Path) -> None:
     """)
     result = _run(manifest, workdir / ".github" / "workflows" / "missing.yml", root=workdir)
     assert result.returncode != 0
+
+
+def test_unknown_entry_key_fails(workdir: Path) -> None:
+    """A typo'd key (e.g., `arg` instead of `args`) must NOT silently pass —
+    otherwise the runner would skip the intended -k filter and run the full
+    test set."""
+    manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
+    _write(manifest, """
+    [[pytest]]
+    id = "real-a"
+    path = "scripts/test_real_a.py"
+    arg = ["-k", "this-should-be-args"]
+    """)
+    workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
+    _write(workflow, """
+    jobs:
+      spec:
+        runs-on: ubuntu-latest
+        steps:
+          - run: python scripts/run_ci_pytest_manifest.py
+    """)
+
+    result = _run(manifest, workflow, root=workdir)
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "arg" in combined.lower()
+
+
+@pytest.mark.parametrize(
+    "bypass_invocation",
+    [
+        # intermediate flags
+        "          - run: pytest -v scripts/test_real_a.py",
+        "          - run: pytest --tb=short scripts/test_real_a.py",
+        "          - run: pytest -xvs --tb=short scripts/test_real_a.py",
+        # quoted paths
+        '          - run: pytest "scripts/test_real_a.py"',
+        "          - run: pytest 'scripts/test_real_a.py'",
+        # explicit relative prefix
+        "          - run: pytest ./scripts/test_real_a.py",
+        # alternative invocations
+        "          - run: python -m pytest scripts/test_real_a.py",
+        "          - run: python3 -m pytest scripts/test_real_a.py",
+        "          - run: python -m pytest -q scripts/test_real_a.py",
+        "          - run: py.test scripts/test_real_a.py",
+        "          - run: uv run pytest scripts/test_real_a.py",
+        # quoted + flag combo
+        '          - run: pytest -v "scripts/test_real_a.py"',
+    ],
+    ids=[
+        "flag-first-short",
+        "flag-first-long",
+        "multiple-flags",
+        "double-quoted-path",
+        "single-quoted-path",
+        "relative-path-prefix",
+        "python-m-pytest",
+        "python3-m-pytest",
+        "python-m-pytest-with-flag",
+        "py.test-shorthand",
+        "uv-run-pytest",
+        "flag-and-quote-combo",
+    ],
+)
+def test_direct_pytest_bypass_variants_fail(workdir: Path, bypass_invocation: str) -> None:
+    """Drift-guard regex must catch every common bypass pattern: flags
+    between `pytest` and the path, quoted paths, `./` prefix, `python -m
+    pytest`, `py.test`, `uv run pytest`. (Dual-track review: gemini P1.1-P1.2
+    + codex empirical probe.)"""
+    manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
+    _write(manifest, """
+    [[pytest]]
+    id = "real-a"
+    path = "scripts/test_real_a.py"
+    """)
+    workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
+    workflow_body = (
+        "jobs:\n"
+        "  spec:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - run: python scripts/run_ci_pytest_manifest.py\n"
+        f"{bypass_invocation}\n"
+    )
+    workflow.write_text(workflow_body, encoding="utf-8")
+
+    result = _run(manifest, workflow, root=workdir)
+
+    assert result.returncode != 0, (
+        f"bypass variant should have failed lint but did not: "
+        f"{bypass_invocation!r}\nstdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    combined = result.stdout + result.stderr
+    assert "test_real_a.py" in combined
+
+
+def test_line_continuation_bypass_fails(workdir: Path) -> None:
+    """Backslash-newline line continuations must be normalized so the regex
+    sees one logical command. (Dual-track review: gemini P1.3.)"""
+    manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
+    _write(manifest, """
+    [[pytest]]
+    id = "real-a"
+    path = "scripts/test_real_a.py"
+    """)
+    workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
+    workflow.write_text(
+        "jobs:\n"
+        "  spec:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - run: python scripts/run_ci_pytest_manifest.py\n"
+        "      - run: |\n"
+        "          pytest \\\n"
+        "            scripts/test_real_a.py\n",
+        encoding="utf-8",
+    )
+
+    result = _run(manifest, workflow, root=workdir)
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "test_real_a.py" in combined
+
+
+def test_pytest_path_substring_in_comment_does_not_match(workdir: Path) -> None:
+    """The drift guard strips YAML comments before scanning, so an example
+    inside a `#` comment must NOT trip the lint. This test pins that
+    behavior so the comment-strip can't be regressed accidentally."""
+    manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
+    _write(manifest, """
+    [[pytest]]
+    id = "real-a"
+    path = "scripts/test_real_a.py"
+    """)
+    workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
+    _write(workflow, """
+    # The drift guard rejects direct `pytest scripts/test_real_a.py` calls
+    # outside the runner — this comment must not trip it.
+    jobs:
+      spec:
+        runs-on: ubuntu-latest
+        steps:
+          - run: python scripts/run_ci_pytest_manifest.py
+    """)
+
+    result = _run(manifest, workflow, root=workdir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
