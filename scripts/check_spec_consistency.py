@@ -240,6 +240,11 @@ def check_readme_ja_sections() -> None:
     ):
         expect_absent(rel_path, forbidden)
 
+    # Mode-section content guards (e.g. `outline-only モード` inside the
+    # Academic Paper usage block) are deliberately not enforced here; the
+    # zh-TW checker uses `extract_section` for that and #171's schema-driven
+    # refactor will fold the three locales together. Adding the extract_section
+    # mirror now would be discarded by that refactor.
     expect_contains(rel_path, "DOCX（利用可能な場合 Pandoc 経由）")
     check_relative_markdown_links(rel_path)
 

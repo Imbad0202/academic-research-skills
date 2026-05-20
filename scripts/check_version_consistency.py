@@ -28,7 +28,7 @@ TABLE_ROW_RE = re.compile(
 SUITE_VERSION_RE = re.compile(
     rf"^\s*-\s*\*\*Suite version\*\*:\s*({SEMVER})(?!\.\d)", re.MULTILINE
 )
-CHANGELOG_ENTRY_RE = re.compile(rf"^##\s*\[({SEMVER})\]", re.MULTILINE)
+CHANGELOG_ENTRY_RE = re.compile(rf"^##\s*\[({SEMVER})\]", re.MULTILINE)  # `]` delimiter blocks 5-segment prefix match without a lookahead
 
 PIPELINE_SKILL_NAME = "academic-pipeline"
 
