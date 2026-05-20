@@ -205,6 +205,45 @@ def check_readme_sections() -> None:
     check_relative_markdown_links(rel_path)
 
 
+def check_readme_ja_sections() -> None:
+    """Symmetric coverage of README.ja-JP.md added in PR #161 (closes #170).
+
+    Pre-#170 the lint silently skipped this file. ja-JP uses ASCII parentheses
+    for release blocks (matching the English README), full-width parentheses
+    for mode and skill-detail headings, and "モード" instead of "mode".
+    """
+    rel_path = "README.ja-JP.md"
+    text = read(rel_path)
+
+    expect_contains(rel_path, "version-v3.9.4.2-blue")
+    expect_contains(rel_path, "releases/tag/v3.9.4.2")
+    expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
+    expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
+    expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
+    expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
+    expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
+    for heading in (
+        "#### Deep Research（7 モード）",
+        "#### Academic Paper（10 モード）",
+        "#### Academic Paper Reviewer（6 モード）",
+        "### Deep Research（v2.8）",
+        "### Academic Paper（v3.0）",
+        "### Academic Paper Reviewer（v1.8）",
+        "### Academic Pipeline（v3.7）",
+    ):
+        if heading not in text:
+            fail(f"{rel_path}: missing heading {heading!r}")
+
+    for forbidden in (
+        "6th independent reviewer",
+        "Peer review gains 6th independent reviewer",
+    ):
+        expect_absent(rel_path, forbidden)
+
+    expect_contains(rel_path, "DOCX（利用可能な場合 Pandoc 経由）")
+    check_relative_markdown_links(rel_path)
+
+
 def check_readme_zh_sections() -> None:
     rel_path = "README.zh-TW.md"
     text = read(rel_path)
@@ -360,6 +399,7 @@ def main() -> int:
     check_pipeline_docs()
     check_readme_sections()
     check_readme_zh_sections()
+    check_readme_ja_sections()
     check_setup_docs()
     check_docx_contract()
     check_reference_docs()
