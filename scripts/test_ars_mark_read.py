@@ -12,7 +12,6 @@ Covers:
 """
 from __future__ import annotations
 
-import json
 import os
 import stat
 import unittest
@@ -28,8 +27,9 @@ SCRIPT = Path(__file__).parent / "ars_mark_read.py"
 
 
 # Minimal Material Passport carrying a literature_corpus[] with 2 entries.
-# The passport schema is JSON; only the literature_corpus[] field is consulted
-# by ars_mark_read for citation_key validation.
+# Passport is YAML per adapter contract (folder_scan / zotero / obsidian all
+# emit YAML); only the literature_corpus[] field is consulted by
+# ars_mark_read for citation_key validation.
 def _write_passport(path: Path, *, citation_keys: list[str]) -> None:
     payload = {
         "literature_corpus": [
@@ -37,7 +37,8 @@ def _write_passport(path: Path, *, citation_keys: list[str]) -> None:
             for k in citation_keys
         ],
     }
-    path.write_text(json.dumps(payload), encoding="utf-8")
+    with path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(payload, f, sort_keys=False, allow_unicode=True)
 
 
 def _read_log(passport_path: Path) -> dict:
@@ -278,6 +279,78 @@ class TestUnmarkRead(unittest.TestCase):
             self.assertIn(
                 "[ARS-MARK-READ ERROR:", result.stderr + result.stdout
             )
+
+
+class TestMarkReadYAMLPassport(unittest.TestCase):
+    """Issue #195: real adapter output is YAML, not JSON. Earlier fixtures
+    wrote JSON which was a parser-coincidence pass (YAML is a JSON superset).
+    These tests pin the real adapter-format expectation with .yaml extension
+    + canonical YAML serializer output."""
+
+    def test_yaml_passport_happy_path(self) -> None:
+        """A passport written by any adapter (folder_scan / zotero / obsidian)
+        is YAML. /ars-mark-read must read it without crashing."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            passport = root / "passport.yaml"
+            _write_passport(passport, citation_keys=["smith2024"])
+
+            result = run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport)
+            )
+
+            self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
+            log_data = _read_log(passport)
+            self.assertEqual(len(log_data["human_read"]), 1)
+            self.assertEqual(
+                log_data["human_read"][0]["citation_key"], "smith2024"
+            )
+
+    def test_yaml_passport_invalid_citation_key_hard_errors(self) -> None:
+        """Citation-key validation works the same against a YAML passport."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            passport = root / "passport.yaml"
+            _write_passport(passport, citation_keys=["smith2024"])
+
+            result = run_script(
+                SCRIPT, "nobody2099", "--passport-path", str(passport)
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "not in literature_corpus[]", result.stderr + result.stdout
+            )
+
+
+class TestReadLogUnwritableExistingFile(unittest.TestCase):
+    """Issue #195 companion P2: parent W_OK check passes but the log file
+    itself is unwritable. Must surface canonical fail-fast, not bare
+    PermissionError."""
+
+    def test_existing_unwritable_log_file_fails_fast(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            passport = root / "passport.yaml"
+            _write_passport(passport, citation_keys=["smith2024"])
+            log_path = root / f"{passport.stem}_human_read_log.yaml"
+            log_path.write_text("human_read: []\n", encoding="utf-8")
+            # Read-only on the existing log file. Parent dir stays writable.
+            log_path.chmod(stat.S_IRUSR)
+            try:
+                result = run_script(
+                    SCRIPT, "smith2024", "--passport-path", str(passport)
+                )
+                self.assertNotEqual(
+                    result.returncode, 0, msg="should fail-fast not succeed"
+                )
+                combined = result.stderr + result.stdout
+                self.assertIn("[ARS-MARK-READ ERROR:", combined)
+                # Bare Python traceback is the failure mode we are guarding
+                # against. Spec §3.6 firm rule 4 wants a canonical surface.
+                self.assertNotIn("Traceback (most recent call last)", combined)
+            finally:
+                log_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
 
 if __name__ == "__main__":

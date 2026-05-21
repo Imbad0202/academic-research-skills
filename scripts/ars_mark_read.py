@@ -24,7 +24,6 @@ Behavior summary:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 import uuid
@@ -90,12 +89,23 @@ def _validate_passport_environment(passport_path: Path | None) -> tuple[Path, Pa
         )
         raise SystemExit(2)
 
-    return passport_path, _read_log_path(passport_path)
+    log_path = _read_log_path(passport_path)
+    if log_path.exists() and not os.access(log_path, os.W_OK):
+        print(
+            _err(
+                f"read-log path target is unwritable at {log_path}; "
+                "existing file not writable"
+            ),
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    return passport_path, log_path
 
 
 def _load_corpus_keys(passport_path: Path) -> set[str]:
     with passport_path.open(encoding="utf-8") as f:
-        passport = json.load(f)
+        passport = yaml.safe_load(f) or {}
     corpus = passport.get("literature_corpus", []) or []
     return {entry["citation_key"] for entry in corpus if "citation_key" in entry}
 
