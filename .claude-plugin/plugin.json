@@ -19,5 +19,45 @@
     "systematic-review",
     "peer-review",
     "scholarly-publishing"
+  ],
+  "commands": [
+    {
+      "name": "ars-reviewer",
+      "description": "Trigger the 5-panel academic peer-review simulation for paper evaluation",
+      "usage": "/ars-reviewer [path/to/draft.md]",
+      "examples": [
+        "/ars-reviewer",
+        "/ars-reviewer --mode=quick",
+        "/ars-reviewer --mode=methodology"
+      ],
+      "routing": {
+        "skill": "academic-paper-reviewer",
+        "default_mode": "full"
+      }
+    },
+    {
+      "name": "ars-full",
+      "description": "Launch the complete 10-stage orchestrated academic research and writing pipeline",
+      "usage": "/ars-full [prompt]",
+      "examples": [
+        "/ars-full Write a paper on AI in higher education"
+      ],
+      "routing": {
+        "skill": "academic-pipeline",
+        "default_mode": "full"
+      }
+    },
+    {
+      "name": "ars-lit-review",
+      "description": "Run an intensive literature mapping, screening, and synthesis loop",
+      "usage": "/ars-lit-review [topic]",
+      "examples": [
+        "/ars-lit-review systematic-review"
+      ],
+      "routing": {
+        "skill": "deep-research",
+        "default_mode": "lit-review"
+      }
+    }
   ]
 }
