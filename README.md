@@ -124,6 +124,24 @@ ARS Stage 2 WRITE     →  write paper with verified experiment results
 
 ---
 
+## Companion: Academic Writing Skills (post-writing polish)
+
+If your manuscript is already drafted and needs format-level polish (LaTeX/Typst compile diagnosis, bibliography hygiene, or AI-tone removal), [Academic Writing Skills](https://github.com/bahayonghang/academic-writing-skills) (AWS, MIT) covers the post-writing layer after ARS Stage 2 (WRITE) / Stage 5 (FINALIZE).
+
+```
+ARS Stage 2 WRITE / Stage 5 FINALIZE  →  draft manuscript (.tex / .typ)
+        ↓
+  academic-writing-skills              →  compile checks · bib verification · de-AI polish
+        ↓
+  submission-ready manuscript
+```
+
+**What it does**: format-level polish on existing manuscripts. `latex-paper-en` (ChkTeX/latexmk + AXES coherence), `latex-thesis-zh` (GB/T 7714-2015; thuthesis/pkuthss/ustcthesis/fduthesis), `typst-paper` (millisecond compile + Hayagriva), `bib-search-citation` (local BibTeX/Zotero search), and `aiwei-zh` (Chinese AI-tone removal with em-dash/quote hard gates).
+
+**How to use together**: ARS `academic-paper` produces a draft from scratch; AWS polishes a draft you already have. The two suites install independently and need zero modification to either. AWS `aiwei-zh` complements ARS's general-purpose `writing_quality_check.md` with Chinese-specific typographic gates. See the [AWS README](https://github.com/bahayonghang/academic-writing-skills) for setup.
+
+---
+
 ## Usage
 
 ### Quick Start
