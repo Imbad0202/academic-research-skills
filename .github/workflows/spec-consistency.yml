@@ -195,6 +195,18 @@ jobs:
         # academic-pipeline/agents/pipeline_orchestrator_agent.md.
         run: python3 scripts/check_v3_6_8_cite_provenance_pipeline.py
 
+      - name: Validate v3.6.8 /ars-mark-read plugin commands (#190)
+        # Step 7 of v3.6.8: enforces the 2 commands (mark-read, unmark-read)
+        # exist, carry the literature_corpus[] validation reference, point at
+        # the human_read_log.yaml peer file (NOT entry frontmatter per §3.1
+        # firm rule 3), and declare model: sonnet routing.
+        run: python3 scripts/check_v3_6_8_mark_read_commands.py
+
+      - name: Run v3.6.8 /ars-mark-read CLI tests (#190)
+        env:
+          PYTHONPATH: .
+        run: python3 -m unittest scripts.test_ars_mark_read scripts.test_check_v3_6_8_mark_read_commands -v
+
       - name: v3.9.0 cross-index triangulation lint
         # §3.8 rules 5-6 (R3 P2 closure): verifies formatter pass-through
         # allowlist equals the canonical 9-suffix set (exact-token extraction
