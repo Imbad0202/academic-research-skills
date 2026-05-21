@@ -317,6 +317,8 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[eltociear](https://github.com/eltociear)** (Ikko Eltociear Ashimine) — Contributor. Translated the Japanese README ([`README.ja-JP.md`](README.ja-JP.md)) ([PR #161](https://github.com/Imbad0202/academic-research-skills/pull/161)).
 
+**[xpfo-go](https://github.com/xpfo-go)** (xpfo) — Contributor. Translated the Simplified Chinese README ([`README.zh-CN.md`](README.zh-CN.md)) ([PR #181](https://github.com/Imbad0202/academic-research-skills/pull/181)).
+
 ---
 
 ## Changelog

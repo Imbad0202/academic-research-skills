@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+**Localization (no version bump — no behavior change to skills):**
+
+- **#185 — Simplified Chinese README.** New `README.zh-CN.md` (630 lines, mirroring `README.zh-TW.md` structure) translated by external contributor [@xpfo-go](https://github.com/xpfo-go) ([PR #181](https://github.com/Imbad0202/academic-research-skills/pull/181)). Language switcher updated across the four READMEs (en / zh-CN / zh-TW / ja-JP); `CONTRIBUTING.md` README sync guidance extended to four locales. `scripts/check_spec_consistency.py` refactored to share zh-TW / zh-CN logic via `ZH_README_CONFIGS` tuple; both locales covered by `test_aligned_zh_cn_readme_passes` + `test_stale_zh_cn_badge_fails` regression tests (symmetric with the ja-JP tests added in #170).
+
 **CI / infrastructure (no version bump — no behavior change to skills):**
 
 - **#156 — Unified pytest invocation manifest.** Twelve `pytest scripts/test_*.py` invocations in `.github/workflows/spec-consistency.yml` are now declared in `scripts/_ci_pytest_manifest.toml` and run via `scripts/run_ci_pytest_manifest.py`. Drift guard `scripts/check_ci_pytest_manifest.py` rejects (a) missing `path`, (b) duplicate `id`, (c) duplicate `(path, args)`, (d) malformed `args`, (e) any `pytest scripts/test_*.py` re-introduced in the workflow outside the runner. `pip install pytest` consolidates from 12 redundant installs to one. 17 unit tests for runner + lint. `python3 -m unittest scripts.test_*` invocations stay inline (out of scope for #156). 41 disk `test_*.py` files that the manifest does not list remain unclassified — separate follow-up.

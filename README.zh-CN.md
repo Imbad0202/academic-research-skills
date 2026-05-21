@@ -298,6 +298,8 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[eltociear](https://github.com/eltociear)**（Ikko Eltociear Ashimine）— 贡献者。翻译了日文版 README（[`README.ja-JP.md`](README.ja-JP.md)）（[PR #161](https://github.com/Imbad0202/academic-research-skills/pull/161)）。
 
+**[xpfo-go](https://github.com/xpfo-go)**（xpfo）— 贡献者。翻译了简体中文版 README（[`README.zh-CN.md`](README.zh-CN.md)）（[PR #181](https://github.com/Imbad0202/academic-research-skills/pull/181)）。
+
 ---
 
 ## 更新纪录
