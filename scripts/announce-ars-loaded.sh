@@ -54,14 +54,15 @@ fi
 # ---------------------------------------------------------------------------
 case "${SOURCE}" in
   compact|resume)
-    ANNOUNCE="ARS v3.7.0 plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-abstract /ars-lit-review /ars-format-convert /ars-citation-check /ars-disclosure. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent."
+    ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-abstract /ars-lit-review /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent."
     ;;
   startup|clear|*)
-    ANNOUNCE="ARS v3.7.0 (academic-research-skills) plugin loaded.
+    ANNOUNCE="ARS (academic-research-skills) plugin loaded.
 
-Slash commands (10) — model routing pinned in frontmatter:
+Slash commands (13) — model routing pinned in frontmatter:
   /ars-full              opus    Full pipeline (research → write → review → revise → finalize)
   /ars-revision-coach    opus    Parse reviewer comments → Revision Roadmap + Response Letter skeleton
+  /ars-reviewer          opus    academic-paper-reviewer full mode — simulated peer-review panel
   /ars-plan              sonnet  Socratic chapter-by-chapter planning
   /ars-outline           sonnet  Detailed outline + evidence map (no full draft)
   /ars-revision          sonnet  Revised draft + R&R responses
@@ -70,6 +71,8 @@ Slash commands (10) — model routing pinned in frontmatter:
   /ars-format-convert    sonnet  Convert paper between LaTeX / DOCX / PDF / Markdown
   /ars-citation-check    sonnet  Citation error report
   /ars-disclosure        sonnet  Venue-specific AI-usage disclosure statement
+  /ars-mark-read         sonnet  Record human-read signal for one or more citation keys
+  /ars-unmark-read       sonnet  Rescind a prior human-read mark for one or more citation keys
 
 Plugin agents (3, v3.6.7-hardened, model: inherit) — dispatched by ARS pipeline:
   synthesis_agent             Cross-source integration, contradiction resolution, gap analysis
