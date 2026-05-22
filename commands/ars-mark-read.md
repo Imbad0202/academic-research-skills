@@ -7,4 +7,4 @@ Acknowledge that the user has personally read the source(s) backing the named ci
 
 Implementation:
 ```bash
-python3 scripts/ars_mark_read.py $ARGUMENTS --passport-path "$ARS_ACTIVE_PASSPORT"
+python3 scripts/ars_mark_read.py $ARGUMENTS --passport-path "$ARS_ACTIVE_PASSPORT" --unmark
