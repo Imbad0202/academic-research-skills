@@ -21,9 +21,14 @@ REQUIRED_COMMANDS = ("ars-mark-read.md", "ars-unmark-read.md")
 # Drift on any of these silently weakens the gate.
 REQUIRED_TOKENS = (
     "literature_corpus",  # validation rule reference
-    "human_read_log",  # peer-file write target
-    "model: sonnet",  # routing per feedback_no_haiku.md
+    "human_read_log",     # peer-file write target
+    "model: sonnet",      # routing per feedback_no_haiku.md
 )
+
+# Enforce canonical CLI dispatch pattern: 
+# Prose instructions are fragile; using a literal bash block with $ARGUMENTS 
+# ensures deterministic argument parsing and shell-safe token handling.
+REQUIRED_BLOCK = "Implementation:\n```bash\npython3 scripts/ars_mark_read.py $ARGUMENTS"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,13 +44,23 @@ def main(argv: list[str] | None = None) -> int:
                 f"2 commands MUST exist)"
             )
             continue
+            
         body = path.read_text(encoding="utf-8")
+        
+        # 1. Check for required tokens
         for token in REQUIRED_TOKENS:
             if token not in body:
                 errors.append(
                     f"commands/{cmd_name}: missing required token "
                     f"{token!r} (spec §3.6 Step 7 contract)"
                 )
+        
+        # 2. Check for canonical implementation block (Moved outside token loop)
+        if REQUIRED_BLOCK not in body:
+            errors.append(
+                f"commands/{cmd_name}: missing compliant 'Implementation: ```bash' block "
+                f"(spec §3.6 Step 7: must use canonical bash block with $ARGUMENTS)"
+            )
 
     if errors:
         for e in errors:
