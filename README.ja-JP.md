@@ -313,7 +313,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[mchesbro1](https://github.com/mchesbro1)** — 貢献者。`academic-paper-reviewer/references/top_journals_by_field.md` 用の IS Basket of 8 ジャーナルを最初に提案・起草（[Issue #5](https://github.com/Imbad0202/academic-research-skills/issues/5)）。
 
-**[cloudenochcsis](https://github.com/cloudenochcsis)** — 貢献者。IS セクションを *Basket of 8* から完全な *Senior Scholars' Basket of 11* に拡張 — *Decision Support Systems*、*Information & Management*、*Information and Organization* を追加（[Issue #7](https://github.com/Imbad0202/academic-research-skills/issues/7)、[PR #8](https://github.com/Imbad0202/academic-research-skills/pull/8)）。出典: [AIS Senior Scholars' List of Premier Journals](https://aisnet.org/page/SeniorScholarListofPremierJournals)。
+**[cloudenochcsis](https://github.com/cloudenochcsis)** — 貢献者。IS セクションを *Basket of 8* から完全な *Senior Scholars' Basket of 11* に拡張 — *Decision Support Systems*、*Information & Management*、*Information and Organization* を追加（[Issue #7](https://github.com/Imbad0202/academic-research-skills/issues/7)、[PR #8](https://github.com/Imbad0202/academic-research-skills/pull/8)）。出典: [AIS Senior Scholars' List of Premier Journals](https://aisnet.org/research/seniorscholarsbasket/)。
 
 **[eltociear](https://github.com/eltociear)**（Ikko Eltociear Ashimine）— 貢献者。日本語版 README（[`README.ja-JP.md`](README.ja-JP.md)）を翻訳（[PR #161](https://github.com/Imbad0202/academic-research-skills/pull/161)）。
 
@@ -540,7 +540,7 @@ Lu ら（2026、*Nature* 651:914-919）からの洞察を統合 — ブライン
 
 ### v3.1.1 (2026-04-09) — IS Senior Scholars' Basket of 11
 
-外部貢献: [@mchesbro1](https://github.com/mchesbro1) が IS Basket of 8 ジャーナルを最初に提案・起草（[Issue #5](https://github.com/Imbad0202/academic-research-skills/issues/5)）。[@cloudenochcsis](https://github.com/cloudenochcsis) が完全な Senior Scholars' Basket of 11 に拡張（[Issue #7](https://github.com/Imbad0202/academic-research-skills/issues/7)、[PR #8](https://github.com/Imbad0202/academic-research-skills/pull/8)）。`academic-paper-reviewer/references/top_journals_by_field.md` Section 7 を更新し、*Decision Support Systems*、*Information & Management*、*Information and Organization* を追加。出典: [AIS Senior Scholars' List of Premier Journals](https://aisnet.org/page/SeniorScholarListofPremierJournals)。
+外部貢献: [@mchesbro1](https://github.com/mchesbro1) が IS Basket of 8 ジャーナルを最初に提案・起草（[Issue #5](https://github.com/Imbad0202/academic-research-skills/issues/5)）。[@cloudenochcsis](https://github.com/cloudenochcsis) が完全な Senior Scholars' Basket of 11 に拡張（[Issue #7](https://github.com/Imbad0202/academic-research-skills/issues/7)、[PR #8](https://github.com/Imbad0202/academic-research-skills/pull/8)）。`academic-paper-reviewer/references/top_journals_by_field.md` Section 7 を更新し、*Decision Support Systems*、*Information & Management*、*Information and Organization* を追加。出典: [AIS Senior Scholars' List of Premier Journals](https://aisnet.org/research/seniorscholarsbasket/)。
 
 ### v3.1 (2026-04-06) — Anti-Context-Rot + 認知フレームワーク + リーンサイズ
 
