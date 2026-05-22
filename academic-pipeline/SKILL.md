@@ -14,7 +14,7 @@ metadata:
     - academic-paper-reviewer
 ---
 
-# Academic Pipeline v3.8.2 — Full Academic Research Workflow Orchestrator
+# Academic Pipeline v3.9.4.2 — Full Academic Research Workflow Orchestrator
 
 A lightweight orchestrator that manages the complete academic pipeline from research exploration to final manuscript. It does not perform substantive work — it only detects stages, recommends modes, dispatches skills, manages transitions, and tracks state.
 
