@@ -43,6 +43,7 @@ Refer to the [`literature_corpus_entry` schema](../../../shared/contracts/passpo
 | `abstract` | string | PRIVATE FIELD. |
 | `adapter_name` | string | Optional. |
 | `adapter_version` | string | — |
+| `arxiv_id` | string | Optional arXiv identifier for arXiv-hosted works. |
 | `contamination_signals` | object | v3.7.3 + v3.9.0 contaminated-source advisory field (spec v3.7.3 §3.2 + v3.9.0 §3.4–§3.5). |
 | `contamination_signals_backfilled_at` | string | v3.7.3 backfill provenance (issue #105). |
 | `description_last_audit` | null \| string | v3.7.1 trust-chain field. |
