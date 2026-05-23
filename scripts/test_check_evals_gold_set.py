@@ -89,3 +89,23 @@ def test_i4_duplicate_expected_outcomes_keys_caught(tmp_path):
     exp_path.write_text(raw)
     errors = check_evals_gold_set.validate(target)
     assert any("I4" in e for e in errors), f"I4 not caught; errors: {errors}"
+
+
+def test_i5_label_disagrees_with_kind_caught(tmp_path):
+    """I5: expected_outcomes lookup_verified mismatches manifest's declared label for the kind."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text())
+    exp["001-valid-doi-test"]["lookup_verified"] = "false"  # should be "true" for valid_doi
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I5" in e for e in errors), f"I5 not caught; errors: {errors}"
+
+
+def test_i5_invalid_label_enum_caught(tmp_path):
+    """I5: expected_outcomes lookup_verified not in label enum caught."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text())
+    exp["001-valid-doi-test"]["lookup_verified"] = "BOGUS"
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I5" in e for e in errors), f"I5 not caught; errors: {errors}"

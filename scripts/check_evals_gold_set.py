@@ -99,6 +99,31 @@ def validate(root: Path) -> list[str]:
         if obs_n != declared_n:
             errors.append(f"I3: kind {k!r} count {obs_n} != manifest declared {declared_n}")
 
+    # I5: expected_outcomes label matches manifest's kind->label mapping
+    kind_to_label = {entry["kind"]: entry["expected_lookup_verified"]
+                     for entry in manifest["tuple_distribution"]}
+    tuple_id_to_kind: dict[str, str] = {}
+    for path in sorted(tuples_dir.glob("*.json")):
+        try:
+            tup = json.loads(path.read_text(encoding="utf-8"))
+            tuple_id_to_kind[path.stem] = tup.get("kind")
+        except json.JSONDecodeError:
+            pass
+    for tid, outcome in expected.items():
+        label = outcome.get("lookup_verified")
+        if label not in LABEL_ENUM:
+            errors.append(f"I5: {tid} lookup_verified={label!r} not in {sorted(LABEL_ENUM)}")
+            continue
+        kind = tuple_id_to_kind.get(tid)
+        if kind is None:
+            continue  # I1 already reported missing tuple
+        expected_label = kind_to_label.get(kind)
+        if expected_label is not None and label != expected_label:
+            errors.append(
+                f"I5: {tid} lookup_verified={label!r} but manifest declares "
+                f"kind {kind!r} -> {expected_label!r}"
+            )
+
     return errors
 
 
