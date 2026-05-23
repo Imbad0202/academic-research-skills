@@ -181,6 +181,21 @@ def validate(root: Path) -> list[str]:
                 f"required pattern 'last verified unresolvable: YYYY-MM-DD...'"
             )
 
+    # I9: resolver_outcomes has all four resolver keys with valid status enum
+    for tid, outcome in expected.items():
+        ros = outcome.get("resolver_outcomes", {})
+        for resolver in RESOLVER_NAMES:
+            entry = ros.get(resolver)
+            if entry is None:
+                errors.append(f"I9: {tid} resolver_outcomes missing resolver {resolver!r}")
+                continue
+            status = entry.get("status")
+            if status not in STATUS_ENUM:
+                errors.append(
+                    f"I9: {tid} resolver_outcomes.{resolver}.status={status!r} "
+                    f"not in {sorted(STATUS_ENUM)}"
+                )
+
     return errors
 
 

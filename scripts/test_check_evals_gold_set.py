@@ -184,3 +184,23 @@ def test_i8_unresolvable_malformed_provenance_note_caught(tmp_path):
     f.write_text(json.dumps(obj))
     errors = check_evals_gold_set.validate(target)
     assert any("I8" in e for e in errors), f"I8 not caught; errors: {errors}"
+
+
+def test_i9_missing_resolver_caught(tmp_path):
+    """I9: expected_outcomes missing one of the four resolvers caught."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
+    exp["001-valid-doi-test"]["resolver_outcomes"].pop("arxiv")
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
+
+
+def test_i9_invalid_status_enum_caught(tmp_path):
+    """I9: expected_outcomes resolver status not in enum caught."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
+    exp["001-valid-doi-test"]["resolver_outcomes"]["crossref"]["status"] = "BOGUS"
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
