@@ -41,4 +41,6 @@ Tuples 031–040 use real citation metadata that was confirmed unresolvable in C
 
 ## Validator
 
+Run this command from the repo root to validate the corpus against its manifest:
+
 `python -m scripts.check_evals_gold_set evals/gold/citation_extraction`

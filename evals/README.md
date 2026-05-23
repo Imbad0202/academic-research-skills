@@ -8,12 +8,12 @@ This directory holds the v3.10 #184 generalized gold sets. Each subdirectory und
 evals/
 ├── README.md                          # this file
 ├── gold/
-│   ├── citation_extraction/           # Phase 1 — baseline for #182
-│   │   ├── README.md
-│   │   ├── manifest.yaml
-│   │   ├── tuples/
+│   ├── citation_extraction/           # Phase 1a — baseline for #182
+│   │   ├── README.md                  # this file (shipped)
+│   │   ├── manifest.yaml              # (Phase 1a, in progress)
+│   │   ├── tuples/                    # (Phase 1a, in progress)
 │   │   │   └── NNN-{kind-slug}-{discriminator}.json
-│   │   └── expected_outcomes.json
+│   │   └── expected_outcomes.json     # (Phase 1a, in progress)
 │   ├── status_classification/         # Phase 2 (lands post-#183)
 │   └── summarization_adequacy/        # Phase 2 (lands post-#183)
 ```
