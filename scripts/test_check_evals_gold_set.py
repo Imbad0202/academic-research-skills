@@ -53,14 +53,12 @@ def test_i2_tuple_id_filename_mismatch_caught(tmp_path):
     """I2: tuple_id field disagrees with filename stem."""
     target = _copy_clean(tmp_path)
     f = target / "tuples" / "001-valid-doi-test.json"
-    obj = json.loads(f.read_text())
+    obj = json.loads(f.read_text(encoding="utf-8"))
     obj["tuple_id"] = "wrong-id"
     f.write_text(json.dumps(obj))
-    # also rewrite expected_outcomes to keep I1 clean (we want only I2 to fire)
-    exp = json.loads((target / "expected_outcomes.json").read_text())
-    # I1 will fire because stems no longer match expected_outcomes (file is still
-    # 001-valid-doi-test.json but tuple_id is "wrong-id"). Confirm BOTH I1 and I2 fire
-    # -- that's the actual semantics; I2 is independent of I1's filename match.
+    # I1 stays clean: filename and expected_outcomes key both still
+    # equal "001-valid-doi-test". Only I2 fires here -- I2 is
+    # independent of filename-vs-key set equality.
     errors = check_evals_gold_set.validate(target)
     assert any("I2" in e for e in errors), f"I2 not caught; errors: {errors}"
 
@@ -70,7 +68,7 @@ def test_i3_wrong_kind_distribution_caught(tmp_path):
     target = _copy_clean(tmp_path)
     # mutate one tuple's kind to break the count
     f = target / "tuples" / "001-valid-doi-test.json"
-    obj = json.loads(f.read_text())
+    obj = json.loads(f.read_text(encoding="utf-8"))
     obj["kind"] = "fabricated"
     obj["fabrication_intent"] = True  # keep I7 consistent
     f.write_text(json.dumps(obj))
@@ -83,7 +81,7 @@ def test_i4_duplicate_expected_outcomes_keys_caught(tmp_path):
     target = _copy_clean(tmp_path)
     # write raw JSON with duplicate key (json.dumps cannot produce this, so write text)
     exp_path = target / "expected_outcomes.json"
-    raw = exp_path.read_text().rstrip().rstrip("}")
+    raw = exp_path.read_text(encoding="utf-8").rstrip().rstrip("}")
     # find the first key in the dict and inject a duplicate at the end
     raw += ', "001-valid-doi-test": {"lookup_verified": "false", "resolver_outcomes": {}}}'
     exp_path.write_text(raw)
@@ -94,7 +92,7 @@ def test_i4_duplicate_expected_outcomes_keys_caught(tmp_path):
 def test_i5_label_disagrees_with_kind_caught(tmp_path):
     """I5: expected_outcomes lookup_verified mismatches manifest's declared label for the kind."""
     target = _copy_clean(tmp_path)
-    exp = json.loads((target / "expected_outcomes.json").read_text())
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
     exp["001-valid-doi-test"]["lookup_verified"] = "false"  # should be "true" for valid_doi
     (target / "expected_outcomes.json").write_text(json.dumps(exp))
     errors = check_evals_gold_set.validate(target)
@@ -104,7 +102,7 @@ def test_i5_label_disagrees_with_kind_caught(tmp_path):
 def test_i5_invalid_label_enum_caught(tmp_path):
     """I5: expected_outcomes lookup_verified not in label enum caught."""
     target = _copy_clean(tmp_path)
-    exp = json.loads((target / "expected_outcomes.json").read_text())
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
     exp["001-valid-doi-test"]["lookup_verified"] = "BOGUS"
     (target / "expected_outcomes.json").write_text(json.dumps(exp))
     errors = check_evals_gold_set.validate(target)
@@ -115,7 +113,7 @@ def test_i6_valid_arxiv_missing_arxiv_id_caught(tmp_path):
     """I6: valid_arxiv tuple with null arxiv_id caught."""
     target = _copy_clean(tmp_path)
     f = target / "tuples" / "002-valid-arxiv-test.json"
-    obj = json.loads(f.read_text())
+    obj = json.loads(f.read_text(encoding="utf-8"))
     obj["arxiv_id"] = None
     f.write_text(json.dumps(obj))
     errors = check_evals_gold_set.validate(target)
@@ -126,7 +124,7 @@ def test_i6_valid_doi_with_arxiv_id_caught(tmp_path):
     """I6: valid_doi tuple with non-null arxiv_id caught."""
     target = _copy_clean(tmp_path)
     f = target / "tuples" / "001-valid-doi-test.json"
-    obj = json.loads(f.read_text())
+    obj = json.loads(f.read_text(encoding="utf-8"))
     obj["arxiv_id"] = "2401.12345"
     f.write_text(json.dumps(obj))
     errors = check_evals_gold_set.validate(target)
@@ -137,7 +135,7 @@ def test_i6_valid_doi_missing_doi_caught(tmp_path):
     """I6: valid_doi tuple with null corpus_entry.doi caught."""
     target = _copy_clean(tmp_path)
     f = target / "tuples" / "001-valid-doi-test.json"
-    obj = json.loads(f.read_text())
+    obj = json.loads(f.read_text(encoding="utf-8"))
     obj["corpus_entry"].pop("doi", None)
     f.write_text(json.dumps(obj))
     errors = check_evals_gold_set.validate(target)
