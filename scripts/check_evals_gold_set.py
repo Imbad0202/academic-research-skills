@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Validator for evals/gold/<task>/ gold subsets.
 
-Enforces 9 invariants documented in
+Enforces 10 invariants documented in
 docs/design/2026-05-21-v3.10-184-extend-eval-harness-spec.md
-implementation plan (Task 4 of #184 Phase 1a).
+implementation plan (Task 4 of #184 Phase 1a; I10 added in 2026-05-24 amendment).
 
 Usage:
     python -m scripts.check_evals_gold_set <gold-set-dir>
 
 Exit code 0 = clean, non-zero = invariants violated. Prints one line per
-violation prefixed with the invariant tag (I1..I9).
+violation prefixed with the invariant tag (I1..I10).
 """
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from jsonschema import Draft202012Validator
 
 LABEL_ENUM = {"true", "false", "unresolvable"}
 KIND_ENUM = {"valid_doi", "valid_arxiv", "valid_unresolvable", "manual_exempt", "fabricated"}
@@ -27,6 +28,15 @@ RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 STATUS_ENUM = {"matched", "unmatched", "unreachable", "skipped"}
 
 _PROVENANCE_RE = re.compile(r"^last verified unresolvable: \d{4}-\d{2}-\d{2}")
+
+_CORPUS_ENTRY_SCHEMA_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "shared" / "contracts" / "passport" / "literature_corpus_entry.schema.json"
+)
+_CORPUS_ENTRY_VALIDATOR = Draft202012Validator(
+    json.loads(_CORPUS_ENTRY_SCHEMA_PATH.read_text(encoding="utf-8")),
+    format_checker=Draft202012Validator.FORMAT_CHECKER,
+)
 
 
 def _load_json_strict(path: Path) -> Any:
@@ -200,6 +210,18 @@ def validate(root: Path) -> list[str]:
                     f"I9: {tid} resolver_outcomes.{resolver}.status={status!r} "
                     f"not in {sorted(STATUS_ENUM)}"
                 )
+
+    # I10: per-tuple corpus_entry validates against literature_corpus_entry.schema.json
+    for stem, tup in tuples_by_id.items():
+        corpus_entry = tup.get("corpus_entry")
+        if corpus_entry is None:
+            errors.append(f"I10: {stem}.json missing required field 'corpus_entry'")
+            continue
+        for ve in _CORPUS_ENTRY_VALIDATOR.iter_errors(corpus_entry):
+            path = "$" + "".join(f"[{p!r}]" if isinstance(p, str) else f"[{p}]" for p in ve.absolute_path)
+            errors.append(
+                f"I10: {stem}.json corpus_entry{path}: {ve.message}"
+            )
 
     return errors
 

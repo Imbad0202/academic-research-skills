@@ -4,7 +4,7 @@
   "corpus_entry": {
     "citation_key": "Bogus2023Fab",
     "title": "Intentionally bogus fabricated paper title",
-    "authors": ["Fictitious, A."],
+    "authors": [{ "family": "Fictitious", "given": "A." }],
     "year": 2023,
     "doi": "10.99999/bogus-fab-1",
     "venue": "Bogus Journal",

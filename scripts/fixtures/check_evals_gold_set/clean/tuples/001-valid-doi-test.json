@@ -4,7 +4,7 @@
   "corpus_entry": {
     "citation_key": "Test2023DOI",
     "title": "Test paper title",
-    "authors": ["Test, A."],
+    "authors": [{ "family": "Test", "given": "A." }],
     "year": 2023,
     "doi": "10.1038/test",
     "venue": "Test Journal",

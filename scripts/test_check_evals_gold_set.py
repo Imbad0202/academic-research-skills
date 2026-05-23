@@ -24,7 +24,7 @@ def _copy_clean(tmp_path: Path) -> Path:
 
 
 def test_clean_fixture_passes(tmp_path):
-    """Clean fixture passes all 9 invariants."""
+    """Clean fixture passes all 10 invariants."""
     target = _copy_clean(tmp_path)
     errors = check_evals_gold_set.validate(target)
     assert errors == [], f"clean fixture should pass; got: {errors}"
@@ -204,3 +204,63 @@ def test_i9_invalid_status_enum_caught(tmp_path):
     (target / "expected_outcomes.json").write_text(json.dumps(exp))
     errors = check_evals_gold_set.validate(target)
     assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
+
+
+def test_i10_authors_string_shorthand_caught(tmp_path):
+    """I10: corpus_entry.authors as string array (CSL-JSON shorthand) caught.
+
+    literature_corpus_entry.schema.json requires each author to be a CSL-JSON
+    object ({family, given, ...} or {literal}). String shorthand like
+    ["Smith, J."] is the most common drift mode and would silently fall over
+    when Phase 1b harness wires verify_citation; I10 surfaces it at commit time.
+    """
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["corpus_entry"]["authors"] = ["Test, A."]
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I10" in e for e in errors), f"I10 not caught; errors: {errors}"
+
+
+def test_i10_missing_required_citation_key_caught(tmp_path):
+    """I10: corpus_entry missing required field (citation_key) caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["corpus_entry"].pop("citation_key")
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I10" in e for e in errors), f"I10 not caught; errors: {errors}"
+
+
+def test_i10_invalid_obtained_via_enum_caught(tmp_path):
+    """I10: corpus_entry.obtained_via outside schema enum caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["corpus_entry"]["obtained_via"] = "csv-import"  # not in schema enum
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I10" in e for e in errors), f"I10 not caught; errors: {errors}"
+
+
+def test_i10_invalid_obtained_at_datetime_caught(tmp_path):
+    """I10: corpus_entry.obtained_at as malformed date-time caught.
+
+    jsonschema by default silently SKIPS `format: "date-time"` constraint
+    unless the validator was constructed with format_checker. Without that
+    safeguard, malformed timestamps in `obtained_at` /
+    `source_acquisition_date` / `contamination_signals_backfilled_at` would
+    sail past I10 and surface as bibliography_agent runtime crashes in
+    Phase 1b. Repo convention (scripts/adapters/tests/test_literature_corpus_
+    entry_schema.py) already enables FORMAT_CHECKER; this test pins the same
+    enforcement here.
+    """
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["corpus_entry"]["obtained_at"] = "not-a-date"
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I10" in e for e in errors), f"I10 not caught; errors: {errors}"

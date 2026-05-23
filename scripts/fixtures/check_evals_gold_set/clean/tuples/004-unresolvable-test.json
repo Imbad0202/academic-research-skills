@@ -4,7 +4,7 @@
   "corpus_entry": {
     "citation_key": "Test2023Unresolvable",
     "title": "Obscure conference paper not yet indexed",
-    "authors": ["Obscure, A."],
+    "authors": [{ "family": "Obscure", "given": "A." }],
     "year": 2023,
     "doi": "10.1234/obscure-real",
     "venue": "Some Workshop 2023",

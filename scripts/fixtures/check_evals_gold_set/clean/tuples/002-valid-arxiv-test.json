@@ -4,7 +4,7 @@
   "corpus_entry": {
     "citation_key": "Test2023ArXiv",
     "title": "Test arxiv preprint title",
-    "authors": ["TestX, B."],
+    "authors": [{ "family": "TestX", "given": "B." }],
     "year": 2023,
     "venue": "arXiv preprint",
     "source_pointer": "https://arxiv.org/abs/2301.99999",
