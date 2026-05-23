@@ -1,4 +1,4 @@
-# Citation-Extraction Gold Subset (Phase 1)
+# Citation-Extraction Gold Subset (Phase 1a)
 
 50-tuple gold subset measuring `verification_gate.verify_citation` per-citation `lookup_verified` 3-class enum classification accuracy. Phase 1a (this version) ships data only; the harness lands in Phase 1b.
 

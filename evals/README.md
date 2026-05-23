@@ -28,5 +28,5 @@ Run `python -m scripts.check_evals_gold_set evals/gold/<task>` to validate any g
 
 ## Provenance
 
-- Phase 1 (citation-extraction): v3.10 #184, spec `docs/design/2026-05-21-v3.10-184-extend-eval-harness-spec.md`
+- Phase 1a (citation-extraction): v3.10 #184, spec `docs/design/2026-05-21-v3.10-184-extend-eval-harness-spec.md`
 - Phase 2 (status + summarization): scheduled post-#183 ship
