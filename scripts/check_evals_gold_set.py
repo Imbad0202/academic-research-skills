@@ -75,6 +75,30 @@ def validate(root: Path) -> list[str]:
         if tid != path.stem:
             errors.append(f"I2: {path.name} tuple_id={tid!r} != filename stem {path.stem!r}")
 
+    # I3: kind distribution matches manifest tuple_distribution
+    manifest_path = root / "manifest.yaml"
+    try:
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as e:
+        errors.append(f"I3: manifest.yaml does not parse: {e}")
+        return errors
+    declared = {entry["kind"]: entry["n"] for entry in manifest["tuple_distribution"]}
+    observed: dict[str, int] = {}
+    for path in sorted(tuples_dir.glob("*.json")):
+        try:
+            tup = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        k = tup.get("kind")
+        if k not in KIND_ENUM:
+            errors.append(f"I3: {path.name} has unknown kind {k!r}")
+            continue
+        observed[k] = observed.get(k, 0) + 1
+    for k, declared_n in declared.items():
+        obs_n = observed.get(k, 0)
+        if obs_n != declared_n:
+            errors.append(f"I3: kind {k!r} count {obs_n} != manifest declared {declared_n}")
+
     return errors
 
 

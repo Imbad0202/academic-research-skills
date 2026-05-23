@@ -63,3 +63,16 @@ def test_i2_tuple_id_filename_mismatch_caught(tmp_path):
     # -- that's the actual semantics; I2 is independent of I1's filename match.
     errors = check_evals_gold_set.validate(target)
     assert any("I2" in e for e in errors), f"I2 not caught; errors: {errors}"
+
+
+def test_i3_wrong_kind_distribution_caught(tmp_path):
+    """I3: tuple kind count disagrees with manifest tuple_distribution."""
+    target = _copy_clean(tmp_path)
+    # mutate one tuple's kind to break the count
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text())
+    obj["kind"] = "fabricated"
+    obj["fabrication_intent"] = True  # keep I7 consistent
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I3" in e for e in errors), f"I3 not caught; errors: {errors}"
