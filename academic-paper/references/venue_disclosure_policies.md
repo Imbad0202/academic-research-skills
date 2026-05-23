@@ -79,8 +79,8 @@ If the venue is not listed here, the mode halts and asks the user to paste the c
 
 | Field | Value |
 |---|---|
-| Source URL | https://www.aclweb.org/portal/content/acl-policy-use-ai-writing-assistance |
-| Access date | 2026-04-09 |
+| Source URL | https://2023.aclweb.org/blog/ACL-2023-policy/ |
+| Access date | 2026-05-24 |
 | Policy summary | ACL requires a dedicated "Limitations" section and allows an optional "Use of AI Assistance" section. Authors must disclose substantive use of AI writing tools. Minor grammar/spell-check tools do not require disclosure. |
 | Required phrasing elements | Must name the tool. Must describe "the extent of use" — was it for drafting, editing, or brainstorming? ACL distinguishes between minor editing and substantive drafting. |
 | Preferred disclosure location | A dedicated **"Use of AI Assistance"** subsection, placed after "Limitations" and before "References" |
