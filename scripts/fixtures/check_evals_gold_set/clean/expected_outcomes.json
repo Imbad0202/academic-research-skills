@@ -1,0 +1,29 @@
+{
+  "001-valid-doi-test": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": { "status": "matched", "response_summary": null },
+      "openalex": { "status": "matched", "response_summary": null },
+      "semantic_scholar": { "status": "matched", "response_summary": null },
+      "arxiv": { "status": "skipped", "response_summary": null }
+    }
+  },
+  "002-valid-arxiv-test": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": { "status": "unmatched", "response_summary": null },
+      "openalex": { "status": "unmatched", "response_summary": null },
+      "semantic_scholar": { "status": "unmatched", "response_summary": null },
+      "arxiv": { "status": "matched", "response_summary": null }
+    }
+  },
+  "003-fabricated-test": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": { "status": "unmatched", "response_summary": null },
+      "openalex": { "status": "unmatched", "response_summary": null },
+      "semantic_scholar": { "status": "unmatched", "response_summary": null },
+      "arxiv": { "status": "skipped", "response_summary": null }
+    }
+  }
+}
