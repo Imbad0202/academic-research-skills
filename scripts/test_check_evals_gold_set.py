@@ -76,3 +76,16 @@ def test_i3_wrong_kind_distribution_caught(tmp_path):
     f.write_text(json.dumps(obj))
     errors = check_evals_gold_set.validate(target)
     assert any("I3" in e for e in errors), f"I3 not caught; errors: {errors}"
+
+
+def test_i4_duplicate_expected_outcomes_keys_caught(tmp_path):
+    """I4: duplicate keys in expected_outcomes.json caught."""
+    target = _copy_clean(tmp_path)
+    # write raw JSON with duplicate key (json.dumps cannot produce this, so write text)
+    exp_path = target / "expected_outcomes.json"
+    raw = exp_path.read_text().rstrip().rstrip("}")
+    # find the first key in the dict and inject a duplicate at the end
+    raw += ', "001-valid-doi-test": {"lookup_verified": "false", "resolver_outcomes": {}}}'
+    exp_path.write_text(raw)
+    errors = check_evals_gold_set.validate(target)
+    assert any("I4" in e for e in errors), f"I4 not caught; errors: {errors}"
