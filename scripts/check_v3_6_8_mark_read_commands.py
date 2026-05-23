@@ -25,9 +25,10 @@ REQUIRED_TOKENS = (
     "model: sonnet",      # routing per feedback_no_haiku.md
 )
 
-# Enforce canonical CLI dispatch pattern: 
-# Prose instructions are fragile; using a literal bash block with $ARGUMENTS 
+# Enforce canonical CLI dispatch pattern (PR #197 local convention):
+# Prose instructions are fragile; using a literal bash block with $ARGUMENTS
 # ensures deterministic argument parsing and shell-safe token handling.
+# This is a repo-local policy introduced by #197, not a §3.6 Step 7 spec rule.
 REQUIRED_BLOCK = "Implementation:\n```bash\npython3 scripts/ars_mark_read.py $ARGUMENTS"
 
 
@@ -59,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         if REQUIRED_BLOCK not in body:
             errors.append(
                 f"commands/{cmd_name}: missing compliant 'Implementation: ```bash' block "
-                f"(spec §3.6 Step 7: must use canonical bash block with $ARGUMENTS)"
+                f"(PR #197 local convention: must use canonical bash block with $ARGUMENTS for deterministic argument parsing)"
             )
 
     if errors:
