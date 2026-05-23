@@ -47,6 +47,7 @@ def validate(root: Path) -> list[str]:
     root = Path(root)
     expected_path = root / "expected_outcomes.json"
     tuples_dir = root / "tuples"
+    manifest_path = root / "manifest.yaml"
 
     if not tuples_dir.is_dir():
         errors.append(f"I1: tuples/ directory not found at {tuples_dir}")
@@ -67,51 +68,67 @@ def validate(root: Path) -> list[str]:
     if extra:
         errors.append(f"I1: extra tuple files without expected_outcomes entry: {sorted(extra)}")
 
-    # I2: per-tuple tuple_id == filename stem
+    # Load all tuple files ONCE into tuples_by_id
+    tuples_by_id: dict[str, dict] = {}
     for path in sorted(tuples_dir.glob("*.json")):
         try:
-            tup = json.loads(path.read_text(encoding="utf-8"))
+            tuples_by_id[path.stem] = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
             errors.append(f"I2: {path.name} is not valid JSON: {e}")
-            continue
+            # malformed tuple gets a single I2 error; I3/I5/I6/I7/I8 skip it
+
+    # I2: tuple_id == filename stem
+    for stem, tup in tuples_by_id.items():
         tid = tup.get("tuple_id")
-        if tid != path.stem:
-            errors.append(f"I2: {path.name} tuple_id={tid!r} != filename stem {path.stem!r}")
+        if tid != stem:
+            errors.append(f"I2: {stem}.json tuple_id={tid!r} != filename stem {stem!r}")
 
     # I3: kind distribution matches manifest tuple_distribution
-    manifest_path = root / "manifest.yaml"
+    if not manifest_path.is_file():
+        errors.append(f"I3: manifest.yaml not found at {manifest_path}")
+        return errors
     try:
         manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     except yaml.YAMLError as e:
         errors.append(f"I3: manifest.yaml does not parse: {e}")
         return errors
-    declared = {entry["kind"]: entry["n"] for entry in manifest["tuple_distribution"]}
+    if not isinstance(manifest, dict):
+        errors.append(f"I3: manifest.yaml root is not a mapping (got {type(manifest).__name__})")
+        return errors
+    tuple_dist = manifest.get("tuple_distribution")
+    if not isinstance(tuple_dist, list):
+        errors.append(
+            f"I3: manifest.yaml missing or invalid 'tuple_distribution' "
+            f"(got {type(tuple_dist).__name__})"
+        )
+        return errors
+    declared: dict[str, int] = {}
+    for entry in tuple_dist:
+        if not isinstance(entry, dict) or "kind" not in entry or "n" not in entry:
+            errors.append(f"I3: manifest.yaml tuple_distribution entry malformed: {entry!r}")
+            return errors
+        declared[entry["kind"]] = entry["n"]
+
+    # I3 observed accumulator
     observed: dict[str, int] = {}
-    for path in sorted(tuples_dir.glob("*.json")):
-        try:
-            tup = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
+    for stem, tup in tuples_by_id.items():
         k = tup.get("kind")
         if k not in KIND_ENUM:
-            errors.append(f"I3: {path.name} has unknown kind {k!r}")
+            errors.append(f"I3: {stem}.json has unknown kind {k!r}")
             continue
         observed[k] = observed.get(k, 0) + 1
+
+    # I3 declared-vs-observed comparison (Change 2: add observed-but-not-declared loop)
     for k, declared_n in declared.items():
         obs_n = observed.get(k, 0)
         if obs_n != declared_n:
             errors.append(f"I3: kind {k!r} count {obs_n} != manifest declared {declared_n}")
+    for k in observed.keys() - declared.keys():
+        errors.append(f"I3: kind {k!r} observed in tuples but not declared in manifest tuple_distribution")
 
     # I5: expected_outcomes label matches manifest's kind->label mapping
-    kind_to_label = {entry["kind"]: entry["expected_lookup_verified"]
-                     for entry in manifest["tuple_distribution"]}
-    tuple_id_to_kind: dict[str, str] = {}
-    for path in sorted(tuples_dir.glob("*.json")):
-        try:
-            tup = json.loads(path.read_text(encoding="utf-8"))
-            tuple_id_to_kind[path.stem] = tup.get("kind")
-        except json.JSONDecodeError:
-            pass
+    kind_to_label = {entry["kind"]: entry["expected_lookup_verified"] for entry in tuple_dist}
+    tuple_id_to_kind = {stem: tup.get("kind") for stem, tup in tuples_by_id.items()}
     for tid, outcome in expected.items():
         label = outcome.get("lookup_verified")
         if label not in LABEL_ENUM:
@@ -128,56 +145,44 @@ def validate(root: Path) -> list[str]:
             )
 
     # I6: arxiv_id placement consistency
-    for path in sorted(tuples_dir.glob("*.json")):
-        try:
-            tup = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
+    for stem, tup in tuples_by_id.items():
         kind = tup.get("kind")
         arxiv_id = tup.get("arxiv_id")
         doi = (tup.get("corpus_entry") or {}).get("doi")
         if kind == "valid_arxiv":
             if not arxiv_id:
-                errors.append(f"I6: {path.name} kind=valid_arxiv but arxiv_id is null/missing")
+                errors.append(f"I6: {stem}.json kind=valid_arxiv but arxiv_id is null/missing")
             if doi:
-                errors.append(f"I6: {path.name} kind=valid_arxiv but corpus_entry.doi={doi!r} present")
+                errors.append(f"I6: {stem}.json kind=valid_arxiv but corpus_entry.doi={doi!r} present")
         elif kind == "valid_doi":
             if arxiv_id:
-                errors.append(f"I6: {path.name} kind=valid_doi but arxiv_id={arxiv_id!r} present")
+                errors.append(f"I6: {stem}.json kind=valid_doi but arxiv_id={arxiv_id!r} present")
             if not doi:
-                errors.append(f"I6: {path.name} kind=valid_doi but corpus_entry.doi missing/null")
+                errors.append(f"I6: {stem}.json kind=valid_doi but corpus_entry.doi missing/null")
         else:
             if arxiv_id:
-                errors.append(f"I6: {path.name} kind={kind!r} but arxiv_id={arxiv_id!r} present (must be null)")
+                errors.append(f"I6: {stem}.json kind={kind!r} but arxiv_id={arxiv_id!r} present (must be null)")
 
     # I7: fabrication_intent <-> kind == "fabricated"
-    for path in sorted(tuples_dir.glob("*.json")):
-        try:
-            tup = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
+    for stem, tup in tuples_by_id.items():
         kind = tup.get("kind")
         marker = tup.get("fabrication_intent")
         if kind == "fabricated" and marker is not True:
-            errors.append(f"I7: {path.name} kind=fabricated but fabrication_intent={marker!r} (must be true)")
+            errors.append(f"I7: {stem}.json kind=fabricated but fabrication_intent={marker!r} (must be true)")
         if kind != "fabricated" and marker is True:
-            errors.append(f"I7: {path.name} kind={kind!r} but fabrication_intent=true (must be false)")
+            errors.append(f"I7: {stem}.json kind={kind!r} but fabrication_intent=true (must be false)")
 
     # I8: valid_unresolvable tuples carry provenance_note matching the date pattern
-    for path in sorted(tuples_dir.glob("*.json")):
-        try:
-            tup = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
+    for stem, tup in tuples_by_id.items():
         if tup.get("kind") != "valid_unresolvable":
             continue
         note = tup.get("provenance_note")
         if not note:
-            errors.append(f"I8: {path.name} kind=valid_unresolvable but provenance_note is null/missing")
+            errors.append(f"I8: {stem}.json kind=valid_unresolvable but provenance_note is null/missing")
             continue
         if not _PROVENANCE_RE.match(note):
             errors.append(
-                f"I8: {path.name} provenance_note={note!r} does not match "
+                f"I8: {stem}.json provenance_note={note!r} does not match "
                 f"required pattern 'last verified unresolvable: YYYY-MM-DD...'"
             )
 
