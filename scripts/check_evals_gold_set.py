@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Validator for evals/gold/<task>/ gold subsets.
 
 Enforces 9 invariants documented in
@@ -34,7 +35,7 @@ def _load_json_strict(path: Path) -> Any:
                 raise ValueError(f"duplicate JSON key: {k!r}")
             seen.add(k)
         return dict(pairs)
-    return json.loads(path.read_text(), object_pairs_hook=_no_duplicates)
+    return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicates)
 
 
 def validate(root: Path) -> list[str]:
@@ -43,6 +44,10 @@ def validate(root: Path) -> list[str]:
     root = Path(root)
     expected_path = root / "expected_outcomes.json"
     tuples_dir = root / "tuples"
+
+    if not tuples_dir.is_dir():
+        errors.append(f"I1: tuples/ directory not found at {tuples_dir}")
+        return errors
 
     # I1: tuple filename stems == expected_outcomes keys
     tuple_stems = {p.stem for p in tuples_dir.glob("*.json")}
