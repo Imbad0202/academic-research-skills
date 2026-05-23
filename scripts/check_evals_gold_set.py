@@ -124,6 +124,29 @@ def validate(root: Path) -> list[str]:
                 f"kind {kind!r} -> {expected_label!r}"
             )
 
+    # I6: arxiv_id placement consistency
+    for path in sorted(tuples_dir.glob("*.json")):
+        try:
+            tup = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        kind = tup.get("kind")
+        arxiv_id = tup.get("arxiv_id")
+        doi = (tup.get("corpus_entry") or {}).get("doi")
+        if kind == "valid_arxiv":
+            if not arxiv_id:
+                errors.append(f"I6: {path.name} kind=valid_arxiv but arxiv_id is null/missing")
+            if doi:
+                errors.append(f"I6: {path.name} kind=valid_arxiv but corpus_entry.doi={doi!r} present")
+        elif kind == "valid_doi":
+            if arxiv_id:
+                errors.append(f"I6: {path.name} kind=valid_doi but arxiv_id={arxiv_id!r} present")
+            if not doi:
+                errors.append(f"I6: {path.name} kind=valid_doi but corpus_entry.doi missing/null")
+        else:
+            if arxiv_id:
+                errors.append(f"I6: {path.name} kind={kind!r} but arxiv_id={arxiv_id!r} present (must be null)")
+
     return errors
 
 

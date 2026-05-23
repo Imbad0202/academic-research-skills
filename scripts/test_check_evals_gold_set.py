@@ -109,3 +109,36 @@ def test_i5_invalid_label_enum_caught(tmp_path):
     (target / "expected_outcomes.json").write_text(json.dumps(exp))
     errors = check_evals_gold_set.validate(target)
     assert any("I5" in e for e in errors), f"I5 not caught; errors: {errors}"
+
+
+def test_i6_valid_arxiv_missing_arxiv_id_caught(tmp_path):
+    """I6: valid_arxiv tuple with null arxiv_id caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "002-valid-arxiv-test.json"
+    obj = json.loads(f.read_text())
+    obj["arxiv_id"] = None
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I6" in e for e in errors), f"I6 not caught; errors: {errors}"
+
+
+def test_i6_valid_doi_with_arxiv_id_caught(tmp_path):
+    """I6: valid_doi tuple with non-null arxiv_id caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text())
+    obj["arxiv_id"] = "2401.12345"
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I6" in e for e in errors), f"I6 not caught; errors: {errors}"
+
+
+def test_i6_valid_doi_missing_doi_caught(tmp_path):
+    """I6: valid_doi tuple with null corpus_entry.doi caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text())
+    obj["corpus_entry"].pop("doi", None)
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I6" in e for e in errors), f"I6 not caught; errors: {errors}"
