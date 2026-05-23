@@ -14,6 +14,7 @@ violation prefixed with the invariant tag (I1..I9).
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,8 @@ LABEL_ENUM = {"true", "false", "unresolvable"}
 KIND_ENUM = {"valid_doi", "valid_arxiv", "valid_unresolvable", "manual_exempt", "fabricated"}
 RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 STATUS_ENUM = {"matched", "unmatched", "unreachable", "skipped"}
+
+_PROVENANCE_RE = re.compile(r"^last verified unresolvable: \d{4}-\d{2}-\d{2}")
 
 
 def _load_json_strict(path: Path) -> Any:
@@ -159,6 +162,24 @@ def validate(root: Path) -> list[str]:
             errors.append(f"I7: {path.name} kind=fabricated but fabrication_intent={marker!r} (must be true)")
         if kind != "fabricated" and marker is True:
             errors.append(f"I7: {path.name} kind={kind!r} but fabrication_intent=true (must be false)")
+
+    # I8: valid_unresolvable tuples carry provenance_note matching the date pattern
+    for path in sorted(tuples_dir.glob("*.json")):
+        try:
+            tup = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        if tup.get("kind") != "valid_unresolvable":
+            continue
+        note = tup.get("provenance_note")
+        if not note:
+            errors.append(f"I8: {path.name} kind=valid_unresolvable but provenance_note is null/missing")
+            continue
+        if not _PROVENANCE_RE.match(note):
+            errors.append(
+                f"I8: {path.name} provenance_note={note!r} does not match "
+                f"required pattern 'last verified unresolvable: YYYY-MM-DD...'"
+            )
 
     return errors
 

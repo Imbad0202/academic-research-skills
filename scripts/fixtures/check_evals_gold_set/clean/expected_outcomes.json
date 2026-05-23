@@ -25,5 +25,14 @@
       "semantic_scholar": { "status": "unmatched", "response_summary": null },
       "arxiv": { "status": "skipped", "response_summary": null }
     }
+  },
+  "004-unresolvable-test": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": { "status": "unmatched", "response_summary": null },
+      "openalex": { "status": "unmatched", "response_summary": null },
+      "semantic_scholar": { "status": "unmatched", "response_summary": null },
+      "arxiv": { "status": "skipped", "response_summary": null }
+    }
   }
 }

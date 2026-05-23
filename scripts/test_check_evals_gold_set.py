@@ -162,3 +162,25 @@ def test_i7_non_fabricated_with_intent_marker_caught(tmp_path):
     f.write_text(json.dumps(obj))
     errors = check_evals_gold_set.validate(target)
     assert any("I7" in e for e in errors), f"I7 not caught; errors: {errors}"
+
+
+def test_i8_unresolvable_missing_provenance_note_caught(tmp_path):
+    """I8: valid_unresolvable tuple without provenance_note caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "004-unresolvable-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["provenance_note"] = None
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I8" in e for e in errors), f"I8 not caught; errors: {errors}"
+
+
+def test_i8_unresolvable_malformed_provenance_note_caught(tmp_path):
+    """I8: valid_unresolvable provenance_note missing date pattern caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "004-unresolvable-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["provenance_note"] = "checked recently"  # no date pattern
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I8" in e for e in errors), f"I8 not caught; errors: {errors}"
