@@ -64,6 +64,17 @@ def validate(root: Path) -> list[str]:
     if extra:
         errors.append(f"I1: extra tuple files without expected_outcomes entry: {sorted(extra)}")
 
+    # I2: per-tuple tuple_id == filename stem
+    for path in sorted(tuples_dir.glob("*.json")):
+        try:
+            tup = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            errors.append(f"I2: {path.name} is not valid JSON: {e}")
+            continue
+        tid = tup.get("tuple_id")
+        if tid != path.stem:
+            errors.append(f"I2: {path.name} tuple_id={tid!r} != filename stem {path.stem!r}")
+
     return errors
 
 

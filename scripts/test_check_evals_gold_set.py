@@ -47,3 +47,19 @@ def test_i1_extra_tuple_file_caught(tmp_path):
     }))
     errors = check_evals_gold_set.validate(target)
     assert any("I1" in e for e in errors), f"I1 not caught; errors: {errors}"
+
+
+def test_i2_tuple_id_filename_mismatch_caught(tmp_path):
+    """I2: tuple_id field disagrees with filename stem."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text())
+    obj["tuple_id"] = "wrong-id"
+    f.write_text(json.dumps(obj))
+    # also rewrite expected_outcomes to keep I1 clean (we want only I2 to fire)
+    exp = json.loads((target / "expected_outcomes.json").read_text())
+    # I1 will fire because stems no longer match expected_outcomes (file is still
+    # 001-valid-doi-test.json but tuple_id is "wrong-id"). Confirm BOTH I1 and I2 fire
+    # -- that's the actual semantics; I2 is independent of I1's filename match.
+    errors = check_evals_gold_set.validate(target)
+    assert any("I2" in e for e in errors), f"I2 not caught; errors: {errors}"
