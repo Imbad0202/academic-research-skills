@@ -94,8 +94,8 @@ If the venue is not listed here, the mode halts and asks the user to paste the c
 
 | Field | Value |
 |---|---|
-| Source URL | https://2026.emnlp.org/calls/main-conference-papers (follows ACL policy) |
-| Access date | 2026-04-09 |
+| Source URL | https://2026.emnlp.org/calls/main_conference_papers/ (follows ACL policy) |
+| Access date | 2026-05-23 |
 | Policy summary | EMNLP follows the ACL policy. Same requirements apply. |
 | Required phrasing elements | Same as ACL |
 | Preferred disclosure location | Same as ACL: **"Use of AI Assistance"** subsection |
