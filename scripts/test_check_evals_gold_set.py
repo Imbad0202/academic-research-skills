@@ -140,3 +140,25 @@ def test_i6_valid_doi_missing_doi_caught(tmp_path):
     f.write_text(json.dumps(obj))
     errors = check_evals_gold_set.validate(target)
     assert any("I6" in e for e in errors), f"I6 not caught; errors: {errors}"
+
+
+def test_i7_fabricated_without_intent_marker_caught(tmp_path):
+    """I7: fabricated tuple with fabrication_intent=False caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "003-fabricated-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["fabrication_intent"] = False
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I7" in e for e in errors), f"I7 not caught; errors: {errors}"
+
+
+def test_i7_non_fabricated_with_intent_marker_caught(tmp_path):
+    """I7: non-fabricated tuple with fabrication_intent=True caught."""
+    target = _copy_clean(tmp_path)
+    f = target / "tuples" / "001-valid-doi-test.json"
+    obj = json.loads(f.read_text(encoding="utf-8"))
+    obj["fabrication_intent"] = True
+    f.write_text(json.dumps(obj))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I7" in e for e in errors), f"I7 not caught; errors: {errors}"

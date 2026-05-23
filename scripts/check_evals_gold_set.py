@@ -147,6 +147,19 @@ def validate(root: Path) -> list[str]:
             if arxiv_id:
                 errors.append(f"I6: {path.name} kind={kind!r} but arxiv_id={arxiv_id!r} present (must be null)")
 
+    # I7: fabrication_intent <-> kind == "fabricated"
+    for path in sorted(tuples_dir.glob("*.json")):
+        try:
+            tup = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        kind = tup.get("kind")
+        marker = tup.get("fabrication_intent")
+        if kind == "fabricated" and marker is not True:
+            errors.append(f"I7: {path.name} kind=fabricated but fabrication_intent={marker!r} (must be true)")
+        if kind != "fabricated" and marker is True:
+            errors.append(f"I7: {path.name} kind={kind!r} but fabrication_intent=true (must be false)")
+
     return errors
 
 
