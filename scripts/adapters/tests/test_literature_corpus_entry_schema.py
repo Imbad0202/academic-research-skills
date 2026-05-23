@@ -235,6 +235,47 @@ def test_valid_obtained_at_format_passes():
     _validator(schema).validate(entry)
 
 
+def test_valid_arxiv_id_passes():
+    schema = _load_schema()
+    entry = {
+        "citation_key": "chen2024",
+        "title": "T",
+        "authors": [{"family": "C"}],
+        "year": 2024,
+        "source_pointer": "https://arxiv.org/abs/2401.12345",
+        "arxiv_id": "2401.12345",
+    }
+    _validator(schema).validate(entry)
+
+
+def test_valid_legacy_arxiv_id_passes():
+    schema = _load_schema()
+    entry = {
+        "citation_key": "niels1997",
+        "title": "Legacy arXiv",
+        "authors": [{"family": "Niels"}],
+        "year": 1997,
+        "source_pointer": "https://arxiv.org/abs/hep-th/9711200",
+        "arxiv_id": "hep-th/9711200",
+    }
+    _validator(schema).validate(entry)
+
+
+def test_invalid_arxiv_id_rejected():
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = {
+        "citation_key": "invalid2024",
+        "title": "Bad arXiv",
+        "authors": [{"family": "C"}],
+        "year": 2024,
+        "source_pointer": "https://arxiv.org/abs/2401.12345",
+        "arxiv_id": "arXiv:2401.12345",
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
 # --- v3.7.3 contamination_signals (L3-2) -------------------------------
 # Motivation: Zhao et al. arXiv:2605.07723 (2026-05).
 
