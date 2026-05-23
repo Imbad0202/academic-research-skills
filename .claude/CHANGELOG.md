@@ -20,7 +20,7 @@ External contribution from [@cloudenochcsis](https://github.com/cloudenochcsis) 
   - *Information and Organization* (Elsevier, IF 5-7) — Socio-material perspectives, qualitative and interpretive research
 - Subsequent sections renumbered: Interdisciplinary → 8, Asian & Regional → 9
 
-**Why Basket of 11 instead of Basket of 8**: The "Basket of 8" is a widely-cited shorthand, but the [AIS College of Senior Scholars](https://aisnet.org/page/SeniorScholarListofPremierJournals) officially recognizes 11 premier journals. Most IS doctoral programs and tenure committees reference the full Basket of 11. AIS is the authoritative IS academic organization (equivalent to ACM for computer science or APA for psychology).
+**Why Basket of 11 instead of Basket of 8**: The "Basket of 8" is a widely-cited shorthand, but the [AIS College of Senior Scholars](https://aisnet.org/research/seniorscholarsbasket/) officially recognizes 11 premier journals. Most IS doctoral programs and tenure committees reference the full Basket of 11. AIS is the authoritative IS academic organization (equivalent to ACM for computer science or APA for psychology).
 
 **Verification**: All 11 journals cross-checked against the AIS official page. cloudenochcsis's diff matched 1:1 against the source list and used the same metadata format established by the v2.9 Basket of 8 entries.
 
