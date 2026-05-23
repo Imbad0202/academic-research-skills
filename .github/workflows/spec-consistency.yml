@@ -337,3 +337,16 @@ jobs:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_policy_anchor_disclosure -v
 
+      - name: Validate evals gold sets (#184)
+        # Phase 1a citation-extraction gold subset validator.
+        # Enforces 9 invariants (I1-I9) per
+        # docs/design/2026-05-21-v3.10-184-extend-eval-harness-spec.md.
+        env:
+          PYTHONPATH: .
+        run: python3 -m scripts.check_evals_gold_set evals/gold/citation_extraction
+
+      - name: Run check_evals_gold_set unit tests (#184)
+        env:
+          PYTHONPATH: .
+        run: python3 -m pytest scripts/test_check_evals_gold_set.py -v
+
