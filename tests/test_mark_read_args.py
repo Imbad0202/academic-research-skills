@@ -1,35 +1,83 @@
+"""Integration test for scripts/ars_mark_read.py CLI dispatch (#197).
+
+Verifies that citation keys reach the script through the canonical
+bash dispatch pattern. Uses a real fixture passport + read-log to
+assert the side effect on disk (the script writes to the read-log
+file; it does not write to stdout on success).
+"""
+
 import subprocess
+import yaml
 import pytest
 from pathlib import Path
 
-def test_ars_mark_read_argument_parsing():
+
+@pytest.fixture
+def passport_with_corpus(tmp_path: Path) -> Path:
+    """Synthetic passport with a literature_corpus carrying test citation keys.
+
+    The script reads ``literature_corpus[].citation_key`` to validate
+    incoming keys against the active corpus. The fixture writes a
+    minimal YAML passport that satisfies this contract.
     """
-    Integration test: Verify that citation keys with spaces or special characters
-    are correctly passed through the CLI dispatch layer to the script.
-    
-    This mimics the execution of the bash block:
-    python3 scripts/ars_mark_read.py $ARGUMENTS --passport-path ...
+    passport_path = tmp_path / "test_passport.yaml"
+    passport_path.write_text(
+        yaml.safe_dump(
+            {
+                "literature_corpus": [
+                    {"citation_key": "smith2024-data"},
+                    {"citation_key": "wang2023"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    return passport_path
+
+
+def test_ars_mark_read_writes_read_log(passport_with_corpus: Path) -> None:
+    """Mark two citation keys; assert the read-log records both entries.
+
+    Mirrors the bash block ``python3 scripts/ars_mark_read.py
+    $ARGUMENTS --passport-path "<path>"`` with multiple positional
+    citation keys, including one with a hyphen.
     """
     script_path = Path("scripts/ars_mark_read.py")
-    
-    # 1. Complex inputs (dash, space) that would break fragile prose-parsing
-    test_keys = ["smith2024-data", "wang 2023 formative"]
-    
-    # 2. Mocking the execution (adding --dry-run to avoid actual file system writes)
-    # This simulates how the bash block expands $ARGUMENTS
-    cmd = ["python3", str(script_path)] + test_keys + ["--dry-run"]
-    
-    # 3. Execution
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    
-    # 4. Assertions
-    assert result.returncode == 0, f"Script failed: {result.stderr}"
-    
-    # Verify the script successfully received and processed both keys
-    assert "smith2024-data" in result.stdout
-    assert "wang 2023 formative" in result.stdout
-    
-    print("[Integration Test] ARS-Mark-Read CLI dispatch: PASSED")
+    test_keys = ["smith2024-data", "wang2023"]
 
-if __name__ == "__main__":
-    pytest.main([__file__])
+    result = subprocess.run(
+        ["python3", str(script_path), *test_keys, "--passport-path", str(passport_with_corpus)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"Script failed (exit={result.returncode}): {result.stderr}"
+    )
+
+    log_path = passport_with_corpus.parent / f"{passport_with_corpus.stem}_human_read_log.yaml"
+    assert log_path.exists(), f"read-log not created at {log_path}"
+
+    log = yaml.safe_load(log_path.read_text(encoding="utf-8")) or {}
+    human_read = log.get("human_read", [])
+    logged_keys = {entry.get("citation_key") for entry in human_read}
+    assert "smith2024-data" in logged_keys
+    assert "wang2023" in logged_keys
+
+
+def test_ars_mark_read_rejects_unknown_key(passport_with_corpus: Path) -> None:
+    """A key absent from literature_corpus[] hard-fails per §3.6 firm rule 2."""
+    script_path = Path("scripts/ars_mark_read.py")
+
+    result = subprocess.run(
+        ["python3", str(script_path), "not-in-corpus", "--passport-path", str(passport_with_corpus)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, "Script should reject unknown citation key"
+    assert "ARS-MARK-READ ERROR" in result.stderr
+    assert "not-in-corpus" in result.stderr
+
