@@ -418,5 +418,215 @@
         "response_summary": null
       }
     }
+  },
+  "021-valid-arxiv-mistral-7b-2023": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "022-valid-arxiv-qwen-technical-report-2023": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "023-valid-arxiv-sleeper-agents-2024": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "024-valid-arxiv-bitnet-2023": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "025-valid-arxiv-bitnet-1-58-2024": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "026-valid-arxiv-equiformerv2-2023": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "027-valid-arxiv-transformers-causal-2024": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "028-valid-arxiv-mamba-2023": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "029-valid-arxiv-projective-geometric-algebra-2019": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
+  },
+  "030-valid-arxiv-embedded-fluid-spheres-2023": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "matched",
+        "response_summary": null
+      }
+    }
   }
 }
