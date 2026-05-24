@@ -733,5 +733,110 @@
         "response_summary": null
       }
     }
+  },
+  "046-fabricated-phantom-tensor-quantum-rl": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "047-fabricated-cross-lingual-hallucination": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "048-fabricated-bayesian-spike-sorting": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "049-fabricated-topological-edge-state": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "050-fabricated-counterfactual-spectral-knapsack": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
   }
 }
