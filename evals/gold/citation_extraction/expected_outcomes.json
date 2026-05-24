@@ -1,0 +1,422 @@
+{
+  "001-valid-doi-numpy-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "002-valid-doi-alphafold-2021": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "003-valid-doi-med-palm-2023": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "004-valid-doi-scipy-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "005-valid-doi-umap-2019": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "006-valid-doi-alphazero-2018": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "007-valid-doi-seurat-v4-2021": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "008-valid-doi-rosettafold-2021": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "009-valid-doi-resnet-2016": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "010-valid-doi-moco-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "011-valid-doi-optuna-2019": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "012-valid-doi-vosoughi-fake-news-2018": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "013-valid-doi-bnt162b2-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "014-valid-doi-lancet-covid-zhou-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "015-valid-doi-jama-covid-pharm-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "016-valid-doi-bert-2019": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "017-valid-doi-bart-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "018-valid-doi-graphene-magic-angle-2018": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "019-valid-doi-qubit-mof-2020": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "020-valid-doi-aer-experimenter-demand-2018": {
+    "lookup_verified": "true",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "matched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  }
+}
