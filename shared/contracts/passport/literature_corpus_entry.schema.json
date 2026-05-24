@@ -52,8 +52,8 @@
     },
     "arxiv_id": {
       "type": "string",
-      "pattern": "^([a-z\\-]+/\\d{7}|\\d{4}\\.\\d{4,5}(v\\d+)?)$",
-      "description": "Optional arXiv identifier for arXiv-hosted works. Accepts legacy IDs such as 'hep-th/9711200' and new-style IDs such as '2401.12345' or '2401.12345v2'."
+      "pattern": "^([A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z0-9-]+)*/\\d{7}(v[1-9]\\d*)?|\\d{4}\\.\\d{4,5}(v[1-9]\\d*)?)$",
+      "description": "Optional arXiv identifier for arXiv-hosted works. Accepts legacy IDs such as 'hep-th/9711200', 'math.AG/0703087', and new-style IDs such as '2401.12345' or '2401.12345v2'."
     },
     "tags": {
       "type": "array",

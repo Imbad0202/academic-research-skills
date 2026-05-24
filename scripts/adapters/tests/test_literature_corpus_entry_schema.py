@@ -276,6 +276,57 @@ def test_invalid_arxiv_id_rejected():
         _validator(schema).validate(entry)
 
 
+def test_valid_legacy_arxiv_id_with_version_passes():
+    schema = _load_schema()
+    entry = {
+        "citation_key": "hepth1997v2",
+        "title": "Legacy arXiv versioned",
+        "authors": [{"family": "C"}],
+        "year": 1997,
+        "source_pointer": "https://arxiv.org/abs/hep-th/9711200v2",
+        "arxiv_id": "hep-th/9711200v2",
+    }
+    _validator(schema).validate(entry)
+
+
+def test_valid_legacy_arxiv_id_with_subject_class_passes():
+    schema = _load_schema()
+    entry = {
+        "citation_key": "math0703087",
+        "title": "Subject-class arXiv",
+        "authors": [{"family": "C"}],
+        "year": 2007,
+        "source_pointer": "https://arxiv.org/abs/math.AG/0703087",
+        "arxiv_id": "math.AG/0703087",
+    }
+    _validator(schema).validate(entry)
+
+
+def test_valid_short_new_style_arxiv_id_passes():
+    schema = _load_schema()
+    entry = {
+        "citation_key": "smallid0704",
+        "title": "Short new-style arXiv",
+        "authors": [{"family": "C"}],
+        "year": 2007,
+        "source_pointer": "https://arxiv.org/abs/0704.0001",
+        "arxiv_id": "0704.0001",
+    }
+    _validator(schema).validate(entry)
+
+
+def test_arxiv_id_is_optional():
+    schema = _load_schema()
+    entry = {
+        "citation_key": "chen2024opt",
+        "title": "Optional arXiv ID",
+        "authors": [{"family": "C"}],
+        "year": 2024,
+        "source_pointer": "https://doi.org/10.1234/xyz",
+    }
+    _validator(schema).validate(entry)
+
+
 # --- v3.7.3 contamination_signals (L3-2) -------------------------------
 # Motivation: Zhao et al. arXiv:2605.07723 (2026-05).
 
