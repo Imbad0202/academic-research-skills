@@ -54,29 +54,32 @@ Before accepting a clinical claim, verify:
 2. **Verb strength**: Does the draft use verbs such as "causes", "prevents", "proves", "establishes", or "should be used" when the source only says "associated", "suggests", "may", or "needs validation"?
 3. **Clinical action**: Does the draft move from evidence summary to diagnosis, treatment, triage, deployment, or routine-care recommendation?
 4. **Population scope**: Does the draft generalize beyond the source population, setting, disease stage, or inclusion criteria?
-5. **Protected hedges**: Are phrases such as "retrospective", "observational", "in this cohort", "preliminary", "may", "associated with", and "requires validation" preserved?
-6. **Human review boundary**: If the claim affects clinical interpretation, does the draft frame the output as research synthesis rather than patient-specific advice?
+5. **Endpoint, effect-size, and timeframe scope**: Does the draft preserve the same endpoint, effect measure, absolute-vs-relative framing, comparator, and follow-up period used by the source?
+6. **Protected hedges**: Are phrases such as "retrospective", "observational", "in this cohort", "preliminary", "may", "associated with", and "requires validation" preserved?
+7. **Human review boundary**: If the claim affects clinical interpretation, does the draft frame the output as research synthesis rather than patient-specific advice?
 
 ---
 
 ## Example Verdict
 
 ```yaml
-claim_under_review: "In this EHR cohort, GLP-1 receptor agonist use prevented cardiovascular hospitalization and should be prioritized in routine care based on this study alone."
+# Illustrative only; not a #183 schema proposal.
+claim_under_review: "In this EHR cohort, GLP-1 receptor agonist use prevented cardiovascular hospitalization in patients with type 2 diabetes and should be prioritized in routine care based on this study alone."
 source_design: "retrospective cohort"
 source_anchor: "associated with a lower rate... residual confounding remains possible... prospective trials are needed"
-current_5_tier_status: "Supported"
+source_finding_status: "Supported"
+draft_claim_problem: "silent_upgrade_detected"
 illustrative_evidence_type: "observational_evidence"
 silent_upgrade_detected: true
 upgrade_kind:
   - "association_to_cause"
   - "observational_to_clinical_recommendation"
   - "hedge_drop"
-required_rewrite: "GLP-1 receptor agonist exposure was associated with a lower rate of cardiovascular hospitalization in the studied retrospective cohort; residual confounding remains possible, and this cited EHR cohort alone does not establish routine-care prioritization."
+required_rewrite: "After adjustment for measured covariates, GLP-1 receptor agonist exposure was associated with a lower rate of cardiovascular hospitalization in the studied type 2 diabetes EHR cohort; residual confounding remains possible, and this cited EHR cohort alone does not establish routine-care prioritization."
 clinical_safety_note: "Research synthesis only. Not patient-specific diagnosis, treatment, triage, or clinical decision support."
 ```
 
-The YAML block is illustrative. It is not a proposed schema for #183; fields such as `upgrade_kind`, `clinical_safety_note`, and `illustrative_evidence_type` are included only to make the clinical overclaim pattern visible.
+The YAML block is illustrative. It is not a proposed schema for #183; fields such as `upgrade_kind`, `clinical_safety_note`, `source_finding_status`, `draft_claim_problem`, and `illustrative_evidence_type` are included only to make the clinical overclaim pattern visible.
 
 ---
 
