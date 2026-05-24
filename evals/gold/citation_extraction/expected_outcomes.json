@@ -628,5 +628,110 @@
         "response_summary": null
       }
     }
+  },
+  "041-manual-exempt-hofstede-2010-cultures": {
+    "lookup_verified": "unresolvable",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "042-manual-exempt-oecd-2019-ai-principles": {
+    "lookup_verified": "unresolvable",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "043-manual-exempt-brooks-1995-mythical-man-month": {
+    "lookup_verified": "unresolvable",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "044-manual-exempt-turing-1950-computing": {
+    "lookup_verified": "unresolvable",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "045-manual-exempt-kitching-2023-quantum-sensing": {
+    "lookup_verified": "unresolvable",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "skipped",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
   }
 }
