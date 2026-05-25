@@ -45,7 +45,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **前置條件**
 
-- [Claude Code](https://claude.ai/install.sh)（建議最新版；plugin packaging 需要近期版本）
+- [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)（建議最新版；plugin packaging 需要近期版本）
 - 已 export `ANTHROPIC_API_KEY`，或第一次跑 `claude` 時設定
 - *選用：* Pandoc 用於 DOCX 輸出，tectonic + 思源宋體 TC 用於 APA 7.0 PDF（純 Markdown 輸出兩個都不需要）
 
@@ -64,7 +64,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 ## 效能與費用
 
-**👉 [docs/PERFORMANCE.zh-TW.md](docs/PERFORMANCE.zh-TW.md)** — 各模式 token 預算、完整 pipeline 估算（~$4–6 for 一篇 15k 字論文），以及建議的 Claude Code 設定（Skip Permissions；Agent Team 選用）。
+**👉 [docs/PERFORMANCE.zh-TW.md](docs/PERFORMANCE.zh-TW.md)** — 各模式 token 預算、完整 pipeline 估算（一篇 15k 字論文約 ~$4–6），以及建議的 Claude Code 設定（Skip Permissions；Agent Team 選用）。
 
 ## 使用指南與文章
 
@@ -228,19 +228,19 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 各 agent 的職責與各階段產出物現已移至 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。版本號保留在此以維持 release metadata 集中管理。
 
-### Deep Research (v2.8)
+### Deep Research (v2.9.4)
 
 13 個 Agent 的研究團隊。模式：full、quick、review、lit-review、fact-check、socratic、systematic-review。完整 agent 名單與產出物：見 ARCHITECTURE.md §3。
 
-### Academic Paper (v3.0)
+### Academic Paper (v3.1.2)
 
 12 個 Agent 的論文撰寫 pipeline。模式：full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure。輸出：MD + DOCX（Pandoc 可用時）+ LaTeX（APA 7.0 `apa7` class / IEEE / Chicago）→ tectonic 編譯 PDF。完整 agent 名單與各 phase 職責：見 ARCHITECTURE.md §3。
 
-### Academic Paper Reviewer (v1.8)
+### Academic Paper Reviewer (v1.9.1)
 
 7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查團隊 vs. 精簡再審團隊的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.7)
+### Academic Pipeline (v3.9.4.2)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）不可跳過；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 

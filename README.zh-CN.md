@@ -45,7 +45,7 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **前置条件**
 
-- [Claude Code](https://claude.ai/install.sh)（建议最新版；plugin packaging 需要近期版本）
+- [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)（建议最新版；plugin packaging 需要近期版本）
 - 已导出 `ANTHROPIC_API_KEY`，或在第一次运行 `claude` 时设置
 - *选用：* Pandoc 用于 DOCX 输出，tectonic + 思源宋体 TC 用于 APA 7.0 PDF（纯 Markdown 输出不需要这两者）
 
@@ -58,13 +58,13 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **验证可用：** 运行 `/ars-plan` 并描述你正在写的论文，ARS 会用苏格拉底式对话帮你规划章节结构。如果想做单次测试，可以运行 `/ars-lit-review "你的主题"`。
 
-**👉 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md)** — 完整指南：安装 Claude Code、设置 API key、选用的 Pandoc/tectonic（DOCX/PDF）、跨模型验证（`ARS_CROSS_MODEL`），以及五种安装方式（Plugin、项目 skills、全局 skills、claude.ai Project、repo clone）。
+**👉 [docs/SETUP.md](docs/SETUP.md)** — 完整指南：安装 Claude Code、设置 API key、选用的 Pandoc/tectonic（DOCX/PDF）、跨模型验证（`ARS_CROSS_MODEL`），以及五种安装方式（Plugin、项目 skills、全局 skills、claude.ai Project、repo clone）。
 
 **用 Codex CLI？** 请安装姐妹版：[`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex)。同一套 workflow 内容，Codex 原生打包为单一 `$academic-research-suite` skill，提供 `ars-*` 别名。
 
 ## 性能与费用
 
-**👉 [docs/PERFORMANCE.zh-TW.md](docs/PERFORMANCE.zh-TW.md)** — 各模式 token 预算、完整 pipeline 估算（一篇 15k 字论文约 ~$4–6），以及建议的 Claude Code 设置（Skip Permissions；Agent Team 选用）。
+**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — 各模式 token 预算、完整 pipeline 估算（一篇 15k 字论文约 ~$4–6），以及建议的 Claude Code 设置（Skip Permissions；Agent Team 选用）。
 
 ## 使用指南与文章
 
@@ -228,19 +228,19 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 各 agent 的职责与各阶段产出物现已移至 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。版本号保留在此以维持 release metadata 集中管理。
 
-### Deep Research (v2.8)
+### Deep Research (v2.9.4)
 
 13 个 Agent 的研究团队。模式：full、quick、review、lit-review、fact-check、socratic、systematic-review。完整 agent 名单与产出物：见 ARCHITECTURE.md §3。
 
-### Academic Paper (v3.0)
+### Academic Paper (v3.1.2)
 
 12 个 Agent 的论文撰写 pipeline。模式：full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure。输出：MD + DOCX（Pandoc 可用时）+ LaTeX（APA 7.0 `apa7` class / IEEE / Chicago）→ tectonic 编译 PDF。完整 agent 名单与各 phase 职责：见 ARCHITECTURE.md §3。
 
-### Academic Paper Reviewer (v1.8)
+### Academic Paper Reviewer (v1.9.1)
 
 7 个 Agent 的多视角审查，搭配 **0-100 质量量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**决策对照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一轮审查团队 vs. 精简再审团队的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.7)
+### Academic Pipeline (v3.9.4.2)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）不可跳过；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -259,7 +259,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 - **魔鬼代言人让步门槛**：反驳必须评分 1-5，≥4 才允许让步。不允许连续让步。框架锁定检测。
 - **苏格拉底意图检测**：检测用户是「探索型」还是「目标型」。探索型模式停用自动收敛。
 - **对话健康度指针**：每 5 轮后台自检，检测持续同意、回避冲突、过早收敛。
-- **跨模型验证**：设置 `ARS_CROSS_MODEL` 激活第二 AI 模型独立审查。详见 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md)。
+- **跨模型验证**：设置 `ARS_CROSS_MODEL` 激活第二 AI 模型独立审查。详见 [docs/SETUP.md](docs/SETUP.md)。
 - **AI 自我反思报告**：Pipeline 结束后自动产出 AI 行为自评。
 
 这些优化不能完全解决 AI 的结构性限制——它们让限制变得可见、可追踪、可被人类介入。
