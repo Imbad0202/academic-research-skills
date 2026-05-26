@@ -840,7 +840,7 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
   writer/evaluator pair via contract-gated phase splits and Schema 13.1
   conditional gates. No new agent files; existing `draft_writer_agent` and
   `peer_reviewer_agent` gain per-phase sub-section instructions") lands in
-  the private ROADMAP.md (gitignored, lives in claude-memory-sync), not in
+  the private ROADMAP.md (gitignored, maintained outside this public repo), not in
   this repo PR.
 
 ## [3.6.7] - 2026-04-30

@@ -800,8 +800,8 @@ This mirrors #105 → #115 split pattern (production module first, integration f
 
 After ship, update:
 
-- `~/.claude/projects/-Users-imbad/memory/project_ars_106_ai_disclosure_discovery.md` — lesson #22 (8-OQ compressed decision-doc pattern when issue body already has frozen design)
-- `~/.claude/projects/-Users-imbad/memory/feedback_codex_round_convergence_by_scope.md` — new memory if not exists, record "new tool + IO + new agent" data point
+- private maintainer memory (`project_ars_106_ai_disclosure_discovery`) — lesson #22 (8-OQ compressed decision-doc pattern when issue body already has frozen design)
+- private maintainer memory (`feedback_codex_round_convergence_by_scope`) — new memory if not exists, record "new tool + IO + new agent" data point
 - Consider new memory `feedback_audit_results_vs_audit_artifact_semantic_split.md` documenting D5 boundary
 
 ## 13. Implementation order (TDD-driven)
