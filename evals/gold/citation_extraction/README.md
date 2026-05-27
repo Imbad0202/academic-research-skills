@@ -12,7 +12,7 @@
 |----------|------|---|---------------------------|
 | 001–020 | `valid_doi` (DOI, no arXiv) | 20 | `true` |
 | 021–030 | `valid_arxiv` (arXiv, no DOI) | 10 | `true` |
-| 031–040 | `valid_unresolvable` (real-but-rare) | 10 | `false` |
+| 031–040 | `fabricated` (intentionally-bogus DOI + title) | 10 | `false` |
 | 041–045 | `manual_exempt` (`obtained_via: manual`) | 5 | `unresolvable` |
 | 046–050 | `fabricated` (intentionally-bogus DOI + title) | 5 | `false` |
 
@@ -29,11 +29,16 @@ Changing these before v3.10.0 ship requires a spec amendment per #184 §3.1.1 / 
 
 ## Fabricated-reference safety
 
-Tuples 046–050 use intentionally-bogus DOIs (e.g., `10.1234/bogus-pattern-1`) and bogus titles. Each carries `fabrication_intent: true` per public-repo discipline. Do not source fabricated tuples from real-but-misattributed citations.
+Tuples 031–040 and 046–050 use intentionally-bogus DOIs (`10.99999/ars184.fake.<domain>.<seq>`) and bogus titles. Each carries `fabrication_intent: true` per public-repo discipline. Do not source fabricated tuples from real-but-misattributed citations.
 
-## Real-but-unresolvable provenance
+## Amendment: `valid_unresolvable` class removed
 
-Tuples 031–040 use real citation metadata that was confirmed unresolvable in Crossref/OpenAlex/S2/arXiv on the date recorded in each tuple's `provenance_note`. If a resolver eventually indexes one of these citations, the tuple becomes stale and a manifest version bump per E-V1 is required.
+The original spec defined a `valid_unresolvable` class (tuples 031–040) — real citations
+that are unmatched across all four resolvers. No stable, first-party-verifiable source
+satisfying that constraint was found under current index coverage, so the class was
+removed and 031–040 are now `fabricated`. The `false` class is carried by `fabricated`
+tuples. A known coverage gap (no real-but-unindexed tuple to exercise the resolver's
+fuzzy-match false-positive path) is tracked in issue #250.
 
 ## Human expert verdicts
 
