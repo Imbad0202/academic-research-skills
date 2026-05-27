@@ -33,12 +33,9 @@ tuple_distribution:
   - kind: valid_arxiv
     n: 10
     expected_lookup_verified: "true"
-  - kind: valid_unresolvable
-    n: 10
-    expected_lookup_verified: "false"
   - kind: manual_exempt
     n: 5
     expected_lookup_verified: "unresolvable"
   - kind: fabricated
-    n: 5
+    n: 15
     expected_lookup_verified: "false"
