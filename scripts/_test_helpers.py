@@ -22,6 +22,8 @@ def run_script(
 
     extra_env values are merged into os.environ (not replaced).
     """
+    if args and not all(isinstance(a, str) for a in args):
+        raise TypeError(f"All positional args must be str, got {args!r}")
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)

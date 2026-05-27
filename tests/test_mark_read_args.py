@@ -67,6 +67,21 @@ def test_ars_mark_read_writes_read_log(passport_with_corpus: Path) -> None:
     assert "wang2023" in logged_keys
 
 
+def test_ars_mark_read_rejects_zero_keys(passport_with_corpus: Path) -> None:
+    """Calling with no citation keys should fail-fast via argparse nargs=+."""
+    script_path = Path("scripts/ars_mark_read.py")
+
+    result = subprocess.run(
+        ["python3", str(script_path), "--passport-path", str(passport_with_corpus)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, "Script should fail with zero citation keys"
+    assert "citation_keys" in result.stderr
+
+
 def test_ars_mark_read_rejects_unknown_key(passport_with_corpus: Path) -> None:
     """A key absent from literature_corpus[] hard-fails per §3.6 firm rule 2."""
     script_path = Path("scripts/ars_mark_read.py")
