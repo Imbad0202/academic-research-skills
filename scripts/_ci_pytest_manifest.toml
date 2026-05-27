@@ -81,3 +81,7 @@ args = ["-k", "integration or (synthetic and supersession)"]
 [[pytest]]
 id = "v3.6.7-wrapper-e2e"
 path = "scripts/test_run_codex_audit_e2e.py"
+
+[[pytest]]
+id = "v3.10-184-evals-gold-set"
+path = "scripts/test_check_evals_gold_set.py"
