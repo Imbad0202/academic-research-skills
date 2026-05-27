@@ -3,10 +3,8 @@
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/literature_corpus_entry.schema.json",
   "title": "Material Passport Literature Corpus Entry",
   "description": "One entry in Material Passport Schema 9 literature_corpus[]. Represents a single piece of literature the user has included in their corpus. Produced by user-written adapters; see academic-pipeline/references/adapters/overview.md. ARS does NOT produce these entries itself.",
-
   "type": "object",
   "additionalProperties": false,
-
   "required": [
     "citation_key",
     "title",
@@ -14,7 +12,6 @@
     "year",
     "source_pointer"
   ],
-
   "properties": {
     "citation_key": {
       "type": "string",
@@ -29,7 +26,9 @@
     "authors": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/csl_name" },
+      "items": {
+        "$ref": "#/$defs/csl_name"
+      },
       "description": "CSL-JSON name format. Each item is either a personal name ({family, given, ...}) or a corporate/institution name ({literal}). See CSL-JSON spec at https://docs.citationstyles.org/en/stable/specification.html#names."
     },
     "year": {
@@ -43,22 +42,38 @@
       "minLength": 1,
       "description": "Stable URI locating this work in the user's own KB. Examples: 'zotero://select/items/0_ABCD1234', 'obsidian://open?vault=kb&file=Chen2024', 'file:///path/to/refs/chen2024.pdf', 'https://doi.org/10.1234/xyz'. ARS does NOT dereference this; consumers that want the full text fetch it from the pointer themselves."
     },
-
-    "venue":                  { "type": "string", "minLength": 1 },
+    "venue": {
+      "type": "string",
+      "minLength": 1
+    },
     "doi": {
       "type": "string",
       "pattern": "^10\\.[0-9]{4,9}/[^\\s]+$",
       "description": "DOI without leading 'doi:' or URL prefix."
     },
+    "arxiv_id": {
+      "type": "string",
+      "pattern": "^([A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z0-9-]+)*/\\d{7}(v[1-9]\\d*)?|\\d{4}\\.\\d{4,5}(v[1-9]\\d*)?)$",
+      "description": "Optional arXiv identifier for arXiv-hosted works. Accepts legacy IDs such as 'hep-th/9711200', 'math.AG/0703087', and new-style IDs such as '2401.12345' or '2401.12345v2'."
+    },
     "tags": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "description": "User-assigned tags from the source KB. Adapter-specific; treat as free-form."
     },
-
     "obtained_via": {
       "type": "string",
-      "enum": ["zotero-api", "zotero-bbt-export", "obsidian-vault", "folder-scan", "manual", "other"],
+      "enum": [
+        "zotero-api",
+        "zotero-bbt-export",
+        "obsidian-vault",
+        "folder-scan",
+        "manual",
+        "other"
+      ],
       "description": "Strongly recommended. Which adapter produced this entry. 'other' is permitted for user-written custom adapters; those SHOULD also set adapter_name. Note: v3.6.4 reference implementations only use 'zotero-bbt-export', 'obsidian-vault', and 'folder-scan'. The remaining enum values ('zotero-api', 'manual') are reserved for user-written adapters and are permitted in the schema so such adapters remain valid without schema extension."
     },
     "obtained_at": {
@@ -75,7 +90,6 @@
       "type": "string",
       "minLength": 1
     },
-
     "abstract": {
       "type": "string",
       "description": "PRIVATE FIELD. May contain publisher-copyrighted material. Do NOT share passports containing this field publicly without confirming your right to do so. ARS consumers treat this as optional input; absence never causes failure."
@@ -84,7 +98,6 @@
       "type": "string",
       "description": "PRIVATE FIELD. User's own annotations from their KB. May contain copyrighted excerpts. Same sharing caveat as abstract."
     },
-
     "source_acquired": {
       "type": "boolean",
       "description": "v3.7.1 trust-chain field (spec § 3.1, D1). True when the original source artifact (PDF / HTML / dataset) is actually retrieved into the user's KB or workspace. Distinguishes 'we have the file' from 'we cite the bibliography record'. Adapter-set or AI-set; user-orthogonal (the user-set human-read signal is recorded in the §3.6 peer file, NOT here)."
@@ -105,7 +118,12 @@
     },
     "source_verification_method": {
       "type": "string",
-      "enum": ["codex_audit", "manual_grep", "vision_check", "none"],
+      "enum": [
+        "codex_audit",
+        "manual_grep",
+        "vision_check",
+        "none"
+      ],
       "description": "v3.7.1 trust-chain field. Method used to verify the entry against the original source. 'none' means no verification was performed; entries with 'none' MUST NOT set source_verified_against_original=true (spec §3.1 firm rule #1, round-2 R2-007 amend: 'none' is a valid enum but is forbidden in conjunction with verified=true)."
     },
     "description_source": {
@@ -114,7 +132,10 @@
       "description": "v3.7.1 trust-chain field. Origin of the descriptive metadata (title / authors / abstract). 'original_pdf' = read directly off the acquired source; 'bibliography_v<n>' (any non-negative integer n) = lifted from a derivative bibliography revision; 'secondary_summary' = paraphrased from another work. Surfaces description provenance independently of source acquisition. Spec § 3.1 yaml uses the literal `bibliography_v<n>` template, so the pattern accepts any integer n rather than hard-coding a finite revision count."
     },
     "description_last_audit": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "v3.7.1 trust-chain field. Round identifier of the most recent codex / cross-model audit that examined this entry's description, or null / the literal string 'none' when no such audit has run. The field-level type permits both null and 'none' broadly, but per spec §3.1 firm rule #2 the rule-#2 then-branch in `allOf` tightens this to the LITERAL STRING 'none' only when source_acquired=false (no original means audit cannot be substantive — round-6 codex P2 closure). null remains valid only when source_acquired=true and the entry is simply unaudited."
     },
     "contamination_signals_backfilled_at": {
@@ -146,30 +167,52 @@
       }
     }
   },
-
   "allOf": [
     {
       "description": "When obtained_via='other' (user-written custom adapter), adapter_name MUST be set so consumers can attribute the entry. Reference adapters (folder-scan, zotero-bbt-export, obsidian-vault) and other enum values do not trigger this constraint.",
       "if": {
-        "properties": { "obtained_via": { "const": "other" } },
-        "required": ["obtained_via"]
+        "properties": {
+          "obtained_via": {
+            "const": "other"
+          }
+        },
+        "required": [
+          "obtained_via"
+        ]
       },
       "then": {
-        "required": ["adapter_name"]
+        "required": [
+          "adapter_name"
+        ]
       }
     },
     {
       "description": "v3.7.1 spec §3.1 firm rule #1 (round-2 R2-007 amend): source_verified_against_original=true REQUIRES source_acquired=true AND source_verification_method ∈ {codex_audit, manual_grep, vision_check}. The 'none' method is enumerated for shape uniformity but is FORBIDDEN in conjunction with verified=true.",
       "if": {
-        "properties": { "source_verified_against_original": { "const": true } },
-        "required": ["source_verified_against_original"]
+        "properties": {
+          "source_verified_against_original": {
+            "const": true
+          }
+        },
+        "required": [
+          "source_verified_against_original"
+        ]
       },
       "then": {
-        "required": ["source_acquired", "source_verification_method"],
+        "required": [
+          "source_acquired",
+          "source_verification_method"
+        ],
         "properties": {
-          "source_acquired": { "const": true },
+          "source_acquired": {
+            "const": true
+          },
           "source_verification_method": {
-            "enum": ["codex_audit", "manual_grep", "vision_check"]
+            "enum": [
+              "codex_audit",
+              "manual_grep",
+              "vision_check"
+            ]
           }
         }
       }
@@ -177,11 +220,19 @@
     {
       "description": "v3.7.1 spec §3.1 firm rule #2 (round-6 codex P2 closure): source_acquired=false REQUIRES `description_last_audit: \"none\"` — the literal sentinel string, NOT null. Spec line 120 reads 'REQUIRES description_last_audit: none' (literal 'none'); spec line 111 yaml shows the value vocabulary as `<round_id> | none` with no null alternative. Round-1 closure made the field strictly required (presence enforced); round-6 closure removes the null alternative the field-level type permitted, since spec firm rule #2 mandates the literal sentinel. The top-level `type: [string, null]` on the field stays — null is still legal when source_acquired=true and the entry simply hasn't been audited yet — but the rule-#2 then-branch tightens to the literal string only.",
       "if": {
-        "properties": { "source_acquired": { "const": false } },
-        "required": ["source_acquired"]
+        "properties": {
+          "source_acquired": {
+            "const": false
+          }
+        },
+        "required": [
+          "source_acquired"
+        ]
       },
       "then": {
-        "required": ["description_last_audit"],
+        "required": [
+          "description_last_audit"
+        ],
         "properties": {
           "description_last_audit": {
             "type": "string",
@@ -197,24 +248,38 @@
           "contamination_signals": {
             "type": "object",
             "properties": {
-              "preprint_post_llm_inflection": { "const": true }
+              "preprint_post_llm_inflection": {
+                "const": true
+              }
             },
-            "required": ["preprint_post_llm_inflection"]
+            "required": [
+              "preprint_post_llm_inflection"
+            ]
           }
         },
-        "required": ["contamination_signals"]
+        "required": [
+          "contamination_signals"
+        ]
       },
       "then": {
         "properties": {
-          "year": { "minimum": 2024 }
+          "year": {
+            "minimum": 2024
+          }
         }
       }
     },
     {
       "description": "v3.9.0 spec §3.1 extends v3.7.3 §3.2 manual-entry exemption (codex round-3 F11 closure) symmetrically: when obtained_via='manual' the bibliography_agent SKIPS all three lookups (Semantic Scholar / OpenAlex / Crossref) and OMITS the three *_unmatched fields. The schema enforces this contract: a manual entry MUST NOT carry any of semantic_scholar_unmatched / openalex_unmatched / crossref_unmatched. Setting any to true on a manual entry would surface CONTAMINATED-* on a user-vouched reference. The asymmetry: preprint_post_llm_inflection IS still computed for manual entries (pure heuristic, no lookup) and is not in the exemption scope.",
       "if": {
-        "properties": { "obtained_via": { "const": "manual" } },
-        "required": ["obtained_via"]
+        "properties": {
+          "obtained_via": {
+            "const": "manual"
+          }
+        },
+        "required": [
+          "obtained_via"
+        ]
       },
       "then": {
         "not": {
@@ -222,46 +287,96 @@
             "contamination_signals": {
               "type": "object",
               "anyOf": [
-                { "required": ["semantic_scholar_unmatched"] },
-                { "required": ["openalex_unmatched"] },
-                { "required": ["crossref_unmatched"] }
+                {
+                  "required": [
+                    "semantic_scholar_unmatched"
+                  ]
+                },
+                {
+                  "required": [
+                    "openalex_unmatched"
+                  ]
+                },
+                {
+                  "required": [
+                    "crossref_unmatched"
+                  ]
+                }
               ]
             }
           },
-          "required": ["contamination_signals"]
+          "required": [
+            "contamination_signals"
+          ]
         }
       }
     }
   ],
-
   "$defs": {
     "csl_name": {
       "oneOf": [
-        { "$ref": "#/$defs/csl_personal_name" },
-        { "$ref": "#/$defs/csl_literal_name" }
+        {
+          "$ref": "#/$defs/csl_personal_name"
+        },
+        {
+          "$ref": "#/$defs/csl_literal_name"
+        }
       ]
     },
     "csl_personal_name": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["family"],
+      "required": [
+        "family"
+      ],
       "properties": {
-        "family":                { "type": "string", "minLength": 1 },
-        "given":                 { "type": "string" },
-        "suffix":                { "type": "string" },
-        "dropping-particle":     { "type": "string" },
-        "non-dropping-particle": { "type": "string" },
-        "comma-suffix":          { "type": ["string", "boolean"] },
-        "static-ordering":       { "type": ["string", "boolean"] },
-        "parse-names":           { "type": ["string", "boolean"] }
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "given": {
+          "type": "string"
+        },
+        "suffix": {
+          "type": "string"
+        },
+        "dropping-particle": {
+          "type": "string"
+        },
+        "non-dropping-particle": {
+          "type": "string"
+        },
+        "comma-suffix": {
+          "type": [
+            "string",
+            "boolean"
+          ]
+        },
+        "static-ordering": {
+          "type": [
+            "string",
+            "boolean"
+          ]
+        },
+        "parse-names": {
+          "type": [
+            "string",
+            "boolean"
+          ]
+        }
       }
     },
     "csl_literal_name": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["literal"],
+      "required": [
+        "literal"
+      ],
       "properties": {
-        "literal": { "type": "string", "minLength": 1 }
+        "literal": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     }
   }

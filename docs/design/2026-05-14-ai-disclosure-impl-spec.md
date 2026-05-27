@@ -180,10 +180,10 @@ Hitting either trigger ⇒ stop and ask user whether to accept audit-trail-compl
 
 ## 8. Public-repo boundary discipline
 
-This is a public repository. Pre-push gates (per `~/.claude/CLAUDE.md` + `feedback_ars_public_repo_boundary.md`):
+This is a public repository. Pre-push gates:
 
-1. `grep -rn` for the private-org and private-project tokens enumerated in `~/.claude/personal-boundary/deny_list.yaml` — block on hit (Springer is **legal** anchor scope per Decision Doc §4.5 / §4.6).
-2. `python3 ~/.claude/personal-boundary/check_boundary.py --root . --quiet` — block on hit.
+1. `grep -rn` for the private-org and private-project tokens enumerated in the maintainer's local boundary deny list — block on hit (Springer is **legal** anchor scope per Decision Doc §4.5 / §4.6).
+2. Run the maintainer's local boundary-check script against the repo root — block on hit.
 3. `/codex review` + `/security-review` parallel: both must produce 0 P1/P2 before merge.
 
 ---

@@ -11,5 +11,5 @@ docs/superpowers/
 # Python bytecode / pytest cache.
 __pycache__/
 
-# Private ROADMAP lives in claude-memory-sync (花花/roadmaps/), not this public repo
+# Private ROADMAP is intentionally gitignored and maintained outside this public repo
 ROADMAP.md

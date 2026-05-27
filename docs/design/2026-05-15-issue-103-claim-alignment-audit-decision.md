@@ -187,4 +187,4 @@ Implementation-layer acceptance lives in the spec. The decision doc passes when:
 
 - **Spec:** `docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md` (implementation surface, schema, lint, TDD test cases — to be written after this doc passes codex round-1).
 - **Calibration protocol:** `academic-pipeline/references/claim_audit_calibration_protocol.md` (post-spec implementation).
-- **Memory anchor:** `~/.claude/projects/-Users-imbad/memory/project_ars_106_ai_disclosure_discovery.md` — lesson #22 to be added recording 8-OQ resolution pattern (compresses #106's three-stage to two-stage when issue body already contains frozen design).
+- **Memory anchor:** private maintainer memory (`project_ars_106_ai_disclosure_discovery`) — lesson #22 to be added recording 8-OQ resolution pattern (compresses #106's three-stage to two-stage when issue body already contains frozen design).

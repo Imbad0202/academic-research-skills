@@ -39,10 +39,10 @@ JA_README_TEMPLATE = """\
 
 #### Academic Pipeline（オーケストレーター）
 
-### Deep Research（v2.8）
-### Academic Paper（v3.0）
-### Academic Paper Reviewer（v1.8）
-### Academic Pipeline（v3.7）
+### Deep Research（v2.9.4）
+### Academic Paper（v3.1.2）
+### Academic Paper Reviewer（v1.9.1）
+### Academic Pipeline（v3.9.4.2）
 
 ### サポートされる出力フォーマット
 
@@ -105,10 +105,10 @@ ZH_CN_README_TEMPLATE = """\
 
 #### Academic Pipeline（全流程调度器）
 
-### Deep Research (v2.8)
-### Academic Paper (v3.0)
-### Academic Paper Reviewer (v1.8)
-### Academic Pipeline (v3.7)
+### Deep Research (v2.9.4)
+### Academic Paper (v3.1.2)
+### Academic Paper Reviewer (v1.9.1)
+### Academic Pipeline (v3.9.4.2)
 
 ### 支持的输出格式
 
@@ -168,10 +168,10 @@ ZH_TW_README_TEMPLATE = """\
 
 #### Academic Pipeline（全流程調度器）
 
-### Deep Research (v2.8)
-### Academic Paper (v3.0)
-### Academic Paper Reviewer (v1.8)
-### Academic Pipeline (v3.7)
+### Deep Research (v2.9.4)
+### Academic Paper (v3.1.2)
+### Academic Paper Reviewer (v1.9.1)
+### Academic Pipeline (v3.9.4.2)
 
 ### 支援的輸出格式
 
