@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validator for evals/gold/<task>/ gold subsets.
 
-Enforces 10 invariants documented in
+Enforces 9 invariants documented in
 docs/design/2026-05-21-v3.10-184-extend-eval-harness-spec.md
 implementation plan (Task 4 of #184 Phase 1a; I10 added in 2026-05-24 amendment).
 
@@ -9,12 +9,11 @@ Usage:
     python -m scripts.check_evals_gold_set <gold-set-dir>
 
 Exit code 0 = clean, non-zero = invariants violated. Prints one line per
-violation prefixed with the invariant tag (I1..I10).
+violation prefixed with the invariant tag (I1-I7, I9, I10; I8 retired).
 """
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -23,11 +22,9 @@ import yaml
 from jsonschema import Draft202012Validator
 
 LABEL_ENUM = {"true", "false", "unresolvable"}
-KIND_ENUM = {"valid_doi", "valid_arxiv", "valid_unresolvable", "manual_exempt", "fabricated"}
+KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated"}
 RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 STATUS_ENUM = {"matched", "unmatched", "unreachable", "skipped"}
-
-_PROVENANCE_RE = re.compile(r"^last verified unresolvable: \d{4}-\d{2}-\d{2}")
 
 _CORPUS_ENTRY_SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent
@@ -85,7 +82,7 @@ def validate(root: Path) -> list[str]:
             tuples_by_id[path.stem] = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
             errors.append(f"I2: {path.name} is not valid JSON: {e}")
-            # malformed tuple gets a single I2 error; I3/I5/I6/I7/I8 skip it
+            # malformed tuple gets a single I2 error; I3/I5/I6/I7/I10 skip it
 
     # I2: tuple_id == filename stem
     for stem, tup in tuples_by_id.items():
@@ -181,20 +178,6 @@ def validate(root: Path) -> list[str]:
             errors.append(f"I7: {stem}.json kind=fabricated but fabrication_intent={marker!r} (must be true)")
         if kind != "fabricated" and marker is True:
             errors.append(f"I7: {stem}.json kind={kind!r} but fabrication_intent=true (must be false)")
-
-    # I8: valid_unresolvable tuples carry provenance_note matching the date pattern
-    for stem, tup in tuples_by_id.items():
-        if tup.get("kind") != "valid_unresolvable":
-            continue
-        note = tup.get("provenance_note")
-        if not note:
-            errors.append(f"I8: {stem}.json kind=valid_unresolvable but provenance_note is null/missing")
-            continue
-        if not _PROVENANCE_RE.match(note):
-            errors.append(
-                f"I8: {stem}.json provenance_note={note!r} does not match "
-                f"required pattern 'last verified unresolvable: YYYY-MM-DD...'"
-            )
 
     # I9: resolver_outcomes has all four resolver keys with valid status enum
     for tid, outcome in expected.items():
