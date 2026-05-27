@@ -24,7 +24,7 @@ def _copy_clean(tmp_path: Path) -> Path:
 
 
 def test_clean_fixture_passes(tmp_path):
-    """Clean fixture passes all 10 invariants."""
+    """Clean fixture passes all 9 invariants."""
     target = _copy_clean(tmp_path)
     errors = check_evals_gold_set.validate(target)
     assert errors == [], f"clean fixture should pass; got: {errors}"
