@@ -629,6 +629,216 @@
       }
     }
   },
+  "031-fabricated-synthetic-genome": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "032-fabricated-phantom-aerosol": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "033-fabricated-ghost-manipulator": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "034-fabricated-vapor-syntax": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "035-fabricated-null-electrolyte": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "036-fabricated-fictive-market": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "037-fabricated-spectral-void-galaxy": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "038-fabricated-phantom-epitope": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "039-fabricated-illusory-gesture": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
+  "040-fabricated-ghost-tremor": {
+    "lookup_verified": "false",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null
+      }
+    }
+  },
   "041-manual-exempt-hofstede-2010-cultures": {
     "lookup_verified": "unresolvable",
     "resolver_outcomes": {
