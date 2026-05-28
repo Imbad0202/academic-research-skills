@@ -55,6 +55,10 @@ Schemas for Material Passport input ports.
   states (proposal / persisted) share the schema via `oneOf`. Cross-artifact invariants
   are enforced by `scripts/check_audit_artifact_consistency.py`. Spec:
   `docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md` §3.1-§3.2.
+- `passport/version_records.schema.json` (Kong #258) — optional
+  `phase2_investigation/version_records.yaml` sidecar for academic citation version
+  families (preprint -> proceedings -> journal extension). This is deliberately a
+  sidecar: `literature_corpus_entry.schema.json` stays adapter-owned and unmodified.
 
 ## Audit artifact contracts (v3.6.7 Step 6)
 

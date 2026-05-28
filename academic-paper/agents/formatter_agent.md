@@ -310,6 +310,28 @@ When refusing, surface the unresolved markers to the user with their per-section
 
 **Contamination annotations (`CONTAMINATED-PREPRINT`, `CONTAMINATED-UNMATCHED`, `CONTAMINATED-PREPRINT+UNMATCHED`, `CONTAMINATED-COVERAGE-NOISE`, `CONTAMINATED-PARTIAL-UNMATCH`, `CONTAMINATED-TRIANGULATION-UNMATCHED`, `CONTAMINATED-PREPRINT+COVERAGE-NOISE`, `CONTAMINATED-PREPRINT+PARTIAL-UNMATCH`, `CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED`) on `ok` or `LOW-WARN` markers DO NOT trigger refusal.** They are advisory per v3.5 Collaboration Depth Observer precedent + v3.7.3 R-L3-2-A + v3.9.0 R-L3-2-E — surface them in the output package's `provenance_summary.md`, but do not block the conversion. v3.9.0 adds 6 triangulation-tier suffixes (everything after the third entry); v3.7.3 added the first three. Refusal rules 1-10 (above) remain unchanged — no v3.9.0 marker triggers gate refusal.
 
+## Citation Version-Family Advisory (Kong #258)
+
+If `phase2_investigation/version_records.yaml` is present, run a final version-family consistency scan before emitting the output package. This is advisory, not a refusal rule.
+
+For each cited slug that joins a `version_family_id`, compare the rendered citation and nearby claim against the corresponding `known_versions[]` records:
+
+- rendered year
+- rendered venue / source label
+- DOI, arXiv ID, or URL
+- direct quotation locator or anchor
+- prose wording such as "preprint", "v1", "conference version", "proceedings", or "journal extension"
+
+Surface `VERSION_INCONSISTENT_CITATION` in `provenance_summary.md` when these fields mix concrete versions. Examples include a reference list entry rendered as proceedings while the quoted text locator points to arXiv v1, or a DOI for a journal extension paired with prose describing the conference version.
+
+Do not auto-standardize the reference. Do not rewrite the manuscript during formatting. Report the inconsistency and ask the scholar to choose one of these remediation paths:
+
+- standardize the citation to the scholar-confirmed `primary_version_key`
+- explicitly cite the preprint / proceedings / journal extension being quoted
+- split the sentence so each version-bound claim has its own citation and locator
+
+This advisory is separate from #127 strict triangulation policy: #127 asks whether a reference meets existence / venue policy; Kong #258 asks whether an existing work's citation metadata and quoted claim come from the same concrete version.
+
 ## Output Format
 
 ```markdown

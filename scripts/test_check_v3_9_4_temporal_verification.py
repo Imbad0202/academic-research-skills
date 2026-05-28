@@ -439,11 +439,12 @@ def test_timeline_extraction_agent_has_phase_boundary_block():
     assert "## Citation Provenance Protocol (v3.9.4)" in content
 
 
-def test_timeline_extraction_agent_lists_two_deliverables():
+def test_timeline_extraction_agent_lists_sidecar_deliverables():
     agent_path = REPO_ROOT / "deep-research/agents/timeline_extraction_agent.md"
     content = agent_path.read_text()
     assert "timeline.yaml" in content
     assert "citation_provenance.yaml" in content
+    assert "version_records.yaml" in content
 
 
 M3_IRON_RULE_MARKER = "## Temporal Integrity Iron Rule (v3.9.4)"

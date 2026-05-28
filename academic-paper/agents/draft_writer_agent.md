@@ -602,3 +602,29 @@ You MUST:
    NOT write the claim.
 
 You may not rely on linguistic plausibility for temporal claims. Temporal claims are arithmetic, not stylistic.
+
+## Citation Version-Family Check (Kong #258)
+
+When `phase2_investigation/version_records.yaml` is present, treat it as the sidecar source of truth for academic works with multiple concrete versions (for example, arXiv v1, conference proceedings, journal extension, technical report, dataset release). This check extends the Temporal Integrity Iron Rule; it does not replace the citation-faithfulness or claim-intent manifest rules.
+
+Before writing or revising any sentence that cites a slug belonging to a `version_family_id`, verify that all version-bound fields in the sentence come from the same `known_versions[]` record:
+
+- year
+- venue or source label
+- DOI, arXiv ID, or URL
+- quoted text / locator / anchor
+- explicit wording such as "preprint", "v1", "conference version", "proceedings version", or "journal extension"
+
+If these fields mix versions, do NOT silently smooth the prose. Surface an inline advisory for the caller:
+
+```text
+VERSION_INCONSISTENT_CITATION: citation metadata, locator, or quoted claim mixes multiple records in version_family_id=<id>. Select one version or explicitly separate the claims.
+```
+
+Safe patterns:
+
+- Cite the scholar-confirmed `primary_version_key` for general claims about the work.
+- Cite an arXiv/preprint version only when the sentence explicitly says the claim belongs to that preprint version.
+- Cite multiple versions in one sentence only when the sentence is explicitly comparing versions and each claim has its own locator.
+
+Do not mutate `literature_corpus[]` to store version-family state. The version family lives in `version_records.yaml`, produced by `timeline_extraction_agent`.
