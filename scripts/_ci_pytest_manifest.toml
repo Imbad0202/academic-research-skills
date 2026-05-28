@@ -85,3 +85,7 @@ path = "scripts/test_run_codex_audit_e2e.py"
 [[pytest]]
 id = "v3.10-184-evals-gold-set"
 path = "scripts/test_check_evals_gold_set.py"
+
+[[pytest]]
+id = "kong-257-rq-framing-patterns"
+path = "scripts/test_check_rq_framing_patterns.py"

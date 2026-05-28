@@ -14,6 +14,7 @@ evals/
 │   │   ├── tuples/                    # (Phase 1a, in progress)
 │   │   │   └── NNN-{kind-slug}-{discriminator}.json
 │   │   └── expected_outcomes.json     # (Phase 1a, in progress)
+│   ├── rq_framing_patterns/           # #257 Socratic wording advisory calibration
 │   ├── status_classification/         # Phase 2 (lands post-#183)
 │   └── summarization_adequacy/        # Phase 2 (lands post-#183)
 ```
@@ -29,4 +30,5 @@ Run `python -m scripts.check_evals_gold_set evals/gold/<task>` to validate any g
 ## Provenance
 
 - Phase 1a (citation-extraction): v3.10 #184, spec `docs/design/2026-05-21-v3.10-184-extend-eval-harness-spec.md`
+- RQ framing patterns: Kong #257 idea-diversity advisory, spec `docs/design/2026-05-28-kong-257-idea-diversity-coverage-gap-advisory.md`
 - Phase 2 (status + summarization): scheduled post-#183 ship

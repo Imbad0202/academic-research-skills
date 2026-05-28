@@ -132,6 +132,32 @@ After reviewing the literature, identify:
 
 When the corpus-first flow ran, gap identification operates over the merged `final_included` set. The PRE-SCREENED block's zero-hit note (F3) and `uncovered_topics` from Step 2 case A / B' surface coverage gaps that originated in corpus screening; carry those forward into this section so user-curated coverage limits become explicit research-gap claims rather than silent omissions.
 
+## Distributional Skew Advisory (Kong #257)
+
+After retrieval, screening, deduplication, and before finalizing the Literature Search Report, run a **non-blocking** distributional coverage pass over the source set that will feed the Annotated Bibliography, Literature Matrix, Research Gap Identification, and Recommended Sources table. This extends the existing research-gap categories and the `uncovered_topics` / search-fills-gap flow: topic gaps remain the primary coverage signal, and this pass adds distributional skew signals on dimensions that are easy to miss when topics look covered.
+
+Analyze only metadata or annotations actually present. Do not infer missing geography, method, or venue tier from stereotypes. Omit dimensions with too few known values to assess.
+
+Dimensions:
+- **time distribution**: publication year, decade, or user-specified period buckets
+- **geographic distribution**: study site, population region, country/region tag, or explicitly stated context
+- **methodological distribution**: qualitative, quantitative, mixed-methods, review, theoretical, computational/simulation, dataset/tool paper
+- **venue tier distribution**: same journal/conference family, top-3 venue concentration, preprint-only concentration, or grey-literature concentration
+
+Threshold: when a single known value accounts for `>= 70%` of known entries in a dimension, emit `DISTRIBUTIONAL_SKEW_ADVISORY`. Use denominator `known_N` for that dimension, not total source count, and show the count so the user can judge whether the signal is meaningful.
+
+Template:
+
+```markdown
+DISTRIBUTIONAL_SKEW_ADVISORY:
+- Dimension: <time distribution | geographic distribution | methodological distribution | venue tier distribution>
+- Concentration: <value> = <n>/<known_N> (<pct>%)
+- Advisory: This is a coverage-distribution signal, not a defect. Consider whether the paper's RQ warrants broader periods, sites, methods, or venue families.
+- Search response: <new search string / source family to add / "no expansion; user requested this scope">
+```
+
+This advisory never blocks lit-review output, never downgrades included sources, and never becomes a novelty judgment. The user can keep the skew when it is substantively justified.
+
 ## Output Format
 
 ```markdown
@@ -139,6 +165,9 @@ When the corpus-first flow ran, gap identification operates over the merged `fin
 
 ### Search Strategy
 [Databases, search strings, date range, filters]
+
+### Coverage Distribution Advisory
+[Emit `DISTRIBUTIONAL_SKEW_ADVISORY` blocks for any dimension with >= 70% concentration; otherwise state "No distributional skew advisory triggered."]
 
 ### Screening Results
 - Initial hits: [N]
@@ -218,6 +247,10 @@ The external search executes the 4-Layer Progressive Strategy (Boolean → Citat
 ### Step 3: merge
 
 `final_included = pre_screened_included[] ∪ external_included[]`. The annotated bibliography stays neutral — no source-attribution tags on entries, no provenance column in the Literature Matrix.
+
+### Step 3.5: distributional skew advisory
+
+Run the Distributional Skew Advisory pass over `final_included`. This is separate from `uncovered_topics`: a corpus can cover every RQ subtopic while still being narrowly concentrated in one period, site, method, or venue family. Surface the advisory in the Search Strategy Report after the PRE-SCREENED block and before `Databases` when it triggers.
 
 ### Step 4: emit Search Strategy Report
 

@@ -434,6 +434,7 @@ See `academic-pipeline/SKILL.md` for the complete workflow.
 | `examples/handoff_to_paper.md` | deep-research full mode handoff to academic-paper |
 | `examples/review_mode.md` | Review mode: 3-agent review pipeline for policy recommendation text |
 | `examples/fact_check_mode.md` | Fact-check mode: source verification of HEI claims with per-claim verdicts |
+| `examples/idea_diversity_coverage_gap_advisory.md` | #257 Socratic wording-pattern + lit-review distributional-skew advisories |
 
 ---
 
