@@ -97,6 +97,36 @@
       "expected_pattern_ids": ["WP16"]
     },
     {
+      "id": "cliche-016",
+      "label": "wording_cliche",
+      "text": "The relationship between sleep duration and academic achievement.",
+      "expected_pattern_ids": ["WP11"]
+    },
+    {
+      "id": "cliche-017",
+      "label": "wording_cliche",
+      "text": "A comparative study of online and face-to-face instruction.",
+      "expected_pattern_ids": ["WP17"]
+    },
+    {
+      "id": "cliche-018",
+      "label": "wording_cliche",
+      "text": "Toward a framework for sustainable supply chain management.",
+      "expected_pattern_ids": ["WP18"]
+    },
+    {
+      "id": "cliche-019",
+      "label": "wording_cliche",
+      "text": "The role of artificial intelligence in enhancing student engagement.",
+      "expected_pattern_ids": ["WP19"]
+    },
+    {
+      "id": "cliche-020",
+      "label": "wording_cliche",
+      "text": "Exploring the experiences of international students in higher education.",
+      "expected_pattern_ids": ["WP20"]
+    },
+    {
       "id": "native-001",
       "label": "domain_native",
       "text": "How do municipal procurement rules shape the reuse of decommissioned school buildings in Tainan?",
@@ -184,6 +214,36 @@
       "id": "native-015",
       "label": "domain_native",
       "text": "How do planners translate flood memories into zoning boundaries after informal settlements relocate?",
+      "expected_pattern_ids": []
+    },
+    {
+      "id": "native-016",
+      "label": "domain_native",
+      "text": "When students cram the night before an exam, which revision habits survive into the next semester?",
+      "expected_pattern_ids": []
+    },
+    {
+      "id": "native-017",
+      "label": "domain_native",
+      "text": "Why do some clinics keep paper charts after switching to electronic records, while neighboring clinics do not?",
+      "expected_pattern_ids": []
+    },
+    {
+      "id": "native-018",
+      "label": "domain_native",
+      "text": "What design decisions let a rural credit cooperative keep lending when its parent bank withdraws?",
+      "expected_pattern_ids": []
+    },
+    {
+      "id": "native-019",
+      "label": "domain_native",
+      "text": "Which classroom routines do teachers drop first when a new grading dashboard arrives mid-term?",
+      "expected_pattern_ids": []
+    },
+    {
+      "id": "native-020",
+      "label": "domain_native",
+      "text": "How do first-generation graduate students learn the unwritten rules of lab authorship?",
       "expected_pattern_ids": []
     }
   ]

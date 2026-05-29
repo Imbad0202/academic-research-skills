@@ -1,11 +1,12 @@
 """Tests for Kong #258 version_records sidecar schema."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import jsonschema
 import pytest
+
+from scripts._test_helpers import load_json_schema
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +14,7 @@ SCHEMAS = REPO_ROOT / "shared/contracts/passport"
 
 
 def _schema(name: str) -> dict:
-    return json.loads((SCHEMAS / name).read_text())
+    return load_json_schema(SCHEMAS / name)
 
 
 def _valid_version_records() -> dict:
@@ -79,6 +80,102 @@ def test_version_records_rejects_unknown_top_level_field():
 def test_version_records_rejects_invalid_arxiv_id():
     bad = _valid_version_records()
     bad["version_records"][0]["known_versions"][0]["arxiv_id"] = "arXiv:1706.03762v1"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, _schema("version_records.schema.json"))
+
+
+def _drop_top_schema_version(doc: dict) -> dict:
+    del doc["schema_version"]
+    return doc
+
+
+def _drop_record_required(doc: dict) -> dict:
+    del doc["version_records"][0]["discovery_status"]
+    return doc
+
+
+def _empty_known_versions(doc: dict) -> dict:
+    doc["version_records"][0]["known_versions"] = []
+    return doc
+
+
+def _drop_known_version_required(doc: dict) -> dict:
+    del doc["version_records"][0]["known_versions"][0]["metadata_provenance"]
+    return doc
+
+
+def _bad_discovery_status(doc: dict) -> dict:
+    doc["version_records"][0]["discovery_status"] = "maybe"
+    return doc
+
+
+def _bad_kind(doc: dict) -> dict:
+    doc["version_records"][0]["known_versions"][0]["kind"] = "blog_post"
+    return doc
+
+
+def _bad_metadata_provenance(doc: dict) -> dict:
+    doc["version_records"][0]["known_versions"][0]["metadata_provenance"] = "vibes"
+    return doc
+
+
+def _empty_title(doc: dict) -> dict:
+    doc["version_records"][0]["known_versions"][0]["title"] = ""
+    return doc
+
+
+def _extra_prop_on_record(doc: dict) -> dict:
+    doc["version_records"][0]["surprise"] = True
+    return doc
+
+
+def _extra_prop_on_known_version(doc: dict) -> dict:
+    doc["version_records"][0]["known_versions"][0]["surprise"] = True
+    return doc
+
+
+def _bad_date_precision(doc: dict) -> dict:
+    doc["version_records"][0]["known_versions"][0]["publication_date"] = {
+        "value": "2017-06",
+        "precision": "fortnight",
+    }
+    return doc
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        _drop_top_schema_version,
+        _drop_record_required,
+        _empty_known_versions,
+        _drop_known_version_required,
+        _bad_discovery_status,
+        _bad_kind,
+        _bad_metadata_provenance,
+        _empty_title,
+        _extra_prop_on_record,
+        _extra_prop_on_known_version,
+        _bad_date_precision,
+    ],
+)
+def test_version_records_rejects_mutations(mutator):
+    """Each mutation of the canonical valid doc must fail validation.
+
+    Guards against the schema silently relaxing a constraint: required fields,
+    minItems on known_versions, the discovery_status / kind / metadata_provenance
+    enums, non-empty title, additionalProperties:false at each level, and date
+    precision enum. Year bounds are covered separately below.
+    """
+    bad = mutator(_valid_version_records())
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, _schema("version_records.schema.json"))
+
+
+@pytest.mark.parametrize("year", [999, 2101])
+def test_version_records_rejects_year_out_of_range(year):
+    """year must stay within the schema's minimum/maximum (1000-2100)."""
+    bad = _valid_version_records()
+    bad["version_records"][0]["known_versions"][0]["year"] = year
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(bad, _schema("version_records.schema.json"))
 

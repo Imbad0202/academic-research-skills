@@ -71,9 +71,9 @@ The repository includes a small hand-curated gold set for the Socratic wording a
 
 Gold-set shape:
 
-- 30 RQ framings
-- 15 wording-cliche positives
-- 15 domain-native negatives
+- 40 RQ framings
+- 20 wording-cliche positives
+- 20 domain-native negatives
 
 Acceptance thresholds:
 

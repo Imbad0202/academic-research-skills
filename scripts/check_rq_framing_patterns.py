@@ -19,7 +19,6 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLD_SET = REPO_ROOT / "evals/gold/rq_framing_patterns/gold_set.json"
-THRESHOLD = 0.70
 POSITIVE_LABEL = "wording_cliche"
 NEGATIVE_LABEL = "domain_native"
 
@@ -31,7 +30,6 @@ class PatternSpec:
     pattern_id: str
     label: str
     regex: re.Pattern[str]
-    score: float = 0.85
 
 
 def _rx(pattern: str) -> re.Pattern[str]:
@@ -41,16 +39,16 @@ def _rx(pattern: str) -> re.Pattern[str]:
 REFERENCE_PATTERNS: tuple[PatternSpec, ...] = (
     PatternSpec("WP01", "impact/effect frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*|study\w*)\s+(?:the\s+)?(?:impact|effect)s?\s+of\b.+\bon\b")),
     PatternSpec("WP02", "relationship frame", _rx(r"\b(?:investigat\w*|examin\w*|explor\w*)?\s*(?:the\s+)?(?:relationship|association|correlation)\s+between\b")),
-    PatternSpec("WP03", "role frame", _rx(r"\b(?:understand\w*|examin\w*|investigat\w*|explor\w*)?\s*(?:the\s+)?role\s+of\b.+\bin\b")),
+    PatternSpec("WP03", "role frame", _rx(r"\b(?:understand\w*|examin\w*|investigat\w*|explor\w*|analyz\w*|assess\w*)\s+(?:the\s+)?role\s+of\b.+\bin\b")),
     PatternSpec("WP04", "influence frame", _rx(r"\b(?:analyz\w*|investigat\w*|examin\w*|explor\w*)\s+how\b.+\b(?:influences?|affects?)\b")),
     PatternSpec("WP05", "generic factors frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*)?\s*factors\s+(?:influencing|affecting|that\s+influence|that\s+affect)\b")),
-    PatternSpec("WP06", "bare study-of frame", _rx(r"\b(?:a|the)\s+study\s+of\b")),
+    PatternSpec("WP06", "bare study-of frame", _rx(r"^(?:a|an|the)\s+(?:\w+\s+)?study\s+of\b")),
     PatternSpec("WP07", "impact case-study frame", _rx(r"\bimpact\s+of\b.+\bon\b.+\bcase\s+study\b|\bcase\s+study\b.+\bimpact\s+of\b")),
     PatternSpec("WP08", "challenges/opportunities pair", _rx(r"\bchallenges\s+and\s+opportunities\s+of\b")),
     PatternSpec("WP09", "perception/attitude survey frame", _rx(r"\b(?:perceptions|attitudes)\s+(?:of\b.+\s+)?(?:toward|towards|about)\b")),
     PatternSpec("WP10", "performance/achievement effect frame", _rx(r"\b(?:the\s+)?effect\s+of\b.+\bon\b.+\b(?:performance|achievement|satisfaction|outcomes?)\b")),
     PatternSpec("WP11", "achievement relationship frame", _rx(r"\brelationship\s+between\b.+\band\b.+\b(?:performance|achievement|outcomes?)\b")),
-    PatternSpec("WP12", "generic use/application frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*)?\s*(?:the\s+)?(?:use|application|implementation)\s+of\b.+\bin\b")),
+    PatternSpec("WP12", "generic use/application frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*|assess\w*)\s+(?:the\s+)?(?:use|application|implementation)\s+of\b.+\bin\b")),
     PatternSpec("WP13", "effectiveness frame", _rx(r"\b(?:investigat\w*|examin\w*|evaluat\w*)?\s*(?:the\s+)?effectiveness\s+of\b.+\b(?:for|in|on)\b")),
     PatternSpec("WP14", "mediator/moderator template", _rx(r"\b(?:mediating|moderating)\s+role\s+of\b")),
     PatternSpec("WP15", "adoption/intention/satisfaction factors", _rx(r"\bfactors\s+affecting\b.+\b(?:adoption|intention|satisfaction)\b")),
@@ -69,10 +67,8 @@ def normalize(text: str) -> str:
 def analyze_framing(text: str) -> dict[str, Any]:
     normalized = normalize(text)
     matches = [spec for spec in REFERENCE_PATTERNS if spec.regex.search(normalized)]
-    score = max((spec.score for spec in matches), default=0.0)
     return {
-        "trigger_advisory": bool(matches) and score > THRESHOLD,
-        "score": round(score, 3),
+        "trigger_advisory": bool(matches),
         "matched_pattern_ids": [spec.pattern_id for spec in matches],
         "matched_pattern_labels": [spec.label for spec in matches],
     }
@@ -140,10 +136,10 @@ def evaluate_items(items: list[dict[str, Any]]) -> dict[str, Any]:
     tnr = tn / negatives if negatives else 0.0
     balanced_accuracy = (tpr + tnr) / 2 if positives and negatives else 0.0
 
-    if len(items) != 30:
-        errors.append(f"sample_n must be 30, got {len(items)}")
-    if positives != 15 or negatives != 15:
-        errors.append(f"gold set must be balanced 15/15, got positives={positives}, negatives={negatives}")
+    if len(items) != 40:
+        errors.append(f"sample_n must be 40, got {len(items)}")
+    if positives != 20 or negatives != 20:
+        errors.append(f"gold set must be balanced 20/20, got positives={positives}, negatives={negatives}")
     if fnr >= 0.30:
         errors.append(f"FNR {fnr:.3f} must be < 0.30")
     if fpr >= 0.20:

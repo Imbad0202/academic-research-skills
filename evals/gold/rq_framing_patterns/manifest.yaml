@@ -10,7 +10,7 @@ target:
   entrypoint: scripts.check_rq_framing_patterns
   predicted_field: trigger_advisory
   gold_set_path: gold_set.json
-sample_n: 30
+sample_n: 40
 labels: ["wording_cliche", "domain_native"]
 thresholds:
   fnr:
@@ -24,6 +24,6 @@ thresholds:
     threshold_value: 0.75
 tuple_distribution:
   - label: wording_cliche
-    n: 15
+    n: 20
   - label: domain_native
-    n: 15
+    n: 20

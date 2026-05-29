@@ -37,12 +37,12 @@ def test_gold_set_calibration_passes_thresholds() -> None:
     result = checker.validate_gold_set()
     assert result["errors"] == []
     assert result["counts"] == {
-        "tp": 15,
-        "tn": 15,
+        "tp": 20,
+        "tn": 20,
         "fp": 0,
         "fn": 0,
-        "positives": 15,
-        "negatives": 15,
+        "positives": 20,
+        "negatives": 20,
     }
     assert result["metrics"]["fnr"] < 0.30
     assert result["metrics"]["fpr"] < 0.20
