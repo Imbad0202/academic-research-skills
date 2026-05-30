@@ -149,6 +149,9 @@ jobs:
       - name: Validate corpus consumer protocol (v3.6.5+)
         run: python3 scripts/check_corpus_consumer_protocol.py
 
+      - name: Validate domain evidence profile documentation surface (#259)
+        run: python3 scripts/check_domain_evidence_profile.py
+
       - name: Check adapter docs up-to-date
         run: python3 scripts/sync_adapter_docs.py --check
 
