@@ -42,6 +42,55 @@ From the Paper Configuration Record, extract:
 - Discipline-specific terminology
 - Boolean combinations
 
+### Domain Evidence Profile Resolution
+
+Reference: `academic-paper/references/domain_evidence_profiles.md`
+
+**Resolve `domain_evidence_profile` from the PCR `Domain Evidence Profile` row** (NOT the Material Passport, NOT a ledger, NOT a Schema number). The resolution is strictly **row-based** — read the row, do not classify the entry path. `source_verification_agent` is NOT given a profile-resolution step; this agent is the sole consumer.
+
+Graceful-fallback cases (none block — INVARIANT 4):
+- **(a) Row absent** → neutral `unknown_user_defined`. **In `full` mode, emit `[NO-PROFILE-NEUTRAL]`** so the neutral default is visible. (Paths that leave the row absent: `plan → full` and true mid-entry, where intake never set it. Resume-from-checkpoint carries whatever the prior intake wrote — present ⇒ that profile applies with no advisory; absent ⇒ neutral + advisory. A `deep-research → academic-paper` handoff is NOT absent — intake set the row.)
+- **(b) Row = `unknown_user_defined`** → neutral. **No `[NO-PROFILE-NEUTRAL]`** — the scholar actively chose/accepted neutral at intake; that tag is only for the absent-row case.
+- **(c) Row holds a value not in the 4 enum** (hallucinated, or a reserved value somehow stored as effective) → neutral, **and emit `[PROFILE-UNRESOLVED]`**.
+- **(d) Discipline mismatch** (the profile's implied discipline ≠ PCR `Discipline`) → proceed with BOTH signals in their own lanes, **emit `[PROFILE-DISCIPLINE-MISMATCH]`**. This is a warning, not a fallback — admissibility still uses the profile; `Discipline` still drives database selection. Nothing is blocked.
+
+**Profile → implied-discipline map** (so "implies a discipline" is deterministic, a string-category comparison — not inference):
+
+| Profile | Implied discipline(s) |
+|---|---|
+| `cs_ml` | CS / Engineering / Technology |
+| `humanities_interpretive` | Humanities |
+| `general_social_science` | Social Science **or** Policy (matches either) |
+| `unknown_user_defined` | none — neutral default never triggers a mismatch check |
+
+The mismatch advisory fires only when PCR `Discipline` falls **outside** the profile's implied set. `unknown_user_defined` and an absent row never warn.
+
+**There is no `HANDOFF_INCOMPLETE` concern** — the profile is a PCR field, not a handoff object, so the general handoff-validation convention never applies. A profile defect simply falls back to neutral with the advisory.
+
+**Monotonic admit-only resolution (the load-bearing contract — INVARIANT 5).** Every gate edit below is *additive*: under a non-neutral profile a gate may **admit an evidence type it would otherwise wrongly exclude**, but it MUST NOT exclude, down-rank, or fail any source the neutral gate currently admits. Combine neutral and profile criteria by **OR (union of admissible)**, never by replacement.
+
+The three **universal gates are never loosened by any profile**: a source must always pass the **relevance** check (abstract addresses the RQ), the **methodology** check (no fatal design flaw), and the **predatory**/fabrication check, regardless of which profile is active. The profile only forgives "not peer-reviewed / is a preprint / is an older canonical text" — never "off-topic, fatally flawed, or predatory".
+
+```
+profile = resolve_from_PCR_row()    # 4 enum values; absent/non-enum -> unknown_user_defined (+advisory on non-enum)
+
+# Universal gates apply to EVERY source regardless of profile — the profile can never bypass them:
+UNIVERSAL_GATES        = [relevance_to_RQ, methodology_not_fatally_flawed, not_predatory_or_fabricated]
+# Only these may be loosened by a non-neutral profile:
+PROFILE_LOOSENABLE     = [peer_review_requirement, publication_type, currency_window, provenance_expectation]
+
+def admit(source):
+    if not all(g(source) for g in UNIVERSAL_GATES):
+        return False                                  # profile NEVER bypasses relevance / methodology / predatory
+    if neutral_passes(source, PROFILE_LOOSENABLE):
+        return True                                   # never tighten: anything neutral admits stays admitted
+    if profile != unknown_user_defined and profile_admits(source, profile, PROFILE_LOOSENABLE):
+        return True                                   # only loosen: profile ADDs admit paths on loosenable gates only
+    return False
+# Under unknown_user_defined, admit() == the full neutral tree exactly.
+# A cs_ml preprint that is off-topic, fatally flawed, or predatory is STILL excluded.
+```
+
 ### Step 2: Database Selection
 | Discipline | Primary Databases |
 |-----------|-------------------|
@@ -68,6 +117,8 @@ From the Paper Configuration Record, extract:
 | Date range | Last 10 years (default) + seminal works | Outdated unless historically relevant |
 | Language | Per config (EN, zh-TW, or both) | Other languages unless key source |
 | Relevance | Directly addresses RQ | Tangentially related |
+
+Under a non-neutral domain evidence profile, the profile's standard evidence types are added to the includable set before screening — the peer-reviewed filter (Step 3 `Filters:` line and the Step 4 Publication type / Date range rows) relaxes to peer-reviewed-equivalent for `cs_ml`; the year-range relaxes for `humanities_interpretive` canonical texts. Never tightened, never dropping anything the neutral filter would have kept (these are upstream hard filters that would otherwise starve the admit paths the screening tree opens downstream). Search-string enrichment under a profile is optional/additive and does NOT change the Step 2 `Discipline`-driven database table.
 
 ## Source Screening Protocol
 
@@ -417,7 +468,11 @@ Receive a candidate source ->
 ├── Is it peer-reviewed?
 │   ├── No -> Is it gray literature (government report/white paper) and directly relevant to RQ?
 │   │   ├── Yes -> Include (tag as gray literature)
-│   │   └── No -> Exclude
+│   │   └── No -> Is it admissible under the active domain evidence profile?
+│   │       (cs_ml: archival preprint / proceedings; humanities_interpretive: primary / archival / canonical source)
+│   │       ├── Yes -> tag by evidence type, then CONTINUE to the relevance + methodology nodes below
+│   │       │          (profile admit path, loosen-only — it does NOT short-circuit to Include)
+│   │       └── No -> Exclude
 │   └── Yes ->
 ├── Is it within the time range (default 10 years)?
 │   ├── No -> Is it a foundational/milestone work in the field (cited > 100 times)?
@@ -432,6 +487,8 @@ Receive a candidate source ->
 │   ├── No -> Exclude (unless it represents an important opposing viewpoint)
 │   └── Yes -> Include
 ```
+
+A profile-admitted source is added at the peer-review node only and then continues through the unchanged relevance and methodology nodes; the profile never bypasses a universal-quality node and never short-circuits to Include.
 
 ### Literature Quality Quick Assessment Checklist
 
@@ -448,6 +505,8 @@ Each included source is quickly scored on the following 5 items (1-3 points each
 **Total score >= 12**: High-quality source, prioritize assignment to core sections
 **Total score 8-11**: Acceptable source, assign to supporting sections
 **Total score <= 7**: Marginal source, use only when no alternative is available
+
+Under a non-neutral domain evidence profile, a source passes the quick assessment if it meets the neutral total-score outcome **OR** meets the profile's evidence-type expectation on the **Journal-ranking item only** (union scoped to the publication-type axis, not replacement). The other four items — methodological rigor, relevance to RQ, citation count, data/evidence quality — are universal-quality and stay in force: a profile-admitted source must still clear them.
 
 ### Chinese-English Literature Search Difference Handling
 
@@ -478,6 +537,8 @@ Each included source is quickly scored on the following 5 items (1-3 points each
 | Research gaps | >= 2 specific actionable gaps | Re-analyze literature matrix |
 | Peer-reviewed ratio | >= 70% peer-reviewed | Replace non-academic sources |
 | Currency | >= 50% published in last 5 years | Supplement with recent literature |
+
+Under a non-neutral domain evidence profile these two corpus-ratio gates loosen (never tighten): preprints count toward the `cs_ml` peer-reviewed-equivalent ratio; canonical/older texts do not count against `humanities_interpretive` currency. The thresholds are never raised, and a corpus that passes the neutral gate always passes the profile-relative gate. The other gate rows (source count, annotation completeness, matrix coverage, research-gap count) are not evidence-type gates and are untouched.
 
 ### Failure Handling Strategies
 
@@ -557,3 +618,5 @@ Quality gate not passed ->
 - At least 2 research gaps identified
 - Source quality distribution: majority should be peer-reviewed
 - Recency: >50% of sources from last 5 years (unless historical topic)
+
+> Under a non-neutral domain evidence profile, "majority peer-reviewed" counts the profile's peer-reviewed-equivalent types (e.g. `cs_ml` preprints), and the recency criterion does not penalize the profile's canonical/older sources — the same union/loosen-only rule as the Quality Gates rows above. Changing one without the other reintroduces the contradiction the gate fix removes.
