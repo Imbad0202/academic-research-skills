@@ -111,18 +111,38 @@ Systematic framework for grading evidence quality, used by the source_verificati
 
 ## Grading Rubric
 
-### Per-Source Assessment
+Each source is assessed on **two distinct axes** that the columns below combine. Conflating them caps strong interpretive and qualitative work at a low overall grade no matter how excellent it is within its own tradition.
+
+- **Study-design level** — where the design sits on the experimental-to-descriptive ladder (the 7-level pyramid above). This is absolute and field-neutral: a single qualitative case study is Level VI whether it appears in medicine or history.
+- **Fitness for claim within a discipline** — whether the source is excellent *by its field's norms for the specific claim being made*. A primary archival source can be Level VI design evidence and at the same time the gold-standard evidence its field offers for an interpretive claim.
+
+The **Evidence Level** criterion below grades *fitness*, not raw design level. A source earns Grade A on Evidence Level when its study-design level meets or exceeds **its own field's gold standard** (see the Field-Specific Adjustments table below), not only when it reaches Level I-II. So humanities work at Level VI, where Level VI *is* the field's gold standard, can score Grade A on this criterion. The other five criteria are field-neutral.
 
 | Criterion | Grade A (Excellent) | Grade B (Good) | Grade C (Adequate) | Grade D (Weak) | Grade F (Unacceptable) |
 |-----------|-------|-------|-------|-------|-------|
-| Evidence Level | I-II | III | IV-V | VI | VII or unclassifiable |
+| Evidence Level | Meets/exceeds the field's gold standard for the claim | One level below the field's gold standard | Two levels below | Well below field norm | Unclassifiable or fundamentally unfit for the claim |
 | Peer Review | Rigorous peer review | Standard peer review | Editorial review | No formal review | Self-published |
 | Methodology | Exemplary, replicable | Sound, described | Adequate | Questionable | Absent/flawed |
 | Sample/Data | Large, representative | Adequate | Limited but justified | Small, convenience | Unspecified |
 | Currency | < 3 years | 3-5 years | 5-10 years | > 10 years | Outdated for topic |
 | Conflicts | None declared or detected | Minor, disclosed | Moderate, disclosed | Undisclosed potential | Clear undisclosed conflict |
 
+> "Currency" is claim-relative: a foundational or historical source is not penalized for age when the claim is about that source itself or its period. Apply the age bands only when recency bears on the claim (e.g., empirical state-of-the-field assertions).
+
 ### Overall Source Grade
+
+The overall grade reflects **fitness for the claim**, not raw study-design level. A source whose design level is low (e.g., a Level VI primary source) can still earn an overall Grade A when it is excellent by its field's norms for the claim it supports.
+
+**Aggregation rule.** Grade the six criteria above (each A-F), then combine:
+
+1. **Integrity floor.** If **Conflicts** is F (clear undisclosed conflict), or **Peer Review** is F in a field whose Field-Specific Adjustments row (below) treats formal review as the norm, the overall grade is capped at D regardless of the other criteria. Integrity failures are not outweighed by strength elsewhere.
+2. **Base grade.** Otherwise the overall grade is the **median** of the six criterion grades (on the A=4 … F=0 scale, rounding down on a tie between two adjacent grades).
+3. **Fitness adjustment.** Raise the base grade by one step when **Evidence Level** (fitness) is Grade A — a source that is gold-standard for its field reaches overall A even when field-neutral criteria like Currency or Sample/Data sit lower. Do not apply this step if **Methodology** is F (a fundamentally flawed method is not rescued by field fit). Never raise past A.
+
+So an interpretive study that is gold-standard within its discipline reaches overall Grade A, while an integrity-compromised (step 1) or methodologically broken (step 3 proviso) source does not, in any field.
+
+**Overall grade meaning:**
+
 - **A**: Use as primary evidence
 - **B**: Use as supporting evidence
 - **C**: Use with explicit caveats

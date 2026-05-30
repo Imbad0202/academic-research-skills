@@ -55,14 +55,21 @@ responsibility for the accuracy and interpretation of all content.
 
 ## 3. Dual-Use Assessment
 
+**Screen on concrete specifics, never on subject matter.** A sensitive, political, or institution-critical *topic* is not a dual-use trigger. Public-interest research — documenting institutional abuses, exposing surveillance practices, holding power to account — is expected to address harmful subject matter and must not be flagged for the topic alone. A finding triggers dual-use only when the work itself supplies **specific operational detail** that materially lowers the barrier to harm. Studying surveillance is fine; shipping a step-by-step deployment recipe is the trigger.
+
 ### Screening Questions
-1. Could this research be used to harm individuals or communities?
-2. Does it reveal vulnerabilities that could be exploited?
-3. Could it be used to develop surveillance or control mechanisms?
-4. Does it provide information that could be weaponized?
-5. Could it be used to discriminate against specific groups?
+Each asks whether the **content of this work**, not its topic, supplies the specific:
+1. Does the work provide concrete operational detail that would let a reader **carry out** harm against individuals or communities (beyond describing that the harm exists)?
+2. Does it disclose a **specific, currently-exploitable** vulnerability together with enough detail to exploit it (vs. naming that vulnerabilities exist)?
+3. Does it provide a **usable method** to build surveillance or control mechanisms (vs. analyzing or critiquing them)?
+4. Does it contain **weaponizable specifics** — a recipe, design, or procedure — rather than discussion of weaponization risk?
+5. Does it supply a **concrete means** to discriminate against a group (vs. documenting that discrimination occurs)?
+
+If the answer rests on the topic being sensitive rather than on specific enabling detail in the text, the level is None.
 
 ### Risk Levels and Responses
+
+This assessment is **advisory** — it routes to a Responsible Use Statement and never to a hard block. (Hard blocks are reserved for integrity violations; see `agents/ethics_review_agent.md` Blocking Conditions.) Escalation rests on concrete enabling specifics, not subject matter.
 
 | Level | Action Required |
 |-------|----------------|
@@ -70,7 +77,7 @@ responsibility for the accuracy and interpretation of all content.
 | Low | Brief note in limitations |
 | Moderate | Responsible Use statement in report |
 | High | Prominent warning + limited distribution recommendation |
-| Critical | Do not publish without institutional ethics review |
+| Critical | Responsible Use statement + recommend institutional ethics review before publication (advisory — does not auto-block; a human, not the agent, adjudicates a Critical flag) |
 
 ### Responsible Use Statement Template
 ```
@@ -221,9 +228,9 @@ or conditions].
 
 ---
 
-## Quick Audit Checklist (Final Gate)
+## Quick Audit Checklist (Pre-Delivery Self-Check)
 
-Before delivery, confirm ALL items:
+Before delivery, confirm ALL items (this is a self-check, not a veto):
 
 - [ ] AI disclosure present and accurate
 - [ ] All references spot-checked (minimum 20%)

@@ -138,18 +138,20 @@ This document lists all failure scenarios that may be encountered across all mod
 
 **Trigger Conditions**:
 - ethics_review_agent determines BLOCKED
-- Includes: research involving non-consensual use of personal data, potentially discriminatory impact, dual-use risk
+- Integrity violations only — see the authoritative list in `agents/ethics_review_agent.md` §"Blocking Conditions" (fabricated references, missing AI disclosure, plagiarism, systematic source misrepresentation, concrete harm-enabling specifics without safeguards; human subjects with no IRB plan is **CONDITIONAL**, not BLOCKED).
+- **NOT a trigger**: dual-use risk and politically/institutionally sensitive subject matter. Dual-use is advisory (routes to a Responsible Use Statement, never to BLOCKED — see `references/ethics_checklist.md` §3). Subject matter alone never blocks.
 
 **User Notification Message**:
-> Ethics Review has determined that this research has ethical issues requiring prior resolution:
+> Ethics Review flagged a Critical integrity concern that needs your confirmation before delivery:
 > [Specific issue list]
-> The research report cannot be delivered until these issues are resolved. Here are the suggested remediation paths...
+> You can accept the suggested fix, **override with your reasoning** (recorded in the Ethics Decision Log), or revise. This is a one-time confirmation, not a veto. Suggested remediation paths:
 
 **Handling Steps**:
-1. List all BLOCKED reasons, each with specific remediation suggestions
-2. Distinguish between remediable (e.g., add informed consent statement) and irremediable (e.g., research design inherently has ethical issues)
+1. List all flagged reasons, each with specific remediation suggestions
+2. Distinguish between remediable (e.g., add informed consent statement) and irremediable (e.g., research design inherently has integrity problems)
 3. Remediable issues → provide modification suggestions → re-review after user confirmation
 4. Irremediable issues → suggest fundamental redesign of the research
+5. User may override any flag with recorded reasoning → log to the Ethics Decision Log and proceed; do not re-block an overridden item
 
 **Recovery Paths**:
 - Fix ethical issues → re-execute ethics_review_agent → continue after CLEARED

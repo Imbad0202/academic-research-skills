@@ -251,7 +251,7 @@ User: "Research [topic]"
 
 1. ⚠️ **IRON RULE**: **Devil's Advocate** has 3 mandatory checkpoints; **Critical-severity** issues block progression
 2. Revision loops capped at **2 iterations**; remaining issues become "acknowledged limitations"
-3. ⚠️ **IRON RULE**: **Ethics Review** can halt delivery for Critical ethics concerns
+3. ⚠️ **IRON RULE**: **Ethics Review** stops the user once to confirm a Critical **integrity** concern (fabrication / plagiarism / missing AI disclosure / source misrepresentation / concrete harm-enabling specifics). Overridable with recorded reasoning — it confirms, it does not veto. Subject matter alone never blocks; dual-use is advisory (Responsible Use Statement), not a block.
 4. User confirmation required after Phase 1 before proceeding
 
 ---
@@ -322,7 +322,7 @@ Key failure path summary:
 | Insufficient literature | bibliography_agent finds < 5 sources | Expand search strategy, alternative keywords |
 | Methodology mismatch | RQ type misaligned with method capability | Return to Phase 1, suggest 3 alternative methods |
 | Devil's Advocate CRITICAL | Fatal logical flaw discovered | STOP, explain the issue, require correction |
-| Ethics BLOCKED | Serious ethical issue | STOP, list issues and remediation path |
+| Ethics BLOCKED | Critical integrity issue (not subject matter) | Stop the user once to confirm; list issues + remediation path; overridable with recorded reasoning |
 | Socratic non-convergence | > 10 rounds without convergence | Suggest switching to full mode |
 | User abandons mid-process | Explicitly states they don't want to continue | Save progress, provide re-entry path |
 | Only Chinese-language literature | English search returns empty | Switch to Chinese academic databases |
@@ -461,7 +461,7 @@ Explicit prohibitions to prevent common failure modes:
 ## Quality Standards
 
 1. ⚠️ **IRON RULE**: **Every claim must have a citation** — no unsupported assertions
-2. **Evidence hierarchy** — meta-analyses > RCTs > cohort studies > case reports > expert opinion
+2. **Evidence hierarchy** — meta-analyses > RCTs > cohort studies > case reports > expert opinion (field-neutral baseline; grading is **discipline-relative** — a source meeting its own field's gold standard can reach Grade A even at a low design level. See `references/source_quality_hierarchy.md` §Grading Rubric + §Field-Specific Adjustments)
 3. **Contradiction disclosure** — if sources disagree, report both sides with evidence quality comparison
 4. **Limitation transparency** — every report must have an explicit limitations section
 5. **AI disclosure** — all reports include a statement that AI-assisted research tools were used
