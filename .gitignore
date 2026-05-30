@@ -7,6 +7,9 @@ docs/superpowers/
 # not be committed.
 .context/
 .codex-rounds/
+# Session resume / hand-off checkpoints (repo-root only). Private working-process
+# notes; must never reach the public repo.
+/checkpoints/
 
 # Python bytecode / pytest cache.
 __pycache__/
