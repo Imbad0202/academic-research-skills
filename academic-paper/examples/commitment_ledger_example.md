@@ -86,6 +86,40 @@ If R1-3 instead had:
 
 This is **advisory** — final responsibility rests with the author. Re-review does not block submission; it surfaces the gap so the author can act.
 
+## Granular and uncategorizable evidence: `prose_edit` and `other`
+
+The seven structural manuscript-evidence types cover the typical experiment / clarification / citation / restructure cases. Two further values handle the long tail of reviewer comments that would otherwise be misclassified or silently dropped:
+
+Suppose R2 raises two more comments:
+
+- **R2-1:** "Fix the typo in the definition of *consistency* on page 4 and correct the equation formatting in §3.2."
+- **R2-2:** "The submission feels incomplete somewhere in the framing, please tighten it."
+
+```yaml
+- concern_id: R2-1
+  original_comment: "Fix the typo in the definition of consistency on page 4 and correct the equation formatting in §3.2."
+  commitment_extracted:
+    - commitment_text: "fix typo in 'consistency' definition, p.4 (other: copy-edit, no structural change)"
+      commitment_type: other
+      required_evidence_type: prose_edit
+    - commitment_text: "correct equation formatting in §3.2 (other: formatting fix, no structural change)"
+      commitment_type: other
+      required_evidence_type: prose_edit
+
+- concern_id: R2-2
+  original_comment: "The submission feels incomplete somewhere in the framing, please tighten it."
+  commitment_extracted:
+    - commitment_text: "tighten framing (reviewer unspecified — clarify location at re-review)"
+      commitment_type: other
+      required_evidence_type: other
+```
+
+R2-1's two commitments use `prose_edit`: both are sentence-/equation-level changes too granular to bucket as `methods_paragraph` or `new_section`, yet they ARE manuscript changes (so `acknowledgment_only` would be the wrong semantics). They verify at `revision_location` in the revised manuscript like any other manuscript-evidence type.
+
+R2-2 is genuinely uncategorizable — the reviewer did not name a location or a deliverable. It uses `required_evidence_type: other`. At re-review this surfaces an **`EVIDENCE_TYPE_UNSPECIFIED`** advisory (distinct from `COMMITMENT_GAP`): the re-reviewer cannot pin the evidence and prompts the author to specify where the change landed. If the author populates `revision_location`, the re-reviewer verifies there; if not, the commitment is reported as unverifiable alongside the advisory.
+
+Both values exist because `commitment_type` already carries an `other` escape hatch — without the matching `required_evidence_type` values, the agent's instruction to "extract commitments from every parsed comment" would force a typo fix into `methods_paragraph` (wrong) or omit it entirely (violates the every-comment rule).
+
 ## Why this matters (Kong §7.4.3 anchor)
 
 Per Kong et al. 2026 §7.4.3, ICLR 2025 [21] documents a measurable commitment-fulfillment gap: persuasive rebuttal text + matrix saying "Verified: Y" can still hide that the actual experiment was not run. The commitment ledger forces per-promise lifecycle traceability — extracted promises, classified outcomes, mandated rationale — closing the gap at the artifact level instead of relying on reviewer vigilance.

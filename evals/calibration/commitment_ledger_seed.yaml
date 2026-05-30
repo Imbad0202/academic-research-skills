@@ -1,6 +1,6 @@
 # Kong A1 / v3.11 — Commitment Ledger Calibration Seed
 # ----------------------------------------------------------------
-# Purpose: 10 R&R cases for calibrating the COMMITMENT_GAP advisory
+# Purpose: 12 R&R cases for calibrating the COMMITMENT_GAP + EVIDENCE_TYPE_UNSPECIFIED advisory
 # trigger (re_review_mode_protocol step 5) once #263 Phase 1b harness
 # ships. Until then, this file is a SEED — not a runnable test.
 #
@@ -11,23 +11,29 @@
 #   simulated_revision: what author did
 #   expected_fulfillment_status: list parallel to expected_commitments
 #   expected_unfulfilled_rationale: list parallel (empty string "" for fulfilled entries)
-#   expected_commitment_gap: boolean — true if re-review should surface
+#   expected_commitment_gap: boolean — true if re-review should surface COMMITMENT_GAP
+#   expected_evidence_type_unspecified: boolean — true if re-review should surface
+#                    EVIDENCE_TYPE_UNSPECIFIED (fires iff any required_evidence_type == other).
+#                    Omitted/false on cases with no `other` evidence type.
 #
 # Case distribution (by case_id prefix):
 #   F1-F5 (5 cases): single-commitment, all fulfilled
 #   P1    (1 case):  single-commitment, partial (evidence-exists-but-incomplete, with rationale)
 #   P2-P3 (2 cases): multi-commitment, mix of not-fulfilled-with-rationale + fulfilled
 #   N1-N2 (2 cases): not-fulfilled with empty rationale (SHOULD trigger COMMITMENT_GAP)
+#   E1-E2 (2 cases): enum-widening (#269) — E1 prose_edit fulfilled; E2 other → EVIDENCE_TYPE_UNSPECIFIED
 #
 # Per re_review_mode_protocol Commitment Ledger Verification:
 #   - partial = required evidence exists but does not fully address commitment
 #   - not-fulfilled = required evidence absent (rationale presence is orthogonal)
 #   - COMMITMENT_GAP triggers iff status ∈ {partial, not-fulfilled, explicitly-rejected-with-rationale}
 #                    AND unfulfilled_rationale[i] is empty/missing
+#   - EVIDENCE_TYPE_UNSPECIFIED triggers iff required_evidence_type == other (orthogonal to
+#                    fulfillment_status and to COMMITMENT_GAP)
 #
 # Pass criterion (when harness arrives via #263):
-#   For each case, harness output must match expected_commitment_gap
-#   (boolean) AND expected_fulfillment_status (list).
+#   For each case, harness output must match expected_commitment_gap (boolean),
+#   expected_fulfillment_status (list), AND expected_evidence_type_unspecified (boolean).
 
 version: 1
 created: 2026-05-28
@@ -135,3 +141,28 @@ cases:
     expected_fulfillment_status: [not-fulfilled, not-fulfilled]
     expected_unfulfilled_rationale: ["", ""]
     expected_commitment_gap: true
+
+  # === 2 enum-widening cases (#269) ===
+  - case_id: E1
+    reviewer_comment: "Fix the typo in the definition of 'consistency' on page 4 and correct the equation formatting in §3.2."
+    expected_commitments:
+      - {commitment_text: "fix typo in 'consistency' definition, p.4 (other: copy-edit, no structural change)", commitment_type: other, required_evidence_type: prose_edit}
+      - {commitment_text: "correct equation formatting in §3.2 (other: formatting fix, no structural change)", commitment_type: other, required_evidence_type: prose_edit}
+    simulated_revision: "p.4 definition typo corrected; §3.2 equation reformatted."
+    # prose_edit is a manuscript-evidence type — verifies at revision_location like the structural types.
+    # Both fulfilled → no COMMITMENT_GAP. No `other` evidence type → no EVIDENCE_TYPE_UNSPECIFIED.
+    expected_fulfillment_status: [fulfilled, fulfilled]
+    expected_unfulfilled_rationale: ["", ""]
+    expected_commitment_gap: false
+    expected_evidence_type_unspecified: false
+
+  - case_id: E2
+    reviewer_comment: "The submission feels incomplete somewhere in the framing, please tighten it."
+    expected_commitments:
+      - {commitment_text: "tighten framing (reviewer unspecified — clarify location at re-review)", commitment_type: other, required_evidence_type: other}
+    simulated_revision: "§1 ¶2 framing tightened; revision_location populated as §1 ¶2."
+    # other → EVIDENCE_TYPE_UNSPECIFIED fires; author populated revision_location so still verifiable (advisory orthogonal to fulfillment & COMMITMENT_GAP).
+    expected_fulfillment_status: [fulfilled]
+    expected_unfulfilled_rationale: [""]
+    expected_commitment_gap: false
+    expected_evidence_type_unspecified: true
