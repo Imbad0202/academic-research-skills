@@ -213,6 +213,41 @@ Reference: `references/funding_statement_guide.md`
 - If not funded: note "no funding" (still requires explicit statement in paper)
 - Ask about potential conflicts of interest (COI)
 
+### Step 12: Domain Evidence Profile
+
+Reference: `references/domain_evidence_profiles.md`
+
+The domain evidence profile lets the scholar tell `literature_strategist_agent` which discipline's evidence standards to screen by, so it does not apply one Western evidence-based-medicine pyramid to every field. **Advisory only** — it changes which evidence types the literature screening *admits*; it never changes the A-F grade and never blocks ship. **Scholar-confirmed only — nothing auto-activates** (you MAY *suggest* a default inferred from a deep-research handoff or the Step 1 topic interview, but the scholar must confirm).
+
+**Present the 4 ship-ready profiles as an explicit choice:**
+
+> "Which discipline's evidence standards should the literature screening use? This only affects which evidence *types* are admitted, never the grade.
+> - `general_social_science` — empirical + mixed-methods + policy/expert-panel evidence
+> - `cs_ml` — admits archival preprints (arXiv) and proceedings alongside peer-reviewed papers
+> - `humanities_interpretive` — admits primary/archival/canonical sources; recency is not a quality signal
+> - `unknown_user_defined` — neutral single-pyramid (default; pick this if unsure)"
+
+`unknown_user_defined` is the **default** if the scholar does not pick or is unsure.
+
+**Reserved profiles** (`clinical`, `wet_lab`, `materials_physics`, `legal_case_based`, `education`): these are documented but NOT in the enum. If the scholar selects one, record effective `unknown_user_defined` **and surface this advisory**: "this domain has no profile yet — falling back to neutral evidence standards (`unknown_user_defined`)." Display the row as `unknown_user_defined (requested: <reserved>)` so the scholar's intent is visibly acknowledged.
+
+**Write the resolved effective value into the PCR `Domain Evidence Profile` row.** This is the single authoritative home — there is no Material Passport copy, no `selections[]` ledger, and no Schema number. (The profile is a PCR field, mirroring `Style Profile`.)
+
+**Profile-value rules (prose validation — there is NO JSON Schema file):**
+- The scholar's *request* MUST be one of the 4 ship-ready values OR one of the 5 reserved values — nothing else.
+- The stored **effective** value MUST be one of the 4 ship-ready enum values.
+- **Request/effective coherence:** if the request is ship-ready, the stored effective value MUST equal it. If the request is reserved, the stored effective value MUST be `unknown_user_defined` and you MUST surface the reserved-fallback advisory. No other combination is valid (you may never silently store, e.g., a `general_social_science` request as an effective `cs_ml`).
+
+**Phase-1-fully-skipped carve-out (no placebo prompt) — narrow, explicit trigger only.** The profile's only consumer is `literature_strategist_agent` (Phase 1). The carve-out applies **only when `literature_strategist_agent` will not run at all** — i.e. the scholar explicitly skips the literature phase entirely (`academic-paper/SKILL.md:139` "User can skip Phase 1 if providing own sources"), e.g. a mid-entry start with a finished draft where no literature screening will occur. On that explicit signal, do NOT prompt; record `unknown_user_defined` + a one-line `[NO-PROFILE-NEUTRAL]` advisory ("this run skips literature screening entirely, so a domain evidence profile would have no consumer; to apply one, run Phase 1").
+**Critical distinction:** a `deep-research → academic-paper` handoff carrying a bibliography does **NOT** trigger this carve-out — that handoff still runs `literature_strategist_agent`, which "goes directly to Phase B (full-text assessment), skipping Phase A" search, so the profile DOES have a live consumer. In that case **prompt Step 12 normally**.
+**Default when ambiguous: prompt Step 12** (assume the consumer runs) — under-prompting silently drops a usable profile, which is worse than one extra question.
+
+**Mid-pipeline override.** If the scholar later changes the profile (a fresh `academic-paper` invocation that re-runs intake, or an in-session correction), overwrite the PCR row. An override recorded **before Phase 1 runs** is consumed normally. An override recorded when **Phase 1 has already run OR was explicitly skipped** (the corpus is already fixed) cannot retroactively re-screen it, so you MUST emit a one-line `[PROFILE-OVERRIDE-NO-RESCREEN]` advisory: "the literature corpus is already fixed (already screened, or this run skips literature screening); to apply this profile, run Phase 1." The override is still honored for any future Phase-1 run.
+
+**Plan mode is exempt:** the simplified plan-mode intake does not run Step 12; a plan-mode run leaves no profile row, and `literature_strategist_agent` (if reached) takes the neutral fallback.
+
+**Not folded into Step 10 Style Calibration** — Step 10 is writing-sample calibration the scholar frequently declines; the domain profile is a separate concern with a separate lifecycle.
+
 ## Output Format
 
 ### Paper Configuration Record
@@ -236,6 +271,7 @@ Reference: `references/funding_statement_guide.md`
 | **Co-Authors** | [single-author / number of co-authors + corresponding author + brief contribution notes] |
 | **Funding** | [no funding / funder name(s) + grant number(s) + PI role] |
 | **Style Profile** | [attached / null] |
+| **Domain Evidence Profile** | [effective_value, or `unknown_user_defined (requested: <reserved>)` for a reserved fallback, or absent if Step 12 not run] |
 | **Operational Mode** | [full / outline-only / revision / abstract-only / lit-review / format-convert / citation-check] |
 
 ### Notes
