@@ -38,7 +38,7 @@ from scripts.adapters._common import (  # noqa: E402
 )
 
 ADAPTER_NAME = "folder_scan.py"
-ADAPTER_VERSION = "1.0.0"
+ADAPTER_VERSION = "1.1.0"
 
 # Family_Year_title style: "Wang_2023_formative_feedback.pdf"
 RE_FAMILY_UNDERSCORE = re.compile(
@@ -182,6 +182,12 @@ def main() -> int:
             "obtained_at": now_iso(),
             "adapter_name": ADAPTER_NAME,
             "adapter_version": ADAPTER_VERSION,
+            # v3.10 (spec §3 PR-B item 13): a filename scan carries no structured
+            # source-type metadata, so venue_type is always unknown/unknown —
+            # never inferred from the filename (R-L3-2-D). Emitted as a pair to
+            # honor the schema pair invariant.
+            "venue_type": "unknown",
+            "venue_type_provenance": "unknown",
         })
 
     write_passport(args.passport, entries)

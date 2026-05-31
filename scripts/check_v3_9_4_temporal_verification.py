@@ -39,7 +39,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = REPO_ROOT / "shared/contracts/passport"
 
 BIBLIOGRAPHY_AGENT_PATH = REPO_ROOT / "deep-research/agents/bibliography_agent.md"
-BIBLIOGRAPHY_AGENT_SHA256 = "bbe2ed7fc6264a6dc7282efffd11da208f7fec8b26c9d98c818c0e6fe8db8c24"  # post-#257 baseline; F2 ownership guard per spec §3.4 + §3.6
+BIBLIOGRAPHY_AGENT_SHA256 = "3c2b91dbf3fa55133d543f867a50ef316957b5bf1fdc8caacdded5b30775a1cb"  # post-v3.10-PR-B baseline (#127); F2 ownership guard per spec §3.4 + §3.6. v3.10 PR-B reworded the contamination_signals advisory paragraph to clarify the advisory→terminal-policy boundary (R-L3-2-A reword); NO temporal/version-family logic added, so the ownership invariant the hash protects is intact.
 
 
 def _validate(yaml_path: Path, schema_path: Path) -> list[str]:

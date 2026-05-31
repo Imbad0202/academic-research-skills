@@ -739,7 +739,7 @@ After the 4-cell matrix resolves a citation to `ok` or `LOW-WARN`, the finalizer
 
 Example: `<!--ref:smith2024 LOW-WARN CONTAMINATED-PREPRINT-->` or `<!--ref:smith2024 ok CONTAMINATED-PREPRINT+UNMATCHED-->`.
 
-**Advisory only.** The contamination annotation does NOT change the gate decision. `ok CONTAMINATED-...` still passes the formatter hard-gate; `LOW-WARN CONTAMINATED-...` is acknowledgeable via `/ars-mark-read <slug>` exactly like plain LOW-WARN. The annotation surfaces the contamination signal so the user can choose to verify the source more carefully or remove the citation.
+**Advisory by default.** The contamination annotation SUFFIX does not change the gate decision: `ok CONTAMINATED-...` passes the formatter hard-gate and `LOW-WARN CONTAMINATED-...` is acknowledgeable via `/ars-mark-read <slug>` exactly like plain LOW-WARN. The suffix surfaces the signal so the user can verify the source or remove the citation. (v3.10 adds an OPT-IN terminal channel: when the passport's `terminal_policies.contamination_triangulation` is `strict` / `strict_articles_only`, a k=3 signal additionally co-emits a `TERMINAL-BLOCK` token that the formatter refuses on — see § Cite-Time Provenance Finalizer — v3.10 extension. The advisory suffix itself stays advisory; the terminal block is a separate, additional token.)
 
 The contamination annotation does NOT apply to HIGH-WARN / MED-WARN / MED-WARN-NO-LOCATOR rows — those already block at the gate and the user must address the higher-severity problem before contamination becomes relevant.
 
@@ -791,6 +791,70 @@ Example markers:
 - `<!--ref:smith2024 ok CONTAMINATED-PARTIAL-UNMATCH-->` — two-of-three unmatched.
 - `<!--ref:smith2024 LOW-WARN CONTAMINATED-TRIANGULATION-UNMATCHED-->` — all three indexes unmatched.
 - `<!--ref:smith2024 LOW-WARN CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED-->` — preprint heuristic + k=3.
+
+## Cite-Time Provenance Finalizer — v3.10 extension (terminal policy layer)
+
+Spec: `docs/design/2026-05-31-ars-v3.10-policy-layer-rescope-spec.md` §3 PR-B items 6-9. Firm rule: `shared/references/firm_rules.md` R-L3-2-A (broad form) + R-L3-2-E.
+
+v3.10 adds an **opt-in terminal policy layer** on top of the v3.9.0 advisory channel. The finalizer is the **sole policy evaluator**: it reads the passport-level `terminal_policies` block (per `shared/contracts/passport/terminal_policies.schema.json`) and, under a non-advisory policy, stamps a `policy_hash` on every ref marker and co-emits a terminal `HIGH-BLOCK` token where the policy fires. **The default (absent `terminal_policies`, or every key `advisory`) is byte-equivalent to v3.9.0 (Invariant 7): the finalizer emits the EXACT v3.9.0 marker — no `policy_hash` stamp, no terminal token, no behavior change.** The `policy_hash` stamp is added ONLY when the passport carries a non-advisory policy (see below); this is what lets a v3.9.0 (stampless) draft and a v3.10 default-advisory draft be identical, and lets the formatter pass a stampless marker under an advisory passport.
+
+### policy_hash stamp (added ONLY under a non-advisory policy)
+
+When — and ONLY when — the passport's `terminal_policies` carries at least one non-advisory key value, the finalizer appends `policy_hash=<slug>` to every marker it finalizes (so the formatter can detect a draft finalized under a stale policy). The slug is a **fully-encoded, human-readable canonical token** of the passport's `terminal_policies` state — NOT a computed digest (the finalizer is an LLM agent; it cannot reliably compute sha256 by hand). The slug encodes EVERY non-advisory policy key so two distinct policy configurations can never collide on one slug:
+
+- **All-advisory** (absent `terminal_policies`, or every key explicitly `advisory`): NO stamp is emitted — the marker is the bare v3.9.0 shape (Invariant 7 byte-equivalence). There is no `policy_hash=advisory` sentinel; the *absence* of a stamp IS the advisory signal.
+- **Any non-advisory key present:** stamp `policy_hash=<slug>`, where `<slug>` joins each NON-ADVISORY policy key with its value as `key.value`, sorted by key name, separated by `+`. Examples:
+  - `contamination_triangulation: strict`, `temporal_integrity` absent/advisory → `policy_hash=contamination_triangulation.strict`
+  - `contamination_triangulation: strict_articles_only` → `policy_hash=contamination_triangulation.strict_articles_only`
+  - (forward) `contamination_triangulation: strict` + a future `temporal_integrity: strict` → `policy_hash=contamination_triangulation.strict+temporal_integrity.strict`
+- A key whose value is the advisory default is OMITTED from the slug (it contributes nothing), so `contamination_triangulation: strict` + `temporal_integrity: advisory` collapses to `contamination_triangulation.strict`.
+
+This slug is what `formatter_agent.md`'s freshness guard compares against the passport's CURRENT `terminal_policies` (recomputed by the same rule). A mismatch means the draft was finalized under a different policy and must be re-finalized. Under an all-advisory passport there is no slug to compare — the formatter passes the stampless marker (legacy/default transition).
+
+### Two marker grammar shapes
+
+Every finalized marker takes ONE of two shapes (the literal `TERMINAL-BLOCK` sentinel distinguishes them unambiguously). The `policy_hash=<slug>` segment shown below is present ONLY under a non-advisory passport (per the stamp rule above); under an all-advisory passport it is absent and the marker is the bare v3.9.0 shape:
+
+- **Non-terminal** (advisory-or-clean — every marker that did NOT hit a terminal block):
+  - under all-advisory: `<!--ref:<slug> <base-status> [<advisory-suffix>]-->` (the exact v3.9.0 marker, no stamp).
+  - under a non-advisory policy: `policy_hash=<slug>` appended at the END, after any advisory suffix, with NO `TERMINAL-BLOCK` token:
+    ```
+    <!--ref:<slug> <base-status> [<advisory-suffix>] policy_hash=<slug>-->
+    ```
+- **Terminal** (entry hit a HIGH-BLOCK under a strict policy — only reachable under a non-advisory policy, so always stamped): the advisory suffix stays in its optional slot; the terminal token sequence is ADDITIONAL:
+  ```
+  <!--ref:<slug> <base-status> [<advisory-suffix>] TERMINAL-BLOCK severity=HIGH-BLOCK policy=<contamination_triangulation|temporal_integrity> reason=<reason-token> mode=<strict|strict_articles_only> policy_hash=<slug>-->
+  ```
+
+Where `<base-status>` ∈ {`ok`, `LOW-WARN`} (the v3.7.3 5-cell base resolution) and `[<advisory-suffix>]` is the OPTIONAL v3.9.0 contamination suffix (one token max, drawn from the v3.9.0 allowlist), present iff the entry fired an advisory signal. `reason` carries the typed payload that preserves remediation context — for contamination k=3 it is `reason=k3_all_indexes_unmatched`.
+
+**Legacy (v3.9.0) markers carry NO `policy_hash`** — and so does a v3.10 marker finalized under an all-advisory passport (they are byte-identical). They are NOT malformed; the formatter's legacy/default-transition rule (§ Formatter) passes a stampless marker under an advisory passport and refuses it only when the current passport is non-advisory (the user opted into hard-block, so the stampless draft must be re-finalized).
+
+### Terminal promotion under strict
+
+When `terminal_policies.contamination_triangulation == strict` AND the entry's triangulation signal is **k=3** (all three lookup indexes unmatched), the finalizer emits the terminal shape with `policy=contamination_triangulation reason=k3_all_indexes_unmatched mode=strict`. **Co-emitted with — not replacing — the advisory suffix** (R1 P1): the existing `CONTAMINATED-TRIANGULATION-UNMATCHED` (or `CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED`) suffix STAYS in the advisory slot so the "why" survives; the `TERMINAL-BLOCK` sequence is an additional token.
+
+Example (strict, k=3, preprint): `<!--ref:smith2024 LOW-WARN CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED TERMINAL-BLOCK severity=HIGH-BLOCK policy=contamination_triangulation reason=k3_all_indexes_unmatched mode=strict policy_hash=contamination_triangulation.strict-->`
+
+### strict_articles_only precision mode
+
+When `terminal_policies.contamination_triangulation == strict_articles_only`, k=3 promotes to a terminal block ONLY when **all** of: DOI present AND `venue_type ∈ {journal-article, conference-paper}` AND `venue_type_provenance ∈ {adapter_declared, user_declared, trusted_source_declared}`. The terminal token then carries `mode=strict_articles_only`.
+
+**This is a deliberate PRECISION mode (R1 P0-F, user-ruled): a DOI-less or `unknown`-venue journal article STAYS ADVISORY by design** — in the target humanities / non-English / regional-journal corpus, "journal + no-DOI + k=3" is overwhelmingly a legitimate coverage gap, not fabrication. Users wanting comprehensive hard-block use `strict` (no venue/DOI scoping). The recall limit is documented (user-facing docs + a by-design false-negative fixture: DOI-absent + unknown-venue + k=3 → stays advisory).
+
+The finalizer reads `venue_type` / `venue_type_provenance` only as DECLARED entry metadata — it MUST NOT infer venue_type from the free-form `venue` string or from any index `type` field (R-L3-2-D).
+
+### Manual-entry exemption preserved
+
+Manual entries (`obtained_via: manual`) carry no `*_unmatched` fields (v3.9.0 §3.1 not-rule), so k=3 is structurally unreachable for them — no terminal promotion can fire (Invariant 8). Preserved across all policy modes.
+
+### `/ars-mark-read` and HIGH-BLOCK
+
+`HIGH-BLOCK` is **terminal — NOT `/ars-mark-read` ack-able**. Advisory tiers (LOW-WARN, all CONTAMINATED-* advisory suffixes) remain ack-able exactly as before. Acknowledgment cannot clear a terminal block; the only remediation is resolving the underlying signal (verify the source / replace the citation / switch off strict).
+
+### Audit trail (v3.10 update)
+
+The per-pass resolution counts gain a `terminal_blocked[]` bucket recording each ref slug promoted to a terminal block, with its `policy` / `reason` / `mode`. **Non-additive (R2-P2):** a single strict k=3 ref increments BOTH its advisory-signal count (e.g. CONTAMINATED-TRIANGULATION-UNMATCHED) AND the `terminal_blocked[]` bucket, but it remains ONE unique affected ref — any downstream aggregate "total affected refs" MUST dedupe by ref slug across the advisory and terminal buckets, NEVER sum them.
 
 ---
 

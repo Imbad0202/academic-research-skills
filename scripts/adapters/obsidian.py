@@ -39,9 +39,32 @@ from scripts.adapters._common import (  # noqa: E402
 )
 
 ADAPTER_NAME = "obsidian.py"
-ADAPTER_VERSION = "1.0.0"
+ADAPTER_VERSION = "1.1.0"
 
 SKIP_DIR_NAMES = {"_templates", ".obsidian"}
+
+# v3.10 (spec §3 PR-B item 13): valid venue_type enum values an obsidian note's
+# frontmatter may declare. A markdown vault carries no structured source-type
+# metadata, so the default is unknown/unknown; an explicit `venue_type` frontmatter
+# field (a deliberate user declaration) is honored as `user_declared` IFF it is a
+# valid enum member. Never inferred from free-form text (R-L3-2-D).
+VALID_VENUE_TYPES = frozenset({
+    "journal-article", "conference-paper", "book", "chapter", "dissertation",
+    "preprint", "report", "dataset", "other", "unknown",
+})
+
+
+def declare_venue_type(fm: Any) -> tuple[str, str]:
+    """Return (venue_type, venue_type_provenance) for an obsidian note.
+
+    A frontmatter `venue_type` that is a valid enum member is honored as
+    user_declared (with the unknown⟹unknown invariant enforced). Anything else —
+    absent, invalid, or `unknown` — yields unknown/unknown. Honors the pair
+    invariant: the two are always emitted together."""
+    declared = fm.get("venue_type") if isinstance(fm, dict) else None
+    if isinstance(declared, str) and declared in VALID_VENUE_TYPES and declared != "unknown":
+        return declared, "user_declared"
+    return "unknown", "unknown"
 
 RE_FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 RE_H1 = re.compile(r"^#\s+(.+)$", re.MULTILINE)
@@ -195,6 +218,9 @@ def process_file(
         for opt in ("venue", "doi", "tags"):
             if fm.get(opt):
                 entry[opt] = fm[opt]
+        vt, vtp = declare_venue_type(fm)
+        entry["venue_type"] = vt
+        entry["venue_type_provenance"] = vtp
         body_stripped = body.strip()
         if body_stripped:
             entry["user_notes"] = body_stripped + "\n"
@@ -245,6 +271,12 @@ def process_file(
         "adapter_name": ADAPTER_NAME,
         "adapter_version": ADAPTER_VERSION,
     }
+    # Convention B has no structured frontmatter type; honor a frontmatter
+    # venue_type if one is present (fm may exist even in Convention B), else
+    # unknown/unknown.
+    vt, vtp = declare_venue_type(fm)
+    entry["venue_type"] = vt
+    entry["venue_type_provenance"] = vtp
     # Strip the Authors / Year lines and H1 from user_notes
     body_clean = RE_AUTHORS_LINE.sub("", body) if body else ""
     body_clean = RE_YEAR_LINE.sub("", body_clean)

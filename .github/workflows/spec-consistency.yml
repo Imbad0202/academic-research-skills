@@ -225,11 +225,28 @@ jobs:
         # Pins the canonical R-L3-2-* (contamination) / R-CIM-* (claim-manifest)
         # firm-rule wording in shared/references/firm_rules.md against the agent
         # prompt mirrors, and guards the v3.10 PR-A disambiguation (the two rule
-        # families no longer share the R-L3-2-A/B/C ID). The pytest companion
-        # `test_check_firm_rules_sync.py` runs via the unified manifest.
+        # families no longer share the R-L3-2-A/B/C ID). v3.10 PR-B adds a
+        # contradiction guard on the contamination mirrors (no unqualified
+        # "advisory only / never block" claim once strict can block). The pytest
+        # companion `test_check_firm_rules_sync.py` runs via the unified manifest.
         env:
           PYTHONPATH: .
         run: python scripts/check_firm_rules_sync.py
+
+      - name: v3.10 policy-layer lint (#127 PR-B)
+        # Verifies the v3.10 terminal-policy-layer contract: venue_type /
+        # venue_type_provenance / venue_type_source schema fields (incl. the
+        # explicit `unknown` member + no `_inferred` provenance), the pair
+        # dependency branches, the trusted_source laundering guard, the standalone
+        # terminal_policies schema home (Inv. 11), the marker grammar (severity=
+        # HIGH-BLOCK only inside <!--ref-->, two shapes, policy_hash stamp), the
+        # generic formatter rule 11 + STAMP-ONLY two-gate, and temporal_integrity
+        # accepting only `advisory` (Inv. 3). Runs ALONGSIDE the v3.9.0 lint, not a
+        # rename. The pytest companion `test_check_v3_10_policy.py` runs via the
+        # unified manifest.
+        env:
+          PYTHONPATH: .
+        run: python scripts/check_v3_10_policy.py
 
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)

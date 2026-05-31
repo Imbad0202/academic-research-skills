@@ -59,6 +59,9 @@ Refer to the [`literature_corpus_entry` schema](../../../shared/contracts/passpo
 | `tags` | array | User-assigned tags from the source KB. |
 | `user_notes` | string | PRIVATE FIELD. |
 | `venue` | string | — |
+| `venue_type` | string | v3.10 (spec §3 PR-B item 2). |
+| `venue_type_provenance` | string | v3.10 (spec §3 PR-B item 3). |
+| `venue_type_source` | string | v3.10 (spec §3 PR-B item 4). |
 <!-- GENERATED:LITERATURE_CORPUS_OPTIONAL:END -->
 
 ### 3.1 `authors` format (CSL-JSON names)

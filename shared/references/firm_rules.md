@@ -14,10 +14,10 @@ This file is the **single source of truth** for firm-rule wording that is otherw
 
 ## Contamination advisory firm rules (R-L3-2-*)
 
-> **Canonical wording note:** this is the **current (pre-v3.10-reword) wording**. v3.10 PR-B reword of R-L3-2-A to the broad contamination-AND-temporal form lands separately; until then, this is the source of truth and the mirrors match it exactly.
+> **Canonical wording note:** R-L3-2-A carries the **v3.10 PR-B broad form** (default-advisory + opt-in strict extension across contamination AND temporal namespaces; temporal strict not yet wired). This block is the single source of truth for the wording; the contamination mirrors below are intentionally *by-ID references*, not full-block copies (see the "Mirrored in (contamination rules)" note).
 
 <!-- canonical:R-L3-2-A -->
-- **R-L3-2-A (advisory only):** Contamination signals never block emission on their own. The user retains discretion. This follows the v3.5 Collaboration Depth Observer + v3.6.8 LOW-WARN precedent. Hard-gating on contamination would amount to refusing to cite mid-2024+ preprints en masse, which is too coarse.
+- **R-L3-2-A (default-advisory + opt-in strict extension):** By default, contamination and temporal-integrity signals never block emission on their own; in a namespace that accepts a `strict` value, a user-enabled strict terminal policy may promote that namespace's specified signals to non-acknowledgeable terminal blockers. v3.10 accepts a strict value for `contamination_triangulation` only; `temporal_integrity` accepts `advisory` only (no temporal strict path exists yet). This follows the v3.5 Collaboration Depth Observer + v3.6.8 LOW-WARN precedent: hard-gating contamination by default would amount to refusing to cite mid-2024+ preprints en masse, which is too coarse — so the terminal promotion is opt-in (off by default), scoped to the namespace's accepted-strict signals, and surfaced via the §formatter terminal gate, never silently.
 <!-- /canonical:R-L3-2-A -->
 
 <!-- canonical:R-L3-2-B -->
@@ -33,7 +33,7 @@ This file is the **single source of truth** for firm-rule wording that is otherw
 <!-- /canonical:R-L3-2-D -->
 
 <!-- canonical:R-L3-2-E -->
-- **R-L3-2-E (gate refusal list unchanged by advisory tiers):** All triangulation annotations are advisory. The terminal gate **refusal list** is NOT extended by any advisory marker shape. The gate's **advisory pass-through allowlist** MUST be extended in lockstep with any new advisory suffix so that new advisory suffixes are not accidentally routed through a refusal rule. The fix for a new advisory suffix is pass-through-list expansion, not refusal-list change.
+- **R-L3-2-E (gate refusal list unchanged by advisory tiers; terminal blocks ride a separate generic rule):** All triangulation *annotations* are advisory. The terminal gate **refusal list** is NOT extended by any advisory marker shape. The gate's **advisory pass-through allowlist** MUST be extended in lockstep with any new advisory suffix so that new advisory suffixes are not accidentally routed through a refusal rule. The fix for a new advisory suffix is pass-through-list expansion, not refusal-list change. v3.10 adds a *generic* terminal-refusal rule (formatter rule 11) that fires on any unresolved `severity=HIGH-BLOCK` token inside a `<!--ref:...-->` marker — it is NOT a per-suffix refusal entry, so the advisory suffix table and pass-through allowlist stay unchanged when a strict policy promotes a signal. The formatter is STAMP-CHECK ONLY: it compares each marker's `policy_hash` against the passport's current `terminal_policies` (freshness guard) and never re-runs policy logic; the finalizer is the sole policy evaluator.
 <!-- /canonical:R-L3-2-E -->
 
 **Mirrored in (contamination rules):**
@@ -44,7 +44,7 @@ This file is the **single source of truth** for firm-rule wording that is otherw
 - `academic-pipeline/agents/pipeline_orchestrator_agent.md` — R-L3-2-C / R-L3-2-D / R-L3-2-E (finalizer logic).
 - `deep-research/agents/bibliography_agent.md` — R-L3-2-B (ingest-time computation).
 
-> These mirrors are prose references, not full-block copies, so the sync lint does NOT wording-check them against the canonical blocks above — it only ID-guards the contamination side (asserting no contamination context reuses an `R-CIM-*` ID, and no claim-manifest surface reuses an `R-L3-2-*` ID). Wording drift on a contamination mirror is therefore NOT caught yet; full-block wording-sync for the contamination side lands with the v3.10 PR-B reword, which makes these mirrors full-block copies. (Wording-sync IS enforced today for the `R-CIM-*` blocks below, whose mirrors are full-block copies.)
+> These mirrors are **intentionally by-ID prose references**, not full-block copies (e.g. crossref's "the user retains discretion per R-L3-2-A", the formatter's "advisory per ... R-L3-2-A + R-L3-2-E"). The wording lives in exactly one place — the canonical block above — so the single-source goal (D3) is met without duplicating the full rule text into five files. The v3.10 PR-B reword therefore changes ONLY the canonical block, not the mirrors. Because the mirrors are by-ID references, the sync lint does NOT wording-check them; it (1) ID-guards the contamination side (no contamination context reuses an `R-CIM-*` ID, no claim-manifest surface reuses an `R-L3-2-*` ID), and (2) **contradiction-guards** the contamination mirrors against phrasing that would contradict the broad reword — a by-ID reference's surrounding prose MUST NOT assert an unqualified "advisory only" / "never block" / "cannot block" / "must not block" / "non-blocking" claim, since a strict terminal policy can now block (see `check_firm_rules_sync.py` contradiction guard). (Wording-sync IS enforced for the `R-CIM-*` blocks below, whose mirrors ARE full-block copies.)
 
 ---
 

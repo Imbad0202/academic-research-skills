@@ -1,7 +1,7 @@
 literature_corpus:
 - abstract: An abstract that is publisher-copyrighted.
   adapter_name: zotero.py
-  adapter_version: 1.0.0
+  adapter_version: 1.1.0
   authors:
   - family: Chen
     given: Cindy
@@ -17,9 +17,11 @@ literature_corpus:
   - ai
   title: AI assessment in higher education
   venue: Assessment & Evaluation
+  venue_type: journal-article
+  venue_type_provenance: adapter_declared
   year: 2024
 - adapter_name: zotero.py
-  adapter_version: 1.0.0
+  adapter_version: 1.1.0
   authors:
   - literal: World Health Organization
   citation_key: who2024report
@@ -27,4 +29,6 @@ literature_corpus:
   obtained_via: zotero-bbt-export
   source_pointer: zotero://select/items/0_EFGH5678
   title: World higher-education report
+  venue_type: report
+  venue_type_provenance: adapter_declared
   year: 2024

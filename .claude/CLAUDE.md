@@ -11,6 +11,22 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `academic-paper-reviewer` v1.9.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
 | `academic-pipeline` v3.9.4.2 | Full pipeline orchestrator | (coordinates all above) |
 
+## v3.10 Key Additions (#127 — triangulation policy layer)
+
+**External motivation:** Zhao et al. arXiv:2605.07723 (2026-05). v3.9.0 shipped three-index triangulation as advisory-only and explicitly deferred the policy layer (hard-block / strict modes). v3.10 ships it, rescoped after a first-party spec-collision audit (2026-05-31) that found `triangulation_policy` and the `R-L3-2-A` firm-rule wording were staked by two unshipped specs at once.
+
+**Two PRs.** PR-A (shipped) disambiguated the `R-L3-2-A/B/C` ID overload (renamed the borrowed claim-manifest copies to `R-CIM-A/B/C`) and stood up `shared/references/firm_rules.md` as the canonical firm-rule source + `check_firm_rules_sync.py`. PR-B (this) builds the policy layer on that base.
+
+**PR-B — terminal policy layer (opt-in; default byte-equivalent to v3.9.0):**
+
+- **Namespaced `terminal_policies` (D1).** New passport-level `shared/contracts/passport/terminal_policies.schema.json` (standalone — NEVER inside the entry schema, Invariant 11). `contamination_triangulation` ∈ {`advisory`, `strict`, `strict_articles_only`} (wired). `temporal_integrity` accepts only `advisory` (forward-reserved; a wired-less `strict` would be false safety, Invariant 3). Per-key absence = advisory (evaluator default, not a JSON-Schema `default`); whole-object absence = all-advisory = byte-equivalent v3.9.0 (Invariant 7).
+- **`venue_type` entry fields.** `venue_type` (closed enum incl. explicit `unknown`), `venue_type_provenance` (no `_inferred` values, R-L3-2-D), `venue_type_source` (required iff `trusted_source_declared`; lint-guarded against naming a lookup index — laundering guard). Adapter-declared only; pair dependencies bidirectional with a one-way `unknown ⟹ unknown` rule that still lets a known type carry `unknown` provenance.
+- **Hard-block at the emission boundary (D2).** The finalizer is the sole policy evaluator: it stamps a fully-encoded `policy_hash` on every ref marker and, under `strict`, co-emits a `TERMINAL-BLOCK severity=HIGH-BLOCK` token alongside (not replacing) the advisory suffix. `strict_articles_only` is a deliberate PRECISION mode (DOI + journal/conference venue + declared provenance; DOI-less / unknown-venue stays advisory by design). The formatter is a STAMP-ONLY two-gate (freshness + generic rule-11 refusal), never re-evaluating policy logic (Invariant 13). `HIGH-BLOCK` is terminal — not `/ars-mark-read` ack-able. Manual entries exempt (k=3 unreachable).
+- **Firm rule + sync (D3).** R-L3-2-A reworded to the broad default-advisory + opt-in-strict form in the canonical block; mirrors stay by-ID references (single-sourced), with a contradiction guard (scoped to the R-L3-2-A reference sentence, so the Collaboration Depth Observer's "never blocks" is not false-flagged).
+- **Migration + adapters + lint.** `migrate_literature_corpus_to_v3_10.py` deep-merge-seeds `terminal_policies` (idempotent, dry-run, no venue backfill). The three reference adapters declare `venue_type`. New `check_v3_10_policy.py` (alongside the v3.9.0 lint) + CI wiring.
+
+Spec: `docs/design/2026-05-31-ars-v3.10-policy-layer-rescope-spec.md`.
+
 ## v3.7.3 Key Additions (in progress)
 
 **External motivation:** Zhao et al. arXiv:2605.07723 (2026-05). The paper documents 146,932 hallucinated citations across arXiv / bioRxiv / SSRN / PMC in 2025 alone, with inflection at mid-2024 and 85.3% of preprint hallucinations surviving into the published record. It names the L3 (claim faithfulness) gap explicitly as the load-bearing unsolved problem. v3.7.3 closes the locator-channel half of that gap and adds contamination advisory signals.

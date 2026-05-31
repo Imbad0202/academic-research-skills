@@ -1,6 +1,6 @@
 literature_corpus:
 - adapter_name: obsidian.py
-  adapter_version: 1.0.0
+  adapter_version: 1.1.0
   authors:
   - family: Chen
     given: Cindy
@@ -17,9 +17,11 @@ literature_corpus:
 
     '
   venue: Assessment & Evaluation
+  venue_type: unknown
+  venue_type_provenance: unknown
   year: 2024
 - adapter_name: obsidian.py
-  adapter_version: 1.0.0
+  adapter_version: 1.1.0
   authors:
   - family: Wang
     given: J.
@@ -33,4 +35,6 @@ literature_corpus:
   user_notes: 'Body content here.
 
     '
+  venue_type: unknown
+  venue_type_provenance: unknown
   year: 2023

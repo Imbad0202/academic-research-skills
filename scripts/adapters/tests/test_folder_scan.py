@@ -227,3 +227,24 @@ def test_parseable_non_pdf_extension(tmp_path):
         doc = yaml.safe_load(f)
     assert len(doc["literature_corpus"]) == 1
     assert doc["literature_corpus"][0]["citation_key"] == "kim2020book"
+
+
+# --- v3.10 venue_type always unknown/unknown (spec §3 PR-B item 13) ---
+
+def test_folder_scan_venue_type_always_unknown(tmp_path, load_yaml):
+    """A filename scan carries no structured type → every entry is unknown/unknown,
+    never inferred from the filename (R-L3-2-D)."""
+    passport_out = tmp_path / "passport.yaml"
+    rejection_out = tmp_path / "rejection_log.yaml"
+    r = _run(
+        "--input", str(FIXTURE_DIR),
+        "--passport", str(passport_out),
+        "--rejection-log", str(rejection_out),
+    )
+    assert r.returncode == 0, r.stderr
+    got = load_yaml(passport_out)
+    entries = got["literature_corpus"]
+    assert entries, "fixture should produce at least one accepted entry"
+    for e in entries:
+        assert e["venue_type"] == "unknown"
+        assert e["venue_type_provenance"] == "unknown"

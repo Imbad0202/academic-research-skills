@@ -165,6 +165,37 @@
           "description": "True when a Crossref API lookup (per references/crossref_api_protocol.md) returned no match by DOI (with title cross-check) or title. Mirrors semantic_scholar_unmatched semantics. The check fires only when obtained_via != 'manual'. Per spec v3.9.0 §3.5."
         }
       }
+    },
+    "venue_type": {
+      "type": "string",
+      "enum": [
+        "journal-article",
+        "conference-paper",
+        "book",
+        "chapter",
+        "dissertation",
+        "preprint",
+        "report",
+        "dataset",
+        "other",
+        "unknown"
+      ],
+      "description": "v3.10 (spec §3 PR-B item 2). The kind of work this entry is, used by the strict_articles_only terminal policy to scope HIGH-BLOCK to journal-article / conference-paper. ADAPTER-DECLARED ONLY (Invariant 5): an adapter sets this from reliable source-type metadata (e.g. a Zotero item type). `unknown` is an explicit enum member so adapters told to emit `unknown` when they cannot reliably determine the type still validate (R1 P0-D; 'absence-means-unknown' was rejected as harder to test). MUST NOT be inferred from the free-form `venue` string or from OpenAlex / Crossref `type` fields (R-L3-2-D). Absence is still allowed (legacy entries predating v3.10). When present, venue_type_provenance MUST also be present (pair dependency in allOf)."
+    },
+    "venue_type_provenance": {
+      "type": "string",
+      "enum": [
+        "adapter_declared",
+        "user_declared",
+        "trusted_source_declared",
+        "unknown"
+      ],
+      "description": "v3.10 (spec §3 PR-B item 3). How venue_type was established. `adapter_declared`: an adapter read it from structured source-type metadata. `user_declared`: the user set it. `trusted_source_declared`: a matched-record declared-metadata source (a publisher feed / a registry record the entry positively matched) declared it — REQUIRES venue_type_source (see allOf). `unknown`: provenance could not be established. The API-inferred values `openalex_inferred` / `crossref_inferred` are DELIBERATELY ABSENT from this enum (R-L3-2-D): an index `type` field is inference, not declared metadata, even on a matched record. Pair dependencies (allOf): venue_type present ⟺ venue_type_provenance present (bidirectional, R2-P2); venue_type == unknown ⟹ venue_type_provenance == unknown (one-way, NOT biconditional — a KNOWN venue_type MAY carry `unknown` provenance so an adapter that parses the type but cannot establish provenance keeps the type rather than discarding it, R2-P0 data-loss fix)."
+    },
+    "venue_type_source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "v3.10 (spec §3 PR-B item 4). Names WHICH trusted source declared venue_type. REQUIRED iff venue_type_provenance == trusted_source_declared (allOf; closes the optional-bypass — a trusted_source_declared with no named source FAILS the lint). MUST name a matched-record declared-metadata source (a publisher feed / registry record), NOT one of the three lookup indexes (Semantic Scholar / OpenAlex / Crossref) that produced the k=3 unmatched signal — the laundering guard (R2-P1) is enforced by check_v3_10_policy.py, which asserts venue_type_source is non-empty and ∉ {the three lookup index names} when provenance is trusted_source_declared. The schema enforces presence + non-emptiness; the index-name exclusion is a lint-level assertion (a closed enum of forbidden names is not expressible as a JSON-Schema string constraint without enumerating an open-ended set of legitimate sources)."
     }
   },
   "allOf": [
@@ -309,6 +340,73 @@
             "contamination_signals"
           ]
         }
+      }
+    },
+    {
+      "description": "v3.10 spec §3 PR-B item 3 pair dependency (forward): venue_type present ⟹ venue_type_provenance present. No orphan type without provenance — a declared type must say how it was established.",
+      "if": {
+        "required": [
+          "venue_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "venue_type_provenance"
+        ]
+      }
+    },
+    {
+      "description": "v3.10 spec §3 PR-B item 3 pair dependency (reverse, R2-P2): venue_type_provenance present ⟹ venue_type present. No orphan provenance without a type.",
+      "if": {
+        "required": [
+          "venue_type_provenance"
+        ]
+      },
+      "then": {
+        "required": [
+          "venue_type"
+        ]
+      }
+    },
+    {
+      "description": "v3.10 spec §3 PR-B item 3 (one-way, NOT biconditional): venue_type == unknown ⟹ venue_type_provenance == unknown. A literal-unknown type can only carry unknown provenance. The reverse is deliberately NOT enforced — a KNOWN venue_type (e.g. journal-article) MAY carry venue_type_provenance: unknown (R2-P0 data-loss fix: an adapter that parses the type but cannot establish provenance keeps the type rather than discarding it; strict_articles_only already requires declared provenance to hard-block, so a known-type + unknown-provenance entry safely stays advisory).",
+      "if": {
+        "properties": {
+          "venue_type": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "venue_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "venue_type_provenance": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "venue_type_provenance"
+        ]
+      }
+    },
+    {
+      "description": "v3.10 spec §3 PR-B item 4 (R2-P1 required-source): venue_type_provenance == trusted_source_declared ⟹ venue_type_source REQUIRED. Closes the optional-bypass — a trusted_source_declared with no named source FAILS validation. The laundering guard (venue_type_source ∉ {three lookup index names}) is a lint-level assertion in check_v3_10_policy.py, not a schema constraint.",
+      "if": {
+        "properties": {
+          "venue_type_provenance": {
+            "const": "trusted_source_declared"
+          }
+        },
+        "required": [
+          "venue_type_provenance"
+        ]
+      },
+      "then": {
+        "required": [
+          "venue_type_source"
+        ]
       }
     }
   ],

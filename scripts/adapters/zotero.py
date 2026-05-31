@@ -34,7 +34,35 @@ from scripts.adapters._common import (  # noqa: E402
 )
 
 ADAPTER_NAME = "zotero.py"
-ADAPTER_VERSION = "1.0.0"
+ADAPTER_VERSION = "1.1.0"
+
+# v3.10 (spec §3 PR-B item 13): Zotero item type → venue_type. Zotero's itemType
+# is structured source metadata, so this is `adapter_declared` provenance — NOT
+# inference from free-form text (R-L3-2-D). Item types not in this map (or absent)
+# yield venue_type: unknown + venue_type_provenance: unknown, honoring the §3-PR-B-4
+# pair invariant (venue_type present ⟺ provenance present; unknown ⟹ unknown).
+ZOTERO_ITEM_TYPE_TO_VENUE_TYPE = {
+    "journalArticle": "journal-article",
+    "conferencePaper": "conference-paper",
+    "book": "book",
+    "bookSection": "chapter",
+    "thesis": "dissertation",
+    "preprint": "preprint",
+    "report": "report",
+    "dataset": "dataset",
+}
+
+
+def map_venue_type(item_type: str | None) -> tuple[str, str]:
+    """Map a Zotero itemType to (venue_type, venue_type_provenance).
+
+    Known structured types map to a declared venue_type with `adapter_declared`
+    provenance. Unknown / absent types map to (`unknown`, `unknown`) — the type
+    is never guessed from free-form text."""
+    vt = ZOTERO_ITEM_TYPE_TO_VENUE_TYPE.get((item_type or "").strip())
+    if vt is None:
+        return "unknown", "unknown"
+    return vt, "adapter_declared"
 
 RE_YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
 RE_STRIP_HTML = re.compile(r"<[^>]+>")
@@ -246,6 +274,12 @@ def main() -> int:
         }
         if venue:
             entry["venue"] = venue
+        # v3.10: declare venue_type from the structured Zotero itemType. Always
+        # emit the pair together (venue_type + venue_type_provenance) so the
+        # schema pair-invariant holds; unknown types declare unknown/unknown.
+        venue_type, venue_type_provenance = map_venue_type(item.get("itemType"))
+        entry["venue_type"] = venue_type
+        entry["venue_type_provenance"] = venue_type_provenance
         doi = strip_doi(item.get("DOI"))
         if doi:
             entry["doi"] = doi

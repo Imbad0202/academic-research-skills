@@ -190,6 +190,64 @@ def test_cim_id_in_formatter_fails(tree: Path) -> None:
     assert "R-CIM-A leaked" in r.stderr
 
 
+# --- v3.10 PR-B: contradiction guard (R-L3-2-A reword) ---
+
+def test_contradiction_phrase_in_r_l3_2_a_sentence_fails(tree: Path) -> None:
+    """Injecting an unqualified non-blocking claim into the R-L3-2-A reference
+    sentence must fail — a strict policy can now block."""
+    _mutate(
+        tree, "deep-research/references/crossref_api_protocol.md",
+        "handled per R-L3-2-A (advisory by default",
+        "advisory only, handled per R-L3-2-A (",
+    )
+    r = _run(tree)
+    assert r.returncode == 1
+    assert "contradiction phrase" in r.stderr
+    assert "advisory only" in r.stderr
+
+
+def test_contradiction_guard_does_not_flag_collaboration_observer(tree: Path) -> None:
+    """False-positive guard: the Collaboration Depth Observer's legitimate
+    'never blocks' wording (a different subsystem, NOT in an R-L3-2-A sentence)
+    must NOT trip the contradiction guard. The orchestrator file carries both
+    'Collaboration Depth Observer (advisory, never blocks)' and contamination
+    R-L3-2-* references; only the latter are scanned."""
+    # The clean tree already contains the collaboration-observer 'never blocks'
+    # prose in the orchestrator. A clean run must pass — proving the guard scopes
+    # to R-L3-2-A sentences only, not the whole file.
+    r = _run(tree)
+    assert r.returncode == 0, (
+        "contradiction guard false-flagged the collaboration-observer prose: "
+        + r.stderr
+    )
+
+
+def test_contradiction_phrase_after_semicolon_still_caught(tree: Path) -> None:
+    """codex P2: a contradiction phrase joined to the R-L3-2-A reference by a
+    semicolon must still be caught — the guard must NOT split on ';' (which would
+    put the phrase in a different chunk and miss it)."""
+    _mutate(
+        tree, "deep-research/references/crossref_api_protocol.md",
+        "handled per R-L3-2-A (advisory by default",
+        "handled per R-L3-2-A; contamination signals never block emission (",
+    )
+    r = _run(tree)
+    assert r.returncode == 1
+    assert "contradiction phrase" in r.stderr
+
+
+def test_contradiction_phrase_outside_r_l3_2_a_sentence_passes(tree: Path) -> None:
+    """Adding a 'never blocks' clause in a sentence that does NOT name R-L3-2-A
+    must pass — the guard scopes to the R-L3-2-A reference, not the file."""
+    _mutate(
+        tree, "deep-research/references/crossref_api_protocol.md",
+        "Mirrors the structure of",
+        "This lookup never blocks anything by itself. Mirrors the structure of",
+    )
+    r = _run(tree)
+    assert r.returncode == 0, r.stderr
+
+
 # --- mutation: canonical block removed → invocation error ---
 
 def test_missing_canonical_block_fails(tree: Path) -> None:

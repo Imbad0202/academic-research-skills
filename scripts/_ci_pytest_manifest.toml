@@ -53,6 +53,10 @@ id = "v3.10-firm-rules-sync"
 path = "scripts/test_check_firm_rules_sync.py"
 
 [[pytest]]
+id = "v3.10-policy-layer"
+path = "scripts/test_check_v3_10_policy.py"
+
+[[pytest]]
 id = "v3.9.2-phase-boundary"
 path = "scripts/test_check_v3_9_2_phase_boundary.py"
 

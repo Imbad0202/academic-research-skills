@@ -9,10 +9,12 @@ Pins two things against regression:
    self-reference noun (the `<AGENT>` placeholder in the canonical block); this
    lint normalizes that noun before comparing the operative clause.
    The contamination R-L3-2-* blocks are NOT wording-synced here: their mirrors
-   are prose references rather than full-block copies (see firm_rules.md
-   "Mirrored in (contamination rules)" note), so only their IDs are guarded
-   (see check 2). Wording-sync for the contamination side lands with the PR-B
-   reword, which makes those mirrors full-block copies.
+   are intentionally by-ID prose references rather than full-block copies (see
+   firm_rules.md "Mirrored in (contamination rules)" note), so only their IDs
+   are guarded (see check 2) and their surrounding prose is contradiction-guarded
+   (see check 3). The v3.10 PR-B reword of R-L3-2-A to the broad
+   default-advisory-plus-opt-in-strict form changed ONLY the canonical block; the
+   mirrors stay by-ID references, so there is no full-block copy to wording-sync.
 
 2. **Collision guard** (the v3.10 PR-A disambiguation): the `R-L3-2-A/B/C` ID
    (contamination) MUST NOT appear inside any `## Claim Intent Manifest Emission`
@@ -20,6 +22,17 @@ Pins two things against regression:
    MUST NOT appear inside a contamination context. Before v3.10 the same
    `R-L3-2-A/B/C` ID named two unrelated rule families; a blind grep-replace of
    either would corrupt the other. This guard fails if the collision reappears.
+
+3. **Contradiction guard** (v3.10 PR-B): after the R-L3-2-A reword, a contamination
+   mirror's by-ID reference MUST NOT carry an unqualified "advisory only" / "never
+   block" claim ABOUT THE CONTAMINATION SIGNAL ITSELF, because a user-enabled strict
+   terminal policy can now promote a contamination signal to a terminal block. The
+   guard scans only the contamination R-L3-2-A reference sentence(s) — the sentence
+   in each contamination-context file that names `R-L3-2-A` — for forbidden absolute
+   phrasing. It deliberately does NOT scan the whole file, so the Collaboration Depth
+   Observer's legitimate "advisory only / never blocks" wording (a DIFFERENT subsystem
+   that genuinely never blocks) is not false-flagged. This inherits the
+   new-enforcement-must-respect-existing-guardrails discipline.
 
 Usage:
     python scripts/check_firm_rules_sync.py
@@ -153,7 +166,12 @@ def check_claim_manifest_sync(
                 )
 
 
-def check_collision_guard(root: Path, prompt_texts: dict[str, str], violations: list[str]) -> None:
+def check_collision_guard(
+    root: Path,
+    prompt_texts: dict[str, str],
+    contamination_texts: dict[str, str],
+    violations: list[str],
+) -> None:
     """R-L3-2 IDs must not leak into claim-manifest surfaces, and vice versa."""
     # (1) Forbidden contamination IDs inside claim-manifest prompt sections.
     for rel in CLAIM_MANIFEST_PROMPTS:
@@ -192,17 +210,71 @@ def check_collision_guard(root: Path, prompt_texts: dict[str, str], violations: 
 
     # (3) Forbidden R-CIM IDs inside contamination contexts.
     for rel in CONTAMINATION_CONTEXT_FILES:
-        path = root / rel
-        if not path.exists():
+        text = contamination_texts.get(rel)
+        if text is None:
             violations.append(f"missing collision-guard file: {rel}")
             continue
-        text = path.read_text(encoding="utf-8")
         for bad in CIM_IDS:
             if bad in text:
                 violations.append(
                     f"{rel}: claim-manifest ID {bad} leaked into a contamination "
                     f"context (collision regression)"
                 )
+
+
+# v3.10 PR-B contradiction guard. After the R-L3-2-A reword, a contamination
+# mirror's R-L3-2-A reference MUST NOT assert (about the contamination signal)
+# that it is unconditionally non-blocking — a strict terminal policy can now
+# block. These phrases are scanned ONLY within the sentence(s) that name
+# `R-L3-2-A` in a contamination-context file, never the whole file, so the
+# Collaboration Depth Observer's legitimate "advisory only / never blocks"
+# (a different subsystem) is not false-flagged.
+CONTRADICTION_PHRASES = (
+    "advisory only",
+    "only advisory",  # reversed word order paraphrase
+    "purely advisory",
+    "never block",
+    "never blocks",
+    "cannot block",
+    "must not block",
+    "non-blocking",
+    "does not block",
+    "retains discretion",
+)
+
+# Sentence boundary. Split on a real sentence end (a period/!/? followed by
+# whitespace or end-of-string) or a newline — NOT on `;`. A semicolon joins
+# clauses that belong to the same statement ("handled per R-L3-2-A; signals never
+# block"), so splitting on it would put a contradiction phrase in a different
+# chunk from the `R-L3-2-A` token and silently miss it (codex P2). We deliberately
+# keep semicolon-joined clauses together; the scan is still scoped to chunks that
+# contain `R-L3-2-A`, so unrelated prose in the same file is not flagged.
+_SENTENCE_SPLIT_RE = re.compile(r"(?:[.!?](?=\s|$))|\n")
+
+
+def check_contradiction_guard(
+    contamination_texts: dict[str, str], violations: list[str]
+) -> None:
+    """No contamination R-L3-2-A reference sentence may assert an unqualified
+    non-blocking claim that the v3.10 strict policy contradicts."""
+    for rel in CONTAMINATION_CONTEXT_FILES:
+        text = contamination_texts.get(rel)
+        if text is None:
+            continue  # missing file already flagged by the collision guard
+        for raw_sentence in _SENTENCE_SPLIT_RE.split(text):
+            if "R-L3-2-A" not in raw_sentence:
+                continue
+            lowered = raw_sentence.lower()
+            for phrase in CONTRADICTION_PHRASES:
+                if phrase in lowered:
+                    violations.append(
+                        f"{rel}: the R-L3-2-A reference contains the contradiction "
+                        f"phrase {phrase!r} — after the v3.10 reword a strict "
+                        f"terminal policy CAN block, so an unqualified "
+                        f"non-blocking claim about the contamination signal is "
+                        f"stale. Qualify it (e.g. 'advisory by default; strict "
+                        f"can promote to a terminal block')."
+                    )
 
 
 _HEADER_LINE_RE = re.compile(r"#{1,2} ")
@@ -275,9 +347,19 @@ def main() -> int:
         if path.exists():
             prompt_texts[rel] = path.read_text(encoding="utf-8")
 
+    # Read each contamination-context file once and share it between the
+    # collision guard (loop 3) and the contradiction guard — both scan the same
+    # five files, so one read each.
+    contamination_texts: dict[str, str] = {}
+    for rel in CONTAMINATION_CONTEXT_FILES:
+        path = root / rel
+        if path.exists():
+            contamination_texts[rel] = path.read_text(encoding="utf-8")
+
     violations: list[str] = []
     check_claim_manifest_sync(cim_patterns, prompt_texts, violations)
-    check_collision_guard(root, prompt_texts, violations)
+    check_collision_guard(root, prompt_texts, contamination_texts, violations)
+    check_contradiction_guard(contamination_texts, violations)
 
     if violations:
         print("firm-rules sync/collision lint FAILED:", file=sys.stderr)

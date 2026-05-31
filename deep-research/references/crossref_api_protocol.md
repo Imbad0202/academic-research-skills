@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Provides a third bibliographic-index lookup for v3.9.0 cross-index triangulation per spec v3.9.0 §3.5. Crossref is the DOI registry of record — strongest coverage for journal articles with DOIs. Monograph / chapter coverage is partial (publisher participation dependent). v3.9.0 surfaces `crossref_unmatched` as one of three signals; the user retains discretion per R-L3-2-A.
+Provides a third bibliographic-index lookup for v3.9.0 cross-index triangulation per spec v3.9.0 §3.5. Crossref is the DOI registry of record — strongest coverage for journal articles with DOIs. Monograph / chapter coverage is partial (publisher participation dependent). v3.9.0 surfaces `crossref_unmatched` as one of three signals, handled per R-L3-2-A (advisory by default; a user-enabled `contamination_triangulation` strict policy may promote the k=3 triangulation signal to a terminal block — see `shared/references/firm_rules.md`).
 
 Mirrors the structure of `semantic_scholar_api_protocol.md` and `openalex_api_protocol.md`.
 

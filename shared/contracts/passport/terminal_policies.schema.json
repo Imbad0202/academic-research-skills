@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/terminal_policies.schema.json",
+  "title": "Material Passport Terminal Policies",
+  "description": "v3.10 passport-level terminal-policy block (spec docs/design/2026-05-31-ars-v3.10-policy-layer-rescope-spec.md §3 PR-B item 1, D1). Opt-in policies that promote an otherwise-advisory provenance signal into a non-acknowledgeable terminal HIGH-BLOCK at the citation-emission boundary. This is a PASSPORT-LEVEL block (one per passport), NOT an entry-level field — it MUST NOT be hosted inside literature_corpus_entry.schema.json (Invariant 11; entry-level != passport-level). Backward compat: the whole object is OPTIONAL; an absent terminal_policies block means all-advisory = byte-equivalent v3.9.0 behavior (Invariant 7). Per-key absence is also advisory, but that default is applied by the finalizer/evaluator at runtime, NOT by a JSON-Schema `default` keyword (JSON-Schema `default` is non-operational — it does not inject a value during validation; R1 P1).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contamination_triangulation": {
+      "type": "string",
+      "enum": [
+        "advisory",
+        "strict",
+        "strict_articles_only"
+      ],
+      "description": "Policy for the v3.9.0 cross-index triangulation contamination signal (k=3 = all three lookup indexes unmatched). `advisory` (the absent-key default): k=3 stays an advisory CONTAMINATED-TRIANGULATION-UNMATCHED suffix, byte-equivalent v3.9.0. `strict`: k=3 promotes to a non-acknowledgeable terminal HIGH-BLOCK for EVERY affected ref (no venue/DOI scoping). `strict_articles_only`: a deliberate PRECISION mode (R1 P0-F) — k=3 promotes to HIGH-BLOCK ONLY when DOI present AND venue_type ∈ {journal-article, conference-paper} AND venue_type_provenance ∈ {adapter_declared, user_declared, trusted_source_declared}; a DOI-less or unknown-venue journal article STAYS ADVISORY by design (humanities / non-English / regional-journal legitimate coverage gap). This enum is the full v3.9.0 enum and is wired to behavior in v3.10."
+    },
+    "temporal_integrity": {
+      "type": "string",
+      "enum": [
+        "advisory"
+      ],
+      "description": "Forward-reserved namespace for the v3.9.4 temporal-verification signal. In v3.10 ONLY `advisory` is an accepted value — a `strict` value is deliberately NOT in the enum because no temporal strict behavior is wired in v3.10, and a schema-accepted `strict` with no bound behavior is a false-safety bug (codex 2026-05-31; Invariant 3). Wiring temporal strict is a v3.9.4 follow-up, not #127 (spec §6 out of scope)."
+    }
+  }
+}

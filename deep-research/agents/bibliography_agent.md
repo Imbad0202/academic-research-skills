@@ -339,7 +339,7 @@ Set to `true` when the lookup returns NO match — i.e., neither DOI-based looku
 - If only one signal can be computed (e.g., Semantic Scholar API down, but preprint check trivially derivable from year + venue), emit the object with only the computable field present.
 - When `obtained_via` is `manual`, the `semantic_scholar_unmatched` field is omitted (per exemption above). The `preprint_post_llm_inflection` field is still computed if applicable.
 
-The contamination_signals object is **advisory only**. It surfaces at cite-time via the finalizer's CONTAMINATED-... annotation suffix (per `pipeline_orchestrator_agent.md` § Cite-Time Provenance Finalizer — v3.7.3 extension). It does NOT block emission and does NOT promote the entry's trust-state markers from LOW-WARN to MED-WARN. The user retains discretion.
+The contamination_signals object is computed at ingest time and is **advisory at this stage**: bibliography_agent never blocks on it and never promotes the entry's trust-state markers from LOW-WARN to MED-WARN. It surfaces at cite-time via the finalizer's CONTAMINATED-... annotation suffix (per `pipeline_orchestrator_agent.md` § Cite-Time Provenance Finalizer). Whether a contamination signal stays advisory or is promoted to a terminal block at the emission boundary is decided there by the passport's `terminal_policies` (R-L3-2-A; default advisory, user-enabled `contamination_triangulation` strict can promote the k=3 signal) — not by this agent.
 
 ### Triangulation Extension (v3.9.0)
 

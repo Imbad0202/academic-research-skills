@@ -328,3 +328,30 @@ def test_all_rejected_corpus_produces_empty_passport(tmp_path, load_yaml):
     rejection = load_yaml(r)
     assert len(rejection["rejected"]) >= 1
     assert rejection["summary"]["total_rejected"] >= 1
+
+
+# --- v3.10 venue_type frontmatter declaration (spec §3 PR-B item 13) ---
+
+def _import_obsidian():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("obsidian_adapter", ADAPTER)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_obsidian_declare_venue_type_valid_frontmatter():
+    o = _import_obsidian()
+    assert o.declare_venue_type({"venue_type": "journal-article"}) == ("journal-article", "user_declared")
+    assert o.declare_venue_type({"venue_type": "dissertation"}) == ("dissertation", "user_declared")
+
+
+def test_obsidian_declare_venue_type_invalid_or_absent():
+    o = _import_obsidian()
+    # Invalid enum value → unknown/unknown (never guessed).
+    assert o.declare_venue_type({"venue_type": "not-a-real-type"}) == ("unknown", "unknown")
+    # Absent → unknown/unknown.
+    assert o.declare_venue_type({}) == ("unknown", "unknown")
+    assert o.declare_venue_type(None) == ("unknown", "unknown")
+    # Explicit unknown → unknown/unknown (provenance unknown, not user_declared).
+    assert o.declare_venue_type({"venue_type": "unknown"}) == ("unknown", "unknown")

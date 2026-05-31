@@ -321,6 +321,167 @@ def test_check_payload_clean_passport_returns_empty() -> None:
     assert check_payload(payload, "<test>") == []
 
 
+# ---------- v3.10 venue_type / venue_type_provenance / venue_type_source ----------
+# Spec docs/design/2026-05-31-ars-v3.10-policy-layer-rescope-spec.md §3 PR-B items 2-4
+# + §4 acceptance #2. Positive + negative for every pair-dependency branch, plus
+# mutation tests (trivial accept-all replacement → violation FAILs) per
+# feedback_schema_mutation_test_for_constraints.
+
+
+def test_v3_10_schema_includes_three_venue_fields(schema: dict[str, Any]) -> None:
+    expected = {"venue_type", "venue_type_provenance", "venue_type_source"}
+    assert expected.issubset(schema["properties"].keys()), (
+        f"Missing v3.10 venue fields: {expected - schema['properties'].keys()}"
+    )
+
+
+def test_v3_10_venue_type_enum_includes_unknown_member(schema: dict[str, Any]) -> None:
+    """R1 P0-D: `unknown` is an explicit enum member, not absence-means-unknown."""
+    enum = schema["properties"]["venue_type"]["enum"]
+    assert "unknown" in enum
+    # Full enum per spec §3 PR-B item 2.
+    assert set(enum) == {
+        "journal-article", "conference-paper", "book", "chapter",
+        "dissertation", "preprint", "report", "dataset", "other", "unknown",
+    }
+
+
+def test_v3_10_provenance_rejects_inferred_values(schema: dict[str, Any]) -> None:
+    """R-L3-2-D: openalex_inferred / crossref_inferred are NOT enum members."""
+    enum = schema["properties"]["venue_type_provenance"]["enum"]
+    assert "openalex_inferred" not in enum
+    assert "crossref_inferred" not in enum
+    assert set(enum) == {
+        "adapter_declared", "user_declared", "trusted_source_declared", "unknown",
+    }
+
+
+def test_v3_10_venue_known_type_with_declared_provenance_passes(validator) -> None:
+    entry = _minimal_entry(
+        venue_type="journal-article", venue_type_provenance="adapter_declared"
+    )
+    assert list(validator.iter_errors(entry)) == []
+
+
+def test_v3_10_venue_provenance_inferred_value_fails(validator) -> None:
+    """An _inferred provenance value is not in the closed enum → FAILs."""
+    entry = _minimal_entry(
+        venue_type="journal-article", venue_type_provenance="openalex_inferred"
+    )
+    assert any(validator.iter_errors(entry))
+
+
+def test_v3_10_venue_unknown_type_with_declared_provenance_fails(validator) -> None:
+    """One-way rule: venue_type == unknown ⟹ provenance == unknown."""
+    entry = _minimal_entry(
+        venue_type="unknown", venue_type_provenance="adapter_declared"
+    )
+    assert any(validator.iter_errors(entry))
+
+
+def test_v3_10_venue_unknown_type_with_unknown_provenance_passes(validator) -> None:
+    entry = _minimal_entry(venue_type="unknown", venue_type_provenance="unknown")
+    assert list(validator.iter_errors(entry)) == []
+
+
+def test_v3_10_venue_known_type_with_unknown_provenance_passes(validator) -> None:
+    """R2-P0 data-loss fix: a KNOWN type MAY carry `unknown` provenance."""
+    entry = _minimal_entry(
+        venue_type="journal-article", venue_type_provenance="unknown"
+    )
+    assert list(validator.iter_errors(entry)) == []
+
+
+def test_v3_10_venue_type_present_provenance_absent_fails(validator) -> None:
+    """Pair dependency forward: venue_type present ⟹ provenance present."""
+    entry = _minimal_entry(venue_type="journal-article")
+    assert any(validator.iter_errors(entry))
+
+
+def test_v3_10_venue_provenance_present_type_absent_fails(validator) -> None:
+    """Pair dependency reverse (R2-P2): provenance present ⟹ type present."""
+    entry = _minimal_entry(venue_type_provenance="adapter_declared")
+    assert any(validator.iter_errors(entry))
+
+
+def test_v3_10_venue_absent_both_passes_legacy(validator) -> None:
+    """Legacy entries predating v3.10 carry neither field."""
+    entry = _minimal_entry()
+    assert list(validator.iter_errors(entry)) == []
+
+
+def test_v3_10_trusted_source_declared_requires_venue_type_source(validator) -> None:
+    """R2-P1 required-source: trusted_source_declared ⟹ venue_type_source present."""
+    entry = _minimal_entry(
+        venue_type="journal-article", venue_type_provenance="trusted_source_declared"
+    )
+    assert any(validator.iter_errors(entry))
+
+
+def test_v3_10_trusted_source_declared_with_source_passes(validator) -> None:
+    entry = _minimal_entry(
+        venue_type="journal-article",
+        venue_type_provenance="trusted_source_declared",
+        venue_type_source="publisher metadata feed",
+    )
+    assert list(validator.iter_errors(entry)) == []
+
+
+def test_v3_10_venue_type_source_empty_string_fails(validator) -> None:
+    """venue_type_source has minLength 1 — an empty string FAILs."""
+    entry = _minimal_entry(
+        venue_type="journal-article",
+        venue_type_provenance="trusted_source_declared",
+        venue_type_source="",
+    )
+    assert any(validator.iter_errors(entry))
+
+
+def test_v3_10_venue_mutation_one_way_rule_is_load_bearing(schema: dict[str, Any]) -> None:
+    """Mutation test: replace the unknown-type-⟹-unknown-provenance branch with a
+    trivial accept-all (`then: {}`). The previously-failing case
+    (venue_type=unknown + provenance=adapter_declared) must then PASS, proving the
+    branch is load-bearing rather than redundant (feedback_schema_mutation_test_for_constraints)."""
+    import copy
+    mutated = copy.deepcopy(schema)
+    target = "venue_type == unknown ⟹ venue_type_provenance == unknown"
+    found = False
+    for branch in mutated["allOf"]:
+        if isinstance(branch.get("description"), str) and "venue_type == unknown" in branch["description"]:
+            branch["then"] = {}
+            found = True
+            break
+    assert found, "could not locate the unknown-type one-way branch to mutate"
+    v = Draft202012Validator(mutated)
+    bad = _minimal_entry(venue_type="unknown", venue_type_provenance="adapter_declared")
+    assert list(v.iter_errors(bad)) == [], (
+        "after neutering the one-way branch the violating entry must validate; "
+        "if it still fails, the branch was not the thing enforcing the rule"
+    )
+    # And the unmutated schema must reject it (the real guard).
+    assert any(Draft202012Validator(schema).iter_errors(bad))
+
+
+def test_v3_10_venue_mutation_trusted_source_required_is_load_bearing(schema: dict[str, Any]) -> None:
+    """Mutation test: neuter the trusted_source_declared-⟹-venue_type_source-required
+    branch; the source-absent entry must then PASS, proving the branch enforces it."""
+    import copy
+    mutated = copy.deepcopy(schema)
+    found = False
+    for branch in mutated["allOf"]:
+        if isinstance(branch.get("description"), str) and "trusted_source_declared" in branch["description"]:
+            branch["then"] = {}
+            found = True
+            break
+    assert found, "could not locate the trusted_source_declared branch to mutate"
+    v = Draft202012Validator(mutated)
+    bad = _minimal_entry(
+        venue_type="journal-article", venue_type_provenance="trusted_source_declared"
+    )
+    assert list(v.iter_errors(bad)) == []
+    assert any(Draft202012Validator(schema).iter_errors(bad))
+
+
 # ---------- Existing fixtures stay green ----------
 
 
