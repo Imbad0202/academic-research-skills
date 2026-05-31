@@ -49,6 +49,10 @@ id = "v3.9.0-triangulation"
 path = "scripts/test_check_v3_9_0_triangulation.py"
 
 [[pytest]]
+id = "v3.10-firm-rules-sync"
+path = "scripts/test_check_firm_rules_sync.py"
+
+[[pytest]]
 id = "v3.9.2-phase-boundary"
 path = "scripts/test_check_v3_9_2_phase_boundary.py"
 

@@ -38,7 +38,7 @@
     "claims": {
       "type": "array",
       "minItems": 1,
-      "description": "MUST list at least one substantive claim per R-L3-2-A — an empty manifest is a degenerate pre-commitment that produces no drift signal (set-diff has nothing in Intended set) and silently defeats D6.",
+      "description": "MUST list at least one substantive claim per R-CIM-A — an empty manifest is a degenerate pre-commitment that produces no drift signal (set-diff has nothing in Intended set) and silently defeats D6.",
       "items": {
         "type": "object",
         "additionalProperties": false,

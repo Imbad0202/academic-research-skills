@@ -221,6 +221,16 @@ jobs:
           PYTHONPATH: .
         run: python scripts/check_v3_9_0_triangulation.py
 
+      - name: Firm-rules sync + ID-collision lint (v3.10 PR-A, #127)
+        # Pins the canonical R-L3-2-* (contamination) / R-CIM-* (claim-manifest)
+        # firm-rule wording in shared/references/firm_rules.md against the agent
+        # prompt mirrors, and guards the v3.10 PR-A disambiguation (the two rule
+        # families no longer share the R-L3-2-A/B/C ID). The pytest companion
+        # `test_check_firm_rules_sync.py` runs via the unified manifest.
+        env:
+          PYTHONPATH: .
+        run: python scripts/check_firm_rules_sync.py
+
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
         # block, 16 Bucket B/C/D agents DON'T, and each Bucket A block
