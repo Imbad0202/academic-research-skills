@@ -1,6 +1,14 @@
 # Citation-Extraction Gold Subset (Phase 1a)
 
-50-tuple gold subset measuring `verification_gate.verify_citation` per-citation `lookup_verified` 3-class enum classification accuracy. Phase 1a (this version) ships data only; the harness lands in Phase 1b.
+50-tuple gold subset measuring the per-citation `lookup_verified` 3-class enum classification accuracy. Phase 1a shipped the data; **Phase 1b (#263) shipped the harness** (`scripts/run_evals.py`) — it now measures this gold set directly.
+
+Run it with:
+
+```
+PYTHONPATH=. python -m scripts.run_evals --task citation_extraction
+```
+
+The harness computes the predicted `lookup_verified` itself from each tuple's `resolver_outcomes.*.status` via the #182 Delta 4 reducer (`verification_gate.verify_citation` has not shipped yet; the reducer reconciles when it does). The metric is symmetric 3-class accuracy — `unresolvable` is never collapsed into `false`. Because `expected_outcomes.json` was authored by the same rule, a fresh run scores ~1.0.
 
 ## Spec reference
 
@@ -42,10 +50,22 @@ fuzzy-match false-positive path) is tracked in issue #250.
 
 ## Human expert verdicts
 
-10 of 50 tuples (20% per Delta 5) carry an optional `human_expert_verdict` field for `expert_concordance` measurement in the Phase 1b harness. The verdicts are advisory only — synthetic ground truth in `expected_outcomes.json` is the source of truth for CI gates per E-V3.
+10 of 50 tuples (20% per Delta 5) carry an optional `human_expert_verdict` field. The Phase 1b harness emits an `expert_concordance` row per class from these labeled tuples (agreement of the expert verdict vs `expected_outcomes.json`). The verdicts are advisory only — synthetic ground truth in `expected_outcomes.json` is the source of truth for CI gates per E-V3, and concordance never gates.
 
 ## Validator
 
 Run this command from the repo root to validate the corpus against its manifest:
 
 `python -m scripts.check_evals_gold_set evals/gold/citation_extraction`
+
+## Lift gate
+
+When a PR changes ranking / scoring logic, run the harness on the base and the change, then compare:
+
+```
+PYTHONPATH=. python -m scripts.run_evals --output before.json   # on base
+PYTHONPATH=. python -m scripts.run_evals --output after.json    # on change
+python -m scripts.check_ranking_lift --baseline before.json --compare after.json --pr-body @pr.txt
+```
+
+The gate blocks on any polarity-corrected `signed_lift < -0.05` (or a zero-baseline metric change) unless the PR body carries `[ranking-regression-acknowledged]` + an OPEN follow-up issue and declares the `Affected metric: <task>.<class>.<metric>`. CI wires this via `.github/workflows/eval-harness.yml`.

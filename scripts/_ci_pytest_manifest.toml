@@ -93,3 +93,23 @@ path = "scripts/test_check_evals_gold_set.py"
 [[pytest]]
 id = "kong-257-rq-framing-patterns"
 path = "scripts/test_check_rq_framing_patterns.py"
+
+[[pytest]]
+id = "v3.10-184-run-evals"
+path = "scripts/test_run_evals.py"
+
+[[pytest]]
+id = "v3.10-184-check-ranking-lift"
+path = "scripts/test_check_ranking_lift.py"
+
+[[pytest]]
+id = "v3.10-184-evals-citation-extraction"
+path = "scripts/test_evals_citation_extraction.py"
+
+[[pytest]]
+id = "v3.10-184-evals-lift-report-schema"
+path = "scripts/test_evals_lift_report_schema.py"
+
+[[pytest]]
+id = "v3.10-184-eval-harness-workflow"
+path = "scripts/test_eval_harness_workflow.py"
