@@ -42,24 +42,39 @@ Reviewer R1 raises three comments on a manuscript about CNN ablations on small i
 
 Note R1-1 split into two commitments — compound comments decompose per Step 3.5 procedure.
 
-## After revision: author fills fulfillment_status + rationale
+## After revision: author fills fulfillment_status + rationale (nested per commitment)
+
+The lifecycle fields are appended **inside each commitment object** (not as separate parallel lists). A `fulfilled` commitment carries `fulfillment_status` only — no `unfulfilled_rationale` placeholder.
 
 ```yaml
 - concern_id: R1-1
   revision_location: "§4.3 Table 4; §5.2 ¶3"
-  fulfillment_status: [fulfilled, fulfilled]
-  unfulfilled_rationale: ["", ""]
+  commitment_extracted:
+    - commitment_text: "add ablation on CIFAR-100"
+      commitment_type: add_experiment
+      required_evidence_type: new_table
+      fulfillment_status: fulfilled
+    - commitment_text: "clarify why ResNet-50 was preferred over Vision Transformer"
+      commitment_type: add_clarification
+      required_evidence_type: discussion_paragraph
+      fulfillment_status: fulfilled
 
 - concern_id: R1-2
   revision_location: "§5.4 ¶1"
-  fulfillment_status: [fulfilled]
-  unfulfilled_rationale: [""]
+  commitment_extracted:
+    - commitment_text: "acknowledge Patel 2025 baseline in Discussion"
+      commitment_type: add_citation
+      required_evidence_type: new_citation
+      fulfillment_status: fulfilled
 
 - concern_id: R1-3
   revision_location: "§4.3 Table 4 footnote"
-  fulfillment_status: [partial]
-  unfulfilled_rationale:
-    - "Computational budget allowed 3 seeds rather than 5; standard errors reported in Table 4 footnote. Five-seed replication acknowledged as future work in §6 Limitations."
+  commitment_extracted:
+    - commitment_text: "add error bars from 5-seed runs"
+      commitment_type: add_experiment
+      required_evidence_type: new_figure
+      fulfillment_status: partial
+      unfulfilled_rationale: "Computational budget allowed 3 seeds rather than 5; standard errors reported in Table 4 footnote. Five-seed replication acknowledged as future work in §6 Limitations."
 ```
 
 ## Re-review output: COMMITMENT_GAP surface (per re_review_mode_protocol step 5)
@@ -76,8 +91,12 @@ If R1-3 instead had:
 ```yaml
 - concern_id: R1-3
   revision_location: "§4.3 Table 4"
-  fulfillment_status: [not-fulfilled]
-  unfulfilled_rationale: [""]  # empty string at index 0 — Schema 11 validation flags this
+  commitment_extracted:
+    - commitment_text: "add error bars from 5-seed runs"
+      commitment_type: add_experiment
+      required_evidence_type: new_figure
+      fulfillment_status: not-fulfilled
+      # unfulfilled_rationale absent on a not-fulfilled commitment — Schema 11 validation flags this
 ```
 
 …the re-reviewer would surface:

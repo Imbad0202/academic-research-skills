@@ -26,11 +26,40 @@ This template works with both:
 
 ## Revision Tracking Table
 
-| # | Issue Description | Reviewer | Type | Section | Resolution Summary | Location of Change | Status | Reason (if not resolved) | Commitments | Fulfillment | Unfulfilled Rationale |
-|---|-------------------|----------|------|---------|-------------------|-------------------|--------|--------------------------|-------------|-------------|----------------------|
-| 1 | [description] | [R1/R2/R3/DA] | [Major/Minor/Editorial] | [section] | [what was done] | [page/paragraph] | [status] | [if applicable] | 1. [commitment_text]<br>2. [commitment_text] | 1. [fulfillment_status]<br>2. [fulfillment_status] | 1. [rationale or ""]<br>2. [rationale or ""] |
-| 2 | [description] | [R1/R2/R3/DA] | [Major/Minor/Editorial] | [section] | [what was done] | [page/paragraph] | [status] | [if applicable] | 1. [commitment_text] | 1. [fulfillment_status] | 1. [rationale or ""] |
-| 3 | [description] | [R1/R2/R3/DA] | [Major/Minor/Editorial] | [section] | [what was done] | [page/paragraph] | [status] | [if applicable] | _(empty — positive comment, no commitment)_ | _(omit)_ | _(omit)_ |
+| # | Issue Description | Reviewer | Type | Section | Resolution Summary | Location of Change | Status | Reason (if not resolved) | Commitment Ledger |
+|---|-------------------|----------|------|---------|-------------------|-------------------|--------|--------------------------|-------------------|
+| 1 | [description] | [R1/R2/R3/DA] | [Major/Minor/Editorial] | [section] | [what was done] | [page/paragraph] | [status] | [if applicable] | See per-row nested ledger below (concern 1) |
+| 2 | [description] | [R1/R2/R3/DA] | [Major/Minor/Editorial] | [section] | [what was done] | [page/paragraph] | [status] | [if applicable] | See per-row nested ledger below (concern 2) |
+| 3 | [description] | [R1/R2/R3/DA] | [Major/Minor/Editorial] | [section] | [what was done] | [page/paragraph] | [status] | [if applicable] | _(empty — positive comment, no commitment)_ |
+
+**Per-row Commitment Ledger (nested-object shape, #268).** Each concern's commitments are authored as a single nested YAML block keyed by `concern_id` — one object per commitment, with `fulfillment_status` / `unfulfilled_rationale` nested **inside** the object. There are no separate parallel cells to keep aligned, so a dropped separator or mis-numbering can no longer desynchronize status from commitment.
+
+Placeholders use `<...>` (angle brackets) — replace each with a literal scalar. Do NOT use `[...]`: inside a YAML block square brackets parse as a flow sequence, so a half-filled `[R1-1]` becomes a one-element list, not the string `R1-1`. (The only real list here is `commitment_extracted: []`, the empty-list marker.)
+
+```yaml
+# concern 1 (multi-commitment example)
+- concern_id: <R1-1>
+  commitment_extracted:
+    - commitment_text: "<commitment 1 text>"
+      commitment_type: <add_experiment | add_analysis | add_clarification | add_citation | restructure | other>
+      required_evidence_type: <new_section | new_figure | new_table | new_citation | methods_paragraph | discussion_paragraph | prose_edit | acknowledgment_only | other>
+      fulfillment_status: <fulfilled | partial | not-fulfilled | explicitly-rejected-with-rationale>   # appended during revision execution
+      # unfulfilled_rationale: "..."  # required iff status is non-fulfilled; OMIT when fulfilled
+    - commitment_text: "<commitment 2 text>"
+      commitment_type: ...
+      required_evidence_type: ...
+      fulfillment_status: ...
+
+# concern 2 (single commitment)
+- concern_id: <R2-1>
+  commitment_extracted:
+    - commitment_text: "<commitment text>"
+      commitment_type: ...
+      required_evidence_type: ...
+      fulfillment_status: ...
+
+# concern 3 carries no commitments (positive comment) → commitment_extracted: []
+```
 
 ---
 
@@ -86,9 +115,9 @@ Silent omission triggers `COMMITMENT_GAP` advisory at re-review.
 ### explicitly-rejected-with-rationale
 Author has decided not to address the commitment and has provided one of the three rationale forms above. This is **not** a failure — it is a documented, defensible decision. Re-review records it without raising `COMMITMENT_GAP`.
 
-**Authoring guidance:** Fill in `commitment_extracted` first (typically via `revision_coach_agent` Step 3.5 output); fill `fulfillment_status` + `unfulfilled_rationale` as revision execution progresses. By final submission, every non-fulfilled commitment must have a rationale.
+**Authoring guidance:** Fill in each commitment's extraction fields first (typically via `revision_coach_agent` Step 3.5 output — `commitment_text` / `commitment_type` / `required_evidence_type`); append `fulfillment_status` (and `unfulfilled_rationale` when non-fulfilled) **on the same commitment object** as revision execution progresses. By final submission, every non-fulfilled commitment must have a rationale on its own object.
 
-**Parallel-list alignment (Kong A1 / v3.11):** When a row carries multiple commitments, the three cells (Commitments / Fulfillment / Unfulfilled Rationale) MUST contain index-aligned lists of the same length. Use **numbered prefixes** (`1. `, `2. `, …) in each cell so index alignment is visually verifiable; a `<br>` (or actual newline inside `|` cell, depending on Markdown flavor) separates entries. A missing entry in any of the three cells breaks per-commitment traceability — re-reviewers will flag the row. For positive comments (no extractable commitment), leave all three cells with `_(empty)_` or `_(omit)_` to mark the absence explicitly rather than silently.
+**Nested-object shape (#268, supersedes the Kong A1 parallel-list cells):** Each commitment is one object in the concern's `commitment_extracted` list, carrying its own `fulfillment_status` and (when non-fulfilled) `unfulfilled_rationale`. There is no separate Fulfillment / Unfulfilled-Rationale column to align — status and rationale travel **with** the commitment they describe, so a dropped separator or numbering error cannot pair a status with the wrong commitment (the desync failure mode #268 closes). Omit `unfulfilled_rationale` entirely on a `fulfilled` commitment (no `""` placeholder). For positive comments with no extractable commitment, set `commitment_extracted: []` to mark the absence explicitly.
 
 ---
 

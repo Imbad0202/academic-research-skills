@@ -375,3 +375,13 @@ jobs:
           PYTHONPATH: .
         run: python3 -m scripts.check_evals_gold_set evals/gold/citation_extraction
 
+      - name: Validate #268 nested-object Commitment Ledger
+        # Schema 11 parallel-list -> nested-object refactor (#268). N1-N5:
+        # seed extraction-field presence, no retired parallel-list keys,
+        # per-commitment lifecycle coherence, and no surviving index notation
+        # in the Schema 11 prose + re_review_mode_protocol surfaces.
+        # Spec: docs/design/2026-05-31-ars-268-schema11-nested-commitment-ledger-spec.md.
+        env:
+          PYTHONPATH: .
+        run: python3 -m scripts.check_268_nested_commitment_ledger
+
