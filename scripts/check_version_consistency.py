@@ -8,12 +8,18 @@ Invariants enforced:
      "## [X.Y.Z]" entry in CHANGELOG.md.
   3. academic-pipeline version in the table equals the suite version (pipeline
      = orchestrator, by convention tracks the suite release).
+  4. The plugin manifests (.claude-plugin/plugin.json "version" and
+     .claude-plugin/marketplace.json plugins[].version) equal the suite version.
+     These are the repo's OUTWARD-FACING package metadata — a user updating the
+     plugin sees them — and were the one surface a v3.10.0 release-doc pass missed
+     because no lint covered them (marketplace had silently sat at 3.7.0).
 
 Runs from repo root by default; `--path` lets tests point at a fake tree.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -189,6 +195,64 @@ def check(root: Path) -> list[str]:
                 f"v{pipeline_in_table} but suite version is {suite_version!r} "
                 "(pipeline tracks the suite release)"
             )
+
+    # Invariant 4: plugin manifests track the suite version (outward-facing
+    # package metadata). Only checked when a suite version is known.
+    if suite_version is not None:
+        errors.extend(_check_plugin_manifests(root, suite_version))
+
+    return errors
+
+
+def _check_plugin_manifests(root: Path, suite_version: str) -> list[str]:
+    """Invariant 4: .claude-plugin/plugin.json "version" and every
+    .claude-plugin/marketplace.json plugins[].version equal the suite version.
+    Missing files / malformed JSON / missing version keys are surfaced, never
+    crash (a release lint must report drift, not blow up on it)."""
+    errors: list[str] = []
+
+    plugin_json = root / ".claude-plugin" / "plugin.json"
+    if not plugin_json.is_file():
+        errors.append(f"{plugin_json}: not found")
+    else:
+        try:
+            data = json.loads(plugin_json.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{plugin_json}: invalid JSON ({exc})")
+        else:
+            v = data.get("version")
+            if v is None:
+                errors.append(f"{plugin_json}: missing 'version' key")
+            elif str(v) != suite_version:
+                errors.append(
+                    f"{plugin_json}: version {str(v)!r} does not match suite "
+                    f"version {suite_version!r}"
+                )
+
+    marketplace = root / ".claude-plugin" / "marketplace.json"
+    if not marketplace.is_file():
+        errors.append(f"{marketplace}: not found")
+    else:
+        try:
+            data = json.loads(marketplace.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{marketplace}: invalid JSON ({exc})")
+        else:
+            plugins = data.get("plugins")
+            if not isinstance(plugins, list) or not plugins:
+                errors.append(f"{marketplace}: 'plugins' is missing or empty")
+            else:
+                for i, entry in enumerate(plugins):
+                    v = (entry or {}).get("version") if isinstance(entry, dict) else None
+                    if v is None:
+                        errors.append(
+                            f"{marketplace}: plugins[{i}] missing 'version' key"
+                        )
+                    elif str(v) != suite_version:
+                        errors.append(
+                            f"{marketplace}: plugins[{i}] version {str(v)!r} does "
+                            f"not match suite version {suite_version!r}"
+                        )
 
     return errors
 

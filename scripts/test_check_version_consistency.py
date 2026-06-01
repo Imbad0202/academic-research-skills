@@ -80,6 +80,20 @@ def _write_changelog(
     )
 
 
+def _write_plugin_manifests(root: Path, version: str) -> None:
+    """Fixture .claude-plugin/{plugin,marketplace}.json at `version` (invariant 4)."""
+    import json
+    plugin_dir = root / ".claude-plugin"
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+    (plugin_dir / "plugin.json").write_text(
+        json.dumps({"name": "fixture", "version": version}), encoding="utf-8"
+    )
+    (plugin_dir / "marketplace.json").write_text(
+        json.dumps({"name": "fixture", "plugins": [{"name": "fixture", "version": version}]}),
+        encoding="utf-8",
+    )
+
+
 def _write_aligned_fixture(root: Path) -> None:
     """Everything lines up — baseline for PASS cases and drift mutations."""
     skills = [
@@ -92,6 +106,7 @@ def _write_aligned_fixture(root: Path) -> None:
         _write_skill(root, name, ver)
     _write_claude_md(root, suite_version="3.5.0", table_rows=skills)
     _write_changelog(root, latest_version="3.5.0")
+    _write_plugin_manifests(root, "3.5.0")
 
 
 def _write_aligned_fixture_v351(root: Path) -> None:
@@ -106,6 +121,7 @@ def _write_aligned_fixture_v351(root: Path) -> None:
         _write_skill(root, name, ver)
     _write_claude_md(root, suite_version="3.5.1", table_rows=skills)
     _write_changelog(root, latest_version="3.5.1")
+    _write_plugin_manifests(root, "3.5.1")
 
 
 class TestVersionConsistency(unittest.TestCase):
@@ -153,6 +169,38 @@ class TestVersionConsistency(unittest.TestCase):
             self.assertIn("3.5.0", result.stdout)
             self.assertIn("3.4.0", result.stdout)
             self.assertIn("CHANGELOG", result.stdout)
+
+    def test_plugin_json_version_drift_fails(self) -> None:
+        """Invariant 4: .claude-plugin/plugin.json version != suite — must fail.
+        (Regression for the v3.10.0 release miss: plugin.json sat at the prior
+        version because no lint covered it.)"""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)  # suite 3.5.0
+            _write_plugin_manifests(root, "3.4.0")  # drift both manifests down
+            result = _run(root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("plugin.json", result.stdout)
+            self.assertIn("3.4.0", result.stdout)
+            self.assertIn("3.5.0", result.stdout)
+
+    def test_marketplace_version_drift_fails(self) -> None:
+        """Invariant 4: marketplace.json plugins[].version != suite — must fail.
+        (Regression for marketplace.json silently sitting at 3.7.0 for releases.)"""
+        import json
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)  # suite 3.5.0; plugin.json aligned at 3.5.0
+            # Drift ONLY marketplace, leaving plugin.json correct, to isolate it.
+            (root / ".claude-plugin" / "marketplace.json").write_text(
+                json.dumps({"name": "fixture",
+                            "plugins": [{"name": "fixture", "version": "3.7.0"}]}),
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("marketplace.json", result.stdout)
+            self.assertIn("3.7.0", result.stdout)
 
     def test_pipeline_version_vs_suite_drift_fails(self) -> None:
         """academic-pipeline version in table must equal suite version."""
