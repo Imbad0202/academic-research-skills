@@ -261,6 +261,39 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_v3_9_2_phase_boundary.py
 
+      - name: Run v3.10 #134 write-scope three-way name cross-check lint
+        # THE FAIL-OPEN GUARD for the Slice 1 write-scope hook. Asserts the 23 Bucket A
+        # agent names match across the classification roster, the scope manifest keys,
+        # and the on-disk agent frontmatter `name` fields. A drift would silently fail
+        # the PreToolUse hook OPEN (treat a fenced agent as unconstrained). The pytest
+        # companions test_ars_write_scope_guard.py + test_check_v3_10_134_write_scope.py
+        # (hook decision tests + lint mutation tests) run via the unified manifest (#156).
+        # Spec: docs/design/2026-06-01-ars-134-conductor-rescope-deterministic-write-guard-spec.md
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_v3_10_134_write_scope.py
+
+      - name: Validate ARS plugin hooks.json wires the write-scope guard
+        # Pins hooks/hooks.json to (a) be valid JSON, (b) carry a PreToolUse entry whose
+        # matcher covers the structured write tools + Bash, and (c) invoke the guard
+        # script via ${CLAUDE_PLUGIN_ROOT}. Catches an accidental hook-config regression
+        # that would silently disable the guard.
+        run: |
+          python3 - <<'PY'
+          import json
+          h = json.load(open("hooks/hooks.json"))
+          pre = h.get("hooks", {}).get("PreToolUse", [])
+          assert pre, "hooks.json has no PreToolUse entry"
+          entry = pre[0]
+          matcher = entry.get("matcher", "")
+          for tool in ("Write", "Edit", "MultiEdit", "Bash"):
+              assert tool in matcher, f"PreToolUse matcher missing {tool!r}: {matcher!r}"
+          cmds = " ".join(hk.get("command", "") for hk in entry.get("hooks", []))
+          assert "ars_write_scope_guard.py" in cmds, "PreToolUse does not invoke the guard script"
+          assert "${CLAUDE_PLUGIN_ROOT}" in cmds, "guard command must use ${CLAUDE_PLUGIN_ROOT}"
+          print("hooks.json PreToolUse write-scope guard wiring OK")
+          PY
+
       - name: Run v3.9.4 temporal verification lint (#135)
         # Verifies check_v3_9_4_temporal_verification.py against all bundled
         # fixtures in tests/fixtures/v3.9.4-temporal/. Each fixture directory
