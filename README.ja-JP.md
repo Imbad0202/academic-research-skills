@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.9.4.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.9.4.2)
+[![Version](https://img.shields.io/badge/version-v3.10.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.10.0)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -232,15 +232,15 @@ You: "status"
 
 13 エージェントの研究チーム。モード: full、quick、review、lit-review、fact-check、socratic、systematic-review。完全なエージェント名簿と成果物: ARCHITECTURE.md §3 を参照。
 
-### Academic Paper（v3.1.2）
+### Academic Paper（v3.2.0）
 
 12 エージェントの論文執筆パイプライン。モード: full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure。出力: MD + DOCX（利用可能な場合 Pandoc 経由）+ LaTeX（APA 7.0 `apa7` クラス / IEEE / Chicago）→ tectonic 経由 PDF。完全なエージェント名簿とフェーズごとの責務: ARCHITECTURE.md §3 を参照。
 
-### Academic Paper Reviewer（v1.9.1）
+### Academic Paper Reviewer（v1.10.0）
 
 **0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューチーム vs. 限定的な再レビューチームの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.9.4.2）
+### Academic Pipeline（v3.10.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）はスキップできない。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -320,6 +320,12 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.10.0 (2026-06-01) — トライアンギュレーション・ポリシー層、Kong サーベイ採用、評価ハーネス、スコープ書き込みガード
+
+> *[machine-translated, pending native review by @eltociear]*
+>
+> オプトインの汚染トライアンギュレーション **terminal ポリシー層**（#127、デフォルトの引用挙動は v3.9.0 と byte-equivalent）、**Kong et al. 2026 サーベイ採用**（Rebuttal Commitment Ledger #256/#266/#268/#269、分野別の domain evidence profile #259）、**v3.10 計測基盤**（汎用化された評価 gold set + ranking-lift CI gate #184）、**scoped-write guard MVP**（#134、23 個の単一フェーズ subagent を各自の phase ディレクトリに囲い込み、Bash を禁止して Grep/Glob と構造化編集ツールに誘導する deterministic な `PreToolUse` hook）、`/ars-mark-read` plugin コマンド（#190）と broken-on-arrival 修正（#195）、簡体字中国語 README（#185）、CI 強化（#156/#155）をまとめた minor release。`academic-paper` → v3.2.0、`academic-paper-reviewer` → v1.10.0、`academic-pipeline` → v3.10.0。
 
 ### v3.9.4.2 (2026-05-19) — PR #149 CI 規律ゲートのポストシップホットフィックス（codex post-ship）
 

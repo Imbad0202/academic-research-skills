@@ -61,7 +61,7 @@ def check_relative_markdown_links(rel_path: str) -> None:
 def check_mode_registry() -> None:
     rel_path = "MODE_REGISTRY.md"
     text = read(rel_path)
-    expect_contains(rel_path, "Last updated: v3.9.4.2 (2026-05-19)")
+    expect_contains(rel_path, "Last updated: v3.10.0 (2026-06-01)")
     for heading in (
         "## deep-research (7 modes)",
         "## academic-paper (10 modes)",
@@ -75,7 +75,7 @@ def check_claude_md() -> None:
     rel_path = ".claude/CLAUDE.md"
     expect_contains(rel_path, "integrity check (Stage 2.5)")
     expect_contains(rel_path, "final integrity check (Stage 4.5)")
-    expect_contains(rel_path, "**Suite version**: 3.9.4.2")
+    expect_contains(rel_path, "**Suite version**: 3.10.0")
     for forbidden in (
         "6th independent reviewer",
         "Peer review gains 6th independent reviewer",
@@ -136,8 +136,9 @@ def check_readme_sections() -> None:
     rel_path = "README.md"
     text = read(rel_path)
 
-    expect_contains(rel_path, "version-v3.9.4.2-blue")
-    expect_contains(rel_path, "releases/tag/v3.9.4.2")
+    expect_contains(rel_path, "version-v3.10.0-blue")
+    expect_contains(rel_path, "releases/tag/v3.10.0")
+    expect_contains(rel_path, "### v3.10.0 (2026-06-01)")
     expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
     expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
     expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
@@ -164,9 +165,9 @@ def check_readme_sections() -> None:
         "#### Academic Paper (10 modes)",
         "#### Academic Paper Reviewer (6 modes)",
         "### Deep Research (v2.9.4)",
-        "### Academic Paper (v3.1.2)",
-        "### Academic Paper Reviewer (v1.9.1)",
-        "### Academic Pipeline (v3.9.4.2)",
+        "### Academic Paper (v3.2.0)",
+        "### Academic Paper Reviewer (v1.10.0)",
+        "### Academic Pipeline (v3.10.0)",
     ):
         if heading not in text:
             fail(f"{rel_path}: missing heading {heading!r}")
@@ -215,8 +216,9 @@ def check_readme_ja_sections() -> None:
     rel_path = "README.ja-JP.md"
     text = read(rel_path)
 
-    expect_contains(rel_path, "version-v3.9.4.2-blue")
-    expect_contains(rel_path, "releases/tag/v3.9.4.2")
+    expect_contains(rel_path, "version-v3.10.0-blue")
+    expect_contains(rel_path, "releases/tag/v3.10.0")
+    expect_contains(rel_path, "### v3.10.0 (2026-06-01)")
     expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
     expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
     expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
@@ -244,9 +246,9 @@ def check_readme_ja_sections() -> None:
         "#### Academic Paper Reviewer（6 モード）",
         "#### Academic Pipeline（オーケストレーター）",
         "### Deep Research（v2.9.4）",
-        "### Academic Paper（v3.1.2）",
-        "### Academic Paper Reviewer（v1.9.1）",
-        "### Academic Pipeline（v3.9.4.2）",
+        "### Academic Paper（v3.2.0）",
+        "### Academic Paper Reviewer（v1.10.0）",
+        "### Academic Pipeline（v3.10.0）",
     ):
         if heading not in text:
             fail(f"{rel_path}: missing heading {heading!r}")
@@ -274,9 +276,9 @@ ZH_README_CONFIGS = (
             "#### Academic Paper（學術論文撰寫，10 種模式）",
             "#### Academic Paper Reviewer（論文審查，6 種模式）",
             "### Deep Research (v2.9.4)",
-            "### Academic Paper (v3.1.2)",
-            "### Academic Paper Reviewer (v1.9.1)",
-            "### Academic Pipeline (v3.9.4.2)",
+            "### Academic Paper (v3.2.0)",
+            "### Academic Paper Reviewer (v1.10.0)",
+            "### Academic Pipeline (v3.10.0)",
         ),
         "paper_start": "#### Academic Paper（學術論文撰寫，10 種模式）",
         "reviewer_start": "#### Academic Paper Reviewer（論文審查，6 種模式）",
@@ -291,9 +293,9 @@ ZH_README_CONFIGS = (
             "#### Academic Paper（学术论文撰写，10 种模式）",
             "#### Academic Paper Reviewer（论文审查，6 种模式）",
             "### Deep Research (v2.9.4)",
-            "### Academic Paper (v3.1.2)",
-            "### Academic Paper Reviewer (v1.9.1)",
-            "### Academic Pipeline (v3.9.4.2)",
+            "### Academic Paper (v3.2.0)",
+            "### Academic Paper Reviewer (v1.10.0)",
+            "### Academic Pipeline (v3.10.0)",
         ),
         "paper_start": "#### Academic Paper（学术论文撰写，10 种模式）",
         "reviewer_start": "#### Academic Paper Reviewer（论文审查，6 种模式）",
@@ -309,8 +311,9 @@ def check_readme_zh_sections() -> None:
         rel_path = config["rel_path"]
         text = read(rel_path)
 
-        expect_contains(rel_path, "version-v3.9.4.2-blue")
-        expect_contains(rel_path, "releases/tag/v3.9.4.2")
+        expect_contains(rel_path, "version-v3.10.0-blue")
+        expect_contains(rel_path, "releases/tag/v3.10.0")
+        expect_contains(rel_path, "### v3.10.0（2026-06-01）")
         expect_contains(rel_path, "### v3.9.4.2（2026-05-19）")
         expect_contains(rel_path, "### v3.9.4.1（2026-05-19）")
         expect_contains(rel_path, "### v3.9.4（2026-05-18）")

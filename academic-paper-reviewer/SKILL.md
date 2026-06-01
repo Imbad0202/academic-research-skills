@@ -2,8 +2,8 @@
 name: academic-paper-reviewer
 description: "Multi-perspective academic paper review with dynamic reviewer personas. Simulates 5 independent reviewers (EIC + 3 peer reviewers + Devil's Advocate) with field-specific expertise. Supports full review, re-review (verification), quick assessment, methodology focus, Socratic guided, and calibration modes. Triggers on: review paper, peer review, manuscript review, referee report, review my paper, critique paper, simulate review, editorial review, calibrate reviewer, reviewer calibration, measure reviewer accuracy."
 metadata:
-  version: "1.9.1"
-  last_updated: "2026-05-18"
+  version: "1.10.0"
+  last_updated: "2026-06-01"
   status: active
   data_access_level: verified_only
   task_type: open-ended
@@ -12,7 +12,7 @@ metadata:
     - academic-pipeline
 ---
 
-# Academic Paper Reviewer v1.9.1 — Multi-Perspective Academic Paper Review Agent Team
+# Academic Paper Reviewer v1.10.0 — Multi-Perspective Academic Paper Review Agent Team
 
 Simulates a complete international journal peer review process: automatically identifies the paper's field, dynamically configures 5 reviewers (Editor-in-Chief + 3 peer reviewers + Devil's Advocate) who review from four non-overlapping perspectives — methodology, domain expertise, cross-disciplinary viewpoints, and core argument challenges — ultimately producing a structured Editorial Decision and Revision Roadmap.
 
@@ -410,8 +410,8 @@ Follows the paper's language. Academic terms remain in English. User can overrid
 
 | Item | Content |
 |------|---------|
-| Skill Version | 1.9.1 |
-| Last Updated | 2026-05-18 |
+| Skill Version | 1.10.0 |
+| Last Updated | 2026-06-01 |
 | Maintainer | Cheng-I Wu |
 | Dependent Skills | academic-paper v1.0+ (upstream/downstream integration) |
 | Role | Multi-perspective academic paper review simulator |

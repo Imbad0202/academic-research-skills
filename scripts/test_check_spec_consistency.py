@@ -40,9 +40,9 @@ JA_README_TEMPLATE = """\
 #### Academic Pipeline（オーケストレーター）
 
 ### Deep Research（v2.9.4）
-### Academic Paper（v3.1.2）
-### Academic Paper Reviewer（v1.9.1）
-### Academic Pipeline（v3.9.4.2）
+### Academic Paper（v3.2.0）
+### Academic Paper Reviewer（v1.10.0）
+### Academic Pipeline（v3.10.0）
 
 ### サポートされる出力フォーマット
 
@@ -50,7 +50,8 @@ JA_README_TEMPLATE = """\
 
 ## Changelog
 
-### v{ver} (2026-05-19) — latest entry
+### v{ver} (2026-06-01) — latest entry
+### v3.9.4.2 (2026-05-19) — CI discipline hotfix
 ### v3.9.4.1 (2026-05-19) — previous hotfix
 ### v3.9.4 (2026-05-18) — temporal verification
 ### v3.9.1 (2026-05-18) — client hardening
@@ -106,9 +107,9 @@ ZH_CN_README_TEMPLATE = """\
 #### Academic Pipeline（全流程调度器）
 
 ### Deep Research (v2.9.4)
-### Academic Paper (v3.1.2)
-### Academic Paper Reviewer (v1.9.1)
-### Academic Pipeline (v3.9.4.2)
+### Academic Paper (v3.2.0)
+### Academic Paper Reviewer (v1.10.0)
+### Academic Pipeline (v3.10.0)
 
 ### 支持的输出格式
 
@@ -116,7 +117,8 @@ ZH_CN_README_TEMPLATE = """\
 
 ## 更新纪录
 
-### v{ver}（2026-05-19）— latest entry
+### v{ver}（2026-06-01）— latest entry
+### v3.9.4.2（2026-05-19）— CI discipline hotfix
 ### v3.9.4.1（2026-05-19）— previous hotfix
 ### v3.9.4（2026-05-18）— temporal verification
 ### v3.9.1（2026-05-18）— client hardening
@@ -169,9 +171,9 @@ ZH_TW_README_TEMPLATE = """\
 #### Academic Pipeline（全流程調度器）
 
 ### Deep Research (v2.9.4)
-### Academic Paper (v3.1.2)
-### Academic Paper Reviewer (v1.9.1)
-### Academic Pipeline (v3.9.4.2)
+### Academic Paper (v3.2.0)
+### Academic Paper Reviewer (v1.10.0)
+### Academic Pipeline (v3.10.0)
 
 ### 支援的輸出格式
 
@@ -179,7 +181,8 @@ ZH_TW_README_TEMPLATE = """\
 
 ## 更新紀錄
 
-### v{ver}（2026-05-19）— latest entry
+### v{ver}（2026-06-01）— latest entry
+### v3.9.4.2（2026-05-19）— CI discipline hotfix
 ### v3.9.4.1（2026-05-19）— previous hotfix
 ### v3.9.4（2026-05-18）— temporal verification
 ### v3.9.1（2026-05-18）— client hardening
@@ -228,7 +231,7 @@ class TestReadmeJaSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ja_readme(root, version="3.9.4.2")
+            _write_ja_readme(root, version="3.10.0")
 
             csc.check_readme_ja_sections()
 
@@ -248,17 +251,17 @@ class TestReadmeJaSections(unittest.TestCase):
             # Write the "current" v3.9.4.2 release block but downgrade only
             # the badge and tag link to v3.9.4.0. This is the realistic shape
             # of drift when one place gets forgotten during a release.
-            stale = JA_README_TEMPLATE.format(ver="3.9.4.2").replace(
-                "version-v3.9.4.2-blue", "version-v3.9.4.0-blue"
+            stale = JA_README_TEMPLATE.format(ver="3.10.0").replace(
+                "version-v3.10.0-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.9.4.2", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.10.0", "releases/tag/v3.9.4.0"
             )
             (root / "README.ja-JP.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ja_sections()
 
             self.assertTrue(
-                any("README.ja-JP.md" in e and "v3.9.4.2" in e for e in csc.ERRORS),
+                any("README.ja-JP.md" in e and "v3.10.0" in e for e in csc.ERRORS),
                 msg=f"expected ja-JP drift error in: {csc.ERRORS!r}",
             )
 
@@ -284,8 +287,8 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.9.4.2")
-            _write_zh_cn_readme(root, version="3.9.4.2")
+            _write_zh_tw_readme(root, version="3.10.0")
+            _write_zh_cn_readme(root, version="3.10.0")
 
             csc.check_readme_zh_sections()
 
@@ -301,18 +304,18 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.9.4.2")
-            stale = ZH_CN_README_TEMPLATE.format(ver="3.9.4.2").replace(
-                "version-v3.9.4.2-blue", "version-v3.9.4.0-blue"
+            _write_zh_tw_readme(root, version="3.10.0")
+            stale = ZH_CN_README_TEMPLATE.format(ver="3.10.0").replace(
+                "version-v3.10.0-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.9.4.2", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.10.0", "releases/tag/v3.9.4.0"
             )
             (root / "README.zh-CN.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_zh_sections()
 
             self.assertTrue(
-                any("README.zh-CN.md" in e and "v3.9.4.2" in e for e in csc.ERRORS),
+                any("README.zh-CN.md" in e and "v3.10.0" in e for e in csc.ERRORS),
                 msg=f"expected zh-CN drift error in: {csc.ERRORS!r}",
             )
 
