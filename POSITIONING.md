@@ -49,6 +49,8 @@ These reflect our policy intent. See the [CC BY-NC 4.0 license](https://creative
 
 **Failure modes are made visible, not hidden.** The 7-mode AI Research Failure Mode Checklist (v3.2) and Reviewer Calibration Mode exist so that users can see where the AI might be wrong — not so that the AI can claim it's always right. The v3.7.3 + v3.8 L3 claim-faithfulness gate adds per-citation locator anchors and an opt-in audit pass that verifies whether each cited source actually supports the claim made of it.
 
+**Boundaries are recorded, not improvised.** When adopting a capability from a published system would touch a load-bearing boundary — who ranks, what propagates, who writes state — the decision of whether and how to adopt it is written down as a design-lesson doc, so the same boundary is applied consistently later. The Co-Scientist (Gottweis et al. 2026) analysis is recorded in four such docs: hidden-ranking vs. advisory ranking ([L1](docs/design/2026-06-02-co-scientist-220-l1-hidden-ranking.md)), unapproved feedback propagation ([L2](docs/design/2026-06-02-co-scientist-221-l2-feedback-propagation.md)), which mechanisms transfer to ARS and which do not ([L3](docs/design/2026-06-02-co-scientist-222-l3-transfer-matrix.md)), and control-plane ownership — who may write, rank, or route ([L4](docs/design/2026-06-02-co-scientist-223-l4-control-plane-ownership.md)).
+
 ## Citing this tool
 
 If you use ARS in your research, please cite it:
