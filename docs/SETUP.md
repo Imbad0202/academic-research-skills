@@ -327,6 +327,7 @@ See Anthropic's [Organize your tasks with Projects in Claude Cowork](https://sup
 3. In **Tasks**, use the left navigation panel and choose **Use an existing folder**.
 4. Select the local folder you want Cowork to work in. This creates a Cowork Project pointing at that folder.
 5. Restart Cowork after installing or updating the skill folders so the four skills register.
+6. Open **Customize → Skills**, find each of the four skills (`deep-research`, `academic-paper`, `academic-paper-reviewer`, `academic-pipeline`) under **Personal skills**, and turn on the toggle in the top-right of each skill's detail panel (it reads **Enabled** when on). A registered skill that is not enabled here will not appear in the `/` command palette and Claude will not invoke it.
 
 #### How Cowork invokes the skills
 
@@ -334,8 +335,8 @@ Claude uses each skill's `description` to judge relevance, as described in Anthr
 
 If description-based routing does not select the skill you want, Cowork also provides explicit UI surfaces described in Anthropic's [Cowork plugins documentation](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork):
 
-- Type `/` in a Cowork Task to use the command palette and select an available skill.
-- Use the `+` capability picker to add a skill to the current Task.
+- Once a skill is enabled in **Customize → Skills** (step 6 above), type `/` in a Cowork Task to open the command palette and select it. Skills that are not enabled do not appear here.
+- Use the `+` capability picker to add an enabled skill to the current Task.
 
 ### Method 4: Use with claude.ai (web)
 

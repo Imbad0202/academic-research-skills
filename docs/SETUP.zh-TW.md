@@ -327,6 +327,7 @@ cp -R ~/academic-research-skills/academic-pipeline ~/.claude/skills/academic-pip
 3. 在 **Tasks** 中使用左側導覽面板，選擇 **Use an existing folder**（使用既有資料夾）。
 4. 選取你希望 Cowork 在其中工作的本機資料夾。這會建立一個指向該資料夾的 Cowork Project。
 5. 安裝或更新 skill 資料夾後，請重啟 Cowork，讓四個 skills 註冊。
+6. 開啟 **Customize → Skills**，在 **Personal skills** 下找到四個 skill（`deep-research`、`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`），把每個 skill 詳情面板右上角的 toggle 打開（開啟時會顯示 **Enabled**）。已註冊但未在此啟用的 skill 不會出現在 `/` command palette，Claude 也不會呼叫它。
 
 #### Cowork 如何呼叫 skills
 
@@ -334,8 +335,8 @@ Claude 會使用每個 skill 的 `description` 判斷相關性，方式如 Anthr
 
 若 description-based routing 沒有選到你想用的 skill，Cowork 也提供 Anthropic 的 [Cowork plugins documentation](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork) 中說明的顯式 UI 入口：
 
-- 在 Cowork Task 中輸入 `/`，使用 command palette 並選取可用 skill。
-- 使用 `+` capability picker，把 skill 加入目前 Task。
+- 在 **Customize → Skills** 啟用 skill 後（上方步驟 6），在 Cowork Task 中輸入 `/` 開啟 command palette 並選取它。未啟用的 skill 不會出現在這裡。
+- 使用 `+` capability picker，把已啟用的 skill 加入目前 Task。
 
 ### 方法四：使用 claude.ai（網頁版）
 
