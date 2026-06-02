@@ -223,11 +223,34 @@ class WriteScopeGuardTest(unittest.TestCase):
         self.assertIn("infrastructure", d["reason"].lower())
 
     def test_traversal_escaping_workspace_denied(self):
-        # ../ escaping the workspace root entirely must be denied (commonpath guard).
+        # ../ escaping the workspace root entirely must be denied FOR A BUCKET A AGENT
+        # (commonpath guard). Bucket A stays fenced to its workspace regardless of actor.
         raw = os.path.join(self.ws, "phase2_investigation/../../outside.md")
         p = payload("Write", {"file_path": raw, "content": "x"},
                     cwd=self.ws, agent_type="bibliography_agent")
         self.assertEqual(self.decide(p)["decision"], "deny")
+
+    def test_main_session_escape_allowed(self):
+        # #302: a MAIN-SESSION write whose target resolves outside the workspace root
+        # (e.g. a sibling git worktree) is ALLOWED — the main session is unconstrained by
+        # Slice 1 (§3.3). The escape deny is a Bucket A fence, not a main-session fence.
+        raw = os.path.join(self.ws, "../sibling-worktree/file.md")
+        p = payload("Write", {"file_path": raw, "content": "x"}, cwd=self.ws)  # no agent_type
+        d = self.decide(p)
+        self.assertEqual(d["decision"], "allow")
+        # Still fail-loud about the absent agent_type (not a silent no-op).
+        self.assertTrue(d.get("absent_agent_type_advisory"),
+                        "absent agent_type escape write must still surface the advisory")
+
+    def test_non_bucket_a_agent_escape_allowed(self):
+        # A Bucket B/C/D agent (agent_type present but not a manifest key) is also
+        # unconstrained by Slice 1 — an escaping write is allowed, no advisory (it HAS a type).
+        raw = os.path.join(self.ws, "../sibling-worktree/file.md")
+        p = payload("Write", {"file_path": raw, "content": "x"},
+                    cwd=self.ws, agent_type="report_compiler_agent")  # Bucket B, not in manifest
+        d = self.decide(p)
+        self.assertEqual(d["decision"], "allow")
+        self.assertFalse(d.get("absent_agent_type_advisory"))
 
     # --- Step 3: agent gating edge cases ---
 

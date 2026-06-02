@@ -198,6 +198,19 @@ def _infra_protected(rel_path):
     return _matches_any(rel_path, INFRA_PROTECTED_GLOBS)
 
 
+def _allow_unconstrained(agent_type):
+    """The decision for an actor that Slice 1 does not fence (main session / Bucket B/C/D).
+
+    Single source for both the escaped-path allow (#302) and the Step-3 allow, so the two
+    can't drift. A write tool firing with NO agent_type still surfaces a fail-loud advisory
+    (spec §3.4) — do not silently no-op a possibly-regressed payload.
+    """
+    result = {"decision": "allow", "reason": ""}
+    if not agent_type:
+        result["absent_agent_type_advisory"] = True
+    return result
+
+
 def _extract_structured_target(tool_input):
     """Single top-level file_path for Write/Edit/MultiEdit.
 
@@ -271,11 +284,25 @@ def evaluate_decision(payload, manifest, workspace_root):
         }
     rel, escaped = _normalize_target(raw, cwd, workspace_root)
     if escaped:
-        return {
-            "decision": "deny",
-            "reason": (f"ARS scope guard: write target {raw!r} escapes the workspace "
-                       "root (path traversal) — denied."),
-        }
+        # The escape / path-traversal deny is a BUCKET A FENCE, not a global one (#302).
+        # Slice 1's stated scope (§3.3) is confining the 23 Bucket A single-phase agents to
+        # their phase dir; the main session and Bucket B/C/D agents are unconstrained. A
+        # main-session write to a sibling git worktree (a mainstream layout) resolves outside
+        # the workspace root and MUST be allowed — fencing it here contradicted the Step-3
+        # "unconstrained by Slice 1" gate below. So: only a Bucket A agent is denied for an
+        # escape; a non-Bucket-A actor falls through to the Step-3 allow.
+        #   Infra self-protection is intentionally NOT consulted on an escaped path: an escape
+        # means the resolved real path is OUTSIDE the workspace, and every INFRA_PROTECTED_GLOB
+        # is workspace-relative, so an escaped target can never be an infra target. (A symlink
+        # that resolves back INTO the workspace yields escaped=False — see _normalize_target —
+        # so infra protection still runs for it below.)
+        if is_bucket_a:
+            return {
+                "decision": "deny",
+                "reason": (f"ARS scope guard: {agent_type} write target {raw!r} escapes the "
+                           "workspace root (path traversal) — denied."),
+            }
+        return _allow_unconstrained(agent_type)
 
     # --- Step 2: infrastructure self-protection (unconditional, on the normalized path). ---
     if _infra_protected(rel):
@@ -288,12 +315,7 @@ def evaluate_decision(payload, manifest, workspace_root):
     # --- Step 3: agent gating. ---
     if not is_bucket_a:
         # Main session or a Bucket B/C/D agent: unconstrained by Slice 1.
-        result = {"decision": "allow", "reason": ""}
-        if not agent_type:
-            # Fail-loud advisory: a write tool fired with NO agent_type. Do not silently
-            # no-op a possibly-regressed payload (spec §3.4 cross-check rationale).
-            result["absent_agent_type_advisory"] = True
-        return result
+        return _allow_unconstrained(agent_type)
 
     # --- Step 4: Bucket A glob check (path already normalized in Step 1). ---
     allowed = agents[agent_type].get("allowed_write_globs", [])
