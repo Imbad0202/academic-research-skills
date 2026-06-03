@@ -145,10 +145,7 @@ def main() -> int:
     for f in files:
         # Use path relative to --input so two files with the same basename
         # in different subdirectories remain distinguishable in both the
-        # passport (via source_pointer) and the rejection log. Use the
-        # un-resolved path under args.input so symlinks pointing outside
-        # input_root don't raise ValueError; symlink targets are kept
-        # within the original tree as the user authored it.
+        # passport (via source_pointer) and the rejection log.
         try:
             rel = f.relative_to(args.input)
         except ValueError:
@@ -156,6 +153,17 @@ def main() -> int:
             # basename if it ever does.
             rel = Path(f.name)
         rel_str = rel.as_posix()
+        if f.is_symlink():
+            try:
+                f.resolve().relative_to(input_root)
+            except ValueError:
+                rejected.append({
+                    "source": rel_str,
+                    "reason": "symlink_outside_input_root",
+                    "raw": rel_str,
+                    "missing_fields": [],
+                })
+                continue
         parsed = parse_filename(f.name)
         if not parsed:
             rejected.append({

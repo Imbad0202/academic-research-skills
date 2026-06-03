@@ -327,3 +327,47 @@ def test_throttle_uses_monotonic_clock(monkeypatch):
 
     assert len(monotonic_calls) >= 1, "throttle must read time.monotonic"
     assert len(time_calls) == 0, "throttle must NOT read time.time (NTP-unsafe)"
+
+
+def test_doi_lookup_quotes_doi_path_segment(monkeypatch):
+    """DOI lookup must encode path separators/query markers before urlopen."""
+    from openalex_client import OpenAlexClient
+
+    captured_urls = []
+
+    def mock_urlopen(req, *args, **kwargs):
+        captured_urls.append(req.full_url)
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "title": "Attention Is All You Need",
+            "doi": "https://doi.org/10.1000/foo?bar=baz",
+        }).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=None)
+        return mock_response
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = OpenAlexClient()
+        result = client.doi_lookup_with_title_check(
+            doi="10.1000/foo?bar=baz",
+            expected_title="Attention Is All You Need",
+        )
+
+    assert result is not None
+    assert captured_urls == [
+        "https://api.openalex.org/works/doi:10.1000%2Ffoo%3Fbar%3Dbaz?select=id%2Ctitle%2Cauthorships%2Cpublication_year%2Cdoi%2Cprimary_location"
+    ]
+
+
+def test_rejects_non_openalex_api_url_before_urlopen(monkeypatch):
+    import openalex_client
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    monkeypatch.setattr(openalex_client, "_API_BASE", "http://evil.example")
+    urlopen = MagicMock()
+    with patch("urllib.request.urlopen", urlopen):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable):
+            client.title_search("anything")
+
+    assert urlopen.call_count == 0

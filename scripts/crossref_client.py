@@ -29,7 +29,6 @@ try:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
-        _normalize_title,
         _similarity,
     )
 except ImportError:
@@ -37,18 +36,24 @@ except ImportError:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
-        _normalize_title,
         _similarity,
     )
 
 
 _API_BASE = "https://api.crossref.org"
+_API_HOST = "api.crossref.org"
 _POLITE_EMAIL_ENV = "CROSSREF_POLITE_EMAIL"
 
 # Crossref polite pool: 10 req/s with mailto, ~5 req/s anonymous (per
 # Crossref live response headers: x-rate-limit-limit=10, interval=1s).
 _POLITE_MIN_INTERVAL = 0.1
 _ANONYMOUS_MIN_INTERVAL = 0.2
+
+
+def _require_api_url(url: str) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != "https" or parsed.netloc != _API_HOST:
+        raise CrossrefUnavailable(f"Refusing non-Crossref URL: {url}")
 
 
 def _extract_title(message_or_item: Mapping[str, Any]) -> str:
@@ -107,6 +112,7 @@ class CrossrefClient:
         url = f"{_API_BASE}{path}"
         if query:
             url += "?" + urllib.parse.urlencode(query)
+        _require_api_url(url)
         req = urllib.request.Request(url, headers={"User-Agent": self._user_agent})
 
         self._throttle()
@@ -114,7 +120,8 @@ class CrossrefClient:
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                # URL is fixed-host HTTPS after _require_api_url().
+                with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
                     # Wrap response body read + decode + parse in a narrow
                     # except so transient socket drops mid-stream, garbled
                     # bodies, or HTML error pages slipped through with 200
@@ -162,7 +169,7 @@ class CrossrefClient:
         Returns the `message` dict if DOI hit AND title cross-check passes;
         None on 404 (miss), DOI_MISMATCH, or network success but no match.
         """
-        data = self._get(f"/works/{doi}", {})
+        data = self._get(f"/works/{urllib.parse.quote(doi, safe='')}", {})
         if not data:  # 404 -> empty dict from _get
             return None
         message = data.get("message", {})

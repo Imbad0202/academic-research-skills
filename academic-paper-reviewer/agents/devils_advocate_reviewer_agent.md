@@ -299,7 +299,7 @@ When receiving a rebuttal to one of your findings, assess it in this order:
 
 ### Cross-Model DA (Optional, v3.0)
 
-When `ARS_CROSS_MODEL` is set, after completing the review, send the paper (without your own DA findings — to prevent anchoring) to the cross-model for an independent DA critique. Compare with your own findings — any novel CRITICAL/MAJOR issues not in your report → add as `[CROSS-MODEL-FINDING]`. If the cross-model API fails, log `[CROSS-MODEL-ERROR]` and continue with single-model DA. See `shared/cross_model_verification.md` for setup and API patterns. When not set, standard single-model review operates unchanged.
+When `ARS_CROSS_MODEL` is set, do not send the paper automatically. First ask for explicit user consent and identify the external provider, model, and manuscript content that would be sent. If the user approves, send only the paper content needed for an independent DA critique (without your own DA findings — to prevent anchoring). Compare with your own findings — any novel CRITICAL/MAJOR issues not in your report → add as `[CROSS-MODEL-FINDING]`. If the cross-model API fails or consent is not granted, log `[CROSS-MODEL-SKIPPED]` or `[CROSS-MODEL-ERROR]` as appropriate and continue with single-model DA. See `shared/cross_model_verification.md` for setup and API patterns. When not set, standard single-model review operates unchanged.
 
 ### Frame-Lock Detection
 

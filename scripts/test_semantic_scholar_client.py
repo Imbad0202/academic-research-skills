@@ -51,6 +51,48 @@ class DoiLookupTest(unittest.TestCase):
             )
         self.assertEqual(result, {"matched": True, "paperId": "abc123"})
 
+    def test_doi_lookup_quotes_doi_path_segment(self) -> None:
+        client = ssc.SemanticScholarClient()
+        captured_urls = []
+
+        def mock_urlopen(req, *args, **kwargs):
+            captured_urls.append(req.full_url)
+            return _mock_response({
+                "paperId": "abc123",
+                "title": "AI in education",
+            })
+
+        with patch("urllib.request.urlopen", mock_urlopen):
+            result = client.lookup({
+                "title": "AI in education",
+                "doi": "10.1000/foo?bar=baz",
+                "year": 2024,
+            })
+
+        self.assertEqual(result, {"matched": True, "paperId": "abc123"})
+        self.assertEqual(captured_urls, [
+            "https://api.semanticscholar.org/graph/v1/paper/DOI:10.1000%2Ffoo%3Fbar%3Dbaz?fields=title,authors,year,externalIds,venue,publicationDate"
+        ])
+
+    def test_rejects_non_s2_api_url_before_urlopen(self) -> None:
+        client = ssc.SemanticScholarClient()
+        urlopen = MagicMock()
+        with patch.object(ssc, "_API_BASE", "http://evil.example"):
+            with patch("urllib.request.urlopen", urlopen):
+                with self.assertRaises(SemanticScholarUnavailable):
+                    client.lookup({"title": "T", "doi": "10.1/y"})
+
+        self.assertEqual(urlopen.call_count, 0)
+
+    def test_rejects_wrong_s2_host_before_urlopen(self) -> None:
+        client = ssc.SemanticScholarClient()
+        urlopen = MagicMock()
+        with patch.object(ssc, "_API_BASE", "https://evil.example"):
+            with self.assertRaises(SemanticScholarUnavailable):
+                client.lookup({"title": "T", "doi": "10.1/y"})
+
+        self.assertEqual(urlopen.call_count, 0)
+
     def test_doi_404_falls_back_to_title_search(self) -> None:
         """Codex R2-2 closure: v3.7.3 Vector 2 says unmatched=true only
         when NEITHER DOI nor title yields a hit. DOI 404 alone is not

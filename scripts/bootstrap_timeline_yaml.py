@@ -14,9 +14,10 @@ Per spec §9.
 from __future__ import annotations
 
 import argparse
-import re
+import shutil
 import subprocess
 import sys
+import urllib.parse
 from pathlib import Path
 
 import yaml
@@ -35,7 +36,8 @@ def _crossref_lookup(doi: str, dry_run: bool) -> dict | None:
     if requests is None:
         return None  # requests not installed; treat as outage
     try:
-        r = requests.get(f"https://api.crossref.org/works/{doi}", timeout=10)
+        quoted_doi = urllib.parse.quote(doi, safe="")
+        r = requests.get(f"https://api.crossref.org/works/{quoted_doi}", timeout=10)
         if r.status_code != 200:
             return None
         return r.json().get("message", {})
@@ -47,9 +49,12 @@ def _pdftotext_first_line(pdf_path: Path, dry_run: bool) -> str | None:
     """Run pdftotext on cover page; return first non-empty line or None."""
     if dry_run or not pdf_path.exists():
         return None
+    pdftotext = shutil.which("pdftotext")
+    if pdftotext is None:
+        return None
     try:
         result = subprocess.run(
-            ["pdftotext", "-f", "1", "-l", "1", str(pdf_path), "-"],
+            [pdftotext, "-f", "1", "-l", "1", str(pdf_path), "-"],
             capture_output=True, text=True, timeout=10,
         )
         if result.returncode != 0:

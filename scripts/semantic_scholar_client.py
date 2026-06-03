@@ -47,6 +47,7 @@ except ImportError:
 
 # Per protocol: api.semanticscholar.org/graph/v1, 1 req/s unauthenticated.
 _API_BASE = "https://api.semanticscholar.org/graph/v1"
+_API_HOST = "api.semanticscholar.org"
 _API_KEY_ENV = "S2_API_KEY"
 _FIELDS = "title,authors,year,externalIds,venue,publicationDate"
 
@@ -55,6 +56,12 @@ _FIELDS = "title,authors,year,externalIds,venue,publicationDate"
 # against proactive rate limiting before a 429 fires (#115 R5-2).
 _UNAUTHENTICATED_MIN_INTERVAL = 1.0
 _AUTHENTICATED_MIN_INTERVAL = 0.1
+
+
+def _require_api_url(url: str) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != "https" or parsed.netloc != _API_HOST:
+        raise SemanticScholarUnavailable(f"Refusing non-S2 URL: {url}")
 
 
 class SemanticScholarClient:
@@ -170,6 +177,7 @@ class SemanticScholarClient:
         self._last_request_at = self._clock()
 
         url = f"{_API_BASE}{path}"
+        _require_api_url(url)
         headers = {"User-Agent": "ARS-migration/1.0"}
         if self._api_key:
             headers["x-api-key"] = self._api_key
@@ -177,7 +185,8 @@ class SemanticScholarClient:
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                # URL is fixed-host HTTPS after _require_api_url().
+                with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
                     import json
                     return json.loads(resp.read().decode("utf-8"))
             except urllib.error.HTTPError as e:
@@ -229,7 +238,9 @@ class SemanticScholarClient:
         raise SemanticScholarUnavailable(f"S2 API exhausted {_MAX_RETRIES} retries")
 
     def _lookup_by_doi(self, doi: str, expected_title: str) -> dict[str, Any]:
-        data = self._request(f"/paper/DOI:{urllib.parse.quote(doi)}?fields={_FIELDS}")
+        data = self._request(
+            f"/paper/DOI:{urllib.parse.quote(doi, safe='')}?fields={_FIELDS}"
+        )
         if not data or not data.get("paperId"):
             return {"matched": False, "paperId": None}
         # Per protocol: cross-check title; DOI_MISMATCH counts as no-match

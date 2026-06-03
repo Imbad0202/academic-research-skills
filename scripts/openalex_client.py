@@ -27,7 +27,6 @@ try:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
-        _normalize_title,
         _similarity,
     )
 except ImportError:
@@ -35,17 +34,23 @@ except ImportError:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
-        _normalize_title,
         _similarity,
     )
 
 
 _API_BASE = "https://api.openalex.org"
+_API_HOST = "api.openalex.org"
 _POLITE_EMAIL_ENV = "OPENALEX_POLITE_EMAIL"
 _FIELDS = "id,title,authorships,publication_year,doi,primary_location"
 
 _POLITE_MIN_INTERVAL = 0.1
 _ANONYMOUS_MIN_INTERVAL = 1.0
+
+
+def _require_api_url(url: str) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != "https" or parsed.netloc != _API_HOST:
+        raise OpenAlexUnavailable(f"Refusing non-OpenAlex URL: {url}")
 
 
 class OpenAlexUnavailable(Exception):
@@ -82,6 +87,7 @@ class OpenAlexClient:
         if self._polite_email:
             params["mailto"] = self._polite_email
         url = f"{_API_BASE}{path}?{urllib.parse.urlencode(params)}"
+        _require_api_url(url)
         req = urllib.request.Request(url, headers={"User-Agent": "ARS-v3.9.0"})
 
         self._throttle()
@@ -89,7 +95,8 @@ class OpenAlexClient:
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                # URL is fixed-host HTTPS after _require_api_url().
+                with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
                     # Wrap response body read + decode + parse in a narrow
                     # except so transient socket drops mid-stream, garbled
                     # bodies, or HTML error pages slipped through with 200
@@ -134,7 +141,8 @@ class OpenAlexClient:
         self, doi: str, expected_title: str,
     ) -> dict[str, Any] | None:
         """DOI lookup with mandatory Levenshtein 0.70 title cross-check."""
-        data = self._get(f"/works/doi:{doi}", {"select": _FIELDS})
+        quoted_doi = urllib.parse.quote(doi, safe="")
+        data = self._get(f"/works/doi:{quoted_doi}", {"select": _FIELDS})
         title = data.get("title") or ""
         if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return data
