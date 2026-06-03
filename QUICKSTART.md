@@ -20,7 +20,7 @@ ln -s ~/academic-research-skills/academic-paper-reviewer .claude/skills/academic
 ln -s ~/academic-research-skills/academic-pipeline .claude/skills/academic-pipeline
 ```
 
-Each skill must sit at `.claude/skills/<skill-name>/SKILL.md` for Claude Code to discover it. See [docs/SETUP.md](docs/SETUP.md) for the copy-based alternative (Option B) and other installation methods (global `~/.claude/skills/`, Cowork, claude.ai).
+Each skill must sit at `.claude/skills/<skill-name>/SKILL.md` for Claude Code to discover it. See [docs/SETUP.md](docs/SETUP.md) for the copy-based alternative, global `~/.claude/skills/` install, and the other installation methods (Claude Code plugin, Cowork via zip upload, claude.ai). Note that Cowork and claude.ai do not read `~/.claude/skills/` — they install skills through their own settings upload, not this path.
 
 ## Step 2: Launch
 

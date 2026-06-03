@@ -258,85 +258,55 @@ claude
 
 當你想在 [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork) 使用四個 ARS skills 時，請用此方式。Cowork 是 Claude Desktop 的 agentic workspace。
 
-Cowork 使用相同的 skill 資料夾形狀：`~/.claude/skills/<skill-name>/SKILL.md`。
+> **Cowork 不會讀取 `~/.claude/skills/`。** 該目錄屬於 Claude Code（CLI / IDE），Cowork 不會掃描它。Cowork 讀取的是你透過 **Settings → Capabilities → Skills** 上傳的 skill，每個 skill 各自打包成一個 zip。把 skill 資料夾 symlink 或複製到 `~/.claude/skills/`，無論重啟幾次都不會讓它們出現在 Cowork。
 
 #### 前置需求
 
 - macOS 或 Windows 的最新版 Claude Desktop。請從 Anthropic 的 [Claude Desktop page](https://claude.ai/download) 下載。
 - 可用的網路連線；Cowork tasks 會呼叫 Anthropic API。
 - Cowork tasks 執行時，請保持 Claude Desktop 開啟。Cowork 在 Desktop process 內執行。
-- Cowork 對 project folder 需有可讀寫的資料夾與檔案權限。
 - 具備 Cowork 存取權的付費方案。目前方案可用性請參考 Anthropic 的 [Cowork requirements](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork)。
-- Team 或 Enterprise 方案中，組織管理員可能停用了 Skills、plugins、connectors 或 egress。若重啟後已安裝 skills 仍未註冊，請管理員檢查組織層級設定。
+- **必須在 Settings → Capabilities 啟用 code execution / file creation**，否則 Skills 區段不會出現。參見 Anthropic 的 [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)。
+- Team 或 Enterprise 方案中，組織管理員可能停用了 Skills。若啟用 code execution 後 Skills 區段仍未出現，請管理員檢查組織層級設定。
 
-#### 選項 A：symlink 安裝（最快，單機使用）
+#### 步驟 1：每個 skill 各打一個 zip
 
-如果你只在一台機器上工作，且希望日後透過 pull repo 更新，請使用 symlinks。
-
-```bash
-git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
-
-mkdir -p ~/.claude/skills
-cd ~/.claude/skills
-ln -s ~/academic-research-skills/deep-research deep-research
-ln -s ~/academic-research-skills/academic-paper academic-paper
-ln -s ~/academic-research-skills/academic-paper-reviewer academic-paper-reviewer
-ln -s ~/academic-research-skills/academic-pipeline academic-pipeline
-```
-
-預期路徑形狀：
-
-```text
-~/.claude/skills/deep-research/SKILL.md
-~/.claude/skills/academic-paper/SKILL.md
-~/.claude/skills/academic-paper-reviewer/SKILL.md
-~/.claude/skills/academic-pipeline/SKILL.md
-```
-
-如果你透過雲端資料夾在多台機器之間同步 `~/.claude/skills`，請改用選項 B。絕對路徑 symlinks 可能在新的 checkout 或另一台機器上失效。
-
-#### 選項 B：copy 安裝（跨機器安全，不會自動更新）
-
-如果你在多台機器之間同步 `~/.claude/skills`，或不想使用 symlinks，請使用 copies。更新時需要重新執行四個 `cp -R` 指令。
+clone repo 後，把四個 skill 資料夾各自打包成 zip，讓每個 zip 的頂層都是它自己的 `SKILL.md`（不要多包一層資料夾）。`-x "*.DS_Store"` 用來排除 macOS metadata。
 
 ```bash
-git clone https://github.com/Imbad0202/academic-research-skills.git ~/academic-research-skills
+git clone https://github.com/Imbad0202/academic-research-skills.git
+cd academic-research-skills
 
-mkdir -p ~/.claude/skills
-cp -R ~/academic-research-skills/deep-research ~/.claude/skills/deep-research
-cp -R ~/academic-research-skills/academic-paper ~/.claude/skills/academic-paper
-cp -R ~/academic-research-skills/academic-paper-reviewer ~/.claude/skills/academic-paper-reviewer
-cp -R ~/academic-research-skills/academic-pipeline ~/.claude/skills/academic-pipeline
+for s in deep-research academic-paper academic-paper-reviewer academic-pipeline; do
+  (cd "$s" && zip -r "../$s.zip" . -x "*.DS_Store")
+done
 ```
 
-預期路徑形狀：
+這會在 repo 根目錄產生四個 zip：`deep-research.zip`、`academic-paper.zip`、`academic-paper-reviewer.zip`、`academic-pipeline.zip`。每個 zip 的頂層結構如下：
 
 ```text
-~/.claude/skills/deep-research/SKILL.md
-~/.claude/skills/academic-paper/SKILL.md
-~/.claude/skills/academic-paper-reviewer/SKILL.md
-~/.claude/skills/academic-pipeline/SKILL.md
+SKILL.md
+agents/
+examples/
+references/
+templates/
 ```
 
-#### 建立或開啟 Cowork Project
+#### 步驟 2：逐一上傳每個 zip
 
-標準 UI 操作流程請參考 Anthropic 的 [Organize your tasks with Projects in Claude Cowork](https://support.claude.com/en/articles/14116274-organize-your-tasks-with-projects-in-claude-cowork)。
+1. 在 Claude Desktop（或 claude.ai，上傳的 skill 會同步到同一個帳號）中，前往 **Settings → Capabilities → Skills**。
+2. 用 Skills 面板的 **+** 上傳 skill，選擇其中一個 zip。四個 zip 各上傳一次，一次一個。
+3. 每個 skill 上傳後會出現在 **Personal skills** 下，已自動啟用，**Trigger 為 Slash command + auto**。以相同名稱重新上傳會覆蓋既有的 skill（更新到新版 ARS 時很方便）。
 
-1. 開啟 Claude Desktop。
-2. 使用模式選擇器（**Chat / Cowork**），切換到 **Cowork**。
-3. 在 **Tasks** 中使用左側導覽面板，選擇 **Use an existing folder**（使用既有資料夾）。
-4. 選取你希望 Cowork 在其中工作的本機資料夾。這會建立一個指向該資料夾的 Cowork Project。
-5. 安裝或更新 skill 資料夾後，請重啟 Cowork，讓四個 skills 註冊。
-6. 開啟 **Customize → Skills**，在 **Personal skills** 下找到四個 skill（`deep-research`、`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`），把每個 skill 詳情面板右上角的 toggle 打開（開啟時會顯示 **Enabled**）。已註冊但未在此啟用的 skill 不會出現在 `/` command palette，Claude 也不會呼叫它。
+已在 Claude Desktop 驗證（2026 年 6 月）：用此方式打包的 `deep-research.zip` 可乾淨安裝，完整 skill description 保留（不會被截到 200 字元），且 `/deep-research` 會出現在 Cowork command palette。
 
-#### Cowork 如何呼叫 skills
+#### 步驟 3：在 Cowork Task 中使用
 
-Claude 會使用每個 skill 的 `description` 判斷相關性，方式如 Anthropic 的 [Skills documentation](https://code.claude.com/docs/en/skills) 所述。例如 "help me write a paper" 這類句子只是示例，不是必須逐字輸入的 trigger phrase；改寫後的意圖也能運作。
+在 Cowork Task 中輸入 `/` 開啟 command palette 選取 skill，或直接用白話描述意圖（例如「幫我對 X 做深度文獻回顧」），Cowork 會依 skill 的 `description` 自動路由。
 
-若 description-based routing 沒有選到你想用的 skill，Cowork 也提供 Anthropic 的 [Cowork plugins documentation](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork) 中說明的顯式 UI 入口：
+#### 與 Claude Code 的一個取捨
 
-- 在 **Customize → Skills** 啟用 skill 後（上方步驟 6），在 Cowork Task 中輸入 `/` 開啟 command palette 並選取它。未啟用的 skill 不會出現在這裡。
-- 使用 `+` capability picker，把已啟用的 skill 加入目前 Task。
+用此方式上傳的每個 skill 各自獨立運作，是一份 standalone 的指令集，體驗與 Claude Code 不同。在 Claude Code 中，四個 skill 是協作團隊：`academic-pipeline` 會把它們串起來（research → write → review → revise），每個 skill 各自驅動自己那組 sub-agent。Cowork 的 uploaded-skill runtime 不提供這種 sub-agent orchestration，所以個別 skill 會回應，但完整的 end-to-end pipeline 不會像在 Claude Code 那樣運作。想要完整的協作體驗，請用上方的方法零（plugin）或方法一（project skills）在 Claude Code 安裝 ARS。
 
 ### 方法四：使用 claude.ai（網頁版）
 
