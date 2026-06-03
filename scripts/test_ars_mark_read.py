@@ -20,7 +20,7 @@ from tempfile import TemporaryDirectory
 
 import yaml
 
-from scripts._test_helpers import run_script
+from tests.test_helpers import run_script
 
 
 SCRIPT = Path(__file__).parent / "ars_mark_read.py"

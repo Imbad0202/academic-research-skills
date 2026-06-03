@@ -20,7 +20,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from scripts._test_helpers import build_schema_validator, load_json_schema
+from tests.test_helpers import build_schema_validator, load_json_schema
 
 REPO = Path(__file__).resolve().parent.parent
 PASSPORT = REPO / "shared/contracts/passport"

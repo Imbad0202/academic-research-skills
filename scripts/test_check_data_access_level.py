@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from scripts._test_helpers import run_skill_linter
+from tests.test_helpers import run_skill_linter
 
 SCRIPT = Path(__file__).resolve().parent / "check_data_access_level.py"
 

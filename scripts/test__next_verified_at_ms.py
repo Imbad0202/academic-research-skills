@@ -37,7 +37,7 @@ from scripts._next_verified_at_ms import (
     rfc3339_ms,
     utc_now_ms,
 )
-from scripts._test_helpers import run_script
+from tests.test_helpers import run_script
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = REPO / "scripts/_next_verified_at_ms.py"

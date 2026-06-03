@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from scripts._test_helpers import run_script
+from tests.test_helpers import run_script
 
 SCRIPT = Path(__file__).resolve().parent / "check_collaboration_depth_rubric.py"
 

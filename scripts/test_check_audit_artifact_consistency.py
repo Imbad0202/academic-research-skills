@@ -1103,7 +1103,7 @@ class TestSchemaSelfValidation:
         "audit_verdict.schema.json",
     ])
     def test_schema_meta_valid(self, schema_name):
-        from scripts._test_helpers import load_json_schema
+        from tests.test_helpers import load_json_schema
         if "audit_jsonl" in schema_name or "audit_sidecar" in schema_name or "audit_verdict" in schema_name:
             path = REPO / "shared/contracts/audit" / schema_name
         else:

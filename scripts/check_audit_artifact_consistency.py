@@ -31,7 +31,7 @@ Lifecycle ownership notes (E8/E9 — discipline rules with no lint surface):
        human terminal).
 
 Reuse:
-  - scripts/_test_helpers.load_json_schema / build_schema_validator (FORMAT_CHECKER)
+  - tests/test_helpers.load_json_schema / build_schema_validator (FORMAT_CHECKER)
   - scripts/_next_verified_at_ms.next_verified_at_ms (D3 monotonic helper)
   - audit_snapshot is the Phase 6.1 reference for argparse subcommand pattern.
 

@@ -6,7 +6,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from scripts._test_helpers import load_json_schema
+from tests.test_helpers import load_json_schema
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

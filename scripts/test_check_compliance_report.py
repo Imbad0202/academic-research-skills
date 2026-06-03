@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from scripts._test_helpers import run_script
+from tests.test_helpers import run_script
 
 SCRIPT = Path(__file__).resolve().parent / "check_compliance_report.py"
 SCHEMA = Path(__file__).resolve().parent.parent / "shared" / "compliance_report.schema.json"
@@ -363,7 +363,7 @@ class TestComplianceReportValidator(unittest.TestCase):
 
     def test_missing_maturity_warning_opt_in(self) -> None:
         """With ARS_WARN_MISSING_MATURITY=1, warn when prisma_trAIce lacks protocol_maturity."""
-        from scripts._test_helpers import run_script as _run_with_env
+        from tests.test_helpers import run_script as _run_with_env
         report = _valid_sr_report()
         report["prisma_trAIce"].pop("protocol_maturity", None)
         with TemporaryDirectory() as tmp:

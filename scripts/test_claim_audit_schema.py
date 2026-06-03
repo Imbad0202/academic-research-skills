@@ -30,7 +30,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from scripts._test_helpers import (
+from tests.test_helpers import (
     build_schema_validator,
     load_json_schema,
     run_script,

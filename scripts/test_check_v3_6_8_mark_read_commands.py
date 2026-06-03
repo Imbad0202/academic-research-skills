@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from scripts._test_helpers import run_script
+from tests.test_helpers import run_script
 
 
 LINT = Path(__file__).parent / "check_v3_6_8_mark_read_commands.py"
