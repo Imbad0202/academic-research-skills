@@ -103,6 +103,28 @@ def test_crossref_lookup_quotes_doi_path(monkeypatch):
     ]
 
 
+def test_bootstrap_entry_locator_matches_queried_url(monkeypatch):
+    # Codex follow-up to #310: the lookup encodes the DOI, so the recorded
+    # source_locator must point at the same encoded URL — not the raw DOI —
+    # or provenance references a resource that was never queried.
+    module = _load_script_module()
+
+    monkeypatch.setattr(
+        module,
+        "_crossref_lookup",
+        lambda doi, dry_run: {"issued": {"date-parts": [[2024, 3]]}},
+    )
+
+    out = module._bootstrap_entry(
+        {"citation_key": "foo2024", "doi": "10.1000/foo?bar=baz"},
+        dry_run=False,
+    )
+
+    assert out["published_date"]["provenance"]["source_locator"] == (
+        "https://api.crossref.org/works/10.1000%2Ffoo%3Fbar%3Dbaz"
+    )
+
+
 def test_pdftotext_uses_resolved_executable(monkeypatch, tmp_path):
     module = _load_script_module()
     pdf = tmp_path / "paper.pdf"

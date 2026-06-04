@@ -81,6 +81,10 @@ def _bootstrap_entry(entry: dict, dry_run: bool) -> dict:
     doi = entry.get("doi")
     crossref_data = _crossref_lookup(doi, dry_run) if doi else None
     if crossref_data:
+        # Encode the DOI the same way _crossref_lookup does so the recorded
+        # provenance points at the URL actually queried (DOIs contain '/' and
+        # may carry reserved characters).
+        quoted_doi = urllib.parse.quote(doi, safe="")
         issued = crossref_data.get("issued", {}).get("date-parts", [[None]])[0]
         if issued and issued[0]:
             precision_map = {1: "year", 2: "month", 3: "day"}
@@ -94,7 +98,7 @@ def _bootstrap_entry(entry: dict, dry_run: bool) -> dict:
                 "provenance": {
                     "method": "crossref_lookup",
                     "raw": str(issued),
-                    "source_locator": f"https://api.crossref.org/works/{doi}",
+                    "source_locator": f"https://api.crossref.org/works/{quoted_doi}",
                     "confidence": "high",
                 },
             }

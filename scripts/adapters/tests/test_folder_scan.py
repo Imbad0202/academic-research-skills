@@ -198,18 +198,28 @@ def test_symlink_pointing_outside_input_does_not_crash(tmp_path):
     r_out = tmp_path / "r.yaml"
     r = _run("--input", str(inside), "--passport", str(p_out), "--rejection-log", str(r_out))
     assert r.returncode == 0, r.stderr
+    import json
     import yaml
+    import jsonschema
     with p_out.open() as f:
         passport = yaml.safe_load(f)
     with r_out.open() as f:
         rejection = yaml.safe_load(f)
     assert passport == {"literature_corpus": []}
     assert rejection["rejected"] == [{
+        "detail": "symlink resolves outside the input root",
         "missing_fields": [],
         "raw": "Smith2024_link.pdf",
-        "reason": "symlink_outside_input_root",
+        "reason": "other",
         "source": "Smith2024_link.pdf",
     }]
+    # The emitted rejection log must satisfy the rejection-log contract, not
+    # just be crash-free — a non-enum reason would pass the run but break the
+    # schema (Codex follow-up to #310).
+    schema = json.loads(
+        (REPO_ROOT / "shared/contracts/passport/rejection_log.schema.json").read_text()
+    )
+    jsonschema.validate(rejection, schema)
 
 
 def test_parseable_non_pdf_extension(tmp_path):

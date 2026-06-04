@@ -159,7 +159,8 @@ def main() -> int:
             except ValueError:
                 rejected.append({
                     "source": rel_str,
-                    "reason": "symlink_outside_input_root",
+                    "reason": "other",
+                    "detail": "symlink resolves outside the input root",
                     "raw": rel_str,
                     "missing_fields": [],
                 })
