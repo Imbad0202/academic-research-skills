@@ -43,7 +43,13 @@
     "resolver_outcomes": {
       "type": "object",
       "additionalProperties": false,
-      "description": "One optional field per resolver. status is one-of (mutually exclusive). queried_by records what the resolver ACTUALLY queried by (v3.11 #182 Delta 4 / C-V6(a)): the narrowed-false reducer treats an unmatched with queried_by=id as fabrication evidence and queried_by=title as a coverage gap. Downstream consumers needing to distinguish manual exemption from total outage read status directly.",
+      "description": "Exactly four fields, one per resolver — ALL required (the summary contract is fully-populated; a resolver that did not run carries status=skipped, never an absent key, so a consumer never disambiguates 'absent' from 'skipped'). status is one-of (mutually exclusive). queried_by records what the resolver ACTUALLY queried by (v3.11 #182 Delta 4 / C-V6(a)): the narrowed-false reducer treats an unmatched with queried_by=id as fabrication evidence and queried_by=title as a coverage gap. Downstream consumers needing to distinguish manual exemption from total outage read status directly.",
+      "required": [
+        "crossref",
+        "openalex",
+        "semantic_scholar",
+        "arxiv"
+      ],
       "properties": {
         "crossref": {
           "$ref": "#/$defs/resolver_outcome"
@@ -65,7 +71,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "status"
+        "status",
+        "queried_by"
       ],
       "properties": {
         "status": {
@@ -88,7 +95,7 @@
             "title",
             null
           ],
-          "description": "v3.11 #182 Delta 4 / C-V6(a): what the resolver actually queried by. `id` = an exact identifier (DOI or arXiv ID) lookup was attempted (so an `unmatched` here is ID-keyed = fabrication evidence). `title` = only a title search was possible (no resolvable identifier; an `unmatched` here is a coverage gap, reduces to unresolvable not false). `null` for skipped / pure-unreachable outcomes where no meaningful query completed. This reflects resolver EXECUTION, not entry shape (the entry having a DOI does not prove the DOI was queried — it may have been malformed/rejected)."
+          "description": "v3.11 #182 Delta 4 / C-V6(a): what the resolver actually queried by. REQUIRED (load-bearing for narrowed-false; an absent key would let an ambiguous unmatched silently reduce to unresolvable instead of false). `id` = an exact identifier (DOI or arXiv ID) lookup was attempted (so an `unmatched` here is ID-keyed = fabrication evidence). `title` = only a title search was possible (no resolvable identifier; an `unmatched` here is a coverage gap, reduces to unresolvable not false). `null` for skipped / pure-unreachable outcomes where no meaningful query completed. This reflects resolver EXECUTION, not entry shape (the entry having a DOI does not prove the DOI was queried — it may have been malformed/rejected)."
         },
         "response_summary": {
           "type": [
@@ -97,7 +104,52 @@
           ],
           "description": "Optional human-readable summary of the resolver response (e.g. matched title, error class). Null when not captured."
         }
-      }
+      },
+      "allOf": [
+        {
+          "description": "A ran resolver (matched / unmatched) always knows what it keyed on: queried_by MUST be id or title, never null. This closes the exact ambiguity the narrowed-false reducer can be fooled by (a null-keyed unmatched).",
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "matched",
+                  "unmatched"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "queried_by": {
+                "enum": [
+                  "id",
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "description": "A resolver that did not complete a query (skipped / unreachable) MUST carry queried_by=null — there was no meaningful query to attribute.",
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "skipped",
+                  "unreachable"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "queried_by": {
+                "const": null
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

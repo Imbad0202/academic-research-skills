@@ -1,6 +1,6 @@
 # Citation-Extraction Gold Subset (Phase 1a)
 
-50-tuple gold subset measuring the per-citation `lookup_verified` 3-class enum classification accuracy. Phase 1a shipped the data; **Phase 1b (#263) shipped the harness** (`scripts/run_evals.py`) — it now measures this gold set directly.
+51-tuple gold subset measuring the per-citation `lookup_verified` 3-class enum classification accuracy (50 original + one v3.11 by-design false-negative fixture, spec OQ-5 / C-V6(a)). Phase 1a shipped the data; **Phase 1b (#263) shipped the harness** (`scripts/run_evals.py`) — it now measures this gold set directly.
 
 Run it with:
 
@@ -8,7 +8,7 @@ Run it with:
 PYTHONPATH=. python -m scripts.run_evals --task citation_extraction
 ```
 
-The harness computes the predicted `lookup_verified` itself from each tuple's `resolver_outcomes.*.status` via the #182 Delta 4 reducer (`verification_gate.verify_citation` has not shipped yet; the reducer reconciles when it does). The metric is symmetric 3-class accuracy — `unresolvable` is never collapsed into `false`. Because `expected_outcomes.json` was authored by the same rule, a fresh run scores ~1.0.
+The harness computes the predicted `lookup_verified` from each tuple's `resolver_outcomes` via the #182 Delta 4 reducer `citation_verification_summary.reduce_lookup_verified` (the single source of truth). `verification_gate.verify_citation` (#182 Delta 5) runs the resolvers live and feeds the SAME reducer, so the harness and the shipped API agree by construction. The reducer uses the v3.11 narrowed-false definition (C-V6(a)): `false` requires an ID-keyed `unmatched` (`queried_by: id`); a title-only `unmatched` is a coverage gap and reduces to `unresolvable`, never `false`. The metric is symmetric 3-class accuracy — `unresolvable` is never collapsed into `false`. Because `expected_outcomes.json` was authored by the same rule, a fresh run scores ~1.0.
 
 ## Spec reference
 
@@ -26,7 +26,7 @@ The harness computes the predicted `lookup_verified` itself from each tuple's `r
 
 ## Threshold contract (v3.10.0 binding defaults)
 
-- Aggregate: `accuracy >= 0.90` across all 50 tuples
+- Aggregate: `accuracy >= 0.90` across all 51 tuples
 - Per-class: `accuracy >= 0.85` for each of `true` / `false` / `unresolvable`
 
 Changing these before v3.10.0 ship requires a spec amendment per #184 §3.1.1 / E-V2.
@@ -50,7 +50,7 @@ fuzzy-match false-positive path) is tracked in issue #250.
 
 ## Human expert verdicts
 
-10 of 50 tuples (20% per Delta 5) carry an optional `human_expert_verdict` field. The Phase 1b harness emits an `expert_concordance` row per class from these labeled tuples (agreement of the expert verdict vs `expected_outcomes.json`). The verdicts are advisory only — synthetic ground truth in `expected_outcomes.json` is the source of truth for CI gates per E-V3, and concordance never gates.
+11 tuples (the original 10 at 20% per Delta 5, plus the v3.11 by-design FN fixture) carry an optional `human_expert_verdict` field. The Phase 1b harness emits an `expert_concordance` row per class from these labeled tuples (agreement of the expert verdict vs `expected_outcomes.json`). The verdicts are advisory only — synthetic ground truth in `expected_outcomes.json` is the source of truth for CI gates per E-V3, and concordance never gates.
 
 ## Validator
 

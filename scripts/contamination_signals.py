@@ -172,11 +172,20 @@ def compute_ss_unmatched_signal(
             compute=lambda: (
                 not bool(client.lookup(entry).get("matched", False)),
                 None,
-                "id" if entry.get("doi") else "title",
+                queried_by_for(entry, id_field="doi"),
             ),
         )
     except SemanticScholarUnavailable:
         return None  # degradation → omit field, never cached
+
+
+def queried_by_for(entry: Mapping[str, Any], *, id_field: str) -> str:
+    """The C-V6(a) queried_by value for an entry: 'id' when the entry carries the
+    resolver's exact identifier (so an ID-keyed lookup is attempted), else
+    'title'. The SINGLE definition of this rule — all resolver paths (DOI-keyed,
+    arXiv-keyed, and S2's entry-keyed lookup) derive queried_by through here so
+    the narrowed-false signal can never drift across layers."""
+    return "id" if entry.get(id_field) else "title"
 
 
 def _query_form(*, id_label: str, id_value: str | None, title: str) -> str:
@@ -251,7 +260,7 @@ def _resolve_doi_then_title(
     catches."""
     title = entry.get("title", "")
     doi = entry.get("doi")
-    queried_by = "id" if doi else "title"
+    queried_by = queried_by_for(entry, id_field="doi")
     if doi:
         hit = client.doi_lookup_with_title_check(doi, title)
         if hit is not None:
@@ -343,7 +352,7 @@ def _resolve_arxiv_id_then_title(
     exception differentiation stays at the wrapper."""
     title = entry.get("title", "")
     arxiv_id = entry.get("arxiv_id")
-    queried_by = "id" if arxiv_id else "title"
+    queried_by = queried_by_for(entry, id_field="arxiv_id")
     if arxiv_id:
         hit = client.arxiv_id_lookup(arxiv_id, title)
         if hit is not None:

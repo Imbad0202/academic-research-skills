@@ -11,6 +11,19 @@ run_evals.py imports `reduce_lookup_verified` from here; there is exactly one
 reducer implementation in the repo (the old un-narrowed copy in run_evals.py
 was removed when this landed).
 
+OQ-5 recall limit (user-facing surfacing deferred). The narrowed-false rule
+means a fabricated citation that carries NO resolvable identifier (no DOI /
+arXiv ID, only a bogus title) reduces to `unresolvable`, NOT `false`, so the
+citation-existence gate does not block it — it is indistinguishable from a
+legitimately unindexed (regional / non-English / pre-digital) paper. This is an
+accepted recall limit, caught instead by the v3.8 claim-faithfulness audit +
+human review. The user-facing explanation of this limit (in docs/ARCHITECTURE.md
+and the user guide) and the policy that consumes this verdict
+(`terminal_policies.citation_existence`, enum {advisory, strict}) both land with
+the Delta 3 / C-V6 policy batch — this data-layer batch only computes the
+verdict; it does not gate on it. Gold fixtures 051 (FN) + 052 (legit-unindexed)
+pin the symmetric treatment.
+
 Spec: docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md
 §2 Delta 4 + §0(4a) + INVARIANT C-V6(a).
 """
@@ -24,8 +37,6 @@ STATUS_UNREACHABLE = "unreachable"
 STATUS_SKIPPED = "skipped"
 
 QUERIED_BY_ID = "id"
-
-CITATION_LABELS = ("true", "false", "unresolvable")
 
 
 def reduce_lookup_verified(resolver_outcomes: Mapping[str, Any]) -> str:

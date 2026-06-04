@@ -21,10 +21,17 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+from citation_verification_summary import (  # noqa: E402
+    reduce_lookup_verified as _reduce_lookup_verified,
+)
+
 LABEL_ENUM = {"true", "false", "unresolvable"}
 QUERIED_BY_ENUM = {"id", "title", None}
 KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated",
-             "fabricated_title_only"}
+             "fabricated_title_only", "valid_unindexed"}
 RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 STATUS_ENUM = {"matched", "unmatched", "unreachable", "skipped"}
 
@@ -186,6 +193,12 @@ def validate(root: Path) -> list[str]:
 
     # I9: resolver_outcomes has all four resolver keys with valid status enum
     # + valid queried_by enum (v3.11 #182 Delta 4 / C-V6(a)).
+    # I9b: every gold label must be REPRODUCIBLE by the shipped reducer (the
+    # single source of truth, C-V6(a) narrowed-false). Rather than hand-rolling
+    # the false condition here (which would drift from the reducer if C-V6(a) is
+    # ever amended), recompute each label via reduce_lookup_verified and assert
+    # it matches — pinning the gold to the reducer, not a parallel copy of its
+    # logic. Both share a single pass over expected.items().
     for tid, outcome in expected.items():
         ros = outcome.get("resolver_outcomes", {})
         for resolver in RESOLVER_NAMES:
@@ -206,22 +219,14 @@ def validate(root: Path) -> list[str]:
                     f"not in {{'id', 'title', null}}"
                 )
 
-    # I9b: narrowed-false invariant (C-V6(a)) — a `false`-labeled tuple MUST
-    # carry at least one ID-keyed unmatched (status=unmatched, queried_by=id).
-    # A title-only-only fabrication must be labeled `unresolvable`, not `false`.
-    for tid, outcome in expected.items():
-        if outcome.get("lookup_verified") != "false":
-            continue
-        ros = outcome.get("resolver_outcomes", {})
-        has_id_keyed_unmatched = any(
-            (r or {}).get("status") == "unmatched" and (r or {}).get("queried_by") == "id"
-            for r in ros.values()
-        )
-        if not has_id_keyed_unmatched:
+        recomputed = _reduce_lookup_verified(ros)
+        declared = outcome.get("lookup_verified")
+        if recomputed != declared:
             errors.append(
-                f"I9b: {tid} labeled lookup_verified=false but has no ID-keyed "
-                f"unmatched (C-V6(a): false requires a provably-bogus DOI/arXiv ID; "
-                f"a title-only unmatched must be labeled unresolvable)"
+                f"I9b: {tid} lookup_verified={declared!r} but the shipped reducer "
+                f"computes {recomputed!r} from its resolver_outcomes "
+                f"(gold label must match the single-source-of-truth reducer; "
+                f"C-V6(a) narrowed-false: false needs an ID-keyed unmatched)"
             )
 
     # I10: per-tuple corpus_entry validates against literature_corpus_entry.schema.json
