@@ -792,3 +792,95 @@ class SemanticScholarCacheTest(unittest.TestCase):
         result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
         self.assertIsNone(result)  # degradation → None (omit field)
         self.assertEqual(cache.put_calls, [])  # never cache degradation
+
+
+# ============================================================================
+# v3.11 #182 Delta 4 — queried_by retrofit (the ID-keyed-unmatched signal that
+# the narrowed-false reducer C-V6(a) needs). The internal resolver-flow helpers
+# return (unmatched, matched_by, queried_by) where queried_by records what the
+# resolver ACTUALLY queried by, so a title-only unmatched is distinguishable
+# from an ID-keyed unmatched at reduce time.
+# ============================================================================
+
+
+class ResolveDoiThenTitleQueriedByTest(unittest.TestCase):
+    """_resolve_doi_then_title now returns (unmatched, matched_by, queried_by).
+    queried_by ∈ {'id', 'title'} for unmatched; mirrors matched_by for matched."""
+
+    def test_doi_match_queried_by_id(self):
+        client = MagicMock()
+        client.doi_lookup_with_title_check.return_value = {"title": ["X"]}
+        unmatched, matched_by, queried_by = cs._resolve_doi_then_title(
+            {"title": "X", "doi": "10.5/x"}, client
+        )
+        self.assertIs(unmatched, False)
+        self.assertEqual(matched_by, "doi")
+        self.assertEqual(queried_by, "id")
+
+    def test_doi_present_but_unmatched_queried_by_id(self):
+        """DOI present, ID lookup miss, title miss → unmatched, queried_by='id'
+        (an ID lookup WAS attempted — this is ID-keyed unmatched, C-V6(a))."""
+        client = MagicMock()
+        client.doi_lookup_with_title_check.return_value = None
+        client.title_search.return_value = None
+        unmatched, matched_by, queried_by = cs._resolve_doi_then_title(
+            {"title": "Ghost", "doi": "10.5/fake"}, client
+        )
+        self.assertIs(unmatched, True)
+        self.assertIsNone(matched_by)
+        self.assertEqual(queried_by, "id")
+
+    def test_no_doi_unmatched_queried_by_title(self):
+        """No DOI to key on → title-only search → unmatched, queried_by='title'
+        (NOT id-keyed — coverage gap, must reduce to unresolvable not false)."""
+        client = MagicMock()
+        client.title_search.return_value = None
+        unmatched, matched_by, queried_by = cs._resolve_doi_then_title(
+            {"title": "Unindexed regional paper"}, client  # no doi
+        )
+        self.assertIs(unmatched, True)
+        self.assertIsNone(matched_by)
+        self.assertEqual(queried_by, "title")
+
+    def test_no_doi_title_match_queried_by_title(self):
+        client = MagicMock()
+        client.title_search.return_value = {"title": ["X"]}
+        unmatched, matched_by, queried_by = cs._resolve_doi_then_title(
+            {"title": "X"}, client  # no doi
+        )
+        self.assertIs(unmatched, False)
+        self.assertEqual(matched_by, "title")
+        self.assertEqual(queried_by, "title")
+
+
+class ResolveArxivQueriedByTest(unittest.TestCase):
+    """_resolve_arxiv_id_then_title queried_by uses arxiv_id presence."""
+
+    def test_arxiv_id_present_unmatched_queried_by_id(self):
+        client = MagicMock()
+        client.arxiv_id_lookup.return_value = None
+        client.title_search.return_value = None
+        unmatched, matched_by, queried_by = cs._resolve_arxiv_id_then_title(
+            {"title": "Ghost", "arxiv_id": "9999.99999"}, client
+        )
+        self.assertIs(unmatched, True)
+        self.assertEqual(queried_by, "id")
+
+    def test_no_arxiv_id_unmatched_queried_by_title(self):
+        client = MagicMock()
+        client.title_search.return_value = None
+        unmatched, matched_by, queried_by = cs._resolve_arxiv_id_then_title(
+            {"title": "Unindexed"}, client  # no arxiv_id
+        )
+        self.assertIs(unmatched, True)
+        self.assertEqual(queried_by, "title")
+
+    def test_arxiv_id_match_queried_by_id(self):
+        client = MagicMock()
+        client.arxiv_id_lookup.return_value = {"title": "X", "year": 2017}
+        unmatched, matched_by, queried_by = cs._resolve_arxiv_id_then_title(
+            {"title": "X", "arxiv_id": "1706.03762"}, client
+        )
+        self.assertIs(unmatched, False)
+        self.assertEqual(matched_by, "arxiv")
+        self.assertEqual(queried_by, "id")

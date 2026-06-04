@@ -167,9 +167,12 @@ def compute_ss_unmatched_signal(
                 id_value=entry.get("doi"),
                 title=entry.get("title", ""),
             ),
+            # S2's lookup() does DOI-first then title internally, so queried_by
+            # follows the same has-an-id rule as the other resolvers (C-V6(a)).
             compute=lambda: (
                 not bool(client.lookup(entry).get("matched", False)),
                 None,
+                "id" if entry.get("doi") else "title",
             ),
         )
     except SemanticScholarUnavailable:
@@ -198,48 +201,66 @@ def _cached_verdict(
 ) -> bool | None:
     """Wrap a verdict computation with the persistent cache (spec §2 Delta 2).
 
-    `compute()` returns `(unmatched: bool, matched_by: str | None)`. On a cache
-    hit the network call is skipped and the stored verdict is returned. On a
-    miss the live `compute()` runs and the verdict is persisted (negatives
-    included, so repeat runs don't re-hammer the API). `cache=None` is
-    byte-equivalent to no caching. Degradation exceptions propagate from
-    `compute()` and are NEVER cached (the caller omits the field).
+    `compute()` returns `(unmatched: bool, matched_by: str | None,
+    queried_by: str)`. On a cache hit the network call is skipped and the stored
+    verdict is returned. On a miss the live `compute()` runs and the verdict is
+    persisted (negatives included, so repeat runs don't re-hammer the API).
+    `cache=None` is byte-equivalent to no caching. Degradation exceptions
+    propagate from `compute()` and are NEVER cached (the caller omits the field).
+
+    The stored payload carries `matched_by` + `queried_by` so a cached negative
+    keeps the C-V6(a) ID-keyed signal the narrowed-false reducer needs.
     """
     if cache is None:
-        unmatched, _ = compute()
+        unmatched, _, _ = compute()
         return unmatched
     cached = cache.get(citation_key, resolver_name, query_form)
     if cached is not None and "matched" in cached:
         return not cached["matched"]
     # A row missing `matched` (written by an older/other tool) is treated as a
     # miss — force a live recompute rather than KeyError for the 90-day TTL.
-    unmatched, matched_by = compute()
+    unmatched, matched_by, queried_by = compute()
     # query_form is the cache key, not part of the value — no need to echo it
     # into the stored payload (nothing reads it back).
     cache.put(
         citation_key,
         resolver_name,
         query_form,
-        {"matched": not unmatched, "matched_by": matched_by},
+        {"matched": not unmatched, "matched_by": matched_by,
+         "queried_by": queried_by},
     )
     return unmatched
 
 
-def _resolve_doi_then_title(entry: Mapping[str, Any], client) -> tuple[bool, str | None]:
-    """Run the DOI-then-title resolver flow, returning (unmatched, matched_by).
-    matched_by ∈ {'doi', 'title', None}. Exception-type differentiation stays
-    at the wrapper — this helper never catches."""
+def _resolve_doi_then_title(
+    entry: Mapping[str, Any], client,
+) -> tuple[bool, str | None, str]:
+    """Run the DOI-then-title resolver flow, returning
+    (unmatched, matched_by, queried_by).
+
+    matched_by ∈ {'doi', 'title', None}: which channel produced a match.
+    queried_by ∈ {'id', 'title'}: what the resolver ACTUALLY queried by —
+      'id' when a DOI was present (so an exact-key lookup was attempted, even
+      if it then fell through to title), 'title' when no DOI was available to
+      key on. This is the C-V6(a) signal: an `unmatched` with queried_by='id'
+      is fabrication evidence (a provably-bogus identifier); queried_by='title'
+      is a coverage gap (reduce to unresolvable, not false). It reflects
+      execution, not entry shape — see #182 Delta 4 / C-V6(a).
+
+    Exception-type differentiation stays at the wrapper — this helper never
+    catches."""
     title = entry.get("title", "")
     doi = entry.get("doi")
+    queried_by = "id" if doi else "title"
     if doi:
         hit = client.doi_lookup_with_title_check(doi, title)
         if hit is not None:
-            return False, "doi"
+            return False, "doi", queried_by
         # DOI miss or MISMATCH — fall through to title search.
     hit = client.title_search(title)
     if hit is not None:
-        return False, "title"
-    return True, None
+        return False, "title", queried_by
+    return True, None, queried_by
 
 
 def _resolve_by_doi_then_title(
@@ -314,21 +335,24 @@ def resolve_crossref_unmatched(
 
 def _resolve_arxiv_id_then_title(
     entry: Mapping[str, Any], client,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, str]:
     """arXiv-specific resolver flow (ID-keyed, not DOI-keyed), returning
-    (unmatched, matched_by). matched_by ∈ {'arxiv', 'title', None}. Never
-    catches — exception differentiation stays at the wrapper."""
+    (unmatched, matched_by, queried_by). matched_by ∈ {'arxiv', 'title', None};
+    queried_by ∈ {'id', 'title'} per the C-V6(a) signal (see
+    _resolve_doi_then_title). 'id' when an arXiv ID was present. Never catches —
+    exception differentiation stays at the wrapper."""
     title = entry.get("title", "")
     arxiv_id = entry.get("arxiv_id")
+    queried_by = "id" if arxiv_id else "title"
     if arxiv_id:
         hit = client.arxiv_id_lookup(arxiv_id, title)
         if hit is not None:
-            return False, "arxiv"
+            return False, "arxiv", queried_by
         # ID miss or MISMATCH — fall through to title search.
     hit = client.title_search(title)
     if hit is not None:
-        return False, "title"
-    return True, None
+        return False, "title", queried_by
+    return True, None, queried_by
 
 
 def resolve_arxiv_unmatched(
