@@ -184,6 +184,32 @@ def test_i9_invalid_status_enum_caught(tmp_path):
     assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
 
 
+def test_i9_invalid_queried_by_enum_caught(tmp_path):
+    """I9: queried_by outside {id, title, null} caught (v3.11 Delta 4)."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
+    exp["001-valid-doi-test"]["resolver_outcomes"]["crossref"]["queried_by"] = "doi"
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
+
+
+def test_i9b_false_with_only_title_only_unmatched_caught(tmp_path):
+    """I9b (C-V6(a)): a `false`-labeled tuple whose unmatched are all title-only
+    (queried_by != id) is a mislabel — narrowed-false requires an ID-keyed
+    unmatched. The validator must catch it (a title-only fabrication should be
+    labeled unresolvable)."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
+    # 003-fabricated-test is labeled false; flip its unmatched to title-only.
+    for r in exp["003-fabricated-test"]["resolver_outcomes"].values():
+        if r["status"] == "unmatched":
+            r["queried_by"] = "title"
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I9b" in e for e in errors), f"I9b not caught; errors: {errors}"
+
+
 def test_i10_authors_string_shorthand_caught(tmp_path):
     """I10: corpus_entry.authors as string array (CSL-JSON shorthand) caught.
 

@@ -6,13 +6,15 @@ outcome_gradable: true
 description: |
   Phase 1 gold subset for #182 verification_gate.verify_citation.
   Measures the lookup_verified 3-class enum classification accuracy
-  across 50 hand-curated tuples.
+  across 51 hand-curated tuples (incl. one by-design false-negative
+  fixture per spec OQ-5 / C-V6(a): a no-identifier fabrication that
+  must stay unresolvable, never false).
 target:
   entrypoint: verification_gate.verify_citation
   predicted_field: lookup_verified
   expected_outcomes_path: expected_outcomes.json
   tuple_dir: tuples
-sample_n: 50
+sample_n: 51
 labels: ["true", "false", "unresolvable"]
 thresholds:
   aggregate:
@@ -39,3 +41,6 @@ tuple_distribution:
   - kind: fabricated
     n: 15
     expected_lookup_verified: "false"
+  - kind: fabricated_title_only
+    n: 1
+    expected_lookup_verified: "unresolvable"

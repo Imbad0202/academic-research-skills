@@ -4,19 +4,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -25,19 +29,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -46,19 +54,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -67,19 +79,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -88,19 +104,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -109,19 +129,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -130,19 +154,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -151,19 +179,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -172,19 +204,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -193,19 +229,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -214,19 +254,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -235,19 +279,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -256,19 +304,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -277,19 +329,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -298,19 +354,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -319,19 +379,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -340,19 +404,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -361,19 +429,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -382,19 +454,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -403,19 +479,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -424,19 +504,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -445,19 +529,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -466,19 +554,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -487,19 +579,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -508,19 +604,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -529,19 +629,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -550,19 +654,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -571,19 +679,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -592,19 +704,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -613,19 +729,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "openalex": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "semantic_scholar": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "title"
       },
       "arxiv": {
         "status": "matched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       }
     }
   },
@@ -634,19 +754,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -655,19 +779,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -676,19 +804,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -697,19 +829,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -718,19 +854,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -739,19 +879,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -760,19 +904,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -781,19 +929,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -802,19 +954,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -823,19 +979,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -844,19 +1004,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "openalex": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "semantic_scholar": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -865,19 +1029,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "openalex": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "semantic_scholar": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -886,19 +1054,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "openalex": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "semantic_scholar": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -907,19 +1079,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "openalex": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "semantic_scholar": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -928,19 +1104,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "openalex": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "semantic_scholar": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -949,19 +1129,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -970,19 +1154,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -991,19 +1179,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -1012,19 +1204,23 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "openalex": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "semantic_scholar": {
         "status": "unmatched",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": "id"
       },
       "arxiv": {
         "status": "skipped",
-        "response_summary": null
+        "response_summary": null,
+        "queried_by": null
       }
     }
   },
@@ -1033,18 +1229,47 @@
     "resolver_outcomes": {
       "crossref": {
         "status": "unmatched",
+        "response_summary": null,
+        "queried_by": "id"
+      },
+      "openalex": {
+        "status": "unmatched",
+        "response_summary": null,
+        "queried_by": "id"
+      },
+      "semantic_scholar": {
+        "status": "unmatched",
+        "response_summary": null,
+        "queried_by": "id"
+      },
+      "arxiv": {
+        "status": "skipped",
+        "response_summary": null,
+        "queried_by": null
+      }
+    }
+  },
+  "051-fabricated-title-only-no-identifier": {
+    "lookup_verified": "unresolvable",
+    "resolver_outcomes": {
+      "crossref": {
+        "status": "unmatched",
+        "queried_by": "title",
         "response_summary": null
       },
       "openalex": {
         "status": "unmatched",
+        "queried_by": "title",
         "response_summary": null
       },
       "semantic_scholar": {
         "status": "unmatched",
+        "queried_by": "title",
         "response_summary": null
       },
       "arxiv": {
         "status": "skipped",
+        "queried_by": null,
         "response_summary": null
       }
     }

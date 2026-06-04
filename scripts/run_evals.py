@@ -7,11 +7,11 @@ each task, and emits a report shaped by ``shared/evals_lift_report.schema.json``
 Per-task measurement dispatch:
 
 * ``citation_extraction`` (outcome-gradable) — the harness computes the predicted
-  ``lookup_verified`` 3-class enum ITSELF from each tuple's
-  ``resolver_outcomes.*.status`` via the #182 Delta 4 reducer (see
-  ``reduce_lookup_verified``). It does NOT call ``verification_gate.verify_citation``
-  because that API has not shipped yet (#182 Delta 5). When that module lands,
-  reconcile the reducer against it.
+  ``lookup_verified`` 3-class enum from each tuple's ``resolver_outcomes`` via the
+  shipped #182 Delta 4 reducer ``citation_verification_summary.reduce_lookup_verified``
+  (the SINGLE source of truth — re-exported here for back-compat). The reducer uses
+  the v3.11 narrowed-false definition (C-V6(a)): ``false`` requires an ID-keyed
+  unmatched, never a title-only one.
 * ``rq_framing_patterns`` (advisory-calibration) — dispatches to the existing
   ``scripts.check_rq_framing_patterns`` runner and adapts its FNR / FPR /
   balanced-accuracy output into the per-task lift-report shape.
@@ -64,38 +64,17 @@ CITATION_LABELS = ("true", "false", "unresolvable")
 
 
 # ---------------------------------------------------------------------------
-# #182 Delta 4 reducer
+# #182 Delta 4 reducer — single source of truth lives in
+# citation_verification_summary.py. Re-exported here so existing callers
+# (and tests) that import run_evals.reduce_lookup_verified keep working.
+# The reducer uses the v3.11 narrowed-false definition (C-V6(a)): `false`
+# requires an ID-keyed unmatched (resolver_outcomes[r].queried_by == "id"),
+# never a title-only unmatched.
 # ---------------------------------------------------------------------------
-def reduce_lookup_verified(resolver_outcomes: dict[str, Any]) -> str:
-    """Reduce per-resolver statuses to a 3-class ``lookup_verified`` value.
-
-    reducer mirrors #182 Delta 4; reconcile when verification_gate.verify_citation ships.
-
-    Rules (symmetric 3-class; ``unresolvable`` is NEVER collapsed into ``false``):
-
-    * ``skipped`` outcomes are EXCLUDED from classification (resolver
-      applicability / policy, not adjudication). "Applicable" = not skipped.
-    * ``true``  iff at least one applicable resolver returned ``matched``
-      (matched WINS — true even if another applicable resolver is ``unmatched``).
-    * ``false`` iff at least one applicable resolver returned ``unmatched`` AND
-      no applicable resolver returned ``matched`` (anti-fabrication bias:
-      3 unmatched + 1 unreachable -> false).
-    * ``unresolvable`` iff every applicable resolver is ``unreachable`` (total
-      outage) with no matched/unmatched — OR — every resolver is ``skipped``
-      (empty adjudicating set; manual-entry exempt). Both default to
-      ``unresolvable``.
-    """
-    statuses = [
-        (entry or {}).get("status")
-        for entry in resolver_outcomes.values()
-    ]
-    applicable = [s for s in statuses if s != STATUS_SKIPPED]
-
-    if any(s == STATUS_MATCHED for s in applicable):
-        return "true"
-    if any(s == STATUS_UNMATCHED for s in applicable):
-        return "false"
-    return "unresolvable"
+try:
+    from citation_verification_summary import reduce_lookup_verified
+except ImportError:
+    from scripts.citation_verification_summary import reduce_lookup_verified
 
 
 # ---------------------------------------------------------------------------

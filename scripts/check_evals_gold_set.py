@@ -22,7 +22,9 @@ import yaml
 from jsonschema import Draft202012Validator
 
 LABEL_ENUM = {"true", "false", "unresolvable"}
-KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated"}
+QUERIED_BY_ENUM = {"id", "title", None}
+KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated",
+             "fabricated_title_only"}
 RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 STATUS_ENUM = {"matched", "unmatched", "unreachable", "skipped"}
 
@@ -170,16 +172,20 @@ def validate(root: Path) -> list[str]:
             if arxiv_id:
                 errors.append(f"I6: {stem}.json kind={kind!r} but arxiv_id={arxiv_id!r} present (must be null)")
 
-    # I7: fabrication_intent <-> kind == "fabricated"
+    # I7: fabrication_intent <-> kind is a fabrication kind. Both `fabricated`
+    # (ID-keyed → false) and `fabricated_title_only` (no identifier → unresolvable,
+    # the C-V6(a) by-design FN fixture) are fabrications and MUST carry the marker.
+    fabrication_kinds = {"fabricated", "fabricated_title_only"}
     for stem, tup in tuples_by_id.items():
         kind = tup.get("kind")
         marker = tup.get("fabrication_intent")
-        if kind == "fabricated" and marker is not True:
-            errors.append(f"I7: {stem}.json kind=fabricated but fabrication_intent={marker!r} (must be true)")
-        if kind != "fabricated" and marker is True:
+        if kind in fabrication_kinds and marker is not True:
+            errors.append(f"I7: {stem}.json kind={kind!r} but fabrication_intent={marker!r} (must be true)")
+        if kind not in fabrication_kinds and marker is True:
             errors.append(f"I7: {stem}.json kind={kind!r} but fabrication_intent=true (must be false)")
 
     # I9: resolver_outcomes has all four resolver keys with valid status enum
+    # + valid queried_by enum (v3.11 #182 Delta 4 / C-V6(a)).
     for tid, outcome in expected.items():
         ros = outcome.get("resolver_outcomes", {})
         for resolver in RESOLVER_NAMES:
@@ -193,6 +199,30 @@ def validate(root: Path) -> list[str]:
                     f"I9: {tid} resolver_outcomes.{resolver}.status={status!r} "
                     f"not in {sorted(STATUS_ENUM)}"
                 )
+            queried_by = entry.get("queried_by")
+            if queried_by not in QUERIED_BY_ENUM:
+                errors.append(
+                    f"I9: {tid} resolver_outcomes.{resolver}.queried_by={queried_by!r} "
+                    f"not in {{'id', 'title', null}}"
+                )
+
+    # I9b: narrowed-false invariant (C-V6(a)) — a `false`-labeled tuple MUST
+    # carry at least one ID-keyed unmatched (status=unmatched, queried_by=id).
+    # A title-only-only fabrication must be labeled `unresolvable`, not `false`.
+    for tid, outcome in expected.items():
+        if outcome.get("lookup_verified") != "false":
+            continue
+        ros = outcome.get("resolver_outcomes", {})
+        has_id_keyed_unmatched = any(
+            (r or {}).get("status") == "unmatched" and (r or {}).get("queried_by") == "id"
+            for r in ros.values()
+        )
+        if not has_id_keyed_unmatched:
+            errors.append(
+                f"I9b: {tid} labeled lookup_verified=false but has no ID-keyed "
+                f"unmatched (C-V6(a): false requires a provably-bogus DOI/arXiv ID; "
+                f"a title-only unmatched must be labeled unresolvable)"
+            )
 
     # I10: per-tuple corpus_entry validates against literature_corpus_entry.schema.json
     for stem, tup in tuples_by_id.items():
