@@ -55,4 +55,8 @@ jobs:
       - name: Run test suite
         env:
           PYTHONPATH: .
+          # actions/checkout does not set origin/HEAD, so the v3.6.8
+          # pattern-protection lint cannot resolve the default branch via
+          # `git symbolic-ref`. Provide its documented env fallback.
+          GITHUB_DEFAULT_BRANCH: main
         run: pytest scripts/ tests/
