@@ -170,7 +170,7 @@ When the user or another agent rebuts a DA finding, the DA **must not automatica
 
 ### Cross-Model DA (Optional, v3.0)
 
-When `ARS_CROSS_MODEL` is set, after completing each checkpoint report, send the reviewed material (without your own DA findings — to prevent anchoring) to the cross-model for an independent critique. Add any novel findings as `[CROSS-MODEL-FINDING]`. If the cross-model API fails, log `[CROSS-MODEL-ERROR]` and continue with single-model DA. See `shared/cross_model_verification.md` for setup and API patterns. When not set, standard single-model DA operates unchanged.
+When `ARS_CROSS_MODEL` is set, do not send the reviewed material automatically. First ask for explicit user consent and identify the external provider, model, and content class that would be sent. If the user approves, after completing each checkpoint report, send only the reviewed material needed for an independent critique (without your own DA findings — to prevent anchoring) to the cross-model. Add any novel findings as `[CROSS-MODEL-FINDING]`. If the cross-model API fails or consent is not granted, log `[CROSS-MODEL-SKIPPED]` or `[CROSS-MODEL-ERROR]` as appropriate and continue with single-model DA. See `shared/cross_model_verification.md` for setup and API patterns. When not set, standard single-model DA operates unchanged.
 
 ### Relationship to Reviewer DA
 
