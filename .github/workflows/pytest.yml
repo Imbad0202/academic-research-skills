@@ -3,22 +3,26 @@ name: pytest
 on:
   pull_request:
     paths:
-      - 'scripts/adapters/**'
-      - 'scripts/check_literature_corpus_schema.py'
-      - 'scripts/check_corpus_consumer_protocol.py'
-      - 'scripts/sync_adapter_docs.py'
-      - 'shared/contracts/passport/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'shared/contracts/**'
+      - 'conftest.py'
+      - 'pyproject.toml'
+      - 'requirements-dev.txt'
+      - '.github/workflows/pytest.yml'
       - 'academic-pipeline/references/adapters/**'
       - 'academic-pipeline/references/literature_corpus_consumers.md'
       - 'deep-research/agents/bibliography_agent.md'
   push:
     branches: [main]
     paths:
-      - 'scripts/adapters/**'
-      - 'scripts/check_literature_corpus_schema.py'
-      - 'scripts/check_corpus_consumer_protocol.py'
-      - 'scripts/sync_adapter_docs.py'
-      - 'shared/contracts/passport/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'shared/contracts/**'
+      - 'conftest.py'
+      - 'pyproject.toml'
+      - 'requirements-dev.txt'
+      - '.github/workflows/pytest.yml'
       - 'academic-pipeline/references/adapters/**'
       - 'academic-pipeline/references/literature_corpus_consumers.md'
       - 'deep-research/agents/bibliography_agent.md'
@@ -48,7 +52,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt pytest
 
-      - name: Run adapter tests
+      - name: Run test suite
         env:
           PYTHONPATH: .
-        run: pytest scripts/adapters/tests/ -v
+        run: pytest scripts/ tests/
