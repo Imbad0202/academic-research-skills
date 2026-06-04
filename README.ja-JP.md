@@ -321,6 +321,12 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## Changelog
 
+### v3.11.0 (2026-06-04) — 決定論的引用検証ゲート（#182）
+
+> **[machine-translated]** この項目は機械翻訳であり、ネイティブ contributor によるレビュー待ちです。正本は英語版 CHANGELOG です。
+
+> LLM ピアレビューとは独立に動作する**決定論的な引用存在性検証ゲート**を追加。各引用は最大 4 つの書誌インデックス（Semantic Scholar、OpenAlex、Crossref、および新規の **arXiv resolver**、`scripts/arxiv_client.py`、API キー不要）と照合され、引用ごとの `lookup_verified` 状態（`{true, false, unresolvable}`）が統一サマリに書き込まれる。捏造された、解決できない DOI/arXiv ID を持つ引用は、レビュー agent が気づくことを期待するのではなく、lookup によって検出・マークされる（ユーザーが strict を選択したときのみ終止に昇格）。このゲートは **v3.10 の `terminal_policies` opt-in モデルを継承**する。検出は常に実行されるが、`lookup_verified == false` の行が終止的になるのはユーザーが `terminal_policies.citation_existence == strict` を選択したときのみで、デフォルトの挙動は advisory（`/ars-mark-read` で承認可能）である。`false` の定義は意図的に **ID-keyed unmatched に限定**（正確な DOI/arXiv で照会して解決できないことが証明された場合）されており、正当だが未索引の人文系 / 非英語 / 地域ジャーナルの引用は `unresolvable` に分類され、決してブロックされない（ドキュメントに明記された「精度優先・再現率劣後」のトレードオフ）。本バージョンには永続的な SQLite 検証 cache（`~/.cache/ars/verification.db`、90 日 TTL）と `/ars-cache-invalidate` コマンド、独立した `verification_gate` API と `verify_passport.py` CLI、および v3.9.0 の汚染トライアンギュレーション行列を 4 インデックス（k=0..4、すべて advisory）へ拡張したものも含まれる。`academic-pipeline` は suite に追従して v3.11.0、他の 3 つの skill バージョンは変更なし。仕様: `docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md`（§0 amendment + C-V6）。
+
 ### v3.10.0 (2026-06-01) — トライアンギュレーション・ポリシー層、Kong サーベイ採用、評価ハーネス、スコープ書き込みガード
 
 > *[machine-translated, pending native review by @eltociear]*

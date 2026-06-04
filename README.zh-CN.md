@@ -304,6 +304,12 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## 更新纪录
 
+### v3.11.0（2026-06-04）— 确定性引用查验 gate（#182）
+
+> **[machine-translated]** 本条目为机器翻译，待母语 contributor 校订；以英文版 CHANGELOG 为准。
+
+> 新增一道**确定性的引用存在性查验 gate**，独立于 LLM 同侪审查运作。每笔引用都会比对最多四个书目索引（Semantic Scholar、OpenAlex、Crossref，以及新增的 **arXiv resolver**，`scripts/arxiv_client.py`，不需 API key），把每笔引用的 `lookup_verified` 状态（`{true, false, unresolvable}`）写进统一汇整。捏造、带着查不到的 DOI/arXiv ID 的引用，因此被 lookup 侦测标示出来（在用户选用 strict 时才升级为终止），而非寄望审查 agent 注意到。这道 gate **沿用 v3.10 `terminal_policies` 的 opt-in 模型**：侦测一律执行，但 `lookup_verified == false` 的列只有在用户选用 `terminal_policies.citation_existence == strict` 时才是终止性的；默认行为是 advisory、可用 `/ars-mark-read` 认可。`false` 的定义刻意**收窄到 ID-keyed unmatched**（一次以精确 DOI/arXiv 查验、却证实查不到），因此正当但未被索引的人文 / 非英语 / 区域期刊引用会落在 `unresolvable`、永不阻挡（这是文件中载明的「精确优先于召回」取舍）。本版另含持久化 SQLite 查验 cache（`~/.cache/ars/verification.db`，90 天 TTL）搭配 `/ars-cache-invalidate` 指令、独立的 `verification_gate` API 与 `verify_passport.py` CLI，以及把 v3.9.0 污染三角验证矩阵扩成四索引（k=0..4，全属 advisory）。`academic-pipeline` 追 suite 至 v3.11.0，其余三个 skill 版号不变。规格：`docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md`（§0 amendment + C-V6）。
+
 ### v3.10.0（2026-06-01）— 三角验证政策层、Kong 综述采纳、评测 harness、scoped-write guard
 
 > Minor release，打包数项工作：可选用的污染三角验证 **terminal 政策层**（#127，默认引用行为与 v3.9.0 byte-equivalent）；**Kong et al. 2026 综述采纳**，包含 Rebuttal Commitment Ledger（#256/#266/#268/#269）与依学门的 domain evidence profile（#259）；**v3.10 量测基建**，通用化评测 gold set 加 ranking-lift CI gate（#184）；**scoped-write guard MVP**（#134），一个 deterministic `PreToolUse` hook，把 23 个单一 phase 的 subagent 围进各自的 phase 目录、并禁用它们的 Bash（改用 Grep/Glob 与结构化编辑工具）；`/ars-mark-read` plugin 指令（#190）加一个 broken-on-arrival 修正（#195）；简体中文 README（#185）；以及 CI 强化（#156/#155）。`academic-paper` 升至 v3.2.0、`academic-paper-reviewer` 升至 v1.10.0，反映 Commitment Ledger 与 domain profile 的新增功能；`academic-pipeline` 追 suite 至 v3.10.0。默认 skill 行为不变，除非用户选用 strict 政策模式；唯一 default-on 的改动是 #134 guard，它约束的是被围起来的 subagent，不是面向用户的产出。
