@@ -98,11 +98,18 @@ LINE_BUDGET_V3_9_0_EXTENSION = 50
 # shapes (terminal / non-terminal) + strict & strict_articles_only promotion
 # rules + manual-entry exemption + the terminal_blocked[] audit-trail note.
 # It is the largest finalizer extension because it carries the full grammar
-# definition. Measured at first-write: ~64 lines. Budget includes ~11 lines
-# headroom for codex-round prose adjustments. Like the v3.7.x / v3.9.0 blocks,
+# definition. Measured at first-write: ~64 lines. Like the v3.7.x / v3.9.0 blocks,
 # this v3.10 block has its own scope and MUST be subtracted from the v3.6.7
 # Phase 6.6 +60 budget.
-LINE_BUDGET_V3_10_EXTENSION = 75
+#
+# v3.11 (#182 Delta 3 / INVARIANT C-V6) adds the `### Citation-existence terminal
+# promotion under strict` subsection INSIDE this same H2 block (the second wired
+# terminal policy alongside contamination_triangulation), plus the C-V6(f) manual-
+# exemption sentence and the C-V6(g) multi-policy co-emit audit-trail paragraph.
+# Measured after C-V6 landed: 84 lines. Budget raised 75 → 90 (rationale: the new
+# policy is a binding spec deliverable carrying C-V6 (a)-(h) requirements, not codex-
+# round prose; ~6 lines headroom retained for review adjustments).
+LINE_BUDGET_V3_10_EXTENSION = 90
 
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as

@@ -316,3 +316,46 @@ def test_mutation_formatter_missing_stamp_only_fails():
     # Missing STAMP-ONLY + MUST NOT re-evaluate → should fail.
     fails = check_formatter_prompt(text)
     assert any("STAMP-ONLY" in f or "MUST NOT re-evaluate" in f for f in fails)
+
+
+# --- v3.11 / C-V6 citation_existence lint mutations ---
+
+def test_mutation_citation_existence_enum_drift_fails(tp_schema):
+    """Rule 9 (C-V6): if citation_existence accepts strict_articles_only (or any
+    member outside {advisory, strict}), the lint must fail."""
+    tp_schema["properties"]["citation_existence"]["enum"].append("strict_articles_only")
+    fails = check_terminal_policies_schema(tp_schema)
+    assert any("citation_existence enum mismatch" in f for f in fails)
+
+
+def test_mutation_citation_existence_json_schema_default_fails(tp_schema):
+    """Rule 9 (C-V6): a JSON-Schema `default` on citation_existence is non-operational
+    false safety — the lint must reject it."""
+    tp_schema["properties"]["citation_existence"]["default"] = "advisory"
+    fails = check_terminal_policies_schema(tp_schema)
+    assert any("citation_existence MUST NOT carry a JSON-Schema `default`" in f for f in fails)
+
+
+def test_mutation_finalizer_missing_citation_existence_token_fails():
+    """Rule 9 (C-V6): if the finalizer section drops the citation_existence terminal
+    token grammar, the lint must fail (the writer/grammar pin)."""
+    text = ("## Cite-Time Provenance Finalizer — v3.10 extension\n\n"
+            "TERMINAL-BLOCK severity=HIGH-BLOCK policy_hash present, sole policy "
+            "evaluator, MUST NOT infer venue_type from index fields. Recompute each "
+            "pass.\n\n## Next")
+    # citation_existence terminal token + reason absent → must fail rule 9.
+    fails = check_finalizer_prompt(text)
+    assert any("policy=citation_existence" in f or "reason=lookup_verified_false" in f
+               for f in fails)
+
+
+def test_mutation_finalizer_citation_existence_without_recompute_fails():
+    """Rule 9 (C-V6(h)): a finalizer that documents citation_existence but drops the
+    recompute-each-pass / no-cache property must fail."""
+    text = ("## Cite-Time Provenance Finalizer — v3.10 extension\n\n"
+            "TERMINAL-BLOCK severity=HIGH-BLOCK policy=citation_existence "
+            "reason=lookup_verified_false policy_hash present, sole policy evaluator, "
+            "MUST NOT infer venue_type from index fields.\n\n## Next")
+    # citation_existence present but no "Recompute each pass" → must fail rule 9(h).
+    fails = check_finalizer_prompt(text)
+    assert any("recompute-each-pass" in f for f in fails)
