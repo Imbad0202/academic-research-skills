@@ -482,6 +482,85 @@ def test_v3_10_venue_mutation_trusted_source_required_is_load_bearing(schema: di
     assert any(Draft202012Validator(schema).iter_errors(bad))
 
 
+# ---------- v3.11 #182 Delta 1: contamination_signals.arxiv_unmatched ----------
+
+
+def test_v3_11_contamination_signals_accepts_arxiv_unmatched(validator) -> None:
+    """arxiv_unmatched is an optional boolean alongside the v3.9.0 triplet."""
+    entry = _minimal_entry(
+        contamination_signals={"arxiv_unmatched": True}
+    )
+    assert list(validator.iter_errors(entry)) == [], (
+        "a non-manual entry carrying arxiv_unmatched must validate"
+    )
+
+
+def test_v3_11_contamination_signals_arxiv_unmatched_rejects_non_bool(
+    validator,
+) -> None:
+    """arxiv_unmatched is typed boolean; a string must fail."""
+    entry = _minimal_entry(
+        contamination_signals={"arxiv_unmatched": "yes"}
+    )
+    assert any(validator.iter_errors(entry)), (
+        "arxiv_unmatched must reject a non-boolean value"
+    )
+
+
+def test_v3_11_contamination_signals_keeps_additional_properties_false(
+    validator,
+) -> None:
+    """The contamination_signals object stays closed (no unknown signals)."""
+    entry = _minimal_entry(
+        contamination_signals={"made_up_signal": True}
+    )
+    assert any(validator.iter_errors(entry)), (
+        "contamination_signals must reject unknown fields "
+        "(additionalProperties: false)"
+    )
+
+
+def test_v3_11_manual_entry_with_arxiv_unmatched_fails(validator) -> None:
+    """The manual-entry not-rule extends to arxiv_unmatched: a manual entry
+    MUST NOT carry it (would surface CONTAMINATED-* on a user-vouched ref)."""
+    entry = _minimal_entry(
+        obtained_via="manual",
+        contamination_signals={"arxiv_unmatched": True},
+    )
+    assert any(validator.iter_errors(entry)), (
+        "a manual entry carrying arxiv_unmatched must FAIL the not-rule"
+    )
+
+
+def test_v3_11_manual_entry_not_rule_covers_v3_9_0_triplet(validator) -> None:
+    """Regression guard for the pre-existing v3.9.0 not-rule members — the
+    extension must not drop coverage of s2 / openalex / crossref."""
+    for field in (
+        "semantic_scholar_unmatched",
+        "openalex_unmatched",
+        "crossref_unmatched",
+    ):
+        entry = _minimal_entry(
+            obtained_via="manual",
+            contamination_signals={field: True},
+        )
+        assert any(validator.iter_errors(entry)), (
+            f"a manual entry carrying {field} must FAIL the not-rule"
+        )
+
+
+def test_v3_11_manual_entry_keeps_preprint_signal_allowed(validator) -> None:
+    """The not-rule covers the lookup fields only — a manual entry MAY still
+    carry preprint_post_llm_inflection (pure heuristic, not a lookup)."""
+    entry = _minimal_entry(
+        obtained_via="manual",
+        contamination_signals={"preprint_post_llm_inflection": True},
+    )
+    assert list(validator.iter_errors(entry)) == [], (
+        "a manual entry carrying only the preprint heuristic must validate"
+    )
+
+
 # ---------- Existing fixtures stay green ----------
 
 

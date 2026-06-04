@@ -13,6 +13,14 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Protocol
 
+# Re-export ArxivUnavailable so callers (and tests) can reference it from the
+# signals module alongside the other resolver exceptions. Dual-path import
+# mirrors the client modules' own import guard.
+try:
+    from arxiv_client import ArxivUnavailable
+except ImportError:
+    from scripts.arxiv_client import ArxivUnavailable
+
 
 # 10-venue closed list per v3.7.3 spec §3.2 + schema description.
 # This list is intentionally redundant with the bibliography_agent's
@@ -125,6 +133,8 @@ def compute_preprint_signal(entry: Mapping[str, Any]) -> bool:
 def compute_ss_unmatched_signal(
     entry: Mapping[str, Any],
     client: SemanticScholarClient,
+    *,
+    cache=None,
 ) -> bool | None:
     """Signal 2 per v3.7.3 spec §3.2 Vector 2.
 
@@ -136,34 +146,124 @@ def compute_ss_unmatched_signal(
     Per spec emission rules, None means OMIT the field from the
     contamination_signals object (NOT set to False — that would imply
     "checked and found", which is not what happened).
+
+    cache: optional VerificationCache (spec §2 Delta 2). The S2 wrapper is the
+    resolver layer for S2 (its `lookup` is the lone entry-keyed client method),
+    so it shares the same `_cached_verdict` path as the other three resolvers.
+    A degradation returns None and is NEVER cached (absent != false): the
+    SemanticScholarUnavailable raised by `lookup` propagates out of `compute`
+    (uncached, since the put runs only on success) and is caught here to yield
+    None. cache=None is byte-equivalent to no caching.
     """
     if entry.get("obtained_via") == "manual":
         return None
     try:
-        result = client.lookup(entry)
+        return _cached_verdict(
+            cache=cache,
+            citation_key=entry.get("citation_key"),
+            resolver_name="semantic_scholar",
+            query_form=_query_form(
+                id_label="doi",
+                id_value=entry.get("doi"),
+                title=entry.get("title", ""),
+            ),
+            compute=lambda: (
+                not bool(client.lookup(entry).get("matched", False)),
+                None,
+            ),
+        )
     except SemanticScholarUnavailable:
-        return None
-    return not result.get("matched", False)
+        return None  # degradation → omit field, never cached
 
 
-def _resolve_by_doi_then_title(entry: Mapping[str, Any], client) -> bool | None:
-    """Shared body for resolve_openalex_unmatched / resolve_crossref_unmatched.
-    See those wrappers for the spec contract. Exception-type differentiation
-    stays at the wrapper — this helper never catches."""
-    if entry.get("obtained_via") == "manual":
-        return None
+def _query_form(*, id_label: str, id_value: str | None, title: str) -> str:
+    """Canonical cache query_form keying the WHOLE resolver attempt.
+
+    A resolver may try the exact ID, miss, then fall through to title search;
+    keying only on the ID would cache a title-hit verdict under the ID and
+    falsely imply the ID resolved. So the query_form captures both inputs of
+    the attempt: e.g. "doi:10.5/x|title:Attention...".
+    The cache key already namespaces by citation_key + resolver_name, so this
+    string never needs to disambiguate across citations or resolvers."""
+    return f"{id_label}:{id_value or ''}|title:{title}"
+
+
+def _cached_verdict(
+    *,
+    cache,
+    citation_key,
+    resolver_name: str,
+    query_form: str,
+    compute,
+) -> bool | None:
+    """Wrap a verdict computation with the persistent cache (spec §2 Delta 2).
+
+    `compute()` returns `(unmatched: bool, matched_by: str | None)`. On a cache
+    hit the network call is skipped and the stored verdict is returned. On a
+    miss the live `compute()` runs and the verdict is persisted (negatives
+    included, so repeat runs don't re-hammer the API). `cache=None` is
+    byte-equivalent to no caching. Degradation exceptions propagate from
+    `compute()` and are NEVER cached (the caller omits the field).
+    """
+    if cache is None:
+        unmatched, _ = compute()
+        return unmatched
+    cached = cache.get(citation_key, resolver_name, query_form)
+    if cached is not None and "matched" in cached:
+        return not cached["matched"]
+    # A row missing `matched` (written by an older/other tool) is treated as a
+    # miss — force a live recompute rather than KeyError for the 90-day TTL.
+    unmatched, matched_by = compute()
+    # query_form is the cache key, not part of the value — no need to echo it
+    # into the stored payload (nothing reads it back).
+    cache.put(
+        citation_key,
+        resolver_name,
+        query_form,
+        {"matched": not unmatched, "matched_by": matched_by},
+    )
+    return unmatched
+
+
+def _resolve_doi_then_title(entry: Mapping[str, Any], client) -> tuple[bool, str | None]:
+    """Run the DOI-then-title resolver flow, returning (unmatched, matched_by).
+    matched_by ∈ {'doi', 'title', None}. Exception-type differentiation stays
+    at the wrapper — this helper never catches."""
     title = entry.get("title", "")
     doi = entry.get("doi")
     if doi:
         hit = client.doi_lookup_with_title_check(doi, title)
         if hit is not None:
-            return False
+            return False, "doi"
         # DOI miss or MISMATCH — fall through to title search.
     hit = client.title_search(title)
-    return hit is None
+    if hit is not None:
+        return False, "title"
+    return True, None
 
 
-def resolve_openalex_unmatched(entry: Mapping[str, Any], client) -> bool | None:
+def _resolve_by_doi_then_title(
+    entry: Mapping[str, Any], client, *, resolver_name: str, cache=None,
+) -> bool | None:
+    """Shared body for resolve_openalex_unmatched / resolve_crossref_unmatched.
+    See those wrappers for the spec contract."""
+    if entry.get("obtained_via") == "manual":
+        return None
+    title = entry.get("title", "")
+    return _cached_verdict(
+        cache=cache,
+        citation_key=entry.get("citation_key"),
+        resolver_name=resolver_name,
+        query_form=_query_form(
+            id_label="doi", id_value=entry.get("doi"), title=title
+        ),
+        compute=lambda: _resolve_doi_then_title(entry, client),
+    )
+
+
+def resolve_openalex_unmatched(
+    entry: Mapping[str, Any], client, *, cache=None,
+) -> bool | None:
     """Compute openalex_unmatched per spec v3.9.0 §3.4.
 
     Mirrors resolve_semantic_scholar_unmatched semantics:
@@ -181,11 +281,18 @@ def resolve_openalex_unmatched(entry: Mapping[str, Any], client) -> bool | None:
 
     Raises:
         OpenAlexUnavailable: API degraded, caller must omit field per R-L3-2-C.
+
+    cache: optional VerificationCache (spec §2 Delta 2). cache=None is
+        byte-equivalent to no caching.
     """
-    return _resolve_by_doi_then_title(entry, client)
+    return _resolve_by_doi_then_title(
+        entry, client, resolver_name="openalex", cache=cache
+    )
 
 
-def resolve_crossref_unmatched(entry: Mapping[str, Any], client) -> bool | None:
+def resolve_crossref_unmatched(
+    entry: Mapping[str, Any], client, *, cache=None,
+) -> bool | None:
     """Compute crossref_unmatched per spec v3.9.0 §3.5.
 
     Mirrors resolve_openalex_unmatched / resolve_semantic_scholar_unmatched
@@ -196,13 +303,82 @@ def resolve_crossref_unmatched(entry: Mapping[str, Any], client) -> bool | None:
 
     Raises:
         CrossrefUnavailable: API degraded, caller must omit field per R-L3-2-C.
+
+    cache: optional VerificationCache (spec §2 Delta 2). cache=None is
+        byte-equivalent to no caching.
     """
-    return _resolve_by_doi_then_title(entry, client)
+    return _resolve_by_doi_then_title(
+        entry, client, resolver_name="crossref", cache=cache
+    )
+
+
+def _resolve_arxiv_id_then_title(
+    entry: Mapping[str, Any], client,
+) -> tuple[bool, str | None]:
+    """arXiv-specific resolver flow (ID-keyed, not DOI-keyed), returning
+    (unmatched, matched_by). matched_by ∈ {'arxiv', 'title', None}. Never
+    catches — exception differentiation stays at the wrapper."""
+    title = entry.get("title", "")
+    arxiv_id = entry.get("arxiv_id")
+    if arxiv_id:
+        hit = client.arxiv_id_lookup(arxiv_id, title)
+        if hit is not None:
+            return False, "arxiv"
+        # ID miss or MISMATCH — fall through to title search.
+    hit = client.title_search(title)
+    if hit is not None:
+        return False, "title"
+    return True, None
+
+
+def resolve_arxiv_unmatched(
+    entry: Mapping[str, Any], client, *, cache=None,
+) -> bool | None:
+    """Compute arxiv_unmatched per spec v3.11 #182 Delta 1.
+
+    Differs from resolve_crossref_unmatched / resolve_openalex_unmatched in
+    its exact-key channel: arXiv is keyed by `entry['arxiv_id']` (not 'doi'),
+    and the client's exact-key method is `arxiv_id_lookup` (not
+    `doi_lookup_with_title_check`). The title fallback is identical.
+
+    - Manual entry → return None (caller MUST omit field).
+    - arXiv ID present + ID hit (passes title cross-check) → return False.
+    - arXiv ID present + ID miss/MISMATCH → fall through to title search.
+    - arXiv ID absent → title search only.
+    - No hit anywhere → return True (unmatched).
+
+    Returns:
+        True: arXiv returned no match by ID (with title cross-check) or title.
+        False: arXiv found a match.
+        None: obtained_via='manual' → exempt, caller must omit field.
+
+    Raises:
+        ArxivUnavailable: API degraded, caller must omit field per R-L3-2-C.
+
+    cache: optional VerificationCache (spec §2 Delta 2). cache=None is
+        byte-equivalent to no caching.
+    """
+    if entry.get("obtained_via") == "manual":
+        return None
+    return _cached_verdict(
+        cache=cache,
+        citation_key=entry.get("citation_key"),
+        resolver_name="arxiv",
+        query_form=_query_form(
+            id_label="arxiv",
+            id_value=entry.get("arxiv_id"),
+            title=entry.get("title", ""),
+        ),
+        compute=lambda: _resolve_arxiv_id_then_title(entry, client),
+    )
 
 
 def build_signals_object(
     entry: Mapping[str, Any],
     client: SemanticScholarClient,
+    arxiv_client=None,
+    *,
+    cache=None,
 ) -> dict[str, bool]:
     """Construct the `contamination_signals` object for `entry`.
 
@@ -211,11 +387,25 @@ def build_signals_object(
         "computed and found clean" is distinct from "not computed")
       - Manual entry → omit `semantic_scholar_unmatched` field
       - API degradation → omit `semantic_scholar_unmatched` field
+
+    cache: optional VerificationCache (spec §2 Delta 2), threaded into both the
+    S2 and arXiv resolvers. cache=None is byte-equivalent to no caching.
     """
     obj: dict[str, bool] = {
         "preprint_post_llm_inflection": compute_preprint_signal(entry),
     }
-    ss = compute_ss_unmatched_signal(entry, client)
+    ss = compute_ss_unmatched_signal(entry, client, cache=cache)
     if ss is not None:
         obj["semantic_scholar_unmatched"] = ss
+    # v3.11 #182 Delta 1: arxiv signal is opt-in via an explicit client so the
+    # v3.7.3 caller (migrate_literature_corpus_to_v3_7_3) stays byte-equivalent
+    # (no client → no field). Manual exemption + API degradation both omit the
+    # field (resolve returns None / raises), matching the ss field's rules.
+    if arxiv_client is not None:
+        try:
+            ax = resolve_arxiv_unmatched(entry, arxiv_client, cache=cache)
+        except ArxivUnavailable:
+            ax = None
+        if ax is not None:
+            obj["arxiv_unmatched"] = ax
     return obj

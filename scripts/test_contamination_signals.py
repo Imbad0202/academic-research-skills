@@ -432,3 +432,363 @@ class ResolveCrossrefUnmatchedTest(unittest.TestCase):
         entry = {"title": "X", "doi": "10.5555/abc", "obtained_via": "folder-scan"}
         with self.assertRaises(CrossrefUnavailable):
             resolve_crossref_unmatched(entry, mock_client)
+
+
+# ============================================================================
+# v3.11 #182 Delta 1 — resolve_arxiv_unmatched
+# ============================================================================
+
+
+class ResolveArxivUnmatchedTest(unittest.TestCase):
+    """Tests for resolve_arxiv_unmatched per spec v3.11 #182 Delta 1.
+
+    Differs from the crossref/openalex resolvers: keyed by entry['arxiv_id']
+    (not 'doi'), and the client exact-key method is arxiv_id_lookup, not
+    doi_lookup_with_title_check."""
+
+    def test_match(self):
+        """arXiv hit via ID cross-check → False."""
+        from contamination_signals import resolve_arxiv_unmatched
+
+        mock_client = MagicMock()
+        mock_client.arxiv_id_lookup.return_value = {"title": "X", "year": 2017}
+
+        entry = {
+            "title": "X",
+            "arxiv_id": "1706.03762",
+            "obtained_via": "zotero-bbt-export",
+        }
+        result = resolve_arxiv_unmatched(entry, mock_client)
+        self.assertIs(result, False)
+
+    def test_no_match(self):
+        """arXiv no ID hit + no title hit → True."""
+        from contamination_signals import resolve_arxiv_unmatched
+
+        mock_client = MagicMock()
+        mock_client.arxiv_id_lookup.return_value = None
+        mock_client.title_search.return_value = None
+
+        entry = {
+            "title": "Nonexistent",
+            "arxiv_id": "9999.99999",
+            "obtained_via": "folder-scan",
+        }
+        result = resolve_arxiv_unmatched(entry, mock_client)
+        self.assertIs(result, True)
+
+    def test_manual_exempt(self):
+        """obtained_via='manual' → return None, no client calls."""
+        from contamination_signals import resolve_arxiv_unmatched
+
+        mock_client = MagicMock()
+        entry = {"title": "X", "arxiv_id": "1706.03762", "obtained_via": "manual"}
+        result = resolve_arxiv_unmatched(entry, mock_client)
+        self.assertIsNone(result)
+        mock_client.arxiv_id_lookup.assert_not_called()
+        mock_client.title_search.assert_not_called()
+
+    def test_arxiv_id_absent_falls_through_to_title(self):
+        """arXiv ID absent: title search alone, NO id lookup attempted."""
+        from contamination_signals import resolve_arxiv_unmatched
+
+        mock_client = MagicMock()
+        mock_client.title_search.return_value = {"title": "X", "year": 2017}
+
+        entry = {"title": "X", "obtained_via": "obsidian-vault"}  # no arxiv_id
+        result = resolve_arxiv_unmatched(entry, mock_client)
+        self.assertIs(result, False)
+        mock_client.arxiv_id_lookup.assert_not_called()
+
+    def test_arxiv_id_miss_falls_through_to_title(self):
+        """ID present but ID lookup misses → fall through to title search."""
+        from contamination_signals import resolve_arxiv_unmatched
+
+        mock_client = MagicMock()
+        mock_client.arxiv_id_lookup.return_value = None
+        mock_client.title_search.return_value = {"title": "X", "year": 2017}
+
+        entry = {"title": "X", "arxiv_id": "1706.03762", "obtained_via": "folder-scan"}
+        result = resolve_arxiv_unmatched(entry, mock_client)
+        self.assertIs(result, False)
+        mock_client.title_search.assert_called_once()
+
+    def test_api_down_raises(self):
+        """API degraded → re-raise ArxivUnavailable for caller to omit field."""
+        from contamination_signals import resolve_arxiv_unmatched
+        from arxiv_client import ArxivUnavailable
+
+        mock_client = MagicMock()
+        mock_client.arxiv_id_lookup.side_effect = ArxivUnavailable("down")
+
+        entry = {"title": "X", "arxiv_id": "1706.03762", "obtained_via": "folder-scan"}
+        with self.assertRaises(ArxivUnavailable):
+            resolve_arxiv_unmatched(entry, mock_client)
+
+
+# ============================================================================
+# v3.11 #182 Delta 1 — build_signals_object arxiv extension
+# ============================================================================
+
+
+class BuildSignalsArxivExtensionTest(unittest.TestCase):
+    """build_signals_object grows an optional arxiv_client keyword arg; when
+    omitted, behavior is byte-equivalent to the v3.7.3 caller (no arxiv field).
+    Per spec §2 Delta 1 'signal computation only' scope."""
+
+    def _entry(self, **overrides):
+        base = {"year": 2024, "venue": "arXiv", "obtained_via": "folder-scan"}
+        return base | overrides
+
+    def test_no_arxiv_client_omits_arxiv_field(self) -> None:
+        """Byte-equivalent v3.7.3 path: no arxiv_client → no arxiv_unmatched."""
+        ss = MagicMock()
+        ss.lookup.return_value = {"matched": True}
+        result = cs.build_signals_object(self._entry(), ss)
+        self.assertNotIn("arxiv_unmatched", result)
+
+    def test_arxiv_client_emits_arxiv_field(self) -> None:
+        """With arxiv_client, a non-manual entry emits arxiv_unmatched."""
+        ss = MagicMock()
+        ss.lookup.return_value = {"matched": True}
+        ax = MagicMock()
+        ax.arxiv_id_lookup.return_value = None
+        ax.title_search.return_value = None
+        result = cs.build_signals_object(
+            self._entry(arxiv_id="9999.99999"), ss, arxiv_client=ax
+        )
+        self.assertIs(result["arxiv_unmatched"], True)
+
+    def test_manual_entry_omits_arxiv_field_even_with_client(self) -> None:
+        """Manual entry: arxiv_unmatched omitted (not-rule), like the ss field."""
+        ss = MagicMock()
+        ax = MagicMock()
+        result = cs.build_signals_object(
+            self._entry(obtained_via="manual"), ss, arxiv_client=ax
+        )
+        self.assertNotIn("arxiv_unmatched", result)
+        ax.arxiv_id_lookup.assert_not_called()
+
+    def test_arxiv_api_down_omits_arxiv_field(self) -> None:
+        """arXiv API degradation → omit arxiv_unmatched (absent != false)."""
+        ss = MagicMock()
+        ss.lookup.return_value = {"matched": True}
+        ax = MagicMock()
+        ax.arxiv_id_lookup.side_effect = cs.ArxivUnavailable("5xx")
+        result = cs.build_signals_object(
+            self._entry(arxiv_id="1706.03762"), ss, arxiv_client=ax
+        )
+        self.assertNotIn("arxiv_unmatched", result)
+
+
+# ============================================================================
+# v3.11 #182 Delta 2 — resolver cache integration (wrapper layer)
+# ============================================================================
+
+
+class _FakeCache:
+    """Minimal in-memory stand-in for VerificationCache. Records get/put calls
+    so tests can assert hit/skip behavior without SQLite."""
+
+    def __init__(self, seed=None):
+        self._store = dict(seed or {})
+        self.get_calls = []
+        self.put_calls = []
+
+    def get(self, citation_key, resolver_name, query_form):
+        self.get_calls.append((citation_key, resolver_name, query_form))
+        return self._store.get((citation_key, resolver_name, query_form))
+
+    def put(self, citation_key, resolver_name, query_form, response):
+        self.put_calls.append((citation_key, resolver_name, query_form, response))
+        self._store[(citation_key, resolver_name, query_form)] = response
+
+
+class ResolveCrossrefCacheTest(unittest.TestCase):
+    """Cache integration is byte-equivalent when cache=None, consults the cache
+    before the network on hit, and populates on miss. Per spec §2 Delta 2."""
+
+    def _entry(self, **overrides):
+        base = {
+            "citation_key": "vaswani2017",
+            "title": "Attention Is All You Need",
+            "doi": "10.5555/abc",
+            "obtained_via": "folder-scan",
+        }
+        return base | overrides
+
+    def test_cache_none_is_byte_equivalent(self):
+        from contamination_signals import resolve_crossref_unmatched
+
+        client = MagicMock()
+        client.doi_lookup_with_title_check.return_value = {"title": ["X"]}
+        result = resolve_crossref_unmatched(self._entry(), client, cache=None)
+        self.assertIs(result, False)
+        client.doi_lookup_with_title_check.assert_called_once()
+
+    def test_cache_hit_skips_network(self):
+        from contamination_signals import resolve_crossref_unmatched
+
+        client = MagicMock()
+        qf = "doi:10.5555/abc|title:Attention Is All You Need"
+        cache = _FakeCache(seed={
+            ("vaswani2017", "crossref", qf): {"matched": True, "matched_by": "doi"}
+        })
+        result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
+        self.assertIs(result, False)  # matched=True → unmatched=False
+        client.doi_lookup_with_title_check.assert_not_called()
+        client.title_search.assert_not_called()
+
+    def test_cache_miss_calls_network_and_populates(self):
+        from contamination_signals import resolve_crossref_unmatched
+
+        client = MagicMock()
+        client.doi_lookup_with_title_check.return_value = None
+        client.title_search.return_value = None  # unmatched
+        cache = _FakeCache()
+        result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
+        self.assertIs(result, True)  # unmatched
+        self.assertEqual(len(cache.put_calls), 1)
+        # The negative verdict is cached (so repeat runs don't re-hammer API).
+        _, resolver, qf, response = cache.put_calls[0]
+        self.assertEqual(resolver, "crossref")
+        self.assertIs(response["matched"], False)
+
+    def test_malformed_cache_payload_treated_as_miss(self):
+        """A persistent on-disk cache row written by an older/other tool that
+        lacks the 'matched' key must be treated as a MISS (force live recompute),
+        not crash with KeyError for 90 days. Robustness guard."""
+        from contamination_signals import resolve_crossref_unmatched
+
+        client = MagicMock()
+        client.doi_lookup_with_title_check.return_value = {"title": ["X"]}  # match
+        qf = "doi:10.5555/abc|title:Attention Is All You Need"
+        cache = _FakeCache(seed={
+            ("vaswani2017", "crossref", qf): {"legacy": "no matched key"}
+        })
+        result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
+        # Falls through to live call (which matched) → unmatched=False.
+        self.assertIs(result, False)
+        client.doi_lookup_with_title_check.assert_called_once()
+
+    def test_degradation_is_not_cached(self):
+        from contamination_signals import resolve_crossref_unmatched
+        from crossref_client import CrossrefUnavailable
+
+        client = MagicMock()
+        client.doi_lookup_with_title_check.side_effect = CrossrefUnavailable("down")
+        cache = _FakeCache()
+        with self.assertRaises(CrossrefUnavailable):
+            resolve_crossref_unmatched(self._entry(), client, cache=cache)
+        self.assertEqual(cache.put_calls, [])  # NEVER cache a degradation
+
+    def test_manual_entry_does_not_touch_cache(self):
+        from contamination_signals import resolve_crossref_unmatched
+
+        client = MagicMock()
+        cache = _FakeCache()
+        result = resolve_crossref_unmatched(
+            self._entry(obtained_via="manual"), client, cache=cache
+        )
+        self.assertIsNone(result)
+        self.assertEqual(cache.get_calls, [])
+        self.assertEqual(cache.put_calls, [])
+
+
+class ResolveArxivCacheTest(unittest.TestCase):
+    """Same cache contract for the arXiv resolver (ID-keyed query_form)."""
+
+    def _entry(self, **overrides):
+        base = {
+            "citation_key": "vaswani2017",
+            "title": "Attention Is All You Need",
+            "arxiv_id": "1706.03762",
+            "obtained_via": "folder-scan",
+        }
+        return base | overrides
+
+    def test_cache_hit_skips_network(self):
+        from contamination_signals import resolve_arxiv_unmatched
+
+        client = MagicMock()
+        qf = "arxiv:1706.03762|title:Attention Is All You Need"
+        cache = _FakeCache(seed={
+            ("vaswani2017", "arxiv", qf): {"matched": False, "matched_by": None}
+        })
+        result = resolve_arxiv_unmatched(self._entry(), client, cache=cache)
+        self.assertIs(result, True)  # matched=False → unmatched=True
+        client.arxiv_id_lookup.assert_not_called()
+
+    def test_cache_miss_populates(self):
+        from contamination_signals import resolve_arxiv_unmatched
+
+        client = MagicMock()
+        client.arxiv_id_lookup.return_value = {"title": "X", "year": 2017}
+        cache = _FakeCache()
+        result = resolve_arxiv_unmatched(self._entry(), client, cache=cache)
+        self.assertIs(result, False)  # matched
+        self.assertEqual(len(cache.put_calls), 1)
+        _, resolver, _, response = cache.put_calls[0]
+        self.assertEqual(resolver, "arxiv")
+        self.assertIs(response["matched"], True)
+
+
+class SemanticScholarCacheTest(unittest.TestCase):
+    """S2's wrapper is compute_ss_unmatched_signal (the lone client.lookup is
+    entry-keyed already). Cache integration lives at that wrapper, matching
+    Option A — the resolver_name is 'semantic_scholar'. Per spec §2 Delta 2
+    'the S2 lookup'."""
+
+    def _entry(self, **overrides):
+        base = {
+            "citation_key": "chen2024ai",
+            "title": "Test paper",
+            "doi": "10.1234/xyz",
+            "obtained_via": "folder-scan",
+        }
+        return base | overrides
+
+    def test_cache_none_byte_equivalent(self):
+        client = MagicMock()
+        client.lookup.return_value = {"matched": True}
+        self.assertFalse(cs.compute_ss_unmatched_signal(self._entry(), client, cache=None))
+        client.lookup.assert_called_once()
+
+    def test_cache_hit_skips_lookup(self):
+        client = MagicMock()
+        qf = "doi:10.1234/xyz|title:Test paper"
+        cache = _FakeCache(seed={
+            ("chen2024ai", "semantic_scholar", qf): {"matched": False, "matched_by": None}
+        })
+        result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
+        self.assertTrue(result)  # matched=False → unmatched=True
+        client.lookup.assert_not_called()
+
+    def test_cache_miss_populates(self):
+        client = MagicMock()
+        client.lookup.return_value = {"matched": True}
+        cache = _FakeCache()
+        result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
+        self.assertFalse(result)
+        self.assertEqual(len(cache.put_calls), 1)
+        _, resolver, _, response = cache.put_calls[0]
+        self.assertEqual(resolver, "semantic_scholar")
+        self.assertIs(response["matched"], True)
+
+    def test_manual_does_not_touch_cache(self):
+        client = MagicMock()
+        cache = _FakeCache()
+        result = cs.compute_ss_unmatched_signal(
+            self._entry(obtained_via="manual"), client, cache=cache
+        )
+        self.assertIsNone(result)
+        self.assertEqual(cache.get_calls, [])
+        self.assertEqual(cache.put_calls, [])
+
+    def test_degradation_not_cached(self):
+        client = MagicMock()
+        client.lookup.side_effect = cs.SemanticScholarUnavailable("5xx")
+        cache = _FakeCache()
+        result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
+        self.assertIsNone(result)  # degradation → None (omit field)
+        self.assertEqual(cache.put_calls, [])  # never cache degradation

@@ -146,7 +146,7 @@
     "contamination_signals": {
       "type": "object",
       "additionalProperties": false,
-      "description": "v3.7.3 + v3.9.0 contaminated-source advisory field (spec v3.7.3 §3.2 + v3.9.0 §3.4–§3.5). Up to four optional boolean signals computed at ingest time by bibliography_agent: v3.7.3 Vector 1 (preprint_post_llm_inflection — heuristic), v3.7.3 Vector 2 (semantic_scholar_unmatched — S2 lookup), v3.9.0 (openalex_unmatched + crossref_unmatched — triangulation extension). Surfaces at cite-time finalizer as CONTAMINATED-... marker annotation suffix; advisory only — does NOT block emission. Absence of the object means signals were not computed (legacy entries or check skipped). Presence with all populated *_unmatched fields false means lookup-based contamination evidence is absent for the queried indexes; `preprint_post_llm_inflection: true` is an independent contamination signal that remains active regardless of lookup field values. Manual entries are exempt from the three lookup fields per spec v3.9.0 §3.1 not-rule but still carry preprint_post_llm_inflection (heuristic). External motivation: Zhao et al. arXiv:2605.07723 (2026-05) documents post-2024-mid hallucination inflection in preprint corpora and §3 cross-index triangulation as viable false-positive reduction.",
+      "description": "v3.7.3 + v3.9.0 + v3.11 contaminated-source advisory field (spec v3.7.3 §3.2 + v3.9.0 §3.4–§3.5 + v3.11 #182 Delta 1). Up to five optional boolean signals computed at ingest time by bibliography_agent: v3.7.3 Vector 1 (preprint_post_llm_inflection — heuristic), v3.7.3 Vector 2 (semantic_scholar_unmatched — S2 lookup), v3.9.0 (openalex_unmatched + crossref_unmatched — triangulation extension), v3.11 (arxiv_unmatched — four-index triangulation extension). Surfaces at cite-time finalizer as CONTAMINATED-... marker annotation suffix; advisory only — does NOT block emission. Absence of the object means signals were not computed (legacy entries or check skipped). Presence with all populated *_unmatched fields false means lookup-based contamination evidence is absent for the queried indexes; `preprint_post_llm_inflection: true` is an independent contamination signal that remains active regardless of lookup field values. Manual entries are exempt from the four lookup fields per spec v3.9.0 §3.1 + v3.11 not-rule but still carry preprint_post_llm_inflection (heuristic). External motivation: Zhao et al. arXiv:2605.07723 (2026-05) documents post-2024-mid hallucination inflection in preprint corpora and §3 cross-index triangulation as viable false-positive reduction.",
       "properties": {
         "preprint_post_llm_inflection": {
           "type": "boolean",
@@ -163,6 +163,10 @@
         "crossref_unmatched": {
           "type": "boolean",
           "description": "True when a Crossref API lookup (per references/crossref_api_protocol.md) returned no match by DOI (with title cross-check) or title. Mirrors semantic_scholar_unmatched semantics. The check fires only when obtained_via != 'manual'. Per spec v3.9.0 §3.5."
+        },
+        "arxiv_unmatched": {
+          "type": "boolean",
+          "description": "True when an arXiv API lookup (per references/arxiv_api_protocol.md) returned no match by arXiv ID (with title cross-check) or title. Mirrors semantic_scholar_unmatched / crossref_unmatched / openalex_unmatched semantics, extending the v3.9.0 triplet to a four-index triangulation. The check fires only when obtained_via != 'manual'. Per spec v3.11 #182 Delta 1. Note: this is the raw triangulation signal; the #182 Delta 4 unified summary narrows the existence-gate `false` to ID-keyed unmatched (a title-only arxiv_unmatched with no resolvable arXiv ID is a coverage-gap signal, not fabrication evidence, per C-V6(a))."
         }
       }
     },
@@ -301,7 +305,7 @@
       }
     },
     {
-      "description": "v3.9.0 spec §3.1 extends v3.7.3 §3.2 manual-entry exemption (codex round-3 F11 closure) symmetrically: when obtained_via='manual' the bibliography_agent SKIPS all three lookups (Semantic Scholar / OpenAlex / Crossref) and OMITS the three *_unmatched fields. The schema enforces this contract: a manual entry MUST NOT carry any of semantic_scholar_unmatched / openalex_unmatched / crossref_unmatched. Setting any to true on a manual entry would surface CONTAMINATED-* on a user-vouched reference. The asymmetry: preprint_post_llm_inflection IS still computed for manual entries (pure heuristic, no lookup) and is not in the exemption scope.",
+      "description": "v3.9.0 spec §3.1 extends v3.7.3 §3.2 manual-entry exemption (codex round-3 F11 closure) symmetrically; v3.11 #182 Delta 1 extends it further to arxiv_unmatched: when obtained_via='manual' the bibliography_agent SKIPS all four lookups (Semantic Scholar / OpenAlex / Crossref / arXiv) and OMITS the four *_unmatched fields. The schema enforces this contract: a manual entry MUST NOT carry any of semantic_scholar_unmatched / openalex_unmatched / crossref_unmatched / arxiv_unmatched. Setting any to true on a manual entry would surface CONTAMINATED-* on a user-vouched reference. The asymmetry: preprint_post_llm_inflection IS still computed for manual entries (pure heuristic, no lookup) and is not in the exemption scope.",
       "if": {
         "properties": {
           "obtained_via": {
@@ -331,6 +335,11 @@
                 {
                   "required": [
                     "crossref_unmatched"
+                  ]
+                },
+                {
+                  "required": [
+                    "arxiv_unmatched"
                   ]
                 }
               ]
