@@ -4,6 +4,76 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-06-04 — Deterministic citation verification gate (#182)
+
+The v3.11.0 minor release ships **#182 — a deterministic citation-existence verification gate**
+that runs independently of LLM peer review. It cross-checks every cited reference against up to
+four bibliographic indexes (Semantic Scholar + OpenAlex + Crossref + the new arXiv resolver) and
+surfaces a per-citation `lookup_verified` status, so a fabricated citation with a provably-bogus
+DOI/arXiv ID is caught by deterministic lookup rather than by hoping a reviewer agent notices.
+The gate **inherits the v3.10 `terminal_policies` opt-in model** — default advisory, opt-in
+`strict` — rather than introducing a second hard-block philosophy: detection always runs and
+populates the summary, but a `lookup_verified == false` row is terminal only under
+`terminal_policies.citation_existence == strict`. **Default behavior is non-blocking** (advisory,
+`/ars-mark-read`-acknowledgeable); a user must opt into `strict` to make existence-failure
+terminal. The `false` definition is deliberately **narrowed to ID-keyed unmatched** (an exact
+DOI/arXiv lookup that provably fails), so a legitimately-unindexed humanities / non-English /
+regional citation with only a title-unmatched stays `unresolvable` and never blocks (C-V6(a); an
+acknowledged precision-over-recall tradeoff documented in the spec, mirroring `strict_articles_only`).
+
+**Five delta items (#182):**
+
+- **Delta 1 — arXiv API resolver + four-index contamination rendering.** New `scripts/arxiv_client.py`
+  verifies citation existence against `export.arxiv.org` (metadata + existence; no API key, no
+  polite-pool email — built-in rate-limit pacing per arXiv ToU; accepts both old-style
+  `hep-th/9711200` and new-style `2605.07723` IDs). `scripts/contamination_signals.py` extends the
+  v3.9.0 cross-index triangulation advisory matrix from three indexes (k=0..3) to four (k=0..4) with
+  an `arxiv_unmatched` signal, and the orchestrator finalizer + formatter render the four new
+  advisory suffixes (`CONTAMINATED-ARXIV-UNMATCHED` at the k=1/k_max=1 arxiv-only carve-out;
+  `CONTAMINATED-QUADRANGULATION-UNMATCHED` at k=4/k_max=4; plus their two `PREPRINT` compositions).
+  All advisory — the terminal gate / refusal list is unchanged (R-L3-2-E). `arxiv_unmatched` field
+  added to `literature_corpus_entry.schema.json`.
+- **Delta 2 — persistent verification cache.** New `scripts/verification_cache.py` — a local SQLite
+  store (`~/.cache/ars/verification.db`, override via `ARS_VERIFICATION_CACHE_PATH`; WAL mode;
+  90-day TTL) keyed by `(citation_key, resolver_name, query_form)`, so the same paper cited across
+  drafts is verified once. Each resolver entry point (crossref / openalex / S2 / arxiv) gains an
+  optional `cache` parameter. New `/ars-cache-invalidate <citation_key>` command removes every
+  cached row for a key (idempotent no-op when absent).
+- **Delta 3 / C-V6 — citation-existence terminal policy.** New `terminal_policies` key
+  `citation_existence` (closed enum `{advisory, strict}`, per-key absence = advisory) in
+  `terminal_policies.schema.json`, alongside `contamination_triangulation`. This replaces the
+  original Delta-3 `ARS_CLAIM_AUDIT` default-flip as the gate's on/off control. The finalizer is the
+  sole policy evaluator; `formatter_agent.md` rule 12 refuses on a `lookup_verified == false` row
+  **only under `strict`**, co-emitting `[UNVERIFIED CITATION — lookup_verified=false: ...]` alongside
+  the advisory annotation. `HIGH-BLOCK` is terminal — not `/ars-mark-read`-clearable. Manual entries
+  structurally exempt.
+- **Delta 4 — unified per-citation status surface.** New
+  `shared/contracts/passport/citation_verification_summary.schema.json` +
+  `scripts/citation_verification_summary.py` write a `lookup_verified` (enum `{true, false,
+  unresolvable}`) + `anchor_present` + `resolver_outcomes` (per-resolver `{matched, unmatched,
+  unreachable, skipped}`) row per citation. The classification is anti-fabrication-biased (one
+  ID-keyed `unmatched` is positive evidence of non-existence; a single transient outage does not
+  cancel it) and the `false` form is narrowed to ID-keyed unmatched per C-V6(a).
+- **Delta 5 — standalone `verification_gate` API.** New `scripts/verification_gate/__init__.py`
+  extracts the gate logic into a callable API composing the four resolvers + the unified summary
+  writer (a second caller of the same lower-layer infrastructure as the v3.8 audit, not a
+  duplicate). New `scripts/verify_passport.py` CLI runs the gate over a Material Passport
+  standalone.
+
+**Lint + CI:**
+
+- `scripts/check_v3_9_0_triangulation.py` (the canonical cross-version contamination-suffix oracle)
+  rule 1 upgraded from subsection token-presence to a **matrix-row oracle**: each Delta-1 token must
+  sit on the finalizer suffix-table row carrying its exact `(k, k_max)` cell, so deleting or
+  mistokening an operational row fails even when the same token survives in surrounding prose. The
+  formatter pass-through allowlist set-equality oracle extends 9 → 13 tokens.
+- `scripts/_ci_pytest_manifest.toml` backfills 5 data-layer test entries (citation-verification-summary
+  / verification-gate / arxiv-client / verification-cache / verify-passport-cli) that shipped with
+  the data layer but were not wired into the manifest runner at the time.
+
+Spec: `docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md` (§0 v3.11 amendment +
+INVARIANT C-V6).
+
 ## [3.10.0] - 2026-06-01 — Triangulation policy layer, Kong et al. survey adoptions, eval harness, scoped-write guard
 
 The v3.10.0 minor release bundles the opt-in contamination-triangulation **terminal policy
