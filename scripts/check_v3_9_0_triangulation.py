@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
-"""v3.9.0 spec lint: verify finalizer suffix table contract + formatter allowlist + refusal-list guard.
+"""Cross-version contamination-suffix lint: finalizer suffix table contract +
+formatter allowlist + refusal-list guard.
 
-Per spec v3.9.0 §3.8 rules 1-7:
-  Rule 1 — marker syntax: 3 new v3.9.0 markers present in finalizer suffix table
+NOTE ON NAMING: this file is named for v3.9.0 (where the triangulation matrix
+landed) but is the CANONICAL contamination-suffix oracle across versions. It now
+also guards the v3.10/v3.11 Delta-1 arXiv four-index tokens (EXPECTED_DELTA1_ROWS).
+The v3.9.0 name is historical; renaming would churn spec-consistency.yml + the CI
+manifest + the test companion for no benefit.
+
+Per spec v3.9.0 §3.8 rules 1-7, extended by #182 Delta 1:
+  Rule 1 — matrix-row oracle: the 3 v3.9.0 markers present in the finalizer
+           suffix-table rows; the 4 Delta-1 arXiv markers (incl. PREPRINT
+           compositions) each pinned to their exact (k, k_max) table cell
   Rule 2 — preprint composition order: PREPRINT before triangulation token
   Rule 3 — v3.7.3 legacy compat: k=1 k_max=1 S2 row → CONTAMINATED-UNMATCHED (not COVERAGE-NOISE)
-  Rule 4 — no *-BLOCK tokens in v3.9.0 finalizer subsection (v3.10 policy-layer scope only)
-  Rule 5 — formatter pass-through allowlist set-equality (R-L3-2-E lint)
+  Rule 4 — no *-BLOCK tokens in finalizer subsection (v3.10 policy-layer scope only)
+  Rule 5 — formatter pass-through allowlist set-equality, 13 tokens (R-L3-2-E lint)
   Rule 6 — refusal-list-unchanged guard
   Rule 7 — CI integration (done in spec-consistency.yml)
 
@@ -41,7 +50,14 @@ EXPECTED_NEW_V3_9_0_SUFFIXES = {
     "CONTAMINATED-TRIANGULATION-UNMATCHED",
 }
 
-# Canonical 9-suffix allowlist per spec v3.9.0 §3.8 rule 5.
+# The four v3.10/v3.11 Delta-1 markers are NOT declared as a bare set here — they
+# are the keys of EXPECTED_DELTA1_ROWS below, which pins each to its exact (k, k_max)
+# matrix cell. A separate presence-only set would be a parallel structure that could
+# drift out of sync (and presence is strictly weaker than the cell assertion anyway),
+# so the cell map is the single source of truth for the Delta-1 token set.
+
+# Canonical 13-suffix allowlist (set-equality oracle, rule 5). This is the full
+# contamination-suffix set across versions: 3 v3.7.3 legacy + 6 v3.9.0 + 4 Delta-1.
 EXPECTED_ALLOWLIST_TOKENS = {
     # v3.7.3 legacy (3)
     "CONTAMINATED-PREPRINT",
@@ -54,6 +70,11 @@ EXPECTED_ALLOWLIST_TOKENS = {
     "CONTAMINATED-PREPRINT+COVERAGE-NOISE",
     "CONTAMINATED-PREPRINT+PARTIAL-UNMATCH",
     "CONTAMINATED-PREPRINT+TRIANGULATION-UNMATCHED",
+    # v3.10/v3.11 Delta-1 arXiv four-index (4)
+    "CONTAMINATED-ARXIV-UNMATCHED",
+    "CONTAMINATED-QUADRANGULATION-UNMATCHED",
+    "CONTAMINATED-PREPRINT+ARXIV-UNMATCHED",
+    "CONTAMINATED-PREPRINT+QUADRANGULATION-UNMATCHED",
 }
 
 
@@ -78,15 +99,57 @@ def extract_v3_9_0_finalizer_subsection(orchestrator_text: str) -> str:
     return "\n".join(collected)
 
 
+# Matrix-row contract for the 4 Delta-1 tokens: each must appear in a suffix-table
+# row carrying its exact (k, k_max) cell. The bullet prose + example markers below
+# the table also mention these tokens, so a subsection-wide token scan would pass
+# even if the operational row were deleted/mistokened. Rule 1 therefore asserts the
+# matrix row, not mere subsection presence — the matrix table IS the contract.
+# Column order in the suffix table: | base | preprint | k | k_max | present | suffix |
+# so "| <k> | <k_max> |" locates the (k, k_max) cell exactly (same idiom as rule 3).
+EXPECTED_DELTA1_ROWS = {
+    "CONTAMINATED-ARXIV-UNMATCHED": "| 1 | 1 |",
+    "CONTAMINATED-PREPRINT+ARXIV-UNMATCHED": "| 1 | 1 |",
+    "CONTAMINATED-QUADRANGULATION-UNMATCHED": "| 4 | 4 |",
+    "CONTAMINATED-PREPRINT+QUADRANGULATION-UNMATCHED": "| 4 | 4 |",
+}
+
+
 def check_marker_syntax(subsection_text: str) -> list[str]:
-    """Rule 1: all 3 new v3.9.0 markers appear as backtick-quoted suffixes in subsection."""
-    tokens = set(re.findall(r"`(CONTAMINATED-[A-Z+\-]+)`", subsection_text))
-    missing = EXPECTED_NEW_V3_9_0_SUFFIXES - tokens
+    """Rule 1 (matrix-row oracle): each v3.9.0 + Delta-1 marker must appear as a
+    backtick-quoted suffix in a TABLE ROW, and each Delta-1 marker must sit in the
+    row carrying its exact (k, k_max) cell.
+
+    Scanning only `|`-delimited rows (not the explanatory bullets/examples below the
+    table) is what makes this a contract oracle rather than a presence check: the
+    matrix table IS the prompt contract, and deleting an operational row must fail
+    even though the same token still appears in the surrounding prose.
+    """
+    table_rows = [ln for ln in subsection_text.splitlines() if "|" in ln]
+    table_text = "\n".join(table_rows)
+    row_tokens = set(re.findall(r"`(CONTAMINATED-[A-Z+\-]+)`", table_text))
+    failures = []
+    # v3.9.0 tokens span k_max RANGES across multiple rows (e.g. COVERAGE-NOISE is
+    # k=1 k_max=1 AND k=1 k_max=2-4), so they get a presence-in-table-rows check, not
+    # a single-cell assertion (same family-by-family treatment as rule 3's s2 rows).
+    missing = EXPECTED_NEW_V3_9_0_SUFFIXES - row_tokens
     if missing:
-        return [
-            f"rule 1 (marker syntax): missing in v3.9.0 finalizer subsection: {sorted(missing)}"
-        ]
-    return []
+        failures.append(
+            f"rule 1 (marker syntax): missing v3.9.0 markers in finalizer "
+            f"suffix-table rows: {sorted(missing)}"
+        )
+    # Delta-1 tokens are POINT cells, so the cell assertion is their sole check — it
+    # is strictly stronger than presence (a token on the wrong tier, or absent
+    # entirely, fails here), and EXPECTED_DELTA1_ROWS is their single source of truth.
+    for token, cell in EXPECTED_DELTA1_ROWS.items():
+        on_correct_row = any(
+            f"`{token}`" in ln and cell in ln for ln in table_rows
+        )
+        if not on_correct_row:
+            failures.append(
+                f"rule 1 (matrix row): `{token}` is not on a suffix-table row "
+                f"carrying its required {cell} (k, k_max) cell"
+            )
+    return failures
 
 
 def check_preprint_composition_order(subsection_text: str) -> list[str]:

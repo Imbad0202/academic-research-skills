@@ -137,3 +137,25 @@ path = "scripts/test_check_v3_10_134_write_scope.py"
 [[pytest]]
 id = "v3.11-citation-existence-policy"
 path = "scripts/test_citation_existence_policy.py"
+
+# #182 Delta 4+5 data-layer tests (shipped via #313/#315 but not wired into the
+# manifest at the time; backfilled here so the runner actually executes them).
+[[pytest]]
+id = "v3.10-182-citation-verification-summary"
+path = "scripts/test_citation_verification_summary.py"
+
+[[pytest]]
+id = "v3.10-182-verification-gate"
+path = "scripts/test_verification_gate.py"
+
+[[pytest]]
+id = "v3.10-182-arxiv-client"
+path = "scripts/test_arxiv_client.py"
+
+[[pytest]]
+id = "v3.10-182-verification-cache"
+path = "scripts/test_verification_cache.py"
+
+[[pytest]]
+id = "v3.10-182-verify-passport-cli"
+path = "scripts/test_verify_passport_cli.py"

@@ -19,7 +19,8 @@ def run_lint(args: list[str] | None = None) -> subprocess.CompletedProcess:
 
 
 def test_lint_passes_on_clean_repo():
-    """After T7 lands (formatter has all 9 allowlist entries), lint passes."""
+    """The real repo carries all 13 allowlist entries (9 v3.9.0 + 4 Delta-1) and
+    lint passes."""
     result = run_lint()
     assert result.returncode == 0, f"Lint failed: stderr={result.stderr}\nstdout={result.stdout}"
 
@@ -222,6 +223,86 @@ def test_rule4_high_block_injection_fails(tmp_path):
     result = run_lint(["--orchestrator-path", str(p)])
     assert result.returncode == 1
     assert "rule 4" in result.stderr.lower() or "block" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# Delta-1 (v3.10/v3.11) — arXiv four-index extension
+# ---------------------------------------------------------------------------
+# (Clean-repo pass for all 13 allowlist tokens is covered by
+# test_lint_passes_on_clean_repo above — not duplicated here.)
+
+def test_delta1_missing_arxiv_allowlist_token_fails(tmp_path):
+    """Drop CONTAMINATED-ARXIV-UNMATCHED from the formatter allowlist — set-equality
+    (rule 5) must fail (the Delta-1 token is load-bearing, not incidentally present)."""
+    formatter = REPO_ROOT / "academic-paper/agents/formatter_agent.md"
+    content = formatter.read_text()
+    # Remove the bare ARXIV token from the allowlist sentence (keep the PREPRINT+ARXIV
+    # composite so the failure is specifically the bare-token drop).
+    broken = content.replace("`CONTAMINATED-ARXIV-UNMATCHED`, ", "", 1)
+    p = tmp_path / "formatter_agent.md"
+    p.write_text(broken)
+    result = run_lint(["--formatter-path", str(p)])
+    assert result.returncode == 1
+    assert "CONTAMINATED-ARXIV-UNMATCHED" in result.stderr
+
+
+def test_delta1_missing_quadrangulation_matrix_row_fails(tmp_path):
+    """Mistoken CONTAMINATED-QUADRANGULATION-UNMATCHED in its MATRIX ROW ONLY (k=4
+    k_max=4) while the explanatory bullet prose keeps the token verbatim — rule 1
+    must still fail.
+
+    This is the mutation rule 1 exists to catch: the matrix table IS the prompt
+    contract, so deleting/mistokening an operational row must fail even though the
+    same token survives in surrounding prose. (A blanket str.replace of every
+    occurrence would mask this — it strips the prose too, so a subsection-wide token
+    scan would fail for the wrong reason rather than because the row is gone.)"""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    # Mistoken the suffix in the k=4 k_max=4 (non-preprint) table row only.
+    matrix_cell = "| 4 | 4 | — | `CONTAMINATED-QUADRANGULATION-UNMATCHED`"
+    broken_cell = "| 4 | 4 | — | `CONTAMINATED-QUADXXX`"
+    assert matrix_cell in content, "fixture drift: k=4 k_max=4 row shape changed"
+    broken = content.replace(matrix_cell, broken_cell, 1)
+    # The bullet prose still carries the verbatim token, proving the failure comes
+    # from the row scan, not from blanket token absence.
+    assert "`CONTAMINATED-QUADRANGULATION-UNMATCHED`" in broken
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 1
+    assert "QUADRANGULATION" in result.stderr or "Delta-1" in result.stderr
+
+
+def test_delta1_token_in_prose_only_still_passes_is_not_contract(tmp_path):
+    """Deleting a Delta-1 token from the bullet PROSE while keeping its matrix row
+    intact must still PASS — the prose is documentation, not the contract. This is
+    the negative twin of the row-oracle test: it proves rule 1 keys off the matrix
+    row, not subsection-wide presence (so prose edits don't cause false failures)."""
+    orch = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+    content = orch.read_text()
+    # The arxiv carve-out bullet starts with the bolded token; neutralise the bolded
+    # prose mention without touching its `| 1 | 1 |` matrix row.
+    prose_bullet = "- **`CONTAMINATED-ARXIV-UNMATCHED` (k=1, k_max=1"
+    assert prose_bullet in content, "fixture drift: arxiv carve-out bullet shape changed"
+    broken = content.replace(prose_bullet, "- **The arxiv carve-out (k=1, k_max=1", 1)
+    # Matrix row for the token is untouched.
+    assert "| 1 | 1 | `arxiv_unmatched` | `CONTAMINATED-ARXIV-UNMATCHED`" in broken
+    p = tmp_path / "orch.md"
+    p.write_text(broken)
+    result = run_lint(["--orchestrator-path", str(p)])
+    assert result.returncode == 0, f"prose-only edit should pass: stderr={result.stderr}"
+
+
+def test_delta1_arxiv_is_kmax1_carveout_documented():
+    """The arxiv carve-out semantics (fires only at k_max=1, not any k=1) must be
+    documented verbatim in the orchestrator subsection so a future edit cannot
+    silently widen it (the resolved reading of the ambiguous 'single-index' phrase:
+    single-index means k_max=1, not merely k=1). This pins the prompt contract."""
+    orch = (REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+            ).read_text()
+    # The disambiguating sentence must be present.
+    assert "single-index" in orch and "k_max=1" in orch
+    assert "CONTAMINATED-COVERAGE-NOISE" in orch  # the k=1 k_max>=2 arxiv fallback
 
 
 # ---------------------------------------------------------------------------
