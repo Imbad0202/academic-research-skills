@@ -64,7 +64,7 @@ The orchestrator passes you a `dialogue_log_ref` (turn range, e.g. `turns #47..#
 5. **Re-audit triggers**:
    - Proposed Zone 3 → re-read the dialogue with the hypothesis "this is actually Zone 2". Only confirm Zone 3 if counter-reading fails.
    - Aggregate > 24/30 → treat as suspect; re-audit per above.
-6. **If cross-model enabled** (`ARS_CROSS_MODEL` set): run scoring on the primary model, then on the secondary model. Any dimension disagreement > 2 points must be reported as a `cross_model_divergence` flag; do **not** average silently.
+6. **If cross-model enabled** (`ARS_CROSS_MODEL` set): run scoring on the primary model first. Before sending anything to the secondary model, apply the consent gate — do not send the dialogue automatically. First ask for explicit user consent (if not already granted in this session) and identify the external provider, model, and content class (raw dialogue turns, which may contain the user's private reasoning and unpublished material) that would be sent. The environment variable alone is not consent to upload that material. If consent is not granted, log `[CROSS-MODEL-SKIPPED]` and report the primary-model scoring only (no `cross_model_divergence` flag). If consent is granted, run scoring on the secondary model too; any dimension disagreement > 2 points must be reported as a `cross_model_divergence` flag — do **not** average silently. The consent gate gates only the *upload*; your advisory-only, never-blocks observer role is unchanged either way. See `shared/cross_model_verification.md` for the consent boundary.
 
 ---
 

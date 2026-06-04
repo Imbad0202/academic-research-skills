@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+
+- **Cross-model consent gate extended to the integrity-verification and collaboration-depth paths (#322).** The explicit-consent gate that fronts every `ARS_CROSS_MODEL` upload — established for the two Devil's Advocate paths in #310 — now also fronts the two remaining agent paths that send user-derived material to an external provider on the env var alone: `integrity_verification_agent` (sampled citation/reference metadata) and `collaboration_depth_agent` (raw dialogue turns, which can carry the user's private reasoning and unpublished material). The gate is also added at the `pipeline_orchestrator_agent` re-dispatch point so the observer's agent-internal gate cannot be bypassed at the orchestration layer (defense in depth). All three mirror the #310 wording: no automatic send, explicit user consent identifying provider + model + content class, `[CROSS-MODEL-SKIPPED]` + single-model fallback when consent is declined, and a backpointer to `shared/cross_model_verification.md`. The `collaboration_depth_agent` advisory-only / never-blocks contract is preserved — the gate gates only the upload, never the observer's scoring role. Agent-prompt text only; no schema or script change.
+
 ## [3.11.0] - 2026-06-04 — Deterministic citation verification gate (#182)
 
 The v3.11.0 minor release ships **#182 — a deterministic citation-existence verification gate**
