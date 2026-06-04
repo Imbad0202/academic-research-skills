@@ -13,12 +13,20 @@ This is daisy-chained migration per spec §3.7.
 Usage:
     python migrate_literature_corpus_to_v3_9_0.py [--dry-run] [--verbose] PATH
 
+Concurrency (#138): when both fields are missing for an entry, the OpenAlex and
+Crossref lookups run in parallel via a 2-worker thread pool. This requires
+`concurrent.futures`. The library-layer sequential-fallback contract ("run
+sequentially if parallelism is not available") documented in
+deep-research/agents/bibliography_agent.md is a separate concern — this one-shot
+tool simply requires threading and does not fall back.
+
 Design: docs/design/2026-05-17-ars-v3.9.0-cross-index-triangulation-measurement-spec.md §3.7
 """
 from __future__ import annotations
 
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -138,43 +146,65 @@ def migrate_passport(
         # --- Backfill missing fields ---
         entry_changed = False
 
-        if "openalex_unmatched" not in sig:
+        # Reconcile one resolver's outcome on the orchestrator thread: get_result
+        # either returns the bool/None value or re-raises the resolver's Unavailable
+        # exception. All passport mutation, report bookkeeping, and degradation
+        # logging stay single-threaded here — the worker only performs the network
+        # call. Returns True iff a field was filled.
+        def _reconcile(get_result, sig_key, exc_type, label) -> bool:
             try:
-                result = cs.resolve_openalex_unmatched(entry, oa_client)
-                if result is not None:
-                    if not dry_run:
-                        sig["openalex_unmatched"] = result
-                        entry["contamination_signals"] = sig
-                    entry_changed = True
-                    _log(f"{key}: fill openalex_unmatched={result}")
-                # result=None means manual (already handled) or API down;
-                # API-down surfaces as OpenAlexUnavailable (caught below).
-            except OpenAlexUnavailable as e:
+                result = get_result()
+            except exc_type as e:
                 degradation_log.append(
-                    f"[CORPUS MIGRATION INCOMPLETE: openalex] {key}: {e}"
+                    f"[CORPUS MIGRATION INCOMPLETE: {label}] {key}: {e}"
                 )
-                report["degraded_openalex"] += 1
-                _log(f"{key}: degraded (openalex) — {e}")
-        else:
-            _log(f"{key}: preserve openalex_unmatched (already set)")
+                report[f"degraded_{label}"] += 1
+                _log(f"{key}: degraded ({label}) — {e}")
+                return False
+            # result=None means manual (already handled); API-down would have
+            # raised exc_type above, so None here just means "nothing to write".
+            if result is None:
+                return False
+            if not dry_run:
+                sig[sig_key] = result
+                entry["contamination_signals"] = sig
+            _log(f"{key}: fill {sig_key}={result}")
+            return True
 
-        if "crossref_unmatched" not in sig:
-            try:
-                result = cs.resolve_crossref_unmatched(entry, cr_client)
-                if result is not None:
-                    if not dry_run:
-                        sig["crossref_unmatched"] = result
-                        entry["contamination_signals"] = sig
-                    entry_changed = True
-                    _log(f"{key}: fill crossref_unmatched={result}")
-            except CrossrefUnavailable as e:
-                degradation_log.append(
-                    f"[CORPUS MIGRATION INCOMPLETE: crossref] {key}: {e}"
-                )
-                report["degraded_crossref"] += 1
-                _log(f"{key}: degraded (crossref) — {e}")
-        else:
+        need_oa = "openalex_unmatched" not in sig
+        need_cr = "crossref_unmatched" not in sig
+        if not need_oa:
+            _log(f"{key}: preserve openalex_unmatched (already set)")
+        if not need_cr:
             _log(f"{key}: preserve crossref_unmatched (already set)")
+
+        # #138: the OpenAlex and Crossref lookups for this entry are independent
+        # (different hosts, per-instance throttle state, monotonic timing), so when
+        # both are missing dispatch the two network calls in parallel. Only missing
+        # fields are dispatched, so an already-set field never consults its client
+        # (preserves the partial-degradation contract). A single missing field skips
+        # the pool and calls directly — no parallelism to gain from one call.
+        if need_oa and need_cr:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                oa_future = pool.submit(cs.resolve_openalex_unmatched, entry, oa_client)
+                cr_future = pool.submit(cs.resolve_crossref_unmatched, entry, cr_client)
+            oa_changed = _reconcile(
+                oa_future.result, "openalex_unmatched", OpenAlexUnavailable, "openalex"
+            )
+            cr_changed = _reconcile(
+                cr_future.result, "crossref_unmatched", CrossrefUnavailable, "crossref"
+            )
+            entry_changed = oa_changed or cr_changed
+        elif need_oa:
+            entry_changed = _reconcile(
+                lambda: cs.resolve_openalex_unmatched(entry, oa_client),
+                "openalex_unmatched", OpenAlexUnavailable, "openalex",
+            )
+        elif need_cr:
+            entry_changed = _reconcile(
+                lambda: cs.resolve_crossref_unmatched(entry, cr_client),
+                "crossref_unmatched", CrossrefUnavailable, "crossref",
+            )
 
         if entry_changed:
             report["patched"] += 1
