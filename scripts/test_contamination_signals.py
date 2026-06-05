@@ -488,17 +488,24 @@ class ResolveArxivUnmatchedTest(unittest.TestCase):
         mock_client.arxiv_id_lookup.assert_not_called()
         mock_client.title_search.assert_not_called()
 
-    def test_arxiv_id_absent_falls_through_to_title(self):
-        """arXiv ID absent: title search alone, NO id lookup attempted."""
+    def test_arxiv_id_absent_skips_resolver(self):
+        """arXiv ID absent (#331 P2): the arXiv resolver is SKIPPED — return None
+        (caller omits arxiv_unmatched) and run NO network query. A non-arXiv
+        citation (e.g. a DOI-keyed journal article) must not be title-searched
+        against arXiv: a title miss there is a coverage gap, not non-existence
+        evidence, and would emit a false arxiv_unmatched=true (inflating the
+        triangulation k on a clean citation). Spec §4 / the orchestrator k_max
+        rule both state arxiv_unmatched is ABSENT on citations with no arXiv ID
+        ('arXiv resolver skipped on a non-arXiv citation per Delta 1')."""
         from contamination_signals import resolve_arxiv_unmatched
 
         mock_client = MagicMock()
-        mock_client.title_search.return_value = {"title": "X", "year": 2017}
 
         entry = {"title": "X", "obtained_via": "obsidian-vault"}  # no arxiv_id
         result = resolve_arxiv_unmatched(entry, mock_client)
-        self.assertIs(result, False)
+        self.assertIsNone(result)
         mock_client.arxiv_id_lookup.assert_not_called()
+        mock_client.title_search.assert_not_called()
 
     def test_arxiv_id_miss_falls_through_to_title(self):
         """ID present but ID lookup misses → fall through to title search."""
@@ -559,12 +566,28 @@ class BuildSignalsArxivExtensionTest(unittest.TestCase):
         )
         self.assertIs(result["arxiv_unmatched"], True)
 
+    def test_no_arxiv_id_omits_arxiv_field_even_with_client(self) -> None:
+        """#331: a non-arXiv citation (arxiv_client present but entry has no
+        arxiv_id) omits arxiv_unmatched and runs NO arXiv query. Without the
+        skip, the resolver would title-search arXiv and emit a false
+        arxiv_unmatched=true, inflating triangulation k on a clean citation."""
+        ss = MagicMock()
+        ss.lookup.return_value = {"matched": True}
+        ax = MagicMock()
+        result = cs.build_signals_object(
+            self._entry(), ss, arxiv_client=ax  # _entry() carries no arxiv_id
+        )
+        self.assertNotIn("arxiv_unmatched", result)
+        ax.arxiv_id_lookup.assert_not_called()
+        ax.title_search.assert_not_called()
+
     def test_manual_entry_omits_arxiv_field_even_with_client(self) -> None:
         """Manual entry: arxiv_unmatched omitted (not-rule), like the ss field."""
         ss = MagicMock()
         ax = MagicMock()
         result = cs.build_signals_object(
-            self._entry(obtained_via="manual"), ss, arxiv_client=ax
+            self._entry(obtained_via="manual", arxiv_id="1706.03762"), ss,
+            arxiv_client=ax
         )
         self.assertNotIn("arxiv_unmatched", result)
         ax.arxiv_id_lookup.assert_not_called()
@@ -866,14 +889,12 @@ class ResolveArxivQueriedByTest(unittest.TestCase):
         self.assertIs(unmatched, True)
         self.assertEqual(queried_by, "id")
 
-    def test_no_arxiv_id_unmatched_queried_by_title(self):
-        client = MagicMock()
-        client.title_search.return_value = None
-        unmatched, matched_by, queried_by = cs._resolve_arxiv_id_then_title(
-            {"title": "Unindexed"}, client  # no arxiv_id
-        )
-        self.assertIs(unmatched, True)
-        self.assertEqual(queried_by, "title")
+    # (#331) No test for the no-arxiv_id case here: _resolve_arxiv_id_then_title's
+    # precondition is now "entry has an arxiv_id" — both callers
+    # (resolve_arxiv_unmatched and verification_gate._run_arxiv) skip the resolver
+    # before reaching it when arxiv_id is absent. The skip is covered by
+    # ResolveArxivUnmatchedTest.test_arxiv_id_absent_skips_resolver and the
+    # verification_gate skipped-status tests.
 
     def test_arxiv_id_match_queried_by_id(self):
         client = MagicMock()

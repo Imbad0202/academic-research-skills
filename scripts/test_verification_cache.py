@@ -166,3 +166,48 @@ def test_response_roundtrips_nested_structure(cache):
     }
     cache.put("vaswani2017", "crossref", "10.5555/abc", payload)
     assert cache.get("vaswani2017", "crossref", "10.5555/abc") == payload
+
+
+def test_corrupted_json_payload_is_miss(tmp_path, monkeypatch):
+    """#331 P3: a row whose response_json is not decodable JSON is a miss
+    (return None → live recompute), not a JSONDecodeError that aborts
+    verification. Contract: 'malformed cache payload = miss'."""
+    from verification_cache import VerificationCache
+
+    db = tmp_path / "verification.db"
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(db))
+    c = VerificationCache()
+    c.put("bad2024", "crossref", "10.5555/bad", {"matched": True})
+
+    conn = sqlite3.connect(str(db))
+    conn.execute(
+        "UPDATE verification_cache SET response_json = ? WHERE citation_key = ?",
+        ("{not valid json", "bad2024"),
+    )
+    conn.commit()
+    conn.close()
+
+    assert c.get("bad2024", "crossref", "10.5555/bad") is None
+
+
+def test_non_dict_payload_is_miss(tmp_path, monkeypatch):
+    """#331 P3: a row decoding to a non-dict value (e.g. a bare list/string from
+    an older or manual writer) is a miss — the caller's `"matched" in cached`
+    join logic expects a dict. Return None rather than hand back a shape the
+    caller cannot read."""
+    from verification_cache import VerificationCache
+
+    db = tmp_path / "verification.db"
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(db))
+    c = VerificationCache()
+    c.put("list2024", "crossref", "10.5555/list", {"matched": True})
+
+    conn = sqlite3.connect(str(db))
+    conn.execute(
+        "UPDATE verification_cache SET response_json = ? WHERE citation_key = ?",
+        ('["matched", true]', "list2024"),  # valid JSON, but a list not a dict
+    )
+    conn.commit()
+    conn.close()
+
+    assert c.get("list2024", "crossref", "10.5555/list") is None

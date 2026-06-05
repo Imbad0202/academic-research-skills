@@ -101,7 +101,18 @@ class VerificationCache:
         response_json, ts = row
         if self._is_expired(ts):
             return None
-        return json.loads(response_json)
+        # #331: a corrupted payload (not decodable) or a non-dict value (e.g.
+        # written by an older/other tool) is a miss, not a hard error — the
+        # documented contract is "malformed cache payload = miss". Returning None
+        # forces a clean live recompute instead of aborting verification with a
+        # JSONDecodeError or handing the caller a shape it cannot read.
+        try:
+            value = json.loads(response_json)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if not isinstance(value, dict):
+            return None
+        return value
 
     def put(
         self,

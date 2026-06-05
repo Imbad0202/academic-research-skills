@@ -122,12 +122,8 @@ class ArxivClient:
                     # drops mid-stream and truncated / malformed bodies surface
                     # as ArxivUnavailable -- honoring the per-API degradation
                     # contract (one transient failure drops only arxiv_unmatched,
-                    # never aborts the backfill). Note: a *complete* non-Atom
-                    # body (e.g. a well-formed HTML error page served with 200)
-                    # parses fine and yields zero Atom entries -- that is a miss,
-                    # not a degradation; only genuinely malformed XML raises
-                    # ParseError here. Mirrors crossref_client.py's read/parse
-                    # except (ET.ParseError replaces JSONDecodeError).
+                    # never aborts the backfill). Mirrors crossref_client.py's
+                    # read/parse except (ET.ParseError replaces JSONDecodeError).
                     try:
                         body = resp.read()
                         root = ET.fromstring(body)
@@ -143,6 +139,19 @@ class ArxivClient:
                         raise ArxivUnavailable(
                             f"arXiv response read/parse failed: {e}"
                         ) from e
+                    # #331: a *complete* non-Atom body (e.g. a well-formed HTML
+                    # error page served with 200 by a proxy/CDN) parses cleanly
+                    # but is NOT an arXiv result. arXiv's genuine empty result is
+                    # a well-formed Atom <feed> with zero <entry> children, so the
+                    # root tag distinguishes the two. Treat a non-feed root as a
+                    # degradation (omit-on-degradation path), NOT a cached miss --
+                    # otherwise an upstream outage persists as a false
+                    # arxiv_unmatched for the cache TTL.
+                    if root.tag != f"{_ATOM_NS}feed":
+                        raise ArxivUnavailable(
+                            f"arXiv returned a non-Atom 200 body (root tag "
+                            f"{root.tag!r}, not an Atom feed)"
+                        )
                     return root.findall(f"{_ATOM_NS}entry")
             except urllib.error.HTTPError as e:
                 if e.code == 429 and attempt < _MAX_RETRIES:

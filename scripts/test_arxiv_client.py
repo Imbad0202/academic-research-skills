@@ -274,11 +274,11 @@ def test_malformed_xml_body_raises_unavailable():
     the ParseError to ArxivUnavailable. Mirrors crossref's
     test_invalid_json_body_raises_unavailable.
 
-    Note: a *complete* HTML error page (`<html>...</html>`) is itself
-    well-formed XML and parses without error -- it just yields zero Atom
-    entries (a miss), not an exception. Only genuinely malformed bytes
-    (truncated/unclosed) trigger ParseError, which is what an interrupted
-    transfer actually produces."""
+    Distinct from the non-Atom-200 case (#331): a *complete* HTML error page
+    parses without ParseError but has a non-feed root tag, so it is rejected by
+    the explicit root-tag check (test_non_atom_200_body_raises_unavailable), not
+    here. This test covers genuinely malformed bytes (truncated/unclosed),
+    which is what an interrupted transfer actually produces."""
     from arxiv_client import ArxivClient, ArxivUnavailable
 
     with patch("urllib.request.urlopen", return_value=_mock_resp(
@@ -286,6 +286,34 @@ def test_malformed_xml_body_raises_unavailable():
         client = ArxivClient()
         with pytest.raises(ArxivUnavailable):
             client.title_search("any title")
+
+
+def test_non_atom_200_body_raises_unavailable():
+    """#331: a complete, well-formed non-Atom body served with 200 (e.g. an HTML
+    error page from a proxy/CDN) must NOT be treated as a real empty-result miss.
+    arXiv's genuine empty result is an Atom <feed> with zero <entry> children;
+    an HTML error page has a non-feed root tag. The non-feed root must raise
+    ArxivUnavailable (omit-on-degradation) so it is never cached as a false
+    arxiv_unmatched=true for the 90-day TTL."""
+    from arxiv_client import ArxivClient, ArxivUnavailable
+
+    html_error_page = b"<html><body><h1>503 Service Unavailable</h1></body></html>"
+    with patch("urllib.request.urlopen", return_value=_mock_resp(html_error_page)):
+        client = ArxivClient()
+        with pytest.raises(ArxivUnavailable):
+            client.title_search("any title")
+
+
+def test_genuine_empty_atom_feed_is_miss_not_unavailable():
+    """#331 guard against over-correction: a genuine empty Atom <feed> (zero
+    <entry>, the real arXiv miss shape) must still resolve to a miss (None), NOT
+    raise. The root-tag check accepts the feed root and findall returns []."""
+    from arxiv_client import ArxivClient
+
+    empty_feed = b'<feed xmlns="http://www.w3.org/2005/Atom"><title>arXiv Query</title></feed>'
+    with patch("urllib.request.urlopen", return_value=_mock_resp(empty_feed)):
+        client = ArxivClient()
+        assert client.title_search("nonexistent paper") is None
 
 
 def test_oserror_during_read_raises_unavailable():

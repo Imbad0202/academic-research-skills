@@ -349,15 +349,18 @@ def _resolve_arxiv_id_then_title(
     (unmatched, matched_by, queried_by). matched_by ∈ {'arxiv', 'title', None};
     queried_by ∈ {'id', 'title'} per the C-V6(a) signal (see
     _resolve_doi_then_title). 'id' when an arXiv ID was present. Never catches —
-    exception differentiation stays at the wrapper."""
+    exception differentiation stays at the wrapper.
+
+    Precondition: only called for entries carrying an arxiv_id — both callers
+    (`resolve_arxiv_unmatched` and verification_gate `_run_arxiv`) skip the
+    resolver when arxiv_id is absent (#331), so the ID lookup always runs and a
+    title search is only the ID-miss fallback."""
     title = entry.get("title", "")
-    arxiv_id = entry.get("arxiv_id")
     queried_by = queried_by_for(entry, id_field="arxiv_id")
-    if arxiv_id:
-        hit = client.arxiv_id_lookup(arxiv_id, title)
-        if hit is not None:
-            return False, "arxiv", queried_by
-        # ID miss or MISMATCH — fall through to title search.
+    hit = client.arxiv_id_lookup(entry.get("arxiv_id"), title)
+    if hit is not None:
+        return False, "arxiv", queried_by
+    # ID miss or MISMATCH — fall through to title search.
     hit = client.title_search(title)
     if hit is not None:
         return False, "title", queried_by
@@ -375,15 +378,20 @@ def resolve_arxiv_unmatched(
     `doi_lookup_with_title_check`). The title fallback is identical.
 
     - Manual entry → return None (caller MUST omit field).
+    - arXiv ID absent → SKIP the resolver, return None (caller MUST omit field).
+      A non-arXiv citation is not title-searched against arXiv: a title miss
+      there is a coverage gap, not non-existence evidence (#331). The spec keys
+      the arXiv index on arxiv_id and states arxiv_unmatched is absent on
+      citations with no arXiv ID ('arXiv resolver skipped on a non-arXiv
+      citation per Delta 1', spec §4; orchestrator k_max rule).
     - arXiv ID present + ID hit (passes title cross-check) → return False.
     - arXiv ID present + ID miss/MISMATCH → fall through to title search.
-    - arXiv ID absent → title search only.
     - No hit anywhere → return True (unmatched).
 
     Returns:
         True: arXiv returned no match by ID (with title cross-check) or title.
         False: arXiv found a match.
-        None: obtained_via='manual' → exempt, caller must omit field.
+        None: obtained_via='manual' OR no arxiv_id → skipped, caller omits field.
 
     Raises:
         ArxivUnavailable: API degraded, caller must omit field per R-L3-2-C.
@@ -392,6 +400,10 @@ def resolve_arxiv_unmatched(
         byte-equivalent to no caching.
     """
     if entry.get("obtained_via") == "manual":
+        return None
+    # #331: no arXiv ID → resolver is skipped (no network, not cached — a skip
+    # is resolver applicability, not an adjudication, so it never persists).
+    if not entry.get("arxiv_id"):
         return None
     return _cached_verdict(
         cache=cache,

@@ -31,7 +31,7 @@ GET ?id_list={arxiv_id}
 
 **Matching rule (mirrors the Crossref/S2 `DOI_MISMATCH` pattern):** ID lookup hits are gated by a 0.70 title cross-check (same SequenceMatcher threshold as the sibling clients). If the resolved entry's title is below threshold → ID_MISMATCH, return None, fall through to title search. An empty feed (non-existent ID) is a miss → None.
 
-### Pattern 2: Title Search (fallback when no arXiv ID or ID_MISMATCH)
+### Pattern 2: Title Search (fallback on ID-miss / ID_MISMATCH)
 
 ```
 GET ?search_query=ti:"{title}"&max_results=5
@@ -41,11 +41,9 @@ GET ?search_query=ti:"{title}"&max_results=5
 
 ## `arxiv_unmatched` derivation
 
-`true` if and only if:
-- arXiv ID present: ID lookup either returns an empty feed (miss), misses the title cross-check, AND title search returns no match meeting threshold; OR
-- arXiv ID absent: title search alone returns no match meeting threshold.
+`true` if and only if the citation **has an arXiv ID** AND the ID lookup either returns an empty feed (miss) or misses the title cross-check, AND the title-search fallback returns no match meeting threshold.
 
-The check fires only when `obtained_via != 'manual'`.
+A citation with **no arXiv ID** is `skipped` (not `unmatched`) — the resolver does not run and the caller omits `arxiv_unmatched` (absent ≠ false, #331). arXiv applicability is ID-gated: a title-only miss against arXiv is a coverage gap for a non-arXiv work, not non-existence evidence, so it must never emit a triangulation signal. The check fires only when `obtained_via != 'manual'` AND an arXiv ID is present.
 
 Note: the unified `lookup_verified` summary (#182 Delta 4, a later batch) narrows the existence-gate `false` to **ID-keyed** unmatched — a title-only `arxiv_unmatched` with no resolvable ID is a coverage-gap signal, not fabrication evidence (C-V6(a)). This protocol's `arxiv_unmatched` boolean is the raw triangulation signal; the narrowing happens at the Delta 4 reducer, not here.
 
