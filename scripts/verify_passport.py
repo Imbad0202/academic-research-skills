@@ -8,10 +8,13 @@ literature_corpus[], and prints the list of per-citation summaries as JSON. A
 standalone entry point for ad-hoc verification, separate from the Stage 4->5
 audit pipeline.
 
-Anchor note: the v3.7.3 anchor lives in writer prose (the <!--anchor:...-->
-markers), not in literature_corpus. This ad-hoc CLI has no prose document to
-join against, so every `anchor_present` is False. The prose-marker join (passing
-an {ref_slug: anchor} map into verify_passport) is wired by the Stage 4->5
+ref_slug note (#332): both the ref_slug AND the anchor live in writer prose (the
+<!--ref:slug--> / <!--anchor:...--> markers), not in literature_corpus. The
+summary contract REQUIRES a non-null string ref_slug, so a passport-only CLI
+cannot honestly emit a summary — by default it REFUSES (nonzero exit). Pass
+`--synthetic-ref-slug citation_key` to synthesize ref_slug from citation_key for
+DIAGNOSTIC output (warned on stderr, not a real prose join). The real
+{citation_key: ref_slug} + {ref_slug: anchor} joins are wired by the Stage 4->5
 pipeline / formatter batch, not by this standalone tool.
 
 Spec: docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md §2 Delta 5.
@@ -60,6 +63,11 @@ def run(argv: list[str] | None = None, *, clients_factory=_real_clients) -> int:
         description="Verify citation existence across a Material Passport.",
     )
     parser.add_argument("passport", help="Path to the passport YAML file.")
+    parser.add_argument(
+        "--synthetic-ref-slug", choices=["citation_key"], default=None,
+        help="Synthesize ref_slug from each entry's citation_key for DIAGNOSTIC "
+             "output (the tool refuses by default; this is not a real prose "
+             "join, #332).")
     args = parser.parse_args(argv)
 
     path = Path(args.passport)
@@ -74,7 +82,31 @@ def run(argv: list[str] | None = None, *, clients_factory=_real_clients) -> int:
               file=sys.stderr)
         return 1
 
-    outcomes = verify_passport(passport, clients=clients_factory())
+    # Refuse by default — a passport alone carries no prose <!--ref:slug--> join,
+    # so it cannot produce a contract-valid summary (see module docstring, #332).
+    corpus = passport.get("literature_corpus") or []
+    if args.synthetic_ref_slug is None:
+        print(
+            "[verify_passport ERROR] cannot emit citation_verification_summary "
+            "from a passport alone: ref_slug is a prose-sourced join "
+            "(<!--ref:slug--> markers) that a passport does not carry. Run the "
+            "Stage 4->5 pipeline (which supplies the prose join), or pass "
+            "--synthetic-ref-slug citation_key for diagnostic output.",
+            file=sys.stderr)
+        return 2
+
+    # synthetic mode: ref_slug := citation_key. Diagnostic only.
+    ref_slug_by_key = {
+        e.get("citation_key"): e.get("citation_key") for e in corpus
+    }
+    print(
+        "[verify_passport WARNING] --synthetic-ref-slug citation_key: ref_slug "
+        "synthesized from citation_key. Output is DIAGNOSTIC, not a real prose "
+        "join — do NOT feed it to a consumer that expects prose-joined ref_slugs.",
+        file=sys.stderr)
+
+    outcomes = verify_passport(
+        passport, clients=clients_factory(), ref_slug_by_key=ref_slug_by_key)
     print(json.dumps(outcomes, indent=2))
     return 0
 

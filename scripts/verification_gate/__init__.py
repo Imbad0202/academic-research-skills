@@ -2,14 +2,18 @@
 """verification_gate — citation existence verification API (Delta 5).
 
 Public functions:
-  - verify_citation(entry, clients, cache=None) -> CitationVerificationOutcome
-  - verify_passport(passport, clients, cache=None) -> list[outcome]
+  - verify_citation(entry, clients, *, ref_slug, anchor=None, cache=None)
+        -> CitationVerificationOutcome
+  - verify_passport(passport, clients, *, ref_slug_by_key, anchors=None,
+        cache=None) -> list[outcome]
 
 Composes the four resolvers (crossref / openalex / semantic_scholar / arxiv),
 maps each resolver's execution to a {status, queried_by} outcome, derives the
 3-class lookup_verified via the Delta 4 reducer (narrowed-false, C-V6(a)),
 reads anchor_present from the v3.7.3 anchor marker, and stamps
-verification_timestamp. Does NOT duplicate the v3.8 audit pipeline — it composes
+verification_timestamp. Both ref_slug and anchor are prose-sourced inputs joined
+upstream by citation_key — NEVER read off the corpus entry, whose schema forbids
+them (#332). Does NOT duplicate the v3.8 audit pipeline — it composes
 the same lower-layer resolvers and writes the unified summary schema (Delta 4).
 
 The returned dict validates against
@@ -122,14 +126,21 @@ def verify_citation(
     entry: Mapping[str, Any],
     clients: Mapping[str, Any],
     *,
+    ref_slug: str,
     anchor: Mapping[str, Any] | None = None,
     cache=None,
 ) -> dict[str, Any]:
     """Verify one citation's existence across the four resolvers.
 
-    `entry` carries citation_key, ref_slug, title, optional doi / arxiv_id,
-    obtained_via. `clients` is a mapping {crossref, openalex, semantic_scholar,
-    arxiv} of resolver clients (injected so callers control network / cache).
+    `entry` carries citation_key, title, authors, year, source_pointer, optional
+    doi / arxiv_id, obtained_via. `clients` is a mapping {crossref, openalex,
+    semantic_scholar, arxiv} of resolver clients (injected so callers control
+    network / cache).
+
+    `ref_slug` is the writer-prose `<!--ref:slug-->` marker this citation renders
+    under, supplied by the caller — never read off the corpus entry (same
+    provenance rule as `anchor`; the entry schema forbids the field, #332).
+
     `anchor` is the v3.7.3 anchor marker ({kind, value}) for this citation's
     ref_slug, already parsed from writer prose and joined upstream (None when no
     anchor marker exists for the ref_slug). It is a SEPARATE input, not an entry
@@ -170,7 +181,7 @@ def verify_citation(
         }
     return {
         "citation_key": entry.get("citation_key"),
-        "ref_slug": entry.get("ref_slug"),
+        "ref_slug": ref_slug,
         "lookup_verified": reduce_lookup_verified(resolver_outcomes),
         "anchor_present": _anchor_present(anchor),
         "verification_timestamp": datetime.now(timezone.utc).isoformat(),
@@ -182,19 +193,43 @@ def verify_passport(
     passport: Mapping[str, Any],
     clients: Mapping[str, Any],
     *,
+    ref_slug_by_key: Mapping[str, str],
     anchors: Mapping[str, Mapping[str, Any]] | None = None,
     cache=None,
 ) -> list[dict[str, Any]]:
     """Batch helper: run verify_citation over every entry in the passport's
-    literature_corpus[]. `anchors` is the {ref_slug: anchor-marker} join map
-    parsed from writer prose (the v3.7.3 <!--anchor:kind:value--> markers); each
-    entry's anchor is looked up by its ref_slug (absent → anchor_present False).
-    Threading the join here keeps verify_citation a pure per-citation unit."""
+    literature_corpus[].
+
+    `ref_slug_by_key` is the {citation_key: ref_slug} join map: corpus entries are
+    keyed by citation_key, writer prose is keyed by ref_slug, and the join across
+    them is the caller's (Stage 4→5 pipeline's) responsibility — the corpus entry
+    never carries ref_slug itself (#332). An entry whose citation_key has no joined
+    ref_slug raises ValueError rather than emitting a contract-invalid summary;
+    the per-entry summary contract requires a non-null string ref_slug, so a
+    missing join is a caller error, not a silently-defaulted field.
+
+    `anchors` is the {ref_slug: anchor-marker} join map parsed from writer prose
+    (the v3.7.3 <!--anchor:kind:value--> markers); each entry's anchor is looked
+    up by its (joined) ref_slug (absent → anchor_present False). Threading both
+    joins here keeps verify_citation a pure per-citation unit.
+
+    ref_slug_by_key is 1:1 (one summary row per corpus entry); per-prose-occurrence
+    verification (one entry under several ref slugs) is a different API shape, out
+    of scope here.
+    """
     corpus = passport.get("literature_corpus") or []
     anchors = anchors or {}
-    return [
-        verify_citation(
-            entry, clients, anchor=anchors.get(entry.get("ref_slug")),
-            cache=cache)
-        for entry in corpus
-    ]
+    outcomes: list[dict[str, Any]] = []
+    for entry in corpus:
+        citation_key = entry.get("citation_key")
+        ref_slug = ref_slug_by_key.get(citation_key)
+        if ref_slug is None:
+            raise ValueError(
+                f"no ref_slug joined for citation_key {citation_key!r}: the "
+                "citation_key→ref_slug prose join must cover every corpus entry "
+                "(corpus entries do not carry ref_slug; #332)"
+            )
+        outcomes.append(verify_citation(
+            entry, clients, ref_slug=ref_slug,
+            anchor=anchors.get(ref_slug), cache=cache))
+    return outcomes

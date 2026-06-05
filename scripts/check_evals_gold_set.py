@@ -29,11 +29,12 @@ from citation_verification_summary import (  # noqa: E402
 )
 
 LABEL_ENUM = {"true", "false", "unresolvable"}
-QUERIED_BY_ENUM = {"id", "title", None}
 KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated",
              "fabricated_title_only", "valid_unindexed"}
 RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
-STATUS_ENUM = {"matched", "unmatched", "unreachable", "skipped"}
+# status + queried_by enums (and their status↔queried_by coherence) are now
+# enforced by _RESOLVER_OUTCOME_VALIDATOR against the shipped summary-schema $def,
+# not local constants (#332 P2).
 
 _CORPUS_ENTRY_SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent
@@ -42,6 +43,23 @@ _CORPUS_ENTRY_SCHEMA_PATH = (
 _CORPUS_ENTRY_VALIDATOR = Draft202012Validator(
     json.loads(_CORPUS_ENTRY_SCHEMA_PATH.read_text(encoding="utf-8")),
     format_checker=Draft202012Validator.FORMAT_CHECKER,
+)
+
+# Validate each resolver_outcome against the SHIPPED summary-schema $def rather
+# than a hand-rolled coherence check, so the gold validator can't drift from the
+# contract it pins (the I9b single-source-of-truth philosophy, applied to shape).
+# The $def carries the status↔queried_by allOf coherence (ran → {id,title};
+# skipped/unreachable → null) plus the required-present rule that a flat enum
+# check silently under-enforced (#332 P2).
+_SUMMARY_SCHEMA_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "shared" / "contracts" / "passport" / "citation_verification_summary.schema.json"
+)
+# Safe to validate the extracted $def in isolation because resolver_outcome is
+# $ref-less today. If it ever gains a $ref into a sibling $def, build the validator
+# from the full schema document (with a registry) instead of the slice.
+_RESOLVER_OUTCOME_VALIDATOR = Draft202012Validator(
+    json.loads(_SUMMARY_SCHEMA_PATH.read_text(encoding="utf-8"))["$defs"]["resolver_outcome"]
 )
 
 
@@ -206,17 +224,16 @@ def validate(root: Path) -> list[str]:
             if entry is None:
                 errors.append(f"I9: {tid} resolver_outcomes missing resolver {resolver!r}")
                 continue
-            status = entry.get("status")
-            if status not in STATUS_ENUM:
+            # Validate the resolver_outcome against the shipped summary-schema
+            # $def: status enum, queried_by enum, queried_by required-present, AND
+            # the status↔queried_by coherence allOf (ran → {id,title};
+            # skipped/unreachable → null). A flat enum check under-enforced the
+            # last two (#332 P2).
+            for verr in _RESOLVER_OUTCOME_VALIDATOR.iter_errors(entry):
                 errors.append(
-                    f"I9: {tid} resolver_outcomes.{resolver}.status={status!r} "
-                    f"not in {sorted(STATUS_ENUM)}"
-                )
-            queried_by = entry.get("queried_by")
-            if queried_by not in QUERIED_BY_ENUM:
-                errors.append(
-                    f"I9: {tid} resolver_outcomes.{resolver}.queried_by={queried_by!r} "
-                    f"not in {{'id', 'title', null}}"
+                    f"I9: {tid} resolver_outcomes.{resolver} violates "
+                    f"citation_verification_summary $defs.resolver_outcome: "
+                    f"{verr.message}"
                 )
 
         recomputed = _reduce_lookup_verified(ros)

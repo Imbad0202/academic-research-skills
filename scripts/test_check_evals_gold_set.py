@@ -194,6 +194,48 @@ def test_i9_invalid_queried_by_enum_caught(tmp_path):
     assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
 
 
+def test_i9_queried_by_missing_caught(tmp_path):
+    """I9 coherence (#332 P2): queried_by is REQUIRED present. An entry that omits
+    it must be caught — the summary schema marks queried_by required, and a missing
+    key is load-bearing (an absent key could let an ambiguous unmatched silently
+    reduce to unresolvable instead of false)."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
+    del exp["001-valid-doi-test"]["resolver_outcomes"]["crossref"]["queried_by"]
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
+
+
+def test_i9_ran_resolver_with_null_queried_by_caught(tmp_path):
+    """I9 coherence (#332 P2): a ran resolver (matched/unmatched) must carry
+    queried_by ∈ {id, title}, never null — the summary schema's allOf forces it.
+    A matched row claiming queried_by=null is incoherent and must be caught."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
+    ros = exp["001-valid-doi-test"]["resolver_outcomes"]
+    # crossref is matched in the clean fixture; null queried_by is incoherent.
+    ros["crossref"]["queried_by"] = None
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
+
+
+def test_i9_skipped_resolver_with_nonnull_queried_by_caught(tmp_path):
+    """I9 coherence (#332 P2): a skipped/unreachable resolver must carry
+    queried_by=null — there was no query to attribute. A skipped row claiming
+    queried_by='id' is incoherent (the summary schema's allOf forces null)."""
+    target = _copy_clean(tmp_path)
+    exp = json.loads((target / "expected_outcomes.json").read_text(encoding="utf-8"))
+    ros = exp["001-valid-doi-test"]["resolver_outcomes"]
+    # arxiv is skipped on a non-arXiv citation in the clean fixture.
+    assert ros["arxiv"]["status"] == "skipped", "fixture assumption changed"
+    ros["arxiv"]["queried_by"] = "id"  # incoherent: skipped must be null
+    (target / "expected_outcomes.json").write_text(json.dumps(exp))
+    errors = check_evals_gold_set.validate(target)
+    assert any("I9" in e for e in errors), f"I9 not caught; errors: {errors}"
+
+
 def test_i9b_false_with_only_title_only_unmatched_caught(tmp_path):
     """I9b (C-V6(a)): a `false`-labeled tuple whose unmatched are all title-only
     (queried_by != id) is a mislabel — narrowed-false requires an ID-keyed
