@@ -378,6 +378,7 @@ This advisory is the default-mode complement to the `strict`-mode terminal block
 | paper.tex | LaTeX | LaTeX source (if requested) |
 | references.bib | BibTeX | Bibliography (if LaTeX) |
 | cover_letter.md | Markdown | Journal cover letter (if applicable) |
+| provenance_summary.md | Markdown | Advisory provenance report — MUST be delivered whenever any advisory fires (contamination, version-family, or the mandatory `Citation Existence Advisories` section for advisory `lookup_verified == false` rows per C-V6(b)). The only deliverable-visible carrier for an advisory false, so it cannot be dropped when one exists. |
 
 ### Format Specifications Applied
 | Spec | Value |

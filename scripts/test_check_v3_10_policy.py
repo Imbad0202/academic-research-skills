@@ -414,24 +414,52 @@ def test_mutation_dropping_pair_branch_fails(entry_schema):
 
 def test_mutation_formatter_missing_citation_existence_advisory_fails():
     """C-V6(b) #333: if the formatter drops the mandatory provenance_summary
-    'Citation Existence Advisories' section, the lint must fail — otherwise an
-    advisory lookup_verified==false (a provably-bogus DOI) has no visibility
+    'Citation Existence Advisories' section header, the lint must fail — otherwise
+    an advisory lookup_verified==false (a provably-bogus DOI) has no visibility
     carrier (the marker stays byte-equivalent v3.9.x, so it can't be the carrier)."""
     formatter = DEFAULT_FORMATTER.read_text()
-    # Excise the whole subsection + every mention of its title.
-    mutated = formatter.replace("Citation Existence Advisor", "Removed Section")
+    # Rename the section header so _extract_section can't find it.
+    mutated = formatter.replace("## Citation Existence Advisory", "## Removed Section")
     fails = check_formatter_prompt(mutated)
     assert any("Citation Existence Advisor" in f or "C-V6(b)" in f for f in fails)
 
 
 def test_mutation_formatter_advisory_not_in_provenance_summary_fails():
-    """C-V6(b) #333: the Citation Existence Advisories section must live in
-    provenance_summary.md (the human-reviewed deliverable). If it is documented
-    but NOT tied to provenance_summary, the visibility-carrier guarantee is lost."""
+    """C-V6(b) #333: the carrier (provenance_summary) must be named INSIDE the
+    Citation Existence Advisory section, not merely somewhere in the prompt. Detach
+    it ONLY within that subsection — the pre-existing contamination/version-family
+    provenance_summary mentions must NOT mask the gap (the codex P2: a whole-prompt
+    scan false-passes here)."""
     formatter = DEFAULT_FORMATTER.read_text()
-    mutated = formatter.replace("provenance_summary", "some_other_file")
+    # Rewrite provenance_summary -> some_other_file only inside the CE section.
+    header = "## Citation Existence Advisory"
+    start = formatter.index(header)
+    end = formatter.index("\n## ", start + len(header))
+    section = formatter[start:end].replace("provenance_summary", "some_other_file")
+    mutated = formatter[:start] + section + formatter[end:]
+    # Sanity: the rest of the prompt still mentions provenance_summary (so a
+    # whole-prompt scan WOULD false-pass — this test pins the scoped check).
+    assert "provenance_summary" in (formatter[:start] + formatter[end:])
     fails = check_formatter_prompt(mutated)
     assert any("provenance_summary" in f for f in fails)
+
+
+def test_mutation_formatter_advisory_label_renamed_fails():
+    """C-V6(b) #333 (codex P2 r2): renaming the exact deliverable-visible label
+    'Citation Existence Advisories' inside the section — while keeping the section
+    header and provenance_summary — must still fail, because that label is what a
+    consumer greps for in provenance_summary.md."""
+    formatter = DEFAULT_FORMATTER.read_text()
+    header = "## Citation Existence Advisory"
+    start = formatter.index(header)
+    end = formatter.index("\n## ", start + len(header))
+    # Rename only the in-body plural label, leave the H2 header + provenance_summary.
+    section = formatter[start:end].replace(
+        "`Citation Existence Advisories` section", "`Some Other` section"
+    ).replace("Citation Existence Advisories", "Some Other Advisories")
+    mutated = formatter[:start] + section + formatter[end:]
+    fails = check_formatter_prompt(mutated)
+    assert any("Citation Existence Advisories" in f for f in fails)
 
 
 def test_mutation_temporal_strict_accepted_fails(tp_schema):

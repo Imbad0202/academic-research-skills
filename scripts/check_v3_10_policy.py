@@ -537,18 +537,33 @@ def check_formatter_prompt(formatter_text: str) -> list[str]:
     # suffix (marker stays byte-equivalent v3.9.x), so its visibility MUST be carried
     # by the formatter's mandatory provenance_summary `Citation Existence Advisories`
     # section — otherwise an advisory false (a provably-bogus DOI) is buried in an
-    # aggregate the user must open separately. Assert the formatter documents it.
-    if "Citation Existence Advisor" not in formatter_text:
+    # aggregate the user must open separately. Assert the formatter documents it, and
+    # that the carrier (provenance_summary) is named INSIDE that subsection — scanning
+    # the whole prompt would false-pass on the pre-existing contamination/version-family
+    # provenance_summary mentions (codex P2).
+    ce_section = _extract_section(formatter_text, "## Citation Existence Advisory")
+    if not ce_section:
         fail.append(
             "C-V6(b): formatter must document a mandatory provenance_summary "
             "'Citation Existence Advisories' section that lists every advisory "
             "lookup_verified==false row (the advisory's visibility carrier, #333)"
         )
-    elif "provenance_summary" not in formatter_text:
-        fail.append(
-            "C-V6(b): the Citation Existence Advisories section must be carried in "
-            "provenance_summary.md (the human-reviewed deliverable), #333"
-        )
+    else:
+        # The section must name BOTH the carrier file (provenance_summary) AND the
+        # exact deliverable-visible section label (`Citation Existence Advisories`),
+        # both INSIDE the subsection — renaming either silently drops the only
+        # visibility path for an advisory false (codex P2).
+        if "provenance_summary" not in ce_section:
+            fail.append(
+                "C-V6(b): the Citation Existence Advisory section must name "
+                "provenance_summary.md as its visibility carrier (#333)"
+            )
+        if "Citation Existence Advisories" not in ce_section:
+            fail.append(
+                "C-V6(b): the section must reference the exact provenance_summary "
+                "label 'Citation Existence Advisories' (the deliverable-visible "
+                "section name a consumer greps for, #333)"
+            )
 
     return fail
 
