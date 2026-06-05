@@ -37,6 +37,14 @@ except ImportError as e:
     )
     sys.exit(2)
 
+# Dual-path import (mirrors arxiv_client.py): the v3.10 laundering guard
+# (#329) lives in check_v3_10_policy and is wired here so it runs over REAL
+# passport entries, not just fixtures.
+try:
+    from check_v3_10_policy import assert_venue_type_source_clean
+except ImportError:
+    from scripts.check_v3_10_policy import assert_venue_type_source_clean
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENTRY_SCHEMA_PATH = REPO_ROOT / "shared/contracts/passport/literature_corpus_entry.schema.json"
 REJECTION_SCHEMA_PATH = REPO_ROOT / "shared/contracts/passport/rejection_log.schema.json"
@@ -138,6 +146,17 @@ def validate_passport(
             errors.append(
                 f"{path}: literature_corpus[{i}] schema validation error: {err.message}"
             )
+        # v3.10 laundering guard (R2-P1, #329): the schema types venue_type_source
+        # as a non-empty string but cannot express the lookup-index exclusion, so
+        # the semantic check runs here over real entries. A trusted_source_declared
+        # entry whose venue_type_source names a lookup index (OpenAlex / Crossref /
+        # Semantic Scholar) is laundering a k=3-unmatched signal into declared trust.
+        if isinstance(entry, dict):
+            for problem in assert_venue_type_source_clean(
+                entry.get("venue_type_source", ""),
+                entry.get("venue_type_provenance", ""),
+            ):
+                errors.append(f"{path}: literature_corpus[{i}]: {problem}")
         key = entry.get("citation_key") if isinstance(entry, dict) else None
         if key:
             citation_keys[key] = citation_keys.get(key, 0) + 1

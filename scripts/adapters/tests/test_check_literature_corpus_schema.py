@@ -333,3 +333,46 @@ def test_v3_9_0_rejects_manual_entry_with_openalex_unmatched(tmp_path):
         f"Expected validation failure for manual entry with openalex_unmatched. "
         f"stdout={r.stdout}\nstderr={r.stderr}"
     )
+
+
+def _laundering_entry(venue_type_source):
+    return {
+        "citation_key": "launder2024",
+        "title": "Real Paper",
+        "authors": [{"family": "Chen"}],
+        "year": 2024,
+        "source_pointer": "file:///x.pdf",
+        "obtained_via": "folder-scan",
+        "venue_type": "journal-article",
+        "venue_type_provenance": "trusted_source_declared",
+        "venue_type_source": venue_type_source,
+    }
+
+
+def test_v3_10_rejects_laundered_venue_type_source(tmp_path):
+    """#329: the laundering guard (R2-P1) must run over REAL passport entries, not
+    just fixtures. An entry whose venue_type_provenance is trusted_source_declared
+    but whose venue_type_source names a lookup index (OpenAlex) is laundering a
+    k=3-unmatched signal into a declared-trust signal. The schema only types the
+    field as a non-empty string, so this MUST be caught by the wired lint."""
+    passport = {"literature_corpus": [_laundering_entry("OpenAlex")]}
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    r = _run(["--passport", str(path)])
+    assert r.returncode != 0, (
+        f"Expected validation failure for laundered venue_type_source=OpenAlex. "
+        f"stdout={r.stdout}\nstderr={r.stderr}"
+    )
+    assert "launder" in (r.stdout + r.stderr).lower() or "lookup index" in (r.stdout + r.stderr).lower()
+
+
+def test_v3_10_accepts_legitimate_declared_venue_type_source(tmp_path):
+    """#329 negative control: a trusted_source_declared entry whose venue_type_source
+    names a legitimate publisher/registry feed (NOT one of the three lookup indexes)
+    passes. Guards against the wired lint over-rejecting every declared source."""
+    passport = {"literature_corpus": [_laundering_entry("Springer-publisher-feed")]}
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    r = _run(["--passport", str(path)])
+    assert r.returncode == 0, (
+        f"Expected a legitimate declared venue_type_source to pass. "
+        f"stdout={r.stdout}\nstderr={r.stderr}"
+    )

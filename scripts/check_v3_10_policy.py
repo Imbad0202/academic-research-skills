@@ -128,13 +128,19 @@ class ParsedMarker:
         unrecognized residual tokens. A marker lacking a base-status (e.g.
         `<!--ref:smith2024 policy_hash=...-->`) is malformed — the v3.7.3 5-cell
         base resolution always produces one. A terminal marker must additionally
-        carry severity=HIGH-BLOCK."""
+        carry severity=HIGH-BLOCK AND the four mandatory terminal-grammar fields
+        (policy / reason / mode / policy_hash) — the freshness + remediation
+        metadata the formatter gate depends on (#329). A stripped terminal marker
+        missing any of them is malformed, not silently accepted."""
         if self.base_status not in _BASE_STATUS:
             return False
         if self.unknown_tokens:
             return False
-        if self.terminal and self.severity != "HIGH-BLOCK":
-            return False
+        if self.terminal:
+            if self.severity != "HIGH-BLOCK":
+                return False
+            if None in (self.policy, self.reason, self.mode, self.policy_hash):
+                return False
         return True
 
 

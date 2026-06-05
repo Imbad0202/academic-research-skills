@@ -192,6 +192,41 @@ def test_terminal_marker_without_high_block_is_malformed():
     assert pm.is_well_formed is False
 
 
+def test_terminal_marker_missing_metadata_fields_is_malformed():
+    """#329: a TERMINAL-BLOCK severity=HIGH-BLOCK marker MUST carry the four
+    mandatory terminal-grammar fields (policy / reason / mode / policy_hash) — the
+    freshness + remediation metadata the formatter gate depends on. A marker with
+    severity=HIGH-BLOCK but any of them missing is malformed, even though the
+    base-status, terminal flag, and severity are all valid in isolation. Without
+    this, a stripped terminal marker passes the grammar's reference checker and a
+    downstream finalizer-output validator loses the metadata it needs."""
+    # All four absent.
+    bare = parse_ref_marker("<!--ref:x ok TERMINAL-BLOCK severity=HIGH-BLOCK-->")
+    assert bare.terminal is True and bare.is_high_block is True
+    assert bare.is_well_formed is False
+
+    # A complete terminal marker is well-formed (positive control).
+    full = parse_ref_marker(
+        "<!--ref:x ok TERMINAL-BLOCK severity=HIGH-BLOCK "
+        "policy=citation_existence reason=lookup_verified_false mode=strict "
+        "policy_hash=citation_existence.strict-->"
+    )
+    assert full.is_well_formed is True
+
+    # Each single missing field individually breaks well-formedness (mutation).
+    parts = {
+        "policy": "policy=citation_existence",
+        "reason": "reason=lookup_verified_false",
+        "mode": "mode=strict",
+        "policy_hash": "policy_hash=citation_existence.strict",
+    }
+    for omit in parts:
+        tokens = " ".join(v for k, v in parts.items() if k != omit)
+        marker = f"<!--ref:x ok TERMINAL-BLOCK severity=HIGH-BLOCK {tokens}-->"
+        pm = parse_ref_marker(marker)
+        assert pm.is_well_formed is False, f"missing {omit} should be malformed: {marker}"
+
+
 def test_well_formed_markers_pass():
     assert parse_ref_marker("<!--ref:smith2024 ok policy_hash=contamination_triangulation.strict-->").is_well_formed
     assert parse_ref_marker("<!--ref:smith2024 LOW-WARN-->").is_well_formed  # legacy, no stamp
