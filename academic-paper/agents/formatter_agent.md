@@ -325,7 +325,7 @@ First determine whether the passport's CURRENT `terminal_policies` is all-adviso
   - **Stamp present + MATCH** ⇒ PASS-GATE-1.
 - **Gate 2 — HIGH-BLOCK refusal (rule 11), applied to EVERY marker that passes gate 1 — including legacy missing-stamp-under-advisory markers (R4-P1 bypass fix):** refuse iff a `severity=HIGH-BLOCK` token is present inside the `<!--ref:...-->`. A stale or hand-edited marker that had its `policy_hash` STRIPPED but still carries a literal `TERMINAL-BLOCK severity=HIGH-BLOCK` token is STILL refused here — passing gate 1 (legacy-under-advisory) does NOT exempt it from gate 2. Only a marker that passes gate 1 AND carries no `severity=HIGH-BLOCK` token emits.
 
-When refusing under rule 11, the formatter echoes the `reason` token (e.g. `reason=k3_all_indexes_unmatched` for contamination, `reason=lookup_verified_false` for citation_existence) plus any co-emitted advisory suffix when one is present (contamination co-emits a `CONTAMINATED-*` suffix; `citation_existence` co-emits none — its "why" is the `reason` token + the `citation_verification_summary[]` aggregate) so the user gets remediation context (R1 P1). Remediation for a HIGH-BLOCK: resolve the underlying signal (verify the source against the original, replace the citation with a matched reference, or — if the user accepts the risk — switch the firing policy (`policy=<...>`) back to `advisory` and re-finalize). `/ars-mark-read` does NOT clear it.
+When refusing under rule 11, the formatter echoes the `reason` token (e.g. `reason=k3_all_indexes_unmatched` for contamination, `reason=lookup_verified_false` for citation_existence) plus any co-emitted advisory suffix when one is present (contamination co-emits a `CONTAMINATED-*` suffix; `citation_existence` co-emits none — its "why" is the `reason` token + the `citation_verification_summary[]` aggregate; note this is the `strict` refusal path — a default-`advisory` `false` does not refuse, it lists in the `provenance_summary.md` `Citation Existence Advisories` section per the subsection above) so the user gets remediation context (R1 P1). Remediation for a HIGH-BLOCK: resolve the underlying signal (verify the source against the original, replace the citation with a matched reference, or — if the user accepts the risk — switch the firing policy (`policy=<...>`) back to `advisory` and re-finalize). `/ars-mark-read` does NOT clear it.
 
 ## Citation Version-Family Advisory (Kong #258)
 
@@ -348,6 +348,23 @@ Do not auto-standardize the reference. Do not rewrite the manuscript during form
 - split the sentence so each version-bound claim has its own citation and locator
 
 This advisory is separate from #127 strict triangulation policy: #127 asks whether a reference meets existence / venue policy; Kong #258 asks whether an existing work's citation metadata and quoted claim come from the same concrete version.
+
+## Citation Existence Advisory (v3.11 / C-V6(b))
+
+Under default `terminal_policies.citation_existence == advisory` (the byte-equivalent-to-v3.9.x default most users run), a `lookup_verified == false` row is NOT a refusal and the ref **marker stays byte-equivalent to v3.9.x** — it carries no `citation_existence` advisory suffix (the marker advisory slot is reserved for the contamination `CONTAMINATED-*` suffix; adding a second advisory token would break the v3.7.3 marker grammar's one-advisory-token cap). The `false` "why" lives in the always-populated `citation_verification_summary[]` aggregate.
+
+So that an advisory `false` (a **provably-bogus DOI/arXiv ID** under the narrowed C-V6(a) definition) is not buried in an aggregate the user must open separately, the output package's `provenance_summary.md` MUST carry a **`Citation Existence Advisories` section** listing every advisory `false` row. This makes the warning travel with the deliverable a human reviews, satisfying the C-V6(b) safety intent without touching marker grammar. The section is **mandatory and non-empty iff** any `citation_verification_summary[]` row has `lookup_verified == false` under advisory; absent the gate firing, the section is omitted (or rendered empty — "No citation-existence advisories").
+
+For each advisory `false` row, surface one entry with:
+
+- `ref_slug` (joins to the `<!--ref:slug-->` in the manuscript)
+- `citation_key`
+- the falsifiable identifier (DOI or arXiv ID) that failed to resolve
+- `resolvers_unmatched` — the list of resolver names that returned `status=unmatched`
+
+Like the Kong #258 and contamination advisories: do NOT auto-correct the citation, do NOT rewrite the manuscript, do NOT block the conversion. Report and ask the scholar to verify the source against the original, replace the citation with a matched reference, or — if the user accepts the risk — leave it (advisory is ack-able via `/ars-mark-read` on the aggregate). Promoting a `false` to a hard block is the `citation_existence == strict` opt-in (rule 11 terminal token), not this advisory.
+
+This advisory is the default-mode complement to the `strict`-mode terminal block: detection is unconditional (C-V6(e)), only terminality is policy-gated. The visibility of an advisory `false` is carried by this `provenance_summary.md` section, NOT by a marker suffix.
 
 ## Output Format
 

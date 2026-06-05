@@ -533,6 +533,23 @@ def check_formatter_prompt(formatter_text: str) -> list[str]:
     if "STALE-POLICY-EVALUATION" not in section:
         fail.append("rule 6: formatter freshness guard must emit [STALE-POLICY-EVALUATION]")
 
+    # C-V6(b) #333: a default-advisory `lookup_verified == false` carries NO marker
+    # suffix (marker stays byte-equivalent v3.9.x), so its visibility MUST be carried
+    # by the formatter's mandatory provenance_summary `Citation Existence Advisories`
+    # section — otherwise an advisory false (a provably-bogus DOI) is buried in an
+    # aggregate the user must open separately. Assert the formatter documents it.
+    if "Citation Existence Advisor" not in formatter_text:
+        fail.append(
+            "C-V6(b): formatter must document a mandatory provenance_summary "
+            "'Citation Existence Advisories' section that lists every advisory "
+            "lookup_verified==false row (the advisory's visibility carrier, #333)"
+        )
+    elif "provenance_summary" not in formatter_text:
+        fail.append(
+            "C-V6(b): the Citation Existence Advisories section must be carried in "
+            "provenance_summary.md (the human-reviewed deliverable), #333"
+        )
+
     return fail
 
 

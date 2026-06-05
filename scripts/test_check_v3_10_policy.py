@@ -412,6 +412,28 @@ def test_mutation_dropping_pair_branch_fails(entry_schema):
     assert any("trusted_source required" in f for f in fails)
 
 
+def test_mutation_formatter_missing_citation_existence_advisory_fails():
+    """C-V6(b) #333: if the formatter drops the mandatory provenance_summary
+    'Citation Existence Advisories' section, the lint must fail — otherwise an
+    advisory lookup_verified==false (a provably-bogus DOI) has no visibility
+    carrier (the marker stays byte-equivalent v3.9.x, so it can't be the carrier)."""
+    formatter = DEFAULT_FORMATTER.read_text()
+    # Excise the whole subsection + every mention of its title.
+    mutated = formatter.replace("Citation Existence Advisor", "Removed Section")
+    fails = check_formatter_prompt(mutated)
+    assert any("Citation Existence Advisor" in f or "C-V6(b)" in f for f in fails)
+
+
+def test_mutation_formatter_advisory_not_in_provenance_summary_fails():
+    """C-V6(b) #333: the Citation Existence Advisories section must live in
+    provenance_summary.md (the human-reviewed deliverable). If it is documented
+    but NOT tied to provenance_summary, the visibility-carrier guarantee is lost."""
+    formatter = DEFAULT_FORMATTER.read_text()
+    mutated = formatter.replace("provenance_summary", "some_other_file")
+    fails = check_formatter_prompt(mutated)
+    assert any("provenance_summary" in f for f in fails)
+
+
 def test_mutation_temporal_strict_accepted_fails(tp_schema):
     tp_schema["properties"]["temporal_integrity"]["enum"].append("strict")
     fails = check_terminal_policies_schema(tp_schema)
