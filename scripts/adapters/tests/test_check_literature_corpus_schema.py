@@ -376,3 +376,21 @@ def test_v3_10_accepts_legitimate_declared_venue_type_source(tmp_path):
         f"Expected a legitimate declared venue_type_source to pass. "
         f"stdout={r.stdout}\nstderr={r.stderr}"
     )
+
+
+def test_v3_10_non_string_venue_type_source_reports_schema_error_not_crash(tmp_path):
+    """#329 (codex P2): a non-string venue_type_source (123) is a schema-type
+    violation. The wired laundering guard calls .strip(), which would crash on a
+    non-str. The validator must report the schema error cleanly, NOT traceback —
+    the guard is only run on string fields."""
+    entry = _laundering_entry("placeholder")
+    entry["venue_type_source"] = 123  # schema-invalid: must be a string
+    passport = {"literature_corpus": [entry]}
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    r = _run(["--passport", str(path)])
+    assert r.returncode != 0
+    combined = r.stdout + r.stderr
+    assert "Traceback" not in combined and "AttributeError" not in combined, (
+        f"validator crashed instead of reporting a schema error: {combined}"
+    )
+    assert "schema" in combined.lower() or "validation" in combined.lower()

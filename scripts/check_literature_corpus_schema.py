@@ -151,12 +151,15 @@ def validate_passport(
         # the semantic check runs here over real entries. A trusted_source_declared
         # entry whose venue_type_source names a lookup index (OpenAlex / Crossref /
         # Semantic Scholar) is laundering a k=3-unmatched signal into declared trust.
+        # Only run on string fields — a non-string venue_type_source / provenance is
+        # already a schema-type error (reported above); the semantic guard must not
+        # crash on it (.strip() on a non-str), so let the schema error stand alone.
         if isinstance(entry, dict):
-            for problem in assert_venue_type_source_clean(
-                entry.get("venue_type_source", ""),
-                entry.get("venue_type_provenance", ""),
-            ):
-                errors.append(f"{path}: literature_corpus[{i}]: {problem}")
+            vts = entry.get("venue_type_source", "")
+            vtp = entry.get("venue_type_provenance", "")
+            if isinstance(vts, str) and isinstance(vtp, str):
+                for problem in assert_venue_type_source_clean(vts, vtp):
+                    errors.append(f"{path}: literature_corpus[{i}]: {problem}")
         key = entry.get("citation_key") if isinstance(entry, dict) else None
         if key:
             citation_keys[key] = citation_keys.get(key, 0) + 1

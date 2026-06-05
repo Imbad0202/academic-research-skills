@@ -226,6 +226,68 @@ def test_terminal_marker_missing_metadata_fields_is_malformed():
         pm = parse_ref_marker(marker)
         assert pm.is_well_formed is False, f"missing {omit} should be malformed: {marker}"
 
+    # A blank token (`policy=`) parses to "" not None — present-but-empty must be
+    # malformed too, same as missing (codex P2: the formatter gate needs the value).
+    blank = parse_ref_marker(
+        "<!--ref:x ok TERMINAL-BLOCK severity=HIGH-BLOCK "
+        "policy= reason= mode= policy_hash=-->"
+    )
+    assert blank.terminal is True and blank.is_high_block is True
+    assert blank.is_well_formed is False
+    for omit in parts:
+        # one field blank, the rest valid → still malformed
+        toks = " ".join((f"{k}=" if k == omit else v) for k, v in parts.items())
+        pm = parse_ref_marker(f"<!--ref:x ok TERMINAL-BLOCK severity=HIGH-BLOCK {toks}-->")
+        assert pm.is_well_formed is False, f"blank {omit} should be malformed"
+
+
+def test_multi_terminal_block_per_block_validation(self_unused=None):
+    """#329 (codex R2/R3): a multi-TERMINAL-BLOCK co-emission (C-V6(g)) is
+    validated PER BLOCK — each TERMINAL-BLOCK must independently carry
+    severity=HIGH-BLOCK + policy/reason/mode, plus the marker-level policy_hash.
+    A complete later block must NOT mask an earlier block's stripped metadata."""
+    # First block missing mode=, second block complete — the flat field would
+    # fill mode from the second block, but per-block validation catches the gap.
+    masked = parse_ref_marker(
+        "<!--ref:both ok TERMINAL-BLOCK severity=HIGH-BLOCK "
+        "policy=contamination_triangulation reason=k3_all_indexes_unmatched "
+        "TERMINAL-BLOCK severity=HIGH-BLOCK policy=citation_existence "
+        "reason=lookup_verified_false mode=strict policy_hash=x-->"
+    )
+    assert masked.terminal_block_count == 2
+    assert masked.is_well_formed is False  # first block has no mode=
+
+    # A fully-complete dual-block co-emission (the C-V6(g) canonical marker) is
+    # well-formed — every block carries its four fields and the marker carries the
+    # shared policy_hash. (R3: do not reject valid dual-policy markers.)
+    full_dual = parse_ref_marker(
+        "<!--ref:both LOW-WARN CONTAMINATED-TRIANGULATION-UNMATCHED "
+        "TERMINAL-BLOCK severity=HIGH-BLOCK policy=contamination_triangulation "
+        "reason=k3_all_indexes_unmatched mode=strict "
+        "TERMINAL-BLOCK severity=HIGH-BLOCK policy=citation_existence "
+        "reason=lookup_verified_false mode=strict "
+        "policy_hash=citation_existence.strict+contamination_triangulation.strict-->"
+    )
+    assert full_dual.terminal_block_count == 2
+    assert full_dual.is_well_formed is True
+    assert marker_triggers_refusal(
+        "<!--ref:both LOW-WARN CONTAMINATED-TRIANGULATION-UNMATCHED "
+        "TERMINAL-BLOCK severity=HIGH-BLOCK policy=contamination_triangulation "
+        "reason=k3_all_indexes_unmatched mode=strict "
+        "TERMINAL-BLOCK severity=HIGH-BLOCK policy=citation_existence "
+        "reason=lookup_verified_false mode=strict "
+        "policy_hash=citation_existence.strict+contamination_triangulation.strict-->"
+    ) is True
+
+    # A dual-block marker missing the marker-level policy_hash is malformed.
+    no_hash = parse_ref_marker(
+        "<!--ref:both ok TERMINAL-BLOCK severity=HIGH-BLOCK "
+        "policy=contamination_triangulation reason=k3_all_indexes_unmatched mode=strict "
+        "TERMINAL-BLOCK severity=HIGH-BLOCK policy=citation_existence "
+        "reason=lookup_verified_false mode=strict-->"
+    )
+    assert no_hash.is_well_formed is False
+
 
 def test_well_formed_markers_pass():
     assert parse_ref_marker("<!--ref:smith2024 ok policy_hash=contamination_triangulation.strict-->").is_well_formed
