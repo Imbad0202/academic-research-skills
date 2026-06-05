@@ -68,6 +68,45 @@ def test_marker_terminal_without_advisory_suffix_parses():
     assert marker_triggers_refusal(marker) is True
 
 
+def test_marker_citation_existence_terminal_parses_and_refuses():
+    """A `policy=citation_existence` terminal token (C-V6(c), the real line-869
+    example) is in-grammar: it parses cleanly with no residual/unknown token and
+    triggers refusal. Pins that the canonical grammar enumeration covers
+    citation_existence (#333) — citation_existence is `mode=strict` only (no
+    strict_articles_only), and unlike contamination it carries NO advisory suffix
+    in the slot (the `false` "why" lives in reason= + the aggregate)."""
+    marker = ("<!--ref:bogus2024 ok TERMINAL-BLOCK severity=HIGH-BLOCK "
+              "policy=citation_existence reason=lookup_verified_false mode=strict "
+              "policy_hash=citation_existence.strict-->")
+    pm = parse_ref_marker(marker)
+    assert pm is not None
+    assert pm.base_status == "ok"
+    assert pm.advisory_suffix is None  # citation_existence occupies no advisory slot
+    assert pm.terminal is True
+    assert pm.is_high_block is True
+    assert pm.policy == "citation_existence"
+    assert pm.reason == "lookup_verified_false"
+    assert pm.mode == "strict"
+    assert pm.policy_hash == "citation_existence.strict"
+    assert pm.unknown_tokens == []  # nothing falls outside the grammar
+    assert marker_triggers_refusal(marker) is True
+
+
+def test_marker_dual_policy_co_emit_parses_and_refuses():
+    """C-V6(g): a ref violating BOTH contamination_triangulation=strict (k=3) AND
+    citation_existence=strict carries two TERMINAL-BLOCK tokens. The generic
+    refusal must still fire (the formatter refuses on any unresolved HIGH-BLOCK,
+    no per-policy enumeration). Pins that the multi-policy grammar at line 887 is
+    consistent with the canonical shape (#333)."""
+    marker = ("<!--ref:both2024 LOW-WARN CONTAMINATED-TRIANGULATION-UNMATCHED "
+              "TERMINAL-BLOCK severity=HIGH-BLOCK policy=contamination_triangulation "
+              "reason=k3_all_indexes_unmatched mode=strict "
+              "TERMINAL-BLOCK severity=HIGH-BLOCK policy=citation_existence "
+              "reason=lookup_verified_false mode=strict "
+              "policy_hash=citation_existence.strict+contamination_triangulation.strict-->")
+    assert marker_triggers_refusal(marker) is True
+
+
 def test_marker_non_terminal_advisory_parses_no_refuse():
     """A non-terminal advisory marker under a NON-advisory passport: advisory suffix
     + a non-advisory policy_hash slug, NO terminal token → does not refuse. (Under an
