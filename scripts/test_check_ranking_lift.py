@@ -65,6 +65,65 @@ def _report(task="citation_extraction", agg_value=0.95, agg_metric="accuracy",
 
 
 # ---------------------------------------------------------------------------
+# _flatten_report status filter (#328 P2 — pending-task baseline pollution)
+# ---------------------------------------------------------------------------
+def test_flatten_includes_measured_task():
+    report = {"per_task": [{
+        "task_name": "citation_extraction", "status": "measured",
+        "aggregate_metric": {"metric": "accuracy", "value": 0.95},
+    }]}
+    flat = crl._flatten_report(report)
+    assert ("citation_extraction", "aggregate", "accuracy") in flat
+    assert flat[("citation_extraction", "aggregate", "accuracy")]["value"] == 0.95
+
+
+def test_flatten_skips_pending_task():
+    """A not-yet-landed task is emitted by run_evals._pending_result with
+    ``status: "pending"`` and a placeholder ``aggregate_metric.value: 0.0``. That
+    placeholder must NOT enter the baseline — else once the task is implemented and
+    produces a real value, compute_signed_lift(baseline=0.0, …) hits the zero-
+    baseline branch and the brand-new metric is spuriously flagged as a regression
+    needing acknowledgement (#328 P2)."""
+    report = {"per_task": [{
+        "task_name": "future_phase2_task", "status": "pending",
+        "aggregate_metric": {"metric": "accuracy", "value": 0.0,
+                             "direction": "higher_is_better"},
+    }]}
+    flat = crl._flatten_report(report)
+    assert flat == {}, "pending placeholder metric must not enter the baseline"
+
+
+def test_flatten_skips_skipped_task():
+    report = {"per_task": [{
+        "task_name": "skipped_task", "status": "skipped",
+        "aggregate_metric": {"metric": "accuracy", "value": 0.0},
+    }]}
+    assert crl._flatten_report(report) == {}
+
+
+def test_flatten_skips_unknown_nonmeasured_status():
+    """A future non-measured status (e.g. "error") is excluded too — the positive
+    skip-unless-measured guard, not a pending/skipped blocklist, is what prevents
+    a new status from silently polluting the baseline again (#328 P2)."""
+    report = {"per_task": [{
+        "task_name": "errored_task", "status": "error",
+        "aggregate_metric": {"metric": "accuracy", "value": 0.0},
+    }]}
+    assert crl._flatten_report(report) == {}
+
+
+def test_flatten_missing_status_treated_as_measured():
+    """Back-compat: a task with no ``status`` key (pre-status reports) still
+    flattens — only an explicit pending/skipped status is dropped."""
+    report = {"per_task": [{
+        "task_name": "legacy_task",
+        "aggregate_metric": {"metric": "accuracy", "value": 0.88},
+    }]}
+    flat = crl._flatten_report(report)
+    assert ("legacy_task", "aggregate", "accuracy") in flat
+
+
+# ---------------------------------------------------------------------------
 # Gate semantics
 # ---------------------------------------------------------------------------
 def test_higher_is_better_positive_passes(monkeypatch):

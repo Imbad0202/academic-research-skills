@@ -102,10 +102,27 @@ def _is_zero_baseline_change(signed_lift: float | str) -> bool:
 def _flatten_report(report: dict[str, Any]) -> dict[tuple[str, str, str], dict[str, Any]]:
     """Map (task, class, metric) -> {value, direction} across aggregate + per_class.
 
-    The aggregate metric is keyed with class == "aggregate".
+    The aggregate metric is keyed with class == "aggregate". Pending/skipped tasks
+    are excluded: run_evals._pending_result emits a placeholder
+    ``aggregate_metric.value: 0.0`` for a not-yet-landed task, and letting that into
+    the baseline makes the real value (once the task lands) read as a zero-baseline
+    change spuriously flagged as a regression to acknowledge, rather than a new
+    metric with no baseline (#328 P2). A task with no ``status`` key is treated as
+    measured (pre-status reports stay valid).
     """
     flat: dict[tuple[str, str, str], dict[str, Any]] = {}
     for task in report.get("per_task", []):
+        # Skip-unless-measured (matches _eval_threshold_gate.failed_tasks). A
+        # pending/skipped task is emitted by run_evals._pending_result with a
+        # placeholder ``aggregate_metric.value: 0.0``; letting it into the baseline
+        # makes the real value (once the task lands) read as a zero-baseline change
+        # spuriously flagged as a regression to acknowledge, rather than a new
+        # metric with no baseline (#328 P2). The positive guard (rather than a
+        # ``status in {"pending","skipped"}`` blocklist) means a future non-measured
+        # status is excluded too, instead of silently polluting the baseline. A task
+        # with no ``status`` key is treated as measured (pre-status reports stay valid).
+        if task.get("status", "measured") != "measured":
+            continue
         task_name = task["task_name"]
         agg = task.get("aggregate_metric")
         if agg:
