@@ -9,7 +9,7 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.9.4 | 13-agent research team | full, quick, socratic, review, lit-review, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.11.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.11.1 | Full pipeline orchestrator | (coordinates all above) |
 
 ## v3.11 Key Additions (#182 — deterministic citation verification gate)
 
@@ -257,7 +257,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.11.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-06-04
+- **Suite version**: 3.11.1 (per CHANGELOG.md)
+- **Last Updated**: 2026-06-06
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

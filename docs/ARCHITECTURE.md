@@ -1,4 +1,4 @@
-# ARS Pipeline Architecture (v3.11.0)
+# ARS Pipeline Architecture (v3.11.1)
 
 Full pipeline view across stages × skills × artifacts × gates. Every completed stage requires a user-confirmation checkpoint (per `academic-pipeline/SKILL.md` and `pipeline_state_machine.md`); the diagrams below surface the **decision-heavy** checkpoints visually so they are easy to locate. The post-stage confirmation checkpoints at 2.5 and 4.5 are machine-verified first, then confirmed by the user — they are not skipped.
 
