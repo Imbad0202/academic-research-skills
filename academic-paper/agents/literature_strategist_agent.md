@@ -50,8 +50,9 @@ Reference: `academic-paper/references/domain_evidence_profiles.md`
 
 Graceful-fallback cases (none block — INVARIANT 4):
 - **(a) Row absent** → neutral `unknown_user_defined`. **In `full` mode, emit `[NO-PROFILE-NEUTRAL]`** so the neutral default is visible. (Paths that leave the row absent: `plan → full` and true mid-entry, where intake never set it. Resume-from-checkpoint carries whatever the prior intake wrote — present ⇒ that profile applies with no advisory; absent ⇒ neutral + advisory. A `deep-research → academic-paper` handoff is NOT absent — intake set the row.)
-- **(b) Row = `unknown_user_defined`** → neutral. **No `[NO-PROFILE-NEUTRAL]`** — the scholar actively chose/accepted neutral at intake; that tag is only for the absent-row case.
-- **(c) Row holds a value not in the 4 enum** (hallucinated, or a reserved value somehow stored as effective) → neutral, **and emit `[PROFILE-UNRESOLVED]`**.
+- **(b) Row is *exactly* `unknown_user_defined`** (no `(requested: …)` suffix) → neutral. **No `[NO-PROFILE-NEUTRAL]`** — the scholar actively chose/accepted neutral at intake; that tag is only for the absent-row case.
+- **(b-reserved) Row is the reserved-fallback display form `unknown_user_defined (requested: <reserved>)`** where `<reserved>` is one of the 5 reserved values (`clinical`, `wet_lab`, `materials_physics`, `legal_case_based`, `education`) → **parse the leading effective token** (`unknown_user_defined`) and screen neutral, **and emit `[PROFILE-RESERVED-FALLBACK]`** — this is a *valid, acknowledged reserved request* that intake correctly fell back to neutral, NOT a malformed row. Do **not** emit `[PROFILE-UNRESOLVED]` here. Resolve by parsing the effective token + the `(requested: …)` parenthetical, not by exact-string equality against the enum.
+- **(c) Row is otherwise unresolvable** — a value not in the 4 enum, OR the reserved-fallback form `unknown_user_defined (requested: X)` whose `X` is **not** one of the 5 reserved values (a typo'd / hallucinated reserved), OR a ship-enum effective token carrying a `(requested: …)` suffix (e.g. `cs_ml (requested: clinical)`, which violates the intake request/effective coherence rule) → neutral, **and emit `[PROFILE-UNRESOLVED]`**.
 - **(d) Discipline mismatch** (the profile's implied discipline ≠ PCR `Discipline`) → proceed with BOTH signals in their own lanes, **emit `[PROFILE-DISCIPLINE-MISMATCH]`**. This is a warning, not a fallback — admissibility still uses the profile; `Discipline` still drives database selection. Nothing is blocked.
 
 **Profile → implied-discipline map** (so "implies a discipline" is deterministic, a string-category comparison — not inference):
@@ -477,7 +478,11 @@ Receive a candidate source ->
 ├── Is it within the time range (default 10 years)?
 │   ├── No -> Is it a foundational/milestone work in the field (cited > 100 times)?
 │   │   ├── Yes -> Include (tag as "seminal work")
-│   │   └── No -> Exclude
+│   │   └── No -> Is it admissible under the active domain evidence profile's currency rule?
+│   │       (humanities_interpretive: primary / archival / canonical source; recency is not a quality signal)
+│   │       ├── Yes -> tag by evidence type, then CONTINUE to the relevance + methodology nodes below
+│   │       │          (profile admit path, loosen-only — it does NOT short-circuit to Include)
+│   │       └── No -> Exclude
 │   └── Yes ->
 ├── Does the abstract directly address at least one aspect of the RQ?
 │   ├── No -> Exclude
@@ -488,7 +493,7 @@ Receive a candidate source ->
 │   └── Yes -> Include
 ```
 
-A profile-admitted source is added at the peer-review node only and then continues through the unchanged relevance and methodology nodes; the profile never bypasses a universal-quality node and never short-circuits to Include.
+A profile-admitted source is added only at the tree's PROFILE_LOOSENABLE nodes — the peer-review / publication-type node and the currency-window (time-range) node — and then continues through the unchanged universal relevance and methodology nodes; the profile never bypasses a universal-quality node and never short-circuits to Include. (Both admit paths are loosen-only and additive per INVARIANT 5: each adds an admit path where the neutral tree would otherwise Exclude, and neither removes, down-ranks, or re-screens anything the neutral tree already admits — e.g. the neutral `cited > 100` seminal-work Include is untouched.)
 
 ### Literature Quality Quick Assessment Checklist
 

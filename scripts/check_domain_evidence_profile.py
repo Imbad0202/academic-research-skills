@@ -24,6 +24,8 @@ RESERVED = ("clinical", "wet_lab", "materials_physics", "legal_case_based", "edu
 
 INTAKE_STEP12_HEADING = "### Step 12: Domain Evidence Profile"
 CONSUMER_RESOLUTION_HEADING = "### Domain Evidence Profile Resolution"
+INTAKE_NO_HANDOFF_HEADING = "### When No Handoff Materials Are Detected"
+DECISION_TREE_HEADING = "### Literature Screening Decision Tree"
 
 
 def _read(p: Path) -> str:
@@ -364,9 +366,155 @@ def check_c7() -> list[str]:
     return f
 
 
+def check_c8() -> list[str]:
+    """Control-flow guard (#327 P1): the no-handoff interview directive's upper
+    bound MUST cover Step 12 (Domain Evidence Profile producer).
+
+    Unlike C1-C7 (documentation-surface presence), this check inspects a
+    control-flow BOUND. The original directive
+    `Execute the original Phase 0 full interview flow (Step 1-11).` bounded the
+    most common full-mode entry (a fresh paper with no deep-research handoff) at
+    Step 11, orphaning the Step-12 profile producer: an agent following it stops
+    at Step 11, never writes the PCR `Domain Evidence Profile` row, and the
+    consumer silently takes the `[NO-PROFILE-NEUTRAL]` fallback — the feature
+    never activates on that path.
+
+    Scope: only the `### When No Handoff Materials Are Detected` block, via the
+    fence-aware `_heading_range` helper (so a `Step 1-11` mention in unrelated
+    prose — e.g. plan-mode's "instead of the full 11" — never trips it). The
+    requirement is that the block reaches Step 12; a directive that stops at
+    Step 11 will not mention Step 12 and so fails.
+    """
+    f: list[str] = []
+    t = _read(INTAKE)
+    if not t:
+        return ["C8: intake_agent.md not found"]
+    block = _heading_range(t, INTAKE_NO_HANDOFF_HEADING)
+    if block is None:
+        return [f"C8: missing exact heading '{INTAKE_NO_HANDOFF_HEADING}'"]
+    # Require a POSITIVE execution directive, not bare `Step 12` token presence:
+    # a directive like "Execute (Step 1-11). Do not run Step 12 in this flow."
+    # contains the token yet still orphans the producer. `then Step 12` is the
+    # affirmative form the fix uses ("Step 1-11, then Step 12 per its own gating").
+    if "then Step 12" not in block:
+        f.append(
+            "C8: no-handoff flow directive does not positively execute Step 12 — "
+            "the Domain Evidence Profile producer (Step 12) is orphaned from the "
+            "most common full-mode entry. The directive must affirmatively reach "
+            "Step 12 (e.g. 'Step 1-11, then Step 12 per its own gating'), not "
+            "merely mention the token."
+        )
+    return f
+
+
+def check_c9() -> list[str]:
+    """Reserved-fallback parse guard (#327 P2#2): the consumer must route a
+    reserved-fallback row to its OWN advisory, not the malformed signal.
+
+    Intake stores a reserved request as the display form
+    `unknown_user_defined (requested: <reserved>)`. The original consumer had no
+    parse step for that form, so it fell into case (c) (value not in the 4 enum)
+    and emitted `[PROFILE-UNRESOLVED]` — the malformed/hallucinated signal — for a
+    valid, acknowledged reserved request.
+
+    C9 pins, within the resolution block, BOTH:
+      (1) the distinct `[PROFILE-RESERVED-FALLBACK]` advisory tag exists, and
+      (2) the block actually parses the `(requested: …)` parenthetical
+          (otherwise the tag is unreachable and the row still routes to (c)).
+
+    Division of labour with C3: C3 guards the three *original* consumer tags
+    (NO-PROFILE-NEUTRAL / PROFILE-UNRESOLVED / PROFILE-DISCIPLINE-MISMATCH) and
+    is deliberately NOT extended here, so each tag's mutation fixture isolates one
+    check. C9 owns the fourth (reserved-fallback) tag + its parse semantics.
+    """
+    f: list[str] = []
+    t = _read(CONSUMER)
+    if not t:
+        return ["C9: literature_strategist_agent.md not found"]
+    block = _heading_range(t, CONSUMER_RESOLUTION_HEADING)
+    if block is None:
+        return [f"C9: missing exact heading '{CONSUMER_RESOLUTION_HEADING}'"]
+    if "[PROFILE-RESERVED-FALLBACK]" not in block:
+        f.append(
+            "C9: resolution block missing the reserved-fallback advisory tag "
+            "'[PROFILE-RESERVED-FALLBACK]' — a valid reserved request "
+            "(`unknown_user_defined (requested: <reserved>)`) would collapse back "
+            "into the [PROFILE-UNRESOLVED] malformed signal."
+        )
+    # Require BOTH the display form AND an explicit parse INSTRUCTION, not just
+    # the suffix token: a block can carry `(requested: …)` only as a display
+    # example while losing the "parse the parenthetical" instruction, leaving
+    # reserved fallbacks to route back to the (c) malformed case. (Hardening from
+    # codex review.) `parse`/`parsing` covers the instruction wording.
+    if "(requested:" not in block:
+        f.append(
+            "C9: resolution block lacks the `(requested: …)` display form — the "
+            "reserved-fallback path is unreachable, so the row routes to the (c) "
+            "malformed case."
+        )
+    elif "parse" not in block.lower():
+        f.append(
+            "C9: resolution block shows the `(requested: …)` form but gives no "
+            "parse INSTRUCTION (no 'parse'/'parsing' of the effective token + "
+            "parenthetical) — without it the agent falls back to exact-string "
+            "equality and the reserved fallback still routes to the (c) malformed "
+            "case."
+        )
+    return f
+
+
+def check_c10() -> list[str]:
+    """Profile-aware currency gate (#327 P2#3): the screening decision tree's
+    time-range (currency) node MUST consult the profile, and the "peer-review node
+    only" fossil wording MUST be gone.
+
+    `currency_window` is in PROFILE_LOOSENABLE and four prose passages say the
+    year-range relaxes for humanities_interpretive canonical texts. But the
+    time-range NODE in the decision tree had no profile branch, so a canonical
+    humanities source admitted at the peer-review node was re-excluded at the
+    time-range node (cited <= 100) — an INVARIANT 5 monotonic-admit violation. The
+    prose under the tree also said the profile admits "at the peer-review node
+    only", which encoded the bug and contradicted the four other passages.
+
+    Scope: the `### Literature Screening Decision Tree` heading range (tree +
+    its trailing prose), via `_heading_range`. Pins BOTH:
+      (1) the currency node consults the profile (`currency rule` admit branch),
+      (2) the `peer-review node only` fossil wording is absent.
+    """
+    f: list[str] = []
+    t = _read(CONSUMER)
+    if not t:
+        return ["C10: literature_strategist_agent.md not found"]
+    block = _heading_range(t, DECISION_TREE_HEADING)
+    if block is None:
+        return [f"C10: missing exact heading '{DECISION_TREE_HEADING}'"]
+    # Pin the currency-node admit branch on its load-bearing semantic phrase, not
+    # on a label. "recency is not a quality signal" lives ONLY inside the
+    # humanities currency-node admit branch in this block; it disappears if the
+    # branch is deleted and survives a label reword (e.g. "currency rule" ->
+    # "recency rule"). Keying on a label would let a benign reword silently defeat
+    # the guard while a broken edit that kept the label passed.
+    if "recency is not a quality signal" not in block:
+        f.append(
+            "C10: decision-tree time-range node is not profile-aware — missing the "
+            "humanities currency-node admit branch (its 'recency is not a quality "
+            "signal' rationale). A canonical humanities source admitted at the "
+            "peer-review node is re-excluded here (INVARIANT 5 violation)."
+        )
+    if "peer-review node only" in block:
+        f.append(
+            "C10: fossil wording 'peer-review node only' present — it encodes the "
+            "#327 P2#3 bug (profile can't touch the currency node) and contradicts "
+            "the four prose passages that relax currency for humanities. Name the "
+            "PROFILE_LOOSENABLE nodes the profile actually admits at instead."
+        )
+    return f
+
+
 CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
     ("C1", check_c1), ("C2", check_c2), ("C3", check_c3), ("C4", check_c4),
-    ("C5", check_c5), ("C6", check_c6), ("C7", check_c7),
+    ("C5", check_c5), ("C6", check_c6), ("C7", check_c7), ("C8", check_c8),
+    ("C9", check_c9), ("C10", check_c10),
 ]
 
 

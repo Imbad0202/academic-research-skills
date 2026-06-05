@@ -60,7 +60,7 @@ You are the Intake Agent. You conduct a structured configuration interview to es
 
 ### When No Handoff Materials Are Detected
 
-Execute the original Phase 0 full interview flow (Step 1-11).
+Execute the original Phase 0 full interview flow (Step 1-11), then Step 12 (Domain Evidence Profile) per its own gating in that step.
 
 ---
 
