@@ -64,6 +64,15 @@ except ImportError:  # pragma: no cover - dual-path import
 _ANCHOR_PRESENT_KINDS = frozenset({"quote", "page", "section", "paragraph"})
 
 
+def _is_valid_ref_slug(ref_slug: Any) -> bool:
+    """A ref_slug is valid iff it is a non-empty string: the summary schema
+    requires ref_slug as a string, and an empty slug joins to no
+    <!--ref:slug--> prose marker. Single definition so verify_citation (the
+    emission point) and verify_passport (the join layer) agree on "bad slug"
+    (#332)."""
+    return isinstance(ref_slug, str) and bool(ref_slug)
+
+
 def _outcome(status: str, queried_by: str | None,
              response_summary: str | None = None) -> dict[str, Any]:
     return {"status": status, "queried_by": queried_by,
@@ -162,6 +171,17 @@ def verify_citation(
             "cache-through at the verification_gate layer is not yet wired "
             "(#182 Delta-2 follow-up); pass cache=None"
         )
+    if not _is_valid_ref_slug(ref_slug):
+        # ref_slug is the prose-join key stamped verbatim into the summary, which
+        # the schema requires as a non-empty string. This is the single emission
+        # point (verify_passport routes through here), so the contract is enforced
+        # once: a non-string fails the schema's type:string, and an empty string
+        # joins to no <!--ref:slug--> marker. Either is a caller (prose-join) error
+        # — refuse rather than emit a contract-invalid / join-broken summary (#332).
+        raise ValueError(
+            f"ref_slug must be a non-empty string (the writer-prose join key), "
+            f"got {ref_slug!r}; corpus entries do not carry ref_slug (#332)"
+        )
     if entry.get("obtained_via") == "manual":
         # v3.7.3 manual exemption: no resolver runs — all four skipped (checked
         # once here rather than re-checked inside each resolver helper).
@@ -223,10 +243,15 @@ def verify_passport(
     for entry in corpus:
         citation_key = entry.get("citation_key")
         ref_slug = ref_slug_by_key.get(citation_key)
-        if ref_slug is None:
+        if not _is_valid_ref_slug(ref_slug):
+            # Missing join (None) OR a present-but-empty/non-string slug — both
+            # fail the per-summary contract. Caught here (not just in
+            # verify_citation) so the error names the offending citation_key,
+            # which the per-citation layer doesn't have (#332).
             raise ValueError(
-                f"no ref_slug joined for citation_key {citation_key!r}: the "
-                "citation_key→ref_slug prose join must cover every corpus entry "
+                f"no valid ref_slug joined for citation_key {citation_key!r} "
+                f"(got {ref_slug!r}): the citation_key→ref_slug prose join must "
+                "cover every corpus entry with a non-empty string "
                 "(corpus entries do not carry ref_slug; #332)"
             )
         outcomes.append(verify_citation(

@@ -325,3 +325,18 @@ def test_cache_argument_is_honest_not_silent_noop():
     from verification_gate import verify_citation
     with pytest.raises(NotImplementedError):
         verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG, cache=object())
+
+
+@pytest.mark.parametrize("bad", [None, "", 0, 123, ["slug"], {"slug": 1}])
+def test_verify_citation_rejects_non_string_or_empty_ref_slug(bad):
+    """#332 hardening: ref_slug is the prose-join key that the summary schema
+    requires as a non-empty string. verify_citation is the single emission point
+    (verify_passport routes through it), so the contract is enforced here once:
+    a non-string or empty ref_slug would stamp a summary that the caller cannot
+    join to any <!--ref:slug--> marker (empty) or that fails the schema's
+    type:string (non-string). Both are caller errors — raise rather than emit a
+    join-broken / contract-invalid summary. Guarding at the entry also closes the
+    verify_passport `is None`-only gap (it now rejects "" and non-str too)."""
+    from verification_gate import verify_citation
+    with pytest.raises((ValueError, TypeError)):
+        verify_citation(_entry(), _clients(), ref_slug=bad)
