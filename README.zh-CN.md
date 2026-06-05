@@ -304,6 +304,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## 更新纪录
 
+### v3.11.1（2026-06-06）— 出货后正确性、强化与来源修正汇整
+
+> 一个 patch release，汇整 v3.11.0 出货后浮现的修正，每项都已各自审查并 merge：把跨模型同意 gate 扩展到 integrity-verification + collaboration-depth 路径（#322）、每笔 entry 的 OpenAlex + Crossref backfill 并行化（#138），以及横跨引用存在性 gate、v3.10 政策层、eval harness、领域证据 profile、#310 安全边界边角案例的七项正确性/强化修正（#323 / #327 / #328 / #329 / #331 / #332 / #333）—— 其中两项是 P1（#327 no-handoff 路径上的领域 profile 启动、#328 eval harness 的 per-class 门槛 gate）。无新功能、无破坏性 schema 变更。逐 issue 细节见 `CHANGELOG.md`。
+
 ### v3.11.0（2026-06-04）— 确定性引用查验 gate（#182）
 
 > **[machine-translated]** 本条目为机器翻译，待母语 contributor 校订；以英文版 CHANGELOG 为准。

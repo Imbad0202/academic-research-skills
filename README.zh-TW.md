@@ -304,6 +304,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## 更新紀錄
 
+### v3.11.1（2026-06-06）— 出貨後正確性、強化與來源修正彙整
+
+> 一個 patch release，彙整 v3.11.0 出貨後浮現的修正，每項都已各自審查並 merge：把跨模型同意 gate 擴展到 integrity-verification + collaboration-depth 路徑（#322）、每筆 entry 的 OpenAlex + Crossref backfill 平行化（#138），以及橫跨引用存在性 gate、v3.10 政策層、eval harness、領域證據 profile、#310 安全邊界邊角案例的七項正確性/強化修正（#323 / #327 / #328 / #329 / #331 / #332 / #333）—— 其中兩項是 P1（#327 no-handoff 路徑上的領域 profile 啟動、#328 eval harness 的 per-class 門檻 gate）。無新功能、無破壞性 schema 變更。逐 issue 細節見 `CHANGELOG.md`。
+
 ### v3.11.0（2026-06-04）— 確定性引用查驗 gate（#182）
 
 > 新增一道**確定性的引用存在性查驗 gate**，獨立於 LLM 同儕審查運作。每筆引用都會比對最多四個書目索引（Semantic Scholar、OpenAlex、Crossref，以及新增的 **arXiv resolver**，`scripts/arxiv_client.py`，不需 API key），把每筆引用的 `lookup_verified` 狀態（`{true, false, unresolvable}`）寫進統一彙整。捏造、帶著查不到的 DOI/arXiv ID 的引用，因此被 lookup 偵測標示出來（在使用者選用 strict 時才升級為終止），而非寄望審查 agent 注意到。這道 gate **沿用 v3.10 `terminal_policies` 的 opt-in 模型**：偵測一律執行，但 `lookup_verified == false` 的列只有在使用者選用 `terminal_policies.citation_existence == strict` 時才是終止性的；預設行為是 advisory、可用 `/ars-mark-read` 認可。`false` 的定義刻意**收窄到 ID-keyed unmatched**（一次以精確 DOI/arXiv 查驗、卻證實查不到），因此正當但未被索引的人文 / 非英語 / 區域期刊引用會落在 `unresolvable`、永不阻擋（這是文件中載明的「精確優先於召回」取捨）。本版另含持久化 SQLite 查驗 cache（`~/.cache/ars/verification.db`，90 天 TTL）搭配 `/ars-cache-invalidate` 指令、獨立的 `verification_gate` API 與 `verify_passport.py` CLI，以及把 v3.9.0 污染三角驗證矩陣擴成四索引（k=0..4，全屬 advisory）。`academic-pipeline` 追 suite 至 v3.11.0，其餘三個 skill 版號不變。規格：`docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md`（§0 amendment + C-V6）。
