@@ -481,9 +481,9 @@ class TC2PerClassReport(unittest.TestCase):
     def test_canonical_denominators_match_gold_set(self) -> None:
         # Pin the expected one-vs-rest denominators against the canonical
         # 17-alignment + 8-constraint gold set (12 base alignment + 5 #213
-        # partial fixtures). R1 codex P3 closure on T-C2 contract pinning —
-        # without this a future gold-set rebalance could silently shift class
-        # distributions away from the documented Phase 4 example.
+        # partial fixtures). Contract pinning (round-1 review) — without this a
+        # future gold-set rebalance could silently shift class distributions
+        # away from the documented Phase 4 example.
         per_class = self.report["per_class"]
         # Alignment gold set: 5 SUPPORTED + 8 UNSUPPORTED (3 base + 5 partial)
         # + 3 AMBIGUOUS + 1 RETRIEVAL_FAILED = 17; one-vs-rest counts the
