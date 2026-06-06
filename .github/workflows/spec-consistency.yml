@@ -54,6 +54,17 @@ jobs:
         # fails fast.
         run: python3 scripts/check_ci_pytest_manifest.py
 
+      - name: Ensure jq is available (#349)
+        # The cross-model grounding-guard tests (run via the manifest below) shell out to `jq`
+        # to exercise the canonical .jq filters and REQUIRE it (they fail clearly rather than
+        # skip — a skipped safety test reads as covered). jq is preinstalled on ubuntu-latest,
+        # but make the dependency explicit so a runner-image change can't silently break it.
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+          jq --version
+
       - name: Run CI pytest manifest (#156)
         # Single entry point for the 12 pytest invocations spec-consistency.yml
         # used to run file-by-file. Each manifest entry is wrapped in a
@@ -329,6 +340,15 @@ jobs:
         env:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_v3_8_annotation_literal_sync -v
+
+      - name: Check cross-model grounding-guard doc sync (#346 / #349)
+        # Drift guard: asserts shared/cross_model_verification.md references the canonical jq
+        # filters under scripts/cross_model_verification/ via `jq -f` and still carries the
+        # NOT_SEARCHED + CROSS-MODEL-ERROR safety branches — so a doc edit can't re-inline a
+        # weaker filter or drop a branch while the behavioral tests keep passing against the
+        # untouched .jq files. Behavior of the filters themselves is pinned by the manifest test
+        # 346-349-cross-model-grounding-guards.
+        run: python3 scripts/check_cross_model_verification_sync.py
 
       - name: Run v3.8 claim_audit pipeline + schema + uncited-assertion + manifest + finalizer + e2e + calibration tests (#103)
         # The v3.8 #103 test suite covers the L3 claim-faithfulness audit

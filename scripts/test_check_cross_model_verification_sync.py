@@ -1,0 +1,75 @@
+"""Tests for the cross-model grounding-guard doc-sync lint (#346 / #349).
+
+Mutation-style: confirm the lint PASSES the real tree and FAILS on each violation class it
+exists to catch, so it is not vacuously green.
+"""
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parent.parent
+LINT = REPO / "scripts" / "check_cross_model_verification_sync.py"
+DOC = REPO / "shared" / "cross_model_verification.md"
+
+# A re-inline of the (pre-#349 naive) Gemini sources jq, used by the re-inline mutation test.
+REINLINE_OLD = 'cites="$(jq -r -f "$GUARD/gemini_sources.jq" <<<"$body")"'
+REINLINE_NEW = (
+    'cites="$(jq -r \'[ .candidates[0].groundingMetadata.groundingSupports[]?'
+    '.groundingChunkIndices[]? ]\' <<<"$body")"'
+)
+
+
+def _load_lint():
+    spec = importlib.util.spec_from_file_location("xmv_sync_lint", LINT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _assert_lint_fails_on_mutation(tmp_path, monkeypatch, old: str, new: str):
+    """Apply a string mutation to the doc and assert the lint rejects it (returns 1)."""
+    mod = _load_lint()
+    mutated = DOC.read_text(encoding="utf-8").replace(old, new)
+    assert mutated != DOC.read_text(encoding="utf-8"), f"mutation {old!r}→{new!r} was a no-op"
+    fake = tmp_path / "cross_model_verification.md"
+    fake.write_text(mutated, encoding="utf-8")
+    monkeypatch.setattr(mod, "DOC", fake)
+    assert mod.main() == 1
+
+
+def test_lint_passes_real_tree():
+    assert _load_lint().main() == 0
+
+
+def test_required_filters_all_exist_on_disk():
+    mod = _load_lint()
+    for name in mod.REQUIRED_FILTERS:
+        assert (mod.GUARD_DIR / name).is_file(), f"canonical filter absent: {name}"
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        # drop a canonical-filter reference (rename it so the doc no longer wires the .jq)
+        ("gemini_is_grounded.jq", "gemini_RENAMED.jq"),
+        # drop each safety branch
+        ("NOT_SEARCHED", "OK_FINE"),
+        ("CROSS-MODEL-ERROR", "oops"),
+    ],
+    ids=["filter-ref-dropped", "not-searched-dropped", "cross-model-error-dropped"],
+)
+def test_lint_fails_on_doc_mutation(tmp_path, monkeypatch, old, new):
+    """Each removal of a wired filter reference or a safety branch must fail the lint."""
+    _assert_lint_fails_on_mutation(tmp_path, monkeypatch, old, new)
+
+
+def test_lint_fails_when_guard_reinlined(tmp_path, monkeypatch):
+    """Re-inlining the naive Gemini sources jq must be caught — it bypasses the tested .jq.
+
+    Kept separate from the parametrized cases: this is a distinct mechanism (check 4 — an inline
+    jq program referencing a grounding token), not a dropped reference/branch.
+    """
+    _assert_lint_fails_on_mutation(tmp_path, monkeypatch, REINLINE_OLD, REINLINE_NEW)

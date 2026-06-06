@@ -163,3 +163,11 @@ path = "scripts/test_verification_cache.py"
 [[pytest]]
 id = "v3.10-182-verify-passport-cli"
 path = "scripts/test_verify_passport_cli.py"
+
+[[pytest]]
+id = "346-349-cross-model-grounding-guards"
+path = "scripts/test_cross_model_verification_guards.py"
+
+[[pytest]]
+id = "346-349-cross-model-sync-lint"
+path = "scripts/test_check_cross_model_verification_sync.py"

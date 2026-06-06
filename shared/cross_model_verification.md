@@ -197,20 +197,25 @@ resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
   }')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
+# The grounding guard and source extraction are kept as canonical jq filters under
+# scripts/cross_model_verification/ so they are behavior-tested in CI (a from-memory verdict, a
+# malformed grounding index, etc.) and cannot silently stop failing closed. Reference them via
+# `jq -f` rather than inlining, so the doc and the test share one definition.
+GUARD=scripts/cross_model_verification
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # Transport/API failure (401/429/5xx, or curl's 000 on a network error) — NOT the same as
   # "searched but found nothing". Surface as a transport error so the consumer falls back to
   # single-model (see § Graceful Degradation); never relabel it NOT_SEARCHED, which would
   # imply a completed-but-ungrounded lookup.
   echo "CROSS-MODEL-ERROR: openai_http_$http"
-elif ! jq -e 'any(.output[]?; .type == "web_search_call" and .status == "completed")' <<<"$body" >/dev/null; then
+elif ! jq -e -f "$GUARD/openai_has_completed_web_search.jq" <<<"$body" >/dev/null; then
   echo "NOT_SEARCHED: no_web_search_call"           # no search happened at all — discard the text
 else
   # A completed web_search_call proves *a* search ran, not that THIS reference's verdict
   # is supported by it. Emit the verdict text together with the url_citation annotations the
   # model attached; step 5 downgrades a VERIFIED with no citation to NOT_SEARCHED.
-  text="$(jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .text] | join("\n")' <<<"$body")"
-  cites="$(jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .annotations[]? | select(.type=="url_citation") | .url] | unique | join(", ")' <<<"$body")"
+  text="$(jq -r -f "$GUARD/openai_text.jq" <<<"$body")"
+  cites="$(jq -r -f "$GUARD/openai_sources.jq" <<<"$body")"
   printf '%s\nSOURCES: %s\n' "$text" "${cites:-(none)}"
 fi
 ```
@@ -231,28 +236,22 @@ resp="$(curl -sS -w '\n%{http_code}' \
   }')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
-# Require a search query (proves the model issued a search) AND groundingSupports (proves the
-# verdict TEXT is tied to retrieved chunks). webSearchQueries + groundingChunks alone is not
-# enough: Gemini can run a search, return chunks, then emit an unsupported from-memory verdict
-# whose text references none of them — groundingSupports[].groundingChunkIndices is what links
-# answer spans to sources. Without that link a VERIFIED is not actually grounded.
+# Grounding guard + source extraction are canonical jq filters under scripts/cross_model_verification/
+# (same rationale as the OpenAI block: behavior-tested, referenced via `jq -f`). The guard requires
+# a search query AND groundingSupports (proves the verdict TEXT is tied to retrieved chunks —
+# webSearchQueries + groundingChunks alone is not enough); the source filter is fail-closed against
+# malformed groundingChunkIndices (a negative/string/out-of-range index yields blank SOURCES, never
+# a fabricated or crashing result). See the .jq file headers for the full contract.
+GUARD=scripts/cross_model_verification
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # Transport/API failure (401/429/5xx, or curl's 000) — surface as a transport error so the
   # consumer falls back to single-model (see § Graceful Degradation), not NOT_SEARCHED.
   echo "CROSS-MODEL-ERROR: gemini_http_$http"
-elif ! jq -e 'any(.candidates[]?; ((.groundingMetadata.webSearchQueries // []) | length) > 0 and ((.groundingMetadata.groundingSupports // []) | length) > 0)' <<<"$body" >/dev/null; then
+elif ! jq -e -f "$GUARD/gemini_is_grounded.jq" <<<"$body" >/dev/null; then
   echo "NOT_SEARCHED: no_grounding_support"           # no search, or text not supported by it — discard
 else
   text="$(jq -r '.candidates[0].content.parts[]?.text // empty' <<<"$body")"
-  # Derive SOURCES only from chunks actually cited by groundingSupports (the supported chunk
-  # indices), NOT every groundingChunks entry — so a VERIFIED whose text cites no chunk leaves
-  # SOURCES blank and is downgraded to NOT_SEARCHED at step 5.
-  cites="$(jq -r '
-    (.candidates[0].groundingMetadata.groundingChunks // []) as $chunks
-    | [ .candidates[0].groundingMetadata.groundingSupports[]?.groundingChunkIndices[]? ]
-    | unique
-    | [ .[] | $chunks[.].web.uri // empty ]
-    | unique | join(", ")' <<<"$body")"
+  cites="$(jq -r -f "$GUARD/gemini_sources.jq" <<<"$body")"
   printf '%s\nSOURCES: %s\n' "$text" "${cites:-(none)}"
 fi
 ```
