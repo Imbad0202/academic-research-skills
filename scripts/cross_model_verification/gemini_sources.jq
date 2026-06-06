@@ -14,12 +14,15 @@
 #
 # Every container is normalized to an array first (`arr/1`): `length` and `$chunks[.]` are only
 # meaningful on arrays, and a malformed groundingChunks/groundingSupports arriving as a string or
-# object would otherwise mis-count length or crash `$chunks[.]`. Extracted URIs are filtered to
-# non-empty strings so a malformed `uri` (a number/bool/object) never fabricates a source.
-# Used with `jq -r`.
+# object would otherwise mis-count length or crash `$chunks[.]`. The top-level `candidates` is
+# array-normalized too, so a malformed `candidates` arriving as an object does not crash the
+# `[0]` access (`arr(.candidates)[0]` on a non-array yields null → no metadata → blank sources).
+# Extracted URIs are filtered to non-empty strings so a malformed `uri` (a number/bool/object)
+# never fabricates a source. Used with `jq -r`.
 def arr($x): if ($x | type) == "array" then $x else [] end;
-arr(.candidates[0].groundingMetadata.groundingChunks) as $chunks
-| [ arr(.candidates[0].groundingMetadata.groundingSupports)[]
+(arr(.candidates)[0].groundingMetadata) as $meta
+| arr($meta.groundingChunks) as $chunks
+| [ arr($meta.groundingSupports)[]
     | arr(.groundingChunkIndices)[]
     | select(type == "number" and . >= 0 and . < ($chunks | length)) ]
 | unique

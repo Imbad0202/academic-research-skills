@@ -5,4 +5,9 @@
 # = no search happened → the caller emits NOT_SEARCHED and discards the verdict.
 # This is the load-bearing fail-closed boundary: without a completed search the model answered
 # from memory and its VERIFIED must never be trusted.
-any(.output[]?; .type == "web_search_call" and .status == "completed")
+#
+# `output` is array-normalized first: a malformed `output` arriving as an object would otherwise be
+# iterated by `.output[]?` over its VALUES, letting a `web_search_call` nested in an object falsely
+# pass the guard. `arr` makes a non-array `output` yield no items → guard false → NOT_SEARCHED.
+def arr($x): if ($x | type) == "array" then $x else [] end;
+any(arr(.output)[]; .type == "web_search_call" and .status == "completed")

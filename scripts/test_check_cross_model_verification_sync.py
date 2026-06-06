@@ -86,6 +86,17 @@ def test_lint_fails_when_jq_f_only_in_comment(tmp_path, monkeypatch):
     )
 
 
+def test_lint_fails_when_jq_f_only_in_trailing_comment(tmp_path, monkeypatch):
+    """A `jq -f` filename surviving only in a TRAILING comment on a weak inline line must NOT
+    satisfy the wiring check — trailing comments are stripped before the check."""
+    _assert_lint_fails_on_mutation(
+        tmp_path,
+        monkeypatch,
+        REINLINE_OLD,
+        'cites="$(jq -r ".candidates[0].x" <<<"$body")"  # ' + REINLINE_OLD,
+    )
+
+
 def test_lint_fails_on_double_quoted_inline_grounding_jq(tmp_path, monkeypatch):
     """An inline jq program referencing a grounding token must be caught even when double-quoted
     (the re-inline guard scans both quote styles, not just single quotes)."""

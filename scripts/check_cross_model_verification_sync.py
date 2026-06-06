@@ -43,12 +43,35 @@ REQUIRED_BRANCHES = [
 ]
 
 
-def _bash_code_lines(text: str) -> list[str]:
-    """Return the executable lines inside ```bash fenced blocks, with comment-only lines removed.
+def _strip_trailing_comment(line: str) -> str:
+    """Remove a trailing bash comment (` #...`) that is outside quotes.
 
-    A comment line is one whose first non-whitespace character is `#`. Inline trailing comments are
-    left intact (a `jq -f ...  # note` line is still executable), but a fully commented-out
-    `# jq -f ...` line is dropped so it cannot satisfy the wiring check.
+    A bash comment begins at a `#` that starts a word — i.e. at line start or preceded by
+    whitespace — and is not inside a single- or double-quoted string. Stripping it means a
+    filename surviving only in a trailing comment (`jq -r ".x"  # jq -f "$GUARD/x.jq"`) can't
+    satisfy the wiring check. A `#` inside a quoted string (or a `$#`/`${#}`-style token) is left
+    intact: it must follow whitespace and be unquoted to count as a comment.
+    """
+    in_single = in_double = False
+    prev = ""
+    for i, ch in enumerate(line):
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double and (i == 0 or prev.isspace()):
+            return line[:i].rstrip()
+        prev = ch
+    return line
+
+
+def _bash_code_lines(text: str) -> list[str]:
+    """Return the executable lines inside ```bash fenced blocks, comments removed.
+
+    A comment-only line (first non-whitespace char is `#`) is dropped entirely; a trailing comment
+    on an executable line is stripped (see `_strip_trailing_comment`). Both matter for the wiring
+    check: a filename mentioned only in a comment — whole-line or trailing — must not count as the
+    doc loading that filter via `jq -f`.
     """
     lines: list[str] = []
     in_block = False
@@ -61,7 +84,9 @@ def _bash_code_lines(text: str) -> list[str]:
             in_block = False
             continue
         if in_block and not stripped.startswith("#"):
-            lines.append(raw)
+            code = _strip_trailing_comment(raw)
+            if code.strip():
+                lines.append(code)
     return lines
 
 

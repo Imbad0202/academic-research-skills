@@ -9,8 +9,12 @@
 #
 # FAIL-CLOSED on malformed types: `length` is truthy for non-empty strings/objects too, so a
 # malformed groundingMetadata (webSearchQueries or groundingSupports arriving as a string/object
-# instead of an array) must NOT pass the guard. Require each field to be a non-empty ARRAY.
+# instead of an array) must NOT pass the guard. Require each field to be a non-empty ARRAY. The
+# top-level `candidates` is array-normalized first (`arr`) so a malformed `candidates` arriving as
+# an object — whose values `.candidates[]?` would otherwise still iterate — yields no candidate to
+# match (guard → false), staying consistent with gemini_sources.jq's `.candidates[0]` access.
+def arr($x): if ($x | type) == "array" then $x else [] end;
 def nonempty_array($x): ($x | type) == "array" and ($x | length) > 0;
-any(.candidates[]?;
+any(arr(.candidates)[];
   nonempty_array(.groundingMetadata.webSearchQueries // [])
   and nonempty_array(.groundingMetadata.groundingSupports // []))

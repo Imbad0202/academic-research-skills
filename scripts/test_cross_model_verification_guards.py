@@ -398,6 +398,66 @@ def test_openai_sources_fails_closed_on_object_url():
     assert sources == ""
 
 
+# Top-level container fixtures: `candidates` / `output` arriving as an OBJECT instead of an array.
+# `.candidates[]?` / `.output[]?` iterate an object's VALUES, so without array-normalization a
+# malformed top-level container could pass the guard (false-grounded) and then crash / leak in the
+# source extractor (`.candidates[0]` on an object errors; `.output[]?` surfaces a nested url).
+
+GEMINI_CANDIDATES_NOT_ARRAY = {
+    "candidates": {  # object, not array
+        "0": {
+            "groundingMetadata": {
+                "webSearchQueries": ["q"],
+                "groundingChunks": [{"web": {"uri": "https://leak.org"}}],
+                "groundingSupports": [{"groundingChunkIndices": [0]}],
+            }
+        }
+    }
+}
+
+OPENAI_OUTPUT_NOT_ARRAY = {
+    "output": {  # object, not array
+        "a": {"type": "web_search_call", "status": "completed"},
+        "b": {
+            "type": "message",
+            "content": [
+                {
+                    "type": "output_text",
+                    "text": "VERIFIED",
+                    "annotations": [{"type": "url_citation", "url": "https://leak.org"}],
+                }
+            ],
+        },
+    }
+}
+
+
+def test_gemini_guard_fails_closed_on_non_array_candidates():
+    """candidates as an object must not pass the guard (.candidates[]? would iterate its values)."""
+    rc, _ = _run_jq(GEMINI_GUARD, GEMINI_CANDIDATES_NOT_ARRAY, exit_test=True)
+    assert rc != 0
+
+
+def test_gemini_sources_fails_closed_on_non_array_candidates():
+    """candidates as an object must yield blank sources, not crash on `.candidates[0]`."""
+    rc, sources = _run_jq(GEMINI_SOURCES, GEMINI_CANDIDATES_NOT_ARRAY, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
+def test_openai_guard_fails_closed_on_non_array_output():
+    """output as an object must not pass the guard (.output[]? would iterate its values)."""
+    rc, _ = _run_jq(OPENAI_GUARD, OPENAI_OUTPUT_NOT_ARRAY, exit_test=True)
+    assert rc != 0
+
+
+def test_openai_sources_fails_closed_on_non_array_output():
+    """output as an object must not surface a url nested in its values."""
+    rc, sources = _run_jq(OPENAI_SOURCES, OPENAI_OUTPUT_NOT_ARRAY, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
 # ---------------------------------------------------------------------------
 # Mutation test — prove the fixtures are not vacuously green
 # ---------------------------------------------------------------------------
