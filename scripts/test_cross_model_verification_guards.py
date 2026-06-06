@@ -661,7 +661,7 @@ def test_openai_filters_skip_non_object_array_elements(filter_path, payload):
         assert rc == 0 and out == ""  # nothing extracted, no crash
 
 
-# #353 round 3 (codex): the structural rederive array-normalized every CONTAINER but left the
+# #353 round 3 (cross-model review): the structural rederive array-normalized every CONTAINER but left the
 # object DEREFERENCES unguarded, so a non-object at any field-access point crashed jq (rc 5,
 # "Cannot index number with string …") instead of failing closed. `obj/1` now normalizes
 # `candidates[0]`, `groundingMetadata`, each `groundingSupports` element, each cited
@@ -713,7 +713,7 @@ def test_gemini_sources_fails_closed_on_non_object_dereference(payload):
     assert sources == "", f"malformed dereference must not fabricate a source, got {sources!r}"
 
 
-# #353 round 4 (codex): the FIRST hardening pass normalized every nested container/value but left
+# #353 round 4 (cross-model review): the FIRST hardening pass normalized every nested container/value but left
 # the ROOT `.candidates` dereference itself unguarded — `arr(.candidates)` protects the *result*,
 # not the access. A non-object root (`5`, `"x"`, `[]`, `true`) crashed jq before `arr` ran. Both my
 # 176-run fuzz and the first 10 tests missed it because every fixture had a `{...}` root. Fixed with
