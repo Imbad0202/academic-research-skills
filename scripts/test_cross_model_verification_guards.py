@@ -278,19 +278,74 @@ def test_gemini_guard_fails_closed_without_valid_supported_index(support_objs):
     assert rc != 0
 
 
-def test_gemini_guard_pass_iff_sources_extractable():
-    """Invariant: the guard passes exactly when at least one source is extractable. A support set
-    with no valid index → guard fails AND sources blank; a valid index → guard passes AND sources
-    non-blank. (Guard and extractor share the same in-range non-negative-integer predicate.)"""
-    no_valid = _gemini_supports([{"groundingChunkIndices": [-1]}])
-    rc_g, _ = _run_jq(GEMINI_GUARD, no_valid, exit_test=True)
-    _, src = _run_jq(GEMINI_SOURCES, no_valid, raw=True)
-    assert rc_g != 0 and src == ""
+# Guard-derives-from-extractor cases (#351 round 2): the guard embeds the SAME extraction as
+# gemini_sources.jq, so the safety invariant `guard-pass ⟹ sources non-blank` holds for every
+# shape — including a multi-candidate response where candidate 0 is unsupported (the guard must read
+# the same candidate[0] the extractor does, not `any` candidate), a fractional index, and a
+# non-string uri. Each row is (label, candidate-list, guard-should-pass).
+_GUARD_DERIVE_CASES = [
+    # candidate 0 unsupported, candidate 1 grounded: guard reads candidate[0] like the extractor,
+    # so it must FAIL (a true `any`-candidate guard would pass here then emit candidate 0's blank).
+    (
+        "multi-candidate-cand0-unsupported",
+        [
+            {"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "X"}}], "groundingSupports": [{"groundingChunkIndices": []}]}},
+            {"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "Y"}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}},
+        ],
+        False,
+    ),
+    # fractional index: jq does not fractional-index, so the extractor yields nothing → guard fails.
+    (
+        "fractional-index",
+        [{"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "X"}}], "groundingSupports": [{"groundingChunkIndices": [0.5]}]}}],
+        False,
+    ),
+    # valid index but the indexed chunk's uri is not a string → no extractable source → guard fails.
+    (
+        "non-string-uri",
+        [{"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": 123}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}}],
+        False,
+    ),
+    # a real grounded response: guard passes.
+    (
+        "legit-grounded",
+        [{"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "A"}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}}],
+        True,
+    ),
+]
 
-    valid = _gemini_supports([{"groundingChunkIndices": [0]}])
-    rc_g2, _ = _run_jq(GEMINI_GUARD, valid, exit_test=True)
-    _, src2 = _run_jq(GEMINI_SOURCES, valid, raw=True)
-    assert rc_g2 == 0 and src2 != ""
+
+@pytest.mark.parametrize(
+    "candidates,should_pass",
+    [(c, p) for _, c, p in _GUARD_DERIVE_CASES],
+    ids=[label for label, _, _ in _GUARD_DERIVE_CASES],
+)
+def test_gemini_guard_derives_from_extractor(candidates, should_pass):
+    """Guard-pass tracks the extractor exactly: it embeds the same candidate[0] extraction and
+    passes iff that yields ≥1 source (plus a real search signal)."""
+    payload = {"candidates": candidates}
+    rc, _ = _run_jq(GEMINI_GUARD, payload, exit_test=True)
+    assert (rc == 0) == should_pass
+
+
+def test_gemini_guard_pass_implies_sources_nonblank():
+    """The safety invariant (one-directional): if the guard passes, gemini_sources.jq returns at
+    least one source. (The converse is intentionally NOT required — the guard is strictly stronger,
+    also demanding a real webSearchQueries signal, so a chunks-but-no-search response fails the
+    guard while sources are non-blank.)"""
+    for _, candidates, should_pass in _GUARD_DERIVE_CASES:
+        payload = {"candidates": candidates}
+        rc, _ = _run_jq(GEMINI_GUARD, payload, exit_test=True)
+        _, src = _run_jq(GEMINI_SOURCES, payload, raw=True)
+        if rc == 0:  # guard passed → sources MUST be non-blank
+            assert src != "", f"guard passed but sources blank for {candidates!r}"
+
+    # The guard is strictly stronger: chunks + valid support but NO webSearchQueries → guard fails
+    # even though a source is extractable.
+    no_search = {"candidates": [{"groundingMetadata": {"groundingChunks": [{"web": {"uri": "X"}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}}]}
+    rc_ns, _ = _run_jq(GEMINI_GUARD, no_search, exit_test=True)
+    _, src_ns = _run_jq(GEMINI_SOURCES, no_search, raw=True)
+    assert rc_ns != 0 and src_ns != ""
 
 
 def test_gemini_sources_only_from_supported_chunks():
@@ -579,6 +634,31 @@ def test_openai_text_fails_closed_on_non_string_text():
     rc, text = _run_jq(OPENAI_TEXT, payload, raw=True)
     assert rc == 0
     assert text == ""
+
+
+# #351 round 2: a malformed ARRAY ELEMENT (a non-object, e.g. `output: [5]` / `content: [7]`) must
+# be skipped, not crash `.type` ("Cannot index number with \"type\""). Each iterated level now
+# type-checks the element as an object before reading `.type`.
+@pytest.mark.parametrize(
+    "filter_path,payload",
+    [
+        (OPENAI_GUARD, {"output": [5]}),
+        (OPENAI_TEXT, {"output": [5]}),
+        (OPENAI_SOURCES, {"output": [5]}),
+        (OPENAI_TEXT, {"output": [{"type": "message", "content": [7]}]}),
+        (OPENAI_SOURCES, {"output": [{"type": "message", "content": [7]}]}),
+        (OPENAI_SOURCES, {"output": [{"type": "message", "content": [{"type": "output_text", "annotations": [9]}]}]}),
+    ],
+    ids=["guard-output", "text-output", "sources-output", "text-content", "sources-content", "sources-annotations"],
+)
+def test_openai_filters_skip_non_object_array_elements(filter_path, payload):
+    """A non-object array element at any iterated level must not crash the filter."""
+    rc, out = _run_jq(filter_path, payload, raw=(filter_path is not OPENAI_GUARD),
+                      exit_test=(filter_path is OPENAI_GUARD))
+    if filter_path is OPENAI_GUARD:
+        assert rc != 0  # no completed web_search_call → not grounded, no crash
+    else:
+        assert rc == 0 and out == ""  # nothing extracted, no crash
 
 
 # ---------------------------------------------------------------------------

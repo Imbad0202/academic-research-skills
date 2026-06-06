@@ -18,13 +18,20 @@
 # array-normalized too, so a malformed `candidates` arriving as an object does not crash the
 # `[0]` access (`arr(.candidates)[0]` on a non-array yields null → no metadata → blank sources).
 # Extracted URIs are filtered to non-empty strings so a malformed `uri` (a number/bool/object)
-# never fabricates a source. Used with `jq -r`.
+# never fabricates a source. Indices must be non-negative INTEGERS (`. == floor`): jq does not
+# fractional-index, so a `0.5` would yield null anyway, but excluding it keeps this predicate
+# identical to the one gemini_is_grounded.jq derives its verdict from (guard-pass ⟺ ≥1 source).
+# Used with `jq -r`.
+#
+# NOTE: gemini_is_grounded.jq embeds the SAME extraction (the `$srcs` body below) and passes iff it
+# is non-empty, so the guard and this extractor cannot diverge on candidate selection, index
+# validity, or uri type — keep the two in lockstep if either is edited.
 def arr($x): if ($x | type) == "array" then $x else [] end;
 (arr(.candidates)[0].groundingMetadata) as $meta
 | arr($meta.groundingChunks) as $chunks
 | [ arr($meta.groundingSupports)[]
     | arr(.groundingChunkIndices)[]
-    | select(type == "number" and . >= 0 and . < ($chunks | length)) ]
+    | select(type == "number" and . == floor and . >= 0 and . < ($chunks | length)) ]
 | unique
 | [ .[] | $chunks[.].web.uri | select(type == "string" and length > 0) ]
 | unique

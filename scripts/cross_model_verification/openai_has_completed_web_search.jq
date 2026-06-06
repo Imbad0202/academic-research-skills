@@ -8,6 +8,8 @@
 #
 # `output` is array-normalized first: a malformed `output` arriving as an object would otherwise be
 # iterated by `.output[]?` over its VALUES, letting a `web_search_call` nested in an object falsely
-# pass the guard. `arr` makes a non-array `output` yield no items → guard false → NOT_SEARCHED.
+# pass the guard. `arr` makes a non-array `output` yield no items → guard false → NOT_SEARCHED. Each
+# element is type-checked as an object before `.type` is read, so a malformed array element (e.g.
+# `output: [5]`) is skipped rather than crashing `.type` ("Cannot index number with \"type\"").
 def arr($x): if ($x | type) == "array" then $x else [] end;
-any(arr(.output)[]; .type == "web_search_call" and .status == "completed")
+any(arr(.output)[]; type == "object" and .type == "web_search_call" and .status == "completed")

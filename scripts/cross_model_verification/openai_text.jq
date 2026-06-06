@@ -6,5 +6,6 @@
 # strings so a malformed non-string `text` (an object) does not crash `join` (`"" + {} ` errors).
 # Used with `jq -r`.
 def arr($x): if ($x | type) == "array" then $x else [] end;
-[arr(.output)[] | select(.type=="message") | arr(.content)[] | select(.type=="output_text")
+[arr(.output)[] | select(type=="object" and .type=="message")
+  | arr(.content)[] | select(type=="object" and .type=="output_text")
   | .text | select(type == "string")] | join("\n")
