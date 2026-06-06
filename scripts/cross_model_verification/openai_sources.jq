@@ -6,10 +6,11 @@
 #
 # FAIL-CLOSED on a malformed `url`: filter to non-empty strings so a `url_citation` whose `url` is
 # a bool/number/object never fabricates a SOURCES entry (defeating the downgrade) or crashes
-# `join` (an object `url` is not addable to a string). `output` is array-normalized first so a
-# malformed `output` arriving as an object is not iterated over its values (which could surface a
-# url nested in an object) — a non-array `output` yields no sources.
+# `join` (an object `url` is not addable to a string). EVERY container on the path — `output`,
+# `content`, `annotations` — is array-normalized (`arr`), so a malformed response with any of them
+# arriving as an object (whose values `[]?` would otherwise iterate, surfacing a url nested in an
+# object) yields no sources rather than a fabricated one.
 def arr($x): if ($x | type) == "array" then $x else [] end;
-[arr(.output)[] | select(.type=="message") | .content[]? | select(.type=="output_text")
-  | .annotations[]? | select(.type=="url_citation") | .url
+[arr(.output)[] | select(.type=="message") | arr(.content)[] | select(.type=="output_text")
+  | arr(.annotations)[] | select(.type=="url_citation") | .url
   | select(type == "string" and length > 0)] | unique | join(", ")

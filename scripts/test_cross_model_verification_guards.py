@@ -458,6 +458,63 @@ def test_openai_sources_fails_closed_on_non_array_output():
     assert sources == ""
 
 
+# Nested-container fixtures: a valid array `output` but `content` / `annotations` arriving as an
+# OBJECT. Every container on the OpenAI path (output → content → annotations → url) is normalized,
+# so none of these may surface a nested url.
+
+OPENAI_CONTENT_NOT_ARRAY = {
+    "output": [
+        {"type": "web_search_call", "status": "completed"},
+        {
+            "type": "message",
+            "content": {  # object, not array
+                "x": {
+                    "type": "output_text",
+                    "text": "VERIFIED",
+                    "annotations": [{"type": "url_citation", "url": "https://leak.org"}],
+                }
+            },
+        },
+    ]
+}
+
+OPENAI_ANNOTATIONS_NOT_ARRAY = {
+    "output": [
+        {
+            "type": "message",
+            "content": [
+                {
+                    "type": "output_text",
+                    "text": "VERIFIED",
+                    "annotations": {"x": {"type": "url_citation", "url": "https://leak.org"}},
+                }
+            ],
+        }
+    ]
+}
+
+
+def test_openai_sources_fails_closed_on_non_array_content():
+    """content as an object must not surface a url nested in its values."""
+    rc, sources = _run_jq(OPENAI_SOURCES, OPENAI_CONTENT_NOT_ARRAY, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
+def test_openai_sources_fails_closed_on_non_array_annotations():
+    """annotations as an object must not surface a url nested in its values."""
+    rc, sources = _run_jq(OPENAI_SOURCES, OPENAI_ANNOTATIONS_NOT_ARRAY, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
+def test_openai_text_fails_closed_on_non_array_content():
+    """content as an object must not surface text nested in its values."""
+    rc, text = _run_jq(OPENAI_TEXT, OPENAI_CONTENT_NOT_ARRAY, raw=True)
+    assert rc == 0
+    assert text == ""
+
+
 # ---------------------------------------------------------------------------
 # Mutation test — prove the fixtures are not vacuously green
 # ---------------------------------------------------------------------------
