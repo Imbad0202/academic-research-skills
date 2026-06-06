@@ -198,7 +198,11 @@ resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
-  echo "NOT_SEARCHED: openai_http_$http"           # API rejected the request (e.g. tool unsupported)
+  # Transport/API failure (401/429/5xx, or curl's 000 on a network error) — NOT the same as
+  # "searched but found nothing". Surface as a transport error so the consumer falls back to
+  # single-model (see § Graceful Degradation); never relabel it NOT_SEARCHED, which would
+  # imply a completed-but-ungrounded lookup.
+  echo "CROSS-MODEL-ERROR: openai_http_$http"
 elif ! jq -e 'any(.output[]?; .type == "web_search_call" and .status == "completed")' <<<"$body" >/dev/null; then
   echo "NOT_SEARCHED: no_web_search_call"           # no search happened at all — discard the text
 else
@@ -227,15 +231,28 @@ resp="$(curl -sS -w '\n%{http_code}' \
   }')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
-# Require BOTH a search query AND grounding chunks: groundingChunks alone can appear without
-# the verdict text being supported; webSearchQueries proves the model actually issued a search.
+# Require a search query (proves the model issued a search) AND groundingSupports (proves the
+# verdict TEXT is tied to retrieved chunks). webSearchQueries + groundingChunks alone is not
+# enough: Gemini can run a search, return chunks, then emit an unsupported from-memory verdict
+# whose text references none of them — groundingSupports[].groundingChunkIndices is what links
+# answer spans to sources. Without that link a VERIFIED is not actually grounded.
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
-  echo "NOT_SEARCHED: gemini_http_$http"
-elif ! jq -e 'any(.candidates[]?; ((.groundingMetadata.webSearchQueries // []) | length) > 0 and ((.groundingMetadata.groundingChunks // []) | length) > 0)' <<<"$body" >/dev/null; then
-  echo "NOT_SEARCHED: no_grounding"                  # no real search behind the text — discard it
+  # Transport/API failure (401/429/5xx, or curl's 000) — surface as a transport error so the
+  # consumer falls back to single-model (see § Graceful Degradation), not NOT_SEARCHED.
+  echo "CROSS-MODEL-ERROR: gemini_http_$http"
+elif ! jq -e 'any(.candidates[]?; ((.groundingMetadata.webSearchQueries // []) | length) > 0 and ((.groundingMetadata.groundingSupports // []) | length) > 0)' <<<"$body" >/dev/null; then
+  echo "NOT_SEARCHED: no_grounding_support"           # no search, or text not supported by it — discard
 else
   text="$(jq -r '.candidates[0].content.parts[]?.text // empty' <<<"$body")"
-  cites="$(jq -r '[.candidates[0].groundingMetadata.groundingChunks[]?.web.uri // empty] | unique | join(", ")' <<<"$body")"
+  # Derive SOURCES only from chunks actually cited by groundingSupports (the supported chunk
+  # indices), NOT every groundingChunks entry — so a VERIFIED whose text cites no chunk leaves
+  # SOURCES blank and is downgraded to NOT_SEARCHED at step 5.
+  cites="$(jq -r '
+    (.candidates[0].groundingMetadata.groundingChunks // []) as $chunks
+    | [ .candidates[0].groundingMetadata.groundingSupports[]?.groundingChunkIndices[]? ]
+    | unique
+    | [ .[] | $chunks[.].web.uri // empty ]
+    | unique | join(", ")' <<<"$body")"
   printf '%s\nSOURCES: %s\n' "$text" "${cites:-(none)}"
 fi
 ```
@@ -277,17 +294,17 @@ Cross-model verification adds API costs from the second provider:
 
 | Scenario | Additional Calls | Estimated Additional Cost |
 |----------|-----------------|--------------------------|
-| Integrity verification (30% of 60 refs, **one call per reference**) | ~18 calls | ~$1.40-2.80 |
+| Integrity verification (60 refs → 30% = 18, capped at max 15; **one call per reference**) | ~15 calls | ~$1.15-2.35 |
 | DA cross-check (1 per checkpoint, 3 checkpoints) | 3 calls | ~$0.30-0.50 |
 | Peer review (planned, not yet implemented) | — | — |
-| **Full pipeline** | **~21 calls** | **~$1.70-3.30** |
+| **Full pipeline** | **~18 calls** | **~$1.45-2.85** |
 
 These are rough estimates based on GPT-5.4 Pro pricing ($5/1M input, $20/1M output) and typical prompt sizes. One-call-per-reference (rather than batching) is a deliberate cost-for-provenance trade: it is the only way the grounding-evidence check maps 1:1 to each verdict. Web-search-tool calls also cost more than plain completions.
 
 ## Limitations
 
 1. **Does not solve frame-lock fully.** All major LLMs share substantial training data. Cross-model catches different surface errors but may share deep structural biases.
-2. **API latency.** Cross-model calls add 2-5 seconds per call, plus web-search round-trip time. With one call per reference (no batching) and a web-search tool, integrity verification of ~18 sampled references adds several minutes; the calls can be issued concurrently to bound wall-clock time.
+2. **API latency.** Cross-model calls add 2-5 seconds per call, plus web-search round-trip time. With one call per reference (no batching) and a web-search tool, integrity verification of up to 15 sampled references (the sample cap) adds several minutes; the calls can be issued concurrently to bound wall-clock time.
 3. **Response format differences.** Different models structure responses differently. The agent must parse varied formats — keep verification prompts simple and structured to minimize parsing issues.
 4. **Cost scales with paper size.** Longer papers with more references = more cross-model calls.
 

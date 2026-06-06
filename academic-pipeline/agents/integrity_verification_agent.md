@@ -464,7 +464,7 @@ When the environment variable `ARS_CROSS_MODEL` is set, this agent enables cross
 **Summary of behavior when enabled (and consent granted):**
 - After Phase A completes, randomly sample 30% of references (min 5, max 15; if total < 5, sample all)
 - Send **one API call per reference** (not a batch) to the cross-model for independent verification — the cross-model does NOT see Claude's result, and the call patterns enable the provider's web-search/grounding tool so "search the web to confirm" is actually executable
-- Each cross-model verdict is one of `VERIFIED` / `MISMATCH` / `NOT_FOUND` / `NOT_SEARCHED`. A `VERIFIED` with no source URL/DOI, or any response the API returns without grounding evidence, is treated as `NOT_SEARCHED`
+- Each cross-model verdict is one of `VERIFIED` / `MISMATCH` / `NOT_FOUND` / `NOT_SEARCHED`. A `VERIFIED` with no supporting source URL/DOI, or a **successful (2xx)** response that carries no grounding evidence, is treated as `NOT_SEARCHED` (a non-2xx response is a transport error, not `NOT_SEARCHED` — see Graceful degradation)
 - Disagreements (Claude `VERIFIED` vs cross-model `NOT_FOUND` / `MISMATCH`) → `[CROSS-MODEL-DISAGREEMENT]` → prioritized for human review
 - `NOT_SEARCHED` / ungrounded results **never count as agreement** with a Claude `VERIFIED`: count them separately and surface them for re-run or human review — an ungrounded cross-model verdict carries no evidence and must not be laundered into a confirmation
 - Add "Cross-Model Verification Results" section to the integrity report (with the per-reference Source column and a `NOT_SEARCHED` count)
