@@ -45,11 +45,11 @@ you CONFIGURATION DOCUMENTATION sufficient to INVESTIGATE divergence — not to 
 repro_lock:
   schema_version: "1.0"                    # lock schema version
   stochasticity_declaration: "LLM outputs are not byte-reproducible. This lockfile documents configuration, not a deterministic replay guarantee."
-  ars_version: "3.3.5"                     # suite version at run time
+  ars_version: "<suite-version-at-run-time>"   # e.g. "3.11.1" — the suite version when this run executed
 
   model:
     family: claude                          # provider family
-    id: claude-opus-4-7                    # model identifier (not weight hash)
+    id: "<model-id-at-run-time>"           # model identifier at run time, e.g. the inherited Claude Code session model (not weight hash)
     weight_stable: false                    # always false until signed attestation exists
 
   prompts:
@@ -62,7 +62,7 @@ repro_lock:
     count: 8                               # number of session materials
 
   external_protocols:
-    s2_api_protocol_version: "3.3"         # S2 query protocol version
+    s2_api_protocol_version: "<s2-protocol-version-at-run-time>"   # the S2 query protocol version that ran
     s2_snapshot_available: false           # whether a response cache exists
 
   cross_model:

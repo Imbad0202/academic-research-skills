@@ -4,7 +4,7 @@
 
 This protocol enables optional cross-model verification for high-stakes AI judgments. When enabled, a second AI model independently reviews outputs from the primary model, reducing shared-bias blind spots.
 
-**This is entirely optional.** All ARS skills work with Claude Opus 4.7 alone. Cross-model verification is an additional layer for users who want higher confidence in integrity checks, devil's advocate challenges, and review judgments.
+**This is entirely optional.** All ARS skills work with the primary Claude model alone. Cross-model verification is an additional layer for users who want higher confidence in integrity checks, devil's advocate challenges, and review judgments.
 
 **Consent boundary:** Before unpublished manuscripts, private notes, corpus text,
 reviewer comments, decision letters, response letters, or other review material
@@ -25,12 +25,12 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 | Model | API ID | Provider | Best For |
 |-------|--------|----------|----------|
-| Claude Opus 4.7 | `claude-opus-4-7` | Anthropic | Primary model (default for all ARS skills) |
+| Claude Opus 4.8 | _(inherited Claude Code session model)_ | Anthropic | Primary model (default for all ARS skills) |
 | GPT-5.4 Pro | `gpt-5.4-pro` | OpenAI | Cross-verification — strongest reasoning |
 | GPT-5.4 | `gpt-5.4` | OpenAI | Cross-verification — balanced cost/performance |
 | Gemini 3.1 Pro | `gemini-3.1-pro-preview` | Google | Cross-verification — strong at factual verification |
 
-**Recommended cross-verification pair:** Claude Opus 4.7 (primary) + GPT-5.4 Pro or Gemini 3.1 Pro (verifier).
+**Recommended cross-verification pair:** Claude Opus 4.8 (primary) + GPT-5.4 Pro or Gemini 3.1 Pro (verifier).
 
 Using two non-Anthropic models as primary+verifier is possible but not tested with ARS prompts.
 
@@ -174,7 +174,7 @@ The DA agent, after completing its checkpoint report, should:
 
 ### OpenAI (GPT-5.4 / GPT-5.4 Pro)
 
-In Claude Code, the agent can use the Bash tool to make API calls:
+In Claude Code, the agent can use the Bash tool to make API calls. Both call patterns below set `temperature: 0.1` deliberately: reference existence/metadata checking is a deterministic factual task, and low temperature reduces run-to-run variance in the VERIFIED / NOT_FOUND / MISMATCH verdict. `max_tokens` is bounded (≤5 references per call) to cap cost, not for determinism.
 
 ```bash
 curl -s https://api.openai.com/v1/chat/completions \
