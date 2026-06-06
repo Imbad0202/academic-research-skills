@@ -496,6 +496,45 @@ def _check_inv_18(e: dict[str, Any]) -> list[Finding]:
     return []
 
 
+def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
+    """sub_claim_breakdown present -> normalized-PARTIAL shape pinned (#213).
+
+    Presence of the breakdown is the machine-readable partial-support signal.
+    When present it must pin the full B1 normalization: judgment=UNSUPPORTED,
+    defect_stage=source_description, and the breakdown is *true-partial* —
+    >=2 items with >=1 SUPPORTED AND >=1 non-SUPPORTED sub_verdict. The
+    SUPPORTED-AND-non-SUPPORTED pair is what distinguishes a genuine partial
+    from an all-supported or all-unsupported decomposition; "non-SUPPORTED
+    alone" would wrongly admit an all-UNSUPPORTED breakdown.
+    """
+    if "sub_claim_breakdown" not in e:
+        return []
+    bd = e.get("sub_claim_breakdown")
+    findings: list[Finding] = []
+    if e.get("judgment") != "UNSUPPORTED":
+        findings.append(
+            Finding("INV-19", f"sub_claim_breakdown present but judgment={e.get('judgment')!r}; must be UNSUPPORTED")
+        )
+    if e.get("defect_stage") != "source_description":
+        findings.append(
+            Finding(
+                "INV-19",
+                f"sub_claim_breakdown present but defect_stage={e.get('defect_stage')!r}; must be source_description",
+            )
+        )
+    if not isinstance(bd, list) or len(bd) < 2:
+        findings.append(Finding("INV-19", "sub_claim_breakdown must have >=2 items (not a true partial)"))
+        return findings
+    verdicts = [item.get("sub_verdict") for item in bd if isinstance(item, dict)]
+    if not any(v == "SUPPORTED" for v in verdicts):
+        findings.append(Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 SUPPORTED sub_verdict"))
+    if not any(v != "SUPPORTED" for v in verdicts):
+        findings.append(
+            Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 non-SUPPORTED sub_verdict")
+        )
+    return findings
+
+
 # INV-17 surfaces on malformed NC constraint ids encountered in manifests
 # (schema also rejects the wrong shape; lint surfaces the explicit tag).
 def _check_inv_17_for_manifest(manifest: dict[str, Any]) -> list[Finding]:
@@ -1314,6 +1353,7 @@ def validate_passport(body: Any) -> list[Finding]:
         findings.extend(_check_inv_15(e, manifest_index))
         findings.extend(_check_inv_16(e))
         findings.extend(_check_inv_18(e))
+        findings.extend(_check_inv_19(e))
         findings.extend(_check_matrix(e))
 
     findings.extend(_check_uncited_invariants(uncited, manifest_index))

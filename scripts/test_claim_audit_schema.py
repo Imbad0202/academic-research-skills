@@ -564,6 +564,66 @@ class TS2ClaimAuditInvariants(_LintTestBase):
         e["ref_retrieval_method"] = "api"
         self.assertLintFinds(build_passport(results=[e]), invariant="INV-18")
 
+    # ----- INV-19 (#213): sub_claim_breakdown pins the normalized-PARTIAL shape.
+    def _partial_entry(self) -> dict[str, Any]:
+        """True-partial UNSUPPORTED row: the INV-19 positive baseline."""
+        e = supported_entry()
+        e["judgment"] = "UNSUPPORTED"
+        e["audit_status"] = "completed"
+        e["defect_stage"] = "source_description"
+        e["sub_claim_breakdown"] = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED"},
+            {"sub_claim_text": "b", "sub_verdict": "UNSUPPORTED"},
+        ]
+        return e
+
+    def test_inv_19_valid_partial_breakdown_passes(self) -> None:
+        # INV-19 positive baseline: a true-partial row is clean.
+        self.assertLintClean(build_passport(results=[self._partial_entry()]))
+
+    def test_inv_19_breakdown_on_supported_row_flagged(self) -> None:
+        # INV-19: a sub_claim_breakdown on a non-UNSUPPORTED row is illegal.
+        e = supported_entry()  # judgment=SUPPORTED, defect_stage=None
+        e["sub_claim_breakdown"] = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED"},
+            {"sub_claim_text": "b", "sub_verdict": "UNSUPPORTED"},
+        ]
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
+
+    def test_inv_19_breakdown_wrong_defect_stage_flagged(self) -> None:
+        # INV-19: breakdown row must carry defect_stage=source_description.
+        e = self._partial_entry()
+        e["defect_stage"] = "synthesis_overclaim"
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
+
+    def test_inv_19_all_unsupported_breakdown_flagged(self) -> None:
+        # INV-19: not true-partial — needs >=1 SUPPORTED (round-1 review #2).
+        e = self._partial_entry()
+        e["sub_claim_breakdown"] = [
+            {"sub_claim_text": "a", "sub_verdict": "UNSUPPORTED"},
+            {"sub_claim_text": "b", "sub_verdict": "UNSUPPORTED"},
+        ]
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
+
+    def test_inv_19_all_supported_breakdown_flagged(self) -> None:
+        # INV-19: not true-partial — needs >=1 non-SUPPORTED.
+        e = self._partial_entry()
+        e["sub_claim_breakdown"] = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED"},
+            {"sub_claim_text": "b", "sub_verdict": "SUPPORTED"},
+        ]
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
+
+    def test_inv_19_single_item_breakdown_flagged(self) -> None:
+        # INV-19: a decomposition with <2 items is not a true partial.
+        e = self._partial_entry()
+        e["sub_claim_breakdown"] = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED"},
+        ]
+        # schema minItems:2 also rejects this; lint must independently flag it
+        # so a future schema relaxation can't silently admit a 1-item breakdown.
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
+
 
 # ---------------------------------------------------------------------------
 # T-S3: anchor_kind=none + INV-6 violation paths.
