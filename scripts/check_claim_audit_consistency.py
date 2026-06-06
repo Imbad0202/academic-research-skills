@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """check_claim_audit_consistency.py — ARS v3.8 claim-faithfulness audit lint.
 
-Enforces the 38 cross-field invariants spanning the six aggregates that
+Enforces the 39 cross-field invariants spanning the six aggregates that
 claim_ref_alignment_audit_agent populates:
 
-    claim_audit_results[]           — INV-1..INV-18      (§3.1)
+    claim_audit_results[]           — INV-1..INV-19      (§3.1)
     claim_intent_manifests[]        — M-INV-1..M-INV-4   (§3.2)
     uncited_assertions[]            — U-INV-1..U-INV-4   (§3.3)
     claim_drifts[]                  — D-INV-1..D-INV-4   (§3.4)
@@ -153,7 +153,7 @@ def _validator(name: str) -> Draft202012Validator:
 
 
 # ---------------------------------------------------------------------------
-# claim_audit_result invariants (INV-1..INV-18).
+# claim_audit_result invariants (INV-1..INV-19).
 # Each helper returns a list of Findings; the caller aggregates across rows.
 # ---------------------------------------------------------------------------
 
@@ -509,7 +509,7 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
     """
     if "sub_claim_breakdown" not in e:
         return []
-    bd = e.get("sub_claim_breakdown")
+    bd = e["sub_claim_breakdown"]
     findings: list[Finding] = []
     if e.get("judgment") != "UNSUPPORTED":
         findings.append(
@@ -525,10 +525,15 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
     if not isinstance(bd, list) or len(bd) < 2:
         findings.append(Finding("INV-19", "sub_claim_breakdown must have >=2 items (not a true partial)"))
         return findings
-    verdicts = [item.get("sub_verdict") for item in bd if isinstance(item, dict)]
+    verdicts = [item.get("sub_verdict") for item in _iter_dicts(bd)]
+    # "non-SUPPORTED" counts only the *valid* opposing verdicts. A missing or
+    # out-of-enum sub_verdict must NOT be silently read as non-SUPPORTED — that
+    # would let `[SUPPORTED, <missing>]` masquerade as true-partial. INV-19 owns
+    # the true-partial check independently of the schema enum (round-2 review #1).
+    non_supported = {"UNSUPPORTED", "AMBIGUOUS"}
     if not any(v == "SUPPORTED" for v in verdicts):
         findings.append(Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 SUPPORTED sub_verdict"))
-    if not any(v != "SUPPORTED" for v in verdicts):
+    if not any(v in non_supported for v in verdicts):
         findings.append(
             Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 non-SUPPORTED sub_verdict")
         )
@@ -1269,7 +1274,7 @@ def _validate_against_schema(
 
 
 def validate_passport(body: Any) -> list[Finding]:
-    """Run all 38 invariants + schema-shape against a passport body. Returns findings."""
+    """Run all 39 invariants + schema-shape against a passport body. Returns findings."""
     # Step 13 R7 codex P3: a syntactically valid JSON top level can still
     # be `[]`, `null`, or a scalar. `.get()` on those raises AttributeError;
     # surface a clean schema finding instead so the CLI can return findings

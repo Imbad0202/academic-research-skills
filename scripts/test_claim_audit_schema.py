@@ -280,7 +280,13 @@ class TS1ValidMinimalEntry(unittest.TestCase):
         self.assertEqual(errors, [], msg=f"unexpected validation errors: {errors}")
 
     def test_subclaim_breakdown_rejects_unknown_subfield(self) -> None:
-        """additionalProperties:false holds inside each breakdown item."""
+        """additionalProperties:false holds inside each breakdown item.
+
+        Two valid items satisfy minItems:2 so the ONLY violation is the bogus
+        subfield — this isolates additionalProperties:false from the array-length
+        constraint (round-2 review #2: a one-item fixture also tripped minItems,
+        so it would still pass even if additionalProperties were removed).
+        """
         schema = load_json_schema(SCHEMA_PATHS["claim_audit_result"])
         validator = build_schema_validator(schema)
         entry = supported_entry()
@@ -288,9 +294,14 @@ class TS1ValidMinimalEntry(unittest.TestCase):
         entry["defect_stage"] = "source_description"
         entry["sub_claim_breakdown"] = [
             {"sub_claim_text": "x", "sub_verdict": "SUPPORTED", "bogus": 1},
+            {"sub_claim_text": "y", "sub_verdict": "UNSUPPORTED"},
         ]
         errors = list(validator.iter_errors(entry))
         self.assertNotEqual(errors, [], msg="expected unknown subfield to be rejected")
+        self.assertTrue(
+            any(e.validator == "additionalProperties" for e in errors),
+            msg=f"expected an additionalProperties error, got: {[e.validator for e in errors]}",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +354,7 @@ class _LintTestBase(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# T-S2: INV-1..INV-18 paired positive + negative fixtures (claim_audit_result).
+# T-S2: INV-1..INV-19 paired positive + negative fixtures (claim_audit_result).
 # Each invariant is one subTest; baseline = SUPPORTED entry, negative cases
 # mutate the field combination the invariant forbids.
 # ---------------------------------------------------------------------------
@@ -622,6 +633,30 @@ class TS2ClaimAuditInvariants(_LintTestBase):
         ]
         # schema minItems:2 also rejects this; lint must independently flag it
         # so a future schema relaxation can't silently admit a 1-item breakdown.
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
+
+    def test_inv_19_breakdown_on_ambiguous_row_flagged(self) -> None:
+        # INV-19 judgment-pin isolation: AMBIGUOUS + completed + source_description
+        # passes INV-3 AND is in ALLOWED_MATRIX, so the ONLY invariant that can
+        # fire is INV-19's judgment check. This catches a partially-broken guard
+        # that forgets the judgment pin but keeps the defect_stage pin — which the
+        # SUPPORTED-row case can't catch (it also has defect_stage=None).
+        # (round-2 review #3.)
+        e = self._partial_entry()
+        e["judgment"] = "AMBIGUOUS"  # defect_stage stays source_description
+        self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
+
+    def test_inv_19_missing_sub_verdict_not_counted_as_non_supported(self) -> None:
+        # INV-19 must NOT read a missing/out-of-enum sub_verdict as "non-SUPPORTED"
+        # (round-2 review #1). [SUPPORTED, <missing>] is NOT true-partial: it has no
+        # valid non-SUPPORTED verdict. A guard using `v != "SUPPORTED"` would wrongly
+        # accept it. The schema also rejects the missing required key, but INV-19 must
+        # independently flag the not-true-partial shape with its own tag.
+        e = self._partial_entry()
+        e["sub_claim_breakdown"] = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED"},
+            {"sub_claim_text": "b"},  # sub_verdict missing -> not a valid non-SUPPORTED
+        ]
         self.assertLintFinds(build_passport(results=[e]), invariant="INV-19")
 
 
