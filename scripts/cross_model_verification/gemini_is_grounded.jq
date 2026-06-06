@@ -14,19 +14,28 @@
 # candidate). The safety invariant is **guard-pass ⟹ at least one source extractable**: deriving
 # the guard from the extractor — rather than asserting two parallel jq programs agree — makes it
 # hold for every input shape (a multi-candidate response where candidate 0 is unsupported, a
-# fractional/negative/string/out-of-range index, a non-string uri, a malformed object container all
-# leave the extraction empty → guard fails closed → an unsupported NOT_FOUND/MISMATCH, which the
+# fractional/negative/string/out-of-range index, a non-string uri, AND a malformed NON-OBJECT at any
+# dereference point — `candidates[0]`, `groundingMetadata`, a `groundingSupports` element, a cited
+# `groundingChunks` element, or its `web` — all leave the extraction empty → guard fails closed →
+# an unsupported NOT_FOUND/MISMATCH, which the
 # blank-source downgrade does not rescue since it only touches VERIFIED, is never trusted). The
 # guard is strictly STRONGER than "has a source": a response carrying chunks but no webSearchQueries
 # (sources non-blank, no real search signal) still fails — the converse is intentionally not
 # required. Keep this extraction byte-identical to gemini_sources.jq's `$srcs` body. Used with
 # `jq -e`: exit 0 = grounded; non-0 = NOT_SEARCHED.
+#
+# `arr/1` array-normalizes every container; `obj/1` object-normalizes every value that is then
+# field-dereferenced (`obj(candidates[0]).groundingMetadata`, `obj($meta)`, `obj(support).…Indices`,
+# `obj(obj(chunk).web).uri`). Without `obj/1`, a non-object at any of those points (e.g.
+# `groundingMetadata: 5`, a `web: 5`) would crash jq ("Cannot index number with string …") instead
+# of failing closed — a crash is loud but still violates the crash-free fail-closed contract.
 def arr($x): if ($x | type) == "array" then $x else [] end;
-(arr(.candidates)[0].groundingMetadata) as $meta
+def obj($x): if ($x | type) == "object" then $x else {} end;
+(obj(arr(.candidates)[0]).groundingMetadata | obj(.)) as $meta
 | arr($meta.groundingChunks) as $chunks
 | ([ arr($meta.groundingSupports)[]
-     | arr(.groundingChunkIndices)[]
+     | arr(obj(.).groundingChunkIndices)[]
      | select(type == "number" and . == floor and . >= 0 and . < ($chunks | length)) ]
    | unique
-   | [ .[] | $chunks[.].web.uri | select(type == "string" and length > 0) ]) as $srcs
+   | [ .[] | obj(obj($chunks[.]).web).uri | select(type == "string" and length > 0) ]) as $srcs
 | ((arr($meta.webSearchQueries) | length) > 0) and (($srcs | length) > 0)

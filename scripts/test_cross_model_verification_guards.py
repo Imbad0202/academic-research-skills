@@ -661,6 +661,58 @@ def test_openai_filters_skip_non_object_array_elements(filter_path, payload):
         assert rc == 0 and out == ""  # nothing extracted, no crash
 
 
+# #353 round 3 (codex): the structural rederive array-normalized every CONTAINER but left the
+# object DEREFERENCES unguarded, so a non-object at any field-access point crashed jq (rc 5,
+# "Cannot index number with string …") instead of failing closed. `obj/1` now normalizes
+# `candidates[0]`, `groundingMetadata`, each `groundingSupports` element, each cited
+# `groundingChunks` element, and its `web`. These five shapes are the exact crash witnesses.
+# Each carries an otherwise-valid grounded skeleton (webSearchQueries + one support citing index 0)
+# so the malformed field is the only reason the verdict drops — proving the normalization, not a
+# missing search signal, is what fails it closed.
+_GEMINI_NONOBJECT_CASES = [
+    {"candidates": [5]},
+    {"candidates": [{"groundingMetadata": 5}]},
+    {"candidates": [{"groundingMetadata": {
+        "webSearchQueries": ["q"],
+        "groundingChunks": [{"web": {"uri": "https://ok.org"}}],
+        "groundingSupports": [5],
+    }}]},
+    {"candidates": [{"groundingMetadata": {
+        "webSearchQueries": ["q"],
+        "groundingChunks": [5],
+        "groundingSupports": [{"groundingChunkIndices": [0]}],
+    }}]},
+    {"candidates": [{"groundingMetadata": {
+        "webSearchQueries": ["q"],
+        "groundingChunks": [{"web": 5}],
+        "groundingSupports": [{"groundingChunkIndices": [0]}],
+    }}]},
+]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    _GEMINI_NONOBJECT_CASES,
+    ids=["candidates0", "groundingMetadata", "groundingSupports-elem", "groundingChunks-elem", "web"],
+)
+def test_gemini_guard_fails_closed_on_non_object_dereference(payload):
+    """The Gemini guard must return a clean non-grounded verdict (rc 1), never a jq crash (rc 5)."""
+    rc, _ = _run_jq(GEMINI_GUARD, payload, exit_test=True)
+    assert rc == 1, f"expected clean fail-closed (rc 1), got rc {rc} (rc 5 = jq crash)"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    _GEMINI_NONOBJECT_CASES,
+    ids=["candidates0", "groundingMetadata", "groundingSupports-elem", "groundingChunks-elem", "web"],
+)
+def test_gemini_sources_fails_closed_on_non_object_dereference(payload):
+    """The Gemini source extractor must yield blank (rc 0, empty), never a jq crash (rc 5)."""
+    rc, sources = _run_jq(GEMINI_SOURCES, payload, raw=True)
+    assert rc == 0, f"expected clean exit (rc 0), got rc {rc} (rc 5 = jq crash)"
+    assert sources == "", f"malformed dereference must not fabricate a source, got {sources!r}"
+
+
 # ---------------------------------------------------------------------------
 # Mutation test — prove the fixtures are not vacuously green
 # ---------------------------------------------------------------------------

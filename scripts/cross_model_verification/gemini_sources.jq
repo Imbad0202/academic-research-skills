@@ -17,6 +17,10 @@
 # object would otherwise mis-count length or crash `$chunks[.]`. The top-level `candidates` is
 # array-normalized too, so a malformed `candidates` arriving as an object does not crash the
 # `[0]` access (`arr(.candidates)[0]` on a non-array yields null → no metadata → blank sources).
+# Every value that is then field-dereferenced is object-normalized (`obj/1`): a non-object
+# `candidates[0]`, `groundingMetadata`, `groundingSupports` element, cited `groundingChunks` element,
+# or its `web` (e.g. `web: 5`) would otherwise crash jq ("Cannot index number with string …")
+# instead of yielding blank SOURCES.
 # Extracted URIs are filtered to non-empty strings so a malformed `uri` (a number/bool/object)
 # never fabricates a source. Indices must be non-negative INTEGERS (`. == floor`): jq does not
 # fractional-index, so a `0.5` would yield null anyway, but excluding it keeps this predicate
@@ -29,12 +33,13 @@
 # response extracts a source here yet correctly fails the guard). Keep the two in lockstep if
 # either is edited.
 def arr($x): if ($x | type) == "array" then $x else [] end;
-(arr(.candidates)[0].groundingMetadata) as $meta
+def obj($x): if ($x | type) == "object" then $x else {} end;
+(obj(arr(.candidates)[0]).groundingMetadata | obj(.)) as $meta
 | arr($meta.groundingChunks) as $chunks
 | [ arr($meta.groundingSupports)[]
-    | arr(.groundingChunkIndices)[]
+    | arr(obj(.).groundingChunkIndices)[]
     | select(type == "number" and . == floor and . >= 0 and . < ($chunks | length)) ]
 | unique
-| [ .[] | $chunks[.].web.uri | select(type == "string" and length > 0) ]
+| [ .[] | obj(obj($chunks[.]).web).uri | select(type == "string" and length > 0) ]
 | unique
 | join(", ")
