@@ -158,7 +158,9 @@ The located passage is what the judge sees. If `quote` mode fails to locate the 
 
 ### Step 5 — Judge invocation
 
-The judge is invoked ONCE per citation with both the alignment question and the active-constraints set in the same call. The unified contract produces a single verdict in `{SUPPORTED, UNSUPPORTED, AMBIGUOUS, VIOLATED}` so the pipeline can dispatch on it without a second round-trip.
+The judge is invoked ONCE per citation with both the alignment question and the active-constraints set in the same call. The unified contract produces a single verdict in `{SUPPORTED, UNSUPPORTED, AMBIGUOUS, PARTIAL, VIOLATED}` so the pipeline can dispatch on it without a second round-trip.
+
+**Verdict priority — VIOLATED outranks PARTIAL.** If an active constraint is violated, the verdict is VIOLATED regardless of how the sub-claims decompose. Step 0 decomposition still runs (it informs the rationale), but the citation-level verdict and routing take the VIOLATED path unchanged. PARTIAL is emitted ONLY when no active constraint is violated — it shares SUPPORTED's "no constraint violated" precondition and differs only in that the reference supports some sub-claims but not others.
 
 **Unified judge prompt** (canonical):
 
@@ -170,13 +172,25 @@ The judge is invoked ONCE per citation with both the alignment question and the 
 > ANCHOR VALUE: {anchor_value}
 > ACTIVE CONSTRAINTS: {active_constraints[]}  # each entry: {constraint_id, rule}
 >
+> STEP 0 — DECOMPOSE: First break CLAIM into its atomic sub-claims (1..N). A compound
+> claim ("X rose, AND the effect held across Y") has multiple sub-claims; a simple claim
+> has one. Judge each sub-claim independently against the excerpt BEFORE you choose the
+> citation-level verdict. A reference that supports one sub-claim but not another is a
+> PARTIAL, not a SUPPORTED — do not collapse a compound claim to a single binary check.
+>
 > Output ONE of:
-> - SUPPORTED — the reference directly supports the claim AND no active constraint is violated
+> - SUPPORTED — the reference directly supports EVERY sub-claim AND no active constraint is violated
 > - UNSUPPORTED — the reference does NOT support the claim (source says something different or contradictory)
 > - AMBIGUOUS — the reference is related but does not clearly support or contradict the claim
+> - PARTIAL — the reference supports SOME sub-claims but not others (≥1 supported AND ≥1 not supported), with NO active constraint violated
 > - VIOLATED — the claim violates one of the active constraints (regardless of whether the reference supports it)
 >
 > When verdict ≠ SUPPORTED, output an optional `defect_stage_hint` from `{source_description, metadata, citation_anchor, synthesis_overclaim}` (UNSUPPORTED only) or omit it. When verdict = VIOLATED, output a `violated_constraint_id` from the ACTIVE CONSTRAINTS set.
+>
+> When verdict = PARTIAL, you MUST also output a SUB_CLAIM_BREAKDOWN block — one line
+> per sub-claim, in the form `- <sub_claim_text> :: <SUPPORTED|UNSUPPORTED|AMBIGUOUS> :: <evidence_pointer or ->`.
+> A PARTIAL breakdown with fewer than 2 sub-claims, or without ≥1 SUPPORTED AND ≥1
+> non-SUPPORTED line, is malformed and handled per Step 6.
 >
 > Then output ONE SENTENCE rationale.
 >
@@ -185,6 +199,9 @@ The judge is invoked ONCE per citation with both the alignment question and the 
 > JUDGMENT: <one-of>
 > DEFECT_STAGE_HINT: <one-of-or-omitted>
 > VIOLATED_CONSTRAINT_ID: <one-of-active-or-omitted>
+> SUB_CLAIM_BREAKDOWN:        # required iff JUDGMENT = PARTIAL; omit otherwise
+> - <sub_claim_text> :: <SUPPORTED|UNSUPPORTED|AMBIGUOUS> :: <evidence_pointer or ->
+> - <sub_claim_text> :: <SUPPORTED|UNSUPPORTED|AMBIGUOUS> :: <evidence_pointer or ->
 > RATIONALE: <one sentence>
 > ```
 
@@ -207,6 +224,7 @@ When the alignment judge returns SUPPORTED / UNSUPPORTED / AMBIGUOUS, classify `
 | UNSUPPORTED | `citation_anchor` | source content correct, but the cited anchor (page/section/quote) points to the wrong passage |
 | UNSUPPORTED | `synthesis_overclaim` | source content correct, but the draft over-strengthens the claim (e.g., "shows" instead of "suggests") |
 | UNSUPPORTED | `negative_constraint_violation` | the judge returned VIOLATED on a cited claim (INV-7 + INV-8) |
+| PARTIAL → UNSUPPORTED | `source_description` | reference supports some sub-claims but not all; normalized to `judgment=UNSUPPORTED`, emits `sub_claim_breakdown[]` (issue #213, INV-19) |
 | RETRIEVAL_FAILED | `retrieval_existence` | retrieval API reports `not_found` (INV-12) |
 | RETRIEVAL_FAILED | `not_applicable` | covers (a) anchor=none (INV-6); (b) paywall (INV-10); (c) audit_tool_failure (INV-14) — discriminated by `ref_retrieval_method` |
 
@@ -216,6 +234,10 @@ When the alignment judge returns SUPPORTED / UNSUPPORTED / AMBIGUOUS, classify `
 - VIOLATED ignores hint entirely and forces `defect_stage=negative_constraint_violation`.
 
 These coercions keep the §3.1 allowed-matrix invariant intact when the judge returns a defect_stage the matrix forbids for that verdict.
+
+**PARTIAL normalization (#213).** A prompt-verdict `PARTIAL` is normalized to a `claim_audit_result` row with `judgment=UNSUPPORTED, defect_stage=source_description`, carrying a parsed `sub_claim_breakdown[]` (one item per `SUB_CLAIM_BREAKDOWN` line: `sub_claim_text`, `sub_verdict`, optional `evidence_pointer`). Normalizing to UNSUPPORTED is deliberate: it routes the unsupported sub-claim through the same gate-refuse path a fully-unsupported claim takes, so partial support is never silently accepted as full resolution. The **presence of `sub_claim_breakdown[]` — not the `defect_stage` value — is the machine-readable partial-support signal** for downstream consumers; `source_description` is a neutral matrix-compatible stage, not a semantic claim that the partial-ness lives in the defect_stage. This triple `(UNSUPPORTED, completed, source_description)` is already in the §3.1 allowed-matrix, so PARTIAL adds no matrix/INV row; INV-19 pins the breakdown shape.
+
+**Malformed PARTIAL.** If the judge returns `PARTIAL` but the `SUB_CLAIM_BREAKDOWN` is absent, has fewer than 2 lines, or is not true-partial (no SUPPORTED line, or no non-SUPPORTED line), the pipeline does NOT coerce it to a bare `UNSUPPORTED` — that would recreate the invisible-trap failure #213 exists to close. It emits an `audit_status=inconclusive` row with the rationale tagged `[partial_breakdown_malformed]` and surfaces it for re-run, mirroring the `audit_tool_failure` inconclusive path. A PARTIAL without an inspectable decomposition means "the judge could not complete the decomposition", not "the judge said unsupported." INV-19 therefore never sees a malformed breakdown on a `completed` row.
 
 **Three out-of-band finding categories** use their own entry-type schemas (NOT `claim_audit_result` defect_stages):
 
