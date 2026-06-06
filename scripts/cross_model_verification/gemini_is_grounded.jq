@@ -21,7 +21,11 @@
 # blank-source downgrade does not rescue since it only touches VERIFIED, is never trusted). The
 # guard is strictly STRONGER than "has a source": a response carrying chunks but no webSearchQueries
 # (sources non-blank, no real search signal) still fails — the converse is intentionally not
-# required. Keep this extraction byte-identical to gemini_sources.jq's `$srcs` body. Used with
+# required. Keep this extraction's LOGIC identical to gemini_sources.jq's `$srcs` body — same
+# candidate-0 selection, same valid-index predicate, same `obj(obj(chunk).web).uri` non-empty-string
+# filter, same order. (The two differ only in how the result is consumed: here it is bound to `$srcs`
+# inside a `([ … ]) as $srcs` wrap; there it is piped to `unique | join`, so leading whitespace is
+# not byte-for-byte equal — only the extraction operations must stay in lockstep.) Used with
 # `jq -e`: exit 0 = grounded; non-0 = NOT_SEARCHED.
 #
 # `arr/1` array-normalizes every container; `obj/1` object-normalizes every value that is then
@@ -31,7 +35,7 @@
 # of failing closed — a crash is loud but still violates the crash-free fail-closed contract.
 def arr($x): if ($x | type) == "array" then $x else [] end;
 def obj($x): if ($x | type) == "object" then $x else {} end;
-(obj(arr(.candidates)[0]).groundingMetadata | obj(.)) as $meta
+(obj(arr(obj(.).candidates)[0]).groundingMetadata | obj(.)) as $meta
 | arr($meta.groundingChunks) as $chunks
 | ([ arr($meta.groundingSupports)[]
      | arr(obj(.).groundingChunkIndices)[]

@@ -34,7 +34,7 @@
 # either is edited.
 def arr($x): if ($x | type) == "array" then $x else [] end;
 def obj($x): if ($x | type) == "object" then $x else {} end;
-(obj(arr(.candidates)[0]).groundingMetadata | obj(.)) as $meta
+(obj(arr(obj(.).candidates)[0]).groundingMetadata | obj(.)) as $meta
 | arr($meta.groundingChunks) as $chunks
 | [ arr($meta.groundingSupports)[]
     | arr(obj(.).groundingChunkIndices)[]
