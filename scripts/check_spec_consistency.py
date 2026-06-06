@@ -132,9 +132,18 @@ def check_pipeline_docs() -> None:
     )
 
 
+# A version token is a dot-separated run of ≥3 numeric components. The repo's own grammar
+# already ships 4-component versions (v3.9.4.2), so a fixed `\d+\.\d+\.\d+` would capture only
+# the first three components of `3.9.4.2` and silently compare a truncated `3.9.4` — making a
+# genuinely-stale 4-component marker pass. `(?:\.\d+)*` is greedy, so it captures the FULL token;
+# the trailing `(?!\.?\d)` is a hard right boundary so a longer numeric run can never tail-match a
+# shorter capture (e.g. `3.9.4` must not partial-match inside `3.9.4.2`).
+_VERSION = r"\d+\.\d+\.\d+(?:\.\d+)*(?!\.?\d)"
+
+
 def _suite_version() -> str | None:
-    """Parse the canonical suite version from `.claude/CLAUDE.md` (`**Suite version**: X.Y.Z`)."""
-    match = re.search(r"\*\*Suite version\*\*:\s*(\d+\.\d+\.\d+)", read(".claude/CLAUDE.md"))
+    """Parse the canonical suite version from `.claude/CLAUDE.md` (`**Suite version**: X.Y.Z[.W]`)."""
+    match = re.search(rf"\*\*Suite version\*\*:\s*({_VERSION})", read(".claude/CLAUDE.md"))
     return match.group(1) if match else None
 
 
@@ -165,7 +174,7 @@ def check_architecture_component_version() -> None:
 
     # 1. Mermaid orchestrator node: `academic-pipeline<br/>orchestrator<br/>vX.Y.Z`.
     node_versions = re.findall(
-        r"academic-pipeline<br/>orchestrator<br/>v(\d+\.\d+\.\d+)", text
+        rf"academic-pipeline<br/>orchestrator<br/>v({_VERSION})", text
     )
     if not node_versions:
         fail(f"{rel_path}: no mermaid `academic-pipeline<br/>orchestrator<br/>vX.Y.Z` node found")
@@ -177,10 +186,14 @@ def check_architecture_component_version() -> None:
             )
 
     # 2. Component table + stage rows: ` academic-pipeline vX.Y.Z` (table cell / `(gate)` rows).
-    #    The `academic-pipeline ` prefix with a leading space (a markdown table cell or backticked
-    #    `\`academic-pipeline\` vX.Y.Z`) distinguishes these from the timeline `vX.Y.Z :` form,
-    #    which never carries the `academic-pipeline` token on the same marker.
-    row_versions = re.findall(r"`?academic-pipeline`?\s+v(\d+\.\d+\.\d+)", text)
+    #    Anchored to markdown table rows (`^\s*\|` … on the same line) so the scan only ever sees
+    #    component/stage cells — never prose like `` `academic-pipeline` v3.9.4 introduced … ``,
+    #    which is feature-history provenance and must NOT be policed against the suite version.
+    #    The timeline `vX.Y.Z :` form never carries the `academic-pipeline` token, so it is already
+    #    out of scope; the table-row anchor additionally excludes any narrative mention.
+    row_versions = re.findall(
+        rf"(?m)^\s*\|.*?`?academic-pipeline`?\s+v({_VERSION})", text
+    )
     if not row_versions:
         fail(f"{rel_path}: no `academic-pipeline vX.Y.Z` component/stage row found")
     for found in row_versions:

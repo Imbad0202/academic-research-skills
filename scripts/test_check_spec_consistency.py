@@ -326,10 +326,12 @@ class TestReadmeZhSections(unittest.TestCase):
             )
 
 
-# Minimal docs/ARCHITECTURE.md fixture carrying BOTH marker kinds the invariant-4 check (#345)
-# must distinguish: current-component markers (mermaid node + component/stage rows, which MUST
-# equal the suite version) and a feature-history timeline marker (`vX.Y.Z : <feature>`, which must
-# NOT be policed). The `{comp}` slots are the component version; `{hist}` is the timeline version.
+# Minimal docs/ARCHITECTURE.md fixture carrying the THREE marker kinds the invariant-4 check (#345)
+# must distinguish: current-component markers (mermaid node + component/stage rows, which MUST equal
+# the suite version), a feature-history timeline marker (`vX.Y.Z : <feature>`, which must NOT be
+# policed), and a prose mention of `academic-pipeline vX.Y.Z` (provenance narrative, which must also
+# NOT be policed — it is excluded by the table-row anchor). `{comp}` = current-component version;
+# `{hist}` = timeline version; `{prose}` = the version named in the narrative provenance line.
 ARCHITECTURE_TEMPLATE = """\
 # Architecture
 
@@ -347,6 +349,8 @@ flowchart TD
 |-----------|------|
 | `academic-pipeline` v{comp} | orchestrator (delegates to sub-skill modes) |
 
+The `academic-pipeline` v{prose} release first introduced the integrity gate (narrative provenance).
+
 ```mermaid
 timeline
     title ARS evolution timeline
@@ -355,15 +359,22 @@ timeline
 """
 
 
-def _write_architecture_fixture(root: Path, *, suite: str, comp: str, hist: str) -> None:
-    """Write `.claude/CLAUDE.md` (suite version source) + a docs/ARCHITECTURE.md fixture."""
+def _write_architecture_fixture(
+    root: Path, *, suite: str, comp: str, hist: str, prose: str | None = None
+) -> None:
+    """Write `.claude/CLAUDE.md` (suite version source) + a docs/ARCHITECTURE.md fixture.
+
+    `prose` defaults to the suite version so the narrative line is innocuous unless a test
+    deliberately sets it to a stale version to assert the prose mention is not policed.
+    """
     (root / ".claude").mkdir(parents=True, exist_ok=True)
     (root / ".claude" / "CLAUDE.md").write_text(
         f"# ARS\n\n- **Suite version**: {suite} (per CHANGELOG.md)\n", encoding="utf-8"
     )
     (root / "docs").mkdir(parents=True, exist_ok=True)
     (root / "docs" / "ARCHITECTURE.md").write_text(
-        ARCHITECTURE_TEMPLATE.format(comp=comp, hist=hist), encoding="utf-8"
+        ARCHITECTURE_TEMPLATE.format(comp=comp, hist=hist, prose=prose or suite),
+        encoding="utf-8",
     )
 
 
@@ -446,6 +457,60 @@ class TestArchitectureComponentVersion(unittest.TestCase):
             self.assertTrue(
                 any("no mermaid" in e or "no `academic-pipeline" in e for e in csc.ERRORS),
                 msg=f"expected missing-marker error in: {csc.ERRORS!r}",
+            )
+
+    def test_four_component_aligned_passes(self) -> None:
+        """#352 P2: the repo's own grammar ships 4-component versions (v3.9.4.2). A suite and
+        component markers both at a 4-component version must pass — the version regex must capture
+        the FULL token, not truncate to three components."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_architecture_fixture(root, suite="3.9.4.2", comp="3.9.4.2", hist="3.9.4")
+
+            csc.check_architecture_component_version()
+
+            self.assertEqual(
+                csc.ERRORS, [],
+                msg=f"unexpected errors on aligned 4-component fixture: {csc.ERRORS!r}",
+            )
+
+    def test_four_component_marker_against_three_component_suite_fails(self) -> None:
+        """#352 P2 (the silent-pass this fix closes): suite is the 3-component `3.9.4` but a
+        component marker carries the 4-component `3.9.4.2`. A truncating `\\d+\\.\\d+\\.\\d+`
+        would capture `3.9.4` from the marker and falsely pass (3.9.4 == 3.9.4). The full-token
+        capture must instead see `3.9.4.2` and fail it against the suite."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_architecture_fixture(root, suite="3.9.4", comp="3.9.4.2", hist="3.9.4")
+
+            csc.check_architecture_component_version()
+
+            # The error must name the FULL 4-component marker as != the 3-component suite. Asserting
+            # on `!= suite v3.9.4` (not just substring `3.9.4`, which is contained in `3.9.4.2`)
+            # proves the captured marker was the full `3.9.4.2`, i.e. the truncation was closed.
+            self.assertTrue(
+                any("v3.9.4.2" in e and "!= suite v3.9.4 " in e for e in csc.ERRORS),
+                msg=f"expected 4-vs-3-component drift error in: {csc.ERRORS!r}",
+            )
+
+    def test_prose_provenance_mention_does_not_fail(self) -> None:
+        """#352 P3: a narrative line naming `academic-pipeline v<old>` (feature provenance) must
+        NOT be policed against the suite version — only markdown table-row component cells are.
+        Component markers + timeline are aligned/innocuous; only the prose line is stale."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_architecture_fixture(
+                root, suite="3.11.1", comp="3.11.1", hist="3.9.4", prose="3.9.4"
+            )
+
+            csc.check_architecture_component_version()
+
+            self.assertEqual(
+                csc.ERRORS, [],
+                msg=f"prose provenance mention must not be policed, but got: {csc.ERRORS!r}",
             )
 
 
