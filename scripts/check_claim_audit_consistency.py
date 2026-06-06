@@ -57,6 +57,7 @@ from _claim_audit_constants import (  # noqa: E402
     RE_NC_CONSTRAINT,
     RE_NC_INNER_HYPHEN,
     SENTINEL_MANIFEST_ID,
+    SUBCLAIM_NON_SUPPORTED,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -507,9 +508,10 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
     from an all-supported or all-unsupported decomposition; "non-SUPPORTED
     alone" would wrongly admit an all-UNSUPPORTED breakdown.
 
-    Mirror: `scripts/claim_audit_calibration.py::_is_true_partial_breakdown`
-    encodes the same true-partial test as a bool for the calibration subset
-    metric. Keep the two definitions in sync if the rule changes (#213).
+    The content-shape gate is `_claim_audit_constants.is_true_partial_breakdown`
+    — the single source of truth shared with the runtime + calibration. This
+    function adds the row-level pins (judgment/defect_stage) and splits the
+    content gate into granular findings.
     """
     if "sub_claim_breakdown" not in e:
         return []
@@ -530,14 +532,14 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
         findings.append(Finding("INV-19", "sub_claim_breakdown must have >=2 items (not a true partial)"))
         return findings
     verdicts = [item.get("sub_verdict") for item in _iter_dicts(bd)]
-    # "non-SUPPORTED" counts only the *valid* opposing verdicts. A missing or
-    # out-of-enum sub_verdict must NOT be silently read as non-SUPPORTED — that
-    # would let `[SUPPORTED, <missing>]` masquerade as true-partial. INV-19 owns
-    # the true-partial check independently of the schema enum (round-2 review #1).
-    non_supported = {"UNSUPPORTED", "AMBIGUOUS"}
+    # "non-SUPPORTED" counts only the *valid* opposing verdicts (the shared
+    # SUBCLAIM_NON_SUPPORTED set). A missing or out-of-enum sub_verdict must NOT
+    # be read as non-SUPPORTED — that would let `[SUPPORTED, <missing>]`
+    # masquerade as true-partial (round-2 review #1). The granular split here is
+    # equivalent to `is_true_partial_breakdown(bd)` but yields distinct findings.
     if not any(v == "SUPPORTED" for v in verdicts):
         findings.append(Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 SUPPORTED sub_verdict"))
-    if not any(v in non_supported for v in verdicts):
+    if not any(v in SUBCLAIM_NON_SUPPORTED for v in verdicts):
         findings.append(
             Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 non-SUPPORTED sub_verdict")
         )

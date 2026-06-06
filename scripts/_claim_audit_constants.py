@@ -35,6 +35,37 @@ INV14_FAULT_CLASS_TAGS: tuple[str, ...] = (
 # Sampling strategy literal (S-INV schema constant).
 SAMPLING_STRATEGY = "stratified_buckets_v1"
 
+# Sub-claim breakdown sub_verdict enum (claim_audit_result.schema.json #213).
+# The "non-SUPPORTED" set is the valid OPPOSING verdicts only — a missing or
+# out-of-enum sub_verdict must NOT count as non-SUPPORTED, or a degenerate
+# breakdown `[SUPPORTED, <missing>]` would masquerade as true-partial.
+SUBCLAIM_VERDICTS: frozenset[str] = frozenset({"SUPPORTED", "UNSUPPORTED", "AMBIGUOUS"})
+SUBCLAIM_NON_SUPPORTED: frozenset[str] = frozenset({"UNSUPPORTED", "AMBIGUOUS"})
+
+
+def is_true_partial_breakdown(breakdown: object) -> bool:
+    """True iff `breakdown` is a well-formed true-partial decomposition (#213).
+
+    Single source of truth for the INV-19 true-partial test, shared by the lint
+    (`check_claim_audit_consistency.py`), the runtime
+    (`claim_audit_pipeline.py` PARTIAL normalization + judge-output validation),
+    and the calibration subset metric (`claim_audit_calibration.py`). A list of
+    >=2 dict items whose sub_verdicts include >=1 SUPPORTED AND >=1 valid
+    non-SUPPORTED ({UNSUPPORTED, AMBIGUOUS}). A missing / out-of-enum sub_verdict
+    is NOT counted as non-SUPPORTED.
+
+    NOTE: this is the *content-shape* gate only. The lint additionally pins the
+    enclosing row's judgment/defect_stage (INV-19) and the calibration subset
+    metric additionally matches the breakdown against each fixture's expected
+    sub-claims — neither of those belongs here.
+    """
+    if not isinstance(breakdown, list) or len(breakdown) < 2:
+        return False
+    verdicts = [item.get("sub_verdict") for item in breakdown if isinstance(item, dict)]
+    has_supported = any(v == "SUPPORTED" for v in verdicts)
+    has_non_supported = any(v in SUBCLAIM_NON_SUPPORTED for v in verdicts)
+    return has_supported and has_non_supported
+
 # rule_version literals for v3.8.0 release. Future revisions bump the literal
 # and require re-lint per spec §3.3 / §3.4 / §3.5.
 UNCITED_RULE_VERSION = "D4-c-v1"

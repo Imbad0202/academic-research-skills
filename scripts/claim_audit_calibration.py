@@ -17,8 +17,17 @@ Spec: docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md
 """
 from __future__ import annotations
 
+import os
 import re
+import sys
 from typing import Any, Callable
+
+# Share the true-partial content gate with the lint + runtime (single source of
+# truth in _claim_audit_constants). Mirror the bare-import form the other two
+# call sites use; ensure scripts/ is importable when this module is loaded as
+# `scripts.claim_audit_calibration` (test path) as well as bare.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _claim_audit_constants import is_true_partial_breakdown  # noqa: E402
 
 # Constraint id shape per spec §3.2 canonical parse rule (RE_NC_CONSTRAINT
 # + RE_MNC_CONSTRAINT in scripts/_claim_audit_constants.py).
@@ -194,21 +203,47 @@ def _derive_constraint_scope(constraint_id: str) -> str:
     )
 
 
-def _is_true_partial_breakdown(breakdown: Any) -> bool:
-    """True iff `breakdown` is a well-formed true-partial decomposition (#213).
+def _breakdown_covers_expected(
+    breakdown: Any, expected_sub_claims: Any
+) -> bool:
+    """True iff the judge's breakdown actually decomposes THIS claim (#213 P1-3).
 
-    Mirrors the INV-19 lint definition: a list of >=2 dict items whose
-    sub_verdicts include >=1 SUPPORTED AND >=1 valid non-SUPPORTED
-    ({UNSUPPORTED, AMBIGUOUS}). A missing / out-of-enum sub_verdict is NOT
-    counted as non-SUPPORTED (same hardening as INV-19) so a regressed judge
-    cannot pass the subset by emitting a degenerate breakdown.
+    `is_true_partial_breakdown` only proves the breakdown has the right verdict
+    MIX — a judge can pass it with two generic dummy lines on every fixture. To
+    prove the judge decomposed *this* claim, each fixture declares
+    `expected_sub_claims`: a list of `{key_tokens: [...], sub_verdict: ...}`.
+    A fixture is covered iff EVERY expected sub-claim is matched by some
+    breakdown item whose `sub_claim_text` contains all the expected key tokens
+    (case-insensitive substring) AND whose `sub_verdict` equals the expected one.
+
+    A fixture with no `expected_sub_claims` declared falls back to True (shape-
+    only check) so the metric is non-breaking on fixtures that don't opt in —
+    but the shipped #213 partial fixtures all declare them, so the dummy-
+    breakdown judge is caught.
     """
-    if not isinstance(breakdown, list) or len(breakdown) < 2:
+    if not expected_sub_claims:
+        return True
+    if not isinstance(breakdown, list):
         return False
-    verdicts = [item.get("sub_verdict") for item in breakdown if isinstance(item, dict)]
-    has_supported = any(v == "SUPPORTED" for v in verdicts)
-    has_non_supported = any(v in {"UNSUPPORTED", "AMBIGUOUS"} for v in verdicts)
-    return has_supported and has_non_supported
+    items = [it for it in breakdown if isinstance(it, dict)]
+
+    def _matches(expected: dict[str, Any], item: dict[str, Any]) -> bool:
+        text = item.get("sub_claim_text")
+        if not isinstance(text, str):
+            return False
+        text_l = text.lower()
+        tokens = expected.get("key_tokens") or []
+        if not all(isinstance(t, str) and t.lower() in text_l for t in tokens):
+            return False
+        exp_verdict = expected.get("sub_verdict")
+        return exp_verdict is None or item.get("sub_verdict") == exp_verdict
+
+    for expected in expected_sub_claims:
+        if not isinstance(expected, dict):
+            return False
+        if not any(_matches(expected, item) for item in items):
+            return False
+    return True
 
 
 def _zero_division_safe(numerator: int, denominator: int) -> float:
@@ -308,8 +343,11 @@ def run_calibration(
             actual = response["judgment"]
             if tup.get("expected_prompt_verdict") == "PARTIAL":
                 n_partial += 1
-                hit = actual == "UNSUPPORTED" and _is_true_partial_breakdown(
-                    response.get("sub_claim_breakdown")
+                breakdown = response.get("sub_claim_breakdown")
+                hit = (
+                    actual == "UNSUPPORTED"
+                    and is_true_partial_breakdown(breakdown)
+                    and _breakdown_covers_expected(breakdown, tup.get("expected_sub_claims"))
                 )
                 if not hit:
                     partial_misses += 1

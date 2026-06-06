@@ -140,6 +140,35 @@ def _judge_violated(*, violated_constraint_id: str) -> Callable[..., dict[str, A
     return fn
 
 
+def _judge_partial(
+    *, breakdown: list[dict[str, Any]] | None = None
+) -> Callable[..., dict[str, Any]]:
+    """#213: a judge that returns a well-formed PARTIAL with a true-partial breakdown."""
+    def fn(**kwargs: Any) -> dict[str, Any]:
+        return {
+            "judgment": "PARTIAL",
+            "rationale": "Reference supports the first sub-claim but not the second.",
+            "sub_claim_breakdown": breakdown
+            if breakdown is not None
+            else [
+                {"sub_claim_text": "preprints are 67%", "sub_verdict": "SUPPORTED", "evidence_pointer": "p.12"},
+                {"sub_claim_text": "trend held across venues", "sub_verdict": "UNSUPPORTED", "evidence_pointer": None},
+            ],
+        }
+
+    return fn
+
+
+def _judge_partial_malformed(
+    *, breakdown: Any
+) -> Callable[..., dict[str, Any]]:
+    """#213: a judge that returns PARTIAL with a malformed (not true-partial) breakdown."""
+    def fn(**kwargs: Any) -> dict[str, Any]:
+        return {"judgment": "PARTIAL", "rationale": "partial but malformed", "sub_claim_breakdown": breakdown}
+
+    return fn
+
+
 class _PipelineTestBase(unittest.TestCase):
     """Skip the entire pipeline suite cleanly when the module is missing.
 
@@ -1723,6 +1752,104 @@ class TP23UncitedJudgeOutageEmitsUAF(_PipelineTestBase):
             uaf[0]["manifest_claim_id"],
             "claim has no NC entries → judge call was MNC-only → manifest_claim_id must be null per spec §3.6",
         )
+
+
+class TP24PartialDecomposition(_PipelineTestBase):
+    """#213: end-to-end PARTIAL handling through the REAL runtime (_judge_result_entry).
+
+    This is the layer all prior #213 tests skipped — schema/lint tests built rows
+    by hand, calibration used a stub judge. These tests drive run_audit_pipeline
+    so the prompt-verdict PARTIAL actually flows: judge -> _validate_judge_dict ->
+    _judge_result_entry -> emitted claim_audit_result row, then cross-checked
+    against both the schema and the INV-19 lint.
+    """
+
+    def _validate_passport(self, out: dict[str, Any]) -> list[Any]:
+        from scripts.check_claim_audit_consistency import validate_passport
+
+        body = {
+            "claim_intent_manifests": [_manifest()],
+            "claim_audit_results": out["claim_audit_results"],
+            "uncited_assertions": out.get("uncited_assertions", []),
+            "claim_drifts": out.get("claim_drifts", []),
+            "constraint_violations": out.get("constraint_violations", []),
+            "audit_sampling_summaries": out.get("audit_sampling_summaries", []),
+            "uncited_audit_failures": out.get("uncited_audit_failures", []),
+        }
+        return validate_passport(body)
+
+    def test_partial_normalizes_to_unsupported_source_description(self) -> None:
+        out = self.run_pipeline(citations=[_citation()], judge_fn=_judge_partial())
+        results = out["claim_audit_results"]
+        self.assertEqual(len(results), 1)
+        e = results[0]
+        self.assertEqual(e["judgment"], "UNSUPPORTED", "PARTIAL must normalize to UNSUPPORTED (B1)")
+        self.assertEqual(e["audit_status"], "completed")
+        self.assertEqual(e["defect_stage"], "source_description")
+
+    def test_partial_copies_breakdown_onto_row(self) -> None:
+        out = self.run_pipeline(citations=[_citation()], judge_fn=_judge_partial())
+        e = out["claim_audit_results"][0]
+        self.assertIn("sub_claim_breakdown", e, "breakdown is the machine-readable partial signal")
+        bd = e["sub_claim_breakdown"]
+        self.assertEqual(len(bd), 2)
+        self.assertEqual(bd[0]["sub_verdict"], "SUPPORTED")
+        self.assertEqual(bd[1]["sub_verdict"], "UNSUPPORTED")
+
+    def test_partial_row_passes_schema_and_inv19(self) -> None:
+        # The emitted row must satisfy BOTH the schema and the INV-19 lint —
+        # this is the end-to-end binding the prior layer-isolated tests missed.
+        out = self.run_pipeline(citations=[_citation()], judge_fn=_judge_partial())
+        findings = self._validate_passport(out)
+        self.assertEqual(
+            findings, [], f"emitted PARTIAL row must be lint-clean (incl. INV-19); got {findings!r}"
+        )
+
+    def test_supported_row_has_no_breakdown(self) -> None:
+        # Non-PARTIAL rows must NOT carry sub_claim_breakdown (presence is the signal).
+        out = self.run_pipeline(citations=[_citation()], judge_fn=_judge_supported())
+        self.assertNotIn("sub_claim_breakdown", out["claim_audit_results"][0])
+
+    def test_malformed_partial_routes_to_judge_parse_error_not_bare_unsupported(self) -> None:
+        # A malformed PARTIAL (here: all-SUPPORTED, not true-partial) must NOT
+        # silently become a bare UNSUPPORTED. It routes to the judge_parse_error
+        # inconclusive triple (the only contract-valid path) — ship-gate review finding.
+        bad = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED"},
+            {"sub_claim_text": "b", "sub_verdict": "SUPPORTED"},
+        ]
+        out = self.run_pipeline(
+            citations=[_citation()], judge_fn=_judge_partial_malformed(breakdown=bad)
+        )
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED", "malformed PARTIAL must NOT become bare UNSUPPORTED")
+        self.assertEqual(e["audit_status"], "inconclusive")
+        self.assertEqual(e["defect_stage"], "not_applicable")
+        self.assertEqual(e["ref_retrieval_method"], "audit_tool_failure")
+        self.assertTrue(
+            e["rationale"].startswith("judge_parse_error"),
+            f"rationale must lead with judge_parse_error tag; got {e['rationale']!r}",
+        )
+        self.assertNotIn("sub_claim_breakdown", e, "no breakdown on a malformed-PARTIAL inconclusive row")
+
+    def test_malformed_partial_single_item_also_routes_inconclusive(self) -> None:
+        out = self.run_pipeline(
+            citations=[_citation()],
+            judge_fn=_judge_partial_malformed(breakdown=[{"sub_claim_text": "a", "sub_verdict": "SUPPORTED"}]),
+        )
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED")
+        self.assertEqual(e["audit_status"], "inconclusive")
+
+    def test_malformed_partial_row_passes_lint(self) -> None:
+        # The fallback inconclusive row must itself be lint-clean.
+        out = self.run_pipeline(
+            citations=[_citation()],
+            judge_fn=_judge_partial_malformed(
+                breakdown=[{"sub_claim_text": "a", "sub_verdict": "SUPPORTED"}]
+            ),
+        )
+        self.assertEqual(self._validate_passport(out), [])
 
 
 if __name__ == "__main__":

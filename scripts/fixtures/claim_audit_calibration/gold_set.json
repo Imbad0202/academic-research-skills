@@ -224,7 +224,21 @@
       "value": "5"
     },
     "expected_judgment": "UNSUPPORTED",
-    "expected_prompt_verdict": "PARTIAL"
+    "expected_prompt_verdict": "PARTIAL",
+    "expected_sub_claims": [
+      {
+        "key_tokens": [
+          "test scores"
+        ],
+        "sub_verdict": "SUPPORTED"
+      },
+      {
+        "key_tokens": [
+          "age cohorts"
+        ],
+        "sub_verdict": "UNSUPPORTED"
+      }
+    ]
   },
   {
     "tuple_kind": "alignment",
@@ -235,7 +249,21 @@
       "value": "4.1"
     },
     "expected_judgment": "UNSUPPORTED",
-    "expected_prompt_verdict": "PARTIAL"
+    "expected_prompt_verdict": "PARTIAL",
+    "expected_sub_claims": [
+      {
+        "key_tokens": [
+          "adults"
+        ],
+        "sub_verdict": "SUPPORTED"
+      },
+      {
+        "key_tokens": [
+          "pediatric"
+        ],
+        "sub_verdict": "UNSUPPORTED"
+      }
+    ]
   },
   {
     "tuple_kind": "alignment",
@@ -246,7 +274,22 @@
       "value": "3"
     },
     "expected_judgment": "UNSUPPORTED",
-    "expected_prompt_verdict": "PARTIAL"
+    "expected_prompt_verdict": "PARTIAL",
+    "expected_sub_claims": [
+      {
+        "key_tokens": [
+          "500",
+          "participants"
+        ],
+        "sub_verdict": "SUPPORTED"
+      },
+      {
+        "key_tokens": [
+          "24 months"
+        ],
+        "sub_verdict": "UNSUPPORTED"
+      }
+    ]
   },
   {
     "tuple_kind": "alignment",
@@ -257,7 +300,21 @@
       "value": "5.2"
     },
     "expected_judgment": "UNSUPPORTED",
-    "expected_prompt_verdict": "PARTIAL"
+    "expected_prompt_verdict": "PARTIAL",
+    "expected_sub_claims": [
+      {
+        "key_tokens": [
+          "accuracy"
+        ],
+        "sub_verdict": "SUPPORTED"
+      },
+      {
+        "key_tokens": [
+          "latency"
+        ],
+        "sub_verdict": "UNSUPPORTED"
+      }
+    ]
   },
   {
     "tuple_kind": "alignment",
@@ -268,6 +325,20 @@
       "value": "7"
     },
     "expected_judgment": "UNSUPPORTED",
-    "expected_prompt_verdict": "PARTIAL"
+    "expected_prompt_verdict": "PARTIAL",
+    "expected_sub_claims": [
+      {
+        "key_tokens": [
+          "satisfaction"
+        ],
+        "sub_verdict": "SUPPORTED"
+      },
+      {
+        "key_tokens": [
+          "complaints"
+        ],
+        "sub_verdict": "UNSUPPORTED"
+      }
+    ]
   }
 ]

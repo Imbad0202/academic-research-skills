@@ -34,6 +34,7 @@ from _claim_audit_constants import (  # noqa: E402
     SENTINEL_MANIFEST_ID,
     UAF_RULE_VERSION,
     UNCITED_RULE_VERSION,
+    is_true_partial_breakdown,
 )
 
 # Permitted UNSUPPORTED defect_stages for non-constraint paths (§3.1 matrix).
@@ -127,8 +128,11 @@ def _cache_key(
 # into _judge_result_entry where the ValueError would abort the audit
 # (Step 13 R3 codex P2 #2).
 _CITED_PATH_JUDGMENTS: frozenset[str] = frozenset(
-    {"SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "VIOLATED"}
+    {"SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "PARTIAL", "VIOLATED"}
 )
+# PARTIAL is a cited-path-only verdict (a reference can support some sub-claims
+# but not others). The uncited path has no reference to be partial against, so
+# it stays the constraint VIOLATED/NOT_VIOLATED binary (#213).
 _UNCITED_PATH_JUDGMENTS: frozenset[str] = frozenset({"VIOLATED", "NOT_VIOLATED"})
 
 
@@ -221,6 +225,19 @@ def _validate_judge_dict(
             raise JudgeInvocationError(
                 "judge_parse_error",
                 f"{source} returned VIOLATED with violated_constraint_id={vcid!r} outside the active constraint set {sorted(active_constraint_ids)}; rejecting hallucinated id (Step 13 R3 codex P2 #1)",
+            )
+    if judgment == "PARTIAL":
+        # #213: a PARTIAL MUST carry a well-formed true-partial sub_claim_breakdown.
+        # A malformed PARTIAL is a judge-output parse failure — routing it through
+        # judge_parse_error yields the existing (RETRIEVAL_FAILED, inconclusive,
+        # not_applicable, audit_tool_failure) row, never a silent bare UNSUPPORTED
+        # (which would recreate the invisible-trap failure). The malformed-PARTIAL
+        # path has no new matrix triple; it reuses the judge_parse_error contract.
+        if not is_true_partial_breakdown(result.get("sub_claim_breakdown")):
+            raise JudgeInvocationError(
+                "judge_parse_error",
+                f"{source} returned PARTIAL without a well-formed true-partial sub_claim_breakdown "
+                f"(>=2 items, >=1 SUPPORTED AND >=1 non-SUPPORTED); got {result.get('sub_claim_breakdown')!r}",
             )
     return result
 
@@ -471,6 +488,17 @@ def _judge_result_entry(
         judgment = "UNSUPPORTED"
         defect_stage = "negative_constraint_violation"
         violated_id = judge_result.get("violated_constraint_id")
+    elif verdict == "PARTIAL":
+        # #213 B1 normalization: a prompt-verdict PARTIAL becomes
+        # judgment=UNSUPPORTED, defect_stage=source_description, carrying the
+        # sub_claim_breakdown[] (the machine-readable partial signal). Routing
+        # to UNSUPPORTED puts the unsupported sub-claim through the same
+        # gate-refuse path a fully-unsupported claim takes. The breakdown shape
+        # was validated true-partial in _validate_judge_dict, so INV-19 holds on
+        # the emitted completed row.
+        judgment = "UNSUPPORTED"
+        defect_stage = "source_description"
+        violated_id = None
     else:
         raise ValueError(f"unknown judge verdict: {verdict!r}")
 
@@ -493,6 +521,25 @@ def _judge_result_entry(
     }
     if violated_id is not None:
         entry["violated_constraint_id"] = violated_id
+    if verdict == "PARTIAL":
+        # Carry the decomposition onto the emitted row. Normalize each item to
+        # the schema item shape (sub_claim_text, sub_verdict, optional
+        # evidence_pointer), dropping any extra keys the judge added so the
+        # additionalProperties:false item schema holds. Presence of this field
+        # is the machine-readable partial-support signal (#213).
+        entry["sub_claim_breakdown"] = [
+            {
+                "sub_claim_text": item.get("sub_claim_text"),
+                "sub_verdict": item.get("sub_verdict"),
+                **(
+                    {"evidence_pointer": item["evidence_pointer"]}
+                    if "evidence_pointer" in item
+                    else {}
+                ),
+            }
+            for item in judge_result["sub_claim_breakdown"]
+            if isinstance(item, dict)
+        ]
     return entry
 
 

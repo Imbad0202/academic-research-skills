@@ -102,13 +102,17 @@ def _perfect_judge() -> Callable[..., dict[str, Any]]:
         if kind == "alignment":
             resp: dict[str, Any] = {"judgment": expected, "rationale": "perfect-judge stub"}
             # A genuinely-perfect judge on a partial fixture (#213) emits the
-            # normalized UNSUPPORTED verdict AND a well-formed true-partial
-            # breakdown, so it passes the partial-support subset metric. A judge
-            # that returned bare UNSUPPORTED here would (correctly) miss the subset.
+            # normalized UNSUPPORTED verdict AND a breakdown that actually
+            # decomposes THIS claim — it echoes the fixture's expected_sub_claims
+            # (key tokens + verdict) so it passes both the shape gate and the
+            # content-match (#213 P1-3). A dummy two-line breakdown would now miss.
             if tup.get("expected_prompt_verdict") == "PARTIAL":
                 resp["sub_claim_breakdown"] = [
-                    {"sub_claim_text": "first sub-claim", "sub_verdict": "SUPPORTED"},
-                    {"sub_claim_text": "second sub-claim", "sub_verdict": "UNSUPPORTED"},
+                    {
+                        "sub_claim_text": " ".join(esc.get("key_tokens", [])) or "sub-claim",
+                        "sub_verdict": esc.get("sub_verdict", "UNSUPPORTED"),
+                    }
+                    for esc in tup.get("expected_sub_claims", [])
                 ]
             return resp
         # constraint tuple
@@ -644,6 +648,42 @@ def _bare_unsupported_judge() -> Callable[..., dict[str, Any]]:
     return fn
 
 
+def _dummy_breakdown_judge() -> Callable[..., dict[str, Any]]:
+    """Cheating judge (#213 P1-3): emits a well-formed-SHAPED but generic
+    two-line breakdown on EVERY partial fixture without decomposing the actual
+    claim. It passes the shape gate (is_true_partial_breakdown) but must fail the
+    content-match against each fixture's expected_sub_claims.
+
+    Mirrors the gold label on every alignment tuple so the aggregate stays green.
+    """
+    tuples_by_key: dict[tuple[str, str, str | None], dict[str, Any]] = {
+        _tuple_lookup_key(t): t for t in _load_gold_set()
+    }
+
+    def fn(**kwargs: Any) -> dict[str, Any]:
+        claim_text = kwargs.get("claim_text", "")
+        active = kwargs.get("active_constraints") or []
+        constraint_id = active[0]["constraint_id"] if active else None
+        kind = "constraint" if active else "alignment"
+        tup = tuples_by_key.get((kind, claim_text, constraint_id))
+        if tup is None:
+            raise AssertionError(f"dummy_breakdown_judge: no gold tuple for {claim_text!r}")
+        if kind == "constraint":
+            if tup["expected_judgment"] == "VIOLATED":
+                return {"judgment": "VIOLATED", "violated_constraint_id": constraint_id}
+            return {"judgment": "NOT_VIOLATED"}
+        resp: dict[str, Any] = {"judgment": tup["expected_judgment"], "rationale": "dummy"}
+        if tup.get("expected_prompt_verdict") == "PARTIAL":
+            # Generic, claim-agnostic — same two lines for every partial fixture.
+            resp["sub_claim_breakdown"] = [
+                {"sub_claim_text": "first sub-claim", "sub_verdict": "SUPPORTED"},
+                {"sub_claim_text": "second sub-claim", "sub_verdict": "UNSUPPORTED"},
+            ]
+        return resp
+
+    return fn
+
+
 class PartialSupportSubsetMetric(unittest.TestCase):
     """#213: the partial-support subset metric catches a judge that regresses to
     bare UNSUPPORTED on compound claims even though its aggregate FNR stays green.
@@ -699,6 +739,37 @@ class PartialSupportSubsetMetric(unittest.TestCase):
             report["partial_support"]["miss_rate"],
             1.0,
             f"bare-unsupported judge must miss EVERY partial fixture; "
+            f"got {report['partial_support']!r}",
+        )
+
+    def test_partial_fixtures_declare_expected_sub_claims(self) -> None:
+        # #213 P1-3: each partial fixture must declare expected_sub_claims so the
+        # subset metric can verify the judge decomposed THIS claim, not just
+        # emitted any two-line breakdown.
+        for tup in self.partial_tuples:
+            esc = tup.get("expected_sub_claims")
+            self.assertIsInstance(
+                esc, list, f"partial fixture {tup['claim_text']!r} missing expected_sub_claims"
+            )
+            self.assertGreaterEqual(len(esc), 2, "expected_sub_claims must have >=2 entries")
+            for entry in esc:
+                self.assertIn("key_tokens", entry)
+                self.assertIn("sub_verdict", entry)
+
+    def test_dummy_breakdown_judge_misses_partial_subset(self) -> None:
+        # #213 P1-3: a judge that emits a well-formed-SHAPED but generic two-line
+        # breakdown on every partial fixture passes the aggregate AND the shape
+        # gate, but must FAIL the subset content-match (it never decomposed the
+        # actual claim). This is the gap a later review round flagged: shape-only
+        # verification was gameable.
+        report = run_calibration(self.gold_set, judge_fn=_dummy_breakdown_judge())
+        self.assertLess(
+            report["FNR"], 0.15, f"dummy-breakdown judge should pass aggregate; got {report['FNR']!r}"
+        )
+        self.assertEqual(
+            report["partial_support"]["miss_rate"],
+            1.0,
+            f"dummy-breakdown judge must miss every partial fixture on content-match; "
             f"got {report['partial_support']!r}",
         )
 
