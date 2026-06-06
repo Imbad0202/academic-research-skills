@@ -10,11 +10,19 @@
 #   - a string index raises a jq error ("Cannot index array with string").
 # The `select(type=="number" and . >= 0 and . < ($chunks|length))` admits only valid in-range
 # numeric indices; anything else is dropped, so a malformed support set yields blank SOURCES
-# (→ NOT_SEARCHED) rather than a fabricated or crashing result. Used with `jq -r`.
-(.candidates[0].groundingMetadata.groundingChunks // []) as $chunks
-| [ .candidates[0].groundingMetadata.groundingSupports[]?.groundingChunkIndices[]?
+# (→ NOT_SEARCHED) rather than a fabricated or crashing result.
+#
+# Every container is normalized to an array first (`arr/1`): `length` and `$chunks[.]` are only
+# meaningful on arrays, and a malformed groundingChunks/groundingSupports arriving as a string or
+# object would otherwise mis-count length or crash `$chunks[.]`. Extracted URIs are filtered to
+# non-empty strings so a malformed `uri` (a number/bool/object) never fabricates a source.
+# Used with `jq -r`.
+def arr($x): if ($x | type) == "array" then $x else [] end;
+arr(.candidates[0].groundingMetadata.groundingChunks) as $chunks
+| [ arr(.candidates[0].groundingMetadata.groundingSupports)[]
+    | arr(.groundingChunkIndices)[]
     | select(type == "number" and . >= 0 and . < ($chunks | length)) ]
 | unique
-| [ .[] | $chunks[.].web.uri // empty ]
+| [ .[] | $chunks[.].web.uri | select(type == "string" and length > 0) ]
 | unique
 | join(", ")

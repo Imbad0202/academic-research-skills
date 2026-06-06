@@ -43,6 +43,28 @@ REQUIRED_BRANCHES = [
 ]
 
 
+def _bash_code_lines(text: str) -> list[str]:
+    """Return the executable lines inside ```bash fenced blocks, with comment-only lines removed.
+
+    A comment line is one whose first non-whitespace character is `#`. Inline trailing comments are
+    left intact (a `jq -f ...  # note` line is still executable), but a fully commented-out
+    `# jq -f ...` line is dropped so it cannot satisfy the wiring check.
+    """
+    lines: list[str] = []
+    in_block = False
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if not in_block and stripped.startswith("```bash"):
+            in_block = True
+            continue
+        if in_block and stripped == "```":
+            in_block = False
+            continue
+        if in_block and not stripped.startswith("#"):
+            lines.append(raw)
+    return lines
+
+
 def main() -> int:
     failures: list[str] = []
 
@@ -50,6 +72,11 @@ def main() -> int:
         print(f"[cross-model-sync] FAIL: doc not found: {DOC}")
         return 1
     text = DOC.read_text(encoding="utf-8")
+
+    # Operate the wiring/inline checks on EXECUTABLE bash only — lines inside ```bash fences with
+    # comment lines stripped — so a commented-out `jq -f` reference (or a filename mentioned only in
+    # prose / a comment) can't satisfy check 2, and a commented example can't trip check 4.
+    bash_code = "\n".join(_bash_code_lines(text))
 
     # 1. REQUIRED_FILTERS is the single source of truth: it must match the .jq files on disk
     #    exactly, so a newly added filter can't silently escape the lint by not being listed.
@@ -63,34 +90,37 @@ def main() -> int:
             f"(add it so the lint pins its doc reference)"
         )
 
-    # 2. Every canonical filter is referenced by the doc via `jq -f`. The reference form is
-    #    `jq ... -f "$GUARD/<name>"` (or a bare path); require `-f` followed by anything up to the
-    #    filename, anywhere in the doc — robust to the $GUARD/ prefix and to line wrapping.
+    # 2. Every canonical filter is loaded by executable bash via `jq ... -f .../<name>`. Checking
+    #    bash_code (not the whole doc) means a commented-out or prose mention doesn't count.
     for name in REQUIRED_FILTERS:
-        if name not in text:
-            failures.append(f"doc does not reference canonical filter: {name}")
-        elif not re.search(r"-f\s+\S*" + re.escape(name), text):
-            failures.append(f"doc mentions {name} but not via `jq -f` (must be loaded as a filter file)")
+        if not re.search(r"jq\b[^\n']*-f\s+\S*" + re.escape(name), bash_code):
+            failures.append(
+                f"doc does not load {name} via `jq -f` in an executable bash line "
+                f"(prose/comment mentions don't count)"
+            )
 
-    # 3. Both safety branches are present.
+    # 3. Both safety branches are present (checked against the whole doc — they appear in prose
+    #    and bash alike, and dropping them anywhere is the regression we care about).
     for branch in REQUIRED_BRANCHES:
         if branch not in text:
             failures.append(f"doc dropped required safety branch: {branch}")
 
     # 4. Guard against re-inlining: the grounding guards and source extractors must be loaded via
     #    `-f`, never inlined. Rather than blacklist specific historical literals (which rot on any
-    #    reword), forbid any *inline* `jq '...'` program (no `-f`) that references a grounding
-    #    structure — these tokens only appear in the guard/sources filters, so an inline jq
-    #    touching them is a re-inlined guard the behavioral tests would not cover. The one allowed
-    #    inline jq is the plain verdict-TEXT extraction (`.candidates[0].content.parts...`), which
-    #    references none of these tokens.
+    #    reword), forbid any *inline* `jq` program (no `-f`) that references a grounding structure —
+    #    these tokens only appear in the guard/sources filters, so an inline jq touching them is a
+    #    re-inlined guard the behavioral tests would not cover. The one allowed inline jq is the
+    #    plain verdict-TEXT extraction (`.candidates[0].content.parts...`), which references none of
+    #    these tokens. Both single- and double-quoted inline programs are scanned.
     GROUNDING_TOKENS = (
         "web_search_call", "url_citation", "groundingSupports",
         "groundingChunkIndices", "groundingChunks", "webSearchQueries",
     )
-    # An inline jq invocation is `jq [flags without -f] '<program>'`; capture the quoted program.
-    for m in re.finditer(r"jq\s+(?:-[A-Za-z]+\s+)*'([^']*)'", text):
-        program = m.group(1)
+    # An inline jq invocation is `jq [flags, none being -f] '<program>'` or "<program>".
+    for m in re.finditer(r"jq\s+((?:-[A-Za-z]+\s+)*)(['\"])(.*?)\2", bash_code, re.DOTALL):
+        flags, program = m.group(1), m.group(3)
+        if re.search(r"(?<!\S)-f(?!\S)", flags):
+            continue  # `-f` means it loads a file, not an inline program
         hit = next((t for t in GROUNDING_TOKENS if t in program), None)
         if hit:
             failures.append(

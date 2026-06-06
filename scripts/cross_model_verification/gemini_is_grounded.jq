@@ -6,6 +6,11 @@
 # then emit an unsupported from-memory verdict whose text references none of them.
 # groundingSupports[].groundingChunkIndices is what links answer spans to sources; without it a
 # VERIFIED is not actually grounded. Used with `jq -e`: exit 0 = grounded; non-0 = NOT_SEARCHED.
+#
+# FAIL-CLOSED on malformed types: `length` is truthy for non-empty strings/objects too, so a
+# malformed groundingMetadata (webSearchQueries or groundingSupports arriving as a string/object
+# instead of an array) must NOT pass the guard. Require each field to be a non-empty ARRAY.
+def nonempty_array($x): ($x | type) == "array" and ($x | length) > 0;
 any(.candidates[]?;
-  ((.groundingMetadata.webSearchQueries // []) | length) > 0
-  and ((.groundingMetadata.groundingSupports // []) | length) > 0)
+  nonempty_array(.groundingMetadata.webSearchQueries // [])
+  and nonempty_array(.groundingMetadata.groundingSupports // []))

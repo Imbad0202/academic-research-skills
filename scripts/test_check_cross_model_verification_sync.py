@@ -73,3 +73,25 @@ def test_lint_fails_when_guard_reinlined(tmp_path, monkeypatch):
     jq program referencing a grounding token), not a dropped reference/branch.
     """
     _assert_lint_fails_on_mutation(tmp_path, monkeypatch, REINLINE_OLD, REINLINE_NEW)
+
+
+def test_lint_fails_when_jq_f_only_in_comment(tmp_path, monkeypatch):
+    """A commented-out `jq -f` line (filename surviving only in a comment) must NOT satisfy the
+    wiring check — the lint scans executable bash lines, not comments/prose."""
+    _assert_lint_fails_on_mutation(
+        tmp_path,
+        monkeypatch,
+        REINLINE_OLD,
+        '# ' + REINLINE_OLD + '\n  cites="$(jq -r ".candidates[0].x" <<<"$body")"',
+    )
+
+
+def test_lint_fails_on_double_quoted_inline_grounding_jq(tmp_path, monkeypatch):
+    """An inline jq program referencing a grounding token must be caught even when double-quoted
+    (the re-inline guard scans both quote styles, not just single quotes)."""
+    _assert_lint_fails_on_mutation(
+        tmp_path,
+        monkeypatch,
+        REINLINE_OLD,
+        'cites="$(jq -r "[.candidates[0].groundingMetadata.groundingChunks[].web.uri]" <<<"$body")"',
+    )

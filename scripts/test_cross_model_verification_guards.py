@@ -47,8 +47,8 @@ def _require_jq() -> str:
     return _JQ_PATH
 
 
-def _run_jq(filter_path: Path, payload: dict, *, raw: bool = False, exit_test: bool = False):
-    """Run `jq [-r] [-e] -f <filter>` over payload. Returns (returncode, stdout)."""
+def _run_jq_raw(filter_path: Path, json_text: str, *, raw: bool = False, exit_test: bool = False):
+    """Run `jq [-r] [-e] -f <filter>` over a pre-serialized JSON string. Returns (rc, stdout)."""
     jq = _require_jq()
     args = [jq]
     if exit_test:
@@ -56,13 +56,13 @@ def _run_jq(filter_path: Path, payload: dict, *, raw: bool = False, exit_test: b
     if raw:
         args.append("-r")
     args += ["-f", str(filter_path)]
-    proc = subprocess.run(
-        args,
-        input=json.dumps(payload),
-        capture_output=True,
-        text=True,
-    )
+    proc = subprocess.run(args, input=json_text, capture_output=True, text=True)
     return proc.returncode, proc.stdout.strip()
+
+
+def _run_jq(filter_path: Path, payload: dict, *, raw: bool = False, exit_test: bool = False):
+    """Run `jq [-r] [-e] -f <filter>` over a Python payload. Returns (returncode, stdout)."""
+    return _run_jq_raw(filter_path, json.dumps(payload), raw=raw, exit_test=exit_test)
 
 
 def test_jq_version_diagnostic():
@@ -74,17 +74,17 @@ def test_jq_version_diagnostic():
 
 
 def test_all_canonical_filters_exist_and_parse():
-    """Each canonical filter exists and is syntactically valid jq."""
-    jq = _require_jq()
+    """Each canonical filter exists and compiles+runs cleanly on `null` input (rc == 0).
+
+    Every filter guards its input access (`?`, `// []`, type-checked `select`), so on `null` it
+    returns a benign empty/false result with exit 0. Asserting rc == 0 — not merely the absence of
+    the string "syntax error" — also catches compile errors that don't use that exact wording
+    (e.g. an undefined function), which a stderr-substring check would miss.
+    """
     for f in ALL_FILTERS:
         assert f.is_file(), f"missing canonical filter: {f}"
-        # jq -n -f <file> with a trivial input compiles the program; a syntax error is non-zero.
-        proc = subprocess.run(
-            [jq, "-n", "-f", str(f)], input="null", capture_output=True, text=True
-        )
-        # Some filters reference the input (.candidates / .output); feeding `null` still compiles
-        # the program — a *compile* error is what we guard against here, not a runtime null deref.
-        assert "syntax error" not in proc.stderr.lower(), f"{f.name}: {proc.stderr}"
+        rc, _ = _run_jq_raw(f, "null")
+        assert rc == 0, f"{f.name} did not compile+run cleanly on null input"
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +268,132 @@ def test_gemini_string_index_fails_closed():
 def test_gemini_out_of_range_index_fails_closed():
     """An index >= len(groundingChunks) must yield blank sources, not a crash."""
     rc, sources = _run_jq(GEMINI_SOURCES, GEMINI_OUT_OF_RANGE, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
+# Malformed-CONTAINER fixtures: a field arrives as the wrong JSON type (not just a bad index).
+# `length` is truthy for non-empty strings/objects, and indexing a string crashes — so these must
+# be type-normalized to fail closed, not silently pass the guard or fabricate/crash on sources.
+
+GEMINI_SUPPORTS_NOT_ARRAY = {
+    "candidates": [
+        {
+            "content": {"parts": [{"text": "VERIFIED"}]},
+            "groundingMetadata": {
+                "webSearchQueries": ["q"],
+                "groundingSupports": {"bogus": 1},  # object, not array
+            },
+        }
+    ]
+}
+
+GEMINI_QUERIES_NOT_ARRAY = {
+    "candidates": [
+        {
+            "content": {"parts": [{"text": "VERIFIED"}]},
+            "groundingMetadata": {
+                "webSearchQueries": "q",  # string, not array
+                "groundingSupports": [{"groundingChunkIndices": [0]}],
+            },
+        }
+    ]
+}
+
+GEMINI_CHUNKS_NOT_ARRAY = {
+    "candidates": [
+        {
+            "content": {"parts": [{"text": "VERIFIED"}]},
+            "groundingMetadata": {
+                "groundingChunks": "oops",  # string, not array — index 0 would crash
+                "groundingSupports": [{"groundingChunkIndices": [0]}],
+            },
+        }
+    ]
+}
+
+GEMINI_URI_NOT_STRING = {
+    "candidates": [
+        {
+            "content": {"parts": [{"text": "VERIFIED"}]},
+            "groundingMetadata": {
+                "groundingChunks": [{"web": {"uri": 123}}],  # number, not a URL string
+                "groundingSupports": [{"groundingChunkIndices": [0]}],
+            },
+        }
+    ]
+}
+
+
+def test_gemini_guard_fails_closed_on_non_array_supports():
+    """groundingSupports as an object must not pass the guard (length is truthy on objects)."""
+    rc, _ = _run_jq(GEMINI_GUARD, GEMINI_SUPPORTS_NOT_ARRAY, exit_test=True)
+    assert rc != 0
+
+
+def test_gemini_guard_fails_closed_on_non_array_queries():
+    """webSearchQueries as a string must not pass the guard (length is truthy on strings)."""
+    rc, _ = _run_jq(GEMINI_GUARD, GEMINI_QUERIES_NOT_ARRAY, exit_test=True)
+    assert rc != 0
+
+
+def test_gemini_sources_fails_closed_on_non_array_chunks():
+    """groundingChunks as a string must yield blank sources, not crash on `$chunks[.]`."""
+    rc, sources = _run_jq(GEMINI_SOURCES, GEMINI_CHUNKS_NOT_ARRAY, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
+def test_gemini_sources_fails_closed_on_non_string_uri():
+    """A chunk whose uri is a number must not fabricate a SOURCES entry."""
+    rc, sources = _run_jq(GEMINI_SOURCES, GEMINI_URI_NOT_STRING, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
+OPENAI_URL_NOT_STRING = {
+    "output": [
+        {"type": "web_search_call", "status": "completed"},
+        {
+            "type": "message",
+            "content": [
+                {
+                    "type": "output_text",
+                    "text": "VERIFIED",
+                    "annotations": [{"type": "url_citation", "url": True}],  # bool, not a URL
+                }
+            ],
+        },
+    ]
+}
+
+OPENAI_URL_OBJECT = {
+    "output": [
+        {"type": "web_search_call", "status": "completed"},
+        {
+            "type": "message",
+            "content": [
+                {
+                    "type": "output_text",
+                    "text": "VERIFIED",
+                    "annotations": [{"type": "url_citation", "url": {"n": 1}}],  # object → join crash
+                }
+            ],
+        },
+    ]
+}
+
+
+def test_openai_sources_fails_closed_on_non_string_url():
+    """A url_citation whose url is a bool must not fabricate a SOURCES entry."""
+    rc, sources = _run_jq(OPENAI_SOURCES, OPENAI_URL_NOT_STRING, raw=True)
+    assert rc == 0
+    assert sources == ""
+
+
+def test_openai_sources_fails_closed_on_object_url():
+    """A url_citation whose url is an object must yield blank sources, not crash `join`."""
+    rc, sources = _run_jq(OPENAI_SOURCES, OPENAI_URL_OBJECT, raw=True)
     assert rc == 0
     assert sources == ""
 

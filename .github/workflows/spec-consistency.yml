@@ -66,8 +66,8 @@ jobs:
           jq --version
 
       - name: Run CI pytest manifest (#156)
-        # Single entry point for the 12 pytest invocations spec-consistency.yml
-        # used to run file-by-file. Each manifest entry is wrapped in a
+        # Single entry point for the pytest invocations spec-consistency.yml used
+        # to run file-by-file. Each manifest entry is wrapped in a
         # `::group::<id>` annotation so the GitHub UI collapses one block
         # per invocation. Manifest at scripts/_ci_pytest_manifest.toml.
         env:
