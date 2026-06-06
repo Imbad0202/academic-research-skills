@@ -55,7 +55,7 @@ def _load_gold_set() -> list[dict[str, Any]]:
 
 def _tuple_lookup_key(tup: dict[str, Any]) -> tuple[str, str, str | None]:
     """Composite lookup key so identical claim_text on different tuple_kind /
-    constraint_id pairs disambiguate (R1 Gemini P2-b closure).
+    constraint_id pairs disambiguate (round-1 review closure).
 
     The canonical gold set currently has unique claim_text per tuple, but
     future gold sets may evaluate the same claim under different MNC ids
@@ -140,7 +140,7 @@ _BAD_JUDGE_FLIP_ALIGNMENT: dict[str, str] = {
 
 def _bad_judge() -> Callable[..., dict[str, Any]]:
     """Stub judge that intentionally returns wrong labels to drive non-zero
-    FNR/FPR (R1 Gemini P1 / codex P2 closure on tautological T-C1).
+    FNR/FPR (round-1 review closure on tautological T-C1).
 
     Used by `TC1ThresholdEnforcementBadJudge` to verify that
     `run_calibration` accurately COMPUTES FNR/FPR and that the threshold
@@ -154,7 +154,7 @@ def _bad_judge() -> Callable[..., dict[str, Any]]:
     into FN/FP territory so aggregate FNR + FPR both massively exceed
     the thresholds.
 
-    R2 Gemini P3 closure: lookup tables are built ONCE at factory time
+    round-2 review closure: lookup tables are built ONCE at factory time
     (not per fn() call) so the gold set isn't re-read from disk for every
     judge invocation. Both alignment and constraint paths use the
     composite key from `_tuple_lookup_key` so duplicate claim_text under
@@ -295,7 +295,7 @@ class TC3GoldSetShape(unittest.TestCase):
         )
 
     def test_validate_gold_set_rejects_invalid_tuple_kind(self) -> None:
-        # Rule (a) negative ingestion test — R1 codex P3 + Gemini P2
+        # Rule (a) negative ingestion test — round-1 review
         # closure on T-C3 rule coverage. Diagnostic must name rule (a).
         broken = [
             {
@@ -313,7 +313,7 @@ class TC3GoldSetShape(unittest.TestCase):
     def test_validate_gold_set_rejects_alignment_with_constraint_field(self) -> None:
         # validate_gold_set is the production entrypoint that the
         # calibration runner calls at ingestion time. It MUST raise the
-        # documented error on rule-(b) violation. R1 codex P3 closure:
+        # documented error on rule-(b) violation. round-1 review closure:
         # also assert rule (b) name in diagnostic.
         broken = [
             {
@@ -379,7 +379,7 @@ class TC3GoldSetShape(unittest.TestCase):
         self.assertIsNone(validate_gold_set(self.gold_set))
 
     def test_run_calibration_rejects_manifest_only_constraint_tuple(self) -> None:
-        # R2 codex P1 closure: validate_gold_set accepts EITHER inline
+        # round-2 review closure: validate_gold_set accepts EITHER inline
         # rule_text OR manifest_fixture_path per spec §7.7 rule (c), but
         # the v3.8.0 runner only supports the inline form. A manifest-only
         # tuple validating clean but reaching the judge with rule="" is
@@ -475,8 +475,8 @@ class TC2PerClassReport(unittest.TestCase):
     def test_each_class_exposes_denominators(self) -> None:
         # Protocol doc Phase 4 contract: each class entry carries
         # n_positive + n_negative so 0.0 FNR on 0 positives is
-        # distinguishable from 0.0 FNR on N positives. R1 codex P3 +
-        # Gemini P3 closure — earlier test only asserted FNR/FPR keys.
+        # distinguishable from 0.0 FNR on N positives. round-1 review
+        # closure — earlier test only asserted FNR/FPR keys.
         per_class = self.report["per_class"]
         for cls, payload in per_class.items():
             self.assertIn("n_positive", payload, f"class {cls!r} missing n_positive")
@@ -555,7 +555,7 @@ class TC1ThresholdEnforcementBadJudge(unittest.TestCase):
     """T-C1 companion — proves the threshold gate accurately fires on a
     degraded judge.
 
-    R1 dual-track Gemini P1 / codex P2 closure: the canonical T-C1
+    round-1 dual-track review closure: the canonical T-C1
     perfect-judge path only proves tooling CORRECTNESS (FNR/FPR
     computation works), not the threshold's ENFORCEABILITY (the gate
     fires when the judge degrades). Without this companion, T-C1 could
