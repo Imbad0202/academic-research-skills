@@ -194,6 +194,23 @@ def _derive_constraint_scope(constraint_id: str) -> str:
     )
 
 
+def _is_true_partial_breakdown(breakdown: Any) -> bool:
+    """True iff `breakdown` is a well-formed true-partial decomposition (#213).
+
+    Mirrors the INV-19 lint definition: a list of >=2 dict items whose
+    sub_verdicts include >=1 SUPPORTED AND >=1 valid non-SUPPORTED
+    ({UNSUPPORTED, AMBIGUOUS}). A missing / out-of-enum sub_verdict is NOT
+    counted as non-SUPPORTED (same hardening as INV-19) so a regressed judge
+    cannot pass the subset by emitting a degenerate breakdown.
+    """
+    if not isinstance(breakdown, list) or len(breakdown) < 2:
+        return False
+    verdicts = [item.get("sub_verdict") for item in breakdown if isinstance(item, dict)]
+    has_supported = any(v == "SUPPORTED" for v in verdicts)
+    has_non_supported = any(v in {"UNSUPPORTED", "AMBIGUOUS"} for v in verdicts)
+    return has_supported and has_non_supported
+
+
 def _zero_division_safe(numerator: int, denominator: int) -> float:
     """Return rate with `nan` semantics for empty denominators.
 
@@ -265,6 +282,16 @@ def run_calibration(
     n_alignment = 0
     n_constraint = 0
 
+    # Partial-support subset (#213). A partial fixture is tagged
+    # expected_prompt_verdict=PARTIAL; its expected_judgment is UNSUPPORTED (B1),
+    # so the aggregate FNR scores a bare-UNSUPPORTED judge as a HIT and HIDES the
+    # exact regression #213 closes (judge stops decomposing). The subset metric
+    # counts a partial fixture as passed ONLY when the judge emits UNSUPPORTED
+    # AND a well-formed true-partial sub_claim_breakdown — so a bare-UNSUPPORTED
+    # judge registers a non-zero miss_rate here even while the aggregate stays green.
+    n_partial = 0
+    partial_misses = 0
+
     for tup in gold_set:
         kind = tup["tuple_kind"]
         expected = tup["expected_judgment"]
@@ -279,6 +306,13 @@ def run_calibration(
                 judge_model="calibration-stub",
             )
             actual = response["judgment"]
+            if tup.get("expected_prompt_verdict") == "PARTIAL":
+                n_partial += 1
+                hit = actual == "UNSUPPORTED" and _is_true_partial_breakdown(
+                    response.get("sub_claim_breakdown")
+                )
+                if not hit:
+                    partial_misses += 1
             # For each alignment one-vs-rest class in PER_CLASS_KEYS,
             # check whether this tuple contributes a TP / FN / FP / TN.
             for cls in ("SUPPORTED", "UNSUPPORTED", "AMBIGUOUS"):
@@ -351,6 +385,13 @@ def run_calibration(
         "FNR": _zero_division_safe(aggregate_FN, aggregate_n_positive),
         "FPR": _zero_division_safe(aggregate_FP, aggregate_n_negative),
         "per_class": per_class_report,
+        # Partial-support subset (#213). Additive block; absent partial fixtures
+        # yield n_partial=0 + miss_rate=0.0 (nothing to miss), so the block is
+        # non-breaking on a gold set without partial tuples.
+        "partial_support": {
+            "miss_rate": _zero_division_safe(partial_misses, n_partial),
+            "n_partial": n_partial,
+        },
         "thresholds": thresholds,
         "n_total": len(gold_set),
         "n_alignment": n_alignment,

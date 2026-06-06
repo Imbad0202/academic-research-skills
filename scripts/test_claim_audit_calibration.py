@@ -5,7 +5,7 @@ docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md.
 
 Three-tier acceptance:
 
-- T-C1: FNR < 0.15 AND FPR < 0.10 against the synthetic 20-tuple gold set.
+- T-C1: FNR < 0.15 AND FPR < 0.10 against the synthetic 25-tuple gold set.
   Threshold failures are CI gates, not advisory.
 - T-C2: per-class FNR/FPR (SUPPORTED / UNSUPPORTED / AMBIGUOUS /
   violated-constraint) appear in the calibration report.
@@ -100,7 +100,17 @@ def _perfect_judge() -> Callable[..., dict[str, Any]]:
             )
         expected = tup["expected_judgment"]
         if kind == "alignment":
-            return {"judgment": expected, "rationale": "perfect-judge stub"}
+            resp: dict[str, Any] = {"judgment": expected, "rationale": "perfect-judge stub"}
+            # A genuinely-perfect judge on a partial fixture (#213) emits the
+            # normalized UNSUPPORTED verdict AND a well-formed true-partial
+            # breakdown, so it passes the partial-support subset metric. A judge
+            # that returned bare UNSUPPORTED here would (correctly) miss the subset.
+            if tup.get("expected_prompt_verdict") == "PARTIAL":
+                resp["sub_claim_breakdown"] = [
+                    {"sub_claim_text": "first sub-claim", "sub_verdict": "SUPPORTED"},
+                    {"sub_claim_text": "second sub-claim", "sub_verdict": "UNSUPPORTED"},
+                ]
+            return resp
         # constraint tuple
         if expected == "VIOLATED":
             return {
@@ -204,7 +214,7 @@ class TC3GoldSetShape(unittest.TestCase):
         self.gold_set = _load_gold_set()
 
     def test_a_every_tuple_has_valid_tuple_kind(self) -> None:
-        # All 20 tuples must declare tuple_kind ∈ {alignment, constraint}.
+        # All tuples must declare tuple_kind ∈ {alignment, constraint}.
         # Spec §7.7 rule (a).
         for idx, tup in enumerate(self.gold_set):
             self.assertIn(
@@ -470,21 +480,21 @@ class TC2PerClassReport(unittest.TestCase):
 
     def test_canonical_denominators_match_gold_set(self) -> None:
         # Pin the expected one-vs-rest denominators against the canonical
-        # 12-alignment + 8-constraint gold set. R1 codex P3 closure on
-        # T-C2 contract pinning — without this a future gold-set
-        # rebalance could silently shift class distributions away from
-        # the documented Phase 4 example.
+        # 17-alignment + 8-constraint gold set (12 base alignment + 5 #213
+        # partial fixtures). R1 codex P3 closure on T-C2 contract pinning —
+        # without this a future gold-set rebalance could silently shift class
+        # distributions away from the documented Phase 4 example.
         per_class = self.report["per_class"]
-        # Alignment gold set: 5 SUPPORTED + 3 UNSUPPORTED + 3 AMBIGUOUS
-        # + 1 RETRIEVAL_FAILED; one-vs-rest counts the SUPPORTED-as-
-        # positive case against the other 7 alignment tuples.
+        # Alignment gold set: 5 SUPPORTED + 8 UNSUPPORTED (3 base + 5 partial)
+        # + 3 AMBIGUOUS + 1 RETRIEVAL_FAILED = 17; one-vs-rest counts the
+        # positive class against the other 16 alignment tuples.
         self.assertEqual(per_class["SUPPORTED"]["n_positive"], 5)
-        self.assertEqual(per_class["SUPPORTED"]["n_negative"], 7)
-        self.assertEqual(per_class["UNSUPPORTED"]["n_positive"], 3)
+        self.assertEqual(per_class["SUPPORTED"]["n_negative"], 12)
+        self.assertEqual(per_class["UNSUPPORTED"]["n_positive"], 8)
         self.assertEqual(per_class["UNSUPPORTED"]["n_negative"], 9)
         self.assertEqual(per_class["AMBIGUOUS"]["n_positive"], 3)
-        self.assertEqual(per_class["AMBIGUOUS"]["n_negative"], 9)
-        # Constraint gold set: 5 VIOLATED + 3 NOT_VIOLATED.
+        self.assertEqual(per_class["AMBIGUOUS"]["n_negative"], 14)
+        # Constraint gold set: 5 VIOLATED + 3 NOT_VIOLATED (unchanged by #213).
         self.assertEqual(per_class["violated_constraint"]["n_positive"], 5)
         self.assertEqual(per_class["violated_constraint"]["n_negative"], 3)
 
@@ -592,6 +602,105 @@ class TC1ThresholdEnforcementBadJudge(unittest.TestCase):
                 f"bad-judge flip should drive non-zero FNR on {cls!r}; "
                 f"got {per_class[cls]!r}",
             )
+
+
+# ---------------------------------------------------------------------------
+# Partial-support subset metric (#213).
+# ---------------------------------------------------------------------------
+
+
+def _bare_unsupported_judge() -> Callable[..., dict[str, Any]]:
+    """Regressed judge: on a partial fixture it stops decomposing and returns a
+    bare UNSUPPORTED with no sub_claim_breakdown.
+
+    For NON-partial alignment tuples it mirrors the gold label (so it does not
+    blow the aggregate FNR/FPR gate) — the whole point of the subset metric is
+    that this judge can pass the aggregate while still missing the partial subset.
+    """
+    tuples_by_key: dict[tuple[str, str, str | None], dict[str, Any]] = {
+        _tuple_lookup_key(t): t for t in _load_gold_set()
+    }
+
+    def fn(**kwargs: Any) -> dict[str, Any]:
+        claim_text = kwargs.get("claim_text", "")
+        active = kwargs.get("active_constraints") or []
+        constraint_id = active[0]["constraint_id"] if active else None
+        kind = "constraint" if active else "alignment"
+        tup = tuples_by_key.get((kind, claim_text, constraint_id))
+        if tup is None:
+            raise AssertionError(
+                f"bare_unsupported_judge: no gold tuple for kind={kind!r} "
+                f"claim_text={claim_text!r} constraint_id={constraint_id!r}"
+            )
+        if kind == "constraint":
+            if tup["expected_judgment"] == "VIOLATED":
+                return {"judgment": "VIOLATED", "violated_constraint_id": constraint_id}
+            return {"judgment": "NOT_VIOLATED"}
+        # alignment: mirror the gold label, but NEVER emit a breakdown — even on
+        # partial fixtures (whose gold expected_judgment is UNSUPPORTED). This is
+        # the regression #213 closes: correct aggregate label, no decomposition.
+        return {"judgment": tup["expected_judgment"], "rationale": "bare-unsupported stub"}
+
+    return fn
+
+
+class PartialSupportSubsetMetric(unittest.TestCase):
+    """#213: the partial-support subset metric catches a judge that regresses to
+    bare UNSUPPORTED on compound claims even though its aggregate FNR stays green.
+
+    A partial fixture carries expected_judgment=UNSUPPORTED (B1) + the
+    expected_prompt_verdict=PARTIAL discriminator. The aggregate gate matches on
+    expected_judgment, so a bare-UNSUPPORTED judge passes it. Only the subset
+    metric — which requires UNSUPPORTED AND a well-formed true-partial breakdown
+    — exposes the regression.
+    """
+
+    def setUp(self) -> None:
+        self.gold_set = _load_gold_set()
+        self.partial_tuples = [
+            t for t in self.gold_set if t.get("expected_prompt_verdict") == "PARTIAL"
+        ]
+
+    def test_gold_set_has_at_least_five_partial_fixtures(self) -> None:
+        self.assertGreaterEqual(
+            len(self.partial_tuples),
+            5,
+            f"gold set must carry >=5 partial fixtures; got {len(self.partial_tuples)}",
+        )
+
+    def test_report_has_partial_support_block(self) -> None:
+        report = run_calibration(self.gold_set, judge_fn=_perfect_judge())
+        self.assertIn("partial_support", report)
+        self.assertIn("miss_rate", report["partial_support"])
+        self.assertEqual(report["partial_support"]["n_partial"], len(self.partial_tuples))
+
+    def test_perfect_judge_passes_partial_subset(self) -> None:
+        # A judge that emits UNSUPPORTED + a well-formed breakdown misses nothing.
+        # Proves the metric is not trivially always-failing.
+        report = run_calibration(self.gold_set, judge_fn=_perfect_judge())
+        self.assertEqual(
+            report["partial_support"]["miss_rate"],
+            0.0,
+            f"perfect judge should miss no partial fixtures; got {report['partial_support']!r}",
+        )
+
+    def test_bare_unsupported_judge_misses_partial_subset(self) -> None:
+        # The regression case: aggregate FNR stays under threshold (label matches),
+        # but the subset miss_rate is non-zero because no breakdown was emitted.
+        report = run_calibration(self.gold_set, judge_fn=_bare_unsupported_judge())
+        self.assertLess(
+            report["FNR"],
+            0.15,
+            f"bare-unsupported judge should still pass the aggregate FNR gate; "
+            f"got {report['FNR']!r} (if this fails the subset metric is redundant "
+            f"with the aggregate and proves nothing)",
+        )
+        self.assertEqual(
+            report["partial_support"]["miss_rate"],
+            1.0,
+            f"bare-unsupported judge must miss EVERY partial fixture; "
+            f"got {report['partial_support']!r}",
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

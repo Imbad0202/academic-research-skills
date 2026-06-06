@@ -506,6 +506,10 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
     SUPPORTED-AND-non-SUPPORTED pair is what distinguishes a genuine partial
     from an all-supported or all-unsupported decomposition; "non-SUPPORTED
     alone" would wrongly admit an all-UNSUPPORTED breakdown.
+
+    Mirror: `scripts/claim_audit_calibration.py::_is_true_partial_breakdown`
+    encodes the same true-partial test as a bool for the calibration subset
+    metric. Keep the two definitions in sync if the rule changes (#213).
     """
     if "sub_claim_breakdown" not in e:
         return []

@@ -19,7 +19,7 @@ Calibration mode closes the measurability gap. It does NOT try to make the judge
 
 ## Inputs
 
-1. **Gold set**: 20 tuples (12 alignment + 8 constraint per the canonical shipped fixture at `scripts/fixtures/claim_audit_calibration/gold_set.json`). Per-tuple shape and the four ingestion-gate rules (alignment-judgment coverage, ≥3 NOT_VIOLATED floor, required constraint fields, tuple_kind validity) are spelled out in **Gold tuple schema** below + spec §7.7 rules (a)-(d). The shipped fixture is the canonical example.
+1. **Gold set**: 25 tuples (17 alignment incl. 5 #213 partial-support fixtures + 8 constraint per the canonical shipped fixture at `scripts/fixtures/claim_audit_calibration/gold_set.json`). Per-tuple shape and the four ingestion-gate rules (alignment-judgment coverage, ≥3 NOT_VIOLATED floor, required constraint fields, tuple_kind validity) are spelled out in **Gold tuple schema** below + spec §7.7 rules (a)-(d). The shipped fixture is the canonical example.
 
 2. **Judge function**: a callable matching the v3.8 judge interface (`claim_text`, `retrieved_excerpt`, `anchor_kind`, `anchor_value`, `active_constraints`, `judge_model` kwargs). The shipped test fixture pairs the gold set with a perfect-judge stub so T-C1 / T-C2 / T-C3 exercise the calibration tooling end-to-end without requiring a live LLM call. Production deployment plugs a real judge_fn in place of the stub.
 
@@ -103,19 +103,22 @@ Both surface as the same CI failure; the report block makes the diagnosis explic
   "FNR": 0.0,
   "FPR": 0.0,
   "per_class": {
-    "SUPPORTED":           {"FNR": 0.0, "FPR": 0.0, "n_positive": 5, "n_negative": 7},
-    "UNSUPPORTED":         {"FNR": 0.0, "FPR": 0.0, "n_positive": 3, "n_negative": 9},
-    "AMBIGUOUS":           {"FNR": 0.0, "FPR": 0.0, "n_positive": 3, "n_negative": 9},
+    "SUPPORTED":           {"FNR": 0.0, "FPR": 0.0, "n_positive": 5, "n_negative": 12},
+    "UNSUPPORTED":         {"FNR": 0.0, "FPR": 0.0, "n_positive": 8, "n_negative": 9},
+    "AMBIGUOUS":           {"FNR": 0.0, "FPR": 0.0, "n_positive": 3, "n_negative": 14},
     "violated_constraint": {"FNR": 0.0, "FPR": 0.0, "n_positive": 5, "n_negative": 3}
   },
+  "partial_support": {"miss_rate": 0.0, "n_partial": 5},
   "thresholds": {"FNR": 0.15, "FPR": 0.10},
-  "n_total": 20,
-  "n_alignment": 12,
+  "n_total": 25,
+  "n_alignment": 17,
   "n_constraint": 8
 }
 ```
 
 The shape is the canonical contract `scripts/test_claim_audit_calibration.py` (T-C1 / T-C2) pins against. Adding fields is non-breaking; removing or renaming is a spec bump.
+
+**Partial-support subset (`partial_support`, #213).** Gold tuples tagged `expected_prompt_verdict=PARTIAL` carry `expected_judgment=UNSUPPORTED` (the B1 normalization), so a judge that **stops decomposing and emits a bare `UNSUPPORTED`** matches the aggregate gate and hides the exact regression #213 closes. The subset metric counts a partial fixture as passed ONLY when the judge emits `UNSUPPORTED` AND a well-formed true-partial `sub_claim_breakdown` (≥2 items, ≥1 SUPPORTED AND ≥1 non-SUPPORTED — the INV-19 definition). `miss_rate = misses / n_partial`; a bare-`UNSUPPORTED` judge registers `miss_rate=1.0` here while the aggregate FNR stays green. The block is additive — a gold set with no partial fixtures yields `{"miss_rate": 0.0, "n_partial": 0}`.
 
 ---
 
@@ -128,6 +131,8 @@ Calibration reports the judge's error profile on a **specific** gold set in a **
 - Replace the post-calibration ramp-on plan recorded in `academic-pipeline/SKILL.md` mode flags. v3.8.0 ships the audit agent dispatch as opt-in default-OFF; T-C1 passing on the canonical gold set is necessary but not sufficient evidence for default-ON.
 
 If a deploying operator brings a gold set that is itself biased (all tuples from one venue, all post-2024, all heavily-redacted), calibration reports a biased profile. Emit a warning during intake if the gold set looks clustered — this protocol does not currently auto-detect clustering, but the operator's pre-deployment review should.
+
+**Partial-evidence regression IS caught (#213).** One failure the aggregate gate alone would NOT catch: a judge that regresses to emitting bare `UNSUPPORTED` on compound claims instead of decomposing them. Because partial fixtures carry `expected_judgment=UNSUPPORTED`, the aggregate FNR stays green on that regression. The `partial_support` subset metric exists precisely to surface it — `miss_rate > 0` means the judge stopped producing inspectable `sub_claim_breakdown` decompositions even though it got the headline label right. Treat a non-zero `partial_support.miss_rate` as a judge-quality regression on the §F.3.2 partial-evidence trap, distinct from an aggregate FNR/FPR threshold breach.
 
 ---
 
