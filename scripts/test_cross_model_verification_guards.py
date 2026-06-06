@@ -23,6 +23,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 GUARD_DIR = Path(__file__).resolve().parent / "cross_model_verification"
 
 OPENAI_GUARD = GUARD_DIR / "openai_has_completed_web_search.jq"
@@ -238,6 +240,57 @@ def test_gemini_grounded_passes_guard():
 def test_gemini_search_without_support_fails_guard():
     rc, _ = _run_jq(GEMINI_GUARD, GEMINI_SEARCH_NO_SUPPORT, exit_test=True)
     assert rc != 0  # searched, chunks present, but no groundingSupports → NOT_SEARCHED
+
+
+# #351: groundingSupports present but linking to NO valid chunk index (empty / negative / string /
+# out-of-range / a bare {}). These have a non-empty groundingSupports array but no actual link to a
+# retrieved chunk, so the verdict is not grounded — the guard must fail closed (previously it
+# false-passed on the non-empty-array check alone, which let an ungrounded NOT_FOUND/MISMATCH be
+# trusted, since the blank-source downgrade only rescues VERIFIED).
+def _gemini_supports(support_objs, chunks=None):
+    return {
+        "candidates": [
+            {
+                "content": {"parts": [{"text": "VERIFIED"}]},
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": chunks if chunks is not None else [{"web": {"uri": "X"}}],
+                    "groundingSupports": support_objs,
+                },
+            }
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "support_objs",
+    [
+        [{}],  # no groundingChunkIndices at all
+        [{"groundingChunkIndices": []}],  # empty index list
+        [{"groundingChunkIndices": [-1]}],  # negative
+        [{"groundingChunkIndices": ["0"]}],  # string
+        [{"groundingChunkIndices": [5]}],  # out of range (only 1 chunk)
+    ],
+    ids=["no-indices", "empty-indices", "negative", "string", "out-of-range"],
+)
+def test_gemini_guard_fails_closed_without_valid_supported_index(support_objs):
+    rc, _ = _run_jq(GEMINI_GUARD, _gemini_supports(support_objs), exit_test=True)
+    assert rc != 0
+
+
+def test_gemini_guard_pass_iff_sources_extractable():
+    """Invariant: the guard passes exactly when at least one source is extractable. A support set
+    with no valid index → guard fails AND sources blank; a valid index → guard passes AND sources
+    non-blank. (Guard and extractor share the same in-range non-negative-integer predicate.)"""
+    no_valid = _gemini_supports([{"groundingChunkIndices": [-1]}])
+    rc_g, _ = _run_jq(GEMINI_GUARD, no_valid, exit_test=True)
+    _, src = _run_jq(GEMINI_SOURCES, no_valid, raw=True)
+    assert rc_g != 0 and src == ""
+
+    valid = _gemini_supports([{"groundingChunkIndices": [0]}])
+    rc_g2, _ = _run_jq(GEMINI_GUARD, valid, exit_test=True)
+    _, src2 = _run_jq(GEMINI_SOURCES, valid, raw=True)
+    assert rc_g2 == 0 and src2 != ""
 
 
 def test_gemini_sources_only_from_supported_chunks():
@@ -511,6 +564,19 @@ def test_openai_sources_fails_closed_on_non_array_annotations():
 def test_openai_text_fails_closed_on_non_array_content():
     """content as an object must not surface text nested in its values."""
     rc, text = _run_jq(OPENAI_TEXT, OPENAI_CONTENT_NOT_ARRAY, raw=True)
+    assert rc == 0
+    assert text == ""
+
+
+def test_openai_text_fails_closed_on_non_string_text():
+    """#351: an output_text whose `text` is an object must not crash `join` (rc 5) — the malformed
+    value is dropped, yielding empty text rather than a jq error."""
+    payload = {
+        "output": [
+            {"type": "message", "content": [{"type": "output_text", "text": {"bad": 1}}]}
+        ]
+    }
+    rc, text = _run_jq(OPENAI_TEXT, payload, raw=True)
     assert rc == 0
     assert text == ""
 

@@ -238,10 +238,11 @@ resp="$(curl -sS -w '\n%{http_code}' \
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 # Grounding guard + source extraction are canonical jq filters under scripts/cross_model_verification/
 # (same rationale as the OpenAI block: behavior-tested, referenced via `jq -f`). The guard requires
-# a search query AND groundingSupports (proves the verdict TEXT is tied to retrieved chunks —
-# webSearchQueries + groundingChunks alone is not enough); the source filter is fail-closed against
-# malformed groundingChunkIndices (a negative/string/out-of-range index yields blank SOURCES, never
-# a fabricated or crashing result). See the .jq file headers for the full contract.
+# a search query AND at least one VALID supported chunk index (groundingSupports linking to a real
+# chunk proves the verdict TEXT is tied to a retrieved source — webSearchQueries + groundingChunks,
+# or a groundingSupports that links to nothing, is not enough); the source filter is fail-closed
+# against malformed groundingChunkIndices (a negative/string/out-of-range index yields blank
+# SOURCES, never a fabricated or crashing result). See the .jq file headers for the full contract.
 GUARD=scripts/cross_model_verification
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # Transport/API failure (401/429/5xx, or curl's 000) — surface as a transport error so the
