@@ -1860,6 +1860,36 @@ class TP24PartialDecomposition(_PipelineTestBase):
         )
         self.assertEqual(out["claim_audit_results"][0]["judgment"], "RETRIEVAL_FAILED")
 
+    def test_malformed_partial_item_wrong_evidence_pointer_type_routes_inconclusive(self) -> None:
+        # Ship-gate round-3: the runtime COPIES evidence_pointer onto the row, so a
+        # wrong-typed one (a number) would emit a schema-invalid completed row. It
+        # MUST route to judge_parse_error instead (the evidence_pointer-type half of
+        # is_emittable_partial_breakdown).
+        bad = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED", "evidence_pointer": 123},
+            {"sub_claim_text": "b", "sub_verdict": "UNSUPPORTED"},
+        ]
+        out = self.run_pipeline(
+            citations=[_citation()], judge_fn=_judge_partial_malformed(breakdown=bad)
+        )
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED")
+        self.assertEqual(e["audit_status"], "inconclusive")
+        self.assertTrue(e["rationale"].startswith("judge_parse_error"))
+        self.assertEqual(self._validate_passport(out), [], "fallback row must be lint-clean")
+
+    def test_partial_with_null_evidence_pointer_emits_valid_row(self) -> None:
+        # A genuine PARTIAL with str + null evidence_pointers is emittable + lint-clean.
+        good = [
+            {"sub_claim_text": "a", "sub_verdict": "SUPPORTED", "evidence_pointer": "p.4"},
+            {"sub_claim_text": "b", "sub_verdict": "UNSUPPORTED", "evidence_pointer": None},
+        ]
+        out = self.run_pipeline(citations=[_citation()], judge_fn=_judge_partial(breakdown=good))
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["judgment"], "UNSUPPORTED")
+        self.assertEqual(e["sub_claim_breakdown"][1]["evidence_pointer"], None)
+        self.assertEqual(self._validate_passport(out), [])
+
     def test_malformed_partial_single_item_also_routes_inconclusive(self) -> None:
         out = self.run_pipeline(
             citations=[_citation()],

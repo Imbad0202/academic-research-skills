@@ -76,13 +76,27 @@ def _is_schema_shaped_item(item: object) -> bool:
     *mix*, so a degenerate item like `{"sub_verdict": "UNSUPPORTED"}` (no text)
     passes the mix gate but would emit `sub_claim_text: None`, a schema-invalid
     completed row (ship-gate round-2 finding).
+
+    Validates the fields the runtime COPIES onto the row against the
+    claim_audit_result.schema.json item shape: non-empty string sub_claim_text
+    (<=1000), sub_verdict in the enum, and evidence_pointer — if present — a
+    string (<=1000) or null. Extra keys are not rejected here because the runtime
+    copy keeps only these three; but the copied fields' TYPES must be valid or a
+    wrong-typed evidence_pointer (e.g. a number) would reach a completed row and
+    violate the schema (ship-gate round-3 finding).
     """
     if not isinstance(item, dict):
         return False
     text = item.get("sub_claim_text")
-    if not isinstance(text, str) or not text.strip():
+    if not isinstance(text, str) or not text.strip() or len(text) > 1000:
         return False
-    return item.get("sub_verdict") in SUBCLAIM_VERDICTS
+    if item.get("sub_verdict") not in SUBCLAIM_VERDICTS:
+        return False
+    if "evidence_pointer" in item:
+        ep = item["evidence_pointer"]
+        if ep is not None and (not isinstance(ep, str) or len(ep) > 1000):
+            return False
+    return True
 
 
 def is_emittable_partial_breakdown(breakdown: object) -> bool:
