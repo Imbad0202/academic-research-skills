@@ -326,5 +326,128 @@ class TestReadmeZhSections(unittest.TestCase):
             )
 
 
+# Minimal docs/ARCHITECTURE.md fixture carrying BOTH marker kinds the invariant-4 check (#345)
+# must distinguish: current-component markers (mermaid node + component/stage rows, which MUST
+# equal the suite version) and a feature-history timeline marker (`vX.Y.Z : <feature>`, which must
+# NOT be policed). The `{comp}` slots are the component version; `{hist}` is the timeline version.
+ARCHITECTURE_TEMPLATE = """\
+# Architecture
+
+```mermaid
+flowchart TD
+    Pipeline[academic-pipeline<br/>orchestrator<br/>v{comp}<br/>Agent Team: 5]
+```
+
+| Stage | Gate | ... |
+|-------|------|-----|
+| **2.5 INTEGRITY** | `academic-pipeline` v{comp} (gate) | VERIFIED_ONLY |
+| **6. PROCESS SUMMARY** | `academic-pipeline` v{comp} | VERIFIED_ONLY |
+
+| Component | Role |
+|-----------|------|
+| `academic-pipeline` v{comp} | orchestrator (delegates to sub-skill modes) |
+
+```mermaid
+timeline
+    title ARS evolution timeline
+    v{hist} : deterministic citation verification gate (#182)
+```
+"""
+
+
+def _write_architecture_fixture(root: Path, *, suite: str, comp: str, hist: str) -> None:
+    """Write `.claude/CLAUDE.md` (suite version source) + a docs/ARCHITECTURE.md fixture."""
+    (root / ".claude").mkdir(parents=True, exist_ok=True)
+    (root / ".claude" / "CLAUDE.md").write_text(
+        f"# ARS\n\n- **Suite version**: {suite} (per CHANGELOG.md)\n", encoding="utf-8"
+    )
+    (root / "docs").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "ARCHITECTURE.md").write_text(
+        ARCHITECTURE_TEMPLATE.format(comp=comp, hist=hist), encoding="utf-8"
+    )
+
+
+class TestArchitectureComponentVersion(unittest.TestCase):
+    """#345: invariant-4 lint for docs/ARCHITECTURE.md current-component version markers."""
+
+    def setUp(self) -> None:
+        self._orig_root = csc.ROOT
+        self._orig_errors = list(csc.ERRORS)
+        csc.ERRORS.clear()
+
+    def tearDown(self) -> None:
+        csc.ROOT = self._orig_root
+        csc.ERRORS.clear()
+        csc.ERRORS.extend(self._orig_errors)
+
+    def test_aligned_passes(self) -> None:
+        """All component markers at the suite version → no errors (timeline at an older version
+        is fine — it records history)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_architecture_fixture(root, suite="3.11.1", comp="3.11.1", hist="3.11.0")
+
+            csc.check_architecture_component_version()
+
+            self.assertEqual(
+                csc.ERRORS, [], msg=f"unexpected errors on aligned fixture: {csc.ERRORS!r}"
+            )
+
+    def test_stale_component_marker_fails(self) -> None:
+        """A current-component marker left at the prior version (the exact #343/#344 drift) must
+        fail — both the mermaid node and the rows carry the stale version here."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_architecture_fixture(root, suite="3.11.1", comp="3.11.0", hist="3.11.0")
+
+            csc.check_architecture_component_version()
+
+            self.assertTrue(
+                any("ARCHITECTURE.md" in e and "3.11.0" in e and "3.11.1" in e for e in csc.ERRORS),
+                msg=f"expected stale-component drift error in: {csc.ERRORS!r}",
+            )
+
+    def test_stale_timeline_marker_does_not_fail(self) -> None:
+        """The critical distinction: a timeline `vX.Y.Z : <feature>` node at a DIFFERENT version
+        from the suite must NOT fail — it records which version shipped a feature, and a
+        naive `v3.x` scan would wrongly flag it. Component markers are aligned here."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            # Component markers all at the suite version; only the timeline records an old version.
+            _write_architecture_fixture(root, suite="3.11.1", comp="3.11.1", hist="3.9.4")
+
+            csc.check_architecture_component_version()
+
+            self.assertEqual(
+                csc.ERRORS, [],
+                msg=f"timeline marker must not be policed, but got: {csc.ERRORS!r}",
+            )
+
+    def test_missing_component_marker_fails(self) -> None:
+        """If the component markers vanish entirely (e.g. a refactor removes them), the check must
+        surface that rather than silently passing on an empty match."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            (root / ".claude").mkdir(parents=True, exist_ok=True)
+            (root / ".claude" / "CLAUDE.md").write_text(
+                "- **Suite version**: 3.11.1 (per CHANGELOG.md)\n", encoding="utf-8"
+            )
+            (root / "docs").mkdir(parents=True, exist_ok=True)
+            (root / "docs" / "ARCHITECTURE.md").write_text(
+                "# Architecture\n\nNo component markers here.\n", encoding="utf-8"
+            )
+
+            csc.check_architecture_component_version()
+
+            self.assertTrue(
+                any("no mermaid" in e or "no `academic-pipeline" in e for e in csc.ERRORS),
+                msg=f"expected missing-marker error in: {csc.ERRORS!r}",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

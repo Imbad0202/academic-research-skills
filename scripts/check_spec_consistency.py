@@ -132,6 +132,65 @@ def check_pipeline_docs() -> None:
     )
 
 
+def _suite_version() -> str | None:
+    """Parse the canonical suite version from `.claude/CLAUDE.md` (`**Suite version**: X.Y.Z`)."""
+    match = re.search(r"\*\*Suite version\*\*:\s*(\d+\.\d+\.\d+)", read(".claude/CLAUDE.md"))
+    return match.group(1) if match else None
+
+
+def check_architecture_component_version() -> None:
+    """Invariant-4 (#345): the *current-component* `academic-pipeline` version markers in
+    docs/ARCHITECTURE.md must equal the suite version.
+
+    docs/ARCHITECTURE.md carries two kinds of version string and only the first must track the
+    suite version:
+      - current-component markers — the mermaid orchestrator node + the component table row + the
+        four stage-table `(gate)` / stage-6 rows — describe what the *current* pipeline is.
+      - feature-history markers — the `timeline` block (`vX.Y.Z : <feature>`) and inline
+        "introduced in vX.Y.Z" provenance — record which version first shipped a gate/feature and
+        must NOT be bumped on a release that adds no new gate.
+
+    This check anchors on the `academic-pipeline <ver>` component pattern specifically (mermaid
+    `<br/>vX.Y.Z` node + ` academic-pipeline vX.Y.Z` table/stage rows) and never inspects the
+    timeline block, so a stale current-component marker fails while a feature-history marker is
+    left alone. (Surfaced during the v3.11.1 release: six component markers were missed by the
+    bump and only caught by a manual sweep — #343/#344.)
+    """
+    rel_path = "docs/ARCHITECTURE.md"
+    version = _suite_version()
+    if version is None:
+        fail(".claude/CLAUDE.md: could not parse '**Suite version**: X.Y.Z' for ARCHITECTURE check")
+        return
+    text = read(rel_path)
+
+    # 1. Mermaid orchestrator node: `academic-pipeline<br/>orchestrator<br/>vX.Y.Z`.
+    node_versions = re.findall(
+        r"academic-pipeline<br/>orchestrator<br/>v(\d+\.\d+\.\d+)", text
+    )
+    if not node_versions:
+        fail(f"{rel_path}: no mermaid `academic-pipeline<br/>orchestrator<br/>vX.Y.Z` node found")
+    for found in node_versions:
+        if found != version:
+            fail(
+                f"{rel_path}: mermaid orchestrator node version v{found} != suite v{version} "
+                f"(invariant-4: current-component marker must equal the suite version)"
+            )
+
+    # 2. Component table + stage rows: ` academic-pipeline vX.Y.Z` (table cell / `(gate)` rows).
+    #    The `academic-pipeline ` prefix with a leading space (a markdown table cell or backticked
+    #    `\`academic-pipeline\` vX.Y.Z`) distinguishes these from the timeline `vX.Y.Z :` form,
+    #    which never carries the `academic-pipeline` token on the same marker.
+    row_versions = re.findall(r"`?academic-pipeline`?\s+v(\d+\.\d+\.\d+)", text)
+    if not row_versions:
+        fail(f"{rel_path}: no `academic-pipeline vX.Y.Z` component/stage row found")
+    for found in row_versions:
+        if found != version:
+            fail(
+                f"{rel_path}: `academic-pipeline v{found}` component/stage row != suite v{version} "
+                f"(invariant-4: current-component marker must equal the suite version)"
+            )
+
+
 def check_readme_sections() -> None:
     rel_path = "README.md"
     text = read(rel_path)
@@ -459,6 +518,7 @@ def main() -> int:
     check_claude_md()
     check_reviewer_version_block()
     check_pipeline_docs()
+    check_architecture_component_version()
     check_readme_sections()
     check_readme_zh_sections()
     check_readme_ja_sections()
