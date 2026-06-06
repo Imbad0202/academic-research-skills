@@ -684,6 +684,40 @@ def _dummy_breakdown_judge() -> Callable[..., dict[str, Any]]:
     return fn
 
 
+def _full_claim_text_judge() -> Callable[..., dict[str, Any]]:
+    """Cheating judge (ship-gate round-2): on a partial fixture it returns two
+    items whose sub_claim_text is the FULL claim text (one SUPPORTED, one
+    UNSUPPORTED). Each item contains every expected key token, so a naive
+    coverage check would pass — but this is NOT an atomic decomposition. The
+    atomicity + distinct-item rules in _breakdown_covers_expected must reject it.
+    """
+    tuples_by_key: dict[tuple[str, str, str | None], dict[str, Any]] = {
+        _tuple_lookup_key(t): t for t in _load_gold_set()
+    }
+
+    def fn(**kwargs: Any) -> dict[str, Any]:
+        claim_text = kwargs.get("claim_text", "")
+        active = kwargs.get("active_constraints") or []
+        constraint_id = active[0]["constraint_id"] if active else None
+        kind = "constraint" if active else "alignment"
+        tup = tuples_by_key.get((kind, claim_text, constraint_id))
+        if tup is None:
+            raise AssertionError(f"full_claim_text_judge: no gold tuple for {claim_text!r}")
+        if kind == "constraint":
+            if tup["expected_judgment"] == "VIOLATED":
+                return {"judgment": "VIOLATED", "violated_constraint_id": constraint_id}
+            return {"judgment": "NOT_VIOLATED"}
+        resp: dict[str, Any] = {"judgment": tup["expected_judgment"], "rationale": "full-text"}
+        if tup.get("expected_prompt_verdict") == "PARTIAL":
+            resp["sub_claim_breakdown"] = [
+                {"sub_claim_text": claim_text, "sub_verdict": "SUPPORTED"},
+                {"sub_claim_text": claim_text, "sub_verdict": "UNSUPPORTED"},
+            ]
+        return resp
+
+    return fn
+
+
 class PartialSupportSubsetMetric(unittest.TestCase):
     """#213: the partial-support subset metric catches a judge that regresses to
     bare UNSUPPORTED on compound claims even though its aggregate FNR stays green.
@@ -755,6 +789,20 @@ class PartialSupportSubsetMetric(unittest.TestCase):
             for entry in esc:
                 self.assertIn("key_tokens", entry)
                 self.assertIn("sub_verdict", entry)
+
+    def test_full_claim_text_judge_misses_partial_subset(self) -> None:
+        # Ship-gate round-2: a judge returning two items each = the FULL claim text
+        # (one SUPPORTED, one UNSUPPORTED) passes the verdict-mix gate and contains
+        # every expected token, but is not an atomic decomposition. The atomicity +
+        # distinct-item rules must catch it -> miss_rate = 1.0.
+        report = run_calibration(self.gold_set, judge_fn=_full_claim_text_judge())
+        self.assertLess(report["FNR"], 0.15)
+        self.assertEqual(
+            report["partial_support"]["miss_rate"],
+            1.0,
+            f"full-claim-text (non-atomic) judge must miss every partial fixture; "
+            f"got {report['partial_support']!r}",
+        )
 
     def test_dummy_breakdown_judge_misses_partial_subset(self) -> None:
         # #213 P1-3: a judge that emits a well-formed-SHAPED but generic two-line

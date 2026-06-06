@@ -206,43 +206,73 @@ def _derive_constraint_scope(constraint_id: str) -> str:
 def _breakdown_covers_expected(
     breakdown: Any, expected_sub_claims: Any
 ) -> bool:
-    """True iff the judge's breakdown actually decomposes THIS claim (#213 P1-3).
+    """True iff the judge's breakdown actually, atomically decomposes THIS claim.
 
-    `is_true_partial_breakdown` only proves the breakdown has the right verdict
-    MIX — a judge can pass it with two generic dummy lines on every fixture. To
-    prove the judge decomposed *this* claim, each fixture declares
-    `expected_sub_claims`: a list of `{key_tokens: [...], sub_verdict: ...}`.
-    A fixture is covered iff EVERY expected sub-claim is matched by some
-    breakdown item whose `sub_claim_text` contains all the expected key tokens
-    (case-insensitive substring) AND whose `sub_verdict` equals the expected one.
+    `is_true_partial_breakdown` only proves the verdict MIX — a judge can pass it
+    with two generic lines. Each fixture declares `expected_sub_claims`:
+    `[{key_tokens: [...], sub_verdict: ...}, ...]`. Coverage requires a one-to-one
+    assignment of expected sub-claims to DISTINCT breakdown items where each item:
+      1. contains all of its expected sub-claim's key tokens (case-insensitive),
+      2. carries the expected sub_verdict, AND
+      3. is ATOMIC — it does NOT also contain the distinguishing key tokens of a
+         *different* expected sub-claim.
 
-    A fixture with no `expected_sub_claims` declared falls back to True (shape-
-    only check) so the metric is non-breaking on fixtures that don't opt in —
-    but the shipped #213 partial fixtures all declare them, so the dummy-
-    breakdown judge is caught.
+    Rule 3 + the distinct-item requirement defeat the gaming vector (ship-gate
+    round-2 finding): a judge returning two items whose `sub_claim_text` is the
+    FULL claim text contains every expected token in both items, so neither item
+    is atomic and no valid one-to-one assignment exists. A genuine decomposition
+    puts each sub-claim's tokens in its own item.
+
+    Empty `expected_sub_claims` falls back to True (non-breaking); the shipped
+    #213 fixtures all declare them, with disjoint key tokens per sub-claim.
     """
     if not expected_sub_claims:
         return True
     if not isinstance(breakdown, list):
         return False
     items = [it for it in breakdown if isinstance(it, dict)]
+    if not all(isinstance(e, dict) for e in expected_sub_claims):
+        return False
 
-    def _matches(expected: dict[str, Any], item: dict[str, Any]) -> bool:
+    def _item_text(item: dict[str, Any]) -> str:
         text = item.get("sub_claim_text")
-        if not isinstance(text, str):
-            return False
-        text_l = text.lower()
-        tokens = expected.get("key_tokens") or []
-        if not all(isinstance(t, str) and t.lower() in text_l for t in tokens):
+        return text.lower() if isinstance(text, str) else ""
+
+    def _has_tokens(text_l: str, tokens: Any) -> bool:
+        return bool(tokens) and all(
+            isinstance(t, str) and t.lower() in text_l for t in (tokens or [])
+        )
+
+    def _matches(exp_idx: int, item: dict[str, Any]) -> bool:
+        expected = expected_sub_claims[exp_idx]
+        text_l = _item_text(item)
+        # 1. contains own tokens + 2. right verdict.
+        if not _has_tokens(text_l, expected.get("key_tokens")):
             return False
         exp_verdict = expected.get("sub_verdict")
-        return exp_verdict is None or item.get("sub_verdict") == exp_verdict
+        if exp_verdict is not None and item.get("sub_verdict") != exp_verdict:
+            return False
+        # 3. atomic — must NOT also carry another expected sub-claim's tokens.
+        for other_idx, other in enumerate(expected_sub_claims):
+            if other_idx == exp_idx:
+                continue
+            if _has_tokens(text_l, other.get("key_tokens")):
+                return False
+        return True
 
-    for expected in expected_sub_claims:
-        if not isinstance(expected, dict):
+    # Greedy is sufficient because rule 3 makes the match relation a partial
+    # matching where each item matches at most one expected sub-claim (an item
+    # carrying two sub-claims' tokens matches neither). Require a distinct item
+    # per expected sub-claim.
+    used: set[int] = set()
+    for exp_idx in range(len(expected_sub_claims)):
+        match_idx = next(
+            (i for i, item in enumerate(items) if i not in used and _matches(exp_idx, item)),
+            None,
+        )
+        if match_idx is None:
             return False
-        if not any(_matches(expected, item) for item in items):
-            return False
+        used.add(match_idx)
     return True
 
 

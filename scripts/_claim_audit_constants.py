@@ -66,6 +66,38 @@ def is_true_partial_breakdown(breakdown: object) -> bool:
     has_non_supported = any(v in SUBCLAIM_NON_SUPPORTED for v in verdicts)
     return has_supported and has_non_supported
 
+
+def _is_schema_shaped_item(item: object) -> bool:
+    """True iff a breakdown item satisfies the schema item shape (#213).
+
+    Each item MUST be a dict with a non-empty-string `sub_claim_text` and a
+    `sub_verdict` in the closed enum. The runtime needs this BEFORE it copies an
+    item onto an emitted row — `is_true_partial_breakdown` only checks the verdict
+    *mix*, so a degenerate item like `{"sub_verdict": "UNSUPPORTED"}` (no text)
+    passes the mix gate but would emit `sub_claim_text: None`, a schema-invalid
+    completed row (ship-gate round-2 finding).
+    """
+    if not isinstance(item, dict):
+        return False
+    text = item.get("sub_claim_text")
+    if not isinstance(text, str) or not text.strip():
+        return False
+    return item.get("sub_verdict") in SUBCLAIM_VERDICTS
+
+
+def is_emittable_partial_breakdown(breakdown: object) -> bool:
+    """True iff `breakdown` is true-partial AND every item is schema-shaped (#213).
+
+    The runtime validation gate before a PARTIAL is normalized onto a *completed*
+    row: it must be a genuine partial (`is_true_partial_breakdown`) AND every item
+    must carry a non-empty sub_claim_text + valid sub_verdict, so the copied row
+    satisfies the item schema. A breakdown that is true-partial by mix but has a
+    malformed item is a judge parse failure, NOT a completed row.
+    """
+    if not is_true_partial_breakdown(breakdown):
+        return False
+    return all(_is_schema_shaped_item(item) for item in breakdown)
+
 # rule_version literals for v3.8.0 release. Future revisions bump the literal
 # and require re-lint per spec §3.3 / §3.4 / §3.5.
 UNCITED_RULE_VERSION = "D4-c-v1"

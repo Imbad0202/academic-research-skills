@@ -1832,6 +1832,34 @@ class TP24PartialDecomposition(_PipelineTestBase):
         )
         self.assertNotIn("sub_claim_breakdown", e, "no breakdown on a malformed-PARTIAL inconclusive row")
 
+    def test_malformed_partial_item_missing_sub_claim_text_routes_inconclusive(self) -> None:
+        # Ship-gate round-2: an item that passes the verdict-MIX gate but lacks a
+        # sub_claim_text would, if copied onto a completed row, emit
+        # sub_claim_text=None (schema-invalid). It MUST take the judge_parse_error
+        # path instead. This is the item-shape half of is_emittable_partial_breakdown.
+        bad = [
+            {"sub_claim_text": "first", "sub_verdict": "SUPPORTED"},
+            {"sub_verdict": "UNSUPPORTED"},  # missing sub_claim_text
+        ]
+        out = self.run_pipeline(
+            citations=[_citation()], judge_fn=_judge_partial_malformed(breakdown=bad)
+        )
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED")
+        self.assertEqual(e["audit_status"], "inconclusive")
+        self.assertTrue(e["rationale"].startswith("judge_parse_error"))
+        self.assertEqual(self._validate_passport(out), [], "fallback row must be lint-clean")
+
+    def test_malformed_partial_item_empty_sub_claim_text_routes_inconclusive(self) -> None:
+        bad = [
+            {"sub_claim_text": "first", "sub_verdict": "SUPPORTED"},
+            {"sub_claim_text": "   ", "sub_verdict": "UNSUPPORTED"},  # blank
+        ]
+        out = self.run_pipeline(
+            citations=[_citation()], judge_fn=_judge_partial_malformed(breakdown=bad)
+        )
+        self.assertEqual(out["claim_audit_results"][0]["judgment"], "RETRIEVAL_FAILED")
+
     def test_malformed_partial_single_item_also_routes_inconclusive(self) -> None:
         out = self.run_pipeline(
             citations=[_citation()],

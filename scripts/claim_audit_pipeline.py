@@ -34,7 +34,7 @@ from _claim_audit_constants import (  # noqa: E402
     SENTINEL_MANIFEST_ID,
     UAF_RULE_VERSION,
     UNCITED_RULE_VERSION,
-    is_true_partial_breakdown,
+    is_emittable_partial_breakdown,
 )
 
 # Permitted UNSUPPORTED defect_stages for non-constraint paths (§3.1 matrix).
@@ -233,11 +233,18 @@ def _validate_judge_dict(
         # not_applicable, audit_tool_failure) row, never a silent bare UNSUPPORTED
         # (which would recreate the invisible-trap failure). The malformed-PARTIAL
         # path has no new matrix triple; it reuses the judge_parse_error contract.
-        if not is_true_partial_breakdown(result.get("sub_claim_breakdown")):
+        # is_emittable_*: true-partial mix AND every item schema-shaped (non-empty
+        # sub_claim_text + valid sub_verdict). The item-shape half is required
+        # because _judge_result_entry copies items onto a *completed* row; a
+        # mix-valid-but-malformed item (e.g. missing sub_claim_text) would emit a
+        # schema-invalid row instead of taking the judge_parse_error path
+        # (ship-gate round-2 finding).
+        if not is_emittable_partial_breakdown(result.get("sub_claim_breakdown")):
             raise JudgeInvocationError(
                 "judge_parse_error",
-                f"{source} returned PARTIAL without a well-formed true-partial sub_claim_breakdown "
-                f"(>=2 items, >=1 SUPPORTED AND >=1 non-SUPPORTED); got {result.get('sub_claim_breakdown')!r}",
+                f"{source} returned PARTIAL without an emittable true-partial sub_claim_breakdown "
+                f"(>=2 schema-shaped items, >=1 SUPPORTED AND >=1 non-SUPPORTED, each with a "
+                f"non-empty sub_claim_text); got {result.get('sub_claim_breakdown')!r}",
             )
     return result
 

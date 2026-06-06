@@ -508,10 +508,14 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
     from an all-supported or all-unsupported decomposition; "non-SUPPORTED
     alone" would wrongly admit an all-UNSUPPORTED breakdown.
 
-    The content-shape gate is `_claim_audit_constants.is_true_partial_breakdown`
-    — the single source of truth shared with the runtime + calibration. This
-    function adds the row-level pins (judgment/defect_stage) and splits the
-    content gate into granular findings.
+    The "what counts as non-SUPPORTED" decision is the shared
+    `_claim_audit_constants.SUBCLAIM_NON_SUPPORTED` constant (the literal most
+    likely to drift) — `is_true_partial_breakdown` in that module is the bool
+    form used by the runtime + calibration. This lint deliberately re-expresses
+    the same mix test inline (rather than calling the bool helper) because it
+    must emit two DISTINCT findings — "needs >=1 SUPPORTED" and "needs >=1
+    non-SUPPORTED" — which a single bool cannot carry. The shared constant keeps
+    the verdict set in sync; the granular split is lint-specific.
     """
     if "sub_claim_breakdown" not in e:
         return []
