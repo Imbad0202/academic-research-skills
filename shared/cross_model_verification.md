@@ -200,9 +200,14 @@ http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   echo "NOT_SEARCHED: openai_http_$http"           # API rejected the request (e.g. tool unsupported)
 elif ! jq -e 'any(.output[]?; .type == "web_search_call" and .status == "completed")' <<<"$body" >/dev/null; then
-  echo "NOT_SEARCHED: no_web_search_call"           # model produced text without grounding — discard it
+  echo "NOT_SEARCHED: no_web_search_call"           # no search happened at all — discard the text
 else
-  jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .text] | join("\n")' <<<"$body"
+  # A completed web_search_call proves *a* search ran, not that THIS reference's verdict
+  # is supported by it. Emit the verdict text together with the url_citation annotations the
+  # model attached; step 5 downgrades a VERIFIED with no citation to NOT_SEARCHED.
+  text="$(jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .text] | join("\n")' <<<"$body")"
+  cites="$(jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .annotations[]? | select(.type=="url_citation") | .url] | unique | join(", ")' <<<"$body")"
+  printf '%s\nSOURCES: %s\n' "$text" "${cites:-(none)}"
 fi
 ```
 
@@ -222,12 +227,16 @@ resp="$(curl -sS -w '\n%{http_code}' \
   }')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
+# Require BOTH a search query AND grounding chunks: groundingChunks alone can appear without
+# the verdict text being supported; webSearchQueries proves the model actually issued a search.
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   echo "NOT_SEARCHED: gemini_http_$http"
-elif ! jq -e 'any(.candidates[]?; ((.groundingMetadata.groundingChunks // []) | length) > 0)' <<<"$body" >/dev/null; then
-  echo "NOT_SEARCHED: no_groundingMetadata"          # text without grounding — discard it
+elif ! jq -e 'any(.candidates[]?; ((.groundingMetadata.webSearchQueries // []) | length) > 0 and ((.groundingMetadata.groundingChunks // []) | length) > 0)' <<<"$body" >/dev/null; then
+  echo "NOT_SEARCHED: no_grounding"                  # no real search behind the text — discard it
 else
-  jq -r '.candidates[0].content.parts[]?.text // empty' <<<"$body"
+  text="$(jq -r '.candidates[0].content.parts[]?.text // empty' <<<"$body")"
+  cites="$(jq -r '[.candidates[0].groundingMetadata.groundingChunks[]?.web.uri // empty] | unique | join(", ")' <<<"$body")"
+  printf '%s\nSOURCES: %s\n' "$text" "${cites:-(none)}"
 fi
 ```
 
