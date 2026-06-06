@@ -104,6 +104,21 @@
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$",
       "description": "Identifier for the audit run that produced this entry. Excluded from the cache key (see §4 step 3) so different audit runs over the same (claim, ref, anchor, source, constraint-set, judge_model) tuple share the cached verdict."
+    },
+    "sub_claim_breakdown": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Per-sub-claim decomposition (issue #213). Present iff the judge emitted prompt-verdict PARTIAL: >=2 sub-claims with >=1 SUPPORTED and >=1 non-SUPPORTED, normalized to judgment=UNSUPPORTED + defect_stage=source_description. Its presence IS the machine-readable partial-support signal (consumers read this, not defect_stage). Absent on single-claim and fully-unsupported verdicts. The cross-field shape (true-partial + judgment + defect_stage pinning) is INV-19, lint-enforced in scripts/check_claim_audit_consistency.py.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sub_claim_text", "sub_verdict"],
+        "properties": {
+          "sub_claim_text": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "sub_verdict": { "enum": ["SUPPORTED", "UNSUPPORTED", "AMBIGUOUS"] },
+          "evidence_pointer": { "type": ["string", "null"], "maxLength": 1000 }
+        }
+      }
     }
   }
 }

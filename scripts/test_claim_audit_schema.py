@@ -257,6 +257,41 @@ class TS1ValidMinimalEntry(unittest.TestCase):
             with self.subTest(schema=name):
                 load_json_schema(path)
 
+    def test_subclaim_breakdown_optional_field_validates(self) -> None:
+        """T-S9 (#213): sub_claim_breakdown is an additive optional field."""
+        schema = load_json_schema(SCHEMA_PATHS["claim_audit_result"])
+        validator = build_schema_validator(schema)
+        entry = supported_entry()
+        entry["judgment"] = "UNSUPPORTED"
+        entry["defect_stage"] = "source_description"
+        entry["sub_claim_breakdown"] = [
+            {
+                "sub_claim_text": "n-values are reported",
+                "sub_verdict": "SUPPORTED",
+                "evidence_pointer": "p.4 Table 1",
+            },
+            {
+                "sub_claim_text": "reporting is consistent across models",
+                "sub_verdict": "UNSUPPORTED",
+                "evidence_pointer": None,
+            },
+        ]
+        errors = list(validator.iter_errors(entry))
+        self.assertEqual(errors, [], msg=f"unexpected validation errors: {errors}")
+
+    def test_subclaim_breakdown_rejects_unknown_subfield(self) -> None:
+        """additionalProperties:false holds inside each breakdown item."""
+        schema = load_json_schema(SCHEMA_PATHS["claim_audit_result"])
+        validator = build_schema_validator(schema)
+        entry = supported_entry()
+        entry["judgment"] = "UNSUPPORTED"
+        entry["defect_stage"] = "source_description"
+        entry["sub_claim_breakdown"] = [
+            {"sub_claim_text": "x", "sub_verdict": "SUPPORTED", "bogus": 1},
+        ]
+        errors = list(validator.iter_errors(entry))
+        self.assertNotEqual(errors, [], msg="expected unknown subfield to be rejected")
+
 
 # ---------------------------------------------------------------------------
 # Lint-driven invariant tests share a base that writes a tmp passport,
