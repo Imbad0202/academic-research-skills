@@ -1273,30 +1273,5 @@
         "response_summary": null
       }
     }
-  },
-  "052-valid-unindexed-regional-paper": {
-    "lookup_verified": "unresolvable",
-    "resolver_outcomes": {
-      "crossref": {
-        "status": "unmatched",
-        "queried_by": "title",
-        "response_summary": null
-      },
-      "openalex": {
-        "status": "unmatched",
-        "queried_by": "title",
-        "response_summary": null
-      },
-      "semantic_scholar": {
-        "status": "unmatched",
-        "queried_by": "title",
-        "response_summary": null
-      },
-      "arxiv": {
-        "status": "skipped",
-        "queried_by": null,
-        "response_summary": null
-      }
-    }
   }
 }

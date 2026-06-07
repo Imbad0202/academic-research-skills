@@ -6,18 +6,18 @@ outcome_gradable: true
 description: |
   Phase 1 gold subset for #182 verification_gate.verify_citation.
   Measures the lookup_verified 3-class enum classification accuracy
-  across 52 hand-curated tuples. Two of them form the C-V6(a)
-  coverage-gap pair: a no-identifier fabrication (OQ-5 by-design
-  false-negative) and a legitimately-unindexed regional paper, both
-  of which must stay unresolvable, never false — proving the gate
-  treats fabrication and coverage-gap symmetrically when no resolvable
-  identifier exists.
+  across 51 hand-curated tuples. One of them (the OQ-5 by-design
+  false-negative: a no-identifier fabrication) exercises the C-V6(a)
+  coverage-gap path: a title-only unmatched stays unresolvable, never
+  false, because no resolvable identifier exists to key the lookup on.
+  The complementary real-but-unindexed canary (a verified genuine paper
+  unmatched across all four resolvers) remains unfilled — see issue #250.
 target:
   entrypoint: verification_gate.verify_citation
   predicted_field: lookup_verified
   expected_outcomes_path: expected_outcomes.json
   tuple_dir: tuples
-sample_n: 52
+sample_n: 51
 labels: ["true", "false", "unresolvable"]
 thresholds:
   aggregate:
@@ -45,8 +45,5 @@ tuple_distribution:
     n: 15
     expected_lookup_verified: "false"
   - kind: fabricated_title_only
-    n: 1
-    expected_lookup_verified: "unresolvable"
-  - kind: valid_unindexed
     n: 1
     expected_lookup_verified: "unresolvable"

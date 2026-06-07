@@ -21,8 +21,10 @@ human review. The user-facing explanation of this limit (in docs/ARCHITECTURE.md
 and the user guide) and the policy that consumes this verdict
 (`terminal_policies.citation_existence`, enum {advisory, strict}) both land with
 the Delta 3 / C-V6 policy batch — this data-layer batch only computes the
-verdict; it does not gate on it. Gold fixtures 051 (FN) + 052 (legit-unindexed)
-pin the symmetric treatment.
+verdict; it does not gate on it. Gold fixture 051 (the OQ-5 by-design
+false-negative: a no-identifier fabrication) pins that a title-only unmatched
+reduces to unresolvable, never false. The complementary real-but-unindexed
+canary remains unfilled (issue #250).
 
 Spec: docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md
 §2 Delta 4 + §0(4a) + INVARIANT C-V6(a).

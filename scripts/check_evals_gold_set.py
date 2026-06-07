@@ -30,7 +30,7 @@ from citation_verification_summary import (  # noqa: E402
 
 LABEL_ENUM = {"true", "false", "unresolvable"}
 KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated",
-             "fabricated_title_only", "valid_unindexed"}
+             "fabricated_title_only"}
 RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 # status + queried_by enums (and their status↔queried_by coherence) are now
 # enforced by _RESOLVER_OUTCOME_VALIDATOR against the shipped summary-schema $def,

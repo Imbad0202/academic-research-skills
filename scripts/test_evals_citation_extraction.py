@@ -104,13 +104,14 @@ def test_reducer_unresolvable_never_collapsed_into_false():
 
 
 # ---------------------------------------------------------------------------
-# Full 52-tuple gold-set run (50 + the C-V6(a) coverage-gap pair: 1 by-design
-# FN fixture per spec OQ-5 + 1 legit-unindexed companion).
+# Full 51-tuple gold-set run (50 + 1 C-V6(a) coverage-gap fixture: the OQ-5
+# by-design FN, a no-identifier fabrication). The complementary real-but-
+# unindexed canary remains unfilled (issue #250).
 # ---------------------------------------------------------------------------
 def test_full_gold_set_runs_at_high_accuracy():
     result = run_evals.run_task("citation_extraction")
     assert result["status"] == "measured"
-    assert result["sample_n"] == 52
+    assert result["sample_n"] == 51
     # Authored by the same reducer rule -> expect ~1.0 accuracy.
     assert result["aggregate_metric"]["value"] == pytest.approx(1.0)
     assert result["aggregate_metric"]["passed"] is True
@@ -122,11 +123,11 @@ def test_full_gold_set_per_class_all_pass():
     for cls in ("true", "false", "unresolvable"):
         assert by_class[cls]["passed"] is True, cls
     # Distribution: 30 true (20 doi + 10 arxiv), 15 false (all ID-keyed),
-    # 7 unresolvable (5 manual_exempt + the C-V6(a) coverage-gap pair:
-    # 1 fabricated_title_only FN fixture + 1 valid_unindexed companion).
+    # 6 unresolvable (5 manual_exempt + 1 fabricated_title_only by-design
+    # FN fixture; the real-but-unindexed canary is unfilled, issue #250).
     assert by_class["true"]["support"] == 30
     assert by_class["false"]["support"] == 15
-    assert by_class["unresolvable"]["support"] == 7
+    assert by_class["unresolvable"]["support"] == 6
 
 
 def test_full_gold_set_reducer_matches_every_expected_label():
@@ -139,10 +140,9 @@ def test_full_gold_set_reducer_matches_every_expected_label():
 
 
 def test_expert_concordance_present_for_labeled_subset():
-    # 12 tuples carry human_expert_verdict (10 original + the C-V6(a)
-    # coverage-gap pair: FN fixture 051 + valid_unindexed companion 052);
-    # concordance is advisory.
+    # 11 tuples carry human_expert_verdict (10 original + the OQ-5 by-design
+    # FN fixture 051); concordance is advisory.
     result = run_evals.run_task("citation_extraction")
     conc = result.get("expert_concordance", [])
     total_labeled = sum(c["labeled_count"] for c in conc)
-    assert total_labeled == 12
+    assert total_labeled == 11
