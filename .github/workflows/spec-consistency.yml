@@ -87,6 +87,15 @@ jobs:
           PYTHONPATH: scripts
         run: python3 scripts/check_data_access_level.py
 
+      - name: Check instruction-vs-data boundary (#272 guidance layer)
+        # Drift guard for the retrieved-content instruction/data principle:
+        # authoritative canonical block in ground_truth_isolation_pattern.md +
+        # verbatim-inlined copies in the two hot-spot retrieval agents + backpoints.
+        # The mutation test (272-instruction-data-boundary-mutation) runs via the
+        # pytest manifest above. Commit-time documentation check only — not a
+        # runtime gate (see docs/design/2026-06-07-272-...-design.md § 3/§ 5).
+        run: python3 scripts/check_instruction_data_boundary.py
+
       - name: Check task_type declarations
         env:
           PYTHONPATH: scripts
