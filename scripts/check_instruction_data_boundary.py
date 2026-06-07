@@ -67,9 +67,28 @@ CANONICAL_BODY = (
     "to be reported on, not as a command to follow."
 )
 
-# Backpoint must cite the authoritative file AND the section anchor.
+# Backpoint must cite the authoritative file AND the section anchor — as one
+# contiguous citation, not two unrelated substrings that happen to both appear.
+# Matches:  Authoritative source: `shared/ground_truth_isolation_pattern.md` § 2A.
+# Whitespace (incl. a line break) between tokens is tolerated; the backtick around
+# the path is optional so a future reflow that drops it still matches.
 BACKPOINT_FILE = "shared/ground_truth_isolation_pattern.md"
 BACKPOINT_ANCHOR = "§ 2A"
+BACKPOINT_RE = re.compile(
+    r"Authoritative source:\s*`?"
+    + re.escape(BACKPOINT_FILE)
+    + r"`?\s*"
+    + re.escape(BACKPOINT_ANCHOR)
+    + r"\.",
+)
+
+# The authoritative section the canonical block must live under. The lint requires
+# exactly one such H2 heading and that the canonical block sits inside it (between
+# this heading and the next H2), so the agents' backpoint to "§ 2A" never targets a
+# renamed/moved/absent section.
+AUTH_SECTION_HEADING_RE = re.compile(
+    r"^##\s+§\s*2A\b.*$", re.MULTILINE
+)
 
 CANONICAL_BLOCK_RE = re.compile(
     r"<!--\s*canonical:" + re.escape(MARKER) + r"\s*-->\n"
@@ -80,6 +99,8 @@ CANONICAL_BLOCK_RE = re.compile(
 
 # A fenced code block, to exclude the backpoint check from examples.
 _FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+# Any H2 heading line (used to bound the § 2A section).
+_H2_RE = re.compile(r"^##\s", re.MULTILINE)
 
 
 def _norm(text: str) -> str:
@@ -125,17 +146,52 @@ def check_canonical_blocks(text: str, rel: str, *, require_exactly_one: bool,
 
 
 def check_backpoint(text: str, rel: str, violations: list[str]) -> None:
-    """Hot-spot agent must cite the authoritative file + anchor outside a fence."""
+    """Hot-spot agent must carry the full backpoint citation outside a fence.
+
+    Requires the contiguous 'Authoritative source: `…` § 2A.' paragraph, not the
+    file path and the anchor as two independent substrings that could each appear
+    unrelated. A backpoint that exists only inside a fenced code block does not
+    count.
+    """
     body = _strip_fences(text)
-    if BACKPOINT_FILE not in body:
+    if not BACKPOINT_RE.search(body):
         violations.append(
-            f"{rel}: backpoint missing — does not cite '{BACKPOINT_FILE}' "
-            f"outside a code fence"
+            f"{rel}: backpoint missing, mis-targeted, or only inside a code fence "
+            f"— expected the contiguous 'Authoritative source: "
+            f"`{BACKPOINT_FILE}` {BACKPOINT_ANCHOR}.' citation outside any fence"
         )
-    if BACKPOINT_ANCHOR not in body:
+
+
+def check_auth_section(text: str, rel: str, violations: list[str]) -> None:
+    """Authoritative file must carry exactly one '§ 2A' H2, with the canonical
+    block inside it (between that heading and the next H2)."""
+    headings = AUTH_SECTION_HEADING_RE.findall(text)
+    if len(headings) == 0:
         violations.append(
-            f"{rel}: backpoint missing or mis-targeted — does not cite "
-            f"anchor '{BACKPOINT_ANCHOR}' outside a code fence"
+            f"{rel}: authoritative section heading '## § 2A …' not found "
+            f"(renamed/removed — the agents' backpoint would target nothing)"
+        )
+        return
+    if len(headings) > 1:
+        violations.append(
+            f"{rel}: authoritative section heading '## § 2A …' appears "
+            f"{len(headings)} times (must be exactly one)"
+        )
+        return
+    # Bound the § 2A section: from its heading to the next H2 (or EOF).
+    h = AUTH_SECTION_HEADING_RE.search(text)
+    sec_start = h.start()
+    nxt = _H2_RE.search(text, h.end())
+    sec_end = nxt.start() if nxt else len(text)
+    blk = CANONICAL_BLOCK_RE.search(text)
+    if blk is None:
+        # Absence of the block is already reported by check_canonical_blocks;
+        # don't double-report here.
+        return
+    if not (sec_start <= blk.start() and blk.end() <= sec_end):
+        violations.append(
+            f"{rel}: canonical block is outside the '§ 2A' section "
+            f"(moved away from its heading — backpoints would mis-target)"
         )
 
 
@@ -154,6 +210,7 @@ def main() -> int:
     auth_text = auth_path.read_text(encoding="utf-8")
     check_canonical_blocks(auth_text, AUTHORITATIVE_REL, require_exactly_one=True,
                            violations=violations)
+    check_auth_section(auth_text, AUTHORITATIVE_REL, violations)
 
     for rel in HOTSPOT_AGENTS:
         path = root / rel
