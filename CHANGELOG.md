@@ -402,13 +402,13 @@ The #118 issue body listed four candidate options. Option 1 (extend `constraint_
 
 ### Review trail
 
-Single-PR ship after spec → TDD → impl. UAF schema design followed the design-phase brainstorming rule per `feedback_dual_track_design_phase_review_workflow.md`: option 1-4 trade-off analysis happened in conversation with the user before any code, decision memo in `docs/superpowers/plans/2026-05-17-issue-118-uncited-audit-tool-failure-design.md` (local, gitignored). Implementation followed strict TDD RED → GREEN — 15 schema/lint tests + 3 pipeline tests all failed in their intended way (no schema file, no lint logic, swallow site still active) before the schema, lint, helper, and pipeline change landed. No regression on the 694 pre-existing tests.
+Single-PR ship after spec → TDD → impl. UAF schema design followed the design-phase brainstorming rule: option 1-4 trade-off analysis happened in conversation with the user before any code, captured in a local gitignored decision memo. Implementation followed strict TDD RED → GREEN — 15 schema/lint tests + 3 pipeline tests all failed in their intended way (no schema file, no lint logic, swallow site still active) before the schema, lint, helper, and pipeline change landed. No regression on the 694 pre-existing tests.
 
 ---
 
 ## [3.8.1] - 2026-05-17 — claim_audit lint hardening (#119 + #120 4×P2 closure)
 
-Defense-in-depth patch on `ARS_CLAIM_AUDIT=1` opt-in lint paths. Five fixes carried over from #103 R6 + R8 codex review, consolidated into one v3.8.1 release. No schema semantic change, no behavior change for well-formed payloads — pre-fix surfaces all crashed the CLI with `TypeError` / `AttributeError` instead of returning actionable lint findings or routing through the INV-14 `audit_tool_failure` translation boundary.
+Defense-in-depth patch on `ARS_CLAIM_AUDIT=1` opt-in lint paths. Five fixes carried over from #103 R6 + R8 independent review, consolidated into one v3.8.1 release. No schema semantic change, no behavior change for well-formed payloads — pre-fix surfaces all crashed the CLI with `TypeError` / `AttributeError` instead of returning actionable lint findings or routing through the INV-14 `audit_tool_failure` translation boundary.
 
 ### Fixed
 
@@ -425,7 +425,7 @@ Defense-in-depth patch on `ARS_CLAIM_AUDIT=1` opt-in lint paths. Five fixes carr
 
 ### Design memo
 
-`docs/superpowers/plans/2026-05-17-v3.8.1-claim-audit-lint-hardening.md` (local; gitignored per ARS personal-workspace convention) carries the option-1 vs option-2 analysis, CV-INV-4 dedupe key shape rationale, and the release-framing decision.
+A local, gitignored design memo carries the option-1 vs option-2 analysis, CV-INV-4 dedupe key shape rationale, and the release-framing decision.
 
 Closes [#119](https://github.com/Imbad0202/academic-research-skills/issues/119). Refs [#120](https://github.com/Imbad0202/academic-research-skills/issues/120) P2-1, P2-2, P2-3, P2-4 (all four R8 findings).
 

@@ -197,7 +197,7 @@ jobs:
 
       - name: Validate v3.7.1 audit Scope Report block (Step 2 / D2)
         # Step 2 of v3.7.1: enforces spec §3.2 Scope Report contract on the
-        # codex audit prompt template — Section 0 header + four required
+        # cross-model audit prompt template — Section 0 header + four required
         # content fields + three aggregate-status splits + forbidden
         # combined-aggregate "PASSED" verb (spec line 152).
         run: python3 scripts/check_v3_6_8_audit_scope_block.py
@@ -357,7 +357,7 @@ jobs:
         #     uncited / drift / constraint invariant families), pipeline
         #     routing (T-P1..T-P11 §4 step 1-6), uncited token rule
         #     (T-U1..T-U5 D4-c three-condition detector).
-        #   - Step 7 (round-2 codex P2 closure): manifest set-diff +
+        #   - Step 7 (round-2 review closure): manifest set-diff +
         #     constraint inheritance + MANIFEST-MISSING fallback
         #     (T-M1..T-M3 §7.3) + T-CO-1..T-CO-4 carry-overs.
         #   - Step 8: 8-row finalizer matrix (T-F1a..h + T-F2..T-F5 §7.5).
@@ -369,7 +369,7 @@ jobs:
         #     shape integrity; spec §7.7).
         #   - Step 11 (regression baseline): all 7 modules run together
         #     against the full diff to guarantee zero regression before
-        #     codex review (spec §7.8 + §13 step 11).
+        #     independent review (spec §7.8 + §13 step 11).
         # Without this CI step the audit contracts shipped from Steps 4-10
         # could regress silently. Spec:
         # docs/design/2026-05-15-issue-103-claim-alignment-audit-spec.md §7

@@ -59,7 +59,7 @@ Spec: `docs/design/2026-05-31-ars-v3.10-policy-layer-rescope-spec.md`.
 - New 6 contamination_signals tests in existing literature_corpus schema test file.
 - New v3.7.3 line-budget test; v3.6.7 Phase 6.6 budget test updated to subtract v3.7.3 extension lines alongside v3.7.1 Step 3b.
 
-**Regression status (final, post round-10 convergence):** 967 pass / 3 skipped / 0 failed (pre-review baseline 925; +42 tests across F1-F22 closures). v3.6.7 PATTERN PROTECTION + v3.7.1 / v3.7.2 lints unchanged. v3.7.3 lint wired into spec-consistency.yml CI workflow. 11-round review trajectory (Codex×10 + Gemini 3.1-pro-preview cross-model×1): F1-F22 closed across 10 codex rounds + 1 gemini round, no cross-reviewer overlap — canonical review-vs-challenge cascade per `feedback_codex_workflow_consolidated.md`. Round 10 codex returned **0 findings**, convergence signal achieved.
+**Regression status (final, post-convergence):** 967 pass / 3 skipped / 0 failed (pre-review baseline 925; +42 tests across F1-F22 closures). v3.6.7 PATTERN PROTECTION + v3.7.1 / v3.7.2 lints unchanged. v3.7.3 lint wired into spec-consistency.yml CI workflow. F1-F22 closed across an 11-round independent cross-model review trajectory with no cross-reviewer overlap. The final round returned **0 findings**, convergence signal achieved.
 
 Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md`.
 
@@ -97,7 +97,7 @@ Spec: `docs/design/2026-05-17-ars-v3.9.0-cross-index-triangulation-measurement-s
 - **10 slash commands** (`commands/ars-*.md`) mapping `MODE_REGISTRY.md` entries to `/ars-<mode>` triggers with model routing pinned in frontmatter — `opus` for `full` and `revision-coach`, `sonnet` for the other 8, no Haiku.
 - **3 plugin-shipped agents** (`agents/*_agent.md`) as relative symlinks to the v3.6.7-hardened downstream agents in `deep-research/agents/`. Source frontmatter gains `model: inherit` so an Opus session keeps Opus agents while the user's PreToolUse `warn-agent-no-model.sh` hook gates Haiku at dispatch.
 - **SessionStart announce hook** (`hooks/hooks.json` + `scripts/announce-ars-loaded.sh`) lists the 10 slash commands + 3 agents + token-budget pointer when the plugin loads. Bash 3.2 compatible.
-- **Phase 2.2 scope reduction note**: a `SubagentStop → run_codex_audit.sh` codex audit hook was scoped out for v3.7.0 (contract gap: hook payload carries no stage/deliverable; invoker boundary: same-session in-LLM Bash forbidden by the wrapper). Deferred to a future release.
+- **Phase 2.2 scope reduction note**: a `SubagentStop → run_codex_audit.sh` cross-model audit hook was scoped out for v3.7.0 (contract gap: hook payload carries no stage/deliverable; invoker boundary: same-session in-LLM Bash forbidden by the wrapper). Deferred to a future release.
 
 ## v3.6.8 Key Additions
 
@@ -111,7 +111,7 @@ Spec: `docs/design/2026-05-17-ars-v3.9.0-cross-index-triangulation-measurement-s
 - **`scripts/check_sprint_contract.py` SC-* mode-gating audit**: SC-5 (measurement_procedure canonical outputs) and SC-11 (panel_size sanity) now mode-gated to `mode.startswith("reviewer_")`; SC-9 (paraphrase_minimum_dimensions exceeds dim count) extended across all three mode families with each mode reading its own field path. Mode-agnostic warnings (SC-1/2/3/4/7/10) unchanged.
 - **17 new validator tests** (54 → 71): 4 shipped writer/evaluator template positive tests, 5 schema-branch negative tests (branches 11/12/4/5/6 hard-fail; cross-mode field leakage intentionally NOT tested per §7.1 R1 settled), 2 §3.6 reviewer regression tests, 6 SC-5/SC-9/SC-11 mode-gating tests.
 - **`scripts/check_v3_6_6_ab_manifest.py` + workflow extension**: enforces §6.2 manifest schema + §6.5 git-tracked invariants on `tests/fixtures/v3.6.6-ab/manifest.yaml`. `.github/workflows/spec-consistency.yml` extends the sprint contract validation loop to iterate writer + evaluator template directories alongside the existing reviewer loop, plus runs the new manifest CI lint as an additional step.
-- **`tests/fixtures/v3.6.6-ab/` A/B evidence fixture stub** (30 files): manifest + README + 6 paper-A inputs/baseline + 1 paper-C inputs/baseline + Stage 3 reviewer excerpt + 6 codex-judge baseline placeholders. `manifest_lint_mode: spec_branch`, `fixture_version: 0.1.0`. Real fixture data populates in follow-up commits.
+- **`tests/fixtures/v3.6.6-ab/` A/B evidence fixture stub** (30 files): manifest + README + 6 paper-A inputs/baseline + 1 paper-C inputs/baseline + Stage 3 reviewer excerpt + 6 cross-model judge baseline placeholders. `manifest_lint_mode: spec_branch`, `fixture_version: 0.1.0`. Real fixture data populates in follow-up commits.
 - **`academic-paper-reviewer/references/sprint_contract_protocol.md` cross-reference** noting Schema 13.1 since v3.6.6 + pointing readers at `academic-paper/SKILL.md` + design doc §5 for the parallel generator-evaluator protocol.
 
 ## v3.6.7 Key Additions
