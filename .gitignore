@@ -16,3 +16,6 @@ __pycache__/
 
 # Private ROADMAP is intentionally gitignored and maintained outside this public repo
 ROADMAP.md
+
+# Local tooling scratch directory (not part of the project)
+.gstack/
