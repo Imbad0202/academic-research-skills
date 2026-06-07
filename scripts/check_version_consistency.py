@@ -13,6 +13,13 @@ Invariants enforced:
      These are the repo's OUTWARD-FACING package metadata — a user updating the
      plugin sees them — and were the one surface a v3.10.0 release-doc pass missed
      because no lint covered them (marketplace had silently sat at 3.7.0).
+  5. The README.md shields.io version badge (`badge/version-vX.Y.Z`) equals the
+     suite version — the most outward-facing surface of all.
+  6. No docs/*.md cites a `vX.Y.Z` ABOVE the suite version (a forward/unknown
+     reference misleads readers). Equal-to-suite is allowed.
+  7. Every version-bearing H2 heading in docs/<name>.md has a matching
+     version-bearing H2 (same version) in docs/<name>.zh-TW.md and vice versa.
+     Plain headings may differ — only version TAGS must stay in lockstep.
 
 Runs from repo root by default; `--path` lets tests point at a fake tree.
 """
@@ -22,6 +29,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 from _skill_lint import parse_frontmatter, FrontmatterError
@@ -41,9 +49,43 @@ SUITE_TOKEN_RE = re.compile(
 CHANGELOG_TOKEN_RE = re.compile(r"^##\s*\[([A-Za-z0-9.\-_+]+)\]", re.MULTILINE)
 SEMVER_STRICT_RE = re.compile(r"^\d+(?:\.\d+){2,3}$")  # exactly 3 or 4 segments (N.N.N or N.N.N.N)
 
+# Invariant 5: shields.io version badge label, e.g. `badge/version-v3.11.1-blue`.
+# `_VSEG` = 3-or-4 numeric segments. The trailing `(?!\.?\d)` stops a 5th
+# segment (`3.11.1.2.3` would otherwise yield `3.11.1.2`); the label's own
+# `-<color>` separator already bounds the token on the right, so no broader
+# suffix lookahead is needed here. Keyed off the label, not the release URL.
+_VSEG = r"(\d+(?:\.\d+){2,3})"
+README_BADGE_RE = re.compile(r"badge/version-v" + _VSEG + r"(?!\.?\d)", re.IGNORECASE)
+# Invariant 6 only: a CANONICAL `vX.Y.Z(.W)` token in docs prose. The leading
+# `(?<![\w.])` blocks mid-identifier matches; the trailing `(?![\d.\-+A-Za-z])`
+# drops prerelease/build/5-segment tokens ENTIRELY (`v3.12.0-alpha`,
+# `v3.11.1.2.3`) rather than partial-matching them (review finding). `_VSEG` is
+# 3-or-4 segments, so a 2-segment `v3.10` never matches and is silently
+# ignored (inv 6 gates only on full release tokens; a partial like `v3.10`
+# is not a version this lint adjudicates). Invariant 7 uses H2_VERSION_RE.
+DOCS_VERSION_RE = re.compile(r"(?<![\w.])v" + _VSEG + r"(?![\d.\-+A-Za-z])")
+# Invariant 7: version tag inside an H2 heading, e.g. `## Corpus (v3.6.4+)`.
+# Same canonical-token shape, but a trailing `+` IS allowed (the repo's
+# "vX.Y.Z and later" heading convention, e.g. `(v3.6.4+)`); only `-`/letters/
+# extra `.N` segments disqualify.
+H2_RE = re.compile(r"^##\s+(.*?)\s*$", re.MULTILINE)
+H2_VERSION_RE = re.compile(r"(?<![\w.])v" + _VSEG + r"(?![\d.\-A-Za-z])")
+
 NON_VERSION_CHANGELOG_TOKENS = frozenset({"Unreleased"})
 
 PIPELINE_SKILL_NAME = "academic-pipeline"
+
+
+def _version_tuple(token: str) -> tuple[int, ...]:
+    """Parse a canonical N.N.N(.N) into an int tuple for ordering."""
+    return tuple(int(p) for p in token.split("."))
+
+
+def _version_le(a: str, b: str) -> bool:
+    """a <= b by segment-wise numeric compare (pads shorter with zeros)."""
+    ta, tb = _version_tuple(a), _version_tuple(b)
+    n = max(len(ta), len(tb))
+    return ta + (0,) * (n - len(ta)) <= tb + (0,) * (n - len(tb))
 
 
 def _is_strict_semver(token: str) -> bool:
@@ -200,6 +242,14 @@ def check(root: Path) -> list[str]:
     # package metadata). Only checked when a suite version is known.
     if suite_version is not None:
         errors.extend(_check_plugin_manifests(root, suite_version))
+        # Invariant 5: README version badge tracks the suite version.
+        errors.extend(_check_readme_badge(root, suite_version))
+        # Invariant 6: docs/ must not cite a version above the suite version.
+        errors.extend(_check_docs_versions(root, suite_version))
+
+    # Invariant 7: en<->zh-TW version-bearing-heading parity (independent of
+    # suite version; pairs each docs/*.md with its docs/*.zh-TW.md sibling).
+    errors.extend(_check_zhtw_heading_parity(root))
 
     return errors
 
@@ -254,6 +304,106 @@ def _check_plugin_manifests(root: Path, suite_version: str) -> list[str]:
                             f"not match suite version {suite_version!r}"
                         )
 
+    return errors
+
+
+def _check_readme_badge(root: Path, suite_version: str) -> list[str]:
+    """Invariant 5: README.md shields.io version badge equals the suite version.
+
+    The badge is outward-facing — the first thing a reader sees. A v3.10.0
+    release-doc pass can miss it the same way it missed the marketplace
+    manifest (invariant 4). Missing file / no badge surfaced, never crash."""
+    errors: list[str] = []
+    readme = root / "README.md"
+    if not readme.is_file():
+        errors.append(f"{readme}: not found")
+        return errors
+    text = readme.read_text(encoding="utf-8")
+    matches = README_BADGE_RE.findall(text)
+    if not matches:
+        errors.append(f"{readme}: no `badge/version-vX.Y.Z` version badge found")
+        return errors
+    for raw in matches:
+        if raw != suite_version:
+            errors.append(
+                f"{readme}: version badge v{raw} does not match suite "
+                f"version {suite_version!r}"
+            )
+    return errors
+
+
+def _check_docs_versions(root: Path, suite_version: str) -> list[str]:
+    """Invariant 6: no docs/*.md cites a version ABOVE the suite version.
+
+    A doc that references a not-yet-released (or deleted) version is a forward
+    reference that misleads readers. Equal-to-suite is fine (<=). Non-canonical
+    tokens are surfaced, not silently dropped."""
+    errors: list[str] = []
+    docs = root / "docs"
+    if not docs.is_dir():
+        return errors  # docs/ optional; absence is not drift
+    for md in sorted(docs.rglob("*.md")):
+        text = md.read_text(encoding="utf-8")
+        for raw in DOCS_VERSION_RE.findall(text):
+            if not _is_strict_semver(raw):
+                continue  # 2-segment etc. — not a release token we gate on
+            if not _version_le(raw, suite_version):
+                errors.append(
+                    f"{md}: cites v{raw} which is ABOVE suite version "
+                    f"{suite_version!r} (forward/unknown reference)"
+                )
+    return errors
+
+
+def _version_bearing_headings(text: str) -> Counter:
+    """Count version tokens across H2s that carry a vX.Y.Z tag.
+
+    Returns a multiset {version: count}. Comparison is by version token, not
+    heading text, so an en heading and its zh-TW translation match despite
+    different wording. A MULTISET (not a set/dict) is load-bearing: two H2s in
+    one doc tagged the same version count as two, so a translator dropping one
+    of a duplicated pair surfaces as a count mismatch (review finding — a
+    {version: heading} dict silently collapsed duplicates and passed)."""
+    out: Counter = Counter()
+    for h in H2_RE.findall(text):
+        m = H2_VERSION_RE.search(h)
+        if m:
+            out[m.group(1)] += 1
+    return out
+
+
+def _check_zhtw_heading_parity(root: Path) -> list[str]:
+    """Invariant 7: every version-bearing H2 in docs/<name>.md has a matching
+    version-bearing H2 in docs/<name>.zh-TW.md (same version), and vice versa.
+
+    Plain (no-version) headings may differ freely — translation asymmetry is
+    allowed; only version TAGS must stay in lockstep. Compares by version-token
+    MULTISET, so wording differences don't false-flag but a dropped/added/
+    drifted version tag (including one of a same-version pair) does."""
+    errors: list[str] = []
+    docs = root / "docs"
+    if not docs.is_dir():
+        return errors
+    for zh in sorted(docs.rglob("*.zh-TW.md")):
+        en = zh.with_name(zh.name.replace(".zh-TW.md", ".md"))
+        if not en.is_file():
+            errors.append(f"{zh}: no English sibling {en.name}")
+            continue
+        en_vers = _version_bearing_headings(en.read_text(encoding="utf-8"))
+        zh_vers = _version_bearing_headings(zh.read_text(encoding="utf-8"))
+        # Counter subtraction keeps only positive surpluses; doing it both ways
+        # surfaces under- and over-translation, and a 2-vs-1 same-version
+        # mismatch shows as a residual count of 1.
+        for v, n in sorted((en_vers - zh_vers).items()):
+            errors.append(
+                f"{zh.name}: missing {n} version-bearing heading(s) for v{v} "
+                f"present in {en.name}"
+            )
+        for v, n in sorted((zh_vers - en_vers).items()):
+            errors.append(
+                f"{zh.name}: has {n} heading(s) citing v{v} not present in "
+                f"{en.name} — version drift"
+            )
     return errors
 
 

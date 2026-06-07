@@ -94,6 +94,47 @@ def _write_plugin_manifests(root: Path, version: str) -> None:
     )
 
 
+def _write_readme(root: Path, badge_version: str) -> None:
+    """Fixture README.md with a shields.io version badge (invariant 5).
+
+    The badge encodes the version twice (label + release-tag URL); the lint
+    keys off the `badge/version-vX.Y.Z` label, the canonical surface a user
+    sees. Both are written aligned here so drift tests mutate one explicitly.
+    """
+    (root / "README.md").write_text(
+        "# Academic Research Skills for Claude Code\n"
+        "\n"
+        f"[![Version](https://img.shields.io/badge/version-v{badge_version}-blue)]"
+        f"(https://github.com/x/y/releases/tag/v{badge_version})\n",
+        encoding="utf-8",
+    )
+
+
+def _write_docs(
+    root: Path,
+    en_h2: list[str],
+    zh_h2: list[str] | None = None,
+    extra_version_strings: list[str] | None = None,
+) -> None:
+    """Fixture docs/ tree (invariants 6 + 7).
+
+    `en_h2` / `zh_h2` are H2 heading texts (without the leading '## ').
+    Version-bearing headings like 'Foo (v3.6.4+)' exercise the en<->zh-TW
+    heading-pairing invariant; plain headings are ignored by it. Any
+    `extra_version_strings` are dropped into PERFORMANCE.md body to exercise
+    the 'docs must not cite a future/unknown version' invariant.
+    """
+    docs = root / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    en_body = "\n".join(f"## {h}\n\nbody\n" for h in en_h2)
+    if extra_version_strings:
+        en_body += "\n" + "\n".join(f"See v{v} for details.\n" for v in extra_version_strings)
+    (docs / "PERFORMANCE.md").write_text("# Performance\n\n" + en_body, encoding="utf-8")
+    if zh_h2 is not None:
+        zh_body = "\n".join(f"## {h}\n\n內文\n" for h in zh_h2)
+        (docs / "PERFORMANCE.zh-TW.md").write_text("# 效能\n\n" + zh_body, encoding="utf-8")
+
+
 def _write_aligned_fixture(root: Path) -> None:
     """Everything lines up — baseline for PASS cases and drift mutations."""
     skills = [
@@ -107,6 +148,15 @@ def _write_aligned_fixture(root: Path) -> None:
     _write_claude_md(root, suite_version="3.5.0", table_rows=skills)
     _write_changelog(root, latest_version="3.5.0")
     _write_plugin_manifests(root, "3.5.0")
+    _write_readme(root, "3.5.0")
+    # en has an extra plain H2 (translation asymmetry is allowed); the
+    # version-bearing heading is present in both and at a past version.
+    _write_docs(
+        root,
+        en_h2=["Token usage", "Corpus ingestion (v3.4.0+)", "Extra EN-only section"],
+        zh_h2=["Token 用量", "語料庫導入 (v3.4.0+)"],
+        extra_version_strings=["3.4.0"],
+    )
 
 
 def _write_aligned_fixture_v351(root: Path) -> None:
@@ -122,6 +172,13 @@ def _write_aligned_fixture_v351(root: Path) -> None:
     _write_claude_md(root, suite_version="3.5.1", table_rows=skills)
     _write_changelog(root, latest_version="3.5.1")
     _write_plugin_manifests(root, "3.5.1")
+    _write_readme(root, "3.5.1")
+    _write_docs(
+        root,
+        en_h2=["Token usage", "Corpus ingestion (v3.4.0+)"],
+        zh_h2=["Token 用量", "語料庫導入 (v3.4.0+)"],
+        extra_version_strings=["3.4.0", "3.5.1"],
+    )
 
 
 class TestVersionConsistency(unittest.TestCase):
@@ -483,6 +540,168 @@ class TestVersionConsistency(unittest.TestCase):
             )
             self.assertIn("3.9.4.2.1", result.stdout)
             self.assertIn("canonical", result.stdout)
+
+    # ── Invariant 5: README version badge tracks the suite version ──────────
+    def test_readme_badge_drift_fails(self) -> None:
+        """README shields.io version badge drifts below suite version — must fail."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_readme(root, "3.4.0")  # badge stale vs suite 3.5.0
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("README", result.stdout)
+            self.assertIn("3.4.0", result.stdout)
+
+    def test_readme_missing_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "README.md").unlink()
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("README", result.stdout)
+
+    # ── Invariant 6: docs/ must not cite a version above the suite version ──
+    def test_docs_future_version_fails(self) -> None:
+        """docs/ references v9.9.9 (above suite 3.5.0) — must fail."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_docs(
+                root,
+                en_h2=["Token usage", "Corpus ingestion (v3.4.0+)"],
+                zh_h2=["Token 用量", "語料庫導入 (v3.4.0+)"],
+                extra_version_strings=["9.9.9"],  # future / nonexistent
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("9.9.9", result.stdout)
+
+    def test_docs_at_suite_version_passes_inv6(self) -> None:
+        """A docs version string EQUAL to the suite version is allowed (<=)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_docs(
+                root,
+                en_h2=["Token usage", "Corpus ingestion (v3.4.0+)"],
+                zh_h2=["Token 用量", "語料庫導入 (v3.4.0+)"],
+                extra_version_strings=["3.5.0"],  # == suite, must be OK
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+
+    # ── Invariant 7: en<->zh-TW version-bearing H2 + version-string parity ──
+    def test_zhtw_version_bearing_heading_missing_fails(self) -> None:
+        """en has '(v3.4.0+)' heading; zh-TW drops it — must fail."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_docs(
+                root,
+                en_h2=["Token usage", "Corpus ingestion (v3.4.0+)"],
+                zh_h2=["Token 用量", "語料庫導入"],  # version tag dropped
+                extra_version_strings=["3.4.0"],
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("zh-TW", result.stdout)
+
+    def test_zhtw_version_bearing_heading_drift_fails(self) -> None:
+        """en heading says v3.4.0, zh-TW says v3.3.0 — version drift, must fail."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_docs(
+                root,
+                en_h2=["Token usage", "Corpus ingestion (v3.4.0+)"],
+                zh_h2=["Token 用量", "語料庫導入 (v3.3.0+)"],  # drift
+                extra_version_strings=["3.4.0"],
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+
+    def test_zhtw_plain_heading_asymmetry_allowed(self) -> None:
+        """en may have extra PLAIN (no-version) H2 the zh-TW lacks — must pass."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            # aligned fixture already has en-only 'Extra EN-only section'; assert it passes
+            result = _run(root)
+            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+
+    def test_docs_two_segment_version_is_skipped(self) -> None:
+        """inv 6 gates only on full N.N.N tokens; a 2-segment `v9.9` in docs is
+        not a release token this lint adjudicates, so it must NOT fail even
+        though 9.9 > suite 3.5.0 (review test-gap)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            docs = root / "docs"
+            (docs / "PERFORMANCE.md").write_text(
+                "# Performance\n\n## Token usage\n\nSee v9.9 milestone.\n"
+                "## Corpus ingestion (v3.4.0+)\n\nbody\n",
+                encoding="utf-8",
+            )
+            (docs / "PERFORMANCE.zh-TW.md").write_text(
+                "# 效能\n\n## Token 用量\n\n看 v9.9 里程碑。\n"
+                "## 語料庫導入 (v3.4.0+)\n\n內文\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+
+    def test_docs_prerelease_token_is_skipped(self) -> None:
+        """`v3.12.0-alpha` (above suite) must NOT partial-match to 3.12.0 and
+        fail — non-canonical tokens are dropped entirely (review finding)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "docs" / "PERFORMANCE.md").write_text(
+                "# Performance\n\n## Token usage\n\nWork toward v3.12.0-alpha.\n"
+                "## Corpus ingestion (v3.4.0+)\n\nbody\n",
+                encoding="utf-8",
+            )
+            (root / "docs" / "PERFORMANCE.zh-TW.md").write_text(
+                "# 效能\n\n## Token 用量\n\n邁向 v3.12.0-alpha。\n"
+                "## 語料庫導入 (v3.4.0+)\n\n內文\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+
+    def test_zhtw_no_english_sibling_fails(self) -> None:
+        """A standalone docs/*.zh-TW.md with no .md sibling — must fail (review test-gap)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "docs" / "ORPHAN.zh-TW.md").write_text(
+                "# 孤兒\n\n## 一節 (v3.4.0+)\n\n內文\n", encoding="utf-8"
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("sibling", result.stdout)
+
+    def test_zhtw_duplicate_same_version_heading_drop_fails(self) -> None:
+        """en has TWO H2s tagged v3.4.0; zh-TW translates only one. Multiset
+        comparison must catch the dropped duplicate (review finding; a
+        {version: heading} dict silently collapsed this and passed)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "docs" / "PERFORMANCE.md").write_text(
+                "# Performance\n\n## Feature A (v3.4.0+)\n\nbody\n"
+                "## Feature B (v3.4.0+)\n\nbody\n",
+                encoding="utf-8",
+            )
+            (root / "docs" / "PERFORMANCE.zh-TW.md").write_text(
+                "# 效能\n\n## 功能 A (v3.4.0+)\n\n內文\n",  # only ONE translated
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("3.4.0", result.stdout)
 
 
 if __name__ == "__main__":
