@@ -43,6 +43,15 @@ _CAR_SCHEMA = load_json_schema(
 )
 _CAR_VALIDATOR = build_schema_validator(_CAR_SCHEMA)
 
+# constraint_violation schema validator — a VIOLATED uncited claim rides in its
+# own aggregate (rationale maxLength=2000 too). Its rationale is also copied
+# straight from untrusted judge output on the success path (#360), so the same
+# overflow can land a schema-invalid constraint_violation row.
+_CV_SCHEMA = load_json_schema(
+    Path(__file__).resolve().parent.parent / "shared/contracts/passport/constraint_violation.schema.json"
+)
+_CV_VALIDATOR = build_schema_validator(_CV_SCHEMA)
+
 
 MANIFEST_ID = "M-2026-05-15T10:00:00Z-a1b2"
 MANIFEST_ID_OTHER = "M-2026-05-15T10:05:00Z-c3d4"
@@ -210,6 +219,22 @@ class _PipelineTestBase(unittest.TestCase):
         }
         defaults.update(kwargs)
         return run_audit_pipeline(**defaults)
+
+    def _validate_passport(
+        self, out: dict[str, Any], manifests: list[dict[str, Any]] | None = None
+    ) -> list[Any]:
+        from scripts.check_claim_audit_consistency import validate_passport
+
+        body = {
+            "claim_intent_manifests": manifests if manifests is not None else [_manifest()],
+            "claim_audit_results": out["claim_audit_results"],
+            "uncited_assertions": out.get("uncited_assertions", []),
+            "claim_drifts": out.get("claim_drifts", []),
+            "constraint_violations": out.get("constraint_violations", []),
+            "audit_sampling_summaries": out.get("audit_sampling_summaries", []),
+            "uncited_audit_failures": out.get("uncited_audit_failures", []),
+        }
+        return validate_passport(body)
 
 
 # ---------------------------------------------------------------------------
@@ -1776,19 +1801,6 @@ class TP24PartialDecomposition(_PipelineTestBase):
     against both the schema and the INV-19 lint.
     """
 
-    def _validate_passport(self, out: dict[str, Any]) -> list[Any]:
-        from scripts.check_claim_audit_consistency import validate_passport
-
-        body = {
-            "claim_intent_manifests": [_manifest()],
-            "claim_audit_results": out["claim_audit_results"],
-            "uncited_assertions": out.get("uncited_assertions", []),
-            "claim_drifts": out.get("claim_drifts", []),
-            "constraint_violations": out.get("constraint_violations", []),
-            "audit_sampling_summaries": out.get("audit_sampling_summaries", []),
-            "uncited_audit_failures": out.get("uncited_audit_failures", []),
-        }
-        return validate_passport(body)
 
     def test_partial_normalizes_to_unsupported_source_description(self) -> None:
         out = self.run_pipeline(citations=[_citation()], judge_fn=_judge_partial())
@@ -1971,6 +1983,155 @@ class TP24PartialDecomposition(_PipelineTestBase):
                 e = out["claim_audit_results"][0]
                 self.assertTrue(e["rationale"].startswith("judge_parse_error"))
                 self.assertEqual(sorted(_CAR_VALIDATOR.iter_errors(e), key=str), [])
+
+
+class TP360JudgeRationaleBoundOnSuccessPath(_PipelineTestBase):
+    """#360: a judge-returned `rationale` is copied onto SUCCESS-path rows with
+    no length bound. A judge is an LLM with no pre-emission length guarantee, so
+    an over-long rationale yields a schema-INVALID row on the *clean* success
+    path — the same defect class as the #359 fallback fix, but on completed /
+    constraint_violation rows rather than the inconclusive fallback. Both
+    success-path rationale assignments MUST clamp to the schema maxLength=2000.
+    """
+
+    # 2500 > 2000 schema maxLength, so an unbounded copy overflows the row.
+    _OVERLONG = "Cited page supports the claim. " + ("y" * 2500)
+
+    def test_completed_row_clamps_overlong_judge_rationale(self) -> None:
+        # SUPPORTED verdict → _judge_result_entry completed row (pipeline line 558).
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            return {"judgment": "SUPPORTED", "rationale": self._OVERLONG}
+
+        out = self.run_pipeline(citations=[_citation()], judge_fn=judge_fn)
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["judgment"], "SUPPORTED")
+        self.assertEqual(e["audit_status"], "completed")
+        # Diagnostic head preserved (so the bound truncates the tail, not the head).
+        self.assertTrue(
+            e["rationale"].startswith("Cited page supports the claim."),
+            f"clamp must preserve the diagnostic head; got {e['rationale'][:60]!r}",
+        )
+        self.assertLessEqual(
+            len(e["rationale"]), 2000,
+            f"completed-row rationale must fit schema maxLength=2000; got {len(e['rationale'])}",
+        )
+        errors = sorted(_CAR_VALIDATOR.iter_errors(e), key=str)
+        self.assertEqual(
+            errors, [], f"completed row with over-long judge rationale must satisfy schema; got {errors}"
+        )
+        self.assertEqual(self._validate_passport(out), [], "completed row must also be lint-clean")
+
+    def test_completed_row_keeps_short_rationale_verbatim(self) -> None:
+        # Regression guard: a short rationale that never needed truncating must
+        # pass through unchanged (the bound must not mangle the common case).
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            return {"judgment": "SUPPORTED", "rationale": "Cited page contains the figure verbatim."}
+
+        out = self.run_pipeline(citations=[_citation()], judge_fn=judge_fn)
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["rationale"], "Cited page contains the figure verbatim.")
+        self.assertEqual(sorted(_CAR_VALIDATOR.iter_errors(e), key=str), [])
+
+    def test_constraint_violation_row_clamps_overlong_judge_rationale(self) -> None:
+        # VIOLATED uncited claim → _constraint_violation_entry (pipeline line 644).
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Manifest claim about the cohort.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                }
+            ],
+            mncs=[{"constraint_id": "MNC-1", "rule": "MUST NOT generalize beyond cohort"}],
+        )
+        sentence = {
+            "sentence_text": "All practitioners benefit.",
+            "section_path": "Discussion",
+        }
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            return {
+                "judgment": "VIOLATED",
+                "violated_constraint_id": "MNC-1",
+                "rationale": self._OVERLONG,
+            }
+
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=[],
+            all_uncited_sentences=[sentence],
+            judge_fn=judge_fn,
+        )
+        cv = out["constraint_violations"]
+        self.assertEqual(len(cv), 1, f"exactly one CV row; got {cv!r}")
+        e = cv[0]
+        self.assertTrue(
+            e["rationale"].startswith("Cited page supports the claim."),
+            f"clamp must preserve the diagnostic head; got {e['rationale'][:60]!r}",
+        )
+        self.assertLessEqual(
+            len(e["rationale"]), 2000,
+            f"constraint_violation rationale must fit schema maxLength=2000; got {len(e['rationale'])}",
+        )
+        errors = sorted(_CV_VALIDATOR.iter_errors(e), key=str)
+        self.assertEqual(
+            errors, [], f"constraint_violation row with over-long judge rationale must satisfy schema; got {errors}"
+        )
+        self.assertEqual(self._validate_passport(out, [manifest]), [], "constraint_violation row must also be lint-clean")
+
+
+class TP360NonStringJudgeRationale(_PipelineTestBase):
+    """#360 follow-up: `_validate_judge_dict` accepts a present-but-null
+    `rationale` (it only checks key presence, not value type). The success-path
+    clamp must NOT call len() on a non-string value — a JSON-null rationale from
+    the judge/cache must degrade to the default placeholder, not abort the audit
+    run with TypeError.
+    """
+
+    def test_completed_row_null_rationale_falls_back_to_placeholder(self) -> None:
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            return {"judgment": "SUPPORTED", "rationale": None}
+
+        out = self.run_pipeline(citations=[_citation()], judge_fn=judge_fn)
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["rationale"], "(no rationale provided)")
+        self.assertEqual(sorted(_CAR_VALIDATOR.iter_errors(e), key=str), [])
+        self.assertEqual(self._validate_passport(out), [])
+
+    def test_constraint_violation_null_rationale_falls_back_to_default(self) -> None:
+        manifest = _manifest(
+            claims=[
+                {
+                    "claim_id": "C-001",
+                    "claim_text": "Manifest claim about the cohort.",
+                    "intended_evidence_kind": "empirical",
+                    "planned_refs": [],
+                }
+            ],
+            mncs=[{"constraint_id": "MNC-1", "rule": "MUST NOT generalize beyond cohort"}],
+        )
+        sentence = {"sentence_text": "All practitioners benefit.", "section_path": "Discussion"}
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            return {"judgment": "VIOLATED", "violated_constraint_id": "MNC-1", "rationale": None}
+
+        out = self.run_pipeline(
+            citations=[],
+            manifests=[manifest],
+            uncited_sentences=[],
+            all_uncited_sentences=[sentence],
+            judge_fn=judge_fn,
+        )
+        cv = out["constraint_violations"]
+        self.assertEqual(len(cv), 1, f"exactly one CV row; got {cv!r}")
+        e = cv[0]
+        # Non-empty (schema minLength=1) and schema-valid — the null degraded
+        # to the default, not to None (which would be schema-invalid).
+        self.assertTrue(e["rationale"], "null rationale must degrade to a non-empty default")
+        self.assertEqual(sorted(_CV_VALIDATOR.iter_errors(e), key=str), [])
+        self.assertEqual(self._validate_passport(out, [manifest]), [])
 
 
 if __name__ == "__main__":

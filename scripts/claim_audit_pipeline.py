@@ -75,22 +75,58 @@ _RATIONALE_TRUNC_MARK = "…[truncated]"
 _WIDEST_FAULT_PREFIX = "retrieval_network_error: "
 
 
-def _bounded_failure_detail(message: str) -> str:
-    """Clamp a failure detail so the emitted rationale fits the schema maxLength.
+def _clamp_to_rationale_budget(text: str, *, reserved: int) -> str:
+    """Clamp `text` so that `reserved + len(result)` fits the rationale maxLength.
 
-    The row builder forms the rationale as ``f"{fault_class}: {detail}"``. A
-    malformed payload's repr embedded in `message` (a >1000-char sub_claim_text,
-    an over-decomposed breakdown, a giant non-string judgment/method) can push
-    the detail past the rationale maxLength, making the fallback row
-    schema-invalid (#355 P2#3). Truncate to a budget that leaves room for the
-    widest fault-class prefix and a truncation marker, preserving the diagnostic
-    head (which says WHICH malformed shape) at the front.
+    Single length-budgeting choke point for every untrusted string that lands in
+    a row's `rationale` (#355 P2#3 / #360). `reserved` is the number of chars the
+    caller will prepend before this text reaches the rationale field:
+
+    - Failure paths emit ``f"{fault_class}: {detail}"`` → reserved = widest
+      fault-class prefix width, so the worst-case composed rationale still fits.
+    - Success paths copy a judge's own `rationale` verbatim onto the row → no
+      prefix → reserved = 0.
+
+    Truncation preserves the diagnostic head (which says WHAT the string is) and
+    marks the dropped tail, so a short string that already fits passes through
+    byte-for-byte.
     """
-    budget = _RATIONALE_MAX_LEN - len(_WIDEST_FAULT_PREFIX)
-    if len(message) <= budget:
-        return message
+    budget = _RATIONALE_MAX_LEN - reserved
+    if len(text) <= budget:
+        return text
     keep = budget - len(_RATIONALE_TRUNC_MARK)
-    return message[:keep] + _RATIONALE_TRUNC_MARK
+    return text[:keep] + _RATIONALE_TRUNC_MARK
+
+
+def _bounded_failure_detail(message: str) -> str:
+    """Clamp a failure detail so ``f"{fault_class}: {detail}"`` fits the maxLength.
+
+    A malformed payload's repr embedded in `message` (a >1000-char
+    sub_claim_text, an over-decomposed breakdown, a giant non-string
+    judgment/method) can push the detail past the rationale maxLength, making the
+    fallback row schema-invalid (#355 P2#3). Budgets against the widest
+    fault-class prefix so the composed rationale fits for every fault class.
+    """
+    return _clamp_to_rationale_budget(message, reserved=len(_WIDEST_FAULT_PREFIX))
+
+
+def _bounded_judge_rationale(rationale: Any) -> str:
+    """Clamp a judge-supplied `rationale` copied verbatim onto a SUCCESS-path row.
+
+    The judge is an LLM with no pre-emission length guarantee; an over-long
+    `rationale` makes a *clean* completed / constraint_violation row
+    schema-invalid (#360 — the success-path parallel to the #359 fallback fix).
+    No fault-class prefix is prepended on the success path, so reserved = 0.
+
+    `_validate_judge_dict` only checks that the `rationale` key is present, not
+    that its value is a string — a JSON-null (or otherwise non-string) rationale
+    passes that gate. Return "" for a non-string value so each caller's existing
+    fallback (`... or "(no rationale provided)"` / the constraint default) takes
+    over, rather than calling len() on it and aborting the audit run.
+    """
+    if not isinstance(rationale, str):
+        return ""
+    return _clamp_to_rationale_budget(rationale, reserved=0)
 
 
 def _active_constraints_for_claim(
@@ -512,7 +548,9 @@ def _judge_result_entry(
 ) -> dict[str, Any]:
     """§4 Steps 5-6: route judge verdict to the right (judgment, defect_stage) row."""
     verdict = judge_result["judgment"]
-    rationale = judge_result.get("rationale", "")
+    # #360: a judge is an LLM with no length guarantee; clamp its rationale to
+    # the schema maxLength before it lands on the completed row (success path).
+    rationale = _bounded_judge_rationale(judge_result.get("rationale", ""))
 
     if verdict == "SUPPORTED":
         judgment, defect_stage, violated_id = "SUPPORTED", None, None
@@ -641,7 +679,10 @@ def _constraint_violation_entry(
         "scoped_manifest_id": scoped_manifest_id,
         "manifest_claim_id": manifest_claim_id,
         "judge_verdict": "VIOLATED",
-        "rationale": judge_result.get("rationale", "Constraint violated by uncited claim."),
+        # #360: clamp the judge-supplied rationale (success path) to maxLength;
+        # `or` default catches a missing/null/empty rationale (schema minLength=1).
+        "rationale": _bounded_judge_rationale(judge_result.get("rationale"))
+        or "Constraint violated by uncited claim.",
         "judge_model": judge_model,
         "judge_run_at": now_iso,
         "rule_version": DRIFT_RULE_VERSION,
