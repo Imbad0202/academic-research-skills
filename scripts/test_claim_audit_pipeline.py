@@ -22,6 +22,8 @@ import unittest
 from pathlib import Path
 from typing import Any, Callable
 
+from tests.test_helpers import build_schema_validator, load_json_schema
+
 try:
     from scripts.claim_audit_pipeline import run_audit_pipeline  # noqa: F401
     _MODULE_IMPORT_ERR: Exception | None = None
@@ -30,6 +32,16 @@ except Exception as exc:  # pragma: no cover — import-time error pathway is ex
 
     def run_audit_pipeline(*args: Any, **kwargs: Any) -> Any:
         raise _MODULE_IMPORT_ERR  # type: ignore[misc]
+
+
+# claim_audit_result schema validator — an emitted row MUST satisfy the
+# passport entry schema (incl. rationale maxLength=2000). Some failure paths
+# build the rationale from untrusted judge output, so a row that is supposed to
+# be a clean inconclusive fallback can still overflow the schema (#355 P2#3).
+_CAR_SCHEMA = load_json_schema(
+    Path(__file__).resolve().parent.parent / "shared/contracts/passport/claim_audit_result.schema.json"
+)
+_CAR_VALIDATOR = build_schema_validator(_CAR_SCHEMA)
 
 
 MANIFEST_ID = "M-2026-05-15T10:00:00Z-a1b2"
@@ -1908,6 +1920,57 @@ class TP24PartialDecomposition(_PipelineTestBase):
             ),
         )
         self.assertEqual(self._validate_passport(out), [])
+
+    def test_malformed_partial_with_oversized_text_emits_schema_valid_row(self) -> None:
+        # #355 P2#3: the malformed-PARTIAL fallback embeds the offending
+        # breakdown's repr in the rationale. A >1000-char sub_claim_text is
+        # itself a malformed trigger (is_emittable rejects len>1000), so its repr
+        # alone overflows the rationale maxLength=2000 and the "clean inconclusive"
+        # fallback row becomes schema-INVALID. The row MUST satisfy the schema.
+        # 1700-char text overflows the rationale (measured: 2017 chars > 2000).
+        # A judge is an LLM with no pre-emission length guarantee, so an
+        # over-long claim or an over-decomposed breakdown is a real malformed
+        # input — not a synthetic edge.
+        bad = [
+            {"sub_claim_text": "x" * 1700, "sub_verdict": "SUPPORTED"},
+            {"sub_claim_text": "second", "sub_verdict": "UNSUPPORTED"},
+        ]
+        out = self.run_pipeline(
+            citations=[_citation()], judge_fn=_judge_partial_malformed(breakdown=bad)
+        )
+        e = out["claim_audit_results"][0]
+        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED")
+        self.assertEqual(e["audit_status"], "inconclusive")
+        self.assertTrue(e["rationale"].startswith("judge_parse_error"))
+        self.assertLessEqual(
+            len(e["rationale"]), 2000,
+            f"fallback rationale must fit schema maxLength=2000; got {len(e['rationale'])}",
+        )
+        errors = sorted(_CAR_VALIDATOR.iter_errors(e), key=str)
+        self.assertEqual(
+            errors, [], f"malformed-PARTIAL fallback row must satisfy claim_audit_result schema; got {errors}"
+        )
+        self.assertEqual(self._validate_passport(out), [], "fallback row must also be lint-clean")
+
+    def test_malformed_partial_short_breakdown_fallback_is_schema_valid(self) -> None:
+        # Regression guard: the existing short-breakdown malformed paths
+        # (single-item, all-SUPPORTED) must STILL emit schema-valid rows after
+        # the #355 P2#3 truncation fix — i.e. the bound must not drop the
+        # fault-class tag or mangle short messages that never needed truncating.
+        for bad in (
+            [{"sub_claim_text": "a", "sub_verdict": "SUPPORTED"}],  # single-item
+            [
+                {"sub_claim_text": "a", "sub_verdict": "SUPPORTED"},
+                {"sub_claim_text": "b", "sub_verdict": "SUPPORTED"},
+            ],  # all-supported, not true-partial
+        ):
+            with self.subTest(bad=bad):
+                out = self.run_pipeline(
+                    citations=[_citation()], judge_fn=_judge_partial_malformed(breakdown=bad)
+                )
+                e = out["claim_audit_results"][0]
+                self.assertTrue(e["rationale"].startswith("judge_parse_error"))
+                self.assertEqual(sorted(_CAR_VALIDATOR.iter_errors(e), key=str), [])
 
 
 if __name__ == "__main__":

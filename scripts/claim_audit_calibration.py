@@ -82,7 +82,7 @@ class GoldSetValidationError(ValueError):
 
 
 def validate_gold_set(tuples: list[dict[str, Any]]) -> None:
-    """Validate the gold set per spec §7.7 rules (a)..(d).
+    """Validate the gold set per spec §7.7 rules (a)..(d) + rule (e) (#355).
 
     Raises GoldSetValidationError on the first failed rule. Returns None
     on success so the call site can ignore the return value — the
@@ -110,6 +110,15 @@ def validate_gold_set(tuples: list[dict[str, Any]]) -> None:
                         f"tuple {idx}: alignment tuple must not carry "
                         f"constraint field {forbidden!r} (rule (b))"
                     )
+            # Rule (e): a PARTIAL fixture must declare non-empty expected_sub_claims;
+            # without them `_breakdown_covers_expected` early-returns True and the
+            # #213 atomic-decomposition subset metric is silently bypassed.
+            if tup.get("expected_prompt_verdict") == "PARTIAL" and not tup.get("expected_sub_claims"):
+                raise GoldSetValidationError(
+                    f"tuple {idx}: PARTIAL fixture must declare non-empty "
+                    f"expected_sub_claims (rule (e); else the atomic-decomposition "
+                    f"subset metric is silently skipped)"
+                )
         else:  # constraint
             if expected not in CONSTRAINT_JUDGMENTS:
                 raise GoldSetValidationError(

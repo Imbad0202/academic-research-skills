@@ -63,6 +63,36 @@ def _hash_text(text: str | None) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 
+# claim_audit_result.rationale schema maxLength (#355 P2#3). A judge/retrieval
+# failure detail that embeds the offending payload's repr must fit here, or the
+# "clean inconclusive" fallback row it produces is itself schema-invalid. Every
+# JudgeInvocationError / RetrievalInvocationError detail ends up in a row's
+# rationale via `f"{fault_class}: {detail}"`, so the bound lives in those
+# exceptions' constructors (single choke point) rather than at each raise site.
+_RATIONALE_MAX_LEN = 2000
+_RATIONALE_TRUNC_MARK = "…[truncated]"
+# Widest fault-class prefix across both exception families ("retrieval_network_error: ").
+_WIDEST_FAULT_PREFIX = "retrieval_network_error: "
+
+
+def _bounded_failure_detail(message: str) -> str:
+    """Clamp a failure detail so the emitted rationale fits the schema maxLength.
+
+    The row builder forms the rationale as ``f"{fault_class}: {detail}"``. A
+    malformed payload's repr embedded in `message` (a >1000-char sub_claim_text,
+    an over-decomposed breakdown, a giant non-string judgment/method) can push
+    the detail past the rationale maxLength, making the fallback row
+    schema-invalid (#355 P2#3). Truncate to a budget that leaves room for the
+    widest fault-class prefix and a truncation marker, preserving the diagnostic
+    head (which says WHICH malformed shape) at the front.
+    """
+    budget = _RATIONALE_MAX_LEN - len(_WIDEST_FAULT_PREFIX)
+    if len(message) <= budget:
+        return message
+    keep = budget - len(_RATIONALE_TRUNC_MARK)
+    return message[:keep] + _RATIONALE_TRUNC_MARK
+
+
 def _active_constraints_for_claim(
     *,
     scoped_manifest_id: str,
@@ -136,7 +166,23 @@ _CITED_PATH_JUDGMENTS: frozenset[str] = frozenset(
 _UNCITED_PATH_JUDGMENTS: frozenset[str] = frozenset({"VIOLATED", "NOT_VIOLATED"})
 
 
-class JudgeInvocationError(Exception):
+class _AuditInvocationError(Exception):
+    """Base for audit-tool invocation failures (judge / retrieval).
+
+    Carries an INV-14 fault-class tag + detail. The detail is bounded so the
+    `f"{fault_class}: {detail}"` rationale it becomes fits the claim_audit_result
+    schema maxLength (#355 P2#3) — every subclass's detail flows to a row
+    rationale, so the bound lives here (single choke point).
+    """
+
+    def __init__(self, fault_class: str, detail: str) -> None:
+        detail = _bounded_failure_detail(detail)
+        super().__init__(f"{fault_class}: {detail}")
+        self.fault_class = fault_class
+        self.detail = detail
+
+
+class JudgeInvocationError(_AuditInvocationError):
     """Raised by `_invoke_judge` when judge_fn fails or returns malformed output.
 
     Carries the INV-14 fault-class tag + detail so the caller can emit a
@@ -145,13 +191,8 @@ class JudgeInvocationError(Exception):
     audit pass.
     """
 
-    def __init__(self, fault_class: str, detail: str) -> None:
-        super().__init__(f"{fault_class}: {detail}")
-        self.fault_class = fault_class
-        self.detail = detail
 
-
-class RetrievalInvocationError(Exception):
+class RetrievalInvocationError(_AuditInvocationError):
     """Raised by `_invoke_retrieve` when retrieve_fn fails or returns malformed output.
 
     Mirrors JudgeInvocationError but tags faults with the INV-14 retrieval_*
@@ -159,11 +200,6 @@ class RetrievalInvocationError(Exception):
     so a transient retrieval outage surfaces as audit_tool_failure rather than
     aborting the audit pass (Step 13 R2 codex P2 finding).
     """
-
-    def __init__(self, fault_class: str, detail: str) -> None:
-        super().__init__(f"{fault_class}: {detail}")
-        self.fault_class = fault_class
-        self.detail = detail
 
 
 def _validate_judge_dict(

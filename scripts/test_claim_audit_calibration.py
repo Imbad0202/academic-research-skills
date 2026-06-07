@@ -378,6 +378,62 @@ class TC3GoldSetShape(unittest.TestCase):
         # Positive path — the shipped gold set MUST validate cleanly.
         self.assertIsNone(validate_gold_set(self.gold_set))
 
+    def test_validate_gold_set_rejects_partial_without_expected_sub_claims(self) -> None:
+        # #355 P2#4 — rule (e): a PARTIAL fixture is the ONLY thing exercising
+        # the atomic-decomposition subset metric. If it omits expected_sub_claims,
+        # `_breakdown_covers_expected` early-returns True and the metric is
+        # silently skipped — any generic two-line true-partial breakdown reports
+        # miss_rate=0, defeating the whole point of the #213 calibration. Ingestion
+        # MUST reject a PARTIAL tuple with missing/empty expected_sub_claims.
+        for missing in ({}, {"expected_sub_claims": []}, {"expected_sub_claims": None}):
+            with self.subTest(missing=missing):
+                broken = [
+                    {
+                        "tuple_kind": "alignment",
+                        "claim_text": "compound claim with two parts",
+                        "ref_text_excerpt": "excerpt",
+                        "anchor": {"kind": "page", "value": "1"},
+                        "expected_judgment": "UNSUPPORTED",
+                        "expected_prompt_verdict": "PARTIAL",
+                        **missing,
+                    }
+                ]
+                with self.assertRaises(GoldSetValidationError) as ctx:
+                    validate_gold_set(broken)
+                msg = str(ctx.exception)
+                self.assertIn("rule (e)", msg, f"diagnostic must name rule (e); got {msg!r}")
+                self.assertIn("expected_sub_claims", msg)
+
+    def test_validate_gold_set_accepts_partial_with_expected_sub_claims(self) -> None:
+        # Positive: a PARTIAL fixture that declares expected_sub_claims passes
+        # rule (e). Guards the rule from over-firing on well-formed fixtures.
+        # Padded with 3 NOT_VIOLATED constraint tuples to satisfy rule (d).
+        ok = [
+            {
+                "tuple_kind": "alignment",
+                "claim_text": "compound claim with two parts",
+                "ref_text_excerpt": "excerpt",
+                "anchor": {"kind": "page", "value": "1"},
+                "expected_judgment": "UNSUPPORTED",
+                "expected_prompt_verdict": "PARTIAL",
+                "expected_sub_claims": [
+                    {"key_tokens": ["first"], "sub_verdict": "SUPPORTED"},
+                    {"key_tokens": ["second"], "sub_verdict": "UNSUPPORTED"},
+                ],
+            },
+            *[
+                {
+                    "tuple_kind": "constraint",
+                    "claim_text": f"nv-filler-{i}",
+                    "expected_judgment": "NOT_VIOLATED",
+                    "constraint_under_test_id": "MNC-1",
+                    "constraint_under_test_rule_text": "filler rule",
+                }
+                for i in range(3)
+            ],
+        ]
+        self.assertIsNone(validate_gold_set(ok))
+
     def test_run_calibration_rejects_manifest_only_constraint_tuple(self) -> None:
         # round-2 review closure: validate_gold_set accepts EITHER inline
         # rule_text OR manifest_fixture_path per spec §7.7 rule (c), but
