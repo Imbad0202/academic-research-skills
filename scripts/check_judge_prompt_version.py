@@ -3,16 +3,17 @@
 
 The judge cache key includes a `prompt_version` component so a judge-prompt
 revision invalidates stale cache entries automatically (issue #361). That gate
-only works if `JUDGE_PROMPT_VERSION` is actually bumped when the prompt changes —
-a manual step that is easy to forget, which would silently re-open the exact
-stale-cache bug #361 closes.
+keys on `JUDGE_PROMPT_SHA256` — the prompt's own fingerprint — so invalidation
+only works if that hash actually tracks the prompt text. If the hash could drift
+from the prompt, an edited prompt would still hash-match an old cache key and a
+stale verdict would be served, silently re-opening the exact bug #361 closes.
 
 This lint is the backstop: it recomputes the SHA-256 of the canonical judge-prompt
 section (the text between the JUDGE-PROMPT-CANONICAL-START / -END markers in
 `academic-pipeline/agents/claim_ref_alignment_audit_agent.md`) and compares it to
 `JUDGE_PROMPT_SHA256` in `scripts/_claim_audit_constants.py`. On drift it fails,
-instructing the author to update the hash AND bump `JUDGE_PROMPT_VERSION` in the
-same change.
+instructing the author to re-pin the hash AND bump the `JUDGE_PROMPT_VERSION`
+human-readable label (a log/diff aid, not the cache key) in the same change.
 
 It does NOT (and cannot) verify that the version literal itself changed — that is
 a human judgment about whether the edit is behavior-affecting. What it guarantees
