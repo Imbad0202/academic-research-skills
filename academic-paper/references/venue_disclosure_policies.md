@@ -1,6 +1,6 @@
 # AI-Usage Disclosure Policy Database — v1
 
-**Snapshot date**: 2026-04-09
+**Snapshot date**: 2026-04-09 (original v1 database build; individual rows carry their own "access date" recording when each was last re-verified)
 **Scope**: v1 covers 6 ML/NLP-focused venues. Education/QA journals deferred to v2.
 **Maintenance**: policies drift. Before submission, the user should verify against the venue's current page. The "source URL" and "access date" below record when ARS last verified each policy.
 
@@ -79,14 +79,14 @@ If the venue is not listed here, the mode halts and asks the user to paste the c
 
 | Field | Value |
 |---|---|
-| Source URL | https://2023.aclweb.org/blog/ACL-2023-policy/ |
-| Access date | 2026-05-24 |
-| Policy summary | ACL requires a dedicated "Limitations" section and allows an optional "Use of AI Assistance" section. Authors must disclose substantive use of AI writing tools. Minor grammar/spell-check tools do not require disclosure. |
-| Required phrasing elements | Must name the tool. Must describe "the extent of use" — was it for drafting, editing, or brainstorming? ACL distinguishes between minor editing and substantive drafting. |
-| Preferred disclosure location | A dedicated **"Use of AI Assistance"** subsection, placed after "Limitations" and before "References" |
-| Prohibited uses | Submitting AI-generated text as the primary intellectual contribution without disclosure |
-| Authorship rule | AI tools cannot be listed as authors |
-| Notes | ACL's "Use of AI Assistance" section is formatted separately from Acknowledgements. The tool should produce both sections if both apply. |
+| Source URL | https://www.aclweb.org/adminwiki/index.php/ACL_Policy_on_Publication_Ethics#Guidelines_for_Generative_Assistance_in_Authorship |
+| Access date | 2026-06-07 |
+| Policy summary | Use of generative AI to create content must be fully disclosed in the **Acknowledgements** section (the policy's own example: "Section 3 was written with inputs from ChatGPT"). Disclosure is graduated by use type: language-only assistance (paraphrasing/polishing) and short-form input assistance (predictive keyboards) do **not** require disclosure; low-novelty text generation and AI-suggested new ideas **do**. AI literature-search tools require no special disclosure but the usual citation-accuracy and thoroughness requirements still apply. Authors are fully responsible for all submitted content. |
+| Required phrasing elements | Name the tool and the specific content it produced (the policy example states the section and the tool). For low-novelty generated text, also affirm the output was checked for accuracy and carries appropriate citations for both the source text and the source idea(s). |
+| Preferred disclosure location | The **Acknowledgements** section (per the ACL Admin Wiki current guidance). The 2023-era separate "Use of AI Assistance" subsection is no longer the canonical location. |
+| Prohibited uses | Listing a generative AI tool as an author. Using automated tools that rephrase existing work as one's own without attribution (treated as plagiarism). Generated text that copies existing work is subject to the plagiarism policy. |
+| Authorship rule | AI tools cannot be listed as authors; ACL does not consider a generative model an entity that can fulfill co-authorship requirements |
+| Notes | Source is the org-wide ACL Admin Wiki policy (ACL Exec-approved, current through 2025), which ARR / EMNLP 2026 link to for current paper-integrity guidance. Supersedes the 2023 ACL conference blog URL (still live but stale: it pointed disclosure at a dedicated subsection rather than Acknowledgements). |
 
 ---
 
@@ -94,14 +94,14 @@ If the venue is not listed here, the mode halts and asks the user to paste the c
 
 | Field | Value |
 |---|---|
-| Source URL | https://2026.emnlp.org/calls/main_conference_papers/ (follows ACL policy) |
-| Access date | 2026-05-23 |
-| Policy summary | EMNLP follows the ACL policy. Same requirements apply. |
+| Source URL | https://2026.emnlp.org/paper-integrity-policy/ (refers authors to ACL's generative-authorship guidelines; canonical text at the ACL Admin Wiki — see ACL row) |
+| Access date | 2026-06-07 |
+| Policy summary | For AI-assistance disclosure, EMNLP refers authors to ACL's generative-authorship guidelines. Same requirements apply. See ACL row. |
 | Required phrasing elements | Same as ACL |
-| Preferred disclosure location | Same as ACL: **"Use of AI Assistance"** subsection |
+| Preferred disclosure location | Same as ACL: the **Acknowledgements** section |
 | Prohibited uses | Same as ACL |
 | Authorship rule | Same as ACL |
-| Notes | EMNLP is co-located with ACL and adopts ACL's policies wholesale. Any update to ACL policy applies here. |
+| Notes | EMNLP 2026 maintains its own Paper Integrity Policy page that refers authors to ACL's generative-authorship guidelines for this issue (and carries additional EMNLP/ARR-specific integrity policies beyond AI disclosure). The canonical source for the AI-disclosure rules below is the ACL Admin Wiki (see ACL row). |
 
 ---
 
