@@ -171,3 +171,7 @@ path = "scripts/test_cross_model_verification_guards.py"
 [[pytest]]
 id = "346-349-cross-model-sync-lint"
 path = "scripts/test_check_cross_model_verification_sync.py"
+
+[[pytest]]
+id = "361-judge-prompt-version-drift"
+path = "scripts/test_check_judge_prompt_version.py"

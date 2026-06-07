@@ -244,6 +244,18 @@ jobs:
           PYTHONPATH: .
         run: python scripts/check_firm_rules_sync.py
 
+      - name: Judge-prompt-version drift guard (#361)
+        # Recomputes the SHA-256 of the canonical judge-prompt section (between
+        # the JUDGE-PROMPT-CANONICAL markers in claim_ref_alignment_audit_agent.md)
+        # and fails if it drifts from JUDGE_PROMPT_SHA256 in _claim_audit_constants.py.
+        # Forces a prompt edit to re-pin the hash + bump JUDGE_PROMPT_VERSION, so a
+        # judge-prompt change cannot silently leave stale judge-cache entries valid.
+        # The pytest companion `test_check_judge_prompt_version.py` runs via the
+        # unified manifest.
+        env:
+          PYTHONPATH: .
+        run: python scripts/check_judge_prompt_version.py
+
       - name: v3.10 policy-layer lint (#127 PR-B)
         # Verifies the v3.10 terminal-policy-layer contract: venue_type /
         # venue_type_provenance / venue_type_source schema fields (incl. the

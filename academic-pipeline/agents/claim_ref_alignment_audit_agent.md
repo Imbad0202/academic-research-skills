@@ -130,15 +130,20 @@ cache_key = SHA-256(JCS(
     "retrieved_excerpt_hash":   SHA-256(retrieved_excerpt),
     "active_constraints_hash":  SHA-256(JCS(active_constraints_for_(manifest_id, claim_id))),
     "judge_model":              judge_model,
+    "prompt_version":           prompt_version,
   }
 ))
 ```
 
 Selection is scoped by `(scoped_manifest_id, claim_id)`, NOT bare `claim_id` — per M-INV-1, cross-manifest C-001 collision is permitted, so selecting by bare claim_id would pick constraints from the wrong manifest.
 
+`prompt_version` (#361): the version of the judge prompt this verdict was produced under. `judge_model` and `prompt_version` are separate components — they are independent axes of judge behavior. The pipeline reads `config.judge_prompt_version`, falling back to the repo constant `JUDGE_PROMPT_VERSION` (`scripts/_claim_audit_constants.py`) — a real version that must be bumped whenever the Step 5 judge prompt changes, so a prompt revision partitions the keyspace and a verdict cached under the old prompt is never served against the new prompt logic. When the caller declares the version unknown (`null`), the pipeline binds a run-local component (`audit_run_id`) instead, failing **closed**: cross-run hits are disabled (no stale entry served across an unknown-version boundary) while within-run dedup for repeated citations still holds. `scripts/check_judge_prompt_version.py` is the CI backstop against forgetting the bump.
+
 `active_constraints_for_(manifest_id, claim_id)`: the **manifest's** `manifest_negative_constraints[]` UNION that manifest's `claims[].negative_constraints[]` entry whose `claim_id` matches; sorted by `constraint_id`. Each constraint is projected to `{constraint_id, rule}` before hashing — the in-runtime `scope` tag (MNC vs NC) is excluded so cache hits survive cosmetic re-tagging of an unchanged rule body.
 
 **Cache stores only judge-verdict + source-bound fields**; never run-local identifiers. Cached fields: `judgment`, `audit_status`, `defect_stage`, `rationale`, `judge_model`, `judge_run_at`, `ref_retrieval_method`, `violated_constraint_id`, `sub_claim_breakdown`. Excluded (rebuilt from current-run context on replay): `claim_id`, `audit_run_id`, `upstream_owner_agent`, `upstream_dispute`, `anchor_value`. **`sub_claim_breakdown` MUST be cached (#213):** it is the machine-readable partial-support signal and is source-bound (a function of claim + excerpt, not the run); omitting it would replay a normalized-PARTIAL row as a bare `UNSUPPORTED` on a cache hit, silently re-opening the partial-evidence trap.
+
+This "never run-local identifiers" rule governs the cached **value**. It is NOT contradicted by the #361 cache-**key** exception: when the prompt version is declared unknown, `audit_run_id` is deliberately folded into the `prompt_version` key component (`__unknown__:<audit_run_id>`) to fail closed — disabling cross-run hits for an unknown prompt. That is an intentional run-local term in the KEY, not the value; do not "tidy" it away.
 
 - **Hit**: load cached judge-verdict + source-bound block; assemble a complete `claim_audit_result` by joining with current-run identifiers. Do NOT invoke the judge.
 - **Miss**: proceed to Step 4-5; write only the judge-verdict + source-bound block into the cache; emit the joined entry.
@@ -163,6 +168,8 @@ The judge is invoked ONCE per citation with both the alignment question and the 
 **Verdict priority — VIOLATED outranks PARTIAL.** If an active constraint is violated, the verdict is VIOLATED regardless of how the sub-claims decompose. Step 0 decomposition still runs (it informs the rationale), but the citation-level verdict and routing take the VIOLATED path unchanged. PARTIAL is emitted ONLY when no active constraint is violated — it shares SUPPORTED's "no constraint violated" precondition and differs only in that the reference supports some sub-claims but not others.
 
 **Unified judge prompt** (canonical):
+
+<!-- JUDGE-PROMPT-CANONICAL-START (#361): scripts/check_judge_prompt_version.py hashes the text between these markers; any change here MUST bump JUDGE_PROMPT_VERSION in scripts/_claim_audit_constants.py so stale judge-cache entries are not served against the new prompt. -->
 
 > Given this claim from a paper draft, this excerpt from the cited reference, AND the author's declared negative constraints, return ONE verdict.
 >
@@ -204,6 +211,8 @@ The judge is invoked ONCE per citation with both the alignment question and the 
 > - <sub_claim_text> :: <SUPPORTED|UNSUPPORTED|AMBIGUOUS> :: <evidence_pointer or ->
 > RATIONALE: <one sentence>
 > ```
+
+<!-- JUDGE-PROMPT-CANONICAL-END (#361) -->
 
 VIOLATED short-circuits alignment classification: the pipeline always routes VIOLATED to either `claim_audit_result` (cited path) or `constraint_violation` (uncited path) regardless of any `defect_stage_hint`.
 

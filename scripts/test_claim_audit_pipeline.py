@@ -21,6 +21,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from typing import Any, Callable
+from unittest import mock
 
 from tests.test_helpers import build_schema_validator, load_json_schema
 
@@ -352,6 +353,160 @@ class TP2P3CacheBehavior(_PipelineTestBase):
             len(invocations),
             2,
             "manual PDF excerpt with different hash MUST force a fresh judge invocation",
+        )
+
+
+# ---------------------------------------------------------------------------
+# #361 — prompt-version partitions the judge cache keyspace.
+# ---------------------------------------------------------------------------
+
+
+class TP361PromptVersionCacheKey(_PipelineTestBase):
+    """#361: the judge cache key must include a prompt-version component so a
+    judge-prompt revision (e.g. #213 Step-0 decomposition) invalidates stale
+    entries automatically — a verdict cached under prompt A must NOT be served
+    once the active prompt is B. Same-version entries still dedup (no
+    regression). When no concrete prompt version can be resolved (caller
+    declares it unknown), the cache fails CLOSED — stale entries are never
+    served across an unknown-version boundary.
+    """
+
+    @staticmethod
+    def _counting_judge(invocations: list[Any]) -> Callable[..., dict[str, Any]]:
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            invocations.append(kwargs)
+            return {"judgment": "SUPPORTED", "rationale": "judge ran"}
+
+        return judge_fn
+
+    def test_prompt_version_change_misses_cache(self) -> None:
+        cache: dict[str, Any] = {}
+        invocations: list[Any] = []
+        judge_fn = self._counting_judge(invocations)
+
+        # Populate under prompt version A.
+        self.run_pipeline(
+            citations=[_citation()],
+            judge_fn=judge_fn,
+            cache=cache,
+            config=_config(judge_prompt_version="promptA"),
+        )
+        self.assertEqual(len(invocations), 1, "first run must invoke judge")
+
+        # Same (claim, ref, anchor, excerpt, constraints, model) but a NEW
+        # prompt version MUST miss and re-invoke the judge.
+        self.run_pipeline(
+            citations=[_citation()],
+            judge_fn=judge_fn,
+            cache=cache,
+            config=_config(judge_prompt_version="promptB"),
+        )
+        self.assertEqual(
+            len(invocations), 2,
+            "a prompt-version change MUST invalidate the stale entry and re-invoke the judge",
+        )
+
+    def test_same_prompt_version_still_hits(self) -> None:
+        # Regression guard: identical prompt version keeps the existing dedup.
+        cache: dict[str, Any] = {}
+        invocations: list[Any] = []
+        judge_fn = self._counting_judge(invocations)
+
+        for _ in range(2):
+            self.run_pipeline(
+                citations=[_citation()],
+                judge_fn=judge_fn,
+                cache=cache,
+                config=_config(judge_prompt_version="promptA"),
+            )
+        self.assertEqual(
+            len(invocations), 1,
+            "two runs under the same prompt version must hit the cache (no dedup regression)",
+        )
+
+    def test_unknown_prompt_version_fails_closed(self) -> None:
+        # Caller declares the prompt version unknown (None). Across two distinct
+        # runs (different audit_run_id) the cache must NOT serve the stale entry
+        # — the unknown version binds a run-local component, so each run misses.
+        cache: dict[str, Any] = {}
+        invocations: list[Any] = []
+        judge_fn = self._counting_judge(invocations)
+
+        for run_id in ("2026-05-15T10:10:00Z-run1", "2026-05-15T10:20:00Z-run2"):
+            self.run_pipeline(
+                citations=[_citation()],
+                judge_fn=judge_fn,
+                cache=cache,
+                config=_config(judge_prompt_version=None),
+                audit_run_id=run_id,
+            )
+        self.assertEqual(
+            len(invocations), 2,
+            "an unknown prompt version must fail closed — no cross-run cache hit",
+        )
+
+    def test_unknown_prompt_version_dedups_within_a_run(self) -> None:
+        # Fail-closed must not break WITHIN-run dedup: two identical citations in
+        # the SAME run (same audit_run_id) share the run-local component, so the
+        # second is a hit — the judge runs once.
+        cache: dict[str, Any] = {}
+        invocations: list[Any] = []
+        judge_fn = self._counting_judge(invocations)
+
+        self.run_pipeline(
+            citations=[_citation(), _citation()],
+            judge_fn=judge_fn,
+            cache=cache,
+            config=_config(judge_prompt_version=None),
+        )
+        self.assertEqual(
+            len(invocations), 1,
+            "two identical citations in one run must still dedup under the run-local key",
+        )
+
+    def test_default_prompt_version_hits_across_runs(self) -> None:
+        # When the caller does NOT declare a version at all, the repo constant
+        # JUDGE_PROMPT_VERSION supplies a real version → normal dedup holds.
+        cache: dict[str, Any] = {}
+        invocations: list[Any] = []
+        judge_fn = self._counting_judge(invocations)
+
+        for _ in range(2):
+            self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
+        self.assertEqual(
+            len(invocations), 1,
+            "absent an explicit version, the repo constant is a real version and dedup holds",
+        )
+
+    def test_default_tracks_prompt_hash_not_version_label(self) -> None:
+        # codex P2: with NO explicit judge_prompt_version, the default cache-key
+        # prompt component must be the prompt FINGERPRINT (JUDGE_PROMPT_SHA256),
+        # not the decoupled human-readable JUDGE_PROMPT_VERSION label. A prompt
+        # edit that re-pins the SHA256 (lint enforces this) must AUTOMATICALLY
+        # invalidate stale entries — even if the author forgot to bump the
+        # version label. Patch the hash to two distinct 64-char values across two
+        # runs sharing one cache; the judge must be invoked TWICE (cache miss).
+        cache: dict[str, Any] = {}
+        invocations: list[Any] = []
+        judge_fn = self._counting_judge(invocations)
+        hash_a = "a" * 64
+        hash_b = "b" * 64
+
+        with mock.patch(
+            "scripts.claim_audit_pipeline.JUDGE_PROMPT_SHA256", hash_a
+        ):
+            self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
+        self.assertEqual(len(invocations), 1, "first run must invoke judge")
+
+        with mock.patch(
+            "scripts.claim_audit_pipeline.JUDGE_PROMPT_SHA256", hash_b
+        ):
+            self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
+        self.assertEqual(
+            len(invocations), 2,
+            "a re-pinned prompt hash MUST invalidate the stale entry and re-invoke "
+            "the judge — the default cache-key prompt component is the hash, not the "
+            "decoupled version label",
         )
 
 
