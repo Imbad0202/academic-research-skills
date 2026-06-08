@@ -44,10 +44,12 @@ What went wrong: the bundle holds **two** sub-claims with **different** support 
 
 Two atomic sub-claims fall out of the one "statistics" bundle. `not-mentioned` is recorded as silence, not opposition.
 
-### Step 2 — consensus per sub_claim
+### Step 2 — consensus per sub_claim (denominator = 4 non-DA reviewers)
 
-- **SC-1 (random-effects grouping unspecified):** spoke-to = {R1 raised, R2 corroborated} = 2 of 4; no `disputed`. Two reviewers agree, two silent → **[CONSENSUS-3]**-class action-bearing finding driven by R1's Confidence-5 weight. **Not a SPLIT** (no conflicting position).
-- **SC-2 (inconsistent reporting units):** spoke-to = {R1 raised, R3 corroborated} = 2 of 4; no `disputed` → a corroborated finding, R1 Confidence-5. **Not a SPLIT.**
+- **SC-1 (random-effects grouping unspecified):** `agree = 2` (R1 raised, R2 corroborated), `conflict = 0`, `silent = 2` (R3, EIC). Two agree, none conflict → a **corroborated finding** (below the CONSENSUS-3 bar of 3/4), action-bearing and prioritized by R1's Confidence-5 weight. **Not a CONSENSUS-3/4 label; not a SPLIT.**
+- **SC-2 (inconsistent reporting units):** `agree = 2` (R1 raised, R3 corroborated), `conflict = 0`, `silent = 2` (R2, EIC) → a **corroborated finding**, R1 Confidence-5. **Not a SPLIT.**
+
+Note the threshold discipline: even though every reviewer who *spoke* agreed, neither sub-claim is promoted to CONSENSUS-4 — the denominator is the full panel of 4, not the 2 who spoke, so 2/4 is a corroborated finding, not unanimity. This is exactly the mislabel the absolute-count rule prevents.
 
 Neither sub-claim triggers EIC arbitration — there is no `disputed` position anywhere, so finer granularity did **not** manufacture arbitration load. (Had R2 instead written "the grouping is clearly by site, this is a non-issue," SC-1 would carry a `disputed` position against R1's `raised`, and *then* it would be a genuine SPLIT requiring EIC arbitration.)
 

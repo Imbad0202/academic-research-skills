@@ -79,12 +79,14 @@ Requirements:
 
 [Only needed for Minor Revision and Major Revision]
 
-| # | Revision Item | Source Reviewer | Severity | Section | Estimated Effort |
-|---|--------------|----------------|----------|---------|-----------------|
-| R1 | [Description] | [EIC/R1/R2/R3] | Critical | [Section name] | [X days] |
-| R2 | [Description] | [Source] | Critical/Major | [Section name] | [X days] |
-| R3 | [Description] | [Source] | Major | [Section name] | [X days] |
+| # | Revision Item | Sub-Claim(s) | Source Reviewer | Severity | Section | Estimated Effort |
+|---|--------------|--------------|----------------|----------|---------|-----------------|
+| R1 | [Description] | [SC-n] | [EIC/R1/R2/R3] | Critical | [Section name] | [X days] |
+| R2 | [Description] | [SC-n] | [Source] | Critical/Major | [Section name] | [X days] |
+| R3 | [Description] | [SC-n] | [Source] | Major | [Section name] | [X days] |
 ...
+
+The `Sub-Claim(s)` column carries the Step 1b `sub_claim_id`(s) the item traces to (e.g. `SC-1`); a DA-CRITICAL or non-decomposed item uses `—`.
 
 ### Required Item Details
 
@@ -101,10 +103,10 @@ Requirements:
 
 ## Suggested Revisions (Should Fix)
 
-| # | Revision Item | Source Reviewer | Priority | Section | Expected Improvement |
-|---|--------------|----------------|----------|---------|---------------------|
-| S1 | [Description] | [Source] | P2 | [Section name] | [What it improves] |
-| S2 | [Description] | [Source] | P2/P3 | [Section name] | [What it improves] |
+| # | Revision Item | Sub-Claim(s) | Source Reviewer | Priority | Section | Expected Improvement |
+|---|--------------|--------------|----------------|----------|---------|---------------------|
+| S1 | [Description] | [SC-n] | [Source] | P2 | [Section name] | [What it improves] |
+| S2 | [Description] | [SC-n] | [Source] | P2/P3 | [Section name] | [What it improves] |
 ...
 
 ---

@@ -107,7 +107,7 @@ Split each weakness bundle into atomic sub-claims and record one row per `(sub_c
 
 - `sub_claim_id`: `SC-<n>`, synthesizer-assigned, stable within this synthesis.
 - `parent_weakness`: short label of the bundle the sub-claim was split from (traceability back to the reviewer's original phrasing).
-- `position` ∈ `{raised, corroborated, not-mentioned, disputed}`. **`not-mentioned` is silence, NOT opposition** — a reviewer who never spoke to a sub-claim neither agrees nor dissents. Only `disputed` is a conflicting position.
+- `position` ∈ `{raised, corroborated, not-mentioned, disputed}`. **`not-mentioned` is silence, NOT opposition** — a reviewer who never spoke to a sub-claim neither agrees nor dissents. `disputed` is the one conflicting position: use it when a reviewer either (a) argues the sub-claim is NOT a real problem, OR (b) agrees the problem exists but recommends an **incompatible remedy / materially different severity** than another reviewer. Both an existence conflict and an action/severity conflict are `disputed`.
 - `evidence_pointer`: where in the reviewer's card the sub-claim is grounded.
 - `confidence`: that reviewer's existing Confidence Score (1–5) for the finding; it drives the weighting rule below at the sub-claim level.
 
@@ -121,20 +121,26 @@ Split each weakness bundle into atomic sub-claims and record one row per `(sub_c
 
 Consensus is determined across the 4 non-DA reviewers (EIC, R1, R2, R3), **computed per `sub_claim_id` from the Step 1b inventory** (not per weakness bundle). The DA's findings are handled separately.
 
-**Counting rule:** a reviewer "spoke to" a sub-claim if their `position ∈ {raised, corroborated, disputed}`. A `not-mentioned` position counts as neither agreement nor opposition — it never adds to a consensus count and never manufactures a SPLIT.
+**Counting rule.** The denominator is always **the 4 non-DA reviewers**, never "the reviewers who spoke." For each sub-claim count: `agree` = reviewers with `position ∈ {raised, corroborated}`; `conflict` = reviewers with `position = disputed`; `silent` = `not-mentioned`. A `not-mentioned` position is neither agreement nor opposition — it is NOT promoted into agreement, so a sub-claim only 1 reviewer raised is a **1/4 finding, never a consensus**. (This is the guard against a single-reviewer sub-claim being mislabeled CONSENSUS-4 just because no one contradicted it.)
+
+The labels are pinned to absolute counts over 4:
 
 #### [CONSENSUS-4]: Unanimous Agreement
-- All 4 reviewers who spoke to the sub-claim agree on it AND the recommended action
+- **All 4** reviewers agree on the sub-claim AND the recommended action (`agree = 4`, `conflict = 0`)
 - Highest weight in the Revision Roadmap
 - Author MUST address (no "respectfully decline" option)
 
 #### [CONSENSUS-3]: Strong Majority
-- 3 of 4 reviewers agree on the sub-claim
-- Must explicitly name the dissenting reviewer and summarize their counter-reasoning
-- Author should address but may provide counter-justification if the dissent has merit
+- **3 of 4** reviewers agree (`agree = 3`); name the 4th's position (dissent or silence) explicitly
+- Author should address but may provide counter-justification if a dissent has merit
+
+#### Corroborated / single-reviewer findings (below the consensus bar)
+- `agree = 2, conflict = 0` → **corroborated finding** (two reviewers, no conflict): action-bearing, prioritized by the Confidence Score Weighting rules below — but it is NOT a CONSENSUS-3/4 label.
+- `agree = 1` → **single-reviewer finding**: noted and weighted by its Confidence Score; it does not carry a consensus label and is not a SPLIT.
+- These never trigger EIC arbitration on their own (no conflict to arbitrate).
 
 #### [SPLIT]: Divided Opinion
-- **A SPLIT requires ≥2 reviewers holding explicitly conflicting positions on the SAME sub-claim** — i.e. ≥1 `disputed` against ≥1 `raised`/`corroborated` for an action-bearing sub-claim (2v2 or more fragmented, e.g. 2-1-1 with opposing positions).
+- **A SPLIT requires `conflict ≥ 1` AND `agree ≥ 1` on the SAME sub-claim** — i.e. ≥1 `disputed` (existence OR action/severity conflict) against ≥1 `raised`/`corroborated` for an action-bearing sub-claim (2v2 or more fragmented, e.g. 2-1-1 with opposing positions).
 - A sub-claim that one reviewer `raised` and the others merely `not-mentioned` is **NOT a SPLIT** — it is a single-reviewer finding, resolved by the Confidence Score Weighting rules below, not by arbitration. (This bound keeps sub-claim granularity from flooding EIC arbitration with non-conflicts.)
 - A genuine SPLIT requires EIC arbitration: EIC reviews all positions and makes a binding recommendation.
 - Author receives the EIC's arbitrated recommendation, not the raw split.
@@ -265,20 +271,22 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ## Part 2: Revision Roadmap
 
+> The `Sub-Claim(s)` column carries the Step 1b `sub_claim_id`(s) each item traces to (e.g. `SC-1`), so the decomposed granularity survives to the output boundary. A pre-decomposition / DA-CRITICAL item that has no sub-claim id uses `—`.
+
 ### Required Revisions (Must Fix)
 
-| # | Revision Item | Source | Priority | Estimated Effort |
-|---|--------------|--------|----------|-----------------|
-| R1 | [Description] | [EIC/R1/R2/R3] | P1 | [Time] |
-| R2 | [Description] | [Source] | P1 | [Time] |
+| # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
+|---|--------------|--------------|--------|----------|-----------------|
+| R1 | [Description] | [SC-n] | [EIC/R1/R2/R3] | P1 | [Time] |
+| R2 | [Description] | [SC-n] | [Source] | P1 | [Time] |
 ...
 
 ### Suggested Revisions (Should Fix)
 
-| # | Revision Item | Source | Priority | Estimated Effort |
-|---|--------------|--------|----------|-----------------|
-| S1 | [Description] | [Source] | P2 | [Time] |
-| S2 | [Description] | [Source] | P2/P3 | [Time] |
+| # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
+|---|--------------|--------------|--------|----------|-----------------|
+| S1 | [Description] | [SC-n] | [Source] | P2 | [Time] |
+| S2 | [Description] | [SC-n] | [Source] | P2/P3 | [Time] |
 ...
 
 ### Revision Checklist (Checkable List)

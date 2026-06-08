@@ -81,4 +81,4 @@ Step 5 Revision Roadmap construction: each roadmap item traces to a `sub_claim_i
 
 - Prose self-consistency: the worked example must round-trip through the new Step 1a/1b/Step 2/Step 5 without contradiction.
 - If a line-budget test covers this agent, update its expected count for the added section.
-- Public-repo discipline: paper-derived, full citation; no internal / PII content. Pre-push hygiene scan + independent dual-track review (0 P1/P2) before merge.
+- Paper-derived: full citation to the source; no internal or personal content in the change.
