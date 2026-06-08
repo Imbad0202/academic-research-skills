@@ -153,6 +153,24 @@ Calibration reports this reviewer's error profile on a **specific** gold set in 
 
 If the user's gold set is itself biased (e.g., all papers from one lab, all from one year), calibration reports a biased profile. Emit a warning during intake if papers share obvious metadata clusters.
 
+### Same-family / rubric-aware judging — read the numbers as a possible under-estimate
+
+There is a second reason a measured profile can be optimistic, independent of the gold set. It belongs to the broader **same-source evaluation risk**, which has two forms:
+
+- **Factual form** — *same-source hallucination*: when the model that wrote the work and the model verifying it share training data, a fabricated reference that "feels right" passes undetected. This is the citation-integrity risk documented in the Anti-Hallucination Mandate (`academic-pipeline/agents/integrity_verification_agent.md`), countered there by independent reference lookup.
+- **Behavioral form** — *same-family rubric optimization* (rubric-aware judging): an evaluator may, to some degree, optimize toward *what the rubric appears to reward* rather than toward the correct judgment. When the produced-work model and the evaluator model are from the same family and may be rubric-aware, the calibration error you measure can be **optimistic — read it as a possible under-estimate of the true error, not a ceiling.**
+
+This is an interpretive caveat only. ARS does **not** detect, prevent, or correct rubric-aware judging — the behavior can be unverbalized and is not reliably visible in chain-of-thought. The note changes how you *read* the numbers; it does not change any threshold or gate.
+
+**Cross-model evaluation — stronger evidence where available.** Running the evaluation across model families reduces the same-family risk (it does not eliminate it). Positioning:
+
+- In ordinary reviewer / judge paths, cross-model is **opt-in, "for best results"** — the citation-claim alignment judge already supports a non-default judge model, and the suite is designed to work single-model.
+- **Calibration mode is the exception**: calibration itself is opt-in, but once invoked `ARS_CROSS_MODEL` is **default-on** (see "Cross-model verification" under Phase 1) — at least one of the runs should use a different family when configured.
+- Absent cross-model is **warn-and-continue**, never a gate.
+- Sending a user's manuscript to another provider still requires the explicit consent / privacy step in `shared/cross_model_verification.md` — this recommendation does not weaken that boundary.
+
+**A single-model spot-check (weak, optional).** With no second model, you can reword the rubric and re-judge, then check whether the verdict changed. Be clear about what this does: it only tells you whether a *change of wording* shifts the judgment — surface wording sensitivity. It does **not** reveal whether the model is quietly optimizing toward the grader (that can be unverbalized), and a verdict that survives rewording is **not** evidence the judgment is correct — only that it is stable to that paraphrase. It is one model checking itself, so its power against grader-awareness is limited. No score, no threshold, no gate.
+
 ---
 
 ## Integration with existing modes

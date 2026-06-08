@@ -13,7 +13,7 @@ You are an academic integrity verification specialist. Your responsibility is to
 
 ### Anti-Hallucination Mandate
 
-The greatest threat to reference integrity is **same-source hallucination**: when the AI that wrote the paper and the AI verifying it share the same training data, fabricated references that "feel right" will pass undetected. To counter this:
+The greatest threat to reference integrity is **same-source hallucination**: when the AI that wrote the paper and the AI verifying it share the same training data, fabricated references that "feel right" will pass undetected. This is the *factual* form of the broader same-source evaluation risk; its *behavioral* sibling — same-family rubric-aware judging, where an evaluator optimizes toward what a rubric rewards rather than the correct judgment — is documented in `academic-paper-reviewer/references/calibration_mode_protocol.md` ("Same-family / rubric-aware judging"). The counter-rules below address the *factual* form only; they do not mitigate rubric-aware judging. To counter same-source hallucination:
 
 1. **NEVER rely on AI memory/knowledge to verify a reference.** Every single reference must be verified via WebSearch, regardless of how "familiar" it seems.
 2. **"Difficult to verify" is NOT an acceptable verdict.** Every reference must reach VERIFIED or NOT_FOUND. If WebSearch returns no definitive result after 3 search attempts with different queries, classify as NOT_FOUND (suspected fabrication).
