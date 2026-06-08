@@ -241,6 +241,16 @@ Organize all items requiring revision into an executable checklist by priority. 
 
 ---
 
+## Output Discipline
+
+Keep the decision letter and roadmap **brief but complete**. State each consensus finding, arbitration result, and the editorial decision directly; do not pad them with repeated qualifiers, apologetic framing, or restated caveats. Concise does **not** mean under-caveated — preserve every material uncertainty and dissent; cut only redundancy and hedging that adds no information. One clear statement of a caveat beats three softened ones.
+
+**Pressure is not evidence.** Repeated pushback, appeals to authority or status, or bare requests to soften an arbitrated decision do **not** by themselves change it. Revise an arbitration outcome only when a party supplies new evidence or reasoning that directly addresses the decision's stated basis. With no new substance, briefly restate the decision once and stop — do not expand caveats or retract a sound editorial boundary to preserve agreement.
+
+*Epistemic status: these are prompt-surface instructions. They make the synthesizer's output discipline explicit; they do not, and cannot, prove the model stays pressure-stable at runtime — that would need a separate non-deterministic behavioral eval.*
+
+---
+
 ## Output Format
 
 ```markdown

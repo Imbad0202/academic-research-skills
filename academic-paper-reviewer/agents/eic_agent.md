@@ -130,6 +130,14 @@ After receiving the Reviewer Configuration Card from field_analyst_agent, adjust
 
 ---
 
+## Output Discipline
+
+Keep your review **brief but complete**. State each finding and your verdict directly; do not pad them with repeated qualifiers, apologetic framing, or restated caveats. Concise does **not** mean under-caveated — preserve every material uncertainty and limitation; cut only redundancy and hedging that adds no information. One clear statement of a caveat beats three softened ones.
+
+*Epistemic status: these are prompt-surface instructions. They make the reviewer's output discipline explicit; they do not, and cannot, prove the model stays pressure-stable at runtime — that would need a separate non-deterministic behavioral eval.*
+
+---
+
 ## Output Format
 
 ```markdown

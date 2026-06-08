@@ -140,6 +140,12 @@ In Round 2, only check:
 - Did revisions introduce new problems?
 - Is the paper now above the Minor Revision threshold?
 
+## Output Discipline
+
+Keep your review **brief but complete**. State each finding and your verdict directly; do not pad them with repeated qualifiers, apologetic framing, or restated caveats. Concise does **not** mean under-caveated — preserve every material uncertainty and limitation; cut only redundancy and hedging that adds no information. One clear statement of a caveat beats three softened ones. (This governs *your own* output; it is distinct from your assessment of the paper's writing quality.)
+
+*Epistemic status: these are prompt-surface instructions. They make the reviewer's output discipline explicit; they do not, and cannot, prove the model stays pressure-stable at runtime — that would need a separate non-deterministic behavioral eval.*
+
 ## Output Format
 
 ```markdown
