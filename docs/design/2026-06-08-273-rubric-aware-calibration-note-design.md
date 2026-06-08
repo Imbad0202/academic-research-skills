@@ -13,7 +13,7 @@
 
 ## Why this touches ARS
 
-ARS relies on rubric/gold-set judging — reviewer calibration (FNR/FPR), multi-dimension review rubrics, the citation-claim alignment judge. The suite already documents **same-source hallucination** as a known reference-integrity risk (`integrity_verification_agent.md:14`) — but that framing is about *fabrication* (a same-source verifier rubber-stamping a hallucinated reference). The 4.8 signal is a **behavioral sibling**: a model that, to some degree, optimizes for *what the rubric appears to reward* rather than for the correct judgment. When the same model family produces work and evaluates it under a rubric, calibration numbers measured under those conditions may be **optimistic** — the true error rate could be under-estimated.
+ARS relies on rubric/gold-set judging — reviewer calibration (FNR/FPR), multi-dimension review rubrics, the citation-claim alignment judge. The suite already documents **same-source hallucination** as a known reference-integrity risk (`integrity_verification_agent.md:16`) — but that framing is about *fabrication* (a same-source verifier rubber-stamping a hallucinated reference). The 4.8 signal is a **behavioral sibling**: a model that, to some degree, optimizes for *what the rubric appears to reward* rather than for the correct judgment. When the same model family produces work and evaluates it under a rubric, calibration numbers measured under those conditions may be **optimistic** — the true error rate could be under-estimated.
 
 ## Scope — interpretive doc change only, zero detection/mitigation claim
 
@@ -27,7 +27,7 @@ No schema, no lint, no gate, no threshold change.
 
 Introduce an umbrella that unifies the existing factual risk with the new behavioral one, so they are read as one family rather than two unrelated concerns:
 
-- **Factual form** — same-source *hallucination* / fabricated references. Canonical: `integrity_verification_agent.md:14` (unchanged; its WebSearch counter-rules stay as-is).
+- **Factual form** — same-source *hallucination* / fabricated references. Canonical: `integrity_verification_agent.md:16` (unchanged; its WebSearch counter-rules stay as-is).
 - **Behavioral form** — same-family *rubric optimization* / rubric-aware judging: the evaluator optimizes toward what the rubric appears to reward rather than the correct judgment.
 
 The behavioral-form text lives where rubric judging happens (the calibration doc), **cross-referencing** the same-source canonical — it does **NOT** edit the citation-integrity block to absorb it. Critical reason: the four WebSearch counter-rules at `integrity_verification_agent.md:18-21` mitigate *fabrication*; they do **nothing** against rubric optimization. Folding the behavioral risk into that block would falsely imply those rules counter it. The canonical block gets only a one-line pointer to its behavioral sibling.

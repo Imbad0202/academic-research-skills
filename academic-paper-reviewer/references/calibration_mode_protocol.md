@@ -162,7 +162,7 @@ There is a second reason a measured profile can be optimistic, independent of th
 
 This is an interpretive caveat only. ARS does **not** detect, prevent, or correct rubric-aware judging — the behavior can be unverbalized and is not reliably visible in chain-of-thought. The note changes how you *read* the numbers; it does not change any threshold or gate.
 
-**Cross-model evaluation — stronger evidence where available.** Running the evaluation across model families reduces the same-family risk (it does not eliminate it). Positioning:
+**Cross-model evaluation — stronger evidence where available.** Running the evaluation across model families provides **stronger evidence** than a same-family-only run; it still does **not** detect or rule out rubric-aware judging. Positioning:
 
 - In ordinary reviewer / judge paths, cross-model is **opt-in, "for best results"** — the citation-claim alignment judge already supports a non-default judge model, and the suite is designed to work single-model.
 - **Calibration mode is the exception**: calibration itself is opt-in, but once invoked `ARS_CROSS_MODEL` is **default-on** (see "Cross-model verification" under Phase 1) — at least one of the runs should use a different family when configured.
