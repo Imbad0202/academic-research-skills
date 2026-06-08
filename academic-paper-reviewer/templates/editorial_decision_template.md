@@ -45,8 +45,8 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 1. [Consensus content — cite relevant passages from each reviewer's report]
 2. [...]
 
-**[CONSENSUS-3]** (3/4 reviewers agree):
-1. [Consensus content — indicate which 3 agree and which 1 has a different view]
+**[CONSENSUS-3]** (3/4 reviewers agree, the 4th **silent**):
+1. [Consensus content — indicate which 3 agree and name the silent 4th. If the 4th *disputes* the sub-claim rather than being silent, it is a SPLIT (see Points of Disagreement), not a CONSENSUS-3.]
 2. [...]
 
 ### Points of Disagreement

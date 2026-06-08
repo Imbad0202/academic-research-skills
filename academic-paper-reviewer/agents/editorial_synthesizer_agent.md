@@ -123,6 +123,8 @@ Consensus is determined across the 4 non-DA reviewers (EIC, R1, R2, R3), **compu
 
 **Counting rule.** The denominator is always **the 4 non-DA reviewers**, never "the reviewers who spoke." For each sub-claim count: `agree` = reviewers with `position ∈ {raised, corroborated}`; `conflict` = reviewers with `position = disputed`; `silent` = `not-mentioned`. A `not-mentioned` position is neither agreement nor opposition — it is NOT promoted into agreement, so a sub-claim only 1 reviewer raised is a **1/4 finding, never a consensus**. (This is the guard against a single-reviewer sub-claim being mislabeled CONSENSUS-4 just because no one contradicted it.)
 
+Every sub-claim in the Step 1b inventory has `agree ≥ 1` by construction — the synthesizer only creates a sub-claim from a weakness a reviewer actually `raised`/`corroborated`, so `agree = 0` rows do not exist and need no disposition. (A reviewer can only `dispute` a sub-claim that some reviewer raised.)
+
 The labels are pinned to absolute counts over 4 and are **mutually exclusive**. Assign exactly one disposition per sub-claim in this precedence order:
 
 **Disposition precedence (apply top-down; first match wins):**
