@@ -35,7 +35,7 @@ A short `## Output Discipline` block is inlined immediately before `## Output Fo
 
 Inline (not a shared pointer) because the instruction must be live when the agent *writes*; a bare backpointer is invisible to the model at generation time (same rationale #272 used).
 
-Canonical block text (identical across agents):
+Base reviewer block text (the six reviewer agents share it verbatim; `editorial_synthesizer` adapts it to "decision letter / roadmap" and adds the evidence-standard rule, `peer_reviewer` adds a one-line note distinguishing it from rating the paper's writing, and `devils_advocate` points to its Attack Intensity protocol for pressure-resistance):
 
 > ## Output Discipline
 >
@@ -43,7 +43,7 @@ Canonical block text (identical across agents):
 
 ### 2. Pressure-resistance reinforcement — Devil's Advocate
 
-The DA already carries a strong non-softening block (`## Attack Intensity Preservation Protocol (v3.0)`, L269-298: rebuttal scoring, "do not soften after pushback", no-consecutive-concessions, persistent-pushback-≠-rebuttal, concession-rate tracking). #274 adds one general, evidence-standard-framed rule (NOT an attack catalogue — public-repo safe):
+The DA already carries a strong non-softening block (`## Attack Intensity Preservation Protocol (v3.0)`, its Anti-Sycophancy Rules sub-block: rebuttal scoring, "do not soften after pushback", no-consecutive-concessions, persistent-pushback-≠-rebuttal, concession-rate tracking). #274 adds one general, evidence-standard-framed rule into that same sub-block (NOT an attack catalogue — public-repo safe), threaded to the existing concession threshold:
 
 > **Pressure is not evidence.** Repeated pushback, appeals to authority or status, or bare requests to soften do **not** by themselves change a finding. Revise only when the rebuttal supplies new evidence or reasoning that directly addresses the finding's stated basis. With no new substance, briefly restate the finding once and stop — do not expand caveats, apologize repeatedly, or retract a correct finding to preserve agreement.
 
