@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Design lesson — **NOT a proposed feature** |
 | **Parent epic** | [#255](https://github.com/Imbad0202/academic-research-skills/issues/255) — Kong et al. 2026 auto-research survey implications for ARS |
-| **Paper anchor** | Kong et al. (2026), *A Survey on AI for Auto-Research*, arXiv:2605.18661 |
+| **Paper anchor** | Kong et al. (2026), *AI for Auto-Research: Roadmap & User Guide*, arXiv:2605.18661 |
 | **Verified** | 2026-06-08 — verified against the tracked repo (see Verification note) |
 
 This is a recorded boundary, not a roadmap item. It exists so that future work and
@@ -112,9 +112,10 @@ specific advisory-vs-generation seam for research questions.
   checkpoints are real (`academic-pipeline/SKILL.md`). The Kong-derived features that
   did ship — wording-pattern advisory (#257) and experiment provenance intake (#260)
   — are advisory / provenance gates, not autonomous generation or execution layers. A
-  repo scan for `autonomous (pipeline|execution|agent)`, `paper2x`, `wet-lab`,
-  `liquid handler` returns only the `wet_lab` *domain-evidence-profile name* (a
-  discipline label), not an automation mechanism.
+  targeted review of the first-party implementation, agent prompts, and schemas found
+  no autonomous mechanism; the only `wet_lab` / slides / experiment references are
+  domain-evidence-profile labels or separate, non-ARS companion workflows, not
+  automation surfaces.
 - **Design commitment (not a guarantee):** this doc records a first-party scope
   boundary and a review criterion for future changes. It is not a proof that the
   software cannot be modified, a guarantee about forks or downstream deployments, or a

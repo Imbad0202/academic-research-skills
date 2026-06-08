@@ -5,7 +5,7 @@
 | **Status** | Design lesson — **NOT a proposed feature** |
 | **Parent epic** | [#255](https://github.com/Imbad0202/academic-research-skills/issues/255) — Kong et al. 2026 auto-research survey implications for ARS |
 | **Sub-issue** | [#257](https://github.com/Imbad0202/academic-research-skills/issues/257) — wording-pattern + distributional-skew advisory (the ACCEPTED side of this line) |
-| **Paper anchor** | Kong et al. (2026), *A Survey on AI for Auto-Research*, arXiv:2605.18661, §3.1 (idea generation), §7.4.2 / §7.4.7 (idea clusters, cognitive ownership) |
+| **Paper anchor** | Kong et al. (2026), *AI for Auto-Research: Roadmap & User Guide*, arXiv:2605.18661, §3.1 (idea generation), §7.4.2 / §7.4.7 (idea clusters, cognitive ownership) |
 | **Verified** | 2026-06-08 — verified against the tracked repo (see Verification note) |
 
 This is a recorded boundary, not a roadmap item. It exists so that future work and

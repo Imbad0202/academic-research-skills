@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Closeout design note for META [#255](https://github.com/Imbad0202/academic-research-skills/issues/255) |
 | **Scope** | Documentation only — no schema, no agent prompt, no lint change |
-| **Paper anchor** | Kong et al. (2026), *A Survey on AI for Auto-Research*, arXiv:2605.18661 |
+| **Paper anchor** | Kong et al. (2026), *AI for Auto-Research: Roadmap & User Guide*, arXiv:2605.18661 |
 | **Verified** | 2026-06-08 — ship-state of #257 / #260 and absence of autonomous mechanisms verified against the tracked repo (see Verification) |
 
 ## Why this exists
@@ -107,12 +107,14 @@ commitment, so the boundary is not mis-stated as a proven property:
 - #260 (experiment provenance intake) shipped: commit `d066340` (PR `#374`) on
   `main`; `shared/contracts/passport/experiment_provenance_entry.schema.json` exists;
   it is a scholar-declared intake + claim-alignment gate, not an execution layer.
-- No autonomous mechanism exists: a repo scan for `autonomous (pipeline|execution|
-  agent)`, `paper2x`, `wet-lab`, `liquid handler` returns only the `wet_lab`
-  *domain-evidence-profile name* (a discipline label in `intake_agent` /
-  `literature_strategist_agent` / `domain_evidence_profiles`), not an automation
-  mechanism. So the "no autonomous mechanism today" claim is a verified fact, not an
-  aspiration.
+- No autonomous mechanism exists: a targeted review of the first-party
+  implementation, agent prompts, and schemas found no end-to-end pipeline,
+  idea-generation agent, Paper2X generator, autonomous experiment executor, or
+  wet-lab automation API. The only `wet_lab` references are domain-evidence-profile
+  labels (a discipline label in `intake_agent` / `literature_strategist_agent` /
+  `domain_evidence_profiles`); dissemination is handled by separate, non-ARS
+  companion skills. So the "no autonomous mechanism today" claim is a reviewed
+  finding, not an aspiration.
 
 ## Closeout
 
