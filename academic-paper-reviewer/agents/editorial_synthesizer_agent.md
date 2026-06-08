@@ -123,24 +123,28 @@ Consensus is determined across the 4 non-DA reviewers (EIC, R1, R2, R3), **compu
 
 **Counting rule.** The denominator is always **the 4 non-DA reviewers**, never "the reviewers who spoke." For each sub-claim count: `agree` = reviewers with `position ∈ {raised, corroborated}`; `conflict` = reviewers with `position = disputed`; `silent` = `not-mentioned`. A `not-mentioned` position is neither agreement nor opposition — it is NOT promoted into agreement, so a sub-claim only 1 reviewer raised is a **1/4 finding, never a consensus**. (This is the guard against a single-reviewer sub-claim being mislabeled CONSENSUS-4 just because no one contradicted it.)
 
-The labels are pinned to absolute counts over 4:
+The labels are pinned to absolute counts over 4 and are **mutually exclusive**. Assign exactly one disposition per sub-claim in this precedence order:
 
-#### [CONSENSUS-4]: Unanimous Agreement
-- **All 4** reviewers agree on the sub-claim AND the recommended action (`agree = 4`, `conflict = 0`)
+**Disposition precedence (apply top-down; first match wins):**
+1. **`conflict ≥ 1` → [SPLIT]** (see below). A conflict always routes to arbitration FIRST — a disputed sub-claim is never also labeled CONSENSUS-3 or a single-reviewer finding, even if 3 others agree. (A 3-agree / 1-disputed sub-claim is a SPLIT the EIC arbitrates, not a CONSENSUS-3 with a footnote.)
+2. Otherwise (`conflict = 0`), assign by `agree` count below.
+
+#### [CONSENSUS-4]: Unanimous Agreement (`agree = 4, conflict = 0`)
+- All 4 reviewers agree on the sub-claim AND the recommended action
 - Highest weight in the Revision Roadmap
 - Author MUST address (no "respectfully decline" option)
 
-#### [CONSENSUS-3]: Strong Majority
-- **3 of 4** reviewers agree (`agree = 3`); name the 4th's position (dissent or silence) explicitly
-- Author should address but may provide counter-justification if a dissent has merit
+#### [CONSENSUS-3]: Strong Majority (`agree = 3, conflict = 0`)
+- 3 of 4 reviewers agree, the 4th is **silent** (`not-mentioned`); name the silent reviewer explicitly
+- Author should address; an agreed sub-claim with a *disputing* 4th reviewer is a SPLIT (precedence rule 1), not a CONSENSUS-3
 
-#### Corroborated / single-reviewer findings (below the consensus bar)
+#### Corroborated / single-reviewer findings (below the consensus bar, `conflict = 0`)
 - `agree = 2, conflict = 0` → **corroborated finding** (two reviewers, no conflict): action-bearing, prioritized by the Confidence Score Weighting rules below — but it is NOT a CONSENSUS-3/4 label.
-- `agree = 1` → **single-reviewer finding**: noted and weighted by its Confidence Score; it does not carry a consensus label and is not a SPLIT.
+- `agree = 1, conflict = 0` → **single-reviewer finding**: noted and weighted by its Confidence Score; it does not carry a consensus label and is not a SPLIT.
 - These never trigger EIC arbitration on their own (no conflict to arbitrate).
 
-#### [SPLIT]: Divided Opinion
-- **A SPLIT requires `conflict ≥ 1` AND `agree ≥ 1` on the SAME sub-claim** — i.e. ≥1 `disputed` (existence OR action/severity conflict) against ≥1 `raised`/`corroborated` for an action-bearing sub-claim (2v2 or more fragmented, e.g. 2-1-1 with opposing positions).
+#### [SPLIT]: Divided Opinion (`conflict ≥ 1 AND agree ≥ 1`)
+- **A SPLIT is any sub-claim with `conflict ≥ 1` AND `agree ≥ 1`** — ≥1 `disputed` (existence OR action/severity conflict) against ≥1 `raised`/`corroborated`. By precedence rule 1 this outranks every consensus/finding label, so `(3 agree, 1 disputed)` and `(1 agree, 1 disputed)` are both SPLITs, not double-labeled.
 - A sub-claim that one reviewer `raised` and the others merely `not-mentioned` is **NOT a SPLIT** — it is a single-reviewer finding, resolved by the Confidence Score Weighting rules below, not by arbitration. (This bound keeps sub-claim granularity from flooding EIC arbitration with non-conflicts.)
 - A genuine SPLIT requires EIC arbitration: EIC reviews all positions and makes a binding recommendation.
 - Author receives the EIC's arbitrated recommendation, not the raw split.
