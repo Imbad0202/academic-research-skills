@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.11.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.11.1)
+[![Version](https://img.shields.io/badge/version-v3.12.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.12.0)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -241,7 +241,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查團隊 vs. 精簡再審團隊的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.11.1)
+### Academic Pipeline (v3.12.0)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）不可跳過；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -304,6 +304,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.12.0（2026-06-08）— Kong 自動研究功能線：實驗來源、圖表保真、跨論文矛盾、部分證據拆解
+
+> 一個 minor release，落地 Kong et al.（2026，arXiv:2605.18661）自動研究功能線，以及部分證據陷阱的拆解工作，每項都已各自審查並 merge。**新功能：** 實驗來源登錄 + 宣稱對實驗對齊 —— 為實驗支撐的宣稱建立 schema-first 的證據帳本層，只做登錄與對齊（學者在外部跑實驗，ARS 從不執行）（#260）；圖表保真 gate，查驗 caption 的詮釋是否從資料推得、論文是否拿該圖表佐證它真正支撐的宣稱（#261）；結構化的跨論文矛盾盤點，把已評估的論文對列舉出來供學者確認（#262）；以及在引用判定（#213）與編輯統合（#214）兩層都先做子宣稱拆解再判定，於兩層收斂 §F.3.2 部分證據陷阱。**引導與詮釋層：** 對產報告的審稿人加上精簡輸出 + 抗壓邊界強化（#274）；同源／rubric-aware 校準的認識論註記（#273）；把檢索內容的指令／資料邊界訂為常設原則（#367）。**負面範圍：** Kong META（#255）收尾，在 `POSITIONING.md` 加「拒絕機制」段落列舉 ARS 不做的五種自主機制，外加兩份 Tier D 設計教訓文件。**發版紀律 lint：** version-consistency 不變量 5–7（#357）與 ARCHITECTURE 元件版號稽核（#345）。另含跨模型 grounding guard（#346 / #349 / #351）、引用 gate 快取鍵與 rationale 上界（#359 / #360 / #361）、eval 黃金集（#250）、ACL/EMNLP 揭露重新接地（#242）等正確性修正。新增的 schema、manifest 欄位與所有不變量皆為增量、向後相容。`academic-pipeline` 隨 suite 升至 v3.12.0；其餘三個 skill 版號不變。逐 issue 細節見 `CHANGELOG.md`。
 
 ### v3.11.1（2026-06-06）— 出貨後正確性、強化與來源修正彙整
 

@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.11.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.11.1)
+[![Version](https://img.shields.io/badge/version-v3.12.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.12.0)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -241,7 +241,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，搭配 **0-100 质量量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**决策对照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一轮审查团队 vs. 精简再审团队的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.11.1)
+### Academic Pipeline (v3.12.0)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）不可跳过；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -304,6 +304,12 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新纪录
+
+### v3.12.0（2026-06-08）— Kong 自动研究功能线：实验来源、图表保真、跨论文矛盾、部分证据拆解
+
+> **[machine-translated]** 本条目为机器翻译，待母语 contributor 校订；以英文版 CHANGELOG 为准。
+
+> 一个 minor release，落地 Kong et al.（2026，arXiv:2605.18661）自动研究功能线，以及部分证据陷阱的拆解工作，每项都已各自审查并 merge。**新功能：** 实验来源登录 + 宣称对实验对齐 —— 为实验支撑的宣称建立 schema-first 的证据帐本层，只做登录与对齐（学者在外部跑实验，ARS 从不执行）（#260）；图表保真 gate，查验 caption 的诠释是否从资料推得、论文是否拿该图表佐证它真正支撑的宣称（#261）；结构化的跨论文矛盾盘点，把已评估的论文对列举出来供学者确认（#262）；以及在引用判定（#213）与编辑统合（#214）两层都先做子宣称拆解再判定，于两层收敛 §F.3.2 部分证据陷阱。**引导与诠释层：** 对产报告的审稿人加上精简输出 + 抗压边界强化（#274）；同源／rubric-aware 校准的认识论注记（#273）；把检索内容的指令／资料边界订为常设原则（#367）。**负面范围：** Kong META（#255）收尾，在 `POSITIONING.md` 加「拒绝机制」段落列举 ARS 不做的五种自主机制，外加两份 Tier D 设计教训文件。**发版纪律 lint：** version-consistency 不变量 5–7（#357）与 ARCHITECTURE 元件版号稽核（#345）。另含跨模型 grounding guard（#346 / #349 / #351）、引用 gate 快取键与 rationale 上界（#359 / #360 / #361）、eval 黄金集（#250）、ACL/EMNLP 揭露重新接地（#242）等正确性修正。新增的 schema、manifest 字段与所有不变量皆为增量、向后兼容。`academic-pipeline` 随 suite 升至 v3.12.0；其余三个 skill 版号不变。逐 issue 细节见 `CHANGELOG.md`。
 
 ### v3.11.1（2026-06-06）— 出货后正确性、强化与来源修正汇整
 

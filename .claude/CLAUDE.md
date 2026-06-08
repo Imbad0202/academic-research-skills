@@ -9,7 +9,20 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.9.4 | 13-agent research team | full, quick, socratic, review, lit-review, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.11.1 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.12.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.12 Key Additions (Kong auto-research feature track + partial-evidence decomposition)
+
+**External motivation:** Kong et al. arXiv:2605.18661 (2026), *AI for Auto-Research: Roadmap & User Guide*. v3.12 ships the Kong feature track plus the §F.3.2 partial-evidence-trap work (Kim et al. arXiv:2605.20668v1), all additive and backward-compatible. `academic-pipeline` tracks the suite at v3.12.0; the other three skill versions are unchanged.
+
+- **Experiment Provenance Intake + claim→experiment alignment (#260).** A schema-first evidence-ledger layer for experiment-backed claims — intake and alignment only; the scholar runs experiments externally and ARS never executes them. New `experiment_provenance[]` Material Passport aggregate (nested `repro_lock`, `planned_vs_executed[]`, `negative_results[]` / `known_limitations[]`) + a fourth ref_slug-less `experiment_alignment_results[]` aggregate with a MECE verdict enum, verdict produced AT the integrity gate (worst-verdict-wins on mixed-evidence claims). Seven cross-array invariants (EP-INV-1..5 / EA-INV-1..2) + fail-closed `experiment_intake_declaration` legacy boundary.
+- **Figure/Table Fidelity Gate (#261).** Extends the VLM Figure Verification Protocol with a `figure_table_trace[]` prose contract — checks whether a caption's interpretation follows from the data and whether the manuscript cites the artifact for a claim it actually supports. Stage 4.5 Phase C3. Prose-layer only (no schema).
+- **Cross-Paper Contradiction inventory (#262).** A `synthesis_agent` Step 3b emitting `cross_paper_tensions[]` so the assessed paper-pairs and unresolved tensions are enumerable for scholar confirmation, with a mandatory Coverage Note stating the recall limitation. Prose-layer only.
+- **Partial-evidence decomposition (#213 / #214).** Sub-claim decomposition before judgment in both the citation judge (#213, schema + INV-19 + calibration) and the editorial synthesizer (#214, prose-layer), closing the §F.3.2 partial-evidence trap on both layers.
+- **Guidance + interpretive layer.** Concise-output + pressure-stable boundary reinforcement across the report-producing reviewers (#274); a same-family / rubric-aware calibration epistemic note (#273); the retrieved-content instruction/data boundary as a standing principle (#367) — all guidance/interpretive, with explicit epistemic-status lines (no runtime-enforcement claim).
+- **Negative scope + release discipline.** The Kong META (#255) closed with a POSITIONING.md "Rejected mechanisms" section + two Tier D design-lesson docs; version-consistency lint extended to invariants 5–7 (#357) and ARCHITECTURE component-version policing (#345).
+
+Spec: `docs/design/2026-06-08-260-experiment-provenance-intake-spec.md` (+ the Kong sub-issue design docs).
 
 ## v3.11 Key Additions (#182 — deterministic citation verification gate)
 
@@ -257,7 +270,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.11.1 (per CHANGELOG.md)
-- **Last Updated**: 2026-06-06
+- **Suite version**: 3.12.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-06-08
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

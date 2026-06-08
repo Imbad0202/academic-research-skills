@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.11.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.11.1)
+[![Version](https://img.shields.io/badge/version-v3.12.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.12.0)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
@@ -241,7 +241,7 @@ You: "status"
 
 **0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューチーム vs. 限定的な再レビューチームの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.11.1）
+### Academic Pipeline（v3.12.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）はスキップできない。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -321,6 +321,12 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.12.0 (2026-06-08) — Kong 自動研究フィーチャートラック：実験来歴・図表フィデリティ・論文間矛盾・部分証拠の分解
+
+> **[machine-translated]** この項目は機械翻訳であり、ネイティブ contributor によるレビュー待ちです。正本は英語版 CHANGELOG です。
+
+> Kong et al.（2026、arXiv:2605.18661）の自動研究フィーチャートラックと、部分証拠トラップの分解作業を出荷するマイナーリリース。いずれも個別にレビュー・マージ済み。**新機能：** 実験来歴インテイク + クレーム↔実験アラインメント — 実験に裏付けられたクレームのための schema-first な証拠台帳層で、インテイクとアラインメントのみ（学者が外部で実験を実行し、ARS は決して実行しない）（#260）；キャプションの解釈がデータから導けるか、論文がそのアーティファクトを実際に裏付けるクレームのために引用しているかを検査する図表フィデリティゲート（#261）；評価済みの論文ペアを学者の確認用に列挙可能にする構造化された論文間矛盾インベントリ（#262）；引用判定（#213）と編集統合（#214）の両層で判定前にサブクレーム分解を行い、両層で §F.3.2 部分証拠トラップを収束させる。**ガイダンス・解釈層：** レポート生成レビュアーへの簡潔出力 + 圧力耐性境界の強化（#274）；同一ファミリ／rubric-aware 較正の認識論的注記（#273）；検索コンテンツの命令／データ境界を常設原則として明文化（#367）。**ネガティブスコープ：** Kong META（#255）をクローズし、`POSITIONING.md` に ARS が行わない 5 つの自律的メカニズムを列挙する「拒否されたメカニズム」セクションと 2 つの Tier D 設計教訓ドキュメントを追加。**リリース規律 lint：** version-consistency 不変条件 5–7（#357）と ARCHITECTURE コンポーネントバージョン監査（#345）。さらにクロスモデル grounding ガード（#346 / #349 / #351）、引用ゲートのキャッシュキーと rationale 上限（#359 / #360 / #361）、eval ゴールドセット（#250）、ACL/EMNLP 開示の再接地（#242）の正確性修正を含む。新しいスキーマ、manifest フィールド、すべての不変条件は追加的で後方互換。`academic-pipeline` は suite に追従して v3.12.0、他の 3 つの skill バージョンは変更なし。issue ごとの詳細は `CHANGELOG.md` を参照。
 
 ### v3.11.1 (2026-06-06) — 出荷後の正確性・堅牢化・来歴の修正ロールアップ
 
