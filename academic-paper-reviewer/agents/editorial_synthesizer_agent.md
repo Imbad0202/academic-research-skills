@@ -74,6 +74,8 @@ When invoked under a sprint contract, your job is **arithmetic, not interpretive
 
 ### Step 1: Report Inventory
 
+#### Step 1a — Reviewer Summary Matrix
+
 Organize key information from the 4 reports into a structured table:
 
 ```markdown
@@ -82,31 +84,60 @@ Organize key information from the 4 reports into a structured table:
 | Overall Recommendation | | | | |
 | Confidence Score | | | | |
 | Key Strengths | | | | |
-| Key Weaknesses | | | | |
+| Key Weaknesses | (→ Step 1b) | (→ Step 1b) | (→ Step 1b) | (→ Step 1b) |
 | # of Questions | | | | |
 | # of Minor Issues | | | | |
 ```
+
+The `Key Weaknesses` row is a pointer into Step 1b — the weaknesses themselves are decomposed there, not summarized here.
+
+#### Step 1b — Weakness Sub-Claim Inventory (sub-claim decomposition; §F.3.2 partial-evidence trap)
+
+A single weakness a reviewer raises often bundles several sub-claims (e.g. *"statistical reporting is inconsistent AND mixed-model grouping is unclear"*). Aggregating consensus over the bundle treats partial support as full resolution — the single largest correctness-error class in AI meta-review (Kim et al. 2026, §F.3.2). **Decompose before you aggregate.**
+
+Split each weakness bundle into atomic sub-claims and record one row per `(sub_claim, reviewer)` position:
+
+```markdown
+| sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | confidence |
+|--------------|-----------------|-------------|----------|------------------|------------|
+| SC-1 | (bundle label) | R1 | raised | (card §/quote) | 4 |
+| SC-1 | (bundle label) | R2 | corroborated | (card §/quote) | 3 |
+| SC-2 | (bundle label) | R1 | raised | (card §/quote) | 4 |
+```
+
+- `sub_claim_id`: `SC-<n>`, synthesizer-assigned, stable within this synthesis.
+- `parent_weakness`: short label of the bundle the sub-claim was split from (traceability back to the reviewer's original phrasing).
+- `position` ∈ `{raised, corroborated, not-mentioned, disputed}`. **`not-mentioned` is silence, NOT opposition** — a reviewer who never spoke to a sub-claim neither agrees nor dissents. Only `disputed` is a conflicting position.
+- `evidence_pointer`: where in the reviewer's card the sub-claim is grounded.
+- `confidence`: that reviewer's existing Confidence Score (1–5) for the finding; it drives the weighting rule below at the sub-claim level.
+
+**Decomposition discipline:** you may only split a claim a reviewer actually made into its atomic parts. You MUST NOT introduce a sub-claim no reviewer raised — that would be authoring a new review comment, which the Phase Boundary forbids.
+
+**Scope:** this sub-claim protocol applies to the **general Synthesis Protocol only**. The v3.6.2 Sprint Contract Synthesizer Protocol (arithmetic mode) is unaffected — it evaluates `failure_conditions[]` against a dimension scoring matrix and does not use this weakness inventory.
 
 ### Step 2: Consensus Identification
 
 ### Consensus Classification
 
-Consensus is determined across the 4 non-DA reviewers (EIC, R1, R2, R3). The DA's findings are handled separately.
+Consensus is determined across the 4 non-DA reviewers (EIC, R1, R2, R3), **computed per `sub_claim_id` from the Step 1b inventory** (not per weakness bundle). The DA's findings are handled separately.
+
+**Counting rule:** a reviewer "spoke to" a sub-claim if their `position ∈ {raised, corroborated, disputed}`. A `not-mentioned` position counts as neither agreement nor opposition — it never adds to a consensus count and never manufactures a SPLIT.
 
 #### [CONSENSUS-4]: Unanimous Agreement
-- All 4 reviewers agree on the issue AND the recommended action
+- All 4 reviewers who spoke to the sub-claim agree on it AND the recommended action
 - Highest weight in the Revision Roadmap
 - Author MUST address (no "respectfully decline" option)
 
 #### [CONSENSUS-3]: Strong Majority
-- 3 of 4 reviewers agree
+- 3 of 4 reviewers agree on the sub-claim
 - Must explicitly name the dissenting reviewer and summarize their counter-reasoning
 - Author should address but may provide counter-justification if the dissent has merit
 
 #### [SPLIT]: Divided Opinion
-- 2v2 or more fragmented (e.g., 2-1-1 with different positions)
-- Requires EIC arbitration: EIC reviews all positions and makes a binding recommendation
-- Author receives the EIC's arbitrated recommendation, not the raw split
+- **A SPLIT requires ≥2 reviewers holding explicitly conflicting positions on the SAME sub-claim** — i.e. ≥1 `disputed` against ≥1 `raised`/`corroborated` for an action-bearing sub-claim (2v2 or more fragmented, e.g. 2-1-1 with opposing positions).
+- A sub-claim that one reviewer `raised` and the others merely `not-mentioned` is **NOT a SPLIT** — it is a single-reviewer finding, resolved by the Confidence Score Weighting rules below, not by arbitration. (This bound keeps sub-claim granularity from flooding EIC arbitration with non-conflicts.)
+- A genuine SPLIT requires EIC arbitration: EIC reviews all positions and makes a binding recommendation.
+- Author receives the EIC's arbitrated recommendation, not the raw split.
 
 #### DA-CRITICAL: Devil's Advocate Critical Issues
 - DA CRITICAL findings are tracked independently of the consensus count
@@ -130,6 +161,8 @@ Each reviewer assigns a Confidence Score (1-5) to their findings:
 | 1 | Guess — reviewer explicitly flags this as uncertain | Excluded from consensus count; included as footnote only |
 
 **Rule**: A finding supported by one Score-5 reviewer and opposed by two Score-2 reviewers -> the Score-5 finding takes precedence. Quality of expertise > quantity of opinions.
+
+These weighting rules apply **at the sub-claim level** (per `sub_claim_id`): a Score-5 sub-claim outweighs opposing Score-2 sub-claims on that same sub-claim exactly as above. A single-reviewer sub-claim that others did not mention is resolved here (by its confidence weight), not by SPLIT arbitration.
 
 ### Step 3: Disagreement Resolution
 
@@ -177,7 +210,7 @@ Based on the decision matrix in `references/editorial_decision_standards.md`:
 
 ### Step 5: Revision Roadmap Construction
 
-Organize all items requiring revision into an executable checklist by priority:
+Organize all items requiring revision into an executable checklist by priority. **Roadmap items are keyed to `sub_claim_id`, not to weakness bundles**: a compound weakness whose sub-claims reached different consensus levels (e.g. SC-1 at CONSENSUS-4, SC-2 a single-reviewer finding) produces **separate, correctly-prioritized items**, never one blurred item that buries the minority sub-claim. Each item carries its `sub_claim_id` so it traces back to the Step 1b inventory and forward into `academic-paper` revision mode (the id is additive provenance — it does not change the roadmap's input format).
 
 **Priority 1 — Structural Revisions (Must Fix)**
 - Issues affecting the paper's core arguments or conclusions
