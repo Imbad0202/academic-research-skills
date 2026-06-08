@@ -16,65 +16,25 @@ from pathlib import Path
 
 import yaml
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.0"}
-SUPPORTED_HASH_TIMINGS = {"skill-load"}
+# Canonical repro_lock field set + shape validator are single-sourced in
+# repro_lock_validation.py so the nested copy in
+# experiment_provenance_entry.schema.json (#260) cannot silently drift from
+# this standalone validator. The drift test asserts the two stay in sync.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from repro_lock_validation import (  # noqa: E402
+    REQUIRED_FIELDS,  # re-exported for backward compat / external importers
+    SUPPORTED_HASH_TIMINGS,
+    SUPPORTED_SCHEMA_VERSIONS,
+    validate_block,
+)
 
-REQUIRED_FIELDS = {
-    "schema_version",
-    "stochasticity_declaration",
-    "ars_version",
-    "model",
-    "prompts",
-    "materials",
-    "external_protocols",
-    "cross_model",
-}
-
-REQUIRED_MODEL = {"family", "id", "weight_stable"}
-REQUIRED_PROMPTS = {"hash_timing", "skill_md_hash", "agents_bundle_hash"}
-REQUIRED_MATERIALS = {"list_hash", "count"}
-REQUIRED_EXTERNAL = {"s2_api_protocol_version", "s2_snapshot_available"}
-REQUIRED_CROSSMODEL = {"enabled", "secondary_model_id"}
-
-
-def validate_block(lock: dict) -> list[str]:
-    errors = []
-
-    missing = REQUIRED_FIELDS - set(lock.keys())
-    for m in sorted(missing):
-        errors.append(f"repro_lock: missing required field '{m}'")
-
-    sv = lock.get("schema_version")
-    if sv is not None and sv not in SUPPORTED_SCHEMA_VERSIONS:
-        errors.append(
-            f"repro_lock.schema_version = {sv!r}, must be one of {sorted(SUPPORTED_SCHEMA_VERSIONS)}"
-        )
-
-    for name, required, sub in [
-        ("model", REQUIRED_MODEL, lock.get("model")),
-        ("prompts", REQUIRED_PROMPTS, lock.get("prompts")),
-        ("materials", REQUIRED_MATERIALS, lock.get("materials")),
-        ("external_protocols", REQUIRED_EXTERNAL, lock.get("external_protocols")),
-        ("cross_model", REQUIRED_CROSSMODEL, lock.get("cross_model")),
-    ]:
-        if sub is None:
-            continue  # missing top-level already reported
-        if not isinstance(sub, dict):
-            errors.append(f"repro_lock.{name} must be a mapping")
-            continue
-        for m in sorted(required - set(sub.keys())):
-            errors.append(f"repro_lock.{name}: missing required field '{m}'")
-
-    prompts = lock.get("prompts")
-    if isinstance(prompts, dict):
-        ht = prompts.get("hash_timing")
-        if ht is not None and ht not in SUPPORTED_HASH_TIMINGS:
-            errors.append(
-                f"repro_lock.prompts.hash_timing = {ht!r}, "
-                f"must be one of {sorted(SUPPORTED_HASH_TIMINGS)} (see shared/artifact_reproducibility_pattern.md)"
-            )
-
-    return errors
+__all__ = [
+    "REQUIRED_FIELDS",
+    "SUPPORTED_HASH_TIMINGS",
+    "SUPPORTED_SCHEMA_VERSIONS",
+    "validate_block",
+    "main",
+]
 
 
 def main() -> int:

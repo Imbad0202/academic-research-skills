@@ -505,6 +505,9 @@ score_trajectory: {
 | `literature_corpus` | list[object] | Optional append-friendly literature corpus. Each entry conforms to [`shared/contracts/passport/literature_corpus_entry.schema.json`](contracts/passport/literature_corpus_entry.schema.json). Produced by user-written adapters (see [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md)); ARS does not produce these entries itself. Added v3.6.4+. |
 | `audit_artifact` | list[object] | Optional append-only ledger of cross-model audit runs for v3.6.7 downstream-agent deliverables. Each entry conforms to [`shared/contracts/passport/audit_artifact_entry.schema.json`](contracts/passport/audit_artifact_entry.schema.json). Produced by the pipeline orchestrator after Layer 2 + Layer 3 verification of wrapper-emitted proposal entries; only `persisted` entries are stored here. Added v3.6.7+. |
 | `slr_lineage` | boolean | Run-level provenance flag set by `pipeline_orchestrator_agent` at the Stage 1 → Stage 2 handoff. `true` iff any stage in this run history was produced by `deep-research` in systematic-review mode. Consumed by `disclosure` mode renderer (`--policy-anchor=prisma-trAIce` track gate per `policy_anchor_disclosure_protocol.md` §3.1). Absence = `false` = cold-start path (renderer requires explicit `mode=` per §4.3 G2 invariant fallback rule). Added v3.7.4+. See [Run-level lineage signal (v3.7.4)](#run-level-lineage-signal-v374) below. |
+| `experiment_intake_declaration` | object | Passport-level intake decision (#260, D7). `status` ∈ `{experiments_declared, no_experiments_declared, legacy_unknown}` + `declared_at` + `declared_by: scholar`. Set by whichever agent owns Stage 1 intake (the intake/orchestrator layer — NOT the three manifest writers). **Fail-closed**: a passport treated-as-post-#260 (the default — only a `repro_lock.ars_version` proven `< the #260 constant` is `legacy_unknown`) with this field ABSENT is a gate FAIL. Even a literature-only run must carry `{status: no_experiments_declared}`. EP-INV-4 enforces declaration↔provenance symmetry. See [Experiment Provenance Intake (#260)](#experiment-provenance-intake-260) below. |
+| `experiment_provenance` | list[object] | Optional scholar-entered ledger of experiments run EXTERNALLY (#260, D1). Each entry conforms to [`shared/contracts/passport/experiment_provenance_entry.schema.json`](contracts/passport/experiment_provenance_entry.schema.json) — `experiment_id` (passport-flat, frozen at intake) + nested `repro_lock` + `planned_vs_executed[]` + `negative_results[]` + `known_limitations[]`. ARS does not run experiments, does not auto-fill provenance, does not judge experiment correctness. Joined from claims via `claim_intent_manifest.planned_experiment_ids[]`. Gated at the integrity verification stage (Stage 2.5/4.5, D6). Added #260. |
+| `experiment_alignment_results` | list[object] | Optional aggregate of claim→experiment alignment verdicts (#260, D4) — the FOURTH ref_slug-less claim-finding aggregate (alongside `uncited_assertions` / `claim_drifts` / `constraint_violations`). Each entry conforms to [`shared/contracts/passport/experiment_alignment_result.schema.json`](contracts/passport/experiment_alignment_result.schema.json); `alignment_verdict` ∈ `{ALIGNED, OVERSTATED, NOT_SUPPORTED_BY_PROVENANCE, PROVENANCE_INSUFFICIENT}`. **Produced by the integrity verification agent AT the gate** (mirrors #261 C3), NOT by the claim-alignment audit agent. EA-INV-1/2 enforce id-uniqueness + reference resolution. Carried forward by `pipeline_orchestrator_agent`'s aggregate hand-off. Added #260. |
 
 ### Example
 
@@ -624,6 +627,48 @@ audit_artifact:
 **This mirrors the v3.6.3 `reset_boundary[]` append-only pattern**: history preserved, freshness computed by ledger scan. Deletion or reordering is forbidden; lint at `scripts/check_audit_artifact_consistency.py` enforces the invariant family at [`docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md`](../docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md) §3.7.
 
 For the orchestrator-side gate procedure (Path A latest-by-`verified_at` selection, Path B proposal merge after Layer 2 + Layer 3 verification), the canonical contract is [`docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md`](../docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md) §5.6 (Path A/B fall-through with the §5.6 A1.5 superseding-proposal preflight) plus §5.2 (eleven Layer 2 + Layer 3 gating checks). Implementation lands as a subsection of `academic-pipeline/agents/pipeline_orchestrator_agent.md` (Phase 6.6 deliverable). For the resume-time re-verification semantics, see [`academic-pipeline/references/passport_as_reset_boundary.md`](../academic-pipeline/references/passport_as_reset_boundary.md).
+
+### Experiment Provenance Intake (#260)
+
+Schema 9 gains the **intake + alignment** layer for experiments — NOT an execution layer. ARS keeps experiment execution outside the pipeline: the scholar runs experiments externally and brings results back. This extension records disclosure and lets manuscript claims be audited against declared provenance. It does **not** run experiments, judge experiment correctness, auto-fill provenance, or require provenance for literature-only pipelines.
+
+**Three additions** (all under the Optional-Fields table above):
+
+1. `experiment_intake_declaration` (passport-level object) — the Stage 1 intake decision, set by the intake/orchestrator layer (the agent that owns Stage 1 for that entry path), never by the three manifest writers:
+
+   ```yaml
+   experiment_intake_declaration:
+     status: experiments_declared        # | no_experiments_declared | legacy_unknown
+     declared_at: "2026-06-08T10:00:00Z"
+     declared_by: scholar                # always scholar — an intake decision, not an agent emission
+   ```
+
+   **Fail-closed legacy boundary (D7).** The default is treat-as-post-#260, NOT treat-as-legacy. A passport is `legacy_unknown` (advisory) ONLY with positive proof it predates #260 — `repro_lock.ars_version` present AND `< the #260 release constant` (frozen in the gate at ship time). Everything else — including a passport with no `repro_lock` or a `repro_lock` with no `ars_version` — is treated as post-#260, so the declaration is REQUIRED and its absence is a gate FAIL. Version-unprovable ≠ legacy. This shuts the back door: a new run cannot dodge the declaration by omitting `repro_lock` to make its version unprovable. Even a pure-literature run (e.g. `deep-research lit-review`) must emit `{status: no_experiments_declared}`.
+
+2. `experiment_provenance[]` (scholar-entered list) — one [`experiment_provenance_entry.schema.json`](contracts/passport/experiment_provenance_entry.schema.json) per experiment:
+
+   ```yaml
+   experiment_provenance:
+     - experiment_id: exp-ablation-A      # passport-flat, FROZEN at intake (a rename is a re-intake event)
+       title: "Ablation: remove head pruning"
+       repro_lock: { schema_version: "1.0", ... }   # same inline shape as the passport-level repro_lock
+       planned_vs_executed:
+         - planned: "macro-F1 on held-out test, pruning removed"
+           executed: true
+           result_file: results/ablation_A.json
+           metric: macro-F1
+           value: 0.842
+       negative_results: []               # KEY MUST be present (absent = malformed FAIL); empty [] is well-formed
+       known_limitations: []              # KEY MUST be present; empty [] routes to the D6 check-4 advisory
+   ```
+
+   The `experiment_id` values are FROZEN once `status == experiments_declared` is set; writers reference that key space via `claim_intent_manifest.planned_experiment_ids[]`. A post-intake rename is a re-intake event (re-run the manifest emitters), caught by EP-INV-2 if it dangles.
+
+3. `experiment_alignment_results[]` (integrity-agent-produced list) — the fourth ref_slug-less claim-finding aggregate. Each [`experiment_alignment_result.schema.json`](contracts/passport/experiment_alignment_result.schema.json) row carries an `alignment_verdict` computed by the integrity verification agent **at the gate** (Stage 2.5/4.5), mirroring #261's Phase C3. A mixed-evidence claim (carrying BOTH `planned_refs` and `planned_experiment_ids`) gets one `claim_audit_results[]` row AND one `experiment_alignment_results[]` row; the gate combines them worst-verdict-wins.
+
+**Invariants** (lint-enforced in `scripts/check_claim_audit_consistency.py`): EP-INV-1 (experiment_id unique/passport) · EP-INV-2 (planned_experiment_ids resolve; rename + forward-reference guard) · EP-INV-3 (experiment ids ⟹ empirical; mixed literature+experiment allowed) · EP-INV-4 (declaration↔provenance symmetry) · EA-INV-1 (finding_id unique) · EA-INV-2 (alignment row references resolve; dangling id = structural FAIL, never a verdict). Shape-only validation of a single entry is also available via `scripts/check_experiment_provenance.py`.
+
+See [`docs/design/2026-06-08-260-experiment-provenance-intake-spec.md`](../docs/design/2026-06-08-260-experiment-provenance-intake-spec.md) for the full design (7 decisions D1–D7) and [`examples/passport_with_experiment_provenance.yaml`](../examples/passport_with_experiment_provenance.yaml) for a worked passport.
 
 ### Run-level lineage signal (v3.7.4)
 

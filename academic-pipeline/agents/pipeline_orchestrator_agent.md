@@ -449,6 +449,8 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 - `audit_sampling_summaries[]` — drives paper-level `[CLAIM-AUDIT-SAMPLED — k/N audited]` annotation when audited_count < total_citation_count (S-INV-3)
 - Per-citation / per-sentence annotations injected adjacent to the existing v3.7.1 finalizer annotations. HIGH-WARN classes block; MED/LOW-WARN advisory passes.
 
+**Experiment-provenance aggregate carry-forward (#260).** The `experiment_alignment_results[]` aggregate is NOT produced by the claim-alignment audit agent — it is produced by `integrity_verification_agent` at the Stage 2.5/4.5 gate (Phase C4, mirroring #261 C3). The orchestrator MUST nonetheless enumerate it when carrying the passport forward: it already enumerates every aggregate it passes (claim_audit_results / uncited_assertions / claim_drifts / constraint_violations / audit_sampling_summaries / uncited_audit_failures), and omitting the new one means the integrity agent emits it into a void — the rows are computed at the gate, block there, but then vanish from the passport that reaches Stage 5/6. Add `experiment_alignment_results[]` to that carried-forward set so its annotations survive into the formatter surface (advisory/surface-only at the formatter — the blocking already happened at the integrity gate) and the Stage-6 defect histogram. Likewise carry the passport-level `experiment_intake_declaration` object forward unchanged on every handoff (Stage 2.5→3, Stage 4.5→5) — it is a passport-level field like `slr_lineage` / `repro_lock`, set once at Stage 1 intake and propagated, never recomputed by a later stage. The `experiment_provenance[]` aggregate itself is scholar-entered at intake and rides the passport from Stage 1; the orchestrator does not produce it but must not drop it.
+
 **Outputs feeding Stage 6 self-reflection.**
 
 - Per-stage `defect_stage` histogram appendix (renders when ≥5 completed entries via `scripts/claim_audit_finalizer.py:render_stage6_histogram`) — added to the existing Stage 6 AI Self-Reflection Report after gate pass.
@@ -513,12 +515,12 @@ Reference helper: `scripts/slr_lineage.py` `emit(stages, incoming_slr_lineage)`.
 |-----------|----------------------|-----------------|----------------|
 | Stage 1 -> 2 | RQ Brief, Annotated Bibliography, Synthesis Report | Schema 1 (RQ Brief), Schema 2 (Bibliography), Schema 3 (Synthesis) | deep-research handoff protocol |
 | Stage 2 -> 2.5 | Complete Paper Draft | Schema 4 (Paper Draft) | Pass to integrity_verification_agent |
-| Stage 2.5 -> 3 | Verified Paper Draft + Integrity Report | Schema 4 + Schema 5 (Integrity Report) | Pass to reviewer (with verification report attached) |
+| Stage 2.5 -> 3 | Verified Paper Draft + Integrity Report | Schema 4 + Schema 5 (Integrity Report) | Pass to reviewer (with verification report attached). Carry forward `experiment_provenance[]` + `experiment_alignment_results[]` + `experiment_intake_declaration` (#260) |
 | Stage 3 -> **coaching** -> 4 | Editorial Decision, Revision Roadmap, 5 Review Reports | Schema 6 (Review Report), Schema 7 (Revision Roadmap) | **First Socratic dialogue** -> academic-paper revision mode input |
 | Stage 4 -> 3' | Revised Draft, Response to Reviewers | Schema 4 (revised) + Schema 8 (Response to Reviewers) | Pass to reviewer (marked as verification round) |
 | Stage 3' -> **coaching** -> 4' | New Revision Roadmap (if Major) | Schema 7 (Revision Roadmap) | **First Socratic dialogue** -> academic-paper revision mode input |
 | Stage 4/4' -> 4.5 | Revised/Re-Revised Draft | Schema 4 (revised) | Pass to integrity_verification_agent (final verification) |
-| Stage 4.5 -> 5 | Final Verified Draft + Final Integrity Report | Schema 4 + Schema 5 (Integrity Report) | Produce MD -> DOCX via Pandoc when available (otherwise instructions) -> ask about LaTeX -> confirm -> PDF |
+| Stage 4.5 -> 5 | Final Verified Draft + Final Integrity Report | Schema 4 + Schema 5 (Integrity Report) | Produce MD -> DOCX via Pandoc when available (otherwise instructions) -> ask about LaTeX -> confirm -> PDF. Carry forward `experiment_alignment_results[]` + `experiment_intake_declaration` (#260) to formatter surface + Stage 6 histogram |
 
 **All artifacts must carry a Material Passport (Schema 9)** with `origin_skill`, `origin_mode`, `origin_date`, `verification_status`, and `version_label`. From v3.7.4+, the passport also carries the run-level `slr_lineage` boolean computed per the emission step above.
 

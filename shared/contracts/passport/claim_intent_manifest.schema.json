@@ -60,6 +60,13 @@
             "minItems": 0,
             "description": "Ref slugs the writer intends to cite. Empty array MUST be permitted — definitional/normative claims may legitimately have no planned refs at manifest time."
           },
+          "planned_experiment_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "uniqueItems": true,
+            "description": "Passport-local experiment_provenance[].experiment_id values the writer intends to support this claim with (#260, D1). OPTIONAL-ABSENT — present only on experiment-backed claims; literature-only / definitional / theoretical / normative claims omit it entirely (do NOT carry a meaningless empty array). minItems 1 because an empty array is meaningless — omit the field instead. EP-INV-2 enforces every value resolves to exactly one experiment_provenance[] entry (doubles as the rename + forward-reference dangling-pointer guard). EP-INV-3 enforces presence ⟹ this claim's intended_evidence_kind == 'empirical' (mixed literature+experiment allowed: a claim MAY carry BOTH planned_refs and planned_experiment_ids). A mixed-evidence claim is audited by both paths and combined worst-verdict-wins (D4)."
+          },
           "negative_constraints": {
             "type": "array",
             "items": {

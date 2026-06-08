@@ -169,6 +169,20 @@ jobs:
       - name: Validate corpus consumer protocol (v3.6.5+)
         run: python3 scripts/check_corpus_consumer_protocol.py
 
+      - name: Validate experiment_provenance[] example shape (#260)
+        # Standalone shape gate (mirrors the non-CI check_repro_lock.py family):
+        # asserts the shipped example's experiment_provenance[] entries are
+        # well-formed against experiment_provenance_entry.schema.json so the
+        # example cannot rot. Cross-array EP/EA invariants + the repro_lock drift
+        # guard are covered by scripts.test_experiment_provenance +
+        # scripts.test_repro_lock_validation_drift (run below + via pytest).
+        run: python3 scripts/check_experiment_provenance.py examples/passport_with_experiment_provenance.yaml
+
+      - name: Run #260 experiment-provenance + repro_lock drift tests
+        env:
+          PYTHONPATH: .
+        run: python3 -m unittest scripts.test_experiment_provenance scripts.test_repro_lock_validation_drift -v
+
       - name: Validate domain evidence profile documentation surface (#259)
         run: python3 scripts/check_domain_evidence_profile.py
 

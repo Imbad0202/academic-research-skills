@@ -70,6 +70,8 @@ SCHEMA_FILES = {
     "claim_drift": PASSPORT_SCHEMAS / "claim_drift.schema.json",
     "constraint_violation": PASSPORT_SCHEMAS / "constraint_violation.schema.json",
     "uncited_audit_failure": PASSPORT_SCHEMAS / "uncited_audit_failure.schema.json",
+    "experiment_provenance_entry": PASSPORT_SCHEMAS / "experiment_provenance_entry.schema.json",
+    "experiment_alignment_result": PASSPORT_SCHEMAS / "experiment_alignment_result.schema.json",
 }
 
 # Inline schema for audit_sampling_summary (spec §4 step 3) — not a shipped file.
@@ -737,6 +739,238 @@ def _build_manifest_constraint_index(
 
 
 # ---------------------------------------------------------------------------
+# experiment provenance / alignment invariants (#260).
+#   EP-INV-1  experiment_id unique within the passport
+#   EP-INV-2  planned_experiment_ids[] resolve to an experiment_provenance entry
+#             (doubles as the rename + forward-reference dangling-pointer guard)
+#   EP-INV-3  planned_experiment_ids present => owning claim is empirical
+#   EP-INV-4  experiment_intake_declaration <-> experiment_provenance symmetry
+#   EP-INV-5  experiment_intake_declaration well-formedness when present
+#             (status enum / declared_by==scholar / declared_at date-time)
+#   EA-INV-1  experiment_alignment_results[].finding_id unique
+#   EA-INV-2  alignment row (scoped_manifest_id, claim_id) + experiment_id resolve
+# These are cross-array integrity checks that JSON Schema cannot express; they
+# mirror the INV-15 / U-INV-4 (scoped_manifest_id, *) resolution pattern.
+# ---------------------------------------------------------------------------
+
+
+def _build_claim_detail_index(
+    manifests: list[dict[str, Any]],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    """Build {(manifest_id, claim_id): {evidence_kind, planned_experiment_ids}}.
+
+    Used by EP-INV-3 (planned_experiment_ids => empirical) which needs the
+    per-claim intended_evidence_kind, a field _build_manifest_index discards.
+    """
+    out: dict[tuple[str, str], dict[str, Any]] = {}
+    for m in manifests:
+        mid = m.get("manifest_id")
+        if not isinstance(mid, str) or not mid:
+            continue
+        for c in _iter_dicts(m.get("claims")):
+            cid = c.get("claim_id")
+            if not isinstance(cid, str) or not cid:
+                continue
+            out[(mid, cid)] = {
+                "intended_evidence_kind": c.get("intended_evidence_kind"),
+                "planned_experiment_ids": c.get("planned_experiment_ids"),
+            }
+    return out
+
+
+def _build_experiment_id_set(provenance: list[dict[str, Any]]) -> set[str]:
+    """The set of well-formed experiment_id values across experiment_provenance[]."""
+    ids: set[str] = set()
+    for e in provenance:
+        eid = e.get("experiment_id")
+        if isinstance(eid, str) and eid:
+            ids.add(eid)
+    return ids
+
+
+def _check_experiment_provenance_invariants(
+    provenance: list[dict[str, Any]],
+    manifests: list[dict[str, Any]],
+    declaration: Any,
+) -> list[Finding]:
+    findings: list[Finding] = []
+
+    # EP-INV-1: experiment_id unique within the passport.
+    seen: dict[str, int] = {}
+    for i, e in enumerate(provenance):
+        eid = e.get("experiment_id")
+        if not isinstance(eid, str) or not eid:
+            continue  # schema-shape surfaces malformed/missing ids separately
+        if eid in seen:
+            findings.append(
+                Finding("EP-INV-1", f"duplicate experiment_id={eid!r} (also at experiment_provenance[{seen[eid]}])")
+            )
+        else:
+            seen[eid] = i
+
+    experiment_ids = set(seen.keys())
+    claim_detail = _build_claim_detail_index(manifests)
+
+    # EP-INV-2 + EP-INV-3: walk each manifest claim's planned_experiment_ids.
+    for (mid, cid), detail in claim_detail.items():
+        planned = detail.get("planned_experiment_ids")
+        if planned is None:
+            continue  # optional-absent — nothing to check
+        if not isinstance(planned, list):
+            continue  # schema-shape surfaces the type error
+        # EP-INV-2: every value resolves to exactly one provenance entry.
+        for pid in planned:
+            if not isinstance(pid, str):
+                continue
+            if pid not in experiment_ids:
+                findings.append(
+                    Finding(
+                        "EP-INV-2",
+                        f"planned_experiment_ids value {pid!r} on (manifest={mid!r}, claim={cid!r}) "
+                        f"resolves to no experiment_provenance[] entry (dangling: rename-without-re-emit "
+                        f"or writer ran ahead of intake)",
+                    )
+                )
+        # EP-INV-3: presence => owning claim is empirical. Mixed evidence
+        # (planned_refs AND planned_experiment_ids) is allowed — this only
+        # forbids experiment ids on a non-empirical claim.
+        kind = detail.get("intended_evidence_kind")
+        if kind != "empirical":
+            findings.append(
+                Finding(
+                    "EP-INV-3",
+                    f"planned_experiment_ids present on (manifest={mid!r}, claim={cid!r}) but "
+                    f"intended_evidence_kind={kind!r}; experiment ids require empirical (mixed "
+                    f"literature+experiment is allowed, non-empirical is not)",
+                )
+            )
+
+    # EP-INV-4: declaration <-> provenance symmetry. The deterministic
+    # structural half of D7 FAIL conditions #2 and #3.
+    status = None
+    if isinstance(declaration, dict):
+        status = declaration.get("status")
+    has_provenance = len(provenance) > 0
+    if status == "experiments_declared" and not has_provenance:
+        findings.append(
+            Finding(
+                "EP-INV-4",
+                "experiment_intake_declaration.status == experiments_declared but "
+                "experiment_provenance[] is absent/empty",
+            )
+        )
+    if status == "no_experiments_declared" and has_provenance:
+        findings.append(
+            Finding(
+                "EP-INV-4",
+                "experiment_intake_declaration.status == no_experiments_declared but "
+                "experiment_provenance[] is non-empty (a populated array contradicts the declaration)",
+            )
+        )
+
+    # EP-INV-5: when a declaration IS present, it must be well-formed. A
+    # malformed declaration (bad status enum, wrong declared_by, missing/empty
+    # declared_at) would otherwise pass silently — the symmetry checks above
+    # only fire on the two known status literals, so `status: "garbage"` slips
+    # through with no finding. This is the deterministic shape half of D7 the
+    # symmetry check alone does not cover; it does NOT decide presence/absence
+    # (the ars_version legacy gate, a Stage-1 gate check, owns that).
+    if declaration is not None:
+        if not isinstance(declaration, dict):
+            findings.append(
+                Finding(
+                    "EP-INV-5",
+                    f"experiment_intake_declaration must be a mapping; got {type(declaration).__name__}",
+                )
+            )
+        else:
+            allowed_status = {
+                "experiments_declared",
+                "no_experiments_declared",
+                "legacy_unknown",
+            }
+            if status not in allowed_status:
+                findings.append(
+                    Finding(
+                        "EP-INV-5",
+                        f"experiment_intake_declaration.status={status!r} not in "
+                        f"{sorted(allowed_status)}",
+                    )
+                )
+            declared_by = declaration.get("declared_by")
+            if declared_by != "scholar":
+                findings.append(
+                    Finding(
+                        "EP-INV-5",
+                        f"experiment_intake_declaration.declared_by={declared_by!r}; must be "
+                        "'scholar' (an intake decision, never an agent emission)",
+                    )
+                )
+            declared_at = declaration.get("declared_at")
+            if not isinstance(declared_at, str) or not declared_at:
+                findings.append(
+                    Finding(
+                        "EP-INV-5",
+                        "experiment_intake_declaration.declared_at must be a non-empty "
+                        f"date-time string; got {declared_at!r}",
+                    )
+                )
+
+    return findings
+
+
+def _check_experiment_alignment_invariants(
+    entries: list[dict[str, Any]],
+    manifest_index: dict[str, set[str]],
+    experiment_ids: set[str],
+) -> list[Finding]:
+    findings: list[Finding] = []
+
+    # EA-INV-1: finding_id uniqueness.
+    seen: dict[str, int] = {}
+    for i, e in enumerate(entries):
+        fid = e.get("finding_id")
+        if not isinstance(fid, str):
+            continue
+        if fid in seen:
+            findings.append(
+                Finding("EA-INV-1", f"duplicate finding_id={fid!r} (also at experiment_alignment_results[{seen[fid]}])")
+            )
+        else:
+            seen[fid] = i
+
+    # EA-INV-2: (scoped_manifest_id, claim_id) resolves to a real manifest claim
+    # AND experiment_id resolves to a real experiment_provenance[] entry. A
+    # dangling id is a structural FAIL here (and at EP-INV-2 from the manifest
+    # side) — never represented as a judge verdict.
+    for e in entries:
+        fid = e.get("finding_id")
+        smid = e.get("scoped_manifest_id")
+        cid = e.get("claim_id")
+        if not (isinstance(smid, str) and isinstance(cid, str)):
+            continue  # schema-shape surfaces the type error
+        if smid not in manifest_index or cid not in manifest_index[smid]:
+            findings.append(
+                Finding(
+                    "EA-INV-2",
+                    f"alignment row finding_id={fid!r} has ({smid!r}, {cid!r}) "
+                    f"not present in any claim_intent_manifests[] entry",
+                )
+            )
+        eid = e.get("experiment_id")
+        if isinstance(eid, str) and eid and eid not in experiment_ids:
+            findings.append(
+                Finding(
+                    "EA-INV-2",
+                    f"alignment row finding_id={fid!r} references experiment_id={eid!r} "
+                    f"with no matching experiment_provenance[] entry (structural FAIL, not a verdict)",
+                )
+            )
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # uncited_assertion invariants (U-INV-1..U-INV-4).
 # ---------------------------------------------------------------------------
 
@@ -1309,6 +1543,9 @@ def validate_passport(body: Any) -> list[Finding]:
     violations_raw = body.get("constraint_violations", [])
     samplings_raw = body.get("audit_sampling_summaries", [])
     uaf_raw = body.get("uncited_audit_failures", [])
+    provenance_raw = body.get("experiment_provenance", [])  # #260
+    alignment_raw = body.get("experiment_alignment_results", [])  # #260
+    declaration = body.get("experiment_intake_declaration")  # #260 (object | None)
 
     def _coerce_aggregate(value: Any) -> list[dict[str, Any]]:
         """Reduce an aggregate to a list of dict entries.
@@ -1331,6 +1568,8 @@ def validate_passport(body: Any) -> list[Finding]:
     violations = _coerce_aggregate(violations_raw)
     samplings = _coerce_aggregate(samplings_raw)
     uaf = _coerce_aggregate(uaf_raw)
+    provenance = _coerce_aggregate(provenance_raw)  # #260
+    alignment = _coerce_aggregate(alignment_raw)  # #260
 
     findings: list[Finding] = []
 
@@ -1343,6 +1582,8 @@ def validate_passport(body: Any) -> list[Finding]:
     findings.extend(_validate_against_schema(violations_raw, "constraint_violation", "constraint_violations"))
     findings.extend(_validate_against_schema(samplings_raw, "audit_sampling_summary", "audit_sampling_summaries"))
     findings.extend(_validate_against_schema(uaf_raw, "uncited_audit_failure", "uncited_audit_failures"))
+    findings.extend(_validate_against_schema(provenance_raw, "experiment_provenance_entry", "experiment_provenance"))
+    findings.extend(_validate_against_schema(alignment_raw, "experiment_alignment_result", "experiment_alignment_results"))
 
     # Manifest invariants + index for downstream cross-array checks.
     findings.extend(_check_manifest_invariants(manifests))
@@ -1376,6 +1617,11 @@ def validate_passport(body: Any) -> list[Finding]:
     findings.extend(_check_constraint_violation_invariants(violations, constraint_index))
     findings.extend(_check_sampling_invariants(samplings))
     findings.extend(_check_uaf_invariants(uaf, violations, manifest_index))
+
+    # #260 experiment provenance / alignment cross-array invariants.
+    findings.extend(_check_experiment_provenance_invariants(provenance, manifests, declaration))
+    experiment_ids = _build_experiment_id_set(provenance)
+    findings.extend(_check_experiment_alignment_invariants(alignment, manifest_index, experiment_ids))
 
     return findings
 

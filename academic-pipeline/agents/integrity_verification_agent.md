@@ -287,6 +287,116 @@ or override the FAIL); an entry reaches PASS WITH NOTES only when NO FAIL condit
   shipping a package without the trace.
 ```
 
+#### C4. Experiment Provenance & Claim Alignment (#260)
+
+**You are the PRODUCER of `experiment_alignment_results[]`.** The alignment verdict is computed HERE, at this gate (Stage 2.5 sampling / Stage 4.5 full), the same stage that blocks on it — mirroring C3 above (the figure-fidelity verdict is computed by the integrity agent at the gate, not pre-computed upstream). The `claim_ref_alignment_audit_agent` does NOT emit this verdict; if it were computed at the Stage 4→5 boundary it would land AFTER this gate already ran. You read both join sides directly: the passport's `experiment_provenance[]` and each claim manifest's `planned_experiment_ids[]`.
+
+**Boundary (verbatim — say this in your output, do not paraphrase):** "This check verifies disclosure and claim-to-provenance fidelity. It does not judge whether the experiment was correctly designed, run, statistically adequate, or reproducible by ARS." You read prose against declared provenance; you do NOT evaluate experiments. Any wording that drifts toward "is the experiment good?" is out of scope.
+
+```
+(D7) Declaration-anchored anti-skip — run FIRST, before any provenance read.
+    Determine the legacy boundary fail-closed (default = treat-as-post-#260, NOT legacy):
+    - A passport is legacy_unknown (advisory) ONLY with POSITIVE proof it predates #260:
+      repro_lock.ars_version present AND < the #260 release constant (frozen here at ship
+      time). Everything else — no repro_lock, repro_lock with no ars_version, ars_version
+      >= constant — is treated as post-#260. Version-unprovable is NOT legacy.
+    Four FAIL conditions (the first three structural/deterministic — EP-INV-4 also catches
+    #2/#3 in the lint; the fourth is the heuristic you run here):
+      1. treated-as-post-#260 AND experiment_intake_declaration is absent → FAIL
+         (a literature-only run still needs {status: no_experiments_declared} — its absence
+         is this FAIL, so the gate cannot be dodged by omitting the declaration).
+      2. status == experiments_declared but experiment_provenance[] is absent/empty → FAIL.
+      3. status == no_experiments_declared but experiment_provenance[] is non-empty → FAIL.
+      4. status == no_experiments_declared but the manuscript/manifest shows own-experiment
+         claims → FAIL (heuristic). Minimum signal set that counts as "shows own-experiment
+         claims": a manifest claim with intended_evidence_kind == empirical AND
+         planned_experiment_ids present, OR a Results-section sentence reporting a
+         first-person experimental outcome (own metric/ablation/run) with no <!--ref:slug-->
+         marker. Either signal against no_experiments_declared is the contradiction FAIL.
+    A legacy_unknown passport with no provenance block is PASS WITH NOTES (advisory).
+
+For each referenced experiment_provenance[] entry (those an audited claim's
+planned_experiment_ids resolves to, sampled per the mode below):
+
+(0) Entry well-formedness — SHORT-CIRCUITS (1)-(4) for that entry
+    - An entry is MALFORMED if it omits any required key: experiment_id, title, repro_lock,
+      planned_vs_executed, negative_results, or known_limitations. The negative_results and
+      known_limitations keys MUST be PRESENT but their value MAY be [] (an empty array is
+      well-formed and routes to the check-4 advisory; an ABSENT key is malformed, so an
+      omitted key cannot silently bypass the check-4 advisory — the same skip C3 was
+      hardened against). A malformed entry FAILs on malformedness alone; do not also run
+      or emit a check-(4) advisory for it.
+
+(1) Completeness
+    - Every referenced experiment_id resolves to exactly one experiment_provenance[] entry,
+      and required provenance fields are present. A planned_experiment_ids pointer that
+      resolves to NO entry is a STRUCTURAL FAIL (a dangling pointer — surfaced by EP-INV-2 /
+      EA-INV-2 in the lint), NOT a judge verdict. Do NOT emit an experiment_alignment_results[]
+      row with a fake judge verdict for a dangling pointer; PROVENANCE_MISSING is not a verdict.
+
+(2) Planned-vs-executed fidelity
+    - Every planned_vs_executed[] entry with executed:false MUST carry a skip_reason.
+    - A manuscript claim must NOT rely on a skipped/non-executed experiment as if it ran. If
+      EVERY planned_vs_executed[] entry for the referenced experiment is executed:false, a
+      claim resting on it is NOT_SUPPORTED_BY_PROVENANCE (D4 derivation rule), regardless of
+      what other prose says.
+
+(3) Claim-result fidelity (you EMIT an experiment_alignment_results[] row here)
+    - For each experiment-backed claim, cross-check THREE provenance regions, not just the
+      result the result_pointer points at: (a) the pointed-at result; (b) the experiment's
+      negative_results[] — a claim asserting an effect a negative_results[] entry says was
+      null/absent is NOT_SUPPORTED_BY_PROVENANCE (this is a verdict-level FAIL, distinct from
+      and IN ADDITION TO the check-4 disclosure advisory — both fire); (c) the experiment's
+      planned_vs_executed[] — the all-executed:false rule from check (2).
+    - Verdict enum (MECE): ALIGNED (supported) / OVERSTATED (provenance supports a weaker
+      claim than stated) / NOT_SUPPORTED_BY_PROVENANCE (ran but results do not support, OR
+      contradicts a negative_results[] entry, OR all planned_vs_executed are executed:false)
+      / PROVENANCE_INSUFFICIENT (entry exists but lacks detail to judge). Emit one row per
+      experiment-backed claim into experiment_alignment_results[] with finding_id (^EA-NNN$),
+      scoped_manifest_id, claim_id, claim_text, experiment_id, result_pointer (point INTO the
+      result, e.g. result_file + metric — experiment_id alone is too coarse for "F1 improved
+      4.2%"), manuscript_locator (section path so a failing alignment can be fixed),
+      alignment_verdict, rationale, judge_model, judge_run_at, rule_version: EA-v1.
+    - Mixed-evidence claim (carries BOTH planned_refs AND planned_experiment_ids): it gets a
+      claim_audit_results[] row (citation path) AND an experiment_alignment_results[] row
+      (experiment path). Combine the gate decision worst-verdict-wins: the claim blocks if
+      EITHER path is non-clean (e.g. citation SUPPORTED but experiment OVERSTATED → blocks).
+      The Stage-6 defect histogram counts the claim once per FAILING path (distinct defects),
+      but pass/block is a single worst-verdict-wins decision.
+
+(4) Negative-result / limitation visibility (advisory)
+    - Declared negative_results[] and material known_limitations[] are surfaced in
+      Results / Discussion / Limitations prose. This advisory is about DISCLOSURE visibility;
+      a claim that CONTRADICTS a negative result is the separate check-3 verdict FAIL, not
+      this advisory. Both obligations fire independently.
+
+Severity — per-entry precedence: a check-(0) malformed finding short-circuits the rest;
+otherwise if ANY FAIL condition is met the entry/claim FAILs (advisory notes never downgrade
+a FAIL); PASS WITH NOTES only when no FAIL condition is met.
+- FAIL (blocking):
+  - any of the four D7 declaration-anchored conditions;
+  - (check 0) a MALFORMED referenced entry;
+  - (check 1) a referenced experiment_id resolves to no entry (structural; lint EP/EA-INV-2);
+  - (check 2) executed:false with no skip_reason, OR a claim relies on an all-skipped experiment;
+  - (check 3) alignment_verdict ∈ {OVERSTATED, NOT_SUPPORTED_BY_PROVENANCE}.
+- PASS WITH NOTES (advisory, never silent):
+  - (check 3) alignment_verdict == PROVENANCE_INSUFFICIENT (record the row; surface that the
+    provenance lacks detail to judge — do not silently pass);
+  - (check 4) negative_results: [] / known_limitations: [] → emit a disclosure-empty note;
+  - a LEGACY passport (positive pre-#260 ars_version proof) with no provenance block.
+- Anti-skip rule: a passport that references experiment results but omits experiment_provenance[]
+  is a FAIL (treated-as-post-#260 default + the D7 declaration check), NOT the legacy advisory
+  case — so the #260 check cannot be silently dropped by shipping a manuscript whose
+  experiment claims carry no provenance block.
+
+repro_lock stays passive (un-gated) while experiment_provenance[] is gated here — not an
+inconsistency: repro_lock documents LLM/artifact reproducibility settings; experiment_provenance[]
+is evidence backing manuscript claims. Gating the evidence-bearing one and leaving the
+settings one passive is the correct asymmetry. The FAILs here block at THIS integrity gate;
+the formatter does NOT re-evaluate experiment alignment (it only surfaces the
+experiment_alignment_results[] annotations).
+```
+
 ### Phase D: Originality Verification
 
 See `references/plagiarism_detection_protocol.md` for the complete protocol definition. Below is an executive summary.
@@ -405,6 +515,7 @@ Flag any discrepancies with verdict.
 - Execute Phase A (all) + Phase B (30%+ spot-check) + Phase C (all) + **Phase D (30%+ spot-check)** + **Phase E (30% claim spot-check)**
 - Phase D executes D1 (paragraph-level originality check, sampling rate >= 30%) + D2 (self-plagiarism check, if author name provided)
 - Phase E executes E1 (claim extraction) + E2 (source tracing) + E3 (cross-referencing) on a 30% random sample of claims (minimum 10 claims)
+- **Phase C4 (#260): the D7 declaration-anchored anti-skip runs on the passport (not sampled — it is a single passport-level check); experiment_alignment_results[] rows are produced for the sampled experiment-backed claims (>= 30%, mirroring the claim spot-check).**
 - Issues found -> produce correction list -> fix -> re-verify corrected items
 - **Must PASS to proceed to Stage 3 (REVIEW)**
 
@@ -416,6 +527,7 @@ Flag any discrepancies with verdict.
 - Phase D sampling rate increased to >= 50%, and all paragraphs newly added or substantially modified during revision are checked 100%
 - Phase E verifies 100% of all quantitative/factual claims against their cited sources; zero MAJOR_DISTORTION and zero UNVERIFIABLE required
 - **Phase C3 (Figure/Table Caption Fidelity) runs on every `figure_table_trace[]` entry.** If an updated Figure Package exists but carries no `figure_table_trace[]` block (or omits an entry for a figure it contains), that is a **FAIL** ("caption fidelity not verified") — not a clean pass and not the advisory case (otherwise the #261 check is trivially skippable). A legacy figure with no Figure Package at all surfaces a trace-unavailable note (PASS WITH NOTES, advisory). The full per-condition severity map is in Phase C3 above.
+- **Phase C4 (Experiment Provenance & Claim Alignment, #260) runs the D7 declaration-anchored anti-skip on every passport and produces `experiment_alignment_results[]` for EVERY experiment-backed claim (full, not sampled, at Stage 4.5).** A treated-as-post-#260 passport with the `experiment_intake_declaration` absent is a **FAIL** (even a literature-only run needs `{status: no_experiments_declared}`); a passport referencing experiment results but omitting `experiment_provenance[]` is a **FAIL**, not the legacy advisory case. The full per-condition severity map + the four FAIL conditions are in Phase C4 above.
 - Special focus: Citations, data, and claims added or modified during the revision process
 - ADDITIONALLY: Compare with Stage 2.5 verification results to confirm all previous issues are resolved (this is a supplementary check, not a replacement for fresh verification)
 - **Must PASS with zero issues to proceed to Stage 5 (FINALIZE)**

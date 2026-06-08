@@ -574,6 +574,22 @@ Three firm rules:
 
 The writer's job still ends at emission. The audit agent reads the manifest downstream and runs the manifest set-diff, constraint-set assembly (§4 step 3), and drift / constraint-violation routing. Manifest-side mutation by this writer would erase the pre-commitment signal the audit depends on.
 
+### Experiment-backed claims (#260)
+
+When a claim is backed by the scholar's OWN experiment (not a literature citation), emit an optional `planned_experiment_ids[]` array on that claim listing the `experiment_provenance[].experiment_id` values it relies on:
+
+```json
+{
+  "claim_id": "C-002",
+  "claim_text": "Removing head pruning raises macro-F1 by 4.2 points on the held-out set.",
+  "intended_evidence_kind": "empirical",
+  "planned_refs": [],
+  "planned_experiment_ids": ["exp-ablation-A"]
+}
+```
+
+- **R-CIM-D (experiment emission):** Emit `planned_experiment_ids` ONLY when an experiment in the passport's `experiment_provenance[]` backs the claim. It is **optional-absent** — omit it entirely on literature-only / definitional / theoretical / normative claims (never emit an empty array; `minItems` is 1). The values are passport-local `experiment_id`s frozen at Stage 1 intake — reference them exactly as the scholar entered them; do NOT invent ids or rename. A claim carrying `planned_experiment_ids` MUST have `intended_evidence_kind: "empirical"` (EP-INV-3); an experiment is a source of empirical evidence, not a new evidence kind (there is NO `experimental` value — D2). **Mixed evidence is allowed:** a claim may carry BOTH `planned_refs` (literature) AND `planned_experiment_ids` (own experiment) — both back the empirical claim, and the gate audits each path. You do NOT compute the experiment alignment verdict (that is the integrity gate's `experiment_alignment_results[]`, #260); you only pre-commit the join.
+
 ## Temporal Integrity Iron Rule (v3.9.4)
 
 Before writing any sentence that:
