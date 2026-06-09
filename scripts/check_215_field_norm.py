@@ -73,11 +73,11 @@ def check() -> list[str]:
     if step5 is None:
         errors.append("domain_reviewer_agent.md: missing '### Step 5: Field-Norm Severity Discipline (#215)' block")
     else:
-        # The down-rate prohibition AND the load-bearing positive grounding clause must
-        # both survive. A generic `MUST` check passes on `MUST NOT` alone, so deleting the
-        # "ground the norm in an external ... source" sentence would not be caught — assert
-        # the specific clauses, not a bare modal verb.
-        for clause in ("MUST NOT", "[FIELD-NORM UNVERIFIED]", "ground the norm in an external"):
+        # The down-rate prohibition AND the load-bearing positive MUST-ground clause must
+        # both survive. The positive clause binds the modal to the grounding requirement
+        # ("MUST** ground the norm in an external"), so weakening MUST→SHOULD is caught — a
+        # bare "ground the norm" substring would still pass under SHOULD (codex re-review P1).
+        for clause in ("MUST NOT", "[FIELD-NORM UNVERIFIED]", "MUST** ground the norm in an external"):
             if clause not in step5:
                 errors.append(f"domain_reviewer_agent.md Step 5: missing required clause {clause!r}")
         # codex P1: evidence is NOT limited to a literature citation.
@@ -101,13 +101,21 @@ def check() -> list[str]:
     else:
         # The CRITICAL/MAJOR tables carry the fields as human-readable column HEADERS
         # (Title Case), which is what actually reaches the review output. The snake_case
-        # names live only in the gating prose, so check the header strings here.
-        for column in ("Field-Norm Boundary", "Evidence-Crossing Rationale"):
-            if column not in output_fmt:
-                errors.append(
-                    f"devils_advocate_reviewer_agent.md Output Format: missing required "
-                    f"CRITICAL/MAJOR column {column!r}"
-                )
+        # names live only in the gating prose. Scope to EACH severity subsection separately:
+        # if only one table loses its columns, a whole-block check still finds the names in
+        # the other table and false-passes (codex re-review P1). These #### headers sit inside
+        # the ```markdown sample, so slice between #### markers rather than using _block.
+        for severity in ("CRITICAL", "MAJOR"):
+            sub = re.search(rf"^#### {severity}\n(.*?)(?=^#### |\Z)", output_fmt, re.M | re.S)
+            if sub is None:
+                errors.append(f"devils_advocate_reviewer_agent.md Output Format: missing '#### {severity}' table")
+                continue
+            for column in ("Field-Norm Boundary", "Evidence-Crossing Rationale"):
+                if column not in sub.group(1):
+                    errors.append(
+                        f"devils_advocate_reviewer_agent.md Output Format {severity} table: "
+                        f"missing required column {column!r}"
+                    )
     # The snake_case field NAMES + their grounding definition live in the CRITICAL-finding
     # gating block; check them there (scoped) so a definition deleted from that block is
     # caught independently of the output-format columns.

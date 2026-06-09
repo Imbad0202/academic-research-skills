@@ -153,6 +153,46 @@ class TestMutations(unittest.TestCase):
             msg=f"expected scoped output-format column error: {errors!r}",
         )
 
+    def test_da_single_table_column_removed_fails(self) -> None:
+        """codex re-review P1: if ONLY the CRITICAL table loses its columns while MAJOR keeps
+        them, a whole-block check would find the names in MAJOR and false-pass. Each severity
+        subsection must be checked separately. Mutate only the CRITICAL table header row."""
+        def drop_critical_columns(t: str) -> str:
+            # Replace the column names on the CRITICAL table's header row only (first occurrence
+            # after '#### CRITICAL'), leaving the MAJOR table intact.
+            idx = t.index("#### CRITICAL")
+            head = t[:idx]
+            tail = t[idx:]
+            tail = tail.replace(
+                "| # | Dimension | Issue Description | Location | Field-Norm Boundary | Evidence-Crossing Rationale |",
+                "| # | Dimension | Issue Description | Location |",
+                1,
+            )
+            return head + tail
+
+        errors = self._patch(DA, drop_critical_columns)
+        self.assertTrue(
+            any("CRITICAL table" in e and "Field-Norm Boundary" in e for e in errors),
+            msg=f"expected single-table (CRITICAL) column error: {errors!r}",
+        )
+
+    def test_domain_must_weakened_to_should_fails(self) -> None:
+        """codex re-review P1: weakening 'MUST** ground' to 'SHOULD** ground' must fail — the
+        load-bearing invariant is the positive MUST requirement, not just the grounding phrase."""
+        errors = self._patch(
+            DOMAIN,
+            lambda t: self._strip_in_block(
+                t,
+                "### Step 5: Field-Norm Severity Discipline (#215)",
+                "**MUST** ground the norm",
+                "**SHOULD** ground the norm",
+            ),
+        )
+        self.assertTrue(
+            any("Step 5" in e and "MUST** ground the norm in an external" in e for e in errors),
+            msg=f"expected weakened-modal error: {errors!r}",
+        )
+
     def test_calibration_risk_definitions_removed_fails(self) -> None:
         """codex P2: the intro line already contains 'low / med / high', so a bare-word check
         passes after the three definition bullets are deleted. Removing a definition marker
