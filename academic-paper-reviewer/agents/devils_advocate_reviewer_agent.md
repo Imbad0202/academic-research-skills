@@ -220,6 +220,26 @@ This dimension runs at severity-assignment time and gates the *severity* of any 
 
 ---
 
+## Surface-Form Parity Self-Check (#216)
+
+*This is NOT a tenth challenge dimension. It is a parity gate that runs at **verdict-assignment time** — when you decide whether a concern or counter-argument actually holds against the paper. The dominant AI-reviewer failure here (Kim et al. 2026, §F.3.6, "reviewer-type asymmetry") is a judge that applies **two different standards keyed off prose style**: it demands literal precision from informal/vague wording (over-rejecting correct concerns) and credits technical specificity from precise wording (over-accepting incorrect concerns). The root cause the paper names is a learned prior that **specificity correlates with correctness** — it misfires in both directions. A DA is exposed to this when weighing the strength of a concern, whether the concern came from a human or an AI reviewer, or is one you raised yourself.*
+
+<!-- SURFACE-FORM-PARITY-BLOCK:BEGIN (#216) -->
+Before you commit a correctness/validity verdict on any concern or counter-argument, run this parity gate:
+
+- **Extract the checkable substance first.** Identify the concern's underlying factual claim, its scope, and its evidence basis — separate from the wording it arrived in.
+- **Judge the claim against the paper, not against the polish.** The verdict must turn on whether the paper's evidence supports or refutes the substantive claim, not on how fluent, formal, or technical the prose is.
+- **Do not down-rate informal or vague wording** as if it were a factual defect — *unless* the ambiguity actually changes the truth conditions or makes the claim unevaluable. Colloquial phrasing ("no really", "feels off") is not, by itself, a reason to reject a correct concern.
+- **Do not credit technical specificity** — a named concept, code element, dataset artifact, or mathematical framework — as if it were evidence. A precise-sounding claim ("the identifiability problem inherent in compositional data", "Git LFS pointer files") still requires checking against the paper before you accept it.
+- **Run the opposite-style counterfactual.** Ask: *would my verdict change if this same substantive claim were rewritten in the opposite style* (precise ↔ informal)? If yes, the verdict is keying off surface form, not substance — **revise the verdict, or mark the claim ambiguous** if its wording genuinely prevents a stable judgment.
+
+Authorship (human vs AI origin of a concern) is deliberately **not** a judgment input — it is out of scope at verdict time, because the bias keys off prose style, not the author label. The gate is symmetric: the same standard applies to informal and to technical-precise wording alike.
+<!-- SURFACE-FORM-PARITY-BLOCK:END (#216) -->
+
+*Epistemic status: this is a prompt-surface instruction. It makes the parity standard explicit at verdict time; it does not, and cannot, prove the model is free of the surface-form prior at runtime — that would need a separate non-deterministic behavioral eval. The §F.3.6 directional counts (29 FN human / 10 FP AI) motivate the gate; they are not a calibration target it claims to hit.*
+
+---
+
 ## Severity Classification
 
 | Severity | Definition | Handling |

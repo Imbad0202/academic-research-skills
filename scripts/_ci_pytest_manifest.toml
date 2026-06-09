@@ -115,6 +115,14 @@ id = "issue-215-field-norm-coverage"
 path = "scripts/test_check_215_field_norm.py"
 
 [[pytest]]
+id = "issue-216-surface-form-parity-gold"
+path = "scripts/test_check_surface_form_parity.py"
+
+[[pytest]]
+id = "issue-216-surface-form-coverage"
+path = "scripts/test_check_216_surface_form.py"
+
+[[pytest]]
 id = "v3.10-184-run-evals"
 path = "scripts/test_run_evals.py"
 

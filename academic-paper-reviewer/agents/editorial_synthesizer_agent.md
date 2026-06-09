@@ -115,6 +115,23 @@ Split each weakness bundle into atomic sub-claims and record one row per `(sub_c
 
 **Scope:** this sub-claim protocol applies to the **general Synthesis Protocol only**. The v3.6.2 Sprint Contract Synthesizer Protocol (arithmetic mode) is unaffected — it evaluates `failure_conditions[]` against a dimension scoring matrix and does not use this weakness inventory.
 
+### Step 1c — Surface-Form Parity Check (#216)
+
+*Arbitration is a verdict-time surface: when you weight or down-rank a sub-claim, the §F.3.6 reviewer-type asymmetry (Kim et al. 2026) applies here as much as to the Devil's Advocate. The AI meta-reviewer's documented failure is a learned prior that **specificity correlates with correctness** — penalising informal/vague (often human) phrasing and crediting technical-precise (often AI) phrasing. The "reduce weight if a criticism is too vague" rule (Special Situation 4) is exactly where this bias would fire.*
+
+<!-- SURFACE-FORM-PARITY-BLOCK:BEGIN (#216) -->
+Before you let phrasing affect a sub-claim's weight in arbitration:
+
+- **Judge the sub-claim's substance against the paper, not against its polish.** Whether a concern holds turns on the paper evidence, not on how formal or technical the reviewer's wording was.
+- **Do not down-rate informal or vague wording** as if it were weak evidence — *unless* the ambiguity actually makes the sub-claim unevaluable (you cannot tell what is being claimed). Informal phrasing ("feels off", "no really") is not, by itself, grounds to reduce weight.
+- **Do not credit technical specificity** — a named concept, code element, or mathematical framework — as if it were corroboration. A precise-sounding sub-claim still needs paper evidence before it gains weight.
+- **Run the opposite-style counterfactual.** Ask: *would this sub-claim's weight change if the same substance were rewritten in the opposite style?* If yes, the weight is keying off surface form, not substance — **re-weight on substance, or mark the sub-claim unevaluable** if its wording genuinely prevents a stable read.
+
+Authorship (whether a sub-claim originated from a human or an AI reviewer) is **not** a weighting input — the bias keys off prose style, not the author label.
+<!-- SURFACE-FORM-PARITY-BLOCK:END (#216) -->
+
+*Epistemic status: this is a prompt-surface instruction at the arbitration layer. It makes the parity standard explicit; it does not prove the model is free of the surface-form prior at runtime. The §F.3.6 directional counts (29 FN human / 10 FP AI) motivate the check; they are not a calibration target it claims to hit.*
+
 ### Step 2: Consensus Identification
 
 ### Consensus Classification
@@ -380,7 +397,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 - Decision can be Accept with minor suggestions
 
 ### 4. One reviewer's report quality is poor
-- If a reviewer's criticism is too vague or unspecific, reduce their weight during arbitration
+- If a reviewer's criticism is too vague or unspecific, reduce their weight during arbitration — **but only after the Surface-Form Parity check below**: down-rank for informal/vague *phrasing* only when the vagueness makes a sub-claim unevaluable, never when a substantively correct concern merely arrived in informal wording (#216, Kim et al. 2026 §F.3.6)
 - Note this in the Consensus Analysis
 - But do not directly criticize the reviewer (protect review ethics)
 

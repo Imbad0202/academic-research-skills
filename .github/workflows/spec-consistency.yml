@@ -318,6 +318,29 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_215_field_norm.py
 
+      - name: Run #216 surface-form parity gold-set integrity lint
+        # Validates the mixed-provenance §F.3.6 gold set: structural completeness,
+        # provenance honesty (paper_verbatim quotes the paper; counterfactual_rewrite /
+        # maintainer_boundary are labelled as maintainer-authored, never paper-verbatim),
+        # pair invariants (paired items hold claim + verdict constant, differ in framing),
+        # no rotting pdftotext line anchors, and gold<->manifest agreement. NOT an FNR/FPR
+        # detector — there is no deterministic predictor for the surface-form bias.
+        # Companion test_check_surface_form_parity.py (mutation + serializer-strip) runs
+        # via the unified manifest (#156). Issue #216 (Kim et al. 2026 §F.3.6).
+        env:
+          PYTHONPATH: .
+        run: python3 -m scripts.check_surface_form_parity
+
+      - name: Run #216 surface-form parity coverage lint
+        # Asserts the Devil's Advocate agent carries the Surface-Form Parity self-check
+        # block at verdict time, with every load-bearing clause inside its marker block
+        # (block-scoped + fence-aware), so a stray keyword cannot mask a missing rule.
+        # Companion test_check_216_surface_form.py (6-class mutation suite) runs via the
+        # unified manifest (#156). Issue #216 (Kim et al. 2026 §F.3.6).
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_216_surface_form.py
+
       - name: Run v3.10 #134 write-scope three-way name cross-check lint
         # THE FAIL-OPEN GUARD for the Slice 1 write-scope hook. Asserts the 23 Bucket A
         # agent names match across the classification roster, the scope manifest keys,

@@ -292,6 +292,18 @@ def test_run_task_unknown_task_does_not_raise(tmp_path):
     assert result["status"] == "skipped"
 
 
+def test_surface_form_parity_is_pending_not_silently_passing():
+    """#216 regression fixture has NO native measurer (by design — the §F.3.6 surface-form
+    bias has no deterministic predictor). run_evals must surface it as `pending`, not as a
+    measured pass. This pins codex's P2 concern: a regression fixture must not false-green
+    through the eval gate. Its integrity is checked by scripts/check_surface_form_parity.py,
+    not by an FNR/FPR measurer here."""
+    assert "surface_form_parity" not in run_evals._NATIVE_MEASURERS
+    result = run_evals.run_task("surface_form_parity")
+    assert result["status"] == "pending", result
+    assert "no native measurer" in result["notice"]
+
+
 # ---------------------------------------------------------------------------
 # Implemented-task failures RAISE; they do not masquerade as "pending" (Fix 2)
 # ---------------------------------------------------------------------------
