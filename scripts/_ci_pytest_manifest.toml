@@ -111,6 +111,10 @@ id = "issue-215-field-norm-severity"
 path = "scripts/test_check_field_norm_severity.py"
 
 [[pytest]]
+id = "issue-215-field-norm-coverage"
+path = "scripts/test_check_215_field_norm.py"
+
+[[pytest]]
 id = "v3.10-184-run-evals"
 path = "scripts/test_run_evals.py"
 

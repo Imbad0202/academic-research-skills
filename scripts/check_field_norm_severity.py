@@ -55,9 +55,9 @@ def validate(data: dict[str, Any]) -> list[str]:
 
     seen_ids: set[str] = set()
     for idx, item in enumerate(items):
-        where = item.get("id", f"<index {idx}>")
-
         item_id = item.get("id")
+        where = item_id if isinstance(item_id, str) and item_id.strip() else f"<index {idx}>"
+
         if not isinstance(item_id, str) or not item_id.strip():
             errors.append(f"{where}: missing non-empty id")
         elif item_id in seen_ids:

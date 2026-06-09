@@ -163,6 +163,20 @@ After receiving the Reviewer Configuration Card from field_analyst_agent, adjust
 - Does it clearly explain similarities and differences with prior research?
 - Is there a risk of overclaiming?
 
+### Step 5: Field-Norm Severity Discipline (#215)
+
+The largest documented failure class for AI reviewers is **field-norm severity miscalibration** (Kim et al. 2026, arXiv:2605.20668v1, weakness W1, n=54): a critique that is content-correct against a discipline-neutral standard but mis-rated in severity because the reviewer lacks the subfield's accepted-practice prior. The canonical example is an AI reviewer demanding reproducibility artifacts that the CERN/LHCb collaboration legitimately keeps internal — correct by generic open-science standards, wrong as a severity judgment for that field.
+
+**Hard rule.** Before you assign a severity to any weakness that rests on a claim about what the field *should* do (a methodological norm, a reporting expectation, an evidence-completeness standard, a data-release expectation), you **MUST** ground the norm in an external, checkable source — and you **MUST NOT** assert the norm from your own model knowledge alone.
+
+- **Acceptable norm evidence** is not limited to a literature citation. Any of these counts when it actually establishes the field's practice: a peer-reviewed reference, a venue/journal author or data-policy, a community data-release or reproducibility standard, a registered-report or preregistration convention, a domain reporting guideline (CONSORT, PRISMA, MIAME, …), or documented expert/community practice.
+- **Not acceptable:** "in my understanding the field expects X", an unsourced "best practice", or a generic open-science standard applied without checking whether *this* subfield follows it.
+- If you cannot ground the norm, you **MUST** down-rate the finding to advisory and label it `[FIELD-NORM UNVERIFIED]` rather than asserting a severity. Detection of the gap can still be reported; only the *severity assertion* is gated.
+
+This rule runs at severity-assignment time and applies to **every** weakness whose severity depends on a field norm — not only those you would mark CRITICAL.
+
+*Epistemic status: this is a prompt-surface instruction. It makes the norm-grounding requirement explicit; it cannot by itself prove the model never fabricates a field norm at runtime — that needs the independent calibration measurement (see `references/calibration_mode_protocol.md`) and the first-party regression fixture at `evals/gold/field_norm_severity/`.*
+
 ---
 
 ## Domain-Specific Review Anchors
@@ -227,7 +241,7 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 3. **[S3 Title]**: [...]
 
 ### Weaknesses (3-5 items)
-1. **[W1 Title]**: [Specific description + why it's a problem + suggested improvement direction + recommended references]
+1. **[W1 Title]**: [Specific description + why it's a problem + suggested improvement direction + recommended references. If the severity rests on a field norm (Step 5), append the grounded norm evidence, or `[FIELD-NORM UNVERIFIED]` if you could not ground it.]
 2. **[W2 Title]**: [...]
 3. **[W3 Title]**: [...]
 

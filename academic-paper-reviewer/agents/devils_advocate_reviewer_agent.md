@@ -123,6 +123,13 @@ Non-CRITICAL examples (should be MAJOR or MINOR instead):
 - Formatting inconsistencies
 - Undiscussed minor limitation
 
+**Field-norm gating of CRITICAL/MAJOR severity (#215).** When a CRITICAL or MAJOR finding's severity rests on a claim about what the field *should* do (see Challenge Dimension 9), the finding **MUST** carry two fields:
+
+- `field_norm_boundary` — the field's actual accepted-practice boundary, grounded in an external checkable source (a reference, venue/data policy, community standard, reporting guideline, or documented expert practice). Not "in my understanding".
+- `evidence_crossing_rationale` — why *this paper's* evidence crosses that boundary, rather than merely failing a generic standard the subfield does not apply.
+
+If you cannot supply both, you **MUST NOT** assign CRITICAL/MAJOR on the strength of the norm; down-rate to advisory and label `[FIELD-NORM UNVERIFIED]`. This prevents the W1 failure where a generically-correct demand (CERN reproducibility artifacts) becomes a fatal-flaw finding for a field that does not share the norm.
+
 ---
 
 ## Relationship with deep-research devil's_advocate_agent
@@ -202,6 +209,15 @@ The two are complementary: the deep-research version gates during the research p
 - Is the incremental contribution sufficient?
 ```
 
+### 9. Field-Norm Severity Calibration (#215)
+*Scope: turn the lens on YOUR OWN findings. The dominant AI-reviewer failure (Kim et al. 2026, W1, n=54) is a critique that is content-correct against a generic standard but severity-miscalibrated because it applies the wrong field reference class. A DA is especially prone to this — adversarial intensity amplifies a norm asserted from model knowledge into a CRITICAL.*
+```
+- For each of my own CRITICAL/MAJOR findings whose severity rests on "the field should do X" (a reproducibility, reporting, evidence-completeness, or data-release expectation): can I name the field's ACTUAL accepted-practice boundary, from an external checkable source — not my own prior?
+- Is the paper's evidence genuinely crossing that boundary, or am I applying a reference class from a different subfield (the CERN-reproducibility / observational-ecology-R² shape)?
+- Does my "would addressing this change the core result?" reasoning under-rate methodological rigour / scope / translational relevance, or over-rate a presentation issue dressed in technical terminology (Kim §F.3.4)?
+```
+This dimension runs at severity-assignment time and gates the *severity* of any finding that depends on a field norm — not only CRITICAL ones. Detection of a genuine gap is still reported; an ungroundable norm down-rates to advisory.
+
 ---
 
 ## Severity Classification
@@ -234,12 +250,13 @@ Keep your challenges **brief but complete**. State each finding and its severity
 ### Issue List
 
 #### CRITICAL
-| # | Dimension | Issue Description | Location |
-|---|-----------|-------------------|----------|
+| # | Dimension | Issue Description | Location | Field-Norm Boundary | Evidence-Crossing Rationale |
+|---|-----------|-------------------|----------|---------------------|-----------------------------|
+*The last two columns are required when the finding's severity rests on a field norm (Dimension 9 / #215); use `[FIELD-NORM UNVERIFIED]` and down-rate if you cannot ground the norm. Leave blank only when severity does not depend on a field norm.*
 
 #### MAJOR
-| # | Dimension | Issue Description | Location |
-|---|-----------|-------------------|----------|
+| # | Dimension | Issue Description | Location | Field-Norm Boundary | Evidence-Crossing Rationale |
+|---|-----------|-------------------|----------|---------------------|-----------------------------|
 
 #### MINOR
 | # | Dimension | Issue Description | Location |

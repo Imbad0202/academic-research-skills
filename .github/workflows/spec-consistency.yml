@@ -307,6 +307,17 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_v3_9_2_phase_boundary.py
 
+      - name: Run #215 field-norm severity coverage lint
+        # Asserts the three #215 reviewer surfaces (domain_reviewer Step 5,
+        # devils_advocate dimension 9 + CRITICAL fields, calibration Phase 3.5)
+        # carry their scoped field-norm-severity blocks. Block-scoped keyword
+        # checks (not file-wide) so a stray keyword cannot mask a missing rule.
+        # The pytest companion test_check_215_field_norm.py (mutation tests) runs
+        # via the unified manifest (#156). Issue #215 (Kim et al. 2026 W1/§F.3.4).
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_215_field_norm.py
+
       - name: Run v3.10 #134 write-scope three-way name cross-check lint
         # THE FAIL-OPEN GUARD for the Slice 1 write-scope hook. Asserts the 23 Bucket A
         # agent names match across the classification roster, the scope manifest keys,

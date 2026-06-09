@@ -112,13 +112,12 @@ class TestValidatorInvariants(unittest.TestCase):
     def test_exception_item_requires_reason(self) -> None:
         """An item flagged exception=true must carry an exception_reason (the SAR case);
         dropping the reason while keeping the flag must fail."""
-        errors = self._mutate(
-            lambda d: [
-                it.pop("exception_reason")
-                for it in d["items"]
-                if it.get("exception") is True
-            ]
-        )
+        def drop_reason(d: dict) -> None:
+            for it in d["items"]:
+                if it.get("exception") is True:
+                    it.pop("exception_reason")
+
+        errors = self._mutate(drop_reason)
         self.assertTrue(
             any("exception_reason" in e for e in errors),
             msg=f"expected missing exception_reason error: {errors!r}",

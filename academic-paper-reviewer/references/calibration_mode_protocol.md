@@ -3,7 +3,7 @@
 **Status**: v3.2
 **Parent skill**: `academic-paper-reviewer`
 **Mode name**: `calibration`
-**Purpose**: Measure this reviewer's own false-negative rate (FNR), false-positive rate (FPR), and balanced accuracy against a user-supplied gold-standard set, then attach the resulting error profile as a confidence disclosure to subsequent reviews in the same session.
+**Purpose**: Measure this reviewer's own false-negative rate (FNR), false-positive rate (FPR), balanced accuracy, and **severity-miscalibration rate** (#215) against a user-supplied gold-standard set, then attach the resulting error profile as a confidence disclosure to subsequent reviews in the same session.
 
 ---
 
@@ -74,6 +74,20 @@ Borderline papers don't enter the binary matrix but are useful for rubric-score 
 
 A reviewer that confidently Accepts or Rejects borderline papers has a "confidence miscalibration" problem even if its binary accuracy looks fine.
 
+### Phase 3.5: Severity-miscalibration measurement (#215)
+
+The binary confusion matrix (Phase 2) measures decision-level error (FNR/FPR). It does **not** capture the paper's largest documented AI-reviewer failure: a finding that is content-correct but **severity-miscalibrated** — either a field-norm boundary error (Kim et al. 2026, W1, n=54) or the "would addressing this change the core result?" significance-boundary error (Kim §F.3.4, 56 errors). A reviewer can have a clean FNR/FPR and still systematically over- or under-rate the severity of individual findings.
+
+For each weakness the reviewer emitted across the gold runs, classify its **severity-miscalibration risk** as `low` / `med` / `high`:
+
+- **`high`** — the finding's severity rests on a field norm or the "core result" formula, AND the reviewer asserted the severity **without** grounding the norm in an external checkable source (the W1 / §F.3.4 failure shape).
+- **`med`** — severity depends on a field norm but the reviewer gave partial or weak grounding (named a standard but did not establish it applies to this subfield).
+- **`low`** — severity does not depend on a field norm, OR the norm is grounded in an external checkable source per the domain-reviewer Field-Norm Severity Discipline (Step 5).
+
+**Grounding discipline (do not repeat the failure you are measuring).** The classifier persona **MUST NOT** guess whether a norm is right from its own model knowledge — that is exactly the W1 behaviour under audit. It rates *whether the reviewer supplied external grounding*, not *whether the reviewer's norm is factually correct*. The reference shapes are anchored to the first-party regression fixture at `evals/gold/field_norm_severity/` (W1 + §F.3.4 cases extracted verbatim from Kim et al. 2026); a finding that matches a fixture shape but lacks grounding is `high`.
+
+This produces a histogram of low/med/high counts reported alongside FNR/FPR in Phase 4 — a severity-calibration signal the binary matrix cannot show.
+
 ### Phase 4: Produce the Calibration Report
 
 Output document structured as:
@@ -103,6 +117,15 @@ Cross-model: <yes/no, model families used>
 
 ## Per-dimension calibration error
 <table of 7 review dimensions with mean absolute calibration error>
+
+## Severity-miscalibration histogram (#215)
+<low/med/high counts over all emitted weaknesses, e.g.>
+| Risk | Count | Share |
+|---|---|---|
+| low | XX | XX% |
+| med | XX | XX% |
+| high | XX | XX% |
+<A high `high`-share means the reviewer frequently asserts field-norm / "core result" severities without external grounding — the W1 / §F.3.4 failure shape. This is a SEPARATE signal from FNR/FPR: a reviewer can pass the binary gate and still carry a high severity-miscalibration rate. Grounded per Phase 3.5; classifies grounding, not norm-correctness.>
 
 ## Systematic biases detected
 <natural-language narrative identifying patterns, e.g.
