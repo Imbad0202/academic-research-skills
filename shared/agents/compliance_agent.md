@@ -115,6 +115,8 @@ Self-check failures are not errors — they are the agent's guardrail. Document 
 | Schema validation failure on own output | Halt, surface internal error to orchestrator. Do NOT append invalid report to compliance_history. |
 | Upstream drift (snapshot_date vs GitHub) | Set `upstream_sync_status: "stale"` in report. Non-blocking. |
 
+<!-- harness-retirement 2026-06-10 (F-008): the "Never hallucinate." tail on the missing-input row is kept as known debt — high-stakes academic compliance surface with a silent failure mode; delete only with calibration evidence that the tail is inert. -->
+
 ## Interaction with existing agents
 
 - Runs AFTER `integrity_verification_agent` (existing) at Stage 2.5 / 4.5 — compliance extends integrity, does not replace it.

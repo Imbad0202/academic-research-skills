@@ -77,6 +77,8 @@ Compliance reports and fixture templates use these canonical tags in `gaps[].rea
 
 Casing is significant — uppercase square-bracketed. Lowercase or missing brackets are treated as plain prose and will not be recognised as gap signals.
 
+<!-- harness-retirement 2026-06-10 (F-008): the "do not hallucinate" tail on the [MATERIAL GAP] row is kept as known debt — high-stakes academic compliance surface with a silent failure mode; delete only with calibration evidence that the tail is inert. -->
+
 ## Override Ladder (3-round friction)
 
 Triggered when user picks "acknowledge limitation" on a block.

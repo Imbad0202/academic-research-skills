@@ -10,7 +10,7 @@ These fixtures are **behavioral smoke tests + cross-model spot-check**, not dete
 
 LLM-behavior assertions are flaky in the way model-behavior tests always are:
 
-- A test that passes on Opus 4.7 today can regress on Opus 4.8 tomorrow
+- A test that passes on one model generation can regress on the next (observed Opus 4.7 → 4.8; recalibrated on Fable 5, 2026-06)
 - A test can pass with prompt cache warm and fail cold
 - A test can pass at temp=0 and fail at temp=1
 
@@ -18,11 +18,11 @@ This is acceptable for **routing discipline** (which is a calibration target, no
 
 ## Acceptance criterion (v3.9.2 ship gate)
 
-- **100% pass on Opus 4.7** (primary model — most ARS users)
+- **100% pass on the current primary model** — the inherited Claude Code session model (Opus 4.7 at the v3.9.2 ship; Fable 5 at the 2026-06 recalibration)
 - **≥ 75% pass on Sonnet 4.6 and GPT-5.5** (degradation flagged but non-blocking ship)
-- Cross-model divergence > 1 fixture between Opus and Sonnet/GPT → recalibrate routing prose
+- Cross-model divergence > 1 fixture between primary and Sonnet/GPT → recalibrate routing prose
 
-If you cannot reach 100% on Opus 4.7, the routing prose in CLAUDE.md / protocol doc needs tightening — fix the prose, not the test.
+If you cannot reach 100% on the current primary model, the routing prose in CLAUDE.md / protocol doc needs tightening — fix the prose, not the test.
 
 ## Fixture index
 

@@ -25,12 +25,14 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 | Model | API ID | Provider | Best For |
 |-------|--------|----------|----------|
-| Claude Opus 4.8 | _(inherited Claude Code session model)_ | Anthropic | Primary model (default for all ARS skills) |
-| GPT-5.4 Pro | `gpt-5.4-pro` | OpenAI | Cross-verification — strongest reasoning |
-| GPT-5.4 | `gpt-5.4` | OpenAI | Cross-verification — balanced cost/performance |
+| Claude (session model) | _(inherited Claude Code session model — e.g., Fable 5)_ | Anthropic | Primary model (default for all ARS skills) |
+| GPT-5.5 | `gpt-5.5` | OpenAI | Cross-verification — recommended balance (supports `xhigh` reasoning) |
+| GPT-5.5 Pro | `gpt-5.5-pro` | OpenAI | Cross-verification — strongest reasoning (premium pricing: ~6× GPT-5.5) |
 | Gemini 3.1 Pro | `gemini-3.1-pro-preview` | Google | Cross-verification — strong at factual verification |
 
-**Recommended cross-verification pair:** Claude Opus 4.8 (primary) + GPT-5.4 Pro or Gemini 3.1 Pro (verifier).
+**Recommended cross-verification pair:** the inherited Claude session model (primary) + GPT-5.5 or Gemini 3.1 Pro (verifier).
+
+> The primary row deliberately names no version: the primary is always the session model, so the row cannot go stale on the next Anthropic release. Verifier IDs stay concrete because they are literal API strings the user must export. (`gpt-5.4` / `gpt-5.4-pro` remain accepted for existing setups.)
 
 Using two non-Anthropic models as primary+verifier is possible but not tested with ARS prompts.
 
@@ -42,7 +44,7 @@ You need API keys from at least one additional provider. ARS itself runs inside 
 
 ### Step 1: Get API Keys
 
-**OpenAI (GPT-5.4):**
+**OpenAI (GPT-5.5):**
 1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 2. Create a new API key
 3. Copy the key (starts with `sk-`)
@@ -62,8 +64,8 @@ export OPENAI_API_KEY="<your-openai-api-key>"
 export GOOGLE_AI_API_KEY="<your-google-ai-api-key>"
 
 # Choose your preferred cross-verification model
-# Options: gpt-5.4-pro, gpt-5.4, gemini-3.1-pro-preview
-export ARS_CROSS_MODEL="gpt-5.4-pro"
+# Options: gpt-5.5, gpt-5.5-pro, gemini-3.1-pro-preview (gpt-5.4 / gpt-5.4-pro still accepted)
+export ARS_CROSS_MODEL="gpt-5.5"
 ```
 
 Then reload: `source ~/.zshrc`
@@ -83,7 +85,7 @@ If you don't want cross-model verification running all the time, you can enable 
 
 ```bash
 # Enable for this session only
-export ARS_CROSS_MODEL="gpt-5.4-pro"
+export ARS_CROSS_MODEL="gpt-5.5"
 
 # Disable for this session
 unset ARS_CROSS_MODEL
@@ -179,9 +181,9 @@ The DA agent, after completing its checkpoint report, should:
 
 Both patterns below share the same contract: enable the provider's hosted web-search tool, and **gate the model's text on proof that a search actually happened**. If the API returns no grounding evidence (an OpenAI `web_search_call` item / a Gemini `groundingMetadata` block), the call emits `NOT_SEARCHED` and the text is discarded — a model that ignored "search the web" cannot fake an absent grounding trace, so this guard, not the prompt wording, is what prevents a from-memory guess being laundered into `VERIFIED`. Both web-search tools are hosted/server-side: one request, no client-side tool-call round-trip. `PROMPT` holds the single-reference verification prompt from step 3.
 
-### OpenAI (GPT-5.4 / GPT-5.4 Pro)
+### OpenAI (GPT-5.5 / GPT-5.5 Pro)
 
-Use the **Responses API** (`/v1/responses`) — the hosted `web_search` tool lives there. (Chat Completions does not take `tools: [{type: "web_search"}]`; web search on that endpoint requires the separate `gpt-5-search-api` model, so this example targets Responses to stay model-agnostic across `gpt-5.4` / `gpt-5.4-pro`.)
+Use the **Responses API** (`/v1/responses`) — the hosted `web_search` tool lives there. (Chat Completions does not take `tools: [{type: "web_search"}]`; web search on that endpoint requires the separate `gpt-5-search-api` model, so this example targets Responses to stay model-agnostic across `gpt-5.5` / `gpt-5.5-pro` / the legacy `gpt-5.4*` ids.)
 
 ```bash
 # PROMPT holds the single-reference verification prompt (step 3). One reference per call.
@@ -273,13 +275,13 @@ fi
 
 if [ -n "$ARS_CROSS_MODEL" ]; then
   case "$ARS_CROSS_MODEL" in
-    gpt-5.4*) 
+    gpt-5.5*|gpt-5.4*) 
       [ -n "$OPENAI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=openai" \
         || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but OPENAI_API_KEY is not set" ;;
     gemini*) 
       [ -n "$GOOGLE_AI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=google" \
         || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but GOOGLE_AI_API_KEY is not set" ;;
-    *) echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a supported model. Supported: gpt-5.4, gpt-5.4-pro, gemini-3.1-pro-preview"
+    *) echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a supported model. Supported: gpt-5.5, gpt-5.5-pro, gemini-3.1-pro-preview (legacy gpt-5.4* accepted)"
        echo "CROSS_MODEL_AVAILABLE=none" ;;
   esac
 else
@@ -295,12 +297,12 @@ Cross-model verification adds API costs from the second provider:
 
 | Scenario | Additional Calls | Estimated Additional Cost |
 |----------|-----------------|--------------------------|
-| Integrity verification (60 refs → 30% = 18, capped at max 15; **one call per reference**) | ~15 calls | ~$1.15-2.35 |
-| DA cross-check (1 per checkpoint, 3 checkpoints) | 3 calls | ~$0.30-0.50 |
+| Integrity verification (60 refs → 30% = 18, capped at max 15; **one call per reference**) | ~15 calls | ~$1.20-2.60 |
+| DA cross-check (1 per checkpoint, 3 checkpoints) | 3 calls | ~$0.30-0.55 |
 | Peer review (planned, not yet implemented) | — | — |
-| **Full pipeline** | **~18 calls** | **~$1.45-2.85** |
+| **Full pipeline** | **~18 calls** | **~$1.50-3.15** |
 
-These are rough estimates based on GPT-5.4 Pro pricing ($5/1M input, $20/1M output) and typical prompt sizes. One-call-per-reference (rather than batching) is a deliberate cost-for-provenance trade: it is the only way the grounding-evidence check maps 1:1 to each verdict. Web-search-tool calls also cost more than plain completions.
+These are rough estimates based on GPT-5.5 pricing ($5/1M input, $30/1M output) and typical prompt sizes; GPT-5.5 Pro runs ~6× higher ($30/1M input, $180/1M output). One-call-per-reference (rather than batching) is a deliberate cost-for-provenance trade: it is the only way the grounding-evidence check maps 1:1 to each verdict. Web-search-tool calls also cost more than plain completions.
 
 ## Limitations
 

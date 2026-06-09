@@ -81,7 +81,7 @@ Plugin agents (3, v3.6.7-hardened, model: inherit) — dispatched by ARS pipelin
 
 Other ARS agents (bibliography_agent, literature_strategist_agent, field_analyst_agent, etc.) remain in-skill prompt templates loaded via SKILL.md, not plugin agents.
 
-Token budget reference: docs/PERFORMANCE.md (a single full pipeline run ≈ \$4–6 on Opus 4.7)."
+Token budget reference: docs/PERFORMANCE.md (a single full pipeline run ≈ \$4–6, order-of-magnitude; measured on Opus 4.x)."
     ;;
 esac
 
