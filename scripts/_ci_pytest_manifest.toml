@@ -107,6 +107,10 @@ id = "kong-257-rq-framing-patterns"
 path = "scripts/test_check_rq_framing_patterns.py"
 
 [[pytest]]
+id = "issue-215-field-norm-severity"
+path = "scripts/test_check_field_norm_severity.py"
+
+[[pytest]]
 id = "v3.10-184-run-evals"
 path = "scripts/test_run_evals.py"
 
