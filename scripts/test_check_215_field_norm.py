@@ -121,6 +121,66 @@ class TestMutations(unittest.TestCase):
             msg=f"expected anti-circularity error: {errors!r}",
         )
 
+    def test_domain_grounding_clause_removed_fails(self) -> None:
+        """codex P2: a bare `MUST` check passes on `MUST NOT` alone. Deleting the load-bearing
+        positive grounding clause must still fail — assert the specific clause, not a modal verb."""
+        errors = self._patch(
+            DOMAIN,
+            lambda t: self._strip_in_block(
+                t,
+                "### Step 5: Field-Norm Severity Discipline (#215)",
+                "ground the norm in an external",
+                "do something with the norm",
+            ),
+        )
+        self.assertTrue(
+            any("domain_reviewer_agent.md Step 5" in e and "ground the norm in an external" in e for e in errors),
+            msg=f"expected grounding-clause error: {errors!r}",
+        )
+
+    def test_da_output_format_column_removed_fails(self) -> None:
+        """codex P1: deleting the CRITICAL/MAJOR table columns from the Output Format block must
+        fail even though the snake_case field names remain in the gating prose elsewhere — proves
+        the column check is scoped to the output block, not file-wide."""
+        errors = self._patch(
+            DA,
+            lambda t: self._strip_in_block(
+                t, "## Output Format", "Field-Norm Boundary", "Removed-Column",
+            ),
+        )
+        self.assertTrue(
+            any("Output Format" in e and "Field-Norm Boundary" in e for e in errors),
+            msg=f"expected scoped output-format column error: {errors!r}",
+        )
+
+    def test_calibration_risk_definitions_removed_fails(self) -> None:
+        """codex P2: the intro line already contains 'low / med / high', so a bare-word check
+        passes after the three definition bullets are deleted. Removing a definition marker
+        (**`high`**) must fail."""
+        errors = self._patch(
+            CAL,
+            lambda t: self._strip_in_block(
+                t,
+                "### Phase 3.5: Severity-miscalibration measurement (#215)",
+                "**`high`**",
+                "**removed**",
+            ),
+        )
+        self.assertTrue(
+            any("Phase 3.5" in e and "'high' risk-level definition" in e for e in errors),
+            msg=f"expected risk-definition error: {errors!r}",
+        )
+
+    def test_block_not_truncated_by_code_fence(self) -> None:
+        """The Output Format block embeds a ```markdown sample report whose code fence contains
+        '## Devil's Advocate Review' etc. _block() must NOT treat those fenced ## lines as the
+        next header — otherwise the block truncates early and drops the CRITICAL table below it.
+        This asserts the real columns (below the fence) are inside the captured block."""
+        block = cfn._block(self._files[DA], r"^## Output Format")
+        self.assertIsNotNone(block)
+        self.assertIn("Field-Norm Boundary", block, "fence-aware _block must reach the CRITICAL table")
+        self.assertIn("#### CRITICAL", block)
+
     @staticmethod
     def _strip_in_block(text: str, header: str, needle: str, replacement: str) -> str:
         """Replace `needle` with `replacement` ONLY inside the block starting at `header`

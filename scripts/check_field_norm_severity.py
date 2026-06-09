@@ -28,6 +28,10 @@ DEFAULT_GOLD_SET = REPO_ROOT / "evals/gold/field_norm_severity/gold_set.json"
 
 VALID_SUBTYPES = {"field_norm_boundary", "significance_boundary"}
 REQUIRED_PROVENANCE_KEYS = ("section", "paper_citation", "verbatim_anchor")
+# An id ending in this suffix declares itself a contextual exception case (the SAR
+# 11.7T case the paper marks ambiguous). The flag must then actually be set — otherwise
+# the case silently reverts to a clean positive, the exact fidelity error this guards.
+EXCEPTION_ID_SUFFIX = "-exception"
 # The fixture must self-identify as a regression fixture (codex review P2): with n=10
 # and no deterministic predictor, it must not claim distributional calibration.
 REQUIRED_TASK_TYPE = "regression-fixture"
@@ -105,6 +109,16 @@ def validate(data: dict[str, Any]) -> list[str]:
         if not is_exception and has_reason:
             errors.append(
                 f"{where}: exception_reason present but exception is not true"
+            )
+
+        # An id that declares itself an exception case MUST carry exception=true. Without
+        # this an exception item that loses BOTH its flag and reason passes the paired
+        # check above (both branches false) and silently reverts to a clean positive —
+        # the SAR fidelity error this fixture exists to prevent.
+        if isinstance(item_id, str) and item_id.endswith(EXCEPTION_ID_SUFFIX) and not is_exception:
+            errors.append(
+                f"{where}: id ends in {EXCEPTION_ID_SUFFIX!r} but exception is not true "
+                f"(a declared exception case must stay marked contextual)"
             )
 
     return errors

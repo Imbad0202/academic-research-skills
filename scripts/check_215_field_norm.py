@@ -43,15 +43,25 @@ def _block(text: str, header_re: str) -> str | None:
     the same-or-higher level (## or ###), or end of file. None if the header is absent.
 
     Scopes keyword checks to the block so a keyword elsewhere in the file does not count.
+    A ``##``/``###`` line INSIDE a ``` fenced code block is NOT a real header (e.g. an
+    Output Format section embeds a sample report whose code fence contains ``## ...`` lines);
+    treating it as one would truncate the block early and drop content below it.
     """
     m = re.search(header_re, text, re.M)
     if not m:
         return None
     start = m.start()
-    # Next line starting with ## or ### (same/higher level) after this header's own line.
-    nxt = re.search(r"^\#{2,3} ", text[m.end():], re.M)
-    end = m.end() + nxt.start() if nxt else len(text)
-    return text[start:end]
+    rest = text[m.end():]
+    in_fence = False
+    offset = 0
+    for line in rest.splitlines(keepends=True):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and re.match(r"\#{2,3} ", line):
+            # A real header line (column 0, outside any fence) ends the block.
+            return text[start : m.end() + offset]
+        offset += len(line)
+    return text[start:]
 
 
 def check() -> list[str]:
@@ -63,9 +73,13 @@ def check() -> list[str]:
     if step5 is None:
         errors.append("domain_reviewer_agent.md: missing '### Step 5: Field-Norm Severity Discipline (#215)' block")
     else:
-        for needle in ("MUST", "MUST NOT", "[FIELD-NORM UNVERIFIED]"):
-            if needle not in step5:
-                errors.append(f"domain_reviewer_agent.md Step 5: missing required phrase {needle!r}")
+        # The down-rate prohibition AND the load-bearing positive grounding clause must
+        # both survive. A generic `MUST` check passes on `MUST NOT` alone, so deleting the
+        # "ground the norm in an external ... source" sentence would not be caught — assert
+        # the specific clauses, not a bare modal verb.
+        for clause in ("MUST NOT", "[FIELD-NORM UNVERIFIED]", "ground the norm in an external"):
+            if clause not in step5:
+                errors.append(f"domain_reviewer_agent.md Step 5: missing required clause {clause!r}")
         # codex P1: evidence is NOT limited to a literature citation.
         if "not limited to a literature citation" not in step5:
             errors.append(
@@ -78,12 +92,40 @@ def check() -> list[str]:
     dim9 = _block(da, r"^### 9\. Field-Norm Severity Calibration \(#215\)")
     if dim9 is None:
         errors.append("devils_advocate_reviewer_agent.md: missing '### 9. Field-Norm Severity Calibration (#215)' dimension")
-    # The two required fields must appear in the file (Output Format + the gating rule).
-    for field in ("field_norm_boundary", "evidence_crossing_rationale"):
-        if field not in da:
-            errors.append(f"devils_advocate_reviewer_agent.md: missing required CRITICAL/MAJOR field {field!r}")
-    if "[FIELD-NORM UNVERIFIED]" not in da:
-        errors.append("devils_advocate_reviewer_agent.md: missing '[FIELD-NORM UNVERIFIED]' down-rate label")
+    # The two required fields must land in the OUTPUT FORMAT block — that is what makes the
+    # rule reach the actual review output. A file-wide check would pass on the prose mention
+    # in the gating section even if the output-format columns were deleted (codex P1).
+    output_fmt = _block(da, r"^## Output Format")
+    if output_fmt is None:
+        errors.append("devils_advocate_reviewer_agent.md: missing '## Output Format' block")
+    else:
+        # The CRITICAL/MAJOR tables carry the fields as human-readable column HEADERS
+        # (Title Case), which is what actually reaches the review output. The snake_case
+        # names live only in the gating prose, so check the header strings here.
+        for column in ("Field-Norm Boundary", "Evidence-Crossing Rationale"):
+            if column not in output_fmt:
+                errors.append(
+                    f"devils_advocate_reviewer_agent.md Output Format: missing required "
+                    f"CRITICAL/MAJOR column {column!r}"
+                )
+    # The snake_case field NAMES + their grounding definition live in the CRITICAL-finding
+    # gating block; check them there (scoped) so a definition deleted from that block is
+    # caught independently of the output-format columns.
+    crit_block = _block(da, r"^### What Constitutes a CRITICAL Finding")
+    if crit_block is None:
+        errors.append("devils_advocate_reviewer_agent.md: missing '### What Constitutes a CRITICAL Finding' block")
+    else:
+        for field in ("field_norm_boundary", "evidence_crossing_rationale"):
+            if field not in crit_block:
+                errors.append(
+                    f"devils_advocate_reviewer_agent.md CRITICAL-finding block: missing field "
+                    f"definition {field!r}"
+                )
+        if "[FIELD-NORM UNVERIFIED]" not in crit_block:
+            errors.append(
+                "devils_advocate_reviewer_agent.md CRITICAL-finding block: missing "
+                "'[FIELD-NORM UNVERIFIED]' down-rate label"
+            )
 
     # --- Surface 3: calibration_mode_protocol.md Phase 3.5 ---
     cal = _read("academic-paper-reviewer/references/calibration_mode_protocol.md")
@@ -91,9 +133,14 @@ def check() -> list[str]:
     if phase35 is None:
         errors.append("calibration_mode_protocol.md: missing '### Phase 3.5: Severity-miscalibration measurement (#215)' block")
     else:
-        for needle in ("low", "med", "high"):
-            if needle not in phase35:
-                errors.append(f"calibration_mode_protocol.md Phase 3.5: missing risk level {needle!r}")
+        # Require the actual risk-level DEFINITIONS, not bare words. The intro line already
+        # contains "low / med / high", so a substring check passes even if all three
+        # definition bullets are deleted (codex P2). Each level is defined as **`level`** — …
+        for level in ("low", "med", "high"):
+            if f"**`{level}`**" not in phase35:
+                errors.append(
+                    f"calibration_mode_protocol.md Phase 3.5: missing the {level!r} risk-level definition"
+                )
         # codex P1: classify GROUNDING, not norm-correctness — do not repeat the failure.
         if "MUST NOT" not in phase35 or "evals/gold/field_norm_severity" not in phase35:
             errors.append(

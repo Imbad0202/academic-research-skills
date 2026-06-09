@@ -134,6 +134,22 @@ class TestValidatorInvariants(unittest.TestCase):
             msg=f"expected stray exception_reason error: {errors!r}",
         )
 
+    def test_exception_id_losing_both_flag_and_reason_fails(self) -> None:
+        """codex P1: if the SAR item loses BOTH its exception flag and its reason, the paired
+        check is satisfied (both branches false) and the case silently reverts to a clean
+        positive. The id-suffix guard must still fail — the declared exception stays contextual."""
+        def strip_exception(d: dict) -> None:
+            for it in d["items"]:
+                if str(it.get("id", "")).endswith("-exception"):
+                    it.pop("exception", None)
+                    it.pop("exception_reason", None)
+
+        errors = self._mutate(strip_exception)
+        self.assertTrue(
+            any("-exception" in e and "exception is not true" in e for e in errors),
+            msg=f"expected exception-id guard error: {errors!r}",
+        )
+
     def test_missing_field_norm_fails(self) -> None:
         errors = self._mutate(lambda d: d["items"][0].pop("field_norm"))
         self.assertTrue(
