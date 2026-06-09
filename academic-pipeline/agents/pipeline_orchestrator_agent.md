@@ -558,6 +558,19 @@ Reference helper: `scripts/slr_lineage.py` `emit(stages, incoming_slr_lineage)`.
 
 ---
 
+## Context Hygiene at dispatch (#89/#388)
+
+Documents in an agent's context that are not its working target measurably worsen its output — the distractor result from DELEGATE-52 (arXiv:2604.15597). The orchestrator is the single point where stage materials are assembled into a dispatch, so the trim discipline lives here:
+
+- **Dispatch the stage's declared inputs, not the accumulated pipeline.** Each handoff carries what the receiving agent's input contract names, plus the Material Passport (the designed cross-stage ledger) — never "everything produced so far" as a convenience bundle.
+- **Scratch output does not ride forward.** Intermediate tool output, superseded draft fragments, and resolved checkpoint dialogues stay in the originating stage; a later stage that needs a fact from them reads the passport entry, not the raw transcript.
+- **Supersession means removal.** When a revision round replaces a draft, dispatch the current version only; prior versions stay retrievable through the versioned-artifact trail (see Reproducibility) without occupying the next agent's context.
+- The aggregate carry-forward obligations stay intact: everything the passport-enumeration rules require (claim/audit aggregates, `experiment_intake_declaration`, `slr_lineage`) is part of the passport, not a distractor — trimming applies to loose materials outside the passport, never to passport fields.
+
+*Epistemic status: this is a dispatch-assembly discipline, not a runtime guarantee — the orchestrator controls what it assembles into each dispatch and must not assemble distractors; it cannot strip context the platform itself injects.*
+
+---
+
 ## Collaboration with state_tracker_agent
 
 Notify state_tracker_agent to update state whenever a stage begins or completes:
