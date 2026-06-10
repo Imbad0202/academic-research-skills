@@ -83,6 +83,14 @@ The repo is maintained by [Cheng-I Wu](https://github.com/Imbad0202) (HEEACT). T
 
 ---
 
+## Release checklist
+
+Most release mechanics are CI-enforced (`check_version_consistency.py` keeps CLAUDE.md / SKILL.md / CHANGELOG / plugin manifests / README badge in lockstep; the release-cooldown workflow paces tags). One convention is editorial and lives here:
+
+### `Real-use findings` subsection (#395)
+
+When drafting a release's CHANGELOG entry, include a **`Real-use findings`** subsection if any of the release's issues were discovered through actual use of the suite on a real paper — one line per issue, naming the run that surfaced it. Paper-derived / external-motivation work (the Zhao / Kong / Kim tracks) does NOT belong here; the subsection exists precisely to make the other provenance class visible. Background: the v3.6.7 production chapter run surfaced 17 drift patterns, but that lived-experience provenance was buried in spec prose with no fixed, greppable home — and release motivation since v3.8 has been almost entirely external papers, which is itself a signal worth seeing per release. If a release has no real-use findings, omit the subsection; never pad it.
+
 ## Academic integrity policy
 
 This repo is designed to be **assistive, not deceptive**. See [POSITIONING.md](POSITIONING.md) for the full design philosophy. Contributors must not add features designed to evade AI detection tools. If unsure, open an issue to discuss before submitting a PR.
