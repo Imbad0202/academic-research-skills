@@ -153,6 +153,71 @@
               }
             }
           }
+        },
+        {
+          "description": "The id prefix encodes the family (spec §3 tables: A=blind_review_residue, B=venue_limits, C=reference_integrity, D=repro_lock_linkage); the contract binds the redundant pair so an emitter cannot ship a mismatch downstream code keys on.",
+          "if": {
+            "properties": {
+              "id": {
+                "pattern": "^A"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "family": {
+                "const": "blind_review_residue"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "pattern": "^B"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "family": {
+                "const": "venue_limits"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "pattern": "^C"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "family": {
+                "const": "reference_integrity"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "pattern": "^D"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "family": {
+                "const": "repro_lock_linkage"
+              }
+            }
+          }
         }
       ]
     }

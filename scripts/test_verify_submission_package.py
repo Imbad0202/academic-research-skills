@@ -14,6 +14,8 @@ from pathlib import Path
 import jsonschema
 import pytest
 
+from verify_submission_package import run
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "submission_package"
 SCHEMA_PATH = (
@@ -27,22 +29,26 @@ def load_schema():
     return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
-def run_on(fixture_name, tmp_path, extra_args=()):
-    """Copy a fixture package into tmp and run the CLI on the copy.
-
-    Returns (exit_code, report_dict, package_dir). The copy keeps the repo
-    fixture pristine (the CLI writes its report into the package dir).
-    """
-    from verify_submission_package import run
-
-    package_dir = tmp_path / fixture_name
-    shutil.copytree(FIXTURES / fixture_name, package_dir)
+def run_dir(package_dir, extra_args=()):
+    """Run the CLI on a package dir; returns (exit_code, report_dict)."""
     rc = run([str(package_dir), *extra_args])
     report_path = package_dir / REPORT_BASENAME
     report = (
         json.loads(report_path.read_text(encoding="utf-8"))
         if report_path.is_file() else None
     )
+    return rc, report
+
+
+def run_on(fixture_name, tmp_path, extra_args=()):
+    """Copy a fixture package into tmp and run the CLI on the copy.
+
+    Returns (exit_code, report_dict, package_dir). The copy keeps the repo
+    fixture pristine (the CLI writes its report into the package dir).
+    """
+    package_dir = tmp_path / fixture_name
+    shutil.copytree(FIXTURES / fixture_name, package_dir)
+    rc, report = run_dir(package_dir, extra_args)
     return rc, report, package_dir
 
 
@@ -148,13 +154,10 @@ def test_join_map_resolves_the_no_join_case(tmp_path):
 
 
 def test_missing_package_dir_is_usage_error(tmp_path):
-    from verify_submission_package import run
-
     assert run([str(tmp_path / "does-not-exist")]) == 2
 
 
 def test_unparseable_passport_is_usage_error(tmp_path):
-    from verify_submission_package import run
 
     bad = tmp_path / "bad.yaml"
     bad.write_text("just a string\n", encoding="utf-8")
@@ -222,8 +225,6 @@ def test_no_machine_readable_reference_list_not_checked(tmp_path):
     package.mkdir()
     (package / "paper.md").write_text(
         "Smith (2024) said things.\n", encoding="utf-8")
-    from verify_submission_package import run
-
     rc = run([str(package)])
     report = json.loads(
         (package / REPORT_BASENAME).read_text(encoding="utf-8"))
@@ -256,7 +257,6 @@ def test_fingerprint_follows_audit_snapshot_convention_excluding_report(tmp_path
 def test_fingerprint_stable_across_reruns_with_report_present(tmp_path):
     # Second run sees the first run's report inside the package dir; the
     # exclusion keeps the fingerprint stable (freshness guard usable, §5.2).
-    from verify_submission_package import run
 
     _, first, package_dir = run_on("clean", tmp_path)
     run([str(package_dir)])
@@ -279,8 +279,6 @@ def test_partial_summary_join_never_falls_back_to_identity(tmp_path):
         "Unjoined but key-shaped (Smith, 2024) <!--ref:smith2024-->.\n",
         encoding="utf-8")
     passport = FIXTURES / "passports" / "summary_join.yaml"
-    from verify_submission_package import run
-
     rc = run([str(package), "--passport", str(passport)])
     report = json.loads(
         (package / REPORT_BASENAME).read_text(encoding="utf-8"))
@@ -304,7 +302,6 @@ def test_C2_is_never_strict_eligible(tmp_path):
 def test_custom_report_out_inside_package_excluded_from_fingerprint(tmp_path):
     # P2: a --report-out path inside the package must be excluded from the
     # fingerprint like the default basename, or reruns self-reference.
-    from verify_submission_package import run
 
     package = tmp_path / "clean"
     shutil.copytree(FIXTURES / "clean", package)
@@ -327,8 +324,6 @@ def test_authoryear_fallback_tolerates_page_locators(tmp_path):
         "(Chen & Lee, 2023, pp. 45–67).\n", encoding="utf-8")
     shutil.copy(FIXTURES / "fallback_authoryear" / "references.bib",
                 package / "references.bib")
-    from verify_submission_package import run
-
     rc = run([str(package)])
     report = json.loads(
         (package / REPORT_BASENAME).read_text(encoding="utf-8"))
@@ -380,6 +375,17 @@ def test_schema_rejects_heuristic_strict_eligible():
         jsonschema.validate(bad, load_schema())
     ok = _minimal_report(signal_class="heuristic", strict_eligible=False)
     jsonschema.validate(ok, load_schema())
+
+
+def test_schema_binds_check_id_prefix_to_family():
+    # The id prefix encodes the family (spec §3 tables); the contract binds
+    # them so a later-slice emitter cannot ship mismatched pairs.
+    bad = _minimal_report(id="C1", family="blind_review_residue")
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_schema())
+    bad2 = _minimal_report(id="A1", family="reference_integrity")
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad2, load_schema())
 
 
 def test_schema_rejects_unknown_status():
