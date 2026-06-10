@@ -13,6 +13,7 @@ from pathlib import Path
 
 import jsonschema
 import pytest
+import yaml
 
 from verify_submission_package import run
 
@@ -115,6 +116,52 @@ def test_policy_slug_is_null_in_standalone_runs(tmp_path):
 def test_report_written_into_package_dir(tmp_path):
     _, _, package_dir = run_on("clean", tmp_path)
     assert (package_dir / REPORT_BASENAME).is_file()
+
+
+def test_full_profile_all_family_b_pass(tmp_path):
+    # venue_clean satisfies every limit in profiles/full.yaml; with both
+    # families green the exit code is a true 0.
+    profile = FIXTURES / "profiles" / "full.yaml"
+    rc, report, _ = run_on("venue_clean", tmp_path,
+                           extra_args=["--venue-profile", str(profile)])
+    assert rc == 0
+    by_id = checks_by_id(report)
+    for cid in ("B1", "B2", "B3", "B4", "B5", "C1", "C2"):
+        assert by_id[cid]["status"] == "pass", (cid, by_id[cid]["detail"])
+    # §3.2: the word-count method is declared in the report, never implied
+    # venue-exact.
+    assert "whitespace-split" in by_id["B1"]["detail"]
+    assert "body_only" in by_id["B1"]["detail"]
+    assert report["header"]["not_checked_count"] == 0
+    jsonschema.validate(report, load_schema())
+
+
+def test_violated_profile_every_family_b_check_fails(tmp_path):
+    # Mutation discipline (§8): every Family B check has a fixture that fails
+    # it. venue_violations breaks all five limits in profiles/tight.yaml.
+    profile = FIXTURES / "profiles" / "tight.yaml"
+    rc, report, _ = run_on("venue_violations", tmp_path,
+                           extra_args=["--venue-profile", str(profile)])
+    assert rc == 1
+    by_id = checks_by_id(report)
+    for cid in ("B1", "B2", "B3", "B4", "B5"):
+        assert by_id[cid]["status"] == "fail", (cid, by_id[cid]["detail"])
+        assert by_id[cid]["signal_class"] == "deterministic"
+        assert by_id[cid]["strict_eligible"] is True
+    assert "Data Availability" in by_id["B4"]["detail"]
+    # Family C stays green — the violations are venue limits, not integrity.
+    assert by_id["C1"]["status"] == "pass"
+    jsonschema.validate(report, load_schema())
+
+
+def test_venue_profile_fixtures_validate_against_schema():
+    profile_schema = json.loads(
+        (REPO_ROOT / "shared" / "contracts" / "submission"
+         / "venue_profile.schema.json").read_text(encoding="utf-8"))
+    for name in ("full.yaml", "tight.yaml"):
+        profile = yaml.safe_load(
+            (FIXTURES / "profiles" / name).read_text(encoding="utf-8"))
+        jsonschema.validate(profile, profile_schema)
 
 
 # --- Round 2: fail / warn / NOT-CHECKED paths + exit codes -------------------

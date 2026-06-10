@@ -472,6 +472,135 @@ def run_family_c(manuscripts: dict[str, str], bibs: dict[str, str],
 
 _FAMILY_B_IDS = ("B1", "B2", "B3", "B4", "B5")
 
+_WORD_COUNT_TOLERANCE = 1.02  # §3.2: ±2% before fail (format-conversion noise)
+
+_MD_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$", re.MULTILINE)
+_KEYWORDS_LINE_RE = re.compile(
+    r"^\s*(?:\*\*|__)?\s*keywords?\s*(?:\*\*|__)?\s*[:：]\s*(.+?)\s*$",
+    re.IGNORECASE | re.MULTILINE)
+_TEX_KEYWORDS_RE = re.compile(r"\\keywords\s*\{([^}]*)\}", re.IGNORECASE)
+_TEX_SECTION_RE = re.compile(r"\\(?:sub)*section\*?\s*\{([^}]*)\}")
+_TEX_ABSTRACT_RE = re.compile(
+    r"\\begin\{abstract\}(.*?)\\end\{abstract\}", re.DOTALL)
+_TEX_BIBLIO_RE = re.compile(
+    r"\\begin\{thebibliography\}.*?\\end\{thebibliography\}|\\bibliography\s*\{[^}]*\}",
+    re.DOTALL)
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_REFS_TITLES = frozenset({"references", "bibliography", "參考文獻"})
+
+
+def _word_count(text: str) -> int:
+    """Canonical whitespace-split (shared/references/word_count_conventions.md)."""
+    return len(text.split())
+
+
+def _md_sections(text: str) -> list[tuple[str, int, int]]:
+    """[(heading title, content start, content end)] per markdown section."""
+    heads = list(_MD_HEADING_RE.finditer(text))
+    return [(m.group(2).strip(),
+             m.end(),
+             heads[i + 1].start() if i + 1 < len(heads) else len(text))
+            for i, m in enumerate(heads)]
+
+
+def _is_abstract_title(title: str) -> bool:
+    return title.lower().strip("*_ ").startswith("abstract")
+
+
+def _is_refs_title(title: str) -> bool:
+    return title.lower().strip("*_ ") in _REFS_TITLES
+
+
+def _md_drop_sections(text: str, title_predicates) -> str:
+    """Remove every section (heading included) whose title matches any
+    predicate."""
+    heads = list(_MD_HEADING_RE.finditer(text))
+    keep, cursor = [], 0
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        if any(p(m.group(2).strip()) for p in title_predicates):
+            keep.append(text[cursor:m.start()])
+            cursor = end
+    keep.append(text[cursor:])
+    return "".join(keep)
+
+
+def _detex(text: str) -> str:
+    """Naive detex (§10 item 4, adjudicated at slice 2: naive detex +
+    whitespace-split, the method is DECLARED in the report and never promised
+    venue-exact): drop comments and \\commands, unwrap braces/brackets."""
+    text = re.sub(r"(?<!\\)%.*", " ", text)
+    text = re.sub(r"\\[a-zA-Z]+\*?", " ", text)
+    return re.sub(r"[{}\[\]]", " ", text)
+
+
+def _countable_body(rel: str, text: str, scope: str) -> tuple[str, str]:
+    """(countable text, human description of what was counted) for B1."""
+    if rel.lower().endswith(".tex"):
+        abstract_stripped = _TEX_ABSTRACT_RE.sub(" ", text)
+        if scope == "body_only":
+            return (_detex(_TEX_BIBLIO_RE.sub(" ", abstract_stripped)),
+                    "naive detex; abstract + bibliography excluded")
+        if scope == "body_plus_references":
+            return _detex(abstract_stripped), "naive detex; abstract excluded"
+        return _detex(text), "naive detex; everything counted"
+    text = _HTML_COMMENT_RE.sub(" ", text)
+    text = _KEYWORDS_LINE_RE.sub(" ", text)
+    if scope == "body_only":
+        return (_md_drop_sections(text, (_is_abstract_title, _is_refs_title)),
+                "abstract + references + keywords line excluded")
+    if scope == "body_plus_references":
+        return (_md_drop_sections(text, (_is_abstract_title,)),
+                "abstract + keywords line excluded")
+    return text, "keywords line excluded; everything else counted"
+
+
+def _abstract_text(rel: str, text: str) -> Optional[str]:
+    if rel.lower().endswith(".tex"):
+        m = _TEX_ABSTRACT_RE.search(text)
+        return _detex(m.group(1)) if m else None
+    for title, start, end in _md_sections(text):
+        if _is_abstract_title(title):
+            body = _HTML_COMMENT_RE.sub(" ", text[start:end])
+            return _KEYWORDS_LINE_RE.sub(" ", body)
+    return None
+
+
+def _keyword_list(text: str) -> Optional[list[str]]:
+    m = _KEYWORDS_LINE_RE.search(text) or _TEX_KEYWORDS_RE.search(text)
+    if not m:
+        return None
+    return [k for k in re.split(r"[,;、；]", m.group(1)) if k.strip()]
+
+
+def _headings(rel: str, text: str) -> list[str]:
+    if rel.lower().endswith(".tex"):
+        return [m.group(1).strip() for m in _TEX_SECTION_RE.finditer(text)]
+    return [t for t, _s, _e in _md_sections(text)]
+
+
+def _primary_manuscript(manuscripts: dict[str, str]
+                        ) -> tuple[str, str]:
+    """The manuscript the limits are checked against: the wordiest candidate,
+    excluding cover letters (a cover letter is part of the package but not of
+    the manuscript the venue counts). Which file was counted is declared in
+    every detail string."""
+    candidates = {rel: t for rel, t in manuscripts.items()
+                  if not Path(rel).name.lower().startswith("cover_letter")}
+    candidates = candidates or manuscripts
+    rel = max(sorted(candidates), key=lambda r: _word_count(candidates[r]))
+    return rel, candidates[rel]
+
+
+def _ceiling_check(check_id: str, count: int, limit: int, what: str,
+                   location: Optional[str] = None,
+                   tolerance: float = 1.0) -> dict[str, Any]:
+    tol_note = " (±2% tolerance)" if tolerance > 1.0 else ""
+    status = "pass" if count <= limit * tolerance else "fail"
+    return _check(check_id, status,
+                  f"{what}: {count} vs declared limit {limit}{tol_note}",
+                  location=location)
+
 
 def run_family_b(manuscripts: dict[str, str],
                  reference_keys: set[str], reference_label: str,
@@ -479,13 +608,151 @@ def run_family_b(manuscripts: dict[str, str],
                  ) -> list[dict[str, Any]]:
     """Family B: venue-declared limits vs actuals (§3.2). Without a profile,
     every check is NOT-CHECKED — limits are never guessed from the journal
-    name (R-L3-2-D mirror)."""
+    name (R-L3-2-D mirror). A partially-declared profile runs the checks it
+    can and NOT-CHECKEDs the rest (§4)."""
     if profile is None:
         return [_check(i, "not_checked",
                        "no venue profile declared — limits are never guessed "
                        "from the journal name (R-L3-2-D mirror)")
                 for i in _FAMILY_B_IDS]
-    raise NotImplementedError  # round 2
+
+    checks: list[dict[str, Any]] = []
+    rel: Optional[str] = None
+    if manuscripts:
+        rel, text = _primary_manuscript(manuscripts)
+
+    def not_declared(check_id: str, field: str) -> dict[str, Any]:
+        return _check(check_id, "not_checked",
+                      f"{field} not declared in venue profile")
+
+    # B1 — manuscript word count vs word_limit (±2%, §3.2)
+    word_limit = profile.get("word_limit")
+    if word_limit is None:
+        checks.append(not_declared("B1", "word_limit"))
+    elif rel is None:
+        checks.append(_check("B1", "not_checked", _NO_MANUSCRIPT_REASON))
+    else:
+        scope = profile.get("word_count_scope")
+        scope_decl = scope or "body_only (default — scope not declared)"
+        body, counted_desc = _countable_body(rel, text, scope or "body_only")
+        checks.append(_ceiling_check(
+            "B1", _word_count(body), word_limit,
+            f"manuscript word count of {rel}, scope {scope_decl} "
+            f"({counted_desc}; whitespace-split per "
+            f"shared/references/word_count_conventions.md)",
+            location=rel, tolerance=_WORD_COUNT_TOLERANCE))
+
+    # B2 — abstract word count vs abstract_word_limit (±2%)
+    abstract_limit = profile.get("abstract_word_limit")
+    if abstract_limit is None:
+        checks.append(not_declared("B2", "abstract_word_limit"))
+    elif rel is None:
+        checks.append(_check("B2", "not_checked", _NO_MANUSCRIPT_REASON))
+    else:
+        abstract = _abstract_text(rel, text)
+        if abstract is None:
+            checks.append(_check(
+                "B2", "not_checked",
+                f"no abstract section found in {rel}", location=rel))
+        else:
+            checks.append(_ceiling_check(
+                "B2", _word_count(abstract), abstract_limit,
+                f"abstract word count of {rel} (whitespace-split)",
+                location=rel, tolerance=_WORD_COUNT_TOLERANCE))
+
+    # B3 — keyword count vs keyword_range (exact)
+    keyword_range = profile.get("keyword_range")
+    if keyword_range is None:
+        checks.append(not_declared("B3", "keyword_range"))
+    elif rel is None:
+        checks.append(_check("B3", "not_checked", _NO_MANUSCRIPT_REASON))
+    else:
+        keywords = _keyword_list(text)
+        if keywords is None:
+            checks.append(_check(
+                "B3", "not_checked",
+                f"no keywords line found in {rel}", location=rel))
+        else:
+            lo, hi = keyword_range["min"], keyword_range["max"]
+            ok = lo <= len(keywords) <= hi
+            checks.append(_check(
+                "B3", "pass" if ok else "fail",
+                f"keyword count of {rel}: {len(keywords)} vs declared range "
+                f"{lo}–{hi}", location=rel))
+
+    # B4 — required sections present (set comparison)
+    required = profile.get("required_sections")
+    if required is None:
+        checks.append(not_declared("B4", "required_sections"))
+    elif rel is None:
+        checks.append(_check("B4", "not_checked", _NO_MANUSCRIPT_REASON))
+    else:
+        headings = [h.lower() for h in _headings(rel, text)]
+        missing = [s for s in required
+                   if not any(s.lower() in h for h in headings)]
+        if missing:
+            checks.append(_check(
+                "B4", "fail",
+                f"required section(s) missing from {rel} (case-insensitive "
+                f"heading containment): {', '.join(missing)}", location=rel))
+        else:
+            checks.append(_check(
+                "B4", "pass",
+                f"all {len(required)} required section(s) present in {rel}",
+                location=rel))
+
+    # B5 — reference count vs reference_limit (exact)
+    reference_limit = profile.get("reference_limit")
+    if reference_limit is None:
+        checks.append(not_declared("B5", "reference_limit"))
+    elif not reference_keys:
+        checks.append(_check("B5", "not_checked", _NO_REFERENCE_LIST_REASON))
+    else:
+        checks.append(_ceiling_check(
+            "B5", len(reference_keys), reference_limit,
+            f"reference entries in {reference_label}"))
+
+    return checks
+
+
+def _validate_venue_profile(raw: dict[str, Any]) -> dict[str, Any]:
+    """Lightweight shape validation for a --venue-profile file. The formal
+    contract is shared/contracts/submission/venue_profile.schema.json; this
+    guards the fields the checks actually consume so a malformed profile is a
+    usage error, never a silently-skewed comparison."""
+    if raw.get("declared_by") != "scholar":
+        raise ValueError(
+            "venue profile must carry `declared_by: scholar` — the profile is "
+            "scholar-declared only, never scraped or inferred (spec §4)")
+    for field in ("word_limit", "abstract_word_limit", "reference_limit"):
+        v = raw.get(field)
+        if v is not None and (not isinstance(v, int) or v < 1):
+            raise ValueError(f"venue profile {field} must be a positive "
+                             f"integer or null, got {v!r}")
+    scope = raw.get("word_count_scope")
+    if scope not in (None, "body_only", "body_plus_references", "all"):
+        raise ValueError(f"venue profile word_count_scope must be one of "
+                         f"body_only/body_plus_references/all/null, got {scope!r}")
+    blind = raw.get("blind_review")
+    if blind not in (None, "double", "single", "open"):
+        raise ValueError(f"venue profile blind_review must be one of "
+                         f"double/single/open/null, got {blind!r}")
+    kr = raw.get("keyword_range")
+    if kr is not None:
+        if (not isinstance(kr, dict)
+                or not isinstance(kr.get("min"), int)
+                or not isinstance(kr.get("max"), int)
+                or kr["min"] > kr["max"]):
+            raise ValueError(
+                f"venue profile keyword_range must be {{min, max}} integers "
+                f"with min <= max, got {kr!r}")
+    sections = raw.get("required_sections")
+    if sections is not None and (
+            not isinstance(sections, list)
+            or not all(isinstance(s, str) and s for s in sections)):
+        raise ValueError("venue profile required_sections must be a list of "
+                         "non-empty strings or null")
+    return raw
 
 
 def run_checks(package_dir: Path,
@@ -580,6 +847,13 @@ def run(argv: Optional[list[str]] = None) -> int:
         help="Explicit scholar-supplied {ref_slug: citation_key} YAML/JSON "
              "mapping (overrides every other join source).")
     parser.add_argument(
+        "--venue-profile", default=None,
+        help="Scholar-declared venue profile YAML (schema shared/contracts/"
+             "submission/venue_profile.schema.json) enabling the Family B "
+             "limits checks. Absent: every Family B check reports "
+             "NOT-CHECKED(no venue profile) — never guessed from the "
+             "journal name.")
+    parser.add_argument(
         "--report-out", default=None,
         help=f"Report path (default: <package_dir>/{REPORT_BASENAME}).")
     args = parser.parse_args(argv)
@@ -609,8 +883,19 @@ def run(argv: Optional[list[str]] = None) -> int:
             return 2
         join_map = {str(slug): str(key) for slug, key in raw.items()}
 
+    venue_profile = None
+    if args.venue_profile is not None:
+        try:
+            venue_profile = _validate_venue_profile(
+                _load_yaml(Path(args.venue_profile)))
+        except (OSError, ValueError, yaml.YAMLError) as e:
+            print(f"[verify_submission_package ERROR] could not load venue "
+                  f"profile: {e}", file=sys.stderr)
+            return 2
+
     checks, extraction_path = run_checks(
-        package_dir, passport=passport, join_map=join_map)
+        package_dir, passport=passport, join_map=join_map,
+        venue_profile=venue_profile)
     report_path = (Path(args.report_out) if args.report_out
                    else package_dir / REPORT_BASENAME)
     report = build_report(package_dir, checks, extraction_path,
