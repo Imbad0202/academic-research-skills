@@ -1,6 +1,6 @@
 # ARS #394 — Deterministic submission-package verifier (design-first)
 
-**Status**: DESIGN — slices ship per §9. Slice 1 (CLI skeleton + Family C + report schema + fixtures) SHIPPED; slices 2–4 follow.
+**Status**: DESIGN — slices ship per §9. Slice 1 (CLI skeleton + Family C + report schema + fixtures) SHIPPED; Slice 2 (venue profile + intake Step 3 follow-up + Family B) SHIPPED; slices 3–4 follow.
 **Issue**: #394 (blindspot-audit F-5, adjudicated design-first).
 **Decision trail**: 2026-06-10 researcher-blindspot audit; cross-model review corrected the initial claim — the formatter's prompt-layer checklist already exists; the gap is deterministic enforcement, not absence.
 
@@ -62,7 +62,7 @@ Runs when the package contains an anonymized variant **or the venue profile decl
 
 ### 3.2 Family B — venue-declared limits vs actuals
 
-Mechanical comparison of package actuals against the intake-declared venue profile (§4): manuscript word count, abstract word count, keyword count range, required sections present (set comparison against `required_sections[]`), reference count ceiling if declared. All deterministic; all promotable under strict. Without a venue profile: every Family B check is `NOT-CHECKED(no venue profile)` — never guessed from the journal name (R-L3-2-D mirror).
+Mechanical comparison of package actuals against the intake-declared venue profile (§4): manuscript word count (**B1**), abstract word count (**B2**), keyword count range (**B3**), required sections present (set comparison against `required_sections[]`, **B4**), reference count ceiling if declared (**B5**) — check ids assigned at slice 2. All deterministic; all promotable under strict. Without a venue profile: every Family B check is `NOT-CHECKED(no venue profile)` — never guessed from the journal name (R-L3-2-D mirror).
 
 Word-count method must be declared in the report (the venue's counting rules differ — with/without references/captions). The profile carries `word_count_scope` so the comparison states what it counted; mismatch tolerance ±2% before `fail` (format conversion noise; same tolerance class as the formatter's existing <1% conversion check, widened because venue counting rules are coarser).
 
@@ -137,7 +137,7 @@ Advisory-only through slice 3; nothing blocks until slice 4 lands the policy key
 1. zh-TW self-citation phrasing list (A5) needs first-party curation — no anglophone-only pattern list.
 2. Family D adjudication (§3.4): presence/shape check vs leaving `repro_lock` fully out — maintainer call at slice 3.
 3. Whether the report's `package_fingerprint` should reuse the audit-snapshot hashing convention or a plain file manifest — decide at slice 1. **ADJUDICATED (slice 1):** reuse the audit-snapshot manifest convention (`scripts/audit_snapshot.py` `write_manifest`), adapted to package level: one `<package-relative-path>:<sha256>` line per file, LC_ALL=C byte-sorted, newline-joined with a trailing newline; the fingerprint is the SHA-256 of that manifest text. The report file itself is excluded (it cannot fingerprint its own bytes). Pinned by an independent reimplementation in `scripts/test_verify_submission_package.py`.
-4. LaTeX word counting (`texcount` vs detex-and-count) — declare the method, don't promise venue-exact numbers.
+4. LaTeX word counting (`texcount` vs detex-and-count) — declare the method, don't promise venue-exact numbers. **ADJUDICATED (slice 2):** naive detex (strip `%` comments and `\commands`, unwrap braces/brackets) + canonical whitespace-split (`shared/references/word_count_conventions.md`), zero new dependencies; the report's B1 detail names the method and the counted file, and the ±2% tolerance absorbs the divergence from venue-exact counters. `texcount` rejected for slice 2 (an external binary dependency for a precision the tolerance makes unnecessary).
 
 ## 11. Ship gate + definition of done (per slice)
 
