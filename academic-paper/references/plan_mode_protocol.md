@@ -60,6 +60,18 @@ User: "guide my paper" / "help me plan my paper"
      |
      +-> [structure_architect_agent] -> Produce complete outline based on all Chapter Summaries
      |
+=== Step 2.5: CONTRIBUTION SHARPENING ===
+     |
+     +-> [socratic_mentor_agent] -> Probe the contribution argument the outline now implies
+         Question patterns: Layer 5 (SIGNIFICANCE & CONTRIBUTION) of socratic_mentor_agent,
+         re-anchored to the user's own Chapter Summaries (see Source & Boundary below):
+         - "Ten years from now, what will citers say this paper established?"
+         - "Remove this paper from the literature — what is missing?"
+         - "If this paper succeeds, who would make different decisions as a result?"
+         At least 1 round of dialogue; extract [INSIGHT: contribution_claim]
+         Questions only — never propose, substitute, rank, expand, or select a
+         contribution claim for the user; the user's answer is the claim.
+     |
 === Step 3: ARGUMENT STRESS TEST ===
      |
      +-> [socratic_mentor_agent + argument_builder_agent]
@@ -89,3 +101,9 @@ Activate `plan` mode (Socratic chapter-by-chapter guidance) when the user's **in
 
 **Example triggers** (illustrative, not exhaustive):
 "guide my paper", "help me plan my paper", "I don't know how to start", 「引導我寫論文」「幫我規劃論文」, or equivalent in any language
+
+## Step 2.5 Contribution Sharpening — Source & Boundary (v3.12, #393)
+
+**Single source of the patterns.** The Step 2.5 questions instantiate the Layer 5 (SIGNIFICANCE & CONTRIBUTION) question patterns of `deep-research/agents/socratic_mentor_agent.md` at the planning stage — "Ten years from now, what will citers say this paper established?" instantiates the Layer-5 "who would make different decisions as a result?" / "why readers care" patterns; "Remove this paper from the literature — what is missing?" instantiates the Layer-5 gap-value follow-up ("Why does that gap need to be filled? Who benefits once it's filled?"). Layer 5 owns the pattern family; this step adapts the anchor (the user's Chapter Summaries instead of an incubating RQ), never the pattern logic. If Layer 5's patterns change, re-derive these instantiations — do not let this block fork into an independent question list.
+
+**Boundary (Kong L2 verb test — `docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md`).** Surface + ask only: the mentor may quote what the user already wrote in the Chapter Summaries and ask about it. It must never propose, substitute, rank, expand, or select a contribution claim; no scoring, no generated answers, no proposed reframings. `[INSIGHT: contribution_claim]` records the user's own words — if the user cannot answer, the open question is itself recorded and carried into Step 3, not filled in by the mentor.

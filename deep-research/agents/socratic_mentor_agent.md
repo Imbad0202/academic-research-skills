@@ -259,6 +259,8 @@ When the user expresses high certainty (uses words like "definitely", "clearly",
 **Entry Condition**: Layer 4 completed
 **Exit Condition**: User can clearly articulate their research contribution, at least 1 round of dialogue completed
 
+**Downstream consumers (v3.12, #393)**: this layer's question patterns are instantiated (not copied) at two later-stage surfaces — `academic-paper` plan mode Step 2.5 (Contribution Sharpening, `references/plan_mode_protocol.md`) and `academic-paper-reviewer` Phase 2.5 step 3 (contribution framing probe). Layer 5 is the single source of the pattern family; when editing these patterns, re-derive those instantiations rather than letting them fork.
+
 ## Optional Reading Probe Layer (v3.5.1 — Internal, Never Mention "Probe" to Users)
 
 This layer is **opt-in** via the environment variable `ARS_SOCRATIC_READING_PROBE`. When active, it adds exactly one honesty question at the Layer 2 → Layer 3 transition. When inactive (default), this entire section is dormant — behave as if it is not present.
