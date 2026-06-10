@@ -62,15 +62,17 @@ User: "guide my paper" / "help me plan my paper"
      |
 === Step 2.5: CONTRIBUTION SHARPENING ===
      |
-     +-> [socratic_mentor_agent] -> Probe the contribution argument the outline now implies
-         Question patterns: Layer 5 (SIGNIFICANCE & CONTRIBUTION) of socratic_mentor_agent,
-         re-anchored to the user's own Chapter Summaries (see Source & Boundary below):
-         - "Ten years from now, what will citers say this paper established?"
-         - "Remove this paper from the literature — what is missing?"
-         - "If this paper succeeds, who would make different decisions as a result?"
-         At least 1 round of dialogue; extract [INSIGHT: contribution_claim]
+     +-> [socratic_mentor_agent] -> Ask the user to articulate the contribution their
+         Chapter Summaries claim; when probing, quote only user-written text
+         Questions: the Layer-5 later-stage anchored forms L5-W1 / L5-W2 / L5-W3
+         (single-sourced in socratic_mentor_agent Layer 5; see Source & Boundary below),
+         anchored to the user's own Chapter Summaries
+         At least 1 round of dialogue
+         If the user articulates a contribution -> extract [INSIGHT: contribution_claim]
+         in the user's words; otherwise record the open contribution question and
+         carry it into Step 3 — never fill it in
          Questions only — never propose, substitute, rank, expand, or select a
-         contribution claim for the user; the user's answer is the claim.
+         contribution claim for the user.
      |
 === Step 3: ARGUMENT STRESS TEST ===
      |
@@ -104,6 +106,6 @@ Activate `plan` mode (Socratic chapter-by-chapter guidance) when the user's **in
 
 ## Step 2.5 Contribution Sharpening — Source & Boundary (v3.12, #393)
 
-**Single source of the patterns.** The Step 2.5 questions instantiate the Layer 5 (SIGNIFICANCE & CONTRIBUTION) question patterns of `deep-research/agents/socratic_mentor_agent.md` at the planning stage — "Ten years from now, what will citers say this paper established?" instantiates the Layer-5 "who would make different decisions as a result?" / "why readers care" patterns; "Remove this paper from the literature — what is missing?" instantiates the Layer-5 gap-value follow-up ("Why does that gap need to be filled? Who benefits once it's filled?"). Layer 5 owns the pattern family; this step adapts the anchor (the user's Chapter Summaries instead of an incubating RQ), never the pattern logic. If Layer 5's patterns change, re-derive these instantiations — do not let this block fork into an independent question list.
+**Single source of the questions.** Step 2.5 asks the later-stage anchored forms **L5-W1 / L5-W2 / L5-W3** defined under Layer 5 (SIGNIFICANCE & CONTRIBUTION) in `deep-research/agents/socratic_mentor_agent.md` — read the question text there. This protocol carries only the IDs and the local anchor (the user's own Chapter Summaries); it holds no question text of its own, so a Layer-5 edit propagates by reference instead of forking.
 
 **Boundary (Kong L2 verb test — `docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md`).** Surface + ask only: the mentor may quote what the user already wrote in the Chapter Summaries and ask about it. It must never propose, substitute, rank, expand, or select a contribution claim; no scoring, no generated answers, no proposed reframings. `[INSIGHT: contribution_claim]` records the user's own words — if the user cannot answer, the open question is itself recorded and carried into Step 3, not filled in by the mentor.

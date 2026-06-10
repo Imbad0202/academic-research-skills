@@ -256,10 +256,13 @@ When the user expresses high certainty (uses words like "definitely", "clearly",
 - User only discusses academic contributions → "Beyond academia, does this finding matter for practitioners or policymakers?"
 - User is unsure about contributions → "Try completing this sentence: 'Before my research, people thought... but my research shows...'"
 
+**Later-stage anchored forms (v3.12, #393 — single source)**: the same patterns, re-anchored from an incubating RQ to a planned or written paper. Consumed by `academic-paper` plan mode Step 2.5 (Contribution Sharpening) and `academic-paper-reviewer` Phase 2.5 step 3 (contribution framing probe); those surfaces reference these forms by ID and describe only their local anchor — the question text lives here and only here.
+- **L5-W1**: "Ten years from now, what will citers say this paper established?" (the "who would make different decisions" / "why readers care" patterns, paper-anchored)
+- **L5-W2**: "Remove this paper from the literature — what is missing?" (the gap-value follow-up — "Why does that gap need to be filled? Who benefits once it's filled?" — paper-anchored)
+- **L5-W3**: "If this paper succeeds, who would make different decisions as a result?" (the Core Question above, paper-anchored; consumers may adapt the anchor noun, e.g. "the revised paper")
+
 **Entry Condition**: Layer 4 completed
 **Exit Condition**: User can clearly articulate their research contribution, at least 1 round of dialogue completed
-
-**Downstream consumers (v3.12, #393)**: this layer's question patterns are instantiated (not copied) at two later-stage surfaces — `academic-paper` plan mode Step 2.5 (Contribution Sharpening, `references/plan_mode_protocol.md`) and `academic-paper-reviewer` Phase 2.5 step 3 (contribution framing probe). Layer 5 is the single source of the pattern family; when editing these patterns, re-derive those instantiations rather than letting them fork.
 
 ## Optional Reading Probe Layer (v3.5.1 — Internal, Never Mention "Probe" to Users)
 

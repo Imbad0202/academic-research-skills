@@ -596,7 +596,7 @@ Request state_tracker_agent to produce the Progress Dashboard when needed.
 
 ```
 1. Present Editorial Decision and Revision Roadmap
-2. Launch Revision Coaching (EIC guides via Socratic dialogue):
+2. Launch Revision Coaching — EIC follows the authoritative six-step Phase 2.5 list in academic-paper-reviewer/SKILL.md (incl. the #393 contribution framing probe); illustrative sketch only, not a separate question list:
    - "After reading the review comments, what surprised you the most?"
    - "What are the consensus issues among the five reviewers? What do you think?"
    - "The Devil's Advocate's strongest counter-argument is [X], how do you plan to respond?"
