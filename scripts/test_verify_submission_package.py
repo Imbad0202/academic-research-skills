@@ -154,6 +154,90 @@ def test_violated_profile_every_family_b_check_fails(tmp_path):
     jsonschema.validate(report, load_schema())
 
 
+def test_partial_profile_runs_what_it_can(tmp_path):
+    # §4: a partially-declared profile runs the checks it can and
+    # NOT-CHECKEDs the rest, each with the undeclared field named.
+    profile = tmp_path / "partial.yaml"
+    profile.write_text(
+        "word_limit: 200\ndeclared_by: scholar\n", encoding="utf-8")
+    rc, report, _ = run_on("venue_clean", tmp_path,
+                           extra_args=["--venue-profile", str(profile)])
+    assert rc == 3
+    by_id = checks_by_id(report)
+    assert by_id["B1"]["status"] == "pass"
+    for cid, field in (("B2", "abstract_word_limit"),
+                       ("B3", "keyword_range"),
+                       ("B4", "required_sections"),
+                       ("B5", "reference_limit")):
+        assert by_id[cid]["status"] == "not_checked"
+        assert f"{field} not declared" in by_id[cid]["detail"]
+
+
+def test_word_count_tolerance_two_percent(tmp_path):
+    # §3.2: ±2% tolerance before fail (format-conversion noise). 101 words
+    # against a 100 limit passes; 103 fails.
+    profile = tmp_path / "profile.yaml"
+    profile.write_text(
+        "word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
+    for n_words, expected in ((101, "pass"), (103, "fail")):
+        package = tmp_path / f"pkg{n_words}"
+        package.mkdir()
+        (package / "paper.md").write_text(
+            " ".join(["word"] * n_words) + "\n", encoding="utf-8")
+        run([str(package), "--venue-profile", str(profile)])
+        report = json.loads(
+            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+        assert checks_by_id(report)["B1"]["status"] == expected, n_words
+
+
+def test_invalid_venue_profile_is_usage_error(tmp_path):
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("# x\n", encoding="utf-8")
+    cases = (
+        "word_limit: 100\n",                                  # no declared_by
+        "declared_by: tool\n",                                # wrong provenance
+        "declared_by: scholar\nword_count_scope: detexed\n",  # bad enum
+        "declared_by: scholar\nkeyword_range: {min: 5, max: 2}\n",  # min>max
+        "declared_by: scholar\nword_limit: -3\n",             # bad int
+    )
+    for body in cases:
+        profile = tmp_path / "bad.yaml"
+        profile.write_text(body, encoding="utf-8")
+        assert run([str(package), "--venue-profile", str(profile)]) == 2, body
+
+
+def test_missing_abstract_and_keywords_not_checked(tmp_path):
+    # Declared limits whose actuals cannot be located are NOT-CHECKED with the
+    # reason — never folded into pass (§1.4), never guessed.
+    profile = tmp_path / "profile.yaml"
+    profile.write_text(
+        "abstract_word_limit: 50\nkeyword_range: {min: 1, max: 5}\n"
+        "declared_by: scholar\n", encoding="utf-8")
+    rc, report, _ = run_on("clean", tmp_path,
+                           extra_args=["--venue-profile", str(profile)])
+    by_id = checks_by_id(report)
+    assert by_id["B2"]["status"] == "not_checked"
+    assert "no abstract section" in by_id["B2"]["detail"]
+    assert by_id["B3"]["status"] == "not_checked"
+    assert "no keywords line" in by_id["B3"]["detail"]
+
+
+def test_latex_manuscript_word_count_declares_detex(tmp_path):
+    # §10 item 4 (adjudicated at slice 2): LaTeX counting = naive detex +
+    # whitespace-split, the method is declared in the report, never promised
+    # venue-exact.
+    profile = tmp_path / "profile.yaml"
+    profile.write_text(
+        "word_limit: 5\ndeclared_by: scholar\n", encoding="utf-8")
+    rc, report, _ = run_on("fallback_latex", tmp_path,
+                           extra_args=["--venue-profile", str(profile)])
+    by_id = checks_by_id(report)
+    assert by_id["B1"]["status"] == "fail"
+    assert "naive detex" in by_id["B1"]["detail"]
+    assert by_id["B1"]["location"] == "paper.tex"
+
+
 def test_venue_profile_fixtures_validate_against_schema():
     profile_schema = json.loads(
         (REPO_ROOT / "shared" / "contracts" / "submission"
