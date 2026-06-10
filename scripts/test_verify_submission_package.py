@@ -163,6 +163,108 @@ def test_unparseable_passport_is_usage_error(tmp_path):
     assert run([str(package), "--passport", str(bad)]) == 2
 
 
+# --- Round 3: fallback extraction, summary join, fingerprint -----------------
+
+def test_fallback_latex_cite_extraction_is_heuristic_best_effort(tmp_path):
+    # §3.3: post-converted sources fall back to \cite{} extraction; the header
+    # downgrades to best-effort and the whole path is heuristic-classed
+    # (advisory-only) — even a true orphan fail is NOT strict-eligible.
+    rc, report, _ = run_on("fallback_latex", tmp_path)
+    assert rc == 1
+    assert report["header"]["extraction_path"] == "best_effort"
+    by_id = checks_by_id(report)
+    assert by_id["C1"]["status"] == "fail"
+    assert "ghost2024" in by_id["C1"]["detail"]
+    assert "smith2024" not in by_id["C1"]["detail"]
+    for cid in ("C1", "C2"):
+        assert by_id[cid]["signal_class"] == "heuristic"
+        assert by_id[cid]["strict_eligible"] is False
+    assert by_id["C2"]["status"] == "pass"
+    jsonschema.validate(report, load_schema())
+
+
+def test_fallback_authoryear_extraction_matches_bib_metadata(tmp_path):
+    rc, report, _ = run_on("fallback_authoryear", tmp_path)
+    assert rc == 1
+    assert report["header"]["extraction_path"] == "best_effort"
+    by_id = checks_by_id(report)
+    # Only the unmatched (Nowhere, 2020) is an orphan; Smith (2024) narrative
+    # and (Chen & Lee, 2023) parenthetical both join to bib metadata.
+    assert by_id["C1"]["status"] == "fail"
+    assert "nowhere" in by_id["C1"]["detail"].lower()
+    assert "smith" not in by_id["C1"]["detail"].lower()
+    assert "chen" not in by_id["C1"]["detail"].lower()
+    # Both bib entries were cited, so C2 passes — and the references section
+    # itself was not scanned as in-text prose.
+    assert by_id["C2"]["status"] == "pass"
+    assert by_id["C1"]["signal_class"] == "heuristic"
+
+
+def test_summary_join_consumes_real_prose_join(tmp_path):
+    # The prose slug (smith-feedback-2024) differs from the citation_key
+    # (smith2024): a pass proves the citation_verification_summary join was
+    # consumed, not an identity guess (§3.3).
+    passport = FIXTURES / "passports" / "summary_join.yaml"
+    rc, report, _ = run_on("summary_join", tmp_path,
+                           extra_args=["--passport", str(passport)])
+    assert rc == 0
+    by_id = checks_by_id(report)
+    assert by_id["C1"]["status"] == "pass"
+    assert by_id["C2"]["status"] == "pass"
+    assert report["header"]["extraction_path"] == "joined_marker"
+    for cid in ("C1", "C2"):
+        assert by_id[cid]["signal_class"] == "deterministic"
+
+
+def test_no_machine_readable_reference_list_not_checked(tmp_path):
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text(
+        "Smith (2024) said things.\n", encoding="utf-8")
+    from verify_submission_package import run
+
+    rc = run([str(package)])
+    report = json.loads(
+        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    assert rc == 3
+    for c in report["checks"]:
+        assert c["status"] == "not_checked"
+        assert "no machine-readable reference list" in c["detail"]
+
+
+def test_fingerprint_follows_audit_snapshot_convention_excluding_report(tmp_path):
+    # §10 open item 3 (adjudicated at slice 1): `<relative-path>:<sha256>`
+    # lines, byte-sorted, trailing newline, fingerprint = sha256 of the
+    # manifest text; the report file itself is excluded. Pinned here by an
+    # independent reimplementation.
+    import hashlib
+
+    _, report, package_dir = run_on("clean", tmp_path)
+    lines = []
+    for p in sorted(package_dir.rglob("*")):
+        if not p.is_file() or p.name == REPORT_BASENAME:
+            continue
+        digest = hashlib.sha256(p.read_bytes()).hexdigest()
+        lines.append(f"{p.relative_to(package_dir).as_posix()}:{digest}")
+    lines.sort()
+    expected = hashlib.sha256(
+        ("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+    assert report["header"]["package_fingerprint"] == expected
+
+
+def test_fingerprint_stable_across_reruns_with_report_present(tmp_path):
+    # Second run sees the first run's report inside the package dir; the
+    # exclusion keeps the fingerprint stable (freshness guard usable, §5.2).
+    from verify_submission_package import run
+
+    _, first, package_dir = run_on("clean", tmp_path)
+    run([str(package_dir)])
+    second = json.loads(
+        (package_dir / REPORT_BASENAME).read_text(encoding="utf-8"))
+    assert (second["header"]["package_fingerprint"]
+            == first["header"]["package_fingerprint"])
+
+
 # --- Report schema structural contract --------------------------------------
 
 def _minimal_report(**check_overrides):

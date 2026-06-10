@@ -69,6 +69,29 @@ _BIB_KEY_RE = re.compile(
 
 _LOCATION_CAP = 5  # findings listed per check detail before truncation
 
+# --- Fallback (best-effort) extraction grammar (§3.3, heuristic-classed) -----
+
+# \cite / \citep / \citet / \citealp / starred forms, up to two optional args.
+_LATEX_CITE_RE = re.compile(r"\\cite[a-zA-Z]*\*?(?:\[[^\]]*\]){0,2}\{([^}]*)\}")
+
+# Reference-list headings: fallback prose scanning stops here so rendered
+# reference entries are not mistaken for in-text citations.
+_REFS_HEADING_RE = re.compile(
+    r"^#{0,6}\s*(?:references|bibliography|參考文獻)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+_NAME = r"[A-Z][\w'’-]+"
+# Narrative: `Smith (2024)`, `Smith et al. (2024)`, `Smith and Chen (2024)`.
+_NARRATIVE_CITE_RE = re.compile(
+    r"(" + _NAME + r")(?:\s+et al\.?|\s+(?:and|&)\s+" + _NAME + r")?"
+    r"\s+\((\d{4})[a-z]?\)")
+# Parenthetical group content is split on `;` and each segment matched:
+# `(Smith, 2024)`, `(Chen & Lee, 2023)`, `(Smith et al., 2024a)`.
+_PAREN_GROUP_RE = re.compile(r"\(([^()]+)\)")
+_PAREN_SEGMENT_RE = re.compile(
+    r"^\s*(" + _NAME + r")[^\d]*?(\d{4})[a-z]?\s*$")
+
 
 def sha256_hex(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
@@ -122,6 +145,87 @@ def parse_bib_keys(package_dir: Path) -> "set[str]":
         text = path.read_text(encoding="utf-8", errors="replace")
         keys.update(_BIB_KEY_RE.findall(text))
     return keys
+
+
+def _parse_bib_metadata(package_dir: Path) -> "dict[tuple, set]":
+    """{(first-author-surname-lower, year): {citation_key, ...}} from package
+    .bib files, for author-year fallback matching. Best-effort field parsing —
+    the whole fallback path is heuristic-classed anyway (§3.3)."""
+    metadata: "dict[tuple, set]" = {}
+    for path in _bib_files(package_dir):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for chunk in re.split(r"(?m)^\s*@", text)[1:]:
+            head = re.match(r"[A-Za-z]+\s*\{\s*([^,\s}]+)\s*,", chunk)
+            author = re.search(r"author\s*=\s*[{\"]([^}\"]+)", chunk,
+                               re.IGNORECASE)
+            year = re.search(r"year\s*=\s*[{\"]?(\d{4})", chunk, re.IGNORECASE)
+            if not (head and author and year):
+                continue
+            surname = _first_author_surname(author.group(1))
+            if surname:
+                metadata.setdefault(
+                    (surname.lower(), year.group(1)), set()).add(head.group(1))
+    return metadata
+
+
+def _first_author_surname(author_field: str) -> str:
+    first = author_field.split(" and ")[0].strip()
+    if "," in first:
+        return first.split(",")[0].strip()
+    parts = first.split()
+    return parts[-1] if parts else ""
+
+
+def _corpus_metadata(passport: "dict[str, Any]") -> "dict[tuple, set]":
+    metadata: "dict[tuple, set]" = {}
+    for e in passport.get("literature_corpus") or []:
+        key = e.get("citation_key")
+        year = e.get("year")
+        authors = e.get("authors") or []
+        family = authors[0].get("family") if (
+            authors and isinstance(authors[0], dict)) else None
+        if isinstance(key, str) and family and year is not None:
+            metadata.setdefault((str(family).lower(), str(year)), set()).add(key)
+    return metadata
+
+
+def _strip_reference_section(text: str) -> str:
+    m = _REFS_HEADING_RE.search(text)
+    return text[: m.start()] if m else text
+
+
+def _extract_fallback(package_dir: Path,
+                      metadata: "dict[tuple, set]") -> "dict[str, str]":
+    """Best-effort in-text extraction (§3.3 fallback path): \\cite{} keys from
+    .tex, author-year hits from .md/.txt matched against reference metadata.
+    Returns {citation_key-or-orphan-token: first-seen location}."""
+    in_text: "dict[str, str]" = {}
+    for path in _manuscript_files(package_dir):
+        rel = path.relative_to(package_dir).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if path.suffix.lower() == ".tex":
+            for m in _LATEX_CITE_RE.finditer(text):
+                for key in m.group(1).split(","):
+                    key = key.strip()
+                    if key:
+                        in_text.setdefault(key, rel)
+            continue
+        prose = _strip_reference_section(text)
+        hits = [(m.group(1), m.group(2))
+                for m in _NARRATIVE_CITE_RE.finditer(prose)]
+        for g in _PAREN_GROUP_RE.finditer(prose):
+            for segment in g.group(1).split(";"):
+                m = _PAREN_SEGMENT_RE.match(segment)
+                if m:
+                    hits.append((m.group(1), m.group(2)))
+        for surname, year in hits:
+            keys = metadata.get((surname.lower(), year))
+            if keys:
+                for key in keys:
+                    in_text.setdefault(key, rel)
+            else:
+                in_text.setdefault(f"{surname} ({year})", rel)
+    return in_text
 
 
 def _check(check_id: str, status: str, detail: str, *,
@@ -275,10 +379,21 @@ def run_family_c(package_dir: Path,
             in_text_label="joined marker path",
             reference_label=reference_label), "joined_marker"
 
-    # Fallback extraction lands in round 3.
-    return _not_checked_pair(
-        "no <!--ref:slug--> markers found and fallback extraction is not "
-        "available"), "none"
+    # Fallback path (§3.3): no markers — non-ARS or post-converted source.
+    # Format-aware best-effort extraction, heuristic-classed (advisory-only).
+    if not reference_keys:
+        return _not_checked_pair(
+            "no machine-readable reference list (no package .bib and no "
+            "passport literature_corpus[])"), "none"
+    metadata = _parse_bib_metadata(package_dir)
+    if passport:
+        for k, v in _corpus_metadata(passport).items():
+            metadata.setdefault(k, set()).update(v)
+    in_text = _extract_fallback(package_dir, metadata)
+    return _compare_sets(
+        in_text, reference_keys, signal_class="heuristic",
+        in_text_label="best-effort extraction",
+        reference_label=reference_label), "best_effort"
 
 
 def build_report(package_dir: Path, checks: "list[dict[str, Any]]",
