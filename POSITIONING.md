@@ -22,6 +22,13 @@ These are not "out of scope" footnotes. They are the load-bearing boundary that 
 
 These are first-party scope boundaries and review criteria for future changes, not runtime guarantees. First-party ARS treats each as out of scope; adding one would require changing this recorded boundary, not merely adding a feature.
 
+## Recorded non-goals (scope boundaries without a mechanism)
+
+Unlike the Rejected mechanisms above — capabilities ARS refuses on principle — these are lifecycle stages and state layers ARS deliberately does not enter. They were adjudicated out of scope in the 2026-06-10 researcher-blindspot audit and are recorded here so the boundary is reviewable, not improvised (the same recording discipline as the Rejected mechanisms; boundary + review criterion, not a runtime guarantee).
+
+- **Post-publication lifecycle.** Tracking citation contexts of the scholar's own published papers, errata/corrigenda workflows, and OA self-archiving compliance are out of scope. ARS's front is research-to-publication; what happens to a paper after it ships belongs to the scholar and their institutional tooling. The existing `monitoring_agent` is unaffected — it alerts on developments in the *cited* literature (an input to current work), not on the scholar's own published output. Review criterion: a proposed feature whose value begins *after* the manuscript is accepted extends the front, and requires changing this recorded boundary first.
+- **Research-program-level state.** ARS keeps no memory across papers: no registry of the scholar's prior claims, no carried-forward limitations list, no reviewer-history profile. The per-paper Material Passport remains the only state carrier, and every run starts from what the scholar explicitly feeds it. This is a deliberate consequence of the anti-leakage philosophy — gates that trusted an ambient cross-paper memory would be evaluating state nobody declared this run. The supported way for a returning author to carry their own prior work forward without any new mechanism is the [Cross-paper workflow guide](docs/cross-paper-workflow.md). Review criterion: a proposed feature that reads or writes scholar state outside the current run's passport crosses this boundary.
+
 ## Allowed uses
 
 - Research assistance: literature search, source verification, citation checking
