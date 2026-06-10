@@ -528,6 +528,89 @@ def test_pdf_parser_unavailable_is_not_checked(tmp_path, monkeypatch):
     assert "pypdf" in a1["detail"]
 
 
+def test_A4_strict_only_when_profile_forbids_acknowledgments(tmp_path):
+    # §3.1 load-bearing: A4's SIGNAL is deterministic but the judgment is the
+    # scholar's — strict-eligible ONLY when the venue profile explicitly
+    # declares acknowledgments must be removed from the blind version.
+    def build(profile_body):
+        package = tmp_path / f"pkg{len(profile_body)}"
+        package.mkdir()
+        (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+        (package / "paper_anonymized.md").write_text(
+            "# Title\n\n## Acknowledgments\n\nWe thank our colleagues.\n",
+            encoding="utf-8")
+        profile = tmp_path / f"p{len(profile_body)}.yaml"
+        profile.write_text(profile_body, encoding="utf-8")
+        run([str(package), "--venue-profile", str(profile)])
+        return json.loads(
+            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+
+    base = "blind_review: double\ndeclared_by: scholar\n"
+    a4 = checks_by_id(build(base))["A4"]
+    assert a4["status"] == "fail"
+    assert a4["strict_eligible"] is False
+
+    a4 = checks_by_id(build(
+        base + "acknowledgments_forbidden_in_blind: true\n"))["A4"]
+    assert a4["status"] == "fail"
+    assert a4["strict_eligible"] is True
+
+
+def test_A6_filename_leakage_from_original_metadata(tmp_path):
+    # §3.1 A6: author-name tokens harvested from the NON-anonymized artifact's
+    # metadata, matched against package filenames (heuristic — coincidental
+    # tokens can false-positive). The metadata-source original itself is not
+    # scanned (its identified name is expected).
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    make_docx(package / "paper.docx", creator="Jordan Smith")
+    make_docx(package / "paper_anonymized.docx")
+    (package / "smith_appendix.csv").write_text("x\n", encoding="utf-8")
+    _rc, report = run_dir(package)
+    a6 = checks_by_id(report)["A6"]
+    assert a6["status"] == "fail"
+    assert "smith_appendix.csv" in a6["detail"]
+    assert a6["signal_class"] == "heuristic"
+    assert a6["strict_eligible"] is False
+
+
+def test_A6_without_original_metadata_not_checked(tmp_path):
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    (package / "paper_anonymized.md").write_text("Body.\n", encoding="utf-8")
+    _rc, report = run_dir(package)
+    a6 = checks_by_id(report)["A6"]
+    assert a6["status"] == "not_checked"
+    assert "no author" in a6["detail"]
+
+
+def test_A5_zh_tw_self_citation_phrase(tmp_path):
+    # §10 item 1: the phrasing list must not be anglophone-only.
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    (package / "paper_anonymized.md").write_text(
+        "# 匿名稿\n\n如我們先前的研究所示，品保回饋迴圈存在斷點。\n",
+        encoding="utf-8")
+    _rc, report = run_dir(package)
+    a5 = checks_by_id(report)["A5"]
+    assert a5["status"] == "fail"
+    assert "我們先前的研究" in a5["detail"]
+
+
+def test_profile_accepts_acknowledgments_forbidden_field(tmp_path):
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("# x\n", encoding="utf-8")
+    profile = tmp_path / "p.yaml"
+    profile.write_text(
+        "declared_by: scholar\nacknowledgments_forbidden_in_blind: maybe\n",
+        encoding="utf-8")
+    assert run([str(package), "--venue-profile", str(profile)]) == 2
+
+
 def test_schema_accepts_not_applicable_and_rejects_old_unknowns():
     ok = _minimal_report(status="not_applicable")
     jsonschema.validate(ok, load_schema())

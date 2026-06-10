@@ -86,6 +86,13 @@
       "minimum": 1,
       "description": "Reference-list entry ceiling (B5). Exact comparison."
     },
+    "acknowledgments_forbidden_in_blind": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Scholar-declared: the venue requires acknowledgments to be removed from the blind-review version. ONLY when true does A4 (acknowledgments present in the anonymized variant) become strict-eligible — by default A4's deterministic signal stays advisory because the de-anonymization judgment is the scholar's (spec §3.1 load-bearing)."
+    },
     "blind_review": {
       "type": [
         "string",

@@ -856,6 +856,11 @@ def _validate_venue_profile(raw: dict[str, Any]) -> dict[str, Any]:
             or not all(isinstance(s, str) and s for s in sections)):
         raise ValueError("venue profile required_sections must be a list of "
                          "non-empty strings or null")
+    ack = raw.get("acknowledgments_forbidden_in_blind")
+    if ack is not None and not isinstance(ack, bool):
+        raise ValueError(
+            f"venue profile acknowledgments_forbidden_in_blind must be a "
+            f"boolean or null, got {ack!r}")
     return raw
 
 
@@ -1075,6 +1080,12 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
                              "no extractable text in the blind submission set"))
         return checks
 
+    # A4 is strict-eligible ONLY when the venue profile explicitly declares
+    # acknowledgments must be removed from the blind version (§3.1
+    # load-bearing — the deterministic signal stays advisory otherwise
+    # because the de-anonymization judgment is the scholar's).
+    a4_strict = bool(profile) and (
+        profile.get("acknowledgments_forbidden_in_blind") is True)
     ack_hits = []
     for rel in text_rels:
         for title in _headings(rel, manuscripts[rel]):
@@ -1087,13 +1098,15 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
             "A4", "fail",
             f"acknowledgments section present in the anonymized variant "
             f"(heading {title!r}) — whether it de-anonymizes is the scholar's "
-            f"judgment (§3.1); flagged, never auto-removed",
-            location=rel, strict_eligible=False))
+            f"judgment (§3.1); flagged, never auto-removed"
+            + (" [venue declares acknowledgments forbidden in the blind "
+               "version]" if a4_strict else ""),
+            location=rel, strict_eligible=a4_strict))
     else:
         checks.append(_check(
             "A4", "pass",
             "no acknowledgments section in the anonymized variant",
-            strict_eligible=False))
+            strict_eligible=a4_strict))
 
     phrase_hits = []
     for rel in text_rels:
@@ -1117,11 +1130,66 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
     return checks
 
 
+def _author_metadata_strings(package_dir: Path,
+                             rels: list[str]) -> list[str]:
+    """Author strings from PDF /Author + DOCX core.xml creator/lastModifiedBy
+    of the given artifacts — best-effort (A6 is heuristic by class)."""
+    authors: list[str] = []
+    for rel in rels:
+        low = rel.lower()
+        try:
+            if low.endswith(".docx"):
+                with zipfile.ZipFile(package_dir / rel) as z:
+                    root = _xml_fromstring(z.read("docProps/core.xml"))
+                for tag in (_NS_DC + "creator", _NS_CP + "lastModifiedBy"):
+                    el = root.find(tag)
+                    if el is not None and (el.text or "").strip():
+                        authors.append(el.text.strip())
+            elif low.endswith(".pdf") and pypdf is not None:
+                meta = pypdf.PdfReader(str(package_dir / rel)).metadata
+                author = str(meta.get("/Author") or "").strip() if meta else ""
+                if author:
+                    authors.append(author)
+        except Exception:
+            continue
+    return authors
+
+
 def _filename_leakage_check(package_dir: Path,
                             anon_rels: list[str]) -> dict[str, Any]:
-    return _check("A6", "not_checked",
-                  "author-token filename scan lands in round 3",
-                  signal_class="heuristic")
+    """A6 (§3.1): author-name tokens from the NON-anonymized variant's
+    metadata appearing in package filenames. Heuristic by class (coincidental
+    name tokens false-positive). The metadata-source originals themselves are
+    not scanned — their identified filenames are expected."""
+    all_rels = _package_files(package_dir)
+    original_rels = [r for r in all_rels
+                     if r not in set(anon_rels)
+                     and r.lower().endswith((".docx", ".pdf"))]
+    authors = _author_metadata_strings(package_dir, original_rels)
+    if not authors:
+        return _check(
+            "A6", "not_checked",
+            "no author metadata available on the non-anonymized artifacts to "
+            "derive name tokens from")
+    tokens = {
+        t for a in authors for t in re.split(r"[^\w]+", a.lower())
+        if len(t) >= 3}
+    scanned = [r for r in all_rels if r not in set(original_rels)]
+    hits = sorted(
+        r for r in scanned
+        if any(t in Path(r).name.lower() for t in tokens))
+    if hits:
+        return _check(
+            "A6", "fail",
+            f"author-name token(s) in package filename(s): "
+            f"{', '.join(hits[:_LOCATION_CAP])} (tokens from "
+            f"{', '.join(original_rels[:_LOCATION_CAP])} metadata) — "
+            f"coincidental tokens can false-positive (heuristic)",
+            location=hits[0])
+    return _check(
+        "A6", "pass",
+        "no author-name tokens from the non-anonymized metadata appear in "
+        "package filenames")
 
 
 def run_checks(package_dir: Path,
