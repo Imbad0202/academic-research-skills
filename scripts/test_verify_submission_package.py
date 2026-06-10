@@ -58,23 +58,46 @@ def checks_by_id(report):
 
 # --- Round 1: clean package, joined marker path -----------------------------
 
-def test_clean_package_all_pass_exit_0(tmp_path):
+def test_clean_package_family_c_passes(tmp_path):
+    # Without a venue profile the Family B checks are NOT-CHECKED (§3.2), so
+    # the honest exit code is 3 ("passed what was checkable", §8) — Family C
+    # itself is fully green.
     rc, report, _ = run_on("clean", tmp_path)
-    assert rc == 0
+    assert rc == 3
     by_id = checks_by_id(report)
     assert by_id["C1"]["status"] == "pass"
     assert by_id["C2"]["status"] == "pass"
-    assert report["header"]["not_checked_count"] == 0
 
 
 def test_clean_package_is_deterministic_joined_marker(tmp_path):
     _, report, _ = run_on("clean", tmp_path)
     assert report["header"]["extraction_path"] == "joined_marker"
-    for c in report["checks"]:
-        assert c["family"] == "reference_integrity"
-        assert c["signal_class"] == "deterministic"
+    by_id = checks_by_id(report)
+    for cid in ("C1", "C2"):
+        assert by_id[cid]["family"] == "reference_integrity"
+        assert by_id[cid]["signal_class"] == "deterministic"
     # strict_eligible is class-level: C1 promotable, C2 (warn-only) never —
     # asserted in test_C2_is_never_strict_eligible.
+
+
+# --- Slice 2: Family B venue limits ------------------------------------------
+
+def test_no_venue_profile_family_b_not_checked(tmp_path):
+    # §3.2: without a venue profile every Family B check is
+    # NOT-CHECKED(no venue profile) — never guessed from the journal name
+    # (R-L3-2-D mirror). The checks stay visible (deterministic,
+    # strict-eligible) so the slice-4 fail-closed path has something to see.
+    rc, report, _ = run_on("clean", tmp_path)
+    assert rc == 3
+    by_id = checks_by_id(report)
+    for cid in ("B1", "B2", "B3", "B4", "B5"):
+        assert by_id[cid]["status"] == "not_checked"
+        assert "no venue profile" in by_id[cid]["detail"]
+        assert by_id[cid]["family"] == "venue_limits"
+        assert by_id[cid]["signal_class"] == "deterministic"
+        assert by_id[cid]["strict_eligible"] is True
+    assert report["header"]["not_checked_count"] == 5
+    jsonschema.validate(report, load_schema())
 
 
 def test_clean_report_validates_against_schema(tmp_path):
@@ -111,9 +134,9 @@ def test_orphan_intext_citation_fails_C1_exit_1(tmp_path):
 
 def test_uncited_reference_entry_warns_C2_exit_0(tmp_path):
     # §3.3: uncited reference entry = warn (some venues allow further-reading
-    # entries) — advisory, so the exit code stays 0.
+    # entries) — advisory, never a fail exit (3 = Family B not checked).
     rc, report, _ = run_on("uncited_reference", tmp_path)
-    assert rc == 0
+    assert rc == 3
     by_id = checks_by_id(report)
     assert by_id["C1"]["status"] == "pass"
     assert by_id["C2"]["status"] == "warn"
@@ -132,7 +155,7 @@ def test_markers_without_join_source_not_checked_exit_3(tmp_path):
     for cid in ("C1", "C2"):
         assert by_id[cid]["status"] == "not_checked"
         assert "missing prose-reference join" in by_id[cid]["detail"]
-    assert report["header"]["not_checked_count"] == 2
+    assert report["header"]["not_checked_count"] == 7  # 2 C + 5 B (no profile)
     assert report["header"]["extraction_path"] == "none"
     jsonschema.validate(report, load_schema())
 
@@ -146,7 +169,7 @@ def test_join_map_resolves_the_no_join_case(tmp_path):
     rc, report, _ = run_on(
         "marker_no_join", tmp_path,
         extra_args=["--passport", str(passport), "--join-map", str(join)])
-    assert rc == 0
+    assert rc == 3  # Family C green; B not checked (no profile)
     by_id = checks_by_id(report)
     assert by_id["C1"]["status"] == "pass"
     assert by_id["C2"]["status"] == "pass"
@@ -211,7 +234,7 @@ def test_summary_join_consumes_real_prose_join(tmp_path):
     passport = FIXTURES / "passports" / "summary_join.yaml"
     rc, report, _ = run_on("summary_join", tmp_path,
                            extra_args=["--passport", str(passport)])
-    assert rc == 0
+    assert rc == 3  # Family C green; B not checked (no profile)
     by_id = checks_by_id(report)
     assert by_id["C1"]["status"] == "pass"
     assert by_id["C2"]["status"] == "pass"
@@ -229,9 +252,10 @@ def test_no_machine_readable_reference_list_not_checked(tmp_path):
     report = json.loads(
         (package / REPORT_BASENAME).read_text(encoding="utf-8"))
     assert rc == 3
-    for c in report["checks"]:
-        assert c["status"] == "not_checked"
-        assert "no machine-readable reference list" in c["detail"]
+    by_id = checks_by_id(report)
+    for cid in ("C1", "C2"):
+        assert by_id[cid]["status"] == "not_checked"
+        assert "no machine-readable reference list" in by_id[cid]["detail"]
 
 
 def test_fingerprint_follows_audit_snapshot_convention_excluding_report(tmp_path):
@@ -328,7 +352,7 @@ def test_authoryear_fallback_tolerates_page_locators(tmp_path):
     report = json.loads(
         (package / REPORT_BASENAME).read_text(encoding="utf-8"))
     by_id = checks_by_id(report)
-    assert rc == 0
+    assert rc == 3  # Family C green; B not checked (no profile)
     assert by_id["C1"]["status"] == "pass"
     assert by_id["C2"]["status"] == "pass"
 

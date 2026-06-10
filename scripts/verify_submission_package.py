@@ -87,6 +87,11 @@ _LOCATION_CAP = 5  # findings listed per check detail before truncation
 # call sites. build_report enforces the roster: a runner that silently omits
 # a registered check cannot emit a report (the §1.4/#349 fail-open guard).
 _CHECK_REGISTRY = {
+    "B1": ("venue_limits", True),   # manuscript word count vs word_limit
+    "B2": ("venue_limits", True),   # abstract word count vs abstract_word_limit
+    "B3": ("venue_limits", True),   # keyword count vs keyword_range
+    "B4": ("venue_limits", True),   # required sections present
+    "B5": ("venue_limits", True),   # reference count vs reference_limit
     "C1": ("reference_integrity", True),
     "C2": ("reference_integrity", False),
 }
@@ -374,33 +379,44 @@ def _corpus_keys(passport: dict[str, Any]) -> set[str]:
     }
 
 
-def run_family_c(package_dir: Path,
+_NO_REFERENCE_LIST_REASON = (
+    "no machine-readable reference list (no package .bib and no "
+    "passport literature_corpus[])")
+_NO_MANUSCRIPT_REASON = (
+    "no manuscript found (no .md/.tex/.txt file in the package)")
+
+
+def _reference_list(bibs: dict[str, str],
+                    passport: Optional[dict[str, Any]]
+                    ) -> tuple[set[str], str]:
+    """The machine-readable reference list both Family C and B5 compare
+    against: package .bib keys, or the passport's declared
+    literature_corpus[] keys. Empty set + empty label = no source."""
+    bib_keys = parse_bib_keys(bibs)
+    if bib_keys:
+        return bib_keys, "the package .bib reference list"
+    corpus_keys = _corpus_keys(passport) if passport else set()
+    if corpus_keys:
+        return corpus_keys, "the passport literature_corpus reference list"
+    return set(), ""
+
+
+def run_family_c(manuscripts: dict[str, str], bibs: dict[str, str],
+                 reference_keys: set[str], reference_label: str,
                  passport: Optional[dict[str, Any]] = None,
                  join_map: Optional[dict[str, str]] = None
                  ) -> tuple[list[dict[str, Any]], str]:
-    """Run Family C over the package. Returns (checks, extraction_path)."""
-    manuscripts, bibs = _collect_package_texts(package_dir)
+    """Run Family C over the collected package texts.
+    Returns (checks, extraction_path)."""
     if not manuscripts:
-        return _not_checked_pair(
-            "no manuscript found (no .md/.tex/.txt file in the package)"), "none"
+        return _not_checked_pair(_NO_MANUSCRIPT_REASON), "none"
 
     markers = extract_ref_markers(manuscripts)
     bib_keys = parse_bib_keys(bibs)
-    corpus_keys = _corpus_keys(passport) if passport else set()
     summary_join = _join_from_passport(passport) if passport else {}
 
-    # Reference-list side: a machine-readable source — package .bib keys, or
-    # the passport's declared literature_corpus[] keys. Without one, neither
-    # path has anything to compare against.
-    if bib_keys:
-        reference_keys, reference_label = bib_keys, "the package .bib reference list"
-    elif corpus_keys:
-        reference_keys, reference_label = (
-            corpus_keys, "the passport literature_corpus reference list")
-    else:
-        return _not_checked_pair(
-            "no machine-readable reference list (no package .bib and no "
-            "passport literature_corpus[])"), "none"
+    if not reference_keys:
+        return _not_checked_pair(_NO_REFERENCE_LIST_REASON), "none"
 
     if markers:
         # Joined marker path (deterministic). Join precedence: explicit
@@ -452,6 +468,41 @@ def run_family_c(package_dir: Path,
         reference_label=reference_label, unjoined=unresolved,
         unjoined_label="unmatched against any reference metadata"
         ), "best_effort"
+
+
+_FAMILY_B_IDS = ("B1", "B2", "B3", "B4", "B5")
+
+
+def run_family_b(manuscripts: dict[str, str],
+                 reference_keys: set[str], reference_label: str,
+                 profile: Optional[dict[str, Any]]
+                 ) -> list[dict[str, Any]]:
+    """Family B: venue-declared limits vs actuals (§3.2). Without a profile,
+    every check is NOT-CHECKED — limits are never guessed from the journal
+    name (R-L3-2-D mirror)."""
+    if profile is None:
+        return [_check(i, "not_checked",
+                       "no venue profile declared — limits are never guessed "
+                       "from the journal name (R-L3-2-D mirror)")
+                for i in _FAMILY_B_IDS]
+    raise NotImplementedError  # round 2
+
+
+def run_checks(package_dir: Path,
+               passport: Optional[dict[str, Any]] = None,
+               join_map: Optional[dict[str, str]] = None,
+               venue_profile: Optional[dict[str, Any]] = None
+               ) -> tuple[list[dict[str, Any]], str]:
+    """Collect the package texts once and run every check family.
+    Returns (checks sorted by id, extraction_path)."""
+    manuscripts, bibs = _collect_package_texts(package_dir)
+    reference_keys, reference_label = _reference_list(bibs, passport)
+    checks_c, extraction_path = run_family_c(
+        manuscripts, bibs, reference_keys, reference_label,
+        passport=passport, join_map=join_map)
+    checks_b = run_family_b(
+        manuscripts, reference_keys, reference_label, venue_profile)
+    return sorted(checks_b + checks_c, key=lambda c: c["id"]), extraction_path
 
 
 def build_report(package_dir: Path, checks: list[dict[str, Any]],
@@ -558,7 +609,7 @@ def run(argv: Optional[list[str]] = None) -> int:
             return 2
         join_map = {str(slug): str(key) for slug, key in raw.items()}
 
-    checks, extraction_path = run_family_c(
+    checks, extraction_path = run_checks(
         package_dir, passport=passport, join_map=join_map)
     report_path = (Path(args.report_out) if args.report_out
                    else package_dir / REPORT_BASENAME)
