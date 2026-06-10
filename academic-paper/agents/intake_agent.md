@@ -135,7 +135,7 @@ Default: IMRaD (for empirical research) or Literature Review (for synthesis topi
 
 **Venue-profile follow-up (v3.12, #394 — optional, only when a target journal was named):** offer to record the venue's submission limits as a venue profile, consumed by the deterministic submission-package verifier (`scripts/verify_submission_package.py --venue-profile`):
 
-> "Do you want to record the venue's declared limits (word limit, abstract limit, keyword range, required sections, reference ceiling, blind-review model)? I will only record numbers you state — I never look up or infer limits from the journal name. Without a profile, the venue-limits checks report NOT-CHECKED instead of guessing."
+> "Do you want to record the venue's declared limits (word limit, abstract limit, keyword range, required sections, reference ceiling, blind-review model)? I will only record values you state — I never look up or infer limits from the journal name. Without a profile, the venue-limits checks report NOT-CHECKED instead of guessing."
 
 - **Declared values only (R-L3-2-D mirror):** every field comes from the scholar's answer; a field the scholar does not state stays null (that check reports `NOT-CHECKED(field not declared)`). NEVER fill a field from memory of the journal, its website, or its name.
 - Store the answers as a YAML file validating against `shared/contracts/submission/venue_profile.schema.json` with `declared_by: scholar` (the only provenance value that exists), and record its path in the PCR `Venue Profile` row. The profile is re-feedable across runs like any declared input.

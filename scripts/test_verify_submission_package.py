@@ -238,6 +238,110 @@ def test_latex_manuscript_word_count_declares_detex(tmp_path):
     assert by_id["B1"]["location"] == "paper.tex"
 
 
+def test_word_count_scope_all_counts_everything(tmp_path):
+    # codex P2: `all` must actually count everything (keywords line included);
+    # only body_only / body_plus_references exclude it. 10 body words +
+    # "**Keywords:** a, b" (3 tokens) against limit 10: body_only passes,
+    # all fails.
+    base = " ".join(["word"] * 10) + "\n\n**Keywords:** alpha, beta\n"
+    for scope, expected in (("body_only", "pass"), ("all", "fail")):
+        package = tmp_path / f"pkg_{scope}"
+        package.mkdir()
+        (package / "paper.md").write_text(base, encoding="utf-8")
+        profile = tmp_path / f"{scope}.yaml"
+        profile.write_text(
+            f"word_limit: 10\nword_count_scope: {scope}\n"
+            "declared_by: scholar\n", encoding="utf-8")
+        run([str(package), "--venue-profile", str(profile)])
+        report = json.loads(
+            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+        assert checks_by_id(report)["B1"]["status"] == expected, scope
+
+
+def test_profile_validation_matches_schema_strictness(tmp_path):
+    # codex P2: the CLI gate must not be looser than
+    # venue_profile.schema.json — unknown fields (additionalProperties false)
+    # and booleans-as-integers are rejected.
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("# x\n", encoding="utf-8")
+    cases = (
+        "declared_by: scholar\nword_limt: 100\n",     # unknown field (typo)
+        "declared_by: scholar\nword_limit: true\n",   # bool is not an int
+        "declared_by: scholar\nvenue_name: 42\n",     # venue_name not a string
+        "declared_by: scholar\nkeyword_range: {min: -1, max: 2}\n",  # min < 0
+    )
+    for body in cases:
+        profile = tmp_path / "bad.yaml"
+        profile.write_text(body, encoding="utf-8")
+        assert run([str(package), "--venue-profile", str(profile)]) == 2, body
+
+
+def test_ambiguous_manuscript_not_checked(tmp_path):
+    # codex P2: with several non-canonical candidates the verifier must not
+    # silently pick the wordiest (it could be a response letter); it reports
+    # NOT-CHECKED(ambiguous manuscript). A canonical name (paper.* /
+    # manuscript.* / main.*) resolves the ambiguity.
+    profile = tmp_path / "profile.yaml"
+    profile.write_text(
+        "word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "chapter_one.md").write_text("alpha " * 20, encoding="utf-8")
+    (package / "rejoinder.md").write_text("beta " * 30, encoding="utf-8")
+    run([str(package), "--venue-profile", str(profile)])
+    report = json.loads(
+        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    b1 = checks_by_id(report)["B1"]
+    assert b1["status"] == "not_checked"
+    assert "ambiguous manuscript" in b1["detail"]
+
+    (package / "paper.md").write_text("gamma " * 10, encoding="utf-8")
+    run([str(package), "--venue-profile", str(profile)])
+    report = json.loads(
+        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    b1 = checks_by_id(report)["B1"]
+    assert b1["status"] == "pass"
+    assert b1["location"] == "paper.md"
+
+
+def test_abstract_tolerance_and_b5_no_reference_list(tmp_path):
+    # codex P3: pin the B2 ±2% tolerance and the B5
+    # declared-limit-but-no-reference-list branch.
+    profile = tmp_path / "profile.yaml"
+    profile.write_text(
+        "abstract_word_limit: 100\nreference_limit: 5\n"
+        "declared_by: scholar\n", encoding="utf-8")
+    for n_words, expected in ((101, "pass"), (103, "fail")):
+        package = tmp_path / f"pkg{n_words}"
+        package.mkdir()
+        (package / "paper.md").write_text(
+            "## Abstract\n\n" + " ".join(["word"] * n_words) + "\n",
+            encoding="utf-8")
+        run([str(package), "--venue-profile", str(profile)])
+        report = json.loads(
+            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+        by_id = checks_by_id(report)
+        assert by_id["B2"]["status"] == expected, n_words
+        assert by_id["B5"]["status"] == "not_checked"
+        assert "no machine-readable reference list" in by_id["B5"]["detail"]
+
+
+def test_profile_with_no_manuscript_not_checked(tmp_path):
+    profile = tmp_path / "profile.yaml"
+    profile.write_text(
+        "word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "figure.png").write_bytes(b"\x89PNG\r\n")
+    run([str(package), "--venue-profile", str(profile)])
+    report = json.loads(
+        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    b1 = checks_by_id(report)["B1"]
+    assert b1["status"] == "not_checked"
+    assert "no manuscript found" in b1["detail"]
+
+
 def test_venue_profile_fixtures_validate_against_schema():
     profile_schema = json.loads(
         (REPO_ROOT / "shared" / "contracts" / "submission"

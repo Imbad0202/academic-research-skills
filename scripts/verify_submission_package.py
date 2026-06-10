@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """verify_submission_package CLI — deterministic submission-package verifier
-(#394 Slice 1: CLI skeleton + Family C reference integrity).
+(#394; slices 1-2 shipped: Family C reference integrity + Family B venue
+limits).
 
     python scripts/verify_submission_package.py <package_dir> \
-        [--passport passport.yaml] [--join-map map.yaml] [--report-out path]
+        [--passport passport.yaml] [--join-map map.yaml] \
+        [--venue-profile profile.yaml] [--report-out path]
 
 Reads the files in an output package and runs the Family C two-way reference
-integrity check (in-text citation keys <-> reference-list entries), writing
-`submission_verification_report.json` (validating against
+integrity check (in-text citation keys <-> reference-list entries) plus the
+Family B venue-limits checks (B1-B5, against a scholar-declared venue profile —
+without one they report NOT-CHECKED, never a guess from the journal name),
+writing `submission_verification_report.json` (validating against
 shared/contracts/submission/submission_verification_report.schema.json) plus a
 human-readable summary to stdout.
 
@@ -545,14 +549,17 @@ def _countable_body(rel: str, text: str, scope: str) -> tuple[str, str]:
             return _detex(abstract_stripped), "naive detex; abstract excluded"
         return _detex(text), "naive detex; everything counted"
     text = _HTML_COMMENT_RE.sub(" ", text)
-    text = _KEYWORDS_LINE_RE.sub(" ", text)
     if scope == "body_only":
-        return (_md_drop_sections(text, (_is_abstract_title, _is_refs_title)),
+        return (_md_drop_sections(_KEYWORDS_LINE_RE.sub(" ", text),
+                                  (_is_abstract_title, _is_refs_title)),
                 "abstract + references + keywords line excluded")
     if scope == "body_plus_references":
-        return (_md_drop_sections(text, (_is_abstract_title,)),
+        return (_md_drop_sections(_KEYWORDS_LINE_RE.sub(" ", text),
+                                  (_is_abstract_title,)),
                 "abstract + keywords line excluded")
-    return text, "keywords line excluded; everything else counted"
+    # `all` counts everything the author wrote — only the ARS tool markers
+    # (HTML comments) are stripped, and that is declared.
+    return text, "everything counted (tool markers stripped)"
 
 
 def _abstract_text(rel: str, text: str) -> Optional[str]:
@@ -579,17 +586,35 @@ def _headings(rel: str, text: str) -> list[str]:
     return [t for t, _s, _e in _md_sections(text)]
 
 
+_CANONICAL_MANUSCRIPT_STEMS = frozenset({"paper", "manuscript", "main"})
+_NON_MANUSCRIPT_PREFIXES = (
+    "cover_letter", "cover-letter", "response", "rebuttal", "readme")
+
+
 def _primary_manuscript(manuscripts: dict[str, str]
-                        ) -> tuple[str, str]:
-    """The manuscript the limits are checked against: the wordiest candidate,
-    excluding cover letters (a cover letter is part of the package but not of
-    the manuscript the venue counts). Which file was counted is declared in
+                        ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """(rel, text, ambiguity_reason) — the manuscript the limits are checked
+    against. Canonical filenames (paper/manuscript/main) win; known
+    package-document names (cover letters, response letters, READMEs) are
+    excluded; with several remaining non-canonical candidates the verifier
+    reports ambiguity instead of silently picking the wordiest (it could be an
+    appendix or a response letter). Which file was counted is declared in
     every detail string."""
-    candidates = {rel: t for rel, t in manuscripts.items()
-                  if not Path(rel).name.lower().startswith("cover_letter")}
+    candidates = {
+        rel: t for rel, t in manuscripts.items()
+        if not Path(rel).name.lower().startswith(_NON_MANUSCRIPT_PREFIXES)}
     candidates = candidates or manuscripts
-    rel = max(sorted(candidates), key=lambda r: _word_count(candidates[r]))
-    return rel, candidates[rel]
+    canonical = {rel: t for rel, t in candidates.items()
+                 if Path(rel).stem.lower() in _CANONICAL_MANUSCRIPT_STEMS}
+    pool = canonical or candidates
+    if not canonical and len(candidates) > 1:
+        return None, None, (
+            "ambiguous manuscript: several candidates and none carries a "
+            f"canonical name (paper/manuscript/main): "
+            f"{', '.join(sorted(candidates))} — rename the manuscript or "
+            "remove the extras")
+    rel = max(sorted(pool), key=lambda r: _word_count(pool[r]))
+    return rel, pool[rel], None
 
 
 def _ceiling_check(check_id: str, count: int, limit: int, what: str,
@@ -617,9 +642,12 @@ def run_family_b(manuscripts: dict[str, str],
                 for i in _FAMILY_B_IDS]
 
     checks: list[dict[str, Any]] = []
-    rel: Optional[str] = None
+    rel = text = None
+    no_manuscript_reason = _NO_MANUSCRIPT_REASON
     if manuscripts:
-        rel, text = _primary_manuscript(manuscripts)
+        rel, text, ambiguity = _primary_manuscript(manuscripts)
+        if ambiguity:
+            no_manuscript_reason = ambiguity
 
     def not_declared(check_id: str, field: str) -> dict[str, Any]:
         return _check(check_id, "not_checked",
@@ -630,7 +658,7 @@ def run_family_b(manuscripts: dict[str, str],
     if word_limit is None:
         checks.append(not_declared("B1", "word_limit"))
     elif rel is None:
-        checks.append(_check("B1", "not_checked", _NO_MANUSCRIPT_REASON))
+        checks.append(_check("B1", "not_checked", no_manuscript_reason))
     else:
         scope = profile.get("word_count_scope")
         scope_decl = scope or "body_only (default — scope not declared)"
@@ -647,7 +675,7 @@ def run_family_b(manuscripts: dict[str, str],
     if abstract_limit is None:
         checks.append(not_declared("B2", "abstract_word_limit"))
     elif rel is None:
-        checks.append(_check("B2", "not_checked", _NO_MANUSCRIPT_REASON))
+        checks.append(_check("B2", "not_checked", no_manuscript_reason))
     else:
         abstract = _abstract_text(rel, text)
         if abstract is None:
@@ -665,7 +693,7 @@ def run_family_b(manuscripts: dict[str, str],
     if keyword_range is None:
         checks.append(not_declared("B3", "keyword_range"))
     elif rel is None:
-        checks.append(_check("B3", "not_checked", _NO_MANUSCRIPT_REASON))
+        checks.append(_check("B3", "not_checked", no_manuscript_reason))
     else:
         keywords = _keyword_list(text)
         if keywords is None:
@@ -685,7 +713,7 @@ def run_family_b(manuscripts: dict[str, str],
     if required is None:
         checks.append(not_declared("B4", "required_sections"))
     elif rel is None:
-        checks.append(_check("B4", "not_checked", _NO_MANUSCRIPT_REASON))
+        checks.append(_check("B4", "not_checked", no_manuscript_reason))
     else:
         headings = [h.lower() for h in _headings(rel, text)]
         missing = [s for s in required
@@ -715,18 +743,40 @@ def run_family_b(manuscripts: dict[str, str],
     return checks
 
 
+_PROFILE_FIELDS = frozenset({
+    "venue_name", "word_limit", "word_count_scope", "abstract_word_limit",
+    "keyword_range", "required_sections", "reference_limit", "blind_review",
+    "declared_by",
+})
+
+
+def _is_int(v: Any) -> bool:
+    """A real integer — bool is an int subclass and must not pass as one."""
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
 def _validate_venue_profile(raw: dict[str, Any]) -> dict[str, Any]:
-    """Lightweight shape validation for a --venue-profile file. The formal
-    contract is shared/contracts/submission/venue_profile.schema.json; this
-    guards the fields the checks actually consume so a malformed profile is a
-    usage error, never a silently-skewed comparison."""
+    """Shape validation for a --venue-profile file, kept exactly as strict as
+    the formal contract (shared/contracts/submission/venue_profile.schema.json,
+    additionalProperties false included) so a malformed or typoed profile is a
+    usage error, never a silently-skewed or silently-skipped comparison."""
+    unknown = set(raw) - _PROFILE_FIELDS
+    if unknown:
+        raise ValueError(
+            f"venue profile has unknown field(s) {sorted(unknown)} — the "
+            f"schema is closed (a typoed limit would otherwise be silently "
+            f"ignored); allowed: {sorted(_PROFILE_FIELDS)}")
     if raw.get("declared_by") != "scholar":
         raise ValueError(
             "venue profile must carry `declared_by: scholar` — the profile is "
             "scholar-declared only, never scraped or inferred (spec §4)")
+    name = raw.get("venue_name")
+    if name is not None and not isinstance(name, str):
+        raise ValueError(f"venue profile venue_name must be a string or null, "
+                         f"got {name!r}")
     for field in ("word_limit", "abstract_word_limit", "reference_limit"):
         v = raw.get(field)
-        if v is not None and (not isinstance(v, int) or v < 1):
+        if v is not None and (not _is_int(v) or v < 1):
             raise ValueError(f"venue profile {field} must be a positive "
                              f"integer or null, got {v!r}")
     scope = raw.get("word_count_scope")
@@ -739,13 +789,13 @@ def _validate_venue_profile(raw: dict[str, Any]) -> dict[str, Any]:
                          f"double/single/open/null, got {blind!r}")
     kr = raw.get("keyword_range")
     if kr is not None:
-        if (not isinstance(kr, dict)
-                or not isinstance(kr.get("min"), int)
-                or not isinstance(kr.get("max"), int)
+        if (not isinstance(kr, dict) or set(kr) != {"min", "max"}
+                or not _is_int(kr.get("min")) or kr["min"] < 0
+                or not _is_int(kr.get("max")) or kr["max"] < 1
                 or kr["min"] > kr["max"]):
             raise ValueError(
-                f"venue profile keyword_range must be {{min, max}} integers "
-                f"with min <= max, got {kr!r}")
+                f"venue profile keyword_range must be {{min >= 0, max >= 1}} "
+                f"integers with min <= max, got {kr!r}")
     sections = raw.get("required_sections")
     if sections is not None and (
             not isinstance(sections, list)
@@ -832,8 +882,8 @@ def exit_code_for(report: dict[str, Any]) -> int:
 def run(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="verify_submission_package",
-        description="Deterministic submission-package verifier (#394 Slice 1: "
-                    "Family C reference integrity).",
+        description="Deterministic submission-package verifier (#394: Family "
+                    "C reference integrity + Family B venue limits).",
         epilog="Exit codes: 0 all-checked no-fail; 1 at least one fail; "
                "2 usage/IO error; 3 no fail but at least one NOT-CHECKED.")
     parser.add_argument("package_dir", help="Output package directory to verify.")
