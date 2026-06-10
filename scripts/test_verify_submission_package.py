@@ -342,6 +342,69 @@ def test_profile_with_no_manuscript_not_checked(tmp_path):
     assert "no manuscript found" in b1["detail"]
 
 
+# --- Slice 3: Family A blind-review residue ----------------------------------
+
+def test_family_a_not_applicable_without_trigger(tmp_path):
+    # §3.1: the residue scan runs only when the package contains an anonymized
+    # variant or the profile declares double-blind. Untriggered checks are
+    # not_applicable — visibly distinct from not_checked (they did not need to
+    # run), so a single-blind package is not condemned to exit 3 forever.
+    rc, report, _ = run_on("clean", tmp_path)
+    by_id = checks_by_id(report)
+    for cid in ("A1", "A2", "A3", "A4", "A5", "A6", "A7"):
+        assert by_id[cid]["status"] == "not_applicable", cid
+        assert "not triggered" in by_id[cid]["detail"]
+        assert by_id[cid]["family"] == "blind_review_residue"
+    # not_applicable is not incompleteness: it does not count as not_checked.
+    assert report["header"]["not_checked_count"] == 5  # the B checks only
+    jsonschema.validate(report, load_schema())
+
+
+def test_declared_double_blind_without_variant_fails_A7(tmp_path):
+    # §3.1: a declared-double-blind package with NO anonymized variant is
+    # itself a fail — the most basic residue of all, the blind version is
+    # missing. A1-A6 have nothing to scan: not_checked.
+    profile = tmp_path / "double.yaml"
+    profile.write_text(
+        "blind_review: double\ndeclared_by: scholar\n", encoding="utf-8")
+    rc, report, _ = run_on("clean", tmp_path,
+                           extra_args=["--venue-profile", str(profile)])
+    assert rc == 1
+    by_id = checks_by_id(report)
+    assert by_id["A7"]["status"] == "fail"
+    assert "anonymized variant" in by_id["A7"]["detail"]
+    assert by_id["A7"]["strict_eligible"] is True
+    for cid in ("A1", "A2", "A3", "A4", "A5", "A6"):
+        assert by_id[cid]["status"] == "not_checked", cid
+        assert "no anonymized variant" in by_id[cid]["detail"]
+
+
+def test_anonymized_variant_triggers_family_a(tmp_path):
+    # Presence of an anonymized variant triggers the scan even without a
+    # profile (presence-or-declaration, §3.1). With an .md-only variant the
+    # PDF/DOCX metadata checks have no object: not_applicable.
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text(
+        "Body (Smith, 2024) <!--ref:smith2024-->.\n", encoding="utf-8")
+    shutil.copy(FIXTURES / "clean" / "references.bib",
+                package / "references.bib")
+    (package / "paper_anonymized.md").write_text(
+        "# T\n\nBody text without identity.\n", encoding="utf-8")
+    rc, report = run_dir(package)
+    by_id = checks_by_id(report)
+    assert by_id["A7"]["status"] == "pass"
+    for cid in ("A1", "A2", "A3"):
+        assert by_id[cid]["status"] == "not_applicable", cid
+        assert "no PDF" in by_id[cid]["detail"] or "no DOCX" in by_id[cid]["detail"]
+    jsonschema.validate(report, load_schema())
+
+
+def test_schema_accepts_not_applicable_and_rejects_old_unknowns():
+    ok = _minimal_report(status="not_applicable")
+    jsonschema.validate(ok, load_schema())
+
+
 def test_venue_profile_fixtures_validate_against_schema():
     profile_schema = json.loads(
         (REPO_ROOT / "shared" / "contracts" / "submission"

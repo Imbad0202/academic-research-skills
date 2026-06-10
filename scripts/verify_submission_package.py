@@ -94,6 +94,13 @@ _LOCATION_CAP = 5  # findings listed per check detail before truncation
 # fail open. build_report enforces the roster: a runner that silently omits
 # a registered check cannot emit a report (the §1.4/#349 fail-open guard).
 _CHECK_REGISTRY = {
+    "A1": ("blind_review_residue", True, "deterministic"),  # PDF metadata authors
+    "A2": ("blind_review_residue", True, "deterministic"),  # DOCX metadata authors
+    "A3": ("blind_review_residue", True, "deterministic"),  # DOCX revision/comment authors
+    "A4": ("blind_review_residue", True, "deterministic"),  # acknowledgments in blind variant (strict only by profile declaration, §3.1)
+    "A5": ("blind_review_residue", True, "heuristic"),      # self-citation phrasing
+    "A6": ("blind_review_residue", True, "heuristic"),      # filename leakage
+    "A7": ("blind_review_residue", True, "deterministic"),  # blind variant missing under declared double-blind
     "B1": ("venue_limits", True, "deterministic"),   # manuscript word count
     "B2": ("venue_limits", True, "deterministic"),   # abstract word count
     "B3": ("venue_limits", True, "deterministic"),   # keyword count range
@@ -276,15 +283,22 @@ def _extract_fallback(manuscripts: dict[str, str],
 
 def _check(check_id: str, status: str, detail: str, *,
            signal_class: str = "deterministic",
-           location: Optional[str] = None) -> dict[str, Any]:
+           location: Optional[str] = None,
+           strict_eligible: Optional[bool] = None) -> dict[str, Any]:
     family, fail_capable, fixed_class = _CHECK_REGISTRY[check_id]
     if fixed_class is not None:
         signal_class = fixed_class  # registry-bound class wins (§3.1)
+    eligible = fail_capable and signal_class == "deterministic"
+    if strict_eligible is not None:
+        # Downward-only override: a call site can RESTRICT eligibility (A4 is
+        # advisory unless the venue profile declares acknowledgments must be
+        # removed, §3.1) but can never promote past the class rule above.
+        eligible = eligible and strict_eligible
     return {
         "id": check_id,
         "family": family,
         "signal_class": signal_class,
-        "strict_eligible": fail_capable and signal_class == "deterministic",
+        "strict_eligible": eligible,
         "status": status,
         "detail": detail,
         "location": location,
@@ -829,6 +843,180 @@ def _validate_venue_profile(raw: dict[str, Any]) -> dict[str, Any]:
     return raw
 
 
+# --- Family A: blind-review residue (§3.1) -----------------------------------
+
+_FAMILY_A_IDS = tuple(
+    cid for cid, (fam, _fc, _sc) in sorted(_CHECK_REGISTRY.items())
+    if fam == "blind_review_residue")
+_SCAN_A_IDS = ("A1", "A2", "A3", "A4", "A5", "A6")  # the variant-scanning subset
+
+# Filename convention for the anonymized (blind-review) variant: a stem token
+# match, so `paper_anonymized.docx` / `manuscript-blind.pdf` classify but
+# `canonical.md` does not.
+_BLIND_STEM_TOKENS = frozenset(
+    {"anonymized", "anonymised", "anonymous", "anon", "blind", "blinded"})
+
+# A5 self-citation phrasing (§3.1 — heuristic by class). zh-TW list drafted
+# first-party per spec §10 item 1; curation pending maintainer review.
+_SELF_CITATION_PHRASES = (
+    "our previous work", "our earlier study", "our prior work",
+    "we previously showed", "we have previously", "in our previous",
+    "我們先前的研究", "我們過去的研究", "我們先前曾", "我們已於先前",
+    "筆者先前的研究", "本研究團隊先前",
+)
+
+_ACK_TITLE_RE = re.compile(r"acknowledg(?:e)?ments?|致謝", re.IGNORECASE)
+
+
+def _is_anonymized_name(rel: str) -> bool:
+    tokens = re.split(r"[-_.\s]+", Path(rel).stem.lower())
+    return any(t in _BLIND_STEM_TOKENS for t in tokens)
+
+
+def _package_files(package_dir: Path) -> list[str]:
+    return sorted(
+        p.relative_to(package_dir).as_posix()
+        for p in package_dir.rglob("*")
+        if p.is_file() and p.name not in _SCAN_EXCLUDED_NAMES)
+
+
+def _not_applicable_family_a(reason: str) -> list[dict[str, Any]]:
+    return [_check(i, "not_applicable", reason) for i in _FAMILY_A_IDS]
+
+
+def run_family_a(package_dir: Path, manuscripts: dict[str, str],
+                 profile: Optional[dict[str, Any]]
+                 ) -> list[dict[str, Any]]:
+    """Family A: blind-review residue scan (§3.1). Trigger is
+    presence-or-declaration: an anonymized variant in the package, or a
+    declared double-blind venue. Untriggered = not_applicable (the package
+    has no blind submission set to protect)."""
+    declared_double = bool(profile) and profile.get("blind_review") == "double"
+    anon_rels = [r for r in _package_files(package_dir)
+                 if _is_anonymized_name(r)]
+
+    if not anon_rels and not declared_double:
+        return _not_applicable_family_a(
+            "not triggered: no anonymized variant in the package and no "
+            "declared double-blind review (§3.1 presence-or-declaration)")
+
+    checks: list[dict[str, Any]] = []
+    if declared_double and not anon_rels:
+        checks.append(_check(
+            "A7", "fail",
+            "venue profile declares double-blind review but the package "
+            "contains no anonymized variant — the blind version is missing "
+            "(the most basic residue of all, §3.1)"))
+        checks.extend(_check(i, "not_checked",
+                             "no anonymized variant to scan")
+                      for i in _SCAN_A_IDS)
+        return checks
+
+    checks.append(_check(
+        "A7", "pass",
+        f"anonymized variant present: {', '.join(anon_rels)}"))
+    checks.extend(_scan_blind_set(package_dir, manuscripts, anon_rels, profile))
+    return checks
+
+
+def _scan_blind_set(package_dir: Path, manuscripts: dict[str, str],
+                    anon_rels: list[str],
+                    profile: Optional[dict[str, Any]]
+                    ) -> list[dict[str, Any]]:
+    """A1-A6 over the blind submission set (the anonymized variants)."""
+    checks: list[dict[str, Any]] = []
+    pdf_rels = [r for r in anon_rels if r.lower().endswith(".pdf")]
+    docx_rels = [r for r in anon_rels if r.lower().endswith(".docx")]
+    text_rels = [r for r in anon_rels if r in manuscripts]
+
+    checks.extend(_pdf_metadata_checks(package_dir, pdf_rels))
+    checks.extend(_docx_residue_checks(package_dir, docx_rels))
+    checks.extend(_text_residue_checks(manuscripts, text_rels, profile))
+    checks.append(_filename_leakage_check(package_dir, anon_rels))
+    return checks
+
+
+def _pdf_metadata_checks(package_dir: Path,
+                         pdf_rels: list[str]) -> list[dict[str, Any]]:
+    if not pdf_rels:
+        return [_check("A1", "not_applicable",
+                       "no PDF in the blind submission set")]
+    return [_check("A1", "not_checked", "PDF metadata scan lands in round 2")]
+
+
+def _docx_residue_checks(package_dir: Path,
+                         docx_rels: list[str]) -> list[dict[str, Any]]:
+    if not docx_rels:
+        return [_check("A2", "not_applicable",
+                       "no DOCX in the blind submission set"),
+                _check("A3", "not_applicable",
+                       "no DOCX in the blind submission set")]
+    return [_check("A2", "not_checked", "DOCX metadata scan lands in round 2"),
+            _check("A3", "not_checked", "DOCX revision scan lands in round 2")]
+
+
+def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
+                         profile: Optional[dict[str, Any]]
+                         ) -> list[dict[str, Any]]:
+    """A4 (acknowledgments section) + A5 (self-citation phrasing) over the
+    text-form anonymized variants."""
+    checks: list[dict[str, Any]] = []
+    if not text_rels:
+        checks.append(_check("A4", "not_applicable",
+                             "no text-form (md/tex/txt) anonymized variant"))
+        checks.append(_check("A5", "not_checked",
+                             "no extractable text in the blind submission set"))
+        return checks
+
+    ack_hits = []
+    for rel in text_rels:
+        for title in _headings(rel, manuscripts[rel]):
+            if _ACK_TITLE_RE.search(title):
+                ack_hits.append((rel, title))
+                break
+    if ack_hits:
+        rel, title = ack_hits[0]
+        checks.append(_check(
+            "A4", "fail",
+            f"acknowledgments section present in the anonymized variant "
+            f"(heading {title!r}) — whether it de-anonymizes is the scholar's "
+            f"judgment (§3.1); flagged, never auto-removed",
+            location=rel, strict_eligible=False))
+    else:
+        checks.append(_check(
+            "A4", "pass",
+            "no acknowledgments section in the anonymized variant",
+            strict_eligible=False))
+
+    phrase_hits = []
+    for rel in text_rels:
+        lowered = manuscripts[rel].lower()
+        for phrase in _SELF_CITATION_PHRASES:
+            if phrase.lower() in lowered:
+                phrase_hits.append((rel, phrase))
+    if phrase_hits:
+        rel, phrase = phrase_hits[0]
+        listed = ", ".join(sorted({p for _r, p in phrase_hits})[:_LOCATION_CAP])
+        checks.append(_check(
+            "A5", "fail",
+            f"self-citation phrasing in the anonymized variant: {listed} — "
+            f"legitimate prose can false-positive (heuristic, advisory-only)",
+            signal_class="heuristic", location=rel))
+    else:
+        checks.append(_check(
+            "A5", "pass",
+            "no self-citation phrasing detected in the anonymized variant",
+            signal_class="heuristic"))
+    return checks
+
+
+def _filename_leakage_check(package_dir: Path,
+                            anon_rels: list[str]) -> dict[str, Any]:
+    return _check("A6", "not_checked",
+                  "author-token filename scan lands in round 3",
+                  signal_class="heuristic")
+
+
 def run_checks(package_dir: Path,
                passport: Optional[dict[str, Any]] = None,
                join_map: Optional[dict[str, str]] = None,
@@ -844,7 +1032,9 @@ def run_checks(package_dir: Path,
         passport=passport, join_map=join_map)
     checks_b = run_family_b(
         manuscripts, reference_keys, reference_label, venue_profile)
-    return sorted(checks_b + checks_c, key=lambda c: c["id"]), extraction_path
+    checks_a = run_family_a(package_dir, manuscripts, venue_profile)
+    return (sorted(checks_a + checks_b + checks_c, key=lambda c: c["id"]),
+            extraction_path)
 
 
 def build_report(package_dir: Path, checks: list[dict[str, Any]],
@@ -887,7 +1077,7 @@ def render_human(report: dict[str, Any]) -> str:
         f"fingerprint: {h['package_fingerprint'][:12]}…)",
     ]
     for c in report["checks"]:
-        status = c["status"].upper().replace("NOT_CHECKED", "NOT-CHECKED")
+        status = c["status"].upper().replace("_", "-")
         loc = f" @ {c['location']}" if c["location"] else ""
         lines.append(
             f"  [{status}] {c['id']} ({c['family']}, {c['signal_class']})"

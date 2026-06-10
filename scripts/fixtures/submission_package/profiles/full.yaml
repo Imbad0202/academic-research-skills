@@ -11,5 +11,5 @@ required_sections:
   - Data Availability
   - Method
 reference_limit: 5
-blind_review: double
+blind_review: open
 declared_by: scholar
