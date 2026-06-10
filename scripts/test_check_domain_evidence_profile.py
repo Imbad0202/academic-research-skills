@@ -313,9 +313,11 @@ def test_neg_h2_step12_mentioned_but_negated(tmp_path):
     nxt = text.index("\n## ", idx)
     block = text[idx:nxt]
     # Replace the affirmative directive with one that mentions but negates Step 12.
+    # Anchored on the period-less core phrase so directive-tail extensions
+    # (e.g. #392's ", then Step 13 (...)") don't break the fixture.
     mutated = block.replace(
-        "then Step 12 (Domain Evidence Profile) per its own gating in that step.",
-        "Do not run Step 12 in this flow.",
+        "then Step 12 (Domain Evidence Profile) per its own gating in that step",
+        "Do not run Step 12 in this flow",
     )
     assert mutated != block, "fixture precondition: affirmative directive must be present to replace"
     p.write_text(text[:idx] + mutated + text[nxt:], encoding="utf-8")
