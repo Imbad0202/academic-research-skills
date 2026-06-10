@@ -207,3 +207,7 @@ path = "scripts/test_check_rubric_weight_consistency.py"
 [[pytest]]
 id = "392-citation-verification-intake"
 path = "scripts/test_check_392_citation_verification_intake.py"
+
+[[pytest]]
+id = "394-submission-package-verifier"
+path = "scripts/test_verify_submission_package.py"

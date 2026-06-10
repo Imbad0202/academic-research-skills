@@ -1,6 +1,6 @@
 # ARS #394 — Deterministic submission-package verifier (design-first)
 
-**Status**: DESIGN — no implementation in this PR; slices follow per §9.
+**Status**: DESIGN — slices ship per §9. Slice 1 (CLI skeleton + Family C + report schema + fixtures) SHIPPED; slices 2–4 follow.
 **Issue**: #394 (blindspot-audit F-5, adjudicated design-first).
 **Decision trail**: 2026-06-10 researcher-blindspot audit; cross-model review corrected the initial claim — the formatter's prompt-layer checklist already exists; the gap is deterministic enforcement, not absence.
 
@@ -97,7 +97,7 @@ All fields nullable: a partially-declared profile runs the checks it can and `NO
 
 1. **Standalone CLI (always available):** `python scripts/verify_submission_package.py <package_dir> [--venue-profile profile.yaml] [--passport passport.yaml]` → human-readable report + JSON (`submission_verification_report.json`). Works with zero pipeline context — a scholar can point it at any folder before any submission.
 2. **Pipeline hook (Stage 5 FINALIZE, post-formatter) — explicitly a NEW package-level gate, not the ref-marker stamp path:** the v3.10 terminality machinery is finalizer-stamped ref markers + the formatter's stamp-only rule 11; this verifier runs *after* the formatter on the whole package, so that carrier cannot serve it. Instead the report itself is the evaluated carrier: it embeds a `package_fingerprint` (manifest of file hashes) and the policy slug in force at evaluation, and the orchestrator MUST NOT reuse a report whose fingerprint or slug no longer matches (the freshness guard, package-level analog of the `policy_hash` stamp). Advisory results append to `provenance_summary.md` (`Submission Package Advisories`); under `terminal_policies.submission_package: strict`, a strict-eligible `fail` returns the package to the formatter fix loop (bounded: 2 fix rounds, then surface to the scholar — mirroring the revision-loop cap philosophy) instead of emitting. **Strict fails closed on incompleteness:** a strict-eligible check that reports `NOT-CHECKED` under strict is `VERIFICATION-INCOMPLETE` and blocks emission exactly like a `fail` — otherwise a missing parser silently waives the one check class the scholar opted into blocking on (the fail-open hole). Advisory default is unaffected (`NOT-CHECKED` is surfaced, never blocking).
-3. **Policy evaluation stays single-homed:** the orchestrator (finalizer side) decides terminality by reading `terminal_policies`; the script only reports per-check `{pass, fail, NOT-CHECKED}` + class `{deterministic, heuristic}`. The script never reads `terminal_policies` — same division as #182's gate (detection unconditional, terminality decided by the policy evaluator).
+3. **Policy evaluation stays single-homed:** the orchestrator (finalizer side) decides terminality by reading `terminal_policies`; the script only reports per-check `{pass, fail, warn, NOT-CHECKED}` + class `{deterministic, heuristic}` (slice-1 reconciliation: §3.3 already assigns `warn` to the uncited-reference case, so the status set here carries it too — `warn` is advisory-only and never policy-promotable). The script never reads `terminal_policies` — same division as #182's gate (detection unconditional, terminality decided by the policy evaluator).
 4. **No ref-marker change:** nothing in this design touches the v3.7.3 marker grammar; the carrier is the report file + `provenance_summary.md` section (the #333 precedent for "advisory needs a home but the marker slot is taken").
 
 ## 6. Boundary
@@ -136,7 +136,7 @@ Advisory-only through slice 3; nothing blocks until slice 4 lands the policy key
 
 1. zh-TW self-citation phrasing list (A5) needs first-party curation — no anglophone-only pattern list.
 2. Family D adjudication (§3.4): presence/shape check vs leaving `repro_lock` fully out — maintainer call at slice 3.
-3. Whether the report's `package_fingerprint` should reuse the audit-snapshot hashing convention or a plain file manifest — decide at slice 1.
+3. Whether the report's `package_fingerprint` should reuse the audit-snapshot hashing convention or a plain file manifest — decide at slice 1. **ADJUDICATED (slice 1):** reuse the audit-snapshot manifest convention (`scripts/audit_snapshot.py` `write_manifest`), adapted to package level: one `<package-relative-path>:<sha256>` line per file, LC_ALL=C byte-sorted, newline-joined with a trailing newline; the fingerprint is the SHA-256 of that manifest text. The report file itself is excluded (it cannot fingerprint its own bytes). Pinned by an independent reimplementation in `scripts/test_verify_submission_package.py`.
 4. LaTeX word counting (`texcount` vs detex-and-count) — declare the method, don't promise venue-exact numbers.
 
 ## 11. Ship gate + definition of done (per slice)
