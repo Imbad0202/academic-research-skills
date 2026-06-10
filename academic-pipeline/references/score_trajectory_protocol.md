@@ -29,8 +29,12 @@ For each dimension d in {originality, methodological_rigor, evidence_sufficiency
   argument_coherence, writing_quality, literature_integration, significance_impact, overall}:
   delta[d] = score_re_review[d] - score_review[d]
 
-Note: Dimensions match the 7 universal review dimensions from
+Note: Dimension names match the 7 universal review dimensions from
 academic-paper-reviewer/references/review_criteria_framework.md plus overall.
+Scores are on the 0-100 scale per
+academic-paper-reviewer/references/quality_rubrics.md — the scale the
+delta thresholds below and the v3.2 Early-Stopping Criterion
+("delta < 3 points on the 0-100 rubric", academic-pipeline/SKILL.md) assume.
 ```
 
 ### Decision rules
@@ -72,17 +76,17 @@ The Process Summary includes a "Score Trajectory" subsection showing all rounds:
 
 | Dimension | Review (Stage 3) | Re-Review (Stage 3') | Delta | Status |
 |-----------|-------------------|----------------------|-------|--------|
-| Originality | 3.5 | 3.8 | +0.3 | Improved |
-| Methodological Rigor | 4.2 | 4.0 | -0.2 | Warning |
-| Evidence Sufficiency | 3.0 | 3.8 | +0.8 | Improved |
-| Argument Coherence | 2.8 | 3.5 | +0.7 | Improved |
-| Writing Quality | 3.5 | 3.6 | +0.1 | Improved |
-| Literature Integration | 3.8 | 4.0 | +0.2 | Improved |
-| Significance & Impact | 3.0 | 3.2 | +0.2 | Improved |
-| Overall | 3.4 | 3.7 | +0.3 | Improved |
+| Originality | 68 | 74 | +6 | Improved |
+| Methodological Rigor | 80 | 78 | -2 | Warning |
+| Evidence Sufficiency | 60 | 72 | +12 | Improved |
+| Argument Coherence | 55 | 66 | +11 | Improved |
+| Writing Quality | 70 | 71 | +1 | Improved |
+| Literature Integration | 74 | 77 | +3 | Improved |
+| Significance & Impact | 62 | 64 | +2 | Improved |
+| Overall | 67 | 71 | +4 | Improved |
 
-Regressions detected: 1 (Methodological Rigor, -0.2, within tolerance)
-Early-stop eligible: No (overall delta = 4 >= 3)
+Regressions detected: 0 (Methodological Rigor -2 is a Warning, within the >= -3 tolerance)
+Early-stop eligible: No (overall delta = +4 >= 3)
 ```
 
 ---

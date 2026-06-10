@@ -298,12 +298,12 @@ phases: {
 
 Present only when the integrity report is for a re-review (Stage 3' or 4'). Tracks rubric score changes across revision rounds.
 
-Dimensions match the 7 universal review dimensions from `academic-paper-reviewer/references/review_criteria_framework.md` plus an overall score:
+Dimension names match the 7 universal review dimensions from `academic-paper-reviewer/references/review_criteria_framework.md` plus an overall score. The scoring scale is **0-100**, per `academic-paper-reviewer/references/quality_rubrics.md` — the scale the report template instructs reviewers to score on, and the scale the SKILL.md Early-Stopping Criterion ("delta < 3 points on the 0-100 rubric") and the delta thresholds below assume (#399 reconciliation; an earlier comment here said 1-5, which never matched either producer or consumer):
 
 ```
 score_trajectory: {
   round: integer,          // revision round number (1 or 2)
-  previous_scores: {       // rubric scores from prior review (1-5 scale)
+  previous_scores: {       // rubric scores from prior review (0-100 scale per quality_rubrics.md)
     originality: float,
     methodological_rigor: float,
     evidence_sufficiency: float,
@@ -313,7 +313,7 @@ score_trajectory: {
     significance_impact: float,
     overall: float
   },
-  current_scores: {        // rubric scores from this review (1-5 scale)
+  current_scores: {        // rubric scores from this review (0-100 scale per quality_rubrics.md)
     originality: float,
     methodological_rigor: float,
     evidence_sufficiency: float,
