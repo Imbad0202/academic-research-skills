@@ -6,9 +6,11 @@ This document defines universal criteria for academic paper review and type-spec
 
 ## 1. Universal Review Dimensions
 
-Seven core dimensions applicable to all paper types:
+Seven core dimensions applicable to all paper types.
 
-### Dimension 1: Originality — Weight 15%
+Numerical weights and the aggregation formula are single-sourced in `quality_rubrics.md` — this document deliberately does not restate them (the two copies drifted once; issue #396). The level tables below define qualitative descriptors only.
+
+### Dimension 1: Originality
 
 | Level | Score | Description |
 |-------|-------|-------------|
@@ -18,7 +20,7 @@ Seven core dimensions applicable to all paper types:
 | Weak | 2 | Highly overlapping with existing literature, new contribution unclear |
 | None | 1 | Essentially repeats what is already known |
 
-### Dimension 2: Methodological Rigor — Weight 25%
+### Dimension 2: Methodological Rigor
 
 | Level | Score | Description |
 |-------|-------|-------------|
@@ -28,7 +30,7 @@ Seven core dimensions applicable to all paper types:
 | Weak | 2 | Methods have significant flaws affecting the credibility of conclusions |
 | Unacceptable | 1 | Methods fundamentally unsuitable for answering the research question, or contain serious errors |
 
-### Dimension 3: Evidence Sufficiency — Weight 20%
+### Dimension 3: Evidence Sufficiency
 
 | Level | Score | Description |
 |-------|-------|-------------|
@@ -38,7 +40,7 @@ Seven core dimensions applicable to all paper types:
 | Weak | 2 | Key arguments lack sufficient evidence |
 | Unacceptable | 1 | Serious disconnect between arguments and evidence |
 
-### Dimension 4: Argument Coherence — Weight 15%
+### Dimension 4: Argument Coherence
 
 | Level | Score | Description |
 |-------|-------|-------------|
@@ -48,7 +50,7 @@ Seven core dimensions applicable to all paper types:
 | Weak | 2 | Multiple logical breaks, readers have difficulty following the argument |
 | Unacceptable | 1 | Confused argumentation, core claims cannot be identified |
 
-### Dimension 5: Writing Quality — Weight 10%
+### Dimension 5: Writing Quality
 
 | Level | Score | Description |
 |-------|-------|-------------|
@@ -58,7 +60,7 @@ Seven core dimensions applicable to all paper types:
 | Weak | 2 | Frequent language issues that affect understanding |
 | Unacceptable | 1 | Language quality does not meet reviewable standards |
 
-### Dimension 6: Literature Integration — Weight 10%
+### Dimension 6: Literature Integration
 
 | Level | Score | Description |
 |-------|-------|-------------|
@@ -68,7 +70,7 @@ Seven core dimensions applicable to all paper types:
 | Weak | 2 | Literature is outdated, incomplete, or merely enumerated |
 | Unacceptable | 1 | Seriously insufficient literature review or irrelevant to the topic |
 
-### Dimension 7: Significance & Impact — Weight 5%
+### Dimension 7: Significance & Impact
 
 | Level | Score | Description |
 |-------|-------|-------------|
@@ -167,30 +169,12 @@ Beyond universal dimensions, specifically focus on:
 
 ## 4. Scoring Aggregation
 
-### Weighted Total Score Calculation
+The aggregation weights, the weighted-score formula, and the score-to-decision mapping are defined in `quality_rubrics.md` (single source — do not restate the numbers here). Two structural facts from that source:
 
-```
-Total Score =
-  Originality (15%) +
-  Methodological Rigor (25%) +
-  Evidence Sufficiency (20%) +
-  Argument Coherence (15%) +
-  Writing Quality (10%) +
-  Literature Integration (10%) +
-  Significance (5%)
-```
-
-### Score-to-Decision Mapping
-
-| Weighted Total | Recommended Decision | Note |
-|---------------|---------------------|------|
-| 4.5-5.0 | Accept | Very few papers reach this level |
-| 3.5-4.4 | Minor Revision | Overall quality is good, minor revisions needed |
-| 2.5-3.4 | Major Revision | Has potential but needs substantial revision |
-| 1.5-2.4 | Reject (Resubmit) | Fundamental issues need rework, but topic has value |
-| 1.0-1.4 | Reject | Not suitable for this journal or quality below standard |
+- Five dimensions carry aggregation weight: Originality, Methodological Rigor, Evidence Sufficiency, Argument Coherence, Writing Quality.
+- Literature Integration and Significance & Impact are reviewer-specific optional dimensions (R2 / R3 focus): scored and reported separately, factored into the editorial synthesis narrative, but not part of the numerical aggregate.
 
 **Important reminder**: Scores are only reference. The final decision also needs to consider:
-- Whether any single dimension is particularly low (e.g., methodology score of 1), which may lead to Reject even if the overall score is passable
+- Whether any single dimension sits at the bottom descriptor (e.g., methodology at "Unacceptable"), which may lead to Reject even if the overall score is passable
 - Specific content of reviewer comments is more important than numbers
 - Special considerations of the journal (special issue, field development needs, etc.)

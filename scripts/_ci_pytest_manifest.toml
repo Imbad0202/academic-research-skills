@@ -199,3 +199,7 @@ path = "scripts/test_check_instruction_data_boundary.py"
 [[pytest]]
 id = "272-runtime-injection-boundary-pebble"
 path = "scripts/test_runtime_injection_boundary_xfail.py"
+
+[[pytest]]
+id = "396-rubric-weight-consistency"
+path = "scripts/test_check_rubric_weight_consistency.py"
