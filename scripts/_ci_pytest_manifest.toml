@@ -203,3 +203,7 @@ path = "scripts/test_runtime_injection_boundary_xfail.py"
 [[pytest]]
 id = "396-rubric-weight-consistency"
 path = "scripts/test_check_rubric_weight_consistency.py"
+
+[[pytest]]
+id = "392-citation-verification-intake"
+path = "scripts/test_check_392_citation_verification_intake.py"

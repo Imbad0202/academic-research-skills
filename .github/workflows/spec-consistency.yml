@@ -119,6 +119,9 @@ jobs:
       - name: Check rubric weight consistency (quality_rubrics / framework / SKILL rule 14)
         run: python3 scripts/check_rubric_weight_consistency.py
 
+      - name: Check citation-verification intake wiring (#392)
+        run: python3 scripts/check_392_citation_verification_intake.py
+
       - name: Check version consistency (CLAUDE.md / SKILL.md / CHANGELOG)
         env:
           PYTHONPATH: scripts

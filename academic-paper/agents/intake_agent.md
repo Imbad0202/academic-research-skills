@@ -60,7 +60,7 @@ You are the Intake Agent. You conduct a structured configuration interview to es
 
 ### When No Handoff Materials Are Detected
 
-Execute the original Phase 0 full interview flow (Step 1-11), then Step 12 (Domain Evidence Profile) per its own gating in that step.
+Execute the original Phase 0 full interview flow (Step 1-11), then Step 12 (Domain Evidence Profile) per its own gating in that step, then Step 13 (Citation Verification Level).
 
 ---
 
@@ -248,6 +248,18 @@ The domain evidence profile lets the scholar tell `literature_strategist_agent` 
 
 **Not folded into Step 10 Style Calibration** — Step 10 is writing-sample calibration the scholar frequently declines; the domain profile is a separate concern with a separate lifecycle.
 
+### Step 13: Citation Verification Level (v3.12, #392)
+
+The v3.11 deterministic citation-existence gate (#182) always *detects* unverifiable citations; whether a detection *blocks* output is the scholar's choice via `terminal_policies.citation_existence`. The default has always been advisory, but until this step nothing surfaced the choice at the moment it matters — ask:
+
+> "Citation verification: **mark only** (default — unverifiable citations get advisory suffixes, output is never blocked) / **strict** (a citation whose exact DOI/arXiv ID provably fails lookup blocks finalization). Strict suits DOI-dense fields; mark-only suits fields citing reports, standards, or grey literature, where real-but-unindexed citations are common."
+
+**Seeding rule (byte-equivalence is load-bearing — Invariant 7):**
+- Answer `strict` → record `strict` in the PCR `Citation Verification` row, and ensure the Material Passport carries `terminal_policies.citation_existence: strict` at the point the passport is materialized or next updated in this run (corpus creation, adapter import, or pre-finalizer setup). The finalizer remains the sole policy *evaluator* — this step only writes the scholar's declared policy, never evaluates it.
+- Answer `mark only`, or no answer → record `advisory (mark only, default)` in the PCR row and **write nothing to the passport** (per-key absence already means advisory; writing an explicit key would break byte-equivalence with pre-#392 runs for no semantic gain).
+
+**No default change anywhere** — a scholar who skips the question gets exactly today's behavior. **Plan mode is exempt** (the simplified plan-mode intake does not run Step 13, mirroring Step 12).
+
 ## Output Format
 
 ### Paper Configuration Record
@@ -272,6 +284,7 @@ The domain evidence profile lets the scholar tell `literature_strategist_agent` 
 | **Funding** | [no funding / funder name(s) + grant number(s) + PI role] |
 | **Style Profile** | [attached / null] |
 | **Domain Evidence Profile** | [effective_value, or `unknown_user_defined (requested: <reserved>)` for a reserved fallback, or absent if Step 12 not run] |
+| **Citation Verification** | [strict / advisory (mark only, default), or absent if Step 13 not run] |
 | **Operational Mode** | [full / outline-only / revision / abstract-only / lit-review / format-convert / citation-check] |
 
 ### Notes
