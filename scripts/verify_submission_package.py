@@ -47,6 +47,8 @@ import argparse
 import json
 import re
 import sys
+import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
@@ -56,6 +58,20 @@ try:
     from audit_snapshot import sha256_hex
 except ImportError:  # pragma: no cover - dual-path import
     from scripts.audit_snapshot import sha256_hex
+
+try:
+    import pypdf
+except ImportError:  # the A1 PDF scan reports NOT-CHECKED without it (§1.4)
+    pypdf = None
+
+try:
+    # Hardened XML parsing (XML-bomb/XXE protection) when available; the
+    # stdlib fallback does not fetch external entities but is exposed to
+    # entity-expansion DoS — acceptable only because the input is the
+    # scholar's own package, and requirements-dev installs the hardened path.
+    from defusedxml.ElementTree import fromstring as _xml_fromstring
+except ImportError:
+    _xml_fromstring = ET.fromstring
 
 REPORT_BASENAME = "submission_verification_report.json"
 
@@ -936,23 +952,114 @@ def _scan_blind_set(package_dir: Path, manuscripts: dict[str, str],
     return checks
 
 
+def _residue_verdict(check_id: str, findings: list[str],
+                     unreadable: list[str], what: str) -> dict[str, Any]:
+    """fail on any finding; otherwise not_checked if any artifact was
+    unreadable (incompleteness is never folded into pass, §1.4); else pass."""
+    if findings:
+        listed = "; ".join(findings[:_LOCATION_CAP])
+        return _check(check_id, "fail",
+                      f"{what} in the blind submission set: {listed}",
+                      location=findings[0].split(":", 1)[0])
+    if unreadable:
+        return _check(check_id, "not_checked",
+                      f"unreadable artifact(s), {what} could not be scanned: "
+                      f"{', '.join(unreadable[:_LOCATION_CAP])}")
+    return _check(check_id, "pass", f"no {what} in the blind submission set")
+
+
 def _pdf_metadata_checks(package_dir: Path,
                          pdf_rels: list[str]) -> list[dict[str, Any]]:
+    """A1: PDF info dict /Author + XMP dc:creator non-empty (§3.1)."""
     if not pdf_rels:
         return [_check("A1", "not_applicable",
                        "no PDF in the blind submission set")]
-    return [_check("A1", "not_checked", "PDF metadata scan lands in round 2")]
+    if pypdf is None:
+        return [_check("A1", "not_checked",
+                       "parser unavailable: pypdf is not installed (pip "
+                       "install pypdf) — PDF metadata cannot be scanned")]
+    findings: list[str] = []
+    unreadable: list[str] = []
+    for rel in pdf_rels:
+        try:
+            reader = pypdf.PdfReader(str(package_dir / rel))
+            meta = reader.metadata
+            author = str(meta.get("/Author") or "").strip() if meta else ""
+            creators: list[str] = []
+            try:
+                xmp = reader.xmp_metadata
+                creators = [c for c in (xmp.dc_creator or []) if str(c).strip()
+                            ] if xmp else []
+            except Exception:  # XMP is best-effort; the info dict is primary
+                pass
+        except Exception:
+            unreadable.append(rel)
+            continue
+        if author:
+            findings.append(f"{rel}: /Author={author!r}")
+        if creators:
+            findings.append(f"{rel}: XMP dc:creator={creators!r}")
+    return [_residue_verdict("A1", findings, unreadable,
+                             "PDF metadata author(s)")]
+
+
+# OOXML namespaces for the raw-structure DOCX scan. Read with stdlib
+# zipfile+ElementTree rather than python-docx: the parts we need
+# (docProps/core.xml, word/*.xml author attributes) are plain XML, and a
+# stdlib reader means the DOCX residue class has NO missing-parser
+# NOT-CHECKED hole at all (§1.3/§1.4; recorded as a spec §9 slice-3
+# refinement — pypdf remains the only new dependency).
+_NS_DC = "{http://purl.org/dc/elements/1.1/}"
+_NS_CP = ("{http://schemas.openxmlformats.org/package/2006/"
+          "metadata/core-properties}")
+_NS_W = ("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}")
 
 
 def _docx_residue_checks(package_dir: Path,
                          docx_rels: list[str]) -> list[dict[str, Any]]:
+    """A2: docProps/core.xml creator/lastModifiedBy non-empty. A3: w:ins /
+    w:del / w:comment author attributes in document parts (§3.1)."""
     if not docx_rels:
         return [_check("A2", "not_applicable",
                        "no DOCX in the blind submission set"),
                 _check("A3", "not_applicable",
                        "no DOCX in the blind submission set")]
-    return [_check("A2", "not_checked", "DOCX metadata scan lands in round 2"),
-            _check("A3", "not_checked", "DOCX revision scan lands in round 2")]
+    meta_findings: list[str] = []
+    rev_findings: list[str] = []
+    unreadable: list[str] = []
+    for rel in docx_rels:
+        try:
+            with zipfile.ZipFile(package_dir / rel) as z:
+                names = set(z.namelist())
+                if "docProps/core.xml" in names:
+                    root = _xml_fromstring(z.read("docProps/core.xml"))
+                    for tag, label in ((_NS_DC + "creator", "creator"),
+                                       (_NS_CP + "lastModifiedBy",
+                                        "lastModifiedBy")):
+                        el = root.find(tag)
+                        if el is not None and (el.text or "").strip():
+                            meta_findings.append(
+                                f"{rel}: {label}={el.text.strip()!r}")
+                for part in sorted(n for n in names
+                                   if n.startswith("word/")
+                                   and n.endswith(".xml")):
+                    root = _xml_fromstring(z.read(part))
+                    for el in root.iter():
+                        if el.tag in (_NS_W + "ins", _NS_W + "del",
+                                      _NS_W + "comment"):
+                            author = (el.get(_NS_W + "author") or "").strip()
+                            if author:
+                                kind = el.tag.split("}", 1)[1]
+                                rev_findings.append(
+                                    f"{rel}: w:{kind} author={author!r}")
+        except (zipfile.BadZipFile, ET.ParseError, OSError, KeyError, ValueError):
+            unreadable.append(rel)
+    return [
+        _residue_verdict("A2", meta_findings, unreadable,
+                         "DOCX metadata author(s)"),
+        _residue_verdict("A3", rev_findings, unreadable,
+                         "DOCX revision/comment author(s)"),
+    ]
 
 
 def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],

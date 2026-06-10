@@ -400,6 +400,134 @@ def test_anonymized_variant_triggers_family_a(tmp_path):
     jsonschema.validate(report, load_schema())
 
 
+_DOCX_CORE_TMPL = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<cp:coreProperties '
+    'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+    'xmlns:dc="http://purl.org/dc/elements/1.1/">'
+    "<dc:creator>{creator}</dc:creator>"
+    "<cp:lastModifiedBy>{last_modified_by}</cp:lastModifiedBy>"
+    "</cp:coreProperties>")
+_DOCX_DOC_TMPL = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<w:document '
+    'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    "<w:body><w:p><w:r><w:t>Blind body text.</w:t></w:r></w:p>{extra}</w:body>"
+    "</w:document>")
+
+
+def make_docx(path, creator="", last_modified_by="", ins_author=None,
+              comment_author=None):
+    """Minimal raw-structure .docx (a zip with core.xml + document.xml [+
+    comments.xml]) — exactly the parts the residue scan reads (§1.3: the
+    deliverable is the raw file, not the rendered view)."""
+    import zipfile
+
+    extra = ""
+    if ins_author:
+        extra = (f'<w:ins w:id="1" w:author="{ins_author}">'
+                 "<w:r><w:t>inserted</w:t></w:r></w:ins>")
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("docProps/core.xml", _DOCX_CORE_TMPL.format(
+            creator=creator, last_modified_by=last_modified_by))
+        z.writestr("word/document.xml", _DOCX_DOC_TMPL.format(extra=extra))
+        if comment_author:
+            z.writestr(
+                "word/comments.xml",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<w:comments xmlns:w="http://schemas.openxmlformats.org/'
+                'wordprocessingml/2006/main">'
+                f'<w:comment w:id="0" w:author="{comment_author}">'
+                "<w:p><w:r><w:t>note</w:t></w:r></w:p></w:comment>"
+                "</w:comments>")
+
+
+def _blind_package(tmp_path, **docx_kwargs):
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    make_docx(package / "paper_anonymized.docx", **docx_kwargs)
+    rc, report = run_dir(package)
+    return checks_by_id(report)
+
+
+def test_docx_metadata_author_residue_fails_A2(tmp_path):
+    # A2 (§3.1): docProps/core.xml creator / lastModifiedBy non-empty in the
+    # blind variant is a deterministic fact about the file — invisible to any
+    # rendered-view scan (§1.3).
+    by_id = _blind_package(tmp_path, creator="Jordan Smith")
+    assert by_id["A2"]["status"] == "fail"
+    assert "Jordan Smith" in by_id["A2"]["detail"]
+    assert by_id["A2"]["strict_eligible"] is True
+    assert by_id["A3"]["status"] == "pass"
+
+
+def test_docx_clean_metadata_passes_A2_A3(tmp_path):
+    by_id = _blind_package(tmp_path)
+    assert by_id["A2"]["status"] == "pass"
+    assert by_id["A3"]["status"] == "pass"
+
+
+def test_docx_tracked_change_author_fails_A3(tmp_path):
+    by_id = _blind_package(tmp_path, ins_author="J. Smith")
+    assert by_id["A3"]["status"] == "fail"
+    assert "J. Smith" in by_id["A3"]["detail"]
+
+
+def test_docx_comment_author_fails_A3(tmp_path):
+    by_id = _blind_package(tmp_path, comment_author="Reviewer Zero")
+    assert by_id["A3"]["status"] == "fail"
+    assert "Reviewer Zero" in by_id["A3"]["detail"]
+
+
+def test_corrupt_docx_not_checked(tmp_path):
+    # An unreadable artifact is incompleteness, never folded into pass (§1.4).
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    (package / "paper_anonymized.docx").write_bytes(b"not a zip")
+    _rc, report = run_dir(package)
+    by_id = checks_by_id(report)
+    for cid in ("A2", "A3"):
+        assert by_id[cid]["status"] == "not_checked"
+        assert "unreadable" in by_id[cid]["detail"]
+
+
+def test_pdf_metadata_author_fails_A1(tmp_path):
+    pypdf = pytest.importorskip("pypdf")
+
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    writer.add_metadata({"/Author": "Jordan Smith"})
+    with open(package / "paper_blind.pdf", "wb") as f:
+        writer.write(f)
+    _rc, report = run_dir(package)
+    a1 = checks_by_id(report)["A1"]
+    assert a1["status"] == "fail"
+    assert "Jordan Smith" in a1["detail"]
+    assert a1["strict_eligible"] is True
+
+
+def test_pdf_parser_unavailable_is_not_checked(tmp_path, monkeypatch):
+    # §1.4/#349: a missing parser must surface as NOT-CHECKED, never read as
+    # covered. (The slice-4 strict mode turns this into
+    # VERIFICATION-INCOMPLETE.)
+    import verify_submission_package as v
+
+    monkeypatch.setattr(v, "pypdf", None)
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    (package / "paper_blind.pdf").write_bytes(b"%PDF-1.4\n%%EOF\n")
+    _rc, report = run_dir(package)
+    a1 = checks_by_id(report)["A1"]
+    assert a1["status"] == "not_checked"
+    assert "pypdf" in a1["detail"]
+
+
 def test_schema_accepts_not_applicable_and_rejects_old_unknowns():
     ok = _minimal_report(status="not_applicable")
     jsonschema.validate(ok, load_schema())
