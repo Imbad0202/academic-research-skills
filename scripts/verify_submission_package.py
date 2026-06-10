@@ -932,12 +932,15 @@ def _package_files(package_dir: Path) -> list[str]:
         if p.is_file() and p.name not in _SCAN_EXCLUDED_NAMES)
 
 
-def _not_applicable_family_a(reason: str,
-                             profile: Optional[dict[str, Any]]
-                             ) -> list[dict[str, Any]]:
-    return [_check(i, "not_applicable", reason,
+def _blanket_family_a(ids, status: str, reason: str,
+                      profile: Optional[dict[str, Any]]
+                      ) -> list[dict[str, Any]]:
+    """One emitter for every whole-family blanket path (untriggered
+    not_applicable / no-variant not_checked), so A4's profile-conditional
+    eligibility cannot diverge between them."""
+    return [_check(i, status, reason,
                    strict_eligible=_a4_strict(profile) if i == "A4" else None)
-            for i in _FAMILY_A_IDS]
+            for i in ids]
 
 
 def run_family_a(package_dir: Path, manuscripts: dict[str, str],
@@ -948,11 +951,12 @@ def run_family_a(package_dir: Path, manuscripts: dict[str, str],
     declared double-blind venue. Untriggered = not_applicable (the package
     has no blind submission set to protect)."""
     declared_double = bool(profile) and profile.get("blind_review") == "double"
-    anon_rels = [r for r in _package_files(package_dir)
-                 if _is_anonymized_name(r)]
+    all_rels = _package_files(package_dir)
+    anon_rels = [r for r in all_rels if _is_anonymized_name(r)]
 
     if not anon_rels and not declared_double:
-        return _not_applicable_family_a(
+        return _blanket_family_a(
+            _FAMILY_A_IDS, "not_applicable",
             "not triggered: no anonymized variant in the package and no "
             "declared double-blind review (§3.1 presence-or-declaration)",
             profile)
@@ -962,24 +966,25 @@ def run_family_a(package_dir: Path, manuscripts: dict[str, str],
         checks.append(_check(
             "A7", "fail",
             "venue profile declares double-blind review but the package "
-            "contains no anonymized manuscript variant (.md/.tex/.txt/.docx/"
-            ".pdf with an anonymized/blind name token) — the blind version "
+            "contains no anonymized manuscript variant "
+            f"({'/'.join(_VARIANT_SUFFIXES)} with a name token among "
+            f"{'/'.join(sorted(_BLIND_STEM_TOKENS))}) — the blind version "
             "is missing (the most basic residue of all, §3.1)"))
-        checks.extend(_check(
-            i, "not_checked", "no anonymized variant to scan",
-            strict_eligible=_a4_strict(profile) if i == "A4" else None)
-            for i in _SCAN_A_IDS)
+        checks.extend(_blanket_family_a(
+            _SCAN_A_IDS, "not_checked", "no anonymized variant to scan",
+            profile))
         return checks
 
     checks.append(_check(
         "A7", "pass",
         f"anonymized variant present: {', '.join(anon_rels)}"))
-    checks.extend(_scan_blind_set(package_dir, manuscripts, anon_rels, profile))
+    checks.extend(_scan_blind_set(
+        package_dir, manuscripts, all_rels, anon_rels, profile))
     return checks
 
 
 def _scan_blind_set(package_dir: Path, manuscripts: dict[str, str],
-                    anon_rels: list[str],
+                    all_rels: list[str], anon_rels: list[str],
                     profile: Optional[dict[str, Any]]
                     ) -> list[dict[str, Any]]:
     """A1-A6 over the blind submission set (the anonymized variants)."""
@@ -991,19 +996,21 @@ def _scan_blind_set(package_dir: Path, manuscripts: dict[str, str],
     checks.extend(_pdf_metadata_checks(package_dir, pdf_rels))
     checks.extend(_docx_residue_checks(package_dir, docx_rels))
     checks.extend(_text_residue_checks(manuscripts, text_rels, profile))
-    checks.append(_filename_leakage_check(package_dir, anon_rels))
+    checks.append(_filename_leakage_check(package_dir, all_rels, anon_rels))
     return checks
 
 
-def _residue_verdict(check_id: str, findings: list[str],
+def _residue_verdict(check_id: str, findings: "list[tuple[str, str]]",
                      unreadable: list[str], what: str) -> dict[str, Any]:
-    """fail on any finding; otherwise not_checked if any artifact was
-    unreadable (incompleteness is never folded into pass, §1.4); else pass."""
+    """fail on any (rel, message) finding; otherwise not_checked if any
+    artifact was unreadable (incompleteness is never folded into pass, §1.4);
+    else pass."""
     if findings:
-        listed = "; ".join(findings[:_LOCATION_CAP])
+        listed = "; ".join(f"{rel}: {msg}"
+                           for rel, msg in findings[:_LOCATION_CAP])
         return _check(check_id, "fail",
                       f"{what} in the blind submission set: {listed}",
-                      location=findings[0].split(":", 1)[0])
+                      location=findings[0][0])
     if unreadable:
         return _check(check_id, "not_checked",
                       f"unreadable artifact(s), {what} could not be scanned: "
@@ -1021,13 +1028,12 @@ def _pdf_metadata_checks(package_dir: Path,
         return [_check("A1", "not_checked",
                        "parser unavailable: pypdf is not installed (pip "
                        "install pypdf) — PDF metadata cannot be scanned")]
-    findings: list[str] = []
+    findings: "list[tuple[str, str]]" = []
     unreadable: list[str] = []
     for rel in pdf_rels:
         try:
             reader = pypdf.PdfReader(str(package_dir / rel))
-            meta = reader.metadata
-            author = str(meta.get("/Author") or "").strip() if meta else ""
+            author = _pdf_info_author(reader)
             creators: list[str] = []
             try:
                 xmp = reader.xmp_metadata
@@ -1042,11 +1048,18 @@ def _pdf_metadata_checks(package_dir: Path,
             unreadable.append(rel)
             continue
         if author:
-            findings.append(f"{rel}: /Author={author!r}")
+            findings.append((rel, f"/Author={author!r}"))
         if creators:
-            findings.append(f"{rel}: XMP dc:creator={creators!r}")
+            findings.append((rel, f"XMP dc:creator={creators!r}"))
     return [_residue_verdict("A1", findings, unreadable,
                              "PDF metadata author(s)")]
+
+
+def _pdf_info_author(reader) -> str:
+    """The PDF info-dict /Author — the one definition A1 and the A6 token
+    harvest share."""
+    meta = reader.metadata
+    return str(meta.get("/Author") or "").strip() if meta else ""
 
 
 def _read_zip_part(z: "zipfile.ZipFile", name: str) -> bytes:
@@ -1055,6 +1068,32 @@ def _read_zip_part(z: "zipfile.ZipFile", name: str) -> bytes:
     if z.getinfo(name).file_size > _MAX_XML_PART_BYTES:
         raise ValueError(f"zip part {name} over the size limit")
     return z.read(name)
+
+
+def _open_docx_guarded(path: Path) -> "zipfile.ZipFile":
+    """Open a .docx with the zip-bomb entry-count guard applied — the one
+    opening path for every DOCX reader (A2/A3 and the A6 token harvest), so
+    the guards cannot drift apart."""
+    z = zipfile.ZipFile(path)
+    if len(z.namelist()) > _MAX_ZIP_ENTRIES:
+        z.close()
+        raise ValueError("zip entry count over limit")
+    return z
+
+
+def _docx_core_author_fields(z: "zipfile.ZipFile") -> "list[tuple[str, str]]":
+    """[(label, value)] for the non-empty author fields of docProps/core.xml
+    — the one extraction A2 and the A6 token harvest share."""
+    if "docProps/core.xml" not in set(z.namelist()):
+        return []
+    root = _xml_fromstring(_read_zip_part(z, "docProps/core.xml"))
+    fields = []
+    for tag, label in ((_NS_DC + "creator", "creator"),
+                       (_NS_CP + "lastModifiedBy", "lastModifiedBy")):
+        el = root.find(tag)
+        if el is not None and (el.text or "").strip():
+            fields.append((label, el.text.strip()))
+    return fields
 
 
 # OOXML namespaces for the raw-structure DOCX scan. Read with stdlib
@@ -1078,26 +1117,15 @@ def _docx_residue_checks(package_dir: Path,
                        "no DOCX in the blind submission set"),
                 _check("A3", "not_applicable",
                        "no DOCX in the blind submission set")]
-    meta_findings: list[str] = []
-    rev_findings: list[str] = []
+    meta_findings: "list[tuple[str, str]]" = []
+    rev_findings: "list[tuple[str, str]]" = []
     unreadable: list[str] = []
     for rel in docx_rels:
         try:
-            with zipfile.ZipFile(package_dir / rel) as z:
-                names = set(z.namelist())
-                if len(names) > _MAX_ZIP_ENTRIES:
-                    raise ValueError("zip entry count over limit")
-                if "docProps/core.xml" in names:
-                    root = _xml_fromstring(
-                        _read_zip_part(z, "docProps/core.xml"))
-                    for tag, label in ((_NS_DC + "creator", "creator"),
-                                       (_NS_CP + "lastModifiedBy",
-                                        "lastModifiedBy")):
-                        el = root.find(tag)
-                        if el is not None and (el.text or "").strip():
-                            meta_findings.append(
-                                f"{rel}: {label}={el.text.strip()!r}")
-                for part in sorted(n for n in names
+            with _open_docx_guarded(package_dir / rel) as z:
+                for label, value in _docx_core_author_fields(z):
+                    meta_findings.append((rel, f"{label}={value!r}"))
+                for part in sorted(n for n in z.namelist()
                                    if n.startswith("word/")
                                    and n.endswith(".xml")):
                     root = _xml_fromstring(_read_zip_part(z, part))
@@ -1108,7 +1136,7 @@ def _docx_residue_checks(package_dir: Path,
                             if author:
                                 kind = el.tag.split("}", 1)[1]
                                 rev_findings.append(
-                                    f"{rel}: w:{kind} author={author!r}")
+                                    (rel, f"w:{kind} author={author!r}"))
         except _XML_READ_ERRORS:
             unreadable.append(rel)
     return [
@@ -1186,21 +1214,20 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
 def _author_metadata_strings(package_dir: Path,
                              rels: list[str]) -> list[str]:
     """Author strings from PDF /Author + DOCX core.xml creator/lastModifiedBy
-    of the given artifacts — best-effort (A6 is heuristic by class)."""
+    of the given artifacts — the SAME extraction (and zip guards) as A1/A2,
+    consumed best-effort (A6 is heuristic by class, so unreadable artifacts
+    are simply skipped here)."""
     authors: list[str] = []
     for rel in rels:
         low = rel.lower()
         try:
             if low.endswith(".docx"):
-                with zipfile.ZipFile(package_dir / rel) as z:
-                    root = _xml_fromstring(z.read("docProps/core.xml"))
-                for tag in (_NS_DC + "creator", _NS_CP + "lastModifiedBy"):
-                    el = root.find(tag)
-                    if el is not None and (el.text or "").strip():
-                        authors.append(el.text.strip())
+                with _open_docx_guarded(package_dir / rel) as z:
+                    authors.extend(
+                        value for _label, value in _docx_core_author_fields(z))
             elif low.endswith(".pdf") and pypdf is not None:
-                meta = pypdf.PdfReader(str(package_dir / rel)).metadata
-                author = str(meta.get("/Author") or "").strip() if meta else ""
+                author = _pdf_info_author(
+                    pypdf.PdfReader(str(package_dir / rel)))
                 if author:
                     authors.append(author)
         except Exception:
@@ -1208,15 +1235,15 @@ def _author_metadata_strings(package_dir: Path,
     return authors
 
 
-def _filename_leakage_check(package_dir: Path,
+def _filename_leakage_check(package_dir: Path, all_rels: list[str],
                             anon_rels: list[str]) -> dict[str, Any]:
     """A6 (§3.1): author-name tokens from the NON-anonymized variant's
     metadata appearing in package filenames. Heuristic by class (coincidental
     name tokens false-positive). The metadata-source originals themselves are
     not scanned — their identified filenames are expected."""
-    all_rels = _package_files(package_dir)
+    anon = set(anon_rels)
     original_rels = [r for r in all_rels
-                     if r not in set(anon_rels)
+                     if r not in anon
                      and r.lower().endswith((".docx", ".pdf"))]
     authors = _author_metadata_strings(package_dir, original_rels)
     if not authors:
@@ -1231,7 +1258,8 @@ def _filename_leakage_check(package_dir: Path,
         return {t for t in re.split(r"[^a-z0-9]+", s.lower()) if t}
 
     tokens = {t for a in authors for t in name_tokens(a) if len(t) >= 3}
-    scanned = [r for r in all_rels if r not in set(original_rels)]
+    originals = set(original_rels)
+    scanned = [r for r in all_rels if r not in originals]
     hits = sorted(
         r for r in scanned if tokens & name_tokens(Path(r).name))
     if hits:

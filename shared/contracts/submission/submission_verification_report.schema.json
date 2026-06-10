@@ -94,7 +94,7 @@
         },
         "strict_eligible": {
           "type": "boolean",
-          "description": "Whether a fail on this check is promotable by terminal_policies.submission_package: strict (slice 4). Heuristic checks are NEVER strict-eligible — enforced structurally below, not by default."
+          "description": "Whether a fail on this check is promotable by terminal_policies.submission_package: strict (slice 4). Heuristic checks are NEVER strict-eligible — enforced structurally below, not by default. The bit describes blocking eligibility HAD THE CHECK RUN: the slice-4 policy evaluator keys on status (`fail` blocks; strict-eligible `not_checked` is VERIFICATION-INCOMPLETE) and `strict_eligible: true` NEVER combines with `not_applicable` to block — an untriggered check has nothing to enforce."
         },
         "status": {
           "type": "string",

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import zipfile
 from pathlib import Path
 
 import jsonschema
@@ -421,8 +422,6 @@ def make_docx(path, creator="", last_modified_by="", ins_author=None,
     """Minimal raw-structure .docx (a zip with core.xml + document.xml [+
     comments.xml]) — exactly the parts the residue scan reads (§1.3: the
     deliverable is the raw file, not the rendered view)."""
-    import zipfile
-
     extra = ""
     if ins_author:
         extra = (f'<w:ins w:id="1" w:author="{ins_author}">'
@@ -682,7 +681,8 @@ def test_profile_rejects_nonboolean_acknowledgments_forbidden_field(tmp_path):
     assert run([str(package), "--venue-profile", str(profile)]) == 2
 
 
-def test_schema_accepts_not_applicable_and_rejects_old_unknowns():
+def test_schema_accepts_not_applicable():
+    # (Unknown statuses are rejected by test_schema_rejects_unknown_status.)
     ok = _minimal_report(status="not_applicable")
     jsonschema.validate(ok, load_schema())
 
