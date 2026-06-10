@@ -72,7 +72,7 @@
         "id": {
           "type": "string",
           "pattern": "^[ABCD][1-9][0-9]*$",
-          "description": "Check id per the spec §3 family tables (A1–A6, B*, C1 orphan in-text citation, C2 uncited reference entry, D*)."
+          "description": "Check id per the spec §3 family tables (A1–A7 — A7 is the slice-3 missing-blind-version carrier, B1–B5, C1 orphan in-text citation, C2 uncited reference entry, D*)."
         },
         "family": {
           "type": "string",

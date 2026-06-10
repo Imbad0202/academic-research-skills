@@ -70,8 +70,23 @@ try:
     # entity-expansion DoS — acceptable only because the input is the
     # scholar's own package, and requirements-dev installs the hardened path.
     from defusedxml.ElementTree import fromstring as _xml_fromstring
+    from defusedxml.common import DefusedXmlException as _DefusedXmlException
 except ImportError:
     _xml_fromstring = ET.fromstring
+
+    class _DefusedXmlException(Exception):
+        """Placeholder when defusedxml is absent — never raised."""
+
+
+# A hardened-parser rejection (entity/DOCTYPE tricks) is an unreadable
+# artifact, reported as NOT-CHECKED — it must not crash the scan.
+_XML_READ_ERRORS = (zipfile.BadZipFile, ET.ParseError, OSError, KeyError,
+                    ValueError, _DefusedXmlException)
+
+# Zip-bomb guards for the raw DOCX part reads (read-only scan, no extraction
+# — path traversal is not exposed, memory is).
+_MAX_XML_PART_BYTES = 50 * 1024 * 1024
+_MAX_ZIP_ENTRIES = 10_000
 
 REPORT_BASENAME = "submission_verification_report.json"
 
@@ -876,6 +891,10 @@ _SCAN_A_IDS = ("A1", "A2", "A3", "A4", "A5", "A6")  # the variant-scanning subse
 # `canonical.md` does not.
 _BLIND_STEM_TOKENS = frozenset(
     {"anonymized", "anonymised", "anonymous", "anon", "blind", "blinded"})
+# Only manuscript-class artifacts count as "the blind variant" — a
+# blind-named ancillary file (blind_survey.csv) is not a blind manuscript
+# and must not satisfy A7 under a declared double-blind venue.
+_VARIANT_SUFFIXES = (".md", ".tex", ".txt", ".docx", ".pdf")
 
 # A5 self-citation phrasing (§3.1 — heuristic by class). zh-TW list drafted
 # first-party per spec §10 item 1; curation pending maintainer review.
@@ -890,8 +909,20 @@ _ACK_TITLE_RE = re.compile(r"acknowledg(?:e)?ments?|致謝", re.IGNORECASE)
 
 
 def _is_anonymized_name(rel: str) -> bool:
+    if not rel.lower().endswith(_VARIANT_SUFFIXES):
+        return False
     tokens = re.split(r"[-_.\s]+", Path(rel).stem.lower())
     return any(t in _BLIND_STEM_TOKENS for t in tokens)
+
+
+def _a4_strict(profile: Optional[dict[str, Any]]) -> bool:
+    """A4 is strict-eligible ONLY when the venue profile explicitly declares
+    acknowledgments must be removed from the blind version (§3.1 load-bearing
+    — the deterministic signal stays advisory otherwise because the
+    de-anonymization judgment is the scholar's). Single definition so EVERY
+    A4 emission path (pass/fail/not_checked/not_applicable) agrees."""
+    return bool(profile) and (
+        profile.get("acknowledgments_forbidden_in_blind") is True)
 
 
 def _package_files(package_dir: Path) -> list[str]:
@@ -901,8 +932,12 @@ def _package_files(package_dir: Path) -> list[str]:
         if p.is_file() and p.name not in _SCAN_EXCLUDED_NAMES)
 
 
-def _not_applicable_family_a(reason: str) -> list[dict[str, Any]]:
-    return [_check(i, "not_applicable", reason) for i in _FAMILY_A_IDS]
+def _not_applicable_family_a(reason: str,
+                             profile: Optional[dict[str, Any]]
+                             ) -> list[dict[str, Any]]:
+    return [_check(i, "not_applicable", reason,
+                   strict_eligible=_a4_strict(profile) if i == "A4" else None)
+            for i in _FAMILY_A_IDS]
 
 
 def run_family_a(package_dir: Path, manuscripts: dict[str, str],
@@ -919,18 +954,21 @@ def run_family_a(package_dir: Path, manuscripts: dict[str, str],
     if not anon_rels and not declared_double:
         return _not_applicable_family_a(
             "not triggered: no anonymized variant in the package and no "
-            "declared double-blind review (§3.1 presence-or-declaration)")
+            "declared double-blind review (§3.1 presence-or-declaration)",
+            profile)
 
     checks: list[dict[str, Any]] = []
     if declared_double and not anon_rels:
         checks.append(_check(
             "A7", "fail",
             "venue profile declares double-blind review but the package "
-            "contains no anonymized variant — the blind version is missing "
-            "(the most basic residue of all, §3.1)"))
-        checks.extend(_check(i, "not_checked",
-                             "no anonymized variant to scan")
-                      for i in _SCAN_A_IDS)
+            "contains no anonymized manuscript variant (.md/.tex/.txt/.docx/"
+            ".pdf with an anonymized/blind name token) — the blind version "
+            "is missing (the most basic residue of all, §3.1)"))
+        checks.extend(_check(
+            i, "not_checked", "no anonymized variant to scan",
+            strict_eligible=_a4_strict(profile) if i == "A4" else None)
+            for i in _SCAN_A_IDS)
         return checks
 
     checks.append(_check(
@@ -995,8 +1033,11 @@ def _pdf_metadata_checks(package_dir: Path,
                 xmp = reader.xmp_metadata
                 creators = [c for c in (xmp.dc_creator or []) if str(c).strip()
                             ] if xmp else []
-            except Exception:  # XMP is best-effort; the info dict is primary
-                pass
+            except Exception:
+                # A malformed XMP stream means HALF of A1's signal could not
+                # be read — incompleteness, not a silent pass (§1.4). The
+                # info-dict half still contributes findings if present.
+                unreadable.append(f"{rel} (XMP stream)")
         except Exception:
             unreadable.append(rel)
             continue
@@ -1006,6 +1047,14 @@ def _pdf_metadata_checks(package_dir: Path,
             findings.append(f"{rel}: XMP dc:creator={creators!r}")
     return [_residue_verdict("A1", findings, unreadable,
                              "PDF metadata author(s)")]
+
+
+def _read_zip_part(z: "zipfile.ZipFile", name: str) -> bytes:
+    """Bounded read of one zip part (the zip-bomb guard): the declared
+    uncompressed size must stay under _MAX_XML_PART_BYTES."""
+    if z.getinfo(name).file_size > _MAX_XML_PART_BYTES:
+        raise ValueError(f"zip part {name} over the size limit")
+    return z.read(name)
 
 
 # OOXML namespaces for the raw-structure DOCX scan. Read with stdlib
@@ -1036,8 +1085,11 @@ def _docx_residue_checks(package_dir: Path,
         try:
             with zipfile.ZipFile(package_dir / rel) as z:
                 names = set(z.namelist())
+                if len(names) > _MAX_ZIP_ENTRIES:
+                    raise ValueError("zip entry count over limit")
                 if "docProps/core.xml" in names:
-                    root = _xml_fromstring(z.read("docProps/core.xml"))
+                    root = _xml_fromstring(
+                        _read_zip_part(z, "docProps/core.xml"))
                     for tag, label in ((_NS_DC + "creator", "creator"),
                                        (_NS_CP + "lastModifiedBy",
                                         "lastModifiedBy")):
@@ -1048,7 +1100,7 @@ def _docx_residue_checks(package_dir: Path,
                 for part in sorted(n for n in names
                                    if n.startswith("word/")
                                    and n.endswith(".xml")):
-                    root = _xml_fromstring(z.read(part))
+                    root = _xml_fromstring(_read_zip_part(z, part))
                     for el in root.iter():
                         if el.tag in (_NS_W + "ins", _NS_W + "del",
                                       _NS_W + "comment"):
@@ -1057,7 +1109,7 @@ def _docx_residue_checks(package_dir: Path,
                                 kind = el.tag.split("}", 1)[1]
                                 rev_findings.append(
                                     f"{rel}: w:{kind} author={author!r}")
-        except (zipfile.BadZipFile, ET.ParseError, OSError, KeyError, ValueError):
+        except _XML_READ_ERRORS:
             unreadable.append(rel)
     return [
         _residue_verdict("A2", meta_findings, unreadable,
@@ -1073,19 +1125,20 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
     """A4 (acknowledgments section) + A5 (self-citation phrasing) over the
     text-form anonymized variants."""
     checks: list[dict[str, Any]] = []
+    a4_strict = _a4_strict(profile)
     if not text_rels:
-        checks.append(_check("A4", "not_applicable",
-                             "no text-form (md/tex/txt) anonymized variant"))
+        # The blind variant exists but only in a form we cannot read headings
+        # from — the scan SHOULD run and cannot: not_checked honesty (§1.4),
+        # never a not_applicable masquerade.
+        checks.append(_check(
+            "A4", "not_checked",
+            "acknowledgments scan requires a text-form (md/tex/txt) "
+            "anonymized variant; DOCX/PDF heading extraction is not supported",
+            strict_eligible=a4_strict))
         checks.append(_check("A5", "not_checked",
                              "no extractable text in the blind submission set"))
         return checks
 
-    # A4 is strict-eligible ONLY when the venue profile explicitly declares
-    # acknowledgments must be removed from the blind version (§3.1
-    # load-bearing — the deterministic signal stays advisory otherwise
-    # because the de-anonymization judgment is the scholar's).
-    a4_strict = bool(profile) and (
-        profile.get("acknowledgments_forbidden_in_blind") is True)
     ack_hits = []
     for rel in text_rels:
         for title in _headings(rel, manuscripts[rel]):
@@ -1171,13 +1224,16 @@ def _filename_leakage_check(package_dir: Path,
             "A6", "not_checked",
             "no author metadata available on the non-anonymized artifacts to "
             "derive name tokens from")
-    tokens = {
-        t for a in authors for t in re.split(r"[^\w]+", a.lower())
-        if len(t) >= 3}
+    # NOTE: not `\w` — underscore is a word char, and `smith_appendix` must
+    # split into tokens. Token-to-token comparison under one delimiter model:
+    # `smith` flags `smith_appendix.csv` but never `blacksmith_notes.md`.
+    def name_tokens(s: str) -> set:
+        return {t for t in re.split(r"[^a-z0-9]+", s.lower()) if t}
+
+    tokens = {t for a in authors for t in name_tokens(a) if len(t) >= 3}
     scanned = [r for r in all_rels if r not in set(original_rels)]
     hits = sorted(
-        r for r in scanned
-        if any(t in Path(r).name.lower() for t in tokens))
+        r for r in scanned if tokens & name_tokens(Path(r).name))
     if hits:
         return _check(
             "A6", "fail",

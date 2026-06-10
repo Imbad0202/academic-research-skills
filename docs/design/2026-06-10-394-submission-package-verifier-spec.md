@@ -30,7 +30,7 @@ Blind-review residue lives disproportionately in places no visual scan reaches: 
 
 ### 1.4 Honest premise 3 — extraction dependencies are environment-shaped
 
-PDF/DOCX parsing needs libraries (`pypdf`, `python-docx`) that the repo's lint environment does not currently ship. A check that silently skips when its parser is missing reads as "covered" when it isn't — the #349 lesson ("a skipped safety test reads as covered"). Every check therefore reports one of `pass | fail | NOT-CHECKED(reason)`, and `NOT-CHECKED` is surfaced in the report header, never folded into `pass`.
+PDF parsing needs a library (`pypdf`) that the repo's lint environment does not currently ship; DOCX parts turned out to be readable with stdlib `zipfile`+XML (slice-3 refinement, §9), so for DOCX the residual incompleteness class is corrupt/oversized artifacts rather than a missing parser. Either way, a check that silently skips when it cannot read its object reads as "covered" when it isn't — the #349 lesson ("a skipped safety test reads as covered"). Every check therefore reports one of `pass | fail | NOT-CHECKED(reason)` (plus `warn` per §3.3 and `not_applicable` per §3.1), and `NOT-CHECKED` is surfaced in the report header, never folded into `pass`.
 
 ## 2. Existing skeleton this design builds on
 
@@ -87,6 +87,7 @@ venue_profile:
   keyword_range: {min: int, max: int} | null
   required_sections: [string] | null  # e.g. ["Data Availability", "CRediT"]
   reference_limit: integer | null
+  acknowledgments_forbidden_in_blind: boolean | null  # true ⟹ A4 strict-eligible (§3.1; slice-3 addition)
   blind_review: enum [double, single, open] | null
   declared_by: const "scholar"        # no other provenance value exists
 ```

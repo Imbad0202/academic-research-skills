@@ -372,7 +372,7 @@ def test_declared_double_blind_without_variant_fails_A7(tmp_path):
     assert rc == 1
     by_id = checks_by_id(report)
     assert by_id["A7"]["status"] == "fail"
-    assert "anonymized variant" in by_id["A7"]["detail"]
+    assert "anonymized manuscript variant" in by_id["A7"]["detail"]
     assert by_id["A7"]["strict_eligible"] is True
     for cid in ("A1", "A2", "A3", "A4", "A5", "A6"):
         assert by_id[cid]["status"] == "not_checked", cid
@@ -600,7 +600,78 @@ def test_A5_zh_tw_self_citation_phrase(tmp_path):
     assert "我們先前的研究" in a5["detail"]
 
 
-def test_profile_accepts_acknowledgments_forbidden_field(tmp_path):
+# --- codex slice-3 review round ----------------------------------------------
+
+def test_A4_docx_only_variant_is_not_checked_not_applicable(tmp_path):
+    # codex P1: a DOCX-only blind variant means the acknowledgments scan
+    # SHOULD run but cannot (no text-form variant to read headings from) —
+    # that is not_checked honesty, never not_applicable masquerade.
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    make_docx(package / "paper_anonymized.docx")
+    _rc, report = run_dir(package)
+    a4 = checks_by_id(report)["A4"]
+    assert a4["status"] == "not_checked"
+    assert "text-form" in a4["detail"]
+
+
+def test_A7_not_satisfied_by_blind_named_supplement(tmp_path):
+    # codex P1: a declared double-blind package whose only blind-named file is
+    # an ancillary CSV has NO blind manuscript variant — A7 must still fail.
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    (package / "blind_survey.csv").write_text("q,a\n", encoding="utf-8")
+    profile = tmp_path / "double.yaml"
+    profile.write_text(
+        "blind_review: double\ndeclared_by: scholar\n", encoding="utf-8")
+    rc = run([str(package), "--venue-profile", str(profile)])
+    report = json.loads(
+        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    assert rc == 1
+    assert checks_by_id(report)["A7"]["status"] == "fail"
+
+
+def test_untriggered_A4_is_never_strict_eligible(tmp_path):
+    # codex P1: A4's eligibility comes ONLY from the explicit profile
+    # declaration — including on the untriggered/not_applicable path.
+    _rc, report, _ = run_on("clean", tmp_path)
+    assert checks_by_id(report)["A4"]["strict_eligible"] is False
+
+
+def test_A6_token_match_does_not_flag_substrings(tmp_path):
+    # codex P2: token-to-token matching — `Smith` must not flag
+    # `blacksmith_notes.md`.
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    make_docx(package / "paper.docx", creator="Jordan Smith")
+    make_docx(package / "paper_anonymized.docx")
+    (package / "blacksmith_notes.md").write_text("x\n", encoding="utf-8")
+    _rc, report = run_dir(package)
+    a6 = checks_by_id(report)["A6"]
+    assert a6["status"] == "pass", a6["detail"]
+
+
+def test_oversized_docx_part_is_not_checked(tmp_path, monkeypatch):
+    # codex P2: unbounded zip reads are a zip-bomb exposure; oversized parts
+    # are reported as unreadable incompleteness, never scanned or passed.
+    import verify_submission_package as v
+
+    monkeypatch.setattr(v, "_MAX_XML_PART_BYTES", 64)
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text("Body.\n", encoding="utf-8")
+    make_docx(package / "paper_anonymized.docx",
+              creator="x" * 200)  # inflates core.xml past the test cap
+    _rc, report = run_dir(package)
+    a2 = checks_by_id(report)["A2"]
+    assert a2["status"] == "not_checked"
+    assert "unreadable" in a2["detail"]
+
+
+def test_profile_rejects_nonboolean_acknowledgments_forbidden_field(tmp_path):
     package = tmp_path / "pkg"
     package.mkdir()
     (package / "paper.md").write_text("# x\n", encoding="utf-8")
