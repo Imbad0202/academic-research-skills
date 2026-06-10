@@ -1,6 +1,6 @@
 # ARS #394 — Deterministic submission-package verifier (design-first)
 
-**Status**: DESIGN — slices ship per §9. Slice 1 (CLI skeleton + Family C + report schema + fixtures) SHIPPED; Slice 2 (venue profile + intake Step 3 follow-up + Family B) SHIPPED; slices 3–4 follow.
+**Status**: DESIGN — slices ship per §9. Slice 1 (CLI skeleton + Family C + report schema + fixtures) SHIPPED; Slice 2 (venue profile + intake Step 3 follow-up + Family B) SHIPPED; Slice 3 (Family A residue scan + Family D assessment, see `2026-06-10-394-family-d-repro-lock-assessment.md`) SHIPPED; slice 4 follows.
 **Issue**: #394 (blindspot-audit F-5, adjudicated design-first).
 **Decision trail**: 2026-06-10 researcher-blindspot audit; cross-model review corrected the initial claim — the formatter's prompt-layer checklist already exists; the gap is deterministic enforcement, not absence.
 
@@ -47,7 +47,7 @@ PDF/DOCX parsing needs libraries (`pypdf`, `python-docx`) that the repo's lint e
 
 ### 3.1 Family A — blind-review residue scan
 
-Runs when the package contains an anonymized variant **or the venue profile declares `blind_review: double`**. The formatter's Journal Submission Adjustment Checklist instructs producing a blind-review version, but it is not a guaranteed artifact in the output package table — so the trigger is presence-or-declaration, and a declared-double-blind package with NO anonymized variant is itself a `fail` (the most basic residue of all: the blind version is missing).
+Runs when the package contains an anonymized variant **or the venue profile declares `blind_review: double`**. The formatter's Journal Submission Adjustment Checklist instructs producing a blind-review version, but it is not a guaranteed artifact in the output package table — so the trigger is presence-or-declaration, and a declared-double-blind package with NO anonymized variant is itself a `fail` (the most basic residue of all: the blind version is missing). **Slice-3 refinements:** (a) the missing-blind-version fail carries its own check id **A7** (deterministic, strict-eligible) so the family-level trigger failure has a per-check carrier in the report contract; (b) an UNTRIGGERED Family A reports the new `not_applicable` status — visibly distinct from `not_checked`, so a single-blind package is not permanently reported as incomplete (`not_applicable` does not count toward `not_checked_count` and does not affect the exit code); (c) the anonymized variant is detected by filename stem token (`anonymized`/`anonymised`/`anonymous`/`anon`/`blind`/`blinded`); (d) A4's strict eligibility is declared via the venue-profile field `acknowledgments_forbidden_in_blind: true`.
 
 | Check | Method | Class |
 |-------|--------|-------|
@@ -127,15 +127,15 @@ Slices are **dependency-ordered, not priority-ordered** — §3's A/B/C/D order 
 |-------|---------|-------|
 | 1 | CLI skeleton + Family C (reference integrity, joined marker path + fallback) + report schema + fixtures | smallest end-to-end value; zero new parser deps |
 | 2 | Family B (venue profile schema + intake Step 3 follow-up + limits checks) | first scholar-declared profile |
-| 3 | Family A (residue scan; `pypdf`/`python-docx` deps declared in requirements-dev + strict-preflight dependency check) + Family D assessment doc | the high-embarrassment-cost class |
+| 3 | Family A (residue scan; `pypdf` declared in requirements-dev — the DOCX parts are read RAW via stdlib `zipfile`+XML (`defusedxml` when available), a slice-3 refinement over the planned `python-docx`: the §1.3 raw-structure premise is served more directly and the DOCX residue class has NO missing-parser `NOT-CHECKED` hole; only the PDF scan can be parser-blocked, reported honestly per §1.4) + Family D assessment doc | the high-embarrassment-cost class |
 | 4 | `terminal_policies.submission_package` key + orchestrator Stage 5 hook + freshness guard + strict fix-loop + VERIFICATION-INCOMPLETE fail-closed | terminality, last |
 
 Advisory-only through slice 3; nothing blocks until slice 4 lands the policy key.
 
 ## 10. Open items for the implementation round
 
-1. zh-TW self-citation phrasing list (A5) needs first-party curation — no anglophone-only pattern list.
-2. Family D adjudication (§3.4): presence/shape check vs leaving `repro_lock` fully out — maintainer call at slice 3.
+1. zh-TW self-citation phrasing list (A5) needs first-party curation — no anglophone-only pattern list. **Slice 3 ships a first-party draft list** (`_SELF_CITATION_PHRASES` in the script: 我們先前的研究/我們過去的研究/我們先前曾/我們已於先前/筆者先前的研究/本研究團隊先前) — curation review by the maintainer still pending; extend in place.
+2. Family D adjudication (§3.4): presence/shape check vs leaving `repro_lock` fully out — maintainer call at slice 3. **Assessment delivered:** `docs/design/2026-06-10-394-family-d-repro-lock-assessment.md` (recommends Option 2 — no check, boundary stands, with the `required_sections`/B4 escape hatch); adjudication pending, Family D ships nothing.
 3. Whether the report's `package_fingerprint` should reuse the audit-snapshot hashing convention or a plain file manifest — decide at slice 1. **ADJUDICATED (slice 1):** reuse the audit-snapshot manifest convention (`scripts/audit_snapshot.py` `write_manifest`), adapted to package level: one `<package-relative-path>:<sha256>` line per file, LC_ALL=C byte-sorted, newline-joined with a trailing newline; the fingerprint is the SHA-256 of that manifest text. The report file itself is excluded (it cannot fingerprint its own bytes). Pinned by an independent reimplementation in `scripts/test_verify_submission_package.py`.
 4. LaTeX word counting (`texcount` vs detex-and-count) — declare the method, don't promise venue-exact numbers. **ADJUDICATED (slice 2):** naive detex (strip `%` comments and `\commands`, unwrap braces/brackets) + canonical whitespace-split (`shared/references/word_count_conventions.md`), zero new dependencies; the report's B1 detail names the method and the counted file, and the ±2% tolerance absorbs the divergence from venue-exact counters. `texcount` rejected for slice 2 (an external binary dependency for a precision the tolerance makes unnecessary).
 
