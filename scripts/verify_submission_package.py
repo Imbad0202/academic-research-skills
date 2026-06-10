@@ -82,32 +82,39 @@ _REFS_HEADING_RE = re.compile(
 )
 
 _NAME = r"[A-Z][\w'’-]+"
-# Narrative: `Smith (2024)`, `Smith et al. (2024)`, `Smith and Chen (2024)`.
+# Narrative: `Smith (2024)`, `Smith et al. (2024)`, `Smith and Chen (2024)`,
+# with an optional page-locator tail: `Smith (2024, p. 12)`.
 _NARRATIVE_CITE_RE = re.compile(
     r"(" + _NAME + r")(?:\s+et al\.?|\s+(?:and|&)\s+" + _NAME + r")?"
-    r"\s+\((\d{4})[a-z]?\)")
+    r"\s+\((\d{4})[a-z]?(?:\s*,\s*pp?\.?[^)]*)?\)")
 # Parenthetical group content is split on `;` and each segment matched:
-# `(Smith, 2024)`, `(Chen & Lee, 2023)`, `(Smith et al., 2024a)`.
+# `(Smith, 2024)`, `(Chen & Lee, 2023)`, `(Smith et al., 2024a)`,
+# `(Chen & Lee, 2023, pp. 45–67)`.
 _PAREN_GROUP_RE = re.compile(r"\(([^()]+)\)")
 _PAREN_SEGMENT_RE = re.compile(
-    r"^\s*(" + _NAME + r")[^\d]*?(\d{4})[a-z]?\s*$")
+    r"^\s*(" + _NAME + r")[^\d]*?(\d{4})[a-z]?(?:\s*,\s*pp?\.?[^;]*)?\s*$")
 
 
 def sha256_hex(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
-def compute_package_fingerprint(package_dir: Path) -> str:
+def compute_package_fingerprint(package_dir: Path,
+                                extra_excluded: "frozenset[str]" = frozenset()
+                                ) -> str:
     """Audit-snapshot manifest convention over the package files (§10 item 3):
     one `<package-relative-path>:<sha256>` line per file, LC_ALL=C byte-sorted,
     trailing newline; fingerprint = SHA-256 of the manifest text. The report
-    file is excluded — the report cannot fingerprint its own bytes."""
+    file is excluded — the report cannot fingerprint its own bytes — including
+    a custom --report-out path inside the package (extra_excluded, as a
+    package-relative posix path), or reruns would self-reference."""
+    excluded = {REPORT_BASENAME} | set(extra_excluded)
     lines = []
     for path in sorted(package_dir.rglob("*")):
         if not path.is_file():
             continue
         rel = path.relative_to(package_dir).as_posix()
-        if rel == REPORT_BASENAME:
+        if rel in excluded:
             continue
         lines.append(f"{rel}:{sha256_hex(path.read_bytes())}")
     lines.sort()  # byte sort over the composed line, matching audit_snapshot
@@ -231,14 +238,17 @@ def _extract_fallback(package_dir: Path,
 def _check(check_id: str, status: str, detail: str, *,
            signal_class: str = "deterministic",
            location: "Optional[str]" = None) -> "dict[str, Any]":
-    # strict_eligible mirrors signal_class for Family C (§3.3: deterministic on
-    # the joined marker path; the fallback path is heuristic-classed,
-    # advisory-only). The schema additionally forbids heuristic+strict.
+    # strict_eligible is class-level (§3.1 separate axes): C1 is promotable on
+    # the deterministic joined marker path; the heuristic fallback path never
+    # is (schema-enforced); and C2's worst outcome is `warn`, which is
+    # advisory-only and never policy-promotable (§5.3) — so C2 is not
+    # strict-eligible even when deterministic.
+    strict_eligible = check_id == "C1" and signal_class == "deterministic"
     return {
         "id": check_id,
         "family": "reference_integrity",
         "signal_class": signal_class,
-        "strict_eligible": signal_class == "deterministic",
+        "strict_eligible": strict_eligible,
         "status": status,
         "detail": detail,
         "location": location,
@@ -263,18 +273,35 @@ def _listed(keys: "set[str]") -> str:
 
 def _compare_sets(in_text: "dict[str, str]", reference_keys: "set[str]",
                   *, signal_class: str, in_text_label: str,
-                  reference_label: str) -> "list[dict[str, Any]]":
+                  reference_label: str,
+                  unjoined: "Optional[dict[str, str]]" = None
+                  ) -> "list[dict[str, Any]]":
     """Two-way set check (§3.3): orphan in-text citation = fail (C1); uncited
-    reference entry = warn (C2 — some venues allow further-reading entries)."""
+    reference entry = warn (C2 — some venues allow further-reading entries).
+    `unjoined` carries marker slugs the join source does not cover: they are a
+    C1 fail in their own right (the prose cites something the declared join
+    cannot place in the reference list) — NEVER compared via an identity guess
+    (§3.3), which would silently pass a slug that coincidentally equals a
+    citation_key."""
+    unjoined = unjoined or {}
     orphans = {k for k in in_text if k not in reference_keys}
     uncited = reference_keys - set(in_text)
     checks = []
-    if orphans:
-        first_loc = min(in_text[k] for k in orphans)
+    if orphans or unjoined:
+        parts = []
+        if orphans:
+            parts.append(
+                f"{len(orphans)} in-text citation(s) absent from "
+                f"{reference_label}: {_listed(orphans)}")
+        if unjoined:
+            parts.append(
+                f"{len(unjoined)} marker slug(s) with no join entry in the "
+                f"supplied join source: {_listed(set(unjoined))}")
+        first_loc = min(
+            [in_text[k] for k in orphans] + list(unjoined.values()))
         checks.append(_check(
             "C1", "fail",
-            f"{len(orphans)} in-text citation(s) absent from {reference_label}: "
-            f"{_listed(orphans)} [{in_text_label}]",
+            "; ".join(parts) + f" [{in_text_label}]",
             signal_class=signal_class, location=first_loc))
     else:
         checks.append(_check(
@@ -359,7 +386,10 @@ def run_family_c(package_dir: Path,
         elif passport is not None and _join_from_passport(passport):
             join = _join_from_passport(passport)
         elif bib_keys:
-            join = {k: k for k in bib_keys}
+            # Documented identity relation (draft_writer_agent.md: the slug IS
+            # the corpus citation_key): every marker slug joins to itself, so
+            # a slug that is not a .bib key is simply an orphan.
+            join = None
         else:
             return _not_checked_pair(
                 "missing prose-reference join: <!--ref:slug--> markers found "
@@ -370,14 +400,23 @@ def run_family_c(package_dir: Path,
             return _not_checked_pair(
                 "no machine-readable reference list (no package .bib and no "
                 "passport literature_corpus[])"), "none"
-        # Unjoinable slugs stay as-is: a slug with no join entry cannot be in
-        # the reference list under any honest join, so it surfaces as a C1
-        # orphan rather than being silently dropped.
-        in_text = {join.get(slug, slug): loc for slug, loc in markers.items()}
+        if join is None:  # .bib identity relation
+            in_text, unjoined = dict(markers), {}
+        else:
+            # An explicit join source (summary / --join-map) must cover every
+            # cited slug; a slug it does not cover is reported as such — NEVER
+            # compared via an identity guess, which would silently pass a slug
+            # that coincidentally equals a citation_key (§3.3).
+            in_text, unjoined = {}, {}
+            for slug, loc in markers.items():
+                if slug in join:
+                    in_text.setdefault(join[slug], loc)
+                else:
+                    unjoined.setdefault(slug, loc)
         return _compare_sets(
             in_text, reference_keys, signal_class="deterministic",
             in_text_label="joined marker path",
-            reference_label=reference_label), "joined_marker"
+            reference_label=reference_label, unjoined=unjoined), "joined_marker"
 
     # Fallback path (§3.3): no markers — non-ARS or post-converted source.
     # Format-aware best-effort extraction, heuristic-classed (advisory-only).
@@ -397,13 +436,23 @@ def run_family_c(package_dir: Path,
 
 
 def build_report(package_dir: Path, checks: "list[dict[str, Any]]",
-                 extraction_path: str) -> "dict[str, Any]":
+                 extraction_path: str,
+                 report_path: "Optional[Path]" = None) -> "dict[str, Any]":
+    extra_excluded = set()
+    if report_path is not None:
+        try:
+            extra_excluded.add(
+                report_path.resolve().relative_to(
+                    package_dir.resolve()).as_posix())
+        except ValueError:
+            pass  # report written outside the package — nothing to exclude
     return {
         "header": {
             "extraction_path": extraction_path,
             "not_checked_count": sum(
                 1 for c in checks if c["status"] == "not_checked"),
-            "package_fingerprint": compute_package_fingerprint(package_dir),
+            "package_fingerprint": compute_package_fingerprint(
+                package_dir, frozenset(extra_excluded)),
             # §5.2/§5.3: stamped by the slice-4 policy evaluator, never here.
             "policy_slug": None,
         },
@@ -488,10 +537,10 @@ def run(argv: "Optional[list[str]]" = None) -> int:
 
     checks, extraction_path = run_family_c(
         package_dir, passport=passport, join_map=join_map)
-    report = build_report(package_dir, checks, extraction_path)
-
     report_path = (Path(args.report_out) if args.report_out
                    else package_dir / REPORT_BASENAME)
+    report = build_report(package_dir, checks, extraction_path,
+                          report_path=report_path)
     try:
         report_path.write_text(
             json.dumps(report, indent=2, ensure_ascii=False) + "\n",

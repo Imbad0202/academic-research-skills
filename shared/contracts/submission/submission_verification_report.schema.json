@@ -136,6 +136,23 @@
               }
             }
           }
+        },
+        {
+          "description": "warn is advisory-only and never policy-promotable (§5.3): a warn outcome forbids strict_eligible=true. Checks whose worst outcome is warn (C2 uncited reference entry) are not strict-eligible by class.",
+          "if": {
+            "properties": {
+              "status": {
+                "const": "warn"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "strict_eligible": {
+                "const": false
+              }
+            }
+          }
         }
       ]
     }

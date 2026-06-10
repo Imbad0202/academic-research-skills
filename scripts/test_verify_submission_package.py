@@ -67,7 +67,8 @@ def test_clean_package_is_deterministic_joined_marker(tmp_path):
     for c in report["checks"]:
         assert c["family"] == "reference_integrity"
         assert c["signal_class"] == "deterministic"
-        assert c["strict_eligible"] is True
+    # strict_eligible is class-level: C1 promotable, C2 (warn-only) never —
+    # asserted in test_C2_is_never_strict_eligible.
 
 
 def test_clean_report_validates_against_schema(tmp_path):
@@ -263,6 +264,88 @@ def test_fingerprint_stable_across_reruns_with_report_present(tmp_path):
         (package_dir / REPORT_BASENAME).read_text(encoding="utf-8"))
     assert (second["header"]["package_fingerprint"]
             == first["header"]["package_fingerprint"])
+
+
+# --- Codex review round: P1 partial-join identity guess + P2s ----------------
+
+def test_partial_summary_join_never_falls_back_to_identity(tmp_path):
+    # P1: a marker slug ABSENT from the join source must never be compared via
+    # an identity guess — even (especially) when the slug coincidentally equals
+    # a citation_key in the reference list (§3.3 "never a guessed comparison").
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text(
+        "Joined (Smith, 2024) <!--ref:smith-feedback-2024-->.\n"
+        "Unjoined but key-shaped (Smith, 2024) <!--ref:smith2024-->.\n",
+        encoding="utf-8")
+    passport = FIXTURES / "passports" / "summary_join.yaml"
+    from verify_submission_package import run
+
+    rc = run([str(package), "--passport", str(passport)])
+    report = json.loads(
+        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    assert rc == 1
+    by_id = checks_by_id(report)
+    assert by_id["C1"]["status"] == "fail"
+    assert "no join entry" in by_id["C1"]["detail"]
+    assert "smith2024" in by_id["C1"]["detail"]
+
+
+def test_C2_is_never_strict_eligible(tmp_path):
+    # P2: C2's worst outcome is warn, which is advisory-only and never
+    # policy-promotable (§5.3) — so the check itself is not strict-eligible,
+    # even on the deterministic path.
+    _, report, _ = run_on("clean", tmp_path)
+    by_id = checks_by_id(report)
+    assert by_id["C1"]["strict_eligible"] is True
+    assert by_id["C2"]["strict_eligible"] is False
+
+
+def test_custom_report_out_inside_package_excluded_from_fingerprint(tmp_path):
+    # P2: a --report-out path inside the package must be excluded from the
+    # fingerprint like the default basename, or reruns self-reference.
+    from verify_submission_package import run
+
+    package = tmp_path / "clean"
+    shutil.copytree(FIXTURES / "clean", package)
+    out = package / "custom_report.json"
+    run([str(package), "--report-out", str(out)])
+    first = json.loads(out.read_text(encoding="utf-8"))
+    run([str(package), "--report-out", str(out)])
+    second = json.loads(out.read_text(encoding="utf-8"))
+    assert (first["header"]["package_fingerprint"]
+            == second["header"]["package_fingerprint"])
+
+
+def test_authoryear_fallback_tolerates_page_locators(tmp_path):
+    # P3: `Smith (2024, p. 12)` / `(Chen & Lee, 2023, pp. 45–67)` are common
+    # locator forms; missing them creates avoidable fallback false orphans.
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "paper.md").write_text(
+        "Smith (2024, p. 12) framed it; details follow "
+        "(Chen & Lee, 2023, pp. 45–67).\n", encoding="utf-8")
+    shutil.copy(FIXTURES / "fallback_authoryear" / "references.bib",
+                package / "references.bib")
+    from verify_submission_package import run
+
+    rc = run([str(package)])
+    report = json.loads(
+        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    by_id = checks_by_id(report)
+    assert rc == 0
+    assert by_id["C1"]["status"] == "pass"
+    assert by_id["C2"]["status"] == "pass"
+
+
+def test_schema_rejects_warn_with_strict_eligible():
+    # P2: warn is advisory-only and never policy-promotable — tightened
+    # structurally like the heuristic exclusion.
+    bad = _minimal_report(status="warn", strict_eligible=True)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_schema())
+    ok = _minimal_report(status="warn", strict_eligible=False)
+    jsonschema.validate(ok, load_schema())
 
 
 # --- Report schema structural contract --------------------------------------
