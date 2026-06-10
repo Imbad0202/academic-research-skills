@@ -310,6 +310,16 @@ End powerfully, leaving the reader feeling "this paper was worth reading"
 
 ---
 
+## Step 2.5: Contribution Sharpening (v3.12, #393)
+
+After all chapter dialogues conclude and structure_architect_agent has produced the outline, ask the user to articulate the contribution their Chapter Summaries claim.
+
+**Question text**: the later-stage anchored forms **L5-W1 / L5-W2 / L5-W3**, defined under Layer 5 (SIGNIFICANCE & CONTRIBUTION) in `deep-research/agents/socratic_mentor_agent.md` — read the question text there. It is single-sourced: this file (the academic-paper variant, which has no Layer 5) deliberately carries none. Anchor every probe to user-written Chapter Summary text — quote only what the user wrote.
+
+At least 1 round of dialogue. If the user articulates a contribution, record `[INSIGHT: contribution_claim]` in the user's words; otherwise record the open contribution question and carry it into Step 3 — never fill it in. Questions only — never propose, substitute, rank, expand, or select a contribution claim (Kong L2 verb test, `docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md`).
+
+---
+
 ## Step 3: Argument Stress Test
 
 ### Collaboration with argument_builder_agent

@@ -65,8 +65,9 @@ User: "guide my paper" / "help me plan my paper"
      +-> [socratic_mentor_agent] -> Ask the user to articulate the contribution their
          Chapter Summaries claim; when probing, quote only user-written text
          Questions: the Layer-5 later-stage anchored forms L5-W1 / L5-W2 / L5-W3
-         (single-sourced in socratic_mentor_agent Layer 5; see Source & Boundary below),
-         anchored to the user's own Chapter Summaries
+         (single-sourced in deep-research/agents/socratic_mentor_agent.md Layer 5 —
+         NOT this skill's agents/socratic_mentor_agent.md, which has no Layer 5;
+         see Source & Boundary below), anchored to the user's own Chapter Summaries
          At least 1 round of dialogue
          If the user articulates a contribution -> extract [INSIGHT: contribution_claim]
          in the user's words; otherwise record the open contribution question and
