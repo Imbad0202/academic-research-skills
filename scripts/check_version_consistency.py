@@ -21,9 +21,11 @@ Invariants enforced:
      version-bearing H2 (same version) in docs/<name>.zh-TW.md and vice versa.
      Plain headings may differ — only version TAGS must stay in lockstep.
   8. The plugin.json description's "N-agent" claim (when present) equals the
-     number of unique *_agent.md files in the tree — symlinks resolved so the
-     agents/ plugin aliases do not double-count (#414: the advertised number
-     had silently drifted from the tree).
+     number of unique *_agent.md files in the tree (#414: the advertised
+     number had silently drifted from the tree). The plugin-root agents/
+     mirror dir is excluded from the count — real byte-identical copies of
+     deep-research agents since #413 (symlinks before that), pinned as pure
+     aliases by check_agents_mirror_sync.py, never a source of new agents.
 
 Runs from repo root by default; `--path` lets tests point at a fake tree.
 """
@@ -421,11 +423,14 @@ def _check_zhtw_heading_parity(root: Path) -> list[str]:
 def _check_agent_count_claim(root: Path) -> list[str]:
     """Invariant 8 (#414): when plugin.json's description advertises an
     "N-agent" count, N must equal the number of unique *_agent.md files in
-    the tree. Symlinks are resolved before counting so the agents/ plugin
-    aliases of deep-research agents count once. Missing/malformed manifest or
-    a description without a count claim is NOT an invariant-8 error — the
-    manifest problems are invariant 4's to report, and the claim is optional
-    (only a stated number must be true)."""
+    the tree. The plugin-root agents/ mirror dir is excluded — its files are
+    byte-identical aliases of deep-research agents (real copies since #413,
+    symlinks before; check_agents_mirror_sync.py pins the byte-equality), so
+    counting them would double-count. resolve() additionally dedups any
+    remaining symlink alias. Missing/malformed manifest or a description
+    without a count claim is NOT an invariant-8 error — the manifest problems
+    are invariant 4's to report, and the claim is optional (only a stated
+    number must be true)."""
     plugin_json = root / ".claude-plugin" / "plugin.json"
     if not plugin_json.is_file():
         return []
@@ -444,11 +449,13 @@ def _check_agent_count_claim(root: Path) -> list[str]:
         p.resolve()
         for p in root.rglob("*_agent.md")
         if ".git" not in p.parts
+        and p.relative_to(root).parts[0] != "agents"  # plugin-root mirror = aliases (#413)
     })
     if claimed != actual:
         return [
             f"{plugin_json}: description claims {claimed}-agent but the tree "
-            f"has {actual} unique *_agent.md files (symlinks deduplicated)"
+            f"has {actual} unique *_agent.md files (agents/ mirror aliases "
+            f"excluded, symlinks deduplicated)"
         ]
     return []
 

@@ -120,7 +120,9 @@ class MutationTest(unittest.TestCase):
 
 class I5DepthAndSymlinkTest(unittest.TestCase):
     """I5 must (a) catch an agent dir nested DEEPER than one level, and
-    (b) NOT false-flag the plugin-root `agents/` symlink-aggregate dir. Runs run_checks()
+    (b) NOT false-flag the plugin-root `agents/` mirror dir — real
+    byte-identical copies since #413 (symlinks before that; both file kinds
+    map back to the rostered deep-research source). Runs run_checks()
     against a synthetic REPO_ROOT so the real repo is untouched."""
 
     def setUp(self):
@@ -158,9 +160,36 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         lint.load_manifest = lambda: {"agents": agents}
         lint.load_manifest_keys = lambda: set(manifest_keys)
 
+    def test_root_agents_materialized_copy_not_flagged(self):
+        # #413: plugin-root agents/ holds REAL byte-identical copies (relative
+        # symlinks broke Windows checkouts / zip installs). I5 maps a root
+        # agents/ file to its deep-research/agents/<name> source BY NAME and
+        # must not report it as undeclared — byte-equality with that source is
+        # check_agents_mirror_sync.py's invariant, not I5's.
+        real = self._write_agent("deep-research/agents/x_agent.md", "x_agent")
+        agg = self.root / "agents"
+        agg.mkdir()
+        (agg / "x_agent.md").write_bytes(real.read_bytes())
+        self._stub_loaders_to(["deep-research/agents/x_agent.md"], [], ["x_agent"])
+        errs = lint.run_checks()
+        self.assertFalse(any("I5" in e for e in errs),
+                         f"root agents/ mirror copy must NOT be I5-undeclared; got {errs}")
+
+    def test_root_agents_copy_without_rostered_source_is_flagged(self):
+        # The name-mapping must not become a blanket allowlist: a file dropped
+        # into root agents/ whose name maps to NO rostered deep-research
+        # source is still the fail-open case I5 exists to catch.
+        self._write_agent("deep-research/agents/x_agent.md", "x_agent")
+        self._write_agent("agents/rogue_agent.md", "rogue_agent")
+        self._stub_loaders_to(["deep-research/agents/x_agent.md"], [], ["x_agent"])
+        errs = lint.run_checks()
+        i5 = [e for e in errs if "I5" in e]
+        self.assertTrue(any("rogue_agent" in e for e in i5),
+                        f"unrostered root agents/ file must trigger I5; got {errs}")
+
     def test_root_agents_symlink_aggregate_not_flagged(self):
-        # plugin-root agents/ holds a SYMLINK to a real per-skill agent file. I5 must resolve
-        # it to the rostered target and NOT report it as undeclared.
+        # Legacy/transition pin (pre-#413 file kind): a symlink in root
+        # agents/ maps back the same way and must not be flagged.
         real = self._write_agent("deep-research/agents/x_agent.md", "x_agent")
         agg = self.root / "agents"
         agg.mkdir()

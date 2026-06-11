@@ -752,8 +752,9 @@ class TestAgentCountClaim(unittest.TestCase):
             )
 
     def test_agent_claim_symlink_alias_not_double_counted(self) -> None:
-        """A symlink alias of a real agent file (the agents/ plugin-dir
-        pattern) resolves to the same target and counts once."""
+        """Legacy/transition pin: a symlink alias in the plugin-root agents/
+        dir (the pre-#413 pattern) still counts once — the whole root
+        agents/ mirror is excluded from the count regardless of file kind."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_aligned_fixture(root)
@@ -766,6 +767,30 @@ class TestAgentCountClaim(unittest.TestCase):
             (link_dir / "alpha_agent.md").symlink_to(
                 root / "deep-research" / "agents" / "alpha_agent.md"
             )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_agent_claim_materialized_mirror_not_double_counted(self) -> None:
+        """#413: the plugin-root agents/ mirror holds REAL byte-identical
+        copies (symlinks broke Windows checkouts / zip installs), so resolve()
+        no longer dedups them. The mirror dir is excluded from the count —
+        it is an alias surface pinned byte-identical to its deep-research
+        sources by check_agents_mirror_sync.py, never a source of new
+        agents."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_plugin_manifests(
+                root, "3.5.0", description="fixture, 2-agent ensemble, more"
+            )
+            self._write_agents(root, ["alpha", "beta"])
+            mirror_dir = root / "agents"
+            mirror_dir.mkdir()
+            src = root / "deep-research" / "agents" / "alpha_agent.md"
+            (mirror_dir / "alpha_agent.md").write_bytes(src.read_bytes())
             result = _run(root)
             self.assertEqual(
                 result.returncode, 0,

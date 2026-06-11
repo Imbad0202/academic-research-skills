@@ -157,14 +157,18 @@ def run_checks() -> list[str]:
     # also covered — a one-level glob would silently miss a future `skill/sub/agents/x.md`
     # and reopen the fail-open hole (caught in review). Two real-layout subtleties
     # this must handle WITHOUT false-positives:
-    #   * The plugin-root `agents/` AGGREGATE dir holds SYMLINKS to the per-skill agent files
-    #     (Claude Code plugin convention). A symlink does not introduce a new agent name —
-    #     it points at an already-rostered real file. So compare on the CANONICAL (resolved)
-    #     workspace-relative path: a root-`agents/` symlink resolves back to its
-    #     `deep-research/agents/...` target, which IS in the roster -> not undeclared.
-    #   * Comparing resolved paths also means a genuinely NEW standalone .md (not a symlink)
-    #     at any depth is still flagged, because it resolves to itself and is absent from the
-    #     roster. That is exactly the fail-open case we want to catch.
+    #   * The plugin-root `agents/` MIRROR dir (Claude Code plugin convention) holds real
+    #     byte-identical COPIES of per-skill agent files — copies since #413 (relative
+    #     symlinks broke Windows checkouts / zip installs); check_agents_mirror_sync.py
+    #     pins the byte-equality. A mirror file introduces no new agent name: map it BY
+    #     NAME to its `deep-research/agents/...` source and check THAT against the roster.
+    #     A name with no rostered source still falls through to undeclared — the mapping
+    #     is not an allowlist for anything dropped into `agents/`.
+    #   * Anything else compares on the CANONICAL (resolved) workspace-relative path: a
+    #     leftover symlink resolves to its rostered target (the pre-#413 shape, kept for
+    #     generality), while a genuinely NEW standalone .md at any depth resolves to
+    #     itself, is absent from the roster, and is flagged. That is exactly the
+    #     fail-open case we want to catch.
     declared = set(BUCKET_A_AGENT_FILES) | set(BUCKET_BCD_AGENT_FILES)
     undeclared = []
     for md in REPO_ROOT.glob("**/agents/*.md"):
@@ -173,13 +177,16 @@ def run_checks() -> list[str]:
         # .as_posix() so the comparison uses `/` on every OS (the rosters use `/`).
         rel = md.relative_to(REPO_ROOT).as_posix()
         if rel in declared:
-            continue  # directly rostered — skip the symlink resolve (the common case)
-        # Not directly rostered: it may be a symlink to a rostered file (the plugin-root
-        # `agents/` aggregate). Resolve the canonical path before deciding it is undeclared.
-        try:
-            canon = md.resolve().relative_to(REPO_ROOT).as_posix()
-        except ValueError:
-            canon = rel  # resolves outside the repo (unexpected) — compare on rel only
+            continue  # directly rostered — skip the alias mapping (the common case)
+        # Not directly rostered: map the two alias shapes documented above before
+        # deciding it is undeclared.
+        if rel.startswith("agents/"):
+            canon = f"deep-research/agents/{md.name}"  # plugin-root mirror (#413)
+        else:
+            try:
+                canon = md.resolve().relative_to(REPO_ROOT).as_posix()
+            except ValueError:
+                canon = rel  # resolves outside the repo (unexpected) — compare on rel only
         if canon not in declared:
             undeclared.append(rel)
     undeclared = sorted(set(undeclared))
