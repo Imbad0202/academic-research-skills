@@ -187,6 +187,22 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         self.assertTrue(any("rogue_agent" in e for e in i5),
                         f"unrostered root agents/ file must trigger I5; got {errs}")
 
+    def test_root_agents_copy_of_non_deep_research_source_fails_closed(self):
+        # The by-name mapping points ONLY at deep-research/agents/ — it must
+        # not shadow-match a same-named rostered agent living elsewhere. A
+        # mirror of e.g. academic-paper/agents/y_agent.md maps to the
+        # (unrostered) deep-research path and is flagged: fail-CLOSED, which
+        # is the documented lockstep-edit prompt, never a silent pass.
+        real = self._write_agent("academic-paper/agents/y_agent.md", "y_agent")
+        agg = self.root / "agents"
+        agg.mkdir()
+        (agg / "y_agent.md").write_bytes(real.read_bytes())
+        self._stub_loaders_to(["academic-paper/agents/y_agent.md"], [], ["y_agent"])
+        errs = lint.run_checks()
+        i5 = [e for e in errs if "I5" in e]
+        self.assertTrue(any("agents/y_agent.md" in e for e in i5),
+                        f"non-deep-research mirror must fail closed; got {errs}")
+
     def test_root_agents_symlink_aggregate_not_flagged(self):
         # Legacy/transition pin (pre-#413 file kind): a symlink in root
         # agents/ maps back the same way and must not be flagged.

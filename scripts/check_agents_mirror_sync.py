@@ -50,18 +50,19 @@ MIRRORS = {
 def check(root: Path) -> list[str]:
     errors: list[str] = []
 
+    roster = set(MIRRORS)
     agents_dir = root / "agents"
     on_disk = (
         {p.relative_to(root).as_posix() for p in agents_dir.glob("*.md")}
         if agents_dir.is_dir() else set()
     )
-    for mirror in sorted(set(MIRRORS) - on_disk):
+    for mirror in sorted(roster - on_disk):
         errors.append(
             f"{mirror}: rostered mirror is missing — the plugin would "
             f"silently un-ship this agent (restore with `cp "
             f"{MIRRORS[mirror]} {mirror}`)"
         )
-    for extra in sorted(on_disk - set(MIRRORS)):
+    for extra in sorted(on_disk - roster):
         errors.append(
             f"{extra}: not in the MIRRORS roster — an unrostered agents/ "
             "file has no declared source to stay in sync with. Add it to "
@@ -72,7 +73,11 @@ def check(root: Path) -> list[str]:
     for mirror, source in sorted(MIRRORS.items()):
         mp = root / mirror
         if not mp.exists() and not mp.is_symlink():
-            continue  # reported as missing above
+            # Truly absent — already reported missing above. A BROKEN symlink
+            # has exists()==False but is_symlink()==True and must fall through
+            # to the symlink branch; collapsing this to `not mp.exists()`
+            # would silently skip broken links — the #413 regression itself.
+            continue
         if mp.is_symlink():
             errors.append(
                 f"{mirror}: is a symlink — #413 regression (breaks Windows "

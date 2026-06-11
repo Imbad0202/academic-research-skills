@@ -163,7 +163,13 @@ def run_checks() -> list[str]:
     #     pins the byte-equality. A mirror file introduces no new agent name: map it BY
     #     NAME to its `deep-research/agents/...` source and check THAT against the roster.
     #     A name with no rostered source still falls through to undeclared — the mapping
-    #     is not an allowlist for anything dropped into `agents/`.
+    #     is not an allowlist for anything dropped into `agents/`. LOAD-BEARING
+    #     assumption: every mirror sources from `deep-research/agents/<same name>`. If a
+    #     mirror of an agent living elsewhere (e.g. `academic-paper/agents/`) is ever
+    #     added, this rule and the MIRRORS roster in check_agents_mirror_sync.py would
+    #     silently disagree — extend BOTH in lockstep (deliberately re-derived here, not
+    #     imported: one-lint-one-invariant; the disagreement today fails CLOSED, pinned
+    #     by the non-deep-research-source negative test).
     #   * Anything else compares on the CANONICAL (resolved) workspace-relative path: a
     #     leftover symlink resolves to its rostered target (the pre-#413 shape, kept for
     #     generality), while a genuinely NEW standalone .md at any depth resolves to
