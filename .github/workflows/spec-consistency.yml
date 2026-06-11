@@ -122,6 +122,11 @@ jobs:
       - name: Check citation-verification intake wiring (#392)
         run: python3 scripts/check_392_citation_verification_intake.py
 
+      - name: Check agents/ mirror sync (#413)
+        # The pytest companion `test_check_agents_mirror_sync.py` runs via the
+        # unified manifest.
+        run: python3 scripts/check_agents_mirror_sync.py
+
       - name: Check version consistency (CLAUDE.md / SKILL.md / CHANGELOG)
         env:
           PYTHONPATH: scripts

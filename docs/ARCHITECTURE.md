@@ -314,7 +314,8 @@ timeline
     v3.7.0 : Claude Code plugin packaging
            : .claude-plugin/{plugin,marketplace}.json + skills/ symlinks
            : 10 slash commands (commands/ars-*.md, model pinned opus/sonnet, no haiku)
-           : 3 plugin agents (agents/, symlink to v3.6.7-hardened source, model: inherit)
+           : 3 plugin agents (agents/, byte-identical copies of v3.6.7-hardened
+           :   source — mirror-sync lint since #413, model: inherit)
            : SessionStart announce hook (hooks/hooks.json + announce-ars-loaded.sh)
     v3.7.3 : L3 locator infrastructure (claim faithfulness — first half)
            : Three-Layer Citation Emission (synthesis / draft_writer / report_compiler)

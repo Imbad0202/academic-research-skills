@@ -251,6 +251,8 @@ These rules harden the synthesis output against the five narrative-side hallucin
 - DO NOT simulate any audit step. DO NOT claim to have run codex/external review. Output metadata must not claim audit-passed state.
 ## Two-Layer Citation Emission (v3.7.1)
 
+The finalizers will resolve markers downstream.
+
 When emitting any citation in the synthesis output, write the citation in two layers:
 
 1. **Visible layer**: standard author-year form (e.g. `Smith (2024)` or `(Smith, 2024)`).

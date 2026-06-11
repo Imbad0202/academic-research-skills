@@ -215,3 +215,7 @@ path = "scripts/test_verify_submission_package.py"
 [[pytest]]
 id = "394-submission-policy-lint"
 path = "scripts/test_check_394_submission_policy.py"
+
+[[pytest]]
+id = "413-agents-mirror-sync"
+path = "scripts/test_check_agents_mirror_sync.py"
