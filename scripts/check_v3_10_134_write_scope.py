@@ -186,8 +186,12 @@ def run_checks() -> list[str]:
             continue  # directly rostered — skip the alias mapping (the common case)
         # Not directly rostered: map the two alias shapes documented above before
         # deciding it is undeclared.
-        if rel.startswith("agents/"):
-            canon = f"deep-research/agents/{md.name}"  # plugin-root mirror (#413)
+        if rel.startswith("agents/") and rel.count("/") == 1:
+            # Plugin-root mirror (#413) — DIRECT children only. A nested
+            # agents/sub/agents/x.md is NOT a mirror (codex P2: remapping it
+            # would fail open when its name collides with a rostered agent);
+            # it falls through to the resolve path and flags as undeclared.
+            canon = f"deep-research/agents/{md.name}"
         else:
             try:
                 canon = md.resolve().relative_to(REPO_ROOT).as_posix()

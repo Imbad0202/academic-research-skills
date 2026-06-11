@@ -203,6 +203,20 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         self.assertTrue(any("agents/y_agent.md" in e for e in i5),
                         f"non-deep-research mirror must fail closed; got {errs}")
 
+    def test_nested_dir_under_root_agents_is_not_remapped(self):
+        # codex review (#413 round, P2): the mirror remap applies ONLY to
+        # DIRECT children of root agents/. A nested agents/sub/agents/x.md
+        # whose NAME collides with a rostered deep-research agent must still
+        # be flagged — remapping it would reopen the fail-open case the
+        # recursive glob exists to catch.
+        self._write_agent("deep-research/agents/x_agent.md", "x_agent")
+        self._write_agent("agents/sub/agents/x_agent.md", "rogue")
+        self._stub_loaders_to(["deep-research/agents/x_agent.md"], [], ["x_agent"])
+        errs = lint.run_checks()
+        i5 = [e for e in errs if "I5" in e]
+        self.assertTrue(any("agents/sub/agents/x_agent.md" in e for e in i5),
+                        f"nested file under root agents/ must not be remapped; got {errs}")
+
     def test_root_agents_symlink_aggregate_not_flagged(self):
         # Legacy/transition pin (pre-#413 file kind): a symlink in root
         # agents/ maps back the same way and must not be flagged.
