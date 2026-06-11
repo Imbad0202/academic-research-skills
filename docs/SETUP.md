@@ -201,6 +201,26 @@ The four skills (`deep-research`, `academic-paper`, `academic-paper-reviewer`, `
 
 **Strongly recommended: open auto-update.** Open the `/plugin` UI, find `academic-research-skills`, and toggle auto-update on. ARS releases roughly every 1–2 weeks; auto-update keeps you in sync without manual refreshes. To refresh manually: `/plugin update academic-research-skills`. (`/plugin marketplace update academic-research-skills` only refreshes the marketplace source list, not the installed plugin itself.)
 
+**Windows / zip-download symlink note:** the plugin surface includes three top-level agent entrypoints under `agents/`:
+
+- `agents/synthesis_agent.md`
+- `agents/research_architect_agent.md`
+- `agents/report_compiler_agent.md`
+
+These are relative symlinks into `deep-research/agents/` so the hardened downstream-agent prompts have one source of truth. Use the plugin marketplace install above, WSL, or a Git checkout with symlink support enabled. Avoid GitHub's **Download ZIP** path for plugin execution, and avoid Windows checkouts where symlinks are disabled (`core.symlinks=false`): those environments can materialize each entrypoint as a one-line text file containing only the target path, which breaks agent discovery silently.
+
+Quick local check:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+for path in Path("agents").glob("*_agent.md"):
+    print(path, "symlink" if path.is_symlink() else "regular file")
+PY
+```
+
+If those files are not symlinks, reinstall through the plugin marketplace, use WSL, or enable Windows Developer Mode + `git config --global core.symlinks true` and reclone the repository.
+
 **Plugin platform scope:**
 - ✅ Claude Code CLI / VS Code extension / JetBrains extension — full support
 - ❌ claude.ai web / Claude for Work / Anthropic API direct calls — plugins not supported; use Method 1 / 2 / 3 below
