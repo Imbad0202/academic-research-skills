@@ -461,6 +461,89 @@ class TestPhase1Rejections(ApplyHarness):
             self._run()
         self.assertIn("duplicate_target", [f["kind"] for f in ctx.exception.failures])
 
+    def test_output_naming_base_is_rejected(self):
+        anchored = self.anchored_fixture()
+        patch = _base_patch(
+            anchored,
+            [
+                {
+                    "op": "delete_block",
+                    "block_id": "B0008",
+                    "old_hash": _hash_of(anchored, "B0008"),
+                    "roadmap_item_ids": ["REV-001"],
+                }
+            ],
+        )
+        self._write(anchored, patch)
+        base_bytes = self.base_path.read_bytes()
+        with self.assertRaises(ApplyRejection) as ctx:
+            run(
+                self.base_path,
+                self.patch_path,
+                self.base_path,  # --output naming the base
+                self.report_path,
+                acknowledge_structural=False,
+                touched_ratio_threshold=None,
+            )
+        self.assertEqual(ctx.exception.failures[0]["kind"], "artifact_path_collision")
+        self.assertEqual(self.base_path.read_bytes(), base_bytes)
+
+    def test_report_naming_output_is_rejected(self):
+        anchored = self.anchored_fixture()
+        patch = _base_patch(
+            anchored,
+            [
+                {
+                    "op": "delete_block",
+                    "block_id": "B0008",
+                    "old_hash": _hash_of(anchored, "B0008"),
+                    "roadmap_item_ids": ["REV-001"],
+                }
+            ],
+        )
+        self._write(anchored, patch)
+        with self.assertRaises(ApplyRejection) as ctx:
+            run(
+                self.base_path,
+                self.patch_path,
+                self.output_path,
+                self.output_path,  # --report-out naming the output
+                acknowledge_structural=False,
+                touched_ratio_threshold=None,
+            )
+        self.assertEqual(ctx.exception.failures[0]["kind"], "artifact_path_collision")
+        self._assert_no_artifacts()
+
+    def test_report_write_failure_removes_output(self):
+        anchored = self.anchored_fixture()
+        patch = _base_patch(
+            anchored,
+            [
+                {
+                    "op": "delete_block",
+                    "block_id": "B0008",
+                    "old_hash": _hash_of(anchored, "B0008"),
+                    "roadmap_item_ids": ["REV-001"],
+                }
+            ],
+        )
+        self._write(anchored, patch)
+        real_atomic = __import__(
+            "scripts.ars_apply_revision_patch", fromlist=["atomic_write_bytes"]
+        ).atomic_write_bytes
+
+        def fail_on_report(path, data):
+            if str(path) == str(self.report_path):
+                raise OSError("disk full")
+            real_atomic(path, data)
+
+        with mock.patch(
+            "scripts.ars_apply_revision_patch.atomic_write_bytes", side_effect=fail_on_report
+        ):
+            with self.assertRaises(OSError):
+                self._run()
+        self._assert_no_artifacts()
+
     def test_unanchored_base_block_cannot_be_targeted(self):
         # A base with an unlabeled block parses fine; only labeled blocks
         # are addressable. (Phase 1 sees the unknown ID.)
@@ -513,6 +596,30 @@ class TestStructuralTriggers(ApplyHarness):
         self.assertTrue(report["structural_flags"]["any"])
         self.assertTrue(report["structural_flags"]["acknowledged"])
         self.assertIn("# Renamed Introduction", self.output_path.read_text())
+
+    def test_insert_after_heading_anchor_fires_literal_rule(self):
+        # §3.3 literal rule: an insert_after whose ANCHOR is a heading
+        # block flags, even when the inserted text contains no heading.
+        # (Whether the anchor case deserves an exemption is a recorded
+        # Slice B escalation-UX question.)
+        anchored = self.anchored_fixture()
+        patch = _base_patch(
+            anchored,
+            [
+                {
+                    "op": "insert_after",
+                    "block_id": "B0004",
+                    "old_hash": _hash_of(anchored, "B0004"),
+                    "new_text": "Plain body text right after the Methods heading.",
+                    "roadmap_item_ids": ["REV-005"],
+                }
+            ],
+        )
+        self._write(anchored, patch)
+        with self.assertRaises(StructuralRefusal) as ctx:
+            self._run()
+        self.assertEqual(ctx.exception.flags["heading_op_indexes"], [0])
+        self.assertEqual(ctx.exception.flags["section_count_delta"], 0)
 
     def test_section_count_change_fires(self):
         anchored = self.anchored_fixture()
@@ -637,8 +744,8 @@ class TestAtomicityAndSelfCheck(ApplyHarness):
         ops = [
             {
                 "op": "insert_after",
-                "block_id": "B0004",
-                "old_hash": _hash_of(anchored, "B0004"),
+                "block_id": "B0005",
+                "old_hash": _hash_of(anchored, "B0005"),
                 "new_text": "Inserted A.\n\nInserted B.",
                 "roadmap_item_ids": ["REV-001"],
             },
@@ -757,10 +864,19 @@ class TestByteIdentityProperty(ApplyHarness):
         return _base_patch(anchored, ops)
 
     def test_untouched_blocks_byte_identical_across_random_patches(self):
+        # Fixture variants rotate LF / frontmatter / CRLF / no-final-EOL
+        # so newline-byte regressions (CRLF translation, EOF handling)
+        # cannot hide behind text-mode reads: all comparisons run over
+        # translation-free decodes of the raw output bytes.
+        variants = [
+            anchorize_text(FIXTURE_BODY),
+            anchorize_text(FIXTURE_WITH_FRONTMATTER),
+            anchorize_text(FIXTURE_BODY.replace("\n", "\r\n")),
+            anchorize_text(FIXTURE_BODY[:-1]),  # final block without EOL
+        ]
         for seed in range(12):
             rng = random.Random(seed)
-            with_fm = seed % 2 == 0
-            anchored = self.anchored_fixture(with_frontmatter=with_fm)
+            anchored = variants[seed % len(variants)]
             patch = self._random_patch(anchored, rng)
             tmp = Path(tempfile.mkdtemp())
             base_path = tmp / "base.md"
@@ -776,7 +892,7 @@ class TestByteIdentityProperty(ApplyHarness):
                 acknowledge_structural=False,
                 touched_ratio_threshold=None,
             )
-            out_text = output_path.read_text()
+            out_text = output_path.read_bytes().decode("utf-8")
 
             base_doc = parse_document(anchored)
             out_doc = parse_document(out_text)

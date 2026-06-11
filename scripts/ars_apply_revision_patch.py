@@ -201,22 +201,20 @@ def validate_patch(
         segments: list[Block] | None = analysis["segments"]
         seg_headings = sum(1 for s in (segments or []) if s.kind == "heading")
         target_is_heading = target is not None and target.kind == "heading"
-        # An insert_after anchor is a position reference, not a heading
-        # op: inserting body text after a section heading modifies no
-        # heading and must not fire (it still fires via seg_headings /
-        # section-count delta when the INSERTED text is a heading).
-        heading_op = seg_headings > 0
+        # §3.3 literal rule: ANY op whose target or segmented new_text is
+        # a heading block flags — including an insert_after whose anchor
+        # is a heading. That over-triggers on "insert body text after a
+        # section heading"; whether the anchor case deserves an exemption
+        # is a Slice B escalation-UX decision, not this script's call.
         if op["op"] == "replace_block":
             touched += 1
             headings_delta += seg_headings - (1 if target_is_heading else 0)
-            heading_op = heading_op or target_is_heading
         elif op["op"] == "delete_block":
             touched += 1
             headings_delta -= 1 if target_is_heading else 0
-            heading_op = heading_op or target_is_heading
         else:  # insert_after
             headings_delta += seg_headings
-        if heading_op:
+        if target_is_heading or seg_headings:
             heading_op_indexes.append(analysis["op_index"])
 
     blocks_total = len(base.blocks)
@@ -471,6 +469,24 @@ def run(
 ) -> dict:
     """Full two-phase apply. Raises ApplyRejection / StructuralRefusal /
     BlockParseError; returns the success report dict."""
+    resolved = {
+        "base": base_path.resolve(),
+        "output": output_path.resolve(),
+        "report": report_path.resolve(),
+    }
+    collisions = []
+    if resolved["output"] == resolved["base"]:
+        collisions.append("--output must not name the base draft (the base is never modified)")
+    if resolved["report"] in (resolved["base"], resolved["output"]):
+        collisions.append("--report-out must not name the base draft or the output draft")
+    if collisions:
+        raise ApplyRejection(
+            [
+                {"op_index": None, "kind": "artifact_path_collision", "message": msg}
+                for msg in collisions
+            ]
+        )
+
     base_raw = base_path.read_bytes()
     base_text = base_raw.decode("utf-8")
 
@@ -530,10 +546,16 @@ def run(
             "preserved_ratio": round(preserved / blocks_total, 4) if blocks_total else 0.0,
         },
     }
-    atomic_write_bytes(
-        report_path,
-        (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
-    )
+    try:
+        atomic_write_bytes(
+            report_path,
+            (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
+        )
+    except BaseException:
+        # The output and its apply report land as a pair: a report-write
+        # failure must not leave a revised draft with no provenance record.
+        output_path.unlink(missing_ok=True)
+        raise
     return report
 
 
