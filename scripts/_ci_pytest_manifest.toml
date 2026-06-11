@@ -219,3 +219,15 @@ path = "scripts/test_check_394_submission_policy.py"
 [[pytest]]
 id = "413-agents-mirror-sync"
 path = "scripts/test_check_agents_mirror_sync.py"
+
+[[pytest]]
+id = "390-block-parser"
+path = "scripts/test_block_parser.py"
+
+[[pytest]]
+id = "390-anchorize-draft"
+path = "scripts/test_ars_anchorize_draft.py"
+
+[[pytest]]
+id = "390-apply-revision-patch"
+path = "scripts/test_ars_apply_revision_patch.py"
