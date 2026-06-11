@@ -487,6 +487,20 @@ def run(
             ]
         )
 
+    # The output is a NEW versioned artifact (§3.3 supersession): refusing
+    # to overwrite an existing file is what makes the report-failure
+    # cleanup below safe — any file at output_path is one this run created.
+    exists = [
+        {"op_index": None, "kind": "artifact_already_exists", "message": msg}
+        for p, msg in (
+            (output_path, "--output already exists; the revised draft must be a new versioned artifact"),
+            (report_path, "--report-out already exists; each apply emits its own report"),
+        )
+        if p.exists()
+    ]
+    if exists:
+        raise ApplyRejection(exists)
+
     base_raw = base_path.read_bytes()
     base_text = base_raw.decode("utf-8")
 

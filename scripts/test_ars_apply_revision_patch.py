@@ -488,6 +488,56 @@ class TestPhase1Rejections(ApplyHarness):
         self.assertEqual(ctx.exception.failures[0]["kind"], "artifact_path_collision")
         self.assertEqual(self.base_path.read_bytes(), base_bytes)
 
+    def test_report_naming_base_is_rejected(self):
+        anchored = self.anchored_fixture()
+        patch = _base_patch(
+            anchored,
+            [
+                {
+                    "op": "delete_block",
+                    "block_id": "B0008",
+                    "old_hash": _hash_of(anchored, "B0008"),
+                    "roadmap_item_ids": ["REV-001"],
+                }
+            ],
+        )
+        self._write(anchored, patch)
+        base_bytes = self.base_path.read_bytes()
+        with self.assertRaises(ApplyRejection) as ctx:
+            run(
+                self.base_path,
+                self.patch_path,
+                self.output_path,
+                self.base_path,  # --report-out naming the base
+                acknowledge_structural=False,
+                touched_ratio_threshold=None,
+            )
+        self.assertEqual(ctx.exception.failures[0]["kind"], "artifact_path_collision")
+        self.assertEqual(self.base_path.read_bytes(), base_bytes)
+        self.assertFalse(self.output_path.exists())
+
+    def test_existing_output_is_rejected_not_overwritten(self):
+        anchored = self.anchored_fixture()
+        patch = _base_patch(
+            anchored,
+            [
+                {
+                    "op": "delete_block",
+                    "block_id": "B0008",
+                    "old_hash": _hash_of(anchored, "B0008"),
+                    "roadmap_item_ids": ["REV-001"],
+                }
+            ],
+        )
+        self._write(anchored, patch)
+        self.output_path.write_text("pre-existing artifact, not ours to replace")
+        with self.assertRaises(ApplyRejection) as ctx:
+            self._run()
+        self.assertEqual(ctx.exception.failures[0]["kind"], "artifact_already_exists")
+        self.assertEqual(
+            self.output_path.read_text(), "pre-existing artifact, not ours to replace"
+        )
+
     def test_report_naming_output_is_rejected(self):
         anchored = self.anchored_fixture()
         patch = _base_patch(
