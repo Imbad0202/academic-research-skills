@@ -22,6 +22,19 @@ except ImportError:
     from scripts.arxiv_client import ArxivUnavailable
 
 
+# #431 §0.12.3b — the resolver-decision logic version, stored under the
+# "decision_version" key in each cached verdict value (spec-preferred form: no
+# cache-key / schema migration; pre-v5 rows simply re-resolve once under v5).
+# Bump it whenever the accept/reject logic changes so a verdict produced by a
+# DIFFERENT logic is not silently reused. v5 is the exact-title-or-bust pivot: a
+# pre-v5 row (written under the v3/v4 author-agree tiers, e.g. a `Study 1` /
+# `Study 2` same-author pair stored as `matched_by=title`) would otherwise be
+# returned as `matched` with `client.title_search` never called, bypassing the
+# v5 loop entirely — a dangerous false-positive surviving the pivot for up to the
+# 90-day TTL. A row whose stored version is absent or != this constant is a MISS.
+RESOLVER_DECISION_VERSION = "431-v5"
+
+
 # 10-venue closed list per v3.7.3 spec §3.2 + schema description.
 # This list is intentionally redundant with the bibliography_agent's
 # in-prose list — adapters and migration tools both need the literal set.
@@ -224,19 +237,30 @@ def _cached_verdict(
         unmatched, _, _ = compute()
         return unmatched
     cached = cache.get(citation_key, resolver_name, query_form)
-    if cached is not None and "matched" in cached:
+    # #431 §0.12.3b: a hit is reusable ONLY when its stored decision version
+    # matches the current logic. A row missing `matched` (written by an
+    # older/other tool) OR carrying a stale/absent decision version (e.g. any
+    # pre-v5 `matched_by=title` row written under the author-agree tiers) is
+    # treated as a MISS — forcing a live recompute under the current logic
+    # rather than reusing a verdict a different decision path produced. Without
+    # this the #431 pivot is a no-op for every citation already cached.
+    if (
+        cached is not None
+        and "matched" in cached
+        and cached.get("decision_version") == RESOLVER_DECISION_VERSION
+    ):
         return not cached["matched"]
-    # A row missing `matched` (written by an older/other tool) is treated as a
-    # miss — force a live recompute rather than KeyError for the 90-day TTL.
     unmatched, matched_by, queried_by = compute()
     # query_form is the cache key, not part of the value — no need to echo it
-    # into the stored payload (nothing reads it back).
+    # into the stored payload (nothing reads it back). The decision version is
+    # stamped into the value so a future run under a newer logic re-resolves.
     cache.put(
         citation_key,
         resolver_name,
         query_form,
         {"matched": not unmatched, "matched_by": matched_by,
-         "queried_by": queried_by},
+         "queried_by": queried_by,
+         "decision_version": RESOLVER_DECISION_VERSION},
     )
     return unmatched
 

@@ -202,7 +202,7 @@ path = "scripts/test_runtime_injection_boundary_xfail.py"
 
 [[pytest]]
 id = "250-title-fuzzy-false-positive-pin"
-path = "scripts/test_title_fuzzy_false_positive_xfail.py"
+path = "scripts/test_title_fuzzy_false_positive.py"
 
 [[pytest]]
 id = "396-rubric-weight-consistency"

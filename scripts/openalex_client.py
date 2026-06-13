@@ -28,6 +28,8 @@ try:
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
         _similarity,
+        exact_normalized_title,
+        generic_title,
     )
 except ImportError:
     from scripts._text_similarity import (
@@ -35,6 +37,8 @@ except ImportError:
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
         _similarity,
+        exact_normalized_title,
+        generic_title,
     )
 
 
@@ -149,11 +153,16 @@ class OpenAlexClient:
         return None  # DOI_MISMATCH
 
     def title_search(self, title: str, year: int | None = None) -> dict[str, Any] | None:
-        """Title search with 0.70 similarity threshold + matching-year tiebreaker.
+        """Title search under the #431 exact-title-or-bust gate.
 
-        When *year* is provided, candidates whose ``publication_year`` matches
-        get a +0.05 score bonus (mirroring S2 client ``_lookup_by_title``).
-        """
+        A candidate matches iff it clears the 0.70 ratio AND is an exact
+        normalized title match (§0.12.1); a non-exact high-ratio title is never
+        promoted on year/author alone. On the title-fallback path no ID can
+        corroborate, so an exact-but-generic title (§0.12.2) is not promoted.
+        Returns the best exact candidate, or None → resolver reduces the
+        title-keyed miss to `unresolvable`. See crossref_client.title_search."""
+        if generic_title(title):
+            return None
         data = self._get("/works", {
             "search": title,
             "per-page": "5",
@@ -162,8 +171,11 @@ class OpenAlexClient:
         candidates = data.get("results", [])
         scored = []
         for cand in candidates:
-            sim = _similarity(cand.get("title") or "", title)
+            cand_title = cand.get("title") or ""
+            sim = _similarity(cand_title, title)
             if sim < _TITLE_SIMILARITY_THRESHOLD:
+                continue
+            if not exact_normalized_title(title, cand_title):
                 continue
             year_match = year is not None and cand.get("publication_year") == year
             score = sim + (0.05 if year_match else 0.0)

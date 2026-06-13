@@ -30,6 +30,8 @@ try:
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
         _similarity,
+        exact_normalized_title,
+        generic_title,
     )
 except ImportError:
     from scripts._text_similarity import (
@@ -37,6 +39,8 @@ except ImportError:
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
         _similarity,
+        exact_normalized_title,
+        generic_title,
     )
 
 
@@ -181,11 +185,21 @@ class CrossrefClient:
     def title_search(
         self, title: str, year: int | None = None,
     ) -> dict[str, Any] | None:
-        """Title search with 0.70 similarity threshold + matching-year tiebreaker.
+        """Title search under the #431 exact-title-or-bust gate.
 
-        Returns the best matching candidate dict from `message.items`,
-        or None if no candidate meets the threshold.
-        """
+        A candidate is a title match iff it clears the 0.70 ratio AND its title
+        is an exact normalized match (§0.12.1) — title similarity + year/author
+        can no longer alone promote a NON-exact title (that is the shared
+        signature of an author's own related-but-distinct works: a correction
+        and its original, Part I / Part II, a no-ordinal companion). A non-exact
+        high-ratio #1 no longer ends the search, so a correct exact #2 is
+        reachable (F3). On the title-fallback path no ID can corroborate (the
+        DOI was absent or already missed before falling through here), so an
+        exact-but-generic title (§0.12.2) is NOT promoted either. The loop
+        returns the best exact candidate, or None → the resolver reduces a
+        title-keyed miss to `unresolvable` (never a false `matched`)."""
+        if generic_title(title):
+            return None
         data = self._get("/works", {"query.title": title, "rows": "5"})
         candidates = data.get("message", {}).get("items", [])
         scored = []
@@ -193,6 +207,8 @@ class CrossrefClient:
             cand_title = _extract_title(cand)
             sim = _similarity(cand_title, title)
             if sim < _TITLE_SIMILARITY_THRESHOLD:
+                continue
+            if not exact_normalized_title(title, cand_title):
                 continue
             year_match = year is not None and _extract_year(cand) == year
             score = sim + (0.05 if year_match else 0.0)

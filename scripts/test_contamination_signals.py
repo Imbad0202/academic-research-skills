@@ -654,13 +654,45 @@ class ResolveCrossrefCacheTest(unittest.TestCase):
 
         client = MagicMock()
         qf = "doi:10.5555/abc|title:Attention Is All You Need"
+        # A same-decision-version row IS reused (#431 §0.12.3b).
         cache = _FakeCache(seed={
-            ("vaswani2017", "crossref", qf): {"matched": True, "matched_by": "doi"}
+            ("vaswani2017", "crossref", qf): {
+                "matched": True, "matched_by": "doi",
+                "decision_version": cs.RESOLVER_DECISION_VERSION,
+            }
         })
         result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
         self.assertIs(result, False)  # matched=True → unmatched=False
         client.doi_lookup_with_title_check.assert_not_called()
         client.title_search.assert_not_called()
+
+    def test_stale_pre_v5_row_forces_recompute(self):
+        """#431 §0.12.3b (ship blocker): a pre-v5 row written under the
+        author-agree logic (matched_by=title, NO decision_version) must be
+        treated as a MISS so the v5 candidate loop actually runs — without this
+        the pivot is a no-op for up to 90 days of cached `matched` rows. The
+        stale row says matched=True; under v5 the DOI misses and the title
+        fallback (non-exact) returns no match → unmatched=True, and the live
+        client methods ARE called."""
+        from contamination_signals import resolve_crossref_unmatched
+
+        client = MagicMock()
+        client.doi_lookup_with_title_check.return_value = None  # DOI miss
+        client.title_search.return_value = None  # v5: non-exact → no match
+        qf = "doi:10.5555/abc|title:Attention Is All You Need"
+        cache = _FakeCache(seed={
+            ("vaswani2017", "crossref", qf): {
+                "matched": True, "matched_by": "title",  # stale, no version
+            }
+        })
+        result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
+        self.assertIs(result, True)  # recomputed unmatched, NOT stale matched
+        client.title_search.assert_called_once()  # v5 loop ran
+        # The recomputed verdict is re-stored WITH the current version.
+        _, _, _, response = cache.put_calls[0]
+        self.assertEqual(
+            response["decision_version"], cs.RESOLVER_DECISION_VERSION
+        )
 
     def test_cache_miss_calls_network_and_populates(self):
         from contamination_signals import resolve_crossref_unmatched
@@ -736,11 +768,32 @@ class ResolveArxivCacheTest(unittest.TestCase):
         client = MagicMock()
         qf = "arxiv:1706.03762|title:Attention Is All You Need"
         cache = _FakeCache(seed={
-            ("vaswani2017", "arxiv", qf): {"matched": False, "matched_by": None}
+            ("vaswani2017", "arxiv", qf): {
+                "matched": False, "matched_by": None,
+                "decision_version": cs.RESOLVER_DECISION_VERSION,
+            }
         })
         result = resolve_arxiv_unmatched(self._entry(), client, cache=cache)
         self.assertIs(result, True)  # matched=False → unmatched=True
         client.arxiv_id_lookup.assert_not_called()
+
+    def test_stale_pre_v5_row_forces_recompute(self):
+        """#431 §0.12.3b: a pre-v5 arXiv row with no decision_version is a MISS;
+        the ID lookup runs live under v5."""
+        from contamination_signals import resolve_arxiv_unmatched
+
+        client = MagicMock()
+        client.arxiv_id_lookup.return_value = None  # ID miss
+        client.title_search.return_value = None  # v5: non-exact → no match
+        qf = "arxiv:1706.03762|title:Attention Is All You Need"
+        cache = _FakeCache(seed={
+            ("vaswani2017", "arxiv", qf): {
+                "matched": True, "matched_by": "title",  # stale, no version
+            }
+        })
+        result = resolve_arxiv_unmatched(self._entry(), client, cache=cache)
+        self.assertIs(result, True)  # recomputed, NOT stale matched
+        client.arxiv_id_lookup.assert_called_once()
 
     def test_cache_miss_populates(self):
         from contamination_signals import resolve_arxiv_unmatched
@@ -781,11 +834,32 @@ class SemanticScholarCacheTest(unittest.TestCase):
         client = MagicMock()
         qf = "doi:10.1234/xyz|title:Test paper"
         cache = _FakeCache(seed={
-            ("chen2024ai", "semantic_scholar", qf): {"matched": False, "matched_by": None}
+            ("chen2024ai", "semantic_scholar", qf): {
+                "matched": False, "matched_by": None,
+                "decision_version": cs.RESOLVER_DECISION_VERSION,
+            }
         })
         result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
         self.assertTrue(result)  # matched=False → unmatched=True
         client.lookup.assert_not_called()
+
+    def test_stale_pre_v5_row_forces_recompute(self):
+        """#431 §0.12.3b (ship blocker), the exact regression the spec names: a
+        stale `{matched: True, matched_by: title}` row with no decision_version
+        (written under v3/v4 author-agree, e.g. a Study 1 / Study 2 same-author
+        pair) MUST be a miss so client.lookup runs under v5 — not returned as a
+        stale `matched`."""
+        client = MagicMock()
+        client.lookup.return_value = {"matched": False}  # v5 live verdict
+        qf = "doi:10.1234/xyz|title:Test paper"
+        cache = _FakeCache(seed={
+            ("chen2024ai", "semantic_scholar", qf): {
+                "matched": True, "matched_by": "title",  # stale, no version
+            }
+        })
+        result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
+        self.assertTrue(result)  # recomputed unmatched=True, NOT stale matched
+        client.lookup.assert_called_once()  # v5 loop ran
 
     def test_cache_miss_populates(self):
         client = MagicMock()
