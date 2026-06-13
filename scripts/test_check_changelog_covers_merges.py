@@ -174,3 +174,72 @@ class ExtractUnreleasedTest(unittest.TestCase):
 
     def test_missing_unreleased_returns_none(self):
         self.assertIsNone(extract_unreleased("# Changelog\n## [3.12.0]\n- x\n"))
+
+
+from check_changelog_covers_merges import (  # noqa: E402
+    previous_release_tag,
+    merged_commit_subjects,
+)
+
+_GIT_ENV = {
+    "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+}
+
+
+def _git(repo: Path, *args: str) -> str:
+    import os
+    env = os.environ.copy()
+    env.update(_GIT_ENV)
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True, text=True, check=True, env=env,
+    ).stdout.strip()
+
+
+def _commit(repo: Path, subject: str) -> None:
+    (repo / "f.txt").write_text(subject)
+    _git(repo, "add", "f.txt")
+    _git(repo, "commit", "-m", subject)
+
+
+class GitInterfaceTest(unittest.TestCase):
+    def _repo(self, stack):
+        d = Path(stack.enter_context(TemporaryDirectory()))
+        _git(d, "init", "-q")
+        # Disable GPG signing in throwaway repos; the global tag.gpgSign=true
+        # would otherwise force annotated-tag mode and require a -m message.
+        _git(d, "config", "tag.gpgSign", "false")
+        return d
+
+    def test_previous_tag_and_subjects(self):
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            repo = self._repo(stack)
+            _commit(repo, "feat: base (#1)")
+            _git(repo, "tag", "v3.12.0")
+            _commit(repo, "feat: new thing (#2)")
+            _commit(repo, "chore: noise (#3)")
+            # Pre-tag: HEAD has no new tag, so describe returns the prev tag.
+            self.assertEqual(previous_release_tag(repo), "v3.12.0")
+            subs = merged_commit_subjects(repo, "v3.12.0")
+            self.assertIn("feat: new thing (#2)", subs)
+            self.assertIn("chore: noise (#3)", subs)
+            self.assertNotIn("feat: base (#1)", subs)
+
+    def test_non_v_tags_ignored(self):
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            repo = self._repo(stack)
+            _commit(repo, "feat: base (#1)")
+            _git(repo, "tag", "v3.12.0")
+            _git(repo, "tag", "nightly")  # non-v tag must be ignored
+            _commit(repo, "feat: x (#2)")
+            self.assertEqual(previous_release_tag(repo), "v3.12.0")
+
+    def test_no_tags_returns_none(self):
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            repo = self._repo(stack)
+            _commit(repo, "feat: base (#1)")
+            self.assertIsNone(previous_release_tag(repo))

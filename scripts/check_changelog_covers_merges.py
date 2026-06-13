@@ -103,3 +103,36 @@ def extract_unreleased(changelog_text: str) -> str | None:
     or None if there is no Unreleased section."""
     m = _UNRELEASED_RE.search(changelog_text)
     return m.group("body") if m else None
+
+
+_TAG_GRAMMAR_RE = re.compile(r"^v\d+(?:\.\d+){1,3}$")
+
+
+def _git_out(repo: Path, *args: str) -> str | None:
+    """Run git in `repo`, return stdout stripped, or None on non-zero exit."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo), *args],
+            capture_output=True, text=True, check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    return proc.stdout.strip()
+
+
+def previous_release_tag(repo: Path) -> str | None:
+    """Most recent release tag reachable from HEAD (pre-tag mode: HEAD has no
+    new tag, so this IS the previous release). Restricted to the v-tag grammar;
+    non-v / nonstandard tags are ignored. None when no matching tag exists."""
+    out = _git_out(repo, "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
+    if out is None or not _TAG_GRAMMAR_RE.match(out):
+        return None
+    return out
+
+
+def merged_commit_subjects(repo: Path, since_tag: str) -> list[str]:
+    """First-parent commit subjects in `<since_tag>..HEAD`."""
+    out = _git_out(repo, "log", "--first-parent", "--format=%s", f"{since_tag}..HEAD")
+    if not out:
+        return []
+    return out.splitlines()
