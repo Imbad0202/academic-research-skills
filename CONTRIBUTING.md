@@ -85,7 +85,13 @@ The repo is maintained by [Cheng-I Wu](https://github.com/Imbad0202) (HEEACT). T
 
 ## Release checklist
 
-Most release mechanics are CI-enforced (`check_version_consistency.py` keeps CLAUDE.md / SKILL.md / CHANGELOG / plugin manifests / README badge in lockstep; the release-cooldown workflow paces tags). One convention is editorial and lives here:
+Most release mechanics are CI-enforced (`check_version_consistency.py` keeps CLAUDE.md / SKILL.md / CHANGELOG / plugin manifests / README badge in lockstep; the release-cooldown workflow paces tags). One step is run by hand at release time:
+
+### Before tagging: CHANGELOG covers every merge
+
+Run `python3 scripts/check_changelog_covers_merges.py` from the release-prep state (on `main`, or the release-prep branch — **before** the `vX.Y.Z` tag is cut). It lists every release-worthy commit since the previous release tag whose issue/PR number (`#N`) is not yet referenced in the `## [Unreleased]` section, so a merged-but-undocumented change cannot slip into a release. Resolve each one (add a CHANGELOG `[Unreleased]` entry citing its `#N`) or confirm it is legitimately exempt (a `chore`/`test`/`ci`/`build` commit, or an internal `docs(design)`/`docs(superpowers)` commit). This is the machine-checked half of the `[doc-aligned: yyyy-mm-dd]` tag-message discipline. Run it on the release-prep state, not on a feature branch — in-progress branch commits have no PR suffix yet and will report as unverifiable.
+
+One convention is editorial and lives here:
 
 ### `Real-use findings` subsection (#395)
 
