@@ -13,6 +13,7 @@ SCRIPT = Path(__file__).resolve().parent / "check_changelog_covers_merges.py"
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_changelog_covers_merges import (  # noqa: E402
+    is_covered,
     is_exempt,
     pr_number,
 )
@@ -74,3 +75,21 @@ class IsExemptTest(unittest.TestCase):
         # type match is case-sensitive: capitalized prefixes are REQUIRED
         self.assertFalse(is_exempt("Chore: capitalized (#17)"))
         self.assertFalse(is_exempt('Revert "feat: x" (#18)'))
+
+
+class IsCoveredTest(unittest.TestCase):
+    UNRELEASED = "- **Thing (#432).** did a thing\n- another (#89 Item 7)\n"
+
+    def test_covered_exact(self):
+        self.assertTrue(is_covered(432, self.UNRELEASED))
+
+    def test_token_boundary_no_substring_match(self):
+        # #42 must NOT be "covered" by #432 in the text
+        self.assertFalse(is_covered(42, self.UNRELEASED))
+
+    def test_uncovered(self):
+        self.assertFalse(is_covered(999, self.UNRELEASED))
+
+    def test_requires_hash_prefix(self):
+        # a bare "432" (no #) in prose must not count
+        self.assertFalse(is_covered(432, "the year was 432 AD\n"))

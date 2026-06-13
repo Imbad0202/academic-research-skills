@@ -37,6 +37,14 @@ _EXEMPT_TYPES = frozenset({"chore", "test", "ci", "build"})
 _EXEMPT_DOCS_SCOPES = frozenset({"design", "superpowers"})
 
 
+def is_covered(pr: int, unreleased_text: str) -> bool:
+    """True iff `#<pr>` appears in the Unreleased text delimited by a non-digit
+    on the right (so `#42` does not match `#420`). The leading `#` is required,
+    so a bare number in prose cannot spuriously cover."""
+    pattern = re.compile(r"#" + str(pr) + r"(?!\d)")
+    return pattern.search(unreleased_text) is not None
+
+
 def is_exempt(subject: str) -> bool:
     """True iff the commit need not be referenced in CHANGELOG.
 
