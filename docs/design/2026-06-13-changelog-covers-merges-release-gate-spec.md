@@ -1,8 +1,41 @@
 # CHANGELOG-covers-merges release gate
 
 **Date:** 2026-06-13
-**Status:** design (pre-implementation)
+**Status:** design (implementation in progress)
 **Motivation:** close the one release-discipline gap the existing version-consistency lint does not cover — *merged but undocumented*.
+
+## §0 amendment (2026-06-14, sanity-run-driven — supersedes the §3.2/§3.5 body where they conflict)
+
+### §0.1 Coverage namespace = ANY `#N` in the subject, not the trailing PR alone
+
+The pre-amendment design (and the cross-model design review's C-point) treated the
+**trailing `(#N)` (the PR number)** as the sole coverage identity, on the reasoning that
+the GitHub squash suffix is the stable anchor. The first real-repo sanity run (Task 8)
+**falsified that assumption against this repo's actual convention**: ARS writes CHANGELOG
+`[Unreleased]` entries against the **issue / spec number** (`#393`, `#394`, `#89`), while
+the squash commit subject carries that issue ref MID-subject and the PR number as the
+trailing suffix (`feat(socratic): … (#393) (#400)`). Under trailing-PR-only matching,
+~26 already-documented commits reported as uncovered (their issue ref `#393` was in
+`[Unreleased]`; their PR `#400` was not) — a flood of false positives that would bury the
+genuinely-missing entries.
+
+**Resolution (owner-decided):** coverage matches if **ANY** `#N` in the subject — trailing
+PR suffix OR mid-subject issue/spec ref — appears in `[Unreleased]`. `audit` collects
+`all_refs(subject)` and a commit is covered when any of them is present; `unverifiable`
+now means "no `#N` at all in the subject" (not "no trailing PR"). The trailing
+`pr_number` is retained purely as the report **display id**.
+
+**Accepted trade-off (the C-point risk, eyes open):** a stale umbrella ref (e.g. a tracking
+issue `#89` mentioned in an old `[Unreleased]` line) can now spuriously "cover" an
+unrelated new commit that also cites `#89`. This is real but (a) `#89`-style umbrella refs
+ARE the repo convention, and (b) the sanity run showed the false-POSITIVE rate under
+trailing-PR-only was overwhelmingly larger than this false-NEGATIVE tail. For a pre-tag
+*reminder* gate, under-reporting a `#89`-shadowed commit is far cheaper than drowning the
+real misses. Mitigated, not eliminated; stated rather than hidden.
+
+This amendment is sanity-run evidence over paper reasoning — the same lesson the title-match
+work logged: a metadata/identity heuristic that looks right on synthetic cases must be run
+against real data before it is trusted.
 
 ## 1. Problem
 
@@ -65,17 +98,22 @@ enforcement.
   never a silent pass.
 
 **Unit B — coverage logic (pure, fully tested):**
-- `pr_number(subject: str) -> int | None`: the canonical PR identity is the **trailing**
-  `(#N)` of the subject (the GitHub squash suffix). Mid-subject refs (`(#89 Item 8)`,
-  spec refs) are NOT the PR identity and are ignored for *identity*.
+- `pr_number(subject: str) -> int | None`: the **trailing** `(#N)` of the subject (the
+  GitHub squash suffix). Used as the commit's *display identity* in reports, and — together
+  with `all_refs` — to decide verifiability.
+- `all_refs(subject: str) -> list[int]`: **every** `#N` in the subject — the trailing PR
+  suffix AND any mid-subject issue/spec refs (`(#89 Item 8)`, `(#393)`). This is the
+  coverage namespace (see §0.1 amendment: this repo writes CHANGELOG entries against the
+  **issue** number, not the PR number).
 - `is_exempt(subject: str) -> bool`: conventional-commit type/scope parse (§3.4).
-- `is_covered(pr: int, unreleased_text: str) -> bool`: token-aware membership — the
-  number appears in `[Unreleased]` delimited by a non-digit on both sides (`#42` must NOT
-  match `#420`). Matched as `#<n>` (the `#` is required, so a bare year/number in prose
-  cannot spuriously cover).
+- `is_covered(ref: int, unreleased_text: str) -> bool`: token-aware membership — the
+  number appears in `[Unreleased]` delimited by a non-digit on the right (`#42` must NOT
+  match `#420`). The leading `#` is required, so a bare year/number in prose cannot
+  spuriously cover.
 - `audit(subjects, unreleased_text) -> list[Uncovered]`: for each non-exempt subject,
-  resolve its PR number; **no trailing `(#N)` → `unverifiable` (a failure, not a skip)**;
-  PR number not covered → `uncovered`. Return the failures.
+  collect `all_refs`; **no `#N` at all → `unverifiable` (a failure, not a skip)**; if NONE
+  of its refs appears in `[Unreleased]` → `uncovered`; if ANY ref appears → covered.
+  Return the failures, each carrying the trailing `pr_number` (or None) as its display id.
 
 Unit B never calls git. Tests feed synthetic subject lists + synthetic CHANGELOG text.
 
@@ -113,10 +151,13 @@ other docs scope stay required, honoring the owner decision that "docs must be c
 
 ### 3.5 Revert policy
 
-`Revert "…"` commits: a revert is a real change to the released surface, so its **own**
-trailing `(#N)` (the revert PR) is required to be covered. The reverted-PR number embedded
-in the quoted original subject is NOT treated as the identity (avoids the original PR's
-old CHANGELOG line spuriously covering the revert).
+`Revert "…"` commits are a real change to the released surface and must be covered. Under
+the §0.1 any-ref model, a revert subject `Revert "feat: thing (#432)" (#433)` carries both
+`#432` (the reverted PR) and `#433` (the revert PR); coverage by EITHER counts. This is a
+deliberate, accepted loosening from the pre-amendment "own-PR-only" rule: a revert whose
+CHANGELOG entry references the original PR number is documented in practice, and chasing
+the stricter own-PR-only rule conflicts with the repo's issue-keyed CHANGELOG convention
+(§0.1). The trailing `(#433)` remains the revert's display id in reports.
 
 ### 3.6 Output
 

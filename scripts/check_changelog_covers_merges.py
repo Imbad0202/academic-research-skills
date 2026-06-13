@@ -17,15 +17,29 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# The canonical PR identity is the TRAILING `(#N)` (the GitHub squash suffix).
-# Mid-subject refs (tracking issues, spec refs) are NOT the PR identity.
+# The trailing `(#N)` (the GitHub squash suffix) — used as a commit's DISPLAY id.
 _TRAILING_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
+# Every `#N` token anywhere in the subject — the COVERAGE namespace (§0.1): this
+# repo writes CHANGELOG entries against the issue/spec number, which appears
+# mid-subject, not as the trailing PR suffix.
+_ANY_REF_RE = re.compile(r"#(\d+)")
 
 
 def pr_number(subject: str) -> int | None:
-    """Return the trailing `(#N)` PR number of a commit subject, or None."""
+    """Return the trailing `(#N)` PR number of a commit subject, or None.
+
+    This is the commit's DISPLAY identity in reports. Coverage uses `all_refs`
+    (any `#N`), not this — see §0.1."""
     m = _TRAILING_PR_RE.search(subject.rstrip())
     return int(m.group(1)) if m else None
+
+
+def all_refs(subject: str) -> list[int]:
+    """Every `#N` in the subject — the trailing PR suffix AND any mid-subject
+    issue/spec refs (`(#89 Item 8)`, `(#393)`). This is the coverage namespace
+    (§0.1): a commit is covered if ANY of these appears in [Unreleased], because
+    the repo writes CHANGELOG entries against the issue number, not the PR."""
+    return [int(n) for n in _ANY_REF_RE.findall(subject)]
 
 
 # Conventional-commit prefix: type + optional (scope) + optional ! + colon.
@@ -37,11 +51,11 @@ _EXEMPT_TYPES = frozenset({"chore", "test", "ci", "build"})
 _EXEMPT_DOCS_SCOPES = frozenset({"design", "superpowers"})
 
 
-def is_covered(pr: int, unreleased_text: str) -> bool:
-    """True iff `#<pr>` appears in the Unreleased text delimited by a non-digit
+def is_covered(ref: int, unreleased_text: str) -> bool:
+    """True iff `#<ref>` appears in the Unreleased text delimited by a non-digit
     on the right (so `#42` does not match `#420`). The leading `#` is required,
     so a bare number in prose cannot spuriously cover."""
-    pattern = re.compile(r"#" + str(pr) + r"(?!\d)")
+    pattern = re.compile(r"#" + str(ref) + r"(?!\d)")
     return pattern.search(unreleased_text) is not None
 
 
@@ -68,26 +82,28 @@ def is_exempt(subject: str) -> bool:
 @dataclass(frozen=True)
 class Uncovered:
     subject: str
-    pr: int | None
-    reason: str  # "not in [Unreleased]" | "no trailing (#N)"
+    pr: int | None  # display id (trailing PR), None when the subject has no #N
+    reason: str  # "not in [Unreleased]" | "no #N reference"
 
 
 def audit(subjects: list[str], unreleased_text: str) -> list[Uncovered]:
     """Return the release-worthy commits not provably covered by [Unreleased].
 
-    A no-trailing-(#N) subject is `unverifiable` (a failure, not a skip): we
-    cannot prove coverage, so it must be made exempt or given a PR suffix.
+    Coverage uses ANY `#N` in the subject (§0.1): trailing PR OR mid-subject
+    issue/spec ref. A subject with NO `#N` at all is `unverifiable` (a failure,
+    not a skip): we cannot prove coverage, so it must be made exempt or given a
+    reference. `pr` carries the trailing PR as the report display id (or None).
     """
     failures: list[Uncovered] = []
     for subject in subjects:
         if is_exempt(subject):
             continue
-        pr = pr_number(subject)
-        if pr is None:
-            failures.append(Uncovered(subject, None, "no trailing (#N)"))
+        refs = all_refs(subject)
+        if not refs:
+            failures.append(Uncovered(subject, None, "no #N reference"))
             continue
-        if not is_covered(pr, unreleased_text):
-            failures.append(Uncovered(subject, pr, "not in [Unreleased]"))
+        if not any(is_covered(ref, unreleased_text) for ref in refs):
+            failures.append(Uncovered(subject, pr_number(subject), "not in [Unreleased]"))
     return failures
 
 
@@ -173,8 +189,9 @@ def check(repo: Path, *, first_release: bool = False) -> list[str]:
             f"{tag} are not referenced in CHANGELOG [Unreleased]:",
         )
         errors.append(
-            "  Fix: add a CHANGELOG [Unreleased] entry citing the PR number, "
-            "or mark the commit exempt via an accepted conventional prefix."
+            "  Fix: add a CHANGELOG [Unreleased] entry citing the commit's "
+            "issue or PR number (#N), or mark the commit exempt via an accepted "
+            "conventional prefix."
         )
     return errors
 

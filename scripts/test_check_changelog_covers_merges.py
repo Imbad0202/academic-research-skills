@@ -13,6 +13,7 @@ SCRIPT = Path(__file__).resolve().parent / "check_changelog_covers_merges.py"
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_changelog_covers_merges import (  # noqa: E402
+    all_refs,
     audit,
     extract_unreleased,
     is_covered,
@@ -42,6 +43,32 @@ class PrNumberTest(unittest.TestCase):
     def test_bare_hash_without_parens_is_none(self):
         # a #N without the surrounding parens is not a PR identity
         self.assertIsNone(pr_number("fixes bug #42"))
+
+
+class AllRefsTest(unittest.TestCase):
+    """§0.1: all_refs is the COVERAGE namespace — every #N in the subject."""
+
+    def test_collects_issue_and_pr(self):
+        # mid-subject issue ref + trailing PR are both refs
+        self.assertEqual(
+            all_refs("feat(socratic): probes (#393) (#400)"), [393, 400]
+        )
+
+    def test_umbrella_and_pr(self):
+        self.assertEqual(
+            all_refs("fix: route correction (#89 Item 8) (#429)"), [89, 429]
+        )
+
+    def test_single_trailing(self):
+        self.assertEqual(all_refs("Harden title-fallback (#432)"), [432])
+
+    def test_no_refs_is_empty(self):
+        self.assertEqual(all_refs("Harden thing with no ref"), [])
+
+    def test_bare_hash_counts_as_ref(self):
+        # all_refs is liberal (any #N); the # is still required
+        self.assertEqual(all_refs("fixes bug #42 and #43"), [42, 43])
+        self.assertEqual(all_refs("no hash here 42"), [])
 
 
 class IsExemptTest(unittest.TestCase):
@@ -116,39 +143,57 @@ class AuditTest(unittest.TestCase):
         subjects = ["chore: x (#7)", "test: y (#8)"]
         self.assertEqual(audit(subjects, ""), [])
 
-    def test_no_trailing_pr_is_unverifiable(self):
-        subjects = ["feat: thing with no suffix"]
+    def test_no_ref_at_all_is_unverifiable(self):
+        # §0.1: unverifiable means NO #N anywhere in the subject (not "no trailing PR").
+        subjects = ["feat: thing with no ref"]
         result = audit(subjects, "anything")
         self.assertEqual(len(result), 1)
         self.assertIsNone(result[0].pr)
-        self.assertEqual(result[0].reason, "no trailing (#N)")
+        self.assertEqual(result[0].reason, "no #N reference")
 
-    def test_revert_requires_own_pr(self):
-        # Revert's own PR is #433; the reverted #432 must not cover it.
-        subjects = ['Revert "feat: thing (#432)" (#433)']
-        # changelog mentions only the OLD #432, not the revert #433
-        result = audit(subjects, "- thing (#432)\n")
+    def test_issue_ref_covers_even_when_pr_does_not(self):
+        # §0.1 core: CHANGELOG cites the ISSUE (#393); the trailing PR (#400) is
+        # absent. ANY ref covering is enough — this must PASS.
+        subjects = ["feat(socratic): probes (#393) (#400)"]
+        unreleased = "- contribution probes (#393)\n"
+        self.assertEqual(audit(subjects, unreleased), [])
+
+    def test_uncovered_when_no_ref_is_in_unreleased(self):
+        # neither the issue #393 nor the PR #400 is documented -> fail; the
+        # trailing PR is the display id.
+        subjects = ["feat(socratic): probes (#393) (#400)"]
+        result = audit(subjects, "- unrelated (#1)\n")
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].pr, 433)
+        self.assertEqual(result[0].pr, 400)
+        self.assertEqual(result[0].reason, "not in [Unreleased]")
 
-    def test_revert_covered_by_own_pr_passes(self):
+    def test_revert_covered_by_either_ref_passes(self):
+        # §0.1: a revert carries both the reverted PR (#432) and the revert PR
+        # (#433); coverage by EITHER counts (accepted loosening, §3.5).
         subjects = ['Revert "feat: thing (#432)" (#433)']
         self.assertEqual(audit(subjects, "- reverted thing (#433)\n"), [])
+        self.assertEqual(audit(subjects, "- original thing (#432)\n"), [])
+
+    def test_revert_uncovered_when_neither_ref_present(self):
+        subjects = ['Revert "feat: thing (#432)" (#433)']
+        result = audit(subjects, "- unrelated (#1)\n")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].pr, 433)  # trailing PR is the display id
 
     def test_mixed_list_accumulates_in_order(self):
         subjects = [
             "chore: x (#7)",                      # exempt -> skip
             "feat: covered (#100)",               # required, covered -> pass
             "feat: uncovered (#200)",             # required -> fail
-            "Harden thing no suffix",             # no PR -> fail
-            'Revert "feat: old (#432)" (#433)',   # revert, #433 uncovered -> fail
+            "Harden thing no ref",                # no #N -> fail
+            'Revert "feat: old (#432)" (#433)',   # revert, neither ref covered -> fail
         ]
         result = audit(subjects, "- covered (#100)\n")
         self.assertEqual(
             result,
             [
                 Uncovered("feat: uncovered (#200)", 200, "not in [Unreleased]"),
-                Uncovered("Harden thing no suffix", None, "no trailing (#N)"),
+                Uncovered("Harden thing no ref", None, "no #N reference"),
                 Uncovered('Revert "feat: old (#432)" (#433)', 433, "not in [Unreleased]"),
             ],
         )
