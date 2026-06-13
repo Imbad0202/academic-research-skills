@@ -362,9 +362,9 @@ When a sub-skill stage fails or produces unacceptable output:
 |-------|-------------|-------------------|
 | Stage 1: deep-research | Insufficient sources found | Retry with expanded keywords; if still insufficient, allow user to provide manual sources; downgrade to `quick` mode with explicit quality note |
 | Stage 2: academic-paper | Draft quality below `adequate` threshold | Return to argument_builder for strengthening; if 2nd attempt fails, pause pipeline and request user input |
-| Stage 2.5: integrity (mid) | FAIL verdict | Mandatory: return to Stage 2 with integrity issues as revision requirements. Cannot skip or override |
+| Stage 2.5: integrity (mid) | FAIL verdict | Mandatory: return to Stage 2 with integrity issues as revision requirements. The correction round dispatches `academic-paper` **revision mode** under § Revision-Round Patch Sequencing — never full-mode re-drafting; reference-level fixes are the most block-local edit class in the pipeline, and full re-emission is reachable only via the §3.6 escalation checkpoint. Cannot skip or override |
 | Stage 3: reviewer | All reviewers reject | Pause pipeline; present rejection reasons; offer: (a) major revision and re-review, (b) pivot the paper's angle, (c) abort |
-| Stage 4.5: integrity (final) | FAIL verdict | Return to Stage 5 (revision) with final integrity issues. If 2nd integrity check also fails -> abort pipeline with detailed report |
+| Stage 4.5: integrity (final) | FAIL verdict | Return to Stage 5 (revision) with final integrity issues. The correction round dispatches `academic-paper` **revision mode** under § Revision-Round Patch Sequencing (same routing as the Stage 2.5 row). If 2nd integrity check also fails -> abort pipeline with detailed report |
 | Stage 5: revision | Author cannot address a must_fix item | Escalate to user; options: (a) provide additional data/evidence, (b) reframe the claim, (c) remove the problematic section |
 | Any stage | Agent timeout or crash | Save current state via state_tracker; allow manual resume from last checkpoint |
 
@@ -905,7 +905,7 @@ The per-pass resolution counts gain a `terminal_blocked[]` bucket recording each
 
 ## Revision-Round Patch Sequencing (#390)
 
-When a revision stage dispatches `academic-paper` revision mode (Stage 3 → 4 / 3' → 4'; "Resolved next stage: 4 (mode: revision)"), the writer's deliverable is a **patch document**, not a re-emitted draft, and the orchestrator owns the deterministic steps around it. Spec: `docs/design/2026-06-10-390-diff-patch-revision-mode-spec.md` §3.3–§3.6. Protocol + exact commands: `academic-paper/references/revision_patch_protocol.md`. The toolchain is Slice A (#423): `scripts/ars_anchorize_draft.py` + `scripts/ars_apply_revision_patch.py`.
+When a revision stage dispatches `academic-paper` revision mode (Stage 3 → 4 / 3' → 4'; "Resolved next stage: 4 (mode: revision)" — and equally the integrity-FAIL correction rounds, Stage 2.5 → 2 and Stage 4.5 → 5, where the integrity correction list serves as the round's revision requirements; #89 Item 8), the writer's deliverable is a **patch document**, not a re-emitted draft, and the orchestrator owns the deterministic steps around it. Spec: `docs/design/2026-06-10-390-diff-patch-revision-mode-spec.md` §3.3–§3.6. Protocol + exact commands: `academic-paper/references/revision_patch_protocol.md`. The toolchain is Slice A (#423): `scripts/ars_anchorize_draft.py` + `scripts/ars_apply_revision_patch.py`.
 
 **Normative order per revision round — nothing may rewrite the draft between steps 1 and 3:**
 
