@@ -136,3 +136,67 @@ def merged_commit_subjects(repo: Path, since_tag: str) -> list[str]:
     if not out:
         return []
     return out.splitlines()
+
+
+def check(repo: Path, *, first_release: bool = False) -> list[str]:
+    """Return a list of error lines; empty means the gate passes."""
+    errors: list[str] = []
+
+    changelog = repo / "CHANGELOG.md"
+    if not changelog.is_file():
+        return [f"{changelog}: not found"]
+    unreleased = extract_unreleased(changelog.read_text(encoding="utf-8"))
+    if unreleased is None:
+        return ["CHANGELOG.md: no '## [Unreleased]' section to verify against"]
+
+    tag = previous_release_tag(repo)
+    if tag is None:
+        if first_release:
+            return []  # explicit first-release: nothing to compare against
+        return [
+            "no previous release tag found (expected a vX.Y.Z tag reachable "
+            "from HEAD). If this is genuinely the first release, pass "
+            "--first-release; otherwise this is usually a shallow checkout "
+            "(fetch-depth: 0 + fetch-tags: true)."
+        ]
+
+    subjects = merged_commit_subjects(repo, tag)
+    failures = audit(subjects, unreleased)
+    for f in failures:
+        ident = f"#{f.pr}" if f.pr is not None else "NO-PR"
+        errors.append(f"  {ident}  {f.subject}  [{f.reason}]")
+    if errors:
+        required = sum(1 for s in subjects if not is_exempt(s))
+        errors.insert(
+            0,
+            f"{len(failures)} of {required} release-worthy commit(s) since "
+            f"{tag} are not referenced in CHANGELOG [Unreleased]:",
+        )
+        errors.append(
+            "  Fix: add a CHANGELOG [Unreleased] entry citing the PR number, "
+            "or mark the commit exempt via an accepted conventional prefix."
+        )
+    return errors
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Pre-tag lint: CHANGELOG [Unreleased] must cover every "
+        "release-worthy commit since the previous release tag."
+    )
+    parser.add_argument("--repo", default=".", help="Repo root (default: cwd).")
+    parser.add_argument(
+        "--first-release", action="store_true",
+        help="No previous release tag is expected (first release).",
+    )
+    args = parser.parse_args(argv)
+    errors = check(Path(args.repo), first_release=args.first_release)
+    if errors:
+        print("\n".join(errors))
+        return 1
+    print("CHANGELOG [Unreleased] covers all release-worthy commits.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

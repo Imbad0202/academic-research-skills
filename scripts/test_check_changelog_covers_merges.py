@@ -243,3 +243,92 @@ class GitInterfaceTest(unittest.TestCase):
             repo = self._repo(stack)
             _commit(repo, "feat: base (#1)")
             self.assertIsNone(previous_release_tag(repo))
+
+
+class CliEndToEndTest(unittest.TestCase):
+    def _make_repo(self, stack, changelog_body):
+        import os
+        repo = Path(stack.enter_context(TemporaryDirectory()))
+        env = os.environ.copy(); env.update(_GIT_ENV)
+        subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
+        subprocess.run(["git", "-C", str(repo), "config", "tag.gpgSign", "false"], check=True, env=env)
+        (repo / "CHANGELOG.md").write_text(changelog_body)
+        subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+        subprocess.run(["git", "-C", str(repo), "tag", "v3.12.0"], check=True, env=env)
+        return repo, env
+
+    def _add_commit(self, repo, env, subject):
+        (repo / "f.txt").write_text(subject)
+        subprocess.run(["git", "-C", str(repo), "add", "f.txt"], check=True, env=env)
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", subject], check=True, env=env)
+
+    def test_pass_when_covered(self):
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = "# Changelog\n\n## [Unreleased]\n\n- new (#2)\n\n## [3.12.0]\n- old\n"
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: new (#2)")
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_fail_when_uncovered(self):
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = "# Changelog\n\n## [Unreleased]\n\n- unrelated (#9)\n\n## [3.12.0]\n- old\n"
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: new (#2)")
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("#2", proc.stdout + proc.stderr)
+
+    def test_fail_closed_no_previous_tag(self):
+        import contextlib, os
+        with contextlib.ExitStack() as stack:
+            repo = Path(stack.enter_context(TemporaryDirectory()))
+            env = os.environ.copy(); env.update(_GIT_ENV)
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
+            (repo / "CHANGELOG.md").write_text("## [Unreleased]\n- x (#1)\n")
+            subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
+            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+            # no tag at all -> fail closed (not first-release flag)
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("no previous release tag", (proc.stdout + proc.stderr).lower())
+
+    def test_first_release_flag_passes(self):
+        import contextlib, os
+        with contextlib.ExitStack() as stack:
+            repo = Path(stack.enter_context(TemporaryDirectory()))
+            env = os.environ.copy(); env.update(_GIT_ENV)
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
+            (repo / "CHANGELOG.md").write_text("## [Unreleased]\n- x (#1)\n")
+            subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
+            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+            proc = run_script(SCRIPT, "--repo", str(repo), "--first-release", cwd=repo)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_fail_when_changelog_missing(self):
+        import contextlib, os
+        with contextlib.ExitStack() as stack:
+            repo = Path(stack.enter_context(TemporaryDirectory()))
+            env = os.environ.copy(); env.update(_GIT_ENV)
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
+            subprocess.run(["git", "-C", str(repo), "config", "tag.gpgSign", "false"], check=True, env=env)
+            (repo / "f.txt").write_text("x")
+            subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
+            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+            subprocess.run(["git", "-C", str(repo), "tag", "v3.12.0"], check=True, env=env)
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("not found", proc.stdout + proc.stderr)
+
+    def test_fail_when_no_unreleased_section(self):
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = "# Changelog\n\n## [3.12.0]\n- old\n"  # no [Unreleased]
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: new (#2)")
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("[Unreleased]", proc.stdout + proc.stderr)
