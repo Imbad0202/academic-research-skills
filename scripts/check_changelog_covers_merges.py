@@ -63,3 +63,29 @@ def is_exempt(subject: str) -> bool:
     if ctype == "docs" and scope in _EXEMPT_DOCS_SCOPES:
         return True
     return False
+
+
+@dataclass(frozen=True)
+class Uncovered:
+    subject: str
+    pr: int | None
+    reason: str  # "not in [Unreleased]" | "no trailing (#N)"
+
+
+def audit(subjects: list[str], unreleased_text: str) -> list[Uncovered]:
+    """Return the release-worthy commits not provably covered by [Unreleased].
+
+    A no-trailing-(#N) subject is `unverifiable` (a failure, not a skip): we
+    cannot prove coverage, so it must be made exempt or given a PR suffix.
+    """
+    failures: list[Uncovered] = []
+    for subject in subjects:
+        if is_exempt(subject):
+            continue
+        pr = pr_number(subject)
+        if pr is None:
+            failures.append(Uncovered(subject, None, "no trailing (#N)"))
+            continue
+        if not is_covered(pr, unreleased_text):
+            failures.append(Uncovered(subject, pr, "not in [Unreleased]"))
+    return failures
