@@ -612,18 +612,20 @@ The following patterns are PROHIBITED in integrity reports:
 
 ## Issue List (Sorted by Severity)
 
+**Correction item IDs.** Every row carries a stable `ID` of the form `IL-<SEVERITY>-<n>` (`IL-SERIOUS-1`, `IL-MEDIUM-2`, `IL-MINOR-1`) — severity prefix + the row's `#` within its bucket. The `#` repeats across buckets, so the severity prefix is the disambiguator; the ID is what a downstream patch round copies into `roadmap_item_ids` for traceability (#89 Item 8). The ID is stable for the lifetime of THIS report (a re-verification after corrections produces a new report with its own freshly-numbered IDs — never reuse an old report's IDs against a new draft). Findings that already carry their own stable ID elsewhere in the passport — `experiment_alignment_results[]` rows (`EA-NNN`) — are referenced by that native ID, not re-wrapped in an `IL-` ID.
+
 ### SERIOUS (Must Fix)
-| # | Category | Location | Issue Description | Correct Information | Source |
-|---|----------|----------|------------------|--------------------|----|
-| 1 | Reference | §References | [description] | [correct value] | [verification source URL] |
+| ID | # | Category | Location | Issue Description | Correct Information | Source |
+|----|---|----------|----------|------------------|--------------------|----|
+| IL-SERIOUS-1 | 1 | Reference | §References | [description] | [correct value] | [verification source URL] |
 
 ### MEDIUM (Must Fix)
-| # | Category | Location | Issue Description | Correct Information | Source |
-|---|----------|----------|------------------|--------------------|----|
+| ID | # | Category | Location | Issue Description | Correct Information | Source |
+|----|---|----------|----------|------------------|--------------------|----|
 
 ### MINOR (Recommended Fix)
-| # | Category | Location | Issue Description | Suggestion |
-|---|----------|----------|------------------|----|
+| ID | # | Category | Location | Issue Description | Suggestion |
+|----|---|----------|----------|------------------|----|
 
 ## Tool Limitation Disclaimer
 
