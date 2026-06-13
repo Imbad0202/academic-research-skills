@@ -89,3 +89,17 @@ def audit(subjects: list[str], unreleased_text: str) -> list[Uncovered]:
         if not is_covered(pr, unreleased_text):
             failures.append(Uncovered(subject, pr, "not in [Unreleased]"))
     return failures
+
+
+# The [Unreleased] section: from its heading to the next top-level `## ` heading.
+_UNRELEASED_RE = re.compile(
+    r"^##\s*\[Unreleased\]\s*$(?P<body>.*?)(?=^##\s|\Z)",
+    re.MULTILINE | re.DOTALL | re.IGNORECASE,
+)
+
+
+def extract_unreleased(changelog_text: str) -> str | None:
+    """Return the body text under `## [Unreleased]` up to the next `## ` heading,
+    or None if there is no Unreleased section."""
+    m = _UNRELEASED_RE.search(changelog_text)
+    return m.group("body") if m else None

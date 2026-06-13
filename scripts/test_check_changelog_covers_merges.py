@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_changelog_covers_merges import (  # noqa: E402
     audit,
+    extract_unreleased,
     is_covered,
     is_exempt,
     pr_number,
@@ -151,3 +152,25 @@ class AuditTest(unittest.TestCase):
                 Uncovered('Revert "feat: old (#432)" (#433)', 433, "not in [Unreleased]"),
             ],
         )
+
+
+class ExtractUnreleasedTest(unittest.TestCase):
+    CHANGELOG = textwrap.dedent("""\
+        # Changelog
+
+        ## [Unreleased]
+
+        ### Added
+        - thing (#432)
+
+        ## [3.12.0] - 2026-06-08
+        - old thing (#300)
+        """)
+
+    def test_extracts_only_unreleased_body(self):
+        body = extract_unreleased(self.CHANGELOG)
+        self.assertIn("#432", body)
+        self.assertNotIn("#300", body)  # must stop at the next ## heading
+
+    def test_missing_unreleased_returns_none(self):
+        self.assertIsNone(extract_unreleased("# Changelog\n## [3.12.0]\n- x\n"))
