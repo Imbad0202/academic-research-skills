@@ -13,6 +13,7 @@ SCRIPT = Path(__file__).resolve().parent / "check_changelog_covers_merges.py"
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_changelog_covers_merges import (  # noqa: E402
+    is_exempt,
     pr_number,
 )
 
@@ -37,3 +38,39 @@ class PrNumberTest(unittest.TestCase):
     def test_bare_hash_without_parens_is_none(self):
         # a #N without the surrounding parens is not a PR identity
         self.assertIsNone(pr_number("fixes bug #42"))
+
+
+class IsExemptTest(unittest.TestCase):
+    def test_exempt_types(self):
+        for subj in [
+            "chore: bump deps (#1)",
+            "test: add pin (#2)",
+            "ci: tweak workflow (#3)",
+            "build: package (#4)",
+            "ci(scope): scoped ci (#5)",  # scope-tolerant
+        ]:
+            self.assertTrue(is_exempt(subj), subj)
+
+    def test_exempt_internal_docs_scopes(self):
+        self.assertTrue(is_exempt("docs(design): spec (#6)"))
+        self.assertTrue(is_exempt("docs(superpowers): plan (#7)"))
+
+    def test_required_prefixes(self):
+        for subj in [
+            "feat: thing (#8)",
+            "fix: bug (#9)",
+            "docs: user-facing (#10)",          # bare docs REQUIRED
+            "docs(contributing): guide (#11)",  # other docs scope REQUIRED
+            "refactor: cleanup (#12)",
+            "perf: speed (#13)",
+            "Harden title-fallback (#14)",      # no-prefix REQUIRED
+        ]:
+            self.assertFalse(is_exempt(subj), subj)
+
+    def test_breaking_marker_and_case_sensitivity(self):
+        # breaking-change "!" marker must not disturb scope parsing
+        self.assertTrue(is_exempt("docs(design)!: breaking spec (#15)"))
+        self.assertTrue(is_exempt("chore(deps)!: bump (#16)"))
+        # type match is case-sensitive: capitalized prefixes are REQUIRED
+        self.assertFalse(is_exempt("Chore: capitalized (#17)"))
+        self.assertFalse(is_exempt('Revert "feat: x" (#18)'))

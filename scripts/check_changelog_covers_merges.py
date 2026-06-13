@@ -26,3 +26,32 @@ def pr_number(subject: str) -> int | None:
     """Return the trailing `(#N)` PR number of a commit subject, or None."""
     m = _TRAILING_PR_RE.search(subject.rstrip())
     return int(m.group(1)) if m else None
+
+
+# Conventional-commit prefix: type + optional (scope) + optional ! + colon.
+_PREFIX_RE = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]*)\))?!?:")
+
+# Pure-engineering types — never user-facing.
+_EXEMPT_TYPES = frozenset({"chore", "test", "ci", "build"})
+# Internal design/spec docs that do not belong in a user-facing CHANGELOG.
+_EXEMPT_DOCS_SCOPES = frozenset({"design", "superpowers"})
+
+
+def is_exempt(subject: str) -> bool:
+    """True iff the commit need not be referenced in CHANGELOG.
+
+    Exempt: chore/test/ci/build (any scope), and docs(design)/docs(superpowers).
+    Everything else — feat, fix, bare docs, other docs scopes, refactor, perf,
+    AND no-prefix subjects — is REQUIRED. Broadening this set reopens the
+    original "merged but undocumented" failure mode under different prefixes.
+    """
+    m = _PREFIX_RE.match(subject)
+    if not m:
+        return False  # no-prefix subjects are required
+    ctype = m.group("type")
+    scope = m.group("scope")
+    if ctype in _EXEMPT_TYPES:
+        return True
+    if ctype == "docs" and scope in _EXEMPT_DOCS_SCOPES:
+        return True
+    return False
