@@ -2,7 +2,7 @@
 
 ## Overview
 
-deep-research provides 7 modes suited to different research stages and needs. This guide helps users select the most appropriate mode.
+deep-research provides 8 modes suited to different research stages and needs. This guide helps users select the most appropriate mode.
 
 ---
 
@@ -19,7 +19,9 @@ User Input
     │   │                         └── No ───→ Need a complete report?
     │   │                                     ├── Yes ──→ full mode
     │   │                                     └── No ───→ Only need literature?
-    │   │                                                 ├── Yes ──→ lit-review mode
+    │   │                                                 ├── Yes ──→ Need rapid paper comparison?
+    │   │                                                 │            ├── Yes ──→ three-way-scan mode
+    │   │                                                 │            └── No ───→ lit-review mode
     │   │                                                 └── No ───→ quick mode
     │   │
     │   └── No ──→ Want guided thinking?
@@ -121,6 +123,27 @@ User Input
 
 ---
 
+### three-way-scan mode (WHY / HOW / WHAT paper comparison)
+
+| Item | Description |
+|------|------|
+| **Applicable Scenario** | Need a quick, structured scan of several papers before deep reading or before deciding whether to escalate into a full literature review |
+| **Not Applicable** | Need exhaustive thematic synthesis, evidence matrix depth, PRISMA protocol, or a full research report |
+| **Typical Users** | Researchers triaging a new topic, authors comparing several candidate citations, scholars choosing what to read next |
+| **Expected Output** | Shortlisted papers compared in a WHY / HOW / WHAT frame plus a compact synthesis of common problem, divergent strategy, strongest result, and unresolved gap |
+| **Expected Dialogue Rounds** | 0-1 round |
+| **Agents Activated** | 2-3 (Biblio + Verification + optional Synthesis) |
+| **Time Required** | Short to medium |
+
+**Trigger Examples**:
+```
+"Compare these papers in WHY HOW WHAT format"
+"Give me a 3W literature scan on organ-on-chip vascularization"
+"I need a fast paper comparison before deep reading"
+```
+
+---
+
 ### fact-check mode (Fact-Checking)
 
 | Item | Description |
@@ -200,6 +223,7 @@ User Input
 | "I want to research X" / 「我想研究X」(but can't articulate what they want to know) | Research thinking clarification | `socratic`, not `full` | full mode's Phase 1 also offers interaction, but socratic goes deeper |
 | "Help me fix this paper" | Paper revision guidance | `review`, not `full` | Already has text, needs review not research from scratch |
 | "I need APA-formatted references" | Reference formatting | `lit-review`, not `full` | If only a reference list and formatting is needed, no complete research required |
+| "Find a few key papers and tell me what each is doing" | Rapid paper comparison | `three-way-scan`, not `lit-review` | User needs structured triage, not a full evidence synthesis |
 | "Help me think of a research topic" / 「幫我想研究題目」 | Research direction exploration | `socratic` | Best suited for users without a clear direction |
 | "Systematic review of X" | PRISMA-compliant review | `systematic-review`, not `lit-review` | lit-review is a narrative survey; systematic-review follows PRISMA protocol with risk of bias and optional meta-analysis |
 | "I need a meta-analysis" | Quantitative evidence synthesis | `systematic-review` | Meta-analysis is a component of systematic review, not a standalone mode |
@@ -216,6 +240,7 @@ socratic → full              Continue with complete research after Socratic co
 socratic → academic-paper    Write paper directly after Socratic completion
 lit-review → full            Want complete analysis after literature review
 lit-review → systematic-review  Need formal PRISMA compliance after initial lit survey
+three-way-scan → lit-review  Need broader synthesis after initial paper triage
 fact-check → full            Need deeper research after fact-checking
 quick → full                 Worth going deeper after quick research
 review → full                Need to re-research after review
@@ -229,6 +254,7 @@ systematic-review → academic-paper  Write up systematic review as a paper
 | `full` | Complete research report | `full` or `revision` | Research complete, proceed to paper writing |
 | `socratic` | Research Plan Summary | `plan` | Research direction determined, plan paper structure |
 | `lit-review` | Annotated bibliography + synthesis | `full` (literature-based) | Literature review complete, start writing paper |
+| `three-way-scan` | WHY/HOW/WHAT shortlist | `plan` or `full` | Initial paper triage complete, choose whether to deepen or start drafting |
 | `quick` | Research brief | `plan` (needs expansion) | Preliminary exploration complete, plan full paper |
 | `review` | Review report | Does not map | Review concluded, revise original paper |
 | `fact-check` | Verification report | Does not map | Fact-checking concluded |

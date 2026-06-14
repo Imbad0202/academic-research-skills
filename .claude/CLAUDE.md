@@ -1,15 +1,16 @@
 # Academic Research Skills
 
-A suite of Claude Code skills for rigorous academic research, paper writing, peer review, and pipeline orchestration.
+A suite of Claude Code skills for rigorous academic research, paper writing, peer review, pipeline orchestration, and reviewer-response packaging.
 
 ## Skills Overview
 
 | Skill | Purpose | Key Modes |
 |-------|---------|-----------|
-| `deep-research` v2.9.4 | 13-agent research team | full, quick, socratic, review, lit-review, fact-check, systematic-review |
+| `deep-research` v2.10.0 | 13-agent research team | full, quick, socratic, review, lit-review, fact-check, three-way-scan, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
 | `academic-pipeline` v3.12.0 | Full pipeline orchestrator | (coordinates all above) |
+| `reviewer-response` v0.1.0 | Reviewer-response package builder | draft, audit, revise, triage-only, appeal-like |
 
 ## v3.12 Key Additions (Kong auto-research feature track + partial-evidence decomposition)
 

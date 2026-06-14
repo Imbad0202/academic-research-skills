@@ -1,14 +1,14 @@
 # Mode Registry
 
-Single source of truth for all modes across the ARS suite. **25 modes** across 4 skills.
+Single source of truth for all modes across the ARS suite. **31 modes** across 5 skills.
 
 When adding or modifying modes, update this file first — SKILL.md files and CLAUDE.md should reference this registry.
 
-Last updated: v3.12.0 (2026-06-08)
+Last updated: v3.12.1 (2026-06-14)
 
 ---
 
-## deep-research (7 modes)
+## deep-research (8 modes)
 
 | Mode | Spectrum | Output | Oversight | Triggers |
 |------|----------|--------|-----------|----------|
@@ -17,6 +17,7 @@ Last updated: v3.12.0 (2026-06-08)
 | `review` | Balanced | Reviewer report on provided text | High | "review this paper", "evaluate this paper", "assess this source" |
 | `lit-review` | Fidelity | Annotated bibliography + synthesis | Medium | "literature review", "annotated bibliography" |
 | `fact-check` | Fidelity | Claim-by-claim verification report | Medium | "verify claims", "fact-check", "evidence verification" |
+| `three-way-scan` | Fidelity | WHY / HOW / WHAT paper shortlist + cross-paper synthesis | Low | "3W scan", "WHY HOW WHAT papers", "compare these papers" |
 | `socratic` | Originality | Research Plan Summary + INSIGHT collection | Very High | "guide my research", "help me think through", "I'm not sure what to research" |
 | `systematic-review` | Fidelity | PRISMA 2020 report, 5,000-15,000 words | Medium | "systematic review", "meta-analysis", "PRISMA" |
 
@@ -53,16 +54,26 @@ Last updated: v3.12.0 (2026-06-08)
 | (pipeline) | Balanced | 10-stage orchestrated workflow | Very High | "academic pipeline", "research to paper", "full paper workflow" |
 | `resume_from_passport=<hash>` | Fidelity | Resume a prior pipeline run from a Material Passport reset boundary. Opt-in (`ARS_PASSPORT_RESET=1`). See `academic-pipeline/references/passport_as_reset_boundary.md`. | High | "resume from passport", "continue pipeline from reset boundary" |
 
+## reviewer-response (5 modes)
+
+| Mode | Spectrum | Output | Oversight | Triggers |
+|------|----------|--------|-----------|----------|
+| `draft` | Balanced | Strategy summary + tracker + point-by-point response package | High | "response to reviewers", "rebuttal letter", "point-by-point response", "conference rebuttal", "grant response" |
+| `audit` | Fidelity | Gap report + risk flags + corrected response guidance | Medium | "audit this rebuttal", "check this response package" |
+| `revise` | Balanced | Updated tracker + revised response package | High | "update this response", "revise rebuttal" |
+| `triage-only` | Fidelity | Comment-response tracker without prose letter drafting | Low | "parse reviewer comments", "triage comments only" |
+| `appeal-like` | Originality | Pushback-risk memo + cautious response posture draft | Very High | "should we push back?", "appeal this review?" |
+
 ---
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Total modes | 25 |
-| Fidelity | 14 (56%) |
-| Balanced | 7 (28%) |
-| Originality | 4 (16%) |
+| Total modes | 31 |
+| Fidelity | 17 (55%) |
+| Balanced | 10 (32%) |
+| Originality | 4 (13%) |
 
 ### Oversight levels
 

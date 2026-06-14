@@ -4,13 +4,13 @@
     "name": "Cheng-I Wu",
     "url": "https://github.com/Imbad0202"
   },
-  "description": "Academic Research Skills — production-grade research, writing, peer review, and pipeline orchestration for Claude Code.",
+  "description": "Academic Research Skills — production-grade research, writing, peer review, pipeline orchestration, and reviewer-response packaging for Claude Code.",
   "plugins": [
     {
       "name": "academic-research-skills",
       "source": "./",
-      "description": "4 skills + 35+ modes + Material Passport pipeline. Includes v3.6.7 cross-model audit gate and v3.6.8 generator-evaluator contract.",
-      "version": "3.12.0",
+      "description": "5 skills + 31 named modes + Material Passport pipeline. Includes deep-research 3W paper triage and reviewer-response rebuttal packaging.",
+      "version": "3.12.1",
       "license": "CC-BY-NC-4.0"
     }
   ]

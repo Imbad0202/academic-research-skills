@@ -6,7 +6,7 @@
 
 [简体中文版](README.zh-CN.md) | [繁體中文版](README.zh-TW.md) | [日本語版](README.ja-JP.md)
 
-A comprehensive suite of Claude Code skills for academic research, covering the full pipeline from research to publication.
+A comprehensive suite of Claude Code skills for academic research, covering the full pipeline from research to publication, plus reviewer-response packaging.
 
 **Install in 30 seconds** (Claude Code CLI / VS Code / JetBrains, v3.7.0+):
 
@@ -56,7 +56,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 /plugin install academic-research-skills
 ```
 
-**Verify it works:** run `/ars-plan` and describe a paper you're working on — ARS will start a Socratic dialogue to map out chapter structure. For a single-shot test instead, try `/ars-lit-review "your topic"`.
+**Verify it works:** run `/ars-plan` and describe a paper you're working on — ARS will start a Socratic dialogue to map out chapter structure. For a single-shot test instead, try `/ars-lit-review "your topic"` or `/ars-3w "your topic"`.
 
 **👉 [docs/SETUP.md](docs/SETUP.md)** — full guide: install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and five installation methods (Plugin, project skills, global skills, claude.ai Project, repo-cloned).
 
@@ -75,10 +75,11 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 ## Features at a glance
 
-- **Deep Research** — 13-agent research team with Socratic guided mode, PRISMA systematic review, intent detection, dialogue health monitoring, optional cross-model DA, Semantic Scholar API verification.
+- **Deep Research** — 13-agent research team with Socratic guided mode, PRISMA systematic review, intent detection, dialogue health monitoring, optional cross-model DA, Semantic Scholar API verification, and a `three-way-scan` mode for WHY / HOW / WHAT paper comparison.
 - **Academic Paper** — 12-agent paper writing with Style Calibration, Writing Quality Check, LaTeX hardening, visualization, revision coaching, citation conversion, anti-leakage protocol, and VLM figure verification.
 - **Academic Paper Reviewer** — 7-agent multi-perspective peer review with 0–100 quality rubrics (EIC + 3 dynamic reviewers + Devil's Advocate), concession threshold protocol, attack intensity preservation, optional cross-model DA critique / calibration, R&R traceability matrix, read-only constraint.
 - **Academic Pipeline** — 10-stage pipeline orchestrator with adaptive checkpoints, claim verification, Material Passport, optional `repro_lock`, optional cross-model integrity verification, mid-conversation reinforcement, and score trajectory tracking.
+- **Reviewer Response** — companion reviewer-response package builder for point-by-point rebuttals, response trackers, and venue-facing revision packages across journal, conference, transfer, and grant-review settings.
 - **Data Access Level Metadata** (v3.3.2+) — every skill declares `data_access_level` (`raw` / `redacted` / `verified_only`); enforced by `scripts/check_data_access_level.py`. Pattern adapted from Anthropic's automated-w2s-researcher (2026). See [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md).
 - **Task Type Annotation** (v3.3.2+) — every skill declares `task_type` (`open-ended` or `outcome-gradable`). All current ARS skills are `open-ended`.
 - **Benchmark Report Schema** (v3.3.5+) — JSON Schema + lint for honest benchmark comparisons. See [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md).
@@ -140,6 +141,9 @@ You: "I want to write a research paper on AI's impact on higher education QA"
 # Start with Socratic guidance
 You: "Guide my research on AI in educational evaluation"
 
+# Run a fast WHY / HOW / WHAT paper comparison
+You: "/ars-3w organ-on-chip vascularization"
+
 # Write a paper with guided planning
 You: "Guide me through writing a paper on demographic decline"
 
@@ -152,7 +156,7 @@ You: "status"
 
 ### Individual Skills
 
-#### Deep Research (7 modes)
+#### Deep Research (8 modes)
 
 ```
 "Research the impact of AI on higher education"       → full mode
@@ -161,6 +165,7 @@ You: "status"
 "Guide my research on X"                              → socratic mode (guided)
 "Fact-check these claims"                             → fact-check mode
 "Do a literature review on X"                         → lit-review mode
+"Compare these papers in WHY HOW WHAT format"         → three-way-scan mode
 "Review this paper's research quality"                → review mode
 ```
 
@@ -198,6 +203,16 @@ You: "status"
 "I received reviewer comments"                        → mid-entry at Stage 4
 ```
 
+#### Reviewer Response (5 modes)
+
+```
+"Draft a response package for this review round"      → draft mode
+"Audit this rebuttal letter"                          → audit mode
+"Update this response after our new edits"            → revise mode
+"Parse these reviewer comments only"                  → triage-only mode
+"Should we push back on this reviewer?"               → appeal-like mode
+```
+
 > Pipeline ends with **Stage 6: Process Summary** — auto-generates a paper creation process record with 6-dimension Collaboration Quality Evaluation (1–100 scoring).
 
 ### Supported Languages
@@ -233,9 +248,9 @@ You: "status"
 
 Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Version numbers are anchored here so release metadata stays in one place.
 
-### Deep Research (v2.9.4)
+### Deep Research (v2.10.0)
 
-13-agent research team. Modes: full, quick, review, lit-review, fact-check, socratic, systematic-review. Full agent roster and artifacts: see ARCHITECTURE.md §3.
+13-agent research team. Modes: full, quick, review, lit-review, fact-check, three-way-scan, socratic, systematic-review. Full agent roster and artifacts: see ARCHITECTURE.md §3.
 
 ### Academic Paper (v3.2.0)
 
@@ -248,6 +263,10 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 ### Academic Pipeline (v3.12.0)
 
 10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) cannot be skipped; R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
+
+### Reviewer Response (v0.1.0)
+
+Companion reviewer-response workflow. Modes: draft, audit, revise, triage-only, appeal-like. Produces point-by-point response packages, comment trackers, and revision-evidence checklists for journal, conference, transfer-after-review, and grant-panel response rounds.
 
 ---
 
