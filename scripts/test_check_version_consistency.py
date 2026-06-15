@@ -599,6 +599,32 @@ class TestVersionConsistency(unittest.TestCase):
             result = _run(root)
             self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
 
+    def test_docs_superpowers_future_version_exempt_inv6(self) -> None:
+        """docs/superpowers/ holds skill specs/plans that intentionally plan the
+        NEXT release; a future version there is exempt (must PASS). A non-aligned
+        future version anywhere ELSE in docs/ still fails — proves the carve-out
+        is scoped to superpowers/, not a blanket disable."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)  # suite 3.5.0
+            sp = root / "docs" / "superpowers" / "plans"
+            sp.mkdir(parents=True, exist_ok=True)
+            (sp / "next-release-plan.md").write_text(
+                "# Plan\n\nBump suite to v9.9.9 in this release.\n", encoding="utf-8"
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"superpowers/ future ref should be exempt; stdout={result.stdout!r}",
+            )
+            # control: same future token under a published doc path still fails
+            (root / "docs" / "OTHER.md").write_text(
+                "# Other\n\nSee v9.9.9 here.\n", encoding="utf-8"
+            )
+            result2 = _run(root)
+            self.assertEqual(result2.returncode, 1, msg=f"stdout={result2.stdout!r}")
+            self.assertIn("9.9.9", result2.stdout)
+
     # ── Invariant 7: en<->zh-TW version-bearing H2 + version-string parity ──
     def test_zhtw_version_bearing_heading_missing_fails(self) -> None:
         """en has '(v3.4.0+)' heading; zh-TW drops it — must fail."""

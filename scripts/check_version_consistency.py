@@ -356,6 +356,11 @@ def _check_docs_versions(root: Path, suite_version: str) -> list[str]:
     if not docs.is_dir():
         return errors  # docs/ optional; absence is not drift
     for md in sorted(docs.rglob("*.md")):
+        # docs/superpowers/ holds skill working files (specs/plans) that
+        # deliberately plan the NEXT release — forward references are their
+        # job, not a published-doc drift. Invariant 6 gates published docs.
+        if "superpowers" in md.relative_to(docs).parts:
+            continue
         text = md.read_text(encoding="utf-8")
         for raw in DOCS_VERSION_RE.findall(text):
             if not _is_strict_semver(raw):
