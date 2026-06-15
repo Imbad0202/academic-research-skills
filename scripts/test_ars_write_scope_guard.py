@@ -2,16 +2,18 @@
 
 Spec: docs/design/2026-06-01-ars-134-conductor-rescope-deterministic-write-guard-spec.md (§3.4).
 
-The hook's testable core is `evaluate_decision(payload, manifest, workspace_root)`,
-a pure function returning a decision dict {"decision": "allow"|"deny", "reason": str}.
-`main()` only wires stdin -> evaluate_decision -> stdout JSON and is not unit-tested here
-(the decision logic is what matters; the I/O shell is a thin adapter verified by the
-hooks.json wiring + spec §3.2 first-party-verified deny schema).
+The hook's testable core is `evaluate_decision(payload, manifest, workspace_root,
+plugin_root=None)`, a pure function returning a decision dict {"decision": ..., "reason": ...}.
+`main()` only wires stdin -> evaluate_decision -> stdout JSON (now also covered by
+MainPluginRootComputationTest, which exercises the CLAUDE_PLUGIN_ROOT plumbing #448 added).
 
-Decision semantics under test (spec §3.2 strict-order 4-step logic):
-  Step 1: normalize the write target FIRST (absolute resolve + symlink resolve +
-          workspace commonpath + traversal deny -> workspace-root-relative canonical).
-  Step 2: infrastructure self-protection (unconditional, on normalized path).
+Decision semantics under test (spec §3.2 logic, amended by #448 dual-root anchoring):
+  Step 2: infrastructure self-protection — RUNS FIRST, anchored on plugin_root (NOT the
+          workspace): a target is infra IFF it resolves inside the ARS plugin install dir
+          AND its plugin-relative path matches INFRA_PROTECTED_GLOBS. A user-project file
+          that merely shares a filename (their own CLAUDE.md, hooks/*.sh, ...) is NOT infra.
+  Step 1: normalize the write target against workspace_root (absolute + symlink resolve +
+          workspace commonpath + escape detection -> workspace-root-relative canonical).
   Step 3: agent gating (Bucket A agent_type -> enforce allowed_write_globs;
           absent/non-Bucket-A -> allow, but fail-loud-log absent agent_type write).
   Step 4: tool-specific (Write/Edit/MultiEdit single top-level file_path;
@@ -31,6 +33,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # scripts/ -> repo root
 
 import ars_write_scope_guard as guard  # noqa: E402
 
@@ -173,7 +176,10 @@ class WriteScopeGuardTest(unittest.TestCase):
         p2 = payload("Bash", {"command": "rm x"}, cwd=self.ws)  # no agent_type (main session)
         self.assertEqual(self.decide(p2)["decision"], "allow")
 
-    # --- Step 2: infrastructure self-protection (unconditional) ---
+    # --- Step 2: infrastructure self-protection (anchored on plugin_root; these tests use
+    #     the 3-arg fallback where plugin_root collapses to workspace_root, so the plugin's
+    #     own infra files sit at the workspace root and are denied for EVERY actor. The
+    #     plugin_root != workspace_root cases live in PluginRootInfraScopeTest.) ---
 
     def test_infra_hooks_json_denied_for_every_agent(self):
         for at in ("bibliography_agent", "synthesis_agent", "formatter_agent", "broad_test_agent"):
@@ -266,7 +272,10 @@ class WriteScopeGuardTest(unittest.TestCase):
                         "absent agent_type write must surface a fail-loud advisory, not silently no-op")
 
     def test_absent_agent_type_still_denied_for_infra(self):
-        # Even the main session may not clobber infrastructure (Step 2 unconditional).
+        # Even the main session may not clobber the PLUGIN's own infra. Here the 3-arg
+        # fallback puts plugin_root == workspace_root, so hooks/hooks.json IS a plugin infra
+        # file and is denied regardless of actor (the #448 carve-out only spares a SEPARATE
+        # user project's same-named file — see PluginRootInfraScopeTest).
         p = payload("Write",
                     {"file_path": os.path.join(self.ws, "hooks/hooks.json"), "content": "x"},
                     cwd=self.ws)  # no agent_type
@@ -517,6 +526,218 @@ class MalformedPayloadTest(unittest.TestCase):
         d = self.decide(p)
         self.assertEqual(d["decision"], "deny")
         self.assertTrue(d.get("schema_drift_advisory"))
+
+
+class PluginRootInfraScopeTest(unittest.TestCase):
+    """#448 — infra self-protection is anchored on the PLUGIN root, not the user's PROJECT
+    root. Under a plugin install the two differ; the user's own project files that happen to
+    share a filename with an ARS infra file (CLAUDE.md, hooks/*.sh, shared/agents/*.md, ...)
+    must NOT be denied. The ARS plugin's OWN files stay protected.
+    """
+
+    def setUp(self):
+        # Two DISTINCT roots: a user project and a separate plugin install dir.
+        self._proj = tempfile.TemporaryDirectory()
+        self._plugin = tempfile.TemporaryDirectory()
+        self.ws = os.path.realpath(self._proj.name)        # user project (workspace_root)
+        self.plugin = os.path.realpath(self._plugin.name)  # ARS plugin install (plugin_root)
+        for d in ("phase2_investigation", ".claude", "hooks", "shared/agents"):
+            os.makedirs(os.path.join(self.ws, d), exist_ok=True)
+        for d in ("scripts", "hooks", ".claude", "shared/agents", "agents"):
+            os.makedirs(os.path.join(self.plugin, d), exist_ok=True)
+
+    def tearDown(self):
+        self._proj.cleanup()
+        self._plugin.cleanup()
+
+    def decide_in_project(self, p):
+        # workspace = user project; plugin_root = the separate ARS install.
+        return guard.evaluate_decision(p, TEST_MANIFEST, self.ws, self.plugin)
+
+    # --- the reported bug: user's own CLAUDE.md must be writable by the main session ---
+
+    def test_user_project_root_claude_md_allowed_main_session(self):
+        # This is exactly #448. Pre-fix this was DENY; post-fix it must be ALLOW.
+        p = payload("Write", {"file_path": os.path.join(self.ws, "CLAUDE.md"), "content": "x"},
+                    cwd=self.ws)  # no agent_type = main session
+        self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+
+    def test_user_project_dotclaude_claude_md_allowed_main_session(self):
+        p = payload("Write", {"file_path": os.path.join(self.ws, ".claude/CLAUDE.md"), "content": "x"},
+                    cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+
+    def test_user_project_shared_agents_md_allowed(self):
+        # `shared/agents/*.md` is an ARS infra glob but ALSO a plausible user-project path.
+        p = payload("Write", {"file_path": os.path.join(self.ws, "shared/agents/foo.md"), "content": "x"},
+                    cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+
+    def test_user_project_hooks_json_allowed(self):
+        p = payload("Write", {"file_path": os.path.join(self.ws, "hooks/hooks.json"), "content": "x"},
+                    cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+
+    def test_user_project_hooks_sh_allowed(self):
+        p = payload("Write", {"file_path": os.path.join(self.ws, "hooks/install.sh"), "content": "x"},
+                    cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+
+    # --- self-protection PRESERVED: the plugin's OWN files stay denied ---
+
+    def test_plugin_own_claude_md_denied(self):
+        # A write whose target resolves INSIDE the plugin root is still infra-protected.
+        p = payload("Write", {"file_path": os.path.join(self.plugin, "CLAUDE.md"), "content": "x"},
+                    cwd=self.ws)
+        d = self.decide_in_project(p)
+        self.assertEqual(d["decision"], "deny")
+        self.assertIn("infrastructure", d["reason"])
+
+    def test_plugin_own_guard_script_denied(self):
+        p = payload("Write",
+                    {"file_path": os.path.join(self.plugin, "scripts/ars_write_scope_guard.py"), "content": "x"},
+                    cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "deny")
+
+    def test_plugin_own_hooks_json_denied(self):
+        p = payload("Write", {"file_path": os.path.join(self.plugin, "hooks/hooks.json"), "content": "x"},
+                    cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "deny")
+
+    def test_plugin_own_shared_agents_md_denied(self):
+        p = payload("Write", {"file_path": os.path.join(self.plugin, "shared/agents/bar.md"), "content": "x"},
+                    cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "deny")
+
+    def test_plugin_own_toplevel_agents_md_denied(self):
+        # The #413-materialized top-level agents/*.md carry the agent_type==name binding too;
+        # #448 added `agents/*.md` to the infra globs. A user-project agents/foo.md is still
+        # allowed (covered by no deny test -> it falls through to Step 3 allow); only the
+        # PLUGIN's own copy is protected.
+        p = payload("Write", {"file_path": os.path.join(self.plugin, "agents/synthesis_agent.md"),
+                              "content": "x"}, cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "deny")
+
+    def test_user_project_toplevel_agents_md_allowed(self):
+        # The mirror: a user's OWN agents/foo.md (inside their project, outside plugin_root)
+        # must remain writable — the #448 carve-out applies to agents/*.md too.
+        os.makedirs(os.path.join(self.ws, "agents"), exist_ok=True)
+        p = payload("Write", {"file_path": os.path.join(self.ws, "agents/my_agent.md"),
+                              "content": "x"}, cwd=self.ws)
+        self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+
+    # --- fallback: plugin_root=None -> conservative pre-fix behavior (workspace-anchored) ---
+
+    def test_fallback_none_plugin_root_protects_workspace_infra(self):
+        # When the caller passes no plugin_root, infra protection falls back to the
+        # workspace root (== pre-#448 behavior, the ARS-on-ARS home-turf case).
+        p = payload("Write", {"file_path": os.path.join(self.ws, "CLAUDE.md"), "content": "x"},
+                    cwd=self.ws)
+        d = guard.evaluate_decision(p, TEST_MANIFEST, self.ws)  # 3-arg: plugin_root defaults None
+        self.assertEqual(d["decision"], "deny")
+
+    # --- Bucket A phase-scope is UNCHANGED by the dual-root split ---
+
+    def test_bucket_a_phase_scope_unaffected_allow(self):
+        p = payload("Write",
+                    {"file_path": os.path.join(self.ws, "phase2_investigation/bib.md"), "content": "x"},
+                    cwd=self.ws, agent_type="bibliography_agent")
+        self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+
+    def test_bucket_a_cannot_reach_user_claude_md(self):
+        # A Bucket A agent still can't write the user's root CLAUDE.md — not because of infra
+        # protection now, but because it's outside the agent's phase glob (Step 4). The guard
+        # is unchanged for agents; only the main session gained access.
+        p = payload("Write", {"file_path": os.path.join(self.ws, "CLAUDE.md"), "content": "x"},
+                    cwd=self.ws, agent_type="bibliography_agent")
+        d = self.decide_in_project(p)
+        self.assertEqual(d["decision"], "deny")
+        self.assertIn("bibliography_agent", d["reason"])  # phase-scope deny, not infra deny
+
+    # --- dual-root regression variants (codex P2-b): traversal / symlink / Bucket A escape
+    #     toward the plugin's OWN infra, under a real plugin_root != workspace_root install ---
+
+    def test_dual_root_traversal_from_phase_into_plugin_infra_denied(self):
+        # A relative target that escapes the phase dir and `..`-walks all the way into the
+        # plugin tree's hooks/hooks.json. realpath in _infra_protected_target must resolve it
+        # and deny — the infra check runs BEFORE the workspace-escape branch.
+        rel_into_plugin = os.path.relpath(
+            os.path.join(self.plugin, "hooks/hooks.json"),
+            os.path.join(self.ws, "phase2_investigation"))
+        raw = "phase2_investigation/" + rel_into_plugin
+        p = payload("Write", {"file_path": raw, "content": "x"}, cwd=self.ws)  # main session
+        self.assertEqual(self.decide_in_project(p)["decision"], "deny")
+
+    def test_dual_root_symlink_into_plugin_infra_denied(self):
+        # A symlink inside the user workspace pointing at a plugin infra file. realpath
+        # resolves the link to the plugin tree -> infra-protected -> deny.
+        link = os.path.join(self.ws, "sneaky_link.py")
+        target = os.path.join(self.plugin, "scripts/ars_write_scope_guard.py")
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "w") as fh:
+            fh.write("# real guard\n")
+        try:
+            os.symlink(target, link)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks unsupported on this platform")
+        p = payload("Write", {"file_path": link, "content": "x"}, cwd=self.ws)  # main session
+        self.assertEqual(self.decide_in_project(p)["decision"], "deny")
+
+    def test_dual_root_bucket_a_escape_toward_plugin_infra_denied(self):
+        # Bucket A agent trying to reach the plugin's own guard script. It is denied — the
+        # infra check fires first; even if it didn't, the escape fence (#302) would catch it.
+        p = payload("Write",
+                    {"file_path": os.path.join(self.plugin, "scripts/ars_write_scope_guard.py"),
+                     "content": "x"},
+                    cwd=self.ws, agent_type="bibliography_agent")
+        self.assertEqual(self.decide_in_project(p)["decision"], "deny")
+
+    def test_dual_root_bucket_a_sibling_worktree_escape_still_allowed_for_main(self):
+        # Sanity: a NON-infra escape (a sibling worktree outside both roots) is still allowed
+        # for the main session — the infra reorder didn't over-deny genuine escapes.
+        sibling = os.path.realpath(os.path.join(self.ws, "..", "sibling_worktree"))
+        os.makedirs(sibling, exist_ok=True)
+        try:
+            p = payload("Write", {"file_path": os.path.join(sibling, "notes.md"), "content": "x"},
+                        cwd=self.ws)  # main session
+            self.assertEqual(self.decide_in_project(p)["decision"], "allow")
+        finally:
+            import shutil
+            shutil.rmtree(sibling, ignore_errors=True)
+
+
+class MainPluginRootComputationTest(unittest.TestCase):
+    """main() must compute plugin_root from CLAUDE_PLUGIN_ROOT, else the resolved repo root
+    (resolve() to follow the ~/.claude/skills symlink install). codex P2-b."""
+
+    def test_plugin_root_from_env(self):
+        import subprocess
+        guard_path = os.path.join(REPO_ROOT, "scripts", "ars_write_scope_guard.py")
+        with tempfile.TemporaryDirectory() as proj, tempfile.TemporaryDirectory() as plug:
+            # Writing the user project's own CLAUDE.md must pass through (no permissionDecision)
+            # when CLAUDE_PLUGIN_ROOT points elsewhere.
+            env = dict(os.environ, CLAUDE_PROJECT_DIR=proj, CLAUDE_PLUGIN_ROOT=plug)
+            inp = json.dumps({"tool_name": "Write", "cwd": proj,
+                              "tool_input": {"file_path": os.path.join(proj, "CLAUDE.md"),
+                                             "content": "x"}})
+            out = subprocess.run([sys.executable, guard_path], input=inp, env=env,
+                                 capture_output=True, text=True)
+            decision = json.loads(out.stdout)
+            self.assertNotIn("permissionDecision", decision["hookSpecificOutput"])
+
+    def test_plugin_own_file_denied_via_env(self):
+        import subprocess
+        guard_path = os.path.join(REPO_ROOT, "scripts", "ars_write_scope_guard.py")
+        with tempfile.TemporaryDirectory() as proj, tempfile.TemporaryDirectory() as plug:
+            os.makedirs(os.path.join(plug, "scripts"))
+            env = dict(os.environ, CLAUDE_PROJECT_DIR=proj, CLAUDE_PLUGIN_ROOT=plug)
+            inp = json.dumps({"tool_name": "Write", "cwd": proj,
+                              "tool_input": {"file_path": os.path.join(plug, "scripts/ars_write_scope_guard.py"),
+                                             "content": "x"}})
+            out = subprocess.run([sys.executable, guard_path], input=inp, env=env,
+                                 capture_output=True, text=True)
+            decision = json.loads(out.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny")
 
 
 if __name__ == "__main__":

@@ -47,6 +47,7 @@ import fnmatch
 import json
 import os
 import sys
+from pathlib import Path
 
 MANIFEST_FILENAME = "ars_phase_scope_manifest.json"
 
@@ -80,12 +81,17 @@ INFRA_PROTECTED_GLOBS = [
     "**/check_v3_10_134_write_scope.py",  # the three-way name cross-check lint
     "check_v3_10_134_write_scope.py",
     # Agent definition files: the agent_type==name binding lives in their frontmatter;
-    # renaming an agent out of the manifest would fail the guard open.
+    # renaming an agent out of the manifest would fail the guard open. Covers the per-skill
+    # source dirs, the shared dir, AND the top-level plugin-shipped `agents/` dir (the
+    # #413-materialized byte-identical copies — these carry the same name binding and were
+    # previously unprotected; closed in #448 when the plugin-root anchoring re-established
+    # which files count as plugin infra).
     "deep-research/agents/*.md",
     "academic-paper/agents/*.md",
     "academic-paper-reviewer/agents/*.md",
     "academic-pipeline/agents/*.md",
     "shared/agents/*.md",
+    "agents/*.md",
     ".claude/CLAUDE.md",
     "CLAUDE.md",
 ]
@@ -193,9 +199,46 @@ def _matches_any(rel_path, globs):
     return False
 
 
-def _infra_protected(rel_path):
-    """Step 2 — is the normalized target part of the enforcement surface?"""
-    return _matches_any(rel_path, INFRA_PROTECTED_GLOBS)
+def _infra_protected_target(raw_path, cwd, plugin_root):
+    """Step 2 — is the write target one of the ARS plugin's OWN enforcement files?
+
+    #448 root-cause fix: infra self-protection must be anchored to the PLUGIN root, not
+    the user's PROJECT root. The two enforcement surfaces have different anchors:
+      * Bucket A phase-scope (Step 4) fences agents to their phaseN_ dir inside the USER'S
+        project — anchored on workspace_root (= CLAUDE_PROJECT_DIR).
+      * Infra self-protection (here) protects the ARS plugin's own files from tampering —
+        those live under the plugin install dir, so it MUST be anchored on plugin_root.
+    Conflating them was the bug: matching the plugin's infra filenames (`CLAUDE.md`,
+    `hooks/*.sh`, `shared/agents/*.md`, ...) against a user PROJECT path denied the user's
+    own same-named files — even from the trusted main session.
+
+    A target is an infra target IFF it resolves INSIDE plugin_root AND its plugin-root-
+    relative path matches INFRA_PROTECTED_GLOBS. A target outside plugin_root (the normal
+    case in a user project where plugin_root != workspace_root) is never an infra target.
+
+    A None plugin_root here returns False ("no infra root known -> not infra-protected").
+    evaluate_decision never calls in with None — it substitutes workspace_root first — so
+    this is a pure defensive guard, not a path any real caller exercises.
+    """
+    if not plugin_root:
+        return False
+    # Resolve the target the SAME way _normalize_target does (realpath, tolerant of a
+    # not-yet-created leaf), but anchored on plugin_root instead of workspace_root.
+    rp = raw_path
+    if not os.path.isabs(rp):
+        rp = os.path.join(cwd, rp)
+    normalized = os.path.realpath(rp)
+    real_plugin = os.path.realpath(plugin_root)
+    try:
+        common = os.path.commonpath([normalized, real_plugin])
+    except ValueError:
+        return False  # different drives -> cannot be inside plugin root
+    if common != real_plugin:
+        return False  # target resolves OUTSIDE the plugin root -> not an infra file
+    rel = os.path.relpath(normalized, real_plugin)
+    if rel == ".":
+        return False  # the plugin root dir itself is not an enumerated infra FILE
+    return _matches_any(rel, INFRA_PROTECTED_GLOBS)
 
 
 def _allow_unconstrained(agent_type):
@@ -222,20 +265,35 @@ def _extract_structured_target(tool_input):
     return fp if isinstance(fp, str) and fp else None
 
 
-def evaluate_decision(payload, manifest, workspace_root):
+def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
     """Pure decision function implementing the spec §3.2 logic (Bash policy per §7, shipped).
 
     Returns a dict: {"decision": "allow"|"deny", "reason": str, ...advisory flags}.
 
     Two enforcement paths:
-      * Structured tools (Write/Edit/MultiEdit) — deterministic write-scope: normalize the
-        single top-level file_path FIRST, then infra self-protection, then Bucket A glob.
+      * Structured tools (Write/Edit/MultiEdit) — deterministic write-scope: extract the
+        single top-level file_path, run infra self-protection FIRST (anchored on plugin_root,
+        #448), then normalize against workspace_root for the escape check, then Bucket A glob.
       * Bash — DENY ALL for a Bucket A agent (spec §3.2 Step-4 hardening: neither a denylist
         of "mutation-capable" Bash nor an allowlist of "read-only" Bash is sound, because
         neither property is stable across commands/flags/env/versions; only all-deny reaches
         zero fail-open by construction). The agent uses the Grep/Glob tools for search and the
         structured tools for writes. Non-Bucket-A Bash passes through.
+
+    plugin_root (#448): the ARS plugin install dir, used to anchor infra self-protection
+    (Step 2). main() ALWAYS supplies a concrete root (CLAUDE_PLUGIN_ROOT or the resolved
+    repo root), so the None default exists only for the ARS-on-ARS unit tests and for any
+    caller that genuinely cannot determine a plugin root.
+
+    When None, infra protection falls back to workspace_root. This is correct ONLY when the
+    plugin and the workspace are the same tree (ARS developing ARS): it then reproduces the
+    pre-#448 behavior byte-for-byte. It is NOT a safe default under a real plugin install
+    (plugin_root != workspace_root) — there it would both re-deny the user's own CLAUDE.md
+    and FAIL to protect plugin infra (those files are mere workspace escapes). So a real
+    runtime caller MUST pass plugin_root; do not rely on this fallback off the home turf.
     """
+    if not plugin_root:
+        plugin_root = workspace_root
     # The pure core defends itself too — not only main() — so a non-dict payload (`[]`,
     # null, a string) passed straight to evaluate_decision can't crash on `.get` (review).
     if not isinstance(payload, dict):
@@ -282,6 +340,27 @@ def evaluate_decision(payload, manifest, workspace_root):
                        "fail-open. Re-verify the tool_input shape."),
             "schema_drift_advisory": True,
         }
+    # --- Step 2: infrastructure self-protection (anchored on plugin_root). RUNS FIRST,
+    #     BEFORE the user-workspace escape check. ---
+    # #448: anchored on the PLUGIN root, not the user's PROJECT root. Two reasons it must
+    # precede the escape check:
+    #   (a) Under a plugin install, the plugin's own files live OUTSIDE the user workspace,
+    #       so they are "escaped" relative to workspace_root — the escape branch would let a
+    #       main-session write to them through. Checking infra first keeps them protected
+    #       wherever they physically sit.
+    #   (b) A target inside the USER's project that merely shares a filename with an ARS infra
+    #       file (the user's own CLAUDE.md / hooks/*.sh / shared/agents/*.md) resolves OUTSIDE
+    #       plugin_root, so _infra_protected_target returns False and it is left to Step 3/4 —
+    #       which is exactly the #448 fix.
+    # _infra_protected_target resolves the target on its own (realpath, anchored on
+    # plugin_root) so it is correct regardless of the workspace-relative `escaped` flag.
+    if _infra_protected_target(raw, cwd, plugin_root):
+        return {
+            "decision": "deny",
+            "reason": (f"ARS scope guard: {raw} is part of the ARS plugin's enforcement "
+                       "infrastructure and may not be written by any agent."),
+        }
+
     rel, escaped = _normalize_target(raw, cwd, workspace_root)
     if escaped:
         # The escape / path-traversal deny is a BUCKET A FENCE, not a global one (#302).
@@ -291,11 +370,9 @@ def evaluate_decision(payload, manifest, workspace_root):
         # the workspace root and MUST be allowed — fencing it here contradicted the Step-3
         # "unconstrained by Slice 1" gate below. So: only a Bucket A agent is denied for an
         # escape; a non-Bucket-A actor falls through to the Step-3 allow.
-        #   Infra self-protection is intentionally NOT consulted on an escaped path: an escape
-        # means the resolved real path is OUTSIDE the workspace, and every INFRA_PROTECTED_GLOB
-        # is workspace-relative, so an escaped target can never be an infra target. (A symlink
-        # that resolves back INTO the workspace yields escaped=False — see _normalize_target —
-        # so infra protection still runs for it below.)
+        #   Infra self-protection already ran above (anchored on plugin_root), so an escaped
+        # target that is an ARS plugin file was already denied; what remains here is a genuine
+        # non-infra escape (e.g. a sibling worktree), correctly allowed for non-Bucket-A.
         if is_bucket_a:
             return {
                 "decision": "deny",
@@ -303,14 +380,6 @@ def evaluate_decision(payload, manifest, workspace_root):
                            "workspace root (path traversal) — denied."),
             }
         return _allow_unconstrained(agent_type)
-
-    # --- Step 2: infrastructure self-protection (unconditional, on the normalized path). ---
-    if _infra_protected(rel):
-        return {
-            "decision": "deny",
-            "reason": (f"ARS scope guard: {rel} is part of the enforcement "
-                       "infrastructure and may not be written by any agent."),
-        }
 
     # --- Step 3: agent gating. ---
     if not is_bucket_a:
@@ -377,8 +446,19 @@ def main():
         print(render_hook_output({"decision": "allow", "reason": ""}))
         return 0
 
-    # Workspace root: prefer CLAUDE_PROJECT_DIR, else the payload cwd.
+    # Workspace root: prefer CLAUDE_PROJECT_DIR, else the payload cwd. This anchors the
+    # Bucket A phase-scope check (Step 4) to the USER'S project.
     workspace_root = os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()
+
+    # Plugin root (#448): anchors infra self-protection (Step 2) to the ARS plugin's OWN
+    # files, NOT the user's project. CLAUDE_PLUGIN_ROOT is set on a plugin install; the
+    # git-clone+symlink track has no such env var, so fall back to this script's repo root
+    # (scripts/ -> repo root, where .claude-plugin/plugin.json lives). Use resolve() (NOT
+    # abspath) so a symlinked script / scripts dir — the norm for the ~/.claude/skills
+    # symlink install track — resolves to the REAL plugin tree, not the symlink's location
+    # (abspath would not follow the symlink and compute the wrong root).
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or str(
+        Path(__file__).resolve().parents[1])
 
     try:
         manifest = _load_manifest()
@@ -388,7 +468,7 @@ def main():
         print(render_hook_output({"decision": "allow", "reason": ""}))
         return 0
 
-    decision = evaluate_decision(payload, manifest, workspace_root)
+    decision = evaluate_decision(payload, manifest, workspace_root, plugin_root)
 
     # Surface fail-loud advisories to stderr (visible to the user/transcript), never silent.
     if decision.get("absent_agent_type_advisory"):
