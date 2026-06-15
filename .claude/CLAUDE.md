@@ -273,6 +273,6 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 
 ## Version Info
 - **Suite version**: 3.12.1 (per CHANGELOG.md)
-- **Last Updated**: 2026-06-08
+- **Last Updated**: 2026-06-15
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

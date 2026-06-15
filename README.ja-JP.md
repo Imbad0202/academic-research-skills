@@ -229,13 +229,13 @@ You: "status"
 
 エージェントごとの責務とステージごとの成果物は [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) に集約されました。リリースメタデータを一箇所にまとめるため、バージョン番号はここにアンカーされています。
 
-### Deep Research（v2.9.4）
+### Deep Research（v2.10.0）
 
-13 エージェントの研究チーム。モード: full、quick、review、lit-review、fact-check、socratic、systematic-review。完全なエージェント名簿と成果物: ARCHITECTURE.md §3 を参照。
+13 エージェントの研究チーム。モード: full、quick、review、lit-review、three-way-scan、fact-check、socratic、systematic-review。完全なエージェント名簿と成果物: ARCHITECTURE.md §3 を参照。
 
 ### Academic Paper（v3.2.0）
 
-12 エージェントの論文執筆パイプライン。モード: full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure。出力: MD + DOCX（利用可能な場合 Pandoc 経由）+ LaTeX（APA 7.0 `apa7` クラス / IEEE / Chicago）→ tectonic 経由 PDF。完全なエージェント名簿とフェーズごとの責務: ARCHITECTURE.md §3 を参照。
+12 エージェントの論文執筆パイプライン。モード: full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure、rebuttal-audit。出力: MD + DOCX（利用可能な場合 Pandoc 経由）+ LaTeX（APA 7.0 `apa7` クラス / IEEE / Chicago）→ tectonic 経由 PDF。完全なエージェント名簿とフェーズごとの責務: ARCHITECTURE.md §3 を参照。
 
 ### Academic Paper Reviewer（v1.10.0）
 

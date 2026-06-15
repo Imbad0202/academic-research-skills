@@ -39,7 +39,7 @@ JA_README_TEMPLATE = """\
 
 #### Academic Pipeline（オーケストレーター）
 
-### Deep Research（v2.9.4）
+### Deep Research（v2.10.0）
 ### Academic Paper（v3.2.0）
 ### Academic Paper Reviewer（v1.10.0）
 ### Academic Pipeline（v{ver}）
@@ -109,7 +109,7 @@ ZH_CN_README_TEMPLATE = """\
 
 #### Academic Pipeline（全流程调度器）
 
-### Deep Research (v2.9.4)
+### Deep Research (v2.10.0)
 ### Academic Paper (v3.2.0)
 ### Academic Paper Reviewer (v1.10.0)
 ### Academic Pipeline (v{ver})
@@ -176,7 +176,7 @@ ZH_TW_README_TEMPLATE = """\
 
 #### Academic Pipeline（全流程調度器）
 
-### Deep Research (v2.9.4)
+### Deep Research (v2.10.0)
 ### Academic Paper (v3.2.0)
 ### Academic Paper Reviewer (v1.10.0)
 ### Academic Pipeline (v{ver})

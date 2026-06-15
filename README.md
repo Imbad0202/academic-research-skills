@@ -235,13 +235,13 @@ You: "status"
 
 Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Version numbers are anchored here so release metadata stays in one place.
 
-### Deep Research (v2.9.4)
+### Deep Research (v2.10.0)
 
-13-agent research team. Modes: full, quick, review, lit-review, fact-check, socratic, systematic-review. Full agent roster and artifacts: see ARCHITECTURE.md §3.
+13-agent research team. Modes: full, quick, review, lit-review, three-way-scan, fact-check, socratic, systematic-review. Full agent roster and artifacts: see ARCHITECTURE.md §3.
 
 ### Academic Paper (v3.2.0)
 
-12-agent paper writing pipeline. Modes: full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure. Output: MD + DOCX (via Pandoc when available) + LaTeX (APA 7.0 `apa7` class / IEEE / Chicago) → PDF via tectonic. Full agent roster and per-phase responsibilities: see ARCHITECTURE.md §3.
+12-agent paper writing pipeline. Modes: full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit. Output: MD + DOCX (via Pandoc when available) + LaTeX (APA 7.0 `apa7` class / IEEE / Chicago) → PDF via tectonic. Full agent roster and per-phase responsibilities: see ARCHITECTURE.md §3.
 
 ### Academic Paper Reviewer (v1.10.0)
 
