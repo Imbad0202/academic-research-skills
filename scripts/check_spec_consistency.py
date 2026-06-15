@@ -63,8 +63,8 @@ def check_mode_registry() -> None:
     text = read(rel_path)
     expect_contains(rel_path, "Last updated: v3.12.0 (2026-06-08)")
     for heading in (
-        "## deep-research (7 modes)",
-        "## academic-paper (10 modes)",
+        "## deep-research (8 modes)",
+        "## academic-paper (11 modes)",
         "## academic-paper-reviewer (6 modes)",
     ):
         if heading not in text:
@@ -306,8 +306,8 @@ def check_readme_sections() -> None:
     expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
     expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
     for heading in (
-        "#### Deep Research (7 modes)",
-        "#### Academic Paper (10 modes)",
+        "#### Deep Research (8 modes)",
+        "#### Academic Paper (11 modes)",
         "#### Academic Paper Reviewer (6 modes)",
         "### Deep Research (v2.9.4)",
         "### Academic Paper (v3.2.0)",
@@ -318,7 +318,7 @@ def check_readme_sections() -> None:
             fail(f"{rel_path}: missing heading {heading!r}")
 
     paper_usage = extract_section(
-        text, "#### Academic Paper (10 modes)", "#### Academic Paper Reviewer (6 modes)"
+        text, "#### Academic Paper (11 modes)", "#### Academic Paper Reviewer (6 modes)"
     )
     for expected in ("outline-only mode", "abstract-only mode", "disclosure mode"):
         if expected not in paper_usage:
@@ -328,7 +328,7 @@ def check_readme_sections() -> None:
             fail(f"{rel_path}: Academic Paper usage section still contains {forbidden!r}")
 
     deep_usage = extract_section(
-        text, "#### Deep Research (7 modes)", "#### Academic Paper (10 modes)"
+        text, "#### Deep Research (8 modes)", "#### Academic Paper (11 modes)"
     )
     if "review mode" not in deep_usage:
         fail(f"{rel_path}: Deep Research usage section missing 'review mode'")
@@ -389,8 +389,8 @@ def check_readme_ja_sections() -> None:
     expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
     expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
     for heading in (
-        "#### Deep Research（7 モード）",
-        "#### Academic Paper（10 モード）",
+        "#### Deep Research（8 モード）",
+        "#### Academic Paper（11 モード）",
         "#### Academic Paper Reviewer（6 モード）",
         "#### Academic Pipeline（オーケストレーター）",
         "### Deep Research（v2.9.4）",
@@ -420,35 +420,35 @@ ZH_README_CONFIGS = (
     {
         "rel_path": "README.zh-TW.md",
         "headings": (
-            "#### Deep Research（深度研究，7 種模式）",
-            "#### Academic Paper（學術論文撰寫，10 種模式）",
+            "#### Deep Research（深度研究，8 種模式）",
+            "#### Academic Paper（學術論文撰寫，11 種模式）",
             "#### Academic Paper Reviewer（論文審查，6 種模式）",
             "### Deep Research (v2.9.4)",
             "### Academic Paper (v3.2.0)",
             "### Academic Paper Reviewer (v1.10.0)",
             "### Academic Pipeline (v3.12.0)",
         ),
-        "paper_start": "#### Academic Paper（學術論文撰寫，10 種模式）",
+        "paper_start": "#### Academic Paper（學術論文撰寫，11 種模式）",
         "reviewer_start": "#### Academic Paper Reviewer（論文審查，6 種模式）",
         "pipeline_start": "#### Academic Pipeline（全流程調度器）",
-        "deep_start": "#### Deep Research（深度研究，7 種模式）",
+        "deep_start": "#### Deep Research（深度研究，8 種模式）",
         "docx_line": "DOCX（Pandoc 可用時）",
     },
     {
         "rel_path": "README.zh-CN.md",
         "headings": (
-            "#### Deep Research（深度研究，7 种模式）",
-            "#### Academic Paper（学术论文撰写，10 种模式）",
+            "#### Deep Research（深度研究，8 种模式）",
+            "#### Academic Paper（学术论文撰写，11 种模式）",
             "#### Academic Paper Reviewer（论文审查，6 种模式）",
             "### Deep Research (v2.9.4)",
             "### Academic Paper (v3.2.0)",
             "### Academic Paper Reviewer (v1.10.0)",
             "### Academic Pipeline (v3.12.0)",
         ),
-        "paper_start": "#### Academic Paper（学术论文撰写，10 种模式）",
+        "paper_start": "#### Academic Paper（学术论文撰写，11 种模式）",
         "reviewer_start": "#### Academic Paper Reviewer（论文审查，6 种模式）",
         "pipeline_start": "#### Academic Pipeline（全流程调度器）",
-        "deep_start": "#### Deep Research（深度研究，7 种模式）",
+        "deep_start": "#### Deep Research（深度研究，8 种模式）",
         "docx_line": "DOCX（Pandoc 可用时）",
     },
 )

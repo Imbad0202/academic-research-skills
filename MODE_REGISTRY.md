@@ -1,6 +1,6 @@
 # Mode Registry
 
-Single source of truth for all modes across the ARS suite. **25 modes** across 4 skills.
+Single source of truth for all modes across the ARS suite. **27 modes** across 4 skills.
 
 When adding or modifying modes, update this file first — SKILL.md files and CLAUDE.md should reference this registry.
 
@@ -8,7 +8,7 @@ Last updated: v3.12.0 (2026-06-08)
 
 ---
 
-## deep-research (7 modes)
+## deep-research (8 modes)
 
 | Mode | Spectrum | Output | Oversight | Triggers |
 |------|----------|--------|-----------|----------|
@@ -16,11 +16,12 @@ Last updated: v3.12.0 (2026-06-08)
 | `quick` | Fidelity | Research brief, 500-1,500 words | Medium | "quick brief", "30 minute summary", "quick research" |
 | `review` | Balanced | Reviewer report on provided text | High | "review this paper", "evaluate this paper", "assess this source" |
 | `lit-review` | Fidelity | Annotated bibliography + synthesis | Medium | "literature review", "annotated bibliography" |
+| `three-way-scan` | Fidelity | WHY/HOW/WHAT paper shortlist + cross-paper synthesis | Low | "WHY HOW WHAT papers", "3W literature scan", "compare these papers" |
 | `fact-check` | Fidelity | Claim-by-claim verification report | Medium | "verify claims", "fact-check", "evidence verification" |
 | `socratic` | Originality | Research Plan Summary + INSIGHT collection | Very High | "guide my research", "help me think through", "I'm not sure what to research" |
 | `systematic-review` | Fidelity | PRISMA 2020 report, 5,000-15,000 words | Medium | "systematic review", "meta-analysis", "PRISMA" |
 
-## academic-paper (10 modes)
+## academic-paper (11 modes)
 
 | Mode | Spectrum | Output | Oversight | Triggers |
 |------|----------|--------|-----------|----------|
@@ -34,6 +35,7 @@ Last updated: v3.12.0 (2026-06-08)
 | `format-convert` | Fidelity | Formatted document (LaTeX/DOCX-via-Pandoc/PDF/MD) | Low | "convert to LaTeX", "convert citations to [format]" |
 | `citation-check` | Fidelity | Citation error report | Low | "check citations", "verify references" |
 | `disclosure` | Fidelity | Venue-specific AI-usage disclosure statement | Low | "AI disclosure for [venue]", "generate AI usage statement" |
+| `rebuttal-audit` | Fidelity | Advisory QA of an existing rebuttal draft (per-comment coverage + gaps + risk flags); no generation; no Schema 11 emission | Low | "audit my response", "check my rebuttal", "did I miss any reviewer comment" |
 
 ## academic-paper-reviewer (6 modes)
 
@@ -59,10 +61,10 @@ Last updated: v3.12.0 (2026-06-08)
 
 | Metric | Count |
 |--------|-------|
-| Total modes | 25 |
-| Fidelity | 14 (56%) |
-| Balanced | 7 (28%) |
-| Originality | 4 (16%) |
+| Total modes | 27 |
+| Fidelity | 16 (59%) |
+| Balanced | 7 (26%) |
+| Originality | 4 (15%) |
 
 ### Oversight levels
 

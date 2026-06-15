@@ -372,7 +372,7 @@ timeline
 
 | Skill | Modes |
 |---|---|
-| `deep-research` v2.9.4 | full, quick, socratic, review, lit-review, fact-check, systematic-review (7) |
-| `academic-paper` v3.2.0 | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure (10) |
+| `deep-research` v2.10.0 | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review (8) |
+| `academic-paper` v3.2.0 | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit (11) |
 | `academic-paper-reviewer` v1.10.0 | full, re-review, quick, methodology-focus, guided, calibration (6) |
 | `academic-pipeline` v3.12.0 | orchestrator (delegates to sub-skill modes) + `resume_from_passport=<hash>` (v3.6.3 — resume a prior pipeline run from a Material Passport reset boundary; no flag required to invoke. The producing session must have set `ARS_PASSPORT_RESET=1` to emit boundary entries.) + `ARS_CLAIM_AUDIT=1` (v3.8 — opt-in Stage 4→5 L3 claim-faithfulness audit gate; default OFF) + v3.9.4 temporal verification advisory layer (M1 timeline_extraction_agent + M2 5-pass verifier at Phase 4→5 + M3 IRON RULE + M6 first-party Crossref/pdftotext) |

@@ -24,6 +24,7 @@ ARS modes fall on a spectrum between these poles. This table is the reference fo
 |---|---|---|---|---|
 | deep-research | `systematic-review` | Fidelity | Heavy | PRISMA protocol, predefined search strategy, reproducible steps |
 | deep-research | `lit-review` | Fidelity | Heavy | Structured annotated bibliography, fixed output format |
+| deep-research | `three-way-scan` | Fidelity | Medium | Fixed WHY/HOW/WHAT per-paper frame + cross-paper synthesis, lighter than lit-review |
 | deep-research | `fact-check` | Fidelity | Heavy | Claim → evidence → verdict pipeline, no room for drift |
 | deep-research | `quick` | Fidelity | Heavy | Time-boxed brief, fixed 3-section format |
 | deep-research | `review` | Balanced | Medium | Review has structure but allows domain-specific adaptation |
@@ -39,6 +40,7 @@ ARS modes fall on a spectrum between these poles. This table is the reference fo
 | academic-paper | `citation-check` | Fidelity | Heavy | Citation audit is checklist-driven |
 | academic-paper | `plan` | Originality | Light | Socratic planning dialogue, no forced chapter sequence |
 | academic-paper | `disclosure` (v3.2) | Fidelity | Heavy | Venue policy database → templated output |
+| academic-paper | `rebuttal-audit` | Fidelity | Heavy | Per-comment coverage checklist against an existing rebuttal draft, advisory QA |
 | academic-paper-reviewer | `full` | Balanced | Medium | Review rubric loaded, but reviewer perspectives are dynamic |
 | academic-paper-reviewer | `re-review` | Fidelity | Heavy | R&R traceability matrix, checklist-driven |
 | academic-paper-reviewer | `quick` | Fidelity | Heavy | Fixed EIC quick-assessment format |

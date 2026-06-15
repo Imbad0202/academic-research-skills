@@ -148,7 +148,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 ### 个别 Skill 使用
 
-#### Deep Research（深度研究，7 种模式）
+#### Deep Research（深度研究，8 种模式）
 
 ```
 "研究 AI 对高等教育的影响"                    → full mode（完整研究）
@@ -160,7 +160,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 "审查这篇论文的研究质量"                      → review mode（论文审查）
 ```
 
-#### Academic Paper（学术论文撰写，10 种模式）
+#### Academic Paper（学术论文撰写，11 种模式）
 
 ```
 "帮我写一篇论文"                              → full mode（完整撰写）

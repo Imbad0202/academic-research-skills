@@ -152,7 +152,7 @@ You: "status"
 
 ### Individual Skills
 
-#### Deep Research (7 modes)
+#### Deep Research (8 modes)
 
 ```
 "Research the impact of AI on higher education"       → full mode
@@ -161,10 +161,11 @@ You: "status"
 "Guide my research on X"                              → socratic mode (guided)
 "Fact-check these claims"                             → fact-check mode
 "Do a literature review on X"                         → lit-review mode
+"Compare these papers in WHY/HOW/WHAT format"         → three-way-scan mode
 "Review this paper's research quality"                → review mode
 ```
 
-#### Academic Paper (10 modes)
+#### Academic Paper (11 modes)
 
 ```
 "Write a paper on X"                                  → full mode
@@ -177,6 +178,7 @@ You: "status"
 "Convert to LaTeX" / "Convert citations to IEEE"      → format-convert mode
 "Check citations"                                     → citation-check mode
 "Generate an AI disclosure statement for NeurIPS"     → disclosure mode
+"Audit my rebuttal draft against the reviews"         → rebuttal-audit mode
 ```
 
 #### Academic Paper Reviewer (6 modes)

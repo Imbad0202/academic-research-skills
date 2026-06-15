@@ -148,7 +148,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 ### 個別 Skill 使用
 
-#### Deep Research（深度研究，7 種模式）
+#### Deep Research（深度研究，8 種模式）
 
 ```
 "研究 AI 對高等教育的影響"                    → full mode（完整研究）
@@ -160,7 +160,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 "審查這篇論文的研究品質"                      → review mode（論文審查）
 ```
 
-#### Academic Paper（學術論文撰寫，10 種模式）
+#### Academic Paper（學術論文撰寫，11 種模式）
 
 ```
 "幫我寫一篇論文"                              → full mode（完整撰寫）

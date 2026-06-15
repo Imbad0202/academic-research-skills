@@ -148,7 +148,7 @@ You: "status"
 
 ### 個別スキル
 
-#### Deep Research（7 モード）
+#### Deep Research（8 モード）
 
 ```
 "Research the impact of AI on higher education"       → full モード
@@ -160,7 +160,7 @@ You: "status"
 "Review this paper's research quality"                → review モード
 ```
 
-#### Academic Paper（10 モード）
+#### Academic Paper（11 モード）
 
 ```
 "Write a paper on X"                                  → full モード
