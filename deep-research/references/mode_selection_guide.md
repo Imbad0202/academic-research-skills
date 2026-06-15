@@ -2,7 +2,7 @@
 
 ## Overview
 
-deep-research provides 7 modes suited to different research stages and needs. This guide helps users select the most appropriate mode.
+deep-research provides 8 modes suited to different research stages and needs. This guide helps users select the most appropriate mode.
 
 ---
 
@@ -19,7 +19,9 @@ User Input
     │   │                         └── No ───→ Need a complete report?
     │   │                                     ├── Yes ──→ full mode
     │   │                                     └── No ───→ Only need literature?
-    │   │                                                 ├── Yes ──→ lit-review mode
+    │   │                                                 ├── Yes ──→ Need rapid paper comparison?
+    │   │                                                 │            ├── Yes ──→ three-way-scan mode
+    │   │                                                 │            └── No ───→ lit-review mode
     │   │                                                 └── No ───→ quick mode
     │   │
     │   └── No ──→ Want guided thinking?
@@ -117,6 +119,27 @@ User Input
 "Literature review on SDGs in higher education"
 "Literature review: the evolution of quality assurance in Taiwan's higher education"
 "Systematic review of AI-assisted assessment"
+```
+
+---
+
+### three-way-scan mode (WHY / HOW / WHAT paper comparison)
+
+| Item | Description |
+|------|------|
+| **Applicable Scenario** | Need a disciplined shortlist of papers compared in a stable WHY/HOW/WHAT frame, lighter than a full literature review |
+| **Not Applicable** | Need a complete evidence matrix, thematic synthesis, or PRISMA-like coverage (escalate to `lit-review` / `systematic-review`); need to verify specific facts (`fact-check`) |
+| **Typical Users** | Researchers scoping a new area, students triaging a reading list, anyone deciding which papers to read in depth |
+| **Expected Output** | Per-paper WHY/HOW/WHAT shortlist + cross-paper synthesis (common WHY, divergent HOW, strongest WHAT, unresolved gap) (800-2,000 words) |
+| **Expected Dialogue Rounds** | 1-2 rounds (confirm candidate set) |
+| **Agents Activated** | 2 (Biblio + Verification, retrieval + compact extract) |
+| **Time Required** | Low-Medium |
+
+**Trigger Examples**:
+```
+"Compare these papers in WHY/HOW/WHAT format"
+"Quick 3W scan of recent LLM-evaluation papers"
+"Which of these should I read first?"
 ```
 
 ---
