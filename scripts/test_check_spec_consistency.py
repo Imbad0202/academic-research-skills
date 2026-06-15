@@ -26,13 +26,13 @@ JA_README_TEMPLATE = """\
 
 ## クイックスタート
 
-#### Deep Research（7 モード）
+#### Deep Research（8 モード）
 - outline-only モード
 - abstract-only モード
 - disclosure モード
 - review モード
 
-#### Academic Paper（10 モード）
+#### Academic Paper（11 モード）
 
 #### Academic Paper Reviewer（6 モード）
 - calibration モード
@@ -96,10 +96,10 @@ ZH_CN_README_TEMPLATE = """\
 
 [![Version](https://img.shields.io/badge/version-v{ver}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{ver})
 
-#### Deep Research（深度研究，7 种模式）
+#### Deep Research（深度研究，8 种模式）
 - review mode
 
-#### Academic Paper（学术论文撰写，10 种模式）
+#### Academic Paper（学术论文撰写，11 种模式）
 - outline-only mode
 - abstract-only mode
 - disclosure mode
@@ -163,10 +163,10 @@ ZH_TW_README_TEMPLATE = """\
 
 [![Version](https://img.shields.io/badge/version-v{ver}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{ver})
 
-#### Deep Research（深度研究，7 種模式）
+#### Deep Research（深度研究，8 種模式）
 - review mode
 
-#### Academic Paper（學術論文撰寫，10 種模式）
+#### Academic Paper（學術論文撰寫，11 種模式）
 - outline-only mode
 - abstract-only mode
 - disclosure mode
@@ -240,7 +240,7 @@ class TestReadmeJaSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ja_readme(root, version="3.12.0")
+            _write_ja_readme(root, version="3.12.1")
 
             csc.check_readme_ja_sections()
 
@@ -260,17 +260,17 @@ class TestReadmeJaSections(unittest.TestCase):
             # Write the "current" v3.9.4.2 release block but downgrade only
             # the badge and tag link to v3.9.4.0. This is the realistic shape
             # of drift when one place gets forgotten during a release.
-            stale = JA_README_TEMPLATE.format(ver="3.12.0").replace(
-                "version-v3.12.0-blue", "version-v3.9.4.0-blue"
+            stale = JA_README_TEMPLATE.format(ver="3.12.1").replace(
+                "version-v3.12.1-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.12.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.12.1", "releases/tag/v3.9.4.0"
             )
             (root / "README.ja-JP.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ja_sections()
 
             self.assertTrue(
-                any("README.ja-JP.md" in e and "v3.12.0" in e for e in csc.ERRORS),
+                any("README.ja-JP.md" in e and "v3.12.1" in e for e in csc.ERRORS),
                 msg=f"expected ja-JP drift error in: {csc.ERRORS!r}",
             )
 
@@ -296,8 +296,8 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.12.0")
-            _write_zh_cn_readme(root, version="3.12.0")
+            _write_zh_tw_readme(root, version="3.12.1")
+            _write_zh_cn_readme(root, version="3.12.1")
 
             csc.check_readme_zh_sections()
 
@@ -313,18 +313,18 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.12.0")
-            stale = ZH_CN_README_TEMPLATE.format(ver="3.12.0").replace(
-                "version-v3.12.0-blue", "version-v3.9.4.0-blue"
+            _write_zh_tw_readme(root, version="3.12.1")
+            stale = ZH_CN_README_TEMPLATE.format(ver="3.12.1").replace(
+                "version-v3.12.1-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.12.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.12.1", "releases/tag/v3.9.4.0"
             )
             (root / "README.zh-CN.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_zh_sections()
 
             self.assertTrue(
-                any("README.zh-CN.md" in e and "v3.12.0" in e for e in csc.ERRORS),
+                any("README.zh-CN.md" in e and "v3.12.1" in e for e in csc.ERRORS),
                 msg=f"expected zh-CN drift error in: {csc.ERRORS!r}",
             )
 
