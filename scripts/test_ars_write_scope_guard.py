@@ -83,6 +83,15 @@ def payload(tool_name, tool_input, cwd, agent_type=None, agent_id=None):
     return p
 
 
+def symlink_or_skip(testcase, target, link_name):
+    try:
+        os.symlink(target, link_name)
+    except (OSError, NotImplementedError) as exc:
+        if getattr(exc, "winerror", None) == 1314:
+            testcase.skipTest("Windows symlink privilege is not available")
+        raise
+
+
 class WriteScopeGuardTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -403,7 +412,11 @@ class NormalizationRegressionTest(unittest.TestCase):
         # A symlinked dir + `../` must resolve through the symlink (realpath), not be
         # lexically collapsed by abspath. Build: ws/link -> ws/phase2_investigation, then
         # write link/../hooks/hooks.json. realpath resolves link first => ws/hooks/hooks.json.
-        os.symlink(os.path.join(self.ws, "phase2_investigation"), os.path.join(self.ws, "link"))
+        symlink_or_skip(
+            self,
+            os.path.join(self.ws, "phase2_investigation"),
+            os.path.join(self.ws, "link"),
+        )
         raw = os.path.join(self.ws, "link/../hooks/hooks.json")
         p = payload("Write", {"file_path": raw, "content": "x"},
                     cwd=self.ws, agent_type="bibliography_agent")
@@ -416,7 +429,7 @@ class NormalizationRegressionTest(unittest.TestCase):
         # approved on its lexical in-workspace name.
         outside = tempfile.mkdtemp()
         try:
-            os.symlink(outside, os.path.join(self.ws, "exit"))
+            symlink_or_skip(self, outside, os.path.join(self.ws, "exit"))
             raw = os.path.join(self.ws, "exit/leak.md")
             p = payload("Write", {"file_path": raw, "content": "x"},
                         cwd=self.ws, agent_type="bibliography_agent")

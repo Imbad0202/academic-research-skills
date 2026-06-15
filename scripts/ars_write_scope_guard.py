@@ -185,7 +185,8 @@ def _matches_any(rel_path, globs):
                     workspace root, the INFRA list carries both `**/name` and the bare
                     `name` (a deny-list, so widening is safe — see INFRA_PROTECTED_GLOBS).
     """
-    segs = [s for s in rel_path.split(os.sep) if s not in ("", ".")]
+    normalized_rel = rel_path.replace("\\", "/")
+    segs = [s for s in normalized_rel.split("/") if s not in ("", ".")]
     for g in globs:
         pat = [s for s in g.split("/") if s != ""]
         if _match_segments(segs, pat):
