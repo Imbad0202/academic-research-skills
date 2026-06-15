@@ -826,5 +826,48 @@ class TestSuiteSkillDateSanity(unittest.TestCase):
             )
 
 
+class RebuttalAuditGuardTest(unittest.TestCase):
+    """check_rebuttal_audit_guard() must enforce the integrity-boundary language
+    in the academic-paper Rebuttal-Audit Mode section. Mutation tests prove the
+    guard actually fails when the suppression language is dropped — otherwise the
+    check would be a vacuous pass that lets the false-certification risk back in."""
+
+    _GOOD = (
+        "## Rebuttal-Audit Mode\n\n"
+        "Advisory QA of an existing rebuttal draft.\n\n"
+        "**IRON RULE:** standalone, so it MUST NOT emit a Schema 11 ledger, "
+        "MUST NOT write the Material Passport, and MUST NOT mark ready_to_submit.\n\n"
+        "## Next Section\n"
+    )
+
+    def _run_guard_with(self, skill_text: str) -> list:
+        orig_read = csc.read
+        csc.ERRORS.clear()
+        try:
+            csc.read = lambda rel: skill_text if rel == "academic-paper/SKILL.md" else orig_read(rel)
+            csc.check_rebuttal_audit_guard()
+            return list(csc.ERRORS)
+        finally:
+            csc.read = orig_read
+            csc.ERRORS.clear()
+
+    def test_guard_passes_with_full_suppression_language(self) -> None:
+        self.assertEqual(self._run_guard_with(self._GOOD), [])
+
+    def test_guard_fails_when_section_missing(self) -> None:
+        errs = self._run_guard_with("## Some Other Mode\n\nno rebuttal section here\n")
+        self.assertTrue(any("missing" in e and "Rebuttal-Audit" in e for e in errs), errs)
+
+    def test_guard_fails_when_schema11_suppression_dropped(self) -> None:
+        mutated = self._GOOD.replace("Schema 11", "the tracker")
+        errs = self._run_guard_with(mutated)
+        self.assertTrue(any("Schema 11" in e for e in errs), errs)
+
+    def test_guard_fails_when_must_not_dropped(self) -> None:
+        mutated = self._GOOD.replace("MUST NOT", "should avoid")
+        errs = self._run_guard_with(mutated)
+        self.assertTrue(any("MUST NOT" in e for e in errs), errs)
+
+
 if __name__ == "__main__":
     unittest.main()

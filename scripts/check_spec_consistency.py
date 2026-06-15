@@ -599,6 +599,34 @@ def check_reference_docs() -> None:
     )
 
 
+def check_rebuttal_audit_guard() -> None:
+    """The rebuttal-audit mode section must declare its integrity boundary.
+
+    A standalone rebuttal-audit invocation runs outside the pipeline, so it must
+    NOT emit Schema 11 / Material Passport / ready_to_submit. This guard is the
+    load-bearing reason rebuttal-audit is safe to ship as a mode rather than a
+    pipeline stage; if the suppression language is ever dropped, the mode would
+    silently re-introduce the false-certification risk it was designed to avoid.
+    """
+    text = read("academic-paper/SKILL.md")
+    m = re.search(r"##\s*Rebuttal-Audit Mode.*?(?=\n##\s|\Z)", text, re.DOTALL)
+    section = m.group(0) if m else ""
+    if not section:
+        fail("academic-paper/SKILL.md: missing '## Rebuttal-Audit Mode' section")
+        return
+    for kw in ["Schema 11", "Material Passport", "ready_to_submit"]:
+        if kw not in section:
+            fail(
+                f"academic-paper/SKILL.md Rebuttal-Audit Mode section must declare "
+                f"{kw!r} suppression (integrity boundary)"
+            )
+    if "MUST NOT" not in section:
+        fail(
+            "academic-paper/SKILL.md Rebuttal-Audit Mode section lacks an explicit "
+            "'MUST NOT' suppression statement"
+        )
+
+
 def main() -> int:
     check_mode_registry()
     check_claude_md()
@@ -612,6 +640,7 @@ def main() -> int:
     check_setup_docs()
     check_docx_contract()
     check_reference_docs()
+    check_rebuttal_audit_guard()
 
     if ERRORS:
         print("Spec consistency check failed:")
