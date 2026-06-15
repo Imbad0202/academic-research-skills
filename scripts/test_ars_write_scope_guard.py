@@ -86,6 +86,18 @@ def payload(tool_name, tool_input, cwd, agent_type=None, agent_id=None):
     return p
 
 
+def symlink_or_skip(testcase, target, link_name):
+    """os.symlink, but skip the test on a Windows host without symlink privilege
+    (WinError 1314) instead of failing — the symlink-resolution tests are about realpath
+    behavior, not about whether the CI host granted SeCreateSymbolicLinkPrivilege."""
+    try:
+        os.symlink(target, link_name)
+    except (OSError, NotImplementedError) as exc:
+        if getattr(exc, "winerror", None) == 1314:
+            testcase.skipTest("Windows symlink privilege is not available")
+        raise
+
+
 class WriteScopeGuardTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -340,6 +352,17 @@ class GlobMatchBoundaryTest(unittest.TestCase):
         for rel, globs in self.NEGATIVE:
             self.assertFalse(guard._matches_any(rel, globs), f"{rel} should NOT match {globs}")
 
+    @unittest.skipIf(os.sep == "\\", "POSIX-only: `\\` is a path separator on Windows")
+    def test_posix_literal_backslash_in_filename_not_split_into_segments(self):
+        # On POSIX, `\` is a LEGAL filename character, NOT a separator. A root-level file
+        # literally named `phase2_x\notes.md` is ONE segment and must NOT be rewritten into
+        # two segments and matched against `phase2_*/**` — that would be a fence-escape
+        # false-allow. (#330 PR #450's unconditional `replace("\\","/")` had this bug; the
+        # rewrite is now gated on os.sep == "\\". This test pins the POSIX no-op.)
+        self.assertFalse(
+            guard._matches_any("phase2_x\\notes.md", ["phase2_*/**"]),
+            "a literal backslash in a POSIX filename must not be treated as a path separator")
+
 
 class DenyJSONShapeTest(unittest.TestCase):
     """The deny output JSON shape (spec §3.2 first-party-verified)."""
@@ -412,7 +435,8 @@ class NormalizationRegressionTest(unittest.TestCase):
         # A symlinked dir + `../` must resolve through the symlink (realpath), not be
         # lexically collapsed by abspath. Build: ws/link -> ws/phase2_investigation, then
         # write link/../hooks/hooks.json. realpath resolves link first => ws/hooks/hooks.json.
-        os.symlink(os.path.join(self.ws, "phase2_investigation"), os.path.join(self.ws, "link"))
+        symlink_or_skip(self, os.path.join(self.ws, "phase2_investigation"),
+                        os.path.join(self.ws, "link"))
         raw = os.path.join(self.ws, "link/../hooks/hooks.json")
         p = payload("Write", {"file_path": raw, "content": "x"},
                     cwd=self.ws, agent_type="bibliography_agent")
@@ -425,7 +449,7 @@ class NormalizationRegressionTest(unittest.TestCase):
         # approved on its lexical in-workspace name.
         outside = tempfile.mkdtemp()
         try:
-            os.symlink(outside, os.path.join(self.ws, "exit"))
+            symlink_or_skip(self, outside, os.path.join(self.ws, "exit"))
             raw = os.path.join(self.ws, "exit/leak.md")
             p = payload("Write", {"file_path": raw, "content": "x"},
                         cwd=self.ws, agent_type="bibliography_agent")
@@ -676,10 +700,7 @@ class PluginRootInfraScopeTest(unittest.TestCase):
         os.makedirs(os.path.dirname(target), exist_ok=True)
         with open(target, "w") as fh:
             fh.write("# real guard\n")
-        try:
-            os.symlink(target, link)
-        except (OSError, NotImplementedError):
-            self.skipTest("symlinks unsupported on this platform")
+        symlink_or_skip(self, target, link)
         p = payload("Write", {"file_path": link, "content": "x"}, cwd=self.ws)  # main session
         self.assertEqual(self.decide_in_project(p)["decision"], "deny")
 

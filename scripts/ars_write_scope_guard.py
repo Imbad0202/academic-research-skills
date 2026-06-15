@@ -191,7 +191,16 @@ def _matches_any(rel_path, globs):
                     workspace root, the INFRA list carries both `**/name` and the bare
                     `name` (a deny-list, so widening is safe — see INFRA_PROTECTED_GLOBS).
     """
-    segs = [s for s in rel_path.split(os.sep) if s not in ("", ".")]
+    # Glob patterns are authored with `/`; segment-split the path on the same separator.
+    # On Windows, rel_path (from os.path.relpath) uses `\`, so normalize `\` -> `/` THERE.
+    # On POSIX this MUST stay a no-op: `\` is a LEGAL filename character, so an
+    # unconditional replace would rewrite a root-level file literally named
+    # `phase2_x\notes.md` (one segment) into `phase2_x/notes.md` (two segments) and let it
+    # masquerade as the `phase2_*` dir — a fence-escape false-allow (#330 PR #450 caught by
+    # cross-model review). Gate on os.sep so the rewrite only fires where `\` is a separator.
+    if os.sep == "\\":
+        rel_path = rel_path.replace("\\", "/")
+    segs = [s for s in rel_path.split("/") if s not in ("", ".")]
     for g in globs:
         pat = [s for s in g.split("/") if s != ""]
         if _match_segments(segs, pat):
