@@ -25,6 +25,10 @@ User Input →
 │       └── No ──────────────────────────→ full mode (Phase 0 will conduct an interview)
 │
 ├── Have an existing paper to revise? ──────────────────────→ revision mode
+├── Have reviewer comments to handle?
+│   ├── Comments only, no response written yet ──────────→ revision-coach mode
+│   └── Comments + an existing rebuttal/response draft ──→ rebuttal-audit mode
+├── Need an AI-usage disclosure statement? ─────────────────→ disclosure mode
 ├── Just need format conversion? ────────────────────────→ format-convert mode
 └── Just need a citation check? ────────────────────────→ citation-check mode
 ```
@@ -177,6 +181,63 @@ User Input →
 
 ---
 
+### revision-coach mode — Reviewer-Comment Triage
+
+**Applicable Scenarios**:
+- Received reviewer comments / a decision letter and need them parsed into a structured plan
+- Want a Revision Roadmap that classifies, maps, and prioritizes each comment
+- Need a Response Letter Skeleton to start drafting replies
+- Deciding whether to address or push back on a comment (disagreement posture)
+- Non-journal scopes: conference rebuttal, grant-panel response, transfer-after-review
+
+**Not Applicable When**:
+- Already have a written rebuttal/response draft you want QA'd (→ rebuttal-audit mode)
+- The paper itself needs rewriting based on the comments (→ revision mode)
+
+**Expected Output**: Revision Roadmap + optional Tracking Template + Response Letter Skeleton
+**Expected Duration**: Short-Medium
+**Agents Used**: revision_coach_agent used standalone (no prior pipeline execution required)
+
+---
+
+### disclosure mode — AI-Usage Disclosure Statement
+
+**Applicable Scenarios**:
+- Paper is drafted and you need a venue-specific AI-usage disclosure paragraph
+- Submitting to a venue with a defined AI-disclosure policy (ICLR, NeurIPS, Nature, Science, ACL, EMNLP)
+- Need placement guidance for where the statement goes in the manuscript
+
+**Not Applicable When**:
+- No paper drafted yet — disclosure is a finishing step (→ full mode first)
+- The venue is not in the policy database (confirm the venue's current policy manually)
+
+**Expected Output**: Venue-specific AI-usage disclosure paragraph(s) + placement instructions
+**Expected Duration**: Short
+**Agents Used**: disclosure protocol used standalone (venue policy database lookup)
+
+---
+
+### rebuttal-audit mode — Rebuttal-Draft QA
+
+**Applicable Scenarios**:
+- You already wrote a rebuttal/response-to-reviewers draft and want it checked before sending
+- Need a per-comment coverage table (which reviewer concerns the draft addresses, partially addresses, or misses)
+- Want risk flags for tone (too combative), unsupported claims, or a response that misreads the reviewer's point
+
+**Not Applicable When**:
+- You have reviewer comments but have **not** written a response yet (→ revision-coach mode, which *generates* a skeleton)
+- The manuscript itself needs revising (→ revision mode)
+
+**Input gate**: requires BOTH (a) the reviewer comments / decision letter AND (b) an existing rebuttal draft. Comments only → route to revision-coach. If intent is ambiguous, clarify rather than guess.
+
+**Expected Output**: Advisory QA report — per-comment coverage + gap list + risk flags. Generates no new response.
+**Expected Duration**: Short
+**Agents Used**: revision_coach_agent's comment-parsing capability, run standalone (advisory)
+
+**Integrity boundary**: a standalone invocation runs **outside** the pipeline, so rebuttal-audit does **not** emit a Schema 11 ledger, does **not** write the Material Passport, and does **not** mark anything `ready_to_submit` or verified. The output is advisory QA only.
+
+---
+
 ## Paths from deep-research
 
 ```
@@ -247,6 +308,9 @@ academic-paper completed
 | Completed paper | Abstract | abstract-only mode |
 | Completed paper | Format conversion | format-convert mode |
 | Completed paper | Citation check | citation-check mode |
+| Reviewer comments (no response yet) | Parse + roadmap + reply skeleton | revision-coach mode |
+| Reviewer comments + a written rebuttal draft | QA the draft before sending | rebuttal-audit mode |
+| Drafted paper + target venue | AI-usage disclosure statement | disclosure mode |
 
 ---
 
@@ -294,4 +358,10 @@ Before conversion, ALL of the following must be true:
 "I got reviewer comments"               -> revision-coach
 "parse these reviews"                    -> revision-coach
 "help me with my revision"              -> revision-coach
+"should we push back on reviewer 2"     -> revision-coach
+"conference rebuttal" / "grant response" -> revision-coach
+"audit my rebuttal draft"               -> rebuttal-audit (needs comments + an existing draft)
+"did I miss any reviewer comment"       -> rebuttal-audit
+"AI disclosure for Nature"              -> disclosure
+"generate an AI usage statement"        -> disclosure
 ```
