@@ -68,3 +68,25 @@ def test_unparseable_text_defaults_closed_to_not_searched():
 def test_empty_response_is_not_searched():
     mod = _load()
     assert mod.normalize_compat_verdict("")["status"] == "NOT_SEARCHED"
+
+
+def test_lowercase_rejection_token_passes_through():
+    """The matcher is case-insensitive by design (models may not uppercase). Pin that a
+    lowercase rejection token still survives as a disagreement, not silently dropped."""
+    mod = _load()
+    assert mod.normalize_compat_verdict("not_found — no such record")["status"] == "NOT_FOUND"
+
+
+def test_none_input_fails_closed():
+    """None must not raise (the `raw or ''` guard); it fails closed to NOT_SEARCHED."""
+    mod = _load()
+    assert mod.normalize_compat_verdict(None)["status"] == "NOT_SEARCHED"
+
+
+def test_verified_first_then_rejection_fails_closed():
+    """SECURITY: a response that LEADS with VERIFIED but later mentions a rejection token
+    must fail closed to NOT_SEARCHED (leftmost-of-all-four precedence), never pass through
+    as a disagreement. This pins the position-based precedence the security contract needs."""
+    mod = _load()
+    assert mod.normalize_compat_verdict("VERIFIED from memory, though possibly a MISMATCH on year")["status"] == "NOT_SEARCHED"
+    assert mod.normalize_compat_verdict("VERIFIED. NOT_FOUND in my training data.")["status"] == "NOT_SEARCHED"
