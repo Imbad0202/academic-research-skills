@@ -33,3 +33,21 @@ def normalize_compat_verdict(raw: str) -> dict:
     # recognizable token all fail closed to NOT_SEARCHED.
     status = token if token in _PASS_THROUGH else "NOT_SEARCHED"
     return {"status": status, "context": raw}
+
+
+def _main() -> int:
+    import sys, json
+    raw = sys.stdin.read()
+    result = normalize_compat_verdict(raw)
+    # Single-line JSON: the consumer reads .status; raw text lives JSON-escaped in .context
+    # where embedded newlines become literal \n and cannot inject a second status line.
+    print(json.dumps({
+        "status": result["status"],
+        "provider": "openai_compatible",
+        "context": result["context"],
+    }, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(_main())

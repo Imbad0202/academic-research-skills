@@ -110,13 +110,16 @@ def test_lint_fails_on_double_quoted_inline_grounding_jq(tmp_path, monkeypatch):
 
 # --- #453 narrowed regression checks (Task 5) ------------------------------------------------
 
-def test_lint_fails_if_compat_drops_not_searched_in_bash(tmp_path, monkeypatch):
-    """The compatible block's executable bash must keep a NOT_SEARCHED fail-closed default.
-    Mutate the fail-closed branch so the block no longer references NOT_SEARCHED there."""
+def test_lint_fails_if_compat_drops_normalizer_invocation(tmp_path, monkeypatch):
+    """(#453) The compatible block must INVOKE normalize_compat_verdict.py (check 8 wiring).
+    Mutate the canonical-unit invocation away — re-implementing verdict logic inline instead of
+    calling the behavior-tested unit must fail the lint. This single test replaces the three
+    removed check-5 tests (drops-NOT_SEARCHED / precedence-rejection-only / block-identifier-lost),
+    which all pinned the now-deleted inline `case`/`grep` precedence logic."""
     _assert_lint_fails_on_mutation(
         tmp_path, monkeypatch,
-        'status="NOT_SEARCHED" ;;  # VERIFIED downgrade',
-        'status="OK" ;;  # VERIFIED downgrade',
+        'printf \'%s\' "$text" | python3 "$GUARD/normalize_compat_verdict.py"',
+        'first="$(printf \'%s\' "$text" | grep -oiE \'(NOT_FOUND|MISMATCH)\' | head -1)"',
     )
 
 
@@ -136,18 +139,6 @@ def test_lint_fails_if_double_v1_reintroduced(tmp_path, monkeypatch):
         tmp_path, monkeypatch,
         'endpoint="${ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions"',
         'endpoint="${ARS_OPENAI_COMPAT_BASE_URL%/}/v1/v1/chat/completions"',
-    )
-
-
-def test_lint_fails_if_compat_precedence_becomes_rejection_only(tmp_path, monkeypatch):
-    """The compatible normalization must scan the leftmost of ALL FOUR tokens (parity with
-    normalize_compat_verdict.py). Mutate the four-token scan into a rejection-only grep and
-    the lint must reject it — a VERIFIED-led ramble would otherwise pass through as a
-    disagreement instead of failing closed."""
-    _assert_lint_fails_on_mutation(
-        tmp_path, monkeypatch,
-        "grep -oiE '\\b(VERIFIED|NOT_FOUND|MISMATCH|NOT_SEARCHED)\\b'",
-        "grep -oiE '\\b(NOT_FOUND|MISMATCH)\\b'",
     )
 
 
@@ -188,11 +179,3 @@ def test_bash_blocks_includes_unterminated_final_block():
     )
 
 
-def test_lint_fails_if_compat_block_identifier_lost(tmp_path, monkeypatch):
-    """If the compatible block can't be located by its endpoint identifier but the compatible
-    path is present, the lint must fail loudly rather than skip the NOT_SEARCHED check."""
-    _assert_lint_fails_on_mutation(
-        tmp_path, monkeypatch,
-        'endpoint="${ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions"',
-        'endpoint="$(build_compat_endpoint)"',  # still openai_compatible present elsewhere, but identifier gone
-    )

@@ -90,8 +90,9 @@ def _bash_blocks(text: str) -> list[list[str]]:
             if code.strip():
                 current.append(code)
     # An unterminated trailing ```bash block (no closing fence at EOF) must still be scanned —
-    # otherwise its lines silently drop, which is fail-OPEN for checks 4/5/7/8 (a re-inlined guard
-    # or a passive OPENAI_BASE_URL in the final block would escape the lint). Flush it here.
+    # otherwise its lines silently drop, which is fail-OPEN for checks 4/6/7/8 (a re-inlined guard,
+    # a passive OPENAI_BASE_URL, or a missing normalizer invocation in the final block would escape
+    # the lint). Flush it here.
     if current is not None:
         blocks.append(current)
     return blocks
@@ -174,36 +175,11 @@ def main() -> int:
                 f"`jq -f` instead so the guard stays behavior-tested"
             )
 
-    # 5. (#453) The compatible block keeps its NOT_SEARCHED fail-closed DEFAULT branch.
-    #    Scoped to the compatible block (identified by the unique ARS_OPENAI_COMPAT_BASE_URL
-    #    endpoint line), not the whole doc: NOT_SEARCHED legitimately appears in several blocks
-    #    (the OpenAI/Gemini `echo NOT_SEARCHED` paths, the grep token list), so a global presence
-    #    check would be vacuous — it could never be tripped by breaking just this block's
-    #    fail-closed default. We pin the actual contract: a wildcard `*)` case branch whose status
-    #    assignment is NOT_SEARCHED (the ungrounded-VERIFIED downgrade / fail-closed path).
-    compat_blocks = [
-        b for b in _bash_blocks(text)
-        if any("ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions" in ln for ln in b)
-    ]
-    compat_code = "\n".join(ln for b in compat_blocks for ln in b)
-    # Anti-vacuity: if the compatible PATH is present (the detection block emits
-    # CROSS_MODEL_AVAILABLE=openai_compatible) but we can't locate the compatible CALL block by its
-    # endpoint identifier, the NOT_SEARCHED-default check below would silently skip. Fail loudly
-    # instead — "I expected to find the compat block to check it, and couldn't" — so a reword of the
-    # endpoint line can't turn this guard vacuous.
-    if "openai_compatible" in bash_code and not compat_blocks:
-        failures.append(
-            "compatible path is present (openai_compatible) but the lint could not locate the "
-            "compatible call block by its endpoint identifier — the check that pins the "
-            "NOT_SEARCHED fail-closed default cannot run; keep the "
-            "`ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions` endpoint line so the guard stays live"
-        )
-    if compat_code and not re.search(r"\*\)\s*status=\"NOT_SEARCHED\"", compat_code):
-        failures.append(
-            "compatible block lost its NOT_SEARCHED fail-closed default branch "
-            "(the `*) status=\"NOT_SEARCHED\"` case): an ungrounded VERIFIED (or any "
-            "non-rejection / empty match) must downgrade to NOT_SEARCHED, not pass through"
-        )
+    # 5. (#453) REMOVED. The compatible block no longer re-implements verdict precedence /
+    #    fail-closed defaulting inline — it INVOKES the canonical normalize_compat_verdict.py
+    #    (check 8 below pins the wiring; the unit's behavioral tests pin the fail-closed contract).
+    #    The old check 5 pinned an inline `*) status="NOT_SEARCHED"` case that no longer exists, so
+    #    keeping it would either fail-vacuously or false-fail. Its intent now lives in check 8.
 
     # 6. (#453) No passive OPENAI_BASE_URL assignment/expansion in executable bash (prose is fine).
     #    Target assignment (`OPENAI_BASE_URL=`) and expansion (`${OPENAI_BASE_URL`/`$OPENAI_BASE_URL`),
@@ -227,19 +203,17 @@ def main() -> int:
             "require ARS_OPENAI_COMPAT_BASE_URL"
         )
 
-    # 8. (#453) Verdict precedence parity with the canonical Python unit: the compatible
-    #    normalization must scan the LEFTMOST of all four tokens, not grep only for rejection
-    #    tokens. A rejection-only grep diverges from normalize_compat_verdict.py (a ramble
-    #    leading with VERIFIED that later says MISMATCH would wrongly pass through as a
-    #    disagreement instead of failing closed).
+    # 8. (#453) The compatible block must INVOKE the canonical normalizer rather than re-implement
+    #    verdict precedence in bash. (Earlier inline bash re-implemented leftmost-of-four precedence
+    #    and risked a head->tail regression + a raw-text injection of a second STATUS line; calling
+    #    the behavior-tested Python unit, which emits single-line JSON, removes both.)
     if "openai_compatible" in bash_code and not re.search(
-        r"VERIFIED\|NOT_FOUND\|MISMATCH\|NOT_SEARCHED", bash_code
+        r"python3?\s+\S*normalize_compat_verdict\.py", bash_code
     ):
         failures.append(
-            "compatible normalization must scan the leftmost of all four verdict tokens "
-            "(VERIFIED|NOT_FOUND|MISMATCH|NOT_SEARCHED) to match normalize_compat_verdict.py; "
-            "a rejection-only grep diverges and can pass an ungrounded VERIFIED-led response "
-            "through as a disagreement"
+            "compatible path present but the bash does not invoke "
+            "normalize_compat_verdict.py — verdict normalization must call the canonical, "
+            "behavior-tested unit (which emits single-line JSON), not re-implement precedence in bash"
         )
 
     if failures:
