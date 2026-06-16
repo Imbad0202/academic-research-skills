@@ -166,3 +166,33 @@ def test_lint_allows_openai_base_url_in_prose(tmp_path, monkeypatch):
     fake.write_text(injected, encoding="utf-8")
     monkeypatch.setattr(mod, "DOC", fake)
     assert mod.main() == 0
+
+
+# --- Defensive hardenings against future silent-vacuity (Task 5 follow-up) -------------------
+
+def test_bash_blocks_includes_unterminated_final_block():
+    """An unterminated trailing ```bash block must still be scanned (fail-closed parsing).
+
+    Directly exercises `_bash_blocks`: without the EOF flush, a final block with no closing fence
+    silently drops — fail-OPEN for the bash-scanning checks. We assert the OPENAI_BASE_URL
+    expansion inside the unterminated block is recovered, so a downstream check could see it.
+    (A whole-doc main()==1 assertion would be vacuously green here — a minimal synthetic doc fails
+    for unrelated reasons like missing filters — so we pin the parse contract, not the exit code.)"""
+    mod = _load_lint()
+    text = 'intro\n\n```bash\nendpoint="${OPENAI_BASE_URL:-x}/chat/completions"\n'  # no closing fence
+    blocks = mod._bash_blocks(text)
+    recovered = [ln for b in blocks for ln in b]
+    assert any("OPENAI_BASE_URL" in ln for ln in recovered), (
+        "unterminated final ```bash block was dropped — its OPENAI_BASE_URL expansion would "
+        f"escape the bash-scanning checks (fail-OPEN). Recovered lines: {recovered!r}"
+    )
+
+
+def test_lint_fails_if_compat_block_identifier_lost(tmp_path, monkeypatch):
+    """If the compatible block can't be located by its endpoint identifier but the compatible
+    path is present, the lint must fail loudly rather than skip the NOT_SEARCHED check."""
+    _assert_lint_fails_on_mutation(
+        tmp_path, monkeypatch,
+        'endpoint="${ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions"',
+        'endpoint="$(build_compat_endpoint)"',  # still openai_compatible present elsewhere, but identifier gone
+    )

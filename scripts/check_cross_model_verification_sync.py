@@ -89,6 +89,11 @@ def _bash_blocks(text: str) -> list[list[str]]:
             code = _strip_trailing_comment(raw)
             if code.strip():
                 current.append(code)
+    # An unterminated trailing ```bash block (no closing fence at EOF) must still be scanned —
+    # otherwise its lines silently drop, which is fail-OPEN for checks 4/5/7/8 (a re-inlined guard
+    # or a passive OPENAI_BASE_URL in the final block would escape the lint). Flush it here.
+    if current is not None:
+        blocks.append(current)
     return blocks
 
 
@@ -181,6 +186,18 @@ def main() -> int:
         if any("ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions" in ln for ln in b)
     ]
     compat_code = "\n".join(ln for b in compat_blocks for ln in b)
+    # Anti-vacuity: if the compatible PATH is present (the detection block emits
+    # CROSS_MODEL_AVAILABLE=openai_compatible) but we can't locate the compatible CALL block by its
+    # endpoint identifier, the NOT_SEARCHED-default check below would silently skip. Fail loudly
+    # instead — "I expected to find the compat block to check it, and couldn't" — so a reword of the
+    # endpoint line can't turn this guard vacuous.
+    if "openai_compatible" in bash_code and not compat_blocks:
+        failures.append(
+            "compatible path is present (openai_compatible) but the lint could not locate the "
+            "compatible call block by its endpoint identifier — the check that pins the "
+            "NOT_SEARCHED fail-closed default cannot run; keep the "
+            "`ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions` endpoint line so the guard stays live"
+        )
     if compat_code and not re.search(r"\*\)\s*status=\"NOT_SEARCHED\"", compat_code):
         failures.append(
             "compatible block lost its NOT_SEARCHED fail-closed default branch "
