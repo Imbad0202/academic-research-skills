@@ -189,6 +189,10 @@ id = "346-349-cross-model-sync-lint"
 path = "scripts/test_check_cross_model_verification_sync.py"
 
 [[pytest]]
+id = "453-compat-verdict-normalization"
+path = "scripts/test_normalize_compat_verdict.py"
+
+[[pytest]]
 id = "361-judge-prompt-version-drift"
 path = "scripts/test_check_judge_prompt_version.py"
 
