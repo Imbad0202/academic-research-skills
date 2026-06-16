@@ -274,15 +274,31 @@ if ! command -v jq &>/dev/null; then
 fi
 
 if [ -n "$ARS_CROSS_MODEL" ]; then
+  # PRECEDENCE: a recognized first-party model id ALWAYS takes the grounded route, even if
+  # ARS_OPENAI_COMPAT_BASE_URL is set. This prevents a grounded->ungrounded downgrade. The
+  # compatible path is reachable only for a model id that matches no first-party prefix, and
+  # only when its dedicated opt-in env vars are both present. OPENAI_BASE_URL is never read.
   case "$ARS_CROSS_MODEL" in
-    gpt-5.5*|gpt-5.4*) 
+    gpt-5.5*|gpt-5.4*)
       [ -n "$OPENAI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=openai" \
         || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but OPENAI_API_KEY is not set" ;;
-    gemini*) 
+    gemini*)
       [ -n "$GOOGLE_AI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=google" \
         || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but GOOGLE_AI_API_KEY is not set" ;;
-    *) echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a supported model. Supported: gpt-5.5, gpt-5.5-pro, gemini-3.1-pro-preview (legacy gpt-5.4* accepted)"
-       echo "CROSS_MODEL_AVAILABLE=none" ;;
+    *)
+      # Unrecognized id: only an explicit, credential-isolated opt-in enables the ungrounded
+      # OpenAI-compatible path. Both the base URL AND the dedicated key are required; the
+      # standard OPENAI_API_KEY is NEVER sent to a third-party endpoint (see Credential
+      # isolation in the API Call Patterns section).
+      if [ -n "$ARS_OPENAI_COMPAT_BASE_URL" ] && [ -n "$ARS_OPENAI_COMPAT_API_KEY" ]; then
+        echo "CROSS_MODEL_AVAILABLE=openai_compatible"
+      elif [ -n "$ARS_OPENAI_COMPAT_BASE_URL" ]; then
+        echo "WARNING: ARS_OPENAI_COMPAT_BASE_URL is set but ARS_OPENAI_COMPAT_API_KEY is not — refusing to send another provider's key. Set ARS_OPENAI_COMPAT_API_KEY."
+        echo "CROSS_MODEL_AVAILABLE=none"
+      else
+        echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a recognized model. First-party: gpt-5.5, gpt-5.5-pro, gemini-3.1-pro-preview (legacy gpt-5.4* accepted). For an OpenAI-compatible provider set ARS_OPENAI_COMPAT_BASE_URL + ARS_OPENAI_COMPAT_API_KEY and use that provider's model id (must not match a gpt-*/gemini-* prefix)."
+        echo "CROSS_MODEL_AVAILABLE=none"
+      fi ;;
   esac
 else
   echo "CROSS_MODEL_AVAILABLE=none"
