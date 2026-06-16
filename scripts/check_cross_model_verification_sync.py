@@ -227,7 +227,16 @@ def main() -> int:
             )
         else:
             compat_code = "\n".join(compat_blocks)
-            if not re.search(r"\|\s*python3?\s+\S*normalize_compat_verdict\.py", compat_code):
+            # Require a PIPE into the canonical normalizer. `(?:-\S+\s+)*` allows interpreter
+            # flags (e.g. `python3 -u .../normalize_compat_verdict.py`). This wiring check proves
+            # the canonical unit is invoked-by-pipe; it does NOT parse bash control flow, so it
+            # cannot catch a contrived block that pipes to the normalizer, discards its output,
+            # and re-derives status in bash. That residual is out of scope by design — the real
+            # output contract is carried by the behavioral tests on the JSON-emitting unit; a
+            # determined wrong rewrite is a code-review concern, not a static-lint one.
+            if not re.search(
+                r"\|\s*python3?\s+(?:-\S+\s+)*\S*normalize_compat_verdict\.py", compat_code
+            ):
                 failures.append(
                     "the compatible block must pipe the model text into "
                     "normalize_compat_verdict.py (`... | python3 .../normalize_compat_verdict.py`); "
