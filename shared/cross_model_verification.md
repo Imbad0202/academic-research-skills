@@ -262,6 +262,73 @@ fi
 
 > **Why `temperature: 0.1`:** reference existence/metadata checking is a deterministic factual task, so low temperature reduces run-to-run variance in the verdict. It is not a grounding control — the grounding guard above is what enforces an actual lookup.
 
+### OpenAI-Compatible API (MiMo, DeepSeek, self-hosted) — ungrounded
+
+When `CROSS_MODEL_AVAILABLE=openai_compatible`, use the **Chat Completions API** at
+`ARS_OPENAI_COMPAT_BASE_URL`, authenticated with the dedicated `ARS_OPENAI_COMPAT_API_KEY`.
+These providers expose no hosted web-search tool, so there is **no grounding guard**. The
+handler therefore normalizes the verdict: a positive `VERIFIED` is downgraded to
+`NOT_SEARCHED` (an ungrounded confirmation can never count as a grounded agreement), while a
+genuine rejection (`NOT_FOUND` / `MISMATCH`) passes through as a useful disagreement. The raw
+model text is kept only as human-readable context and is **never** placed in a verdict slot
+the agreement counter parses. `PROMPT` holds the single-reference verification prompt from
+step 3.
+
+```bash
+# ARS_OPENAI_COMPAT_BASE_URL is the API root INCLUDING /v1 (e.g. https://api.deepseek.com/v1).
+# Trailing slash is normalized so the endpoint is built exactly once — no double /v1.
+endpoint="${ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions"
+
+resp="$(curl -sS -w '\n%{http_code}' "$endpoint" \
+  -H "Authorization: Bearer $ARS_OPENAI_COMPAT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg model "$ARS_CROSS_MODEL" --arg prompt "$PROMPT" '{
+    model: $model,
+    messages: [
+      {role: "system", content: "You are a citation-verification assistant. If you did not actually perform an external lookup, respond NOT_SEARCHED. Use NOT_FOUND only if you are confident no such record exists; MISMATCH if a field is wrong; VERIFIED only with a source URL/DOI."},
+      {role: "user", content: $prompt}
+    ],
+    temperature: 0.1
+  }')")"
+
+http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
+if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
+  # Transport/API failure (401/429/5xx, or curl's 000) — distinct from NOT_SEARCHED, so the
+  # consumer falls back to single-model (see § Graceful Degradation), never an ungrounded verdict.
+  echo "CROSS-MODEL-ERROR: openai_compatible_http_$http"
+else
+  text="$(jq -r '.choices[0].message.content // empty' <<<"$body")"
+  if [ -z "$text" ]; then
+    echo "CROSS-MODEL-ERROR: openai_compatible_empty_response"
+  else
+    # SELECTIVE NORMALIZATION (canonical logic in scripts/cross_model_verification/
+    # normalize_compat_verdict.py, behavior-tested in test_normalize_compat_verdict.py):
+    #   VERIFIED            -> NOT_SEARCHED   (ungrounded positive can never agree)
+    #   NOT_FOUND/MISMATCH  -> pass through   (useful disagreement; needs no grounding)
+    #   anything else/empty -> NOT_SEARCHED   (fail closed)
+    # Precedence is LEFTMOST-of-all-four (same as the Python regex .search over
+    # VERIFIED|NOT_FOUND|MISMATCH|NOT_SEARCHED), NOT "any rejection token anywhere".
+    # This matters: a ramble that LEADS with VERIFIED but later mentions MISMATCH must
+    # fail closed to NOT_SEARCHED, not pass through as a disagreement. So find the first
+    # token of any kind, then branch — only NOT_FOUND/MISMATCH survive.
+    # The emitted STATUS is the only machine-readable verdict the agreement counter reads;
+    # the raw text below it is human context and must never be parsed for a verdict.
+    first="$(printf '%s' "$text" | grep -oiE '\b(VERIFIED|NOT_FOUND|MISMATCH|NOT_SEARCHED)\b' | head -1 | tr 'a-z' 'A-Z')"
+    case "$first" in
+      NOT_FOUND|MISMATCH) status="$first" ;;   # rejection survives as disagreement
+      *)                  status="NOT_SEARCHED" ;;  # VERIFIED downgrade / self-NOT_SEARCHED / none → fail closed
+    esac
+    printf 'STATUS: %s\nPROVIDER: openai_compatible\nCONTEXT (not a verdict — ignored by agreement counting): %s\n' "$status" "$text"
+  fi
+fi
+```
+
+> **No grounding guard for compatible providers.** The grounding guard (an API-level
+> `web_search_call` / `groundingMetadata` trace) exists only for first-party OpenAI and
+> Gemini. A compatible provider cannot evidence a lookup, so its positive verdicts are
+> downgraded to `NOT_SEARCHED` and never count as agreement. Its rejections survive as
+> disagreements. The grounded-agreement count is computed solely from the `STATUS` line.
+
 ### Detecting Available Models
 
 Agents should check at the start of a verification/review session:
