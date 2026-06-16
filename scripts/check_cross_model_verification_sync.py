@@ -65,6 +65,33 @@ def _strip_trailing_comment(line: str) -> str:
     return line
 
 
+def _bash_blocks(text: str) -> list[list[str]]:
+    """Return per-fence lists of executable bash lines (comments removed).
+
+    Each element is one ```bash … ``` fence's executable lines, with comment-only lines dropped
+    and trailing comments stripped (see `_strip_trailing_comment`). Keeping fences separate lets a
+    check scope itself to a single block (e.g. the compatible-provider block) instead of the whole
+    doc — necessary when a token (`NOT_SEARCHED`) legitimately appears in several blocks but a
+    given contract only binds one of them.
+    """
+    blocks: list[list[str]] = []
+    current: list[str] | None = None
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if current is None and stripped.startswith("```bash"):
+            current = []
+            continue
+        if current is not None and stripped == "```":
+            blocks.append(current)
+            current = None
+            continue
+        if current is not None and not stripped.startswith("#"):
+            code = _strip_trailing_comment(raw)
+            if code.strip():
+                current.append(code)
+    return blocks
+
+
 def _bash_code_lines(text: str) -> list[str]:
     """Return the executable lines inside ```bash fenced blocks, comments removed.
 
@@ -74,19 +101,8 @@ def _bash_code_lines(text: str) -> list[str]:
     doc loading that filter via `jq -f`.
     """
     lines: list[str] = []
-    in_block = False
-    for raw in text.splitlines():
-        stripped = raw.strip()
-        if not in_block and stripped.startswith("```bash"):
-            in_block = True
-            continue
-        if in_block and stripped == "```":
-            in_block = False
-            continue
-        if in_block and not stripped.startswith("#"):
-            code = _strip_trailing_comment(raw)
-            if code.strip():
-                lines.append(code)
+    for block in _bash_blocks(text):
+        lines.extend(block)
     return lines
 
 
@@ -152,6 +168,62 @@ def main() -> int:
                 f"doc inlines a jq program referencing {hit!r}; load the canonical .jq via "
                 f"`jq -f` instead so the guard stays behavior-tested"
             )
+
+    # 5. (#453) The compatible block keeps its NOT_SEARCHED fail-closed DEFAULT branch.
+    #    Scoped to the compatible block (identified by the unique ARS_OPENAI_COMPAT_BASE_URL
+    #    endpoint line), not the whole doc: NOT_SEARCHED legitimately appears in several blocks
+    #    (the OpenAI/Gemini `echo NOT_SEARCHED` paths, the grep token list), so a global presence
+    #    check would be vacuous — it could never be tripped by breaking just this block's
+    #    fail-closed default. We pin the actual contract: a wildcard `*)` case branch whose status
+    #    assignment is NOT_SEARCHED (the ungrounded-VERIFIED downgrade / fail-closed path).
+    compat_blocks = [
+        b for b in _bash_blocks(text)
+        if any("ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions" in ln for ln in b)
+    ]
+    compat_code = "\n".join(ln for b in compat_blocks for ln in b)
+    if compat_code and not re.search(r"\*\)\s*status=\"NOT_SEARCHED\"", compat_code):
+        failures.append(
+            "compatible block lost its NOT_SEARCHED fail-closed default branch "
+            "(the `*) status=\"NOT_SEARCHED\"` case): an ungrounded VERIFIED (or any "
+            "non-rejection / empty match) must downgrade to NOT_SEARCHED, not pass through"
+        )
+
+    # 6. (#453) No passive OPENAI_BASE_URL assignment/expansion in executable bash (prose is fine).
+    #    Target assignment (`OPENAI_BASE_URL=`) and expansion (`${OPENAI_BASE_URL`/`$OPENAI_BASE_URL`),
+    #    NOT a raw substring, so an explanatory comment/prose mention doesn't false-fail and a
+    #    `${OPENAI_BASE_URL:-…}` variant doesn't false-pass.
+    if re.search(r"(?<![A-Z_])OPENAI_BASE_URL=", bash_code) or re.search(
+        r"\$\{?OPENAI_BASE_URL\b", bash_code
+    ):
+        failures.append(
+            "executable bash reads/sets OPENAI_BASE_URL; the compatible path must use "
+            "ARS_OPENAI_COMPAT_BASE_URL (reading the standard SDK var silently downgrades "
+            "existing first-party users — the #453 passive-downgrade regression)"
+        )
+
+    # 7. (#453) Endpoint construction never builds a double /v1 or falls back to api.openai.com.
+    if "/v1/v1" in bash_code:
+        failures.append("executable bash contains a literal '/v1/v1' (double-/v1 endpoint bug)")
+    if re.search(r"api\.openai\.com[^\n]*chat/completions", bash_code):
+        failures.append(
+            "compatible endpoint must not fall back to api.openai.com/chat/completions; "
+            "require ARS_OPENAI_COMPAT_BASE_URL"
+        )
+
+    # 8. (#453) Verdict precedence parity with the canonical Python unit: the compatible
+    #    normalization must scan the LEFTMOST of all four tokens, not grep only for rejection
+    #    tokens. A rejection-only grep diverges from normalize_compat_verdict.py (a ramble
+    #    leading with VERIFIED that later says MISMATCH would wrongly pass through as a
+    #    disagreement instead of failing closed).
+    if "openai_compatible" in bash_code and not re.search(
+        r"VERIFIED\|NOT_FOUND\|MISMATCH\|NOT_SEARCHED", bash_code
+    ):
+        failures.append(
+            "compatible normalization must scan the leftmost of all four verdict tokens "
+            "(VERIFIED|NOT_FOUND|MISMATCH|NOT_SEARCHED) to match normalize_compat_verdict.py; "
+            "a rejection-only grep diverges and can pass an ungrounded VERIFIED-led response "
+            "through as a disagreement"
+        )
 
     if failures:
         print(f"[cross-model-sync] FAIL: {len(failures)} issue(s):")
