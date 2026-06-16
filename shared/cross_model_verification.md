@@ -23,12 +23,24 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 ## Supported Models
 
+### First-party providers (web-search grounding supported)
+
 | Model | API ID | Provider | Best For |
 |-------|--------|----------|----------|
-| Claude (session model) | _(inherited Claude Code session model — e.g., Fable 5)_ | Anthropic | Primary model (default for all ARS skills) |
+| Claude (session model) | _(inherited Claude Code session model)_ | Anthropic | Primary model (default for all ARS skills) |
 | GPT-5.5 | `gpt-5.5` | OpenAI | Cross-verification — recommended balance (supports `xhigh` reasoning) |
 | GPT-5.5 Pro | `gpt-5.5-pro` | OpenAI | Cross-verification — strongest reasoning (premium pricing: ~6× GPT-5.5) |
 | Gemini 3.1 Pro | `gemini-3.1-pro-preview` | Google | Cross-verification — strong at factual verification |
+
+### OpenAI-compatible providers (Chat Completions API, no web-search grounding)
+
+| Provider | Example API ID(s) | Endpoint | Notes |
+|----------|-------------------|----------|-------|
+| Xiaomi MiMo | `mimo-v2.5-pro`, `mimo-*` | `https://token-plan-cn.xiaomimimo.com/v1` | Requires `OPENAI_BASE_URL`; set `ARS_CROSS_MODEL` to the MiMo model name |
+| DeepSeek | `deepseek-v4-pro`, `deepseek-*` | `https://api.deepseek.com/v1` | Requires `OPENAI_BASE_URL`; can share the DeepSeek API key already used for Anthropic routing |
+| Any OpenAI-compatible | any model ID | any OpenAI-compatible endpoint | Any provider that supports `/v1/chat/completions`; set `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `ARS_CROSS_MODEL` |
+
+> **OpenAI-compatible providers do not support the hosted web-search tool**, so the grounding guard (checking that a web search actually ran before trusting the verdict) is not available for these providers. The verification prompt is unchanged, but the safety boundary is the prompt wording alone rather than the API-level grounding evidence used for GPT/Gemini.
 
 **Recommended cross-verification pair:** the inherited Claude session model (primary) + GPT-5.5 or Gemini 3.1 Pro (verifier).
 
@@ -49,6 +61,16 @@ You need API keys from at least one additional provider. ARS itself runs inside 
 2. Create a new API key
 3. Copy the key (starts with `sk-`)
 
+**Xiaomi MiMo:**
+1. Go to [Xiaomi MiMo Open Platform](https://token-plan-cn.xiaomimimo.com)
+2. Create an API key
+3. Note the endpoint URL (e.g. `https://token-plan-cn.xiaomimimo.com/v1`)
+
+**DeepSeek:**
+1. Go to [platform.deepseek.com](https://platform.deepseek.com)
+2. Create an API key
+3. Note the endpoint URL (e.g. `https://api.deepseek.com/v1`)
+
 **Google (Gemini 3.1 Pro):**
 1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
 2. Create a new API key
@@ -59,12 +81,19 @@ You need API keys from at least one additional provider. ARS itself runs inside 
 Add to your shell profile (`~/.zshrc` or `~/.bashrc`):
 
 ```bash
-# Optional: Cross-model verification for ARS
+# === OpenAI (GPT) — first-party, with web-search grounding ===
 export OPENAI_API_KEY="<your-openai-api-key>"
+
+# === OpenAI-compatible providers (MiMo, DeepSeek, etc.) ===
+export OPENAI_BASE_URL="https://token-plan-cn.xiaomimimo.com/v1"   # or https://api.deepseek.com/v1
+export OPENAI_API_KEY="<your-provider-api-key>"
+
+# === Google Gemini ===
 export GOOGLE_AI_API_KEY="<your-google-ai-api-key>"
 
-# Choose your preferred cross-verification model
-# Options: gpt-5.5, gpt-5.5-pro, gemini-3.1-pro-preview (gpt-5.4 / gpt-5.4-pro still accepted)
+# Choose your preferred cross-verification model.
+# First-party: gpt-5.5, gpt-5.5-pro, gemini-3.1-pro-preview (legacy gpt-5.4* accepted)
+# OpenAI-compatible: mimo-v2.5-pro, deepseek-v4-pro, or any model ID your provider recognises
 export ARS_CROSS_MODEL="gpt-5.5"
 ```
 
@@ -179,7 +208,7 @@ The DA agent, after completing its checkpoint report, should:
 
 ## API Call Patterns
 
-Both patterns below share the same contract: enable the provider's hosted web-search tool, and **gate the model's text on proof that a search actually happened**. If the API returns no grounding evidence (an OpenAI `web_search_call` item / a Gemini `groundingMetadata` block), the call emits `NOT_SEARCHED` and the text is discarded — a model that ignored "search the web" cannot fake an absent grounding trace, so this guard, not the prompt wording, is what prevents a from-memory guess being laundered into `VERIFIED`. Both web-search tools are hosted/server-side: one request, no client-side tool-call round-trip. `PROMPT` holds the single-reference verification prompt from step 3.
+Three patterns are documented below. The first two (OpenAI and Gemini) share the same contract: enable the provider's hosted web-search tool, and **gate the model's text on proof that a search actually happened**. If the API returns no grounding evidence, the call emits `NOT_SEARCHED` and the text is discarded. The third pattern (OpenAI-compatible) uses the standard Chat Completions API without a grounding guard. `PROMPT` holds the single-reference verification prompt from step 3.
 
 ### OpenAI (GPT-5.5 / GPT-5.5 Pro)
 
@@ -262,6 +291,47 @@ fi
 
 > **Why `temperature: 0.1`:** reference existence/metadata checking is a deterministic factual task, so low temperature reduces run-to-run variance in the verdict. It is not a grounding control — the grounding guard above is what enforces an actual lookup.
 
+### OpenAI-Compatible API (MiMo, DeepSeek, and other custom endpoints)
+
+When `CROSS_MODEL_AVAILABLE=openai_compatible`, use the **Chat Completions API** at the configured `OPENAI_BASE_URL`. Unlike first-party OpenAI, these providers do not expose a hosted web-search tool, so the grounding guard (checking for an API-level `web_search_call` trace) is not available. The call is a standard `/v1/chat/completions` request:
+
+```bash
+# PROMPT holds the single-reference verification prompt (step 3). One reference per call.
+# OPENAI_BASE_URL must be set (e.g. https://token-plan-cn.xiaomimimo.com/v1 or https://api.deepseek.com/v1).
+endpoint="${OPENAI_BASE_URL:-https://api.openai.com}/v1/chat/completions"
+
+resp="$(curl -sS -w '\n%{http_code}' "$endpoint" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg model "$ARS_CROSS_MODEL" --arg prompt "$PROMPT" '{
+    model: $model,
+    messages: [
+      {role: "system", content: "You are a citation-verification assistant. Verify references accurately and provide source URLs or DOIs where possible. If you cannot verify a reference, state NOT_FOUND with a reason."},
+      {role: "user", content: $prompt}
+    ],
+    temperature: 0.1
+  }')")"
+
+http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
+if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
+  # Transport/API failure (401/429/5xx, or curl's 000 on a network error)
+  echo "CROSS-MODEL-ERROR: openai_compatible_http_$http"
+else
+  # Extract the assistant's response text from the first choice.
+  text="$(jq -r '.choices[0].message.content // empty' <<<"$body")"
+  if [ -z "$text" ]; then
+    echo "CROSS-MODEL-ERROR: openai_compatible_empty_response"
+  else
+    # No grounding guard available — the response text is emitted as-is.
+    # Consumers should note the provider type and treat VERIFIED claims
+    # without source URLs with appropriate caution.
+    printf '%s\nPROVIDER: openai_compatible\n' "$text"
+  fi
+fi
+```
+
+> **No grounding guard for compatible providers.** The grounding guard (checking for an API-level `web_search_call` trace) is only available for first-party OpenAI (`CROSS_MODEL_AVAILABLE=openai`) and Gemini (`CROSS_MODEL_AVAILABLE=google`). For compatible providers, the safety boundary is the prompt wording alone. Agents using this path should note the provider type and may apply a lower confidence threshold to `VERIFIED` verdicts that lack accompanying source URLs.
+
 ### Detecting Available Models
 
 Agents should check at the start of a verification/review session:
@@ -275,14 +345,24 @@ fi
 
 if [ -n "$ARS_CROSS_MODEL" ]; then
   case "$ARS_CROSS_MODEL" in
-    gpt-5.5*|gpt-5.4*) 
+    gpt-5.5*|gpt-5.4*)
       [ -n "$OPENAI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=openai" \
         || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but OPENAI_API_KEY is not set" ;;
-    gemini*) 
+    mimo*|deepseek*)
+      [ -n "$OPENAI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=openai_compatible" \
+        || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but OPENAI_API_KEY is not set" ;;
+    gemini*)
       [ -n "$GOOGLE_AI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=google" \
         || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but GOOGLE_AI_API_KEY is not set" ;;
-    *) echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a supported model. Supported: gpt-5.5, gpt-5.5-pro, gemini-3.1-pro-preview (legacy gpt-5.4* accepted)"
-       echo "CROSS_MODEL_AVAILABLE=none" ;;
+    *)
+      if [ -n "$OPENAI_API_KEY" ] && [ -n "$OPENAI_BASE_URL" ]; then
+        echo "CROSS_MODEL_AVAILABLE=openai_compatible"
+      elif [ -n "$OPENAI_API_KEY" ]; then
+        echo "CROSS_MODEL_AVAILABLE=openai"
+      else
+        echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a recognised model. Supported prefixes: gpt-5.*, gemini-*, mimo-*, deepseek-*. For any other OpenAI-compatible model, set OPENAI_API_KEY and OPENAI_BASE_URL."
+        echo "CROSS_MODEL_AVAILABLE=none"
+      fi ;;
   esac
 else
   echo "CROSS_MODEL_AVAILABLE=none"
