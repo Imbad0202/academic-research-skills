@@ -29,9 +29,7 @@ def normalize_compat_verdict(raw: str) -> dict:
     raw = raw or ""
     m = _VERDICT_RE.search(raw)
     token = m.group(1).upper() if m else None
-    if token in _PASS_THROUGH:
-        status = token
-    else:
-        # VERIFIED (downgrade), self-reported NOT_SEARCHED, or no recognizable token → NOT_SEARCHED.
-        status = "NOT_SEARCHED"
+    # Only rejections survive; VERIFIED (downgrade), self-reported NOT_SEARCHED, or no
+    # recognizable token all fail closed to NOT_SEARCHED.
+    status = token if token in _PASS_THROUGH else "NOT_SEARCHED"
     return {"status": status, "context": raw}
