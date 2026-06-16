@@ -41,11 +41,15 @@ def _main() -> int:
     result = normalize_compat_verdict(raw)
     # Single-line JSON: the consumer reads .status; raw text lives JSON-escaped in .context
     # where embedded newlines become literal \n and cannot inject a second status line.
+    # ensure_ascii=True (the default) additionally \u-escapes ALL non-ASCII, including the
+    # Unicode line separators U+2028/U+2029 that some Unicode-aware consumers treat as line
+    # breaks — so a model response cannot smuggle a second output line via those either. The
+    # context is diagnostic text; ASCII-escaping it is fine.
     print(json.dumps({
         "status": result["status"],
         "provider": "openai_compatible",
         "context": result["context"],
-    }, ensure_ascii=False))
+    }, ensure_ascii=True))
     return 0
 
 

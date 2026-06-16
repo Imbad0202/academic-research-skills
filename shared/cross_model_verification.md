@@ -352,6 +352,10 @@ fi
 > disagreements. The block emits a single-line JSON object (`{"status","provider","context"}`)
 > from `normalize_compat_verdict.py`, and the grounded-agreement count is computed solely from
 > its `.status` field — never from the raw text, which lives JSON-escaped in `.context`.
+> For the OpenAI-compatible block, read the verdict from the JSON `.status` field only
+> (e.g. `jq -r .status`); never grep the emitted line or `.context` for a verdict token — the
+> raw model text is preserved JSON-escaped in `.context` precisely so it cannot be mistaken for
+> a verdict.
 
 ### Detecting Available Models
 

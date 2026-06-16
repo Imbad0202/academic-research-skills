@@ -123,6 +123,28 @@ def test_lint_fails_if_compat_drops_normalizer_invocation(tmp_path, monkeypatch)
     )
 
 
+def test_lint_fails_if_normalizer_only_in_comment(tmp_path, monkeypatch):
+    """A commented-out normalizer invocation (with inline logic restored) must NOT satisfy
+    check 8 — the pipe + comment-stripping require a real piped invocation."""
+    _assert_lint_fails_on_mutation(
+        tmp_path, monkeypatch,
+        'printf \'%s\' "$text" | python3 "$GUARD/normalize_compat_verdict.py"',
+        '# normalize via python3 "$GUARD/normalize_compat_verdict.py"\n    echo "STATUS: $text"',
+    )
+
+
+def test_lint_fails_if_compat_block_identifier_lost_v2(tmp_path, monkeypatch):
+    """(#453) Anti-vacuity: if the endpoint identifier that locates the compatible block is
+    lost, check 8 cannot scope itself and must fail loud (not silently pass). `openai_compatible`
+    still appears in the detection block (`echo "CROSS_MODEL_AVAILABLE=openai_compatible"`), so the
+    guard path runs but the block can no longer be located."""
+    _assert_lint_fails_on_mutation(
+        tmp_path, monkeypatch,
+        'endpoint="${ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions"',
+        'endpoint="$(build_endpoint)"',
+    )
+
+
 def test_lint_fails_if_openai_base_url_expansion_reintroduced(tmp_path, monkeypatch):
     """A passive OPENAI_BASE_URL expansion in executable bash must fail (the passive-downgrade
     regression). Reintroduce the PR's endpoint line."""

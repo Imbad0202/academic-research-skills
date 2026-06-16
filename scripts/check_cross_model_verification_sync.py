@@ -203,18 +203,37 @@ def main() -> int:
             "require ARS_OPENAI_COMPAT_BASE_URL"
         )
 
-    # 8. (#453) The compatible block must INVOKE the canonical normalizer rather than re-implement
-    #    verdict precedence in bash. (Earlier inline bash re-implemented leftmost-of-four precedence
-    #    and risked a head->tail regression + a raw-text injection of a second STATUS line; calling
-    #    the behavior-tested Python unit, which emits single-line JSON, removes both.)
-    if "openai_compatible" in bash_code and not re.search(
-        r"python3?\s+\S*normalize_compat_verdict\.py", bash_code
-    ):
-        failures.append(
-            "compatible path present but the bash does not invoke "
-            "normalize_compat_verdict.py — verdict normalization must call the canonical, "
-            "behavior-tested unit (which emits single-line JSON), not re-implement precedence in bash"
-        )
+    # 8. (#453) The compatible block must INVOKE the canonical normalizer via a PIPE, not
+    #    re-implement verdict logic in bash. Scope to the compatible block (located by its
+    #    endpoint identifier) and require `| python3 ... normalize_compat_verdict.py` so a bare
+    #    comment mention or an unpiped/dead reference can't satisfy the check. Anti-vacuity:
+    #    if the compatible path is present but its block can't be located, fail loud.
+    #    (Earlier inline bash re-implemented leftmost-of-four precedence and risked a head->tail
+    #    regression + a raw-text injection of a second STATUS line; calling the behavior-tested
+    #    Python unit, which emits single-line JSON, removes both. _bash_blocks already strips
+    #    comment-only and trailing comments, so a `# ... normalize_compat_verdict.py` comment is
+    #    gone before this check sees it — the pipe requirement is belt-and-braces on top.)
+    if "openai_compatible" in bash_code:
+        compat_blocks = [
+            "\n".join(b) for b in _bash_blocks(text)
+            if "ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions" in "\n".join(b)
+        ]
+        if not compat_blocks:
+            failures.append(
+                "compatible path is present (openai_compatible) but the lint could not locate "
+                "the compatible call block by its endpoint identifier — keep the "
+                "`ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions` endpoint line so the wiring "
+                "check stays live"
+            )
+        else:
+            compat_code = "\n".join(compat_blocks)
+            if not re.search(r"\|\s*python3?\s+\S*normalize_compat_verdict\.py", compat_code):
+                failures.append(
+                    "the compatible block must pipe the model text into "
+                    "normalize_compat_verdict.py (`... | python3 .../normalize_compat_verdict.py`); "
+                    "a comment mention or unpiped reference does not count — verdict normalization "
+                    "must call the canonical, behavior-tested unit, not re-implement it in bash"
+                )
 
     if failures:
         print(f"[cross-model-sync] FAIL: {len(failures)} issue(s):")
