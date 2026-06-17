@@ -116,7 +116,7 @@ Enforcement: `python scripts/check_data_access_level.py`
 
 - `/ars-plan` — Socratic dialogue for paper structure
 - `/ars-lit-review TOPIC` — Quick literature review
-- `/ars-deep-research` — Full 13-agent research team
+- `/ars-deep-research` — Full 13-agent research team with Socratic guided mode and domain adaptation options
 - `/ars-write` — 12-agent paper writing
 - `/ars-review` — 7-agent peer review
 - `/ars-pipeline` — Full 10-stage orchestrated workflow
