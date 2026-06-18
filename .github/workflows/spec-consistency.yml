@@ -424,8 +424,14 @@ jobs:
           # P2-f: do NOT use a bare substring (a COMMENT mentioning the guard would false-pass and
           # the launcher->guard chain could be severed while CI stays green). Skip whole-line
           # comments, then require non-comment EXECUTABLE shapes: (1) the guard path is ASSIGNED
-          # from the launcher's own location, and (2) that assigned var is actually RUN. The
-          # load-bearing lines carry no inline '#', so skipping '#'-leading lines is sufficient.
+          # from the launcher's own location, and (2) that assigned path is EXEC'd in the guard
+          # call site's command-substitution. This is a fast smoke pin, not full semantic proof —
+          # the authoritative launcher->guard exec verification is scripts/test_run_guard_launcher.py
+          # (run via the CI pytest manifest), which actually runs the launcher and asserts a real
+          # `deny` is forwarded. So we keep the static check tight enough to catch an obvious
+          # severance (commenting out the exec line) without trying to out-parse the shell:
+          # the exec match is bound to the GUARD_OUT=$( ... run_bounded ... "$GUARD" ) call-site
+          # shape, so a stray `echo run_bounded "$GUARD"` no longer false-passes it (codex r6 P2).
           import re
           guard_assigned = guard_run = False
           for raw in open("hooks/run_guard.sh"):
@@ -434,13 +440,13 @@ jobs:
               # (1) GUARD=...ars_write_scope_guard.py  (assignment, derived from $0 dir)
               if re.search(r'\bGUARD=.*ars_write_scope_guard\.py', raw):
                   guard_assigned = True
-              # (2) the assigned $GUARD is handed to the bounded runner (actual exec of the guard)
-              if re.search(r'run_bounded\b.*"\$GUARD"', raw):
+              # (2) the guard call site: GUARD_OUT=$( ... run_bounded ... "$GUARD" ... )
+              if re.search(r'GUARD_OUT=\$\(.*run_bounded\b.*"\$GUARD"', raw):
                   guard_run = True
           assert guard_assigned, \
               "run_guard.sh has no non-comment GUARD=...ars_write_scope_guard.py assignment — chain severed"
           assert guard_run, \
-              'run_guard.sh never runs "$GUARD" via run_bounded — launcher->guard exec chain severed'
+              'run_guard.sh has no GUARD_OUT=$(... run_bounded ... "$GUARD") call site — launcher->guard exec chain severed'
           print("hooks.json PreToolUse write-scope guard wiring OK (via run_guard.sh launcher)")
           PY
 

@@ -95,9 +95,16 @@ run_bounded() {
     #     point of the bound). So the job writes stdout to a temp file; we `cat` it back after
     #     reaping the direct child. The orphan may linger but can no longer wedge the hot path.
     #  3. KILL: with `setsid` we new-pgid the job and signal the whole group (negative pid) so
-    #     TERM-ignoring children die too; without it we can only reach the direct pid.
+    #     TERM-ignoring children die too; without it we can only reach the direct pid, so a
+    #     grandchild a hung interpreter spawned can be ORPHANED (it no longer wedges the hot
+    #     path per (2), but it lingers). There is no fully portable POSIX reap without process
+    #     groups / setsid / job-control, and inventing one would add fragility for a doubly-
+    #     degraded case (no `timeout` AND no `setsid` AND a broken interpreter that forks — the
+    #     real marker probe and guard never spawn grandchildren). Accepted; prefer `timeout`
+    #     (path A) and `setsid` where present (codex round-6 P2).
     #  4. TIMEOUT DETECTION: a TERM'd `sh` wrapper does not reliably surface 143/137, so we
-    #     don't infer timeout from the exit code — the watchdog writes a flag file iff it fired.
+    #     don't infer timeout from the exit code — the watchdog writes a flag file iff its TERM
+    #     actually landed on a still-live process (see the watchdog body for the race it closes).
     _rb_out=$(mktemp 2>/dev/null) || _rb_out="${TMPDIR:-/tmp}/ars_rb_out.$$"
     _rb_fired=$(mktemp 2>/dev/null) || _rb_fired="${TMPDIR:-/tmp}/ars_rb_fired.$$"
     rm -f "$_rb_fired" 2>/dev/null  # absent = watchdog has not fired
@@ -108,9 +115,17 @@ run_bounded() {
     fi
     _cmd_pid=$!
     ( sleep "$PROBE_BOUND"
-      : >"$_rb_fired"  # mark that we are about to force-kill an overrun
-      # Kill the whole process group (negative pid) when we can; else the bare pid.
-      kill -TERM "-$_cmd_pid" 2>/dev/null || kill -TERM "$_cmd_pid" 2>/dev/null
+      # Mark "timed out" ONLY if the TERM actually lands on a still-live process. Writing the
+      # flag unconditionally after the sleep races a command that finished within the bound:
+      # the parent could be between `wait` returning and killing this watchdog when we wake, and
+      # an unconditional flag would falsely report a timeout for a command that completed in time
+      # — which, on the guard path, fail-opens to pass-through (codex round-6 P1, repro'd via a
+      # forced parent SIGSTOP at 0.90s on a 1s bound). A successful TERM proves the child was
+      # still running, i.e. a real overrun. Kill the whole process group (negative pid) when we
+      # can; else the bare pid.
+      if kill -TERM "-$_cmd_pid" 2>/dev/null || kill -TERM "$_cmd_pid" 2>/dev/null; then
+          : >"$_rb_fired"
+      fi
       sleep 1
       kill -KILL "-$_cmd_pid" 2>/dev/null || kill -KILL "$_cmd_pid" 2>/dev/null
     ) &
