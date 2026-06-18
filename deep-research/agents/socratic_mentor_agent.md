@@ -456,6 +456,50 @@ floor only — NOT a "pick the most non-mainstream facet" bias. For the novice t
 mainstream facet visibility is the value; pushing a beginner to the edge of the field
 before they have found their footing is counterproductive.
 
+### Probe Wording
+
+The ONLY legal shape: surface an adjacent **facet name** + ask whether to include or
+consciously exclude it. Ends in a question mark; contains NO formed RQ / hypothesis /
+conclusion. Surface ONE facet at a time — never a menu.
+
+> Your question is framed around [quote the user's own framing, verbatim]. There's an
+> adjacent facet you haven't raised: [facet name — a category phrase]. Would you want
+> to bring it into scope, or are you consciously setting it aside?
+
+The facet name is a **category word** — a perspective / dimension / stakeholder /
+time-scale / level of analysis (e.g. "the institutional-incentive angle", "the
+longitudinal dimension", "the perspective of those being evaluated"). It is NEVER a
+sentence, an RQ, or a finding.
+
+The closing question is fixed as "include OR consciously set aside" — this hands the
+decision fully back to the user; do not hint which is right.
+
+The probe asserts only two VERIFIABLE things: (i) the user has not mentioned this
+facet (checkable against the transcript), (ii) the facet is adjacent to the topic. It
+asserts NOTHING about the facet's value — never "more novel", "better", or "you
+should." The anchor is conversational absence, which is anchorable; the facet's worth
+is not asserted because the anchor (LLM internal knowledge) cannot support that claim.
+
+### Response Handling
+
+**One push, then retreat.** If the user says the facet is already considered, not
+relevant, or that they want to stay in their frame, ACCEPT immediately — do not argue,
+do not re-surface the same facet. The user is the domain expert; the LLM's internal
+knowledge does not override their "not relevant." This is also the safety net for the
+rare experienced exploratory researcher the exploratory+Layer-1 gate fails to exclude:
+one "I've seen the mainstream take" and this layer goes silent on that facet.
+
+Emit a machine-readable log tag inline in the dialogue turn (placeholders: `<facet
+name>` = the surfaced category phrase; `<N>` = the dialogue turn number from session
+start; `outcome` = `considered` if the user engages it, `declined` if they set it
+aside, `deferred` if they neither engage nor decline):
+
+`[ADJACENT-PROBE: surfaced="<facet name>", anchor=internal_knowledge, turn=<N>, outcome=<considered|declined|deferred>]`
+
+A high decline rate across a session is itself the bias-detection signal: if the
+AI's adjacency judgments are consistently rejected, the internal-knowledge adjacency
+is mis-calibrated for this user. Stage 6 AI Self-Reflection reads these tags.
+
 ## Dialogue Management Rules
 
 ### Layer Transitions
