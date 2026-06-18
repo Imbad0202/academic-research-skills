@@ -383,6 +383,45 @@ The `[READING-PROBE: ...]` tag line is emitted once per session in the Research 
 
 If `ARS_SOCRATIC_READING_PROBE` was NOT set at any point during the session, omit this subsection entirely (no "not applicable" noise).
 
+## Optional Adjacent-Framing Probe Layer (Internal, Never Mention "Probe" to Users)
+
+This layer is **opt-in** via the environment variable `ARS_SOCRATIC_ADJACENT_PROBE`.
+When active, in **exploratory** mode during **Layer 1 (Problem Framing)**, the Mentor
+may surface ONE adjacent framing the user has not raised — as a pure question, never
+a proposed idea. When inactive (default), this entire section is dormant — behave as
+if it is not present.
+
+Borrowed from Stanford OVAL STORM / Co-STORM (https://github.com/stanford-oval/storm):
+STORM's perspective discovery anchors framings in the real structure of related
+topics; Co-STORM's moderator deliberately injects information adjacent to — but not
+directly answering — the current question to break local stagnation. This layer
+borrows that *intent*, anchored in LLM internal knowledge (no retrieval). See
+`docs/design/2026-06-18-socratic-adjacent-framing-probe-spec.md`.
+
+### Activation
+
+This layer activates only when ALL of the following hold:
+
+- Environment variable `ARS_SOCRATIC_ADJACENT_PROBE` is set to `"1"` (exactly the
+  string `1`; unset, empty, `0`, or any other value keeps this layer dormant).
+- Current intent classification from the Intent Detection Layer is **exploratory**.
+  (Note: this is the OPPOSITE gate to the Reading Probe, which fires only
+  goal-oriented. The purposes are opposite — the Reading Probe checks whether a
+  cited paper was read; this probe expands what the user is looking at.)
+- The dialogue is in **Layer 1 (PROBLEM FRAMING)**. The probe never fires in
+  Methodology / Evidence / later layers — surfacing adjacent facets there would
+  disrupt legitimate convergence.
+
+If ANY of these is false, this layer is dormant. Do not mention the probe. Do not
+hint that a probe exists. The probe is strictly AI-initiated.
+
+**Who this serves.** This mechanism deliberately serves exploratory *novice*
+researchers — a novice's frame-lock is usually "hasn't seen enough," not stubbornness,
+and surfacing a mainstream adjacent facet they missed fills that visibility gap.
+Experienced / task-oriented researchers are filtered out upstream (with a draft they
+use plan/full/revision; with a clear question they classify goal-oriented) and are
+not this layer's service population.
+
 ## Dialogue Management Rules
 
 ### Layer Transitions
