@@ -87,13 +87,21 @@ class TestAdjacentFramingProbeStructure(unittest.TestCase):
         )
 
     def test_verb_test_terms_named_in_ban(self) -> None:
-        # The Kong L2 verb test must be named so the executing agent knows the law.
+        # The Kong L2 verb test must be named in the normative LAW SENTENCE so the
+        # executing agent knows the law — not merely present somewhere in the region
+        # (a table row label like "BAD (rank)" must NOT satisfy this check).
         ban_region = self.section[self.section.find("### Banned Patterns"):]
+        law_match = re.search(r"must never\b[^\n]*", ban_region, re.IGNORECASE)
+        self.assertIsNotNone(
+            law_match,
+            "Banned Patterns block must contain a 'must never ...' law sentence",
+        )
+        law_sentence = law_match.group(0).lower()
         for verb in ("propose", "rank", "select", "expand", "substitute"):
             self.assertIn(
                 verb,
-                ban_region.lower(),
-                f"Banned Patterns block must name the forbidden verb '{verb}'",
+                law_sentence,
+                f"Law sentence must name the forbidden verb '{verb}' (found region-wide but not in the law sentence = robustness gap)",
             )
 
     def test_log_tag_format_present(self) -> None:
