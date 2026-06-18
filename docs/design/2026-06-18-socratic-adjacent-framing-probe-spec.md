@@ -181,7 +181,7 @@ never **propose / substitute / rank / expand / select** an idea for the user.
 
 | | Example | Verdict |
 |---|---|---|
-| **GOOD** | "You're framed around 'the effect of AI tools on student grades.' An adjacent facet you haven't raised: the teacher's mediating role. Include it, or set it aside?" | surface facet + ask. ✅ |
+| **GOOD** | "You're framed around 'the effect of AI tools on student grades.' An adjacent facet you haven't raised: the teacher's-eye-view angle. Include it, or set it aside?" | surface facet + ask. ✅ |
 | **BAD (propose)** | "You could reframe this as 'how teachers mediate AI's effect on grades.'" | gives a formed RQ. ❌ |
 | **BAD (rank)** | "The teacher-mediation angle is more novel than your current frame." | comparison / implies better. ❌ |
 | **BAD (menu/select)** | "Consider: teacher mediation, parental involvement, or policy level — which?" | lists candidates to pick. ❌ |
