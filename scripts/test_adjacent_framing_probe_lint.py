@@ -104,6 +104,37 @@ class TestAdjacentFramingProbeStructure(unittest.TestCase):
                 f"Law sentence must name the forbidden verb '{verb}' (found region-wide but not in the law sentence = robustness gap)",
             )
 
+    def test_probe_wording_block_has_no_leak_phrases(self) -> None:
+        # The Probe Wording block (the legal probe SURFACE) must not contain
+        # idea-proposing phrasing or mechanism-bearing facet words.
+        start = self.section.find("### Probe Wording")
+        end = self.section.find("### Response Handling")
+        self.assertGreater(start, -1)
+        self.assertGreater(end, start)
+        wording = self.section[start:end].lower()
+        banned = ["you could research", "more novel", "consider:", "could become",
+                  "mediation angle", "mediating role"]
+        for phrase in banned:
+            self.assertNotIn(
+                phrase, wording,
+                f"Probe Wording block must not contain leak phrase {phrase!r}",
+            )
+
+    def test_good_row_facet_is_directionless(self) -> None:
+        # The Banned Patterns GOOD row must not use a mechanism/valenced facet noun.
+        ban_region = self.section[self.section.find("### Banned Patterns"):]
+        good_line = ""
+        for line in ban_region.splitlines():
+            if line.strip().startswith("| GOOD"):
+                good_line = line.lower()
+                break
+        self.assertTrue(good_line, "Banned Patterns table must have a GOOD row")
+        for mech in ("mediating", "mediation", "-impact", "-burnout", "driver of", "effect of"):
+            self.assertNotIn(
+                mech, good_line,
+                f"GOOD-row facet must be directionless; found mechanism term {mech!r}",
+            )
+
     def test_log_tag_format_present(self) -> None:
         # The exact machine-readable tag prefix must appear verbatim.
         self.assertIn(
