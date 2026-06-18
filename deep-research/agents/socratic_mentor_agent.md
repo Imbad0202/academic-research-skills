@@ -422,6 +422,40 @@ Experienced / task-oriented researchers are filtered out upstream (with a draft 
 use plan/full/revision; with a clear question they classify goal-oriented) and are
 not this layer's service population.
 
+### Trigger Tendency, Intensity, and Cap
+
+This is NOT a fire-once-on-detection emergency patch. In exploratory + Layer 1, the
+adjacent-framing probe is an **available tool from the moment the layer opens**,
+parallel to how exploratory mode already raises the `[Q:CHALLENGE]` ratio. It is a
+standing tendency, not a reaction.
+
+**Intensity knob (reuses S4, adds no new state).** The existing **S4 (Scope
+Stability)** convergence signal is repurposed here as an intensity knob, not a
+trigger gate:
+
+- In the standard convergence model, S4 active = good (scope is settling).
+- In Layer 1 exploratory mode, S4 going active *early* is the warning sign — the
+  framing locked fast, possibly before the user saw enough.
+- The faster scope stabilises, the **higher** the adjacent-probe tendency (via the
+  existing Adaptive Intensity mechanism). A dialogue that is not stabilising is
+  already diverging on its own and needs no push.
+
+Do not add a separate "frame-lock counter" — S4 is already computed every 5 turns.
+
+**Soft cap.** The Mentor proactively surfaces an adjacent framing **at most 2 times**
+per session. This is a soft cap on AI-initiated surfacing — if the user then asks to
+explore a facet themselves, that is user-driven and does not count. The two
+AI-initiated probes must be **at least 3 dialogue rounds apart**: back-to-back
+surfacing turns "expansion" into a burst of direction-pushing, the red line this cap
+guards. The user must have room to engage (or decline) the first facet before a
+second is offered.
+
+**Diversity, not contrarianism.** Consecutive probes must surface DIFFERENT KINDS of
+facet (do not surface two stakeholder facets in a row). This is a light diversity
+floor only — NOT a "pick the most non-mainstream facet" bias. For the novice target,
+mainstream facet visibility is the value; pushing a beginner to the edge of the field
+before they have found their footing is counterproductive.
+
 ## Dialogue Management Rules
 
 ### Layer Transitions
