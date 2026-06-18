@@ -72,7 +72,8 @@ TIMEOUT_STATUS=124
 
 # Run "$@" with a wall-clock bound; its stdout flows to OUR stdout (capture via $(...)).
 # Returns the command's real exit status, or $TIMEOUT_STATUS if it overran the bound.
-# Stdin for "$@" is whatever the caller arranges (we redirect it per call site).
+# Stdin for "$@" is whatever the caller arranges (we redirect it per call site) — the guard
+# call site PIPES the payload in, so the bounded command MUST keep that stdin.
 run_bounded() {
     if have_timeout; then
         # GNU timeout exits 124 on timeout — normalize to our sentinel for a uniform caller.
@@ -81,16 +82,33 @@ run_bounded() {
         [ "$_st" -eq 124 ] && return "$TIMEOUT_STATUS"
         return "$_st"
     fi
-    # No `timeout`: background the command in its OWN process group so a child that ignores
-    # TERM (or spawns grandchildren) is still killed as a group. `setsid` gives a new pgid;
-    # if setsid is unavailable, fall back to killing the direct pid (best effort).
+    # No `timeout` binary: a portable background-and-watchdog fallback. Several POSIX subtleties
+    # bite here, all of which broke a naive version (#454 dual-track):
+    #
+    #  1. STDIN: a backgrounded (`&`) command's stdin defaults to /dev/null, which would feed
+    #     the GUARD an EMPTY payload (guard reads nothing -> pass-through -> a real `deny` is
+    #     LOST and the guard is dead on any timeout-less host). We stash this function's stdin
+    #     on fd 3 and redirect the job's stdin from it (`<&3`) so the piped payload arrives.
+    #  2. STDOUT: capturing the job's stdout through the `$(...)` pipe directly would WEDGE the
+    #     pipe — if the job spawns a grandchild we can't reap (no `setsid` to group-kill), that
+    #     orphan keeps the pipe's write end open and `$(...)` blocks until it dies (the whole
+    #     point of the bound). So the job writes stdout to a temp file; we `cat` it back after
+    #     reaping the direct child. The orphan may linger but can no longer wedge the hot path.
+    #  3. KILL: with `setsid` we new-pgid the job and signal the whole group (negative pid) so
+    #     TERM-ignoring children die too; without it we can only reach the direct pid.
+    #  4. TIMEOUT DETECTION: a TERM'd `sh` wrapper does not reliably surface 143/137, so we
+    #     don't infer timeout from the exit code — the watchdog writes a flag file iff it fired.
+    _rb_out=$(mktemp 2>/dev/null) || _rb_out="${TMPDIR:-/tmp}/ars_rb_out.$$"
+    _rb_fired=$(mktemp 2>/dev/null) || _rb_fired="${TMPDIR:-/tmp}/ars_rb_fired.$$"
+    rm -f "$_rb_fired" 2>/dev/null  # absent = watchdog has not fired
     if command -v setsid >/dev/null 2>&1; then
-        setsid "$@" &
+        { setsid "$@" >"$_rb_out" <&3 3<&- & } 3<&0
     else
-        "$@" &
+        { "$@" >"$_rb_out" <&3 3<&- & } 3<&0
     fi
     _cmd_pid=$!
     ( sleep "$PROBE_BOUND"
+      : >"$_rb_fired"  # mark that we are about to force-kill an overrun
       # Kill the whole process group (negative pid) when we can; else the bare pid.
       kill -TERM "-$_cmd_pid" 2>/dev/null || kill -TERM "$_cmd_pid" 2>/dev/null
       sleep 1
@@ -101,10 +119,12 @@ run_bounded() {
     _st=$?
     kill "$_watch_pid" 2>/dev/null
     wait "$_watch_pid" 2>/dev/null
-    # 143 = 128+SIGTERM, 137 = 128+SIGKILL -> the watchdog fired -> treat as timeout.
-    if [ "$_st" -eq 143 ] || [ "$_st" -eq 137 ]; then
+    cat "$_rb_out" 2>/dev/null  # replay captured stdout to OUR stdout (for the $(...) caller)
+    if [ -f "$_rb_fired" ]; then
+        rm -f "$_rb_out" "$_rb_fired" 2>/dev/null
         return "$TIMEOUT_STATUS"
     fi
+    rm -f "$_rb_out" "$_rb_fired" 2>/dev/null
     return "$_st"
 }
 

@@ -71,26 +71,26 @@ _SH = shutil.which("sh") or "/bin/sh"
 _LAUNCHER_TIMEOUT = 45  # generous so a (bounded) hanging-candidate test can't false-fail
 
 
-def _run_launcher(bin_dir, payload, extra_env=None, guard_override=None, with_sys_timeout=True):
+def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER):
     """Run the launcher with PATH = bin_dir + system dirs (bin_dir first, so injected
     interpreters shadow the real ones). Returns (exit_code, stdout, stderr).
 
-    with_sys_timeout=False drops a `timeout` shim into bin_dir's PATH ahead of the system one
-    to simulate a host WITHOUT a usable `timeout` binary (exercises the watchdog fallback)."""
+    `launcher` defaults to the repo's real launcher; pass an alternate path to run a copy from
+    a temp plugin layout (the only way to exercise a broken/alternate guard now that the
+    ARS_GUARD_PATH_FOR_TEST back door is gone — the guard is ALWAYS resolved from the
+    launcher's own ../scripts/, P2-e)."""
     path = bin_dir + os.pathsep + _SYS_PATH
     env = {
         "PATH": path,
         # Short probe bound keeps the suite fast; a hanging-candidate is killed in ~1s.
         "ARS_PROBE_BOUND": "1",
-        # The launcher must resolve the guard from its OWN path, not this var (codex P1).
+        # The launcher must resolve the guard from its OWN path, not any var (codex P1).
         # We deliberately do NOT set CLAUDE_PLUGIN_ROOT in most tests.
     }
-    if guard_override:
-        env["ARS_GUARD_PATH_FOR_TEST"] = guard_override
     if extra_env:
         env.update(extra_env)
     proc = subprocess.run(
-        [_SH, LAUNCHER],
+        [_SH, launcher],
         input=json.dumps(payload),
         env=env,
         capture_output=True,
@@ -98,6 +98,25 @@ def _run_launcher(bin_dir, payload, extra_env=None, guard_override=None, with_sy
         timeout=_LAUNCHER_TIMEOUT,
     )
     return proc.returncode, proc.stdout, proc.stderr
+
+
+def _make_plugin_layout(base, guard_body):
+    """Build a temp plugin layout under `base`: hooks/run_guard.sh (real launcher copy) +
+    scripts/ars_write_scope_guard.py (a guard whose body is `guard_body`) + the manifest the
+    real guard needs. Returns the path to the copied launcher.
+
+    This is how a test runs an ALTERNATE/broken guard without a production back door: the
+    launcher resolves the guard from its OWN ../scripts/, so we plant the guard there (P2-e)."""
+    os.makedirs(os.path.join(base, "hooks"))
+    os.makedirs(os.path.join(base, "scripts"))
+    launcher_copy = os.path.join(base, "hooks", "run_guard.sh")
+    shutil.copy(LAUNCHER, launcher_copy)
+    with open(os.path.join(base, "scripts", "ars_write_scope_guard.py"), "w") as fh:
+        fh.write(guard_body)
+    # The real guard reads this manifest; copy it so an unmodified-guard layout also works.
+    manifest = os.path.join(os.path.dirname(GUARD), "ars_phase_scope_manifest.json")
+    shutil.copy(manifest, os.path.join(base, "scripts", "ars_phase_scope_manifest.json"))
+    return launcher_copy
 
 
 def _bucket_a_payload(workspace, file_path):
@@ -139,14 +158,27 @@ class LauncherNoPythonTest(unittest.TestCase):
             code, out, err = _run_launcher(bin_dir, {"tool_name": "Write", "tool_input": {"file_path": "/x", "content": "y"}})
             self._assert_clean_passthrough(code, out, err)
 
+    def test_marker_printed_but_nonzero_exit_rejected(self):
+        """P1-a: a candidate that PRINTS the exact marker on stdout but EXITS NON-ZERO must be
+        rejected (a half-broken interpreter, or a stub that echoes then fails). The probe keys
+        on `exit 0 AND marker`, not the marker alone -> no real python -> pass-through."""
+        with tempfile.TemporaryDirectory() as bin_dir:
+            for name in ("py", "python3", "python"):
+                # Print the marker to stdout (what a REAL probe would print) but exit 9.
+                # Must still be rejected because the exit status is non-zero.
+                _write_exec(os.path.join(bin_dir, name),
+                            "#!/bin/sh\nprintf 'ARS_PY_OK'\nexit 9\n")
+            code, out, err = _run_launcher(bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}})
+            self._assert_clean_passthrough(code, out, err)
+
     def test_no_timeout_binary_present(self):
-        """Launcher must still work (and not hang) when no usable `timeout` binary exists —
-        forces the watchdog fallback via ARS_NO_TIMEOUT_FOR_TEST."""
+        """Launcher must still work (and not hang) when the `timeout` binary is bypassed —
+        forces the process-group watchdog fallback via ARS_GUARD_FORCE_WATCHDOG."""
         with tempfile.TemporaryDirectory() as bin_dir:
             for name in ("py", "python3", "python"):
                 _stub(os.path.join(bin_dir, name))
             code, out, err = _run_launcher(bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
-                                           extra_env={"ARS_NO_TIMEOUT_FOR_TEST": "1"})
+                                           extra_env={"ARS_GUARD_FORCE_WATCHDOG": "1"})
             self._assert_clean_passthrough(code, out, err)
 
 
@@ -268,19 +300,20 @@ class LauncherSelfResolveTest(unittest.TestCase):
 
 class LauncherGuardBrokeTest(unittest.TestCase):
     """Found real python BUT the guard subprocess misbehaves -> pass-through + exit 0,
-    do NOT block (maintainer decision §3.2.1), do NOT spam stderr."""
+    do NOT block (maintainer decision §3.2.1), do NOT spam stderr.
+
+    Mechanism (P2-e): the launcher resolves the guard from its OWN ../scripts/ — no test-only
+    path override exists in production. So each test plants a broken guard in a temp plugin
+    layout (real launcher copy + broken scripts/ars_write_scope_guard.py) and runs that copy."""
 
     def _run_with_broken_guard(self, guard_body):
-        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as gdir:
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as base:
             _fake_real_python(os.path.join(bin_dir, "python3"))
-            broken = os.path.join(gdir, "broken_guard.py")
-            with open(broken, "w") as fh:
-                fh.write(guard_body)
-            code, out, err = _run_launcher(
+            launcher_copy = _make_plugin_layout(base, guard_body)
+            return _run_launcher(
                 bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
-                guard_override=broken,
+                launcher=launcher_copy,
             )
-            return code, out, err
 
     def test_guard_exits_nonzero(self):
         code, out, err = self._run_with_broken_guard("import sys\nsys.exit(3)\n")
@@ -300,12 +333,28 @@ class LauncherGuardBrokeTest(unittest.TestCase):
         self.assertEqual(json.loads(out), PASS_THROUGH)
         self.assertEqual(err.strip(), "")
 
+    def test_guard_prints_substring_not_json(self):
+        """P1-c: stdout CONTAINS the literal 'hookSpecificOutput' but is NOT valid JSON. A
+        substring grep would false-accept and forward garbage; the real json.load parse must
+        reject it and degrade to pass-through."""
+        code, out, err = self._run_with_broken_guard(
+            "print('not json but mentions \"hookSpecificOutput\" in prose')\n"
+        )
+        self.assertEqual(code, 0, f"non-JSON substring match must NOT be forwarded; err={err!r}")
+        self.assertEqual(json.loads(out), PASS_THROUGH)
+        self.assertEqual(err.strip(), "")
+
     def test_guard_script_missing(self):
-        with tempfile.TemporaryDirectory() as bin_dir:
+        # A plugin layout with the launcher but NO scripts/ars_write_scope_guard.py: the
+        # launcher resolves a guard path that doesn't exist -> the run_bounded exec fails ->
+        # broken-path degrade. Build the layout, then delete the guard the helper planted.
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as base:
             _fake_real_python(os.path.join(bin_dir, "python3"))
+            launcher_copy = _make_plugin_layout(base, "pass\n")
+            os.remove(os.path.join(base, "scripts", "ars_write_scope_guard.py"))
             code, out, err = _run_launcher(
                 bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
-                guard_override="/nonexistent/guard.py",
+                launcher=launcher_copy,
             )
             self.assertEqual(code, 0, f"missing guard -> pass-through, not block; err={err!r}")
             self.assertEqual(json.loads(out), PASS_THROUGH)
@@ -326,6 +375,26 @@ class LauncherHangingCandidateTest(unittest.TestCase):
             self.assertEqual(code, 0, f"must not hang/error on a hanging candidate; err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
                              "must kill the hanging py and use the real python3")
+
+    def test_hanging_py_killed_via_watchdog_path(self):
+        """P2-d: same hanging-candidate scenario, but ARS_GUARD_FORCE_WATCHDOG=1 forces the
+        no-`timeout` process-group watchdog instead of the `timeout` binary. Confirms the
+        watchdog (setsid + kill -TERM/-KILL on the negative pid) actually reaps a hung probe
+        so the launcher still falls through to the real python3 within the bound. A candidate
+        that hangs AND spawns a child grandprocess exercises the process-GROUP kill."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            # py spawns a long-sleeping grandchild then waits — a bare-pid TERM would leak the
+            # child; the process-group kill must take down the whole group.
+            _write_exec(os.path.join(bin_dir, "py"),
+                        "#!/bin/sh\nsleep 60 &\nwait\n")
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload,
+                                           extra_env={"CLAUDE_PROJECT_DIR": ws,
+                                                      "ARS_GUARD_FORCE_WATCHDOG": "1"})
+            self.assertEqual(code, 0, f"watchdog must reap the hung probe; err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "watchdog must kill the hanging py and fall through to python3")
 
 
 class LauncherInfraProtectionTest(unittest.TestCase):
