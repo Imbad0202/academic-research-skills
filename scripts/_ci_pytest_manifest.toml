@@ -151,6 +151,10 @@ id = "v3.10-134-write-scope-guard"
 path = "scripts/test_ars_write_scope_guard.py"
 
 [[pytest]]
+id = "454-write-scope-guard-launcher"
+path = "scripts/test_run_guard_launcher.py"
+
+[[pytest]]
 id = "v3.10-134-write-scope-lint-mutation"
 path = "scripts/test_check_v3_10_134_write_scope.py"
 

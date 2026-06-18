@@ -402,9 +402,11 @@ jobs:
 
       - name: Validate ARS plugin hooks.json wires the write-scope guard
         # Pins hooks/hooks.json to (a) be valid JSON, (b) carry a PreToolUse entry whose
-        # matcher covers the structured write tools + Bash, and (c) invoke the guard
-        # script via ${CLAUDE_PLUGIN_ROOT}. Catches an accidental hook-config regression
-        # that would silently disable the guard.
+        # matcher covers the structured write tools + Bash, (c) invoke the cross-platform
+        # launcher hooks/run_guard.sh via ${CLAUDE_PLUGIN_ROOT}, AND (d) confirm the launcher
+        # actually execs the guard script (so the launcher->guard chain can't be silently
+        # severed by a future edit). The hook went via run_guard.sh in #454: a bare `python3`
+        # command broke on Windows where python3 is a 0-byte Microsoft Store alias stub.
         run: |
           python3 - <<'PY'
           import json
@@ -416,9 +418,13 @@ jobs:
           for tool in ("Write", "Edit", "MultiEdit", "Bash"):
               assert tool in matcher, f"PreToolUse matcher missing {tool!r}: {matcher!r}"
           cmds = " ".join(hk.get("command", "") for hk in entry.get("hooks", []))
-          assert "ars_write_scope_guard.py" in cmds, "PreToolUse does not invoke the guard script"
-          assert "${CLAUDE_PLUGIN_ROOT}" in cmds, "guard command must use ${CLAUDE_PLUGIN_ROOT}"
-          print("hooks.json PreToolUse write-scope guard wiring OK")
+          assert "hooks/run_guard.sh" in cmds, "PreToolUse does not invoke the run_guard.sh launcher"
+          assert "${CLAUDE_PLUGIN_ROOT}" in cmds, "hook command must use ${CLAUDE_PLUGIN_ROOT}"
+          # The launcher must still chain to the guard script — pin it so the chain stays intact.
+          launcher = open("hooks/run_guard.sh").read()
+          assert "ars_write_scope_guard.py" in launcher, \
+              "run_guard.sh no longer references the guard script — launcher->guard chain severed"
+          print("hooks.json PreToolUse write-scope guard wiring OK (via run_guard.sh launcher)")
           PY
 
       - name: Run v3.9.4 temporal verification lint (#135)
