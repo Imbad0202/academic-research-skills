@@ -79,6 +79,54 @@ class TestAdjacentFramingProbeStructure(unittest.TestCase):
             "Probe layer must specify the env var activates on the string '1'",
         )
 
+    def test_banned_patterns_subheading_present(self) -> None:
+        self.assertIn(
+            "### Banned Patterns",
+            self.section,
+            "Probe section must carry an explicit '### Banned Patterns' block",
+        )
+
+    def test_verb_test_terms_named_in_ban(self) -> None:
+        # The Kong L2 verb test must be named so the executing agent knows the law.
+        ban_region = self.section[self.section.find("### Banned Patterns"):]
+        for verb in ("propose", "rank", "select", "expand", "substitute"):
+            self.assertIn(
+                verb,
+                ban_region.lower(),
+                f"Banned Patterns block must name the forbidden verb '{verb}'",
+            )
+
+    def test_log_tag_format_present(self) -> None:
+        # The exact machine-readable tag prefix must appear verbatim.
+        self.assertIn(
+            "[ADJACENT-PROBE: surfaced=",
+            self.section,
+            "Probe section must define the [ADJACENT-PROBE: ...] log tag",
+        )
+        self.assertIn("anchor=internal_knowledge", self.section)
+
+    def test_exploratory_gate_not_goal_oriented(self) -> None:
+        # Guard against a copy-paste of the Reading Probe's goal-oriented gate.
+        activation = self.section[: self.section.find("### Probe Wording")]
+        self.assertIn("exploratory", activation.lower())
+        self.assertNotRegex(
+            activation,
+            r"intent classification[^\n]*?goal-oriented",
+            "Activation must gate on EXPLORATORY, not goal-oriented (Reading-Probe copy-paste bug)",
+        )
+
+    def test_probe_does_not_leak_into_scoring_files(self) -> None:
+        # The probe tag must not appear in scoring / pipeline-summary files —
+        # it is dialogue-layer only, surfaced for Stage 6 reflection by grep, not
+        # embedded as a scored artifact.
+        for path in (COLLABORATION_RUBRIC,):
+            if path.exists():
+                self.assertNotIn(
+                    "ADJACENT-PROBE",
+                    _read(path),
+                    f"{path.name} must not embed the adjacent-probe tag (scoring leak)",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -500,6 +500,23 @@ A high decline rate across a session is itself the bias-detection signal: if the
 AI's adjacency judgments are consistently rejected, the internal-knowledge adjacency
 is mis-calibrated for this user. Stage 6 AI Self-Reflection reads these tags.
 
+### Banned Patterns
+
+Aligned with the Kong L2 verb test (`docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md`):
+the Mentor must never **propose**, **substitute**, **rank**, **expand**, or **select**
+an idea for the user. The probe surfaces and asks — nothing more.
+
+| | Example | Verdict |
+|---|---|---|
+| GOOD | "You're framed around 'the effect of AI tools on student grades.' An adjacent facet you haven't raised: the teacher's mediating role. Include it, or set it aside?" | surface facet + ask ✅ |
+| BAD (propose) | "You could reframe this as 'how teachers mediate AI's effect on grades.'" | gives a formed RQ ❌ |
+| BAD (rank) | "The teacher-mediation angle is more novel than your current frame." | comparison / implies better ❌ |
+| BAD (select) | "Consider: teacher mediation, parental involvement, or policy level — which?" | lists candidates to pick ❌ |
+| BAD (expand) | "Teacher mediation could become three sub-questions: …" | expands it for the user ❌ |
+
+The moment a probe contains "you could research X", "X is better / more novel", or
+"consider A, B, or C", it is a violation. Only the GOOD row is legal.
+
 ## Dialogue Management Rules
 
 ### Layer Transitions
