@@ -397,6 +397,51 @@ class LauncherHangingCandidateTest(unittest.TestCase):
                              "watchdog must kill the hanging py and fall through to python3")
 
 
+class LauncherWatchdogRobustnessTest(unittest.TestCase):
+    """Round-6 gemini track: the no-`timeout` watchdog must not fail OPEN under (a) a private-
+    temp allocation failure or (b) the pid-reuse race that would false-report a timeout."""
+
+    def test_mktemp_failure_degrades_to_passthrough_not_fail_open(self):
+        """gemini P1: if `mktemp` can't hand out a private temp, the launcher must NOT fall back
+        to a predictable /tmp path (symlink-attack surface whose redirect failure would read as a
+        broken guard and fail OPEN). It must degrade to a clean pass-through: exit 0, canonical
+        JSON, silent. We force mktemp to fail by shadowing it on PATH and force the watchdog path
+        (where the temp files live) via ARS_GUARD_FORCE_WATCHDOG."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            _write_exec(os.path.join(bin_dir, "mktemp"), "#!/bin/sh\nexit 1\n")  # mktemp always fails
+            # A Bucket A out-of-scope write would normally be DENIED — proving we don't fail open,
+            # the launcher must NOT emit deny here (it can't run the guard without a temp), it must
+            # cleanly pass through instead of erroring or blocking.
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload,
+                                           extra_env={"CLAUDE_PROJECT_DIR": ws,
+                                                      "ARS_GUARD_FORCE_WATCHDOG": "1"})
+            self.assertEqual(code, 0, f"mktemp failure must not crash/block; err={err!r}")
+            self.assertEqual(json.loads(out), PASS_THROUGH,
+                             "mktemp failure must degrade to canonical pass-through, never a "
+                             "predictable-temp path that fails open")
+            self.assertEqual(err.strip(), "", f"degraded path must be silent; got {err!r}")
+
+    def test_fast_guard_not_falsely_timed_out_on_watchdog_path(self):
+        """gemini P1 (pid-reuse race): on the forced watchdog path, a guard that answers WELL
+        within the bound must have its real decision forwarded — the done-file handshake must not
+        let the watchdog false-flag a timeout (which would fail open to pass-through). Run the
+        deny case several times; a single false-timeout would surface as a pass-through."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            for i in range(5):
+                code, out, err = _run_launcher(bin_dir, payload,
+                                               extra_env={"CLAUDE_PROJECT_DIR": ws,
+                                                          "ARS_GUARD_FORCE_WATCHDOG": "1"})
+                self.assertEqual(code, 0, f"run {i}: err={err!r}")
+                self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"),
+                                 "deny",
+                                 f"run {i}: fast guard decision must be forwarded, not lost to a "
+                                 f"false timeout; got {out!r}")
+
+
 class LauncherInfraProtectionTest(unittest.TestCase):
     """A Bucket A subagent writing to hooks/run_guard.sh itself must be denied — confirms
     the hooks/*.sh infra glob covers the new launcher end-to-end through the launcher."""

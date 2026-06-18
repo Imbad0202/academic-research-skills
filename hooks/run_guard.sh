@@ -43,6 +43,13 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || emit_passthrough_and_ex
 GUARD="$SELF_DIR/../scripts/ars_write_scope_guard.py"
 
 # --- Read the payload from stdin ONCE (we must replay it to the guard subprocess) ---------
+# Known trade-off (gemini round-6 P2, accepted): the payload is held in a shell variable and
+# replayed with `printf '%s'`. `printf` is a builtin so it is NOT bound by ARG_MAX, and the
+# stripped trailing newline is irrelevant to the guard's JSON parse, so for ordinary hook
+# payloads this is safe. A multi-megabyte Write payload on a POSIX shell that caps variable
+# length is the narrow case this does not cover; buffering to a private temp file would handle
+# it but adds another temp-file lifecycle (and symlink surface) to a hot path, so it is left as
+# documented degradation rather than fixed speculatively.
 PAYLOAD=$(cat)
 
 # --- Marker probe: does this candidate run real Python? ----------------------------------
@@ -102,12 +109,23 @@ run_bounded() {
     #     degraded case (no `timeout` AND no `setsid` AND a broken interpreter that forks — the
     #     real marker probe and guard never spawn grandchildren). Accepted; prefer `timeout`
     #     (path A) and `setsid` where present (codex round-6 P2).
-    #  4. TIMEOUT DETECTION: a TERM'd `sh` wrapper does not reliably surface 143/137, so we
-    #     don't infer timeout from the exit code — the watchdog writes a flag file iff its TERM
-    #     actually landed on a still-live process (see the watchdog body for the race it closes).
-    _rb_out=$(mktemp 2>/dev/null) || _rb_out="${TMPDIR:-/tmp}/ars_rb_out.$$"
-    _rb_fired=$(mktemp 2>/dev/null) || _rb_fired="${TMPDIR:-/tmp}/ars_rb_fired.$$"
+    #  4. TIMEOUT DETECTION via a DONE-FILE handshake, not the exit code (a TERM'd `sh` wrapper
+    #     does not reliably surface 143/137) and not "did the kill succeed" (gemini round-6 P1
+    #     refuted that: after `wait` reaps the child its pid is freed, and if the OS recycles it
+    #     before the parent disarms the watchdog, a blind `kill` would land on an INNOCENT
+    #     unrelated process — succeeding, so it would both false-flag a timeout AND signal the
+    #     wrong pid). Instead the parent writes a done-file the instant `wait` returns; the
+    #     watchdog kills (and flags) ONLY if that file is still absent when its sleep elapses.
+    #     So "child finished in time" and "child overran" are decided by the handshake, never by
+    #     racing a pid. mktemp failure must NOT fall back to a predictable /tmp path: a local
+    #     attacker could pre-create it as a symlink, our redirect would fail, and the launcher
+    #     would treat that as a broken guard and fail OPEN (gemini round-6 P1). If we can't get a
+    #     private temp, degrade safely to pass-through instead of writing a guessable path.
+    _rb_out=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
+    _rb_fired=$(mktemp 2>/dev/null) || { rm -f "$_rb_out" 2>/dev/null; emit_passthrough_and_exit; }
+    _rb_done=$(mktemp 2>/dev/null) || { rm -f "$_rb_out" "$_rb_fired" 2>/dev/null; emit_passthrough_and_exit; }
     rm -f "$_rb_fired" 2>/dev/null  # absent = watchdog has not fired
+    rm -f "$_rb_done" 2>/dev/null   # absent = parent has not yet signalled completion
     if command -v setsid >/dev/null 2>&1; then
         { setsid "$@" >"$_rb_out" <&3 3<&- & } 3<&0
     else
@@ -115,31 +133,31 @@ run_bounded() {
     fi
     _cmd_pid=$!
     ( sleep "$PROBE_BOUND"
-      # Mark "timed out" ONLY if the TERM actually lands on a still-live process. Writing the
-      # flag unconditionally after the sleep races a command that finished within the bound:
-      # the parent could be between `wait` returning and killing this watchdog when we wake, and
-      # an unconditional flag would falsely report a timeout for a command that completed in time
-      # — which, on the guard path, fail-opens to pass-through (codex round-6 P1, repro'd via a
-      # forced parent SIGSTOP at 0.90s on a 1s bound). A successful TERM proves the child was
-      # still running, i.e. a real overrun. Kill the whole process group (negative pid) when we
-      # can; else the bare pid.
-      if kill -TERM "-$_cmd_pid" 2>/dev/null || kill -TERM "$_cmd_pid" 2>/dev/null; then
+      # If the parent already signalled completion, the child finished within the bound: do NOT
+      # kill (its pid may have been recycled to an innocent process) and do NOT flag a timeout.
+      if [ ! -f "$_rb_done" ]; then
+          # Real overrun: kill the whole process group (negative pid) when we can, else the bare
+          # pid, and record the timeout. Re-check the done-file before the hard KILL too.
+          kill -TERM "-$_cmd_pid" 2>/dev/null || kill -TERM "$_cmd_pid" 2>/dev/null
           : >"$_rb_fired"
+          sleep 1
+          if [ ! -f "$_rb_done" ]; then
+              kill -KILL "-$_cmd_pid" 2>/dev/null || kill -KILL "$_cmd_pid" 2>/dev/null
+          fi
       fi
-      sleep 1
-      kill -KILL "-$_cmd_pid" 2>/dev/null || kill -KILL "$_cmd_pid" 2>/dev/null
     ) &
     _watch_pid=$!
     wait "$_cmd_pid" 2>/dev/null
     _st=$?
+    : >"$_rb_done"  # DISARM the watchdog before reaping it — closes the pid-reuse race window
     kill "$_watch_pid" 2>/dev/null
     wait "$_watch_pid" 2>/dev/null
     cat "$_rb_out" 2>/dev/null  # replay captured stdout to OUR stdout (for the $(...) caller)
     if [ -f "$_rb_fired" ]; then
-        rm -f "$_rb_out" "$_rb_fired" 2>/dev/null
+        rm -f "$_rb_out" "$_rb_fired" "$_rb_done" 2>/dev/null
         return "$TIMEOUT_STATUS"
     fi
-    rm -f "$_rb_out" "$_rb_fired" 2>/dev/null
+    rm -f "$_rb_out" "$_rb_fired" "$_rb_done" 2>/dev/null
     return "$_st"
 }
 
@@ -195,7 +213,10 @@ set -- $REAL_PY
 # has its own no-silent advisories — absent agent_type / schema drift / unreadable manifest —
 # that must surface; the launcher only suppresses stderr on its OWN degraded paths). On the
 # broken path we drop it, since broken-guard noise on every hot-path call is the #454 spam.
-GUARD_ERR=$(mktemp 2>/dev/null) || GUARD_ERR=/tmp/ars_guard_err.$$
+# No predictable /tmp fallback: a guessable path is a symlink-attack surface, and a redirect
+# onto an attacker-owned symlink fails -> we'd read that as a broken guard and fail OPEN
+# (gemini round-6 P1). If mktemp can't give us a private file, degrade safely to pass-through.
+GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" "$GUARD" 2>"$GUARD_ERR")
 GUARD_STATUS=$?
 

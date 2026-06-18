@@ -431,7 +431,11 @@ jobs:
           # `deny` is forwarded. So we keep the static check tight enough to catch an obvious
           # severance (commenting out the exec line) without trying to out-parse the shell:
           # the exec match is bound to the GUARD_OUT=$( ... run_bounded ... "$GUARD" ) call-site
-          # shape, so a stray `echo run_bounded "$GUARD"` no longer false-passes it (codex r6 P2).
+          # shape. The assignment line is ANCHORED at line start (^\s*) so an inline comment like
+          # `ls # GUARD_OUT=$(run_bounded "$GUARD")` can't satisfy it, and the run_bounded/"$GUARD"
+          # tokens are confined to a single command substitution (no `)` between them) so
+          # `GUARD_OUT=$( echo run_bounded "$GUARD" )` doesn't false-pass either (gemini r6 P2,
+          # tightening the codex r6 P2 fix).
           import re
           guard_assigned = guard_run = False
           for raw in open("hooks/run_guard.sh"):
@@ -440,13 +444,15 @@ jobs:
               # (1) GUARD=...ars_write_scope_guard.py  (assignment, derived from $0 dir)
               if re.search(r'\bGUARD=.*ars_write_scope_guard\.py', raw):
                   guard_assigned = True
-              # (2) the guard call site: GUARD_OUT=$( ... run_bounded ... "$GUARD" ... )
-              if re.search(r'GUARD_OUT=\$\(.*run_bounded\b.*"\$GUARD"', raw):
+              # (2) the guard call site, anchored at line start; run_bounded must be the command
+              #     run inside the substitution (only a pipe `|` may precede it), and "$GUARD" its
+              #     argument — all within one $( ... ) (the [^)]* forbids a closing paren between).
+              if re.search(r'^\s*GUARD_OUT=\$\([^)]*\|\s*run_bounded\b[^)]*"\$GUARD"', raw):
                   guard_run = True
           assert guard_assigned, \
               "run_guard.sh has no non-comment GUARD=...ars_write_scope_guard.py assignment — chain severed"
           assert guard_run, \
-              'run_guard.sh has no GUARD_OUT=$(... run_bounded ... "$GUARD") call site — launcher->guard exec chain severed'
+              'run_guard.sh has no anchored GUARD_OUT=$(... | run_bounded ... "$GUARD") call site — launcher->guard exec chain severed'
           print("hooks.json PreToolUse write-scope guard wiring OK (via run_guard.sh launcher)")
           PY
 
