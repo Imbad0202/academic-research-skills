@@ -29,9 +29,10 @@
 | 設定 | 功能說明 | 啟用方式 | 官方文件 |
 |---|---|---|---|
 | **Agent Team**（選用） | 啟用 `TeamCreate` / `SendMessage` tools 做手動多 agent 協作。**ARS 內部平行化不需要這個 flag** — skills 透過內建 `Agent` tool 直接 spawn subagent。僅在你想手動跨 session 協作持久 team 時有用。 | 設定 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`（研究預覽） | 實驗性功能 — 尚無穩定文件 |
-| **Skip Permissions** | 跳過每次工具使用的確認提示，實現全 pipeline 不中斷的自主執行 | 啟動時加上 `claude --dangerously-skip-permissions` | [Permissions](https://docs.anthropic.com/en/docs/claude-code/cli-reference) · [Advanced Usage](https://docs.anthropic.com/en/docs/claude-code/advanced) |
+| **Auto 模式**（建議） | 自動接受大多數工具動作，讓長時間 pipeline 大幅減少中斷；同時由伺服器端 classifier 擋下超出你請求範圍的危險動作（例如部署到 production、force-push 或直接 push main、資料外洩）。明確的 ask 規則與 classifier 攔截仍可能跳出確認。是「手動逐項確認」與「完全不檢查」之間的折衷。 | 啟動時加上 `claude --permission-mode auto`（若可用），或在 `~/.claude/settings.json` 設定 `"permissions": { "defaultMode": "auto" }`；啟動後確認當前模式（研究預覽） | [Permission modes](https://code.claude.com/docs/en/permission-modes) |
+| **Skip Permissions** | 跳過例行的工具使用確認，且不做任何安全檢查。比 auto 模式更快，但移除所有護欄。設計用途是用完即拋、無網路連線的隔離沙箱，不適合真實開發機器。 | 啟動時加上 `claude --dangerously-skip-permissions`（等同 `--permission-mode bypassPermissions`） | [Permission modes](https://code.claude.com/docs/en/permission-modes) |
 
-> **⚠️ Skip Permissions 注意事項**：此旗標會停用所有工具使用的確認對話框。請自行斟酌使用 — 在可信任的長時間 pipeline 中非常方便，但會移除手動審核的安全機制。僅在你確定接受 Claude 自動執行檔案讀寫、shell 指令等操作時才啟用。
+> **⚠️ 模式選擇**：大多數無人值守的 pipeline，建議使用 auto 模式。它讓長時間執行大幅減少中斷，同時由 classifier 擋下超出你請求範圍的危險動作，但 ask 規則與 classifier 攔截仍可能跳出確認。auto 模式是研究預覽：它不保證安全，也不能取代敏感操作的人工審查，且行為可能變動。Skip Permissions 則完全移除這層安全網，僅應在無網路連線的隔離沙箱中使用，且你要確定可以接受 Claude 在無檢查的情況下執行檔案讀寫與 shell 指令。
 
 ### v3.7.0 Plugin agent 與模型路由
 
