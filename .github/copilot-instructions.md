@@ -7,143 +7,58 @@ license: CC BY-NC 4.0
 
 # Academic Research Skills for GitHub Copilot
 
-## Quick Summary
-This repository contains a comprehensive suite of AI agents and skills for academic research, designed to augment human researchers rather than replace them. It covers the complete pipeline from deep research through paper writing and peer review, with built-in integrity verification and quality gates.
+AI-augmented research pipeline for academic writing, literature review, and peer review.
 
-## Core Principle
-**AI is your copilot, not the pilot.** The system handles grunt work (references, formatting, verification) while humans focus on substantive decisions, methodology, and interpretation.
+**Core principle:** AI is your copilot, not the pilot. Humans focus on substantive decisions; AI handles grunt work (references, formatting, verification).
 
-## When to Use Each Component
+## Quick Start
 
-### Use Deep Research When:
-- Conducting literature reviews
-- Need PRISMA systematic review structure
-- Seeking cross-disciplinary connections
-- Want to verify source availability
-- Need intent detection for research direction
+Try `/ars-plan` — describe your paper, get Socratic structure guidance.
 
-### Use Academic Paper When:
-- Writing research papers or dissertations
-- Need style calibration to your voice
-- Want citation verification before submission
-- Need help with revision and polish
-- Require LaTeX compilation support
+**Key commands:** `/ars-lit-review`, `/ars-deep-research`, `/ars-write`, `/ars-review`, `/ars-pipeline`
 
-### Use Academic Paper Reviewer When:
-- Preparing for peer review submission
-- Need diverse reviewer perspectives
-- Want quality rubric feedback
-- Need R&R traceability
-- Seeking devil's advocate critique
+## Setup & Installation
 
-### Use Academic Pipeline When:
-- Running the full publication workflow
-- Need claim verification at scale
-- Want experiment provenance tracking
-- Need material passport for reproducibility
-- Require adaptive checkpoints
+→ **[SETUP.md](docs/SETUP.md)** for plugin, local symlink, API keys, and optional tools
 
-## Installation
+## Architecture & Components
 
-### Via Plugin (Recommended)
-```
-/plugin marketplace add Imbad0202/academic-research-skills
-/plugin install academic-research-skills
-```
+- **Deep Research** — 13-agent team, PRISMA support, intent detection
+- **Paper Writing** — 12-agent pipeline, style calibration, citation verification  
+- **Peer Review** — 7-agent multi-perspective review, quality rubrics
+- **Pipeline** — 10-stage orchestration, claim verification, material passports
 
-### Via Local Symlink
-```bash
-# Clone repo
-git clone https://github.com/imbad0202/academic-research-skills
-cd academic-research-skills
+→ **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full flow diagrams and dependency graph
 
-# Set up Claude Code to use the skills
-# See docs/SETUP.md for detailed instructions
-```
+## Integrity & Safety
 
-## Getting Started
-
-**Test it works:** Run `/ars-plan` and describe a paper you're working on. ARS will guide you through structure via Socratic dialogue.
-
-**For literature review:** Use `/ars-lit-review "your topic"`
-
-**For full pipeline:** Use `/ars-pipeline` to run the orchestrated 10-stage workflow
-
-## Important Failure Modes (Know These!)
-
-The project explicitly addresses AI research failure modes identified by Lu et al. (2026):
-- Implementation bugs
-- Hallucinated results
-- Shortcut reliance
-- Methodology fabrication
-- Citation hallucinations (see Zhao et al. 2026 corpus analysis)
-
-Mitigations:
-- 7-mode blocking checklist (Stage 2.5 and 4.5 gates)
-- Claim-level audit with locator anchors
+Addresses AI research failure modes (Lu et al. 2026):
+- 7-mode blocking checklist for common AI failures
+- Claim-level audits with locator anchors
 - Trust-chain frontmatter for provenance
 - FNR/FPR calibration on custom measures
 
-## Cost & Performance
+⚠️ **Skip Permissions flag** (disables tool-use confirmation) should only be used in trusted environments. See [POSITIONING.md](docs/POSITIONING.md) for full safety context before enabling.
 
-- **Estimated cost:** $4–6 for a 15k-word paper
-- **Token budgets:** See `docs/PERFORMANCE.md`
-- **Recommended settings:** Skip Permissions, optional Agent Team
+## Contributing
 
-## File Structure for Contributors
+→ **[CONTRIBUTING.md](CONTRIBUTING.md)** for PR workflow, acceptance criteria, development guidelines
 
-- `agents/` - Individual agent implementations
-- `commands/` - CLI entry points and user interactions
-- `skills/` - Reusable skill modules with `data_access_level` and `task_type`
-- `shared/` - Common patterns: ground truth isolation, benchmarking, reproducibility
-- `scripts/` - Validation and checking utilities
-- `docs/` - Full architecture, setup, performance, positioning
+## Docs
 
-## Data Access & Task Annotations
+| Topic | Link |
+|-------|------|
+| **Setup & Installation** | [SETUP.md](docs/SETUP.md) |
+| **Architecture** | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| **Performance & Costs** | [PERFORMANCE.md](docs/PERFORMANCE.md) |
+| **Design Philosophy** | [POSITIONING.md](docs/POSITIONING.md) |
+| **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| **Citation** | [CITATION.cff](CITATION.cff) |
 
-All new code should declare:
+## License
 
-```python
-METADATA = {
-    "data_access_level": "raw|redacted|verified_only",  # Data scope
-    "task_type": "open-ended|outcome-gradable",         # Task classification
-}
-```
-
-Enforcement: `python scripts/check_data_access_level.py`
-
-## Key Commands for Researchers
-
-- `/ars-plan` — Socratic dialogue for paper structure
-- `/ars-lit-review TOPIC` — Quick literature review
-- `/ars-deep-research` — Full 13-agent research team with Socratic guided mode and domain adaptation options
-- `/ars-write` — 12-agent paper writing
-- `/ars-review` — 7-agent peer review
-- `/ars-pipeline` — Full 10-stage orchestrated workflow
-
-## Documentation Pointers
-
-- **Architecture:** `docs/ARCHITECTURE.md` — flow diagrams, stage matrix, dependency graph
-- **Setup:** `docs/SETUP.md` — installation, API keys, optional tools
-- **Performance:** `docs/PERFORMANCE.md` — token budgets, costs
-- **Positioning:** `docs/POSITIONING.md` — design philosophy, research grounding
-
-## License & Citation
-
-- **License:** CC BY-NC 4.0 (non-commercial use)
-- **Citation:** See `CITATION.cff`
-- **DOI:** [10.5281/zenodo.20696614](https://doi.org/10.5281/zenodo.20696614)
-
-## Support & Community
-
-- **Report issues:** GitHub Issues
-- **Contribute:** See `CONTRIBUTING.md`
-- **Security concerns:** See `SECURITY.md`
-- **Sponsor development:** [Buy Me a Coffee](https://buymeacoffee.com/crucify020v)
-
-## Version
-v3.12.1 — see `CHANGELOG.md` for updates
+CC BY-NC 4.0 (non-commercial use) • DOI: [10.5281/zenodo.20696614](https://doi.org/10.5281/zenodo.20696614)
 
 ---
 
-**Remember:** This tool helps you write *better*, not helps you hide that you used AI. Integrity and human judgment are non-negotiable.
+**This tool helps you write *better*, not helps you hide that you used AI. Integrity is non-negotiable.**
