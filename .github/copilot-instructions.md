@@ -1,7 +1,7 @@
 ---
 title: Academic Research Skills
 description: AI-augmented academic research pipeline with integrity verification
-version: 3.12.1
+version: 3.13.0
 license: CC BY-NC 4.0
 ---
 
@@ -15,11 +15,11 @@ AI-augmented research pipeline for academic writing, literature review, and peer
 
 Try `/ars-plan` — describe your paper, get Socratic structure guidance.
 
-**Key commands:** `/ars-lit-review`, `/ars-deep-research`, `/ars-write`, `/ars-review`, `/ars-pipeline`
+**Key commands:** `/ars-plan`, `/ars-lit-review`, `/ars-full`, `/ars-reviewer`
 
 ## Setup & Installation
 
-→ **[SETUP.md](docs/SETUP.md)** for plugin, local symlink, API keys, and optional tools
+→ **[SETUP.md](../docs/SETUP.md)** for plugin, local symlink, API keys, and optional tools
 
 ## Architecture & Components
 
@@ -28,7 +28,7 @@ Try `/ars-plan` — describe your paper, get Socratic structure guidance.
 - **Peer Review** — 7-agent multi-perspective review, quality rubrics
 - **Pipeline** — 10-stage orchestration, claim verification, material passports
 
-→ **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full flow diagrams and dependency graph
+→ **[ARCHITECTURE.md](../docs/ARCHITECTURE.md)** for full flow diagrams and dependency graph
 
 ## Integrity & Safety
 
@@ -38,7 +38,7 @@ Addresses AI research failure modes (Lu et al. 2026):
 - Trust-chain frontmatter for provenance
 - FNR/FPR calibration on custom measures
 
-⚠️ **Skip Permissions flag** (disables tool-use confirmation) should only be used in trusted environments. See [POSITIONING.md](docs/POSITIONING.md) for full safety context before enabling.
+⚠️ **Auto mode** is the recommended setting for unattended runs. `--dangerously-skip-permissions` is sandbox-only. See [POSITIONING.md](../docs/POSITIONING.md) for full safety context before enabling.
 
 ## Contributing
 
@@ -48,10 +48,10 @@ Addresses AI research failure modes (Lu et al. 2026):
 
 | Topic | Link |
 |-------|------|
-| **Setup & Installation** | [SETUP.md](docs/SETUP.md) |
-| **Architecture** | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| **Performance & Costs** | [PERFORMANCE.md](docs/PERFORMANCE.md) |
-| **Design Philosophy** | [POSITIONING.md](docs/POSITIONING.md) |
+| **Setup & Installation** | [SETUP.md](../docs/SETUP.md) |
+| **Architecture** | [ARCHITECTURE.md](../docs/ARCHITECTURE.md) |
+| **Performance & Costs** | [PERFORMANCE.md](../docs/PERFORMANCE.md) |
+| **Design Philosophy** | [POSITIONING.md](../docs/POSITIONING.md) |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | **Citation** | [CITATION.cff](CITATION.cff) |
 
