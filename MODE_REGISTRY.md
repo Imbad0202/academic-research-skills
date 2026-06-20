@@ -55,7 +55,15 @@ Last updated: v3.12.1 (2026-06-15)
 | (pipeline) | Balanced | 10-stage orchestrated workflow | Very High | "academic pipeline", "research to paper", "full paper workflow" |
 | `resume_from_passport=<hash>` | Fidelity | Resume a prior pipeline run from a Material Passport reset boundary. Opt-in (`ARS_PASSPORT_RESET=1`). See `academic-pipeline/references/passport_as_reset_boundary.md`. | High | "resume from passport", "continue pipeline from reset boundary" |
 
----
+## Utility Modes
+
+| Mode | Spectrum | Output | Oversight | Triggers |
+|------|----------|--------|-----------|----------|
+| `ars-summary` | Fidelity | Concise research‑plan summary | Low | "ars-summary", "summary of plan" |
+| `ars-citation-audit` | Fidelity | Citation completeness/format audit | Low | "ars-citation-audit", "audit citations" |
+| `ars-export-latex` | Fidelity | LaTeX project export of manuscript | Low | "ars-export-latex", "export latex" |
+| `ars-cost-estimate` | Fidelity | Compute‑time and token‑cost estimate | Low | "ars-cost-estimate", "estimate cost" |
+| `ars-bibliography` | Fidelity | Bibliography file (BibTeX/CSL) generation | Low | "ars-bibliography", "generate bibliography" |
 
 ## Summary
 
