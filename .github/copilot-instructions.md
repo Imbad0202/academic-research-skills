@@ -15,7 +15,7 @@ AI-augmented research pipeline for academic writing, literature review, and peer
 
 Try `/ars-plan` — describe your paper, get Socratic structure guidance.
 
-**Key commands:** `/ars-plan`, `/ars-lit-review`, `/ars-full`, `/ars-reviewer`
+**Key commands:** `/ars-plan`, `/ars-lit-review`, `/ars-full`, `/ars-reviewer`, `/ars-summary`, `/ars-citation-audit`, `/ars-abstract`, `/ars-export-latex`, `/ars-cost-estimate`
 
 ## Setup & Installation
 
