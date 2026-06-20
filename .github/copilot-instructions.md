@@ -42,7 +42,7 @@ Addresses AI research failure modes (Lu et al. 2026):
 
 ## Contributing
 
-→ **[CONTRIBUTING.md](CONTRIBUTING.md)** for PR workflow, acceptance criteria, development guidelines
+→ **[CONTRIBUTING.md](../CONTRIBUTING.md)** for PR workflow, acceptance criteria, development guidelines
 
 ## Docs
 
