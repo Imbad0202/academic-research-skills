@@ -1,0 +1,126 @@
+# Academic Research Skills for Hermes — Full LLM Reference
+
+## Overview
+
+Academic Research Skills for Hermes is a Hermes Agent adaptation layer for academic research workflows. It is maintained as a fork of Academic Research Skills for Claude Code and preserves the upstream CC BY-NC 4.0 license.
+
+The repository keeps the upstream Claude Code project intact and adds a Hermes-specific `hermes/` directory containing skills, references, templates, examples, scripts, and docs.
+
+## Repository
+
+- GitHub: https://github.com/maximosovsky/academic-research-skills
+- Default branch: hermes-adaptation
+- Docs: https://maximosovsky.github.io/academic-research-skills/
+- Release: https://github.com/maximosovsky/academic-research-skills/releases/tag/v0.1.0-hermes
+- Upstream: https://github.com/Imbad0202/academic-research-skills
+- License: CC BY-NC 4.0
+
+## Hermes Skills
+
+### hermes-academic-deep-research
+
+Use for research-question shaping, literature review, systematic-review planning, source discovery, fact-checking, evidence synthesis, and claim verification.
+
+Key references:
+- literature-review-protocol.md
+- systematic-review-protocol.md
+- source-reliability.md
+- claim-support-audit.md
+- netnography-corpus-protocol.md
+
+### hermes-academic-paper
+
+Use for planning, outlining, drafting, revising, formatting, and polishing academic manuscripts.
+
+Key references:
+- paper-structure-patterns.md
+- revision-protocol.md
+- disclosure-checklist.md
+- formatting-checklist.md
+
+### hermes-academic-reviewer
+
+Use for simulated peer review and editorial assessment. Produces editor + reviewer reports, devil's advocate critique, editorial decision, and prioritized revision roadmap.
+
+Key references:
+- manuscript-genre-discipline.md
+- peer-review-panels.md
+- editorial-decision-standards.md
+- devil-advocate-protocol.md
+- journal-fit-apc.md
+
+### hermes-academic-pipeline
+
+Use for end-to-end academic workflows: research, paper planning, drafting, integrity checks, peer review, revision, final verification, formatting, and submission preparation.
+
+Key references:
+- pipeline-state-machine.md
+- integrity-gates.md
+- checkpoint-protocol.md
+- completed-preprint-pipeline.md
+
+## Install
+
+```bash
+git clone -b hermes-adaptation https://github.com/maximosovsky/academic-research-skills.git
+cd academic-research-skills
+python hermes/scripts/validate-skills.py
+bash hermes/scripts/install-local.sh all
+```
+
+Then start a fresh Hermes session or run `/reload-skills`.
+
+## Usage Examples
+
+### Full peer review of a PDF
+
+```text
+/skill hermes-academic-reviewer
+Полная peer-review имитация Editor + 3 reviewers + devil's advocate + editorial decision для этого PDF.
+```
+
+### Claim-support audit
+
+```text
+/skill hermes-academic-deep-research
+Проведи claim-support audit: проверь ключевые claims, источники, overclaims и missing citations.
+```
+
+### Full pipeline
+
+```text
+/skill hermes-academic-pipeline
+Проведи полный research-to-publication workflow для этой статьи.
+```
+
+## Scripts
+
+- `hermes/scripts/install-local.sh`: copy selected skills into local Hermes skills directory.
+- `hermes/scripts/validate-skills.py`: validate Hermes SKILL.md frontmatter and basic structure.
+- `hermes/scripts/extract-pdf.py`: extract local PDF text for review/citation workflows.
+- `hermes/scripts/install-urls.py`: print direct `hermes skills install` commands for raw GitHub URLs.
+
+## Templates
+
+- Research brief
+- Literature review matrix
+- Paper outline
+- Abstract template
+- Peer review report
+- Editorial decision
+- Revision roadmap
+- Journal fit report
+
+## Manuscript Genre Discipline
+
+Do not review every manuscript as an empirical IMRaD article. Conceptual and methodological papers should be evaluated by recoverability of reasoning, adequacy of corpus/material, clarity of contribution, honest evidence status, limitations, and future validation path.
+
+Netnography and digital corpus papers should be evaluated by search log, corpus inventory, inclusion/exclusion criteria, source reliability hierarchy, coding protocol, translation verification, and online research ethics.
+
+Sport pedagogy and physical education papers should be evaluated by safety and age adaptation, curriculum fit, lesson progression, teacher competencies, and whether pedagogical outcomes are measured or hypothetical.
+
+## License and Attribution
+
+This fork preserves the upstream CC BY-NC 4.0 license. It is based on Academic Research Skills by Cheng-I Wu: https://github.com/Imbad0202/academic-research-skills
+
+Maintained fork/adaptation by Maxim Osovsky: https://github.com/maximosovsky
