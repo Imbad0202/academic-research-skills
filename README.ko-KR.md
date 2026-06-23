@@ -413,7 +413,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.7.0 (2026-05-05) — Claude Code Plugin Packaging
 
-> 플러그인 패키징 업그레이드: ARS가 이제 `/plugin marketplace add Imbad0202/academic-research-skills` + `/plugin install academic-research-skills`로 Claude Code CLI / VS Code / JetBrains에 한 줄로 설치됩니다. 전통적인 `git clone + ~/.claude/skills/` 경로로 연결하는  방식도 계속 동작합니다 — 두 트랙 모두 일급입니다.
+> 플러그인 패키징 업그레이드: ARS가 이제 `/plugin marketplace add Imbad0202/academic-research-skills` + `/plugin install academic-research-skills`로 Claude Code CLI / VS Code / JetBrains에 한 줄로 설치됩니다. 전통적인 `git clone` + `~/.claude/skills/` 경로로 연결하는  방식도 계속 동작합니다 — 두 트랙 모두 일급입니다.
 
 - **플러그인 manifest + marketplace 메타데이터**(Phase 1, PR #68). `.claude-plugin/plugin.json`이 스위트를 선언(`skills/` 디렉터리에서 상대 symlink로 자동 발견되는 4개 스킬). `.claude-plugin/marketplace.json`이 플러그인을 등록해 단일 GitHub 호스팅 엔드포인트가 marketplace 목록과 플러그인 소스를 모두 제공. README + `README.zh-TW.md` + `docs/SETUP.md`가 dual-track 설치 지침을 담음.
 - **10개 슬래시 명령**(`commands/ars-*.md`, Phase 2.1, PR #69)이 `MODE_REGISTRY.md` 항목을 `/ars-<mode>` 트리거에 매핑. 모델 라우팅은 각 명령의 frontmatter에 고정 — `full`과 `revision-coach`에는 `opus`(아키텍처 / 검토 해석 깊이), 나머지 8개에는 `sonnet`. 프로젝트 정책에 따라 Haiku 없음.
