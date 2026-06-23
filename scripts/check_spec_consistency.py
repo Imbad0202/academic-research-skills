@@ -416,6 +416,71 @@ def check_readme_ja_sections() -> None:
     check_relative_markdown_links(rel_path)
 
 
+def check_readme_ko_sections() -> None:
+    """Symmetric coverage of README.ko-KR.md added with Korean localization.
+
+    Korean typography uses ASCII parentheses, so the release-block headings match
+    the English / ja-JP convention verbatim (NOT the full-width zh-CN/zh-TW form).
+    Localized mode headings use ASCII parens + "N개 모드"; skill-detail headings
+    reuse the English ASCII-paren form. Mode-section inner-content guards are
+    deliberately omitted here, mirroring check_readme_ja_sections — the #171
+    schema-driven refactor will fold the locales together, so an extract_section
+    mirror added now would be discarded by it.
+    """
+    rel_path = "README.ko-KR.md"
+    text = read(rel_path)
+
+    expect_contains(rel_path, "version-v3.13.0-blue")
+    expect_contains(rel_path, "releases/tag/v3.13.0")
+    expect_contains(rel_path, "### v3.13.0 (2026-06-18)")
+    expect_contains(rel_path, "### v3.12.0 (2026-06-08)")
+    expect_contains(rel_path, "### v3.11.1 (2026-06-06)")
+    expect_contains(rel_path, "### v3.11.0 (2026-06-04)")
+    expect_contains(rel_path, "### v3.10.0 (2026-06-01)")
+    expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
+    expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
+    expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
+    expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
+    expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
+    expect_contains(rel_path, "### v3.8.0 (2026-05-16)")
+    expect_contains(rel_path, "### v3.7.0 (2026-05-05)")
+    expect_contains(rel_path, "### v3.6.8 (2026-05-03)")
+    expect_contains(rel_path, "### v3.6.7 (2026-04-30)")
+    expect_contains(rel_path, "### v3.6.5 (2026-04-27)")
+    expect_contains(rel_path, "### v3.6.4 (2026-04-25)")
+    expect_contains(rel_path, "### v3.6.3 (2026-04-23)")
+    expect_contains(rel_path, "### v3.6.2 (2026-04-23)")
+    expect_contains(rel_path, "### v3.5.1 (2026-04-22)")
+    expect_contains(rel_path, "### v3.5.0 (2026-04-21)")
+    expect_contains(rel_path, "### v3.4.0 (2026-04-20)")
+    expect_contains(rel_path, "### v3.3.6 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.5 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.4 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
+    expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
+    for heading in (
+        "#### Deep Research (8개 모드)",
+        "#### Academic Paper (11개 모드)",
+        "#### Academic Paper Reviewer (6개 모드)",
+        "#### Academic Pipeline (오케스트레이터)",
+        "### Deep Research (v2.11.0)",
+        "### Academic Paper (v3.2.0)",
+        "### Academic Paper Reviewer (v1.10.0)",
+        "### Academic Pipeline (v3.13.0)",
+    ):
+        if heading not in text:
+            fail(f"{rel_path}: missing heading {heading!r}")
+
+    for forbidden in (
+        "6th independent reviewer",
+        "Peer review gains 6th independent reviewer",
+    ):
+        expect_absent(rel_path, forbidden)
+
+    expect_contains(rel_path, "DOCX (가능한 경우 Pandoc 경유)")
+    check_relative_markdown_links(rel_path)
+
+
 ZH_README_CONFIGS = (
     {
         "rel_path": "README.zh-TW.md",
@@ -637,6 +702,7 @@ def main() -> int:
     check_readme_sections()
     check_readme_zh_sections()
     check_readme_ja_sections()
+    check_readme_ko_sections()
     check_setup_docs()
     check_docx_contract()
     check_reference_docs()
