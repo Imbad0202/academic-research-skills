@@ -23,6 +23,10 @@ permissions:
 
 jobs:
   defer-check:
+    # Hermes adaptation releases use tags like v0.1.1-hermes and do not use
+    # the upstream defer:<tag> issue-label convention. Skip them so forks with
+    # Issues disabled do not fail release runs.
+    if: ${{ !endsWith(github.ref_name, '-hermes') }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

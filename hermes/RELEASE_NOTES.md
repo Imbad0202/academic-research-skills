@@ -1,6 +1,15 @@
-# v0.1.0-hermes
+# v0.1.1-hermes
 
-Initial Hermes Agent adaptation of Academic Research Skills.
+Hermes Agent adaptation of Academic Research Skills.
+
+## Fixed since v0.1.0-hermes
+
+- Skip upstream Defer Label Gate for `*-hermes` tags so fork releases do not fail when GitHub Issues are disabled.
+- Expand Hermes adaptation CI triggers to cover README, `llms.txt`, `llms-full.txt`, and docs changes, not only `hermes/**`.
+- Apply the README guidelines standard to the fork landing page: English-first README, centered header, badges, tagline, feature table, quick start, tech stack, roadmap, and license.
+- Add `llms.txt` and `llms-full.txt` for LLM discoverability.
+
+## Initial v0.1.0-hermes contents
 
 ## Added
 

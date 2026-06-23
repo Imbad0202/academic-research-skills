@@ -3,11 +3,21 @@ name: Hermes adaptation
 on:
   pull_request:
     paths:
+      - 'README.md'
+      - 'llms.txt'
+      - 'llms-full.txt'
+      - 'docs/index.html'
+      - 'docs/hermes/**'
       - 'hermes/**'
       - '.github/workflows/hermes-adaptation.yml'
   push:
     branches: [hermes-adaptation]
     paths:
+      - 'README.md'
+      - 'llms.txt'
+      - 'llms-full.txt'
+      - 'docs/index.html'
+      - 'docs/hermes/**'
       - 'hermes/**'
       - '.github/workflows/hermes-adaptation.yml'
 

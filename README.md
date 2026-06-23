@@ -10,7 +10,7 @@
 **Hermes Agent skills for academic research, paper writing, peer review, and publication workflows.**
 
 <a href="https://maximosovsky.github.io/academic-research-skills/">Docs</a> ·
-<a href="https://github.com/maximosovsky/academic-research-skills/releases/tag/v0.1.0-hermes">Release</a> ·
+<a href="https://github.com/maximosovsky/academic-research-skills/releases/tag/v0.1.1-hermes">Release</a> ·
 <a href="https://github.com/Imbad0202/academic-research-skills">Upstream</a> ·
 <a href="HERMES.md">Hermes Notes</a>
 
@@ -166,7 +166,7 @@ academic-research-skills/
 - [x] Add Hermes-native skill layer.
 - [x] Add local installer and validator.
 - [x] Add references, templates, examples, and helper scripts.
-- [x] Publish `v0.1.0-hermes` release.
+- [x] Publish `v0.1.1-hermes` release.
 - [x] Add GitHub Pages documentation.
 - [x] Open upstream PR with optional Hermes layer.
 - [ ] Add more manuscript-specific examples.
