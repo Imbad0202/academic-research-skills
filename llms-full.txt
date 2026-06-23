@@ -11,7 +11,7 @@ The repository keeps the upstream Claude Code project intact and adds a Hermes-s
 - GitHub: https://github.com/maximosovsky/academic-research-skills
 - Default branch: hermes-adaptation
 - Docs: https://maximosovsky.github.io/academic-research-skills/
-- Release: https://github.com/maximosovsky/academic-research-skills/releases/tag/v0.1.1-hermes
+- Release: https://github.com/maximosovsky/academic-research-skills/releases/tag/v0.1.2-hermes
 - Upstream: https://github.com/Imbad0202/academic-research-skills
 - License: CC BY-NC 4.0
 

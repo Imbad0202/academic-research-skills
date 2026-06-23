@@ -1,6 +1,10 @@
-# v0.1.1-hermes
+# v0.1.2-hermes
 
 Hermes Agent adaptation of Academic Research Skills.
+
+## Fixed since v0.1.1-hermes
+
+- Skip upstream Spec Consistency on `*-hermes` release tags as well as the `hermes-adaptation` branch, so Hermes-tagged releases do not run upstream README invariants.
 
 ## Fixed since v0.1.0-hermes
 

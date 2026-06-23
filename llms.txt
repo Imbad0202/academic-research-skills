@@ -10,7 +10,7 @@ This fork adapts Academic Research Skills for Claude Code into a Hermes Agent sk
 
 - Repository: https://github.com/maximosovsky/academic-research-skills
 - Docs: https://maximosovsky.github.io/academic-research-skills/
-- Release: https://github.com/maximosovsky/academic-research-skills/releases/tag/v0.1.1-hermes
+- Release: https://github.com/maximosovsky/academic-research-skills/releases/tag/v0.1.2-hermes
 - Upstream: https://github.com/Imbad0202/academic-research-skills
 - Full LLM reference: https://raw.githubusercontent.com/maximosovsky/academic-research-skills/hermes-adaptation/llms-full.txt
 

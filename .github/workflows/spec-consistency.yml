@@ -20,8 +20,9 @@ jobs:
     # README.upstream.md, while this upstream CI check still assumes README.md
     # is the canonical Claude Code README. Skip this job for the Hermes branch
     # and PRs opened from it; the Hermes-specific workflow validates the
-    # adaptation layer instead.
-    if: github.ref_name != 'hermes-adaptation' && github.head_ref != 'hermes-adaptation'
+    # adaptation layer instead. Also skip Hermes release tags like
+    # v0.1.2-hermes; those are validated by the Hermes adaptation workflow.
+    if: github.ref_name != 'hermes-adaptation' && github.head_ref != 'hermes-adaptation' && !endsWith(github.ref_name, '-hermes')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
