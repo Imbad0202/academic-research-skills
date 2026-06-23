@@ -29,6 +29,14 @@ These skills translate the ARS workflow into Hermes idioms:
 - use `todo` for multi-stage orchestration;
 - keep manuscript review output separate from manuscript edits unless explicitly requested.
 
+## Added package surface
+
+- `hermes/skills/` — four Hermes skills.
+- `hermes/skills/*/references/` — Hermes-native protocols and checklists.
+- `hermes/skills/*/templates/` — report, outline, matrix, and roadmap templates.
+- `hermes/examples/` — ready-to-use prompts for common manuscript workflows.
+- `hermes/scripts/` — local install, validation, PDF extraction, and raw URL helpers.
+
 ## Install selected skills into Hermes
 
 From the repo root:
@@ -37,6 +45,12 @@ From the repo root:
 bash hermes/scripts/install-local.sh all
 # or:
 bash hermes/scripts/install-local.sh reviewer pipeline
+```
+
+Validate before installing:
+
+```bash
+python hermes/scripts/validate-skills.py
 ```
 
 Then start a fresh Hermes session or run `/reload-skills`.

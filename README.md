@@ -25,12 +25,25 @@ The default branch of this fork is `hermes-adaptation`.
 | `hermes-academic-reviewer` | Simulated peer review: editor + reviewers + devil's advocate + editorial decision + revision roadmap. |
 | `hermes-academic-pipeline` | End-to-end workflow orchestration: research → write → integrity → review → revise → finalize. |
 
+## What's included beyond SKILL.md
+
+- `references/` protocols for literature review, systematic-review planning, netnography corpora, claim-support audits, manuscript genre discipline, peer-review panels, integrity gates, and journal-fit/APC checks.
+- `templates/` for research briefs, literature matrices, paper outlines, abstracts, peer review reports, editorial decisions, and revision roadmaps.
+- `examples/` with ready-to-use Hermes prompts for completed PDFs, netnography papers, sport-pedagogy papers, and citation audits.
+- `scripts/` for local install, skill validation, PDF extraction, and raw URL install command generation.
+
 ## Install into Hermes
 
 ```bash
 git clone -b hermes-adaptation https://github.com/maximosovsky/academic-research-skills.git
 cd academic-research-skills
 bash hermes/scripts/install-local.sh all
+```
+
+Validate the Hermes layer:
+
+```bash
+python hermes/scripts/validate-skills.py
 ```
 
 Install only selected skills:
