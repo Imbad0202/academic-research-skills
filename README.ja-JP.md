@@ -5,7 +5,7 @@
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
 
-[English](README.md) | [简体中文版](README.zh-CN.md) | [繁體中文版](README.zh-TW.md)
+[English](README.md) | [简体中文版](README.zh-CN.md) | [繁體中文版](README.zh-TW.md) | [한국어](README.ko-KR.md)
 
 学術研究のための Claude Code スキル統合スイート。研究から論文公開までの全工程をカバーします。
 
