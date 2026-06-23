@@ -1,0 +1,80 @@
+# SkillOpt config — ARS rq_framing_patterns wording-advisory skill.
+#
+# Self-contained (no `_base_`): SkillOpt's configs/_base_/default.yaml is NOT
+# shipped in the pip wheel, so every key the loader needs is inlined here. Run with:
+#
+#   PYTHONPATH=. python tools/skillopt/run_ars_skillopt.py \
+#       --config tools/skillopt/configs/rq_framing_patterns.yaml
+#
+# Budget is deliberately small (2 epochs, 40-item gold set). Scale train.num_epochs /
+# train.batch_size / optimizer.learning_rate up for a fuller run. Every target/optimizer
+# call goes through the Claude CLI (claude_chat backend), so it draws on your
+# authenticated `claude` binary rather than a separate metered API key.
+
+model:
+  backend: claude_chat
+  optimizer: claude-opus-4-8       # proposes skill edits — ARS uses Opus for review/architecture
+  target: claude-sonnet-4-6        # executes the skill — ARS uses Sonnet for execution (never Haiku)
+  optimizer_backend: claude_chat
+  target_backend: claude_chat
+  reasoning_effort: medium
+  rewrite_reasoning_effort: ""
+  rewrite_max_completion_tokens: 64000
+  claude_code_exec_effort: medium
+  claude_code_exec_max_thinking_tokens: 16384
+  # Azure/OpenAI/MiniMax keys are unused under claude_chat but kept blank for loader safety.
+  azure_openai_endpoint: ""
+  azure_openai_api_version: "2024-12-01-preview"
+  azure_openai_api_key: ""
+  minimax_base_url: ""
+  minimax_api_key: ""
+
+train:
+  num_epochs: 2
+  train_size: 0          # 0 = derive from the dataset split
+  batch_size: 8
+  accumulation: 1
+  seed: 42
+
+gradient:
+  minibatch_size: 8
+  merge_batch_size: 8
+  analyst_workers: 8
+  max_analyst_rounds: 3
+  failure_only: false
+
+optimizer:
+  learning_rate: 3          # max edits per step
+  min_learning_rate: 2
+  lr_scheduler: cosine
+  lr_control_mode: fixed
+  skill_update_mode: patch
+  use_slow_update: true
+  slow_update_samples: 8
+  slow_update_gate_with_selection: false
+  longitudinal_pair_policy: mixed
+  use_meta_skill: true
+  use_skill_aware_reflection: false
+  skill_aware_appendix_source: both
+  skill_aware_consolidate_threshold: 0
+
+evaluation:
+  use_gate: true
+  sel_env_num: 0
+  test_env_num: 0
+  eval_test: true
+
+env:
+  name: ars_rq_framing_patterns
+  skill_init: tools/skillopt/skills/rq_framing_patterns/initial.md
+  split_mode: ratio                 # auto-split the single gold file into train/val/test
+  split_ratio: "5:2:3"              # 40 items -> ~20 train / ~8 val / ~12 test
+  split_seed: 42
+  split_dir: ""
+  data_path: evals/gold/rq_framing_patterns/gold_set.json
+  split_output_dir: ""
+  exec_timeout: 120
+  max_completion_tokens: 2048
+  workers: 8
+  limit: 0
+  out_root: ""

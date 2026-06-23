@@ -13,6 +13,12 @@ docs/superpowers/
 
 # Python bytecode / pytest cache.
 __pycache__/
+.pytest_cache/
+
+# SkillOpt harness runtime artifacts (tools/skillopt/): the ratio-split
+# materialization and any training checkpoints/outputs are regenerated per run.
+/_generated_splits/
+tools/skillopt/runs/
 
 # Private ROADMAP is intentionally gitignored and maintained outside this public repo
 ROADMAP.md
