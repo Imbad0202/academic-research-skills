@@ -21,8 +21,8 @@
 > A Hermes-native adaptation layer for Academic Research Skills: deep research, manuscript writing, simulated peer review, revision roadmaps, and research-to-publication pipelines.
 
 <div align="center">
-  <img src="readme-cover.jpg" width="600" alt="Academic Research Skills for Hermes preview">
-  <br><br>
+  <!-- Preview image placeholder: add docs/preview.png or readme-cover.jpg when a real screenshot/cover is available. -->
+
   <a href="#-quick-start">Quick Start</a> ·
   <a href="#-features">Features</a> ·
   <a href="#-skills">Skills</a> ·
