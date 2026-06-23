@@ -3,6 +3,8 @@
 # 🪽 Academic Research Skills for Hermes
 
 ![Hermes Agent](https://img.shields.io/badge/Hermes-Agent-7C3AED?style=for-the-badge)
+![Hermes CI](https://img.shields.io/github/actions/workflow/status/maximosovsky/academic-research-skills/hermes-adaptation.yml?branch=hermes-adaptation&style=for-the-badge&label=Hermes%20CI)
+![Release](https://img.shields.io/github/v/release/maximosovsky/academic-research-skills?display_name=tag&style=for-the-badge&label=Release)
 ![Academic Research](https://img.shields.io/badge/Academic-Research-2563EB?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey?style=for-the-badge&logo=creativecommons)
@@ -180,6 +182,8 @@ academic-research-skills/
 Fork → `feature/name` → PR.
 
 For upstream Claude Code functionality, contribute to the original project. For Hermes-specific workflows, target the `hermes-adaptation` branch and keep changes under `hermes/`, `docs/hermes/`, or the Hermes CI workflow unless there is a clear reason to touch upstream files.
+
+See [`CONTRIBUTING-HERMES.md`](CONTRIBUTING-HERMES.md) for the Hermes-specific contribution checklist, validation commands, and license notes.
 
 ---
 

@@ -1,0 +1,39 @@
+name: Link Check
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.html'
+      - '.github/workflows/link-check.yml'
+      - '.lychee.toml'
+  push:
+    branches: [hermes-adaptation]
+    paths:
+      - '**/*.md'
+      - '**/*.html'
+      - '.github/workflows/link-check.yml'
+      - '.lychee.toml'
+  workflow_dispatch:
+
+concurrency:
+  group: link-check-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check Markdown and HTML links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --config .lychee.toml
+            README.md HERMES.md CONTRIBUTING-HERMES.md llms.txt llms-full.txt
+            hermes/**/*.md docs/**/*.html
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

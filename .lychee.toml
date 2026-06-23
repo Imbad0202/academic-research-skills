@@ -1,0 +1,19 @@
+# Link checker configuration for the Hermes adaptation layer.
+# Keep this conservative: external sites can rate-limit CI, so known noisy
+# domains are excluded while repo/docs/release links are still checked.
+
+accept = [200, 204, 206, 429]
+max_retries = 2
+timeout = 20
+
+exclude = [
+  '^https://www\.linkedin\.com/',
+  '^https://linkedin\.com/',
+  '^https://buymeacoffee\.com/',
+]
+
+exclude_path = [
+  'README.upstream.md',
+  'node_modules',
+  '.git',
+]
