@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Usage — Hermes Academic Skills</title><style>body{font-family:system-ui;max-width:900px;margin:auto;padding:40px;background:#0f172a;color:#e5e7eb}a{color:#7dd3fc}pre,code{background:#111827;color:#d1fae5;border-radius:8px}pre{padding:1rem;overflow:auto}</style></head><body>
+<h1>Usage Guide</h1>
+<p><a href="../index.html">← Home</a></p>
+<h2>Install</h2>
+<pre><code>git clone -b hermes-adaptation https://github.com/maximosovsky/academic-research-skills.git
+cd academic-research-skills
+bash hermes/scripts/install-local.sh all</code></pre>
+<h2>Validate</h2>
+<pre><code>python hermes/scripts/validate-skills.py</code></pre>
+<h2>Common workflows</h2>
+<h3>Full peer review of a PDF</h3>
+<pre><code>/skill hermes-academic-reviewer
+Полная peer-review имитация Editor + 3 reviewers + devil's advocate + editorial decision для этого PDF.</code></pre>
+<h3>Citation/claim audit</h3>
+<pre><code>/skill hermes-academic-deep-research
+Проведи claim-support audit: проверь ключевые claims, источники, overclaims и missing citations.</code></pre>
+<h3>Pipeline</h3>
+<pre><code>/skill hermes-academic-pipeline
+Проведи полный research-to-publication workflow для этой статьи.</code></pre>
+</body></html>

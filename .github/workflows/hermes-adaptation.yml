@@ -1,0 +1,46 @@
+name: Hermes adaptation
+
+on:
+  pull_request:
+    paths:
+      - 'hermes/**'
+      - '.github/workflows/hermes-adaptation.yml'
+  push:
+    branches: [hermes-adaptation]
+    paths:
+      - 'hermes/**'
+      - '.github/workflows/hermes-adaptation.yml'
+
+concurrency:
+  group: hermes-adaptation-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate-hermes-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install validation dependencies
+        run: python -m pip install --upgrade pip pyyaml
+
+      - name: Validate Hermes skills
+        run: python hermes/scripts/validate-skills.py
+
+      - name: Smoke-test local install
+        run: |
+          export HERMES_SKILLS_DIR="$RUNNER_TEMP/hermes-skills"
+          bash hermes/scripts/install-local.sh all
+          test -f "$HERMES_SKILLS_DIR/hermes-academic-deep-research/SKILL.md"
+          test -f "$HERMES_SKILLS_DIR/hermes-academic-paper/SKILL.md"
+          test -f "$HERMES_SKILLS_DIR/hermes-academic-reviewer/SKILL.md"
+          test -f "$HERMES_SKILLS_DIR/hermes-academic-pipeline/SKILL.md"
+
+      - name: Print raw install URLs
+        run: python hermes/scripts/install-urls.py

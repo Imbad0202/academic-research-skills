@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Academic Research Skills — Hermes Adaptation</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; background:#0f172a; color:#e5e7eb; }
+    body { margin:0; }
+    main { max-width: 980px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 { font-size: 2.4rem; margin-bottom: .4rem; }
+    h2 { margin-top: 2rem; color:#93c5fd; }
+    a { color:#7dd3fc; }
+    code, pre { background:#111827; color:#d1fae5; border:1px solid #334155; border-radius:8px; }
+    code { padding:.1rem .35rem; }
+    pre { padding:1rem; overflow:auto; }
+    .hero { border:1px solid #334155; border-radius:18px; padding:28px; background:linear-gradient(135deg,#111827,#1e293b); box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; }
+    .card { border:1px solid #334155; border-radius:14px; padding:18px; background:#111827; }
+    .muted { color:#94a3b8; }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <h1>Academic Research Skills — Hermes Adaptation</h1>
+    <p class="muted">Hermes Agent skills for academic research, manuscript writing, peer review simulation, and research-to-publication pipelines.</p>
+    <p><a href="https://github.com/maximosovsky/academic-research-skills/tree/hermes-adaptation">GitHub repository</a> · <a href="https://github.com/Imbad0202/academic-research-skills">Upstream ARS</a></p>
+  </section>
+
+  <h2>Install</h2>
+  <pre><code>git clone -b hermes-adaptation https://github.com/maximosovsky/academic-research-skills.git
+cd academic-research-skills
+bash hermes/scripts/install-local.sh all</code></pre>
+  <p>Then start a fresh Hermes session or run <code>/reload-skills</code>.</p>
+
+  <h2>Skills</h2>
+  <div class="grid">
+    <div class="card"><h3>hermes-academic-deep-research</h3><p>Research questions, literature review, systematic-review planning, fact-checking.</p></div>
+    <div class="card"><h3>hermes-academic-paper</h3><p>Planning, outlining, drafting, revising, formatting and declarations.</p></div>
+    <div class="card"><h3>hermes-academic-reviewer</h3><p>Editor + reviewers + devil's advocate + editorial decision + revision roadmap.</p></div>
+    <div class="card"><h3>hermes-academic-pipeline</h3><p>End-to-end workflow: research → write → integrity → review → revise → finalize.</p></div>
+  </div>
+
+  <h2>Usage</h2>
+  <pre><code>/skill hermes-academic-reviewer
+Полная peer-review имитация Editor + 3 reviewers + devil's advocate + editorial decision для этого PDF.</code></pre>
+
+  <h2>Documentation</h2>
+  <ul>
+    <li><a href="hermes/usage.html">Usage guide</a></li>
+    <li><a href="hermes/skills.html">Per-skill guide</a></li>
+    <li><a href="hermes/examples.html">Examples</a></li>
+  </ul>
+
+  <h2>License</h2>
+  <p>This fork preserves the upstream <strong>CC BY-NC 4.0</strong> license. Do not treat it as MIT or commercial-use licensed unless separately granted by the upstream rights holder.</p>
+</main>
+</body>
+</html>
