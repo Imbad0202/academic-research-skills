@@ -121,17 +121,10 @@ Green flags for independent writing:
 
 ## Common Errors to Avoid
 
-### English Abstract
-- Starting with "This paper..." (vary openings)
-- Vague findings ("results were significant")
-- Including methodology details that don't matter for the abstract
-- Using abbreviations without definition (in abstract, always define)
+Distinct from the Independence Verification red flags above (which check English↔Chinese independence); these are per-language writing-quality points:
 
-### Chinese Abstract
-- Translation tone (directly translating English grammar)
-- Overuse of passive voice (Chinese prefers active voice)
-- Overly long subordinate clauses (Chinese prefers short sentences)
-- Inconsistent academic terminology (using different translations for the same concept)
+- **English**: vary openings (not every abstract starts "This paper..."); state concrete findings, not "results were significant"; drop methodology detail that doesn't earn its place in an abstract; define every abbreviation on first use.
+- **Chinese**: prefer active voice over passive (Chinese reads more naturally active); prefer short sentences over long subordinate clauses; keep academic terminology consistent (one translation per concept). (Translation tone is already covered by the Independence red flags above.)
 
 ## Output Format
 

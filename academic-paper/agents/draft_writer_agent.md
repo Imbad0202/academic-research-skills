@@ -96,26 +96,19 @@ Reference: `references/academic_writing_style.md`
 | Engineering | Problem-solution oriented, specification-precise |
 | Education | Practice-oriented, stakeholder-aware, impact-focused |
 | Medicine | Evidence hierarchy-conscious, clinical precision |
+| Business/Management | Problem-solution oriented, ROI/strategic-implication framing, practical recommendations |
 
-### Paragraph Structure
-Each paragraph should follow:
-1. **Topic sentence** — states the paragraph's main point
-2. **Evidence/support** — 2-3 sentences with citations
-3. **Analysis/interpretation** — connects evidence to the argument
-4. **Transition** — links to the next paragraph
+### Paragraph Structure (TEEL)
+Each paragraph follows the TEEL shape:
+1. **T — Topic sentence** — states the paragraph's main point
+2. **E — Evidence** — 2-3 sentences with citations
+3. **E — Explanation** — connects evidence to the argument (analysis, not just data)
+4. **L — Link** — transitions to the next paragraph
 
 ### Citation Integration
 
-**Narrative (author as subject)**:
-> Smith (2024) demonstrated that AI-assisted QA reduces evaluation variance by 23%.
+Use narrative citations (author as sentence subject) and parenthetical citations as the argument requires; group multiple sources in one parenthetical where they support the same point. Use direct quotes sparingly, and always with a page locator:
 
-**Parenthetical (author in parentheses)**:
-> AI-assisted QA has been shown to reduce evaluation variance significantly (Smith, 2024).
-
-**Multiple sources**:
-> Several studies have confirmed this finding (Chen, 2023; Kim, 2024; Smith, 2024).
-
-**Direct quote (use sparingly)**:
 > As Smith (2024) noted, "the reduction in variance was statistically significant across all institutional types" (p. 45).
 
 ## Word Count Tracking
@@ -183,89 +176,17 @@ When receiving feedback from peer_reviewer_agent (Phase 6 -> back to Phase 4):
 | ... | ... | ... | ... |
 ```
 
-## Detailed Execution Algorithm
+## Paragraph Structure Convention (TEEL)
 
-### Section-by-Section Writing Strategy
+Body paragraphs follow the TEEL shape already defined under *Paragraph Structure* above (topic → evidence-with-citation → analysis → link). Conventions that constrain it:
 
-```
-INPUT: Paper Outline + Argument Blueprint + Annotated Bibliography
-OUTPUT: Complete Draft (produced section by section)
+- **Length**: 120-200 words (EN) / 200-350 characters (zh-TW); at least 3 body paragraphs per section.
+- **Exception**: the opening paragraph of the Introduction and the closing paragraph of the Conclusion need not follow TEEL.
+- **Evidence discipline**: prefer paraphrase; limit direct quotes to one per section.
 
-Phase A: Preparation (before each section begins)
-  1. Read the section's Outline (Purpose + Content Summary + Key Sources + Key Arguments)
-  2. Read the section's CER chains (from Argument Blueprint)
-  3. Prepare the section's citation list (from Annotated Bibliography -> Potential Use)
-  4. Confirm word count target (from Word Count Allocation)
+Recommended drafting order (not mandatory): Introduction first (sets tone), then Literature Review → Methodology → Results → Discussion → Conclusion, and the Abstract last (it summarizes the finished paper). Write the Abstract elsewhere only if the user asks for a specific section first.
 
-Phase B: Writing (strictly section by section)
-  Writing order decision:
-  ├── Recommended order (not mandatory):
-  │   1. Introduction (write first, establish tone)
-  │   2. Literature Review (lay out background)
-  │   3. Methodology (explain methods)
-  │   4. Results / Analysis (present findings)
-  │   5. Discussion (discuss significance)
-  │   6. Conclusion (summarize)
-  │   7. Abstract (write last, since it needs to summarize the whole paper)
-  └── Exception: user requests writing a specific section first -> follow user
-
-  Writing flow for each section:
-  1. Write Opening paragraph (introduction + section preview)
-  2. Write Body paragraphs following CER chain
-  3. Each paragraph follows TEEL structure (see below)
-  4. Write Closing paragraph (summary + transition to next section)
-  5. Calculate word count -> compare against target
-  6. IF deviation > +/-15% -> adjust immediately (trim or expand)
-
-Phase C: Assembly
-  1. Combine all sections
-  2. Check inter-section transitions for smoothness
-  3. Add Title page + Reference list placeholder
-  4. Calculate total word count and produce Draft Metadata
-```
-
-### Paragraph Structure Rules (TEEL Framework)
-
-Each Body paragraph must contain 4 components:
-
-```
-T — Topic Sentence
-    -> States the core point of the paragraph
-    -> Length: 1 sentence
-    -> Directly related to section Purpose
-
-E — Evidence
-    -> Cite literature to support the topic sentence
-    -> Length: 2-3 sentences
-    -> Use narrative or parenthetical citation
-    -> Prefer paraphrasing; direct quotes limited to 1 per section
-
-E — Explanation
-    -> Analyze how the evidence supports the topic sentence
-    -> Length: 1-2 sentences
-    -> This is where the author demonstrates analytical ability
-    -> Must not merely list data without explanation
-
-L — Link
-    -> Connect to the next paragraph or tie back to section argument
-    -> Length: 1 sentence
-    -> Use transition words/phrases
-```
-
-**Paragraph length standard**: Each paragraph 120-200 words (EN) or 200-350 characters (zh-TW)
-**Minimum per section**: At least 3 TEEL paragraphs
-**Exceptions**: The first paragraph of Introduction and the last paragraph of Conclusion need not strictly follow TEEL
-
-### Academic Writing Register Adjustment
-
-| Discipline | Register Characteristics | Preferred Structural Phrases | Avoid |
-|------|---------|-----------|------|
-| Social Sciences | Theory-oriented, reflexive | "This study argues...", "The findings suggest..." | Over-simplifying causal relationships |
-| Science/Engineering | Precise, measurement-oriented | "The results indicate...", "The system achieves..." | Subjective evaluative terms |
-| Humanities | Interpretive, argument-driven | "It can be argued that...", "This reading reveals..." | Quantitative reductionism of complex phenomena |
-| Education | Practice-oriented, stakeholder-aware | "Practitioners may...", "The implications for..." | Ignoring field context |
-| Medicine | Evidence hierarchy-conscious, clinically precise | "Level I evidence shows...", "Clinical significance..." | Confusing statistical significance with clinical significance |
-| Business/Management | Problem-solution oriented | "The ROI analysis indicates...", "Strategic implications..." | Purely academic discourse without practical recommendations |
+Register cues by discipline are in *Discipline-Specific Adjustments* above; do not restate them here.
 
 **Additional rules for Chinese academic register**:
 - Use "this study" rather than "we"
@@ -274,22 +195,10 @@ L — Link
 
 ### Citation Integration Strategy
 
-```
-Decision tree for choosing citation method:
-├── Is there a single clear source for this point?
-│   ├── Want to emphasize author's contribution -> Narrative citation: Smith (2024) demonstrated...
-│   └── Author not important, point is important -> Parenthetical citation: ...(Smith, 2024).
-├── Are multiple sources supporting this point?
-│   └── Synthesized citation: Several studies have confirmed... (A, 2023; B, 2024; C, 2024).
-├── Need to quote the original text?
-│   └── Direct quote (<=1 per section): As Smith (2024) noted, "exact words" (p. 45).
-│       -> Only when: (a) precise wording matters, (b) definitional statement, (c) particularly powerful expression
-├── Is the cited viewpoint different from this paper's position?
-│   └── Contrastive citation: While Smith (2024) argued X, this study contends Y because...
-└── Secondary citation (have not personally read the original)?
-    └── Secondary citation: (Original, Year, as cited in Citing, Year)
-        -> Limit: <=3 secondary citations per paper
-```
+Choose narrative / parenthetical / direct-quote forms per *Citation Integration* above. Two further cases:
+
+- **Contrastive** (cited view differs from this paper's position): `While Smith (2024) argued X, this study contends Y because…`
+- **Secondary** (you have not read the original): `(Original, Year, as cited in Citing, Year)` — limit ≤3 secondary citations per paper.
 
 ### Transition Words and Phrases Guide
 

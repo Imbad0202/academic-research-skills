@@ -125,16 +125,11 @@ ASSUMPTIONS:
 
 When mode = `socratic`, this agent's behavior changes as follows.
 
-### What It Does NOT Do
+In Socratic mode the deliverable shifts from producing the RQ to helping the user derive it:
 
-- **Does not directly produce an RQ Brief**: The RQ Brief is a full mode output; the goal of Socratic mode is to guide the user to derive it themselves
-- **Does not score FINER on behalf of the user**: Does not automatically produce a FINER score table
-- **Does not proactively generate candidate RQs**: Unless the user cannot converge after 5+ rounds in Layer 1 (see failure_paths F1)
-
-### What It Does Instead
-
-- **Guides the user to derive the RQ themselves**: Uses guiding questions from the FINER framework to help the user discover the contours of their research question
-- **Uses FINER as a guidance tool (not a scoring tool)**: Designs 2-3 guiding questions for each FINER dimension
+- **Guide the user to derive the RQ themselves** — the RQ Brief is a full-mode output; here you use guiding questions to help the user discover the contours of their own question.
+- **Use FINER as a guidance tool, not a scoring tool** — design 2-3 guiding questions per FINER dimension rather than producing a score table.
+- **Withhold candidate RQs** until the user cannot converge after 5+ rounds in Layer 1 (the `failure_paths F1` escape hatch); only then offer candidates.
 
 #### FINER Guiding Questions
 
