@@ -105,13 +105,11 @@ jobs:
           if [ -n "$failed" ]; then
             echo "::notice title=Eval below threshold::${failed}"
           fi
-          {
-            echo "## Eval harness results"
-            echo ""
-            echo '```json'
-            cat "$report"
-            echo '```'
-          } > eval_comment.md
+          # Comment body: one-line verdict + per-task table + raw JSON folded
+          # into <details>. Display layer only — rendered by a unit-tested
+          # module (scripts/render_eval_comment.py), not inline shell; the
+          # threshold verdict above is untouched.
+          python -m scripts.render_eval_comment "$report" > eval_comment.md
 
       - name: Post PR comment
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository

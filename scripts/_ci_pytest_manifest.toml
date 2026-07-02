@@ -147,6 +147,10 @@ id = "v3.10-184-eval-harness-workflow"
 path = "scripts/test_eval_harness_workflow.py"
 
 [[pytest]]
+id = "184-render-eval-comment"
+path = "scripts/test_render_eval_comment.py"
+
+[[pytest]]
 id = "v3.10-134-write-scope-guard"
 path = "scripts/test_ars_write_scope_guard.py"
 

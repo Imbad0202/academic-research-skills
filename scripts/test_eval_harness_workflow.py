@@ -124,6 +124,16 @@ def test_harness_step_computes_failed_tasks(workflow):
     assert "GITHUB_OUTPUT" in body
 
 
+def test_comment_built_by_renderer_module(workflow):
+    steps = _steps(workflow)
+    run_step = next(s for s in steps if s.get("id") == "run")
+    body = run_step["run"]
+    # The PR comment body is rendered by the unit-tested display module (not a
+    # raw `cat` of the report into a fenced block).
+    assert "scripts.render_eval_comment" in body
+    assert "eval_comment.md" in body
+
+
 def test_workflow_has_no_inline_python_heredoc(raw):
     # Fix 1 moved the gate logic into a module; no fragile inline python heredoc
     # should remain in the workflow.
