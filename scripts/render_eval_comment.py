@@ -35,9 +35,9 @@ def _fmt_value(value: Any) -> str:
 
 def _cell(text: Any) -> str:
     """Markdown-table-safe cell: report strings (task_name, metric, comparison)
-    come from eval manifests, so a `|` or newline would break the table or spoof
-    extra rows/results."""
-    return str(text).replace("\n", " ").replace("|", "\\|")
+    come from eval manifests, so a `|` or any line boundary (\\n, \\r, U+2028…)
+    would break the table or spoof extra rows/results."""
+    return " ".join(str(text).splitlines()).replace("|", "\\|")
 
 
 def _task_failures(task: dict[str, Any]) -> tuple[bool, bool]:
@@ -119,7 +119,8 @@ def main(argv: list[str] | None = None) -> int:
         print("usage: python -m scripts.render_eval_comment <report.json>",
               file=sys.stderr)
         return 2
-    raw_json = open(args[0], encoding="utf-8").read()
+    with open(args[0], encoding="utf-8") as fh:
+        raw_json = fh.read()
     report = json.loads(raw_json)
     print(render_comment(report, raw_json))
     return 0

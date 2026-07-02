@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 
-from scripts.render_eval_comment import main, render_comment
+from scripts._eval_threshold_gate import failed_tasks
+from scripts.render_eval_comment import _task_failures, main, render_comment
 
 
 def _measured(name, metric="accuracy", value=1.0, threshold=0.9,
@@ -129,9 +130,33 @@ def test_cli_main_usage_error():
     assert main([]) == 2
 
 
-def test_table_cells_escape_pipes_and_newlines():
-    # task_name / metric come from eval manifests; a `|` or newline must not
-    # break the table or spoof extra columns (codex review P2).
-    task = _measured("evil|name\nrow", metric="acc|uracy")
+def test_failure_signal_agrees_with_threshold_gate():
+    # _task_failures deliberately MIRRORS (does not import) the gate's failure
+    # rule — importing would couple display to the gate's flat key format.
+    # This pin makes the mirror loud instead of silent: if a future gated axis
+    # lands in _eval_threshold_gate but not here, this fails in CI rather than
+    # the comment rendering green on a run the gate blocks.
+    report = {"per_task": [
+        _measured("agg_fail", value=0.5, passed=False),
+        _measured("pc_fail", per_class=[{"class_name": "high",
+                                         "metric": "accuracy",
+                                         "passed": False}]),
+        _measured("both_fail", value=0.5, passed=False,
+                  per_class=[{"class_name": "low", "metric": "accuracy",
+                              "passed": False}]),
+        _measured("clean"),
+        _pending("pending_task"),
+    ]}
+    renderer_failed = {t["task_name"] for t in report["per_task"]
+                       if any(_task_failures(t))}
+    gate_failed = {key.split(".")[0] for key in failed_tasks(report)}
+    assert renderer_failed == gate_failed == {"agg_fail", "pc_fail", "both_fail"}
+
+
+def test_table_cells_escape_pipes_and_line_boundaries():
+    # task_name / metric come from eval manifests; a `|` or any line boundary
+    # (\n, \r, \r\n) must not break the table or spoof extra columns/rows
+    # (codex review P2 + re-review \r gap).
+    task = _measured("evil|name\nrow\rmore\r\nend", metric="acc|uracy")
     out = _render([task])
-    assert "| evil\\|name row | acc\\|uracy |" in out
+    assert "| evil\\|name row more end | acc\\|uracy |" in out
