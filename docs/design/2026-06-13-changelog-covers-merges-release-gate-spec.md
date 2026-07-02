@@ -37,6 +37,39 @@ This amendment is sanity-run evidence over paper reasoning — the same lesson t
 work logged: a metadata/identity heuristic that looks right on synthetic cases must be run
 against real data before it is trusted.
 
+### §0.2 Coverage window = CHANGELOG above the previous release's section, not [Unreleased] alone (2026-07-02, practice-driven)
+
+§3.1's pre-tag reasoning assumed entries stay under `[Unreleased]` until the tag is cut.
+The v3.14.0 release **falsified that assumption against this repo's actual release flow**:
+the release-prep PR (#481) promotes `[Unreleased]` into the new `## [X.Y.Z]` section
+BEFORE the tag exists (promotion happens in the prep PR; the tag lands after its merge).
+Under `[Unreleased]`-only scanning, the gate run on a prep PR (or on main between
+prep-merge and tag push) false-flags every just-promoted entry — the gate would fail
+exactly at the moment it is supposed to certify.
+
+**Resolution:** the coverage window is the CHANGELOG text **above the previous release's
+own heading** (`## [<prev version>]`, located from the git-derived previous tag). That
+window contains `[Unreleased]` AND any release-prep-promoted newer section, in both the
+during-development and prep-PR states; anything at or below the boundary is
+already-released history, so a stale `#N` there cannot cover a new commit (this actually
+NARROWS the §0.1 umbrella-ref trade-off for old refs). Fail-closed: if the previous
+release's heading is missing, the gate errors instead of silently widening the window.
+
+**Two operational consequences:**
+
+- **`--merges-ref` (CI split):** the release-prep-PR CI job audits merges in
+  `<prev_tag>..origin/main` while reading the PR checkout's CHANGELOG — the prep branch's
+  own in-flight commits are not merges yet and would otherwise report unverifiable.
+  Manual runs keep the HEAD default.
+- **`docs(release)` / `docs(i18n)` exemption:** release-mechanics commits (promotion,
+  doc alignment, translation fixes) ARE the changelog being written; they cannot cite
+  themselves and are exempt like `chore`/`ci` (added to `_EXEMPT_DOCS_SCOPES`).
+
+CI wiring shipped with this amendment: `.github/workflows/changelog-covers-merges.yml`
+runs the gate on every `release/**`-headed PR into main (`fetch-depth: 0` +
+`fetch-tags: true`); the CONTRIBUTING manual step remains for tag flows that skip a
+release branch.
+
 ## 1. Problem
 
 The repo releases via annotated `v*` tags. `CHANGELOG.md` keeps a `## [Unreleased]`

@@ -85,11 +85,13 @@ The repo is maintained by [Cheng-I Wu](https://github.com/Imbad0202) (HEEACT). T
 
 ## Release checklist
 
-Most release mechanics are CI-enforced (`check_version_consistency.py` keeps CLAUDE.md / SKILL.md / CHANGELOG / plugin manifests / README badge in lockstep; the release-cooldown workflow paces tags). One step is run by hand at release time:
+Most release mechanics are CI-enforced (`check_version_consistency.py` keeps CLAUDE.md / SKILL.md / CHANGELOG / plugin manifests / README badge in lockstep; the release-cooldown workflow paces tags; the `changelog-covers-merges` workflow gates release-prep PRs). One step still has a manual form for tag flows that skip a release branch:
 
 ### Before tagging: CHANGELOG covers every merge
 
-Run `python3 scripts/check_changelog_covers_merges.py` from the release-prep state (on `main`, or the release-prep branch — **before** the `vX.Y.Z` tag is cut). It lists every release-worthy commit since the previous release tag whose issue/PR number (`#N`) is not yet referenced in the `## [Unreleased]` section, so a merged-but-undocumented change cannot slip into a release. Resolve each one (add a CHANGELOG `[Unreleased]` entry citing its `#N`) or confirm it is legitimately exempt (a `chore`/`test`/`ci`/`build` commit, or an internal `docs(design)`/`docs(superpowers)` commit). This is the machine-checked half of the `[doc-aligned: yyyy-mm-dd]` tag-message discipline. Run it on the release-prep state, not on a feature branch — in-progress branch commits have no PR suffix yet and will report as unverifiable.
+CI runs this automatically on every release-prep PR (head branch `release/**`): the `Changelog Covers Merges` workflow audits every release-worthy commit merged to `main` since the previous release tag and fails unless its issue/PR number (`#N`) is referenced in `CHANGELOG.md` **above the previous release's section** — under `## [Unreleased]`, or under the version section the prep PR just promoted (spec §0.2).
+
+For a tag cut without a `release/` branch, run the same gate by hand from the release-prep state (**before** the `vX.Y.Z` tag exists): `python3 scripts/check_changelog_covers_merges.py`. Resolve each finding (add a CHANGELOG entry citing its `#N`) or confirm it is legitimately exempt (a `chore`/`test`/`ci`/`build` commit, or an internal `docs(design)`/`docs(superpowers)`/`docs(release)`/`docs(i18n)` commit). This is the machine-checked half of the `[doc-aligned: yyyy-mm-dd]` tag-message discipline. Run it on the release-prep state, not on a feature branch — in-progress branch commits have no PR suffix yet and will report as unverifiable (CI avoids this by auditing `--merges-ref origin/main`).
 
 One convention is editorial and lives here:
 

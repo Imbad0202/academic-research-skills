@@ -1,10 +1,15 @@
 """Pre-tag lint: every release-worthy commit since the previous release tag
-must be referenced in CHANGELOG.md's [Unreleased] section.
+must be referenced in CHANGELOG.md ABOVE the previous release's own section
+(the pre-tag coverage window: [Unreleased] plus any already-promoted newer
+version section — §0.2).
 
 Closes the "merged but undocumented" gap that check_version_consistency.py
 (invariants 1-8, pure file reads) does not cover. Runs in PRE-TAG mode: before
-the vX.Y.Z tag exists, so [Unreleased] is not yet promoted and `git describe`
-returns the PREVIOUS release tag directly.
+the vX.Y.Z tag exists, `git describe` returns the PREVIOUS release tag
+directly. Entries may sit under [Unreleased] (normal development) or under the
+release-prep-promoted [X.Y.Z] section (this repo promotes in the release-prep
+PR before tagging — v3.14.0 / PR #481 precedent); both are above the previous
+release's heading, and stale mentions below it never cover a new commit.
 
 Spec: docs/design/2026-06-13-changelog-covers-merges-release-gate-spec.md.
 """
@@ -47,16 +52,18 @@ _PREFIX_RE = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]*)\))?!?:")
 
 # Pure-engineering types — never user-facing.
 _EXEMPT_TYPES = frozenset({"chore", "test", "ci", "build"})
-# Internal design/spec docs that do not belong in a user-facing CHANGELOG.
-_EXEMPT_DOCS_SCOPES = frozenset({"design", "superpowers"})
+# Internal design/spec docs that do not belong in a user-facing CHANGELOG,
+# plus release-mechanics commits (docs(release)/docs(i18n) promotion and
+# alignment work IS the changelog being written — it cannot cite itself).
+_EXEMPT_DOCS_SCOPES = frozenset({"design", "superpowers", "release", "i18n"})
 
 
-def is_covered(ref: int, unreleased_text: str) -> bool:
-    """True iff `#<ref>` appears in the Unreleased text delimited by a non-digit
+def is_covered(ref: int, coverage_text: str) -> bool:
+    """True iff `#<ref>` appears in the coverage window delimited by a non-digit
     on the right (so `#42` does not match `#420`). The leading `#` is required,
     so a bare number in prose cannot spuriously cover."""
     pattern = re.compile(r"#" + str(ref) + r"(?!\d)")
-    return pattern.search(unreleased_text) is not None
+    return pattern.search(coverage_text) is not None
 
 
 def is_exempt(subject: str) -> bool:
@@ -86,8 +93,9 @@ class Uncovered:
     reason: str  # "not in [Unreleased]" | "no #N reference"
 
 
-def audit(subjects: list[str], unreleased_text: str) -> list[Uncovered]:
-    """Return the release-worthy commits not provably covered by [Unreleased].
+def audit(subjects: list[str], coverage_text: str) -> list[Uncovered]:
+    """Return the release-worthy commits not provably covered by the pre-tag
+    coverage window (CHANGELOG text above the previous release's section).
 
     Coverage uses ANY `#N` in the subject (§0.1): trailing PR OR mid-subject
     issue/spec ref. A subject with NO `#N` at all is `unverifiable` (a failure,
@@ -102,8 +110,8 @@ def audit(subjects: list[str], unreleased_text: str) -> list[Uncovered]:
         if not refs:
             failures.append(Uncovered(subject, None, "no #N reference"))
             continue
-        if not any(is_covered(ref, unreleased_text) for ref in refs):
-            failures.append(Uncovered(subject, pr_number(subject), "not in [Unreleased]"))
+        if not any(is_covered(ref, coverage_text) for ref in refs):
+            failures.append(Uncovered(subject, pr_number(subject), "not covered"))
     return failures
 
 
@@ -119,6 +127,29 @@ def extract_unreleased(changelog_text: str) -> str | None:
     or None if there is no Unreleased section."""
     m = _UNRELEASED_RE.search(changelog_text)
     return m.group("body") if m else None
+
+
+def extract_coverage_text(changelog_text: str, previous_tag: str) -> str | None:
+    """Return the CHANGELOG text ABOVE the previous release's own section
+    heading — the pre-tag coverage window (§0.2).
+
+    Pre-tag, a release-worthy commit may be documented under
+    ``## [Unreleased]`` (normal development) or under an already-promoted
+    newer ``## [X.Y.Z]`` section (this repo's release-prep PRs promote
+    Unreleased BEFORE the tag exists — v3.14.0 / PR #481 precedent). Both
+    live above the previous release's heading; anything at or below it is
+    already-released history, so a stale mention there must not cover a new
+    commit. None when the previous release's heading is missing
+    (fail-closed: the caller reports instead of widening the window)."""
+    version = previous_tag.lstrip("v")
+    m = re.search(
+        r"^##\s*\[" + re.escape(version) + r"\]",
+        changelog_text,
+        re.MULTILINE,
+    )
+    if m is None:
+        return None
+    return changelog_text[: m.start()]
 
 
 _TAG_GRAMMAR_RE = re.compile(r"^v\d+(?:\.\d+){1,3}$")
@@ -146,23 +177,29 @@ def previous_release_tag(repo: Path) -> str | None:
     return out
 
 
-def merged_commit_subjects(repo: Path, since_tag: str) -> list[str]:
-    """First-parent commit subjects in `<since_tag>..HEAD`."""
-    out = _git_out(repo, "log", "--first-parent", "--format=%s", f"{since_tag}..HEAD")
+def merged_commit_subjects(repo: Path, since_tag: str, ref: str = "HEAD") -> list[str]:
+    """First-parent commit subjects in `<since_tag>..<ref>`."""
+    out = _git_out(repo, "log", "--first-parent", "--format=%s", f"{since_tag}..{ref}")
     if not out:
         return []
     return out.splitlines()
 
 
-def check(repo: Path, *, first_release: bool = False) -> list[str]:
-    """Return a list of error lines; empty means the gate passes."""
+def check(repo: Path, *, first_release: bool = False, merges_ref: str = "HEAD") -> list[str]:
+    """Return a list of error lines; empty means the gate passes.
+
+    ``merges_ref`` bounds the audited merge range (`<prev_tag>..<merges_ref>`).
+    Default HEAD suits the manual pre-tag run; the release-prep-PR CI job
+    passes ``origin/main`` so only merges already landed on main are audited
+    (the prep branch's own in-flight commits are not merges yet), while the
+    coverage window still reads the PR's CHANGELOG state."""
     errors: list[str] = []
 
     changelog = repo / "CHANGELOG.md"
     if not changelog.is_file():
         return [f"{changelog}: not found"]
-    unreleased = extract_unreleased(changelog.read_text(encoding="utf-8"))
-    if unreleased is None:
+    changelog_text = changelog.read_text(encoding="utf-8")
+    if extract_unreleased(changelog_text) is None:
         return ["CHANGELOG.md: no '## [Unreleased]' section to verify against"]
 
     tag = previous_release_tag(repo)
@@ -176,8 +213,16 @@ def check(repo: Path, *, first_release: bool = False) -> list[str]:
             "(fetch-depth: 0 + fetch-tags: true)."
         ]
 
-    subjects = merged_commit_subjects(repo, tag)
-    failures = audit(subjects, unreleased)
+    coverage = extract_coverage_text(changelog_text, tag)
+    if coverage is None:
+        return [
+            f"CHANGELOG.md: no '## [{tag.lstrip('v')}]' section for the "
+            f"previous release {tag} — cannot bound the pre-tag coverage "
+            "window (fix the heading, or the tag grammar)."
+        ]
+
+    subjects = merged_commit_subjects(repo, tag, merges_ref)
+    failures = audit(subjects, coverage)
     for f in failures:
         ident = f"#{f.pr}" if f.pr is not None else "NO-PR"
         errors.append(f"  {ident}  {f.subject}  [{f.reason}]")
@@ -186,11 +231,13 @@ def check(repo: Path, *, first_release: bool = False) -> list[str]:
         errors.insert(
             0,
             f"{len(failures)} of {required} release-worthy commit(s) since "
-            f"{tag} are not referenced in CHANGELOG [Unreleased]:",
+            f"{tag} are not referenced in CHANGELOG above the [{tag.lstrip('v')}] "
+            "section ([Unreleased] or a newer version section):",
         )
         errors.append(
-            "  Fix: add a CHANGELOG [Unreleased] entry citing the commit's "
-            "issue or PR number (#N), or mark the commit exempt via an accepted "
+            "  Fix: add a CHANGELOG entry (under [Unreleased], or the "
+            "release-prep-promoted section) citing the commit's issue or PR "
+            "number (#N), or mark the commit exempt via an accepted "
             "conventional prefix."
         )
     return errors
@@ -198,20 +245,30 @@ def check(repo: Path, *, first_release: bool = False) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Pre-tag lint: CHANGELOG [Unreleased] must cover every "
-        "release-worthy commit since the previous release tag."
+        description="Pre-tag lint: CHANGELOG (above the previous release's "
+        "section) must cover every release-worthy commit since the previous "
+        "release tag."
     )
     parser.add_argument("--repo", default=".", help="Repo root (default: cwd).")
     parser.add_argument(
         "--first-release", action="store_true",
         help="No previous release tag is expected (first release).",
     )
+    parser.add_argument(
+        "--merges-ref", default="HEAD",
+        help="Audit merges in <prev_tag>..<this ref> (default HEAD). The "
+        "release-prep-PR CI job passes origin/main.",
+    )
     args = parser.parse_args(argv)
-    errors = check(Path(args.repo), first_release=args.first_release)
+    errors = check(
+        Path(args.repo),
+        first_release=args.first_release,
+        merges_ref=args.merges_ref,
+    )
     if errors:
         print("\n".join(errors))
         return 1
-    print("CHANGELOG [Unreleased] covers all release-worthy commits.")
+    print("CHANGELOG covers all release-worthy commits since the previous tag.")
     return 0
 
 

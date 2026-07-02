@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_changelog_covers_merges import (  # noqa: E402
     all_refs,
     audit,
+    extract_coverage_text,
     extract_unreleased,
     is_covered,
     is_exempt,
@@ -86,6 +87,12 @@ class IsExemptTest(unittest.TestCase):
         self.assertTrue(is_exempt("docs(design): spec (#6)"))
         self.assertTrue(is_exempt("docs(superpowers): plan (#7)"))
 
+    def test_exempt_release_mechanics_docs_scopes(self):
+        # docs(release)/docs(i18n) promotion + alignment work IS the changelog
+        # being written — it cannot cite itself (§0.2).
+        self.assertTrue(is_exempt("docs(release): align all doc surfaces for v3.14.0 (#481)"))
+        self.assertTrue(is_exempt("docs(i18n): apply review P3s (#482)"))
+
     def test_required_prefixes(self):
         for subj in [
             "feat: thing (#8)",
@@ -137,7 +144,7 @@ class AuditTest(unittest.TestCase):
         result = audit(subjects, unreleased)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].pr, 999)
-        self.assertEqual(result[0].reason, "not in [Unreleased]")
+        self.assertEqual(result[0].reason, "not covered")
 
     def test_exempt_skipped_even_if_uncovered(self):
         subjects = ["chore: x (#7)", "test: y (#8)"]
@@ -165,7 +172,7 @@ class AuditTest(unittest.TestCase):
         result = audit(subjects, "- unrelated (#1)\n")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].pr, 400)
-        self.assertEqual(result[0].reason, "not in [Unreleased]")
+        self.assertEqual(result[0].reason, "not covered")
 
     def test_revert_covered_by_either_ref_passes(self):
         # §0.1: a revert carries both the reverted PR (#432) and the revert PR
@@ -192,9 +199,9 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(
             result,
             [
-                Uncovered("feat: uncovered (#200)", 200, "not in [Unreleased]"),
+                Uncovered("feat: uncovered (#200)", 200, "not covered"),
                 Uncovered("Harden thing no ref", None, "no #N reference"),
-                Uncovered('Revert "feat: old (#432)" (#433)', 433, "not in [Unreleased]"),
+                Uncovered('Revert "feat: old (#432)" (#433)', 433, "not covered"),
             ],
         )
 
@@ -246,6 +253,47 @@ def _commit(repo: Path, subject: str) -> None:
     (repo / "f.txt").write_text(subject)
     _git(repo, "add", "f.txt")
     _git(repo, "commit", "-m", subject)
+
+
+class ExtractCoverageTextTest(unittest.TestCase):
+    CHANGELOG = textwrap.dedent(
+        """\
+        # Changelog
+
+        ## [Unreleased]
+
+        - pending thing (#900)
+
+        ## [3.15.0] - 2026-07-10 — promoted by the release-prep PR
+
+        - promoted thing (#901)
+
+        ## [3.14.0] - 2026-07-02 — previous release
+
+        - already-released thing (#902)
+        """
+    )
+
+    def test_window_spans_unreleased_and_promoted_sections(self):
+        window = extract_coverage_text(self.CHANGELOG, "v3.14.0")
+        self.assertIn("#900", window)
+        self.assertIn("#901", window)  # release-prep-promoted section counts
+
+    def test_window_excludes_previous_release_and_below(self):
+        window = extract_coverage_text(self.CHANGELOG, "v3.14.0")
+        # A stale mention in already-released history must not cover a new
+        # commit that reuses the same issue number.
+        self.assertNotIn("#902", window)
+        self.assertFalse(is_covered(902, window))
+
+    def test_missing_previous_heading_returns_none(self):
+        # Fail-closed: no silent widening of the window to the whole file.
+        self.assertIsNone(extract_coverage_text(self.CHANGELOG, "v3.13.0"))
+
+    def test_version_dots_not_regex_wildcards(self):
+        # [3.14.0] must not be matched by a heading like [3.14x0].
+        text = "## [3x14y0]\n- decoy (#903)\n"
+        self.assertIsNone(extract_coverage_text(text, "v3.14.0"))
 
 
 class GitInterfaceTest(unittest.TestCase):
@@ -377,3 +425,61 @@ class CliEndToEndTest(unittest.TestCase):
             proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
             self.assertEqual(proc.returncode, 1)
             self.assertIn("[Unreleased]", proc.stdout + proc.stderr)
+
+    def test_pass_when_covered_by_promoted_section(self):
+        # §0.2: the release-prep PR promotes [Unreleased] into [3.13.0] before
+        # the tag exists; entries there must still count as coverage.
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = ("# Changelog\n\n## [Unreleased]\n\n"
+                  "## [3.13.0] - promoted\n- new (#2)\n\n"
+                  "## [3.12.0]\n- old\n")
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: new (#2)")
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_stale_mention_below_boundary_does_not_cover(self):
+        # §0.2 fail-closed precision: a #N in already-released history must not
+        # cover a new commit that reuses the number.
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = ("# Changelog\n\n## [Unreleased]\n\n"
+                  "## [3.12.0]\n- ancient mention of (#2)\n")
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: new (#2)")
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("#2", proc.stdout + proc.stderr)
+
+    def test_fail_when_previous_release_heading_missing(self):
+        # Tag v3.12.0 exists but CHANGELOG has no [3.12.0] heading: fail loud,
+        # never silently widen the window to the whole file.
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = "# Changelog\n\n## [Unreleased]\n- new (#2)\n"
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: new (#2)")
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("coverage window", proc.stdout + proc.stderr)
+
+    def test_merges_ref_bounds_audited_range(self):
+        # CI on a release-prep PR audits <tag>..origin/main, not the prep
+        # branch's own in-flight commits.
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = ("# Changelog\n\n## [Unreleased]\n- covered (#2)\n\n"
+                  "## [3.12.0]\n- old\n")
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: covered (#2)")
+            covered_tip = subprocess.run(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"],
+                check=True, env=env, capture_output=True, text=True,
+            ).stdout.strip()
+            self._add_commit(repo, env, "feat: uncovered in-flight work")
+            proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
+            self.assertEqual(proc.returncode, 1)  # default HEAD sees it
+            proc = run_script(SCRIPT, "--repo", str(repo),
+                              "--merges-ref", covered_tip, cwd=repo)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
