@@ -53,9 +53,11 @@ _PREFIX_RE = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]*)\))?!?:")
 # Pure-engineering types — never user-facing.
 _EXEMPT_TYPES = frozenset({"chore", "test", "ci", "build"})
 # Internal design/spec docs that do not belong in a user-facing CHANGELOG,
-# plus release-mechanics commits (docs(release)/docs(i18n) promotion and
-# alignment work IS the changelog being written — it cannot cite itself).
-_EXEMPT_DOCS_SCOPES = frozenset({"design", "superpowers", "release", "i18n"})
+# plus docs(release): the once-per-release doc-alignment/promotion commit IS
+# the changelog being written — it cannot cite itself. The scope is reserved
+# for release mechanics by convention; docs(i18n) is deliberately NOT exempt
+# (translation changes are user-facing docs like any other — codex review P2).
+_EXEMPT_DOCS_SCOPES = frozenset({"design", "superpowers", "release"})
 
 
 def is_covered(ref: int, coverage_text: str) -> bool:
@@ -177,9 +179,14 @@ def previous_release_tag(repo: Path) -> str | None:
     return out
 
 
-def merged_commit_subjects(repo: Path, since_tag: str, ref: str = "HEAD") -> list[str]:
-    """First-parent commit subjects in `<since_tag>..<ref>`."""
+def merged_commit_subjects(repo: Path, since_tag: str, ref: str = "HEAD") -> list[str] | None:
+    """First-parent commit subjects in `<since_tag>..<ref>`, or None when the
+    git invocation itself fails (bad ref / shallow checkout). None is NOT an
+    empty range — the caller must fail closed, else a typo'd --merges-ref or a
+    missing origin/main in CI silently passes the gate (codex review P1)."""
     out = _git_out(repo, "log", "--first-parent", "--format=%s", f"{since_tag}..{ref}")
+    if out is None:
+        return None
     if not out:
         return []
     return out.splitlines()
@@ -222,6 +229,12 @@ def check(repo: Path, *, first_release: bool = False, merges_ref: str = "HEAD") 
         ]
 
     subjects = merged_commit_subjects(repo, tag, merges_ref)
+    if subjects is None:
+        return [
+            f"git log {tag}..{merges_ref} failed — cannot enumerate the merges "
+            "to audit (bad --merges-ref, or refs/tags missing in a shallow "
+            "checkout). Failing closed."
+        ]
     failures = audit(subjects, coverage)
     for f in failures:
         ident = f"#{f.pr}" if f.pr is not None else "NO-PR"

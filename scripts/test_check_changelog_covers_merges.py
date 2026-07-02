@@ -87,11 +87,15 @@ class IsExemptTest(unittest.TestCase):
         self.assertTrue(is_exempt("docs(design): spec (#6)"))
         self.assertTrue(is_exempt("docs(superpowers): plan (#7)"))
 
-    def test_exempt_release_mechanics_docs_scopes(self):
-        # docs(release)/docs(i18n) promotion + alignment work IS the changelog
-        # being written — it cannot cite itself (§0.2).
+    def test_exempt_release_mechanics_docs_scope(self):
+        # docs(release): the once-per-release alignment/promotion commit IS the
+        # changelog being written — it cannot cite itself (§0.2).
         self.assertTrue(is_exempt("docs(release): align all doc surfaces for v3.14.0 (#481)"))
-        self.assertTrue(is_exempt("docs(i18n): apply review P3s (#482)"))
+
+    def test_i18n_docs_required(self):
+        # Translation changes are user-facing docs like any other (codex P2):
+        # exempting docs(i18n) would let them slip through undocumented.
+        self.assertFalse(is_exempt("docs(i18n): apply review P3s (#482)"))
 
     def test_required_prefixes(self):
         for subj in [
@@ -295,6 +299,13 @@ class ExtractCoverageTextTest(unittest.TestCase):
         text = "## [3x14y0]\n- decoy (#903)\n"
         self.assertIsNone(extract_coverage_text(text, "v3.14.0"))
 
+    def test_boundary_heading_line_itself_is_excluded(self):
+        # A #N on the previous release's OWN heading line is released history,
+        # not coverage (codex P3 pin: slice ends BEFORE the heading line).
+        text = "## [Unreleased]\n\n## [3.14.0] - rework (#902)\n- body\n"
+        window = extract_coverage_text(text, "v3.14.0")
+        self.assertFalse(is_covered(902, window))
+
 
 class GitInterfaceTest(unittest.TestCase):
     def _repo(self, stack):
@@ -463,6 +474,19 @@ class CliEndToEndTest(unittest.TestCase):
             proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
             self.assertEqual(proc.returncode, 1)
             self.assertIn("coverage window", proc.stdout + proc.stderr)
+
+    def test_bad_merges_ref_fails_closed(self):
+        # A typo'd --merges-ref (or missing origin/main in CI) must FAIL, not
+        # silently pass as an empty range (codex P1: fail-open reproduced).
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            cl = "# Changelog\n\n## [Unreleased]\n\n## [3.12.0]\n- old\n"
+            repo, env = self._make_repo(stack, cl)
+            self._add_commit(repo, env, "feat: new (#2)")
+            proc = run_script(SCRIPT, "--repo", str(repo),
+                              "--merges-ref", "does-not-exist", cwd=repo)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("failing closed", (proc.stdout + proc.stderr).lower())
 
     def test_merges_ref_bounds_audited_range(self):
         # CI on a release-prep PR audits <tag>..origin/main, not the prep

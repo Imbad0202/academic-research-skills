@@ -61,9 +61,12 @@ release's heading is missing, the gate errors instead of silently widening the w
   `<prev_tag>..origin/main` while reading the PR checkout's CHANGELOG — the prep branch's
   own in-flight commits are not merges yet and would otherwise report unverifiable.
   Manual runs keep the HEAD default.
-- **`docs(release)` / `docs(i18n)` exemption:** release-mechanics commits (promotion,
-  doc alignment, translation fixes) ARE the changelog being written; they cannot cite
-  themselves and are exempt like `chore`/`ci` (added to `_EXEMPT_DOCS_SCOPES`).
+- **`docs(release)` exemption (and deliberately NOT `docs(i18n)`):** the once-per-release
+  doc-alignment/promotion commit IS the changelog being written; it cannot cite itself and
+  is exempt like `chore`/`ci` (added to `_EXEMPT_DOCS_SCOPES`; the scope is reserved for
+  release mechanics by convention). `docs(i18n)` was considered and REJECTED (codex review
+  P2, 2026-07-02): translation changes are user-facing docs like any other, so exempting
+  the scope would let them slip through undocumented.
 
 CI wiring shipped with this amendment: `.github/workflows/changelog-covers-merges.yml`
 runs the gate on every `release/**`-headed PR into main (`fetch-depth: 0` +
