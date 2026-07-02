@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **CHANGELOG-covers-merges pre-tag release gate (#483).** `scripts/check_changelog_covers_merges.py` machine-checks that every release-worthy commit merged since the previous release tag is documented in `CHANGELOG.md` above the previous release's section ([Unreleased] or a release-prep-promoted newer section — spec §0.2), with conventional-prefix exemptions (`chore`/`test`/`ci`/`build`, `docs(design)`/`docs(superpowers)`/`docs(release)`/`docs(i18n)`) and fail-closed behavior on missing tags/headings. New `changelog-covers-merges.yml` workflow gates every `release/**`-headed PR into main; the CONTRIBUTING manual step covers branchless tag flows. Would have blocked the 16-entry Unreleased backlog rolled up in 3.14.0. 47 tests, registered in the CI pytest manifest.
+
+### Fixed
+
+- **DOI badge served from shields.io (#482).** Zenodo's badge endpoint rate-limits GitHub's camo image proxy (HTTP 429), intermittently rendering the README DOI badge as a broken image even though the DOI resolves fine. The badge image is now a static shields.io badge in all five READMEs; the link target stays the concept DOI (`10.5281/zenodo.20696614`), which always resolves to the latest version.
+
 ## [3.14.0] - 2026-07-02 — Claude Science importability, eval-comment rendering, prompt-debt retirement
 
 ### Added
