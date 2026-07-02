@@ -9,7 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.11.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.13.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.14.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.14 Key Additions (Claude Science importability + eval-comment rendering + prompt-debt retirement)
+
+- **Claude Science / GitHub-importer compatibility (#480).** `.claude-plugin/marketplace.json` declares explicit skill paths (`"skills": [...]`); symlink-blind GitHub-API importers (Claude Science "Import from GitHub", Windows checkouts) now find all four skills. Marketplace-root replace semantics keep Claude Code installs loading the same four skills — no content change, no double-loading. Verified end-to-end on Claude Science; import guide in README + docs/SETUP.md Method 5.
+- **Eval-harness PR comment renderer (#479).** `scripts/render_eval_comment.py` renders a one-line verdict + per-task table + raw JSON folded into `<details>`, replacing the raw report dump. The row verdict mirrors the threshold gate's failure signal (aggregate AND per-class) with a CI-pinned agreement test; table cells escape pipes/line boundaries. Evaluation logic untouched.
+- **Prompt-debt retirement (#476/#477 → #478).** Expired writing-harness scaffolds removed from `abstract_bilingual_agent`, `citation_compliance_agent`, `draft_writer_agent`, and `research_question_agent` (net −111 lines) after the 2026-07 harness-retirement audit (report under `audits/`); three-track verification (sub-agent audit + codex review + eval harness at 100%).
+- **Platform Port Reminder CI (#473).** Remind-don't-block workflow surfacing the "Platform ports (community-maintained only)" policy when a PR adds a new top-level directory.
+- **Changelog backlog rollup.** 16 `[Unreleased]` entries whose code shipped before the v3.13.0 tag (#390 diff/patch revision mode, #394 submission-package verifier, #215/#216 eval gold sets, and more) are versioned under 3.14.0 with a provenance note.
 
 ## v3.13 Key Additions (portability + verifier reach + guard correctness)
 
@@ -281,7 +289,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.13.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-06-18
+- **Suite version**: 3.14.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-07-02
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

@@ -407,3 +407,17 @@ zip -r academic-pipeline.zip academic-pipeline
 - claude.ai 不支援本機 shell commands；結果可能不如依賴本機 scripts 的 Claude Code workflows 完整。
 - 跨模型驗證（`ARS_CROSS_MODEL`）需要 Claude Code 與 API keys。
 - 直接產出 `.docx` 需要 Pandoc，LaTeX/PDF 輸出需要 Claude Code 搭配 `tectonic`；claude.ai 仍可產出 Markdown 與 DOCX 轉換說明。
+### 方法五：Claude Science 匯入（v3.14.0+）
+
+Claude Science 可直接從 GitHub 匯入四個 ARS skill：
+
+1. 開啟 **Customize → Capabilities → Skills → Import from GitHub**。
+2. 貼上 `https://github.com/Imbad0202/academic-research-skills`，按 **Preview**。
+3. 四個 skill（`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`、`deep-research`）全部出現——按 **Import 4 skills**。
+
+**注意事項：**
+
+- 需要 repo 狀態為 v3.14.0+——匯入器讀取 `.claude-plugin/marketplace.json` 中明列的 skill 路徑。更早的 tag 只透過 symlink 的 `skills/` 目錄暴露 skill，GitHub-API 匯入器無法穿越（會回報「no skills/ dirs with SKILL.md」）。
+- 匯入是**單次快照**：Claude Science 不會追蹤 repo。ARS 發版後需重新匯入才能取得更新。
+- **會轉移的**：方法論層——各 skill 的 `SKILL.md` 與其協定（研究／寫作／審查），Claude Science 的 agent 會在相關時讀取。
+- **不會轉移的**：Claude Code 專屬機制——`/ars-*` slash commands、hooks（含 write-scope guard）、跨模型驗證 scripts、Task-tool subagent 編排。Claude Science 有自己的 specialist agent 系統與內建引用查核 reviewer；把 Claude Science 上的執行視為「ARS 方法論 + Claude Science 自家機制」，而非 1:1 的 pipeline 移植。

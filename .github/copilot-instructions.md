@@ -1,7 +1,7 @@
 ---
 title: Academic Research Skills
 description: AI-augmented academic research pipeline with integrity verification
-version: 3.13.0
+version: 3.14.0
 license: CC BY-NC 4.0
 ---
 

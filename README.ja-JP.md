@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.13.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.13.0)
+[![Version](https://img.shields.io/badge/version-v3.14.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.14.0)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20696614.svg)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -59,7 +59,9 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 **動作確認:** `/ars-plan` を実行して取り組んでいる論文について説明してください — ARS がソクラテス式対話を開始し、章構成をマップします。代わりに単発テストを行うには、`/ars-lit-review "your topic"` を試してください。
 
-**👉 [docs/SETUP.md](docs/SETUP.md)** — 完全ガイド: Claude Code インストール、API キー設定、DOCX/PDF 用のオプション Pandoc/tectonic、クロスモデル検証（`ARS_CROSS_MODEL`）、5 つのインストール方法（Plugin、プロジェクトスキル、グローバルスキル、claude.ai Project、リポジトリクローン）。
+**👉 [docs/SETUP.md](docs/SETUP.md)** — 完全ガイド: Claude Code インストール、API キー設定、DOCX/PDF 用のオプション Pandoc/tectonic、クロスモデル検証（`ARS_CROSS_MODEL`）、6 つのインストール方法（Plugin、プロジェクトスキル、グローバルスキル、claude.ai Project、リポジトリクローン、Claude Science インポート）。
+
+**Claude Science をお使いですか？** 4 つのスキルは直接インポートできます: **Skills → Import from GitHub** で `https://github.com/Imbad0202/academic-research-skills` を貼り付け、**Preview** → **Import 4 skills**（本リポジトリ v3.14.0+ が必要 — インポーターは marketplace manifest に明示されたスキルパスを読み取ります）。インポートはその時点のスナップショットです: ARS の更新後は再インポートしてください。インポートされたスキルは ARS の方法論（研究・執筆・査読プロトコル）を伝えます。Claude Code 固有の仕組み — slash commands、hooks、サブエージェントオーケストレーション — は移行されません。詳細は [docs/SETUP.md](docs/SETUP.md) の Method 5 を参照。
 
 **Codex CLI を使用していますか?** 代わりに姉妹ディストリビューションをインストールしてください: [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) — 同じワークフローコンテンツ、`ars-*` エイリアスを持つ単一の `$academic-research-suite` スキルとしての Codex ネイティブパッケージング。
 
@@ -322,6 +324,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.14.0 (2026-07-02) — Claude Science インポート対応、eval コメント表示、プロンプト負債の整理
+
+> 可搬性と仕上げに焦点を当てたリリースで、スキルの挙動に変更はありません。**追加:** Claude Science インポート対応 — marketplace manifest がスキルパスを明示的に宣言し、symlink の `skills/` ディレクトリを辿れない GitHub API ベースのインポーター（Claude Science「Import from GitHub」、Windows チェックアウト）でも 4 つのスキルすべてが検出されるようになりました。Claude Science 上でエンドツーエンド検証済み、README + SETUP にインポートガイドを追加（#480）。eval-harness の PR コメントは、生の JSON レポート全文の貼り付けに代わり、1 行の判定 + タスク別テーブル + `<details>` に折りたたんだ JSON で表示されます — 表示層のみの変更で、ゲートロジックはバイト単位で不変（#479）。**変更:** 2026-07 の harness-retirement 監査に基づき、4 つのライター系エージェントから期限切れの writing-harness スキャフォールドを除去（#476/#477 → #478、正味 −111 行）。PR が新しいトップレベルディレクトリを追加した際に platform-ports ポリシーを通知する remind-don't-block の Platform Port Reminder を追加（#473）。**ドキュメント:** devCharlotte によるネイティブ査読済み韓国語 README（#469/#471）、GitHub Copilot repository instructions（#465）、Skip Permissions より auto permission mode を推奨（#464）。`[Unreleased]` に蓄積されていた 16 件のバックログ（コードはいずれも v3.13.0 タグ以前に反映済み — diff/patch revision mode #390、submission-package verifier #394、eval gold sets #215/#216 ほか）をバージョン記録に統合。詳細は `CHANGELOG.md` を参照。`academic-pipeline` はスイートに合わせて v3.14.0 へ、他の 3 スキルのバージョンは変更ありません。
 
 ### v3.13.0 (2026-06-18) — フック移植性、プロバイダ非依存の検証、ガード正確性
 

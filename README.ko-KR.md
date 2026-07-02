@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.13.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.13.0)
+[![Version](https://img.shields.io/badge/version-v3.14.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.14.0)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20696614.svg)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -60,7 +60,9 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 **동작 확인:** `/ars-plan`을 실행하고 작업 중인 논문을 설명하세요 — ARS가 소크라테스식 대화를 시작해 논문의 장 구조를 함께 그려 줍니다. 단발성 테스트를 원하면 `/ars-lit-review "your topic"`을 시도하세요.
 
-**👉 [docs/SETUP.md](docs/SETUP.md)** — 전체 가이드: Claude Code 설치, API 키 설정, DOCX/PDF용 선택적 Pandoc/tectonic, 교차 모델 검증(`ARS_CROSS_MODEL`), 다섯 가지 설치 방법(Plugin, project skills, global skills, claude.ai Project, repo-cloned).
+**👉 [docs/SETUP.md](docs/SETUP.md)** — 전체 가이드: Claude Code 설치, API 키 설정, DOCX/PDF용 선택적 Pandoc/tectonic, 교차 모델 검증(`ARS_CROSS_MODEL`), 여섯 가지 설치 방법(Plugin, project skills, global skills, claude.ai Project, repo-cloned, Claude Science 가져오기).
+
+**Claude Science를 사용하시나요?** 네 개의 스킬을 바로 가져올 수 있습니다: **Skills → Import from GitHub**에서 `https://github.com/Imbad0202/academic-research-skills`를 붙여넣고 **Preview** → **Import 4 skills**(이 저장소 v3.14.0+ 필요 — 가져오기 도구는 marketplace manifest에 명시된 스킬 경로를 읽습니다). 가져오기는 특정 시점의 스냅샷입니다: ARS 업데이트 후에는 다시 가져오세요. 가져온 스킬은 ARS 방법론(연구/작성/리뷰 프로토콜)을 담습니다. Claude Code 전용 메커니즘 — slash commands, hooks, 서브에이전트 오케스트레이션 — 은 이전되지 않습니다. 자세한 내용은 [docs/SETUP.md](docs/SETUP.md) Method 5를 참조하세요.
 
 **Codex CLI를 사용하시나요?** 대신 자매 배포판을 설치하세요: [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) — 동일한 워크플로 콘텐츠를, `ars-*` 별칭을 갖는 단일 `$academic-research-suite` 스킬로 Codex 네이티브 패키징한 것입니다.
 
@@ -249,7 +251,7 @@ You: "status"
 
 **0-100 품질 루브릭**을 갖춘 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. **결정 매핑:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. 1차 심사팀 대 좁은 re-review 팀 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.13.0)
+### Academic Pipeline (v3.14.0)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 건너뛸 수 없고, R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -335,6 +337,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 변경 이력
+
+### v3.14.0 (2026-07-02) — Claude Science importability, eval-comment rendering, prompt-debt retirement
+
+> 이식성과 다듬기에 초점을 둔 릴리스로, 스킬 동작 변경은 없습니다. **추가:** Claude Science 가져오기 지원 — marketplace manifest가 스킬 경로를 명시적으로 선언하여, symlink된 `skills/` 디렉터리를 탐색할 수 없는 GitHub API 기반 가져오기 도구(Claude Science "Import from GitHub", Windows 체크아웃)에서도 네 개의 스킬이 모두 인식됩니다. Claude Science에서 엔드투엔드로 검증되었으며 README + SETUP에 가져오기 가이드가 추가되었습니다(#480). eval-harness PR 코멘트는 원시 JSON 전체 붙여넣기 대신 한 줄 판정 + 태스크별 테이블 + `<details>`로 접힌 JSON으로 렌더링됩니다 — 표시 계층만의 변경으로, 게이트 로직은 바이트 단위로 동일합니다(#479). **변경:** 2026-07 harness-retirement 감사에 따라 네 개의 작성 계열 에이전트에서 만료된 writing-harness 스캐폴드를 제거(#476/#477 → #478, 순 −111줄); PR이 새 최상위 디렉터리를 추가할 때 platform-ports 정책을 안내하는 remind-don't-block 방식의 Platform Port Reminder 추가(#473). **문서:** devCharlotte의 네이티브 검수 한국어 README(#469/#471); GitHub Copilot repository instructions(#465); Skip Permissions 대신 auto permission mode 권장(#464). `[Unreleased]`에 누적된 16개 백로그 항목(코드는 모두 v3.13.0 태그 이전에 반영됨 — diff/patch revision mode #390, submission-package verifier #394, eval gold sets #215/#216 등)이 버전 기록으로 통합되었습니다. 자세한 내용은 `CHANGELOG.md`를 참조하세요. `academic-pipeline`은 스위트와 함께 v3.14.0으로, 나머지 세 스킬 버전은 변경 없습니다.
 
 ### v3.13.0 (2026-06-18) — Hook portability, provider-agnostic verification, guard correctness
 

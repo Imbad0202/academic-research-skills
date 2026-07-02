@@ -76,5 +76,5 @@ These reflect our policy intent. See the [CC BY-NC 4.0 license](https://creative
 If you use ARS in your research, please cite it:
 
 ```
-Wu, C.-I. (2026). Academic Research Skills for Claude Code (Version 3.13.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20696614
+Wu, C.-I. (2026). Academic Research Skills for Claude Code (Version 3.14.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20696614
 ```
