@@ -127,3 +127,11 @@ def test_cli_main_writes_markdown(tmp_path, capsys):
 
 def test_cli_main_usage_error():
     assert main([]) == 2
+
+
+def test_table_cells_escape_pipes_and_newlines():
+    # task_name / metric come from eval manifests; a `|` or newline must not
+    # break the table or spoof extra columns (codex review P2).
+    task = _measured("evil|name\nrow", metric="acc|uracy")
+    out = _render([task])
+    assert "| evil\\|name row | acc\\|uracy |" in out

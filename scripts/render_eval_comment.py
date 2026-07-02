@@ -33,6 +33,13 @@ def _fmt_value(value: Any) -> str:
     return str(value)
 
 
+def _cell(text: Any) -> str:
+    """Markdown-table-safe cell: report strings (task_name, metric, comparison)
+    come from eval manifests, so a `|` or newline would break the table or spoof
+    extra rows/results."""
+    return str(text).replace("\n", " ").replace("|", "\\|")
+
+
 def _task_failures(task: dict[str, Any]) -> tuple[bool, bool]:
     """(aggregate_failed, per_class_failed) — mirrors the gate's failure signal."""
     agg = task.get("aggregate_metric") or {}
@@ -42,16 +49,16 @@ def _task_failures(task: dict[str, Any]) -> tuple[bool, bool]:
 
 
 def _table_row(task: dict[str, Any]) -> str:
-    name = task.get("task_name", "?")
+    name = _cell(task.get("task_name", "?"))
     if task.get("status", "measured") != "measured":
         return f"| {name} | — | — | — | {_PENDING_RESULT} |"
     agg = task.get("aggregate_metric") or {}
-    metric = agg.get("metric", "—")
-    value = _fmt_value(agg["value"]) if "value" in agg else "—"
+    metric = _cell(agg.get("metric", "—"))
+    value = _cell(_fmt_value(agg["value"])) if "value" in agg else "—"
     if "threshold_value" in agg:
         comparison = agg.get("comparison", ">=")
         symbol = _COMPARISON_SYMBOLS.get(comparison, comparison)
-        threshold = f"{symbol} {_fmt_value(agg['threshold_value'])}"
+        threshold = _cell(f"{symbol} {_fmt_value(agg['threshold_value'])}")
     else:
         threshold = "—"
     agg_failed, pc_failed = _task_failures(task)
