@@ -6,9 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Command-invariants CI gate — announce list machine-checked against the actual command inventory.** Vendors release-discipline-toolkit v0.3.0 under `tools/release-discipline/` and adds `.command-invariants.toml` + a `command-invariants.yml` workflow. The lint discovers `commands/*.md` (16 today) and asserts `scripts/announce-ars-loaded.sh` lists exactly that set — missing command, stale extra, and the hardcoded `Slash commands (N)` count all fail CI — plus a version-lockstep check pinning `.claude-plugin/plugin.json` to the newest CHANGELOG release entry. Motivated by the announce list drifting twice (PR #193: 10 listed vs 12 actual; this change: 14 vs 16); the validator was verified against the live drift before installation (caught exactly the two missing commands, zero false positives).
+
 - **CHANGELOG-covers-merges pre-tag release gate (#483).** `scripts/check_changelog_covers_merges.py` machine-checks that every release-worthy commit merged since the previous release tag is documented in `CHANGELOG.md` above the previous release's section ([Unreleased] or a release-prep-promoted newer section — spec §0.2), with conventional-prefix exemptions (`chore`/`test`/`ci`/`build`, `docs(design)`/`docs(superpowers)`/`docs(release)`/`docs(i18n)`) and fail-closed behavior on missing tags/headings. New `changelog-covers-merges.yml` workflow gates every `release/**`-headed PR into main; the CONTRIBUTING manual step covers branchless tag flows. Would have blocked the 16-entry Unreleased backlog rolled up in 3.14.0. 47 tests, registered in the CI pytest manifest.
 
 ### Fixed
+
+- **SessionStart announce updated to the full 16-command set.** `/ars-3w` and `/ars-rebuttal-audit` were missing from both the resume short-form list and the startup long-form listing, and the stated count said 14 — commands shipped after the list was last hand-synced were silently invisible at session start. Both forms now list all 16 with the correct count (announce script `# version` bumped 1.0.0 → 1.1.0); the new command-invariants gate prevents recurrence.
 
 - **DOI badge served from shields.io (#482).** Zenodo's badge endpoint rate-limits GitHub's camo image proxy (HTTP 429), intermittently rendering the README DOI badge as a broken image even though the DOI resolves fine. The badge image is now a static shields.io badge in all five READMEs; the link target stays the concept DOI (`10.5281/zenodo.20696614`), which always resolves to the latest version.
 

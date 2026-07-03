@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# version: 1.0.0
+# version: 1.1.0
 #
 # SessionStart hook script for the ARS Claude Code plugin (v3.7.0+).
 #
@@ -54,20 +54,22 @@ fi
 # ---------------------------------------------------------------------------
 case "${SOURCE}" in
   compact|resume)
-    ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-abstract /ars-lit-review /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent."
+    ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent."
     ;;
   startup|clear|*)
     ANNOUNCE="ARS (academic-research-skills) plugin loaded.
 
-Slash commands (14) — light modes pin sonnet in frontmatter; the three heavy modes inherit the session model (the v3.7.0 opus floor was retired in the 2026-06 harness pass):
+Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy modes inherit the session model (the v3.7.0 opus floor was retired in the 2026-06 harness pass):
   /ars-full              inherit Full pipeline (research → write → review → revise → finalize)
   /ars-revision-coach    inherit Parse reviewer comments → Revision Roadmap + Response Letter skeleton
   /ars-reviewer          inherit academic-paper-reviewer full mode — simulated peer-review panel
   /ars-plan              sonnet  Socratic chapter-by-chapter planning
   /ars-outline           sonnet  Detailed outline + evidence map (no full draft)
   /ars-revision          sonnet  Revised draft + R&R responses
+  /ars-rebuttal-audit    sonnet  QA an existing rebuttal draft against reviewer comments (advisory)
   /ars-abstract          sonnet  Bilingual abstract + keywords
   /ars-lit-review        sonnet  Annotated bibliography in paper format
+  /ars-3w                sonnet  WHY / HOW / WHAT three-way paper scan (lighter than lit-review)
   /ars-format-convert    sonnet  Convert paper between LaTeX / DOCX / PDF / Markdown
   /ars-citation-check    sonnet  Citation error report
   /ars-disclosure        sonnet  Venue-specific AI-usage disclosure statement
