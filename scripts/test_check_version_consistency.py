@@ -44,11 +44,31 @@ def _write_claude_md(
     root: Path,
     suite_version: str,
     table_rows: list[tuple[str, str]],
+    last_updated: str | None = "2026-04-22",
+    key_additions: str | None = "derive",
 ) -> None:
+    """`last_updated` / `key_additions` default to values aligned with the
+    fixture CHANGELOG (invariants 10 + 11). `key_additions="derive"` writes a
+    `## v<major>.<minor> Key Additions` heading derived from `suite_version`;
+    pass an explicit token (e.g. "v3.4") to drift it, or None to omit."""
     claude_dir = root / ".claude"
     claude_dir.mkdir(parents=True, exist_ok=True)
     rows = "\n".join(
         f"| `{name}` v{ver} | purpose | modes |" for name, ver in table_rows
+    )
+    if key_additions == "derive":
+        parts = suite_version.split(".")
+        if len(parts) >= 2 and all(p.isdigit() for p in parts[:2]):
+            key_additions = f"v{parts[0]}.{parts[1]}"
+        else:
+            key_additions = None
+    key_additions_block = (
+        f"## {key_additions} Key Additions (fixture)\n\n- fixture addition\n\n"
+        if key_additions is not None
+        else ""
+    )
+    last_updated_line = (
+        f"- **Last Updated**: {last_updated}\n" if last_updated is not None else ""
     )
     text = (
         "# Academic Research Skills\n"
@@ -59,8 +79,10 @@ def _write_claude_md(
         "|-------|---------|-----------|\n"
         f"{rows}\n"
         "\n"
+        f"{key_additions_block}"
         "## Version Info\n"
         f"- **Suite version**: {suite_version} (per CHANGELOG.md)\n"
+        f"{last_updated_line}"
     )
     (claude_dir / "CLAUDE.md").write_text(text, encoding="utf-8")
 
@@ -69,9 +91,21 @@ def _write_changelog(
     root: Path,
     latest_version: str,
     prior_versions: list[str] | None = None,
+    latest_body: str | None = None,
+    latest_date: str = "2026-04-22",
 ) -> None:
-    """Write fixture CHANGELOG with `latest_version` first, then any `prior_versions`."""
-    entries = [f"## [{latest_version}] - 2026-04-22\n\n### Added\n- fixture entry\n"]
+    """Write fixture CHANGELOG with `latest_version` first, then any `prior_versions`.
+
+    The default latest-entry body is long enough to satisfy the >=100-char
+    release-notes invariant (9); pass a short `latest_body` to drift it."""
+    if latest_body is None:
+        latest_body = (
+            "### Added\n"
+            "- fixture entry with enough substantive body text that the latest "
+            "release entry clears the one-hundred-character release-notes "
+            "minimum enforced by invariant 9\n"
+        )
+    entries = [f"## [{latest_version}] - {latest_date}\n\n{latest_body}"]
     for prev in prior_versions or []:
         entries.append(f"## [{prev}] - 2026-04-15\n\n### Added\n- prior fixture entry\n")
     (root / "CHANGELOG.md").write_text(
@@ -142,8 +176,17 @@ def _write_docs(
         (docs / "PERFORMANCE.zh-TW.md").write_text("# 效能\n\n" + zh_body, encoding="utf-8")
 
 
-def _write_aligned_fixture(root: Path) -> None:
-    """Everything lines up — baseline for PASS cases and drift mutations."""
+def _write_aligned_fixture(
+    root: Path,
+    last_updated: str | None = "2026-04-22",
+    key_additions: str | None = "derive",
+) -> None:
+    """Everything lines up — baseline for PASS cases and drift mutations.
+
+    `last_updated` / `key_additions` pass straight through to `_write_claude_md`
+    so invariant-10 / invariant-11 tests can drift a single field without
+    re-specifying the aligned skill table (which would duplicate the very
+    drift this lint exists to catch)."""
     skills = [
         ("deep-research", "2.9.0"),
         ("academic-paper", "3.1.0"),
@@ -152,7 +195,13 @@ def _write_aligned_fixture(root: Path) -> None:
     ]
     for name, ver in skills:
         _write_skill(root, name, ver)
-    _write_claude_md(root, suite_version="3.5.0", table_rows=skills)
+    _write_claude_md(
+        root,
+        suite_version="3.5.0",
+        table_rows=skills,
+        last_updated=last_updated,
+        key_additions=key_additions,
+    )
     _write_changelog(root, latest_version="3.5.0")
     _write_plugin_manifests(root, "3.5.0")
     _write_readme(root, "3.5.0")
@@ -838,6 +887,288 @@ class TestAgentCountClaim(unittest.TestCase):
                 result.returncode, 0,
                 msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
             )
+
+
+class TestChangelogBodyLength(unittest.TestCase):
+    """Invariant 9 (#487): the latest CHANGELOG entry's body must be >= 100
+    characters — a bare heading (or a stub line) is not release notes."""
+
+    def test_short_body_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_changelog(root, latest_version="3.5.0", latest_body="- stub\n")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("body", result.stdout)
+            self.assertIn("100", result.stdout)
+
+    def test_empty_body_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_changelog(root, latest_version="3.5.0", latest_body="\n")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("body", result.stdout)
+
+    def test_prior_entry_body_not_gated(self) -> None:
+        """Only the LATEST entry is gated — historical entries may be terse."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_changelog(root, latest_version="3.5.0", prior_versions=["3.4.0"])
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_fenced_h2_inside_body_not_a_terminator(self) -> None:
+        """A '## ' line inside a fenced code block must NOT truncate the body
+        (codex P2-1): the entry body ends at the next RELEASE heading, not any
+        markdown H2. Otherwise a code sample in the release notes false-fails
+        invariant 9."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            body = (
+                "### Added\n\n"
+                "```md\n"
+                "## not a release heading — just a code sample\n"
+                "```\n\n"
+                "Real release notes continue here with more than one hundred "
+                "characters of substantive text so invariant 9 is satisfied by "
+                "the full body, not the truncated fence prefix.\n"
+            )
+            _write_changelog(
+                root, latest_version="3.5.0", latest_body=body,
+                prior_versions=["3.4.0"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_fenced_bracketed_h2_not_a_terminator(self) -> None:
+        """A fenced '## [example]' — which even LOOKS like a release heading —
+        must not truncate the body either (codex re-review): the body ends at
+        the next real release heading, past any fenced content."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            body = (
+                "### Added\n\n"
+                "```md\n"
+                "## [example] - 2020-01-01 — a code sample, not a real entry\n"
+                "```\n\n"
+                "Real release notes continue here with more than one hundred "
+                "characters of substantive text so invariant 9 is satisfied by "
+                "the full body, not the truncated fence prefix.\n"
+            )
+            _write_changelog(
+                root, latest_version="3.5.0", latest_body=body,
+                prior_versions=["3.4.0"],
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+
+class TestLastUpdatedFreshness(unittest.TestCase):
+    """Invariant 10 (#487): .claude/CLAUDE.md "Last Updated" must lie within
+    ±7 days of the latest CHANGELOG entry's date (deterministic baseline —
+    re-running the lint later cannot flip the result)."""
+
+    def test_stale_last_updated_fails(self) -> None:
+        """8 days after the CHANGELOG date (2026-04-22) is out of the window."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, last_updated="2026-04-30")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("Last Updated", result.stdout)
+
+    def test_boundary_seven_days_passes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, last_updated="2026-04-29")
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_missing_last_updated_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, last_updated=None)
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("Last Updated", result.stdout)
+
+    def test_changelog_missing_date_fails(self) -> None:
+        """The latest entry carrying no date breaks the freshness baseline."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            # Strip only the date off the aligned CHANGELOG heading, keeping
+            # the compliant body so invariant 9 doesn't also fire.
+            changelog = root / "CHANGELOG.md"
+            changelog.write_text(
+                changelog.read_text(encoding="utf-8").replace(
+                    "## [3.5.0] - 2026-04-22", "## [3.5.0]"
+                ),
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("date", result.stdout)
+
+    def test_impossible_changelog_date_reports_not_crashes(self) -> None:
+        """A syntactically-shaped but impossible CHANGELOG date (2026-02-30)
+        must produce a lint error, never a traceback (codex P2-2)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_changelog(root, latest_version="3.5.0", latest_date="2026-02-30")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertIn("2026-02-30", result.stdout)
+
+    def test_overlong_changelog_date_not_accepted_as_prefix(self) -> None:
+        """A trailing-digit date like 2026-04-222 must NOT be prefix-captured
+        as 2026-04-22 and silently pass freshness (codex re-review P3): it is
+        malformed and must be flagged."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, last_updated="2026-04-22")
+            _write_changelog(root, latest_version="3.5.0", latest_date="2026-04-222")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_non_iso_last_updated_reports_not_crashes(self) -> None:
+        """A non-YYYY-MM-DD Last Updated that date.fromisoformat happens to
+        accept (e.g. compact 20260422) must still be flagged as malformed
+        rather than silently passing (codex P2-2)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, last_updated="20260422")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("Last Updated", result.stdout)
+
+
+class TestKeyAdditionsAlignment(unittest.TestCase):
+    """Invariant 11 (#487): the newest "## vX.Y… Key Additions" heading in
+    .claude/CLAUDE.md must match the suite version (compared at the heading's
+    own precision, so `## v3.5 Key Additions` matches suite 3.5.0)."""
+
+    def test_key_additions_drift_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, key_additions="v3.4")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("Key Additions", result.stdout)
+
+    def test_key_additions_missing_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, key_additions=None)
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("Key Additions", result.stdout)
+
+    def test_three_segment_heading_match_passes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root, key_additions="v3.5.0")
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_older_headings_below_newest_allowed(self) -> None:
+        """Historical Key Additions sections stay put; only the NEWEST (max
+        version) heading is compared against the suite version."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            claude_md = root / ".claude" / "CLAUDE.md"
+            text = claude_md.read_text(encoding="utf-8")
+            text = text.replace(
+                "## Version Info\n",
+                "## v3.4 Key Additions (older, allowed)\n\n- old\n\n## Version Info\n",
+            )
+            claude_md.write_text(text, encoding="utf-8")
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+
+class TestTagMatch(unittest.TestCase):
+    """Tag gate (#487, invariant 1c): `--tag <ref>` must equal the suite
+    version — the one comparison nothing else performs at tag time."""
+
+    def test_matching_tag_passes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            result = run_script(SCRIPT, "--path", str(root), "--tag", "v3.5.0")
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_mismatched_tag_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            result = run_script(SCRIPT, "--path", str(root), "--tag", "v3.6.0")
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("v3.6.0", result.stdout)
+            self.assertIn("3.5.0", result.stdout)
+
+    def test_tag_without_v_prefix_matches(self) -> None:
+        """A bare `3.5.0` ref compares equal — the leading `v` is cosmetic."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            result = run_script(SCRIPT, "--path", str(root), "--tag", "3.5.0")
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_tag_supplied_but_suite_version_missing_fails(self) -> None:
+        """The tag gate must NOT silently no-op when .claude/CLAUDE.md has no
+        Suite-version line: the whole point of `--tag` is to guarantee the tag
+        is right at tag time, so a garbage tag co-occurring with a broken
+        CLAUDE.md has to be a non-zero exit (both the suite-missing error AND
+        the tag-uncheckable error surface), never a pass."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            claude_md = root / ".claude" / "CLAUDE.md"
+            text = claude_md.read_text(encoding="utf-8")
+            text = text.replace(
+                "- **Suite version**: 3.5.0 (per CHANGELOG.md)\n", ""
+            )
+            claude_md.write_text(text, encoding="utf-8")
+            result = run_script(SCRIPT, "--path", str(root), "--tag", "v9.9.9")
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            # The tag itself must be named as uncheckable — not just the
+            # generic suite-missing error that would fire even without --tag.
+            self.assertIn("v9.9.9", result.stdout)
 
 
 if __name__ == "__main__":
