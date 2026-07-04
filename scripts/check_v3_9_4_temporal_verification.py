@@ -39,7 +39,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = REPO_ROOT / "shared/contracts/passport"
 
 BIBLIOGRAPHY_AGENT_PATH = REPO_ROOT / "deep-research/agents/bibliography_agent.md"
-BIBLIOGRAPHY_AGENT_SHA256 = "4d8bee0615ca2045af805b1cdae2566b349827a3c17a2f494c601631632db70c"  # #272 guidance-layer baseline; F2 ownership guard per spec §3.4 + §3.6. The #272 guidance layer inlined the retrieved-content instruction/data standing principle into Core Principles; NO M6 citation-provenance / M5 version-family / temporal logic added, so the ownership invariant the hash protects is intact. (Previous baseline 3c2b91d… was the post-v3.10-PR-B state.)
+BIBLIOGRAPHY_AGENT_SHA256 = "39370675561f74fae9a8595bdeb03939402d273a0734b6bcaa1230d5e9928616"  # #489 harness-retirement baseline (B4-F01); F2 ownership guard per spec §3.4 + §3.6. The B4-F01 apply rewrote ONLY the Phase Boundary enforcement-status sentence (stale "hook deferred to #134" claim → post-PR-#294 two-layer reality); NO M6 citation-provenance / M5 version-family / temporal logic added, so the ownership invariant the hash protects is intact. (Previous baseline 4d8bee06… was the #272 guidance-layer state.)
 
 
 def _validate(yaml_path: Path, schema_path: Path) -> list[str]:
