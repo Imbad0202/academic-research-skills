@@ -123,7 +123,7 @@ KO_README_TEMPLATE = """\
 
 ## 변경 이력
 
-### v3.14.0 (2026-07-02) — current release
+### v3.15.0 (2026-07-04) — current release
 ### v3.12.0 (2026-06-08) — prior release
 ### v3.11.1 (2026-06-06) — prior patch
 ### v3.11.0 (2026-06-04) — prior patch
@@ -311,7 +311,7 @@ class TestReadmeJaSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ja_readme(root, version="3.14.0")
+            _write_ja_readme(root, version="3.15.0")
 
             csc.check_readme_ja_sections()
 
@@ -331,17 +331,17 @@ class TestReadmeJaSections(unittest.TestCase):
             # Write the "current" v3.9.4.2 release block but downgrade only
             # the badge and tag link to v3.9.4.0. This is the realistic shape
             # of drift when one place gets forgotten during a release.
-            stale = JA_README_TEMPLATE.format(ver="3.14.0").replace(
-                "version-v3.14.0-blue", "version-v3.9.4.0-blue"
+            stale = JA_README_TEMPLATE.format(ver="3.15.0").replace(
+                "version-v3.15.0-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.14.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.15.0", "releases/tag/v3.9.4.0"
             )
             (root / "README.ja-JP.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ja_sections()
 
             self.assertTrue(
-                any("README.ja-JP.md" in e and "v3.14.0" in e for e in csc.ERRORS),
+                any("README.ja-JP.md" in e and "v3.15.0" in e for e in csc.ERRORS),
                 msg=f"expected ja-JP drift error in: {csc.ERRORS!r}",
             )
 
@@ -365,7 +365,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ko_readme(root, version="3.14.0")
+            _write_ko_readme(root, version="3.15.0")
 
             csc.check_readme_ko_sections()
 
@@ -380,17 +380,17 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            stale = KO_README_TEMPLATE.format(ver="3.14.0").replace(
-                "version-v3.14.0-blue", "version-v3.9.4.0-blue"
+            stale = KO_README_TEMPLATE.format(ver="3.15.0").replace(
+                "version-v3.15.0-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.14.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.15.0", "releases/tag/v3.9.4.0"
             )
             (root / "README.ko-KR.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ko_sections()
 
             self.assertTrue(
-                any("README.ko-KR.md" in e and "v3.14.0" in e for e in csc.ERRORS),
+                any("README.ko-KR.md" in e and "v3.15.0" in e for e in csc.ERRORS),
                 msg=f"expected ko-KR drift error in: {csc.ERRORS!r}",
             )
 
@@ -401,7 +401,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver="3.14.0").replace(
+            broken = KO_README_TEMPLATE.format(ver="3.15.0").replace(
                 "#### Deep Research (8개 모드)", "#### Deep Research (8 modes)"
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
@@ -418,9 +418,9 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver="3.14.0").replace(
-                "### v3.14.0 (2026-07-02)",
-                "### v3.14.0（2026-07-02）",
+            broken = KO_README_TEMPLATE.format(ver="3.15.0").replace(
+                "### v3.15.0 (2026-07-04)",
+                "### v3.15.0（2026-07-04）",
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
 
@@ -429,7 +429,7 @@ class TestReadmeKoSections(unittest.TestCase):
             self.assertTrue(
                 any(
                     "README.ko-KR.md" in e
-                    and "### v3.14.0 (2026-07-02)" in e
+                    and "### v3.15.0 (2026-07-04)" in e
                     for e in csc.ERRORS
                 ),
                 msg=f"expected Korean parenthesis-style error in: {csc.ERRORS!r}",
@@ -457,8 +457,8 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.14.0")
-            _write_zh_cn_readme(root, version="3.14.0")
+            _write_zh_tw_readme(root, version="3.15.0")
+            _write_zh_cn_readme(root, version="3.15.0")
 
             csc.check_readme_zh_sections()
 
@@ -474,18 +474,18 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.14.0")
-            stale = ZH_CN_README_TEMPLATE.format(ver="3.14.0").replace(
-                "version-v3.14.0-blue", "version-v3.9.4.0-blue"
+            _write_zh_tw_readme(root, version="3.15.0")
+            stale = ZH_CN_README_TEMPLATE.format(ver="3.15.0").replace(
+                "version-v3.15.0-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.14.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.15.0", "releases/tag/v3.9.4.0"
             )
             (root / "README.zh-CN.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_zh_sections()
 
             self.assertTrue(
-                any("README.zh-CN.md" in e and "v3.14.0" in e for e in csc.ERRORS),
+                any("README.zh-CN.md" in e and "v3.15.0" in e for e in csc.ERRORS),
                 msg=f"expected zh-CN drift error in: {csc.ERRORS!r}",
             )
 
