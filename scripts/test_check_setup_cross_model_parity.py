@@ -79,6 +79,25 @@ class SetupCrossModelParityTests(unittest.TestCase):
         self.assertIn("deepseek-v4-pro", ids)
         self.assertNotIn("gpt-5.4-pro", ids)
 
+    def test_wildcard_prefix_tokens_are_not_ids(self) -> None:
+        """codex P2 regression (PR #492): the compat table's "any
+        non-`gpt-*`/`gemini-*` id" prose sits in an API ID column — globs are
+        prefix patterns, not model ids, and a SETUP example of `gpt-*` must
+        fail, not pass on the leaked token."""
+        module = _load_module()
+        canonical = CANONICAL_OK + (
+            "\n| Provider | Example API ID(s) | Endpoint |\n"
+            "|----------|-------------------|----------|\n"
+            "| Any OpenAI-compatible | any non-`gpt-*`/`gemini-*` id | any |\n"
+        )
+        self.assertNotIn("gpt-*", module.canonical_model_ids(canonical))
+        glob_setup = 'export ARS_CROSS_MODEL="gpt-*"\n'
+        errors = module.check(glob_setup, glob_setup, canonical)
+        self.assertTrue(
+            any("gpt-*" in e and "not in" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_unknown_model_fails(self) -> None:
         """Example naming a model outside the canonical lineup."""
         module = _load_module()

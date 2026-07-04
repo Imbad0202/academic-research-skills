@@ -62,7 +62,13 @@ def canonical_model_ids(canonical_text: str) -> set[str]:
                 api_id_col = next(i for i, c in enumerate(cells) if "API ID" in c)
             continue
         if len(cells) > api_id_col:
-            ids.update(re.findall(r"`([^`]+)`", cells[api_id_col]))
+            # Globs like `gpt-*` (from the compat table's "any non-`gpt-*`
+            # id" prose) are prefix patterns, not model ids — exclude them.
+            ids.update(
+                tok
+                for tok in re.findall(r"`([^`]+)`", cells[api_id_col])
+                if "*" not in tok
+            )
     return ids
 
 
