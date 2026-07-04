@@ -29,7 +29,7 @@ You MAY READ the paper draft and all provided artifacts for legitimate domain re
 
 If synthesis-side work is needed, return control to `editorial_synthesizer_agent`.
 
-**Enforcement (v3.9.2):** prompt-level only. Advisory verifier (`scripts/check_pipeline_integrity.py`) can detect violations post-hoc. Deterministic PreToolUse hook deferred to v3.10 active conductor (#134). The v3.6.2 Sprint Contract Protocol below ALSO applies.
+**Enforcement (v3.9.2):** prompt-level fence + advisory post-hoc verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard additionally enforces the WRITE clause in hook-enabled runtimes; where no hook runs, this prose fence is the enforcement layer. The v3.6.2 Sprint Contract Protocol below ALSO applies.
 
 ---
 

@@ -140,10 +140,8 @@ Reference: `references/apa7_style_guide.md`
 - Hedging language for uncertain claims ("suggests," "indicates," "may")
 
 ### Citation Practices
-- **Narrative**: Author (Year) found that...
-- **Parenthetical**: Evidence suggests X (Author, Year).
-- **Direct quote**: "exact words" (Author, Year, p. X).
-- **Multiple sources**: (Author1, Year; Author2, Year) — alphabetical
+- **Direct quote**: "exact words" (Author, Year, p. X) — page number required
+- **Multiple sources**: (Author1, Year; Author2, Year) — alphabetical order
 - **Secondary**: (Original Author, Year, as cited in Citing Author, Year)
 
 ### Tables & Figures

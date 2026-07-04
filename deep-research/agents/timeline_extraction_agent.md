@@ -31,7 +31,7 @@ You MAY READ files in `phase1_*/` (Research Question Brief) and `phase2_*/` (own
 
 If downstream work is needed, return control to the caller with a recommendation. Do not execute.
 
-**Enforcement (v3.9.4):** prompt-level only. Advisory verifier (`scripts/check_pipeline_integrity.py` v3.9.4 extension) can detect violations post-hoc. Deterministic PreToolUse hook deferred to v3.10 active conductor (#134).
+**Enforcement (v3.9.4):** prompt-level fence + advisory post-hoc verifier (`scripts/check_pipeline_integrity.py` v3.9.4 extension). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard additionally enforces the WRITE clause in hook-enabled runtimes; where no hook runs, this prose fence is the enforcement layer.
 
 ## Citation Provenance Protocol (v3.9.4)
 

@@ -92,21 +92,7 @@ Every material artifact produced by the pipeline carries a version label. These 
       "team_notes": null,
       "dialogue_log_ref": "turns #3..#15"
     },
-    "2": {
-      "name": "WRITE",
-      "skill": "academic-paper",
-      "status": "completed",
-      "mode": "plan -> full",
-      "outputs": ["Paper Draft (5,200 words, IMRaD)"],
-      "started_at": "conversation turn #16",
-      "completed_at": "conversation turn #28",
-      "checkpoint_confirmed": true,
-      "checkpoint_type": "FULL",
-      "schema_validated": true,
-      "assigned_to": null,
-      "approval_gate": false,
-      "team_notes": null
-    },
+    "2": { "name": "WRITE", "skill": "academic-paper", "status": "completed", "mode": "plan -> full", "outputs": ["Paper Draft (5,200 words, IMRaD)"], "...": "same standard fields as stage \"1\"" },
     "2.5": {
       "name": "INTEGRITY",
       "agent": "integrity_verification_agent",
@@ -160,22 +146,7 @@ Every material artifact produced by the pipeline carries a version label. These 
       "approval_gate": false,
       "team_notes": null
     },
-    "3p": {
-      "name": "RE-REVIEW",
-      "skill": "academic-paper-reviewer",
-      "status": "completed",
-      "mode": "re-review",
-      "outputs": ["Re-Review Report", "Editorial Decision: Accept"],
-      "decision": "accept",
-      "started_at": "conversation turn #43",
-      "completed_at": "conversation turn #45",
-      "checkpoint_confirmed": true,
-      "checkpoint_type": "MANDATORY",
-      "schema_validated": true,
-      "assigned_to": null,
-      "approval_gate": true,
-      "team_notes": null
-    },
+    "3p": { "name": "RE-REVIEW", "skill": "academic-paper-reviewer", "status": "completed", "mode": "re-review", "decision": "accept", "outputs": ["Re-Review Report", "Editorial Decision: Accept"], "...": "same standard fields as stage \"3\"" },
     "4p": {
       "name": "RE-REVISE",
       "skill": "academic-paper",

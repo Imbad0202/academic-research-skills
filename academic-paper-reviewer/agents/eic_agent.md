@@ -28,7 +28,7 @@ You MAY READ the paper draft and all upstream artifacts provided by the caller f
 
 If synthesis-side work is needed (Editorial Decision Letter, Revision Roadmap), return control. The synthesis is `editorial_synthesizer_agent`'s Phase 2 job.
 
-**Enforcement (v3.9.2):** prompt-level only. Advisory verifier (`scripts/check_pipeline_integrity.py`) can detect violations post-hoc. Deterministic PreToolUse hook deferred to v3.10 active conductor (#134). The v3.6.2 Sprint Contract Protocol below ALSO applies — both constrain your behavior (Phase Boundary = phase scope; Sprint Contract = within-phase paper-blind/paper-visible discipline).
+**Enforcement (v3.9.2):** prompt-level fence + advisory post-hoc verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard additionally enforces the WRITE clause in hook-enabled runtimes; where no hook runs, this prose fence is the enforcement layer. The v3.6.2 Sprint Contract Protocol below ALSO applies — both constrain your behavior (Phase Boundary = phase scope; Sprint Contract = within-phase paper-blind/paper-visible discipline).
 
 ---
 

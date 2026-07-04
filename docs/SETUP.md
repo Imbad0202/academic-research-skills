@@ -1,6 +1,6 @@
 # ARS Setup
 
-Prerequisites and optional setup for Academic Research Skills. If you only need Markdown output and the default Claude Opus 4.8 pipeline, you can skip most of this — see "Minimum viable setup" below.
+Prerequisites and optional setup for Academic Research Skills. If you only need Markdown output and the default Claude pipeline (the inherited session model), you can skip most of this — see "Minimum viable setup" below.
 
 ---
 
@@ -142,17 +142,17 @@ The cache is single-process (SQLite WAL); concurrent multi-user access to one ca
 
 ## Cross-model verification (optional)
 
-ARS works with Claude Opus 4.8 alone. For higher confidence, you can optionally enable a second AI model to independently verify integrity checks and challenge the devil's advocate.
+ARS works with the inherited Claude session model alone. For higher confidence, you can optionally enable a second AI model to independently verify integrity checks and challenge the devil's advocate.
 
 ### Quick setup
 
 ```bash
 # Step 1: Set your API key (choose one or both)
-export OPENAI_API_KEY="sk-your-key-here"        # For GPT-5.4 Pro
+export OPENAI_API_KEY="sk-your-key-here"        # For GPT-5.5 / GPT-5.5 Pro
 export GOOGLE_AI_API_KEY="AIza-your-key-here"    # For Gemini 3.1 Pro
 
 # Step 2: Choose your cross-verification model
-export ARS_CROSS_MODEL="gpt-5.4-pro"            # Best reasoning
+export ARS_CROSS_MODEL="gpt-5.5"                # Recommended pair (gpt-5.5-pro = strongest reasoning, ~6x cost)
 # or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Strong at factual verification
 
 # Step 3: Run Claude Code as normal — cross-verification activates automatically
@@ -169,7 +169,7 @@ claude
 
 ### Cost
 
-Full pipeline adds ~$0.60-1.10 in cross-model API costs (GPT-5.4 Pro pricing). See [`shared/cross_model_verification.md`](../shared/cross_model_verification.md) for the detailed breakdown.
+Full pipeline adds ~$0.60-1.10 in cross-model API costs (order-of-magnitude; measured at GPT-5.4 Pro pricing). See [`shared/cross_model_verification.md`](../shared/cross_model_verification.md) for the current model lineup and detailed breakdown.
 
 ### No API key? No problem
 

@@ -437,12 +437,16 @@ Overall convergence (across all chapters):
 
 ### Auto-End Rules
 
+The single authority for non-convergence and early-stop handling:
+
 | Condition | Action |
 |-----------|--------|
 | 3+ convergence signals = "Yes" for current chapter | Chapter converged; extract Chapter Summary; proceed to next chapter |
 | All chapters converged + Stress Test passed | Fully converged; announce readiness; offer to proceed to `full` mode |
+| > 5 rounds on a single chapter without convergence | Attempt to summarize for the user and ask for confirmation (first-line intervention) |
 | > 8 rounds on a single chapter without convergence | Offer to switch: (a) skip to next chapter, (b) switch to `outline-only` mode, (c) take a break and return later |
 | > 30 total rounds without completing all chapters | Suggest switching to `outline-only` mode with current progress saved |
+| User explicitly wants to stop | Save completed Chapter Plan (see Mid-Process Save); inform them they can return anytime |
 
 ---
 
@@ -454,39 +458,19 @@ Use these question types strategically. Each chapter dialogue should include at 
 
 #### 1. Clarifying Questions
 **Purpose**: Ensure the user's meaning is precise and unambiguous.
-
-| Template | When to Use | Example |
-|----------|------------|---------|
-| "When you say X, do you mean A or B?" | User uses ambiguous terms | "When you say 'quality assurance,' do you mean internal QA processes or external accreditation?" |
-| "Can you give a specific example of X?" | User makes abstract claims | "Can you give a specific example of how AI changed assessment practices at a university?" |
-| "How would you define X for a reader unfamiliar with the field?" | User uses jargon without definition | "How would you define 'learning analytics' for a reader outside of educational technology?" |
+*Example*: "When you say 'quality assurance,' do you mean internal QA processes or external accreditation?"
 
 #### 2. Probing Questions
 **Purpose**: Push the user to think deeper about their reasoning and evidence.
-
-| Template | When to Use | Example |
-|----------|------------|---------|
-| "What evidence supports that claim?" | User makes unsupported assertions | "You say AI improves learning outcomes — what evidence supports that? From your data or from the literature?" |
-| "How do you know that X causes Y, rather than being correlated?" | User implies causation | "How do you know that the AI tool caused the improvement, rather than it being correlated with student motivation?" |
-| "What would change your mind about this?" | User seems overly committed to a position | "What kind of evidence would make you reconsider your thesis?" |
+*Example*: "How do you know that the AI tool caused the improvement, rather than it being correlated with student motivation?"
 
 #### 3. Structuring Questions
 **Purpose**: Help the user organize their thinking and see connections between parts.
-
-| Template | When to Use | Example |
-|----------|------------|---------|
-| "How does this connect to what you said about X?" | User introduces a point without linking it | "How does this finding about student satisfaction connect to what you said about retention rates?" |
-| "If you had to summarize this chapter in one sentence, what would it be?" | User has explored many ideas but lacks focus | "If you had to summarize your Results chapter in one sentence, what would it be?" |
-| "What is the one thing the reader must understand before moving to the next section?" | User is ready to transition between chapters | "What must the reader understand from your Literature Review before they can make sense of your Methodology?" |
+*Example*: "What must the reader understand from your Literature Review before they can make sense of your Methodology?"
 
 #### 4. Challenging Questions
 **Purpose**: Stress-test the user's argument and uncover weaknesses before reviewers do.
-
-| Template | When to Use | Example |
-|----------|------------|---------|
-| "A skeptical reviewer would say X — how do you respond?" | User needs to prepare for critique | "A skeptical reviewer would say your sample of 50 students is too small. How do you respond?" |
-| "If someone repeated your study and got the opposite result, what would that mean?" | User needs to consider falsifiability | "If someone repeated your study with a different AI tool and found no improvement, what would that mean for your thesis?" |
-| "What is the strongest argument against your position?" | User needs to engage with counter-arguments | "What is the strongest argument someone could make against using AI in assessment?" |
+*Example*: "A skeptical reviewer would say your sample of 50 students is too small. How do you respond?"
 
 ### Question Type Distribution by Chapter
 
@@ -506,14 +490,8 @@ Use these question types strategically. Each chapter dialogue should include at 
 ### Normal Convergence
 - Each chapter can be completed in 2-5 rounds of dialogue
 - User confirms Chapter Summary before proceeding to next chapter
-- Track convergence signals (C1-C4) after each round
 - All 6 chapters + Stress Test typically takes 20-30 dialogue rounds
-
-### Non-Convergence Handling
-- If a chapter exceeds 5 rounds without converging -> attempt to summarize for the user, ask for confirmation
-- If > 8 rounds on a single chapter -> trigger auto-end (offer to skip, switch mode, or pause)
-- If the entire process exceeds 15 rounds without completing all chapters -> suggest switching to outline-only mode
-- If the user explicitly wants to stop -> save completed Chapter Plan, inform them they can return anytime
+- Non-convergence and early-stop handling: governed by the Auto-End Rules table under Convergence Criteria (single authority)
 
 ### Mid-Process Save
 

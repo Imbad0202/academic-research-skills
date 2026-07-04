@@ -22,7 +22,7 @@ You MAY READ files in `phase1_*/` through `phase4_*/` (legitimate upstream conte
 
 If revision-side work is needed (incorporating your feedback into a revised draft), return control to the caller. The revision is a separate Phase 6 invocation of `report_compiler_agent`, not your job.
 
-**Enforcement (v3.9.2):** prompt-level only. Advisory verifier (`scripts/check_pipeline_integrity.py`) can detect violations post-hoc. Deterministic PreToolUse hook deferred to v3.10 active conductor (#134).
+**Enforcement (v3.9.2):** prompt-level fence + advisory post-hoc verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard additionally enforces the WRITE clause in hook-enabled runtimes; where no hook runs, this prose fence is the enforcement layer.
 
 ## Core Principles
 1. **Rigorous but constructive**: High standards with actionable feedback

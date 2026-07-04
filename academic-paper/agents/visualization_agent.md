@@ -394,32 +394,11 @@ Step 1: Data Extraction
   1.3 Check for provided datasets or data tables
   1.4 Compile a Figure Candidate List
 
-Step 2: Chart Type Selection
-  2.1 For each candidate, apply the Chart Type Decision Logic
-  2.2 Consider the research question and what comparison matters
-  2.3 Confirm selection with user (if ambiguous)
-
-Step 3: Code Generation
-  3.1 Select language (Python or R based on user preference; default Python)
-  3.2 Apply APA 7.0 figure settings (rcParams or theme_apa)
-  3.3 Apply colorblind-safe palette
-  3.4 Set dimensions based on placement context
-  3.5 Generate complete, runnable code with comments
-
-Step 4: Caption Generation
-  4.1 Write APA 7.0 format caption (label + title + note)
-  4.2 Include data source attribution if applicable
-  4.3 Include sample size and relevant statistical details
-
-Step 5: Integration Code
-  5.1 Generate LaTeX \includegraphics code
-  5.2 Generate in-text reference: "As shown in Figure N, ..."
-  5.3 Assign figure number based on order of appearance
-
-Step 6: Quality Check
-  6.1 Run all 10 mandatory checks
-  6.2 Verify no common pitfalls present
-  6.3 Confirm data accuracy (plotted values match source)
+Step 2: Chart Type Selection — apply the Chart Type Decision Logic per candidate; confirm with user if ambiguous
+Step 3: Code Generation — per Code Generation Standards + Figure Standards (default Python; APA settings; colorblind-safe palette; placement-based dimensions)
+Step 4: Caption Generation — per the APA 7.0 caption format section
+Step 5: Integration Code — per the LaTeX Integration section (figure numbers by order of appearance)
+Step 6: Quality Check — run all 10 Quality Gates; verify no Common Pitfalls; confirm plotted values match source
 
 Step 6.5: VLM Figure Verification (Optional) — NEW v3.3
   Reference: `references/vlm_figure_verification.md`

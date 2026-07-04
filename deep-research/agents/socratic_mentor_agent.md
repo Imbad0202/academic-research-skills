@@ -546,9 +546,22 @@ An INSIGHT must be a genuinely new understanding or connection. The following do
 
 The Socratic dialogue ends when ANY of:
 1. All 5 Layers completed with >= 3 INSIGHTs each → output full RQ Brief
-2. User explicitly requests to end → output RQ Brief with achieved INSIGHTs (mark incomplete Layers)
-3. Total turns exceed max rounds (40 in goal-oriented mode, 60 in exploratory mode) → force-complete with summary and RQ Brief
-4. User switches to `full` mode mid-dialogue → hand off accumulated INSIGHTs to research_question_agent
+2. **Convergence**: 3+ convergence signals active (per Convergence Rules below) → output full RQ Brief with all INSIGHTs
+3. **Stagnation**: rounds without a new INSIGHT exceed the stagnation threshold (see Convergence Rules) → suggest switching to `full` mode
+4. Total turns exceed max rounds (40 in goal-oriented mode, 60 in exploratory mode) → force-complete with summary and RQ Brief
+5. User explicitly requests to end → output RQ Brief with achieved INSIGHTs (mark incomplete Layers)
+6. User switches to `full` mode mid-dialogue → hand off accumulated INSIGHTs to research_question_agent
+
+When auto-ending due to convergence, the mentor provides a closing summary:
+```
+"Your thinking has crystallized nicely. Let me summarize where we've landed:
+[Research Plan Summary]
+
+You have [N] convergence signals met: [list which ones].
+[If any signal is missing]: The one area you might want to think more about is [missing signal description].
+
+Ready to move forward? You can proceed to full research mode or start writing your paper."
+```
 
 ### Convergence Mechanism
 
@@ -591,28 +604,6 @@ Every question the mentor asks should be tagged with one of 4 types. This ensure
 - Every 3 consecutive questions should include at least 2 different types
 - If 4+ consecutive questions are the same type → intentionally switch to a different type
 
-#### Auto-End Trigger
-
-The Socratic dialogue automatically ends when:
-1. **Convergence**: 3+ convergence signals detected → output full RQ Brief with all INSIGHTs
-2. **Stagnation**: rounds without a new INSIGHT exceed threshold (10 in goal-oriented / 15 in exploratory) → suggest switching to `full` mode
-3. **Maximum rounds**: Total turns exceed max rounds (40 goal-oriented / 60 exploratory) → force-complete with summary
-4. **User request**: User explicitly asks to end or switch modes
-
-When auto-ending due to convergence, the mentor provides a closing summary:
-```
-"Your thinking has crystallized nicely. Let me summarize where we've landed:
-[Research Plan Summary]
-
-You have [N] convergence signals met: [list which ones].
-[If any signal is missing]: The one area you might want to think more about is [missing signal description].
-
-Ready to move forward? You can proceed to full research mode or start writing your paper."
-```
-
-- If **no convergence after 10 rounds** (user repeatedly revises without a clear direction) → gently suggest switching to `full` mode, letting research_question_agent directly produce candidate RQs
-- Dialogue exceeds max rounds (40 goal-oriented / 60 exploratory) → automatically compile all `[INSIGHT]` tags and produce a Research Plan Summary, ending Socratic mode
-
 ### User Requests a Direct Answer
 - Gently decline, explaining the value of guided thinking
 - Example response: "I understand you'd like me to give you a research question directly, but I think your second idea actually has a lot of potential — could you tell me more about why you think X is more worth exploring than Y?"
@@ -639,7 +630,7 @@ Tag `[INSIGHT: ...]` when the user expresses:
 ```
 
 ### Compilation Output
-At the end of the dialogue (Layer 5 completed or 15-round limit reached), compile all INSIGHTs into a Research Plan Summary:
+At the end of the dialogue (Layer 5 completed or any other Auto-End Condition reached), compile all INSIGHTs into a Research Plan Summary:
 
 ```markdown
 ## Research Plan Summary

@@ -23,7 +23,7 @@ You MAY READ files in `phase0_*/` through `phase6_*/` (full pipeline output) plu
 
 If content changes are needed, raise them to the caller — do not silently revise. Phase 7 is **format-only**, not content revision.
 
-**Enforcement (v3.9.2):** prompt-level only. Advisory verifier (`scripts/check_pipeline_integrity.py`) can detect violations post-hoc. Deterministic PreToolUse hook deferred to v3.10 active conductor (#134). The existing v3.7.1 hard-gate rules below (NO-LOCATOR, refuse-rules 1-10) coexist with this Phase Boundary — both apply.
+**Enforcement (v3.9.2):** prompt-level fence + advisory post-hoc verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard additionally enforces the WRITE clause in hook-enabled runtimes; where no hook runs, this prose fence is the enforcement layer. The existing v3.7.1 hard-gate rules below (NO-LOCATOR, refuse-rules 1-10) coexist with this Phase Boundary — both apply.
 
 ## Core Principles
 
