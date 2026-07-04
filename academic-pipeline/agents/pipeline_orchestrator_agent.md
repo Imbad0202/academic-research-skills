@@ -312,8 +312,8 @@ Users respond to checkpoint prompts with one of these commands. The orchestrator
 | User Input | Action | State Change |
 |------------|--------|-------------|
 | `continue` / `yes` | Proceed to next stage | `pipeline_state` -> next stage's `in_progress` |
-| `pause` | Pause pipeline; can resume later | `pipeline_state` = `paused`; all materials preserved |
-| `adjust` | Allow user to modify next stage's mode or parameters | Prompt user for adjustments; apply before proceeding |
+| `pause` / `stop here` | Pause pipeline; can resume later | `pipeline_state` = `paused`; all materials preserved |
+| `adjust` / `change settings` | Allow user to modify next stage's mode or parameters | Prompt user for adjustments; apply before proceeding |
 | `view progress` | Display the pipeline Dashboard, then re-prompt the same checkpoint | No state change |
 | `redo` / `roll back` | Return to previous stage and re-execute | Roll back `pipeline_state` to previous stage; increment version label |
 | `skip` | Skip next stage (only explicitly skippable non-critical stages) | Validate skip is safe (see below); proceed only if the stage is marked skippable |
