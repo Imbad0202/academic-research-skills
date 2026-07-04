@@ -10,7 +10,7 @@
       "name": "academic-research-skills",
       "source": "./",
       "description": "4 skills + 27 modes + Material Passport pipeline. Includes v3.6.7 cross-model audit gate and v3.6.8 generator-evaluator contract.",
-      "version": "3.14.0",
+      "version": "3.15.0",
       "license": "CC-BY-NC-4.0",
       "skills": [
         "./academic-paper",

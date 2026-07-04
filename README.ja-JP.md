@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.14.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.14.0)
+[![Version](https://img.shields.io/badge/version-v3.15.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.15.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -244,7 +244,7 @@ You: "status"
 
 **0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューチーム vs. 限定的な再レビューチームの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.14.0）
+### Academic Pipeline（v3.15.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）はスキップできない。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -324,6 +324,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.15.0 (2026-07-04) — リリースゲート強化、プロンプト負債整理第 2 弾、ドリフト防止ロック
+
+> リリース規律と品質衛生を中心としたリリースで、スキルの挙動に変更はありません。**追加:** 3 つの CI ゲート — CHANGELOG-covers-merges のタグ前ゲート（#483）、version-consistency の invariant 9-11 とタグ時再実行ゲート（#487）、SessionStart アナウンス一覧を実際の 16 コマンド一覧に固定する command-invariants ゲート（#486）— に加え、2 つのドリフト防止ロック: Phase Boundary の enforcement 文を全 23 の Bucket A エージェントブロックで逐語固定し、SETUP のクロスモデル例を相互および正準モデル表に固定（#491 → #492）。**変更:** プロンプト負債整理第 2 弾は第 1 弾で先送りされた 17 エージェントを精査（#489 → #490）: 両 socratic_mentor の実害ある自己矛盾（期限切れの「15 ラウンドで打ち切り」規則 vs 文書化された典型 20-30 ラウンド）を修正、リポジトリ全体 29 箇所の期限切れ enforcement 状態文を修正、7 エージェントの few-shot と重複プロセス・スキャフォールドを削減 — 4 バッチ並列監査 + 独立 codex クロスモデルチャレンジで検証。監査レポートは `audits/` 配下。**修正:** DOI バッジを shields.io から配信（#482）。`academic-pipeline` はスイートに合わせて v3.15.0 へ、他の 3 スキルのバージョンは変更ありません。
 
 ### v3.14.0 (2026-07-02) — Claude Science インポート対応、eval コメント表示、プロンプト負債の整理
 

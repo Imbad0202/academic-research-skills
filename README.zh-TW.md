@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.14.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.14.0)
+[![Version](https://img.shields.io/badge/version-v3.15.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.15.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -244,7 +244,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查團隊 vs. 精簡再審團隊的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.14.0)
+### Academic Pipeline (v3.15.0)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）不可跳過；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -307,6 +307,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.15.0（2026-07-04）— 發版閘門強化、prompt 債務清理第二輪、防漂移鎖
+
+> 以發版紀律與品質衛生為主的版本；skill 行為無變更。**新增：**三道 CI 閘門 — CHANGELOG-covers-merges tag 前閘門（#483）、版本一致性 invariant 9-11 加 tag 時重跑閘門（#487）、把 SessionStart announce 清單釘到實際 16 個指令清單的 command-invariants 閘門（#486）— 以及兩道防漂移鎖：Phase Boundary enforcement 句在全部 23 個 Bucket A agent 區塊逐字釘死、SETUP 跨模型範例與 canonical 型號表互相釘死（#491 → #492）。**變更：**prompt 債務清理第二輪深掃第一輪延後的 17 個 agent（#489 → #490）：修正兩個 socratic_mentor 的活矛盾（過期的 15 輪勸退規則 vs 文件明載的典型 20-30 輪）、修正全 repo 29 處過期的 enforcement 狀態句、修剪 7 個 agent 的 few-shot 與重複流程鷹架 — 經 4 批平行稽核 + 獨立 codex 跨模型挑戰驗證；稽核報告在 `audits/`。**修復：**DOI 徽章改由 shields.io 提供（#482）。`academic-pipeline` 跟隨套件版本至 v3.15.0；其他三個 skill 版本不變。
 
 ### v3.14.0（2026-07-02）— Claude Science 可匯入性、eval comment 呈現、prompt 債務清理
 

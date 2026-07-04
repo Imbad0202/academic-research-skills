@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.14.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.14.0)
+[![Version](https://img.shields.io/badge/version-v3.15.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.15.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -251,7 +251,7 @@ You: "status"
 
 **0-100 품질 루브릭**을 갖춘 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. **결정 매핑:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. 1차 심사팀 대 좁은 re-review 팀 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.14.0)
+### Academic Pipeline (v3.15.0)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 건너뛸 수 없고, R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -337,6 +337,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 변경 이력
+
+### v3.15.0 (2026-07-04) — 릴리스 게이트 강화, 프롬프트 부채 정리 2차, 드리프트 방지 잠금
+
+> 릴리스 규율과 품질 위생 중심의 릴리스로, 스킬 동작 변경은 없습니다. **추가:** 세 가지 CI 게이트 — CHANGELOG-covers-merges 태그 전 게이트(#483), version-consistency invariant 9-11 및 태그 시점 재실행 게이트(#487), SessionStart 안내 목록을 실제 16개 명령 목록에 고정하는 command-invariants 게이트(#486) — 그리고 두 가지 드리프트 방지 잠금: Phase Boundary enforcement 문장을 23개 Bucket A 에이전트 블록 전체에 축자 고정하고, SETUP 크로스모델 예시를 상호 및 정준 모델 표에 고정(#491 → #492). **변경:** 프롬프트 부채 정리 2차는 1차에서 미뤄진 17개 에이전트를 정밀 감사(#489 → #490): 두 socratic_mentor의 실제 동작하는 자기모순(만료된 "15라운드 중단 권고" 규칙 vs 문서화된 일반적 20-30라운드) 수정, 저장소 전체 29곳의 만료된 enforcement 상태 문장 수정, 7개 에이전트의 few-shot 및 중복 프로세스 스캐폴드 정리 — 4개 배치 병렬 감사 + 독립 codex 크로스모델 챌린지로 검증. 감사 보고서는 `audits/` 아래. **수정:** DOI 배지를 shields.io에서 제공(#482). `academic-pipeline`은 스위트를 따라 v3.15.0으로, 나머지 세 스킬 버전은 변경 없습니다.
 
 ### v3.14.0 (2026-07-02) — Claude Science importability, eval-comment rendering, prompt-debt retirement
 

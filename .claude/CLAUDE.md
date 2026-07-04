@@ -9,7 +9,14 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.11.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.14.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.15.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.15 Key Additions (release-gate hardening + prompt-debt retirement round 2 + defrift locks)
+
+- **Prompt-debt retirement round 2 (#489 → #490).** Deep-scanned the 17 agents the #476 pass deferred (all 5 academic-pipeline, 5 deep-research, 5 academic-paper, field_analyst, compliance_agent) via 4 parallel batches + codex cross-model challenge. 13 findings (2 P1 + 11 P2, 2 user-rejected): both `socratic_mentor` agents carried live self-contradictions (stale "quit after 15 rounds" vs documented typical 20-30) — auto-end machinery merged to a single authority per file, threshold 30; the repo-wide stale "hook deferred to #134" enforcement sentence (false since PR #294) rewritten at 29 surfaces; few-shot/duplication trims across 7 agents. The 2026-06-10 F-007 negative-framing deferred item closes as verified-no-rewrite-needed. Report: `audits/harness-retirement-2026-07-04.md`.
+- **Defrift locks (#491 → #492).** `check_v3_9_2_phase_boundary.py` invariant 4 pins the canonical enforcement sentence verbatim across all 23 Bucket A blocks (the drift class that sat wrong for a month now fails CI); new `check_setup_cross_model_parity.py` pins SETUP en/zh-TW `ARS_CROSS_MODEL` examples to each other and to the canonical model tables (table-column-scoped after a codex P1); local pytest manifest gains the v3.9.4 temporal test whose CI-only coverage caused a local-green/CI-red split (58 → 60 entries).
+- **Release-gate hardening (#483, #487, #486).** `check_changelog_covers_merges.py` pre-tag gate (every release-worthy merge since the previous tag must be documented in CHANGELOG, fail-closed); version-consistency invariants 9-11 (release-notes body ≥100 chars, Last-Updated within ±7 days of the CHANGELOG date, Key-Additions heading matches suite version) + a `tag-version-match.yml` gate re-running the full lint at tag time; command-invariants gate pinning the SessionStart announce list to the actual 16-command inventory (announce list had drifted twice).
+- **DOI badge fix (#482).** Served from shields.io (Zenodo's badge endpoint rate-limits GitHub's image proxy); link target stays the concept DOI.
 
 ## v3.14 Key Additions (Claude Science importability + eval-comment rendering + prompt-debt retirement)
 
@@ -289,7 +296,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.14.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-07-02
+- **Suite version**: 3.15.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-07-04
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
