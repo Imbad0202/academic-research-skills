@@ -8,7 +8,14 @@ SCRIPT = Path(__file__).resolve().parent / "check_setup_cross_model_parity.py"
 
 EN_OK = 'export ARS_CROSS_MODEL="gpt-5.5"\n# or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"\n'
 ZH_OK = EN_OK
-CANONICAL_OK = "| GPT-5.5 | `gpt-5.5` | ... |\n| Gemini 3.1 Pro | `gemini-3.1-pro-preview` | ... |\n"
+CANONICAL_OK = (
+    "| Model | API ID | Provider |\n"
+    "|-------|--------|----------|\n"
+    "| GPT-5.5 | `gpt-5.5` | OpenAI |\n"
+    "| Gemini 3.1 Pro | `gemini-3.1-pro-preview` | Google |\n"
+    "\n"
+    "(`gpt-5.4` / `gpt-5.4-pro` remain accepted for existing setups.)\n"
+)
 
 
 def _load_module():
@@ -37,9 +44,40 @@ class SetupCrossModelParityTests(unittest.TestCase):
         """One-sided edit (the B4-F02 shape: en updated, zh-TW forgotten)."""
         module = _load_module()
         zh_stale = 'export ARS_CROSS_MODEL="gpt-5.4-pro"\n'
-        canonical = CANONICAL_OK + "| legacy | `gpt-5.4-pro` | ... |\n"
-        errors = module.check(EN_OK, zh_stale, canonical)
+        errors = module.check(EN_OK, zh_stale, CANONICAL_OK)
         self.assertTrue(any("drift" in e for e in errors), msg=f"errors: {errors}")
+
+    def test_legacy_id_in_prose_note_does_not_count(self) -> None:
+        """codex P1 regression (PR #492): `gpt-5.4-pro` is backticked in the
+        canonical doc's legacy-accepted NOTE but absent from the model tables —
+        a SETUP example reverting to it must FAIL, not pass on the note."""
+        module = _load_module()
+        stale = 'export ARS_CROSS_MODEL="gpt-5.4-pro"\n'
+        errors = module.check(stale, stale, CANONICAL_OK)
+        self.assertTrue(
+            any("gpt-5.4-pro" in e and "not in" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_canonical_table_parse_fails_closed(self) -> None:
+        """No 'API ID' table in the canonical doc = parser stale = error."""
+        module = _load_module()
+        errors = module.check(EN_OK, ZH_OK, "prose only, `gpt-5.5` backticked")
+        self.assertTrue(
+            any("parser went stale" in e for e in errors), msg=f"errors: {errors}"
+        )
+
+    def test_compat_table_column_counts(self) -> None:
+        """Ids in the compat table's 'Example API ID(s)' column are members."""
+        module = _load_module()
+        canonical = CANONICAL_OK + (
+            "\n| Provider | Example API ID(s) | Endpoint |\n"
+            "|----------|-------------------|----------|\n"
+            "| DeepSeek | `deepseek-v4-pro` | https://api.deepseek.com/v1 |\n"
+        )
+        ids = module.canonical_model_ids(canonical)
+        self.assertIn("deepseek-v4-pro", ids)
+        self.assertNotIn("gpt-5.4-pro", ids)
 
     def test_unknown_model_fails(self) -> None:
         """Example naming a model outside the canonical lineup."""

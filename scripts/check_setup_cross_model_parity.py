@@ -13,13 +13,17 @@ This lint pins the two invariants that broke:
 1. **en/zh-TW parity** — both SETUP files must carry the same set of
    `ARS_CROSS_MODEL` example values (the zh-TW file mirrors the bash block
    verbatim; a one-sided edit is drift).
-2. **canonical membership** — every example value must appear (backticked)
-   in shared/cross_model_verification.md, the single source of truth for the
-   supported lineup. A SETUP example naming a model the canonical doc no
-   longer lists is exactly the B4-F02 failure.
+2. **canonical membership** — every example value must appear in a model
+   TABLE of shared/cross_model_verification.md (the column whose header
+   contains "API ID": the first-party supported table + the compat-provider
+   table). Backticked ids elsewhere in the doc deliberately do NOT count —
+   the legacy-accepted note backticks `gpt-5.4`/`gpt-5.4-pro`, and "accepted
+   for existing setups" is not "recommended in SETUP examples" (false-pass
+   surface caught by codex review on PR #492).
 
-Fail-closed: finding zero ARS_CROSS_MODEL examples in a SETUP file is an
-error (the extraction regex went stale), never a silent pass.
+Fail-closed twice: zero ARS_CROSS_MODEL examples in a SETUP file, or zero
+ids extracted from the canonical tables, is an error (the extraction went
+stale), never a silent pass.
 
 Exit codes: 0 on pass, 1 on any failure.
 """
@@ -40,10 +44,26 @@ CANONICAL = REPO_ROOT / "shared/cross_model_verification.md"
 #   # or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"
 ASSIGNMENT_RE = re.compile(r'ARS_CROSS_MODEL="([^"]+)"')
 
-# Canonical membership = the ID appears backticked anywhere in the canonical
-# doc (supported-model table or compat-provider table).
-def _backticked(canonical_text: str) -> set[str]:
-    return set(re.findall(r"`([^`]+)`", canonical_text))
+def canonical_model_ids(canonical_text: str) -> set[str]:
+    """Backticked ids from the "API ID" column of the canonical doc's model
+    tables ONLY. A table starts at a header row containing "API ID" and ends
+    at the first non-table line; ids backticked in surrounding prose (e.g.
+    the legacy-accepted note) are deliberately excluded."""
+    ids: set[str] = set()
+    api_id_col: int | None = None
+    for line in canonical_text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            api_id_col = None
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if api_id_col is None:
+            if any("API ID" in c for c in cells):
+                api_id_col = next(i for i, c in enumerate(cells) if "API ID" in c)
+            continue
+        if len(cells) > api_id_col:
+            ids.update(re.findall(r"`([^`]+)`", cells[api_id_col]))
+    return ids
 
 
 def extract_ids(setup_text: str) -> list[str]:
@@ -71,16 +91,24 @@ def check(en_text: str, zh_text: str, canonical_text: str) -> list[str]:
             f"quick-setup bash blocks must carry the same example values."
         )
 
-    known = _backticked(canonical_text)
+    known = canonical_model_ids(canonical_text)
+    if not known:
+        errors.append(
+            "shared/cross_model_verification.md: no ids extracted from any "
+            "'API ID' table column — the table format changed and the parser "
+            "went stale. Fail-closed per lint contract."
+        )
+        return errors
     for label, ids in (("docs/SETUP.md", en_ids), ("docs/SETUP.zh-TW.md", zh_ids)):
         for model_id in ids:
             if model_id not in known:
                 errors.append(
-                    f"{label}: ARS_CROSS_MODEL example {model_id!r} does not "
-                    f"appear in shared/cross_model_verification.md — the SETUP "
-                    f"example names a model outside the canonical lineup "
-                    f"(B4-F02 drift class). Update the example or the canonical "
-                    f"doc, in the same PR."
+                    f"{label}: ARS_CROSS_MODEL example {model_id!r} is not in "
+                    f"the canonical model tables of "
+                    f"shared/cross_model_verification.md (B4-F02 drift class; "
+                    f"legacy ids in the accepted-note do not count as "
+                    f"recommended). Update the example or the canonical table, "
+                    f"in the same PR."
                 )
     return errors
 
