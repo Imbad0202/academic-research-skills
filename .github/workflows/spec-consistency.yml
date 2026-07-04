@@ -137,6 +137,11 @@ jobs:
           PYTHONPATH: scripts
         run: python3 scripts/check_version_consistency.py
 
+      - name: Check SETUP cross-model example parity (#491)
+        # The pytest companion `test_check_setup_cross_model_parity.py`
+        # runs via the unified manifest.
+        run: python3 scripts/check_setup_cross_model_parity.py
+
       - name: Run version consistency unit tests
         env:
           PYTHONPATH: .

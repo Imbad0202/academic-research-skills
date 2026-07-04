@@ -26,6 +26,18 @@ Enforces three invariants:
    boundary), so the same keyword appearing elsewhere in the agent file
    does not count toward passing.
 
+4. **Canonical enforcement sentence (#491 defrift lock)** — every Bucket A
+   block's enforcement paragraph must carry the canonical sentence verbatim
+   (version-matched to the block's v3.9.2/v3.9.4 marker). The sentence is
+   shared boilerplate across all 23 blocks; the previous copy ("hook deferred
+   to v3.10 #134") went factually stale repo-wide for a month with no lint
+   noticing (audits/harness-retirement-2026-07-04.md B4-F01). Per-file tails
+   AFTER the sentence stay free (formatter's v3.7.1 hard-gate note, the
+   reviewers' Sprint Contract notes are legitimately file-specific).
+   If a release legitimately changes the enforcement reality, update
+   CANONICAL_ENFORCEMENT below and sweep all 23 files (+2 `agents/` mirrors)
+   in the same PR.
+
 Falsifiability discipline (per feedback_lint_passes_but_prompt_silent.md):
 keywords are scoped to the v3.9.2 block; bare keyword presence anywhere
 in the agent file does NOT count. The block must include all four phrases
@@ -98,8 +110,27 @@ BUCKET_BCD_AGENTS = [
 
 # v3.9.4: widened to accept either v3.9.2 or v3.9.4 phase boundary markers.
 # timeline_extraction_agent.md (added in v3.9.4) uses v3.9.4 in both markers.
-PHASE_BOUNDARY_RE = re.compile(r"## Phase Boundary \(v3\.9\.(?:2|4)\)")
+PHASE_BOUNDARY_RE = re.compile(r"## Phase Boundary \(v3\.9\.(2|4)\)")
 ENFORCEMENT_RE = re.compile(r"Enforcement \(v3\.9\.(?:2|4)\)")
+
+# #491 defrift lock — the canonical enforcement sentence, keyed by the block's
+# version marker ("2" = v3.9.2, "4" = v3.9.4). Single source of truth: any
+# per-file copy that drifts from this constant fails the lint. Update here +
+# sweep all 23 files (+2 mirrors) together when the enforcement reality changes.
+CANONICAL_ENFORCEMENT = {
+    "2": (
+        "**Enforcement (v3.9.2):** prompt-level fence + advisory verifier "
+        "(`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), "
+        "a deterministic PreToolUse write-scope guard enforces the WRITE clause "
+        "where a hook runs; where none runs, this fence is the enforcement layer."
+    ),
+    "4": (
+        "**Enforcement (v3.9.4):** prompt-level fence + advisory verifier "
+        "(`scripts/check_pipeline_integrity.py` v3.9.4 extension). Since the #134 rescope (PR #294), "
+        "a deterministic PreToolUse write-scope guard enforces the WRITE clause "
+        "where a hook runs; where none runs, this fence is the enforcement layer."
+    ),
+}
 
 # H2 marker that ends the Phase Boundary block scope.
 # Used to scope keyword checks: keywords appearing elsewhere in the file
@@ -158,6 +189,22 @@ def check_bucket_a(path: Path) -> list[str]:
             f"{path.relative_to(REPO_ROOT)}: Phase Boundary block missing "
             f"required phrase: 'Enforcement (v3.9.2|v3.9.4)' (falsifiability "
             f"discipline: phrase must appear inside the H2 block)"
+        )
+    # Canonical enforcement sentence check (#491 defrift lock).
+    # Version-matched to the block's own marker; per-file tail after the
+    # sentence is free, so containment of the full sentence is the assertion.
+    version = PHASE_BOUNDARY_RE.search(block).group(1)
+    canonical = CANONICAL_ENFORCEMENT[version]
+    if canonical not in block:
+        errors.append(
+            f"{path.relative_to(REPO_ROOT)}: enforcement paragraph has drifted "
+            f"from the canonical sentence (#491 defrift lock, v3.9.{version} "
+            f"variant). The enforcement-status claim is shared boilerplate "
+            f"across all Bucket A blocks and must match CANONICAL_ENFORCEMENT "
+            f"in {Path(__file__).name} verbatim (per-file tail after the "
+            f"sentence stays free). If the enforcement reality legitimately "
+            f"changed, update the constant and sweep all 23 files (+2 mirrors) "
+            f"in the same PR."
         )
     return errors
 

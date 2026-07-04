@@ -259,3 +259,11 @@ path = "scripts/test_check_390_revision_patch_discipline.py"
 [[pytest]]
 id = "release-gate-changelog-covers-merges"
 path = "scripts/test_check_changelog_covers_merges.py"
+
+[[pytest]]
+id = "v3.9.4-temporal-verification"
+path = "scripts/test_check_v3_9_4_temporal_verification.py"
+
+[[pytest]]
+id = "491-setup-cross-model-parity"
+path = "scripts/test_check_setup_cross_model_parity.py"
