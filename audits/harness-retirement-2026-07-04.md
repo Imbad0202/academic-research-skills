@@ -315,7 +315,7 @@ Independent codex pass (gpt-5.5, high reasoning, read-only; ~1.10M tokens) attac
 
 | Finding | Action | Notes | Verified |
 |---------|--------|-------|----------|
-| B4-F01 | accepted → applied | enforcement sentence rewritten at 23 agents + 4 SKILL.md (hook-registered vs hook-absent wording per challenge correction); 2 mirrors byte-resynced | mirror lint green; zero residual "deferred to v3.10 active conductor" outside records |
+| B4-F01 | accepted → applied | enforcement sentence rewritten at 23 agents + 4 SKILL.md (hook-registered vs hook-absent wording per challenge correction); 2 mirrors byte-resynced; body tightened 39→35 words in the /simplify pass (semantics preserved); defrift lint (canonical-string pin) tracked as #491 | mirror lint green; zero residual "deferred to v3.10 active conductor" outside records |
 | B4-F02 | accepted → applied (amended scope) | all six lines per language fixed (3, 145, 151, 155, 172); cost line provenance-labelled per 2026-06-10 F-002 pattern | — |
 | B2-F01 | accepted → applied (**P1**) | stale 10/15-round bullets deleted; compilation trigger now references Auto-End Conditions | — |
 | B2-F02 | accepted → applied | Auto-End Conditions (Precise) is now the single 6-condition authority; Auto-End Trigger section removed; stagnation constants single-sourced in Convergence Rules | — |
@@ -333,5 +333,5 @@ Independent codex pass (gpt-5.5, high reasoning, read-only; ~1.10M tokens) attac
 
 - Suggested: next default-model upgrade, or next minor release.
 - With this pass, **every agent prompt file in the repo has now had a deep per-file pass** (22 Bucket A in 2026-07 + these 17). Remaining un-deep-scanned surface: `shared/references/*.md`, `shared/templates/*.md`, `*/references/*.md` protocol docs (the 2026-06-10 pass covered them at grep level only).
-- Carry forward: the F-008 annotation (unchanged); the Output Discipline shared-include backlog item; the B1-F03 side-observation (`dialogue_log_ref` example-vs-rule contradiction in state_tracker) if not resolved during apply.
+- Carry forward: the F-008 annotation (unchanged); the Output Discipline shared-include backlog item; the B1-F03 side-observation (`dialogue_log_ref` example-vs-rule contradiction in state_tracker) if not resolved during apply; **#491** (canonical-string defrift lint for the enforcement sentence + SETUP model-token parity — the /simplify altitude finding).
 - 2026-06-10 F-007 is closed by this pass (verified no-rewrite-needed); do not re-surface.

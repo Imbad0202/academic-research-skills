@@ -396,7 +396,7 @@ Step 1: Data Extraction
 
 Step 2: Chart Type Selection — apply the Chart Type Decision Logic per candidate; confirm with user if ambiguous
 Step 3: Code Generation — per Code Generation Standards + Figure Standards (default Python; APA settings; colorblind-safe palette; placement-based dimensions)
-Step 4: Caption Generation — per the APA 7.0 caption format section
+Step 4: Caption Generation — per the Figure Numbering and Captions (APA 7.0) section
 Step 5: Integration Code — per the LaTeX Integration section (figure numbers by order of appearance)
 Step 6: Quality Check — run all 10 Quality Gates; verify no Common Pitfalls; confirm plotted values match source
 
