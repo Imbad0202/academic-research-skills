@@ -4,6 +4,8 @@ This file is the **single source of truth** for firm-rule wording that is otherw
 
 **Why this file exists:** the contamination `R-L3-2-*` wording provably drifted between v3.9.0 (contamination-only) and v3.9.4 (contamination-AND-temporal) drafts before being single-sourced here. Manual 5×-duplication is not enough; the sync lint pins it.
 
+**Related mechanisms:** the Phase Boundary enforcement-status sentence (factual status prose, not a behavioral firm rule) is single-sourced as `CANONICAL_ENFORCEMENT` inside `scripts/check_v3_9_2_phase_boundary.py` (#491) rather than here — same defrift goal, separate mechanism co-located with its only consumer.
+
 **ID namespaces (do NOT confuse — they were overloaded until v3.10 PR-A):**
 
 - `R-L3-2-*` = **contamination advisory** rules (origin: v3.7.3 spec §3.2 L3-2; extended v3.9.0 §3.3). Original holder of the `R-L3-2` ID.

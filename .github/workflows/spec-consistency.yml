@@ -139,7 +139,8 @@ jobs:
 
       - name: Check SETUP cross-model example parity (#491)
         # The pytest companion `test_check_setup_cross_model_parity.py`
-        # runs via the unified manifest.
+        # runs via the unified manifest (and also under pytest.yml's
+        # scripts/ glob — that 2x overlap is the accepted manifest pattern).
         run: python3 scripts/check_setup_cross_model_parity.py
 
       - name: Run version consistency unit tests

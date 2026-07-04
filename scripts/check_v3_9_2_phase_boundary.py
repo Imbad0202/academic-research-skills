@@ -28,15 +28,15 @@ Enforces three invariants:
 
 4. **Canonical enforcement sentence (#491 defrift lock)** — every Bucket A
    block's enforcement paragraph must carry the canonical sentence verbatim
-   (version-matched to the block's v3.9.2/v3.9.4 marker). The sentence is
-   shared boilerplate across all 23 blocks; the previous copy ("hook deferred
-   to v3.10 #134") went factually stale repo-wide for a month with no lint
-   noticing (audits/harness-retirement-2026-07-04.md B4-F01). Per-file tails
-   AFTER the sentence stay free (formatter's v3.7.1 hard-gate note, the
-   reviewers' Sprint Contract notes are legitimately file-specific).
-   If a release legitimately changes the enforcement reality, update
-   CANONICAL_ENFORCEMENT below and sweep all 23 files (+2 `agents/` mirrors)
-   in the same PR.
+   (version-matched to the block's v3.9.2/v3.9.4 marker; per-file tails
+   AFTER the sentence stay free — formatter's v3.7.1 hard-gate note, the
+   reviewers' Sprint Contract notes are legitimately file-specific). The
+   previous copy ("hook deferred to v3.10 #134") went factually stale
+   repo-wide with no lint noticing (audits/harness-retirement-2026-07-04.md
+   B4-F01). Scope: the constant governs the Bucket A blocks only — the
+   `agents/` mirrors follow mechanically via check_agents_mirror_sync.py,
+   and the SKILL.md copies carry a different, shorter wording (separate
+   surface). Update procedure: see the error message in check_bucket_a.
 
 Falsifiability discipline (per feedback_lint_passes_but_prompt_silent.md):
 keywords are scoped to the v3.9.2 block; bare keyword presence anywhere
@@ -114,9 +114,12 @@ PHASE_BOUNDARY_RE = re.compile(r"## Phase Boundary \(v3\.9\.(2|4)\)")
 ENFORCEMENT_RE = re.compile(r"Enforcement \(v3\.9\.(?:2|4)\)")
 
 # #491 defrift lock — the canonical enforcement sentence, keyed by the block's
-# version marker ("2" = v3.9.2, "4" = v3.9.4). Single source of truth: any
-# per-file copy that drifts from this constant fails the lint. Update here +
-# sweep all 23 files (+2 mirrors) together when the enforcement reality changes.
+# version marker ("2" = v3.9.2, "4" = v3.9.4). Any Bucket A copy that drifts
+# fails the lint; update procedure lives in check_bucket_a's error message.
+# Deliberately lint-local rather than a shared/references/firm_rules.md
+# canonical block: this is factual enforcement-STATUS prose, not a behavioral
+# firm rule, and co-locating it with its only consumer avoids cross-lint
+# coupling (cross-referenced in firm_rules.md "Related mechanisms").
 CANONICAL_ENFORCEMENT = {
     "2": (
         "**Enforcement (v3.9.2):** prompt-level fence + advisory verifier "
@@ -199,12 +202,12 @@ def check_bucket_a(path: Path) -> list[str]:
         errors.append(
             f"{path.relative_to(REPO_ROOT)}: enforcement paragraph has drifted "
             f"from the canonical sentence (#491 defrift lock, v3.9.{version} "
-            f"variant). The enforcement-status claim is shared boilerplate "
-            f"across all Bucket A blocks and must match CANONICAL_ENFORCEMENT "
-            f"in {Path(__file__).name} verbatim (per-file tail after the "
-            f"sentence stays free). If the enforcement reality legitimately "
-            f"changed, update the constant and sweep all 23 files (+2 mirrors) "
-            f"in the same PR."
+            f"variant). It must contain CANONICAL_ENFORCEMENT from "
+            f"{Path(__file__).name} verbatim (per-file tail after the sentence "
+            f"stays free). If the enforcement reality legitimately changed, "
+            f"update the constant and sweep all {len(BUCKET_A_AGENTS)} Bucket A "
+            f"files in the same PR; the `agents/` mirrors follow via "
+            f"check_agents_mirror_sync.py."
         )
     return errors
 

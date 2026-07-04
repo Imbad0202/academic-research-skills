@@ -103,13 +103,8 @@ class CanonicalEnforcementDefriftTests(unittest.TestCase):
     )
 
     def _load_module(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "check_v3_9_2_phase_boundary", SCRIPT
-        )
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
+        from tests.test_helpers import load_module_from_path
+        return load_module_from_path("check_v3_9_2_phase_boundary", SCRIPT)
 
     def _block(self, enforcement_line: str, version: str = "2") -> str:
         return (

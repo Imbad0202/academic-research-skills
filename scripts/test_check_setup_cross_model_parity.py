@@ -2,7 +2,7 @@
 import unittest
 from pathlib import Path
 
-from tests.test_helpers import run_script
+from tests.test_helpers import load_module_from_path, run_script
 
 SCRIPT = Path(__file__).resolve().parent / "check_setup_cross_model_parity.py"
 
@@ -19,13 +19,7 @@ CANONICAL_OK = (
 
 
 def _load_module():
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(
-        "check_setup_cross_model_parity", SCRIPT
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_module_from_path("check_setup_cross_model_parity", SCRIPT)
 
 
 class SetupCrossModelParityTests(unittest.TestCase):
