@@ -209,8 +209,10 @@ def test_title_search_prefers_matching_year():
     assert result["year"] == 2017
 
 
-def test_429_triggers_2s_backoff_3_retries(monkeypatch):
-    """Per protocol: 429 -> 2s backoff x 3 retries -> raise ArxivUnavailable."""
+def test_429_backs_off_at_tou_pacing_floor(monkeypatch):
+    """Per protocol (#495): 429 -> 3s backoff x 3 retries -> raise
+    ArxivUnavailable. The backoff is the ToU pacing floor (>= 3s between
+    requests) — a sub-3s retry would itself violate arXiv's rate terms."""
     from arxiv_client import ArxivClient, ArxivUnavailable
 
     call_count = [0]
@@ -231,7 +233,7 @@ def test_429_triggers_2s_backoff_3_retries(monkeypatch):
             client.title_search("anything")
 
     assert call_count[0] == 4
-    assert sleeps == [2.0, 2.0, 2.0]
+    assert sleeps == [3.0, 3.0, 3.0]
 
 
 def test_5xx_skips_immediately():

@@ -100,8 +100,9 @@ def test_doi_lookup_with_matching_title(monkeypatch):
     assert result["title"] == "Attention Is All You Need"
 
 
-def test_429_triggers_2s_backoff_3_retries(monkeypatch):
-    """Per protocol: 429 → 2s backoff × 3 retries → raise OpenAlexUnavailable."""
+def test_429_transient_backs_off_exponentially(monkeypatch):
+    """Per protocol (#495): transient 429 (no budget header) → exponential
+    backoff 2s → 4s → 8s over 3 retries → raise OpenAlexUnavailable."""
     from openalex_client import OpenAlexClient, OpenAlexUnavailable
 
     call_count = [0]
@@ -125,7 +126,64 @@ def test_429_triggers_2s_backoff_3_retries(monkeypatch):
             client.title_search("anything")
 
     assert call_count[0] == 4  # initial + 3 retries
-    assert sleeps == [2.0, 2.0, 2.0]
+    assert sleeps == [2.0, 4.0, 8.0]
+
+
+def test_429_daily_budget_exhausted_fails_fast(monkeypatch):
+    """Per protocol (#495): 429 with X-RateLimit-Remaining: 0 is daily-budget
+    exhaustion (refills midnight UTC) — an in-process retry cannot succeed, so
+    raise OpenAlexUnavailable immediately: no sleep, no retry."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    call_count = [0]
+
+    def mock_urlopen(*args, **kwargs):
+        call_count[0] += 1
+        raise urllib.error.HTTPError(
+            url="https://api.openalex.org/works",
+            code=429,
+            msg="Too Many Requests",
+            hdrs={"X-RateLimit-Remaining": "0"},
+            fp=None,
+        )
+
+    sleeps = []
+    monkeypatch.setattr("openalex_client.time.sleep", lambda s: sleeps.append(s))
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable, match="daily budget exhausted"):
+            client.title_search("anything")
+
+    assert call_count[0] == 1  # fail-fast: no retry
+    assert sleeps == []
+
+
+def test_429_with_remaining_budget_stays_on_retry_path(monkeypatch):
+    """A 429 whose X-RateLimit-Remaining is nonzero is burst limiting, not
+    budget exhaustion — it must keep the retry behavior."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    call_count = [0]
+
+    def mock_urlopen(*args, **kwargs):
+        call_count[0] += 1
+        raise urllib.error.HTTPError(
+            url="https://api.openalex.org/works",
+            code=429,
+            msg="Too Many Requests",
+            hdrs={"X-RateLimit-Remaining": "42"},
+            fp=None,
+        )
+
+    monkeypatch.setattr("openalex_client.time.sleep", lambda s: None)
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable):
+            client.title_search("anything")
+
+    assert call_count[0] == 4  # initial + 3 retries
 
 
 def test_5xx_skips_immediately(monkeypatch):
@@ -173,6 +231,60 @@ def test_polite_pool_email_param(monkeypatch):
         client.title_search("any title")
 
     assert any("mailto=test%40example.com" in url for url in captured_url)
+
+
+# ---------- #495: OPENALEX_API_KEY auth ----------
+
+
+def test_api_key_env_adds_api_key_param(monkeypatch):
+    """OPENALEX_API_KEY env var adds api_key= query param (#495)."""
+    from openalex_client import OpenAlexClient
+
+    captured_url = []
+
+    def mock_urlopen(req, *args, **kwargs):
+        captured_url.append(req.full_url if hasattr(req, "full_url") else req)
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"results": []}).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=None)
+        return mock_response
+
+    monkeypatch.setenv("OPENALEX_API_KEY", "test-key-123")
+
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        client = OpenAlexClient()
+        client.title_search("any title")
+
+    assert any("api_key=test-key-123" in url for url in captured_url)
+
+
+def test_api_key_selects_authenticated_interval(monkeypatch):
+    """api_key (like polite_email) selects the 0.1s authenticated pacing
+    tier; with neither credential the anonymous 1.0s tier applies (#495)."""
+    from openalex_client import OpenAlexClient
+
+    monkeypatch.delenv("OPENALEX_API_KEY", raising=False)
+    monkeypatch.delenv("OPENALEX_POLITE_EMAIL", raising=False)
+
+    assert OpenAlexClient()._min_interval == 1.0
+    assert OpenAlexClient(api_key="k")._min_interval == 0.1
+    assert OpenAlexClient(polite_email="a@b.c")._min_interval == 0.1
+
+
+def test_refusal_message_never_carries_api_key(monkeypatch):
+    """The non-OpenAlex-URL refusal strips the query string so api_key
+    never lands in raised-exception text / logs (#495)."""
+    import openalex_client
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    monkeypatch.setattr(openalex_client, "_API_BASE", "http://evil.example")
+    with patch("urllib.request.urlopen", MagicMock()):
+        client = OpenAlexClient(api_key="sk-secret-key")
+        with pytest.raises(OpenAlexUnavailable) as excinfo:
+            client.title_search("anything")
+
+    assert "sk-secret-key" not in str(excinfo.value)
 
 
 def test_doi_404_treated_as_miss_not_unavailable(monkeypatch):
@@ -332,6 +444,11 @@ def test_throttle_uses_monotonic_clock(monkeypatch):
 def test_doi_lookup_quotes_doi_path_segment(monkeypatch):
     """DOI lookup must encode path separators/query markers before urlopen."""
     from openalex_client import OpenAlexClient
+
+    # Exact-URL assertion below — a developer-machine OPENALEX_API_KEY /
+    # OPENALEX_POLITE_EMAIL would append extra params and break it.
+    monkeypatch.delenv("OPENALEX_API_KEY", raising=False)
+    monkeypatch.delenv("OPENALEX_POLITE_EMAIL", raising=False)
 
     captured_urls = []
 

@@ -4,8 +4,9 @@
 Implements the lookup contract documented at
 `deep-research/references/openalex_api_protocol.md`. DOI-first with
 title cross-check (DOI_MISMATCH pattern), title-similarity fallback,
-429 → 2s backoff × 3 retries, 5xx → skip. Mirrors
-`semantic_scholar_client.py` structure for code locality.
+429 → budget-exhausted fail-fast or exponential backoff × 3 retries,
+5xx → skip. Mirrors `semantic_scholar_client.py` structure for code
+locality.
 """
 from __future__ import annotations
 
@@ -44,17 +45,40 @@ except ImportError:
 
 _API_BASE = "https://api.openalex.org"
 _API_HOST = "api.openalex.org"
+_API_KEY_ENV = "OPENALEX_API_KEY"
 _POLITE_EMAIL_ENV = "OPENALEX_POLITE_EMAIL"
 _FIELDS = "id,title,authorships,publication_year,doi,primary_location"
 
-_POLITE_MIN_INTERVAL = 0.1
+_AUTHENTICATED_MIN_INTERVAL = 0.1
 _ANONYMOUS_MIN_INTERVAL = 1.0
 
 
 def _require_api_url(url: str) -> None:
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.netloc != _API_HOST:
-        raise OpenAlexUnavailable(f"Refusing non-OpenAlex URL: {url}")
+        # Strip the query from the message: it can carry api_key, which
+        # must never land in logs / raised-exception text.
+        redacted = urllib.parse.urlunsplit(
+            (parsed.scheme, parsed.netloc, parsed.path, "", "")
+        )
+        raise OpenAlexUnavailable(f"Refusing non-OpenAlex URL: {redacted}")
+
+
+def _daily_budget_exhausted(headers: Any) -> bool:
+    """True iff a 429 carries `X-RateLimit-Remaining: 0` — OpenAlex's
+    daily-budget exhaustion signal (budget refills at midnight UTC), where
+    an in-process retry seconds later cannot succeed. A 429 without the
+    header, or with budget remaining, is transient burst limiting
+    (>100 req/s) and stays on the retry path."""
+    if headers is None:
+        return False
+    value = headers.get("X-RateLimit-Remaining")
+    if value is None:
+        return False
+    try:
+        return int(value) == 0
+    except (ValueError, TypeError):
+        return False
 
 
 class OpenAlexUnavailable(Exception):
@@ -68,10 +92,20 @@ class OpenAlexClient:
     instance across a migration run.
     """
 
-    def __init__(self, polite_email: str | None = None):
+    def __init__(
+        self, polite_email: str | None = None, api_key: str | None = None,
+    ):
+        # api_key is the OpenAlex-documented auth mechanism (free key, 10×
+        # the keyless daily budget). polite_email predates it: the polite
+        # pool is no longer in OpenAlex's docs but `mailto` is still sent
+        # for backward compatibility when configured. Either credential
+        # selects the authenticated pacing tier.
+        self._api_key = api_key or os.environ.get(_API_KEY_ENV)
         self._polite_email = polite_email or os.environ.get(_POLITE_EMAIL_ENV)
         self._min_interval = (
-            _POLITE_MIN_INTERVAL if self._polite_email else _ANONYMOUS_MIN_INTERVAL
+            _AUTHENTICATED_MIN_INTERVAL
+            if (self._api_key or self._polite_email)
+            else _ANONYMOUS_MIN_INTERVAL
         )
         self._last_request_at: float | None = None
 
@@ -88,6 +122,8 @@ class OpenAlexClient:
 
     def _get(self, path: str, query: Mapping[str, str]) -> dict[str, Any]:
         params = dict(query)
+        if self._api_key:
+            params["api_key"] = self._api_key
         if self._polite_email:
             params["mailto"] = self._polite_email
         url = f"{_API_BASE}{path}?{urllib.parse.urlencode(params)}"
@@ -127,14 +163,22 @@ class OpenAlexClient:
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     return {}
-                if e.code == 429 and attempt < _MAX_RETRIES:
-                    time.sleep(_BACKOFF_SECONDS)
-                    # Refresh anchor after backoff so the next _throttle()
-                    # paces against actual wake time, not entry time.
-                    # Without this the next call may under-sleep (elapsed
-                    # already counts the 2s × N backoff) and re-trigger 429.
-                    self._last_request_at = time.monotonic()
-                    continue
+                if e.code == 429:
+                    if _daily_budget_exhausted(e.headers):
+                        raise OpenAlexUnavailable(
+                            "OpenAlex daily budget exhausted "
+                            "(X-RateLimit-Remaining: 0, refills midnight UTC)"
+                        ) from e
+                    if attempt < _MAX_RETRIES:
+                        # Exponential backoff (2s → 4s → 8s) per OpenAlex's
+                        # documented guidance for transient burst 429s.
+                        time.sleep(_BACKOFF_SECONDS * (2 ** attempt))
+                        # Refresh anchor after backoff so the next _throttle()
+                        # paces against actual wake time, not entry time.
+                        # Without this the next call may under-sleep (elapsed
+                        # already counts the backoff) and re-trigger 429.
+                        self._last_request_at = time.monotonic()
+                        continue
                 raise OpenAlexUnavailable(f"OpenAlex HTTP {e.code}: {e.reason}") from e
             except (urllib.error.URLError, TimeoutError) as e:
                 raise OpenAlexUnavailable(f"OpenAlex network error: {e}") from e

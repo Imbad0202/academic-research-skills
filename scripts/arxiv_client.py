@@ -4,8 +4,9 @@
 Implements the lookup contract documented at
 `deep-research/references/arxiv_api_protocol.md`. arXiv-ID-first with
 title cross-check (ID_MISMATCH pattern), title-similarity fallback,
-429 -> 2s backoff x 3 retries, network/5xx -> ArxivUnavailable. Mirrors
-`crossref_client.py` / `openalex_client.py` structure.
+429 -> 3s backoff x 3 retries (the ToU pacing floor), network/5xx ->
+ArxivUnavailable. Mirrors `crossref_client.py` / `openalex_client.py`
+structure.
 
 arXiv-specific differences from the Crossref/OpenAlex siblings:
   - The query API returns Atom 1.0 XML, NOT JSON. `_get` parses with
@@ -34,7 +35,6 @@ from typing import Any
 # Dual-path import: see openalex_client.py comment.
 try:
     from _text_similarity import (
-        _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
         _similarity,
@@ -43,7 +43,6 @@ try:
     )
 except ImportError:
     from scripts._text_similarity import (
-        _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
         _similarity,
@@ -159,7 +158,11 @@ class ArxivClient:
                     return root.findall(f"{_ATOM_NS}entry")
             except urllib.error.HTTPError as e:
                 if e.code == 429 and attempt < _MAX_RETRIES:
-                    time.sleep(_BACKOFF_SECONDS)
+                    # Sleep the ToU pacing floor, not the sibling clients'
+                    # shared 2s backoff: arXiv asks for >= 3s between
+                    # requests, so a sub-3s retry would itself violate the
+                    # pacing the 429 is enforcing.
+                    time.sleep(_ARXIV_MIN_INTERVAL)
                     # Refresh throttle anchor after backoff so the next outer
                     # _get call paces against actual wake time (mirrors
                     # crossref_client.py).

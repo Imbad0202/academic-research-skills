@@ -30,8 +30,10 @@ _PUNCT_TRANSLATION = str.maketrans({c: " " for c in string.punctuation})
 _DOTTED_ACRONYM = re.compile(r"\b(?:[A-Za-z]\.){2,}")
 
 
-# Per protocol: 429 → 2s backoff × 3 retries. Shared budget across S2 /
-# OpenAlex / Crossref clients.
+# Per protocol: shared retry budget for the index clients. S2 / Crossref
+# sleep a fixed _BACKOFF_SECONDS per 429; OpenAlex uses it as the base of
+# an exponential backoff (2s → 4s → 8s, #495); arXiv does not use it — its
+# 429 backoff is the 3s ToU pacing floor (_ARXIV_MIN_INTERVAL, #495).
 _BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
 

@@ -57,7 +57,13 @@ _ANONYMOUS_MIN_INTERVAL = 0.2
 def _require_api_url(url: str) -> None:
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.netloc != _API_HOST:
-        raise CrossrefUnavailable(f"Refusing non-Crossref URL: {url}")
+        # Strip the query from the message: it can carry the polite-pool
+        # mailto (an email address), which must never land in logs /
+        # raised-exception text. Mirrors openalex_client.py (#495).
+        redacted = urllib.parse.urlunsplit(
+            (parsed.scheme, parsed.netloc, parsed.path, "", "")
+        )
+        raise CrossrefUnavailable(f"Refusing non-Crossref URL: {redacted}")
 
 
 def _extract_title(message_or_item: Mapping[str, Any]) -> str:

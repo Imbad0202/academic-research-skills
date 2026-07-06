@@ -375,3 +375,19 @@ def test_rejects_non_crossref_api_url_before_urlopen(monkeypatch):
             client.title_search("anything")
 
     assert urlopen.call_count == 0
+
+
+def test_refusal_message_never_carries_mailto(monkeypatch):
+    """The non-Crossref-URL refusal strips the query string so the polite-pool
+    mailto (an email address) never lands in raised-exception text / logs
+    (#495; mirrors openalex_client.py)."""
+    import crossref_client
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    monkeypatch.setattr(crossref_client, "_API_BASE", "http://evil.example")
+    with patch("urllib.request.urlopen", MagicMock()):
+        client = CrossrefClient(polite_email="secret@example.com")
+        with pytest.raises(CrossrefUnavailable) as excinfo:
+            client.title_search("anything")
+
+    assert "secret@example.com" not in str(excinfo.value)

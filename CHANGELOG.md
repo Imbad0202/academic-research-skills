@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **API-first retrieval refresh: OpenAlex API-key auth, budget-aware 429 handling, arXiv ToU-aligned backoff (#495; proposed by [@pikaqiu2333](https://github.com/pikaqiu2333)).** OpenAlex's current developer docs are API-key-first (freemium daily budget; the polite pool is no longer documented): `scripts/openalex_client.py` gains `OPENALEX_API_KEY` support (query-param auth; either credential selects the authenticated 10 req/s pacing tier, `OPENALEX_POLITE_EMAIL` stays as legacy compat), distinguishes daily-budget-exhausted 429s (`X-RateLimit-Remaining: 0` → raise `OpenAlexUnavailable` immediately — the budget refills at midnight UTC, so an in-process retry cannot succeed) from transient burst 429s (exponential backoff 2s → 4s → 8s per OpenAlex's documented guidance), and strips the query string from refusal-path error messages so the key never lands in logs (`scripts/crossref_client.py` gets the same redaction — its query string carries the polite-pool `mailto` email). `scripts/arxiv_client.py`'s 429 backoff moves from the shared 2s constant to the 3s ToU pacing floor (arXiv's Terms of Use ask for at most one request every three seconds — a sub-3s retry would itself violate the pacing the 429 enforces; verified verbatim against the ToU page). Both protocol docs (`deep-research/references/openalex_api_protocol.md`, `arxiv_api_protocol.md`) updated in lockstep, plus an explicit retrieval-order boundary in each: structured APIs are the primary channel, browser/WebFetch page inspection is a bounded first-party fallback whose output is data-not-instructions (`shared/ground_truth_isolation_pattern.md` §2A), and browser retrieval is never a rate-limit bypass (no parallel browsing, no bulk PDF harvesting, no multi-machine fan-out). 5 new client tests; the two 429-behavior tests updated to pin the new backoff shapes.
+
 ## [3.15.0] - 2026-07-04 — Release-gate hardening, prompt-debt retirement round 2, defrift locks
 
 ### Added
