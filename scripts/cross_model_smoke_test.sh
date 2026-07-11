@@ -20,12 +20,17 @@
 # Checks (exit 0 only if all hard checks pass):
 #   1. HTTP 2xx (transport)
 #   2. completed web_search_call present  — canonical jq guard, fail-closed
-#   3. non-empty verdict text carrying exactly one known verdict token
+#   3. non-empty verdict text carrying exactly one DISTINCT whole-word verdict
+#      token (a substring hit inside e.g. "UNVERIFIED" does not count; the same
+#      token repeated in prose warns but passes)
 #   4. a VERIFIED verdict carries at least one url_citation source
 #   5. response model echo matches the requested model id (prefix match on
 #      snapshot suffixes, e.g. gpt-5.5 -> gpt-5.5-2026-xx-xx)
-#   6. requested reasoning effort accepted (soft: warn if the response carries
-#      no reasoning echo; fail only on an explicit mismatch)
+#   6. when ARS_CROSS_MODEL_REASONING_EFFORT is set: the response must echo the
+#      requested effort — a missing or mismatched echo FAILS (fail-closed; a
+#      provisional model silently ignoring the setting is exactly what this
+#      gate exists to catch). Skipped when the variable is unset (the request
+#      omits the field, so there is nothing to confirm).
 #
 # The known-good reference is deliberately famous and stable so a NOT_FOUND /
 # MISMATCH verdict indicates a broken search path or parser, not a bad fixture.
@@ -51,8 +56,8 @@ esac
 [ -f "$GUARD/openai_has_completed_web_search.jq" ] || {
   echo "ERROR: canonical jq guards not found under $GUARD (run from a repo checkout)"; exit 1; }
 
-EFFORT="${ARS_CROSS_MODEL_REASONING_EFFORT:-medium}"
-note "model=$ARS_CROSS_MODEL effort=$EFFORT"
+EFFORT="${ARS_CROSS_MODEL_REASONING_EFFORT:-}"
+note "model=$ARS_CROSS_MODEL effort=${EFFORT:-(provider default — reasoning field omitted)}"
 
 # --- One real call against a stable reference --------------------------------
 PROMPT='Verify this academic reference. Check: Does it exist? Are the author
@@ -79,9 +84,8 @@ resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
     instructions: "You are a citation-verification assistant. Search the web before every verdict; never answer from memory. If you could not search, respond NOT_SEARCHED.",
     input: $prompt,
     tools: [{type: "web_search"}],
-    reasoning: {effort: $effort},
     temperature: 0.1
-  }')")"
+  } + (if $effort == "" then {} else {reasoning: {effort: $effort}} end)')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 
@@ -107,15 +111,21 @@ text="$(jq -r -f "$GUARD/openai_text.jq" <<<"$body")"
 if [ -z "$text" ]; then
   fail "empty verdict text"
 else
-  verdicts="$(printf '%s' "$text" | grep -oE 'VERIFIED|MISMATCH|NOT_FOUND|NOT_SEARCHED' | sort -u)"
-  count="$(printf '%s' "$verdicts" | grep -c . || true)"
-  if [ "$count" -eq 1 ]; then
+  # Whole-word match: a bare substring hit would extract VERIFIED out of
+  # "UNVERIFIED" and false-pass an invalid status.
+  all_hits="$(printf '%s' "$text" | grep -oE '\b(VERIFIED|MISMATCH|NOT_FOUND|NOT_SEARCHED)\b')"
+  verdicts="$(printf '%s' "$all_hits" | sort -u | grep . || true)"
+  distinct="$(printf '%s' "$verdicts" | grep -c . || true)"
+  total="$(printf '%s' "$all_hits" | grep -c . || true)"
+  if [ "$distinct" -eq 1 ]; then
     pass "verdict token: $verdicts"
-  elif [ "$count" -eq 0 ]; then
-    fail "no verdict token in response text (parser would reject) — text: $(printf '%s' "$text" | head -c 200)"
+    [ "$total" -gt 1 ] && note "WARN: verdict token repeated $total times in prose (unambiguous, but consumers should read the first occurrence)"
+  elif [ "$distinct" -eq 0 ]; then
+    fail "no whole-word verdict token in response text (parser would reject) — text: $(printf '%s' "$text" | head -c 200)"
     verdicts=""
   else
     fail "multiple distinct verdict tokens ($(printf '%s' "$verdicts" | tr '\n' ' ')) — ambiguous for the consumer"
+    verdicts=""
   fi
 fi
 
@@ -145,14 +155,18 @@ case "$resp_model" in
     fail "model echo '$resp_model' does not match requested '$ARS_CROSS_MODEL' (silent rerouting?)" ;;
 esac
 
-# --- Check 6: reasoning effort accepted (soft) ---------------------------------
-resp_effort="$(jq -r '.reasoning.effort // empty' <<<"$body")"
-if [ -z "$resp_effort" ]; then
-  note "WARN: response carries no reasoning.effort echo — cannot confirm the requested effort applied (HTTP 2xx means it was at least not rejected)"
-elif [ "$resp_effort" = "$EFFORT" ]; then
-  pass "reasoning effort echo: $resp_effort"
+# --- Check 6: reasoning effort accepted (fail-closed when requested) -----------
+if [ -z "$EFFORT" ]; then
+  note "SKIP: effort echo check (ARS_CROSS_MODEL_REASONING_EFFORT unset — reasoning field omitted from the request)"
 else
-  fail "reasoning effort echo '$resp_effort' does not match requested '$EFFORT'"
+  resp_effort="$(jq -r '.reasoning.effort // empty' <<<"$body")"
+  if [ "$resp_effort" = "$EFFORT" ]; then
+    pass "reasoning effort echo: $resp_effort"
+  elif [ -z "$resp_effort" ]; then
+    fail "requested reasoning effort '$EFFORT' but the response carries no reasoning.effort echo — the setting may have been ignored or the response shape changed (fail-closed for a promotion gate)"
+  else
+    fail "reasoning effort echo '$resp_effort' does not match requested '$EFFORT'"
+  fi
 fi
 
 # --- Result --------------------------------------------------------------------

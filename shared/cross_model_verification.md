@@ -85,8 +85,9 @@ export OPENAI_API_KEY="<your-openai-api-key>"
 export ARS_CROSS_MODEL="gpt-5.5"
 # Frontier alternative, provisional pending ARS validation (see Supported Models):
 # export ARS_CROSS_MODEL="gpt-5.6-sol"
-# Optional: reasoning effort for OpenAI verifier calls (default: medium — the API default).
-# GPT-5.6 accepts none|low|medium|high|xhigh|max; GPT-5.5 tops out at xhigh.
+# Optional: reasoning effort for OpenAI verifier calls (unset = the provider's own
+# default for the chosen model). GPT-5.6 accepts none|low|medium|high|xhigh|max;
+# GPT-5.5 tops out at xhigh.
 # export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
 
 # --- Option B: Google Gemini (first-party, grounded) ---
@@ -225,14 +226,13 @@ resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d "$(jq -n --arg model "$ARS_CROSS_MODEL" --arg prompt "$PROMPT" \
-        --arg effort "${ARS_CROSS_MODEL_REASONING_EFFORT:-medium}" '{
+        --arg effort "${ARS_CROSS_MODEL_REASONING_EFFORT:-}" '{
     model: $model,
     instructions: "You are a citation-verification assistant. Search the web before every verdict; never answer from memory. If you could not search, respond NOT_SEARCHED.",
     input: $prompt,
     tools: [{type: "web_search"}],
-    reasoning: {effort: $effort},
     temperature: 0.1
-  }')")"
+  } + (if $effort == "" then {} else {reasoning: {effort: $effort}} end)')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 # The grounding guard and source extraction are kept as canonical jq filters under
@@ -298,7 +298,7 @@ fi
 
 > **Why `temperature: 0.1`:** reference existence/metadata checking is a deterministic factual task, so low temperature reduces run-to-run variance in the verdict. It is not a grounding control — the grounding guard above is what enforces an actual lookup.
 
-> **Reasoning effort (OpenAI only):** the payload passes `reasoning.effort` from `ARS_CROSS_MODEL_REASONING_EFFORT`, defaulting to `medium` — the API default, made explicit so the effort a verification run uses is visible and reproducible rather than whatever the provider's default happens to be. Citation lookup is search-bound, not reasoning-bound, so higher efforts mostly buy latency and cost here; raise it deliberately per session if a run shows shallow search behavior. The value is passed through unvalidated (the API rejects unknown values): GPT-5.5 accepts up to `xhigh`, GPT-5.6 adds `max`.
+> **Reasoning effort (OpenAI only):** when `ARS_CROSS_MODEL_REASONING_EFFORT` is set, the payload passes it as `reasoning.effort`, making the effort a verification run uses visible and reproducible. When it is **unset, the field is omitted entirely and the provider's own default for the chosen model applies** — defaults differ across the lineup (GPT-5.6 documents `medium`; other ids carry their own), so forcing one value here would silently change behavior for existing setups. Citation lookup is search-bound, not reasoning-bound, so higher efforts mostly buy latency and cost; set the variable deliberately (never silently run at `xhigh`) if a run shows shallow search behavior. The value is passed through unvalidated (the API rejects unknown values): GPT-5.5 accepts up to `xhigh`, GPT-5.6 adds `max`.
 
 ### OpenAI-Compatible API (MiMo, DeepSeek, self-hosted) — ungrounded
 

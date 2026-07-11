@@ -156,7 +156,7 @@ export ARS_CROSS_MODEL="gpt-5.5"                # Recommended pair (gpt-5.5-pro 
 # or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Strong at factual verification
 # or: export ARS_CROSS_MODEL="gpt-5.6-sol"      # Frontier, provisional pending ARS validation (same rates as gpt-5.5)
 
-# Optional: reasoning effort for OpenAI verifier calls (default: medium)
+# Optional: reasoning effort for OpenAI verifier calls (unset = provider default)
 # export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
 
 # Step 3: Run Claude Code as normal — cross-verification activates automatically
