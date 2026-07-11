@@ -33,7 +33,7 @@ Show what is missing, unresolved, or contested. This is the pivot of the whole I
 
 **The gap must be licensed by the review.** A gap statement is only as credible as the Move 1 synthesis that precedes it. If the annotated bibliography does not support "X has not been examined in Y," soften to what it does support ("evidence in Y remains limited to Z designs") or return to literature_strategist_agent for a targeted search. Never manufacture a gap.
 
-**Avoid the universal-negative trap.** "No study has examined X" is an unverifiable claim and a common desk-reject irritant. Prefer scoped negatives: "within LIS-indexed journals since 2015, we found no..." or positive framings of the limit of current evidence.
+**Avoid the universal-negative trap.** "No study has examined X" is an unverifiable claim and a common desk-reject irritant. Prefer scoped negatives tied to a documented search — "our search of [named databases], covering [period and design scope], identified no..." — or positive framings of the limit of current evidence.
 
 ### Move 3 — Occupy the niche
 
@@ -111,4 +111,4 @@ Examples are illustrative shapes, not field-verified claims; never reuse their c
 
 ## Provenance
 
-Added for #500. The coverage gap (introduction rhetoric and title guidance) was surfaced by PR #485 (@lorenzo392), which proposed these topics inside a broader new-skill shape the suite declined. Content here was written fresh for this repo. Model source: Swales, J. M. (1990, rev. 2004), *Genre Analysis: English in Academic and Research Settings*, CARS model.
+Added for #500. The coverage gap (introduction rhetoric and title guidance) was surfaced by PR #485 (@lorenzo392), which proposed these topics inside a broader new-skill shape the suite declined. Content here was written fresh for this repo. Model source: the CARS model as introduced in Swales, J. M. (1990), *Genre Analysis: English in Academic and Research Settings*; a revised model appears in Swales, J. M. (2004), *Research Genres: Explorations and Applications*. This guide follows the 1990 move and step inventory.
