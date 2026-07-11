@@ -61,32 +61,46 @@ advisory section variant + 6 items.
 
 ## Post-#505 runs — the decorated-title shape argued through the new rule
 
-- `ti-002` (post-#505 rep1, FIRE): "colon-decorated title; post-colon part is
+- `ti-002` (post-#505 round1 rep1, FIRE): "colon-decorated title; post-colon part is
   'Nurse Workload and the Quality of Patient Care,' a generic swappable
   noun-pair (WP01/WP06 shell). Decoration doesn't exempt it." (Baseline rep2
   argued the same item as "names a specific mechanism/population" and missed.)
-- `ti-004` (post-#505 rep2, FIRE): "'Cybersecurity Training and Employee
+- `ti-004` (post-#505 round1 rep2, FIRE): "'Cybersecurity Training and Employee
   Security Behavior' — bare study-of/factors-style noun pair, no named
   instrument or mechanism specified. Swappable shell."
-- `ti-013` (post-#505 rep2, FIRE): "'Aging Apart' decorated title; subtitle
+- `ti-013` (post-#505 round1 rep2, FIRE): "'Aging Apart' decorated title; subtitle
   'Social Isolation Among Older Adults' is a bare topic label with no named
   site, instrument, or mechanism." (Rep1 missed the same item as "subtitle is
   named-population topic label … not swappable-shell form" — the single-topic
   subtitle sits nearest the boundary.)
-- `el-013` (post-#505 both reps, FIRE): "'How does X bear on Y' … no named
+- `el-013` (post-#505 round1 both reps, FIRE): "'How does X bear on Y' … no named
   instrument/theory/site, generic material/durability pairing is swappable."
   (Stable miss in every baseline run under the broad-exemption reading.)
 
 ## Post-#505 runs — negatives still exempted, and via the narrow list
 
-- `dn-007` (post-#505 rep1, correct SILENT): "names mechanism (unobtrusive
+- `dn-007` (post-#505 round1 rep1, correct SILENT): "names mechanism (unobtrusive
   indicators in annual reports), specific causal pathway (through TMT power
   centralization) — satisfies specified-pathway exemption."
-- `dn-016` (post-#505 rep2, correct SILENT): "names specific mechanism
+- `dn-016` (post-#505 round1 rep2, correct SILENT): "names specific mechanism
   (telicity constraints, lexical aspect) and a specified causal pathway (L1
   transfer vs. aspect), plus named population." — the stated-tension /
   pathway arms of the narrow exemption doing the work.
-- `nat-044` (post-#505 rep2, MISS): "plain descriptive question without a
+- `nat-044` (post-#505 round1 rep2, MISS): "plain descriptive question without a
   shell connective (impact/relationship/role/factors), so weak match, stay
   silent." — the remaining interrogative off-list miss rides the
   high-confidence bar, not the exemption clause.
+
+## Post-#505 FINAL-wording runs — single-topic subtitles caught; one prose-verdict inversion
+
+- `ti-013` (FINAL rep2, FIRE): "'Social Isolation Among Older Adults' is a
+  generic topic label (age group is generic demographic, not named population);
+  decorative prefix ignored." — the round-2 demographic-descriptor clause doing
+  exactly the work the round-1 miss motivated.
+- `ti-012` (FINAL rep2, FIRE): "'Words in the Making' is decorative pre-colon
+  phrase, ignored per rule" — single-topic subtitle judged on its own.
+- `ti-002`/`ti-004`/`ti-007` (FINAL rep1, MISS — anomaly): the batch judge's
+  prose called each "swappable shell / generic 'X and Y' noun-pair, no named
+  instrument" yet its JSON verdicts said SILENT — a prose-verdict inversion.
+  The boolean record stands per protocol; the same items fired in FINAL rep2
+  and both round-1 replicates.

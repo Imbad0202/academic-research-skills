@@ -108,20 +108,29 @@ Full write-up: `audits/rq-advisory-heldout-measurement-2026-07-11.md`.
 
 The #505 exemption sharpening (narrow named/operationalized-specific exemption +
 decorated-compound-title rule; both `socratic_mentor_agent.md` files) was measured
-against this set per the protocol above (2 replicates, same judge model):
+against this set per the protocol above, in two rounds: round 1 on the initial
+wording, then — after a cross-model review P2 refined the wording (generic
+demographic descriptors excluded from "named population"; the decorated-title
+rule extended to single-topic subtitles "X in/among Z") — a fresh 2-replicate
+round on the FINAL shipped wording:
 
 | variant | overall miss | family_variant | off_list | false-fire |
 |---------|-------------|----------------|----------|------------|
-| post-#505 rep1 | 0.094 | 0.043 | 0.222 | 0.000 |
-| post-#505 rep2 | 0.094 | 0.087 | 0.111 | 0.000 |
+| post-#505 round1 rep1 | 0.094 | 0.043 | 0.222 | 0.000 |
+| post-#505 round1 rep2 | 0.094 | 0.087 | 0.111 | 0.000 |
+| post-#505 FINAL rep1 | 0.094 | 0.000 | 0.333 | 0.000 |
+| post-#505 FINAL rep2 | 0.094 | 0.130 | 0.000 | 0.000 |
 
-**Verdict: PASS** — both replicates sit well under the FNR < 0.30 line and the
+**Verdict: PASS** — all four runs sit well under the FNR < 0.30 line and the
 zero over-warning property (0/16 false-fire, including the four hard negatives
-carrying listed surface substrings) holds in both. The decorated-title shape that
-carried the baseline gap is now caught: all 8 `ti-*` items fired in rep2 (rep1
-missed `ti-012`/`ti-013`, the two single-topic-label subtitles nearest the
-boundary). No item missed in both replicates. The #505 prompt examples were
-substring-checked against every held-out item before measurement (no hits), so
-the set remains held out of the in-prompt examples. Full write-up:
+carrying listed surface substrings) holds in every run. The decorated-title
+shape that carried the baseline gap (0.778) is now caught: FINAL rep2 fired on
+all 9 off-list items; FINAL rep1's three off-list misses (`ti-002/004/007`)
+trace to a single judge whose prose reasoning called the items swappable shells
+but whose JSON verdicts said SILENT — the boolean record stands per protocol,
+and the run still passes. No shell was missed in both FINAL replicates. All
+#505 prompt example strings were substring-checked against every held-out item
+before measurement (no hits), so the set remains held out of the in-prompt
+examples. Full write-up:
 `audits/rq-advisory-505-exemption-sharpening-2026-07-11.md`. The model/time-drift
 caveat above applies unchanged — re-run, don't reuse.
