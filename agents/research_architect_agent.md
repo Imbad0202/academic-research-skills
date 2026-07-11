@@ -202,6 +202,19 @@ Recommended platforms: PROSPERO for systematic reviews, OSF Registries for all o
 - Reporting standard should be identified at design stage (ref: `references/equator_reporting_guidelines.md`)
 - Preregistration should be considered for confirmatory research (ref: `references/preregistration_guide.md`)
 
+## Cross-Model Blind Checkpoint at Design Freeze (Optional, #518)
+
+The Methodology Blueprint is one of the pipeline's two irreversible checkpoints: once frozen, every downstream stage builds on it. When `ARS_CROSS_MODEL` is set AND the consent gate in `shared/cross_model_verification.md` has been passed (blueprint content goes to an external provider — the env var alone is not consent), run a blind disagreement check before presenting the blueprint as final:
+
+1. Finish your own blueprint and reach your own soundness judgment first.
+2. Send the RQ Brief + the draft blueprint to the cross-model with the structured-decision prompt from `shared/cross_model_verification.md` § Blind Disagreement Checkpoints. **Never include your own judgment, scores, or reasoning** — the cross-model decides blind (anchoring prevention).
+3. The cross-model returns `{decision: sound | revise_before_freeze | fundamental_concern, drivers: [up to 3], confidence}`.
+4. Differing decisions = material divergence. Address each cross-model driver specifically against the blueprint's actual content (no generic reassurance), then present BOTH decisions + your targeted rebuttal to the user. Your recommendation stands unless the **user** changes it — divergence is a review trigger, never a vote.
+5. Agreement → log `[CROSS-MODEL-CHECKPOINT: agreement — design-freeze]` and record both decisions in the blueprint's audit note.
+6. Transport failure → `[CROSS-MODEL-ERROR]`, proceed single-model, note it in the blueprint. This check is judgment, not lookup — an ungrounded/compatible provider is first-class here, and its divergence is an adversarial hypothesis, never a confirmed defect.
+
+When `ARS_CROSS_MODEL` is not set: no behavioral change.
+
 ## PATTERN PROTECTION (v3.6.7)
 
 These rules apply when this agent operates as the **survey designer** for instrument design (Likert items, consent scripts, retrospective items, list-of-options items). They harden output against the five instrument-side hallucination/drift patterns documented in `docs/design/2026-04-29-ars-v3.6.7-downstream-agent-pattern-protection-spec.md` §3.2 (B1–B5).

@@ -45,7 +45,7 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 > The primary row deliberately names no version: the primary is always the session model, so the row cannot go stale on the next Anthropic release. Verifier IDs stay concrete because they are literal API strings the user must export. (`gpt-5.4` / `gpt-5.4-pro` remain accepted for existing setups.)
 
-> **GPT-5.6 Sol is provisional (listed 2026-07-11, three days after release).** Its endpoint support (Responses API), hosted `web_search` tool, and reasoning-effort values are confirmed against OpenAI's model documentation, but its ARS-specific behavior — grounded-search completion rate, citation-mismatch recall, false-disagreement rate, response-shape stability against the jq grounding guards, p95 latency — is unvalidated. **GPT-5.5 remains the recommended default** until `gpt-5.6-sol` shows non-inferiority on those measures; run `scripts/cross_model_smoke_test.sh` against your key before adopting it. Two facts that differ from the GPT-5.5 lineup: GPT-5.6 ships **no `-pro` model ID** — premium operation is standard `gpt-5.6-sol` plus `reasoning: {mode: "pro"}` in the request, billed at standard token rates with more model work per request (the old fixed ~6× unit-price split does not carry over); and its reasoning effort accepts `none|low|medium|high|xhigh|max` (GPT-5.5 tops out at `xhigh`), defaulting to `medium` in both standard and pro modes.
+> **GPT-5.6 Sol is provisional (listed 2026-07-11, three days after release).** Its endpoint support (Responses API), hosted `web_search` tool, and reasoning-effort values are confirmed against OpenAI's model documentation, but its ARS-specific behavior — grounded-search completion rate, citation-mismatch recall, false-disagreement rate, response-shape stability against the jq grounding guards, p95 latency — is unvalidated. **GPT-5.5 remains the recommended default** until `gpt-5.6-sol` shows non-inferiority on those measures — the run that decides this is defined in § Promotion Bakeoff below; run `scripts/cross_model_smoke_test.sh` against your key before adopting it. Two facts that differ from the GPT-5.5 lineup: GPT-5.6 ships **no `-pro` model ID** — premium operation is standard `gpt-5.6-sol` plus `reasoning: {mode: "pro"}` in the request, billed at standard token rates with more model work per request (the old fixed ~6× unit-price split does not carry over); and its reasoning effort accepts `none|low|medium|high|xhigh|max` (GPT-5.5 tops out at `xhigh`), defaulting to `medium` in both standard and pro modes.
 
 Using two non-Anthropic models as primary+verifier is possible but not tested with ARS prompts.
 
@@ -130,7 +130,7 @@ unset ARS_CROSS_MODEL
 
 **When `ARS_CROSS_MODEL` is set:**
 - Primary model (Claude) runs full Phase A-E verification as normal
-- After Phase A completes, a random 30% sample of references is sent to the cross-model for independent verification
+- After Phase A completes, a **risk-stratified** selection of references is sent to the cross-model for independent verification (see step 2 below; replaces the pre-#518 uniform random 30%)
 - Cross-model receives only the reference text and paper context — not Claude's verification result (to prevent anchoring)
 - Disagreements are flagged as `[CROSS-MODEL-DISAGREEMENT]` and prioritized for human review
 
@@ -142,7 +142,11 @@ unset ARS_CROSS_MODEL
 When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environment, it should:
 
 1. Complete Phase A verification normally
-2. Select 30% of references randomly (minimum 5, maximum 15). If total references < 5, sample all of them.
+2. Select references by **risk stratification** (#518; replaces uniform random 30%). Classify each reference at selection time and record the tier in the results table:
+   - **HIGH-IMPACT — verify 100%, no cap.** A reference is high-impact if it supports any of: (a) a headline conclusion (abstract- or conclusions-level claim); (b) a numerical claim (statistic, effect size, percentage, threshold); (c) a causal claim; (d) a methods-critical claim (the validity of the chosen method rests on it); (e) a disputed claim (already carrying a contradiction disclosure or reviewer split).
+   - **RANDOM — the remainder**, sampled at 10% (minimum 3, maximum 10; if the remainder has fewer than 3 references, sample all of it).
+   - **At Stage 4.5 (final gate):** verify 100% of references supporting claims that are **new or changed** since Stage 2.5, plus a **CONTROL** sample of unchanged ones (10%, minimum 3) to catch silent drift.
+   - Cost scales with the count of high-impact citations instead of total reference count — a results-dense paper approaches 100% coverage, which is the point: verification budget concentrates where the paper's weight rests. The old flat cap (max 15) survives only in the RANDOM/CONTROL tiers.
 3. Issue **one API call per reference** — not a batch. (Batching hides which reference the model actually grounded: a single grounding-metadata trace on a 5-reference response proves *something* was searched, not that *each* reference was. One reference per call makes the grounding evidence 1:1 with the verdict.) For each reference, construct a verification prompt:
    ```
    Verify this academic reference. Check: Does it exist? Are the author
@@ -163,15 +167,15 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
 6. Include disagreements in the integrity report under a new section:
    ```markdown
    ### Cross-Model Verification Results
-   - References sampled: X/Y (Z%)
+   - References selected: X/Y (Z%) — HIGH-IMPACT: H (100% of tier), RANDOM: R, CONTROL: C (Stage 4.5 only)
    - Agreements: N
    - Disagreements: M (listed below, prioritized for human review)
    - Ungrounded (NOT_SEARCHED): U (the cross-model could not actually search — these are NOT confirmations; re-run or human-review)
 
-   | # | Reference | Claude | Cross-Model | Source (URL/DOI) | Status |
-   |---|-----------|--------|-------------|------------------|--------|
+   | # | Reference | Tier | Claude | Cross-Model | Source (URL/DOI) | Status |
+   |---|-----------|------|--------|-------------|------------------|--------|
    ```
-   The `Source` column carries the URL/DOI the cross-model returned for a `VERIFIED` row; a blank source on a `VERIFIED` verdict downgrades it to `NOT_SEARCHED`.
+   The `Tier` column is `HIGH-IMPACT` / `RANDOM` / `CONTROL` per step 2. The `Source` column carries the URL/DOI the cross-model returned for a `VERIFIED` row; a blank source on a `VERIFIED` verdict downgrades it to `NOT_SEARCHED`.
 
 ### Devil's Advocate (deep-research + academic-paper-reviewer)
 
@@ -203,14 +207,28 @@ The DA agent, after completing its checkpoint report, should:
 3. Any cross-model finding not already covered → add to report as `[CROSS-MODEL-FINDING]`
 4. Log: `[CROSS-MODEL: X findings received, Y novel (not in primary DA report)]`
 
-### Peer Review (academic-paper-reviewer) — Future
+### Blind Disagreement Checkpoints (research-design freeze + final editorial decision)
 
-> **Status: Planned, not yet implemented.** No agent currently owns the 6th reviewer behavior. This will be added in a future version, likely as a cross-model section in `eic_agent.md`. For now, cross-model verification in peer review is limited to the DA's independent critique (above).
+Two irreversible checkpoints gain an optional cross-model check when `ARS_CROSS_MODEL` is set and the consent gate has been passed:
 
-**Planned behavior when `ARS_CROSS_MODEL` is set:**
-- Cross-model acts as an additional independent reviewer (6th reviewer)
-- Its scores are shown separately, not averaged into the existing 5-reviewer consensus
-- Significant score divergence (>15 points on any dimension) is flagged
+| Checkpoint | Primary owner | Cross-model input (never the primary's decision) | Structured decision enum |
+|---|---|---|---|
+| Research-design freeze | `research_architect_agent` (deep-research) | RQ Brief + draft Methodology Blueprint | `sound` / `revise_before_freeze` / `fundamental_concern` |
+| Final editorial decision | `editorial_synthesizer_agent` (academic-paper-reviewer) | The five reviewer cards + paper metadata | `accept` / `minor_revision` / `major_revision` / `reject` |
+
+**Mechanics:**
+
+1. The primary reaches its decision as normal.
+2. The cross-model receives the same input material and a structured-decision prompt. It **never** sees the primary's decision, scores, or reasoning first — the same anchoring-prevention rule as the integrity samples.
+3. Output contract: `{decision: <enum>, drivers: [up to 3 one-sentence reasons], confidence: low|medium|high}`.
+4. Mechanical comparison: **material divergence = differing enum values.** Adjacent categories (e.g. minor vs major revision) are still material; the report notes adjacency.
+5. On divergence: a **targeted rebuttal** — the primary must address each cross-model driver specifically against the evidence already on file (reviewer cards / blueprint content), no generic reassurance. Both decisions and the rebuttal surface to the user. The primary's decision stands unless the **user** changes it: disagreement is a review trigger, never a vote, and the two decisions are never averaged.
+6. On agreement: one log line `[CROSS-MODEL-CHECKPOINT: agreement — <checkpoint>]`; both structured decisions are still recorded.
+7. Graceful degradation: transport failure → `[CROSS-MODEL-ERROR]`, proceed single-model, note in the report (see § Graceful Degradation).
+
+Checkpoint decisions are judgment, not lookup — an ungrounded/compatible provider is first-class here, with the same scoping as DA critique: a divergence from any provider is an adversarial hypothesis and a review trigger, never a confirmed defect.
+
+> **Why there is no generic "6th reviewer."** An earlier version of this document planned a cross-model 6th reviewer for peer review. That design is retired, not deferred (#518, 2026-07): the conditions under which an extra generic reviewer becomes counterproductive — score averaging, role duplication, findings treated as confirmed defects, majority-vote false confidence, synthesizer context burn — match ARS's documented anti-patterns one-for-one. The blind disagreement checkpoints above are the replacement: cross-model judgment concentrated at the two decisions that are hardest to reverse, compared blind, with divergence escalated to the human instead of blended into a consensus.
 
 ## API Call Patterns
 
@@ -388,13 +406,42 @@ if [ -n "$ARS_CROSS_MODEL" ]; then
   # ungrounded compatible branch. The compatible path is reachable only for a model id that
   # matches no first-party prefix, and only when its dedicated opt-in env vars are both present.
   # OPENAI_BASE_URL is never read.
+  # ID STATUS is a separate axis from routing (#518): routing answers "which provider
+  # endpoint", the allowlist answers "is this id known-good". An unlisted gpt-*/gemini-* id
+  # still routes grounded (never falls through to the ungrounded compatible branch) but is
+  # announced as unlisted so nobody trusts results from a typo'd or made-up id the API has
+  # never accepted. Applies to first-party routes only — compatible-route ids are
+  # user-declared and carry no allowlist.
+  id_status() {
+    case " gpt-5.5 gpt-5.5-pro gpt-5.4 gpt-5.4-pro gemini-3.1-pro-preview " in
+      *" $1 "*) echo "validated"; return ;;
+    esac
+    case " gpt-5.6-sol " in
+      *" $1 "*) echo "provisional"; return ;;
+    esac
+    echo "unlisted"
+  }
+  announce_id_status() {
+    status="$(id_status "$ARS_CROSS_MODEL")"
+    echo "CROSS_MODEL_ID_STATUS=$status"
+    case "$status" in
+      provisional) echo "NOTE: $ARS_CROSS_MODEL is provisional — endpoint support confirmed, ARS-specific behavior unvalidated (see Supported Models). Run scripts/cross_model_smoke_test.sh before relying on it." ;;
+      unlisted)    echo "WARNING: $ARS_CROSS_MODEL matches a first-party prefix and routes grounded, but is NOT a known-good id — the API may reject it. Check the id, or run scripts/cross_model_smoke_test.sh before trusting results." ;;
+    esac
+  }
   case "$ARS_CROSS_MODEL" in
     gpt-*)
-      [ -n "$OPENAI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=openai" \
-        || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but OPENAI_API_KEY is not set" ;;
+      if [ -n "$OPENAI_API_KEY" ]; then
+        echo "CROSS_MODEL_AVAILABLE=openai"; announce_id_status
+      else
+        echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but OPENAI_API_KEY is not set"
+      fi ;;
     gemini*)
-      [ -n "$GOOGLE_AI_API_KEY" ] && echo "CROSS_MODEL_AVAILABLE=google" \
-        || echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but GOOGLE_AI_API_KEY is not set" ;;
+      if [ -n "$GOOGLE_AI_API_KEY" ]; then
+        echo "CROSS_MODEL_AVAILABLE=google"; announce_id_status
+      else
+        echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but GOOGLE_AI_API_KEY is not set"
+      fi ;;
     *)
       # Unrecognized id: only an explicit, credential-isolated opt-in enables the ungrounded
       # OpenAI-compatible path. Both the base URL AND the dedicated key are required; the
@@ -417,23 +464,39 @@ fi
 
 If `ARS_CROSS_MODEL` is set but the corresponding API key is missing or the model name is unsupported, the agent should warn the user and proceed with single-model verification.
 
+### Promotion Bakeoff (provisional → validated → recommended default)
+
+The run that flips a provisional id (today: `gpt-5.6-sol`) to validated — and, on a clean pass, to the recommended default — is defined here so a future promotion argues against numbers, not vibes (#518).
+
+- **Entry gate:** `scripts/cross_model_smoke_test.sh` passes against the candidate id.
+- **Probe set:** 30 fixed references — 20 real (10 easy: DOI-keyed journal articles; 10 hard: preprints, DOI-less, non-English) + 10 synthetic plausible fabrications. Run the baseline (`gpt-5.5`) and the candidate the same day, one call per reference, 3 repeats, majority verdict per reference.
+- **Non-inferiority thresholds — all five must pass:**
+  1. **Grounded-search completion rate** (share of calls returning grounding evidence) ≥ baseline − 5 pp.
+  2. **Citation-mismatch recall** on the 10 fabrications (share flagged `NOT_FOUND`/`MISMATCH`) ≥ baseline − 5 pp AND ≥ 80% absolute.
+  3. **False-disagreement rate** on the 20 real references (share incorrectly flagged `NOT_FOUND`/`MISMATCH`) ≤ baseline + 5 pp.
+  4. **jq-guard shape stability:** zero guard misfires attributable to response-shape change across all calls (hard requirement — a shape change that trips the fail-closed guards disqualifies regardless of the other measures).
+  5. **p95 latency** ≤ 2× baseline.
+- **Outcome:** pass → a promotion PR flips the recommended default (Supported Models table, Setup examples, the id-status allowlist `provisional` → `validated`) and records the run under `audits/`. Any fail → the id stays provisional; the results are still recorded.
+
+Web-search results vary day to day; the 3-repeat majority verdict and same-day paired runs are what make the comparison fair. Thresholds are the #518 spec's choice and are tunable in a future spec without redesigning the procedure.
+
 ## Cost Considerations
 
 Cross-model verification adds API costs from the second provider:
 
 | Scenario | Additional Calls | Estimated Additional Cost |
 |----------|-----------------|--------------------------|
-| Integrity verification (60 refs → 30% = 18, capped at max 15; **one call per reference**) | ~15 calls | ~$1.20-2.60 |
+| Integrity verification (risk-stratified: 100% of high-impact refs + 10% random remainder, min 3 / max 10; **one call per reference**; example: 60 refs with 12 high-impact → 12 + 5) | ~10-25 calls (scales with high-impact count) | ~$0.80-4.30 |
 | DA cross-check (1 per checkpoint, 3 checkpoints) | 3 calls | ~$0.30-0.55 |
-| Peer review (planned, not yet implemented) | — | — |
-| **Full pipeline** | **~18 calls** | **~$1.50-3.15** |
+| Blind disagreement checkpoints (design freeze + final editorial decision, 1 structured-decision call each; editorial repeats on re-review) | 2-3 calls | ~$0.20-0.55 |
+| **Full pipeline** | **~15-31 calls** | **~$1.30-5.40** |
 
 These are rough estimates based on GPT-5.5 pricing ($5/1M input, $30/1M output) and typical prompt sizes; GPT-5.5 Pro runs ~6× higher ($30/1M input, $180/1M output). GPT-5.6 Sol bills at the same standard rates as GPT-5.5 ($5/1M input, $0.50/1M cached input, $30/1M output); its pro mode keeps those rates but performs more model work per request, so total tokens (and latency) rise instead of the unit price. One-call-per-reference (rather than batching) is a deliberate cost-for-provenance trade: it is the only way the grounding-evidence check maps 1:1 to each verdict. Web-search-tool calls also cost more than plain completions.
 
 ## Limitations
 
 1. **Does not solve frame-lock fully.** All major LLMs share substantial training data. Cross-model catches different surface errors but may share deep structural biases.
-2. **API latency.** Cross-model calls add 2-5 seconds per call, plus web-search round-trip time. With one call per reference (no batching) and a web-search tool, integrity verification of up to 15 sampled references (the sample cap) adds several minutes; the calls can be issued concurrently to bound wall-clock time.
+2. **API latency.** Cross-model calls add 2-5 seconds per call, plus web-search round-trip time. With one call per reference (no batching) and a web-search tool, a risk-stratified integrity selection (100% of high-impact references — uncapped — plus the capped random remainder) can add several minutes on a results-dense paper; the calls can be issued concurrently to bound wall-clock time.
 3. **Response format differences.** Different models structure responses differently. The agent must parse varied formats — keep verification prompts simple and structured to minimize parsing issues.
 4. **Cost scales with paper size.** Longer papers with more references = more cross-model calls.
 

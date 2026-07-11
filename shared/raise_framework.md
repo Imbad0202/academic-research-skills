@@ -80,7 +80,7 @@ Used when `raise.mode == "full"` (SR and other_evidence_synthesis). Each role ca
 1. Adhere to open science practice when researching and evaluating AI systems.
 2. Commit to independent evaluations and validation of AI systems.
 
-**ARS self-declaration:** ARS cross-model verification per `cross_model_verification.md` provides one form of independent validation; sixth-reviewer peer review remains planned.
+**ARS self-declaration:** ARS cross-model verification per `cross_model_verification.md` provides one form of independent validation — integrity sample checks, independent DA critique, and blind disagreement checkpoints at the two irreversible decisions. The once-planned sixth-reviewer design was retired in #518 (its failure modes matched ARS's documented anti-patterns).
 
 ### Role 4 — Publishers of evidence synthesis
 
