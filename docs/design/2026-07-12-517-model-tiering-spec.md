@@ -2,7 +2,7 @@
 
 **Issue:** #517 — one tiering mechanism, two explicit directions, default untouched
 **Date:** 2026-07-12
-**Files touched:** `shared/model_tiering.md` (new canonical), `scripts/model_tiering_manifest.json` (new), `scripts/check_model_tiering.py` + `scripts/test_check_model_tiering.py` (new), the four `SKILL.md` files (compact dispatch block), `docs/SETUP.md` + `docs/SETUP.zh-TW.md` (env table), `.github/workflows/spec-consistency.yml`, `scripts/_ci_pytest_manifest.toml`, `CHANGELOG.md`
+**Files touched:** `shared/model_tiering.md` (new canonical), `scripts/model_tiering_manifest.json` (new), `scripts/check_model_tiering.py` + `scripts/test_check_model_tiering.py` (new), the four `SKILL.md` files (compact dispatch block), `docs/SETUP.md` + `docs/SETUP.zh-TW.md` (env table), `docs/PERFORMANCE.md` + `docs/PERFORMANCE.zh-TW.md` (routing-layer sentence reconciled), `.github/workflows/spec-consistency.yml`, `scripts/_ci_pytest_manifest.toml`, `CHANGELOG.md`
 **Status:** design frozen per issue #517 (2026-07-11); classification counts corrected in this spec
 
 ## Motivation (from the issue, unchanged)
@@ -42,11 +42,11 @@ The issue header said 25 judgment + 12 execution; the frozen lists themselves en
 
 ## Implementation shape
 
-**Prose + manifest + lint — no agent-file edits.** Agent frontmatter stays `model: inherit`; the tiering decision is made by the DISPATCHING layer (the session orchestrating a skill) at Task-tool dispatch time, following the canonical doc. This keeps the mechanism byte-invisible when the env var is absent and avoids touching the F2-locked `bibliography_agent.md`.
+**Prose + manifest + lint — no agent-file edits.** Agent frontmatter stays `model: inherit`; the tiering decision is made by the DISPATCHING layer (the session orchestrating a skill), following the canonical doc. A different tier is physically selectable only where a role runs as a separate subagent, and many ARS roles execute inline today (`docs/PERFORMANCE.md` § v3.7.0 plugin agents) — so the mechanism is: flag unset → nothing changes (dispatch shapes included, byte-equivalent); a direction applies to a role → the session dispatches that role as a subagent pinned to the target tier, inline roles included (dispatch-as-subagent IS the mechanism for them); subagent dispatch not possible in the runtime → the role runs inline on the session model with a one-line `[MODEL-TIERING: ... tiering not applicable]` announcement (fail-open, never a silently wrong-model claim). The PERFORMANCE.md "no separate model routing layer" sentence (en + zh-TW) is reconciled with a pointer. This keeps the mechanism byte-invisible when the env var is absent and avoids touching the F2-locked `bibliography_agent.md`. *(Round-1 codex review: the original "routes at Task-tool dispatch time" claim contradicted PERFORMANCE.md's inline-execution reality; the dispatch-as-subagent mechanism + inline fallback + PERFORMANCE reconciliation close it. The same round scoped the prompt-caching guidance to active directions — the byte-equivalent default promise now covers dispatch shapes — and unified the jump-to-frontier and warn-once wording across all surfaces.)*
 
 1. **`shared/model_tiering.md` (canonical).** Mechanism, the two directions with their no-op conditions, the full 39-agent classification table, the relative-tier rule, the unknown-value rule, and the prompt-caching guidance (route repeated same-stage calls — e.g. reviewer re-review loops — to the SAME worker so its cache accumulates; a fresh worker per call re-pays the context write and can erase the savings; article guidance item 4).
 2. **`scripts/model_tiering_manifest.json`.** Machine-readable classification: one entry per agent file (repo-relative path + `tier` ∈ {`judgment`, `execution`}). Single source of truth for the lint.
-3. **`scripts/check_model_tiering.py` (classification drift guard).** Fails CI when: (a) the set of `*_agent.md` files on disk ≠ the manifest's set — an agent added without a tier assignment fails; (b) a manifest entry's tier is not a valid enum value; (c) the canonical doc's table does not name every manifest agent under the matching tier heading. Mutation tests in `scripts/test_check_model_tiering.py`; wired into `spec-consistency.yml` and the local pytest manifest.
+3. **`scripts/check_model_tiering.py` (classification drift guard).** Fails CI when: (a) the set of `*_agent.md` files on disk ≠ the manifest's set — an agent added without a tier assignment fails — including a repo-wide sweep that rejects agent files under a NEW skill directory outside the fixed roster; (b) a manifest entry's tier is not a valid enum value or a path is duplicated; (c) the canonical doc's table does not carry EXACTLY the manifest's short-name set per (tier, skill) row — missing tokens, extra tokens, duplicate tokens, wrong per-row `(N)` counts, duplicate skill rows, and headline-count mismatches each fail. 15 mutation tests in `scripts/test_check_model_tiering.py`; wired into `spec-consistency.yml` and the local pytest manifest. *(Round-1 codex review: the first cut was subset-only and dir-hardcoded; the exact set comparison + stray sweep close both.)*
 4. **Four `SKILL.md` dispatch blocks.** A compact `## Model Tiering (#517)` section (absence-is-default, the two direction rules, pointer to the canonical doc) so every skill's dispatching layer sees the rule without duplicating the table.
 5. **SETUP env tables (en/zh-TW).** One `ARS_MODEL_TIERING` row each.
 
@@ -59,6 +59,6 @@ The issue header said 25 judgment + 12 execution; the frozen lists themselves en
 
 ## Verification
 
-- New lint + tests green locally; full CI lint set + 60-entry pytest manifest green.
+- New lint + tests green locally; full CI lint set + the local pytest manifest (61 entries including this PR's) green.
 - Boundary: no personal/private identifiers (public repo).
 - Dual-track review (codex xhigh + security review) to 0 P1/P2 before merge.

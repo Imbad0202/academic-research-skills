@@ -163,6 +163,61 @@ class ModelTieringLintTests(unittest.TestCase):
             _fixture_repo(tmp, doc_text="# Model Tiering\n\nno tier sections here\n")
             self.assertEqual(_run_on(tmp), 1)
 
+    def test_extra_doc_token_fails(self) -> None:
+        """A token in the doc table with no manifest backing must fail (subset-only trap)."""
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            doc = (
+                "### Judgment-type (1)\n\n"
+                "| Skill | Agents |\n|---|---|\n"
+                "| deep-research (2) | `synthesis`, `phantom` |\n\n"
+                "### Execution-type (1)\n\n"
+                "| Skill | Agents |\n|---|---|\n"
+                "| academic-paper (1) | `formatter` |\n"
+            )
+            _fixture_repo(tmp, doc_text=doc)
+            self.assertEqual(_run_on(tmp), 1)
+
+    def test_wrong_per_row_count_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            doc = (
+                "### Judgment-type (1)\n\n"
+                "| Skill | Agents |\n|---|---|\n"
+                "| deep-research (3) | `synthesis` |\n\n"
+                "### Execution-type (1)\n\n"
+                "| Skill | Agents |\n|---|---|\n"
+                "| academic-paper (1) | `formatter` |\n"
+            )
+            _fixture_repo(tmp, doc_text=doc)
+            self.assertEqual(_run_on(tmp), 1)
+
+    def test_duplicate_skill_row_fails(self) -> None:
+        """A contradictory second row for the same skill must not be shadowed."""
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            doc = (
+                "### Judgment-type (1)\n\n"
+                "| Skill | Agents |\n|---|---|\n"
+                "| deep-research (1) | `synthesis` |\n"
+                "| deep-research (1) | `something_else` |\n\n"
+                "### Execution-type (1)\n\n"
+                "| Skill | Agents |\n|---|---|\n"
+                "| academic-paper (1) | `formatter` |\n"
+            )
+            _fixture_repo(tmp, doc_text=doc)
+            self.assertEqual(_run_on(tmp), 1)
+
+    def test_agent_in_unknown_skill_dir_fails(self) -> None:
+        """Repo-wide sweep: a *_agent.md under a NEW skill dir (not in AGENT_DIRS) fails."""
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            _fixture_repo(tmp)
+            stray = tmp / "brand-new-skill" / "agents" / "novel_agent.md"
+            stray.parent.mkdir(parents=True)
+            stray.write_text("# agent\n", encoding="utf-8")
+            self.assertEqual(_run_on(tmp), 1)
+
     def test_skill_label_prefix_collision_is_not_a_false_pass(self) -> None:
         """`academic-paper-reviewer` row must not satisfy an `academic-paper` agent."""
         with tempfile.TemporaryDirectory() as d:

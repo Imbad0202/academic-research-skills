@@ -9,11 +9,14 @@ and the manifest silently disagreeing. This lint pins all three:
   1. SET EQUALITY — the ``*_agent.md`` files on disk (five skill agent dirs; the
      top-level ``agents/`` plugin mirror is excluded, it is byte-pinned separately
      by check_agents_mirror_sync.py) exactly match the manifest's ``path`` set.
-     A new agent without a tier assignment fails CI here.
+     A new agent without a tier assignment fails CI here. A repo-wide sweep also
+     rejects any ``*_agent.md`` OUTSIDE the known roster dirs (a new skill
+     directory cannot smuggle unclassified agents past the fixed dir list).
   2. TIER ENUM — every manifest ``tier`` is ``judgment`` or ``execution``.
-  3. DOC SYNC — shared/model_tiering.md's classification table names every agent
-     (backticked short name, in the table row matching the agent's skill) under the
-     correct tier section, and each section's headline count matches the manifest.
+  3. DOC SYNC — shared/model_tiering.md's classification table carries EXACTLY the
+     manifest's short-name set per (tier, skill) row: a missing token, an extra or
+     duplicate token, a wrong per-row ``(N)`` count, a duplicate skill row, or a
+     headline-count mismatch each fail.
 
 Exit codes: 0 = pass; 1 = drift found.
 """
@@ -55,6 +58,24 @@ def disk_agent_paths() -> set[str]:
     return found
 
 
+# Paths outside the roster where *_agent.md files are legitimate and out of scope:
+# the top-level plugin mirror (byte-pinned by check_agents_mirror_sync.py) and
+# design/docs material that may quote agent filenames as examples.
+OUT_OF_SCOPE_PREFIXES = ("agents/", "docs/", "tests/", "audits/", "evals/", ".git/")
+
+
+def out_of_roster_agents() -> list[str]:
+    """Repo-wide sweep: *_agent.md files in an agents/ dir NOT covered by AGENT_DIRS."""
+    strays: list[str] = []
+    for f in sorted(REPO.rglob("*_agent.md")):
+        rel = f.relative_to(REPO).as_posix()
+        if rel.startswith(OUT_OF_SCOPE_PREFIXES):
+            continue
+        if not any(rel.startswith(d + "/") for d in AGENT_DIRS):
+            strays.append(rel)
+    return strays
+
+
 def load_manifest() -> list[dict]:
     data = json.loads(MANIFEST.read_text(encoding="utf-8"))
     agents = data.get("agents")
@@ -84,12 +105,30 @@ def doc_sections(text: str) -> tuple[str, int, str, int]:
     return judgment_body, int(jm.group(1)), execution_body, int(em.group(1))
 
 
-def skill_row(section: str, skill: str) -> str:
-    """Return the table row whose first cell starts with exactly this skill label."""
+ROW_RE = re.compile(r"^\|\s*([a-z-]+(?:-[a-z]+)*) \((\d+)\)\s*\|(.*)\|\s*$")
+TOKEN_RE = re.compile(r"`([^`]+)`")
+
+
+def section_rows(section: str) -> tuple[dict[str, tuple[int, list[str]]], list[str]]:
+    """Parse a tier section's table rows into {skill: (declared_count, tokens)}.
+
+    Returns (rows, errors). A duplicate skill row is an error — a contradictory
+    second row must never be silently shadowed by first-match-wins.
+    """
+    rows: dict[str, tuple[int, list[str]]] = {}
+    errors: list[str] = []
     for line in section.splitlines():
-        if re.match(rf"^\|\s*{re.escape(skill)} \(\d+\)\s*\|", line):
-            return line
-    return ""
+        m = ROW_RE.match(line)
+        if not m:
+            continue
+        skill, count, body = m.group(1), int(m.group(2)), m.group(3)
+        if skill == "Skill":  # header guard (never matches the regex, kept for clarity)
+            continue
+        if skill in rows:
+            errors.append(f"duplicate '{skill}' row in one tier section — contradictory rows are ambiguous")
+            continue
+        rows[skill] = (count, TOKEN_RE.findall(body))
+    return rows, errors
 
 
 def main() -> int:
@@ -107,7 +146,7 @@ def main() -> int:
         dupes = sorted({p for p in manifest_paths if manifest_paths.count(p) > 1})
         errors.append(f"manifest contains duplicate path(s): {dupes}")
 
-    # 1. set equality with disk
+    # 1. set equality with disk + repo-wide stray sweep
     disk = disk_agent_paths()
     missing_from_manifest = sorted(disk - manifest_set)
     missing_from_disk = sorted(manifest_set - disk)
@@ -115,6 +154,8 @@ def main() -> int:
         errors.append(f"agent file on disk has NO tier classification: {p} (add it to scripts/model_tiering_manifest.json AND shared/model_tiering.md)")
     for p in missing_from_disk:
         errors.append(f"manifest classifies a file that does not exist on disk: {p}")
+    for p in out_of_roster_agents():
+        errors.append(f"agent file outside the known skill agent dirs: {p} (a new skill directory must be added to AGENT_DIRS in this lint AND its agents classified)")
 
     # 2. tier enum
     for a in agents:
@@ -139,18 +180,34 @@ def main() -> int:
     if execution_count != len(by_tier["execution"]):
         errors.append(f"doc says Execution-type ({execution_count}) but manifest has {len(by_tier['execution'])}")
 
+    # Exact per-(tier, skill) token-set equality: missing, extra, and duplicate
+    # tokens, wrong per-row (N) counts, and duplicate skill rows all fail.
+    doc_map: dict[tuple[str, str], set[str]] = {}
     for tier, body in (("judgment", judgment_body), ("execution", execution_body)):
-        other_body = execution_body if tier == "judgment" else judgment_body
+        rows, row_errors = section_rows(body)
+        errors.extend(f"{tier} section: {e}" for e in row_errors)
+        for skill, (declared, tokens) in rows.items():
+            if len(tokens) != declared:
+                errors.append(f"{tier} section '{skill}' row declares ({declared}) but lists {len(tokens)} backticked agent name(s)")
+            dupes = sorted({t for t in tokens if tokens.count(t) > 1})
+            if dupes:
+                errors.append(f"{tier} section '{skill}' row lists duplicate token(s): {dupes}")
+            doc_map[(tier, skill)] = set(tokens)
+
+    manifest_map: dict[tuple[str, str], set[str]] = {}
+    for tier in VALID_TIERS:
         for path in by_tier[tier]:
-            name = short_name(path)
-            skill = skill_of(path)
-            row = skill_row(body, skill)
-            token = f"`{name}`"
-            if token not in row:
-                errors.append(f"{path} is '{tier}' in the manifest but {token} is not in the {tier} section's '{skill}' table row of {DOC.relative_to(REPO)}")
-            other_row = skill_row(other_body, skill)
-            if token in other_row:
-                errors.append(f"{path} appears in BOTH tier sections' '{skill}' rows in {DOC.relative_to(REPO)} — a tier must be unambiguous")
+            manifest_map.setdefault((tier, skill_of(path)), set()).add(short_name(path))
+
+    doc_rel = DOC.relative_to(REPO)
+    for key in sorted(set(doc_map) | set(manifest_map)):
+        tier, skill = key
+        missing = sorted(manifest_map.get(key, set()) - doc_map.get(key, set()))
+        extra = sorted(doc_map.get(key, set()) - manifest_map.get(key, set()))
+        if missing:
+            errors.append(f"{tier} section '{skill}' row in {doc_rel} is missing manifest agent(s): {missing}")
+        if extra:
+            errors.append(f"{tier} section '{skill}' row in {doc_rel} lists agent(s) not classified '{tier}' for that skill in the manifest: {extra}")
 
     if errors:
         print(f"[model-tiering] FAIL ({len(errors)} error(s)):")

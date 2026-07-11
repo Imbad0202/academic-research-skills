@@ -12,7 +12,7 @@ export ARS_MODEL_TIERING="economy"        # frontier session: execution agents s
 export ARS_MODEL_TIERING="quality-boost"  # below-frontier session: judgment agents step UP to the frontier tier at the gates
 ```
 
-Any other value is ignored with a one-line warning and treated as absent — misconfiguration must never silently change models.
+Any other value is warned once (one line) and treated as absent — misconfiguration must never silently change models.
 
 ## Relative tiers, never hard-pinned ids
 
@@ -21,7 +21,7 @@ Tier positions are expressed relative to the session: "session model", "frontier
 ## Direction 1 — `quality-boost` (for sessions below the frontier tier)
 
 - **Who:** judgment-type agents (table below) **when dispatched at a checkpoint surface**: the Stage 2.5 / 4.5 integrity gates (`integrity_verification`, `claim_ref_alignment_audit`, `compliance_agent`) and the final review surfaces (Stage 3/3' reviewer panel: `eic`, the three reviewers, `devils_advocate_reviewer`, `editorial_synthesizer`).
-- **What:** dispatch those calls one tier UP, to the frontier tier of the session's model family. Everything else stays on the session model.
+- **What:** dispatch those calls AT the frontier tier of the session's model family — a jump to the frontier, however many tiers away the session sits, not a single-increment step. Everything else stays on the session model.
 - **Why there:** the measured value of a stronger model concentrates at mid-task re-ranking and verification, not upfront planning.
 - **No-op condition:** a session already at the frontier tier has nothing to upgrade to — announce `[MODEL-TIERING: quality-boost is a no-op at the frontier tier]` once and proceed. quality-boost NEVER downgrades anything.
 
@@ -34,11 +34,17 @@ Tier positions are expressed relative to the session: "session model", "frontier
 
 ## Where the decision is made
 
-The dispatching layer (the session orchestrating a skill) applies the direction rule at Task-tool dispatch time. Agent files are untouched — frontmatter stays `model: inherit`, and this mechanism never edits an agent file (the sha256-locked `bibliography_agent.md` included). The machine-readable classification lives in `scripts/model_tiering_manifest.json`; `scripts/check_model_tiering.py` fails CI when an agent file exists without a classification (drift guard), when a tier value is invalid, or when this table and the manifest disagree.
+A different tier is physically selectable only where a role runs as a **separate subagent** (the built-in Agent tool's `model` parameter, or a plugin-exposed agent). Today many ARS roles execute **inline** in the main session as prompt templates (see `docs/PERFORMANCE.md` § "v3.7.0 Plugin agents and model routing") — inline execution has no per-role model choice. The mechanism therefore works like this:
+
+- **Flag unset:** nothing changes — roles execute exactly as they do today (inline or subagent, session model). No role is spun out, no dispatch shape changes; byte-equivalent.
+- **A direction applies to a role:** the session dispatches that role as a subagent pinned to the target tier — including roles that would otherwise have executed inline (the dispatch-as-subagent IS the mechanism for them).
+- **Dispatching as a subagent is not possible in the runtime** (no Agent tool available, or the role's step is inseparable from the main conversation): the role runs inline on the session model and the direction is a no-op for that call — announce `[MODEL-TIERING: <role> ran inline on the session model — tiering not applicable]` once per run. Fail-open, never a silently wrong model claim.
+
+Agent files are untouched — frontmatter stays `model: inherit`, and this mechanism never edits an agent file (the sha256-locked `bibliography_agent.md` included). The machine-readable classification lives in `scripts/model_tiering_manifest.json`; `scripts/check_model_tiering.py` fails CI when an agent file exists without a classification (drift guard), when a tier value is invalid, or when this table and the manifest disagree.
 
 ## Prompt-caching guidance (article item 4)
 
-Route repeated same-stage calls to the SAME worker so its cache accumulates — e.g. the reviewer re-review loop (Stage 3 → 3') should reuse each reviewer worker rather than spawning a fresh one per round. A fresh worker per call re-pays the full context write and can erase the tiering savings entirely. This applies in every direction, including default.
+When a tiering direction is active, route repeated same-stage calls to the SAME worker so its cache accumulates — e.g. the reviewer re-review loop (Stage 3 → 3') should reuse each reviewer worker rather than spawning a fresh one per round. A fresh worker per call re-pays the full context write and can erase the tiering savings entirely. With the flag unset this guidance imposes nothing: default behavior stays byte-equivalent, dispatch shapes included.
 
 ## Classification table (39 agents; frozen 2026-07-11, #517)
 
