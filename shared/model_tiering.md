@@ -16,11 +16,20 @@ Any other value is warned once (one line) and treated as absent — misconfigura
 
 ## Relative tiers, never hard-pinned ids
 
-Tier positions are expressed relative to the session: "session model", "frontier tier of the session's model family", "one tier below the session model", "the Opus-class floor". Concrete model ids are NEVER pinned in this mechanism — a hard-pinned floor becomes a downgrade ceiling on the next model generation (the v3.7.0 `opus` command floor, retired in the 2026-06 Fable 5 harness pass, is the precedent).
+Tier positions are expressed relative to the session: "session model", "frontier tier of the session's model family", "one tier below the session model", "the Opus-class floor". Concrete model ids are NEVER pinned in this mechanism's FILES — a hard-pinned floor becomes a downgrade ceiling on the next model generation (the v3.7.0 `opus` command floor, retired in the 2026-06 Fable 5 harness pass, is the precedent).
+
+### Resolving a tier at dispatch time
+
+The no-hard-pinning rule is about what lives in the repo, not about the dispatch call — a subagent invocation ultimately needs a model value the runtime accepts (an alias such as `opus`/`sonnet`, or a concrete current-generation id). The dispatching session resolves the relative target at the moment of dispatch:
+
+1. Determine the session's model family and current-generation lineup (from the runtime's own model information — never from a list stored in this repo).
+2. Map the direction to a target: `economy` → the tier exactly one below the session model, bounded below at the Opus-class tier; `quality-boost` → the family's frontier tier.
+3. Pass whatever identifier the runtime accepts for that target (alias preferred where supported; otherwise the current generation's concrete id). The concrete value exists only in that ephemeral call — it is never written into agent files, manifests, or this doc.
+4. If the session cannot resolve the target (unknown lineup, runtime exposes no model choice): the direction is a no-op for that call — announce `[MODEL-TIERING: could not resolve target tier — ran on the session model]` once per run. Fail-open, never a guessed id.
 
 ## Direction 1 — `quality-boost` (for sessions below the frontier tier)
 
-- **Who:** judgment-type agents (table below) **when dispatched at a checkpoint surface**: the Stage 2.5 / 4.5 integrity gates (`integrity_verification`, `claim_ref_alignment_audit`, `compliance_agent`) and the final review surfaces (Stage 3/3' reviewer panel: `eic`, the three reviewers, `devils_advocate_reviewer`, `editorial_synthesizer`).
+- **Who:** judgment-type agents (table below) **when dispatched at a checkpoint surface**: the Stage 2.5 / 4.5 integrity gates (`integrity_verification`, `compliance_agent`); the Stage 4→5 claim–ref alignment audit (`claim_ref_alignment_audit` — dispatched only when `ARS_CLAIM_AUDIT=1`, so this surface exists only on opted-in runs); and the final-review surfaces (Stage 3 full panel: `eic`, the three reviewers, `devils_advocate_reviewer`, `editorial_synthesizer`; Stage 3' re-review dispatches the narrow team — among its judgment-type roles that means `eic` + `editorial_synthesizer`; `field_analyst` is execution-type and unaffected here).
 - **What:** dispatch those calls AT the frontier tier of the session's model family — a jump to the frontier, however many tiers away the session sits, not a single-increment step. Everything else stays on the session model.
 - **Why there:** the measured value of a stronger model concentrates at mid-task re-ranking and verification, not upfront planning.
 - **No-op condition:** a session already at the frontier tier has nothing to upgrade to — announce `[MODEL-TIERING: quality-boost is a no-op at the frontier tier]` once and proceed. quality-boost NEVER downgrades anything.
@@ -44,7 +53,7 @@ Agent files are untouched — frontmatter stays `model: inherit`, and this mecha
 
 ## Prompt-caching guidance (article item 4)
 
-When a tiering direction is active, route repeated same-stage calls to the SAME worker so its cache accumulates — e.g. the reviewer re-review loop (Stage 3 → 3') should reuse each reviewer worker rather than spawning a fresh one per round. A fresh worker per call re-pays the full context write and can erase the tiering savings entirely. With the flag unset this guidance imposes nothing: default behavior stays byte-equivalent, dispatch shapes included.
+When a tiering direction is active, route repeated same-stage calls to the SAME worker so its cache accumulates — e.g. across the Stage 3 → 3' review loop, the roles that are actually re-dispatched (`eic`, `editorial_synthesizer` — Stage 3' runs the narrow team, not the full panel) should reuse their Stage 3 workers rather than spawning fresh ones per round. A fresh worker per call re-pays the full context write and can erase the tiering savings entirely. With the flag unset this guidance imposes nothing: default behavior stays byte-equivalent, dispatch shapes included.
 
 ## Classification table (39 agents; frozen 2026-07-11, #517)
 
