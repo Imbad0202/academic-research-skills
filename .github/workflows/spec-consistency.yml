@@ -143,6 +143,11 @@ jobs:
         # scripts/ glob — that 2x overlap is the accepted manifest pattern).
         run: python3 scripts/check_setup_cross_model_parity.py
 
+      - name: Check model-tiering classification (#517)
+        # The pytest companion `test_check_model_tiering.py` runs via the
+        # unified manifest.
+        run: python3 scripts/check_model_tiering.py
+
       - name: Run version consistency unit tests
         env:
           PYTHONPATH: .

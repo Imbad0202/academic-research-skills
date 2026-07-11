@@ -267,3 +267,7 @@ path = "scripts/test_check_v3_9_4_temporal_verification.py"
 [[pytest]]
 id = "491-setup-cross-model-parity"
 path = "scripts/test_check_setup_cross_model_parity.py"
+
+[[pytest]]
+id = "517-model-tiering-classification"
+path = "scripts/test_check_model_tiering.py"
