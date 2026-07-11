@@ -103,3 +103,25 @@ one generator model) and the judgments are model- and time-specific and drift
 across versions — re-run rather than reuse the numbers.
 
 Full write-up: `audits/rq-advisory-heldout-measurement-2026-07-11.md`.
+
+## 2026-07-11 post-#505 result (see `measurement-2026-07-11-505.json`)
+
+The #505 exemption sharpening (narrow named/operationalized-specific exemption +
+decorated-compound-title rule; both `socratic_mentor_agent.md` files) was measured
+against this set per the protocol above (2 replicates, same judge model):
+
+| variant | overall miss | family_variant | off_list | false-fire |
+|---------|-------------|----------------|----------|------------|
+| post-#505 rep1 | 0.094 | 0.043 | 0.222 | 0.000 |
+| post-#505 rep2 | 0.094 | 0.087 | 0.111 | 0.000 |
+
+**Verdict: PASS** — both replicates sit well under the FNR < 0.30 line and the
+zero over-warning property (0/16 false-fire, including the four hard negatives
+carrying listed surface substrings) holds in both. The decorated-title shape that
+carried the baseline gap is now caught: all 8 `ti-*` items fired in rep2 (rep1
+missed `ti-012`/`ti-013`, the two single-topic-label subtitles nearest the
+boundary). No item missed in both replicates. The #505 prompt examples were
+substring-checked against every held-out item before measurement (no hits), so
+the set remains held out of the in-prompt examples. Full write-up:
+`audits/rq-advisory-505-exemption-sharpening-2026-07-11.md`. The model/time-drift
+caveat above applies unchanged — re-run, don't reuse.

@@ -1,4 +1,8 @@
-# Judge reasoning excerpts — 2026-07-11 measurement
+# Judge reasoning excerpts — 2026-07-11 measurements
+
+> Sections below the baseline blocks were appended for the post-#505
+> exemption-sharpening runs (same day, same protocol); see
+> `measurement-2026-07-11-505.json`.
 
 Verbatim excerpts of the judge agents' prose reasoning, captured alongside the
 boolean outcomes in `measurement-2026-07-11.json`. Not every agent produced prose
@@ -54,3 +58,35 @@ advisory section variant + 6 items.
 - `nat-077` (pre-#503, MISS): "close to WP16 … but not the canonical 'barriers
   and facilitators to X' pair shell … weak/ambiguous match, not high-confidence."
   (Post-#503: FIRE citing WP16 in both replicates.)
+
+## Post-#505 runs — the decorated-title shape argued through the new rule
+
+- `ti-002` (post-#505 rep1, FIRE): "colon-decorated title; post-colon part is
+  'Nurse Workload and the Quality of Patient Care,' a generic swappable
+  noun-pair (WP01/WP06 shell). Decoration doesn't exempt it." (Baseline rep2
+  argued the same item as "names a specific mechanism/population" and missed.)
+- `ti-004` (post-#505 rep2, FIRE): "'Cybersecurity Training and Employee
+  Security Behavior' — bare study-of/factors-style noun pair, no named
+  instrument or mechanism specified. Swappable shell."
+- `ti-013` (post-#505 rep2, FIRE): "'Aging Apart' decorated title; subtitle
+  'Social Isolation Among Older Adults' is a bare topic label with no named
+  site, instrument, or mechanism." (Rep1 missed the same item as "subtitle is
+  named-population topic label … not swappable-shell form" — the single-topic
+  subtitle sits nearest the boundary.)
+- `el-013` (post-#505 both reps, FIRE): "'How does X bear on Y' … no named
+  instrument/theory/site, generic material/durability pairing is swappable."
+  (Stable miss in every baseline run under the broad-exemption reading.)
+
+## Post-#505 runs — negatives still exempted, and via the narrow list
+
+- `dn-007` (post-#505 rep1, correct SILENT): "names mechanism (unobtrusive
+  indicators in annual reports), specific causal pathway (through TMT power
+  centralization) — satisfies specified-pathway exemption."
+- `dn-016` (post-#505 rep2, correct SILENT): "names specific mechanism
+  (telicity constraints, lexical aspect) and a specified causal pathway (L1
+  transfer vs. aspect), plus named population." — the stated-tension /
+  pathway arms of the narrow exemption doing the work.
+- `nat-044` (post-#505 rep2, MISS): "plain descriptive question without a
+  shell connective (impact/relationship/role/factors), so weak match, stay
+  silent." — the remaining interrogative off-list miss rides the
+  high-confidence bar, not the exemption clause.
