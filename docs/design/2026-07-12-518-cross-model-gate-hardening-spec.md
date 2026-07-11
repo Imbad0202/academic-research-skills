@@ -2,7 +2,7 @@
 
 **Issue:** #518 — risk-stratified sampling, blind disagreement checkpoints, capability allowlist, gpt-5.6-sol promotion bakeoff
 **Date:** 2026-07-12
-**Files touched:** `shared/cross_model_verification.md`, `academic-pipeline/agents/integrity_verification_agent.md`, `deep-research/agents/research_architect_agent.md`, `academic-paper-reviewer/agents/editorial_synthesizer_agent.md`, `docs/SETUP.md` + `docs/SETUP.zh-TW.md` (feature table), `.claude/CLAUDE.md`, `shared/raise_framework.md`, `CHANGELOG.md`
+**Files touched:** `shared/cross_model_verification.md`, `academic-pipeline/agents/integrity_verification_agent.md`, `deep-research/agents/research_architect_agent.md` + its byte-identical plugin mirror `agents/research_architect_agent.md`, `academic-paper-reviewer/agents/editorial_synthesizer_agent.md`, `docs/SETUP.md` + `docs/SETUP.zh-TW.md` (feature table), `.claude/CLAUDE.md`, `shared/raise_framework.md`, `CHANGELOG.md`
 **Status:** design frozen per issue #518 (2026-07-11 consult); parameters chosen in this spec
 
 ## Problem
@@ -36,7 +36,7 @@ Replaces the uniform random 30% (min 5, max 15) in `shared/cross_model_verificat
 
 **Cost model change (documented, deliberate):** calls now scale with the count of high-impact (and, at Stage 4.5, new/changed) citations instead of total reference count. A results-dense paper approaches 100% coverage; that is the point — precision where the paper's weight rests. The old flat cap (max 15) is retired; only the sampled tiers (RANDOM/CONTROL) carry a cap (max 10 each).
 
-Sampling parameters (10% / round-up / min 3 / max 10) are this spec's choice, not the issue's; they are tunable without protocol redesign. *(Round-2 codex review: the tier set was widened from three to four — a new/changed non-high-impact reference was unrepresentable — and the stale "max 15 survives" sentence was removed.)*
+Sampling parameters (10% / round-up / min 3 / max 10) are this spec's choice, not the issue's; they are tunable without protocol redesign. *(Round-1 codex review: the tier set was widened from three to four — a new/changed non-high-impact reference was unrepresentable — and the stale "max 15 survives" sentence was removed.)*
 
 ### D2 — Blind disagreement checkpoints (replaces the "6th reviewer — Planned" section)
 
@@ -49,7 +49,7 @@ Two irreversible checkpoints gain an optional cross-model check when `ARS_CROSS_
 
 **Mechanics (shared):**
 
-1. The primary reaches its decision as normal and commits it in the SAME structured form (enum + up to 3 drivers) before the cross-model is called — enum-against-enum comparison, both sides blind. The architect records it in a new Design-Freeze Checkpoint Audit section of the blueprint; the synthesizer's is the emitted decision (in sprint-contract mode, the mechanical protocol's `editorial_decision` verbatim, with the checkpoint running strictly post-Step-3, never extending the contract arithmetic).
+1. The primary reaches its decision as normal and commits it in the SAME structured form (enum + up to 3 drivers) before the cross-model is called — enum-against-enum comparison, both sides blind. The architect records it separately from the blueprint and sends the cross-model a sanitized payload with the Design-Freeze Checkpoint Audit section stripped (writing the decision into the blueprint before the call would leak it and break blindness — round-2 verify fix); the audit section is populated after the comparison, with an `unavailable — transport error` representation for the no-cross-model case. The synthesizer's decision is the emitted one (in sprint-contract mode, the mechanical protocol's `editorial_decision` verbatim, with the checkpoint running strictly post-Step-3, never extending the contract arithmetic).
 2. The cross-model receives the same input material and a structured-decision prompt. It **never** sees the primary's decision, scores, or reasoning first — same anchoring-prevention rule as the integrity samples.
 3. Output contract: `{decision: <enum>, drivers: [≤3 one-sentence reasons], confidence: low|medium|high}`.
 4. Mechanical comparison: **material divergence = differing enum values.** (Adjacent categories, e.g. minor vs major revision, are still material; the report notes adjacency.)
@@ -90,7 +90,7 @@ New subsection in the canonical doc operationalizing the five measures already n
   3. False-disagreement rate on the 20 real ≤ baseline + 5 pp.
   4. jq-guard shape stability: zero guard misfires attributable to response-shape change (hard requirement).
   5. p95 latency ≤ 2× baseline.
-- **Outcome — two promotions, not one:** all five pass → `provisional` becomes `validated` (allowlist + Supported Models note; run recorded under `audits/` with the probe-set hash). The **recommended default** flips only with an additional stated reason (superiority on ≥1 measure with no inferiority elsewhere, or a named operational benefit) — a candidate that merely scraped under every tolerance is validated but not the new recommendation. Any fail → stays provisional, results still recorded. *(Round-2 codex review: outcome split added — a bare non-inferiority pass no longer auto-flips the default; probe-set fixture + tie handling made preconditions.)*
+- **Outcome — two promotions, not one:** all five pass → `provisional` becomes `validated` (allowlist + Supported Models note; run recorded under `audits/` with the probe-set hash). The **recommended default** flips only with an additional stated reason (superiority on ≥1 measure with no inferiority elsewhere, or a named operational benefit) — a candidate that merely scraped under every tolerance is validated but not the new recommendation. Any fail → stays provisional, results still recorded. *(Round-1 codex review: outcome split added — a bare non-inferiority pass no longer auto-flips the default; probe-set fixture + tie handling made preconditions. Round-2 verify: the two introductory statements that still implied pass ⇒ default were aligned to the split.)*
 
 Thresholds are this spec's choice; recorded here so a future bakeoff argues against numbers, not vibes.
 
