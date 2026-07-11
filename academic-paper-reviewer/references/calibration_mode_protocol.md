@@ -196,7 +196,7 @@ This is an interpretive caveat only. ARS does **not** detect, prevent, or correc
 
 ### Directional prior: assume leniency relative to human expert review (FARS external anchor)
 
-Beyond the same-family optimism above, there is a citable **directional** prior on the sign of the error: when the simulated 5-reviewer panel's output is read as a pass/fail signal, assume it runs **lenient relative to human expert review** until your own calibration measurement shows otherwise. FARS (arXiv:2606.31651, Analemma 2026) provides a deployment-scale external anchor: on the same 140-paper corpus, an ICLR-style automated reviewer (Stanford Agentic Reviewer) scored a mean of 5.00 while 282 human expert reviews averaged 3.23 on the same 0-10 scale — the LLM judge ran ~1.8 points lenient, and the automated score never functioned as an acceptance probability, only as a relative ranking.
+Beyond the same-family optimism above, there is a citable **directional** prior on the sign of the error: when the simulated 5-reviewer panel's output is read as a pass/fail signal, assume it runs **lenient relative to human expert review** until your own calibration measurement shows otherwise. FARS (arXiv:2606.31651, Analemma 2026) provides a deployment-scale external anchor: on the FARS deployment corpus, an ICLR-style automated reviewer (Stanford Agentic Reviewer) averaged 5.00 over the 165 papers it reviewed, while the paper-level mean from 282 human expert reviews covering 140 of those papers was 3.23 on the same 0-10 scale — a ~1.8-point gap (a descriptive difference between overlapping-but-unequal paper sets, not a paired estimate), and the automated score never functioned as an acceptance probability, only as a relative ranking.
 
 How to use this prior:
 
@@ -230,7 +230,7 @@ How to use this prior:
 ## References
 
 - Lu, C. et al. (2026). Towards end-to-end automation of AI research. *Nature* 651, 914-919. doi:10.1038/s41586-026-10265-5 — Table 1 (reviewer validation), Methods A.1.1 (ensembling).
-- Analemma (2026). FARS. arXiv:2606.31651 — deployment-scale automated-vs-human reviewer comparison (140 papers, 282 human expert reviews); source of the leniency-direction anchor above.
+- Analemma (2026). FARS. arXiv:2606.31651 — deployment-scale automated-vs-human reviewer comparison (automated mean over 165 papers; 282 human expert reviews over 140 papers); source of the leniency-direction anchor above.
 - Efron, B. & Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*. Chapman & Hall/CRC — bootstrap CI methodology.
 - ARS `shared/cross_model_verification.md` — cross-model reviewer integration.
 - ARS `academic-paper-reviewer/references/quality_rubrics.md` — scoring rubric definitions.
