@@ -28,6 +28,7 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 | Claude (session model) | _(inherited Claude Code session model — e.g., Fable 5)_ | Anthropic | Primary model (default for all ARS skills) |
 | GPT-5.5 | `gpt-5.5` | OpenAI | Cross-verification — recommended balance (supports `xhigh` reasoning) |
 | GPT-5.5 Pro | `gpt-5.5-pro` | OpenAI | Cross-verification — strongest reasoning (premium pricing: ~6× GPT-5.5) |
+| GPT-5.6 Sol | `gpt-5.6-sol` | OpenAI | Cross-verification — frontier tier, **provisional pending ARS validation** (same standard rates as GPT-5.5) |
 | Gemini 3.1 Pro | `gemini-3.1-pro-preview` | Google | Cross-verification — strong at factual verification |
 
 ### OpenAI-compatible providers (Chat Completions API — UNGROUNDED, opt-in)
@@ -44,6 +45,8 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 > The primary row deliberately names no version: the primary is always the session model, so the row cannot go stale on the next Anthropic release. Verifier IDs stay concrete because they are literal API strings the user must export. (`gpt-5.4` / `gpt-5.4-pro` remain accepted for existing setups.)
 
+> **GPT-5.6 Sol is provisional (listed 2026-07-11, three days after release).** Its endpoint support (Responses API), hosted `web_search` tool, and reasoning-effort values are confirmed against OpenAI's model documentation, but its ARS-specific behavior — grounded-search completion rate, citation-mismatch recall, false-disagreement rate, response-shape stability against the jq grounding guards, p95 latency — is unvalidated. **GPT-5.5 remains the recommended default** until `gpt-5.6-sol` shows non-inferiority on those measures; run `scripts/cross_model_smoke_test.sh` against your key before adopting it. Two facts that differ from the GPT-5.5 lineup: GPT-5.6 ships **no `-pro` model ID** — premium operation is standard `gpt-5.6-sol` plus `reasoning: {mode: "pro"}` in the request, billed at standard token rates with more model work per request (the old fixed ~6× unit-price split does not carry over); and its reasoning effort accepts `none|low|medium|high|xhigh|max` (GPT-5.5 tops out at `xhigh`), defaulting to `medium` in both standard and pro modes.
+
 Using two non-Anthropic models as primary+verifier is possible but not tested with ARS prompts.
 
 ## Setup Guide
@@ -54,7 +57,7 @@ You need API keys from at least one additional provider. ARS itself runs inside 
 
 ### Step 1: Get API Keys
 
-**OpenAI (GPT-5.5):**
+**OpenAI (GPT-5.5 / GPT-5.6 Sol):**
 1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 2. Create a new API key
 3. Copy the key (starts with `sk-`)
@@ -80,6 +83,11 @@ Add to your shell profile (`~/.zshrc` or `~/.bashrc`):
 # --- Option A: OpenAI (first-party, grounded) ---
 export OPENAI_API_KEY="<your-openai-api-key>"
 export ARS_CROSS_MODEL="gpt-5.5"
+# Frontier alternative, provisional pending ARS validation (see Supported Models):
+# export ARS_CROSS_MODEL="gpt-5.6-sol"
+# Optional: reasoning effort for OpenAI verifier calls (default: medium — the API default).
+# GPT-5.6 accepts none|low|medium|high|xhigh|max; GPT-5.5 tops out at xhigh.
+# export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
 
 # --- Option B: Google Gemini (first-party, grounded) ---
 export GOOGLE_AI_API_KEY="<your-google-ai-api-key>"
@@ -207,20 +215,22 @@ The DA agent, after completing its checkpoint report, should:
 
 Three patterns are documented below. The first two (OpenAI and Gemini) are first-party and share the same contract: enable the provider's hosted web-search tool, and **gate the model's text on proof that a search actually happened** — no grounding evidence (an OpenAI `web_search_call` item / a Gemini `groundingMetadata` block) emits `NOT_SEARCHED` and the text is discarded, so this guard, not the prompt wording, is what prevents a from-memory guess being laundered into `VERIFIED`. Both first-party web-search tools are hosted/server-side: one request, no client-side tool-call round-trip. The third (OpenAI-compatible) is ungrounded by construction: it has no web-search tool, so the handler downgrades positive verdicts to `NOT_SEARCHED` and lets rejections through, and a compatible verdict never counts as a grounded agreement. `PROMPT` holds the single-reference verification prompt from step 3.
 
-### OpenAI (GPT-5.5 / GPT-5.5 Pro)
+### OpenAI (GPT-5.5 / GPT-5.5 Pro / GPT-5.6 Sol)
 
-Use the **Responses API** (`/v1/responses`) — the hosted `web_search` tool lives there. (Chat Completions does not take `tools: [{type: "web_search"}]`; web search on that endpoint requires the separate `gpt-5-search-api` model, so this example targets Responses to stay model-agnostic across `gpt-5.5` / `gpt-5.5-pro` / the legacy `gpt-5.4*` ids.)
+Use the **Responses API** (`/v1/responses`) — the hosted `web_search` tool lives there. (Chat Completions does not take `tools: [{type: "web_search"}]`; web search on that endpoint requires the separate `gpt-5-search-api` model, so this example targets Responses to stay model-agnostic across `gpt-5.5` / `gpt-5.5-pro` / `gpt-5.6-sol` / the legacy `gpt-5.4*` ids.)
 
 ```bash
 # PROMPT holds the single-reference verification prompt (step 3). One reference per call.
 resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
-  -d "$(jq -n --arg model "$ARS_CROSS_MODEL" --arg prompt "$PROMPT" '{
+  -d "$(jq -n --arg model "$ARS_CROSS_MODEL" --arg prompt "$PROMPT" \
+        --arg effort "${ARS_CROSS_MODEL_REASONING_EFFORT:-medium}" '{
     model: $model,
     instructions: "You are a citation-verification assistant. Search the web before every verdict; never answer from memory. If you could not search, respond NOT_SEARCHED.",
     input: $prompt,
     tools: [{type: "web_search"}],
+    reasoning: {effort: $effort},
     temperature: 0.1
   }')")"
 
@@ -287,6 +297,8 @@ fi
 ```
 
 > **Why `temperature: 0.1`:** reference existence/metadata checking is a deterministic factual task, so low temperature reduces run-to-run variance in the verdict. It is not a grounding control — the grounding guard above is what enforces an actual lookup.
+
+> **Reasoning effort (OpenAI only):** the payload passes `reasoning.effort` from `ARS_CROSS_MODEL_REASONING_EFFORT`, defaulting to `medium` — the API default, made explicit so the effort a verification run uses is visible and reproducible rather than whatever the provider's default happens to be. Citation lookup is search-bound, not reasoning-bound, so higher efforts mostly buy latency and cost here; raise it deliberately per session if a run shows shallow search behavior. The value is passed through unvalidated (the API rejects unknown values): GPT-5.5 accepts up to `xhigh`, GPT-5.6 adds `max`.
 
 ### OpenAI-Compatible API (MiMo, DeepSeek, self-hosted) — ungrounded
 
@@ -394,7 +406,7 @@ if [ -n "$ARS_CROSS_MODEL" ]; then
         echo "WARNING: ARS_OPENAI_COMPAT_BASE_URL is set but ARS_OPENAI_COMPAT_API_KEY is not — refusing to send another provider's key. Set ARS_OPENAI_COMPAT_API_KEY."
         echo "CROSS_MODEL_AVAILABLE=none"
       else
-        echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a recognized model. First-party grounded route: any gpt-* id (e.g. gpt-5.5, gpt-5.5-pro, legacy gpt-5.4*) or gemini-* id (e.g. gemini-3.1-pro-preview). For an OpenAI-compatible provider set ARS_OPENAI_COMPAT_BASE_URL + ARS_OPENAI_COMPAT_API_KEY and use that provider's model id (must not match a gpt-*/gemini-* prefix, or it takes the grounded first-party route instead)."
+        echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL is not a recognized model. First-party grounded route: any gpt-* id (e.g. gpt-5.5, gpt-5.5-pro, gpt-5.6-sol, legacy gpt-5.4*) or gemini-* id (e.g. gemini-3.1-pro-preview). For an OpenAI-compatible provider set ARS_OPENAI_COMPAT_BASE_URL + ARS_OPENAI_COMPAT_API_KEY and use that provider's model id (must not match a gpt-*/gemini-* prefix, or it takes the grounded first-party route instead)."
         echo "CROSS_MODEL_AVAILABLE=none"
       fi ;;
   esac
@@ -416,7 +428,7 @@ Cross-model verification adds API costs from the second provider:
 | Peer review (planned, not yet implemented) | — | — |
 | **Full pipeline** | **~18 calls** | **~$1.50-3.15** |
 
-These are rough estimates based on GPT-5.5 pricing ($5/1M input, $30/1M output) and typical prompt sizes; GPT-5.5 Pro runs ~6× higher ($30/1M input, $180/1M output). One-call-per-reference (rather than batching) is a deliberate cost-for-provenance trade: it is the only way the grounding-evidence check maps 1:1 to each verdict. Web-search-tool calls also cost more than plain completions.
+These are rough estimates based on GPT-5.5 pricing ($5/1M input, $30/1M output) and typical prompt sizes; GPT-5.5 Pro runs ~6× higher ($30/1M input, $180/1M output). GPT-5.6 Sol bills at the same standard rates as GPT-5.5 ($5/1M input, $0.50/1M cached input, $30/1M output); its pro mode keeps those rates but performs more model work per request, so total tokens (and latency) rise instead of the unit price. One-call-per-reference (rather than batching) is a deliberate cost-for-provenance trade: it is the only way the grounding-evidence check maps 1:1 to each verdict. Web-search-tool calls also cost more than plain completions.
 
 ## Limitations
 

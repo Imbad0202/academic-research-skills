@@ -154,6 +154,10 @@ export GOOGLE_AI_API_KEY="AIza-your-key-here"    # For Gemini 3.1 Pro
 # Step 2: Choose your cross-verification model
 export ARS_CROSS_MODEL="gpt-5.5"                # Recommended pair (gpt-5.5-pro = strongest reasoning, ~6x cost)
 # or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Strong at factual verification
+# or: export ARS_CROSS_MODEL="gpt-5.6-sol"      # Frontier, provisional pending ARS validation (same rates as gpt-5.5)
+
+# Optional: reasoning effort for OpenAI verifier calls (default: medium)
+# export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
 
 # Step 3: Run Claude Code as normal — cross-verification activates automatically
 claude
