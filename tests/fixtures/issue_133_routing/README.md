@@ -36,6 +36,8 @@ If you cannot reach 100% on the current primary model, the routing prose in CLAU
 | 06 | `06_direct_mode_mid_message_not_honored/` | "Please [direct-mode] dispatch X" | **Clarify** (escape hatch ignored — not byte-0) |
 | 07 | `07_direct_mode_case_insensitive/` | `[Direct-Mode] write an abstract` | **Proceed** (case-insensitive accepted) |
 | 08 | `08_full_draft_plus_abstract_plus_lit/` | Full draft + abstract + literature, no clear intent | **Clarify** (cross-phase, multiple plausible workflows) |
+| 09 | `09_korean_revision_not_review/` | Korean 수정 (revise) request + draft (#452) | **Proceed** → `academic-paper:revision` (not reviewer) |
+| 10 | `10_korean_review_not_revision/` | Korean 심사 (referee) request + manuscript (#452) | **Proceed** → `academic-paper-reviewer:full` (not paper) |
 
 ## Fixture file format
 
