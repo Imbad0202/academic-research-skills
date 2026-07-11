@@ -29,20 +29,37 @@ none of the 48 items; the 12 generated items it did fire on were excluded as on-
 2. **On-list filter.** The shipped regex detector removed 12 literal-surface-form
    matches. The remaining 68 are held out of the *listed surface forms* by
    construction.
-3. **Dual annotation.** The 88 candidates were annotated independently by the
-   generator model (noun-swap rubric verbatim) and by the maintainer-side reviewer.
-   Seven disagreement/borderline items were dropped (`nat-041/050/052/055/056`
-   name mechanisms or engineering artifacts; `nat-064/067` split between annotators).
-   Only agreed labels shipped.
-4. **Elicited rewrites (label by construction).** Two realistic de-cliché flows —
-   "rewrite so it sounds less AI-cliché" (`el-*`) and "give my paper a catchy,
-   ambitious title" (`ti-*`) — were run on agreed-shell sources with an explicit
-   no-new-specifics constraint, so shell labels inherit from the sources; each
-   rewrite was manually verified to add no mechanism/instrument/site. One borderline
-   (`ti-005`, brushes the "concrete theoretical tension" exemption) was dropped.
-   These flows are how off-list shells arise in the wild: users asking an AI to
-   polish an already-shell phrasing.
-5. **Final set.** 32 shells (23 `family_variant` + 9 `off_list`) + 16 domain-native
+3. **Dual annotation.** The 88 candidates were annotated independently by two
+   models: the generator (`gpt-5.6-sol`, noun-swap rubric verbatim) and the
+   maintainer-session agent (`claude-fable-5`). Seven disagreement/borderline items
+   were dropped (`nat-041/050/052/055/056` name mechanisms or engineering artifacts;
+   `nat-064/067` split between annotators). Only agreed labels shipped. Caveat:
+   annotator 2 shares a model family with the measured judge (`claude-sonnet-5`);
+   the cross-family generator annotation and the mechanical regex filter are the
+   independence anchors.
+4. **Elicited rewrites (label by construction + re-verification).** Two realistic
+   de-cliché flows — "rewrite so it sounds less AI-cliché" (`el-*`) and "give my
+   paper a catchy, ambitious title" (`ti-*`) — were run on agreed-shell sources with
+   an explicit no-new-specifics constraint. Shell labels inherit from the sources,
+   and annotator 2 additionally re-applied the noun-swap judgment to every rewrite
+   (not only the no-new-specifics check); one borderline (`ti-005`, brushes the
+   "concrete theoretical tension" exemption) was dropped at that step. These flows
+   are how off-list shells arise in the wild: users asking an AI to polish an
+   already-shell phrasing. **Construct note:** the `ti-*` items are title-form
+   phrasings, not interrogative RQs — 8 of the 9 `off_list` shells. They are in
+   scope for the advisory (the `academic-paper` twin covers thesis sentences and
+   chapter framings, and users paste working titles as directions), but off-list
+   conclusions from this set are specifically about decorated title-form shells.
+5. **Final selection (deterministic, documented).** From the agreed pool: 15
+   natural family-variants picked by per-field round-robin (fields sorted
+   alphabetically, items in id order; `random.seed(501)` for batch shuffling only),
+   plus `nat-044` (the only agreed off-list natural); 8 of 18 `el-*` and 8 of 13
+   eligible `ti-*` picked for field spread; all 32 elicitation source items were
+   excluded from the set to avoid near-duplicate pairs. Negatives: `nat-059` (the
+   single agreed natural negative) + 15 of 20 `dn-*` (dropped `dn-004/010/015/017/020`
+   to hit the 16-negative budget while keeping field spread). Selection happened
+   before any judging run.
+6. **Final set.** 32 shells (23 `family_variant` + 9 `off_list`) + 16 domain-native
    hard negatives = 48 items. `tier` is descriptive metadata; `label` is ground truth.
 
 ## Measurement protocol (re-run this for any future advisory change)
@@ -67,13 +84,14 @@ none of the 48 items; the 12 generated items it did fire on were excluded as on-
 
 **Verdict: miss rate HIGH** (overall ≥ the 0.30 line). The gap is concentrated in
 `off_list` decorated compound-title shells — the same 7 of 9 missed in both post
-replicates — where judges read generic topical nouns ("cybersecurity training",
-"nurse workload") as the exemption's "specific mechanism". Family-variant
-generalization is under the line (0.17–0.26), and false-fire is zero on both
-variants: the conservative bar over-exempts rather than over-warns. Per issue
-#501, this set is therefore the acceptance test for any future advisory change.
-Judge model: `claude-sonnet-5`; both the set (English-only, one generator model)
-and the judgments are model- and time-specific and drift across versions — re-run
-rather than reuse the numbers.
+replicates — where the captured judge reasoning reads generic topical nouns
+("cybersecurity training", "nurse workload") as the exemption's "specific
+mechanism" (excerpts in `judge_reasoning_excerpts.md`; boolean outcomes in the
+measurement JSON). Family-variant generalization is under the line (0.17–0.26),
+and false-fire is zero on both variants: the conservative bar over-exempts rather
+than over-warns. Per issue #501, this set is therefore the acceptance test for any
+future advisory change. Judge model: `claude-sonnet-5`; both the set (English-only,
+one generator model) and the judgments are model- and time-specific and drift
+across versions — re-run rather than reuse the numbers.
 
 Full write-up: `audits/rq-advisory-heldout-measurement-2026-07-11.md`.
