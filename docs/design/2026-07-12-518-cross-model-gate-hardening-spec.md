@@ -27,16 +27,16 @@ A 2026-07-11 cross-model consult (gpt-5.6-sol, xhigh) on verifier placement prod
 
 Replaces the uniform random 30% (min 5, max 15) in `shared/cross_model_verification.md` §Integrity Verification and its consumer copy in `integrity_verification_agent.md`.
 
-**Tier classification (by the primary, at selection time, reported in the results table):**
+**Tier classification (by the primary, at selection time, reported in the results table).** Four tiers, mutually exclusive by precedence (`HIGH-IMPACT` > `NEW-CHANGED` > `CONTROL`/`RANDOM`); a reference qualifying for more than one is classified once at the highest tier and verified once:
 
-- **HIGH-IMPACT — verify 100%, no cap.** A reference is high-impact if it supports any of: (a) a headline conclusion (abstract- or conclusions-level claim); (b) a numerical claim (statistic, effect size, percentage, threshold); (c) a causal claim; (d) a methods-critical claim (the validity of the chosen method rests on it); (e) a disputed claim (already carrying a contradiction disclosure or reviewer split).
-- **RANDOM — the remainder**, sampled at 10% (min 3, max 10; if the remainder < 3, sample all of it).
+- **HIGH-IMPACT — verify 100%, no cap (both gates).** A reference is high-impact if it supports any of: (a) a headline conclusion (abstract- or conclusions-level claim); (b) a numerical claim (statistic, effect size, percentage, threshold); (c) a causal claim; (d) a methods-critical claim (the validity of the chosen method rests on it); (e) a disputed claim (already carrying a contradiction disclosure or reviewer split).
+- **RANDOM (Stage 2.5 only) — the non-high-impact remainder**, sampled at 10%, rounded up (min 3, max 10; if the remainder < 3, sample all of it).
+- **NEW-CHANGED (Stage 4.5 only) — verify 100%, no cap:** every reference supporting a claim new or changed since Stage 2.5, whatever its impact class.
+- **CONTROL (Stage 4.5 only) — the unchanged, non-high-impact remainder**, sampled at 10%, rounded up (min 3, max 10), to catch silent drift. CONTROL replaces RANDOM at the final gate.
 
-**Stage 4.5 (final gate):** verify 100% of references supporting claims that are **new or changed** since Stage 2.5, plus a **CONTROL** sample of unchanged ones (10%, min 3) to catch silent drift.
+**Cost model change (documented, deliberate):** calls now scale with the count of high-impact (and, at Stage 4.5, new/changed) citations instead of total reference count. A results-dense paper approaches 100% coverage; that is the point — precision where the paper's weight rests. The old flat cap (max 15) is retired; only the sampled tiers (RANDOM/CONTROL) carry a cap (max 10 each).
 
-**Cost model change (documented, deliberate):** calls now scale with the count of high-impact citations instead of total reference count. A results-dense paper approaches 100% coverage; that is the point — precision where the paper's weight rests. The old flat cap (max 15) is retired for the HIGH-IMPACT tier and survives only in the RANDOM/CONTROL tiers.
-
-Sampling parameters (10% / min 3 / max 10) are this spec's choice, not the issue's; they are tunable without protocol redesign.
+Sampling parameters (10% / round-up / min 3 / max 10) are this spec's choice, not the issue's; they are tunable without protocol redesign. *(Round-2 codex review: the tier set was widened from three to four — a new/changed non-high-impact reference was unrepresentable — and the stale "max 15 survives" sentence was removed.)*
 
 ### D2 — Blind disagreement checkpoints (replaces the "6th reviewer — Planned" section)
 
@@ -45,11 +45,11 @@ Two irreversible checkpoints gain an optional cross-model check when `ARS_CROSS_
 | Checkpoint | Primary owner | Cross-model input (never the primary's decision) | Structured decision enum |
 |---|---|---|---|
 | Research-design freeze | `research_architect_agent` (deep-research) | RQ Brief + draft Methodology Blueprint | `sound` / `revise_before_freeze` / `fundamental_concern` |
-| Final editorial decision | `editorial_synthesizer_agent` (academic-paper-reviewer) | The five reviewer cards + paper metadata | `accept` / `minor_revision` / `major_revision` / `reject` |
+| Final editorial decision | `editorial_synthesizer_agent` (academic-paper-reviewer) | The panel's usable reviewer cards (`panel_size` N — 5 in full mode, 2 under `methodology_focus`) + paper metadata | `accept` / `minor_revision` / `major_revision` / `reject` |
 
 **Mechanics (shared):**
 
-1. The primary reaches its decision as normal.
+1. The primary reaches its decision as normal and commits it in the SAME structured form (enum + up to 3 drivers) before the cross-model is called — enum-against-enum comparison, both sides blind. The architect records it in a new Design-Freeze Checkpoint Audit section of the blueprint; the synthesizer's is the emitted decision (in sprint-contract mode, the mechanical protocol's `editorial_decision` verbatim, with the checkpoint running strictly post-Step-3, never extending the contract arithmetic).
 2. The cross-model receives the same input material and a structured-decision prompt. It **never** sees the primary's decision, scores, or reasoning first — same anchoring-prevention rule as the integrity samples.
 3. Output contract: `{decision: <enum>, drivers: [≤3 one-sentence reasons], confidence: low|medium|high}`.
 4. Mechanical comparison: **material divergence = differing enum values.** (Adjacent categories, e.g. minor vs major revision, are still material; the report notes adjacency.)
@@ -82,14 +82,15 @@ Status applies to first-party routes only; compatible-route ids are user-declare
 New subsection in the canonical doc operationalizing the five measures already named in the provisional note.
 
 - **Entry gate:** `scripts/cross_model_smoke_test.sh` passes against the candidate id.
-- **Probe set:** 30 fixed references — 20 real (10 easy: DOI-keyed journal articles; 10 hard: preprints, DOI-less, non-English) + 10 synthetic plausible fabrications. Run baseline (`gpt-5.5`) and candidate the same day, one call per reference, 3 repeats, majority verdict per reference.
+- **Probe-set precondition:** the 30-reference probe set (20 real: 10 easy DOI-keyed + 10 hard preprints/DOI-less/non-English; 10 synthetic plausible fabrications) must be committed as a versioned, labeled fixture with its sha256 recorded in the run report before any run counts as a gate result.
+- **Procedure:** baseline (`gpt-5.5`) and candidate the same day, one call per reference, 3 repeats; per-reference verdict = ≥2/3 agreement, a 1–1–1 split is indeterminate and scored conservatively against the model that produced it.
 - **Non-inferiority thresholds (all five must pass):**
   1. Grounded-search completion rate ≥ baseline − 5 pp.
   2. Citation-mismatch recall on the 10 fabrications ≥ baseline − 5 pp AND ≥ 80% absolute.
   3. False-disagreement rate on the 20 real ≤ baseline + 5 pp.
   4. jq-guard shape stability: zero guard misfires attributable to response-shape change (hard requirement).
   5. p95 latency ≤ 2× baseline.
-- **Outcome:** pass → a promotion PR flips the recommended default (Supported Models table, Setup examples, D3 allowlist `provisional` → `validated`) and records results under `audits/`. Any fail → stays provisional, results still recorded.
+- **Outcome — two promotions, not one:** all five pass → `provisional` becomes `validated` (allowlist + Supported Models note; run recorded under `audits/` with the probe-set hash). The **recommended default** flips only with an additional stated reason (superiority on ≥1 measure with no inferiority elsewhere, or a named operational benefit) — a candidate that merely scraped under every tolerance is validated but not the new recommendation. Any fail → stays provisional, results still recorded. *(Round-2 codex review: outcome split added — a bare non-inferiority pass no longer auto-flips the default; probe-set fixture + tie handling made preconditions.)*
 
 Thresholds are this spec's choice; recorded here so a future bakeoff argues against numbers, not vibes.
 

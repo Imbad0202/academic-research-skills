@@ -142,11 +142,12 @@ unset ARS_CROSS_MODEL
 When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environment, it should:
 
 1. Complete Phase A verification normally
-2. Select references by **risk stratification** (#518; replaces uniform random 30%). Classify each reference at selection time and record the tier in the results table:
-   - **HIGH-IMPACT — verify 100%, no cap.** A reference is high-impact if it supports any of: (a) a headline conclusion (abstract- or conclusions-level claim); (b) a numerical claim (statistic, effect size, percentage, threshold); (c) a causal claim; (d) a methods-critical claim (the validity of the chosen method rests on it); (e) a disputed claim (already carrying a contradiction disclosure or reviewer split).
-   - **RANDOM — the remainder**, sampled at 10% (minimum 3, maximum 10; if the remainder has fewer than 3 references, sample all of it).
-   - **At Stage 4.5 (final gate):** verify 100% of references supporting claims that are **new or changed** since Stage 2.5, plus a **CONTROL** sample of unchanged ones (10%, minimum 3) to catch silent drift.
-   - Cost scales with the count of high-impact citations instead of total reference count — a results-dense paper approaches 100% coverage, which is the point: verification budget concentrates where the paper's weight rests. The old flat cap (max 15) survives only in the RANDOM/CONTROL tiers.
+2. Select references by **risk stratification** (#518; replaces uniform random 30%). Classify each reference at selection time and record the tier in the results table. Four tiers; a reference qualifying for more than one is classified once at the highest tier that applies (precedence: `HIGH-IMPACT` > `NEW-CHANGED` > `CONTROL`/`RANDOM`) and verified once:
+   - **HIGH-IMPACT — verify 100%, no cap (both gates).** A reference is high-impact if it supports any of: (a) a headline conclusion (abstract- or conclusions-level claim); (b) a numerical claim (statistic, effect size, percentage, threshold); (c) a causal claim; (d) a methods-critical claim (the validity of the chosen method rests on it); (e) a disputed claim (already carrying a contradiction disclosure or reviewer split).
+   - **RANDOM (Stage 2.5 only) — the non-high-impact remainder**, sampled at 10%, rounded up (minimum 3, maximum 10; if the remainder has fewer than 3 references, sample all of it).
+   - **NEW-CHANGED (Stage 4.5 only) — verify 100%, no cap:** every reference supporting a claim that is **new or changed** since Stage 2.5, whatever its impact class.
+   - **CONTROL (Stage 4.5 only) — the unchanged, non-high-impact remainder**, sampled at 10%, rounded up (minimum 3, maximum 10; fewer than 3 → all of it) to catch silent drift. At Stage 4.5, CONTROL replaces RANDOM — there is no separate RANDOM tier at the final gate.
+   - Cost scales with the count of high-impact (and, at Stage 4.5, new/changed) citations instead of total reference count — a results-dense paper approaches 100% coverage, which is the point: verification budget concentrates where the paper's weight rests. The old flat cap (max 15) is retired; only the sampled tiers (RANDOM/CONTROL) carry a cap (max 10 each).
 3. Issue **one API call per reference** — not a batch. (Batching hides which reference the model actually grounded: a single grounding-metadata trace on a 5-reference response proves *something* was searched, not that *each* reference was. One reference per call makes the grounding evidence 1:1 with the verdict.) For each reference, construct a verification prompt:
    ```
    Verify this academic reference. Check: Does it exist? Are the author
@@ -167,7 +168,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
 6. Include disagreements in the integrity report under a new section:
    ```markdown
    ### Cross-Model Verification Results
-   - References selected: X/Y (Z%) — HIGH-IMPACT: H (100% of tier), RANDOM: R, CONTROL: C (Stage 4.5 only)
+   - References selected: X/Y (Z%) — HIGH-IMPACT: H (100% of tier), RANDOM: R (Stage 2.5), NEW-CHANGED: N + CONTROL: C (Stage 4.5)
    - Agreements: N
    - Disagreements: M (listed below, prioritized for human review)
    - Ungrounded (NOT_SEARCHED): U (the cross-model could not actually search — these are NOT confirmations; re-run or human-review)
@@ -175,7 +176,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
    | # | Reference | Tier | Claude | Cross-Model | Source (URL/DOI) | Status |
    |---|-----------|------|--------|-------------|------------------|--------|
    ```
-   The `Tier` column is `HIGH-IMPACT` / `RANDOM` / `CONTROL` per step 2. The `Source` column carries the URL/DOI the cross-model returned for a `VERIFIED` row; a blank source on a `VERIFIED` verdict downgrades it to `NOT_SEARCHED`.
+   The `Tier` column is `HIGH-IMPACT` / `RANDOM` / `NEW-CHANGED` / `CONTROL` per step 2 (one tier per reference, highest-precedence tier wins). The `Source` column carries the URL/DOI the cross-model returned for a `VERIFIED` row; a blank source on a `VERIFIED` verdict downgrades it to `NOT_SEARCHED`.
 
 ### Devil's Advocate (deep-research + academic-paper-reviewer)
 
@@ -214,11 +215,11 @@ Two irreversible checkpoints gain an optional cross-model check when `ARS_CROSS_
 | Checkpoint | Primary owner | Cross-model input (never the primary's decision) | Structured decision enum |
 |---|---|---|---|
 | Research-design freeze | `research_architect_agent` (deep-research) | RQ Brief + draft Methodology Blueprint | `sound` / `revise_before_freeze` / `fundamental_concern` |
-| Final editorial decision | `editorial_synthesizer_agent` (academic-paper-reviewer) | The five reviewer cards + paper metadata | `accept` / `minor_revision` / `major_revision` / `reject` |
+| Final editorial decision | `editorial_synthesizer_agent` (academic-paper-reviewer) | The panel's usable reviewer cards (all `panel_size` N of them — 5 in the default full-mode panel, 2 under `methodology_focus`) + paper metadata | `accept` / `minor_revision` / `major_revision` / `reject` |
 
 **Mechanics:**
 
-1. The primary reaches its decision as normal.
+1. The primary reaches its decision as normal and records it in the SAME structured form (the enum + up to 3 drivers) **before** the cross-model is called — both sides commit blind, so the comparison in step 4 is enum-against-enum, not enum-against-prose. Under a sprint contract, the editorial checkpoint runs **after** the mechanical three-step protocol has emitted `editorial_decision` (a post-Step-3 comparison; the contract arithmetic itself is never extended or re-run).
 2. The cross-model receives the same input material and a structured-decision prompt. It **never** sees the primary's decision, scores, or reasoning first — the same anchoring-prevention rule as the integrity samples.
 3. Output contract: `{decision: <enum>, drivers: [up to 3 one-sentence reasons], confidence: low|medium|high}`.
 4. Mechanical comparison: **material divergence = differing enum values.** Adjacent categories (e.g. minor vs major revision) are still material; the report notes adjacency.
@@ -469,14 +470,18 @@ If `ARS_CROSS_MODEL` is set but the corresponding API key is missing or the mode
 The run that flips a provisional id (today: `gpt-5.6-sol`) to validated — and, on a clean pass, to the recommended default — is defined here so a future promotion argues against numbers, not vibes (#518).
 
 - **Entry gate:** `scripts/cross_model_smoke_test.sh` passes against the candidate id.
-- **Probe set:** 30 fixed references — 20 real (10 easy: DOI-keyed journal articles; 10 hard: preprints, DOI-less, non-English) + 10 synthetic plausible fabrications. Run the baseline (`gpt-5.5`) and the candidate the same day, one call per reference, 3 repeats, majority verdict per reference.
+- **Probe-set precondition (reproducibility):** before any run counts, the probe set must be committed as a versioned fixture (under `evals/` or `audits/`) listing each reference's full text, its ground-truth label (`real` / `fabricated`, with source DOI/URL for the real ones), and the file's sha256 recorded in the run report. A bakeoff against an ad-hoc, unversioned probe set is not a gate result. Composition: 30 references — 20 real (10 easy: DOI-keyed journal articles; 10 hard: preprints, DOI-less, non-English) + 10 synthetic plausible fabrications.
+- **Procedure:** run the baseline (`gpt-5.5`) and the candidate the same day, one call per reference, 3 repeats. Per-reference verdict = the verdict returned by ≥ 2 of 3 repeats; if no verdict reaches 2 (a 1–1–1 split), the reference is **indeterminate** and scored conservatively against the model that produced it — a miss for recall (measure 2), a false disagreement for measure 3. Grounded-search completion (measure 1) is computed per call, so ties don't apply.
 - **Non-inferiority thresholds — all five must pass:**
   1. **Grounded-search completion rate** (share of calls returning grounding evidence) ≥ baseline − 5 pp.
   2. **Citation-mismatch recall** on the 10 fabrications (share flagged `NOT_FOUND`/`MISMATCH`) ≥ baseline − 5 pp AND ≥ 80% absolute.
   3. **False-disagreement rate** on the 20 real references (share incorrectly flagged `NOT_FOUND`/`MISMATCH`) ≤ baseline + 5 pp.
   4. **jq-guard shape stability:** zero guard misfires attributable to response-shape change across all calls (hard requirement — a shape change that trips the fail-closed guards disqualifies regardless of the other measures).
   5. **p95 latency** ≤ 2× baseline.
-- **Outcome:** pass → a promotion PR flips the recommended default (Supported Models table, Setup examples, the id-status allowlist `provisional` → `validated`) and records the run under `audits/`. Any fail → the id stays provisional; the results are still recorded.
+- **Outcome — two distinct promotions, not one:**
+  - **All five pass → `provisional` becomes `validated`** (the id-status allowlist and the Supported Models note update; a promotion PR records the run under `audits/` with the probe-set hash). Non-inferiority earns trust, nothing more.
+  - **Recommended default flips only with a separate, stated reason on top of the validated pass** — superiority on at least one measure with no inferiority elsewhere, or a concrete operational benefit (cost, latency, capability) the promotion PR names explicitly. A candidate that merely scraped under every tolerance (−5 pp grounding, −5 pp recall, +5 pp false disagreements, 2× latency) is validated but NOT the new recommendation.
+  - Any fail → the id stays provisional; the results are still recorded.
 
 Web-search results vary day to day; the 3-repeat majority verdict and same-day paired runs are what make the comparison fair. Thresholds are the #518 spec's choice and are tunable in a future spec without redesigning the procedure.
 
