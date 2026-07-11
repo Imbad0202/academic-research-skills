@@ -501,7 +501,7 @@ These are rough estimates based on GPT-5.5 pricing ($5/1M input, $30/1M output) 
 ## Limitations
 
 1. **Does not solve frame-lock fully.** All major LLMs share substantial training data. Cross-model catches different surface errors but may share deep structural biases.
-2. **API latency.** Cross-model calls add 2-5 seconds per call, plus web-search round-trip time. With one call per reference (no batching) and a web-search tool, a risk-stratified integrity selection (100% of high-impact references — uncapped — plus the capped random remainder) can add several minutes on a results-dense paper; the calls can be issued concurrently to bound wall-clock time.
+2. **API latency.** Cross-model calls add 2-5 seconds per call, plus web-search round-trip time. With one call per reference (no batching) and a web-search tool, a risk-stratified integrity selection (uncapped HIGH-IMPACT plus the capped RANDOM sample at Stage 2.5; uncapped HIGH-IMPACT + NEW-CHANGED plus the capped CONTROL sample at Stage 4.5) can add several minutes on a results-dense paper; the calls can be issued concurrently to bound wall-clock time.
 3. **Response format differences.** Different models structure responses differently. The agent must parse varied formats — keep verification prompts simple and structured to minimize parsing issues.
 4. **Cost scales with paper size.** Longer papers with more references = more cross-model calls.
 
