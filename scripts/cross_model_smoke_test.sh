@@ -20,9 +20,11 @@
 # Checks (exit 0 only if all hard checks pass):
 #   1. HTTP 2xx (transport)
 #   2. completed web_search_call present  — canonical jq guard, fail-closed
-#   3. non-empty verdict text carrying exactly one DISTINCT whole-word verdict
-#      token (a substring hit inside e.g. "UNVERIFIED" does not count; the same
-#      token repeated in prose warns but passes)
+#   3. non-empty verdict text carrying exactly ONE whole-word verdict token —
+#      single occurrence enforced (a substring hit inside e.g. "UNVERIFIED"
+#      does not count; a repeated token FAILS: the fixture prompt demands
+#      exactly one verdict, and a model that cannot comply with that
+#      instruction is itself a gate signal)
 #   4. a VERIFIED verdict carries at least one url_citation source
 #   5. response model echo matches the requested model id (prefix match on
 #      snapshot suffixes, e.g. gpt-5.5 -> gpt-5.5-2026-xx-xx)
@@ -117,9 +119,11 @@ else
   verdicts="$(printf '%s' "$all_hits" | sort -u | grep . || true)"
   distinct="$(printf '%s' "$verdicts" | grep -c . || true)"
   total="$(printf '%s' "$all_hits" | grep -c . || true)"
-  if [ "$distinct" -eq 1 ]; then
+  if [ "$distinct" -eq 1 ] && [ "$total" -eq 1 ]; then
     pass "verdict token: $verdicts"
-    [ "$total" -gt 1 ] && note "WARN: verdict token repeated $total times in prose (unambiguous, but consumers should read the first occurrence)"
+  elif [ "$distinct" -eq 1 ]; then
+    fail "verdict token '$verdicts' repeated $total times — the single-verdict contract requires exactly one occurrence (the prompt demands exactly one verdict; non-compliance is a gate signal)"
+    verdicts=""
   elif [ "$distinct" -eq 0 ]; then
     fail "no whole-word verdict token in response text (parser would reject) — text: $(printf '%s' "$text" | head -c 200)"
     verdicts=""
