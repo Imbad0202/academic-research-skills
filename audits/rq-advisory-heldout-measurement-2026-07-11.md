@@ -17,8 +17,10 @@ future change.
 ## Method (summary — full protocol in the set's README)
 
 - 48-item held-out set: 32 shells (23 family-variant, 9 off-list) + 16 domain-native
-  hard negatives. Generated cross-model (`gpt-5.6-sol` via Codex CLI 0.144.1),
-  filtered against the shipped regex detector and the four in-prompt examples,
+  hard negatives. Generated cross-model (`gpt-5.6-sol` via Codex CLI 0.144.1); the
+  shell items are filtered against the shipped regex detector and the four
+  in-prompt examples (four negatives intentionally carry listed surface substrings
+  as hard-negative material — see the set README),
   dual-annotated (generator + maintainer; 8 borderline/disagreement items dropped),
   elicited-rewrite labels inherited by construction under a no-new-specifics
   constraint. English-only per the #468 language/model-drift caveat.

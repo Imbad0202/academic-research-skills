@@ -18,7 +18,12 @@ off-list examples quoted inside the post-#503 advisory paragraph ("unpacking the
 dynamics of…", "a deep dive into…", "rethinking X in the age of Y", "interrogating
 the nexus between…") — those four are in the judge's prompt and are no longer
 held out. The shipped regex detector (`scripts.check_rq_framing_patterns`) fires on
-none of the 48 items; the 12 generated items it did fire on were excluded as on-list.
+none of the **32 shell items**; the 12 generated candidates it did fire on were
+excluded as on-list. Four `domain_native` negatives (`dn-003/006/009/019`)
+intentionally DO contain listed surface substrings ("mediate the relationship
+between…", "effect of X on task performance") inside fully specified designs — the
+regex false-fires on them, while the LLM judge correctly stayed silent on all four
+in every run. They are hard negatives by design, not a filtering oversight.
 
 ## Construction (2026-07-11)
 
@@ -50,14 +55,17 @@ none of the 48 items; the 12 generated items it did fire on were excluded as on-
    scope for the advisory (the `academic-paper` twin covers thesis sentences and
    chapter framings, and users paste working titles as directions), but off-list
    conclusions from this set are specifically about decorated title-form shells.
-5. **Final selection (deterministic, documented).** From the agreed pool: 15
-   natural family-variants picked by per-field round-robin (fields sorted
-   alphabetically, items in id order; `random.seed(501)` for batch shuffling only),
-   plus `nat-044` (the only agreed off-list natural); 8 of 18 `el-*` and 8 of 13
-   eligible `ti-*` picked for field spread; all 32 elicitation source items were
-   excluded from the set to avoid near-duplicate pairs. Negatives: `nat-059` (the
-   single agreed natural negative) + 15 of 20 `dn-*` (dropped `dn-004/010/015/017/020`
-   to hit the 16-negative budget while keeping field spread). Selection happened
+5. **Final selection (enumerated manifest).** From the agreed pool: 15 natural
+   family-variants picked by per-field round-robin (fields sorted alphabetically,
+   items in id order; `random.seed(501)` for batch shuffling only), plus `nat-044`
+   (the only agreed off-list natural); all 32 elicitation source items were excluded
+   from the set to avoid near-duplicate pairs. The elicited/title/negative strata
+   were picked by maintainer judgment for field spread — the exact selections are
+   the manifest: `el-001/003/005/007/010/013/016/017` (8 of 18),
+   `ti-001/002/004/007/008/010/012/013` (8 of 13 eligible, `ti-005` dropped as
+   borderline), and negatives `nat-059` + `dn-*` all except `dn-004/010/015/017/020`
+   (dropped to hit the 16-negative budget while keeping field spread). The committed
+   `heldout_set.json` is the authoritative selection record. Selection happened
    before any judging run.
 6. **Final set.** 32 shells (23 `family_variant` + 9 `off_list`) + 16 domain-native
    hard negatives = 48 items. `tier` is descriptive metadata; `label` is ground truth.
