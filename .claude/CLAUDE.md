@@ -9,7 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.11.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.15.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.16.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.16 Key Additions (model tiering + cross-model gate hardening + WP advisory sharpening)
+
+- **Model tiering: judgment/execution split, two opt-in directions, default untouched (#517 → #520).** New `ARS_MODEL_TIERING` env switch + canonical `shared/model_tiering.md`. `economy` (frontier-tier session): the 13 execution-type agents dispatch one tier below the session model, floor Opus-class, never Sonnet. `quality-boost` (below-frontier session): the judgment-type agents at the Stage 2.5/4.5 integrity gates and final-review surfaces step up to the frontier tier; nothing is ever downgraded. Unset = byte-equivalent pre-#517 behavior. Tiers are relative positions, never hard-pinned model ids. The frozen 39-agent classification (26 judgment / 13 execution) lives in `scripts/model_tiering_manifest.json` + the canonical doc's table, pinned to each other and to the agent files on disk by `scripts/check_model_tiering.py` (15 mutation tests, CI-wired).
+- **Cross-model gate hardening (#518 → #519).** Four upgrades to `shared/cross_model_verification.md` and consumers: (1) integrity-gate sampling moves from uniform 30% to risk stratification — HIGH-IMPACT references verified 100% uncapped at both gates, NEW-CHANGED references 100% at Stage 4.5, plus 10% RANDOM/CONTROL samples of the remainder; (2) blind disagreement checkpoints at the two irreversible decisions (design freeze in `research_architect_agent`, final editorial decision in `editorial_synthesizer_agent`) — the primary commits its structured decision first, the cross-model decides blind, divergence escalates to the user (a review trigger, never a vote); (3) the "6th reviewer — Planned" section retired, not deferred (the counterproductive-conditions list matches ARS's documented anti-patterns one-for-one); (4) `CROSS_MODEL_ID_STATUS=validated|provisional|unlisted` id-status allowlist + a § Promotion Bakeoff operationalizing provisional→validated criteria.
+- **GPT-5.6 Sol as provisional verifier + explicit reasoning-effort control (#515 → #516).** `gpt-5.6-sol` joins the canonical model table as provisional pending ARS validation; GPT-5.5 stays the recommended default. New `ARS_CROSS_MODEL_REASONING_EFFORT` passes `reasoning.effort` explicitly (unset = provider default, so existing setups don't silently change). New `scripts/cross_model_smoke_test.sh` manual promotion gate.
+- **WP advisory generalization + exemption sharpening (#501 → #503/#504, #505 → #507).** The WP01-WP20 shell table is now explicitly illustrative: the noun-swap test is the operative judgment, off-list shells may fire at the same high-confidence bar. A 48-item held-out acceptance set (`evals/heldout/rq_framing_offlist/`) measured baseline miss 0.34–0.38; the #505 exemption sharpening (named-or-operationalized specifics required, decorated-compound-title rule) drove it to 0.094 across all four post runs with false-fire 0/16 preserved. The set is now the acceptance test for any future advisory change.
+- **Also:** Korean trigger keywords + routing boundary fixtures, proposal and phrases by @devCharlotte (#452 → #509); CARS introduction-rhetoric + title-crafting reference wired into `draft_writer_agent` (#500 → #502); reviewer calibration protocol documents the LLM-as-judge leniency direction with the FARS anchor (#484 → #506); OpenAlex API-key auth + budget-aware 429 handling + arXiv ToU-aligned backoff, proposed by @pikaqiu2333 (#495 → #496); `THIRD_PARTY.md` community directory + README pointer (#497 → #498).
 
 ## v3.15 Key Additions (release-gate hardening + prompt-debt retirement round 2 + defrift locks)
 
@@ -296,7 +304,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.15.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-07-04
+- **Suite version**: 3.16.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-07-12
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
