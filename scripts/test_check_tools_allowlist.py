@@ -355,6 +355,23 @@ def test_fullwidth_comma_and_name_and_paren_bash_fails(tmp_path):
     assert any("declares Bash" in e for e in errs)
 
 
+def test_nfkc_stable_alt_separator_is_not_a_bash_grant(tmp_path):
+    # #524 r12 (convergence boundary, documented as a NON-bug): an alternate
+    # separator that NFKC does NOT fold to ASCII "," — e.g. an ideographic comma
+    # U+3001, an Arabic comma U+060C, or a semicolon — keeps "Read、Bash" as ONE
+    # token for EVERYONE: the string is a single YAML scalar, this lint splits
+    # only on ASCII "," (and any NFKC-normalizing consumer would too), so no
+    # consumer extracts a bare "Bash" from it and no shell is granted. The
+    # fullwidth comma/paren cases fail (above) precisely because NFKC DOES fold
+    # them into the ASCII separators the split honors; these do not. Not
+    # flagging this is correct — flagging it would be a false positive a future
+    # maintainer might "fix" by over-broadening the separator set.
+    make_tree(tmp_path)
+    assert bash_fixture(tmp_path, "name: eic_agent\ntools: Read、Bash") == []
+    assert bash_fixture(tmp_path, "name: eic_agent\ntools: Read؍Bash") == []
+    assert bash_fixture(tmp_path, "name: eic_agent\ntools: Read;Bash") == []
+
+
 def test_bom_canonical_allowlist_value_still_fires_byte_witness(tmp_path):
     # #524 r9 companion: folding the SEMANTIC check must not weaken invariant 1.
     # A plugin agent whose tools value is BOM-padded canonical now folds to the
