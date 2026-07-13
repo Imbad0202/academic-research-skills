@@ -391,7 +391,30 @@ def check(root: Path) -> list[str]:
                     "advertising Bash; failing closed."
                 )
                 continue
-            if _name_value(node) not in bucket_a:
+            # Duplicate `name`/`tools` handling is parser-dependent (last-wins
+            # here, but another consumer may take first-wins). If ANY resolved
+            # `name` is a Bucket A key, the file is in scope — and if it also
+            # carries a duplicate `tools`, one resolution could hide Bash
+            # behind the other. Fail closed rather than pick a winner, exactly
+            # as invariant 1 rejects a duplicate `tools`.
+            name_nodes = _key_values(node, "name")
+            resolved_names = {_node_to_py(n) for n in name_nodes}
+            if not resolved_names & bucket_a:
+                continue
+            if len(name_nodes) > 1:
+                errors.append(
+                    f"{rel}: {len(name_nodes)} `name` keys in frontmatter, one "
+                    "resolving to a Bucket A agent — duplicate-key resolution "
+                    "is parser-dependent; failing closed."
+                )
+                continue
+            if len(_key_values(node, "tools")) > 1:
+                errors.append(
+                    f"{rel}: Bucket A agent has {len(_key_values(node, 'tools'))} "
+                    "`tools` keys — duplicate-key resolution is "
+                    "parser-dependent and one could hide Bash behind another; "
+                    "failing closed."
+                )
                 continue
             tools_value = _tools_value(node)
             if tools_value is _UNRESOLVED:

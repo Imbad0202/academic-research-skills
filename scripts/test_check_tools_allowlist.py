@@ -420,6 +420,42 @@ def test_escaped_tools_key_fires_byte_witness_on_allowlisted(tmp_path):
     assert any("not byte-equal" in e for e in errs_for(tmp_path, src))
 
 
+def test_duplicate_tools_on_bucket_a_fails_closed(tmp_path):
+    # codex round-4 P2: last-wins would pick `Read, Grep` and pass, but a
+    # first-wins parser would grant Bash. Duplicate-key resolution is
+    # parser-dependent, so invariant 2 fails closed (as invariant 1 does).
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        "name: eic_agent\ntools: Read, Bash\ntools: Read, Grep")
+    assert any("`tools` keys" in e and "parser-dependent" in e for e in errs)
+
+
+def test_duplicate_tools_first_wins_bash_fails_closed(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        "name: eic_agent\ntools: Read, Grep\ntools: Read, Bash")
+    assert any("`tools` keys" in e and "parser-dependent" in e for e in errs)
+
+
+def test_duplicate_name_one_bucket_a_fails_closed(tmp_path):
+    # A duplicate `name` where one resolution is Bucket A: a non-Bucket-A
+    # last-wins name would skip the file, hiding a Bucket A first-wins name +
+    # Bash. Fail closed.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        "name: safe_agent\nname: eic_agent\ntools: Read, Bash")
+    assert any("`name` keys" in e and "parser-dependent" in e for e in errs)
+
+
+def test_duplicate_name_neither_bucket_a_passes(tmp_path):
+    # If NO resolution is a Bucket A name, the file is out of scope whichever
+    # way a parser resolves it — no need to fail closed.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        "name: safe_one\nname: safe_two\ntools: Read, Bash")
+    assert errs == []
+
+
 def test_non_bucket_a_agent_with_bash_passes(tmp_path):
     # Baked into the green fixture (pipeline_orchestrator_agent declares
     # Bash); assert it raises nothing on its own.
