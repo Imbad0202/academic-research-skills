@@ -127,6 +127,13 @@ jobs:
         # unified manifest.
         run: python3 scripts/check_agents_mirror_sync.py
 
+      - name: Check tools-allowlist content lock (#524)
+        # Pins the #514 allowlist VALUE (mirror-sync pins only the pair) +
+        # the Bucket-A-must-not-advertise-Bash reconciliation. The pytest
+        # companion `test_check_tools_allowlist.py` runs via the unified
+        # manifest.
+        run: python3 scripts/check_tools_allowlist.py
+
       - name: Check revision-patch discipline (#390 Slice B)
         # The pytest companion `test_check_390_revision_patch_discipline.py`
         # runs via the unified manifest.

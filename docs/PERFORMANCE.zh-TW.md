@@ -42,6 +42,8 @@
 - Sonnet session 取得 Sonnet agent，跟主 session cost / latency 對齊。
 - Agent 永遠不會默默掉到 Haiku — `inherit` 走的是主 session 模型，主 session 本身又被「ARS 全程不用 Haiku」政策守住。
 
+自 #514（於 #521 出貨）起，這三個 agent 的 frontmatter 同時帶固定的 tools 白名單——`tools: Read, Write, Edit, Grep, Glob`，無 shell、無網路抓取——派工當下即是最小權限；白名單內容由 `scripts/check_tools_allowlist.py`（#524）在 CI 鎖定。
+
 意涵：**plugin agent 的 token 成本完全跟著上表各模式估算走，沒有額外加減**（`ARS_MODEL_TIERING` 未設定時）。dispatched agent 跟主 session 同一個模型，主 session 已經付的成本沒有再多一層 plugin agent 收費。設定 `ARS_MODEL_TIERING=economy` 時，plugin 暴露的 execution 型 agent（如 `report_compiler_agent`）改走分層規則——比 session model 低一階、樓地板 Opus 級（見 `shared/model_tiering.md`）。如果 pipeline 中途換模型（例如 revision pass 改用 Sonnet 省成本），下一輪 agent 派工自動跟上。
 
 其他 ARS agent（`bibliography_agent`、`literature_strategist_agent` 等）在 v3.7.0 不暴露為 plugin agent；它們仍是 in-skill prompt template，由主 session 內聯執行，**預設**沒有獨立的模型路由層。Opt-in 的 `ARS_MODEL_TIERING`（#517）在其上加了一層 dispatch 時的路由規則：當分層方向適用於某角色時，session 會把該角色以子代理形式派發、鎖定目標層級（內聯角色也一樣——「派發為子代理」正是其機制）；flag 未設定時，本段描述的行為完全不變。見 `shared/model_tiering.md`。更廣的 plugin agent 覆蓋留到後續版本。

@@ -77,7 +77,7 @@ Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy m
   /ars-unmark-read       sonnet  Rescind a prior human-read mark for one or more citation keys
   /ars-cache-invalidate  sonnet  Drop cached verification rows for one or more citation keys
 
-Plugin agents (3, v3.6.7-hardened, model: inherit) — dispatched by ARS pipeline:
+Plugin agents (3, v3.6.7-hardened, model: inherit, tools allowlist: Read/Write/Edit/Grep/Glob per #514) — dispatched by ARS pipeline:
   synthesis_agent             Cross-source integration, contradiction resolution, gap analysis
   research_architect_agent    Methodology blueprint (paradigm, method, data strategy)
   report_compiler_agent       APA 7.0 report drafting (Phase 4 + Phase 6)
