@@ -206,6 +206,13 @@ def _key_values(node: yaml.MappingNode, key: str) -> list[yaml.Node]:
             if isinstance(k, yaml.ScalarNode) and _scalar_py(k) == key]
 
 
+def _key_nodes(node: yaml.MappingNode, key: str) -> list[yaml.ScalarNode]:
+    """Every KEY node that resolves to `key` (for line marks), duplicates
+    included."""
+    return [k for k, v in node.value
+            if isinstance(k, yaml.ScalarNode) and _scalar_py(k) == key]
+
+
 def _node_to_py(value_node: yaml.Node) -> object:
     """A value node converted to its Python value, or the sentinel
     _UNRESOLVED when it is not a plain scalar/sequence of scalars (a nested
@@ -240,20 +247,22 @@ def _normalized_tools(value: object) -> list[str] | None:
     return out
 
 
-def _raw_tools_lines(block: str) -> list[str]:
-    """Raw frontmatter lines that begin a `tools` key (bare/quoted/indented),
-    for the byte-exact PINNED_TOOLS_LINE witness. An ADDITIVE (still
-    CI-gating) layer on top of the node-tree check — it only adds findings a
+def _raw_tools_line(block: str, key_node: yaml.ScalarNode) -> str | None:
+    """The raw frontmatter line the composed `tools` key SITS ON, for the
+    byte-exact PINNED_TOOLS_LINE witness. Anchored to the node's
+    `start_mark.line` (not a text scan) so a `tools:`-looking line INSIDE a
+    block scalar — e.g. a `description: |` documenting the tools — is never
+    mistaken for the key line (round-6 false-positive). An ADDITIVE (still
+    CI-gating) layer on top of the node-tree check: it only adds findings a
     capability-equivalent re-spelling would slip past (CRLF, trailing/interior
-    whitespace, exact spelling), never clears the semantic check."""
-    out = []
-    for ln in block.split("\n"):
-        stripped = ln.lstrip()
-        for prefix in ("tools:", '"tools":', "'tools':"):
-            if stripped.startswith(prefix):
-                out.append(ln)
-                break
-    return out
+    whitespace, exact spelling), never clears the semantic check. Returns
+    None when the key's line cannot be located (e.g. a flow-mapping key with
+    no line of its own), in which case the semantic check alone governs."""
+    line_no = key_node.start_mark.line
+    lines = block.split("\n")
+    if 0 <= line_no < len(lines):
+        return lines[line_no]
+    return None
 
 
 def _tools_value(node: yaml.MappingNode) -> object:
@@ -350,20 +359,27 @@ def check(root: Path) -> list[str]:
                 )
         # Byte-exact witness ON TOP (also pins CRLF / spelling). Additive
         # layer: it can only add findings, never clear the semantic check.
-        # Fires unless the pinned line is present VERBATIM as the sole raw
-        # `tools` line — an escaped/tagged/folded re-spelling makes raw_lines
-        # empty, which is still not the pinned form and must fire (the
-        # semantic check above independently catches those too).
-        raw_lines = _raw_tools_lines(block)
-        if tools_nodes and raw_lines != [PINNED_TOOLS_LINE]:
-            found = raw_lines[0] if raw_lines else "(no verbatim `tools:` line)"
-            errors.append(
-                f"{rel}: the `tools` line is not byte-equal to the frozen "
-                f"#514 form.\n    expected: {PINNED_TOOLS_LINE}\n    found:    "
-                f"{found!r}\n  Changing the allowlist is a deliberate "
-                "security-surface change: update PINNED_TOOLS_LINE in "
-                "check_tools_allowlist.py in the same commit."
-            )
+        # Anchored to the composed `tools` key's own line (not a text scan),
+        # so a `tools:`-looking line inside a block scalar is not mistaken for
+        # it. Only meaningful for the exactly-one-key case; the missing /
+        # duplicate cases already fired via the semantic branch above. A
+        # non-verbatim line (escaped/tagged/folded spelling, or CRLF /
+        # whitespace drift) fires — the semantic check independently catches
+        # the value-changing subset.
+        key_nodes = _key_nodes(node, "tools")
+        if len(key_nodes) == 1:
+            raw_line = _raw_tools_line(block, key_nodes[0])
+            if raw_line != PINNED_TOOLS_LINE:
+                found = raw_line if raw_line is not None else \
+                    "(tools key not on its own line)"
+                errors.append(
+                    f"{rel}: the `tools` line is not byte-equal to the frozen "
+                    f"#514 form.\n    expected: {PINNED_TOOLS_LINE}\n    "
+                    f"found:    {found!r}\n  Changing the allowlist is a "
+                    "deliberate security-surface change: update "
+                    "PINNED_TOOLS_LINE in check_tools_allowlist.py in the "
+                    "same commit."
+                )
 
     # --- invariant 2: no Bucket A agent declares Bash -------------------------
     bucket_a, manifest_err = _bucket_a_names(root)

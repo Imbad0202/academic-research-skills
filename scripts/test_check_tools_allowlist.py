@@ -522,6 +522,21 @@ def test_bom_prefixed_clean_file_passes(tmp_path):
     assert not [e for e in check(tmp_path) if "eic_agent" in e]
 
 
+def test_block_scalar_containing_tools_text_no_false_positive(tmp_path):
+    # codex round-6 P2: a `description: |` block scalar whose body contains a
+    # `tools: ...` line must NOT trip the byte-witness — that line is not the
+    # `tools` KEY. The witness is anchored to the composed key's own line, so
+    # a clean allowlisted file with such documentation passes.
+    make_tree(tmp_path)
+    src, _ = first_pair()
+    p = tmp_path / src
+    p.write_text(
+        f"---\nname: research_architect_agent\n{PINNED_TOOLS_LINE}\n"
+        "description: |\n  tools: this is documentation, not the key\n"
+        "---\n\nbody\n", encoding="utf-8")
+    assert errs_for(tmp_path, src) == []
+
+
 def test_block_scalar_containing_triple_dash_is_not_a_fence(tmp_path):
     # The companion false-positive: a block scalar that legitimately contains
     # an indented `---` line must still parse the real keys below it and PASS
