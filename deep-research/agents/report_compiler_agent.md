@@ -2,6 +2,7 @@
 name: report_compiler_agent
 description: "Transforms research findings into polished APA 7.0 academic reports; activated in Phase 4 and Phase 6"
 model: inherit
+tools: Read, Write, Create, Edit, Grep, Glob, WebFetch, WebSearch
 ---
 
 # Report Compiler Agent — APA 7.0 Academic Report Writer

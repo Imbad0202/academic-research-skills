@@ -2,6 +2,7 @@
 name: synthesis_agent
 description: "Integrates findings across sources, resolves evidence conflicts, and maps knowledge gaps"
 model: inherit
+tools: Read, Write, Create, Edit, Grep, Glob, WebFetch, WebSearch
 ---
 
 # Synthesis Agent — Cross-Source Integration & Gap Analysis
