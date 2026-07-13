@@ -60,6 +60,7 @@ from __future__ import annotations
 
 import json
 import sys
+import unicodedata
 from pathlib import Path
 
 import yaml
@@ -233,13 +234,30 @@ def _node_to_py(value_node: yaml.Node) -> object:
     return _UNRESOLVED
 
 
+def _fold_token(token: str) -> str:
+    """A base tool token folded so an invisible/compatibility re-spelling of a
+    tool name collapses onto its plain ASCII form. Removes Unicode format
+    characters (category `Cf` — BOM/`\\ufeff`, zero-width space/`\\u200b`,
+    zero-width non-joiner/`\\u200c`, etc.), which `str.strip()` does NOT remove,
+    so `\\ufeffBash\\ufeff` would otherwise survive as a token distinct from
+    `Bash` and slip the `"Bash" in declared` membership test (#524 r9) — a
+    fenced Bucket A agent could declare a zero-width-padded Bash and pass. Then
+    NFKC-normalizes to fold compatibility homoglyphs (fullwidth, etc.) onto
+    ASCII. All six real tool names + the `Bash(git:*)` permission form are pure
+    ASCII and pass through byte-identical, so no legitimate value is altered."""
+    stripped = "".join(c for c in token if unicodedata.category(c) != "Cf")
+    return unicodedata.normalize("NFKC", stripped).strip()
+
+
 def _normalized_tools(value: object) -> list[str] | None:
     """A `tools` value normalized to base tool names, or None when the shape
     is unrecognized. Accepts the comma-string form and a list of strings; a
-    `Bash(git:*)`-style permission specifier normalizes to `Bash`. `value`
-    comes from `_node_to_py`, which already collapses a non-scalar list
-    member to `_UNRESOLVED`, so a list reaching here is all-strings; any
-    non-str/list value (including `_UNRESOLVED`) is unrecognized."""
+    `Bash(git:*)`-style permission specifier normalizes to `Bash`. Each base
+    token is folded (`_fold_token`) so a zero-width/compatibility re-spelling
+    of a tool name cannot masquerade as a different token. `value` comes from
+    `_node_to_py`, which already collapses a non-scalar list member to
+    `_UNRESOLVED`, so a list reaching here is all-strings; any non-str/list
+    value (including `_UNRESOLVED`) is unrecognized."""
     if isinstance(value, str):
         items: list[str] = value.split(",")
     elif isinstance(value, list) and all(isinstance(i, str) for i in value):
@@ -248,7 +266,7 @@ def _normalized_tools(value: object) -> list[str] | None:
         return None
     out = []
     for item in items:
-        base = item.strip().split("(", 1)[0].strip()
+        base = _fold_token(item.strip().split("(", 1)[0])
         if base:
             out.append(base)
     return out

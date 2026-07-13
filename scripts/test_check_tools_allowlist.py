@@ -281,6 +281,52 @@ def test_lowercase_bash_is_a_different_tool_and_passes(tmp_path):
     assert errs == []
 
 
+def test_bom_padded_bash_fails(tmp_path):
+    # #524 r9: a BOM (U+FEFF) is NOT stripped by str.strip(), so `﻿Bash`
+    # would survive as a token != `Bash` and slip the membership test.
+    # _fold_token drops Cf format chars so it collapses back to Bash.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, ﻿Bash﻿")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_zero_width_space_padded_bash_fails(tmp_path):
+    # #524 r9: zero-width space (U+200B) — a Cf format char str.strip() leaves.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, ​Bash​")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_zero_width_non_joiner_padded_bash_fails(tmp_path):
+    # #524 r9: zero-width non-joiner (U+200C) — another Cf format char.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, ‌Bash‌")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_fullwidth_bash_fails(tmp_path):
+    # #524 r9: fullwidth "Ｂａｓｈ" (U+FF22 etc.) is a compatibility homoglyph;
+    # NFKC in _fold_token folds it onto ASCII "Bash".
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Ｂａｓｈ")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_bom_canonical_allowlist_value_still_fires_byte_witness(tmp_path):
+    # #524 r9 companion: folding the SEMANTIC check must not weaken invariant 1.
+    # A plugin agent whose tools value is BOM-padded canonical now folds to the
+    # five canonical tools semantically — but the additive byte-witness must
+    # STILL fire (the raw line is not byte-equal to PINNED_TOOLS_LINE).
+    make_tree(tmp_path)
+    target = tmp_path / sorted(ALLOWLISTED_FILES)[0]
+    target.write_text(
+        "---\nname: report_compiler_agent\n"
+        "tools: ﻿Read﻿, Write, Edit, Grep, Glob\n---\n\nbody\n",
+        encoding="utf-8")
+    errs = [e for e in check(tmp_path) if "byte-equal" in e]
+    assert errs, "byte-witness must still fire on an invisible-char canonical value"
+
+
 def test_repeated_identical_scalars_are_not_aliases(tmp_path):
     # False-positive guard for the alias-by-shared-identity detector:
     # `yaml.compose` does NOT intern identical scalar values (each gets a
