@@ -272,6 +272,37 @@ def test_bashoutput_is_a_different_tool_and_passes(tmp_path):
     assert errs == []
 
 
+def test_lowercase_bash_is_a_different_tool_and_passes(tmp_path):
+    # Tool names are exact: `bash` (lowercase) is not the shell-granting
+    # `Bash` tool. Case-folding would false-fire on a legitimate value.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, bash")
+    assert errs == []
+
+
+def test_repeated_identical_scalars_are_not_aliases(tmp_path):
+    # False-positive guard for the alias-by-shared-identity detector:
+    # `yaml.compose` does NOT intern identical scalar values (each gets a
+    # distinct node), so a clean file repeating a value must still pass.
+    make_tree(tmp_path)
+    errs = bash_fixture(
+        tmp_path,
+        "name: eic_agent\ntools: Read, Read, Grep\ndescription: Read Read")
+    assert errs == []
+
+
+def test_non_string_manifest_agent_key_still_reconciles(tmp_path):
+    # A manifest whose `agents` mapping carries a non-string key alongside
+    # the real ones must not break reconciliation of the real Bucket A agent.
+    make_tree(tmp_path)
+    (tmp_path / MANIFEST).write_text(
+        '{"agents": {"123": {}, "report_compiler_agent": {}, '
+        '"research_architect_agent": {}, "synthesis_agent": {}, '
+        '"eic_agent": {}}}', encoding="utf-8")
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash")
+    assert any("declares Bash" in e for e in errs)
+
+
 def test_nested_list_member_fails_closed(tmp_path):
     # A non-scalar list member is an unrecognized shape — must not be
     # silently stringified into a passing value (codex round-2 P2).
