@@ -252,24 +252,30 @@ def _fold(text: str) -> str:
 def _normalized_tools(value: object) -> list[str] | None:
     """A `tools` value normalized to base tool names, or None when the shape
     is unrecognized. Accepts the comma-string form and a list of strings; a
-    `Bash(git:*)`-style permission specifier normalizes to `Bash`. Each item is
-    folded (`_fold`) BEFORE the permission-specifier split so a fullwidth-paren
-    specifier `Bash（git:*）` (U+FF08/U+FF09, which the ASCII `(` split would
-    miss) has its parens folded to ASCII first and strips to `Bash` — folding
-    after the split would leave the whole `Bash（git:*）` as one token != `Bash`
-    (#524 r10). `value` comes from `_node_to_py`, which already collapses a
-    non-scalar list member to `_UNRESOLVED`, so a list reaching here is
-    all-strings; any non-str/list value (including `_UNRESOLVED`) is
+    `Bash(git:*)`-style permission specifier normalizes to `Bash`. Folding
+    (`_fold`) happens BEFORE any split, on the whole string (or on each list
+    member whole), so every compatibility separator becomes its ASCII form
+    first: a fullwidth comma `，` (U+FF0C) in the string form — which
+    `split(",")` would miss, leaving `Read，Bash` as one token that an
+    NFKC-normalizing consumer would re-split to grant Bash (#524 r11) — and a
+    fullwidth-paren specifier `Bash（git:*）` (U+FF08/U+FF09) that the ASCII `(`
+    split would miss (#524 r10) both reduce correctly. Splitting before folding
+    reintroduces either hole. `value` comes from `_node_to_py`, which already
+    collapses a non-scalar list member to `_UNRESOLVED`, so a list reaching
+    here is all-strings; any non-str/list value (including `_UNRESOLVED`) is
     unrecognized."""
     if isinstance(value, str):
-        items: list[str] = value.split(",")
+        items: list[str] = _fold(value).split(",")
     elif isinstance(value, list) and all(isinstance(i, str) for i in value):
-        items = list(value)
+        # A YAML list is already tokenized; fold each member whole (a
+        # fullwidth comma inside a member is not a YAML separator, so it stays
+        # one token — correctly, since no list consumer re-splits an element).
+        items = [_fold(i) for i in value]
     else:
         return None
     out = []
     for item in items:
-        base = _fold(item).split("(", 1)[0].strip()
+        base = item.split("(", 1)[0].strip()
         if base:
             out.append(base)
     return out

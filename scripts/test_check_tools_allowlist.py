@@ -329,6 +329,32 @@ def test_fullwidth_bash_and_paren_specifier_fails(tmp_path):
     assert any("declares Bash" in e for e in errs)
 
 
+def test_fullwidth_comma_separated_bash_fails(tmp_path):
+    # #524 r11: fullwidth comma U+FF0C. split(",") misses it, so "Read，Bash"
+    # stays one token — folding must happen on the WHOLE value BEFORE the comma
+    # split (the r11 corollary of r10), or "Read，Bash" folds to "Read,Bash"
+    # (one token != "Bash") and slips.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read，Bash")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_small_comma_separated_bash_fails(tmp_path):
+    # #524 r11: small comma U+FE50 — another compatibility comma NFKC folds to
+    # ASCII "," only if the fold precedes the split.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read﹐Bash")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_fullwidth_comma_and_name_and_paren_bash_fails(tmp_path):
+    # #524 r11: fullwidth comma + fullwidth name + fullwidth parens all at once
+    # — the whole-value fold must reduce it to Read + Bash.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read，Ｂａｓｈ（git:*）")
+    assert any("declares Bash" in e for e in errs)
+
+
 def test_bom_canonical_allowlist_value_still_fires_byte_witness(tmp_path):
     # #524 r9 companion: folding the SEMANTIC check must not weaken invariant 1.
     # A plugin agent whose tools value is BOM-padded canonical now folds to the
