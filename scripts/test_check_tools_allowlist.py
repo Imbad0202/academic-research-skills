@@ -612,6 +612,39 @@ def test_nested_bucket_a_agent_declaring_bash_fails_closed(tmp_path):
                if "eic_agent" in e)
 
 
+def test_directory_symlink_under_agent_dir_fails_closed(tmp_path):
+    # codex round-8 P1: rglob does not descend into directory symlinks, so a
+    # tracked `agents/nested -> ../payload` could hide a Bucket A agent
+    # declaring Bash. Fail closed on the symlink itself.
+    make_tree(tmp_path)
+    agents = tmp_path / "academic-paper-reviewer/agents"
+    agents.mkdir(parents=True, exist_ok=True)
+    payload = tmp_path / "payload"
+    payload.mkdir()
+    (payload / "eic_agent.md").write_text(
+        "---\nname: eic_agent\ntools: Read, Bash\n---\nbody\n",
+        encoding="utf-8")
+    try:
+        (agents / "nested").symlink_to(payload, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        import pytest
+        pytest.skip("symlinks unavailable on this platform")
+    assert any("directory symlink" in e for e in check(tmp_path))
+
+
+def test_bare_cr_frontmatter_bucket_a_bash_fails_closed(tmp_path):
+    # codex round-8 P1: bare `\r` (old-Mac) is a YAML line break, but a
+    # split-on-`\n` fence scan reads the file as frontmatter-less and skips
+    # it, hiding a Bucket A `tools: Bash`. splitlines() recognizes bare CR so
+    # the declaration is caught.
+    make_tree(tmp_path)
+    eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
+    eic.write_bytes(
+        "---\rname: eic_agent\rtools: Read, Bash\r---\r".encode("utf-8"))
+    assert any("declares Bash" in e for e in check(tmp_path)
+               if "eic_agent" in e)
+
+
 def test_unicode_line_break_before_tools_no_false_positive(tmp_path):
     # codex round-7 P2: YAML counts NEL (U+0085) / LS (U+2028) / PS (U+2029)
     # as line breaks but str.split("\n") does not. Placed in a quoted value

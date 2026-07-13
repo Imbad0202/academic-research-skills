@@ -109,24 +109,31 @@ def _read_raw(path: Path) -> str:
     return path.read_bytes().decode("utf-8").lstrip("﻿")
 
 
-def _is_fence(line: str) -> bool:
-    """A frontmatter fence is exactly `---` at column 0 (an optional trailing
-    `\\r` retained from a CRLF file is allowed). An INDENTED `---` is content
-    inside a block scalar, NOT a fence — matching it would truncate the block
-    and hide a `name`/`tools` key below it (a real fail-open)."""
-    return line in ("---", "---\r")
-
-
 def _frontmatter(text: str) -> str | None:
-    """The raw YAML frontmatter block (text between the two `---` fences),
-    or None when the file has no frontmatter. Split on bare `\\n` with CR
-    retained so the raw-line check downstream stays CRLF-sensitive."""
-    lines = text.split("\n")
-    if not lines or not _is_fence(lines[0]):
+    """The raw YAML frontmatter block (the byte-faithful substring between the
+    two `---` fences), or None when the file has no frontmatter.
+
+    Line breaks are found with `str.splitlines`, which recognizes EVERY YAML
+    line break — `\\n`, `\\r\\n`, and a bare `\\r` (old-Mac) plus the Unicode
+    breaks NEL/LS/PS — so a bare-CR-delimited file is not silently read as
+    frontmatter-less and skipped (a real fail-open, #524 r8). A fence is
+    exactly `---` at column 0: an INDENTED `---` is block-scalar content, not
+    a fence (matching it would truncate the block and hide keys). The block
+    returned is the raw substring (original break bytes intact) so `compose`
+    sees the true bytes and the byte-witness — anchored to `start_mark.index`
+    — stays byte-faithful; a bare `\\r`/CRLF file therefore still fires the
+    byte-witness as drift."""
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].splitlines()[0] != "---":
         return None
-    for i, line in enumerate(lines[1:], start=1):
-        if _is_fence(line):
-            return "\n".join(lines[1:i])
+    # Byte offset just past the opening fence line (start of the block body).
+    body_start = len(lines[0])
+    offset = body_start
+    for raw in lines[1:]:
+        content = raw.splitlines()[0] if raw.splitlines() else raw
+        if content == "---":  # column-0 closing fence
+            return text[body_start:offset]
+        offset += len(raw)
     return None
 
 
@@ -395,6 +402,19 @@ def check(root: Path) -> list[str]:
         d = root / rel_dir
         if not d.is_dir():
             continue
+        # rglob does NOT descend into directory symlinks, so a tracked
+        # `agents/nested -> ../payload` could hide a Bucket A `.md` declaring
+        # Bash (#524 r8). Fail closed on any directory symlink under an agent
+        # dir — these hand-authored trees have no reason for one, and
+        # reconciliation cannot see through it.
+        for sub in sorted(d.rglob("*")):
+            if sub.is_symlink() and sub.is_dir():
+                errors.append(
+                    f"{sub.relative_to(root).as_posix()}: directory symlink "
+                    "under an agent dir — rglob does not descend into it, so a "
+                    "Bucket A agent declaring Bash could hide behind it; "
+                    "failing closed. Replace with real files."
+                )
         # rglob, not glob: a nested `agents/subdir/x.md` could carry a Bucket
         # A `name` + Bash and the runtime guard keys on name regardless of
         # path, so the reconciliation must reach nested files too (#524 r7).
