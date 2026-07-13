@@ -598,6 +598,40 @@ def test_duplicate_name_neither_bucket_a_passes(tmp_path):
     assert errs == []
 
 
+def test_nested_bucket_a_agent_declaring_bash_fails_closed(tmp_path):
+    # codex round-7 P1: invariant 2 must reach nested agent files (rglob, not
+    # glob) — the runtime guard keys on `name` regardless of path, so a
+    # `agents/subdir/x.md` with a Bucket A name + Bash is a real exposure.
+    make_tree(tmp_path)
+    nested = (tmp_path
+              / "academic-paper-reviewer/agents/subdir/eic_agent.md")
+    nested.parent.mkdir(parents=True, exist_ok=True)
+    nested.write_text("---\nname: eic_agent\ntools: Read, Bash\n---\nbody\n",
+                      encoding="utf-8")
+    assert any("declares Bash" in e for e in check(tmp_path)
+               if "eic_agent" in e)
+
+
+def test_unicode_line_break_before_tools_no_false_positive(tmp_path):
+    # codex round-7 P2: YAML counts NEL (U+0085) / LS (U+2028) / PS (U+2029)
+    # as line breaks but str.split("\n") does not. Placed in a quoted value
+    # BEFORE the tools key, they shift YAML's start_mark.line off the
+    # split("\n") index, so a line-based anchor would read the WRONG physical
+    # line. The byte witness anchors via start_mark.index (byte offset), so
+    # the clean allowlisted file is not falsely rejected and no non-verbatim
+    # key line slips past.
+    make_tree(tmp_path)
+    src, _ = first_pair()
+    p = tmp_path / src
+    p.write_text(
+        f"---\nname: research_architect_agent\n"
+        'description: "ab c d"\n'
+        f"{PINNED_TOOLS_LINE}\n---\n\nbody\n",
+        encoding="utf-8")
+    assert errs_for(tmp_path, src) == []
+
+
+
 def test_non_bucket_a_agent_with_bash_passes(tmp_path):
     # Baked into the green fixture (pipeline_orchestrator_agent declares
     # Bash); assert it raises nothing on its own.

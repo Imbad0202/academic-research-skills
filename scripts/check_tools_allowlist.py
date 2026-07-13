@@ -250,19 +250,24 @@ def _normalized_tools(value: object) -> list[str] | None:
 def _raw_tools_line(block: str, key_node: yaml.ScalarNode) -> str | None:
     """The raw frontmatter line the composed `tools` key SITS ON, for the
     byte-exact PINNED_TOOLS_LINE witness. Anchored to the node's
-    `start_mark.line` (not a text scan) so a `tools:`-looking line INSIDE a
-    block scalar — e.g. a `description: |` documenting the tools — is never
-    mistaken for the key line (round-6 false-positive). An ADDITIVE (still
-    CI-gating) layer on top of the node-tree check: it only adds findings a
-    capability-equivalent re-spelling would slip past (CRLF, trailing/interior
-    whitespace, exact spelling), never clears the semantic check. Returns
-    None when the key's line cannot be located (e.g. a flow-mapping key with
-    no line of its own), in which case the semantic check alone governs."""
-    line_no = key_node.start_mark.line
-    lines = block.split("\n")
-    if 0 <= line_no < len(lines):
-        return lines[line_no]
-    return None
+    `start_mark.index` — the character offset into `block` — sliced to the
+    surrounding physical-`\\n` line, NOT `start_mark.line` (which counts
+    YAML's Unicode line breaks NEL/LS/PS that `split("\\n")` does not, so the
+    two indexings can diverge and select the wrong line — #524 r7). Using the
+    byte offset makes the two agree by construction. Anchoring (not a text
+    scan) also means a `tools:`-looking line inside a block scalar — e.g. a
+    `description: |` documenting the tools — is never mistaken for the key
+    line (round-6 false-positive). An ADDITIVE (still CI-gating) layer on top
+    of the node-tree check: it only adds findings a capability-equivalent
+    re-spelling would slip past (CRLF, trailing/interior whitespace, exact
+    spelling), never clears the semantic check. Returns None when the offset
+    is out of range."""
+    idx = key_node.start_mark.index
+    if not (0 <= idx <= len(block)):
+        return None
+    start = block.rfind("\n", 0, idx) + 1        # char after the prev newline
+    end = block.find("\n", idx)                  # next newline, or end
+    return block[start:] if end == -1 else block[start:end]
 
 
 def _tools_value(node: yaml.MappingNode) -> object:
@@ -390,7 +395,10 @@ def check(root: Path) -> list[str]:
         d = root / rel_dir
         if not d.is_dir():
             continue
-        for path in sorted(d.glob("*.md")):
+        # rglob, not glob: a nested `agents/subdir/x.md` could carry a Bucket
+        # A `name` + Bash and the runtime guard keys on name regardless of
+        # path, so the reconciliation must reach nested files too (#524 r7).
+        for path in sorted(d.rglob("*.md")):
             rel = path.relative_to(root).as_posix()
             block = _frontmatter(_read_raw(path))
             if block is None:
