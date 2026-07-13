@@ -121,6 +121,34 @@ def test_trailing_whitespace_is_drift(tmp_path):
     assert any(src in e and "drifted" in e for e in errs)
 
 
+def test_crlf_conversion_is_drift(tmp_path):
+    # A symmetric LF->CRLF conversion must not silently satisfy the exact
+    # line pin (codex round-1 P2: universal-newline reads would hide it).
+    make_tree(tmp_path)
+    src, mirror = first_pair()
+    for rel in (src, mirror):
+        p = tmp_path / rel
+        p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+    errs = check(tmp_path)
+    assert any(src in e and "drifted" in e for e in errs)
+    assert any(mirror in e and "drifted" in e for e in errs)
+
+
+def test_quoted_duplicate_tools_key_fails(tmp_path):
+    # The sharpest round-1 bypass: keep the pinned bare line AND add a
+    # quoted `"tools":` duplicate — YAML last-wins would make the EFFECTIVE
+    # value `Read, Bash` while a naive `tools:` prefix count still sees one
+    # line. The broadened key regex counts both.
+    make_tree(tmp_path)
+    src, _ = first_pair()
+    rewrite_tools_line(tmp_path / src,
+                       f'{PINNED_TOOLS_LINE}\n"tools": Read, Bash')
+    errs = check(tmp_path)
+    assert any(src in e and "carry a `tools` key" in e for e in errs)
+    # And the semantic belt independently sees the last-wins divergence.
+    assert any(src in e and "SEMANTIC" in e for e in errs)
+
+
 def test_missing_tools_line_fails_as_widening(tmp_path):
     # Dropping the key silently widens capability (agent inherits ALL tools).
     make_tree(tmp_path)
@@ -138,7 +166,8 @@ def test_duplicate_tools_line_fails(tmp_path):
     rewrite_tools_line(tmp_path / src,
                        f"{PINNED_TOOLS_LINE}\n{PINNED_TOOLS_LINE}")
     errs = check(tmp_path)
-    assert any(src in e and "2 `tools:` lines" in e for e in errs)
+    assert any(src in e and "2 frontmatter lines carry a `tools` key" in e
+               for e in errs)
 
 
 def test_missing_allowlisted_file_fails(tmp_path):
@@ -180,6 +209,75 @@ def test_bucket_a_agent_advertising_bash_fails(tmp_path):
     assert any("eic_agent" in e and "Bash" in e for e in errs)
 
 
+def bash_fixture(tmp_path, frontmatter_body: str) -> list[str]:
+    """Write a Bucket A agent with the given frontmatter body and return
+    the errors mentioning it."""
+    eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
+    eic.write_text(f"---\n{frontmatter_body}\n---\n\nbody\n",
+                   encoding="utf-8")
+    return [e for e in check(tmp_path) if "eic_agent" in e]
+
+
+def test_quoted_string_value_bash_fails(tmp_path):
+    # codex round-1 P1: yaml resolves the quotes; a raw string scan keeps
+    # them and misses `Bash"`.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, 'name: eic_agent\ntools: "Read, Bash"')
+    assert any("Bash" in e for e in errs)
+
+
+def test_quoted_name_with_bash_fails(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, 'name: "eic_agent"\ntools: Read, Bash')
+    assert any("Bash" in e for e in errs)
+
+
+def test_flow_list_bash_fails(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: [Read, Bash]")
+    assert any("Bash" in e for e in errs)
+
+
+def test_block_list_bash_fails(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        "name: eic_agent\ntools:\n  - Read\n  - Bash")
+    assert any("Bash" in e for e in errs)
+
+
+def test_inline_comment_bash_fails(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        "name: eic_agent\ntools: Read, Bash # reviewed")
+    assert any("Bash" in e for e in errs)
+
+
+def test_permission_specifier_bash_fails(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash(git:*)")
+    assert any("Bash" in e for e in errs)
+
+
+def test_bashoutput_is_a_different_tool_and_passes(tmp_path):
+    # Exact base-name match: BashOutput grants no shell; a prefix match
+    # would false-fire on it.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, BashOutput")
+    assert errs == []
+
+
+def test_unparseable_yaml_on_bucket_a_fails_closed(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ndescription: [unclosed")
+    assert any("not" in e and "parseable" in e for e in errs)
+
+
+def test_unrecognized_tools_shape_on_bucket_a_fails_closed(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: {Read: yes}")
+    assert any("unrecognized shape" in e for e in errs)
+
+
 def test_non_bucket_a_agent_with_bash_passes(tmp_path):
     # Baked into the green fixture (pipeline_orchestrator_agent declares
     # Bash); assert it raises nothing on its own.
@@ -206,6 +304,22 @@ def test_unparseable_manifest_fails_closed(tmp_path):
     (tmp_path / MANIFEST).write_text("{not json", encoding="utf-8")
     errs = check(tmp_path)
     assert any(MANIFEST in e and "failing closed" in e for e in errs)
+
+
+def test_valid_json_non_object_manifest_fails_closed(tmp_path):
+    # A JSON array parses fine but has no `agents` mapping — must be a
+    # curated diagnostic, not a traceback (codex round-1 P2).
+    make_tree(tmp_path)
+    (tmp_path / MANIFEST).write_text("[]", encoding="utf-8")
+    errs = check(tmp_path)
+    assert any(MANIFEST in e and "no `agents` mapping" in e for e in errs)
+
+
+def test_non_mapping_agents_value_fails_closed(tmp_path):
+    make_tree(tmp_path)
+    (tmp_path / MANIFEST).write_text('{"agents": []}', encoding="utf-8")
+    errs = check(tmp_path)
+    assert any(MANIFEST in e and "no `agents` mapping" in e for e in errs)
 
 
 # --- lock shape ------------------------------------------------------------------
