@@ -17,6 +17,7 @@ the guarded property is broken. Two load-bearing families:
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from check_tools_allowlist import (
@@ -365,15 +366,57 @@ def test_merge_tagged_complex_key_fails_closed(tmp_path):
         assert any("merge key / alias" in e for e in errs), key
 
 
-def test_deeply_nested_frontmatter_fails_closed_not_crash(tmp_path):
-    # codex round-5 P2: a pathologically deep flow sequence must fail closed
-    # (RecursionError in compose or the walk) rather than crash the lint with
-    # a traceback. Not a real agent file — a robustness floor.
+def test_deeply_nested_frontmatter_does_not_crash(tmp_path):
+    # codex round-5 P2: a pathologically deep flow sequence must never crash
+    # the lint with an unhandled traceback — check() must RETURN. Whether a
+    # given depth trips RecursionError is Python-version-dependent (3.14
+    # tolerates far deeper nesting than 3.11), so the version-independent
+    # contract is "returns, does not raise", not "fails at depth N". A
+    # depth that does NOT recurse past the limit is a harmless (if odd) file
+    # and legitimately passes; the fail-closed path is exercised
+    # deterministically by test_recursion_error_fails_closed below.
     make_tree(tmp_path)
     deep = "name: eic_agent\ntools: Read, Grep\nx: " + "[" * 400 + "]" * 400
-    # Must return (not raise) and flag the file.
-    errs = bash_fixture(tmp_path, deep)
-    assert errs, "deeply nested frontmatter must fail closed, not pass"
+    errs = bash_fixture(tmp_path, deep)  # must not raise
+    assert isinstance(errs, list)
+
+
+def test_compose_recursion_error_maps_to_none():
+    # _mapping_node must turn a RecursionError from yaml.compose into None
+    # (→ the caller emits a fail-closed "does not compose" error), not let it
+    # escape. Driven by monkeypatching compose to raise, so it is
+    # deterministic and Python-version-independent (unlike relying on a
+    # specific nesting depth tripping the interpreter's own limit).
+    import check_tools_allowlist as m
+
+    def boom(*a, **k):
+        raise RecursionError("maximum recursion depth exceeded")
+
+    orig = m.yaml.compose
+    m.yaml.compose = boom
+    try:
+        assert m._mapping_node("name: x\n") is None
+    finally:
+        m.yaml.compose = orig
+
+
+def test_walk_recursion_error_fails_closed():
+    # _uses_merge_or_alias must treat a RecursionError in the walk as True
+    # (fail closed — the tree could not be proven clean). Forced
+    # deterministically: a MappingNode whose `.value` is an iterable that
+    # raises RecursionError on iteration (standing in for a walk that
+    # recurses past the interpreter limit), so the test does not depend on
+    # any Python-version recursion depth.
+    import check_tools_allowlist as m
+    import yaml as y
+
+    class ExplodingValue:
+        def __iter__(self):
+            raise RecursionError("maximum recursion depth exceeded")
+
+    node = y.MappingNode("tag:yaml.org,2002:map", [])
+    node.value = ExplodingValue()
+    assert m._uses_merge_or_alias(node) is True
 
 
 def test_uncomposable_bucket_a_frontmatter_fails_closed(tmp_path):
