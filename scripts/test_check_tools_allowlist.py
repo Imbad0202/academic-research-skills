@@ -292,6 +292,59 @@ def test_mapping_tools_value_fails_closed(tmp_path):
     assert any("unrecognized shape" in e for e in errs)
 
 
+def test_typed_scalar_tools_on_bucket_a_fails_closed(tmp_path):
+    # A Bucket A `tools` that is an int/bool/null/timestamp scalar is an
+    # unrecognized shape — the reconciliation cannot confirm it excludes
+    # Bash, so it fails closed (scoped to Bucket A; out-of-scope agents with
+    # a nonsense tools value are not this lint's concern).
+    make_tree(tmp_path)
+    for val in ("5", "true", "null", "2020-01-01"):
+        errs = bash_fixture(tmp_path, f"name: eic_agent\ntools: {val}")
+        assert any("unrecognized shape" in e for e in errs), val
+
+
+def test_bare_bash_scalar_fails_closed(tmp_path):
+    # Bash as the whole scalar value (not a list member) still resolves to
+    # the `Bash` base name.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Bash")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_merge_nested_in_sequence_fails_closed(tmp_path):
+    # The merge/alias walk must recurse into sequence values, not only
+    # mapping values — a `<<`/alias buried in a list still fails closed.
+    make_tree(tmp_path)
+    errs = bash_fixture(
+        tmp_path,
+        "name: eic_agent\n_a: &a {tools: [Read, Bash]}\nx: [<<, *a]")
+    assert any("merge key / alias" in e for e in errs)
+
+
+def test_merge_tagged_complex_key_fails_closed(tmp_path):
+    # codex round-5 P1: the merge tag can land on a non-scalar KEY
+    # (`? !!merge [x]` is a merge-tagged sequence key). safe_load applies
+    # merge semantics and injects `tools: [Read, Bash]`; the tag check must
+    # fire on any node type, not just scalars.
+    make_tree(tmp_path)
+    for key in ("!!merge [x]", "!!merge {a: 1}"):
+        errs = bash_fixture(
+            tmp_path,
+            f"name: eic_agent\n? {key}\n: {{tools: [Read, Bash]}}")
+        assert any("merge key / alias" in e for e in errs), key
+
+
+def test_deeply_nested_frontmatter_fails_closed_not_crash(tmp_path):
+    # codex round-5 P2: a pathologically deep flow sequence must fail closed
+    # (RecursionError in compose or the walk) rather than crash the lint with
+    # a traceback. Not a real agent file — a robustness floor.
+    make_tree(tmp_path)
+    deep = "name: eic_agent\ntools: Read, Grep\nx: " + "[" * 400 + "]" * 400
+    # Must return (not raise) and flag the file.
+    errs = bash_fixture(tmp_path, deep)
+    assert errs, "deeply nested frontmatter must fail closed, not pass"
+
+
 def test_uncomposable_bucket_a_frontmatter_fails_closed(tmp_path):
     # Frontmatter that won't compose can't be cleared by name — fail closed
     # (codex round-2 P2: a quoted/indented name under malformed YAML must

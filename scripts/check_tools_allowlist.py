@@ -132,11 +132,13 @@ def _frontmatter(text: str) -> str | None:
 
 def _mapping_node(block: str) -> yaml.MappingNode | None:
     """The frontmatter composed to a DUPLICATE-PRESERVING mapping node, or
-    None when it is not a mapping / will not compose. Unlike `safe_load`,
-    `compose` keeps a shadowed duplicate key visible in the node tree."""
+    None when it is not a mapping / will not compose / is too deeply nested
+    to compose safely. Unlike `safe_load`, `compose` keeps a shadowed
+    duplicate key visible in the node tree. A RecursionError on pathological
+    nesting maps to None so the caller fails closed rather than crashing."""
     try:
         node = yaml.compose(block, Loader=yaml.SafeLoader)
-    except yaml.YAMLError:
+    except (yaml.YAMLError, RecursionError):
         return None
     return node if isinstance(node, yaml.MappingNode) else None
 
@@ -167,28 +169,34 @@ def _uses_merge_or_alias(node: yaml.Node) -> bool:
     `tools`/`name` the literal-key scan never sees, and an alias shares a
     value node — so their presence makes the duplicate-preserving key scan
     unsound. Detected from the COMPOSED NODE TREE, not text (text scanning is
-    not a sound YAML authority — the reviews' recurring lesson): a merge key
-    carries the `merge` tag on its scalar node, and an alias surfaces as the
-    SAME node object reachable by two paths (compose resolves `*a` to shared
+    not a sound YAML authority — the reviews' recurring lesson): the `merge`
+    tag can land on a node of ANY type (`<<:` is a scalar key, but `? !!merge
+    [x]` is a merge-tagged sequence/mapping key), so we check the tag on
+    every node before dispatching on its type; an alias surfaces as the SAME
+    node object reachable by two paths (compose resolves `*a` to shared
     identity). These hand-authored files never need either, so we fail closed
-    rather than reimplement merge resolution."""
+    rather than reimplement merge resolution. A RecursionError on pathological
+    nesting also fails closed (True) — we could not prove the tree clean."""
     seen: set[int] = set()
 
     def walk(nd: yaml.Node) -> bool:
         if nd is None:
             return False
+        if nd.tag == _MERGE_TAG:  # merge tag on ANY node type (key or value)
+            return True
         if id(nd) in seen:
             return True  # reached twice = an alias shares this node
         seen.add(id(nd))
-        if isinstance(nd, yaml.ScalarNode):
-            return nd.tag == _MERGE_TAG
         if isinstance(nd, yaml.SequenceNode):
             return any(walk(i) for i in nd.value)
         if isinstance(nd, yaml.MappingNode):
             return any(walk(k) or walk(v) for k, v in nd.value)
         return False
 
-    return walk(node)
+    try:
+        return walk(node)
+    except RecursionError:
+        return True
 
 
 def _key_values(node: yaml.MappingNode, key: str) -> list[yaml.Node]:
