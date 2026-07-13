@@ -101,8 +101,12 @@ MANIFEST = "scripts/ars_phase_scope_manifest.json"
 
 def _read_raw(path: Path) -> str:
     """Read WITHOUT universal-newline translation, so a CRLF file keeps its
-    `\\r` bytes and cannot satisfy an exact LF line pin."""
-    return path.read_bytes().decode("utf-8")
+    `\\r` bytes and cannot satisfy an exact LF line pin. A leading UTF-8 BOM
+    is stripped: a YAML reader (and Claude Code) skips it, so leaving it on
+    would make `\\ufeff---` fail the column-0 fence match and the whole file
+    read as frontmatter-less — a fail-open that lets a BOM-prefixed Bucket A
+    agent smuggle Bash past invariant 2's skip-when-no-frontmatter branch."""
+    return path.read_bytes().decode("utf-8").lstrip("﻿")
 
 
 def _is_fence(line: str) -> bool:

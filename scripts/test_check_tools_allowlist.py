@@ -372,6 +372,29 @@ def test_indented_fence_in_block_scalar_does_not_truncate(tmp_path):
                for e in check(tmp_path) if "eic_agent" in e)
 
 
+def test_bom_prefixed_bucket_a_bash_fails_closed(tmp_path):
+    # A leading UTF-8 BOM makes `﻿---` fail the column-0 fence match, so
+    # the file would read as frontmatter-less and skip invariant 2 — while a
+    # real YAML reader strips the BOM and sees `tools: Read, Bash`. _read_raw
+    # strips the BOM so the two agree; the smuggled Bash fails closed.
+    make_tree(tmp_path)
+    eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
+    eic.write_bytes(
+        "﻿---\nname: eic_agent\ntools: Read, Bash\n---\n\nbody\n"
+        .encode("utf-8"))
+    assert any("declares Bash" in e
+               for e in check(tmp_path) if "eic_agent" in e)
+
+
+def test_bom_prefixed_clean_file_passes(tmp_path):
+    make_tree(tmp_path)
+    eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
+    eic.write_bytes(
+        "﻿---\nname: eic_agent\ntools: Read, Grep\n---\n\nbody\n"
+        .encode("utf-8"))
+    assert not [e for e in check(tmp_path) if "eic_agent" in e]
+
+
 def test_block_scalar_containing_triple_dash_is_not_a_fence(tmp_path):
     # The companion false-positive: a block scalar that legitimately contains
     # an indented `---` line must still parse the real keys below it and PASS
