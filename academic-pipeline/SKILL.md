@@ -277,7 +277,7 @@ After user confirmation:
 
 1. Pass the previous stage's deliverables as input to the next stage
 2. Trigger handoff protocol (defined in each skill's SKILL.md):
-   - Stage 1  --> 2: deep-research handoff (RQ Brief + Bibliography + Synthesis)
+   - Stage 1  --> 2: deep-research handoff (RQ Brief + Methodology Blueprint + Bibliography + Synthesis)
    - Stage 2  --> 2.5: Pass complete paper to integrity_verification_agent
    - Stage 2.5 --> 3: Pass verified paper to reviewer
    - Stage 3  --> 4: Pass Revision Roadmap to academic-paper revision mode

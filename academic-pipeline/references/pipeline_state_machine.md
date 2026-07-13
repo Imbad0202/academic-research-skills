@@ -145,7 +145,7 @@ This document defines all legal states, transition conditions, transition action
 | INIT | Stage 4 | User has review comments | Confirm paper + review comments, launch revision |
 | INIT | Stage 5 | User has final draft for format conversion | Confirm format requirements, launch format-convert |
 | Stage 1 | **checkpoint** | Stage 1 completed | Wait for user confirmation |
-| checkpoint | Stage 2 | User confirms | handoff RQ Brief + Bibliography + Synthesis |
+| checkpoint | Stage 2 | User confirms | handoff RQ Brief + Methodology Blueprint + Bibliography + Synthesis |
 | Stage 2 | **checkpoint** | Stage 2 completed, Paper Draft produced | Wait for user confirmation |
 | checkpoint | Stage 2.5 | User confirms | Pass Paper Draft to integrity agent |
 | Stage 2.5 | **checkpoint** | PASS | Wait for user confirmation |

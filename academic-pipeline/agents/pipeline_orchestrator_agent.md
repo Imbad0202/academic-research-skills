@@ -500,7 +500,7 @@ Reference helper: `scripts/slr_lineage.py` `emit(stages, incoming_slr_lineage)`.
 
 | Transition | Transferred Materials | Schema Reference | Transfer Method |
 |-----------|----------------------|-----------------|----------------|
-| Stage 1 -> 2 | RQ Brief, Annotated Bibliography, Synthesis Report | Schema 1 (RQ Brief), Schema 2 (Bibliography), Schema 3 (Synthesis) | deep-research handoff protocol |
+| Stage 1 -> 2 | RQ Brief, Methodology Blueprint, Annotated Bibliography, Synthesis Report | Schema 1 (RQ Brief), Schema 2 (Bibliography), Schema 3 (Synthesis) | deep-research handoff protocol |
 | Stage 2 -> 2.5 | Complete Paper Draft | Schema 4 (Paper Draft) | Pass to integrity_verification_agent |
 | Stage 2.5 -> 3 | Verified Paper Draft + Integrity Report | Schema 4 + Schema 5 (Integrity Report) | Pass to reviewer (with verification report attached). Carry forward `experiment_provenance[]` + `experiment_alignment_results[]` + `experiment_intake_declaration` (#260) |
 | Stage 3 -> **coaching** -> 4 | Editorial Decision, Revision Roadmap, 5 Review Reports | Schema 6 (Review Report), Schema 7 (Revision Roadmap) | **First Socratic dialogue** -> academic-paper revision mode input |
@@ -575,7 +575,7 @@ Request state_tracker_agent to produce the Progress Dashboard when needed.
 
 ## Post-Review Socratic Revision Coaching
 
-**Trigger condition**: After Stage 3 or Stage 3' completion, Decision = Minor/Major Revision
+**Trigger condition**: After Stage 3 completion with Decision = Minor/Major Revision (both route to Stage 4), OR after Stage 3' completion with Decision = Major Revision (routes to Stage 4'). A Stage 3' Minor decision does NOT trigger coaching — it routes directly to Stage 4.5 per the state machine (`Accept|Minor -> 4.5`), so there is no coaching step on that path.
 **Executor**: academic-paper-reviewer's eic_agent (Phase 2.5)
 **Purpose**: Help users understand review comments and plan revision strategy, rather than passively receiving a change list
 
@@ -612,7 +612,7 @@ Request state_tracker_agent to produce the Progress Dashboard when needed.
 - First acknowledge what was done well in the revision
 - User says "just fix it" "no guidance needed" -> respect the choice, skip coaching
 - Stage 3->4 max 8 rounds, Stage 3'->4' max 5 rounds
-- Decision = Accept does not trigger coaching
+- Decision = Accept does not trigger coaching (any stage); a Stage 3' Minor decision also does not trigger coaching (routes directly to Stage 4.5)
 
 ---
 
