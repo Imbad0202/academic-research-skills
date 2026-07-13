@@ -284,7 +284,7 @@ def test_lowercase_bash_is_a_different_tool_and_passes(tmp_path):
 def test_bom_padded_bash_fails(tmp_path):
     # #524 r9: a BOM (U+FEFF) is NOT stripped by str.strip(), so `﻿Bash`
     # would survive as a token != `Bash` and slip the membership test.
-    # _fold_token drops Cf format chars so it collapses back to Bash.
+    # _fold drops Cf format chars so it collapses back to Bash.
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, ﻿Bash﻿")
     assert any("declares Bash" in e for e in errs)
@@ -306,9 +306,26 @@ def test_zero_width_non_joiner_padded_bash_fails(tmp_path):
 
 def test_fullwidth_bash_fails(tmp_path):
     # #524 r9: fullwidth "Ｂａｓｈ" (U+FF22 etc.) is a compatibility homoglyph;
-    # NFKC in _fold_token folds it onto ASCII "Bash".
+    # NFKC in _fold folds it onto ASCII "Bash".
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Ｂａｓｈ")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_fullwidth_paren_permission_specifier_bash_fails(tmp_path):
+    # #524 r10: fullwidth parens U+FF08/U+FF09 in a permission specifier. The
+    # ASCII "(" split misses them, so folding must happen BEFORE the split —
+    # otherwise NFKC leaves the whole "Bash（git:*）" as one token != "Bash".
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash（git:*）")
+    assert any("declares Bash" in e for e in errs)
+
+
+def test_fullwidth_bash_and_paren_specifier_fails(tmp_path):
+    # #524 r10: both the tool name AND its parens fullwidth — the whole thing
+    # must fold to ASCII "Bash" and be caught.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Ｂａｓｈ（git:*）")
     assert any("declares Bash" in e for e in errs)
 
 
