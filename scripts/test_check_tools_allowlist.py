@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Tests for check_tools_allowlist.py (#524).
 
-Mutation discipline: every invariant has a passing case (green fixture tree +
-the real repo tree) and failing cases proving the check fires when the
-guarded property is broken. The load-bearing mutation is the SYMMETRIC
-source+mirror edit re-adding Bash: it passes check_agents_mirror_sync.py
-(byte-equal pair) and the name-keyed runtime guard lint, so before #524 it
-sailed through CI green — the exact drift scenario the issue documents.
+Mutation discipline: every invariant branch has a passing case (green fixture
+tree + the real repo tree) and a failing case proving the check fires when
+the guarded property is broken. Two load-bearing families:
+
+  * The SYMMETRIC source+mirror edit re-adding Bash — it passes
+    check_agents_mirror_sync.py (byte-equal pair) and the name-keyed runtime
+    guard lint, so before #524 it sailed through CI green (the drift the
+    issue documents).
+  * YAML-form bypasses of the semantic checks — quoted/flow/block/escaped
+    spellings that a raw line scan cannot see. These were found by the codex
+    xhigh review; the node-tree parse closes them and each has a witness
+    here.
 """
 from __future__ import annotations
 
@@ -15,6 +21,7 @@ from pathlib import Path
 
 from check_tools_allowlist import (
     ALLOWLISTED_FILES,
+    CANONICAL_TOOLS,
     MANIFEST,
     PINNED_TOOLS_LINE,
     REPO_ROOT,
@@ -24,7 +31,8 @@ from check_tools_allowlist import (
 
 def make_tree(tmp_path: Path) -> Path:
     """A green fixture tree: six allowlisted files carrying the pinned line,
-    plus a minimal Bucket A manifest and one fenced/one unfenced extra agent."""
+    a minimal Bucket A manifest, a fenced no-tools agent, and an unfenced
+    Bash-holding agent."""
     for rel in ALLOWLISTED_FILES:
         p = tmp_path / rel
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -68,6 +76,10 @@ def rewrite_tools_line(path: Path, new_line: str) -> None:
                     encoding="utf-8")
 
 
+def errs_for(tmp_path: Path, rel: str) -> list[str]:
+    return [e for e in check(tmp_path) if rel in e]
+
+
 # --- invariant 0: the real tree is green --------------------------------------
 
 def test_real_repo_passes():
@@ -81,109 +93,109 @@ def test_green_tree_passes(tmp_path):
     assert check(tmp_path) == []
 
 
-# --- invariant 1: exact pinned value -------------------------------------------
+# --- invariant 1: exact value + semantic parse ---------------------------------
 
 def test_symmetric_bash_readd_fails_on_both_files(tmp_path):
     # THE #524 drift scenario: source+mirror edited together to re-add Bash.
-    # Mirror-sync stays green (byte-equal pair); this lint must fire on BOTH.
+    # Mirror-sync stays green (byte-equal pair); this lint must fire on BOTH,
+    # via the semantic value check AND the byte-exact witness.
     make_tree(tmp_path)
     src, mirror = first_pair()
     for rel in (src, mirror):
         rewrite_tools_line(tmp_path / rel, PINNED_TOOLS_LINE + ", Bash")
-    errs = check(tmp_path)
-    assert any(src in e and "drifted" in e for e in errs)
-    assert any(mirror in e and "drifted" in e for e in errs)
+    assert any("diverges from the canonical" in e for e in errs_for(tmp_path, src))
+    assert any("diverges from the canonical" in e for e in errs_for(tmp_path, mirror))
 
 
 def test_dropped_tool_fails(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     rewrite_tools_line(tmp_path / src, "tools: Read, Write, Edit, Glob")
-    errs = check(tmp_path)
-    assert any(src in e and "drifted" in e for e in errs)
+    assert any("diverges from the canonical" in e for e in errs_for(tmp_path, src))
 
 
 def test_typoed_tool_name_fails(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     rewrite_tools_line(tmp_path / src, "tools: Read, Write, Edit, Gerp, Glob")
-    errs = check(tmp_path)
-    assert any(src in e and "drifted" in e for e in errs)
+    assert any("diverges from the canonical" in e for e in errs_for(tmp_path, src))
 
 
-def test_trailing_whitespace_is_drift(tmp_path):
-    # Exact byte pin: even whitespace divergence must fire, or the "exact
-    # line" contract quietly weakens to "roughly that line".
+def test_trailing_whitespace_is_byte_drift(tmp_path):
+    # A trailing space keeps the semantic value intact but breaks the
+    # byte-exact witness — the exact-form pin must still fire.
     make_tree(tmp_path)
     src, _ = first_pair()
     rewrite_tools_line(tmp_path / src, PINNED_TOOLS_LINE + " ")
-    errs = check(tmp_path)
-    assert any(src in e and "drifted" in e for e in errs)
+    assert any("not byte-equal" in e for e in errs_for(tmp_path, src))
 
 
-def test_crlf_conversion_is_drift(tmp_path):
-    # A symmetric LF->CRLF conversion must not silently satisfy the exact
-    # line pin (codex round-1 P2: universal-newline reads would hide it).
+def test_crlf_conversion_is_byte_drift(tmp_path):
+    # A symmetric LF->CRLF conversion leaves YAML semantics intact, so only
+    # the CR-sensitive byte witness catches it (codex round-1 P2).
     make_tree(tmp_path)
     src, mirror = first_pair()
     for rel in (src, mirror):
         p = tmp_path / rel
         p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
-    errs = check(tmp_path)
-    assert any(src in e and "drifted" in e for e in errs)
-    assert any(mirror in e and "drifted" in e for e in errs)
+    assert any("not byte-equal" in e for e in errs_for(tmp_path, src))
+    assert any("not byte-equal" in e for e in errs_for(tmp_path, mirror))
 
 
-def test_quoted_duplicate_tools_key_fails(tmp_path):
-    # The sharpest round-1 bypass: keep the pinned bare line AND add a
-    # quoted `"tools":` duplicate — YAML last-wins would make the EFFECTIVE
-    # value `Read, Bash` while a naive `tools:` prefix count still sees one
-    # line. The broadened key regex counts both.
-    make_tree(tmp_path)
-    src, _ = first_pair()
-    rewrite_tools_line(tmp_path / src,
-                       f'{PINNED_TOOLS_LINE}\n"tools": Read, Bash')
-    errs = check(tmp_path)
-    assert any(src in e and "carry a `tools` key" in e for e in errs)
-    # And the semantic belt independently sees the last-wins divergence.
-    assert any(src in e and "SEMANTIC" in e for e in errs)
-
-
-def test_missing_tools_line_fails_as_widening(tmp_path):
+def test_missing_tools_key_fails_as_widening(tmp_path):
     # Dropping the key silently widens capability (agent inherits ALL tools).
     make_tree(tmp_path)
     src, _ = first_pair()
     p = tmp_path / src
     p.write_text(p.read_text(encoding="utf-8").replace(
         PINNED_TOOLS_LINE + "\n", ""), encoding="utf-8")
-    errs = check(tmp_path)
-    assert any(src in e and "no `tools:` line" in e for e in errs)
+    assert any("no `tools:` key" in e for e in errs_for(tmp_path, src))
 
 
-def test_duplicate_tools_line_fails(tmp_path):
+def test_escaped_duplicate_key_fails(tmp_path):
+    # The sharpest round-2 bypass: keep the pinned bare line AND add a
+    # `s`-escaped `"tools":` duplicate. safe_load collapses the two
+    # to the last-wins canonical value; the duplicate-preserving node tree
+    # sees TWO `tools` keys and fires.
+    make_tree(tmp_path)
+    src, _ = first_pair()
+    rewrite_tools_line(
+        tmp_path / src,
+        '"tool\\u0073": Read, Write, Edit, Grep, Glob, Bash\n'
+        + PINNED_TOOLS_LINE,
+    )
+    assert any("2 `tools` keys" in e for e in errs_for(tmp_path, src))
+
+
+def test_quoted_duplicate_key_fails(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     rewrite_tools_line(tmp_path / src,
-                       f"{PINNED_TOOLS_LINE}\n{PINNED_TOOLS_LINE}")
-    errs = check(tmp_path)
-    assert any(src in e and "2 frontmatter lines carry a `tools` key" in e
-               for e in errs)
+                       f'{PINNED_TOOLS_LINE}\n"tools": Read, Bash')
+    assert any("2 `tools` keys" in e for e in errs_for(tmp_path, src))
 
 
 def test_missing_allowlisted_file_fails(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     (tmp_path / src).unlink()
-    errs = check(tmp_path)
-    assert any(src in e and "missing" in e for e in errs)
+    assert any("missing" in e for e in errs_for(tmp_path, src))
 
 
 def test_no_frontmatter_fails(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     (tmp_path / src).write_text("body only\n", encoding="utf-8")
-    errs = check(tmp_path)
-    assert any(src in e and "frontmatter" in e for e in errs)
+    assert any("no YAML frontmatter" in e for e in errs_for(tmp_path, src))
+
+
+def test_uncomposable_frontmatter_fails_closed(tmp_path):
+    make_tree(tmp_path)
+    src, _ = first_pair()
+    p = tmp_path / src
+    p.write_text(p.read_text(encoding="utf-8").replace(
+        PINNED_TOOLS_LINE, "tools: [unclosed"), encoding="utf-8")
+    assert any("does not compose" in e for e in errs_for(tmp_path, src))
 
 
 def test_body_tools_line_does_not_satisfy_pin(tmp_path):
@@ -194,68 +206,62 @@ def test_body_tools_line_does_not_satisfy_pin(tmp_path):
     p.write_text(p.read_text(encoding="utf-8").replace(
         PINNED_TOOLS_LINE + "\n", "") + f"\n{PINNED_TOOLS_LINE}\n",
         encoding="utf-8")
-    errs = check(tmp_path)
-    assert any(src in e and "no `tools:` line" in e for e in errs)
+    assert any("no `tools:` key" in e for e in errs_for(tmp_path, src))
 
 
-# --- invariant 2: Bucket A frontmatter must not advertise Bash ------------------
-
-def test_bucket_a_agent_advertising_bash_fails(tmp_path):
-    make_tree(tmp_path)
-    eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
-    eic.write_text("---\nname: eic_agent\ntools: Read, Bash\n---\n\nbody\n",
-                   encoding="utf-8")
-    errs = check(tmp_path)
-    assert any("eic_agent" in e and "Bash" in e for e in errs)
-
+# --- invariant 2: Bucket A frontmatter must not declare Bash --------------------
 
 def bash_fixture(tmp_path, frontmatter_body: str) -> list[str]:
-    """Write a Bucket A agent with the given frontmatter body and return
-    the errors mentioning it."""
+    """Write a Bucket A agent with the given frontmatter body and return the
+    errors mentioning it."""
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
     eic.write_text(f"---\n{frontmatter_body}\n---\n\nbody\n",
                    encoding="utf-8")
     return [e for e in check(tmp_path) if "eic_agent" in e]
 
 
+def test_bucket_a_agent_advertising_bash_fails(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash")
+    assert any("declares Bash" in e for e in errs)
+
+
 def test_quoted_string_value_bash_fails(tmp_path):
-    # codex round-1 P1: yaml resolves the quotes; a raw string scan keeps
-    # them and misses `Bash"`.
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path, 'name: eic_agent\ntools: "Read, Bash"')
-    assert any("Bash" in e for e in errs)
+    assert any("declares Bash" in e for e in errs)
 
 
 def test_quoted_name_with_bash_fails(tmp_path):
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path, 'name: "eic_agent"\ntools: Read, Bash')
-    assert any("Bash" in e for e in errs)
+    assert any("declares Bash" in e for e in errs)
 
 
 def test_flow_list_bash_fails(tmp_path):
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path, "name: eic_agent\ntools: [Read, Bash]")
-    assert any("Bash" in e for e in errs)
+    assert any("declares Bash" in e for e in errs)
 
 
 def test_block_list_bash_fails(tmp_path):
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path,
                         "name: eic_agent\ntools:\n  - Read\n  - Bash")
-    assert any("Bash" in e for e in errs)
+    assert any("declares Bash" in e for e in errs)
 
 
 def test_inline_comment_bash_fails(tmp_path):
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path,
                         "name: eic_agent\ntools: Read, Bash # reviewed")
-    assert any("Bash" in e for e in errs)
+    assert any("declares Bash" in e for e in errs)
 
 
 def test_permission_specifier_bash_fails(tmp_path):
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash(git:*)")
-    assert any("Bash" in e for e in errs)
+    assert any("declares Bash" in e for e in errs)
 
 
 def test_bashoutput_is_a_different_tool_and_passes(tmp_path):
@@ -266,16 +272,129 @@ def test_bashoutput_is_a_different_tool_and_passes(tmp_path):
     assert errs == []
 
 
-def test_unparseable_yaml_on_bucket_a_fails_closed(tmp_path):
+def test_nested_list_member_fails_closed(tmp_path):
+    # A non-scalar list member is an unrecognized shape — must not be
+    # silently stringified into a passing value (codex round-2 P2).
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path, "name: eic_agent\ndescription: [unclosed")
-    assert any("not" in e and "parseable" in e for e in errs)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: [Read, [Bash]]")
+    assert any("unrecognized shape" in e for e in errs)
 
 
-def test_unrecognized_tools_shape_on_bucket_a_fails_closed(tmp_path):
+def test_mapping_list_member_fails_closed(tmp_path):
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: [Read, {Bash: 1}]")
+    assert any("unrecognized shape" in e for e in errs)
+
+
+def test_mapping_tools_value_fails_closed(tmp_path):
     make_tree(tmp_path)
     errs = bash_fixture(tmp_path, "name: eic_agent\ntools: {Read: yes}")
     assert any("unrecognized shape" in e for e in errs)
+
+
+def test_uncomposable_bucket_a_frontmatter_fails_closed(tmp_path):
+    # Frontmatter that won't compose can't be cleared by name — fail closed
+    # (codex round-2 P2: a quoted/indented name under malformed YAML must
+    # not be silently skipped).
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path, 'name: "eic_agent"\ndescription: [unclosed')
+    assert any("does not compose" in e for e in errs)
+
+
+def test_merge_key_injecting_bash_fails_closed(tmp_path):
+    # codex round-3: `<<: *base` merges a `tools: [..., Bash]` the
+    # duplicate-preserving node scan never sees (the top level only shows a
+    # literal `<<` key). The composed node tree carries the `merge` tag —
+    # detected there, not by text, and failed closed.
+    make_tree(tmp_path)
+    errs = bash_fixture(
+        tmp_path,
+        "_base: &b {tools: [Read, Bash]}\n<<: *b\nname: eic_agent")
+    assert any("merge key / alias" in e for e in errs)
+
+
+def test_flow_merge_with_quoted_hash_key_fails_closed(tmp_path):
+    # codex round-3 P1-2: a `#` inside a quoted flow key fooled the old
+    # text-scan comment strip; the node-tree merge-tag detector is immune.
+    make_tree(tmp_path)
+    eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
+    eic.write_text(
+        '---\n{ "x#": y, name: eic_agent, <<: &b {tools: "Read, Bash"} }\n'
+        "---\n\nbody\n", encoding="utf-8")
+    assert any("merge key / alias" in e
+               for e in check(tmp_path) if "eic_agent" in e)
+
+
+def test_alias_value_bash_fails_closed(tmp_path):
+    # An alias makes `tools` share another node's value — the node tree sees
+    # the SAME node object twice (shared identity). Fail closed.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        "name: eic_agent\n_x: &a [Read, Bash]\ntools: *a")
+    assert any("merge key / alias" in e for e in errs)
+
+
+def test_ampersand_in_quoted_value_is_not_an_anchor(tmp_path):
+    # False-positive guard: a literal `&`/`*` inside a quoted scalar is not a
+    # YAML anchor/alias (the node carries a plain str value) and must NOT
+    # fail the clean file — the node-tree detector, unlike a text scan, sees
+    # this correctly.
+    make_tree(tmp_path)
+    errs = bash_fixture(tmp_path,
+                        'name: eic_agent\ndescription: "A & B, 3 * 4"\n'
+                        "tools: Read, Grep")
+    assert errs == []
+
+
+def test_allowlisted_file_with_alias_fails_closed(tmp_path):
+    # Invariant 1 also fails closed on aliases (a `<<`/alias could inject the
+    # pinned value from elsewhere, defeating the value lock).
+    make_tree(tmp_path)
+    src, _ = first_pair()
+    p = tmp_path / src
+    p.write_text(
+        "---\nname: research_architect_agent\n_t: &t Read, Write, Edit, "
+        "Grep, Glob\ntools: *t\n---\n\nbody\n", encoding="utf-8")
+    assert any("merge key / alias" in e for e in errs_for(tmp_path, src))
+
+
+def test_indented_fence_in_block_scalar_does_not_truncate(tmp_path):
+    # codex round-3 P1-1: an indented `---` inside a `description: |` block
+    # scalar must NOT be read as the closing fence — doing so truncated the
+    # block and hid a Bucket A `name` + `tools: Read, Bash` below it. Only a
+    # column-0 `---` closes frontmatter.
+    make_tree(tmp_path)
+    eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
+    eic.write_text(
+        "---\ndescription: |\n  ---\nname: eic_agent\ntools: Read, Bash\n"
+        "---\n\nbody\n", encoding="utf-8")
+    assert any("declares Bash" in e
+               for e in check(tmp_path) if "eic_agent" in e)
+
+
+def test_block_scalar_containing_triple_dash_is_not_a_fence(tmp_path):
+    # The companion false-positive: a block scalar that legitimately contains
+    # an indented `---` line must still parse the real keys below it and PASS
+    # a clean file.
+    make_tree(tmp_path)
+    errs = bash_fixture(
+        tmp_path,
+        "name: eic_agent\ndescription: |\n  intro\n  --- not a fence\n"
+        "tools: Read, Grep")
+    assert errs == []
+
+
+def test_escaped_tools_key_fires_byte_witness_on_allowlisted(tmp_path):
+    # codex round-3 P2-1: replacing the pinned line with an escaped-key
+    # spelling makes raw_lines empty; the byte witness must still fire
+    # (require the verbatim pinned line), and the semantic check fires too.
+    make_tree(tmp_path)
+    src, _ = first_pair()
+    p = tmp_path / src
+    p.write_text(
+        '---\nname: research_architect_agent\n"tool\\u0073": Read, Write, '
+        "Edit, Grep, Glob\n---\n\nbody\n", encoding="utf-8")
+    assert any("not byte-equal" in e for e in errs_for(tmp_path, src))
 
 
 def test_non_bucket_a_agent_with_bash_passes(tmp_path):
@@ -328,6 +447,7 @@ def test_pinned_line_is_the_frozen_514_value():
     # Editing the allowlist is a deliberate security-surface change: it must
     # touch this lint in the same commit. This test is the second witness.
     assert PINNED_TOOLS_LINE == "tools: Read, Write, Edit, Grep, Glob"
+    assert CANONICAL_TOOLS == ("Read", "Write", "Edit", "Grep", "Glob")
 
 
 def test_allowlisted_files_are_the_three_pairs():
