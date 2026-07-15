@@ -108,6 +108,17 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _repo_relative(ref: str) -> Path | None:
+    """Resolve a registry-supplied path and refuse anything outside the repo.
+
+    The registry is repo-committed (same trust level as this lint), so a
+    traversal ref is a registry bug, not an attack — but containment keeps the
+    lint from ever reading or existence-probing outside the checkout
+    (hardening per the #511 security review)."""
+    resolved = (REPO_ROOT / ref).resolve()
+    return resolved if resolved.is_relative_to(REPO_ROOT) else None
+
+
 def _check_unique_ids(mechanisms: list) -> list[str]:
     seen: set[str] = set()
     errors: list[str] = []
@@ -144,7 +155,11 @@ def _check_authorities(mechanisms: list) -> list[str]:
                     "references are forbidden; cite a content anchor instead "
                     "(line numbers drift, anchors survive)")
                 continue
-            target = REPO_ROOT / file_ref
+            target = _repo_relative(file_ref)
+            if target is None:
+                errors.append(
+                    f"{where}.file escapes the repo root: {file_ref}")
+                continue
             if not target.is_file():
                 errors.append(f"{where}.file does not exist: {file_ref}")
                 continue
@@ -177,7 +192,11 @@ def _check_pinned_by(mechanisms: list) -> list[str]:
                 errors.append(
                     f"{where} {pin!r} is not 'path' or 'path::function'")
                 continue
-            path = REPO_ROOT / m.group("path")
+            path = _repo_relative(m.group("path"))
+            if path is None:
+                errors.append(
+                    f"{where}: pinned path escapes the repo root: {pin}")
+                continue
             if not path.is_file():
                 errors.append(f"{where}: pinned file does not exist: {pin}")
                 continue

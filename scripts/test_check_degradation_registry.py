@@ -172,3 +172,19 @@ def test_existing_pinned_function_passes(tmp_path):
     data["mechanisms"][0]["pinned_by"] = [
         "scripts/test_verification_gate.py::test_all_unreachable_is_unresolvable"]
     assert _errors_for(tmp_path, data) == []
+
+
+def test_traversal_authority_ref_fails(tmp_path):
+    """Containment hardening: a ref resolving outside the repo is refused
+    before any read or existence probe (#511 security-review note)."""
+    data = _shipped()
+    data["mechanisms"][0]["authority"][0]["file"] = "../outside.md"
+    errors = _errors_for(tmp_path, data)
+    assert any("escapes the repo root" in e for e in errors)
+
+
+def test_traversal_pinned_ref_fails(tmp_path):
+    data = _shipped()
+    data["mechanisms"][0]["pinned_by"] = ["../../outside_test.py"]
+    errors = _errors_for(tmp_path, data)
+    assert any("escapes the repo root" in e for e in errors)
