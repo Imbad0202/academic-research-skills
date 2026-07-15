@@ -111,7 +111,7 @@ Parsing operates on the report with fenced code blocks (``` ... ```) stripped fi
 so example/quoted content can never satisfy or double a required token. Each required
 section heading must appear **exactly once** (a duplicated required section ⇒ parse
 error). Required tokens are matched as full lines (anchored, case-sensitive,
-surrounding whitespace tolerated), not as substrings of prose.
+trailing whitespace tolerated), not as substrings of prose.
 
 From each Phase-2 report the checker reads:
 

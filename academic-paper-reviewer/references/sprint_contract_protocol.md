@@ -165,3 +165,7 @@ Audit-log tags the orchestrator may emit:
 | `[SYNTHESIS-MISMATCH]` | second checker failure after retry | abort editorial round |
 | `[REVIEWER-SELF-INCONSISTENT: reviewer=..., ...]` | checker Layer 1 (exit 3) | mark reviewer unusable |
 | `[PANEL-CARDINALITY: ...]` | checker cardinality/role guard (exit 2) | abort editorial round |
+| `[REPORT-PARSE: <path>: ...]` | checker report-grammar failure (exit 3) | mark reviewer unusable |
+| `[SYNTHESIS-PARSE: <path>: ...]` | checker synthesis-grammar failure (exit 1) | void synthesis, retry once |
+| `[CONTRACT-INVALID/-INELIGIBLE: ...]` | checker contract validation failure (exit 2) | abort editorial round |
+| `[IO-ERROR: <path>: ...]` | checker file read/encoding failure (exit 2) | abort editorial round |

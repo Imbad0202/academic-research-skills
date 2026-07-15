@@ -189,7 +189,7 @@ REQUIRED_REPORT_SECTIONS = (
 
 def strip_fences(text):
     out, in_fence = [], False
-    for line in text.splitlines():
+    for line in text.split("\n"):
         if _FENCE_RE.match(line):
             in_fence = not in_fence
             continue

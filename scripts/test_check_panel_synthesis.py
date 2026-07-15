@@ -73,6 +73,17 @@ def test_pattern2_priority_eq_variant():
     assert p({**ALL_PASS, "D1": "block", "D3": "warn"}) is True
 
 
+def test_pattern2_or_worse_boundaries_beyond_warn():
+    # 'or worse' floor semantics must hold at both the 'warn' and 'block'
+    # anchors, not just the 'warn' anchor already covered above.
+    p_warn = pred("two or more mandatory dimensions score 'warn' or worse")
+    assert p_warn({**ALL_PASS, "D1": "pass", "D2": "pass"}) is False  # both pass: no fire
+
+    p_block = pred("two or more mandatory dimensions score 'block' or worse")
+    assert p_block({**ALL_PASS, "D1": "warn", "D2": "warn"}) is False  # warns don't reach block
+    assert p_block({**ALL_PASS, "D1": "block", "D2": "block"}) is True  # two blocks: fires
+
+
 def test_pattern3_every_priority():
     p = pred("every mandatory dimension scores 'pass'")
     assert p(ALL_PASS) is True
@@ -293,6 +304,15 @@ def _write(tmp_path, obj):
 def test_load_contract_rejects_unsupported_mode(tmp_path):
     bad = dict(FULL_CONTRACT)
     bad["mode"] = "writer_full"
+    with pytest.raises(cps.ContractError):
+        cps.load_contract(_write(tmp_path, bad))
+
+
+def test_load_contract_rejects_evaluator_mode(tmp_path):
+    # evaluator_full is a real Schema 13.1 mode (v3.6.8), but this checker
+    # only publishes a panel mapping for reviewer_* modes (protocol §7).
+    bad = json.loads(json.dumps(FULL_CONTRACT))
+    bad["mode"] = "evaluator_full"
     with pytest.raises(cps.ContractError):
         cps.load_contract(_write(tmp_path, bad))
 
@@ -520,6 +540,26 @@ def test_cli_role_set_mismatch_exit2(tmp_path):
     assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
 
 
+def test_cli_unknown_contract_role_token_exit2(tmp_path):
+    # 'banana' is well-formed per the contract_role line grammar but is not
+    # in the mode's published role vocabulary (protocol §7) -> cardinality
+    # failure, not a report-parse failure.
+    bad_role = tmp_path / "r_banana.md"
+    bad_role.write_text(make_report(role="banana", scores={**ALL_PASS, "D3": "warn"},
+                                    fired={"F1": False, "F2": False,
+                                           "F3": False, "F0": False},
+                                    decision="editorial_decision=accept"),
+                        encoding="utf-8")
+    reports = [FIX / f"r_{r}.md" for r in ROLES[:4]] + [bad_role]
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
+
+
+def test_cli_layer1_only_too_many_reports_exit2():
+    # layer1-only accepts 1..panel_size reports; panel_size+1 must reject.
+    reports = [FIX / f"r_{r}.md" for r in ROLES] + [FIX / "r_eic.md"]
+    assert cli("--layer1-only", reports=reports) == 2
+
+
 def test_cli_exit_precedence_2_beats_3_and_1(tmp_path):
     # inconsistent reviewer (3) + duplicate paths (2) + flipped synthesis (1) -> 2
     bad = tmp_path / "r_eic.md"
@@ -589,3 +629,24 @@ def test_cli_methodology_focus_round(tmp_path, capsys):
     assert cps.main(["--contract", str(mcontract),
                      "--report", str(r1), "--report", str(r2),
                      "--synthesis", str(synth)]) == 0
+
+
+# --- Unicode line-separator bypass (#524 separator-class discipline) -------------
+
+def test_unicode_line_separators_do_not_create_anchored_lines():
+    # NEL-embedded decision token must not satisfy the exactly-once rule
+    # when the real decision line is absent (#524 separator-class discipline).
+    base = make_report()
+    real = "editorial_decision=accept"
+    mangled = base.replace(
+        real, "prose\x85editorial_decision=accept\x85tail")
+    with pytest.raises(cps.ReportError):
+        cps.parse_report("r.md", mangled, FULL_CONTRACT)
+
+
+def test_crlf_report_still_parses(tmp_path):
+    p = tmp_path / "r.md"
+    p.write_bytes(make_report().replace("\n", "\r\n").encode("utf-8"))
+    text = cps._read_text(p)
+    r = cps.parse_report("r.md", text, FULL_CONTRACT)
+    assert r.decision == "editorial_decision=accept"
