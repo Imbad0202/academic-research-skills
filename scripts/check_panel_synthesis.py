@@ -364,10 +364,11 @@ def load_contract(path):
         raise ContractError(
             f"[CONTRACT-INELIGIBLE: mode '{mode}' has no published panel "
             f"mapping (protocol §7); supported: {sorted(ROLE_SETS)}]")
-    if contract.get("panel_size") != len(ROLE_SETS[mode]):
+    expected_size = check_sprint_contract.EXPECTED_PANEL_SIZE[mode]
+    if contract.get("panel_size") != expected_size:
         raise ContractError(
             f"[CONTRACT-INELIGIBLE: panel_size={contract.get('panel_size')} "
-            f"inconsistent with mode={mode}; expected {len(ROLE_SETS[mode])}]")
+            f"inconsistent with mode={mode}; expected {expected_size}]")
     accept_grade_action(contract["failure_conditions"])
     dims_by_priority, dim_ids = {}, set()
     for d in contract["acceptance_dimensions"]:
@@ -453,8 +454,8 @@ def main(argv=None):
     role_set = ROLE_SETS[contract["mode"]]
 
     # cardinality: paths + content identity (both modes)
-    resolved = [p.resolve() for p in args.reports]
-    if len(set(resolved)) != len(resolved):
+    resolved = {p: p.resolve() for p in args.reports}
+    if len(set(resolved.values())) != len(args.reports):
         infra.append("[PANEL-CARDINALITY: duplicate report paths]")
     if not args.layer1_only and len(args.reports) != panel_size:
         infra.append(f"[PANEL-CARDINALITY: got={len(args.reports)}, "
@@ -470,7 +471,7 @@ def main(argv=None):
         except ContractError as exc:
             infra.append(str(exc))
             continue
-        resolved_p = p.resolve()
+        resolved_p = resolved[p]
         if resolved_p in seen_resolved:
             # Already processed under a prior --report occurrence of this same
             # resolved path; the duplicate-path diagnostic above already

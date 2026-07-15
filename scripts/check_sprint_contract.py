@@ -73,6 +73,10 @@ _VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 # Module-level alongside _VERSION_RE; reused by SC-10 (Task 12).
 _DIM_REF_RE = re.compile(r"\bD\d+\b")
 
+# Canonical shipped-mode panel sizes (protocol §7 table). Single authority:
+# SC-11 below and check_panel_synthesis.load_contract both read this.
+EXPECTED_PANEL_SIZE = {"reviewer_full": 5, "reviewer_methodology_focus": 2}
+
 
 def _parse_version(v: str | None) -> tuple[int, int, int] | None:
     if not v:
@@ -241,11 +245,10 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
                 "'any'/'all' collapse to the bare predicate and 'majority' "
                 "never fires (protocol §8)"
             )
-        expected_panel = {"reviewer_full": 5, "reviewer_methodology_focus": 2}
-        if mode in expected_panel and ps != expected_panel[mode]:
+        if mode in EXPECTED_PANEL_SIZE and ps != EXPECTED_PANEL_SIZE[mode]:
             warnings.append(
                 f"SC-11 WARNING: panel_size={ps} inconsistent with mode={mode}; "
-                f"expected {expected_panel[mode]}"
+                f"expected {EXPECTED_PANEL_SIZE[mode]}"
             )
 
     return warnings
