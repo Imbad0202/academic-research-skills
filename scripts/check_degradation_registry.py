@@ -32,6 +32,7 @@ import argparse
 import json
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -84,20 +85,27 @@ def _check_shape(data: dict) -> list[str]:
         for field in _REQUIRED_ROW_FIELDS:
             if field not in row:
                 errors.append(f"D1: {label} missing required field {field!r}")
-        for field in _REQUIRED_ROW_FIELDS:
-            if field in ("authority", "pinned_by"):
                 continue
-            value = row.get(field)
-            if field in row and (not isinstance(value, str) or not value.strip()):
+            value = row[field]
+            if field == "authority":
+                if not isinstance(value, list) or not value:
+                    errors.append(
+                        f"D1: {label}.authority must be a non-empty list")
+            elif field == "pinned_by":
+                if not isinstance(value, list):
+                    errors.append(f"D1: {label}.pinned_by must be a list")
+            elif not isinstance(value, str) or not value.strip():
                 errors.append(
                     f"D1: {label}.{field} must be a non-empty string")
-        if "authority" in row and (
-            not isinstance(row["authority"], list) or not row["authority"]
-        ):
-            errors.append(f"D1: {label}.authority must be a non-empty list")
-        if "pinned_by" in row and not isinstance(row["pinned_by"], list):
-            errors.append(f"D1: {label}.pinned_by must be a list")
     return errors
+
+
+@lru_cache(maxsize=None)
+def _read(path: Path) -> str:
+    """Memoized file read: authority files repeat across rows as the registry
+    grows (firm_rules.md, the corpus-entry schema), and the mutation-test
+    suite calls run() dozens of times against the same unchanged repo files."""
+    return path.read_text(encoding="utf-8")
 
 
 def _check_unique_ids(mechanisms: list) -> list[str]:
@@ -145,7 +153,7 @@ def _check_authorities(mechanisms: list) -> list[str]:
                     f"{where}.anchor must be a string of >= {_MIN_ANCHOR_LEN} "
                     "chars (too-short anchors match vacuously)")
                 continue
-            if anchor not in target.read_text(encoding="utf-8"):
+            if anchor not in _read(target):
                 errors.append(
                     f"{where}: anchor not found verbatim in {file_ref}: "
                     f"{anchor!r} — either the authority moved (update the "
@@ -181,7 +189,7 @@ def _check_pinned_by(mechanisms: list) -> list[str]:
                     continue
                 if not re.search(
                     rf"^def {re.escape(func)}\(",
-                    path.read_text(encoding="utf-8"),
+                    _read(path),
                     re.MULTILINE,
                 ):
                     errors.append(
@@ -190,10 +198,7 @@ def _check_pinned_by(mechanisms: list) -> list[str]:
     return errors
 
 
-def run(registry_path: Path) -> list[str]:
-    data, errors = _load_registry(registry_path)
-    if data is None:
-        return errors
+def _run_checks(data: dict) -> list[str]:
     errors = _check_shape(data)
     mechanisms = data.get("mechanisms")
     if isinstance(mechanisms, list) and mechanisms:
@@ -203,23 +208,28 @@ def run(registry_path: Path) -> list[str]:
     return errors
 
 
+def run(registry_path: Path) -> list[str]:
+    data, errors = _load_registry(registry_path)
+    return errors if data is None else _run_checks(data)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--registry", type=Path, default=DEFAULT_REGISTRY,
         help="registry path override (tests); default: %(default)s")
     args = parser.parse_args(argv)
-    errors = run(args.registry)
+    data, errors = _load_registry(args.registry)
+    if data is not None:
+        errors = _run_checks(data)
     if errors:
         for e in errors:
             print(f"ERROR: {e}", file=sys.stderr)
         print(f"\ncheck_degradation_registry: {len(errors)} violation(s)",
               file=sys.stderr)
         return 1
-    data, _ = _load_registry(args.registry)
-    count = len(data.get("mechanisms", [])) if data else 0
-    print(f"Degradation registry lint ok ({count} mechanisms, all anchors "
-          "and pins resolve).")
+    print(f"Degradation registry lint ok ({len(data['mechanisms'])} "
+          "mechanisms, all anchors and pins resolve).")
     return 0
 
 

@@ -78,6 +78,10 @@
         {
           "file": "scripts/verify_submission_package.py",
           "anchor": "return 3  # \"passed what was checkable\" (§8) — distinct from a full pass"
+        },
+        {
+          "file": "scripts/verify_submission_package.py",
+          "anchor": "Fail-closed (§5.2): a missing parser/profile must not silently"
         }
       ],
       "pinned_by": [
@@ -95,6 +99,14 @@
         {
           "file": "shared/cross_model_verification.md",
           "anchor": "Continue with single-model verification — never block the pipeline on cross-model failure"
+        },
+        {
+          "file": "shared/cross_model_verification.md",
+          "anchor": "Cross-model verification was configured but unavailable for this run. Results are single-model only."
+        },
+        {
+          "file": "shared/cross_model_verification.md",
+          "anchor": "A `NOT_SEARCHED` result is **not** a transport failure and is handled differently."
         }
       ],
       "pinned_by": [

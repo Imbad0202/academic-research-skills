@@ -467,117 +467,85 @@
       }
     },
     {
-      "description": "#511 Part A mutual exclusion: a signal was either computed (present in contamination_signals) or omitted-with-reason (present in contamination_signal_omissions) -- never both. One if/then per signal key; the if requires contamination_signals present so entries without the object are unaffected.",
+      "description": "#511 Part A mutual exclusion: a signal was either computed (present in contamination_signals) or omitted-with-reason (present in contamination_signal_omissions) -- never both. One not-branch per signal key: the branch fails exactly when both objects are present AND both carry the key (logically equivalent to the if/then form, one nesting level flatter).",
       "allOf": [
         {
-          "if": {
+          "not": {
+            "required": [
+              "contamination_signals",
+              "contamination_signal_omissions"
+            ],
             "properties": {
               "contamination_signals": {
                 "required": [
                   "semantic_scholar_unmatched"
                 ]
-              }
-            },
-            "required": [
-              "contamination_signals"
-            ]
-          },
-          "then": {
-            "not": {
-              "properties": {
-                "contamination_signal_omissions": {
-                  "required": [
-                    "semantic_scholar_unmatched"
-                  ]
-                }
               },
-              "required": [
-                "contamination_signal_omissions"
-              ]
+              "contamination_signal_omissions": {
+                "required": [
+                  "semantic_scholar_unmatched"
+                ]
+              }
             }
           }
         },
         {
-          "if": {
+          "not": {
+            "required": [
+              "contamination_signals",
+              "contamination_signal_omissions"
+            ],
             "properties": {
               "contamination_signals": {
                 "required": [
                   "openalex_unmatched"
                 ]
-              }
-            },
-            "required": [
-              "contamination_signals"
-            ]
-          },
-          "then": {
-            "not": {
-              "properties": {
-                "contamination_signal_omissions": {
-                  "required": [
-                    "openalex_unmatched"
-                  ]
-                }
               },
-              "required": [
-                "contamination_signal_omissions"
-              ]
+              "contamination_signal_omissions": {
+                "required": [
+                  "openalex_unmatched"
+                ]
+              }
             }
           }
         },
         {
-          "if": {
+          "not": {
+            "required": [
+              "contamination_signals",
+              "contamination_signal_omissions"
+            ],
             "properties": {
               "contamination_signals": {
                 "required": [
                   "crossref_unmatched"
                 ]
-              }
-            },
-            "required": [
-              "contamination_signals"
-            ]
-          },
-          "then": {
-            "not": {
-              "properties": {
-                "contamination_signal_omissions": {
-                  "required": [
-                    "crossref_unmatched"
-                  ]
-                }
               },
-              "required": [
-                "contamination_signal_omissions"
-              ]
+              "contamination_signal_omissions": {
+                "required": [
+                  "crossref_unmatched"
+                ]
+              }
             }
           }
         },
         {
-          "if": {
+          "not": {
+            "required": [
+              "contamination_signals",
+              "contamination_signal_omissions"
+            ],
             "properties": {
               "contamination_signals": {
                 "required": [
                   "arxiv_unmatched"
                 ]
-              }
-            },
-            "required": [
-              "contamination_signals"
-            ]
-          },
-          "then": {
-            "not": {
-              "properties": {
-                "contamination_signal_omissions": {
-                  "required": [
-                    "arxiv_unmatched"
-                  ]
-                }
               },
-              "required": [
-                "contamination_signal_omissions"
-              ]
+              "contamination_signal_omissions": {
+                "required": [
+                  "arxiv_unmatched"
+                ]
+              }
             }
           }
         }
