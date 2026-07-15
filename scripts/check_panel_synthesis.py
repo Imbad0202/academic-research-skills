@@ -463,13 +463,21 @@ def main(argv=None):
         infra.append(f"[PANEL-CARDINALITY: layer1-only accepts 1..{panel_size} "
                      f"reports, got={len(args.reports)}]")
 
-    texts, hashes = {}, set()
+    texts, hashes, seen_resolved = {}, set(), set()
     for p in args.reports:
         try:
             texts[p] = _read_text(p)
         except ContractError as exc:
             infra.append(str(exc))
             continue
+        resolved_p = p.resolve()
+        if resolved_p in seen_resolved:
+            # Already processed under a prior --report occurrence of this same
+            # resolved path; the duplicate-path diagnostic above already
+            # covers it, so skip re-hashing to avoid a second, redundant
+            # byte-identical diagnostic for the identical file.
+            continue
+        seen_resolved.add(resolved_p)
         digest = hashlib.sha256(texts[p].encode("utf-8")).hexdigest()
         if digest in hashes:
             infra.append(f"[PANEL-CARDINALITY: byte-identical report contents "

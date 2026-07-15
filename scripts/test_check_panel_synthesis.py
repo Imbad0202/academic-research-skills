@@ -416,3 +416,26 @@ def test_layer2_panel_zero_fired_accepts():
     diags = cps.layer2_check(reports, FULL_CONTRACT, _predicates(),
                              [], "editorial_decision=accept", [])
     assert diags == []
+
+
+def test_duplicate_path_emits_single_cardinality_diag(tmp_path, capsys):
+    r = tmp_path / "r_eic.md"
+    r.write_text(make_report(), encoding="utf-8")
+    synth = tmp_path / "synth.md"
+    synth.write_text(make_synthesis([], "editorial_decision=accept"),
+                     encoding="utf-8")
+    contract = str(REPO / "shared/contracts/reviewer/full.json")
+    rc = cps.main(["--contract", contract] +
+                  ["--report", str(r)] * 5 +
+                  ["--synthesis", str(synth)])
+    assert rc == 2
+    out = capsys.readouterr().out
+    # A single reused path must not be re-hashed on every repeated
+    # occurrence: the byte-identical diagnostic must fire at most once
+    # (previously fired once per repeat beyond the first, i.e. 4 times
+    # here). The separate, legitimate "duplicate report paths" and
+    # "roles ... != required" diagnostics are independent infra checks
+    # that correctly still fire for this same 5x-identical-path input and
+    # are out of scope for this fix.
+    assert out.count("[PANEL-CARDINALITY: byte-identical report contents") == 0
+    assert out.count("[PANEL-CARDINALITY:") == 2
