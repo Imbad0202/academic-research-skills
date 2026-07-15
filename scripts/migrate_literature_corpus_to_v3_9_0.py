@@ -160,7 +160,20 @@ def migrate_passport(
                 )
                 report[f"degraded_{label}"] += 1
                 _log(f"{key}: degraded ({label}) — {e}")
-                return False
+                # #511 Part A reason-provenance: record WHY the field is
+                # absent so a degraded lookup stays distinguishable from
+                # "never computed". Idempotent (re-run with the API still
+                # down changes nothing); dry-run reports without writing.
+                already = (
+                    entry.get("contamination_signal_omissions", {})
+                    .get(sig_key) == cs.OMISSION_API_DEGRADED
+                )
+                if already:
+                    return False
+                if not dry_run:
+                    cs.record_signal_omission(entry, sig_key)
+                _log(f"{key}: record omission {sig_key}=api_degraded")
+                return True
             # result=None means manual (already handled); API-down would have
             # raised exc_type above, so None here just means "nothing to write".
             if result is None:
@@ -168,6 +181,9 @@ def migrate_passport(
             if not dry_run:
                 sig[sig_key] = result
                 entry["contamination_signals"] = sig
+                # #511 recovery: the signal is now computed, so any omission
+                # recorded by an earlier degraded run is stale.
+                cs.clear_signal_omission(entry, sig_key)
             _log(f"{key}: fill {sig_key}={result}")
             return True
 

@@ -188,3 +188,41 @@ def test_traversal_pinned_ref_fails(tmp_path):
     data["mechanisms"][0]["pinned_by"] = ["../../outside_test.py"]
     errors = _errors_for(tmp_path, data)
     assert any("escapes the repo root" in e for e in errors)
+
+
+# ---------- D5 inventory lock + duplicate keys ----------
+
+
+def test_deleted_row_fails_inventory_lock(tmp_path):
+    """D5: silently deleting a mechanism row must fail until the lint's
+    pinned inventory is updated in the same commit (lock semantics)."""
+    data = _shipped()
+    data["mechanisms"] = [
+        r for r in data["mechanisms"] if r["mechanism"] != "vlm_unavailable"]
+    errors = _errors_for(tmp_path, data)
+    assert any("D5" in e and "missing from the registry" in e for e in errors)
+
+
+def test_renamed_row_fails_both_directions(tmp_path):
+    data = _shipped()
+    data["mechanisms"][0]["mechanism"] = "citation_resolver_outage_v2"
+    errors = _errors_for(tmp_path, data)
+    assert any("D5" in e and "missing" in e for e in errors)
+    assert any("D5" in e and "not in the pinned inventory" in e for e in errors)
+
+
+def test_unpinned_new_row_fails(tmp_path):
+    data = _shipped()
+    extra = dict(data["mechanisms"][0])
+    extra["mechanism"] = "brand_new_mechanism"
+    data["mechanisms"].append(extra)
+    errors = _errors_for(tmp_path, data)
+    assert any("D5" in e and "not in the pinned inventory" in e for e in errors)
+
+
+def test_duplicate_json_key_fails_closed(tmp_path):
+    """Plain json.loads is last-value-wins on duplicate keys — two consumers
+    could read different rows from one file. Reject at parse time."""
+    dup = '{"registry_version": "1.0.0", "mechanisms": [], "mechanisms": []}'
+    errors = _errors_for(tmp_path, dup)
+    assert any("D1" in e and "duplicate JSON object key" in e for e in errors)

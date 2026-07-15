@@ -127,7 +127,7 @@ def migrate_passport(
             report[_SKIP_INSUFFICIENT_DATA] += 1
             _log(f"{key}: skip (insufficient data — missing year)")
             continue
-        signals = cs.build_signals_object(entry, ss_client)
+        signals, omissions = cs.build_signals_with_omissions(entry, ss_client)
         if existing is not None:
             # Partial-fill recovery (codex R1-3 closure): an earlier run
             # that hit API degradation wrote contamination_signals with
@@ -141,6 +141,16 @@ def migrate_passport(
             for sig_key, value in signals.items():
                 if sig_key not in existing:
                     existing[sig_key] = value
+                    # #511 recovery: the field is now computed, so any
+                    # omission a degraded earlier run recorded is stale.
+                    cs.clear_signal_omission(entry, sig_key)
+                    added_any = True
+            # #511 reason-provenance: fields STILL absent because the API
+            # degraded on this run get their omission reason recorded
+            # (idempotent — an already-recorded omission is not a change).
+            for field in omissions:
+                if field not in existing and cs.record_signal_omission(
+                        entry, field):
                     added_any = True
             if not added_any:
                 report[_SKIP_ALREADY_MIGRATED] += 1
@@ -157,6 +167,11 @@ def migrate_passport(
             _log(f"{key}: patch (partial-fill recovery, fields added)")
         else:
             entry["contamination_signals"] = signals
+            # #511 reason-provenance: lookups that degraded on this run are
+            # recorded so the absence stays distinguishable from "never
+            # computed" (manual entries reach here with omissions == {}).
+            for field in omissions:
+                cs.record_signal_omission(entry, field)
             entry["contamination_signals_backfilled_at"] = now_iso()
             _log(f"{key}: patch (signals={dict(signals)})")
         report["patched"] += 1

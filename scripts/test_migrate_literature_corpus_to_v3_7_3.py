@@ -314,10 +314,14 @@ literature_corpus:
             self.assertIn("lopez2024manual", output)
             self.assertIn("patch", output)
 
-    def test_partial_fill_with_persistent_api_degradation_does_not_re_patch(self) -> None:
-        """Codex R2-3 closure: when a partial entry's missing field
-        STILL cannot be computed (API still degraded), the merge loop
-        adds nothing. Don't claim it was patched, don't mark mutated."""
+    def test_partial_fill_with_persistent_api_degradation_records_omission_once(self) -> None:
+        """Codex R2-3 closure, amended by #511 Part A: when a partial entry's
+        missing field STILL cannot be computed (API still degraded), the merge
+        loop adds no signal — but the FIRST degraded run now records the
+        omission reason (a genuinely new fact on the entry:
+        contamination_signal_omissions.semantic_scholar_unmatched =
+        api_degraded), so it patches once. A SECOND degraded run adds nothing
+        (idempotent — the R2-3 no-re-patch guarantee, one field deeper)."""
         partial_yaml = """\
 origin_skill: deep-research
 literature_corpus:
@@ -345,9 +349,18 @@ literature_corpus:
             bad_client.lookup.side_effect = SemanticScholarUnavailable("still down")
             report = mig.migrate_passport(p, ss_client=bad_client, dry_run=False)
             after = p.read_text()
-            self.assertEqual(report["patched"], 0)
-            self.assertEqual(report["skipped_already_migrated"], 1)
-            self.assertEqual(before, after, "no rewrite when nothing was added")
+            self.assertEqual(report["patched"], 1)
+            self.assertNotEqual(
+                before, after, "first degraded run records the omission")
+            self.assertIn("contamination_signal_omissions", after)
+            self.assertIn("api_degraded", after)
+            # Re-run with the API still down: omission already recorded,
+            # nothing new — no re-patch, byte-identical passport.
+            report2 = mig.migrate_passport(p, ss_client=bad_client, dry_run=False)
+            after2 = p.read_text()
+            self.assertEqual(report2["patched"], 0)
+            self.assertEqual(report2["skipped_already_migrated"], 1)
+            self.assertEqual(after, after2, "no rewrite when nothing was added")
 
     def test_manual_entry_with_only_preprint_signal_is_complete(self) -> None:
         """A manual entry permanently omits semantic_scholar_unmatched

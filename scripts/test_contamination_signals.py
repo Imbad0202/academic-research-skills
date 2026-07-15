@@ -280,6 +280,111 @@ class ResetClientOutageLatchHelperTest(unittest.TestCase):
         cs.reset_client_outage_latch(client)
 
 
+
+
+class BuildSignalsWithOmissionsTest(unittest.TestCase):
+    """#511 Part A: the omissions half distinguishes degraded from derivable."""
+
+    def _entry(self, **over):
+        base = {
+            "citation_key": "chen2024",
+            "title": "AI in education",
+            "authors": [{"family": "Chen"}],
+            "year": 2024,
+            "source_pointer": "file:///x.pdf",
+            "obtained_via": "folder-scan",
+        }
+        base.update(over)
+        return base
+
+    def _client(self, *, matched=False, degraded=False):
+        client = MagicMock()
+        if degraded:
+            client.lookup.side_effect = cs.SemanticScholarUnavailable("down")
+        else:
+            client.lookup.return_value = {"matched": matched, "paperId": "x"}
+        return client
+
+    def test_degraded_lookup_yields_omission(self):
+        signals, omissions = cs.build_signals_with_omissions(
+            self._entry(), self._client(degraded=True))
+        self.assertNotIn("semantic_scholar_unmatched", signals)
+        self.assertEqual(
+            omissions, {"semantic_scholar_unmatched": "api_degraded"})
+
+    def test_computed_lookup_yields_no_omission(self):
+        signals, omissions = cs.build_signals_with_omissions(
+            self._entry(), self._client(matched=True))
+        self.assertIs(signals["semantic_scholar_unmatched"], False)
+        self.assertEqual(omissions, {})
+
+    def test_manual_entry_yields_no_omission(self):
+        """Manual exemption is derivable from obtained_via — never recorded."""
+        signals, omissions = cs.build_signals_with_omissions(
+            self._entry(obtained_via="manual"), self._client(degraded=True))
+        self.assertNotIn("semantic_scholar_unmatched", signals)
+        self.assertEqual(omissions, {})
+
+    def test_no_arxiv_id_skips_arxiv_row(self):
+        """The no-arxiv-id skip is derivable from the entry — never recorded,
+        even when an arxiv client is supplied."""
+        ax = MagicMock()
+        signals, omissions = cs.build_signals_with_omissions(
+            self._entry(), self._client(), ax)
+        self.assertNotIn("arxiv_unmatched", signals)
+        self.assertEqual(omissions, {})
+        ax.arxiv_id_lookup.assert_not_called()
+
+    def test_degraded_arxiv_yields_omission(self):
+        ax = MagicMock()
+        ax.arxiv_id_lookup.side_effect = cs.ArxivUnavailable("down")
+        ax.title_search.side_effect = cs.ArxivUnavailable("down")
+        signals, omissions = cs.build_signals_with_omissions(
+            self._entry(arxiv_id="2401.00001"), self._client(), ax)
+        self.assertEqual(omissions.get("arxiv_unmatched"), "api_degraded")
+
+    def test_build_signals_object_stays_equivalent(self):
+        """The legacy single-return API is the signals half, byte-equal."""
+        for client in (self._client(), self._client(degraded=True)):
+            entry = self._entry()
+            self.assertEqual(
+                cs.build_signals_object(entry, client),
+                cs.build_signals_with_omissions(entry, client)[0])
+
+
+class OmissionHelpersTest(unittest.TestCase):
+    """#511 Part A: record/clear are idempotent and keep the schema shape
+    (no empty omissions object)."""
+
+    def test_record_then_rerecord_is_idempotent(self):
+        entry = {}
+        self.assertTrue(cs.record_signal_omission(entry, "openalex_unmatched"))
+        self.assertFalse(cs.record_signal_omission(entry, "openalex_unmatched"))
+        self.assertEqual(
+            entry["contamination_signal_omissions"],
+            {"openalex_unmatched": "api_degraded"})
+
+    def test_clear_removes_key_and_empty_object(self):
+        entry = {"contamination_signal_omissions": {
+            "openalex_unmatched": "api_degraded"}}
+        self.assertTrue(cs.clear_signal_omission(entry, "openalex_unmatched"))
+        self.assertNotIn("contamination_signal_omissions", entry)
+
+    def test_clear_keeps_other_keys(self):
+        entry = {"contamination_signal_omissions": {
+            "openalex_unmatched": "api_degraded",
+            "crossref_unmatched": "api_degraded"}}
+        self.assertTrue(cs.clear_signal_omission(entry, "openalex_unmatched"))
+        self.assertEqual(
+            entry["contamination_signal_omissions"],
+            {"crossref_unmatched": "api_degraded"})
+
+    def test_clear_on_absent_is_noop(self):
+        entry = {}
+        self.assertFalse(cs.clear_signal_omission(entry, "openalex_unmatched"))
+        self.assertEqual(entry, {})
+
+
 if __name__ == "__main__":
     unittest.main()
 

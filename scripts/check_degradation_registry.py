@@ -17,11 +17,19 @@ registry can never drift into a stale (or second) authority:
   D4. Every pinned_by entry ('path' or 'path::test_function') names an existing
       file; when a ::function is given on a .py path, that function is defined
       in the file.
+  D5. The mechanism-id set equals the pinned _EXPECTED_MECHANISMS constant
+      (standard lock semantics: silently deleting or renaming a row cannot
+      pass — adding/removing a mechanism requires touching this lint in the
+      same commit). JSON parsing also rejects duplicate object keys (a
+      last-value-wins duplicate would let two consumers read different rows
+      from one "machine-readable" file).
 
 The registry indexes, it does not re-author (#511): this lint deliberately does
 NOT re-verify the degradation SEMANTICS — those live in each row's authority
-file and the tests/lints the row cites. What this lint guarantees is that every
-citation in the index still resolves.
+file and the tests/lints the row cites (row-prose accuracy is owned by code
+review, anchored by D3's per-clause anchors). What this lint guarantees is
+that every citation in the index still resolves and the mechanism inventory
+cannot silently shrink.
 
 Usage: python3 scripts/check_degradation_registry.py [--registry PATH]
 Exit 0 = all invariants hold; exit 1 = violations (listed on stderr).
@@ -52,14 +60,42 @@ _MIN_ANCHOR_LEN = 16
 # 'path::test_function' — the '::' form is pytest's node-id convention.
 _PINNED_BY_RE = re.compile(r"^(?P<path>[^:]+)(?:::(?P<func>\w+))?$")
 
+# D5 lock: the shipped mechanism inventory. Deleting or renaming a registry
+# row must fail CI until this constant is updated in the same commit.
+_EXPECTED_MECHANISMS = frozenset({
+    "citation_resolver_outage",
+    "contamination_signal_api_degradation",
+    "vlm_unavailable",
+    "submission_package_incompleteness",
+    "cross_model_unavailable",
+    "compliance_non_sr_warn_cap",
+})
+
+
+def _reject_duplicate_keys(pairs):
+    """object_pairs_hook: plain json.loads is last-value-wins on duplicate
+    keys, so a duplicated 'mechanisms' (or any) key would let two consumers
+    read different content from one registry. Fail-closed instead."""
+    obj: dict = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError(f"duplicate JSON object key {key!r}")
+        obj[key] = value
+    return obj
+
 
 def _load_registry(path: Path) -> tuple[dict | None, list[str]]:
-    """D1 fail-closed loader: missing file or bad JSON is an ERROR."""
+    """D1 fail-closed loader: missing file, bad JSON, or duplicate keys is
+    an ERROR."""
     if not path.is_file():
         return None, [f"D1: registry file missing: {path}"]
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        data = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+        # ValueError also covers the duplicate-key hook.
         return None, [f"D1: registry is not parseable JSON: {e}"]
     if not isinstance(data, dict):
         return None, ["D1: registry top level must be a JSON object"]
@@ -130,6 +166,18 @@ def _check_unique_ids(mechanisms: list) -> list[str]:
             if mid in seen:
                 errors.append(f"D2: duplicate mechanism id {mid!r}")
             seen.add(mid)
+    missing = _EXPECTED_MECHANISMS - seen
+    extra = seen - _EXPECTED_MECHANISMS
+    if missing:
+        errors.append(
+            f"D5: mechanism(s) missing from the registry: {sorted(missing)} "
+            "— a row was deleted or renamed; if intentional, update "
+            "_EXPECTED_MECHANISMS in this lint in the same commit")
+    if extra:
+        errors.append(
+            f"D5: mechanism(s) not in the pinned inventory: {sorted(extra)} "
+            "— new rows must be added to _EXPECTED_MECHANISMS in this lint "
+            "in the same commit (lock semantics)")
     return errors
 
 

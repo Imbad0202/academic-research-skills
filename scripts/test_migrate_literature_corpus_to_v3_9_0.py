@@ -414,5 +414,84 @@ class ApiDownDegradationTest(unittest.TestCase):
             self.assertIs(sig["crossref_unmatched"], True)
 
 
+
+
+class OmissionProvenanceTest(unittest.TestCase):
+    """#511 Part A: degraded lookups record contamination_signal_omissions;
+    recovery clears them; both idempotently."""
+
+    def _entry(self):
+        return {
+            "citation_key": "chen2024ai",
+            "title": "AI in education",
+            "authors": [{"family": "Chen", "given": "A"}],
+            "year": 2024,
+            "source_pointer": "file:///refs/chen2024.pdf",
+            "doi": "10.1234/abc",
+            "obtained_via": "folder-scan",
+            "contamination_signals": {
+                "preprint_post_llm_inflection": False,
+                "semantic_scholar_unmatched": False,
+            },
+        }
+
+    def _degraded_oa(self):
+        client = MagicMock()
+        client.doi_lookup_with_title_check.side_effect = OpenAlexUnavailable("down")
+        client.title_search.side_effect = OpenAlexUnavailable("down")
+        return client
+
+    def test_degraded_lookup_records_omission(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _make_passport(Path(td), [self._entry()])
+            report = mig.migrate_passport(
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
+                dry_run=False)
+            self.assertEqual(report["degraded_openalex"], 1)
+            entry = mig.load_passport(p)["literature_corpus"][0]
+            self.assertEqual(
+                entry["contamination_signal_omissions"],
+                {"openalex_unmatched": "api_degraded"})
+            # Crossref ran fine — signal present, no omission for it.
+            self.assertIn("crossref_unmatched", entry["contamination_signals"])
+
+    def test_degraded_rerun_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _make_passport(Path(td), [self._entry()])
+            mig.migrate_passport(
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
+                dry_run=False)
+            before = p.read_text()
+            report2 = mig.migrate_passport(
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
+                dry_run=False)
+            self.assertEqual(report2["patched"], 0)
+            self.assertEqual(before, p.read_text())
+
+    def test_recovery_clears_stale_omission(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _make_passport(Path(td), [self._entry()])
+            mig.migrate_passport(
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
+                dry_run=False)
+            # API back up: signal computes, stale omission cleared.
+            mig.migrate_passport(
+                p, oa_client=_make_oa_client(), cr_client=_make_cr_client(),
+                dry_run=False)
+            entry = mig.load_passport(p)["literature_corpus"][0]
+            self.assertIn("openalex_unmatched", entry["contamination_signals"])
+            self.assertNotIn("contamination_signal_omissions", entry)
+
+    def test_dry_run_reports_omission_without_writing(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _make_passport(Path(td), [self._entry()])
+            before = p.read_text()
+            report = mig.migrate_passport(
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
+                dry_run=True)
+            self.assertEqual(report["degraded_openalex"], 1)
+            self.assertEqual(before, p.read_text())
+
+
 if __name__ == "__main__":
     unittest.main()

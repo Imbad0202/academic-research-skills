@@ -22,7 +22,7 @@ shared/contracts/degradation_registry.json.
 """
 from __future__ import annotations
 
-from typing import Any, Mapping, Protocol
+from typing import Any, Mapping, MutableMapping, Protocol
 
 # Re-export ArxivUnavailable so callers (and tests) can reference it from the
 # signals module alongside the other resolver exceptions. Dual-path import
@@ -471,21 +471,84 @@ def build_signals_object(
     cache: optional VerificationCache (spec §2 Delta 2), threaded into both the
     S2 and arXiv resolvers. cache=None is byte-equivalent to no caching.
     """
+    return build_signals_with_omissions(
+        entry, client, arxiv_client, cache=cache)[0]
+
+
+# ---------------------------------------------------------------------------
+# #511 Part A — omission reason-provenance writer API
+# ---------------------------------------------------------------------------
+
+OMISSION_API_DEGRADED = "api_degraded"
+_OMISSIONS_FIELD = "contamination_signal_omissions"
+
+
+def build_signals_with_omissions(
+    entry: Mapping[str, Any],
+    client: SemanticScholarClient,
+    arxiv_client=None,
+    *,
+    cache=None,
+) -> tuple[dict[str, bool], dict[str, str]]:
+    """`build_signals_object` plus the #511 Part A omission reasons.
+
+    Returns `(signals, omissions)`. `omissions` carries a
+    `{field: "api_degraded"}` row for every lookup field absent BECAUSE the
+    API degraded — the distinction `compute_ss_unmatched_signal`'s None return
+    collapses (manual vs degraded), surfaced here by checking the manual
+    exemption upstream. Derivable omissions are never recorded: manual entries
+    return `({preprint...}, {})` (no lookup ran), and a missing arxiv_id skips
+    the arXiv row entirely (#331). Callers persist a non-empty `omissions` as
+    the entry's `contamination_signal_omissions` object (schema forbids empty).
+    """
     obj: dict[str, bool] = {
         "preprint_post_llm_inflection": compute_preprint_signal(entry),
     }
+    omissions: dict[str, str] = {}
+    if entry.get("obtained_via") == "manual":
+        return obj, omissions  # all lookups skipped by design — derivable
     ss = compute_ss_unmatched_signal(entry, client, cache=cache)
-    if ss is not None:
+    if ss is None:
+        # Manual is excluded above, so None here means exactly one thing:
+        # the S2 lookup degraded.
+        omissions["semantic_scholar_unmatched"] = OMISSION_API_DEGRADED
+    else:
         obj["semantic_scholar_unmatched"] = ss
     # v3.11 #182 Delta 1: arxiv signal is opt-in via an explicit client so the
     # v3.7.3 caller (migrate_literature_corpus_to_v3_7_3) stays byte-equivalent
-    # (no client → no field). Manual exemption + API degradation both omit the
-    # field (resolve returns None / raises), matching the ss field's rules.
-    if arxiv_client is not None:
+    # (no client → no field).
+    if arxiv_client is not None and entry.get("arxiv_id"):
         try:
             ax = resolve_arxiv_unmatched(entry, arxiv_client, cache=cache)
         except ArxivUnavailable:
-            ax = None
-        if ax is not None:
-            obj["arxiv_unmatched"] = ax
-    return obj
+            omissions["arxiv_unmatched"] = OMISSION_API_DEGRADED
+        else:
+            if ax is not None:
+                obj["arxiv_unmatched"] = ax
+    return obj, omissions
+
+
+def record_signal_omission(entry: MutableMapping[str, Any], field: str) -> bool:
+    """Record `{field: "api_degraded"}` on the entry. Returns True iff the
+    entry changed (idempotent re-runs return False). The caller has already
+    established the omission is degradation-caused — this helper never
+    records derivable omissions itself."""
+    omissions = entry.setdefault(_OMISSIONS_FIELD, {})
+    if omissions.get(field) == OMISSION_API_DEGRADED:
+        return False
+    omissions[field] = OMISSION_API_DEGRADED
+    return True
+
+
+def clear_signal_omission(entry: MutableMapping[str, Any], field: str) -> bool:
+    """Recovery: a later run computed the signal, so the recorded omission is
+    stale — remove it (and the object when it empties: the schema's
+    minProperties forbids an empty omissions object). Returns True iff the
+    entry changed."""
+    omissions = entry.get(_OMISSIONS_FIELD)
+    if not isinstance(omissions, dict) or field not in omissions:
+        return False
+    del omissions[field]
+    if not omissions:
+        del entry[_OMISSIONS_FIELD]
+    return True
