@@ -1,0 +1,15 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "total-results": 0,
+    "items": [],
+    "items-per-page": 5,
+    "query": {
+      "start-index": 0,
+      "search-terms": null
+    }
+  }
+}

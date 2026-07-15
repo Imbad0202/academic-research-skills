@@ -1,0 +1,24 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "DOI": "10.5555/ars.tfx.2026.42",
+    "type": "journal-article",
+    "title": ["Hermetic Transport Fixtures for Deterministic Citation Gate Verification"],
+    "container-title": ["Journal of Synthetic Test Corpora"],
+    "author": [
+      {"given": "Ada", "family": "Fixture", "sequence": "first", "affiliation": []}
+    ],
+    "issued": {"date-parts": [[2026, 1]]},
+    "published-print": {"date-parts": [[2026, 1, 15]]},
+    "publisher": "Synthetic Press",
+    "volume": "12",
+    "issue": "1",
+    "page": "1-18",
+    "ISSN": ["0000-0000"],
+    "URL": "https://doi.org/10.5555/ars.tfx.2026.42",
+    "reference-count": 0,
+    "is-referenced-by-count": 0
+  }
+}

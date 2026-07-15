@@ -1,0 +1,29 @@
+{
+  "id": "https://openalex.org/W4400000001",
+  "title": "Hermetic Transport Fixtures for Deterministic Citation Gate Verification",
+  "authorships": [
+    {
+      "author_position": "first",
+      "author": {
+        "id": "https://openalex.org/A5000000001",
+        "display_name": "Ada Fixture",
+        "orcid": null
+      },
+      "institutions": []
+    }
+  ],
+  "publication_year": 2026,
+  "doi": "https://doi.org/10.5555/ars.tfx.2026.42",
+  "primary_location": {
+    "is_oa": false,
+    "landing_page_url": "https://doi.org/10.5555/ars.tfx.2026.42",
+    "pdf_url": null,
+    "source": {
+      "id": "https://openalex.org/S4300000001",
+      "display_name": "Journal of Synthetic Test Corpora",
+      "issn_l": "0000-0000",
+      "type": "journal"
+    },
+    "version": null
+  }
+}

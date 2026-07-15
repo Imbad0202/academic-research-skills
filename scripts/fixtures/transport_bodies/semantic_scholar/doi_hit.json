@@ -1,0 +1,14 @@
+{
+  "paperId": "0123456789abcdef0123456789abcdef01234567",
+  "title": "Hermetic Transport Fixtures for Deterministic Citation Gate Verification",
+  "venue": "Journal of Synthetic Test Corpora",
+  "year": 2026,
+  "publicationDate": "2026-01-15",
+  "externalIds": {
+    "DOI": "10.5555/ars.tfx.2026.42",
+    "ArXiv": "2601.04567"
+  },
+  "authors": [
+    {"authorId": "1000000001", "name": "Ada Fixture"}
+  ]
+}
