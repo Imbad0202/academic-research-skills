@@ -439,3 +439,153 @@ def test_duplicate_path_emits_single_cardinality_diag(tmp_path, capsys):
     # are out of scope for this fix.
     assert out.count("[PANEL-CARDINALITY: byte-identical report contents") == 0
     assert out.count("[PANEL-CARDINALITY:") == 2
+
+
+# --- CLI integration over the canonical on-disk fixture ---------------------------
+
+FIX = REPO / "tests/fixtures/panel-synthesis/full-consistent"
+CONTRACT_PATH = str(REPO / "shared/contracts/reviewer/full.json")
+ROLES = ("eic", "methodology", "domain", "perspective", "da")
+
+
+def cli(*extra, reports=None):
+    argv = ["--contract", CONTRACT_PATH]
+    for p in (reports if reports is not None
+              else [FIX / f"r_{r}.md" for r in ROLES]):
+        argv += ["--report", str(p)]
+    argv += list(extra)
+    return cps.main(argv)
+
+
+def test_cli_full_consistent_passes(capsys):
+    assert cli("--synthesis", str(FIX / "synthesis.md")) == 0
+    assert "PANEL-SYNTHESIS: PASS" in capsys.readouterr().out
+
+
+def test_cli_layer1_only_single_report_passes(capsys):
+    assert cli("--layer1-only", reports=[FIX / "r_eic.md"]) == 0
+    out = capsys.readouterr().out
+    assert "LAYER1-ONLY: PASS" in out
+    assert "PANEL-SYNTHESIS" not in out          # never emits Layer-2 verdicts
+
+
+def test_cli_layer1_only_rejects_synthesis_flag():
+    with pytest.raises(SystemExit):
+        cli("--layer1-only", "--synthesis", str(FIX / "synthesis.md"))
+
+
+def test_cli_flipped_synthesis_decision_exit1(tmp_path, capsys):
+    bad = tmp_path / "synth.md"
+    bad.write_text(make_synthesis(["F2"], "editorial_decision=minor_revision"),
+                   encoding="utf-8")
+    assert cli("--synthesis", str(bad)) == 1
+    assert "PANEL-SYNTHESIS-MISMATCH" in capsys.readouterr().out
+
+
+def test_cli_inconsistent_reviewer_exit3(tmp_path):
+    bad = tmp_path / "r_eic.md"
+    bad.write_text(make_report(role="eic", scores=WARN2, fired=FIRED_F0,
+                               decision="editorial_decision=accept"),
+                   encoding="utf-8")
+    reports = [bad] + [FIX / f"r_{r}.md" for r in ROLES[1:]]
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 3
+
+
+def test_cli_duplicate_report_path_exit2():
+    reports = [FIX / "r_eic.md"] * 5
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
+
+
+def test_cli_byte_identical_contents_exit2(tmp_path):
+    clone = tmp_path / "clone.md"
+    clone.write_text((FIX / "r_eic.md").read_text(encoding="utf-8"),
+                     encoding="utf-8")
+    reports = [FIX / f"r_{r}.md" for r in ROLES[:4]] + [clone]
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
+
+
+def test_cli_wrong_report_count_exit2():
+    reports = [FIX / f"r_{r}.md" for r in ROLES[:4]]
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
+
+
+def test_cli_role_set_mismatch_exit2(tmp_path):
+    dup_role = tmp_path / "r_extra_eic.md"
+    dup_role.write_text(make_report(role="eic", scores={**ALL_PASS, "D3": "warn"},
+                                    fired={"F1": False, "F2": False,
+                                           "F3": False, "F0": False},
+                                    decision="editorial_decision=accept"),
+                        encoding="utf-8")
+    reports = [FIX / f"r_{r}.md" for r in ROLES[:4]] + [dup_role]
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
+
+
+def test_cli_exit_precedence_2_beats_3_and_1(tmp_path):
+    # inconsistent reviewer (3) + duplicate paths (2) + flipped synthesis (1) -> 2
+    bad = tmp_path / "r_eic.md"
+    bad.write_text(make_report(role="eic", scores=WARN2, fired=FIRED_F0,
+                               decision="editorial_decision=accept"),
+                   encoding="utf-8")
+    synth = tmp_path / "synth.md"
+    synth.write_text(make_synthesis([], "editorial_decision=reject"),
+                     encoding="utf-8")
+    reports = [bad, bad] + [FIX / f"r_{r}.md" for r in ROLES[1:4]]
+    assert cli("--synthesis", str(synth), reports=reports) == 2
+
+
+def test_cli_exit_precedence_3_beats_1(tmp_path):
+    bad = tmp_path / "r_eic.md"
+    bad.write_text(make_report(role="eic", scores=WARN2, fired=FIRED_F0,
+                               decision="editorial_decision=accept"),
+                   encoding="utf-8")
+    synth = tmp_path / "synth.md"
+    synth.write_text(make_synthesis([], "editorial_decision=reject"),
+                     encoding="utf-8")
+    reports = [bad] + [FIX / f"r_{r}.md" for r in ROLES[1:]]
+    assert cli("--synthesis", str(synth), reports=reports) == 3
+
+
+def test_cli_unreadable_report_exit2(tmp_path):
+    missing = tmp_path / "nope.md"
+    reports = [missing] + [FIX / f"r_{r}.md" for r in ROLES[1:]]
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
+
+
+def test_cli_non_utf8_report_exit2(tmp_path):
+    binary = tmp_path / "bin.md"
+    binary.write_bytes(b"\xff\xfe\x00bad")
+    reports = [binary] + [FIX / f"r_{r}.md" for r in ROLES[1:]]
+    assert cli("--synthesis", str(FIX / "synthesis.md"), reports=reports) == 2
+
+
+def test_cli_methodology_focus_round(tmp_path, capsys):
+    mcontract = REPO / "shared/contracts/reviewer/methodology_focus.json"
+    mc = json.loads(mcontract.read_text(encoding="utf-8"))
+    dims = {d["id"]: d["name"] for d in mc["acceptance_dimensions"]}
+
+    def mreport(role, d1, fired, decision):
+        return "\n".join([
+            f"contract_role: {role}", "", "## Dimension Scores", "",
+            f"### D1: {dims['D1']}", f"score: {d1}", "",
+            f"### D2: {dims['D2']}", "score: pass", "",
+            "## Failure Condition Checks", "",
+            "### F1", f"fired: {str(fired['F1']).lower()}", "",
+            "### F2", f"fired: {str(fired['F2']).lower()}", "",
+            "### F0", f"fired: {str(fired['F0']).lower()}", "",
+            "## Review Body", "", "Fixture body.", "",
+            "## Editorial Decision", "", decision, ""])
+
+    r1 = tmp_path / "r_eic.md"
+    r1.write_text(mreport("eic", "pass",
+                          {"F1": False, "F2": False, "F0": True},
+                          "editorial_decision=accept"), encoding="utf-8")
+    r2 = tmp_path / "r_methodology.md"
+    r2.write_text(mreport("methodology", "warn",
+                          {"F1": False, "F2": True, "F0": False},
+                          "editorial_decision=major_revision"), encoding="utf-8")
+    synth = tmp_path / "synth.md"
+    synth.write_text(make_synthesis(["F2"], "editorial_decision=major_revision"),
+                     encoding="utf-8")
+    assert cps.main(["--contract", str(mcontract),
+                     "--report", str(r1), "--report", str(r2),
+                     "--synthesis", str(synth)]) == 0
