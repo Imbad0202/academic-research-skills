@@ -362,6 +362,44 @@ literature_corpus:
             self.assertEqual(report2["skipped_already_migrated"], 1)
             self.assertEqual(after, after2, "no rewrite when nothing was added")
 
+
+    def test_partial_fill_recovery_clears_stale_omission(self) -> None:
+        """#511 Part A recovery (codex R2 witness): a degraded first run
+        records the omission; a later run with a HEALTHY API computes the
+        signal and clears the stale omission — removing the clear call in
+        the migration must fail this test."""
+        partial_yaml = """\
+origin_skill: deep-research
+literature_corpus:
+  - citation_key: chen2024ai
+    title: AI in education
+    authors:
+      - family: Chen
+        given: A
+    year: 2024
+    venue: arXiv
+    doi: 10.1234/abc
+    obtained_via: folder-scan
+    source_pointer: file:///refs/chen2024.pdf
+    contamination_signals:
+      preprint_post_llm_inflection: true
+    contamination_signals_backfilled_at: '2026-05-15T10:30:00Z'
+    contamination_signal_omissions:
+      semantic_scholar_unmatched: api_degraded
+"""
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "passport.yaml"
+            p.write_text(partial_yaml)
+            good_client = MagicMock()
+            good_client.lookup.return_value = {"matched": True, "paperId": "x"}
+            report = mig.migrate_passport(p, ss_client=good_client, dry_run=False)
+            self.assertEqual(report["patched"], 1)
+            after = p.read_text()
+            self.assertIn("semantic_scholar_unmatched: false", after)
+            self.assertNotIn(
+                "contamination_signal_omissions", after,
+                "stale omission must be cleared once the signal computes")
+
     def test_manual_entry_with_only_preprint_signal_is_complete(self) -> None:
         """A manual entry permanently omits semantic_scholar_unmatched
         (per spec §3.2 + schema allOf rule #4). An object with only
