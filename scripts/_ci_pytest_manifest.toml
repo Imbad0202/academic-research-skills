@@ -275,3 +275,7 @@ path = "scripts/test_check_model_tiering.py"
 [[pytest]]
 id = "524-tools-allowlist-lock"
 path = "scripts/test_check_tools_allowlist.py"
+
+[[pytest]]
+id = "510-panel-synthesis-checker"
+path = "scripts/test_check_panel_synthesis.py"
