@@ -99,22 +99,6 @@ def hermetic_env(monkeypatch):
 # ---------- URL-dispatch fake transport ----------
 
 
-class _FakeResponse:
-    """Minimal file-like context manager mirroring what urlopen yields."""
-
-    def __init__(self, body: bytes):
-        self._body = body
-
-    def read(self) -> bytes:
-        return self._body
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-
 class FakeTransport:
     """urlopen stand-in dispatching on the REAL URL each client built.
 
@@ -140,8 +124,10 @@ class FakeTransport:
 
 
 def _serve(fixture_relpath: str):
+    # io.BytesIO already satisfies everything the clients touch on the
+    # response (context manager + read()); no custom response class needed.
     body = (FIXTURES / fixture_relpath).read_bytes()
-    return lambda url: _FakeResponse(body)
+    return lambda url: io.BytesIO(body)
 
 
 def _http_error(code: int, reason: str, fixture_relpath: str | None = None):

@@ -39,7 +39,11 @@ DOI/ID-keyed misses are HTTP 404s (no body to check in for JSON APIs — the
 clients never read the 404 body); the checked-in miss body is the 200
 empty-result shape the title-fallback request receives. arXiv's miss shape is
 its genuine empty Atom feed, which serves both the `id_list` miss and the
-`search_query` miss.
+`search_query` miss (its self-link echoes an empty query — the one file
+deliberately answers both request shapes). The clients never read 5xx bodies
+either (their degradation paths use only the HTTP code/reason); the error
+bodies are checked in for transport realism only, attached as the
+`HTTPError` payload.
 
 Deliberately NOT here: a product-level `--offline` mode, or a replication of
 the 51-case citation gold set (issue #511 scopes both out as inflation).
