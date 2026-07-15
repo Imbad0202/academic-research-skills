@@ -174,3 +174,68 @@ def test_missing_accept_grade_entry_raises():
     conds = [{"condition_id": "F1", "severity": 90, "action": "editorial_decision=reject"}]
     with pytest.raises(cps.ContractError):
         cps.resolve_decision(conds, set())
+
+
+# --- report parser --------------------------------------------------------------
+
+def make_report(role="eic", scores=None, fired=None,
+                decision="editorial_decision=accept"):
+    scores = scores or ALL_PASS
+    fired = fired if fired is not None else {"F1": False, "F2": False,
+                                             "F3": False, "F0": True}
+    dim_names = {d["id"]: d["name"] for d in FULL_CONTRACT["acceptance_dimensions"]}
+    parts = [f"contract_role: {role}", "", "## Dimension Scores", ""]
+    for did in sorted(scores):
+        parts += [f"### {did}: {dim_names[did]}", f"score: {scores[did]}", ""]
+    parts += ["## Failure Condition Checks", ""]
+    for cid in ["F1", "F2", "F3", "F0"]:
+        parts += [f"### {cid}", f"fired: {str(fired[cid]).lower()}", ""]
+    parts += ["## Review Body", "", "Fixture body.", "",
+              "## Editorial Decision", "", decision, ""]
+    return "\n".join(parts)
+
+
+def test_parse_report_happy_path():
+    r = cps.parse_report("r.md", make_report(), FULL_CONTRACT)
+    assert r.role == "eic"
+    assert r.scores == ALL_PASS
+    assert r.fired == {"F1": False, "F2": False, "F3": False, "F0": True}
+    assert r.decision == "editorial_decision=accept"
+
+
+@pytest.mark.parametrize("mutate,frag", [
+    (lambda t: t.replace("## Editorial Decision", "## Renamed"), "missing required section"),
+    (lambda t: t + "\n## Dimension Scores\n", "duplicated required section"),
+    (lambda t: t.replace("contract_role: eic\n", ""), "contract_role"),
+    (lambda t: t.replace("contract_role: eic", "contract_role: eic\ncontract_role: da"), "contract_role"),
+    (lambda t: t.replace("### D5: writing_and_structure\nscore: pass\n", ""), "D5"),
+    (lambda t: t.replace("### D5:", "### D9:"), "D9"),
+    (lambda t: t.replace("score: pass", "score: pass\nscore: warn", 1), "score"),
+    (lambda t: t.replace("score: pass", "score: fatal", 1), "score"),
+    (lambda t: t.replace("### F3\nfired: false\n", ""), "F3"),
+    (lambda t: t.replace("fired: true", "fired: yes"), "fired"),
+    (lambda t: t.replace("editorial_decision=accept",
+                         "editorial_decision=accept\neditorial_decision=accept"), "decision"),
+    (lambda t: t.replace("editorial_decision=accept", "editorial_decision=maybe"), "decision"),
+    (lambda t: t.replace("editorial_decision=accept", "the decision is accept"), "decision"),
+])
+def test_parse_report_mutations_raise(mutate, frag):
+    with pytest.raises(cps.ReportError) as exc:
+        cps.parse_report("r.md", mutate(make_report()), FULL_CONTRACT)
+    assert frag.lower() in str(exc.value).lower()
+
+
+def test_decoy_tokens_inside_fences_ignored():
+    decoy = ("```\nscore: block\nfired: true\neditorial_decision=reject\n```\n\n")
+    text = decoy + make_report()
+    r = cps.parse_report("r.md", text, FULL_CONTRACT)
+    assert r.decision == "editorial_decision=accept"
+
+
+def test_prose_embedded_decision_not_matched():
+    # Anchored-line rule: a token inside prose must not count as the decision line.
+    text = make_report().replace(
+        "Fixture body.",
+        "Fixture body mentioning editorial_decision=reject inline in prose.")
+    r = cps.parse_report("r.md", text, FULL_CONTRACT)
+    assert r.decision == "editorial_decision=accept"

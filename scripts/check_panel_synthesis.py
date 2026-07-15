@@ -170,3 +170,135 @@ def resolve_decision(conditions, fired_ids):
         return accept_grade_action(conditions)
     best = max(fired, key=lambda ic: (ic[1]["severity"], -ic[0]))
     return best[1]["action"]
+
+
+# --- markdown grammar (pinned; fenced code stripped; anchored full lines) -------
+
+_FENCE_RE = re.compile(r"^\s*```")
+_H2_RE = re.compile(r"^## (.+?)\s*$")
+_H3_RE = re.compile(r"^### (.+?)\s*$")
+_ROLE_RE = re.compile(r"^contract_role: (?P<role>[a-z_]+)\s*$")
+_SCORE_LINE_RE = re.compile(r"^score: (?P<score>block|warn|pass)\s*$")
+_FIRED_LINE_RE = re.compile(r"^fired: (?P<fired>true|false)\s*$")
+_DECISION_LINE_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
+_DIM_H3_RE = re.compile(r"^(?P<dim>D\d+): (?P<name>.+)$")
+
+REQUIRED_REPORT_SECTIONS = (
+    "Dimension Scores", "Failure Condition Checks", "Editorial Decision")
+
+
+def strip_fences(text):
+    out, in_fence = [], False
+    for line in text.splitlines():
+        if _FENCE_RE.match(line):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            out.append(line)
+    return out
+
+
+def _split_by(lines, heading_re):
+    sections, dupes, current = {}, set(), None
+    for line in lines:
+        m = heading_re.match(line)
+        if m:
+            title = m.group(1)
+            if title in sections:
+                dupes.add(title)
+            current = sections.setdefault(title, [])
+            continue
+        if current is not None:
+            current.append(line)
+    return sections, dupes
+
+
+def split_sections(lines):
+    return _split_by(lines, _H2_RE)
+
+
+def split_subsections(lines):
+    return _split_by(lines, _H3_RE)
+
+
+def _exactly_one(lines, rx, what, path, group):
+    hits = [m.group(group) for line in lines if (m := rx.match(line))]
+    if len(hits) != 1:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: expected exactly one {what} line, "
+            f"found {len(hits)}]")
+    return hits[0]
+
+
+@dataclass
+class ReviewerReport:
+    path: str
+    role: str
+    scores: dict
+    fired: dict
+    decision: str
+
+
+def parse_report(path, text, contract):
+    lines = strip_fences(text)
+    sections, dupes = split_sections(lines)
+    for req in REQUIRED_REPORT_SECTIONS:
+        if req in dupes:
+            raise ReportError(
+                f"[REPORT-PARSE: {path}: duplicated required section '## {req}']")
+        if req not in sections:
+            raise ReportError(
+                f"[REPORT-PARSE: {path}: missing required section '## {req}']")
+    role = _exactly_one(lines, _ROLE_RE, "contract_role", path, "role")
+
+    dim_ids = [d["id"] for d in contract["acceptance_dimensions"]]
+    subs, sub_dupes = split_subsections(sections["Dimension Scores"])
+    if sub_dupes:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: duplicated Dimension Scores subsection(s) "
+            f"{sorted(sub_dupes)}]")
+    scores = {}
+    for title, sublines in subs.items():
+        m = _DIM_H3_RE.match(title)
+        if not m or m.group("dim") not in dim_ids:
+            raise ReportError(
+                f"[REPORT-PARSE: {path}: unknown Dimension Scores subsection "
+                f"'### {title}']")
+        scores[m.group("dim")] = _exactly_one(
+            sublines, _SCORE_LINE_RE, f"score ({m.group('dim')})", path, "score")
+    missing = [d for d in dim_ids if d not in scores]
+    if missing:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: missing Dimension Scores for {missing}]")
+
+    cond_ids = [c["condition_id"] for c in contract["failure_conditions"]]
+    fsubs, fdupes = split_subsections(sections["Failure Condition Checks"])
+    if fdupes:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: duplicated Failure Condition Checks "
+            f"subsection(s) {sorted(fdupes)}]")
+    fired = {}
+    for title, sublines in fsubs.items():
+        if title not in cond_ids:
+            raise ReportError(
+                f"[REPORT-PARSE: {path}: unknown Failure Condition Checks "
+                f"subsection '### {title}']")
+        fired[title] = _exactly_one(
+            sublines, _FIRED_LINE_RE, f"fired ({title})", path, "fired") == "true"
+    missing = [c for c in cond_ids if c not in fired]
+    if missing:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: missing Failure Condition Checks for {missing}]")
+
+    decision = _exactly_one(lines, _DECISION_LINE_RE, "decision", path, "action")
+    if decision not in ACTION_ENUM:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: unknown decision action token '{decision}']")
+    in_section = [m.group("action") for line in sections["Editorial Decision"]
+                  if (m := _DECISION_LINE_RE.match(line))]
+    if len(in_section) != 1:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: decision line must sit inside "
+            f"'## Editorial Decision']")
+    return ReviewerReport(path=path, role=role, scores=scores,
+                          fired=fired, decision=decision)
