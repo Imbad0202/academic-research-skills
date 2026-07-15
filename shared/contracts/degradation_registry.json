@@ -79,7 +79,7 @@
       "degraded_state": "Check status 'not_checked' (distinct from pass AND from fail); process exit code 3 = 'passed what was checkable' — distinct from a full pass (0) and from a failure (1)",
       "diagnostic_marker": "[NOT-CHECKED] lines + not_checked_count in the verification report header; exit code 3",
       "downstream_consumer": "submission-package policy evaluation (advisory vs strict) and the orchestrator invoking scripts/verify_submission_package.py",
-      "terminal_policy_effect": "advisory: not_checked surfaces but does not refuse; strict mode fails closed on incompleteness (a not_checked is treated as a gate failure)",
+      "terminal_policy_effect": "advisory: not_checked surfaces but does not refuse (exit 3); under strict, ONLY strict_eligible not_checked checks fail closed (VERIFICATION-INCOMPLETE token, exit 4) — heuristic-classed not_checked stays nonterminal at exit 3 even under strict",
       "authority": [
         {
           "file": "scripts/verify_submission_package.py",
@@ -88,6 +88,10 @@
         {
           "file": "scripts/verify_submission_package.py",
           "anchor": "Fail-closed (§5.2): a missing parser/profile must not silently"
+        },
+        {
+          "file": "scripts/verify_submission_package.py",
+          "anchor": "if c[\"strict_eligible\"] and c[\"status\"] == \"not_checked\")"
         }
       ],
       "pinned_by": [
