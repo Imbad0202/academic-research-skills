@@ -238,7 +238,8 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
         if ps == 1:
             warnings.append(
                 "SC-11 WARNING: panel_size=1 means no cross-reviewer aggregation; "
-                "cross_reviewer_quantifier values collapse to pass-through"
+                "'any'/'all' collapse to the bare predicate and 'majority' "
+                "never fires (protocol §8)"
             )
         expected_panel = {"reviewer_full": 5, "reviewer_methodology_focus": 2}
         if mode in expected_panel and ps != expected_panel[mode]:

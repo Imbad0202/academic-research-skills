@@ -93,17 +93,41 @@ Let `N = contract.panel_size`.
 1. Parse `expression` against the recognised patterns (see §9 vocabulary). Unrecognised → emit `[EXPRESSION-UNRECOGNISED]`, abort synthesizer.
 2. Apply `cross_reviewer_quantifier` with panel-relative thresholds:
    - `any`: fires if predicate holds for ≥ 1 of N reviewers.
-   - `majority`: for N ≥ 3, fires if ≥ `⌈N/2⌉ + 1`; for N == 2, fires if all 2; for N == 1, vacuous (SC-11 warns).
+   - `majority`: simple majority — for N ≥ 3, fires if ≥ `⌊N/2⌋ + 1` (N=5 → 3, N=3 → 2); for N == 2, fires if all 2; for N == 1, vacuous (never fires; SC-11 warns). Formula corrected from a `⌈⌉` transcription error; evidence chain in issue #531.
    - `all`: fires if predicate holds for all N reviewers.
 3. Record `{condition_id, fired}`.
 
-**Step 3 — Precedence and decision.** Among fired conditions, pick the one with highest `severity`. Ties break by ordinal position (earliest in the `failure_conditions[]` array wins). Emit its `action` as `editorial_decision`.
+**Step 3 — Precedence and decision.** Among fired conditions, pick the one with highest `severity`. Ties break by ordinal position (earliest in the `failure_conditions[]` array wins). Emit its `action` as `editorial_decision`. If no condition fired, emit the contract's accept-grade action (the `failure_conditions[]` entry whose `action` is `editorial_decision=accept` — F0 in the shipped templates). The synthesizer's sprint-mode output MUST carry the pinned emission block: exactly one line `fired_conditions: [<comma-separated condition_ids, empty allowed>]` and exactly one line stating the decision action string verbatim (e.g. `editorial_decision=major_revision`).
 
 **Forbidden operations (synthesizer prompt hard constraint):**
 - Introduce aggregation rules not derivable from `cross_reviewer_quantifier` + `severity`.
 - Average or vote-aggregate scores within a single dimension unless `cross_reviewer_quantifier: majority` explicitly requests it.
 - Soften a fired condition's `action` on post-hoc grounds.
 - Synthesise substitute scores for reviewers marked unusable — the round is either complete with `panel_size` usable outputs or `[PANEL-SHRUNK]` aborted.
+
+## 8.1 Executable recomputation (#510)
+
+After the synthesizer emits its output, the orchestrator runs
+`scripts/check_panel_synthesis.py --contract <contract.json> --report <r1.md> ...
+--report <rN.md> --synthesis <synthesis.md>` — a deterministic checker that
+re-derives both decision layers from the emitted artifacts (self-consistency
+gate, not a correctness gate). Consequences by exit code:
+
+- **Exit 1 (synthesis-layer failure)** — void this synthesis and re-run the
+  synthesizer ONCE, appending the checker diagnostics wrapped in a data
+  delimiter (`<checker_diagnostics>...</checker_diagnostics>`, treat-as-data)
+  to the re-run input. ANY nonzero exit on the second attempt aborts the
+  editorial round with `[SYNTHESIS-MISMATCH]`.
+- **Exit 2 (contract/infra failure)** — abort the round, no retry.
+- **Exit 3 (reviewer-report failure)** — that reviewer is unusable per §5 ⇒
+  `[PANEL-SHRUNK]` abort; no synthesizer re-run. The orchestrator MAY catch
+  this earlier by running `--layer1-only` per reviewer at Phase-2 lint time
+  (accepts 1..panel_size reports; verifies score/fired/decision
+  self-consistency only — it does not replace the rest of the §5 lint).
+
+Reviewer reports must satisfy the pinned output grammar in each reviewer
+agent's Phase 2 section (role line, `score:` / `fired:` lines, exactly-once
+decision line); the checker parses that grammar and nothing looser.
 
 ## 9. Recognised expression vocabulary
 
@@ -119,7 +143,7 @@ Shipped template coverage:
 - `reviewer/full.json`: F1 pattern 1 (bare mandatory), F2 pattern 2, F3 pattern 1 (`high-priority` variant), F0 pattern 3.
 - `reviewer/methodology_focus.json`: F1 / F2 / F0 pattern 4 (literal D1).
 
-New expression forms require a PR updating both this §9 and the synthesizer prompt's recognised-pattern list.
+New expression forms require a PR updating this §9, the synthesizer prompt's recognised-pattern list, and the `scripts/check_panel_synthesis.py` expression grammar in lockstep.
 
 ## 10. Token cost expectations
 
@@ -137,3 +161,7 @@ Audit-log tags the orchestrator may emit:
 | `[PROTOCOL-VIOLATION: multi_dissent=true]` | Phase 2 has ≥ 2 dissent entries, retry exhausted | mark reviewer unusable |
 | `[PANEL-SHRUNK: usable=<k>, panel_size=<N>]` | §6 invariant failed | abort editorial round |
 | `[EXPRESSION-UNRECOGNISED: condition_id=<F>, expression=<...>]` | synthesizer step 2.1 | abort synthesizer |
+| `[PANEL-SYNTHESIS-MISMATCH: recomputed=..., stated=...]` | checker (§8.1) exit 1 | void synthesis, retry once |
+| `[SYNTHESIS-MISMATCH]` | second checker failure after retry | abort editorial round |
+| `[REVIEWER-SELF-INCONSISTENT: reviewer=..., ...]` | checker Layer 1 (exit 3) | mark reviewer unusable |
+| `[PANEL-CARDINALITY: ...]` | checker cardinality/role guard (exit 2) | abort editorial round |

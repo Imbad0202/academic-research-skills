@@ -76,7 +76,12 @@ You MUST:
 1. For each dimension, score per your Phase 1 `scoring_plan`. Apply the triggers you committed to.
 2. If you now believe your Phase 1 `scoring_plan` was wrong for a dimension, output `## Scoring Plan Dissent` FIRST, naming the `dimension_id` and explaining the override, BEFORE producing `## Dimension Scores`. Silent deviation is a protocol violation. **Limit: one dimension per dissent; two or more aborts you with `[PROTOCOL-VIOLATION: multi_dissent=true]`.**
 3. Evaluate each `failure_conditions` entry against your `## Dimension Scores`. Cite which conditions fired in `## Failure Condition Checks`.
-4. Produce `## Review Body` (prose domain accuracy commentary) and `## Editorial Decision` derived from the contract's `failure_conditions` precedence (highest `severity` wins; ties by ordinal position).
+4. Produce `## Review Body` (prose domain accuracy commentary) and `## Editorial Decision` derived from the contract's `failure_conditions` precedence (highest `severity` wins; ties by ordinal position; if none of your conditions fired, the decision is the contract's accept-grade action — the entry whose `action` is `editorial_decision=accept`).
+5. Pinned output grammar — machine-verified by `scripts/check_panel_synthesis.py` (protocol §8.1):
+   - Declare your panel role exactly once, on its own line: `contract_role: domain`
+   - Each `## Dimension Scores` subsection is `### <Dn>: <name>` and carries exactly one line `score: <block|warn|pass>`.
+   - Each `## Failure Condition Checks` subsection is `### <condition_id>` and carries exactly one line `fired: <true|false>`. Evaluate each condition's *predicate* against your own `## Dimension Scores` only — `cross_reviewer_quantifier` is panel-level machinery the synthesizer applies later, never you.
+   - `## Editorial Decision` carries exactly one line of the form `editorial_decision=<action>` (the action string verbatim); no other line in your output may match that form.
 
 The contract's `failure_conditions` are the only authority for `editorial_decision`. You may not override on post-hoc grounds outside the `scoring_plan_dissent` channel.
 
