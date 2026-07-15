@@ -621,3 +621,125 @@ def test_v3_9_0_manual_entry_with_preprint_flag_passes():
         "contamination_signals": {"preprint_post_llm_inflection": True},
     }
     _validator(schema).validate(entry)  # should not raise
+
+
+# ---------- #511 Part A: contamination_signal_omissions ----------
+
+
+def test_511_omission_with_api_degraded_passes():
+    """#511 Part A: an entry whose S2 lookup degraded carries the omission
+    reason instead of the signal."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signal_omissions": {
+            "semantic_scholar_unmatched": "api_degraded",
+        },
+    }
+    _validator(schema).validate(entry)
+
+
+def test_511_omission_absent_stays_valid():
+    """#511 Part A is additive: legacy entries without the object stay valid
+    (no migration)."""
+    schema = _load_schema()
+    _validator(schema).validate(_base_entry())
+
+
+def test_511_omission_unknown_reason_rejected():
+    """#511 Part A: the reason enum is closed — api_degraded only (manual /
+    no-arxiv-id omissions are derivable from the entry, never recorded)."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signal_omissions": {
+            "semantic_scholar_unmatched": "manual_exempt",
+        },
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_511_omission_unknown_key_rejected():
+    """#511 Part A: additionalProperties false — only the four lookup signal
+    names are valid omission keys (preprint flag is a heuristic, no lookup to
+    degrade)."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signal_omissions": {
+            "preprint_post_llm_inflection": "api_degraded",
+        },
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_511_empty_omissions_object_rejected():
+    """#511 Part A: minProperties 1 — an empty object records nothing and is
+    a writer bug, not a valid state."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {"contamination_signal_omissions": {}}
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_511_manual_entry_with_omissions_rejected():
+    """#511 Part A: manual entries run no lookups, so nothing can have
+    degraded — the omissions object is forbidden (mirrors the manual-entry
+    *_unmatched not-rule)."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "obtained_via": "manual",
+        "contamination_signal_omissions": {
+            "semantic_scholar_unmatched": "api_degraded",
+        },
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_511_signal_and_omission_for_same_key_rejected():
+    """#511 Part A mutual exclusion: a signal was either computed or
+    omitted-with-reason — never both."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {"openalex_unmatched": True},
+        "contamination_signal_omissions": {"openalex_unmatched": "api_degraded"},
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_511_signal_and_omission_different_keys_pass():
+    """#511 Part A: exclusion is per-key — S2 computed while OpenAlex degraded
+    is the canonical partial-degradation state."""
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signals": {"semantic_scholar_unmatched": False},
+        "contamination_signal_omissions": {"openalex_unmatched": "api_degraded"},
+    }
+    _validator(schema).validate(entry)
+
+
+def test_511_arxiv_omission_requires_arxiv_id():
+    """#511 Part A: the arXiv lookup only runs when arxiv_id is present
+    (#331), so an arxiv omission without an arxiv_id is contradictory."""
+    from jsonschema.exceptions import ValidationError
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "contamination_signal_omissions": {"arxiv_unmatched": "api_degraded"},
+    }
+    with pytest.raises(ValidationError):
+        _validator(schema).validate(entry)
+
+
+def test_511_arxiv_omission_with_arxiv_id_passes():
+    schema = _load_schema()
+    entry = _base_entry() | {
+        "arxiv_id": "2401.00001",
+        "contamination_signal_omissions": {"arxiv_unmatched": "api_degraded"},
+    }
+    _validator(schema).validate(entry)

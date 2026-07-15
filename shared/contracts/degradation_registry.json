@@ -1,0 +1,122 @@
+{
+  "$comment": "Degradation registry (#511 Part A). Machine-readable INDEX of every graceful-degradation mechanism in ARS: what fails, what degraded state is emitted, where the degradation is visible, who consumes it, and how the terminal-policy layer treats it. The registry INDEXES — it never re-authors: each row's `authority` points at the per-mechanism source of truth (a content anchor that must appear verbatim in the cited file), so semantics live in exactly one place and this file cannot drift into a second authority. Rows use each mechanism's NATIVE semantics (unresolvable / not_checked / PASS WITH NOTES / omit-field / warn-and-continue); there is deliberately NO universal score-cap column — ARS's gate model is tri-state outcomes + advisory suffixes + opt-in terminal policies, not a shared scalar score (#511 'Explicitly rejected: score capping'). Numeric/severity caps appear only where a scale already exists (see compliance_non_sr_warn_cap). Adding a row: fill every required field, cite the authority file with a short verbatim anchor (never a line number — anchors survive drift, line numbers do not), list the tests/lints/schemas that pin the behavior under `pinned_by` (path, or path::test_function), then run scripts/check_degradation_registry.py.",
+  "registry_version": "1.0.0",
+  "mechanisms": [
+    {
+      "mechanism": "citation_resolver_outage",
+      "failure_class": "Bibliographic lookup API unreachable (network error, 5xx, rate-limit exhaustion) during citation-existence verification",
+      "degraded_state": "Per-resolver outcome status 'unreachable' (queried_by null); a TOTAL outage of all applicable resolvers reduces lookup_verified to 'unresolvable' — never to 'true' (an outage is not evidence of existence) and never alone to 'false' (an outage is not fabrication evidence)",
+      "diagnostic_marker": "resolver_outcomes.<resolver>.status == 'unreachable' in the citation verification summary",
+      "downstream_consumer": "pipeline_orchestrator_agent finalizer (5-cell gate) and terminal_policies.citation_existence evaluation",
+      "terminal_policy_effect": "advisory by default; under citation_existence='strict' only lookup_verified=='false' (ID-keyed unmatched, C-V6(a)) refuses — 'unresolvable' from outage is NEVER blocked",
+      "authority": [
+        {
+          "file": "scripts/citation_verification_summary.py",
+          "anchor": "`unresolvable` otherwise — every applicable resolver `unreachable` (total"
+        },
+        {
+          "file": "scripts/verification_gate/__init__.py",
+          "anchor": "return _outcome(STATUS_UNREACHABLE, None)"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_verification_gate.py::test_all_unreachable_is_unresolvable",
+        "scripts/test_transport_fixture_citation_gate.py::test_total_outage_reduces_to_unresolvable_through_real_clients",
+        "shared/contracts/passport/citation_verification_summary.schema.json"
+      ]
+    },
+    {
+      "mechanism": "contamination_signal_api_degradation",
+      "failure_class": "Lookup API (Semantic Scholar / OpenAlex / Crossref / arXiv) degraded while computing a contamination signal at ingest/backfill time",
+      "degraded_state": "The per-resolver *_unmatched field is OMITTED from contamination_signals — never set to false (which would falsely read 'checked and clean'); the omission is excluded from the k/k_max triangulation count per R-L3-2-C",
+      "diagnostic_marker": "contamination_signal_omissions.<signal> == 'api_degraded' on the corpus entry (#511 Part A reason-provenance; entries written before this field exists carry no marker — absence of BOTH the signal and the omission reason is indistinguishable from 'not yet computed', which is the pre-#511 live weakness this field closes)",
+      "downstream_consumer": "pipeline_orchestrator_agent finalizer advisory-suffix matrix (k, k_max) per shared/references/firm_rules.md R-L3-2-C",
+      "terminal_policy_effect": "advisory only; a degraded lookup shrinks k_max and can only weaken (never strengthen) a CONTAMINATED-* suffix; no policy key blocks on an omitted signal",
+      "authority": [
+        {
+          "file": "scripts/contamination_signals.py",
+          "anchor": "None means OMIT the field from the"
+        },
+        {
+          "file": "shared/references/firm_rules.md",
+          "anchor": "Absent fields are excluded from the count and do not default to either `true` or `false`."
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_contamination_signals.py",
+        "shared/contracts/passport/literature_corpus_entry.schema.json",
+        "scripts/adapters/tests/test_literature_corpus_entry_schema.py"
+      ]
+    },
+    {
+      "mechanism": "vlm_unavailable",
+      "failure_class": "No multimodal/vision capability available for VLM figure verification (or figure too simple to warrant it)",
+      "degraded_state": "VLM verification step is SKIPPED; the Figure Package records 'VLM verification: skipped' instead of a verification section",
+      "diagnostic_marker": "'VLM verification: skipped' note in the Figure Package output",
+      "downstream_consumer": "integrity_verification_agent Stage 4.5 Phase C3 figure/table fidelity review",
+      "terminal_policy_effect": "no terminal policy exists for VLM; a skipped verification can reach PASS WITH NOTES but never converts to FAIL on absence alone (FAIL requires a positive fidelity finding)",
+      "authority": [
+        {
+          "file": "academic-paper/agents/visualization_agent.md",
+          "anchor": "If not available or figure is simple: skip (note \"VLM verification: skipped\" in Figure Package)"
+        },
+        {
+          "file": "academic-pipeline/agents/integrity_verification_agent.md",
+          "anchor": "an entry reaches PASS WITH NOTES only when NO FAIL condition is met"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "submission_package_incompleteness",
+      "failure_class": "A submission-package check cannot run (missing artifact, unreadable input, extraction failure) during package verification",
+      "degraded_state": "Check status 'not_checked' (distinct from pass AND from fail); process exit code 3 = 'passed what was checkable' — distinct from a full pass (0) and from a failure (1)",
+      "diagnostic_marker": "[NOT-CHECKED] lines + not_checked_count in the verification report header; exit code 3",
+      "downstream_consumer": "submission-package policy evaluation (advisory vs strict) and the orchestrator invoking scripts/verify_submission_package.py",
+      "terminal_policy_effect": "advisory: not_checked surfaces but does not refuse; strict mode fails closed on incompleteness (a not_checked is treated as a gate failure)",
+      "authority": [
+        {
+          "file": "scripts/verify_submission_package.py",
+          "anchor": "return 3  # \"passed what was checkable\" (§8) — distinct from a full pass"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_verify_submission_package.py"
+      ]
+    },
+    {
+      "mechanism": "cross_model_unavailable",
+      "failure_class": "Cross-model verifier not configured (ARS_CROSS_MODEL / API key unset) or transport-level failure (API error, rate limit, expired key) mid-run",
+      "degraded_state": "Warn-and-continue: pipeline proceeds single-model; NEVER blocks on cross-model absence; a NOT_SEARCHED grounded-lookup result is NOT a transport failure and does not fall back (it is counted separately and surfaced for re-run/human review)",
+      "diagnostic_marker": "[CROSS-MODEL-ERROR: reason] log line + required report disclosure 'Cross-model verification was configured but unavailable for this run. Results are single-model only.'",
+      "downstream_consumer": "integrity_verification_agent (Stage 2.5/4.5 sample checks), devils_advocate reviewers, blind disagreement checkpoints (#518)",
+      "terminal_policy_effect": "none — cross-model is verification-support, not a gate; its absence is disclosed, never blocking",
+      "authority": [
+        {
+          "file": "shared/cross_model_verification.md",
+          "anchor": "Continue with single-model verification — never block the pipeline on cross-model failure"
+        }
+      ],
+      "pinned_by": [
+        "scripts/check_cross_model_verification_sync.py"
+      ]
+    },
+    {
+      "mechanism": "compliance_non_sr_warn_cap",
+      "failure_class": "Compliance checkpoint running outside systematic-review mode (PRISMA-trAIce scope not applicable)",
+      "degraded_state": "RAISE principles-only evaluation with severity capped at 'warn' — never block (the one registry row with a severity cap, legitimate because compliance already has a native block>warn>info scale; NOT a precedent for score caps elsewhere)",
+      "diagnostic_marker": "compliance section of the FULL checkpoint dashboard showing principles_only / warn-only evaluation",
+      "downstream_consumer": "Stage 2.5 / 4.5 integrity gates aggregating compliance decisions via max_severity precedence",
+      "terminal_policy_effect": "non-SR compliance findings can warn but never block the pipeline; block conditions are SR-mode-only",
+      "authority": [
+        {
+          "file": "shared/compliance_checkpoint_protocol.md",
+          "anchor": "| Non-SR mode | RAISE principles_only, warn-only (never block) | Same |"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_compliance_report.py"
+      ]
+    }
+  ]
+}

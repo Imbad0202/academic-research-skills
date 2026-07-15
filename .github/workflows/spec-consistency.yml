@@ -200,6 +200,14 @@ jobs:
       - name: Validate literature_corpus schemas and examples
         run: python3 scripts/check_literature_corpus_schema.py
 
+      - name: Validate degradation registry (#511 Part A)
+        # Pins shared/contracts/degradation_registry.json to the repo state it
+        # cites: every authority content-anchor must appear verbatim in its
+        # file, every pinned test/lint/schema must exist (path::function
+        # resolved for .py). The registry indexes, it never re-authors —
+        # semantics stay in each row's authority file.
+        run: python3 scripts/check_degradation_registry.py
+
       - name: Validate corpus consumer protocol (v3.6.5+)
         run: python3 scripts/check_corpus_consumer_protocol.py
 

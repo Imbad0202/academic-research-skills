@@ -185,6 +185,10 @@ id = "511-transport-fixture-citation-gate"
 path = "scripts/test_transport_fixture_citation_gate.py"
 
 [[pytest]]
+id = "511-degradation-registry"
+path = "scripts/test_check_degradation_registry.py"
+
+[[pytest]]
 id = "v3.10-182-verification-cache"
 path = "scripts/test_verification_cache.py"
 

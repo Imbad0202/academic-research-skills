@@ -200,6 +200,34 @@
       "type": "string",
       "minLength": 1,
       "description": "v3.10 (spec §3 PR-B item 4). Names WHICH trusted source declared venue_type. REQUIRED iff venue_type_provenance == trusted_source_declared (allOf; closes the optional-bypass — a trusted_source_declared with no named source FAILS the lint). MUST name a matched-record declared-metadata source (a publisher feed / registry record), NOT one of the three lookup indexes (Semantic Scholar / OpenAlex / Crossref) that produced the k=3 unmatched signal — the laundering guard (R2-P1) is enforced by check_v3_10_policy.py, which asserts venue_type_source is non-empty and ∉ {the three lookup index names} when provenance is trusted_source_declared. The schema enforces presence + non-emptiness; the index-name exclusion is a lint-level assertion (a closed enum of forbidden names is not expressible as a JSON-Schema string constraint without enumerating an open-ended set of legitimate sources)."
+    },
+    "contamination_signal_omissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "#511 Part A reason-provenance for degraded-lookup omissions. When a lookup API degrades while computing a contamination signal, the per-resolver *_unmatched field is OMITTED from contamination_signals (per-API degradation contract; never set to false, which would falsely read 'checked and clean') -- but pre-#511 the omission itself carried no structured reason, so 'degraded' was indistinguishable from 'not yet computed'. This object closes that gap: bibliography_agent records, per omitted signal, WHY it is absent. The reason enum is deliberately api_degraded ONLY: the other two omission causes are derivable from the entry itself and recording them would create a second (driftable) copy -- manual exemption from obtained_via='manual', arXiv skip from an absent arxiv_id. Absence of this object on an entry with absent signals means the entry predates this field or the signals were never computed (legacy-compatible; no migration). Advisory-layer only: R-L3-2-C's k/k_max counting reads contamination_signals presence, never this object.",
+      "properties": {
+        "semantic_scholar_unmatched": {
+          "enum": [
+            "api_degraded"
+          ]
+        },
+        "openalex_unmatched": {
+          "enum": [
+            "api_degraded"
+          ]
+        },
+        "crossref_unmatched": {
+          "enum": [
+            "api_degraded"
+          ]
+        },
+        "arxiv_unmatched": {
+          "enum": [
+            "api_degraded"
+          ]
+        }
+      }
     }
   },
   "allOf": [
@@ -415,6 +443,163 @@
       "then": {
         "required": [
           "venue_type_source"
+        ]
+      }
+    },
+    {
+      "description": "#511 Part A: manual entries run NO lookups (v3.7.3 manual exemption skips all four resolvers), so no lookup can have degraded -- a manual entry MUST NOT carry contamination_signal_omissions. Mirrors the manual-entry *_unmatched not-rule symmetrically.",
+      "if": {
+        "properties": {
+          "obtained_via": {
+            "const": "manual"
+          }
+        },
+        "required": [
+          "obtained_via"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "contamination_signal_omissions"
+          ]
+        }
+      }
+    },
+    {
+      "description": "#511 Part A mutual exclusion: a signal was either computed (present in contamination_signals) or omitted-with-reason (present in contamination_signal_omissions) -- never both. One if/then per signal key; the if requires contamination_signals present so entries without the object are unaffected.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "contamination_signals": {
+                "required": [
+                  "semantic_scholar_unmatched"
+                ]
+              }
+            },
+            "required": [
+              "contamination_signals"
+            ]
+          },
+          "then": {
+            "not": {
+              "properties": {
+                "contamination_signal_omissions": {
+                  "required": [
+                    "semantic_scholar_unmatched"
+                  ]
+                }
+              },
+              "required": [
+                "contamination_signal_omissions"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "contamination_signals": {
+                "required": [
+                  "openalex_unmatched"
+                ]
+              }
+            },
+            "required": [
+              "contamination_signals"
+            ]
+          },
+          "then": {
+            "not": {
+              "properties": {
+                "contamination_signal_omissions": {
+                  "required": [
+                    "openalex_unmatched"
+                  ]
+                }
+              },
+              "required": [
+                "contamination_signal_omissions"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "contamination_signals": {
+                "required": [
+                  "crossref_unmatched"
+                ]
+              }
+            },
+            "required": [
+              "contamination_signals"
+            ]
+          },
+          "then": {
+            "not": {
+              "properties": {
+                "contamination_signal_omissions": {
+                  "required": [
+                    "crossref_unmatched"
+                  ]
+                }
+              },
+              "required": [
+                "contamination_signal_omissions"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "contamination_signals": {
+                "required": [
+                  "arxiv_unmatched"
+                ]
+              }
+            },
+            "required": [
+              "contamination_signals"
+            ]
+          },
+          "then": {
+            "not": {
+              "properties": {
+                "contamination_signal_omissions": {
+                  "required": [
+                    "arxiv_unmatched"
+                  ]
+                }
+              },
+              "required": [
+                "contamination_signal_omissions"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "description": "#511 Part A: the arXiv lookup only runs when the entry carries an arxiv_id (#331 skip rule), so an arxiv_unmatched omission can only be api_degraded if the lookup could have run -- contamination_signal_omissions.arxiv_unmatched REQUIRES arxiv_id.",
+      "if": {
+        "properties": {
+          "contamination_signal_omissions": {
+            "required": [
+              "arxiv_unmatched"
+            ]
+          }
+        },
+        "required": [
+          "contamination_signal_omissions"
+        ]
+      },
+      "then": {
+        "required": [
+          "arxiv_id"
         ]
       }
     }
