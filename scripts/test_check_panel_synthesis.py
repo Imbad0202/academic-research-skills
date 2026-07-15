@@ -239,3 +239,73 @@ def test_prose_embedded_decision_not_matched():
         "Fixture body mentioning editorial_decision=reject inline in prose.")
     r = cps.parse_report("r.md", text, FULL_CONTRACT)
     assert r.decision == "editorial_decision=accept"
+
+
+# --- synthesis parser -----------------------------------------------------------
+
+def make_synthesis(fired_list, decision):
+    inner = ", ".join(fired_list)
+    return (f"## Synthesis\n\nfired_conditions: [{inner}]\n{decision}\n")
+
+
+def test_parse_synthesis_happy_and_empty_list():
+    fired, dec = cps.parse_synthesis(
+        "s.md", make_synthesis(["F2"], "editorial_decision=major_revision"),
+        FULL_CONTRACT)
+    assert fired == ["F2"] and dec == "editorial_decision=major_revision"
+    fired, dec = cps.parse_synthesis(
+        "s.md", make_synthesis([], "editorial_decision=accept"), FULL_CONTRACT)
+    assert fired == [] and dec == "editorial_decision=accept"
+
+
+@pytest.mark.parametrize("text", [
+    "editorial_decision=accept\n",                                  # missing fired list
+    "fired_conditions: [F2]\n",                                     # missing decision
+    make_synthesis(["F9"], "editorial_decision=accept"),            # unknown condition id
+    make_synthesis(["F2", "F2"], "editorial_decision=accept"),      # duplicate id
+    make_synthesis(["F2"], "editorial_decision=accept")
+        + "editorial_decision=accept\n",                            # duplicate decision line
+    make_synthesis(["F2"], "editorial_decision=sideways"),          # unknown token
+    "fired_conditions: [F2]\nfired_conditions: [F1]\n"
+        + "editorial_decision=accept\n",                            # duplicate fired list
+])
+def test_parse_synthesis_mutations_raise(text):
+    with pytest.raises(cps.SynthesisError):
+        cps.parse_synthesis("s.md", text, FULL_CONTRACT)
+
+
+# --- contract loader ------------------------------------------------------------
+
+def test_load_contract_shipped_templates(tmp_path):
+    for rel in ("shared/contracts/reviewer/full.json",
+                "shared/contracts/reviewer/methodology_focus.json"):
+        contract, predicates = cps.load_contract(REPO / rel)
+        assert set(predicates) == {c["condition_id"]
+                                   for c in contract["failure_conditions"]}
+
+
+def _write(tmp_path, obj):
+    p = tmp_path / "c.json"
+    p.write_text(json.dumps(obj), encoding="utf-8")
+    return p
+
+
+def test_load_contract_rejects_unsupported_mode(tmp_path):
+    bad = dict(FULL_CONTRACT)
+    bad["mode"] = "writer_full"
+    with pytest.raises(cps.ContractError):
+        cps.load_contract(_write(tmp_path, bad))
+
+
+def test_load_contract_rejects_panel_size_mismatch(tmp_path):
+    bad = json.loads(json.dumps(FULL_CONTRACT))
+    bad["panel_size"] = 4
+    with pytest.raises(cps.ContractError):
+        cps.load_contract(_write(tmp_path, bad))
+
+
+def test_load_contract_rejects_schema_invalid(tmp_path):
+    bad = json.loads(json.dumps(FULL_CONTRACT))
+    del bad["failure_conditions"]
+    with pytest.raises(cps.ContractError):
+        cps.load_contract(_write(tmp_path, bad))

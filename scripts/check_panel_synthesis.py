@@ -302,3 +302,80 @@ def parse_report(path, text, contract):
             f"'## Editorial Decision']")
     return ReviewerReport(path=path, role=role, scores=scores,
                           fired=fired, decision=decision)
+
+
+# --- synthesis output parser ----------------------------------------------------
+
+_FIREDLIST_RE = re.compile(r"^fired_conditions: \[(?P<body>[^\]]*)\]\s*$")
+
+
+def parse_synthesis(path, text, contract):
+    lines = strip_fences(text)
+    bodies = [m.group("body") for line in lines
+              if (m := _FIREDLIST_RE.match(line))]
+    if len(bodies) != 1:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: expected exactly one fired_conditions "
+            f"line, found {len(bodies)}]")
+    body = bodies[0].strip()
+    fired = [t.strip() for t in body.split(",") if t.strip()] if body else []
+    cond_ids = {c["condition_id"] for c in contract["failure_conditions"]}
+    unknown = [f for f in fired if f not in cond_ids]
+    if unknown:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: unknown condition id(s) {unknown}]")
+    if len(fired) != len(set(fired)):
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: duplicate condition id in fired list]")
+    decisions = [m.group("action") for line in lines
+                 if (m := _DECISION_LINE_RE.match(line))]
+    if len(decisions) != 1:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: expected exactly one decision line, "
+            f"found {len(decisions)}]")
+    if decisions[0] not in ACTION_ENUM:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: unknown decision action token "
+            f"'{decisions[0]}']")
+    return fired, decisions[0]
+
+
+# --- contract loading + hard eligibility ----------------------------------------
+
+def _read_text(path):
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ContractError(f"[IO-ERROR: {path}: {exc}]") from exc
+
+
+def load_contract(path):
+    try:
+        contract = json.loads(_read_text(path))
+    except json.JSONDecodeError as exc:
+        raise ContractError(f"[CONTRACT-INVALID: {path}: {exc}]") from exc
+    problems = check_sprint_contract.validate(contract)
+    problems += check_sprint_contract.check_structural_invariants(contract)
+    if problems:
+        raise ContractError(
+            f"[CONTRACT-INVALID: {path}: " + "; ".join(problems) + "]")
+    mode = contract.get("mode")
+    if mode not in ROLE_SETS:
+        raise ContractError(
+            f"[CONTRACT-INELIGIBLE: mode '{mode}' has no published panel "
+            f"mapping (protocol §7); supported: {sorted(ROLE_SETS)}]")
+    if contract.get("panel_size") != len(ROLE_SETS[mode]):
+        raise ContractError(
+            f"[CONTRACT-INELIGIBLE: panel_size={contract.get('panel_size')} "
+            f"inconsistent with mode={mode}; expected {len(ROLE_SETS[mode])}]")
+    accept_grade_action(contract["failure_conditions"])
+    dims_by_priority, dim_ids = {}, set()
+    for d in contract["acceptance_dimensions"]:
+        dims_by_priority.setdefault(d["priority"], []).append(d["id"])
+        dim_ids.add(d["id"])
+    predicates = {
+        c["condition_id"]: parse_expression(
+            c["expression"], dims_by_priority, dim_ids, c["condition_id"])
+        for c in contract["failure_conditions"]
+    }
+    return contract, predicates
