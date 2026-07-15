@@ -123,7 +123,15 @@ class FakeTransport:
         url = req.full_url
         self.requests.append(url)
         parsed = urllib.parse.urlsplit(url)
-        query = urllib.parse.parse_qs(parsed.query)
+        # keep_blank_values + strict_parsing so a malformed addition
+        # (?junk=, &extra=, a stray separator) fails routing instead of
+        # being silently dropped by parse_qs and matching the exact dict.
+        # An absent query string parses to {} (strict_parsing rejects "").
+        query = (
+            urllib.parse.parse_qs(
+                parsed.query, keep_blank_values=True, strict_parsing=True)
+            if parsed.query else {}
+        )
         for predicate, action in self.routes:
             if predicate(parsed, query):
                 return action(url)
