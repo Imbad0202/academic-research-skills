@@ -309,3 +309,110 @@ def test_load_contract_rejects_schema_invalid(tmp_path):
     del bad["failure_conditions"]
     with pytest.raises(cps.ContractError):
         cps.load_contract(_write(tmp_path, bad))
+
+
+# --- layer engines ----------------------------------------------------------------
+
+WARN2 = {**ALL_PASS, "D1": "warn", "D2": "warn"}   # F2 predicate true
+FIRED_F2 = {"F1": False, "F2": True, "F3": False, "F0": False}
+FIRED_F0 = {"F1": False, "F2": False, "F3": False, "F0": True}
+
+
+def _predicates():
+    return cps.load_contract(REPO / "shared/contracts/reviewer/full.json")[1]
+
+
+def test_layer1_consistent_report_no_diags():
+    r = cps.parse_report("r.md", make_report(
+        scores=WARN2, fired=FIRED_F2,
+        decision="editorial_decision=major_revision"), FULL_CONTRACT)
+    assert cps.layer1_check(r, FULL_CONTRACT, _predicates(), []) == []
+
+
+def test_layer1_fired_flag_contradicts_scores():
+    r = cps.parse_report("r.md", make_report(
+        scores=WARN2, fired=FIRED_F0,             # claims F0 despite 2 warns
+        decision="editorial_decision=accept"), FULL_CONTRACT)
+    diags = cps.layer1_check(r, FULL_CONTRACT, _predicates(), [])
+    assert any("condition=F2" in d for d in diags)
+    assert any("condition=F0" in d for d in diags)
+
+
+def test_layer1_decision_contradicts_declared_fired():
+    r = cps.parse_report("r.md", make_report(
+        scores=WARN2, fired=FIRED_F2,
+        decision="editorial_decision=accept"), FULL_CONTRACT)
+    diags = cps.layer1_check(r, FULL_CONTRACT, _predicates(), [])
+    assert any("decision_declared=editorial_decision=accept" in d for d in diags)
+
+
+def test_layer1_zero_fired_fallback_reviewer_level():
+    one_warn = {**ALL_PASS, "D1": "warn"}          # fires nothing
+    none_fired = {"F1": False, "F2": False, "F3": False, "F0": False}
+    r = cps.parse_report("r.md", make_report(
+        scores=one_warn, fired=none_fired,
+        decision="editorial_decision=accept"), FULL_CONTRACT)
+    assert cps.layer1_check(r, FULL_CONTRACT, _predicates(), []) == []
+
+
+def _panel(scores_by_role, fired_by_role, decision_by_role):
+    return [cps.parse_report(f"{role}.md", make_report(
+                role=role, scores=scores_by_role[role],
+                fired=fired_by_role[role], decision=decision_by_role[role]),
+            FULL_CONTRACT)
+            for role in ("eic", "methodology", "domain", "perspective", "da")]
+
+
+def _consistent_panel_majority_f2():
+    scores = {"eic": WARN2, "methodology": WARN2, "domain": WARN2,
+              "perspective": ALL_PASS, "da": ALL_PASS}
+    fired = {"eic": FIRED_F2, "methodology": FIRED_F2, "domain": FIRED_F2,
+             "perspective": FIRED_F0, "da": FIRED_F0}
+    dec = {"eic": "editorial_decision=major_revision",
+           "methodology": "editorial_decision=major_revision",
+           "domain": "editorial_decision=major_revision",
+           "perspective": "editorial_decision=accept",
+           "da": "editorial_decision=accept"}
+    return _panel(scores, fired, dec)
+
+
+def test_layer2_consistent_panel():
+    reports = _consistent_panel_majority_f2()
+    diags = cps.layer2_check(reports, FULL_CONTRACT, _predicates(),
+                             ["F2"], "editorial_decision=major_revision", [])
+    assert diags == []
+
+
+def test_layer2_flipped_decision_fails():
+    reports = _consistent_panel_majority_f2()
+    diags = cps.layer2_check(reports, FULL_CONTRACT, _predicates(),
+                             ["F2"], "editorial_decision=minor_revision", [])
+    assert any("PANEL-SYNTHESIS-MISMATCH" in d for d in diags)
+
+
+def test_layer2_fabricated_fired_list_fails_despite_right_decision():
+    reports = _consistent_panel_majority_f2()
+    diags = cps.layer2_check(reports, FULL_CONTRACT, _predicates(),
+                             ["F3"], "editorial_decision=major_revision", [])
+    assert any("PANEL-SYNTHESIS-MISMATCH" in d for d in diags)
+
+
+def test_layer2_one_flipped_score_changes_outcome():
+    reports = _consistent_panel_majority_f2()
+    reports[2].scores["D2"] = "pass"   # domain drops to 1 warn -> F2 only 2-of-5
+    diags = cps.layer2_check(reports, FULL_CONTRACT, _predicates(),
+                             ["F2"], "editorial_decision=major_revision", [])
+    assert any("PANEL-SYNTHESIS-MISMATCH" in d for d in diags)
+
+
+def test_layer2_panel_zero_fired_accepts():
+    scores = {r: ALL_PASS for r in ("eic", "methodology", "domain",
+                                    "perspective", "da")}
+    scores["eic"] = {**ALL_PASS, "D1": "warn"}     # breaks F0, fires nothing
+    fired = {r: FIRED_F0 for r in scores}
+    fired["eic"] = {"F1": False, "F2": False, "F3": False, "F0": False}
+    dec = {r: "editorial_decision=accept" for r in scores}
+    reports = _panel(scores, fired, dec)
+    diags = cps.layer2_check(reports, FULL_CONTRACT, _predicates(),
+                             [], "editorial_decision=accept", [])
+    assert diags == []

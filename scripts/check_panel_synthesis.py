@@ -379,3 +379,158 @@ def load_contract(path):
         for c in contract["failure_conditions"]
     }
     return contract, predicates
+
+
+# --- Layer 1: per-reviewer self-consistency --------------------------------------
+
+def layer1_check(report, contract, predicates, warnings):
+    diags = []
+    for cond in contract["failure_conditions"]:
+        cid = cond["condition_id"]
+        recomputed = predicates[cid](report.scores)
+        declared = report.fired[cid]
+        if recomputed != declared:
+            diags.append(
+                f"[REVIEWER-SELF-INCONSISTENT: reviewer={report.path}, "
+                f"condition={cid}, declared={str(declared).lower()}, "
+                f"recomputed={str(recomputed).lower()}]")
+    declared_fired = {cid for cid, f in report.fired.items() if f}
+    expected = resolve_decision(contract["failure_conditions"], declared_fired)
+    if expected != report.decision:
+        diags.append(
+            f"[REVIEWER-SELF-INCONSISTENT: reviewer={report.path}, "
+            f"decision_declared={report.decision}, "
+            f"decision_recomputed={expected}]")
+    return diags
+
+
+# --- Layer 2: panel synthesis recomputation --------------------------------------
+
+def layer2_check(reports, contract, predicates, declared_fired,
+                 declared_decision, warnings):
+    recomputed_fired = []
+    for cond in contract["failure_conditions"]:
+        cid = cond["condition_id"]
+        per_reviewer = [predicates[cid](r.scores) for r in reports]
+        if quantifier_fires(cond["cross_reviewer_quantifier"],
+                            per_reviewer, warnings):
+            recomputed_fired.append(cid)
+    recomputed_decision = resolve_decision(
+        contract["failure_conditions"], set(recomputed_fired))
+    if (sorted(recomputed_fired) != sorted(declared_fired)
+            or recomputed_decision != declared_decision):
+        return [
+            f"[PANEL-SYNTHESIS-MISMATCH: recomputed_fired={recomputed_fired}, "
+            f"declared_fired={list(declared_fired)}, "
+            f"recomputed={recomputed_decision}, stated={declared_decision}]"]
+    return []
+
+
+# --- CLI --------------------------------------------------------------------------
+
+def _parse_args(argv):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--contract", required=True, type=Path)
+    parser.add_argument("--report", required=True, action="append",
+                        type=Path, dest="reports")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--synthesis", type=Path)
+    group.add_argument("--layer1-only", action="store_true")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = _parse_args(argv)
+    warnings, infra, reviewer_diags, synthesis_diags = [], [], [], []
+
+    try:
+        contract, predicates = load_contract(args.contract)
+    except ContractError as exc:
+        print(exc)
+        return EXIT_CONTRACT
+
+    panel_size = contract["panel_size"]
+    role_set = ROLE_SETS[contract["mode"]]
+
+    # cardinality: paths + content identity (both modes)
+    resolved = [p.resolve() for p in args.reports]
+    if len(set(resolved)) != len(resolved):
+        infra.append("[PANEL-CARDINALITY: duplicate report paths]")
+    if not args.layer1_only and len(args.reports) != panel_size:
+        infra.append(f"[PANEL-CARDINALITY: got={len(args.reports)}, "
+                     f"panel_size={panel_size}]")
+    if args.layer1_only and not (1 <= len(args.reports) <= panel_size):
+        infra.append(f"[PANEL-CARDINALITY: layer1-only accepts 1..{panel_size} "
+                     f"reports, got={len(args.reports)}]")
+
+    texts, hashes = {}, set()
+    for p in args.reports:
+        try:
+            texts[p] = _read_text(p)
+        except ContractError as exc:
+            infra.append(str(exc))
+            continue
+        digest = hashlib.sha256(texts[p].encode("utf-8")).hexdigest()
+        if digest in hashes:
+            infra.append(f"[PANEL-CARDINALITY: byte-identical report contents "
+                         f"({p})]")
+        hashes.add(digest)
+
+    reports, parse_failed = [], False
+    for p in args.reports:
+        if p not in texts:
+            parse_failed = True
+            continue
+        try:
+            reports.append(parse_report(str(p), texts[p], contract))
+        except ReportError as exc:
+            reviewer_diags.append(str(exc))
+            parse_failed = True
+
+    roles = [r.role for r in reports]
+    if not parse_failed:
+        if args.layer1_only:
+            bad = [x for x in roles if x not in role_set]
+            if bad or len(set(roles)) != len(roles):
+                infra.append(f"[PANEL-CARDINALITY: roles {roles} invalid for "
+                             f"mode {contract['mode']}]")
+        elif set(roles) != role_set or len(set(roles)) != len(roles):
+            infra.append(f"[PANEL-CARDINALITY: roles {sorted(roles)} != "
+                         f"required {sorted(role_set)}]")
+
+    for r in reports:
+        reviewer_diags.extend(layer1_check(r, contract, predicates, warnings))
+
+    if not args.layer1_only:
+        if parse_failed or infra:
+            synthesis_diags.append(
+                "[SUPPRESSED: panel recomputation skipped — upstream "
+                "reviewer/cardinality failure]")
+        else:
+            try:
+                declared_fired, declared_decision = parse_synthesis(
+                    str(args.synthesis), _read_text(args.synthesis), contract)
+            except ContractError as exc:      # IO on synthesis file
+                infra.append(str(exc))
+            except SynthesisError as exc:
+                synthesis_diags.append(str(exc))
+            else:
+                synthesis_diags.extend(layer2_check(
+                    reports, contract, predicates, declared_fired,
+                    declared_decision, warnings))
+
+    for line in warnings + infra + reviewer_diags + synthesis_diags:
+        print(line)
+    if infra:
+        return EXIT_CONTRACT
+    if reviewer_diags:
+        return EXIT_REVIEWER
+    if any(not d.startswith("[SUPPRESSED") for d in synthesis_diags):
+        return EXIT_SYNTHESIS
+    print("PANEL-SYNTHESIS: PASS" if not args.layer1_only
+          else "LAYER1-ONLY: PASS")
+    return EXIT_PASS
+
+
+if __name__ == "__main__":
+    sys.exit(main())
