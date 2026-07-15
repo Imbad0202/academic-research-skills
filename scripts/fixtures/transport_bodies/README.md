@@ -18,11 +18,17 @@ metadata SYNTHETIC:
 
 - DOI `10.5555/ars.tfx.2026.42` uses the `10.5555` example/test prefix — it
   resolves nowhere.
-- arXiv ID `2601.04567` is fictitious; the Atom entry title deliberately keeps
-  arXiv's real-world line-wrap inside `<title>` to exercise the client's
-  whitespace collapsing.
-- Author "Ada Fixture", venue "Journal of Synthetic Test Corpora", and all IDs
-  (OpenAlex `W…`/`A…`/`S…`, S2 `paperId`) are invented.
+- arXiv ID `2613.04567` is structurally impossible (month 13 does not exist in
+  the `YYMM.NNNNN` scheme), so it can never be minted — a merely "unused" ID
+  would eventually collide with a real submission (a first-draft plausible ID
+  turned out to resolve to a real paper; cross-model review P1, verified
+  2026-07-15). The Atom entry title deliberately keeps arXiv's real-world
+  line-wrap inside `<title>` to exercise the client's whitespace collapsing.
+- OpenAlex IDs `W999999999999` / `A999999999998` / `S999999999997` sit far
+  beyond OpenAlex's minting range for the same reason (a plausible `W44…` ID
+  resolved to a real 2024 work); all three verified 404 on 2026-07-15.
+- Author "Ada Fixture", venue "Journal of Synthetic Test Corpora", ISSN
+  `0000-0000`, and the S2 `paperId` (a repeating hex pattern) are invented.
 
 ## Layout
 

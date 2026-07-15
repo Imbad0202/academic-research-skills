@@ -39,14 +39,21 @@ if str(REPO_ROOT / "scripts") not in sys.path:
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "transport_bodies"
 
 # Synthetic citation pinned to the fixture bodies (see transport_bodies/README.md):
-# 10.5555 is the example/test DOI prefix; the arXiv ID is fictitious.
+# 10.5555 is the example/test DOI prefix; the arXiv ID is structurally
+# impossible (month 13), so it can never collide with a real submission.
 DOI = "10.5555/ars.tfx.2026.42"
-ARXIV_ID = "2601.04567"
+ARXIV_ID = "2613.04567"
 TITLE = "Hermetic Transport Fixtures for Deterministic Citation Gate Verification"
 REF_SLUG = "fixture-2026-hermetic-transport"
 
 _QUOTED_DOI = urllib.parse.quote(DOI, safe="")
 _RESOLVERS = ("crossref", "openalex", "semantic_scholar", "arxiv")
+
+# The documented select/fields values each client sends — pinned here
+# INDEPENDENTLY of the clients' private _FIELDS constants, so an accidental
+# field-list edit in a client fails this suite instead of auto-following.
+_OPENALEX_SELECT = "id,title,authorships,publication_year,doi,primary_location"
+_S2_FIELDS = "title,authors,year,externalIds,venue,publicationDate"
 
 
 def _entry():
@@ -144,47 +151,80 @@ def _http_error(code: int, reason: str, fixture_relpath: str | None = None):
     return action
 
 
-# Endpoint predicates — one per documented request shape.
+# Endpoint predicates — one per documented request shape. Each compares
+# scheme + host + path + the EXACT decoded query dict (parse_qs is
+# order-insensitive), so a malformed production URL — wrong title, dropped
+# rows/per-page/limit, missing select/fields — cannot silently receive the
+# expected fixture and pass (codex review P2).
 def _crossref_doi(p, q):
-    return p.netloc == "api.crossref.org" and p.path == f"/works/{_QUOTED_DOI}"
+    return (
+        p.scheme == "https"
+        and p.netloc == "api.crossref.org"
+        and p.path == f"/works/{_QUOTED_DOI}"
+        and q == {}
+    )
 
 
 def _crossref_title_search(p, q):
-    return p.netloc == "api.crossref.org" and p.path == "/works" and "query.title" in q
+    return (
+        p.scheme == "https"
+        and p.netloc == "api.crossref.org"
+        and p.path == "/works"
+        and q == {"query.title": [TITLE], "rows": ["5"]}
+    )
 
 
 def _openalex_doi(p, q):
-    return p.netloc == "api.openalex.org" and p.path == f"/works/doi:{_QUOTED_DOI}"
+    return (
+        p.scheme == "https"
+        and p.netloc == "api.openalex.org"
+        and p.path == f"/works/doi:{_QUOTED_DOI}"
+        and q == {"select": [_OPENALEX_SELECT]}
+    )
 
 
 def _openalex_title_search(p, q):
-    return p.netloc == "api.openalex.org" and p.path == "/works" and "search" in q
+    return (
+        p.scheme == "https"
+        and p.netloc == "api.openalex.org"
+        and p.path == "/works"
+        and q == {"search": [TITLE], "per-page": ["5"], "select": [_OPENALEX_SELECT]}
+    )
 
 
 def _s2_doi(p, q):
     return (
-        p.netloc == "api.semanticscholar.org"
+        p.scheme == "https"
+        and p.netloc == "api.semanticscholar.org"
         and p.path == f"/graph/v1/paper/DOI:{_QUOTED_DOI}"
+        and q == {"fields": [_S2_FIELDS]}
     )
 
 
 def _s2_title_search(p, q):
-    return p.netloc == "api.semanticscholar.org" and p.path == "/graph/v1/paper/search"
+    return (
+        p.scheme == "https"
+        and p.netloc == "api.semanticscholar.org"
+        and p.path == "/graph/v1/paper/search"
+        and q == {"query": [TITLE], "limit": ["5"], "fields": [_S2_FIELDS]}
+    )
 
 
 def _arxiv_id(p, q):
     return (
-        p.netloc == "export.arxiv.org"
+        p.scheme == "http"  # arXiv's documented query API base is http
+        and p.netloc == "export.arxiv.org"
         and p.path == "/api/query"
-        and q.get("id_list") == [ARXIV_ID]
+        and q == {"id_list": [ARXIV_ID]}
     )
 
 
 def _arxiv_title_search(p, q):
     return (
-        p.netloc == "export.arxiv.org"
+        p.scheme == "http"
+        and p.netloc == "export.arxiv.org"
         and p.path == "/api/query"
-        and "search_query" in q
+        and q == {"search_query": [f'ti:"{TITLE}"'], "max_results": ["5"]}
     )
 
 

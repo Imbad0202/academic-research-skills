@@ -1,11 +1,11 @@
 {
-  "id": "https://openalex.org/W4400000001",
+  "id": "https://openalex.org/W999999999999",
   "title": "Hermetic Transport Fixtures for Deterministic Citation Gate Verification",
   "authorships": [
     {
       "author_position": "first",
       "author": {
-        "id": "https://openalex.org/A5000000001",
+        "id": "https://openalex.org/A999999999998",
         "display_name": "Ada Fixture",
         "orcid": null
       },
@@ -19,7 +19,7 @@
     "landing_page_url": "https://doi.org/10.5555/ars.tfx.2026.42",
     "pdf_url": null,
     "source": {
-      "id": "https://openalex.org/S4300000001",
+      "id": "https://openalex.org/S999999999997",
       "display_name": "Journal of Synthetic Test Corpora",
       "issn_l": "0000-0000",
       "type": "journal"
