@@ -103,6 +103,30 @@ class ExtractionTests(unittest.TestCase):
         with self.assertRaises(cmh.HandoffError):
             cmh.extract_handoff_block(cmh.OPEN_FENCE + "\ncheckpoint_kind: design_freeze")
 
+    def test_closing_fence_without_opening_is_malformed(self) -> None:
+        """Round-9 probe: an output carrying only a closing fence must raise,
+        never pass as an ordinary deliverable."""
+        with self.assertRaises(cmh.HandoffError):
+            cmh.extract_handoff_block("some text\n" + cmh.CLOSE_FENCE + "\nmore text")
+
+    def test_close_before_open_is_malformed(self) -> None:
+        """Round-9 probe: a closing fence ABOVE the opening fence must raise."""
+        text = cmh.CLOSE_FENCE + "\n" + cmh.OPEN_FENCE + "\ncheckpoint_kind: design_freeze"
+        with self.assertRaises(cmh.HandoffError):
+            cmh.extract_handoff_block(text)
+
+    def test_parse_direct_rejects_wrong_first_line(self) -> None:
+        """Round-9 probe: parse_handoff called directly (bypassing extract)
+        must reject a block whose first line is not the exact v1 fence."""
+        block = "preamble\n" + _envelope("design_freeze", "enum_comparison", OWNER_SOUND)
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(block)
+
+    def test_parse_direct_rejects_missing_last_line_closer(self) -> None:
+        block = _envelope("design_freeze", "enum_comparison", OWNER_SOUND) + "\ntrailer"
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(block)
+
 
 class ParseTests(unittest.TestCase):
     def test_valid_design_freeze(self) -> None:
@@ -325,6 +349,13 @@ class RoutingTests(unittest.TestCase):
                 "original_payload": "RQ Brief...\nBlueprint...",
             },
         )
+
+    def test_ok_transport_with_no_body_is_unavailable(self) -> None:
+        """Round-9 probe: transport_ok=True with raw_result=None must still
+        be unavailable — the None guard is independently load-bearing."""
+        r = cmh.route_result(self.h, transport_ok=True, raw_result=None)
+        self.assertEqual(r.outcome, "unavailable")
+        self.assertEqual(r.error, "transport_failure")
 
     def test_transport_failure_wins_over_residual_body(self) -> None:
         """codex round-5 P1: transport_ok is authoritative — a failed
