@@ -25,13 +25,15 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         cls.orch = (REPO_ROOT / cls.mod.ORCH).read_text(encoding="utf-8")
         cls.sm = (REPO_ROOT / cls.mod.SM).read_text(encoding="utf-8")
         cls.proto = (REPO_ROOT / cls.mod.PROTO).read_text(encoding="utf-8")
+        cls.tracker = (REPO_ROOT / cls.mod.TRACKER).read_text(encoding="utf-8")
 
-    def _check(self, skill=None, orch=None, sm=None, proto=None):
+    def _check(self, skill=None, orch=None, sm=None, proto=None, tracker=None):
         return self.mod.check(
             skill if skill is not None else self.skill,
             orch if orch is not None else self.orch,
             sm if sm is not None else self.sm,
             proto if proto is not None else self.proto,
+            tracker if tracker is not None else self.tracker,
         )
 
     def _authority_section(self, sm_text: str) -> str:
@@ -271,8 +273,8 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         branch flips Stage 6 to `skipped` while update_pipeline_state stays —
         must fire."""
         mutated = self.orch.replace(
-            '`update_stage(6, "completed", outputs)` + `update_pipeline_state("completed")`',
-            '`update_stage(6, "skipped")` + `update_pipeline_state("completed")`',
+            '`update_stage("6", "completed", outputs)` + `update_pipeline_state("completed")`',
+            '`update_stage("6", "skipped", {})` + `update_pipeline_state("completed")`',
         )
         self.assertNotEqual(mutated, self.orch)
         errors = self._check(orch=mutated)
@@ -340,12 +342,101 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         errors_skill = self._check(skill=skill_mut)
         errors_proto = self._check(proto=proto_mut)
         self.assertTrue(
-            any(e.startswith("invariant 4") and "non-acknowledgement" in e and self.mod.SKILL in e for e in errors_skill),
+            any(e.startswith("invariant 4") and "change-requests-not-ack" in e and self.mod.SKILL in e for e in errors_skill),
             msg=f"errors: {errors_skill}",
         )
         self.assertTrue(
             any(e.startswith("invariant 4") and "non-acknowledgement" in e and self.mod.PROTO in e for e in errors_proto),
             msg=f"errors: {errors_proto}",
+        )
+
+    # --- codex round-3 witnesses ---
+
+    def test_inv3_full_row_reclaims_before_finalization(self) -> None:
+        """Adverse-value mutation (codex round-3 P1): the FULL checkpoint-type
+        row reclaims 'before finalization' (colliding with MANDATORY) — must
+        fire on both mirrors."""
+        for name, text, kw in (("skill", self.skill, "skill"), ("orch", self.orch, "orch")):
+            mutated = text.replace(
+                "| FULL | First checkpoint; after integrity boundaries; Stage 5 completion (final-deliverable acceptance) |",
+                "| FULL | First checkpoint; after integrity boundaries; before finalization (Stage 5 entry gate) |",
+            )
+            self.assertNotEqual(mutated, text, msg=name)
+            errors = self._check(**{kw: mutated})
+            self.assertTrue(
+                any(e.startswith("invariant 3") and "FULL checkpoint-type row" in e for e in errors),
+                msg=f"{name} errors: {errors}",
+            )
+
+    def test_inv3_skill_step1_reasks_citation_style(self) -> None:
+        """Adverse-value mutation (codex round-3 P1): Stage 5 execution Step 1
+        reverts to always asking the citation style — must fire."""
+        mutated = self.skill.replace(
+            "Consume the citation-style decision recorded at the Stage 5 entry gate",
+            "Ask user which academic formatting style",
+        )
+        self.assertNotEqual(mutated, self.skill)
+        errors = self._check(skill=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "Step 1" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_decline_flipped_on_mirrors(self) -> None:
+        """Adverse-value mutation (codex round-3 P1): a mirror surface makes
+        Stage 6 mandatory / non-declinable — must fire per surface."""
+        skill_mut = self.skill.replace(
+            "the user may decline it at the Stage 5 completion checkpoint (Stage 6 marked `skipped`; the pipeline still terminates `completed`)",
+            "Stage 6 is mandatory and may not be declined",
+        )
+        orch_mut = self.orch.replace(
+            "User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`",
+            "Stage 6 may not be declined",
+        )
+        proto_mut = self.proto.replace(
+            "the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`",
+            "Stage 6 is mandatory; may not decline",
+        )
+        for kw, mut, orig in (("skill", skill_mut, self.skill),
+                              ("orch", orch_mut, self.orch),
+                              ("proto", proto_mut, self.proto)):
+            self.assertNotEqual(mut, orig, msg=kw)
+            errors = self._check(**{kw: mut})
+            self.assertTrue(
+                any(e.startswith("invariant 4") and "decline" in e for e in errors),
+                msg=f"{kw} errors: {errors}",
+            )
+
+    def test_inv4_skill_rule10_pin_lost(self) -> None:
+        section_heading = "## Stage 6: Process Summary Protocol"
+        rule10 = "terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`"
+        mutated = self.skill.replace(rule10, "terminal acknowledgement -> end")
+        self.assertNotEqual(mutated, self.skill)
+        self.assertIn(section_heading, mutated)  # the section copy is untouched
+        errors = self._check(skill=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "rule 10" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_tracker_stage6_dropped(self) -> None:
+        """Adverse-value mutation (codex round-3 P1): the state_tracker enum
+        reverts to '1'..'5' — must fire."""
+        mutated = self.tracker.replace(
+            '"1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5", "6"',
+            '"1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5"',
+        )
+        self.assertNotEqual(mutated, self.tracker)
+        errors = self._check(tracker=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "stage_id enum" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+        mutated2 = self.tracker.replace('"6": {', '"6x": {')
+        errors2 = self._check(tracker=mutated2)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "Stage 6 entry" in e for e in errors2),
+            msg=f"errors: {errors2}",
         )
 
     # --- scoping discipline ---

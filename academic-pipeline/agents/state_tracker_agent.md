@@ -196,6 +196,21 @@ Every material artifact produced by the pipeline carries a version label. These 
       "assigned_to": null,
       "approval_gate": true,
       "team_notes": null
+    },
+    "6": {
+      "name": "PROCESS SUMMARY",
+      "skill": "academic-pipeline",
+      "status": "pending",
+      "mode": null,
+      "outputs": [],
+      "started_at": null,
+      "completed_at": null,
+      "checkpoint_confirmed": false,
+      "checkpoint_type": null,
+      "schema_validated": false,
+      "assigned_to": null,
+      "approval_gate": true,
+      "team_notes": null
     }
   },
   "revision_history": [
@@ -287,7 +302,7 @@ Update the specified stage's status.
 
 | Parameter | Description |
 |-----------|------------|
-| stage_id | "1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5" |
+| stage_id | "1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5", "6" |
 | status | "pending", "in_progress", "completed", "skipped", "blocked" |
 | details | mode, outputs, decision, verdict, and other additional information |
 
@@ -295,6 +310,7 @@ Update the specified stage's status.
 - Status can only advance (pending -> in_progress -> completed), cannot regress
 - Exception: Stage 2.5 and 4.5 FAIL retries are legal (status remains in_progress)
 - Skipped status means the user skipped this stage (Stage 2.5 and 4.5 cannot be skipped)
+- Stage 6 terminal semantics (#528): on the terminal acknowledgement, `update_stage("6", "completed", outputs)` then `update_pipeline_state("completed")`; if the user declines Stage 6 at the Stage 5 completion checkpoint, `update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`. See `../references/pipeline_state_machine.md` § Stage 6 terminal semantics
 
 ### 2. update_pipeline_state(state)
 

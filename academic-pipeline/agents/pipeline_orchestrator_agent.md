@@ -120,7 +120,7 @@ You can adjust any stage's mode at any time. Ready to begin?
 
 | Type | When Used | Content |
 |------|-----------|---------|
-| FULL | First checkpoint; after integrity boundaries; before finalization | Full deliverables list + decision dashboard + all options |
+| FULL | First checkpoint; after integrity boundaries; Stage 5 completion (final-deliverable acceptance) | Full deliverables list + decision dashboard + all options |
 | SLIM | After 2+ consecutive "continue" responses on non-critical stages | One-line status + explicit continue/pause prompt |
 | MANDATORY | Integrity FAIL; Review decision; Stage 5 entry gate (before finalization) | Cannot be skipped; requires explicit user input |
 
@@ -569,7 +569,7 @@ Notify state_tracker_agent to update state whenever a stage begins or completes:
 - Checkpoint passed: `update_pipeline_state("running")`
 - Material produced: `update_material(material_name, true)`
 - Integrity check result: `update_integrity(stage_id, verdict, details)`
-- Pipeline terminal transition: on the Stage 6 terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) — `update_stage(6, "completed", outputs)` + `update_pipeline_state("completed")`; if the user declined Stage 6 at the Stage 5 completion checkpoint — `update_stage(6, "skipped")` + `update_pipeline_state("completed")`
+- Pipeline terminal transition: on the Stage 6 terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) — `update_stage("6", "completed", outputs)` + `update_pipeline_state("completed")`; if the user declined Stage 6 at the Stage 5 completion checkpoint — `update_stage("6", "skipped", {reason: "user declined Stage 6"})` + `update_pipeline_state("completed")`
 
 Request state_tracker_agent to produce the Progress Dashboard when needed.
 
