@@ -70,6 +70,24 @@ class ModuleConstantsTests(unittest.TestCase):
         self.assertEqual(cmh.OPEN_FENCE, "[CROSS-MODEL-HANDOFF v1]")
         self.assertEqual(cmh.CLOSE_FENCE, "[/CROSS-MODEL-HANDOFF]")
 
+    def test_contract_limits_are_pinned(self) -> None:
+        """codex round-4 P1: MAX_DRIVERS / CONFIDENCE_VALUES could expand
+        green — pin the literals."""
+        self.assertEqual(cmh.MAX_DRIVERS, 3)
+        self.assertEqual(cmh.CONFIDENCE_VALUES, ("low", "medium", "high"))
+
+    def test_four_drivers_rejected(self) -> None:
+        h = cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND))
+        raw = json.dumps({"decision": "sound", "drivers": ["a", "b", "c", "d"], "confidence": "low"})
+        r = cmh.route_result(h, transport_ok=True, raw_result=raw)
+        self.assertEqual(r.outcome, "unavailable")
+
+    def test_out_of_contract_confidence_rejected(self) -> None:
+        h = cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND))
+        raw = json.dumps({"decision": "sound", "drivers": [], "confidence": "unbounded"})
+        r = cmh.route_result(h, transport_ok=True, raw_result=raw)
+        self.assertEqual(r.outcome, "unavailable")
+
 
 class ExtractionTests(unittest.TestCase):
     def test_plain_deliverable_has_no_block(self) -> None:
@@ -241,8 +259,17 @@ class RoutingTests(unittest.TestCase):
     def test_da_full_return_always_returns_to_owner(self) -> None:
         h = cmh.parse_handoff(_envelope("da_critique", "full_return", None))
         r = cmh.route_result(h, transport_ok=True, raw_result="Critique: three CRITICAL issues...")
-        self.assertEqual(r.outcome, cmh.FULL_RETURN_REINVOKE)
-        self.assertEqual(r.return_context["cross_model_response"], "Critique: three CRITICAL issues...")
+        self.assertEqual(r.outcome, "full_return_reinvoke_owner")
+        # The complete required context: correlation + owner + verbatim
+        # response (codex round-4 P1: correlation could disappear green).
+        self.assertEqual(
+            r.return_context,
+            {
+                "correlation_id": "design-freeze-demo-001",
+                "owner_agent": "devils_advocate_reviewer_agent",
+                "cross_model_response": "Critique: three CRITICAL issues...",
+            },
+        )
 
     def test_end_to_end_owner_dispatcher_owner(self) -> None:
         """The full deterministic replay: owner emits inside a larger

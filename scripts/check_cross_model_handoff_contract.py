@@ -78,6 +78,7 @@ SHARED_REQUIRED = [
     "REQUIRED iff enum_comparison",
     "Structured decisions carry ALL THREE fields (`decision`, `drivers`, `confidence`)",
     "must not contain a fence-shaped line",
+    "Sanitized also means data-minimized: strip personal names, affiliations, and private URLs not essential to the judgment",
     "NEVER forwarded to the cross-model",
     "payload only",
     "[CROSS-MODEL-ERROR: malformed_handoff]",

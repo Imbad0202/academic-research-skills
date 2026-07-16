@@ -128,6 +128,16 @@ class HandoffContractLintTests(unittest.TestCase):
             msg=f"errors: {errors}",
         )
 
+    def test_shared_data_minimization_dropped(self) -> None:
+        """codex round-4 P1 (boundary): the data-minimization rule flips to
+        permitting identity metadata — must fire."""
+        mutated = self.shared.replace(
+            "Sanitized also means data-minimized: strip personal names, affiliations, and private URLs not essential to the judgment",
+            "Identity and location metadata may be included for context",
+        )
+        errors = self._check(shared=mutated)
+        self.assertTrue(any(e.startswith("invariant 1") for e in errors), msg=f"{errors}")
+
     def test_shared_all_three_fields_narrowed(self) -> None:
         mutated = self.shared.replace(
             "Structured decisions carry ALL THREE fields (`decision`, `drivers`, `confidence`)",
