@@ -364,6 +364,18 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(r.outcome, cmh.UNAVAILABLE)
         self.assertIn("malformed_result", r.error)
 
+    def test_each_missing_field_is_unavailable_independently(self) -> None:
+        """codex round-8 P1: drivers and confidence are pinned SEPARATELY —
+        a default supplied for either single field must not reach
+        agreement, on both the result and the owner path."""
+        missing_confidence = {"decision": "sound", "drivers": ["ok"]}
+        missing_drivers = {"decision": "sound", "confidence": "high"}
+        for name, obj in (("confidence", missing_confidence), ("drivers", missing_drivers)):
+            r = cmh.route_result(self.h, transport_ok=True, raw_result=json.dumps(obj))
+            self.assertEqual(r.outcome, "unavailable", msg=f"result missing {name}")
+            with self.assertRaises(cmh.HandoffError, msg=f"owner missing {name}"):
+                cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", json.dumps(obj)))
+
     def test_malformed_result_is_unavailable_not_fabricated(self) -> None:
         r = cmh.route_result(self.h, transport_ok=True, raw_result="I think the design is sound overall.")
         self.assertEqual(r.outcome, cmh.UNAVAILABLE)
