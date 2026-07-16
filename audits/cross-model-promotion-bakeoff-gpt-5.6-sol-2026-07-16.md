@@ -3,7 +3,9 @@
 **Date:** 2026-07-16 (all 180 calls same-day, per the paired-run requirement)
 **Scope:** the § Promotion Bakeoff defined in `shared/cross_model_verification.md`, run against
 the candidate id `gpt-5.6-sol` with `gpt-5.5` as baseline.
-**Deliverables:** `evals/bakeoff/cross_model_promotion/probe_set_v2.json` (the pinned probe set), this report.
+**Deliverables:** everything under `evals/bakeoff/cross_model_promotion/` — `probe_set_v2.json` (the
+pinned probe set), `run_bakeoff.py` + `score_bakeoff.py` (the harness), `full_run_v2.jsonl` (the raw
+180-call record) — plus this report. See § Reproduction.
 **Provenance chain:** #515 → #516 (`gpt-5.6-sol` added as provisional) → #518 → #519 (§ Promotion Bakeoff
 + `CROSS_MODEL_ID_STATUS` allowlist) → this run.
 
@@ -210,18 +212,31 @@ Stated here rather than buried, because two of them bound what this run can conc
 
 ## Reproduction
 
-```
-# fixture is committed; hash must match the header above
-sha256sum evals/bakeoff/cross_model_promotion/probe_set_v2.json
+The harness, the probe set, and the raw 180-call run record are all committed under
+`evals/bakeoff/cross_model_promotion/`, so step 2 re-derives every number in this report offline —
+no API calls, no subscription spend.
 
-# 180 paired calls through the shipped adapter, Codex subscription, no API key
-python run_bakeoff.py \
-  --fixture evals/bakeoff/cross_model_promotion/probe_set_v2.json \
-  --models gpt-5.6-sol,gpt-5.5 --repeats 3 --concurrency 6 --timeout 300 \
-  --out full_run_v2.jsonl
+```bash
+cd evals/bakeoff/cross_model_promotion
 
-python score_bakeoff.py --run full_run_v2.jsonl --json-out score_report_v2.json
+# 1. The fixture is pinned; this hash must match the header above.
+sha256sum probe_set_v2.json
+
+# 2. Re-score the committed run record. Deterministic and offline; reproduces the
+#    Results table and all five threshold verdicts exactly.
+python3 score_bakeoff.py --run full_run_v2.jsonl
+
+# 3. OPTIONAL — re-run the 180 live paired calls (~30 min, spends subscription quota).
+#    Writes a NEW record: live model behavior may differ from the 2026-07-16 run, so a
+#    fresh run tests today's models, it does not re-verify this report.
+python3 run_bakeoff.py --models gpt-5.6-sol,gpt-5.5 --repeats 3 \
+  --concurrency 6 --timeout 300 --out fresh_run.jsonl
+python3 score_bakeoff.py --run fresh_run.jsonl
 ```
+
+`run_bakeoff.py` defaults to the committed `probe_set_v2.json` and resolves the repo root — and hence
+the shipped adapter it calls — from its own location, so it runs from any checkout without editing
+paths. `score_bakeoff.py` reads only the run record named by `--run`.
 
 The runner and scorer are harness scripts, not shipped ARS surface. The measured path — prompt,
 adapter, grounding guard, verdict extraction — is the shipped one.
