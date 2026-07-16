@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.16.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.16.0)
+[![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.17.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -244,7 +244,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查團隊 vs. 精簡再審團隊的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.16.0)
+### Academic Pipeline (v3.17.0)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）不可跳過；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -307,6 +307,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.17.0（2026-07-16）— Pipeline 邊界語意、跨模型交接信封、可執行 panel checker
+
+> **修復：**收斂 #528 兩個未明確定義的 pipeline 邊界 — Stage 5「finalize 前一律 MANDATORY」現在只指定唯一一個 checkpoint（Stage 4.5 通過與 Stage 5 派工之間的入口閘門），Stage 6 新增終止確認詞彙（`finish`/`end`/`done`/`confirm`）與明確的婉拒路徑；五個 pipeline 表面現在都加上全檔 sha256 內容鎖（#529），日後任何 prompt 表面漂移都會擋 CI，直到同一個 commit 更新雜湊值。盲測 checkpoint 傳輸移到派工層（#523）— 原本 Bucket A 的 checkpoint 擁有者被要求自行執行跨模型傳輸，但這在 runtime Bash deny 下無法執行；現在改由派工層負責傳輸呼叫。**新增：**canonical `[CROSS-MODEL-HANDOFF v1]` 信封 + 標準化 Python 文法（#527）取代原本純文字約束的擁有者→派工者→擁有者傳輸路徑，把一致/分歧/格式錯誤結果的路由釘死在全部三個 checkpoint 擁有者上。#514 工具白名單的防漂移鎖（#524，74 個 mutation test）擋住「對 agent 本體與其鏡像同步修改、悄悄加回 Bash」的漂移路徑。可執行的 sprint-contract panel checker（#510）從原始產出物重新算出 v3.6.2 的兩層決策，並抓到多數決公式的一個轉錄錯誤。機器可讀的降級註冊表（#511 Part A）把套件內每個優雅降級機制都列成索引，另加引用驗證閘門的 hermetic transport-fixture 整合測試（#511 Part B），對四個解析器 client 端到端跑過檢入版的合成 API 回應。`academic-pipeline` 跟隨套件版本至 v3.17.0；其他三個 skill 版本不變。
 
 ### v3.16.0（2026-07-12）— 模型分層、跨模型閘門強化、WP 提示語銳化
 

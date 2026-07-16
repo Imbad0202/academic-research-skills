@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.16.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.16.0)
+[![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.17.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -90,6 +90,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 - **Benchmark Report Schema** (v3.3.5+) — JSON Schema + lint for honest benchmark comparisons. See [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md).
 - **Artifact Reproducibility Lockfile** (v3.3.5+) — optional `repro_lock` sub-block on Material Passport. **Configuration documentation, not replay guarantee** — LLM outputs are not byte-reproducible. See [`shared/artifact_reproducibility_pattern.md`](shared/artifact_reproducibility_pattern.md).
 - **Model Tiering** (#517, v3.16+) — optional `ARS_MODEL_TIERING` switch with two directions: `economy` (execution-type agents dispatch one tier below the session model, floor Opus-class) and `quality-boost` (judgment-type agents at integrity gates and final review step up to the frontier tier). Default unset = byte-equivalent to pre-#517 behavior. See [`shared/model_tiering.md`](shared/model_tiering.md).
+- **Canonical Cross-Model Handoff Envelope** (#527, v3.17+) — the owner→dispatcher→owner blind-checkpoint transport path (#523) now has a machine-stable `[CROSS-MODEL-HANDOFF v1]` envelope with a normative Python grammar (`scripts/cross_model_handoff.py`) instead of prose-only enforcement, pinning agreement/divergence/malformed-result routing across all three checkpoint owners. See [`shared/cross_model_verification.md`](shared/cross_model_verification.md) §"Cross-model handoff envelope".
 - **Experiment Provenance Intake** (#260) — optional `experiment_provenance[]` on the Material Passport records experiments the scholar ran **externally** (ARS never runs experiments), and manuscript claims join to them via `claim_intent_manifest.planned_experiment_ids[]`. The integrity gate (Stage 2.5/4.5) audits each experiment-backed claim against declared provenance — `ALIGNED` / `OVERSTATED` / `NOT_SUPPORTED_BY_PROVENANCE` / `PROVENANCE_INSUFFICIENT` — **without judging whether the experiment itself was correct**. A fail-closed `experiment_intake_declaration` makes "did you run experiments?" an explicit Stage 1 decision (even literature-only runs declare `no_experiments_declared`). See [`shared/handoff_schemas.md`](shared/handoff_schemas.md) §"Experiment Provenance Intake (#260)".
 
 ---
@@ -254,7 +255,7 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 
 7-agent multi-perspective review with **0-100 quality rubrics**. Modes: full, re-review, quick, methodology-focus, guided, calibration. **Decision mapping:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. First-round review team vs. narrow re-review team boundary: see ARCHITECTURE.md §3 Stage 3 / Stage 3'.
 
-### Academic Pipeline (v3.16.0)
+### Academic Pipeline (v3.17.0)
 
 10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) cannot be skipped; R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
 
@@ -340,6 +341,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.17.0 (2026-07-16) — Pipeline boundary semantics, canonical cross-model handoff envelope, executable panel checker
+
+> **Fixed:** two under-specified pipeline boundaries closed (#528) — Stage 5's "before finalization: always MANDATORY" now names exactly one checkpoint (the entry gate between Stage 4.5 PASS and Stage 5 dispatch), and Stage 6 gains a defined terminal-acknowledgement vocabulary (`finish`/`end`/`done`/`confirm`) plus an explicit decline path; all five pipeline surfaces now carry whole-file sha256 content locks (#529) so any further prompt-surface drift fails CI until the hash is updated in the same commit. Blind-checkpoint transport moved to the dispatching layer (#523) — the Bucket A checkpoint owners were being told to execute cross-model transport themselves, which is unexecutable under the runtime Bash deny; the dispatching layer now owns the transport call. **Added:** a canonical `[CROSS-MODEL-HANDOFF v1]` envelope + normative Python grammar (#527) replaces prose-only enforcement of the owner→dispatcher→owner transport path, pinning agreement/divergence/malformed-result routing across all three checkpoint owners. A defrift lock for the #514 tools allowlist (#524, 74 mutation tests) closes the drift path where a symmetric edit to an agent + its mirror could silently re-add Bash. An executable sprint-contract panel checker (#510) recomputes both v3.6.2 decision layers from the primary artifacts and catches a transcription error in the majority-vote formula. A machine-readable degradation registry (#511 Part A) indexes every graceful-degradation mechanism in the suite, plus a hermetic transport-fixture integration test for the citation-verification gate (#511 Part B) exercising all four resolver clients end-to-end against checked-in synthetic API bodies. `academic-pipeline` tracks the suite at v3.17.0; the other three skill versions are unchanged.
 
 ### v3.16.0 (2026-07-12) — Model tiering, cross-model gate hardening, WP advisory sharpening
 

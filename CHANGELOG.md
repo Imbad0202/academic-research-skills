@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.17.0] - 2026-07-16 — Pipeline boundary semantics, canonical cross-model handoff envelope, executable panel checker
+
 ### Security
 
 - **Tools allowlist for the three top-level plugin agents (#514, implemented in PR #521 by [@madtriceps](https://github.com/madtriceps)).** The three plugin-exposed agents (`synthesis_agent`, `research_architect_agent`, `report_compiler_agent`; deep-research sources + byte-identical `agents/` mirrors, six files) now declare `tools: Read, Write, Edit, Grep, Glob` in frontmatter — no Bash, no WebFetch/WebSearch — so dispatch-time capability is least-privilege even in hook-less installs, complementing the runtime Bucket A Bash deny (`scripts/ars_write_scope_guard.py`), which keys on agent name and continues unchanged. Retrospective entry: the code merged just after the v3.16.0 tag; documented here per the changelog-covers-merges gate.

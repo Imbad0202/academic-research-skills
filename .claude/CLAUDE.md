@@ -9,7 +9,16 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.11.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.16.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.17.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.17 Key Additions (pipeline boundary semantics + canonical cross-model handoff envelope + executable panel checker)
+
+- **Pipeline Stage 5/6 boundary semantics + whole-file content locks (#528 → #529, #535).** New authority section `references/pipeline_state_machine.md` § Stage 5 and Stage 6 Boundary Semantics, mirrored in `academic-pipeline/SKILL.md`, `agents/pipeline_orchestrator_agent.md`, and `references/process_summary_protocol.md`. Stage 5's "before finalization: always MANDATORY" now names exactly one checkpoint — the entry gate between Stage 4.5 PASS and Stage 5 dispatch; the completion checkpoint (Final Paper delivered, before Stage 6) is FULL but not MANDATORY. Stage 6 gains a defined Stage 5→6 transition, a non-mandatory decline path, a terminal checkpoint after the Process Record is delivered, and the canonical terminal-acknowledgement vocabulary (`finish`/`end`/`done`/`confirm`) that sets pipeline global state to `completed`. All five pipeline surfaces carry whole-file sha256 content locks (`scripts/check_pipeline_boundary_semantics.py`, 66 mutation tests) — any byte change fails CI until the pinned hash is updated in the same commit.
+- **Canonical cross-model handoff envelope + dispatcher consumer contract (#527 → #536).** The #523 owner→dispatcher→owner transport path gains a machine-stable `[CROSS-MODEL-HANDOFF v1]` envelope (checkpoint_kind / owner_agent / correlation_id / expected_result / payload) with `scripts/cross_model_handoff.py` as the normative Python grammar (parse + outcome routing as pure functions) plus a deterministic fixture suite on a fake transport (no external API). The three checkpoint owners (`research_architect_agent`, `editorial_synthesizer_agent`, `devils_advocate_reviewer_agent`) emit the envelope; the Mode-A orchestrator pins the consumer contract (malformed envelope → `[CROSS-MODEL-ERROR]` → `unavailable`, never a fabricated judgment; agreement → mechanical fill, no owner re-invocation; divergence → re-invoke the owner with minimum context). `scripts/check_cross_model_handoff_contract.py` pins the contract across all five surfaces.
+- **Tools allowlist for plugin agents + defrift lock (#514/#521 → #524).** The three plugin-exposed agents (`synthesis_agent`, `research_architect_agent`, `report_compiler_agent`) declare `tools: Read, Write, Edit, Grep, Glob` in frontmatter — no Bash, no WebFetch/WebSearch. `scripts/check_tools_allowlist.py` (74 mutation tests) reads YAML as a duplicate-preserving node tree rather than a line scan, folding the whole `tools` value through Unicode normalization before any split so a homoglyph or fullwidth-separator re-spelling of `Bash` cannot slip past the allowlist.
+- **Executable sprint-contract panel checker + majority-formula fix (#510 → #532).** New `scripts/check_panel_synthesis.py` recomputes both v3.6.2 decision layers from the primary artifacts (per-reviewer scores → fired conditions → decision; panel matrix → quantifier thresholds → precedence → synthesizer decision) and fails on mismatch. Corrects a majority-quantifier transcription error (`⌈N/2⌉+1` → simple majority `⌊N/2⌋+1`).
+- **Machine-readable degradation registry + hermetic transport-fixture integration test (#511 → #533/#534).** New `shared/contracts/degradation_registry.json` indexes every graceful-degradation mechanism in the suite (failure class → emitted degraded state → diagnostic marker → downstream consumer → terminal-policy effect → authority anchor → pinning tests), validated by `scripts/check_degradation_registry.py`. A separate transport-fixture integration test (`scripts/test_transport_fixture_citation_gate.py`) feeds checked-in synthetic API bodies through the four actual resolver clients into the citation-verification gate, pinning the 3-class verdict end-to-end.
+- **Also:** blind-checkpoint transport moved to the dispatching layer, closing an unexecutable-under-runtime-Bash-deny gap at the two irreversible decision checkpoints (#523).
 
 ## v3.16 Key Additions (model tiering + cross-model gate hardening + WP advisory sharpening)
 
@@ -304,7 +313,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.16.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-07-12
+- **Suite version**: 3.17.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-07-16
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

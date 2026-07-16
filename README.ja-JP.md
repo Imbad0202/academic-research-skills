@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.16.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.16.0)
+[![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.17.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -244,7 +244,7 @@ You: "status"
 
 **0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューチーム vs. 限定的な再レビューチームの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.16.0）
+### Academic Pipeline（v3.17.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）はスキップできない。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -324,6 +324,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.17.0 (2026-07-16) — パイプライン境界セマンティクス、正準クロスモデルハンドオフ・エンベロープ、実行可能パネルチェッカー
+
+> **修正:** #528 の 2 つの不明確なパイプライン境界を解消 — Stage 5 の「finalize 前は常に MANDATORY」は、Stage 4.5 の PASS と Stage 5 のディスパッチの間にある 1 つのチェックポイント（エントリーゲート）のみを指すよう定義され、Stage 6 には終端の確認語彙（`finish`/`end`/`done`/`confirm`）と明示的な辞退パスが追加された。5 つのパイプライン面すべてに全文 sha256 コンテンツロックが付与され（#529）、今後のプロンプト面のドリフトは同一コミットでハッシュを更新しない限り CI で失敗する。ブラインドチェックポイントの伝送はディスパッチ層へ移動（#523）— 元々 Bucket A のチェックポイント所有者にクロスモデル伝送の実行を求めていたが、ランタイムの Bash 拒否のもとでは実行不能だった。現在はディスパッチ層が伝送呼び出しを担う。**追加:** 正準 `[CROSS-MODEL-HANDOFF v1]` エンベロープ + 規範的な Python 文法（#527）が、これまでプローズのみで担保されていた owner→dispatcher→owner 伝送経路を置き換え、一致・不一致・不正形式の結果ルーティングを 3 つのチェックポイント所有者すべてに固定する。#514 ツール許可リストのドリフト防止ロック（#524、74 件のミューテーションテスト）は、エージェント本体とそのミラーを対称的に編集して Bash を静かに再追加するドリフト経路を塞ぐ。実行可能な sprint-contract パネルチェッカー（#510）は一次成果物から v3.6.2 の 2 層決定を再計算し、多数決の式にあった転記ミスを捕捉する。機械可読な degradation registry（#511 Part A）はスイート内のすべての優雅な劣化メカニズムを索引化し、引用検証ゲート向けの hermetic transport-fixture 統合テスト（#511 Part B）が 4 つのリゾルバークライアントをチェックイン済みの合成 API レスポンスに対してエンドツーエンドで検証する。`academic-pipeline` はスイートに合わせて v3.17.0 へ、他の 3 スキルのバージョンは変更ありません。
 
 ### v3.16.0 (2026-07-12) — モデル階層化、クロスモデルゲート強化、WP アドバイザリ精緻化
 
