@@ -164,6 +164,20 @@ export ARS_CROSS_MODEL="gpt-5.5"                # Recommended pair (gpt-5.5-pro 
 claude
 ```
 
+### Codex subscription (no OpenAI API key)
+
+Have a Codex CLI subscription (`~/.codex/auth.json`)? You can run the `gpt-*` verifier through it instead of a metered `OPENAI_API_KEY` — the same grounded checks, billed against your subscription rather than per-token.
+
+```bash
+# Route the gpt-* verifier through the Codex CLI subscription instead of a metered API key.
+export ARS_CROSS_MODEL_TRANSPORT="codex"   # opt-in transport selector
+export ARS_CROSS_MODEL="gpt-5.6-sol"       # any gpt-* id; OPENAI_API_KEY stays UNSET (never read)
+# Optional reasoning effort (defaults to xhigh on the codex transport):
+# export ARS_CROSS_MODEL_REASONING_EFFORT="high"
+```
+
+Requires `codex` on your PATH and a logged-in `~/.codex/auth.json`. The transport enables Codex's hosted web search and fails closed to `NOT_SEARCHED` when no search ran; if the subscription is missing, ARS warns and proceeds single-model. Verify it end-to-end with `ARS_CROSS_MODEL=gpt-5.6-sol bash scripts/cross_model_smoke_test_codex.sh`. Details: [`shared/cross_model_verification.md`](../shared/cross_model_verification.md).
+
 ### What changes when enabled
 
 | Feature | Without cross-model | With cross-model |

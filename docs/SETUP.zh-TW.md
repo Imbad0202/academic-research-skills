@@ -164,6 +164,20 @@ export ARS_CROSS_MODEL="gpt-5.5"                # Recommended pair (gpt-5.5-pro 
 claude
 ```
 
+### Codex 訂閱（免 OpenAI API key）
+
+有 Codex CLI 訂閱（`~/.codex/auth.json`）嗎？可以讓 `gpt-*` 驗證模型改走訂閱，而非計量計費的 `OPENAI_API_KEY` — 驗證內容相同（有 grounding），費用計入你的訂閱而非按 token 計費。
+
+```bash
+# Route the gpt-* verifier through the Codex CLI subscription instead of a metered API key.
+export ARS_CROSS_MODEL_TRANSPORT="codex"   # opt-in transport selector
+export ARS_CROSS_MODEL="gpt-5.6-sol"       # any gpt-* id; OPENAI_API_KEY stays UNSET (never read)
+# Optional reasoning effort (defaults to xhigh on the codex transport):
+# export ARS_CROSS_MODEL_REASONING_EFFORT="high"
+```
+
+需要 PATH 上有 `codex` 且已登入的 `~/.codex/auth.json`。此傳輸會啟用 Codex 內建網路搜尋，未實際搜尋時 fail-closed 為 `NOT_SEARCHED`；訂閱不存在時，ARS 會警告並改用單模型。以 `ARS_CROSS_MODEL=gpt-5.6-sol bash scripts/cross_model_smoke_test_codex.sh` 驗證。詳見 [`shared/cross_model_verification.md`](../shared/cross_model_verification.md)。
+
 ### 啟用後的差異
 
 | 功能 | 未啟用跨模型 | 啟用跨模型 |

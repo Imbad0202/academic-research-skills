@@ -49,6 +49,8 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 Using two non-Anthropic models as primary+verifier is possible but not tested with ARS prompts.
 
+> **Codex subscription transport (opt-in).** Any `gpt-*` verifier can run through a Codex CLI subscription (`~/.codex/auth.json`) instead of a metered `OPENAI_API_KEY` by setting `ARS_CROSS_MODEL_TRANSPORT=codex` — the same grounded contract (hosted web search + fail-closed `NOT_SEARCHED` guard), billed against the subscription rather than per-token. The model id and its `validated`/`provisional`/`unlisted` status are unchanged by transport. See Setup Guide Step 2 Option D and § API Call Patterns → Codex CLI (subscription-backed).
+
 ## Setup Guide
 
 ### Prerequisites
@@ -99,6 +101,14 @@ export ARS_CROSS_MODEL="gemini-3.1-pro-preview"
 export ARS_OPENAI_COMPAT_BASE_URL="https://api.deepseek.com/v1"   # API root incl. /v1
 export ARS_OPENAI_COMPAT_API_KEY="<your-provider-api-key>"
 export ARS_CROSS_MODEL="deepseek-v4-pro"                          # provider id, NOT gpt-*/gemini-*
+
+# --- Option D: Codex CLI subscription (first-party gpt-*, grounded, no OpenAI API key) ---
+# Route the gpt-* verifier through your Codex CLI subscription (~/.codex/auth.json) instead of a
+# metered OPENAI_API_KEY. Requires `codex` on PATH; OPENAI_API_KEY stays UNSET (never read).
+export ARS_CROSS_MODEL_TRANSPORT="codex"
+export ARS_CROSS_MODEL="gpt-5.6-sol"                             # any gpt-* id (status unchanged by transport)
+# Optional reasoning effort (defaults to xhigh on the codex transport):
+# export ARS_CROSS_MODEL_REASONING_EFFORT="high"
 ```
 
 Then reload: `source ~/.zshrc`
@@ -235,7 +245,7 @@ Checkpoint decisions are judgment, not lookup — an ungrounded/compatible provi
 
 ## API Call Patterns
 
-Three patterns are documented below. The first two (OpenAI and Gemini) are first-party and share the same contract: enable the provider's hosted web-search tool, and **gate the model's text on proof that a search actually happened** — no grounding evidence (an OpenAI `web_search_call` item / a Gemini `groundingMetadata` block) emits `NOT_SEARCHED` and the text is discarded, so this guard, not the prompt wording, is what prevents a from-memory guess being laundered into `VERIFIED`. Both first-party web-search tools are hosted/server-side: one request, no client-side tool-call round-trip. The third (OpenAI-compatible) is ungrounded by construction: it has no web-search tool, so the handler downgrades positive verdicts to `NOT_SEARCHED` and lets rejections through, and a compatible verdict never counts as a grounded agreement. `PROMPT` holds the single-reference verification prompt from step 3.
+Four patterns are documented below. The first two (OpenAI and Gemini) are first-party and share the same contract: enable the provider's hosted web-search tool, and **gate the model's text on proof that a search actually happened** — no grounding evidence (an OpenAI `web_search_call` item / a Gemini `groundingMetadata` block) emits `NOT_SEARCHED` and the text is discarded, so this guard, not the prompt wording, is what prevents a from-memory guess being laundered into `VERIFIED`. Both first-party web-search tools are hosted/server-side: one request, no client-side tool-call round-trip. The third (OpenAI-compatible) is ungrounded by construction: it has no web-search tool, so the handler downgrades positive verdicts to `NOT_SEARCHED` and lets rejections through, and a compatible verdict never counts as a grounded agreement. The fourth (Codex CLI) runs the same first-party `gpt-*` models through a Codex subscription instead of a metered API key; it is grounded — it enables Codex's hosted web search and applies the same fail-closed `NOT_SEARCHED` guard, encapsulated in the `cross_model_codex_verify.sh` adapter. `PROMPT` holds the single-reference verification prompt from step 3.
 
 ### OpenAI (GPT-5.5 / GPT-5.5 Pro / GPT-5.6 Sol)
 
@@ -390,6 +400,30 @@ fi
 > raw model text is preserved JSON-escaped in `.context` precisely so it cannot be mistaken for
 > a verdict.
 
+### Codex CLI (subscription-backed, grounded)
+
+When `CROSS_MODEL_AVAILABLE=codex`, the verifier runs the same first-party `gpt-*` model through the **Codex CLI subscription** (`~/.codex/auth.json`) instead of a metered `OPENAI_API_KEY` — the key stays unset and is never read. Grounding, the fail-closed `NOT_SEARCHED` guard, single-verdict extraction, and source-URL extraction are all encapsulated in the canonical `scripts/cross_model_codex_verify.sh` adapter: it invokes `codex exec --json` with the hosted `web_search` tool and treats a run as grounded **only** when the JSONL stream carries a completed `web_search` item — the Codex analogue of the OpenAI `web_search_call` guard. A `VERIFIED` with no source URL, or any verdict from an ungrounded run, is downgraded to `NOT_SEARCHED`, so a from-memory guess is never laundered into a confirmation. `PROMPT` holds the single-reference verification prompt from step 3.
+
+```bash
+# One reference per call. The adapter unsets OPENAI_API_KEY and authenticates from auth.json.
+# It emits single-line JSON: {"verdict": "...", "sources": [...], "searched": bool}.
+if ! result="$(ARS_CROSS_MODEL="$ARS_CROSS_MODEL" bash scripts/cross_model_codex_verify.sh "$PROMPT")"; then
+  # Non-zero exit = codex transport failure (auth / rate-limit / CLI error). Surface as a
+  # transport error so the consumer falls back to single-model (see § Graceful Degradation);
+  # a transport failure is NOT the same as a completed-but-ungrounded lookup, so never relabel
+  # it NOT_SEARCHED.
+  echo "CROSS-MODEL-ERROR: codex_transport_failure"
+else
+  # The adapter already fails closed: verdict is NOT_SEARCHED unless a completed web_search item
+  # backed the run and (for VERIFIED) at least one source URL was extracted. Read its fields only.
+  verdict="$(printf '%s' "$result" | jq -r '.verdict')"
+  sources="$(printf '%s' "$result" | jq -r '.sources | join(", ")')"
+  printf '%s\nSOURCES: %s\n' "$verdict" "${sources:-(none)}"
+fi
+```
+
+The Codex transport carries the same documented residual as any Codex run: `codex exec` echoes no `service_tier`, so `priority` is best-effort and unverifiable from output. Validate it end-to-end with `scripts/cross_model_smoke_test_codex.sh` (the Codex mirror of `cross_model_smoke_test.sh`).
+
 ### Detecting Available Models
 
 Agents should check at the start of a verification/review session:
@@ -434,7 +468,17 @@ if [ -n "$ARS_CROSS_MODEL" ]; then
   }
   case "$ARS_CROSS_MODEL" in
     gpt-*)
-      if [ -n "$OPENAI_API_KEY" ]; then
+      if [ "$ARS_CROSS_MODEL_TRANSPORT" = "codex" ]; then
+        # Opt-in: route the gpt-* verifier through the Codex CLI subscription (auth.json) rather
+        # than a metered OPENAI_API_KEY. Requires codex on PATH + ~/.codex/auth.json; the key
+        # stays unset. Fails closed to single-model (a warning) when the subscription is absent,
+        # so a set-but-unusable transport never silently drops cross-model verification.
+        if command -v codex >/dev/null 2>&1 && [ -f "$HOME/.codex/auth.json" ]; then
+          echo "CROSS_MODEL_AVAILABLE=codex"; announce_id_status
+        else
+          echo "WARNING: ARS_CROSS_MODEL_TRANSPORT=codex but the Codex CLI subscription is unavailable (need codex on PATH and ~/.codex/auth.json); proceeding single-model"
+        fi
+      elif [ -n "$OPENAI_API_KEY" ]; then
         echo "CROSS_MODEL_AVAILABLE=openai"; announce_id_status
       else
         echo "WARNING: ARS_CROSS_MODEL=$ARS_CROSS_MODEL but OPENAI_API_KEY is not set"
