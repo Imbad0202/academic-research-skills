@@ -124,20 +124,20 @@ This document defines all legal states, transition conditions, transition action
          |FINALIZE|                                 |
          +---+----+                                 |
              |                                      |
-        [checkpoint]                                |
-             |                                      |
-             v                                      |
-         +--------+                                 |
-         |Stage 6 |                                 |
-         |PROCESS |                                 |
-         |SUMMARY |                                 |
-         +---+----+                                 |
-             |                                      |
-   [terminal acknowledgement]                       |
-             |                                      |
-             v                                      |
-        +---------+                                 |
-        |COMPLETED|                                 |
+        [checkpoint]---[decline Stage 6]---+        |
+             |                             |        |
+             v                             |        |
+         +--------+                        |        |
+         |Stage 6 |                        |        |
+         |PROCESS |                        |        |
+         |SUMMARY |                        |        |
+         +---+----+                        |        |
+             |                             |        |
+   [terminal acknowledgement]              |        |
+             |                             |        |
+             v                             |        |
+        +---------+                        |        |
+        |COMPLETED| <----------------------+        |
         +---------+                                 |
 ```
 
@@ -174,7 +174,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 4.5 | User confirms | Pass revised draft to final verification |
 | Stage 4.5 | **checkpoint** | PASS (zero issues) | Wait for user confirmation |
 | Stage 4.5 | Stage 4.5 (retry) | FAIL | Fix issues, re-verify (max 3 rounds) |
-| checkpoint | Stage 5 | User confirms (MANDATORY — the Stage 5 entry gate; see § Stage 5 boundary semantics) | Pass final accepted draft; collect the format decisions (citation style, DOCX, LaTeX/PDF) |
+| checkpoint | Stage 5 | User confirms (MANDATORY — the Stage 5 entry gate; see § Stage 5 boundary semantics) | Pass final accepted draft; record the finalization-format decision (citation style) |
 | Stage 5 | **checkpoint** | Stage 5 completed, Final Paper delivered | Wait for user confirmation (FULL — never SLIM; see § Stage 5 boundary semantics) |
 | checkpoint | Stage 6 | User confirms | Dispatch Process Summary per `process_summary_protocol.md` |
 | checkpoint | completed | User declines Stage 6 | Mark Stage 6 `skipped` (non-mandatory stage); set pipeline global state `completed` |
@@ -215,13 +215,13 @@ The two boundaries below were under-specified before v3.17 (different runtimes c
 "Before finalization (Stage 5): always MANDATORY" refers to exactly ONE checkpoint: the **Stage 5 entry gate** — the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch. It is MANDATORY because it carries the finalization decisions:
 
 - explicit confirmation to proceed to finalization (no auto-advance);
-- the format decisions: citation style (APA 7.0 / Chicago / IEEE, ...), DOCX output, LaTeX/PDF yes/no.
+- the finalization-format decision: citation style (APA 7.0 / Chicago / IEEE, ...) — the "Stage 5 finalization format" pending decision the passport-reset machinery records at this boundary.
 
 Transition state: `awaiting_confirmation` → on user confirmation → Stage 5 `in_progress`.
 
-Two other confirmations near Stage 5 are NOT this MANDATORY boundary:
+Other confirmations near Stage 5 are NOT this MANDATORY boundary:
 
-1. The in-stage content confirmation ("user confirms content is correct" before the final PDF — Step 4 of the Stage 5 output process) is part of Stage 5 execution, not a pipeline checkpoint.
+1. The in-stage interactions of the Stage 5 output process — the "Need LaTeX?" question (Step 3) and the content confirmation before the final PDF (Step 4) — are part of Stage 5 execution, not pipeline checkpoints; they are asked during the stage, never at the gate.
 2. The **Stage 5 completion checkpoint** (Final Paper delivered, before Stage 6) follows the global stage-completion rule: it is a FULL checkpoint — never SLIM, because final-deliverable acceptance must not be downgraded — but it is not on the MANDATORY list.
 
 ### Stage 6 terminal semantics
@@ -256,8 +256,8 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | **Re-Review Report** | **Stage 3'** | **Stage 4' (input)** | **Required (if Major)** |
 | **Re-Revised Draft** | **Stage 4'** | **Stage 4.5 (input)** | **Required (if executed)** |
 | **Integrity Report (Final)** | **Stage 4.5** | **Stage 5 (prerequisite)** | **Required** |
-| Final Paper | Stage 5 | END (delivery) | Required |
-| Process Record | Stage 6 | END (delivery) | Optional (Stage 6 is skippable) |
+| Final Paper | Stage 5 | User (delivery) | Required |
+| Process Record | Stage 6 | User (delivery) | Optional (Stage 6 is skippable) |
 
 ---
 

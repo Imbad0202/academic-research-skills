@@ -68,17 +68,22 @@ INV2_FRAGMENTS = [
 
 # --- Invariants 3+4: the state-machine authority section (one H2, two H3s) ---
 AUTHORITY_HEADING = "## Stage 5 and Stage 6 Boundary Semantics"
+TRANSITIONS_HEADING = "## Legal State Transitions"
 
 # Canonical terminal-acknowledgement vocabulary. Two spellings by surface:
 # backtick form in the markdown prose (SKILL / ORCH / SM), double-quote form
-# inside the protocol doc's fenced workflow block.
+# inside the protocol doc's fenced workflow block. The protocol additionally
+# pins the natural-language-equivalent clause so the vocabulary cannot be
+# narrowed to exact-keyword-only there (codex P1, 2026-07-16).
 VOCAB_CANON = "`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent"
 VOCAB_PROTO = '"finish" / "end" / "done" / "confirm"'
+VOCAB_PROTO_NL_CLAUSE = "unambiguous natural-language equivalent that accepts the deliverables"
 
 S5_AUTHORITY_LITERALS = {
     "entry-gate": "refers to exactly ONE checkpoint: the **Stage 5 entry gate**",
-    "in-stage-confirmation": "not a pipeline checkpoint",
+    "in-stage-confirmation": "not pipeline checkpoints",
     "completion-full-never-slim": "FULL checkpoint — never SLIM",
+    "completion-not-mandatory": "but it is not on the MANDATORY list",
 }
 S6_AUTHORITY_LITERALS = {
     "decline-path": "marked `skipped` and the pipeline still terminates `completed`",
@@ -90,13 +95,20 @@ S6_AUTHORITY_LITERALS = {
 S5_ENTRY_GATE_TABLE_CELL = "Stage 5 entry gate (before finalization)"
 S5_CANON_RULE5 = "the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch"
 S5_CANON_COMPLETION = "The Stage 5 completion checkpoint (Final Paper delivered, before Stage 6) is FULL — never SLIM"
-S5_COMPLETION_ROW = "| Stage 5 | **checkpoint** | Stage 5 completed, Final Paper delivered |"
 
-S6_TRANSITION_ROWS = [
-    "| Stage 6 | **terminal checkpoint** | Process Record delivered |",
-    "| terminal checkpoint | completed |",
-    "| checkpoint | completed | User declines Stage 6 |",
-]
+# Transition rows are pinned as COMPLETE rows (all four cells), scoped to the
+# ## Legal State Transitions span — a prefix pin would let a mutation flip the
+# outcome cell (FULL→MANDATORY, completed→skipped) and stay green (codex P1).
+S5_TRANSITION_ROWS = {
+    "entry-gate-row": "| checkpoint | Stage 5 | User confirms (MANDATORY — the Stage 5 entry gate; see § Stage 5 boundary semantics) | Pass final accepted draft; record the finalization-format decision (citation style) |",
+    "completion-checkpoint-row": "| Stage 5 | **checkpoint** | Stage 5 completed, Final Paper delivered | Wait for user confirmation (FULL — never SLIM; see § Stage 5 boundary semantics) |",
+}
+S6_TRANSITION_ROWS = {
+    "stage6-dispatch-row": "| checkpoint | Stage 6 | User confirms | Dispatch Process Summary per `process_summary_protocol.md` |",
+    "terminal-checkpoint-row": "| Stage 6 | **terminal checkpoint** | Process Record delivered | Wait for terminal acknowledgement (see § Stage 6 terminal semantics) |",
+    "terminal-transition-row": "| terminal checkpoint | completed | User acknowledges (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) | Mark Stage 6 `completed`; set pipeline global state `completed` |",
+    "decline-row": "| checkpoint | completed | User declines Stage 6 | Mark Stage 6 `skipped` (non-mandatory stage); set pipeline global state `completed` |",
+}
 ORCH_TERMINAL_WIRING = 'update_pipeline_state("completed")'
 
 
@@ -123,17 +135,17 @@ def check(skill: str, orch: str, sm: str, proto: str) -> list[str]:
                 f"Stage 4.5 and must not trigger coaching)"
             )
 
-    # Invariant 3 — authority section in the state machine (H2-scoped)
+    # Invariant 3 — authority section + transition rows (both H2-scoped)
     errors.extend(
         check_section_literals(3, sm, AUTHORITY_HEADING,
                                f"{SM} Stage-5/6 authority",
                                S5_AUTHORITY_LITERALS)
     )
-    if S5_COMPLETION_ROW not in sm:
-        errors.append(
-            f"invariant 3 ({SM}): the Stage 5 completion-checkpoint "
-            f"transition row is missing: {S5_COMPLETION_ROW!r}"
-        )
+    errors.extend(
+        check_section_literals(3, sm, TRANSITIONS_HEADING,
+                               f"{SM} legal-transitions",
+                               S5_TRANSITION_ROWS)
+    )
     # Invariant 3 — mirrors (file-unique canonical sentences, pinned file-wide)
     for path in (SKILL, ORCH):
         if S5_ENTRY_GATE_TABLE_CELL not in texts[path]:
@@ -152,17 +164,17 @@ def check(skill: str, orch: str, sm: str, proto: str) -> list[str]:
                 f"completion-checkpoint sentence {S5_CANON_COMPLETION!r}"
             )
 
-    # Invariant 4 — authority section (H2-scoped) + transition rows
+    # Invariant 4 — authority section + transition rows (both H2-scoped)
     errors.extend(
         check_section_literals(4, sm, AUTHORITY_HEADING,
                                f"{SM} Stage-5/6 authority",
                                S6_AUTHORITY_LITERALS)
     )
-    for row in S6_TRANSITION_ROWS:
-        if row not in sm:
-            errors.append(
-                f"invariant 4 ({SM}): terminal transition row missing: {row!r}"
-            )
+    errors.extend(
+        check_section_literals(4, sm, TRANSITIONS_HEADING,
+                               f"{SM} legal-transitions",
+                               S6_TRANSITION_ROWS)
+    )
     # Invariant 4 — vocabulary on the mirror surfaces
     for path in (SKILL, ORCH):
         if VOCAB_CANON not in texts[path]:
@@ -170,11 +182,12 @@ def check(skill: str, orch: str, sm: str, proto: str) -> list[str]:
                 f"invariant 4 ({path}): canonical terminal-acknowledgement "
                 f"vocabulary missing: {VOCAB_CANON!r}"
             )
-    if VOCAB_PROTO not in proto:
-        errors.append(
-            f"invariant 4 ({PROTO}): canonical terminal-acknowledgement "
-            f"vocabulary missing: {VOCAB_PROTO!r}"
-        )
+    for fragment in (VOCAB_PROTO, VOCAB_PROTO_NL_CLAUSE):
+        if fragment not in proto:
+            errors.append(
+                f"invariant 4 ({PROTO}): canonical terminal-acknowledgement "
+                f"vocabulary missing: {fragment!r}"
+            )
     if ORCH_TERMINAL_WIRING not in orch:
         errors.append(
             f"invariant 4 ({ORCH}): state_tracker terminal wiring missing: "

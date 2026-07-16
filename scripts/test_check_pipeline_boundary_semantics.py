@@ -123,6 +123,31 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         errors = self._check(sm=mutated)
         self.assertTrue(any(e.startswith("invariant 3") and "completion-checkpoint" in e for e in errors))
 
+    def test_inv3_completion_row_flipped_to_mandatory(self) -> None:
+        """Adverse-value mutation (codex P1): the row survives as a prefix but
+        its outcome cell flips FULL to MANDATORY — must fire."""
+        mutated = self.sm.replace(
+            "Wait for user confirmation (FULL — never SLIM; see § Stage 5 boundary semantics)",
+            "Wait for user confirmation (MANDATORY; see § Stage 5 boundary semantics)",
+        )
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "completion-checkpoint-row" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv3_not_on_mandatory_list_clause_deleted(self) -> None:
+        """Adverse-value mutation (codex P1): deleting the 'not on the
+        MANDATORY list' clause from the authority section must fire."""
+        mutated = self.sm.replace(" — but it is not on the MANDATORY list", "")
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "completion-not-mandatory" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_inv3_skill_mandatory_cell_broadened(self) -> None:
         """The drift that motivated item 3: 'Stage 5' unqualified again."""
         mutated = self.skill.replace(
@@ -178,7 +203,7 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "| Stage 6 | END | done |",
         )
         errors = self._check(sm=mutated)
-        self.assertTrue(any(e.startswith("invariant 4") and "transition row" in e for e in errors))
+        self.assertTrue(any(e.startswith("invariant 4") and "terminal-checkpoint-row" in e for e in errors))
 
     def test_inv4_decline_row_removed(self) -> None:
         mutated = self.sm.replace(
@@ -186,7 +211,36 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "| checkpoint | completed | n/a |",
         )
         errors = self._check(sm=mutated)
-        self.assertTrue(any(e.startswith("invariant 4") and "transition row" in e for e in errors))
+        self.assertTrue(any(e.startswith("invariant 4") and "decline-row" in e for e in errors))
+
+    def test_inv4_terminal_row_outcome_flipped_to_skipped(self) -> None:
+        """Adverse-value mutation (codex P1): the terminal row survives as a
+        prefix but its action cell marks Stage 6 `skipped` — must fire."""
+        mutated = self.sm.replace(
+            "Mark Stage 6 `completed`; set pipeline global state `completed` |",
+            "Mark Stage 6 `skipped`; set pipeline global state `completed` |",
+        )
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "terminal-transition-row" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_protocol_narrowed_to_exact_keywords(self) -> None:
+        """Adverse-value mutation (codex P1): the protocol keeps the four
+        quoted keywords but drops the natural-language-equivalent clause —
+        must fire."""
+        mutated = self.proto.replace(
+            "unambiguous natural-language equivalent that accepts the deliverables",
+            "exact keyword from the list above (no paraphrase accepted)",
+        )
+        self.assertNotEqual(mutated, self.proto)
+        errors = self._check(proto=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and self.mod.PROTO in e for e in errors),
+            msg=f"errors: {errors}",
+        )
 
     def test_inv4_skill_vocab_lost(self) -> None:
         mutated = self.skill.replace(
