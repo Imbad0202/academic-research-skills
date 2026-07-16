@@ -367,6 +367,15 @@ jobs:
           PYTHONPATH: .
         run: python scripts/check_439_format_profile.py
 
+      - name: Run #527 cross-model handoff contract lint
+        # Pins the canonical [CROSS-MODEL-HANDOFF v1] envelope + dispatcher
+        # consumer contract across shared/cross_model_verification.md, the
+        # three checkpoint owners, and the Mode-A orchestrator. Normative
+        # grammar: scripts/cross_model_handoff.py; owner->dispatcher->owner
+        # fixtures + this lint's mutation tests run via the unified
+        # manifest (#156).
+        run: python3 scripts/check_cross_model_handoff_contract.py
+
       - name: Run #528 pipeline boundary-semantics defrift lock
         # Pins the four Mode-A-replay resolutions (#529 items 1-2 + #528
         # items 3-4) across academic-pipeline SKILL.md / orchestrator /

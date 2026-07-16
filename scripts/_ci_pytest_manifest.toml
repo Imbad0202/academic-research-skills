@@ -291,3 +291,11 @@ path = "scripts/test_check_panel_synthesis.py"
 [[pytest]]
 id = "528-pipeline-boundary-semantics"
 path = "scripts/test_check_pipeline_boundary_semantics.py"
+
+[[pytest]]
+id = "527-handoff-envelope-fixtures"
+path = "scripts/test_cross_model_handoff.py"
+
+[[pytest]]
+id = "527-handoff-contract-lint"
+path = "scripts/test_check_cross_model_handoff_contract.py"
