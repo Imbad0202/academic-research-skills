@@ -103,6 +103,26 @@ class HandoffContractLintTests(unittest.TestCase):
             msg=f"errors: {errors}",
         )
 
+    def test_owner_header_spellings_pinned(self) -> None:
+        """codex round-12 P1: correlation_id/owner_decision typos and a
+        wrong owner_agent value in an owner instruction must fire — each
+        would emit envelopes the normative parser rejects."""
+        path = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
+        mutations = [
+            ("a `correlation_id` you choose", "a `correlation_idd` you choose"),
+            ("`owner_decision` header", "`owner_decison` header"),
+            ("`owner_agent: editorial_synthesizer_agent`", "`owner_agent: research_architect_agent`"),
+        ]
+        for old, new in mutations:
+            owners = dict(self.owners)
+            self.assertIn(old, owners[path], msg=old)
+            owners[path] = owners[path].replace(old, new)
+            errors = self._check(owners=owners)
+            self.assertTrue(
+                any(e.startswith("invariant 2") and path in e for e in errors),
+                msg=f"{old} -> {new}: {errors}",
+            )
+
     def test_owner_blindness_clause_dropped(self) -> None:
         path = "deep-research/agents/research_architect_agent.md"
         owners = dict(self.owners)

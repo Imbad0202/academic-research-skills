@@ -41,9 +41,17 @@ ORCH = "academic-pipeline/agents/pipeline_orchestrator_agent.md"
 # owner_decision blindness clause.
 OWNER_BLINDNESS_CLAUSE = "never forwarded to the cross-model"
 ALL_THREE_FIELDS_CLAUSE = "all three fields, the envelope grammar rejects a bare decision"
+# Every operative envelope header the owner instruction must spell exactly
+# (codex #527 round-12 P1: a correlation_idd/owner_decison typo, or a wrong
+# owner_agent value, would emit envelopes the normative parser rejects).
+OWNER_CORRELATION_CLAUSE = "a `correlation_id` you choose"
+OWNER_DECISION_HEADER_CLAUSE = "`owner_decision` header"
 OWNERS = {
     "deep-research/agents/research_architect_agent.md": (
         "`checkpoint_kind: design_freeze`",
+        f"`owner_agent: {cmh.EXPECTED_OWNERS['design_freeze']}`",
+        OWNER_CORRELATION_CLAUSE,
+        OWNER_DECISION_HEADER_CLAUSE,
         "`expected_result: enum_comparison`",
         OWNER_BLINDNESS_CLAUSE,
         ALL_THREE_FIELDS_CLAUSE,
@@ -55,6 +63,9 @@ OWNERS = {
     ),
     "academic-paper-reviewer/agents/editorial_synthesizer_agent.md": (
         "`checkpoint_kind: editorial_decision`",
+        f"`owner_agent: {cmh.EXPECTED_OWNERS['editorial_decision']}`",
+        OWNER_CORRELATION_CLAUSE,
+        OWNER_DECISION_HEADER_CLAUSE,
         "`expected_result: enum_comparison`",
         OWNER_BLINDNESS_CLAUSE,
         ALL_THREE_FIELDS_CLAUSE,
@@ -63,6 +74,8 @@ OWNERS = {
     ),
     "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md": (
         "`checkpoint_kind: da_critique`",
+        f"`owner_agent: {cmh.EXPECTED_OWNERS['da_critique']}`",
+        "a `correlation_id` you choose",
         "`expected_result: full_return`",
         "no `owner_decision` header",
         "without your own DA findings",
