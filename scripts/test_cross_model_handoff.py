@@ -167,6 +167,30 @@ class ParseTests(unittest.TestCase):
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(_envelope("da_critique", "full_return", OWNER_SOUND))
 
+    def test_full_return_with_blank_owner_decision_fails_closed(self) -> None:
+        """codex round-14 P2 survivor: even a BLANK owner_decision header on
+        a full_return envelope is malformed (the presence check must not
+        soften to a truthiness check)."""
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(_envelope("da_critique", "full_return", ""))
+
+    def test_parse_rejects_close_fence_inside_payload_directly(self) -> None:
+        """codex round-14 P2 survivor: the direct-parser fence defense covers
+        the CLOSING fence shape too, not just a nested opener."""
+        block = "\n".join([
+            cmh.OPEN_FENCE,
+            "checkpoint_kind: da_critique",
+            "owner_agent: devils_advocate_reviewer_agent",
+            "correlation_id: da-demo-004",
+            "expected_result: full_return",
+            "payload:",
+            "text",
+            "  " + cmh.CLOSE_FENCE,  # indented close-fence shape inside payload
+            cmh.CLOSE_FENCE,
+        ])
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(block)
+
     def test_unknown_header_fails_closed(self) -> None:
         block = _envelope("design_freeze", "enum_comparison", OWNER_SOUND).replace(
             "correlation_id: design-freeze-demo-001",
@@ -502,6 +526,14 @@ class RoutingTests(unittest.TestCase):
         r = cmh.route_result(self.h, transport_ok=True, raw_result=raw)
         self.assertEqual(r.outcome, cmh.UNAVAILABLE)
         self.assertIn("malformed_result", r.error)
+
+    def test_da_full_return_body_is_verbatim_not_normalized(self) -> None:
+        """codex round-14 P2 survivor: the response goes back to the owner
+        VERBATIM — surrounding whitespace included."""
+        h = cmh.parse_handoff(_envelope("da_critique", "full_return", None))
+        body = "\n  Critique with leading/trailing space  \n"
+        r = cmh.route_result(h, transport_ok=True, raw_result=body)
+        self.assertEqual(r.return_context["cross_model_response"], body)
 
     def test_da_full_return_always_returns_to_owner(self) -> None:
         h = cmh.parse_handoff(_envelope("da_critique", "full_return", None))
