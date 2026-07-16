@@ -69,6 +69,12 @@ INV2_FRAGMENTS = [
 ]
 INV2_SKILL_ROUTING = "6. **Stage 3' RE-REVIEW** -> Accept|Minor -> Stage 4.5 / Major -> Stage 4'"
 INV2_SM_ROUTING_ROW = "| checkpoint | Stage 4.5 | Decision = Accept/Minor, user confirms | Pass final draft to final verification |"
+# Affirmative Major-only coaching predicates (codex round-6 P1: the negative
+# exclusions alone let the operative trigger widen back to Minor/Major).
+INV2_ORCH_AFFIRMATIVE = {
+    "coaching-trigger-major-only": "after Stage 3' completion with Decision = Major Revision (routes to Stage 4')",
+    "coaching-handoff-if-major": "| Stage 3' -> **coaching** -> 4' | New Revision Roadmap (if Major) |",
+}
 
 # --- Invariants 3+4: the state-machine authority section (one H2, two H3s) ---
 AUTHORITY_HEADING = "## Stage 5 and Stage 6 Boundary Semantics"
@@ -96,6 +102,7 @@ S6_AUTHORITY_LITERALS = {
     "acknowledgement-vocabulary": VOCAB_CANON,
     "change-requests-not-ack": "Change requests (the other language version, content corrections) keep Stage 6 `in_progress` — they are not acknowledgements",
     "ack-outcome": "On acknowledgement: state_tracker marks Stage 6 `completed` and sets the pipeline global state to `completed`",
+    "post-delivery-prompt": "After delivering the Process Record (MD + PDF per the user's language choice), the orchestrator prompts for a terminal acknowledgement",
     "no-transition-after-completed": "no stage transition is legal",
 }
 
@@ -134,6 +141,13 @@ SKILL_RULE9_PIN = "completion checkpoint (FULL) -> Stage 6 (user may decline Sta
 SKILL_RULE10_PIN = "terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`"
 ORCH_DECLINE_HANDOFF_PIN = "User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`"
 PROTO_DECLINE_PIN = "the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`"
+# Type-bearing completion-checkpoint triggers on the mirrors (codex round-6
+# P1: a (FULL)->(MANDATORY) flip on either mirror stayed green).
+ORCH_STAGE56_TRIGGER_PIN = "Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL)"
+PROTO_TRIGGER_PIN = "After the user confirms the Stage 5 completion checkpoint (FULL)"
+# Delivery-before-acknowledgement sequencing (codex round-6 P1: on->before /
+# After->Before mutations stayed green).
+PROTO_SEQUENCING_PIN = "After delivering the process record, prompt the user to close the pipeline"
 
 # Transition rows are pinned as COMPLETE rows (all four cells), scoped to the
 # ## Legal State Transitions span — a prefix pin would let a mutation flip the
@@ -152,6 +166,7 @@ S6_TRANSITION_ROWS = {
 # a bare update_pipeline_state("completed") pin would let the acknowledgement
 # branch flip Stage 6 to `skipped` while staying green (codex round-2 P1).
 ORCH_TERMINAL_WIRING = {
+    "acknowledgement-sequencing": "Pipeline terminal transition: on the Stage 6 terminal acknowledgement (",
     "acknowledgement-wiring": '`update_stage("6", "completed", outputs)` + `update_pipeline_state("completed")`',
     "decline-wiring": '`update_stage("6", "skipped", {reason: "user declined Stage 6"})` + `update_pipeline_state("completed")`',
 }
@@ -194,6 +209,12 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             f"invariant 2 ({SKILL}): the Stage 3' routing declaration "
             f"drifted from the pinned form: {INV2_SKILL_ROUTING!r}"
         )
+    for name, fragment in INV2_ORCH_AFFIRMATIVE.items():
+        if fragment not in orch:
+            errors.append(
+                f"invariant 2 ({ORCH}): affirmative {name} predicate "
+                f"drifted from the pinned form: {fragment!r}"
+            )
     errors.extend(
         check_section_literals(2, sm, TRANSITIONS_HEADING,
                                f"{SM} legal-transitions",
@@ -287,6 +308,11 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             f"invariant 4 ({ORCH}): Stage 5->6 handoff row lost the decline "
             f"semantics: {ORCH_DECLINE_HANDOFF_PIN!r}"
         )
+    if ORCH_STAGE56_TRIGGER_PIN not in orch:
+        errors.append(
+            f"invariant 4 ({ORCH}): Stage 5->6 handoff row lost the type-"
+            f"bearing completion trigger: {ORCH_STAGE56_TRIGGER_PIN!r}"
+        )
     for name, fragment in ORCH_TERMINAL_WIRING.items():
         if fragment not in orch:
             errors.append(
@@ -314,6 +340,16 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
         errors.append(
             f"invariant 4 ({PROTO}): terminal-acknowledgement outcome "
             f"sentence missing: {PROTO_ACK_OUTCOME!r}"
+        )
+    if PROTO_TRIGGER_PIN not in proto:
+        errors.append(
+            f"invariant 4 ({PROTO}): trigger line lost the type-bearing "
+            f"completion trigger: {PROTO_TRIGGER_PIN!r}"
+        )
+    if PROTO_SEQUENCING_PIN not in proto:
+        errors.append(
+            f"invariant 4 ({PROTO}): delivery-before-acknowledgement "
+            f"sequencing missing: {PROTO_SEQUENCING_PIN!r}"
         )
     # Invariant 4 — state_tracker contract accepts Stage 6 + outcome pairs
     if tracker:

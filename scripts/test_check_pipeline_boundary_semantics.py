@@ -146,6 +146,73 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
                 msg=f"{name} errors: {errors}",
             )
 
+    # --- codex round-6 witnesses ---
+
+    def test_inv2_coaching_trigger_widened_to_minor(self) -> None:
+        """Adverse-value mutation (codex round-6 P1): the affirmative coaching
+        trigger widens Stage 3' back to Minor/Major — must fire; same for the
+        handoff table's (if Major) qualifier."""
+        trigger_mut = self.orch.replace(
+            "after Stage 3' completion with Decision = Major Revision (routes to Stage 4')",
+            "after Stage 3' completion with Decision = Minor/Major Revision (routes to Stage 4')",
+        )
+        handoff_mut = self.orch.replace(
+            "| Stage 3' -> **coaching** -> 4' | New Revision Roadmap (if Major) |",
+            "| Stage 3' -> **coaching** -> 4' | New Revision Roadmap (if Minor/Major) |",
+        )
+        for name, mut in (("trigger", trigger_mut), ("handoff", handoff_mut)):
+            self.assertNotEqual(mut, self.orch, msg=name)
+            errors = self._check(orch=mut)
+            self.assertTrue(
+                any(e.startswith("invariant 2") and "affirmative" in e for e in errors),
+                msg=f"{name} errors: {errors}",
+            )
+
+    def test_inv4_completion_type_flipped_on_mirrors(self) -> None:
+        """Adverse-value mutation (codex round-6 P1): the completion-checkpoint
+        type flips (FULL)->(MANDATORY) on the orchestrator handoff row or the
+        protocol trigger — must fire per mirror."""
+        orch_mut = self.orch.replace(
+            "Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL)",
+            "Dispatched only after the user confirms the Stage 5 completion checkpoint (MANDATORY)",
+        )
+        proto_mut = self.proto.replace(
+            "After the user confirms the Stage 5 completion checkpoint (FULL)",
+            "After the user confirms the Stage 5 completion checkpoint (MANDATORY)",
+        )
+        for kw, mut, orig in (("orch", orch_mut, self.orch), ("proto", proto_mut, self.proto)):
+            self.assertNotEqual(mut, orig, msg=kw)
+            errors = self._check(**{kw: mut})
+            self.assertTrue(
+                any(e.startswith("invariant 4") and "completion trigger" in e for e in errors),
+                msg=f"{kw} errors: {errors}",
+            )
+
+    def test_inv4_sequencing_flipped(self) -> None:
+        """Adverse-value mutation (codex round-6 P1): completion allowed
+        before acknowledgement/delivery — must fire on each surface."""
+        orch_mut = self.orch.replace(
+            "Pipeline terminal transition: on the Stage 6 terminal acknowledgement (",
+            "Pipeline terminal transition: before the Stage 6 terminal acknowledgement (",
+        )
+        proto_mut = self.proto.replace(
+            "After delivering the process record, prompt the user to close the pipeline",
+            "Before delivering the process record, prompt the user to close the pipeline",
+        )
+        sm_mut = self.sm.replace(
+            "After delivering the Process Record (MD + PDF per the user's language choice), the orchestrator prompts for a terminal acknowledgement",
+            "Before delivering the Process Record, the orchestrator prompts for a terminal acknowledgement",
+        )
+        for kw, mut, orig in (("orch", orch_mut, self.orch),
+                              ("proto", proto_mut, self.proto),
+                              ("sm", sm_mut, self.sm)):
+            self.assertNotEqual(mut, orig, msg=kw)
+            errors = self._check(**{kw: mut})
+            self.assertTrue(
+                any(e.startswith("invariant 4") and ("sequencing" in e or "post-delivery-prompt" in e) for e in errors),
+                msg=f"{kw} errors: {errors}",
+            )
+
     # --- INV-3: Stage 5 boundary semantics ---
 
     def test_inv3_authority_section_removed(self) -> None:
