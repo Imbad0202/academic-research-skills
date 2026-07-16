@@ -1,0 +1,453 @@
+{
+  "fixture_id": "cross-model-promotion-bakeoff-probe-set",
+  "fixture_version": "2.0.0",
+  "created": "2026-07-16",
+  "spec": "shared/cross_model_verification.md -- Promotion Bakeoff (#518), probe-set precondition",
+  "candidate_model": "gpt-5.6-sol",
+  "baseline_model": "gpt-5.5",
+  "label_semantics": {
+    "question": "Does the cited work actually exist as cited?",
+    "note": "This is NOT the gold set's lookup_verified label. lookup_verified grades a deterministic four-index resolver keyed on an identifier; several refs here are real but carry no identifier (lookup_verified=unresolvable) and are labeled real for this bakeoff, which grades an LLM performing a grounded web search.",
+    "labels": [
+      "real",
+      "fabricated"
+    ]
+  },
+  "composition": {
+    "total": 30,
+    "real": 20,
+    "fabricated": 10,
+    "legs": {
+      "easy": 10,
+      "hard_preprint": 4,
+      "hard_doi_less": 3,
+      "hard_non_english": 3,
+      "fabricated": 10
+    }
+  },
+  "references": [
+    {
+      "ref_id": "easy-01",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Harris, Charles R., Millman, K. Jarrod, van der Walt, Stéfan J., et al. (2020). Array programming with NumPy. Nature. https://doi.org/10.1038/s41586-020-2649-2",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1038/s41586-020-2649-2"
+      },
+      "provenance": "gold tuple 001-valid-doi-numpy-2020 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-02",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Jumper, John, Evans, Richard, Pritzel, Alexander, et al. (2021). Highly accurate protein structure prediction with AlphaFold. Nature. https://doi.org/10.1038/s41586-021-03819-2",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1038/s41586-021-03819-2"
+      },
+      "provenance": "gold tuple 002-valid-doi-alphafold-2021 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-03",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Virtanen, Pauli, Gommers, Ralf, Oliphant, Travis E., et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. Nature Methods. https://doi.org/10.1038/s41592-019-0686-2",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1038/s41592-019-0686-2"
+      },
+      "provenance": "gold tuple 004-valid-doi-scipy-2020 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-04",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Silver, David, Hubert, Thomas, Schrittwieser, Julian, et al. (2018). A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play. Science. https://doi.org/10.1126/science.aar6404",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1126/science.aar6404"
+      },
+      "provenance": "gold tuple 006-valid-doi-alphazero-2018 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-05",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Hao, Yuhan, Hao, Stephanie, Andersen-Nissen, Erica, et al. (2021). Integrated analysis of multimodal single-cell data. Cell. https://doi.org/10.1016/j.cell.2021.04.048",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1016/j.cell.2021.04.048"
+      },
+      "provenance": "gold tuple 007-valid-doi-seurat-v4-2021 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-06",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Vosoughi, Soroush, Roy, Deb, Aral, Sinan (2018). The spread of true and false news online. Science. https://doi.org/10.1126/science.aap9559",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1126/science.aap9559"
+      },
+      "provenance": "gold tuple 012-valid-doi-vosoughi-fake-news-2018 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-07",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Zhou, Fei, Yu, Ting, Du, Ronghui, et al. (2020). Clinical course and risk factors for mortality of adult inpatients with COVID-19 in Wuhan, China: a retrospective cohort study. The Lancet. https://doi.org/10.1016/S0140-6736(20)30566-3",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1016/S0140-6736(20)30566-3"
+      },
+      "provenance": "gold tuple 014-valid-doi-lancet-covid-zhou-2020 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-08",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Cao, Yuan, Fatemi, Valla, Fang, Shiang, et al. (2018). Unconventional superconductivity in magic-angle graphene superlattices. Nature. https://doi.org/10.1038/nature26160",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1038/nature26160"
+      },
+      "provenance": "gold tuple 018-valid-doi-graphene-magic-angle-2018 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-09",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "Jellen, Marcus J., Ayodele, Mayokun J., Cantu, Annabelle, et al. (2020). 2D Arrays of Organic Qubit Candidates Embedded into a Pillared-Paddlewheel Metal–Organic Framework. Journal of the American Chemical Society. https://doi.org/10.1021/jacs.0c07251",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1021/jacs.0c07251"
+      },
+      "provenance": "gold tuple 019-valid-doi-qubit-mof-2020 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "easy-10",
+      "leg": "easy",
+      "label": "real",
+      "reference_text": "de Quidt, Jonathan, Haushofer, Johannes, Roth, Christopher (2018). Measuring and Bounding Experimenter Demand. American Economic Review. https://doi.org/10.1257/aer.20171330",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1257/aer.20171330"
+      },
+      "provenance": "gold tuple 020-valid-doi-aer-experimenter-demand-2018 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "hard-preprint-01",
+      "leg": "hard_preprint",
+      "label": "real",
+      "reference_text": "Jiang, Albert Q., Sablayrolles, Alexandre, Mensch, Arthur, et al. (2023). Mistral 7B. arXiv:2310.06825.",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://arxiv.org/abs/2310.06825"
+      },
+      "provenance": "gold tuple 021-valid-arxiv-mistral-7b-2023 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "hard-preprint-02",
+      "leg": "hard_preprint",
+      "label": "real",
+      "reference_text": "Hubinger, Evan, Denison, Carson, Mu, Jesse, et al. (2024). Sleeper Agents: Training Deceptive LLMs that Persist Through Safety Training. arXiv:2401.05566.",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://arxiv.org/abs/2401.05566"
+      },
+      "provenance": "gold tuple 023-valid-arxiv-sleeper-agents-2024 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "hard-preprint-03",
+      "leg": "hard_preprint",
+      "label": "real",
+      "reference_text": "Ma, Shuming, Wang, Hongyu, Ma, Lingxiao, et al. (2024). The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits. arXiv:2402.17764.",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://arxiv.org/abs/2402.17764"
+      },
+      "provenance": "gold tuple 025-valid-arxiv-bitnet-1-58-2024 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "hard-preprint-04",
+      "leg": "hard_preprint",
+      "label": "real",
+      "reference_text": "Gu, Albert, Dao, Tri (2023). Mamba: Linear-Time Sequence Modeling with Selective State Spaces. arXiv:2312.00752.",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://arxiv.org/abs/2312.00752"
+      },
+      "provenance": "gold tuple 028-valid-arxiv-mamba-2023 (expert-labeled lookup_verified=true)"
+    },
+    {
+      "ref_id": "hard-doiless-01",
+      "leg": "hard_doi_less",
+      "label": "real",
+      "reference_text": "Brooks, F. P. (1995). The Mythical Man-Month: Essays on Software Engineering, Anniversary Edition. Addison-Wesley.",
+      "ground_truth": {
+        "exists": true,
+        "source": "ISBN 978-0201835953 (Addison-Wesley, Anniversary Edition, 1995)"
+      },
+      "provenance": "gold tuple 043-manual-exempt-brooks-1995-mythical-man-month (expert-labeled; carries no identifier by design)"
+    },
+    {
+      "ref_id": "hard-doiless-02",
+      "leg": "hard_doi_less",
+      "label": "real",
+      "reference_text": "Turing, A. M. (1950). Computing Machinery and Intelligence. Mind, 59(236), 433-460.",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1093/mind/LIX.236.433 (identifier withheld from the probe text by design)"
+      },
+      "provenance": "gold tuple 044-manual-exempt-turing-1950-computing (expert-labeled; carries no identifier by design)"
+    },
+    {
+      "ref_id": "hard-doiless-03",
+      "leg": "hard_doi_less",
+      "label": "real",
+      "reference_text": "Kitching, J., Kumar, P., Berkeland, D., et al. (2023). Independent Panel Report for Technical Assessment of NASA and External Quantum Sensing Capabilities. NASA Technical Memorandum NASA/TM-20230018123.",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://ntrs.nasa.gov/citations/20230018123"
+      },
+      "provenance": "gold tuple 045-manual-exempt-kitching-2023-quantum-sensing (expert-labeled; carries no identifier by design)"
+    },
+    {
+      "ref_id": "hard-nonenglish-01",
+      "leg": "hard_non_english",
+      "label": "real",
+      "reference_text": "Mie, Gustav (1908). Beiträge zur Optik trüber Medien, speziell kolloidaler Metallösungen. Annalen der Physik, 330, 377-445. https://doi.org/10.1002/andp.19083300302",
+      "language": "de",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1002/andp.19083300302"
+      },
+      "provenance": "Crossref DOI lookup on 2026-07-16 (metadata pinned verbatim); not present in the gold set -- the gold set contains no non-English references"
+    },
+    {
+      "ref_id": "hard-nonenglish-02",
+      "leg": "hard_non_english",
+      "label": "real",
+      "reference_text": "Elizondo-Salazar, Jorge Alberto (2002). Estimación lineal de los requerimientos nutricionales del NRC para ganado de leche. Agronomía Mesoamericana, 13, 41. https://doi.org/10.15517/am.v13i1.13244",
+      "language": "es",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.15517/am.v13i1.13244"
+      },
+      "provenance": "Crossref DOI lookup on 2026-07-16 (metadata pinned verbatim); not present in the gold set -- the gold set contains no non-English references. YEAR OVERRIDE: year taken from the publisher's citation_date meta (2002), NOT Crossref issued (2014-02-20) which is the deposit date of a back-registered DOI: Agronomia Mesoamericana v13i1 is a 2002 issue. Verified at https://revistas.ucr.ac.cr/index.php/agromeso/article/view/13244"
+    },
+    {
+      "ref_id": "hard-nonenglish-03",
+      "leg": "hard_non_english",
+      "label": "real",
+      "reference_text": "Mendes, Karina Dal Sasso, Silveira, Renata Cristina de Campos Pereira, Galvão, Cristina Maria (2008). Revisão integrativa: método de pesquisa para a incorporação de evidências na saúde e na enfermagem. Texto & Contexto - Enfermagem, 17, 758-764. https://doi.org/10.1590/s0104-07072008000400018",
+      "language": "pt",
+      "ground_truth": {
+        "exists": true,
+        "source": "https://doi.org/10.1590/s0104-07072008000400018"
+      },
+      "provenance": "Crossref DOI lookup on 2026-07-16 (metadata pinned verbatim); not present in the gold set -- the gold set contains no non-English references"
+    },
+    {
+      "ref_id": "fab-01",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Madsen, T. Q., Alvarado, P. N. (2023). Cross-Lingual Hallucination Suppression via Adaptive Embedding Pruning in 7B Parameter Models. Transactions of the Association for Computational Linguistics. https://doi.org/10.1162/tacl_a_00981",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.49,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "title from gold tuple 047-fabricated-cross-lingual-hallucination; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-02",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Liu, H., Anderson, J. K., Schmidt, B. (2023). Bayesian Spike-Sorting with Heterodyne Filtering on 1024-Channel Cortical Implants. Journal of Neural Engineering. https://doi.org/10.1088/1741-2552/acb3f1",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.51,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "title from gold tuple 048-fabricated-bayesian-spike-sorting; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-03",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Rao, N. V., Moreno, L. P. (2023). Topological Edge-State Stability Under Anisotropic Lattice Perturbation in MoTe2 Bilayers. 2D Materials. https://doi.org/10.1088/2053-1583/acd4f2",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.52,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "title from gold tuple 049-fabricated-topological-edge-state; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-04",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Brown, D., Moretti, L. V., Park, J. (2024). Counterfactual Causal Effect Estimation with Spectral Knapsack Priors for Heterogeneous Network Treatment Allocation. Journal of the American Statistical Association. https://doi.org/10.1080/01621459.2024.2312876",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.52,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "title from gold tuple 050-fabricated-counterfactual-spectral-knapsack; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-05",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Ferreira, M. J., Okonkwo, A. D., Lindqvist, S. (2023). Constraints on Dark Matter Substructure from Stellar Stream Density Perturbations in the Sagittarius Tail. The Astrophysical Journal. https://doi.org/10.3847/1538-4357/acf1d2",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.55,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "authored for this fixture; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-06",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Traoré, K., Hendricks, R. J. (2023). Decadal Predictability of Sahel Precipitation from Subsurface Ocean Heat Content Initialization. Journal of Climate. https://doi.org/10.1175/JCLI-D-22-0641.1",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.58,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "authored for this fixture; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-07",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Vandermeer, E. L., Sato, R. (2023). Order Flow Toxicity and Intraday Liquidity Provision around Scheduled Macroeconomic Announcements. Journal of Financial Economics. https://doi.org/10.1016/j.jfineco.2023.103944",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.6,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "authored for this fixture; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-08",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Petrov, I. A., Nakamura, Y., Whitfield, C. (2023). Graph-Regularized Deconvolution of Bulk RNA-Seq Using Single-Cell Reference Atlases with Batch-Aware Priors. Bioinformatics. https://doi.org/10.1093/bioinformatics/btad917",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.61,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "authored for this fixture; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-09",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Bhatt, S., Rousseau, M. (2023). Event-Camera Ego-Motion Estimation under Specular Reflectance via Learned Temporal Contrast Priors. IEEE Transactions on Pattern Analysis and Machine Intelligence. https://doi.org/10.1109/TPAMI.2023.3287451",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.55,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "authored for this fixture; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    },
+    {
+      "ref_id": "fab-10",
+      "leg": "fabricated",
+      "label": "fabricated",
+      "reference_text": "Oyelaran, T., Kaufmann, H. J., Ruiz, M. C. (2023). Longitudinal Retinal Microvascular Signatures Predict Incident Heart Failure in a Multi-Ethnic Cohort. Nature Medicine. https://doi.org/10.1038/s41591-023-02489-6",
+      "ground_truth": {
+        "exists": false,
+        "verification": {
+          "title_absent_from": [
+            "crossref",
+            "openalex"
+          ],
+          "title_peak_similarity": 0.54,
+          "doi_resolves": false,
+          "doi_checked_against": "crossref (HTTP 404)",
+          "checked_on": "2026-07-16"
+        }
+      },
+      "provenance": "authored for this fixture; venue is a REAL journal and the DOI uses that venue's real registrant prefix but is unregistered -- both verified on 2026-07-16"
+    }
+  ]
+}
