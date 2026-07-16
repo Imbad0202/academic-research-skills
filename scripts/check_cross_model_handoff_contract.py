@@ -86,6 +86,9 @@ SHARED_REQUIRED = [
     "Sanitized also means data-minimized: strip personal names, affiliations, and private URLs not essential to the judgment",
     "NEVER forwarded to the cross-model",
     "payload only",
+    # Transport prompt-shape rule (codex round-7 P1): the citation handlers'
+    # prompt + grounding normalization must never run a checkpoint judgment.
+    "NEVER the citation-verification prompt, its grounding-status guards",
     "[CROSS-MODEL-ERROR: malformed_handoff]",
     "[CROSS-MODEL-ERROR: malformed_result]",
     "outcome `unavailable`",
@@ -104,6 +107,7 @@ ORCH_REQUIRED = [
     "scripts/cross_model_handoff.py",
     "[CROSS-MODEL-ERROR: malformed_handoff]",
     "[CROSS-MODEL-ERROR: malformed_result]",
+    "never the citation-verification prompt or its grounding-status normalization",
     "never fabricate a judgment",
     "do NOT re-invoke the owner",
     "re-invoke the ORIGINAL owner with the minimum return context",

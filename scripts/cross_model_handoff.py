@@ -229,8 +229,10 @@ def parse_handoff(block: str) -> Handoff:
             raise HandoffError("malformed_handoff: enum_comparison requires owner_decision")
         try:
             owner_decision = json.loads(raw_decision)
-        except json.JSONDecodeError as exc:
-            raise HandoffError(f"malformed_handoff: owner_decision is not JSON ({exc})") from exc
+        except (json.JSONDecodeError, RecursionError, ValueError) as exc:
+            # RecursionError: pathologically nested JSON must fail closed
+            # like any other malformed input (codex #527 round-7 P1).
+            raise HandoffError(f"malformed_handoff: owner_decision is not JSON ({type(exc).__name__})") from exc
         try:
             _validate_structured_decision(owner_decision, enum, who="owner_decision")
         except HandoffError as exc:
@@ -299,8 +301,8 @@ def route_result(handoff: Handoff, transport_ok: bool, raw_result: str | None) -
     try:
         result = json.loads(raw_result)
         _validate_structured_decision(result, handoff.decision_enum or (), who="cross_model_result")
-    except (HandoffError, json.JSONDecodeError) as exc:
-        return Routing(UNAVAILABLE, error=f"malformed_result: {exc}")
+    except (HandoffError, json.JSONDecodeError, RecursionError, ValueError) as exc:
+        return Routing(UNAVAILABLE, error=f"malformed_result: {type(exc).__name__}: {exc}")
 
     assert handoff.owner_decision is not None  # guaranteed by parse_handoff
     if result["decision"] == handoff.owner_decision["decision"]:
