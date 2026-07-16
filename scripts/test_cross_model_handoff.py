@@ -271,6 +271,31 @@ class ParseTests(unittest.TestCase):
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND, payload=" "))
 
+    def test_each_required_header_missing_fails_closed(self) -> None:
+        """codex round-11 P1: every required header raises HandoffError when
+        missing — independently, so exempting one from the check cannot
+        stay green (a missing value must never surface as KeyError)."""
+        base = _envelope("design_freeze", "enum_comparison", OWNER_SOUND)
+        removable = {
+            "checkpoint_kind": "checkpoint_kind: design_freeze",
+            "owner_agent": "owner_agent: research_architect_agent",
+            "correlation_id": "correlation_id: design-freeze-demo-001",
+            "expected_result": "expected_result: enum_comparison",
+        }
+        for name, line in removable.items():
+            mutated = "\n".join(l for l in base.splitlines() if l != line)
+            self.assertNotEqual(mutated, base, msg=name)
+            with self.assertRaises(cmh.HandoffError, msg=name):
+                cmh.parse_handoff(mutated)
+
+    def test_invisible_only_payload_is_missing(self) -> None:
+        """codex round-11 P1: a Cf-only payload is blank — no substance to
+        transport."""
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(
+                _envelope("design_freeze", "enum_comparison", OWNER_SOUND, payload="​⁠")
+            )
+
     def test_duplicate_header_fails_closed(self) -> None:
         block = _envelope("design_freeze", "enum_comparison", OWNER_SOUND).replace(
             "owner_agent: research_architect_agent",
@@ -361,7 +386,7 @@ class RoutingTests(unittest.TestCase):
         """codex round-10 P1: a blank/whitespace DA response is a failed
         transport — never a critique handed back to the owner."""
         h = cmh.parse_handoff(_envelope("da_critique", "full_return", None))
-        for body in ("", "   \n\t"):
+        for body in ("", "   \n\t", "​", "⁠ ​"):
             r = cmh.route_result(h, transport_ok=True, raw_result=body)
             self.assertEqual(r.outcome, "unavailable", msg=repr(body))
 

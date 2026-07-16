@@ -108,6 +108,8 @@ ORCH_REQUIRED = [
     "[CROSS-MODEL-ERROR: malformed_handoff]",
     "[CROSS-MODEL-ERROR: malformed_result]",
     "never the citation-verification prompt or its grounding-status normalization",
+    "the `owner_decision` header is never forwarded — blindness",
+    "a stray envelope is logged `[CROSS-MODEL-SKIPPED]` and not transported",
     "never fabricate a judgment",
     "do NOT re-invoke the owner",
     "re-invoke the ORIGINAL owner with the minimum return context",
@@ -132,14 +134,10 @@ def _module_prose_triples() -> list[str]:
     shape, derived from CHECKPOINT_KINDS + EXPECTED_OWNERS — a shared-prose
     edit rewiring owners or result shapes must fail here (codex #527
     round-10 P1)."""
-    fragments = []
-    for kind, (expected, _) in cmh.CHECKPOINT_KINDS.items():
-        fragments.append(f"`{kind}` (`{cmh.EXPECTED_OWNERS[kind]}`)")
-        if expected == "full_return":
-            fragments.append(
-                f"`{kind}` (`{cmh.EXPECTED_OWNERS[kind]}`) is `full_return`"
-            )
-    return fragments
+    return [
+        f"`{kind}` (`{cmh.EXPECTED_OWNERS[kind]}`) is `{expected}`"
+        for kind, (expected, _) in cmh.CHECKPOINT_KINDS.items()
+    ]
 
 
 def check(shared: str, orch: str, owners: dict[str, str]) -> list[str]:

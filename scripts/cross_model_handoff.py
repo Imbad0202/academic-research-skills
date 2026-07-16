@@ -111,6 +111,15 @@ def _loads_strict(raw: str):
     return json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
 
 
+def _is_blank(text: str) -> bool:
+    """Blank = nothing left after stripping whitespace AND Unicode format
+    (Cf) characters — an invisible-only payload or response must not count
+    as substance (codex #527 round-11 P1)."""
+    return not "".join(
+        c for c in text if unicodedata.category(c) != "Cf"
+    ).strip()
+
+
 def _fold_for_detection(line: str) -> str:
     """Strip whitespace AND Unicode format (Cf) characters for fence
     DETECTION only — a zero-width-prefixed fence must be detected (then
@@ -215,7 +224,7 @@ def parse_handoff(block: str) -> Handoff:
     unknown = set(headers) - set(_REQUIRED_HEADERS) - {"owner_decision"}
     if unknown:
         raise HandoffError(f"malformed_handoff: unknown header(s) {sorted(unknown)}")
-    if payload_lines is None or not "\n".join(payload_lines).strip():
+    if payload_lines is None or _is_blank("\n".join(payload_lines)):
         raise HandoffError("malformed_handoff: missing payload")
 
     kind = headers["checkpoint_kind"]
@@ -301,7 +310,7 @@ def route_result(handoff: Handoff, transport_ok: bool, raw_result: str | None) -
     - full_return: every successful response -> FULL_RETURN_REINVOKE (there
       is no comparison the dispatcher could resolve itself).
     """
-    if not transport_ok or raw_result is None or not raw_result.strip():
+    if not transport_ok or raw_result is None or _is_blank(raw_result):
         # A blank body is a failed transport, not a critique to hand back
         # (codex #527 round-10 P1).
         return Routing(UNAVAILABLE, error="transport_failure")

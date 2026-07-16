@@ -185,6 +185,37 @@ class HandoffContractLintTests(unittest.TestCase):
 
     # --- invariant 3: dispatcher consumer contract ---
 
+    def test_orch_blindness_clause_dropped(self) -> None:
+        """codex round-11 P1: the dispatcher's never-forwarded clause flips
+        to full-envelope — must fire."""
+        mutated = self.orch.replace(
+            "the `owner_decision` header is never forwarded — blindness",
+            "the full envelope is forwarded for context",
+        )
+        errors = self._check(orch=mutated)
+        self.assertTrue(any(e.startswith("invariant 3") for e in errors), msg=f"{errors}")
+
+    def test_orch_flag_unset_transport_flipped(self) -> None:
+        mutated = self.orch.replace(
+            "a stray envelope is logged `[CROSS-MODEL-SKIPPED]` and not transported",
+            "a stray envelope is transported anyway",
+        )
+        errors = self._check(orch=mutated)
+        self.assertTrue(any(e.startswith("invariant 3") for e in errors), msg=f"{errors}")
+
+    def test_prose_enum_owner_rewired_to_full_return_fires(self) -> None:
+        """codex round-11 P1: each triple is pinned independently — flipping
+        an enum owner's result shape to full_return must fire."""
+        mutated = self.shared.replace(
+            "`design_freeze` (`research_architect_agent`) is `enum_comparison`",
+            "`design_freeze` (`research_architect_agent`) is `full_return`",
+        )
+        errors = self._check(shared=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "design_freeze" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_orch_consumer_block_removed(self) -> None:
         mutated = self.orch.replace(
             "**Cross-model handoff consumption (#527, Mode A dispatcher).**",

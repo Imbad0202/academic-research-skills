@@ -247,7 +247,7 @@ payload:
 [/CROSS-MODEL-HANDOFF]
 ```
 
-Kind ↔ owner ↔ result-shape triples are closed (normative mapping: `CHECKPOINT_KINDS` + `EXPECTED_OWNERS` in the reference module): `design_freeze` (`research_architect_agent`) and `editorial_decision` (`editorial_synthesizer_agent`) are `enum_comparison` (decision enums per the checkpoint table above); `da_critique` (`devils_advocate_reviewer_agent`) is `full_return`. Any other combination — including an unknown version fence, which is malformed rather than an ordinary deliverable — fails closed. Structured decisions carry ALL THREE fields (`decision`, `drivers`, `confidence`) on both sides; a bare decision never routes to a judgment.
+Kind ↔ owner ↔ result-shape triples are closed (normative mapping: `CHECKPOINT_KINDS` + `EXPECTED_OWNERS` in the reference module): `design_freeze` (`research_architect_agent`) is `enum_comparison`; `editorial_decision` (`editorial_synthesizer_agent`) is `enum_comparison` (decision enums per the checkpoint table above); `da_critique` (`devils_advocate_reviewer_agent`) is `full_return`. Any other combination — including an unknown version fence, which is malformed rather than an ordinary deliverable — fails closed. Structured decisions carry ALL THREE fields (`decision`, `drivers`, `confidence`) on both sides; a bare decision never routes to a judgment.
 
 **Dispatcher consumer contract** (the main session running the skill, or `pipeline_orchestrator_agent` in pipeline Mode A):
 
