@@ -821,6 +821,91 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             msg=f"errors: {errors2}",
         )
 
+    # --- codex round-11 witnesses ---
+
+    def test_inv4_skill_stage6_made_mandatory_in_section(self) -> None:
+        """Adverse-value mutation (codex round-11 P1): the SKILL Stage 6
+        section flips non-mandatory to mandatory — must fire."""
+        mutated = self.skill.replace(
+            "Stage 6 is non-mandatory — the user may decline it",
+            "Stage 6 is mandatory — the user may not decline it",
+        )
+        self.assertNotEqual(mutated, self.skill)
+        errors = self._check(skill=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "decline-path" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_proto_stage6_made_mandatory(self) -> None:
+        mutated = self.proto.replace(
+            "Stage 6 is non-mandatory — the user may decline it at that checkpoint",
+            "Stage 6 is mandatory — the user may not decline it",
+        )
+        self.assertNotEqual(mutated, self.proto)
+        errors = self._check(proto=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "decline" in e and self.mod.PROTO in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_skippable_label_flipped(self) -> None:
+        """Adverse-value mutation (codex round-11 P1): the `- Skippable:`
+        label flips to `- Non-Skippable:` — must fire (line-anchored pin
+        includes the label)."""
+        mutated = self.orch.replace(
+            "- Skippable: Stage 1 (deep-research, if user provides own bibliography)",
+            "- Non-Skippable: Stage 1 (deep-research, if user provides own bibliography)",
+        )
+        self.assertNotEqual(mutated, self.orch)
+        errors = self._check(orch=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "skippable-stages" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_handoff_destination_rerouted(self) -> None:
+        """Adverse-value mutation (codex round-11 P1): the handoff row's
+        first cell reroutes Stage 5 -> END — must fire."""
+        mutated = self.orch.replace("| Stage 5 -> 6 | Final deliverables", "| Stage 5 -> END | Final deliverables")
+        self.assertNotEqual(mutated, self.orch)
+        errors = self._check(orch=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "handoff row" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv3_reset_iron_rule_names_entry_gate(self) -> None:
+        """The reset-boundary iron rule must scope its MANDATORY list to the
+        Stage 5 entry gate (codex round-11 P1) — enforced via the content
+        lock being on the state machine? No: the rule lives in the
+        orchestrator; verify the committed prose carries the scoped form."""
+        self.assertIn(
+            "MANDATORY checkpoints (Stage 2.5 / 4.5, review decisions, the Stage 5 entry gate) remain MANDATORY",
+            self.orch,
+        )
+
+    # --- content locks (round-11 endgame) ---
+
+    def test_content_locks_baseline(self) -> None:
+        self.assertEqual(self.mod.check_content_locks(), [])
+
+    def test_content_lock_fires_on_any_byte_change(self) -> None:
+        """Any single-byte change to a locked reference doc must fire — this
+        closes the entire single-edit mutation class for the two
+        #528-central operative docs."""
+        import hashlib
+
+        for path in self.mod.CONTENT_LOCKS:
+            content = (REPO_ROOT / path).read_bytes()
+            mutated = content.replace(b"completed", b"finished", 1)
+            self.assertNotEqual(mutated, content, msg=path)
+            self.assertNotEqual(
+                hashlib.sha256(mutated).hexdigest(),
+                self.mod.CONTENT_LOCKS[path],
+                msg=path,
+            )
+
     # --- scoping discipline ---
 
     def test_vocab_elsewhere_does_not_satisfy_section_check(self) -> None:

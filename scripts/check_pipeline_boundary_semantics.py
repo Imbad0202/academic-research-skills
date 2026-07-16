@@ -44,9 +44,35 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import hashlib
+
 from _skill_lint import check_section_literals
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# ---------------------------------------------------------------------------
+# Whole-file content locks (sha256) for the two #528-central reference docs.
+#
+# Eleven codex xhigh review rounds demonstrated that sentence-level pins on a
+# state-machine document cannot converge: every round found another single
+# green mutation of an operative sentence, label, or enum value. The two
+# reference docs below are ENTIRELY operative (state machine authority +
+# Stage 6 protocol), so they get the bibliography_agent-style whole-file
+# hash lock: ANY byte change fails CI until this constant is updated in the
+# same commit — which is the review surface working as designed. The
+# sentence pins above/below stay for targeted error messages; the hash is
+# the catch-all. SKILL.md / orchestrator / tracker are multi-concern files
+# that change for unrelated features, so they keep sentence pins only.
+#
+# Update procedure: edit the doc, run
+#   python3 -c "import hashlib,pathlib;p='<path>';print(hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest())"
+# and update the constant here IN THE SAME COMMIT, with the semantic change
+# reviewed against the #528 resolutions.
+# ---------------------------------------------------------------------------
+CONTENT_LOCKS = {
+    "academic-pipeline/references/pipeline_state_machine.md": "d507f3694cd4d282b9b3247d0d1855330c836c23ab6e5d41f280c6d455b4ed7f",
+    "academic-pipeline/references/process_summary_protocol.md": "5c7053230d73b39d0a5d9d6f5e9f339c12570ae6d3aa2eae2eaf74f51d571e94",
+}
 
 SKILL = "academic-pipeline/SKILL.md"
 ORCH = "academic-pipeline/agents/pipeline_orchestrator_agent.md"
@@ -134,7 +160,7 @@ SKILL_STEP1_CONSUME = "Consume the citation-style decision recorded at the Stage
 SKILL_STAGE6_HEADING = "## Stage 6: Process Summary Protocol"
 SKILL_STAGE6_LITERALS = {
     "acknowledgement-vocabulary": "`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent",
-    "decline-path": "the user may decline it at the Stage 5 completion checkpoint (Stage 6 marked `skipped`; the pipeline still terminates `completed`)",
+    "decline-path": "Stage 6 is non-mandatory — the user may decline it at the Stage 5 completion checkpoint (Stage 6 marked `skipped`; the pipeline still terminates `completed`)",
     "ack-outcome": "On acknowledgement, Stage 6 is marked `completed` and the pipeline global state is set to `completed`",
     "change-requests-not-ack": SKILL_CHANGE_REQUESTS_NOT_ACK,
 }
@@ -142,10 +168,11 @@ PROTO_ACK_OUTCOME = "On acknowledgement: state_tracker marks Stage 6 completed a
 SKILL_RULE9_PIN = "completion checkpoint (FULL) -> Stage 6 (user may decline Stage 6: marked `skipped`, pipeline goes directly to `completed`)"
 SKILL_RULE10_PIN = "terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`"
 ORCH_DECLINE_HANDOFF_PIN = "User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`"
-PROTO_DECLINE_PIN = "the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`"
+PROTO_DECLINE_PIN = "Stage 6 is non-mandatory — the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`"
 # Type-bearing completion-checkpoint triggers on the mirrors (codex round-6
 # P1: a (FULL)->(MANDATORY) flip on either mirror stayed green).
 ORCH_STAGE56_TRIGGER_PIN = "Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL)"
+ORCH_STAGE56_HANDOFF_ROW = "| Stage 5 -> 6 | Final deliverables list + pipeline state history (state_tracker JSON, agent logs) | — (Process Record; no numbered schema) | Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL). User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`. Protocol: `../references/process_summary_protocol.md`; terminal semantics: `../references/pipeline_state_machine.md` § Stage 6 terminal semantics |"
 PROTO_TRIGGER_PIN = "After the user confirms the Stage 5 completion checkpoint (FULL)"
 # Delivery-before-acknowledgement sequencing (codex round-6 P1: on->before /
 # After->Before mutations stayed green).
@@ -225,7 +252,7 @@ TRACKER_GLOBAL_COMPLETED = "- `completed`"
 TRACKER_PREREQ_STAGE6_ROW = "| Stage 6 | None (Final Paper already delivered at Stage 5) |"
 # The skip-command validator only honors explicitly-skippable stages — the
 # decline path requires Stage 6 on the skippable list (codex round-8 P1).
-ORCH_SKIPPABLE_PIN = "Stage 6 (process summary — declined at the Stage 5 completion checkpoint; marked `skipped`, pipeline still terminates `completed`)"
+ORCH_SKIPPABLE_PIN = "- Skippable: Stage 1 (deep-research, if user provides own bibliography), Stage 3' (re-review, if only minor revisions), Stage 4' (re-revise, if accepted), Stage 6 (process summary — declined at the Stage 5 completion checkpoint; marked `skipped`, pipeline still terminates `completed`)"
 # Both sides of the skip classification are pinned as complete lines — adding
 # Stage 6 to the non-skippable side would otherwise stay green while
 # contradicting the skippable declaration (codex round-9 P1).
@@ -388,10 +415,16 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             f"invariant 4 ({ORCH}): Stage 5->6 handoff row lost the type-"
             f"bearing completion trigger: {ORCH_STAGE56_TRIGGER_PIN!r}"
         )
-    if ORCH_SKIPPABLE_PIN not in orch:
+    if not _line_pinned(orch, ORCH_SKIPPABLE_PIN):
         errors.append(
-            f"invariant 4 ({ORCH}): the skippable-stages list no longer "
-            f"carries Stage 6 with its decline scope: {ORCH_SKIPPABLE_PIN!r}"
+            f"invariant 4 ({ORCH}): the skippable-stages line drifted from "
+            f"the pinned form (it must carry Stage 6 with its decline "
+            f"scope): {ORCH_SKIPPABLE_PIN!r}"
+        )
+    if not _line_pinned(orch, ORCH_STAGE56_HANDOFF_ROW):
+        errors.append(
+            f"invariant 4 ({ORCH}): the Stage 5 -> 6 handoff row drifted "
+            f"from the pinned form: {ORCH_STAGE56_HANDOFF_ROW!r}"
         )
     if not _line_pinned(orch, ORCH_NON_SKIPPABLE_LINE):
         errors.append(
@@ -497,6 +530,26 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
     return errors
 
 
+def check_content_locks() -> list[str]:
+    """Whole-file sha256 locks for the two #528-central reference docs."""
+    errors: list[str] = []
+    for path, expected in CONTENT_LOCKS.items():
+        full = REPO_ROOT / path
+        if not full.is_file():
+            errors.append(f"content lock: file missing: {path}")
+            continue
+        actual = hashlib.sha256(full.read_bytes()).hexdigest()
+        if actual != expected:
+            errors.append(
+                f"content lock ({path}): sha256 {actual} != pinned "
+                f"{expected}. Any change to this operative reference doc "
+                f"must update CONTENT_LOCKS in the same commit, with the "
+                f"semantic change reviewed against the #528 resolutions "
+                f"(see the update procedure in this lint's header)."
+            )
+    return errors
+
+
 def main() -> int:
     contents = {}
     for path in (SKILL, ORCH, SM, PROTO, TRACKER):
@@ -507,6 +560,7 @@ def main() -> int:
         contents[path] = full.read_text(encoding="utf-8")
     errors = check(contents[SKILL], contents[ORCH], contents[SM],
                    contents[PROTO], contents[TRACKER])
+    errors.extend(check_content_locks())
     if errors:
         for e in errors:
             print(f"FAILED: {e}", file=sys.stderr)
