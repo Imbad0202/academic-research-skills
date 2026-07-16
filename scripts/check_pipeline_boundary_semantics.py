@@ -234,6 +234,14 @@ TRACKER_WIRING = {
 }
 
 
+def _line_pinned(text: str, pinned: str) -> bool:
+    """True when `pinned` matches a COMPLETE line of `text` (whitespace-
+    stripped equality). Substring pins on list lines are append-exploitable:
+    ', Stage 6' after 'Stage 5 (finalize)' keeps the pin as a prefix and
+    stays green (codex round-9 P1 witness)."""
+    return any(line.strip() == pinned for line in text.splitlines())
+
+
 def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list[str]:
     """Pure invariant evaluation over the five surface contents."""
     errors: list[str] = []
@@ -256,7 +264,7 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                 f"{fragment!r} (#529; a Stage 3' Minor routes directly to "
                 f"Stage 4.5 and must not trigger coaching)"
             )
-    if INV2_SKILL_ROUTING not in skill:
+    if not _line_pinned(skill, INV2_SKILL_ROUTING):
         errors.append(
             f"invariant 2 ({SKILL}): the Stage 3' routing declaration "
             f"drifted from the pinned form: {INV2_SKILL_ROUTING!r}"
@@ -344,7 +352,7 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                                f"{SKILL} Stage-6 protocol",
                                SKILL_STAGE6_LITERALS)
     )
-    if SKILL_STEP4_HANDOFF not in skill:
+    if not _line_pinned(skill, SKILL_STEP4_HANDOFF):
         errors.append(
             f"invariant 4 ({SKILL}): Step 4 transition list lost the Stage "
             f"5->6 handoff line: {SKILL_STEP4_HANDOFF!r}"
@@ -380,7 +388,7 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             f"invariant 4 ({ORCH}): the skippable-stages list no longer "
             f"carries Stage 6 with its decline scope: {ORCH_SKIPPABLE_PIN!r}"
         )
-    if ORCH_NON_SKIPPABLE_LINE not in orch:
+    if not _line_pinned(orch, ORCH_NON_SKIPPABLE_LINE):
         errors.append(
             f"invariant 4 ({ORCH}): the non-skippable line drifted from the "
             f"pinned form (it must not gain Stage 6): "
