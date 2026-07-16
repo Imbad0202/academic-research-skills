@@ -264,7 +264,89 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
     def test_inv4_orchestrator_terminal_wiring_lost(self) -> None:
         mutated = self.orch.replace('update_pipeline_state("completed")', "")
         errors = self._check(orch=mutated)
-        self.assertTrue(any(e.startswith("invariant 4") and "terminal wiring" in e for e in errors))
+        self.assertTrue(any(e.startswith("invariant 4") and "pair missing" in e for e in errors))
+
+    def test_inv4_orchestrator_ack_wiring_flipped_to_skipped(self) -> None:
+        """Adverse-value mutation (codex round-2 P1): the acknowledgement
+        branch flips Stage 6 to `skipped` while update_pipeline_state stays —
+        must fire."""
+        mutated = self.orch.replace(
+            '`update_stage(6, "completed", outputs)` + `update_pipeline_state("completed")`',
+            '`update_stage(6, "skipped")` + `update_pipeline_state("completed")`',
+        )
+        self.assertNotEqual(mutated, self.orch)
+        errors = self._check(orch=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "acknowledgement-wiring" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv3_latex_moved_to_entry_gate(self) -> None:
+        """Adverse-value mutation (codex round-2 P1): the authority section
+        adds LaTeX to the gate decision and drops it from the in-stage
+        clause — must fire (this is the P1-1 contradiction reopening)."""
+        mutated = self.sm.replace(
+            "the finalization-format decision: citation style (APA 7.0 / Chicago / IEEE, ...)",
+            "the finalization-format decisions: citation style and whether to generate LaTeX (APA 7.0 / Chicago / IEEE, ...)",
+        ).replace('the "Need LaTeX?" question (Step 3) and ', "")
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "gate-format-decision" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "latex-in-stage" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv3_gate_scope_clause_lost_in_skill(self) -> None:
+        mutated = self.skill.replace(
+            "makes the finalization-format decision (citation style); the in-stage LaTeX question and content confirmation stay inside Stage 5 execution",
+            "makes all format decisions including LaTeX",
+        )
+        self.assertNotEqual(mutated, self.skill)
+        errors = self._check(skill=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "gate-scope" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_change_requests_flipped_in_authority(self) -> None:
+        """Adverse-value mutation (codex round-2 P1): change requests
+        reclassified as acknowledgements in the authority section — must fire."""
+        mutated = self.sm.replace(
+            "keep Stage 6 `in_progress` — they are not acknowledgements",
+            "immediately complete Stage 6",
+        )
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "change-requests-not-ack" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_change_requests_flipped_in_skill_and_proto(self) -> None:
+        skill_mut = self.skill.replace(
+            "keep Stage 6 `in_progress` and are not acknowledgements",
+            "complete Stage 6 immediately",
+        )
+        proto_mut = self.proto.replace(
+            "Stage 6 in_progress — they are not acknowledgements",
+            "Stage 6 completed",
+        )
+        self.assertNotEqual(skill_mut, self.skill)
+        self.assertNotEqual(proto_mut, self.proto)
+        errors_skill = self._check(skill=skill_mut)
+        errors_proto = self._check(proto=proto_mut)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "non-acknowledgement" in e and self.mod.SKILL in e for e in errors_skill),
+            msg=f"errors: {errors_skill}",
+        )
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "non-acknowledgement" in e and self.mod.PROTO in e for e in errors_proto),
+            msg=f"errors: {errors_proto}",
+        )
 
     # --- scoping discipline ---
 

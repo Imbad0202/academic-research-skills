@@ -81,7 +81,8 @@ VOCAB_PROTO_NL_CLAUSE = "unambiguous natural-language equivalent that accepts th
 
 S5_AUTHORITY_LITERALS = {
     "entry-gate": "refers to exactly ONE checkpoint: the **Stage 5 entry gate**",
-    "in-stage-confirmation": "not pipeline checkpoints",
+    "gate-format-decision": 'the finalization-format decision: citation style (APA 7.0 / Chicago / IEEE, ...) — the "Stage 5 finalization format" pending decision the passport-reset machinery records at this boundary',
+    "latex-in-stage": 'the "Need LaTeX?" question (Step 3) and the content confirmation before the final PDF (Step 4) — are part of Stage 5 execution, not pipeline checkpoints',
     "completion-full-never-slim": "FULL checkpoint — never SLIM",
     "completion-not-mandatory": "but it is not on the MANDATORY list",
 }
@@ -89,12 +90,18 @@ S6_AUTHORITY_LITERALS = {
     "decline-path": "marked `skipped` and the pipeline still terminates `completed`",
     "terminal-checkpoint": "terminal checkpoint",
     "acknowledgement-vocabulary": VOCAB_CANON,
+    "change-requests-not-ack": "Change requests (the other language version, content corrections) keep Stage 6 `in_progress` — they are not acknowledgements",
     "no-transition-after-completed": "no stage transition is legal",
 }
 
 S5_ENTRY_GATE_TABLE_CELL = "Stage 5 entry gate (before finalization)"
 S5_CANON_RULE5 = "the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch"
+S5_CANON_GATE_SCOPE = "makes the finalization-format decision (citation style); the in-stage LaTeX question and content confirmation stay inside Stage 5 execution"
 S5_CANON_COMPLETION = "The Stage 5 completion checkpoint (Final Paper delivered, before Stage 6) is FULL — never SLIM"
+
+# Non-acknowledgement classification of change requests, per mirror surface.
+SKILL_CHANGE_REQUESTS_NOT_ACK = "keep Stage 6 `in_progress` and are not acknowledgements"
+PROTO_CHANGE_REQUESTS_NOT_ACK = "Stage 6 in_progress — they are not acknowledgements"
 
 # Transition rows are pinned as COMPLETE rows (all four cells), scoped to the
 # ## Legal State Transitions span — a prefix pin would let a mutation flip the
@@ -109,7 +116,13 @@ S6_TRANSITION_ROWS = {
     "terminal-transition-row": "| terminal checkpoint | completed | User acknowledges (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) | Mark Stage 6 `completed`; set pipeline global state `completed` |",
     "decline-row": "| checkpoint | completed | User declines Stage 6 | Mark Stage 6 `skipped` (non-mandatory stage); set pipeline global state `completed` |",
 }
-ORCH_TERMINAL_WIRING = 'update_pipeline_state("completed")'
+# The orchestrator's state_tracker wiring, pinned as complete action pairs —
+# a bare update_pipeline_state("completed") pin would let the acknowledgement
+# branch flip Stage 6 to `skipped` while staying green (codex round-2 P1).
+ORCH_TERMINAL_WIRING = {
+    "acknowledgement-wiring": '`update_stage(6, "completed", outputs)` + `update_pipeline_state("completed")`',
+    "decline-wiring": '`update_stage(6, "skipped")` + `update_pipeline_state("completed")`',
+}
 
 
 def check(skill: str, orch: str, sm: str, proto: str) -> list[str]:
@@ -158,6 +171,12 @@ def check(skill: str, orch: str, sm: str, proto: str) -> list[str]:
                 f"invariant 3 ({path}): checkpoint rule 5 lost the entry-gate "
                 f"definition {S5_CANON_RULE5!r}"
             )
+        if S5_CANON_GATE_SCOPE not in texts[path]:
+            errors.append(
+                f"invariant 3 ({path}): checkpoint rule 5 lost the gate-scope "
+                f"clause {S5_CANON_GATE_SCOPE!r} (citation style is the sole "
+                f"gate format decision; LaTeX stays in-stage)"
+            )
         if S5_CANON_COMPLETION not in texts[path]:
             errors.append(
                 f"invariant 3 ({path}): checkpoint rule 5 lost the "
@@ -188,11 +207,23 @@ def check(skill: str, orch: str, sm: str, proto: str) -> list[str]:
                 f"invariant 4 ({PROTO}): canonical terminal-acknowledgement "
                 f"vocabulary missing: {fragment!r}"
             )
-    if ORCH_TERMINAL_WIRING not in orch:
+    # Invariant 4 — change requests are never acknowledgements (all surfaces)
+    if SKILL_CHANGE_REQUESTS_NOT_ACK not in skill:
         errors.append(
-            f"invariant 4 ({ORCH}): state_tracker terminal wiring missing: "
-            f"{ORCH_TERMINAL_WIRING!r}"
+            f"invariant 4 ({SKILL}): change-request non-acknowledgement rule "
+            f"missing: {SKILL_CHANGE_REQUESTS_NOT_ACK!r}"
         )
+    if PROTO_CHANGE_REQUESTS_NOT_ACK not in proto:
+        errors.append(
+            f"invariant 4 ({PROTO}): change-request non-acknowledgement rule "
+            f"missing: {PROTO_CHANGE_REQUESTS_NOT_ACK!r}"
+        )
+    for name, fragment in ORCH_TERMINAL_WIRING.items():
+        if fragment not in orch:
+            errors.append(
+                f"invariant 4 ({ORCH}): state_tracker {name} pair missing: "
+                f"{fragment!r}"
+            )
 
     return errors
 
