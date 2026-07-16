@@ -27,6 +27,50 @@ def _envelope(kind: str, expected: str, owner_decision: str | None, payload: str
 OWNER_SOUND = json.dumps({"decision": "sound", "drivers": ["traces to RQ"], "confidence": "high"})
 
 
+class ModuleConstantsTests(unittest.TestCase):
+    """Literal pins — assertions elsewhere compare against the module's own
+    constants, so a mutated constant would otherwise stay green (codex #527
+    round-3 P1: self-referential testing)."""
+
+    def test_outcome_literals_are_pinned_and_distinct(self) -> None:
+        self.assertEqual(cmh.AGREEMENT_FILL, "agreement_fill_no_reinvoke")
+        self.assertEqual(cmh.DIVERGENCE_REINVOKE, "divergence_reinvoke_owner")
+        self.assertEqual(cmh.FULL_RETURN_REINVOKE, "full_return_reinvoke_owner")
+        self.assertEqual(cmh.UNAVAILABLE, "unavailable")
+        self.assertEqual(
+            len({cmh.AGREEMENT_FILL, cmh.DIVERGENCE_REINVOKE, cmh.FULL_RETURN_REINVOKE, cmh.UNAVAILABLE}),
+            4,
+        )
+
+    def test_owner_bindings_are_pinned(self) -> None:
+        self.assertEqual(
+            cmh.EXPECTED_OWNERS,
+            {
+                "design_freeze": "research_architect_agent",
+                "editorial_decision": "editorial_synthesizer_agent",
+                "da_critique": "devils_advocate_reviewer_agent",
+            },
+        )
+
+    def test_wrong_owner_rejected_for_every_kind(self) -> None:
+        cases = {
+            "design_freeze": ("enum_comparison", OWNER_SOUND, "editorial_synthesizer_agent"),
+            "editorial_decision": (
+                "enum_comparison",
+                json.dumps({"decision": "accept", "drivers": [], "confidence": "low"}),
+                "research_architect_agent",
+            ),
+            "da_critique": ("full_return", None, "research_architect_agent"),
+        }
+        for kind, (expected, od, wrong_owner) in cases.items():
+            with self.assertRaises(cmh.HandoffError, msg=kind):
+                cmh.parse_handoff(_envelope(kind, expected, od, owner=wrong_owner))
+
+    def test_fence_literals_are_pinned(self) -> None:
+        self.assertEqual(cmh.OPEN_FENCE, "[CROSS-MODEL-HANDOFF v1]")
+        self.assertEqual(cmh.CLOSE_FENCE, "[/CROSS-MODEL-HANDOFF]")
+
+
 class ExtractionTests(unittest.TestCase):
     def test_plain_deliverable_has_no_block(self) -> None:
         self.assertIsNone(cmh.extract_handoff_block("## Blueprint\n\nOrdinary deliverable text."))
