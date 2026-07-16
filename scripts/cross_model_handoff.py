@@ -28,6 +28,10 @@ from dataclasses import dataclass, field
 
 OPEN_FENCE = "[CROSS-MODEL-HANDOFF v1]"
 CLOSE_FENCE = "[/CROSS-MODEL-HANDOFF]"
+# Any handoff-shaped opener, any version. A v2 fence must be REJECTED as
+# malformed, never silently treated as an ordinary deliverable (fail-closed
+# on unknown versions — codex #527 round-1 P1).
+_ANY_OPEN_FENCE_RE = re.compile(r"^\[CROSS-MODEL-HANDOFF\b.*\]$")
 
 CHECKPOINT_KINDS = {
     # kind -> (expected_result, decision enum or None)
@@ -40,6 +44,14 @@ CHECKPOINT_KINDS = {
         ("accept", "minor_revision", "major_revision", "reject"),
     ),
     "da_critique": ("full_return", None),
+}
+# Closed kind -> owner binding: a design_freeze envelope claiming a different
+# owner would route the divergence re-invocation to the wrong agent,
+# violating "re-invoke the ORIGINAL owner" (codex #527 round-1 P1).
+EXPECTED_OWNERS = {
+    "design_freeze": "research_architect_agent",
+    "editorial_decision": "editorial_synthesizer_agent",
+    "da_critique": "devils_advocate_reviewer_agent",
 }
 EXPECTED_RESULTS = ("enum_comparison", "full_return")
 CONFIDENCE_VALUES = ("low", "medium", "high")
@@ -90,9 +102,16 @@ def extract_handoff_block(text: str) -> str | None:
     must not invent a transport for it.
     """
     lines = text.splitlines()
-    start = next((i for i, l in enumerate(lines) if l.strip() == OPEN_FENCE), None)
+    start = next(
+        (i for i, l in enumerate(lines) if _ANY_OPEN_FENCE_RE.match(l.strip())), None
+    )
     if start is None:
         return None
+    if lines[start].strip() != OPEN_FENCE:
+        raise HandoffError(
+            f"malformed_handoff: unknown envelope version {lines[start].strip()!r} "
+            f"(only {OPEN_FENCE!r} is supported)"
+        )
     end = next((i for i in range(start + 1, len(lines)) if lines[i].strip() == CLOSE_FENCE), None)
     if end is None:
         raise HandoffError("malformed_handoff: opening fence without closing fence")
@@ -148,6 +167,11 @@ def parse_handoff(block: str) -> Handoff:
             f"malformed_handoff: checkpoint_kind {kind!r} requires "
             f"expected_result {expected!r}, got {headers['expected_result']!r}"
         )
+    if headers["owner_agent"] != EXPECTED_OWNERS[kind]:
+        raise HandoffError(
+            f"malformed_handoff: checkpoint_kind {kind!r} is owned by "
+            f"{EXPECTED_OWNERS[kind]!r}, not {headers['owner_agent']!r}"
+        )
 
     owner_decision = None
     if expected == "enum_comparison":
@@ -158,7 +182,11 @@ def parse_handoff(block: str) -> Handoff:
             owner_decision = json.loads(raw_decision)
         except json.JSONDecodeError as exc:
             raise HandoffError(f"malformed_handoff: owner_decision is not JSON ({exc})") from exc
-        _validate_structured_decision(owner_decision, enum, who="owner_decision")
+        try:
+            _validate_structured_decision(owner_decision, enum, who="owner_decision")
+        except HandoffError as exc:
+            # Owner-side problems are envelope problems, not result problems.
+            raise HandoffError(str(exc).replace("malformed_result", "malformed_handoff", 1)) from exc
 
     return Handoff(
         checkpoint_kind=kind,
@@ -172,16 +200,25 @@ def parse_handoff(block: str) -> Handoff:
 
 
 def _validate_structured_decision(obj: object, enum: tuple[str, ...], who: str) -> dict:
+    """The full #518 output contract: all three fields are REQUIRED —
+    `{"decision": "sound"}` alone must not route to a judgment (codex #527
+    round-1 P1)."""
     if not isinstance(obj, dict):
         raise HandoffError(f"malformed_result: {who} is not an object")
     decision = obj.get("decision")
     if decision not in enum:
         raise HandoffError(f"malformed_result: {who} decision {decision!r} not in {enum}")
-    drivers = obj.get("drivers", [])
-    if not isinstance(drivers, list) or len(drivers) > MAX_DRIVERS:
-        raise HandoffError(f"malformed_result: {who} drivers must be a list of <= {MAX_DRIVERS}")
+    drivers = obj.get("drivers")
+    if (
+        not isinstance(drivers, list)
+        or len(drivers) > MAX_DRIVERS
+        or not all(isinstance(d, str) for d in drivers)
+    ):
+        raise HandoffError(
+            f"malformed_result: {who} drivers must be a list of <= {MAX_DRIVERS} strings"
+        )
     confidence = obj.get("confidence")
-    if confidence is not None and confidence not in CONFIDENCE_VALUES:
+    if confidence not in CONFIDENCE_VALUES:
         raise HandoffError(f"malformed_result: {who} confidence {confidence!r} invalid")
     return obj
 

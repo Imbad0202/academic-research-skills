@@ -10,11 +10,11 @@ import unittest
 import cross_model_handoff as cmh
 
 
-def _envelope(kind: str, expected: str, owner_decision: str | None, payload: str = "RQ Brief...\nBlueprint...") -> str:
+def _envelope(kind: str, expected: str, owner_decision: str | None, payload: str = "RQ Brief...\nBlueprint...", owner: str | None = None) -> str:
     lines = [
         cmh.OPEN_FENCE,
         f"checkpoint_kind: {kind}",
-        "owner_agent: research_architect_agent",
+        f"owner_agent: {owner or cmh.EXPECTED_OWNERS.get(kind, 'research_architect_agent')}",
         "correlation_id: design-freeze-demo-001",
         f"expected_result: {expected}",
     ]
@@ -87,6 +87,31 @@ class ParseTests(unittest.TestCase):
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(block)
 
+    def test_unknown_version_fence_fails_closed(self) -> None:
+        """codex round-1 P1: a v2 fence must be malformed, never an
+        ordinary deliverable."""
+        text = _envelope("design_freeze", "enum_comparison", OWNER_SOUND).replace(
+            cmh.OPEN_FENCE, "[CROSS-MODEL-HANDOFF v2]"
+        )
+        with self.assertRaises(cmh.HandoffError):
+            cmh.extract_handoff_block(text)
+
+    def test_wrong_owner_for_kind_fails_closed(self) -> None:
+        """codex round-1 P1: kind->owner binding — a design_freeze envelope
+        claiming the editorial owner must be malformed."""
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(
+                _envelope("design_freeze", "enum_comparison", OWNER_SOUND, owner="editorial_synthesizer_agent")
+            )
+
+    def test_invalid_owner_decision_is_envelope_class(self) -> None:
+        """codex round-1 P1: owner-side validation errors are
+        malformed_handoff, not malformed_result."""
+        bad = json.dumps({"decision": "approve", "drivers": [], "confidence": "low"})
+        with self.assertRaises(cmh.HandoffError) as ctx:
+            cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", bad))
+        self.assertIn("malformed_handoff", str(ctx.exception))
+
     def test_payload_never_contains_owner_decision(self) -> None:
         """Blindness invariant: the parsed payload (the ONLY thing a
         dispatcher forwards) carries no trace of the committed decision."""
@@ -120,6 +145,13 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(ctx["owner_decision"]["decision"], "sound")
         self.assertEqual(ctx["cross_model_decision"]["decision"], "fundamental_concern")
         self.assertIn("Blueprint", ctx["original_payload"])
+
+    def test_incomplete_result_is_unavailable(self) -> None:
+        """codex round-1 P1: the #518 output contract requires all three
+        fields — a bare decision must not route to agreement."""
+        r = cmh.route_result(self.h, transport_ok=True, raw_result=json.dumps({"decision": "sound"}))
+        self.assertEqual(r.outcome, cmh.UNAVAILABLE)
+        self.assertIn("malformed_result", r.error)
 
     def test_malformed_result_is_unavailable_not_fabricated(self) -> None:
         r = cmh.route_result(self.h, transport_ok=True, raw_result="I think the design is sound overall.")

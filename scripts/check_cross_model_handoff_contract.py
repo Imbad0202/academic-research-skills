@@ -35,18 +35,26 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SHARED = "shared/cross_model_verification.md"
 ORCH = "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+# Full backticked header declarations — pinning only the value would let a
+# `checkpoint_knd:` typo emit malformed envelopes while staying green
+# (codex #527 round-1 P1). The enum owners additionally pin their
+# owner_decision blindness clause.
+OWNER_BLINDNESS_CLAUSE = "never forwarded to the cross-model"
 OWNERS = {
     "deep-research/agents/research_architect_agent.md": (
-        "checkpoint_kind: design_freeze",
-        "expected_result: enum_comparison",
+        "`checkpoint_kind: design_freeze`",
+        "`expected_result: enum_comparison`",
+        OWNER_BLINDNESS_CLAUSE,
     ),
     "academic-paper-reviewer/agents/editorial_synthesizer_agent.md": (
-        "checkpoint_kind: editorial_decision",
-        "expected_result: enum_comparison",
+        "`checkpoint_kind: editorial_decision`",
+        "`expected_result: enum_comparison`",
+        OWNER_BLINDNESS_CLAUSE,
     ),
     "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md": (
-        "checkpoint_kind: da_critique",
-        "expected_result: full_return",
+        "`checkpoint_kind: da_critique`",
+        "`expected_result: full_return`",
+        "no `owner_decision` header",
     ),
 }
 
@@ -119,7 +127,7 @@ def check(shared: str, orch: str, owners: dict[str, str]) -> list[str]:
                 f"envelope fence {cmh.OPEN_FENCE!r}"
             )
         for fragment in fragments:
-            if fragment.split(": ", 1)[1] not in text:
+            if fragment not in text:
                 errors.append(
                     f"invariant 2 ({path}): owner lost its {fragment!r} "
                     f"declaration"

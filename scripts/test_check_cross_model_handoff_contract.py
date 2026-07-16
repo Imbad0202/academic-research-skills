@@ -89,6 +89,30 @@ class HandoffContractLintTests(unittest.TestCase):
                 msg=f"{path}: {errors}",
             )
 
+    def test_owner_header_typo_fires(self) -> None:
+        """codex round-1 P1: a checkpoint_knd typo in an owner's declaration
+        would emit malformed envelopes — must fire."""
+        path = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
+        owners = dict(self.owners)
+        owners[path] = owners[path].replace(
+            "`checkpoint_kind: editorial_decision`", "`checkpoint_knd: editorial_decision`"
+        )
+        errors = self._check(owners=owners)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and path in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_owner_blindness_clause_dropped(self) -> None:
+        path = "deep-research/agents/research_architect_agent.md"
+        owners = dict(self.owners)
+        owners[path] = owners[path].replace("never forwarded to the cross-model", "forwarded as context")
+        errors = self._check(owners=owners)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and path in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_owner_kind_swapped(self) -> None:
         """Adverse-value: the DA owner claims enum_comparison — must fire."""
         path = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
