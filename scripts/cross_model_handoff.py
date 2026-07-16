@@ -95,6 +95,22 @@ _HEADER_RE = re.compile(r"^([a-z_]+):[ \t]*(.*)$")
 _REQUIRED_HEADERS = ("checkpoint_kind", "owner_agent", "correlation_id", "expected_result")
 
 
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    """json.loads keeps the LAST duplicate key silently — an object with two
+    different `decision` values would be routed by the latter (codex #527
+    round-10 P1). Reject ambiguity instead."""
+    obj: dict = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError(f"duplicate JSON key {key!r}")
+        obj[key] = value
+    return obj
+
+
+def _loads_strict(raw: str):
+    return json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
+
+
 def _fold_for_detection(line: str) -> str:
     """Strip whitespace AND Unicode format (Cf) characters for fence
     DETECTION only — a zero-width-prefixed fence must be detected (then
@@ -228,7 +244,7 @@ def parse_handoff(block: str) -> Handoff:
         if not raw_decision:
             raise HandoffError("malformed_handoff: enum_comparison requires owner_decision")
         try:
-            owner_decision = json.loads(raw_decision)
+            owner_decision = _loads_strict(raw_decision)
         except (json.JSONDecodeError, RecursionError, ValueError) as exc:
             # RecursionError: pathologically nested JSON must fail closed
             # like any other malformed input (codex #527 round-7 P1).
@@ -285,7 +301,9 @@ def route_result(handoff: Handoff, transport_ok: bool, raw_result: str | None) -
     - full_return: every successful response -> FULL_RETURN_REINVOKE (there
       is no comparison the dispatcher could resolve itself).
     """
-    if not transport_ok or raw_result is None:
+    if not transport_ok or raw_result is None or not raw_result.strip():
+        # A blank body is a failed transport, not a critique to hand back
+        # (codex #527 round-10 P1).
         return Routing(UNAVAILABLE, error="transport_failure")
 
     if handoff.expected_result == "full_return":
@@ -299,7 +317,7 @@ def route_result(handoff: Handoff, transport_ok: bool, raw_result: str | None) -
         )
 
     try:
-        result = json.loads(raw_result)
+        result = _loads_strict(raw_result)
         _validate_structured_decision(result, handoff.decision_enum or (), who="cross_model_result")
     except (HandoffError, json.JSONDecodeError, RecursionError, ValueError) as exc:
         return Routing(UNAVAILABLE, error=f"malformed_result: {type(exc).__name__}: {exc}")

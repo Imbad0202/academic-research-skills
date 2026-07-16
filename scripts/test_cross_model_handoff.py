@@ -357,6 +357,26 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(r.outcome, "unavailable")
         self.assertEqual(r.error, "transport_failure")
 
+    def test_blank_full_return_body_is_unavailable(self) -> None:
+        """codex round-10 P1: a blank/whitespace DA response is a failed
+        transport — never a critique handed back to the owner."""
+        h = cmh.parse_handoff(_envelope("da_critique", "full_return", None))
+        for body in ("", "   \n\t"):
+            r = cmh.route_result(h, transport_ok=True, raw_result=body)
+            self.assertEqual(r.outcome, "unavailable", msg=repr(body))
+
+    def test_duplicate_json_keys_rejected_on_both_paths(self) -> None:
+        """codex round-10 P1: two different decision values in one object is
+        ambiguity, not a judgment — rejected on the result path (unavailable)
+        and the owner path (malformed_handoff)."""
+        dup = '{"decision": "sound", "decision": "fundamental_concern", "drivers": ["x"], "confidence": "high"}'
+        r = cmh.route_result(self.h, transport_ok=True, raw_result=dup)
+        self.assertEqual(r.outcome, "unavailable")
+        self.assertIn("malformed_result", r.error)
+        with self.assertRaises(cmh.HandoffError) as ctx:
+            cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", dup))
+        self.assertIn("malformed_handoff", str(ctx.exception))
+
     def test_transport_failure_wins_over_residual_body(self) -> None:
         """codex round-5 P1: transport_ok is authoritative — a failed
         transport carrying a valid-looking residual body must still be

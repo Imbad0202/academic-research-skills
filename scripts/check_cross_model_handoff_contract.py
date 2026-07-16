@@ -127,6 +127,21 @@ def _module_prose_enums() -> list[str]:
     return fragments
 
 
+def _module_prose_triples() -> list[str]:
+    """The complete kind (`owner`) attributions plus each kind's result
+    shape, derived from CHECKPOINT_KINDS + EXPECTED_OWNERS — a shared-prose
+    edit rewiring owners or result shapes must fail here (codex #527
+    round-10 P1)."""
+    fragments = []
+    for kind, (expected, _) in cmh.CHECKPOINT_KINDS.items():
+        fragments.append(f"`{kind}` (`{cmh.EXPECTED_OWNERS[kind]}`)")
+        if expected == "full_return":
+            fragments.append(
+                f"`{kind}` (`{cmh.EXPECTED_OWNERS[kind]}`) is `full_return`"
+            )
+    return fragments
+
+
 def check(shared: str, orch: str, owners: dict[str, str]) -> list[str]:
     errors: list[str] = []
 
@@ -165,13 +180,15 @@ def check(shared: str, orch: str, owners: dict[str, str]) -> list[str]:
                 f"fragment {fragment!r}"
             )
 
-    # Invariant 4 — prose enums match the normative module
-    for enum_fragment in _module_prose_enums():
-        if enum_fragment not in shared:
+    # Invariant 4 — prose enums AND kind/owner/result triples match the
+    # normative module
+    for fragment in (*_module_prose_enums(), *_module_prose_triples()):
+        if fragment not in shared:
             errors.append(
-                f"invariant 4 ({SHARED}): checkpoint enum table drifted from "
-                f"the normative module: expected {enum_fragment!r} "
-                f"(source: scripts/cross_model_handoff.py CHECKPOINT_KINDS)"
+                f"invariant 4 ({SHARED}): checkpoint table drifted from the "
+                f"normative module: expected {fragment!r} (source: "
+                f"scripts/cross_model_handoff.py CHECKPOINT_KINDS + "
+                f"EXPECTED_OWNERS)"
             )
 
     return errors

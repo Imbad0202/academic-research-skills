@@ -221,6 +221,19 @@ class HandoffContractLintTests(unittest.TestCase):
 
     # --- invariant 4: prose enums follow the normative module ---
 
+    def test_prose_triple_rewire_fires(self) -> None:
+        """codex round-10 P1: rewiring the shared kind/owner/result triple
+        must fail against the module-derived pins."""
+        mutated = self.shared.replace(
+            "`da_critique` (`devils_advocate_reviewer_agent`) is `full_return`",
+            "`da_critique` (`research_architect_agent`) is `enum_comparison`",
+        )
+        errors = self._check(shared=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "EXPECTED_OWNERS" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_prose_enum_drift_fires(self) -> None:
         mutated = self.shared.replace(
             "`sound` / `revise_before_freeze` / `fundamental_concern`",
