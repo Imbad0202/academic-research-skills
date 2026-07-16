@@ -91,6 +91,7 @@ VOCAB_PROTO_NL_CLAUSE = "unambiguous natural-language equivalent that accepts th
 
 S5_AUTHORITY_LITERALS = {
     "entry-gate": "refers to exactly ONE checkpoint: the **Stage 5 entry gate**",
+    "no-auto-advance": "- explicit confirmation to proceed to finalization (no auto-advance);",
     "gate-format-decision": 'the finalization-format decision: citation style (APA 7.0 / Chicago / IEEE, ...) — the "Stage 5 finalization format" pending decision the passport-reset machinery records at this boundary',
     "latex-in-stage": 'the "Need LaTeX?" question (Step 3) and the content confirmation before the final PDF (Step 4) — are part of Stage 5 execution, not pipeline checkpoints',
     "completion-full-never-slim": "FULL checkpoint — never SLIM",
@@ -98,7 +99,8 @@ S5_AUTHORITY_LITERALS = {
 }
 S6_AUTHORITY_LITERALS = {
     "decline-path": "marked `skipped` and the pipeline still terminates `completed`",
-    "terminal-checkpoint": "terminal checkpoint",
+    "stage6-non-mandatory": "Stage 6 is a non-mandatory stage (it is absent from the orchestrator's non-skippable list). At the Stage 5 completion checkpoint the user may decline it",
+    "terminal-checkpoint": "When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:",
     "acknowledgement-vocabulary": VOCAB_CANON,
     "change-requests-not-ack": "Change requests (the other language version, content corrections) keep Stage 6 `in_progress` — they are not acknowledgements",
     "ack-outcome": "On acknowledgement: state_tracker marks Stage 6 `completed` and sets the pipeline global state to `completed`",
@@ -148,6 +150,24 @@ PROTO_TRIGGER_PIN = "After the user confirms the Stage 5 completion checkpoint (
 # Delivery-before-acknowledgement sequencing (codex round-6 P1: on->before /
 # After->Before mutations stayed green).
 PROTO_SEQUENCING_PIN = "After delivering the process record, prompt the user to close the pipeline"
+# Protocol step-5 header + terminal-outcome sentence (codex round-7 P1: the
+# step could be retyped non-terminal / gain a Stage 7 continuation).
+PROTO_STEP5_HEADER = "5. Terminal acknowledgement (pipeline terminal checkpoint):"
+PROTO_NO_NEXT_STAGE = "There is no next stage."
+# SKILL Step 4 handoff line (codex round-7 P1: the executing transition list
+# could reverse the decline option while the Stage 6 section stayed pinned).
+SKILL_STEP4_HANDOFF = "- Stage 5  --> 6: Pass final deliverables list + pipeline state history to Process Summary (user may decline Stage 6 at the Stage 5 completion checkpoint)"
+
+# The #528/#529 diagram edges (codex round-7 P1: the ASCII diagram is an
+# operative surface too — a /Minor -> /Reject or relabeled terminal edge
+# would contradict the transitions table while staying green). Scoped to the
+# ## State Transition Diagram span.
+DIAGRAM_HEADING = "## State Transition Diagram (ASCII)"
+DIAGRAM_EDGES = {
+    "stage3p-accept-minor-branch": "|     Accept      Major               |\n              |     /Minor        |",
+    "terminal-ack-edge": "[terminal acknowledgement]",
+    "decline-edge": "[decline Stage 6]",
+}
 
 # Transition rows are pinned as COMPLETE rows (all four cells), scoped to the
 # ## Legal State Transitions span — a prefix pin would let a mutation flip the
@@ -220,6 +240,11 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                                f"{SM} legal-transitions",
                                {"stage3p-minor-routing-row": INV2_SM_ROUTING_ROW})
     )
+    errors.extend(
+        check_section_literals(2, sm, DIAGRAM_HEADING,
+                               f"{SM} transition-diagram",
+                               DIAGRAM_EDGES)
+    )
 
     # Invariant 3 — authority section + transition rows (both H2-scoped)
     errors.extend(
@@ -287,6 +312,11 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                                f"{SKILL} Stage-6 protocol",
                                SKILL_STAGE6_LITERALS)
     )
+    if SKILL_STEP4_HANDOFF not in skill:
+        errors.append(
+            f"invariant 4 ({SKILL}): Step 4 transition list lost the Stage "
+            f"5->6 handoff line: {SKILL_STEP4_HANDOFF!r}"
+        )
     if SKILL_RULE9_PIN not in skill:
         errors.append(
             f"invariant 4 ({SKILL}): state-machine rule 9 lost the "
@@ -350,6 +380,16 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
         errors.append(
             f"invariant 4 ({PROTO}): delivery-before-acknowledgement "
             f"sequencing missing: {PROTO_SEQUENCING_PIN!r}"
+        )
+    if PROTO_STEP5_HEADER not in proto:
+        errors.append(
+            f"invariant 4 ({PROTO}): step-5 terminal-checkpoint header "
+            f"missing: {PROTO_STEP5_HEADER!r}"
+        )
+    if PROTO_NO_NEXT_STAGE not in proto:
+        errors.append(
+            f"invariant 4 ({PROTO}): terminal-outcome sentence missing: "
+            f"{PROTO_NO_NEXT_STAGE!r}"
         )
     # Invariant 4 — state_tracker contract accepts Stage 6 + outcome pairs
     if tracker:

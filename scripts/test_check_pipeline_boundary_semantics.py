@@ -213,6 +213,93 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
                 msg=f"{kw} errors: {errors}",
             )
 
+    # --- codex round-7 witnesses ---
+
+    def test_inv3_authority_auto_advance_flipped(self) -> None:
+        mutated = self.sm.replace(
+            "- explicit confirmation to proceed to finalization (no auto-advance);",
+            "- confirmation to proceed to finalization (auto-advance permitted);",
+        )
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "no-auto-advance" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_authority_stage6_made_mandatory(self) -> None:
+        mutated = self.sm.replace(
+            "Stage 6 is a non-mandatory stage (it is absent from the orchestrator's non-skippable list). At the Stage 5 completion checkpoint the user may decline it",
+            "Stage 6 is a mandatory stage. The user may not decline it",
+        )
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "stage6-non-mandatory" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_authority_terminal_moved_to_start(self) -> None:
+        mutated = self.sm.replace(
+            "When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:",
+            "When Stage 6 runs, its start is the pipeline's **terminal checkpoint**:",
+        )
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "terminal-checkpoint" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv2_diagram_minor_branch_rerouted(self) -> None:
+        """Adverse-value mutation (codex round-7 P1): the diagram's Stage 3'
+        Accept/Minor branch reroutes Minor — must fire."""
+        mutated = self.sm.replace("|     /Minor        |", "|     /Reject       |")
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and "stage3p-accept-minor-branch" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv2_diagram_terminal_edge_relabeled(self) -> None:
+        mutated = self.sm.replace("[terminal acknowledgement]", "[record delivery]")
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and "terminal-ack-edge" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_skill_step4_decline_reversed(self) -> None:
+        mutated = self.skill.replace(
+            "(user may decline Stage 6 at the Stage 5 completion checkpoint)",
+            "(user may not decline Stage 6)",
+        )
+        self.assertNotEqual(mutated, self.skill)
+        errors = self._check(skill=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "Step 4" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_proto_step5_retyped_or_continued(self) -> None:
+        header_mut = self.proto.replace(
+            "5. Terminal acknowledgement (pipeline terminal checkpoint):",
+            "5. Acknowledgement (advisory, non-terminal):",
+        )
+        continuation_mut = self.proto.replace(
+            "There is no next stage.",
+            "Proceed to Stage 7 archival.",
+        )
+        for name, mut in (("header", header_mut), ("continuation", continuation_mut)):
+            self.assertNotEqual(mut, self.proto, msg=name)
+            errors = self._check(proto=mut)
+            self.assertTrue(
+                any(e.startswith("invariant 4") and self.mod.PROTO in e for e in errors),
+                msg=f"{name} errors: {errors}",
+            )
+
     # --- INV-3: Stage 5 boundary semantics ---
 
     def test_inv3_authority_section_removed(self) -> None:
