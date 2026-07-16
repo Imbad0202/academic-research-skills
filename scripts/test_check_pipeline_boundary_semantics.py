@@ -419,6 +419,71 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             msg=f"errors: {errors}",
         )
 
+    # --- codex round-4 witnesses ---
+
+    def test_inv3_mandatory_type_flipped_to_full(self) -> None:
+        """Adverse-value mutation (codex round-4 P1): the entry gate's
+        MANDATORY classification flips to FULL on either declaration —
+        must fire independently."""
+        table_mut = self.skill.replace(
+            "| MANDATORY | Integrity FAIL; Review decision; Stage 5 entry gate (before finalization) |",
+            "| MANDATORY | Integrity FAIL; Review decision |",
+        )
+        rule_mut = self.orch.replace(
+            "always MANDATORY — this is the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch",
+            "always FULL — this is the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch",
+        )
+        self.assertNotEqual(table_mut, self.skill)
+        self.assertNotEqual(rule_mut, self.orch)
+        errors_table = self._check(skill=table_mut)
+        errors_rule = self._check(orch=rule_mut)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and self.mod.SKILL in e for e in errors_table),
+            msg=f"errors: {errors_table}",
+        )
+        self.assertTrue(
+            any(e.startswith("invariant 3") and self.mod.ORCH in e for e in errors_rule),
+            msg=f"errors: {errors_rule}",
+        )
+
+    def test_inv4_ack_outcome_flipped_per_surface(self) -> None:
+        """Adverse-value mutation (codex round-4 P1): the acknowledgement
+        outcome flips completed→skipped on each operative copy — must fire
+        per surface independently."""
+        sm_mut = self.sm.replace(
+            "On acknowledgement: state_tracker marks Stage 6 `completed` and sets the pipeline global state to `completed`",
+            "On acknowledgement: state_tracker marks Stage 6 `skipped` and sets the pipeline global state to `completed`",
+        )
+        skill_mut = self.skill.replace(
+            "On acknowledgement, Stage 6 is marked `completed` and the pipeline global state is set to `completed`",
+            "On acknowledgement, Stage 6 is marked `skipped` and the pipeline global state is set to `completed`",
+        )
+        proto_mut = self.proto.replace(
+            "On acknowledgement: state_tracker marks Stage 6 completed and sets the pipeline global state to completed",
+            "On acknowledgement: state_tracker marks Stage 6 skipped and sets the pipeline global state to completed",
+        )
+        for kw, mut, orig in (("sm", sm_mut, self.sm),
+                              ("skill", skill_mut, self.skill),
+                              ("proto", proto_mut, self.proto)):
+            self.assertNotEqual(mut, orig, msg=kw)
+            errors = self._check(**{kw: mut})
+            self.assertTrue(
+                any(e.startswith("invariant 4") and ("ack-outcome" in e or "outcome" in e) for e in errors),
+                msg=f"{kw} errors: {errors}",
+            )
+
+    def test_inv4_tracker_decline_outcome_flipped(self) -> None:
+        mutated = self.tracker.replace(
+            '`update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
+            '`update_stage("6", "completed", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
+        )
+        self.assertNotEqual(mutated, self.tracker)
+        errors = self._check(tracker=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "decline-outcome" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_inv4_tracker_stage6_dropped(self) -> None:
         """Adverse-value mutation (codex round-3 P1): the state_tracker enum
         reverts to '1'..'5' — must fire."""

@@ -91,11 +91,15 @@ S6_AUTHORITY_LITERALS = {
     "terminal-checkpoint": "terminal checkpoint",
     "acknowledgement-vocabulary": VOCAB_CANON,
     "change-requests-not-ack": "Change requests (the other language version, content corrections) keep Stage 6 `in_progress` — they are not acknowledgements",
+    "ack-outcome": "On acknowledgement: state_tracker marks Stage 6 `completed` and sets the pipeline global state to `completed`",
     "no-transition-after-completed": "no stage transition is legal",
 }
 
-S5_ENTRY_GATE_TABLE_CELL = "Stage 5 entry gate (before finalization)"
-S5_CANON_RULE5 = "the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch"
+# Pinned as the complete row / the type-bearing clause so the MANDATORY
+# classification itself cannot flip to FULL while staying green (codex
+# round-4 P1: the previous pins started after the type keyword).
+S5_ENTRY_GATE_TABLE_CELL = "| MANDATORY | Integrity FAIL; Review decision; Stage 5 entry gate (before finalization) | Cannot be skipped; requires explicit user input |"
+S5_CANON_RULE5 = "always MANDATORY — this is the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch"
 S5_CANON_GATE_SCOPE = "makes the finalization-format decision (citation style); the in-stage LaTeX question and content confirmation stay inside Stage 5 execution"
 S5_CANON_COMPLETION = "The Stage 5 completion checkpoint (Final Paper delivered, before Stage 6) is FULL — never SLIM"
 
@@ -118,8 +122,10 @@ SKILL_STAGE6_HEADING = "## Stage 6: Process Summary Protocol"
 SKILL_STAGE6_LITERALS = {
     "acknowledgement-vocabulary": "`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent",
     "decline-path": "the user may decline it at the Stage 5 completion checkpoint (Stage 6 marked `skipped`; the pipeline still terminates `completed`)",
+    "ack-outcome": "On acknowledgement, Stage 6 is marked `completed` and the pipeline global state is set to `completed`",
     "change-requests-not-ack": SKILL_CHANGE_REQUESTS_NOT_ACK,
 }
+PROTO_ACK_OUTCOME = "On acknowledgement: state_tracker marks Stage 6 completed and sets the pipeline global state to completed"
 SKILL_RULE10_PIN = "terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`"
 ORCH_DECLINE_HANDOFF_PIN = "User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`"
 PROTO_DECLINE_PIN = "the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`"
@@ -150,6 +156,10 @@ ORCH_TERMINAL_WIRING = {
 TRACKER = "academic-pipeline/agents/state_tracker_agent.md"
 TRACKER_STAGE_ID_ENUM = '"1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5", "6"'
 TRACKER_STAGE6_ENTRY = '"6": {'
+TRACKER_WIRING = {
+    "acknowledgement-outcome": 'on the terminal acknowledgement, `update_stage("6", "completed", outputs)` then `update_pipeline_state("completed")`',
+    "decline-outcome": '`update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
+}
 
 
 def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list[str]:
@@ -280,7 +290,12 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             f"invariant 4 ({PROTO}): change-request non-acknowledgement rule "
             f"missing: {PROTO_CHANGE_REQUESTS_NOT_ACK!r}"
         )
-    # Invariant 4 — state_tracker contract accepts Stage 6
+    if PROTO_ACK_OUTCOME not in proto:
+        errors.append(
+            f"invariant 4 ({PROTO}): terminal-acknowledgement outcome "
+            f"sentence missing: {PROTO_ACK_OUTCOME!r}"
+        )
+    # Invariant 4 — state_tracker contract accepts Stage 6 + outcome pairs
     if tracker:
         if TRACKER_STAGE_ID_ENUM not in tracker:
             errors.append(
@@ -292,6 +307,12 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                 f"invariant 4 ({TRACKER}): the stages example lost its "
                 f"Stage 6 entry ({TRACKER_STAGE6_ENTRY!r})"
             )
+        for name, fragment in TRACKER_WIRING.items():
+            if fragment not in tracker:
+                errors.append(
+                    f"invariant 4 ({TRACKER}): {name} pair missing: "
+                    f"{fragment!r}"
+                )
 
     return errors
 

@@ -21,6 +21,11 @@
    - Quality requirement evolution (e.g., formatting, tone adjustments)
    - Pipeline statistics (stage count, review rounds, integrity verification count, etc.)
 
+2b. Dispatch collaboration_depth_agent in whole-pipeline mode (range = all
+   stages, v3.5); its advisory report becomes the "Collaboration Depth
+   Trajectory" chapter of the Process Record — this dispatch happens BEFORE
+   record generation so the chapter is inside the record the user acknowledges
+
 3. Generate Markdown version (paper_creation_process.md / paper_creation_process_en.md)
 
 4. Convert to LaTeX and compile PDF:
@@ -35,8 +40,7 @@
      unambiguous natural-language equivalent that accepts the deliverables.
    - Change requests (the other language version, content corrections) keep
      Stage 6 in_progress — they are not acknowledgements.
-   - On acknowledgement: state_tracker marks Stage 6 completed and sets the
-     pipeline global state to completed. There is no next stage.
+   - On acknowledgement: state_tracker marks Stage 6 completed and sets the pipeline global state to completed. There is no next stage.
      (See pipeline_state_machine.md § Stage 6 terminal semantics.)
 ```
 
