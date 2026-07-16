@@ -97,6 +97,55 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         errors = self._check(orch=mutated)
         self.assertTrue(any(e.startswith("invariant 2") for e in errors))
 
+    # --- codex round-5 witnesses ---
+
+    def test_inv2_skill_routing_rerouted(self) -> None:
+        """Adverse-value mutation (codex round-5 P1): SKILL rule 6 reroutes a
+        Stage 3' Minor through coaching/Stage 4' — must fire."""
+        mutated = self.skill.replace(
+            "6. **Stage 3' RE-REVIEW** -> Accept|Minor -> Stage 4.5 / Major -> Stage 4'",
+            "6. **Stage 3' RE-REVIEW** -> Accept -> Stage 4.5 / Minor|Major -> Stage 4'",
+        )
+        self.assertNotEqual(mutated, self.skill)
+        errors = self._check(skill=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and self.mod.SKILL in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv2_state_machine_minor_routing_dropped(self) -> None:
+        """Adverse-value mutation (codex round-5 P1): the state machine's
+        Accept/Minor -> Stage 4.5 transition row loses Minor — must fire."""
+        mutated = self.sm.replace(
+            "| checkpoint | Stage 4.5 | Decision = Accept/Minor, user confirms | Pass final draft to final verification |",
+            "| checkpoint | Stage 4.5 | Decision = Accept, user confirms | Pass final draft to final verification |",
+        )
+        self.assertNotEqual(mutated, self.sm)
+        errors = self._check(sm=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and "stage3p-minor-routing-row" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_skill_rule9_outcome_flipped(self) -> None:
+        """Adverse-value mutation (codex round-5 P1): rule 9 flips the
+        completion type or the decline outcome — must fire."""
+        type_mut = self.skill.replace(
+            "completion checkpoint (FULL) -> Stage 6",
+            "completion checkpoint (MANDATORY) -> Stage 6",
+        )
+        outcome_mut = self.skill.replace(
+            "user may decline Stage 6: marked `skipped`, pipeline goes directly to `completed`",
+            "user may not decline Stage 6",
+        )
+        for name, mut in (("type", type_mut), ("outcome", outcome_mut)):
+            self.assertNotEqual(mut, self.skill, msg=name)
+            errors = self._check(skill=mut)
+            self.assertTrue(
+                any(e.startswith("invariant 4") and "rule 9" in e for e in errors),
+                msg=f"{name} errors: {errors}",
+            )
+
     # --- INV-3: Stage 5 boundary semantics ---
 
     def test_inv3_authority_section_removed(self) -> None:

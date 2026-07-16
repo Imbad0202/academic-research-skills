@@ -30,7 +30,7 @@ A lightweight orchestrator that manages the complete academic pipeline from rese
 3. **Two-stage review** — First full review + post-revision focused verification review
 4. **Final integrity check** — After revision completion, re-verify all citations and data are 100% correct
 5. **Reproducible** — Standardized workflow producing consistent quality assurance each time
-6. **Process documentation** — After pipeline completion, automatically generates a "Paper Creation Process Record" PDF documenting the human-AI collaboration history
+6. **Process documentation** — Stage 6 generates a "Paper Creation Process Record" PDF documenting the human-AI collaboration history (delivered before the terminal acknowledgement that completes the pipeline)
 
 ## Quick Start
 
@@ -213,7 +213,7 @@ If ANY answer raises concern, include it in the checkpoint presentation to the u
 | 1 | `pipeline_orchestrator_agent` | Main orchestrator: detects stage, recommends mode, triggers skill, manages transitions | `agents/pipeline_orchestrator_agent.md` |
 | 2 | `state_tracker_agent` | State tracker: records completed stages, produced materials, revision loop count | `agents/state_tracker_agent.md` |
 | 3 | `integrity_verification_agent` | Integrity verifier: 100% reference/citation/data verification (blocking) | `agents/integrity_verification_agent.md` |
-| 4 | `collaboration_depth_agent` | **Observer (advisory only — never blocks).** Reads dialogue log and scores user-AI collaboration pattern against `shared/collaboration_depth_rubric.md`. Invoked at FULL/SLIM checkpoints and at pipeline completion. Based on Wang & Zhang (2026). | `agents/collaboration_depth_agent.md` |
+| 4 | `collaboration_depth_agent` | **Observer (advisory only — never blocks).** Reads dialogue log and scores user-AI collaboration pattern against `shared/collaboration_depth_rubric.md`. Invoked at FULL/SLIM checkpoints and during Stage 6 record compilation (whole-pipeline pass, before the Process Record is delivered). Based on Wang & Zhang (2026). | `agents/collaboration_depth_agent.md` |
 | 5 | `claim_ref_alignment_audit_agent` | **Opt-in claim faithfulness auditor (v3.8 #103).** Audits sampled citations for claim ↔ reference alignment + negative-constraint compliance; emits per-claim `claim_audit_results[]`, `claim_drift[]`, `uncited_assertions[]`, `constraint_violations[]`. Dispatched via orchestrator §3.6 when claim_audit mode is requested. | `agents/claim_ref_alignment_audit_agent.md` |
 
 ---
@@ -324,7 +324,7 @@ In Mode B, **single-phase agents (Bucket A per `docs/design/2026-05-18-ars-v3.9.
 - `pipeline_orchestrator_agent` (D — orchestrator, full pipeline visibility)
 - `state_tracker_agent` (D — meta state, all phases)
 - `integrity_verification_agent` (C — Stage 2.5 / 4.5 cross-skill gate)
-- `collaboration_depth_agent` (C — FULL/SLIM checkpoints + pipeline completion, advisory-only)
+- `collaboration_depth_agent` (C — FULL/SLIM checkpoints + Stage 6 record compilation, advisory-only)
 - `claim_ref_alignment_audit_agent` (C — opt-in claim audit, phase-orthogonal)
 
 Routing into Mode B requires explicit user signal — `/ars-<mode>` slash command or `[direct-mode]` prefix. Ambiguous cross-phase input defaults to clarification per `.claude/CLAUDE.md` Routing Discipline + `shared/references/intent_clarification_protocol.md`. **Critically:** if `pipeline_orchestrator_agent` is dispatched on ambiguous cross-phase materials, the orchestrator itself currently cannot reconcile (this is the v3.10 conductor #134 work) — v3.9.2 routes such cases to clarification BEFORE the orchestrator runs.
@@ -431,7 +431,7 @@ The `collaboration_depth_agent` observes the user's collaboration pattern with t
 
 **When invoked**: every FULL checkpoint, every SLIM checkpoint, and during Stage 6 record compilation (the whole-pipeline pass runs before the Process Record is generated and delivered, so its output can be a chapter of the record the user acknowledges). MANDATORY checkpoints (Stages 2.5 / 4.5 integrity gates) **do not** invoke the observer — those are integrity concerns and must not be diluted.
 
-**What it does**: reads the dialogue range for the just-completed stage (at checkpoints) or the whole pipeline (at completion), scores the pattern against the canonical rubric at `shared/collaboration_depth_rubric.md`, and emits an advisory block/chapter. Dimensions: Delegation Intensity, Cognitive Vigilance, Cognitive Reallocation, Zone Classification (Zone 1 / Zone 2 / Zone 3). Rubric is based on Wang & Zhang (2026) IJETHE 23:11 (DOI 10.1186/s41239-026-00585-x).
+**What it does**: reads the dialogue range for the just-completed stage (at checkpoints) or the whole pipeline (during Stage 6 record compilation), scores the pattern against the canonical rubric at `shared/collaboration_depth_rubric.md`, and emits an advisory block/chapter. Dimensions: Delegation Intensity, Cognitive Vigilance, Cognitive Reallocation, Zone Classification (Zone 1 / Zone 2 / Zone 3). Rubric is based on Wang & Zhang (2026) IJETHE 23:11 (DOI 10.1186/s41239-026-00585-x).
 
 **Distinction from existing mechanisms**:
 

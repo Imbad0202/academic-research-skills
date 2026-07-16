@@ -60,11 +60,15 @@ INV1_FRAGMENTS = {
     ORCH: "| Stage 1 -> 2 | RQ Brief, Methodology Blueprint, Annotated Bibliography, Synthesis Report |",
 }
 
-# --- Invariant 2: Stage 3' Minor never triggers coaching (both ORCH spots) ---
+# --- Invariant 2: Stage 3' Minor never triggers coaching (both ORCH spots),
+# and the Minor -> Stage 4.5 routing declarations themselves (codex round-5
+# P1: a mutation rerouting Minor left the coaching pins intact and green) ---
 INV2_FRAGMENTS = [
     "A Stage 3' Minor decision does NOT trigger coaching",
     "a Stage 3' Minor decision also does not trigger coaching",
 ]
+INV2_SKILL_ROUTING = "6. **Stage 3' RE-REVIEW** -> Accept|Minor -> Stage 4.5 / Major -> Stage 4'"
+INV2_SM_ROUTING_ROW = "| checkpoint | Stage 4.5 | Decision = Accept/Minor, user confirms | Pass final draft to final verification |"
 
 # --- Invariants 3+4: the state-machine authority section (one H2, two H3s) ---
 AUTHORITY_HEADING = "## Stage 5 and Stage 6 Boundary Semantics"
@@ -126,6 +130,7 @@ SKILL_STAGE6_LITERALS = {
     "change-requests-not-ack": SKILL_CHANGE_REQUESTS_NOT_ACK,
 }
 PROTO_ACK_OUTCOME = "On acknowledgement: state_tracker marks Stage 6 completed and sets the pipeline global state to completed"
+SKILL_RULE9_PIN = "completion checkpoint (FULL) -> Stage 6 (user may decline Stage 6: marked `skipped`, pipeline goes directly to `completed`)"
 SKILL_RULE10_PIN = "terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`"
 ORCH_DECLINE_HANDOFF_PIN = "User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`"
 PROTO_DECLINE_PIN = "the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`"
@@ -184,6 +189,16 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                 f"{fragment!r} (#529; a Stage 3' Minor routes directly to "
                 f"Stage 4.5 and must not trigger coaching)"
             )
+    if INV2_SKILL_ROUTING not in skill:
+        errors.append(
+            f"invariant 2 ({SKILL}): the Stage 3' routing declaration "
+            f"drifted from the pinned form: {INV2_SKILL_ROUTING!r}"
+        )
+    errors.extend(
+        check_section_literals(2, sm, TRANSITIONS_HEADING,
+                               f"{SM} legal-transitions",
+                               {"stage3p-minor-routing-row": INV2_SM_ROUTING_ROW})
+    )
 
     # Invariant 3 — authority section + transition rows (both H2-scoped)
     errors.extend(
@@ -251,6 +266,11 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                                f"{SKILL} Stage-6 protocol",
                                SKILL_STAGE6_LITERALS)
     )
+    if SKILL_RULE9_PIN not in skill:
+        errors.append(
+            f"invariant 4 ({SKILL}): state-machine rule 9 lost the "
+            f"completion-type + decline-outcome pin: {SKILL_RULE9_PIN!r}"
+        )
     if SKILL_RULE10_PIN not in skill:
         errors.append(
             f"invariant 4 ({SKILL}): state-machine rule 10 lost the terminal-"

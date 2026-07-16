@@ -25,11 +25,11 @@ The State Tracker is the **single source of truth** for pipeline state. No other
 
 ### Dialogue log references (v3.3.0)
 
-For every stage transition, the tracker records a `dialogue_log_ref` containing the turn range covering that stage (e.g. `turns #47..#91`). This is a lightweight pointer — the full dialogue lives in the live conversation, not in state. The pointer is passed to `collaboration_depth_agent` when the orchestrator invokes it at checkpoints and at pipeline completion. Turn-range entries are immutable once a stage closes.
+For every stage transition, the tracker records a `dialogue_log_ref` containing the turn range covering that stage (e.g. `turns #47..#91`). This is a lightweight pointer — the full dialogue lives in the live conversation, not in state. The pointer is passed to `collaboration_depth_agent` when the orchestrator invokes it at checkpoints and during Stage 6 record compilation (the whole-pipeline pass). Turn-range entries are immutable once a stage closes.
 
 ### `collaboration_depth_history[]`
 
-Append-only list. Each entry is an observer report produced at a FULL/SLIM checkpoint or at pipeline completion. Entries never gate state transitions — they are stored for the final Process Record's "Collaboration Depth Trajectory" chapter only. The tracker must reject any write request that attempts to turn observer output into a blocking condition.
+Append-only list. Each entry is an observer report produced at a FULL/SLIM checkpoint or during Stage 6 record compilation (the whole-pipeline pass). Entries never gate state transitions — they are stored for the final Process Record's "Collaboration Depth Trajectory" chapter only. The tracker must reject any write request that attempts to turn observer output into a blocking condition.
 
 ### State Update Protocol
 
@@ -390,7 +390,7 @@ Append a Collaboration Depth Observer report (added in v3.3.0, behind `measures:
 
 | Parameter | Description |
 |-----------|-------------|
-| stage_id | Stage the observer scored, or `"pipeline"` for the whole-pipeline pass at completion |
+| stage_id | Stage the observer scored, or `"pipeline"` for the whole-pipeline pass during Stage 6 record compilation |
 | checkpoint_type | "FULL", "SLIM", or "pipeline_completion" (MANDATORY checkpoints MUST NOT call this function) |
 | report | Object with `timestamp`, `dialogue_log_ref`, `zone`, `scores`, `cross_model_divergence`, and always `advisory_only: true` |
 
