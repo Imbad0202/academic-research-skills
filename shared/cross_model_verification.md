@@ -28,7 +28,7 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 | Claude (session model) | _(inherited Claude Code session model — e.g., Fable 5)_ | Anthropic | Primary model (default for all ARS skills) |
 | GPT-5.5 | `gpt-5.5` | OpenAI | Cross-verification — recommended balance (supports `xhigh` reasoning) |
 | GPT-5.5 Pro | `gpt-5.5-pro` | OpenAI | Cross-verification — strongest reasoning (premium pricing: ~6× GPT-5.5) |
-| GPT-5.6 Sol | `gpt-5.6-sol` | OpenAI | Cross-verification — frontier tier, **provisional pending ARS validation** (same standard rates as GPT-5.5) |
+| GPT-5.6 Sol | `gpt-5.6-sol` | OpenAI | Cross-verification — frontier tier, **validated** (same standard rates as GPT-5.5) |
 | Gemini 3.1 Pro | `gemini-3.1-pro-preview` | Google | Cross-verification — strong at factual verification |
 
 ### OpenAI-compatible providers (Chat Completions API — UNGROUNDED, opt-in)
@@ -45,7 +45,11 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 > The primary row deliberately names no version: the primary is always the session model, so the row cannot go stale on the next Anthropic release. Verifier IDs stay concrete because they are literal API strings the user must export. (`gpt-5.4` / `gpt-5.4-pro` remain accepted for existing setups.)
 
-> **GPT-5.6 Sol is provisional (listed 2026-07-11, three days after release).** Its endpoint support (Responses API), hosted `web_search` tool, and reasoning-effort values are confirmed against OpenAI's model documentation, but its ARS-specific behavior — grounded-search completion rate, citation-mismatch recall, false-disagreement rate, response-shape stability against the jq grounding guards, p95 latency — is unvalidated. **GPT-5.5 remains the recommended default** until `gpt-5.6-sol` passes the § Promotion Bakeoff below (non-inferiority on those measures earns `validated`) AND a separate superiority or operational-benefit case is stated for the default flip; run `scripts/cross_model_smoke_test.sh` against your key before adopting it. Two facts that differ from the GPT-5.5 lineup: GPT-5.6 ships **no `-pro` model ID** — premium operation is standard `gpt-5.6-sol` plus `reasoning: {mode: "pro"}` in the request, billed at standard token rates with more model work per request (the old fixed ~6× unit-price split does not carry over); and its reasoning effort accepts `none|low|medium|high|xhigh|max` (GPT-5.5 tops out at `xhigh`), defaulting to `medium` in both standard and pro modes.
+> **GPT-5.6 Sol is validated (listed 2026-07-11; validated 2026-07-16).** It passed the § Promotion Bakeoff below on all five non-inferiority thresholds against the `gpt-5.5` baseline — grounded-search completion 100% vs 100%, citation-mismatch recall 100% vs 100%, false-disagreement rate 0% vs 5%, zero guard misfires, p95 latency 131.5 s against a 237.8 s ceiling. Run and probe set: `audits/cross-model-promotion-bakeoff-gpt-5.6-sol-2026-07-16.md` (probe-set sha256 `cb7ac8df…`, 30 references × 2 models × 3 repeats).
+>
+> **GPT-5.5 nonetheless remains the recommended default.** Per the Outcome bullet these are two separate promotions: validation is non-inferiority and earns trust, nothing more. The bakeoff did not argue a default flip and the numbers do not support one — the candidate's only edge was 0/20 vs 1/20 false disagreements (Fisher exact p = 1.0, a one-reference difference), while measures 1, 2 and 4 were ceiling ties. Switch verifier only if you have your own reason to.
+>
+> Two facts that differ from the GPT-5.5 lineup: GPT-5.6 ships **no `-pro` model ID** — premium operation is standard `gpt-5.6-sol` plus `reasoning: {mode: "pro"}` in the request, billed at standard token rates with more model work per request (the old fixed ~6× unit-price split does not carry over); and its reasoning effort accepts `none|low|medium|high|xhigh|max` (GPT-5.5 tops out at `xhigh`), defaulting to `medium` in both standard and pro modes.
 
 Using two non-Anthropic models as primary+verifier is possible but not tested with ARS prompts.
 
@@ -85,7 +89,7 @@ Add to your shell profile (`~/.zshrc` or `~/.bashrc`):
 # --- Option A: OpenAI (first-party, grounded) ---
 export OPENAI_API_KEY="<your-openai-api-key>"
 export ARS_CROSS_MODEL="gpt-5.5"
-# Frontier alternative, provisional pending ARS validation (see Supported Models):
+# Frontier alternative, validated 2026-07-16 — gpt-5.5 stays the default (see Supported Models):
 # export ARS_CROSS_MODEL="gpt-5.6-sol"
 # Optional: reasoning effort for OpenAI verifier calls (unset = the provider's own
 # default for the chosen model). GPT-5.6 accepts none|low|medium|high|xhigh|max;
@@ -450,10 +454,14 @@ if [ -n "$ARS_CROSS_MODEL" ]; then
   # never accepted. Applies to first-party routes only — compatible-route ids are
   # user-declared and carry no allowlist.
   id_status() {
-    case " gpt-5.5 gpt-5.5-pro gpt-5.4 gpt-5.4-pro gemini-3.1-pro-preview " in
+    case " gpt-5.5 gpt-5.5-pro gpt-5.6-sol gpt-5.4 gpt-5.4-pro gemini-3.1-pro-preview " in
       *" $1 "*) echo "validated"; return ;;
     esac
-    case " gpt-5.6-sol " in
+    # No id is provisional today (gpt-5.6-sol was promoted 2026-07-16 by the
+    # § Promotion Bakeoff). A newly listed id lands here between listing and its
+    # bakeoff; the announce branch below stays wired for that case. The pattern
+    # is a single space, which no non-empty id can match.
+    case " " in
       *" $1 "*) echo "provisional"; return ;;
     esac
     echo "unlisted"
@@ -513,7 +521,9 @@ If `ARS_CROSS_MODEL` is set but the corresponding API key is missing or the mode
 
 ### Promotion Bakeoff (provisional → validated → recommended default)
 
-The run that flips a provisional id (today: `gpt-5.6-sol`) to validated is defined here so a future promotion argues against numbers, not vibes (#518). Validation and the recommended-default flip are two separate promotions — see the Outcome bullet: a bare non-inferiority pass never flips the default by itself.
+The run that flips a provisional id to validated is defined here so a promotion argues against numbers, not vibes (#518). Validation and the recommended-default flip are two separate promotions — see the Outcome bullet: a bare non-inferiority pass never flips the default by itself.
+
+No id is provisional today. This procedure was last run on 2026-07-16 for `gpt-5.6-sol`, which passed all five thresholds and is now `validated`; the recommended default was deliberately not flipped. That run is the worked example of what this section asks for — probe set at `evals/bakeoff/cross_model_promotion/probe_set_v2.json`, report at `audits/cross-model-promotion-bakeoff-gpt-5.6-sol-2026-07-16.md`. Two limits it surfaced are worth reading before the next run: measure 2's ±5 pp tolerance is computed over 10 items and so cannot bind (the smallest observable difference is 10 pp), and the entry gate named below is the OpenAI-key script — the Codex subscription route's counterpart is `scripts/cross_model_smoke_test_codex.sh`, on which the model-id and reasoning-effort echo checks are not implementable.
 
 - **Entry gate:** `scripts/cross_model_smoke_test.sh` passes against the candidate id.
 - **Probe-set precondition (reproducibility):** before any run counts, the probe set must be committed as a versioned fixture (under `evals/` or `audits/`) listing each reference's full text, its ground-truth label (`real` / `fabricated`, with source DOI/URL for the real ones), and the file's sha256 recorded in the run report. A bakeoff against an ad-hoc, unversioned probe set is not a gate result. Composition: 30 references — 20 real (10 easy: DOI-keyed journal articles; 10 hard: preprints, DOI-less, non-English) + 10 synthetic plausible fabrications.
