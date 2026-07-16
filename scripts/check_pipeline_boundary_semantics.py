@@ -51,18 +51,18 @@ from _skill_lint import check_section_literals
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # ---------------------------------------------------------------------------
-# Whole-file content locks (sha256) for the two #528-central reference docs.
+# Whole-file content locks (sha256) for ALL FIVE #528 pipeline surfaces.
 #
-# Eleven codex xhigh review rounds demonstrated that sentence-level pins on a
-# state-machine document cannot converge: every round found another single
-# green mutation of an operative sentence, label, or enum value. The two
-# reference docs below are ENTIRELY operative (state machine authority +
-# Stage 6 protocol), so they get the bibliography_agent-style whole-file
-# hash lock: ANY byte change fails CI until this constant is updated in the
-# same commit — which is the review surface working as designed. The
-# sentence pins above/below stay for targeted error messages; the hash is
-# the catch-all. SKILL.md / orchestrator / tracker are multi-concern files
-# that change for unrelated features, so they keep sentence pins only.
+# Twelve codex xhigh review rounds demonstrated that sentence-level pins on
+# pipeline prompt surfaces cannot converge: every round found another single
+# green mutation of an operative sentence, label, predicate, or enum value.
+# So every surface this lint reads carries the bibliography_agent-style
+# whole-file hash lock: ANY byte change fails CI until this constant is
+# updated in the same commit — which is the review surface working as
+# designed (the same F2-lock convention the repo already applies to
+# bibliography_agent). The sentence pins above/below stay for targeted
+# error messages; the hash is the catch-all that terminates the
+# single-edit-mutation class by construction.
 #
 # Update procedure: edit the doc, run
 #   python3 -c "import hashlib,pathlib;p='<path>';print(hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest())"
@@ -70,6 +70,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # reviewed against the #528 resolutions.
 # ---------------------------------------------------------------------------
 CONTENT_LOCKS = {
+    "academic-pipeline/SKILL.md": "56ee95301d16029053183a12ab1939f44034e66ebb25b1917c65a753cffc479a",
+    "academic-pipeline/agents/pipeline_orchestrator_agent.md": "57aba8259ab418505c53fc9a24939ba5ad972487083f43a6a54b388d5381f5da",
+    "academic-pipeline/agents/state_tracker_agent.md": "b648eac4d4b35c217150539502c20fccc2f3fd026dda8efbb6178b199a288256",
     "academic-pipeline/references/pipeline_state_machine.md": "d507f3694cd4d282b9b3247d0d1855330c836c23ab6e5d41f280c6d455b4ed7f",
     "academic-pipeline/references/process_summary_protocol.md": "5c7053230d73b39d0a5d9d6f5e9f339c12570ae6d3aa2eae2eaf74f51d571e94",
 }
@@ -153,7 +156,12 @@ FULL_ROW = "| FULL | First checkpoint; after integrity boundaries; Stage 5 compl
 
 # Stage 5 execution consumes the gate decision instead of re-asking (SKILL
 # execution contract Step 1; codex round-3 P1).
-SKILL_STEP1_CONSUME = "Consume the citation-style decision recorded at the Stage 5 entry gate"
+SKILL_STEP1_CONSUME = "Consume the citation-style decision recorded at the Stage 5 entry gate; ask which academic formatting style (APA 7.0 / Chicago / IEEE, etc.) only when no gate decision exists (direct format-convert / mid-entry invocation)"
+# The overview summary's terminal ordering (codex round-12 P1).
+SKILL_OVERVIEW_ORDERING = "delivered before the terminal acknowledgement that completes the pipeline"
+# The reset-boundary iron rule scopes MANDATORY to the entry gate (codex
+# round-12 P1: the round-11 prose fix had no pin).
+ORCH_RESET_IRON_RULE = "MANDATORY checkpoints (Stage 2.5 / 4.5, review decisions, the Stage 5 entry gate) remain MANDATORY even when reset co-occurs"
 
 # Stage 6 decline semantics per mirror surface (codex round-3 P1: only the
 # state machine pinned the decline path).
@@ -215,7 +223,7 @@ S6_TRANSITION_ROWS = {
 ORCH_TERMINAL_WIRING = {
     "acknowledgement-sequencing": "Pipeline terminal transition: on the Stage 6 terminal acknowledgement (",
     "acknowledgement-wiring": '`update_stage("6", "completed", outputs)` + `update_pipeline_state("completed")`',
-    "decline-wiring": '`update_stage("6", "skipped", {reason: "user declined Stage 6"})` + `update_pipeline_state("completed")`',
+    "decline-wiring": 'if the user declined Stage 6 at the Stage 5 completion checkpoint — `update_stage("6", "skipped", {reason: "user declined Stage 6"})` + `update_pipeline_state("completed")`',
 }
 
 # The state_tracker contract must accept Stage 6 (codex round-3 P1: the
@@ -262,7 +270,7 @@ ORCH_NON_SKIPPABLE_LINE = "- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-re
 ORCH_ENGAGEMENT_FULL_EXCEPTION = "the Stage 5 completion checkpoint is FULL — never SLIM, regardless of the continue count"
 TRACKER_WIRING = {
     "acknowledgement-outcome": 'on the terminal acknowledgement, `update_stage("6", "completed", outputs)` then `update_pipeline_state("completed")`',
-    "decline-outcome": '`update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
+    "decline-outcome": 'if the user declines Stage 6 at the Stage 5 completion checkpoint, `update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
 }
 
 
@@ -362,8 +370,20 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
     if SKILL_STEP1_CONSUME not in skill:
         errors.append(
             f"invariant 3 ({SKILL}): Stage 5 execution contract Step 1 no "
-            f"longer consumes the entry-gate citation-style decision: "
-            f"{SKILL_STEP1_CONSUME!r}"
+            f"longer consumes the entry-gate citation-style decision (with "
+            f"the ask-only-when-absent fallback): {SKILL_STEP1_CONSUME!r}"
+        )
+    if ORCH_RESET_IRON_RULE not in orch:
+        errors.append(
+            f"invariant 3 ({ORCH}): the reset-boundary iron rule no longer "
+            f"scopes its MANDATORY list to the Stage 5 entry gate: "
+            f"{ORCH_RESET_IRON_RULE!r}"
+        )
+    if SKILL_OVERVIEW_ORDERING not in skill:
+        errors.append(
+            f"invariant 4 ({SKILL}): the overview summary lost the "
+            f"delivery-before-acknowledgement ordering: "
+            f"{SKILL_OVERVIEW_ORDERING!r}"
         )
 
     # Invariant 4 — authority section + transition rows (both H2-scoped)
