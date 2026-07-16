@@ -730,6 +730,51 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             msg=f"errors: {errors}",
         )
 
+    # --- codex round-9 witnesses ---
+
+    def test_inv3_engagement_full_exception_dropped(self) -> None:
+        """Adverse-value mutation (codex round-9 P1): the SLIM engagement
+        downgrade loses its FULL-checkpoint exception — must fire."""
+        mutated = self.orch.replace(
+            "the Stage 5 completion checkpoint is FULL — never SLIM, regardless of the continue count",
+            "all non-MANDATORY checkpoints downgrade to SLIM",
+        )
+        self.assertNotEqual(mutated, self.orch)
+        errors = self._check(orch=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "engagement" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_non_skippable_gains_stage6(self) -> None:
+        """Adverse-value mutation (codex round-9 P1): Stage 6 is added to the
+        non-skippable side while the skippable declaration stays — must fire."""
+        mutated = self.orch.replace(
+            "- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 4.5 (final integrity), Stage 5 (finalize)",
+            "- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 4.5 (final integrity), Stage 5 (finalize), Stage 6 (process summary)",
+        )
+        self.assertNotEqual(mutated, self.orch)
+        errors = self._check(orch=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "non-skippable" in e.lower() for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_tracker_approval_gate_flipped(self) -> None:
+        """Adverse-value mutation (codex round-9 P1): the Stage 6 SSOT block's
+        approval_gate flips to false — must fire."""
+        block = self.mod.TRACKER_STAGE6_ENTRY
+        self.assertIn(block, self.tracker)
+        mutated = self.tracker.replace(
+            block, block.replace('"approval_gate": true', '"approval_gate": false')
+        )
+        self.assertNotEqual(mutated, self.tracker)
+        errors = self._check(tracker=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "Stage 6 entry" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_inv4_tracker_stage6_dropped(self) -> None:
         """Adverse-value mutation (codex round-3 P1): the state_tracker enum
         reverts to '1'..'5' — must fire."""

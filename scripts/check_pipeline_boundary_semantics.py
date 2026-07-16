@@ -195,7 +195,24 @@ ORCH_TERMINAL_WIRING = {
 # orchestrator wiring called update_stage(6, ...) against a "1".."5" enum).
 TRACKER = "academic-pipeline/agents/state_tracker_agent.md"
 TRACKER_STAGE_ID_ENUM = '"1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5", "6"'
-TRACKER_STAGE6_ENTRY = '"6": {'
+# The complete Stage 6 SSOT block — pinning only the key would let a
+# load-bearing field (approval_gate) flip while staying green (codex
+# round-9 P1).
+TRACKER_STAGE6_ENTRY = '''"6": {
+      "name": "PROCESS SUMMARY",
+      "skill": "academic-pipeline",
+      "status": "pending",
+      "mode": null,
+      "outputs": [],
+      "started_at": null,
+      "completed_at": null,
+      "checkpoint_confirmed": false,
+      "checkpoint_type": null,
+      "schema_validated": false,
+      "assigned_to": null,
+      "approval_gate": true,
+      "team_notes": null
+    }'''
 # check_prerequisites drives the automatic material-gap warnings — its Stage 2
 # row must carry the Methodology Blueprint like every other Stage 1→2 surface
 # (codex round-8 P1), and Stage 6 must be a known target stage.
@@ -204,6 +221,13 @@ TRACKER_PREREQ_STAGE6_ROW = "| Stage 6 | None (Final Paper already delivered at 
 # The skip-command validator only honors explicitly-skippable stages — the
 # decline path requires Stage 6 on the skippable list (codex round-8 P1).
 ORCH_SKIPPABLE_PIN = "Stage 6 (process summary — declined at the Stage 5 completion checkpoint; marked `skipped`, pipeline still terminates `completed`)"
+# Both sides of the skip classification are pinned as complete lines — adding
+# Stage 6 to the non-skippable side would otherwise stay green while
+# contradicting the skippable declaration (codex round-9 P1).
+ORCH_NON_SKIPPABLE_LINE = "- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 4.5 (final integrity), Stage 5 (finalize)"
+# The SLIM engagement downgrade must not swallow the FULL-pinned Stage 5
+# completion checkpoint (codex round-9 P1).
+ORCH_ENGAGEMENT_FULL_EXCEPTION = "the Stage 5 completion checkpoint is FULL — never SLIM, regardless of the continue count"
 TRACKER_WIRING = {
     "acknowledgement-outcome": 'on the terminal acknowledgement, `update_stage("6", "completed", outputs)` then `update_pipeline_state("completed")`',
     "decline-outcome": '`update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
@@ -355,6 +379,18 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
         errors.append(
             f"invariant 4 ({ORCH}): the skippable-stages list no longer "
             f"carries Stage 6 with its decline scope: {ORCH_SKIPPABLE_PIN!r}"
+        )
+    if ORCH_NON_SKIPPABLE_LINE not in orch:
+        errors.append(
+            f"invariant 4 ({ORCH}): the non-skippable line drifted from the "
+            f"pinned form (it must not gain Stage 6): "
+            f"{ORCH_NON_SKIPPABLE_LINE!r}"
+        )
+    if ORCH_ENGAGEMENT_FULL_EXCEPTION not in orch:
+        errors.append(
+            f"invariant 3 ({ORCH}): the engagement-tracking SLIM downgrade "
+            f"lost its FULL-checkpoint exception: "
+            f"{ORCH_ENGAGEMENT_FULL_EXCEPTION!r}"
         )
     for name, fragment in ORCH_TERMINAL_WIRING.items():
         if fragment not in orch:

@@ -142,8 +142,8 @@ consecutive_continue_count: integer (reset to 0 when user chooses any action oth
 ```
 
 - `consecutive_continue_count < 2` -> FULL checkpoint (unless rules above override)
-- `consecutive_continue_count >= 2` -> SLIM checkpoint (unless rules above override to MANDATORY)
-- `consecutive_continue_count >= 4` -> SLIM + awareness prompt ("You've continued [N] times in a row...")
+- `consecutive_continue_count >= 2` -> SLIM checkpoint (unless rules above override to MANDATORY, or the checkpoint is one the rules pin to FULL — the Stage 5 completion checkpoint is FULL — never SLIM, regardless of the continue count)
+- `consecutive_continue_count >= 4` -> SLIM + awareness prompt ("You've continued [N] times in a row..."); the FULL-pinned checkpoints above still render FULL
 
 #### Steps
 
