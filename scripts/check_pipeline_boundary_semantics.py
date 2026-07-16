@@ -196,6 +196,14 @@ ORCH_TERMINAL_WIRING = {
 TRACKER = "academic-pipeline/agents/state_tracker_agent.md"
 TRACKER_STAGE_ID_ENUM = '"1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5", "6"'
 TRACKER_STAGE6_ENTRY = '"6": {'
+# check_prerequisites drives the automatic material-gap warnings — its Stage 2
+# row must carry the Methodology Blueprint like every other Stage 1→2 surface
+# (codex round-8 P1), and Stage 6 must be a known target stage.
+TRACKER_PREREQ_STAGE2_ROW = "| Stage 2 | None (but Stage 1 output recommended) | RQ Brief, Methodology Blueprint, Bibliography, Synthesis |"
+TRACKER_PREREQ_STAGE6_ROW = "| Stage 6 | None (Final Paper already delivered at Stage 5) |"
+# The skip-command validator only honors explicitly-skippable stages — the
+# decline path requires Stage 6 on the skippable list (codex round-8 P1).
+ORCH_SKIPPABLE_PIN = "Stage 6 (process summary — declined at the Stage 5 completion checkpoint; marked `skipped`, pipeline still terminates `completed`)"
 TRACKER_WIRING = {
     "acknowledgement-outcome": 'on the terminal acknowledgement, `update_stage("6", "completed", outputs)` then `update_pipeline_state("completed")`',
     "decline-outcome": '`update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
@@ -343,6 +351,11 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             f"invariant 4 ({ORCH}): Stage 5->6 handoff row lost the type-"
             f"bearing completion trigger: {ORCH_STAGE56_TRIGGER_PIN!r}"
         )
+    if ORCH_SKIPPABLE_PIN not in orch:
+        errors.append(
+            f"invariant 4 ({ORCH}): the skippable-stages list no longer "
+            f"carries Stage 6 with its decline scope: {ORCH_SKIPPABLE_PIN!r}"
+        )
     for name, fragment in ORCH_TERMINAL_WIRING.items():
         if fragment not in orch:
             errors.append(
@@ -409,6 +422,17 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                     f"invariant 4 ({TRACKER}): {name} pair missing: "
                     f"{fragment!r}"
                 )
+        if TRACKER_PREREQ_STAGE2_ROW not in tracker:
+            errors.append(
+                f"invariant 1 ({TRACKER}): check_prerequisites Stage 2 row "
+                f"no longer recommends the Methodology Blueprint: "
+                f"{TRACKER_PREREQ_STAGE2_ROW!r}"
+            )
+        if TRACKER_PREREQ_STAGE6_ROW not in tracker:
+            errors.append(
+                f"invariant 4 ({TRACKER}): check_prerequisites lost its "
+                f"Stage 6 row: {TRACKER_PREREQ_STAGE6_ROW!r}"
+            )
 
     return errors
 

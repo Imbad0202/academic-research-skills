@@ -367,7 +367,7 @@ Check whether prerequisite materials for entering the specified stage are availa
 | Target Stage | Required Materials | Recommended Materials |
 |-------------|-------------------|----------------------|
 | Stage 1 | None (can start from scratch) | User-provided topic/direction |
-| Stage 2 | None (but Stage 1 output recommended) | RQ Brief, Bibliography, Synthesis |
+| Stage 2 | None (but Stage 1 output recommended) | RQ Brief, Methodology Blueprint, Bibliography, Synthesis |
 | Stage 2.5 | Paper Draft | -- |
 | Stage 3 | **Verified Paper Draft + Integrity Report (Pre)** | -- |
 | Stage 4 | Review Reports + Revision Roadmap | Paper Draft |
@@ -375,6 +375,7 @@ Check whether prerequisite materials for entering the specified stage are availa
 | Stage 4' | Re-Review Report (Decision: Major) | Revised Draft |
 | Stage 4.5 | Revised Draft or Re-Revised Draft | -- |
 | Stage 5 | **Integrity Report (Final) — verdict: PASS** | -- |
+| Stage 6 | None (Final Paper already delivered at Stage 5) | Pipeline state history + dialogue_log_ref ranges |
 
 **Return format:**
 ```

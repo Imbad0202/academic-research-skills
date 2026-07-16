@@ -687,6 +687,49 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             msg=f"errors: {errors}",
         )
 
+    # --- codex round-8 witnesses ---
+
+    def test_inv1_tracker_prereq_blueprint_dropped(self) -> None:
+        """Adverse-value mutation (codex round-8 P1): check_prerequisites
+        Stage 2 row drops the Methodology Blueprint — must fire."""
+        mutated = self.tracker.replace(
+            "| Stage 2 | None (but Stage 1 output recommended) | RQ Brief, Methodology Blueprint, Bibliography, Synthesis |",
+            "| Stage 2 | None (but Stage 1 output recommended) | RQ Brief, Bibliography, Synthesis |",
+        )
+        self.assertNotEqual(mutated, self.tracker)
+        errors = self._check(tracker=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 1") and self.mod.TRACKER in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_tracker_prereq_stage6_row_dropped(self) -> None:
+        mutated = self.tracker.replace(
+            "| Stage 6 | None (Final Paper already delivered at Stage 5) |",
+            "| Stage 7 | None |",
+        )
+        self.assertNotEqual(mutated, self.tracker)
+        errors = self._check(tracker=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "Stage 6 row" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_orch_stage6_moved_to_non_skippable(self) -> None:
+        """Adverse-value mutation (codex round-8 P1): Stage 6 leaves the
+        skippable list (the skip validator would then reject the pinned
+        decline path) — must fire."""
+        mutated = self.orch.replace(
+            ", Stage 6 (process summary — declined at the Stage 5 completion checkpoint; marked `skipped`, pipeline still terminates `completed`)",
+            "",
+        )
+        self.assertNotEqual(mutated, self.orch)
+        errors = self._check(orch=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "skippable-stages" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_inv4_tracker_stage6_dropped(self) -> None:
         """Adverse-value mutation (codex round-3 P1): the state_tracker enum
         reverts to '1'..'5' — must fire."""
