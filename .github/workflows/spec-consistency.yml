@@ -367,6 +367,18 @@ jobs:
           PYTHONPATH: .
         run: python scripts/check_439_format_profile.py
 
+      - name: Run #528 pipeline boundary-semantics defrift lock
+        # Pins the four Mode-A-replay resolutions (#529 items 1-2 + #528
+        # items 3-4) across academic-pipeline SKILL.md / orchestrator /
+        # state machine / process_summary_protocol: Methodology Blueprint
+        # in the Stage 1->2 handoff, Stage 3' Minor never triggers
+        # coaching, the Stage 5 MANDATORY boundary is the entry gate
+        # (completion checkpoint FULL — never SLIM), and the Stage 6
+        # terminal-acknowledgement semantics. The pytest companion
+        # `test_check_pipeline_boundary_semantics.py` runs via the
+        # unified manifest (#156).
+        run: python3 scripts/check_pipeline_boundary_semantics.py
+
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
         # block, 16 Bucket B/C/D agents DON'T, and each Bucket A block

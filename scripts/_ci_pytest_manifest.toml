@@ -287,3 +287,7 @@ path = "scripts/test_check_tools_allowlist.py"
 [[pytest]]
 id = "510-panel-synthesis-checker"
 path = "scripts/test_check_panel_synthesis.py"
+
+[[pytest]]
+id = "528-pipeline-boundary-semantics"
+path = "scripts/test_check_pipeline_boundary_semantics.py"
