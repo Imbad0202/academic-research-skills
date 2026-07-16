@@ -160,6 +160,41 @@ class ParseTests(unittest.TestCase):
         with self.assertRaises(cmh.HandoffError):
             cmh.extract_handoff_block(one + "\n" + one)
 
+    def test_parse_rejects_fence_inside_payload_directly(self) -> None:
+        """codex round-6 P1: parse_handoff enforces the no-fence-inside rule
+        itself — a caller that skips extract_handoff_block gets the same
+        rejection."""
+        block = "\n".join([
+            cmh.OPEN_FENCE,
+            "checkpoint_kind: da_critique",
+            "owner_agent: devils_advocate_reviewer_agent",
+            "correlation_id: da-demo-001",
+            "expected_result: full_return",
+            "payload:",
+            "manuscript text",
+            cmh.OPEN_FENCE,  # nested opener inside the payload
+            "more text",
+            cmh.CLOSE_FENCE,
+        ])
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(block)
+
+    def test_unclosed_v2_opener_still_raises(self) -> None:
+        """codex round-6 P1: generous any-version detection is load-bearing —
+        an opener-only v2 handoff must raise, never return None (this
+        witness fails if detection is narrowed to the exact v1 fence)."""
+        text = "[CROSS-MODEL-HANDOFF v2]\ncheckpoint_kind: design_freeze\npayload:\nx"
+        with self.assertRaises(cmh.HandoffError):
+            cmh.extract_handoff_block(text)
+
+    def test_zero_width_prefixed_fence_detected_and_rejected(self) -> None:
+        """Invisible-character defense (#524 lesson): a U+200B-prefixed fence
+        is DETECTED (folded) then REJECTED by raw acceptance — never an
+        ordinary deliverable."""
+        text = "\u200b" + _envelope("design_freeze", "enum_comparison", OWNER_SOUND)
+        with self.assertRaises(cmh.HandoffError):
+            cmh.extract_handoff_block(text)
+
     def test_unknown_kind_fails_closed(self) -> None:
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(_envelope("integrity_sample", "enum_comparison", OWNER_SOUND))

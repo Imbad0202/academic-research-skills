@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 OPEN_FENCE = "[CROSS-MODEL-HANDOFF v1]"
@@ -94,6 +95,20 @@ _HEADER_RE = re.compile(r"^([a-z_]+):[ \t]*(.*)$")
 _REQUIRED_HEADERS = ("checkpoint_kind", "owner_agent", "correlation_id", "expected_result")
 
 
+def _fold_for_detection(line: str) -> str:
+    """Strip whitespace AND Unicode format (Cf) characters for fence
+    DETECTION only — a zero-width-prefixed fence must be detected (then
+    rejected by the raw-equality acceptance check), not skipped as an
+    ordinary deliverable (#524 fold-before-compare lesson). Acceptance
+    stays raw column-0 equality."""
+    return "".join(c for c in line if unicodedata.category(c) != "Cf").strip()
+
+
+def _is_fence_shaped(line: str) -> bool:
+    folded = _fold_for_detection(line)
+    return bool(_ANY_OPEN_FENCE_RE.match(folded)) or folded == CLOSE_FENCE
+
+
 def extract_handoff_block(text: str) -> str | None:
     """Return the first fenced handoff block (fences included), or None.
 
@@ -107,8 +122,8 @@ def extract_handoff_block(text: str) -> str | None:
     # strict (raw line equality at column 0, exact v1) so an indented or
     # re-versioned fence is malformed, never transported (codex #527
     # round-5 P1: indented fences).
-    opens = [i for i, l in enumerate(lines) if _ANY_OPEN_FENCE_RE.match(l.strip())]
-    closes = [i for i, l in enumerate(lines) if l.strip() == CLOSE_FENCE]
+    opens = [i for i, l in enumerate(lines) if _ANY_OPEN_FENCE_RE.match(_fold_for_detection(l))]
+    closes = [i for i, l in enumerate(lines) if _fold_for_detection(l) == CLOSE_FENCE]
     if not opens and not closes:
         return None
     if len(opens) > 1 or len(closes) > 1:
@@ -154,6 +169,14 @@ def parse_handoff(block: str) -> Handoff:
     headers: dict[str, str] = {}
     payload_lines: list[str] | None = None
     for raw in lines[1:-1]:
+        if _is_fence_shaped(raw):
+            # parse_handoff enforces the no-fence-inside rule itself, so a
+            # caller that skips extract_handoff_block gets the same
+            # rejection (codex #527 round-6 P1).
+            raise HandoffError(
+                "malformed_handoff: fence-shaped line inside the envelope "
+                "(the payload must not contain a fence-shaped line)"
+            )
         if payload_lines is not None:
             payload_lines.append(raw)
             continue
