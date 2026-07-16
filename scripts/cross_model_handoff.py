@@ -102,6 +102,11 @@ def extract_handoff_block(text: str) -> str | None:
     must not invent a transport for it.
     """
     lines = text.splitlines()
+    # Detection is generous (stripped match, any version) so nothing
+    # handoff-shaped can pass as an ordinary deliverable; ACCEPTANCE is
+    # strict (raw line equality at column 0, exact v1) so an indented or
+    # re-versioned fence is malformed, never transported (codex #527
+    # round-5 P1: indented fences).
     opens = [i for i, l in enumerate(lines) if _ANY_OPEN_FENCE_RE.match(l.strip())]
     closes = [i for i, l in enumerate(lines) if l.strip() == CLOSE_FENCE]
     if not opens and not closes:
@@ -118,13 +123,16 @@ def extract_handoff_block(text: str) -> str | None:
     if not opens:
         raise HandoffError("malformed_handoff: closing fence without opening fence")
     start = opens[0]
-    if lines[start].strip() != OPEN_FENCE:
+    if lines[start] != OPEN_FENCE:
         raise HandoffError(
-            f"malformed_handoff: unknown envelope version {lines[start].strip()!r} "
-            f"(only {OPEN_FENCE!r} is supported)"
+            f"malformed_handoff: fence {lines[start]!r} is not the exact "
+            f"column-0 {OPEN_FENCE!r} (indented or unknown-version fences "
+            f"are rejected, never transported)"
         )
     if not closes or closes[0] < start:
         raise HandoffError("malformed_handoff: opening fence without closing fence")
+    if lines[closes[0]] != CLOSE_FENCE:
+        raise HandoffError("malformed_handoff: closing fence must sit at column 0")
     return "\n".join(lines[start : closes[0] + 1])
 
 
@@ -138,9 +146,9 @@ def parse_handoff(block: str) -> Handoff:
     is a transport failure, not a best-effort guess.
     """
     lines = block.splitlines()
-    if not lines or lines[0].strip() != OPEN_FENCE:
+    if not lines or lines[0] != OPEN_FENCE:
         raise HandoffError("malformed_handoff: missing or unknown version fence")
-    if lines[-1].strip() != CLOSE_FENCE:
+    if lines[-1] != CLOSE_FENCE:
         raise HandoffError("malformed_handoff: missing closing fence")
 
     headers: dict[str, str] = {}

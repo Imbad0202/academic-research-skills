@@ -49,6 +49,9 @@ OWNERS = {
         ALL_THREE_FIELDS_CLAUSE,
         # Payload exclusion: the primary's judgment never rides the payload.
         "with the Design-Freeze Checkpoint Audit section (and any other self-judgment, scores, or reasoning) stripped out",
+        # Consent predicate (codex round-5 P1): the check runs only when the
+        # flag is set AND consent was granted.
+        "only when `ARS_CROSS_MODEL` is set + consent granted",
     ),
     "academic-paper-reviewer/agents/editorial_synthesizer_agent.md": (
         "`checkpoint_kind: editorial_decision`",
@@ -56,12 +59,14 @@ OWNERS = {
         OWNER_BLINDNESS_CLAUSE,
         ALL_THREE_FIELDS_CLAUSE,
         "**Never include your decision, the scoring matrix outcome, or your rationale**",
+        "the consent gate in `shared/cross_model_verification.md` has been passed (reviewer cards + paper metadata go to an external provider — the env var alone is not consent)",
     ),
     "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md": (
         "`checkpoint_kind: da_critique`",
         "`expected_result: full_return`",
         "no `owner_decision` header",
         "without your own DA findings",
+        "First ask for explicit user consent and identify the external provider, model, and manuscript content that would be sent",
     ),
 }
 
@@ -94,6 +99,7 @@ SHARED_REQUIRED = [
 ORCH_HEADING_LINE = "**Cross-model handoff consumption (#527, Mode A dispatcher).**"
 ORCH_REQUIRED = [
     cmh.OPEN_FENCE,
+    "ANY version, detection is generous",
     "a transport request, never an ordinary deliverable",
     "scripts/cross_model_handoff.py",
     "[CROSS-MODEL-ERROR: malformed_handoff]",

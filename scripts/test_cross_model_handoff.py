@@ -145,6 +145,16 @@ class ParseTests(unittest.TestCase):
             cmh.extract_handoff_block(text)
         self.assertIn("ambiguous", str(ctx.exception))
 
+    def test_indented_fences_fail_closed(self) -> None:
+        """codex round-5 P1: fences must sit at column 0 — an indented
+        envelope is malformed, never transported and never a deliverable."""
+        indented = "\n".join(
+            "  " + l if l.strip() in (cmh.OPEN_FENCE, cmh.CLOSE_FENCE) else l
+            for l in _envelope("design_freeze", "enum_comparison", OWNER_SOUND).splitlines()
+        )
+        with self.assertRaises(cmh.HandoffError):
+            cmh.extract_handoff_block(indented)
+
     def test_two_envelopes_fail_closed(self) -> None:
         one = _envelope("design_freeze", "enum_comparison", OWNER_SOUND)
         with self.assertRaises(cmh.HandoffError):
@@ -230,13 +240,42 @@ class RoutingTests(unittest.TestCase):
     def test_divergence_reinvokes_owner_with_minimum_context(self) -> None:
         raw = json.dumps({"decision": "fundamental_concern", "drivers": ["RQ unanswerable"], "confidence": "high"})
         r = cmh.route_result(self.h, transport_ok=True, raw_result=raw)
-        self.assertEqual(r.outcome, cmh.DIVERGENCE_REINVOKE)
-        ctx = r.return_context
-        self.assertEqual(ctx["correlation_id"], "design-freeze-demo-001")
-        self.assertEqual(ctx["owner_agent"], "research_architect_agent")
-        self.assertEqual(ctx["owner_decision"]["decision"], "sound")
-        self.assertEqual(ctx["cross_model_decision"]["decision"], "fundamental_concern")
-        self.assertIn("Blueprint", ctx["original_payload"])
+        self.assertEqual(r.outcome, "divergence_reinvoke_owner")
+        # The COMPLETE minimum context, asserted exactly (codex round-5 P1:
+        # a truncated cross_model_decision stayed green under partial
+        # assertions) — the owner needs the drivers/confidence for the
+        # mandated targeted rebuttal.
+        self.assertEqual(
+            r.return_context,
+            {
+                "correlation_id": "design-freeze-demo-001",
+                "owner_agent": "research_architect_agent",
+                "owner_decision": {"decision": "sound", "drivers": ["traces to RQ"], "confidence": "high"},
+                "cross_model_decision": {
+                    "decision": "fundamental_concern",
+                    "drivers": ["RQ unanswerable"],
+                    "confidence": "high",
+                },
+                "original_payload": "RQ Brief...\nBlueprint...",
+            },
+        )
+
+    def test_transport_failure_wins_over_residual_body(self) -> None:
+        """codex round-5 P1: transport_ok is authoritative — a failed
+        transport carrying a valid-looking residual body must still be
+        unavailable, never routed."""
+        raw = json.dumps({"decision": "sound", "drivers": ["ok"], "confidence": "high"})
+        r = cmh.route_result(self.h, transport_ok=False, raw_result=raw)
+        self.assertEqual(r.outcome, "unavailable")
+        self.assertEqual(r.error, "transport_failure")
+
+    def test_non_string_driver_rejected(self) -> None:
+        """codex round-5 P1: adverse witness for the drivers element-type
+        rule."""
+        raw = json.dumps({"decision": "sound", "drivers": [7], "confidence": "high"})
+        r = cmh.route_result(self.h, transport_ok=True, raw_result=raw)
+        self.assertEqual(r.outcome, "unavailable")
+        self.assertIn("malformed_result", r.error)
 
     def test_incomplete_result_is_unavailable(self) -> None:
         """codex round-1 P1: the #518 output contract requires all three

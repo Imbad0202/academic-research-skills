@@ -151,6 +151,27 @@ class HandoffContractLintTests(unittest.TestCase):
         errors = self._check(shared=mutated)
         self.assertTrue(any(e.startswith("invariant 1") for e in errors), msg=f"{errors}")
 
+    def test_owner_consent_predicate_inverted(self) -> None:
+        """codex round-5 P1: flipping an owner's consent predicate must fire."""
+        path = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
+        owners = dict(self.owners)
+        owners[path] = owners[path].replace(
+            "the consent gate in `shared/cross_model_verification.md` has been passed",
+            "the consent gate in `shared/cross_model_verification.md` has not been passed",
+        )
+        errors = self._check(owners=owners)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and path in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_orch_trigger_narrowed_to_v1_only(self) -> None:
+        """codex round-5 P1: the Mode-A trigger must stay any-version
+        (generous detection) — narrowing it must fire."""
+        mutated = self.orch.replace("ANY version, detection is generous", "the v1 fence only")
+        errors = self._check(orch=mutated)
+        self.assertTrue(any(e.startswith("invariant 3") for e in errors), msg=f"{errors}")
+
     def test_owner_kind_swapped(self) -> None:
         """Adverse-value: the DA owner claims enum_comparison — must fire."""
         path = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
