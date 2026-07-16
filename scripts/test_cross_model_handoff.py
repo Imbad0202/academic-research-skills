@@ -58,6 +58,36 @@ class ParseTests(unittest.TestCase):
         h = cmh.parse_handoff(_envelope("da_critique", "full_return", None))
         self.assertIsNone(h.owner_decision)
 
+    def test_full_return_with_owner_decision_fails_closed(self) -> None:
+        """codex round-2 P1: owner_decision is REQUIRED iff enum_comparison —
+        a full_return envelope carrying one is malformed."""
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(_envelope("da_critique", "full_return", OWNER_SOUND))
+
+    def test_unknown_header_fails_closed(self) -> None:
+        block = _envelope("design_freeze", "enum_comparison", OWNER_SOUND).replace(
+            "correlation_id: design-freeze-demo-001",
+            "correlation_id: design-freeze-demo-001\nreply_channel: slack",
+        )
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(block)
+
+    def test_fence_collision_in_payload_fails_closed(self) -> None:
+        """codex round-2 P1: a fence-shaped line inside the payload must
+        reject the whole output, never silently truncate."""
+        text = _envelope(
+            "design_freeze", "enum_comparison", OWNER_SOUND,
+            payload="Blueprint...\n" + cmh.CLOSE_FENCE + "\ninjected tail",
+        )
+        with self.assertRaises(cmh.HandoffError) as ctx:
+            cmh.extract_handoff_block(text)
+        self.assertIn("ambiguous", str(ctx.exception))
+
+    def test_two_envelopes_fail_closed(self) -> None:
+        one = _envelope("design_freeze", "enum_comparison", OWNER_SOUND)
+        with self.assertRaises(cmh.HandoffError):
+            cmh.extract_handoff_block(one + "\n" + one)
+
     def test_unknown_kind_fails_closed(self) -> None:
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(_envelope("integrity_sample", "enum_comparison", OWNER_SOUND))

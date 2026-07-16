@@ -102,20 +102,30 @@ def extract_handoff_block(text: str) -> str | None:
     must not invent a transport for it.
     """
     lines = text.splitlines()
-    start = next(
-        (i for i, l in enumerate(lines) if _ANY_OPEN_FENCE_RE.match(l.strip())), None
-    )
-    if start is None:
+    opens = [i for i, l in enumerate(lines) if _ANY_OPEN_FENCE_RE.match(l.strip())]
+    closes = [i for i, l in enumerate(lines) if l.strip() == CLOSE_FENCE]
+    if not opens and not closes:
         return None
+    if len(opens) > 1 or len(closes) > 1:
+        # A fence-shaped line inside the payload (or a second envelope)
+        # would silently truncate/confuse extraction — reject the whole
+        # output instead of guessing which fence is real (codex #527
+        # round-2 P1: closing-fence collision).
+        raise HandoffError(
+            "malformed_handoff: ambiguous fences — exactly one envelope per "
+            "output, and the payload must not contain a fence-shaped line"
+        )
+    if not opens:
+        raise HandoffError("malformed_handoff: closing fence without opening fence")
+    start = opens[0]
     if lines[start].strip() != OPEN_FENCE:
         raise HandoffError(
             f"malformed_handoff: unknown envelope version {lines[start].strip()!r} "
             f"(only {OPEN_FENCE!r} is supported)"
         )
-    end = next((i for i in range(start + 1, len(lines)) if lines[i].strip() == CLOSE_FENCE), None)
-    if end is None:
+    if not closes or closes[0] < start:
         raise HandoffError("malformed_handoff: opening fence without closing fence")
-    return "\n".join(lines[start : end + 1])
+    return "\n".join(lines[start : closes[0] + 1])
 
 
 def parse_handoff(block: str) -> Handoff:
@@ -155,6 +165,9 @@ def parse_handoff(block: str) -> Handoff:
     for key in _REQUIRED_HEADERS:
         if not headers.get(key):
             raise HandoffError(f"malformed_handoff: missing header {key!r}")
+    unknown = set(headers) - set(_REQUIRED_HEADERS) - {"owner_decision"}
+    if unknown:
+        raise HandoffError(f"malformed_handoff: unknown header(s) {sorted(unknown)}")
     if payload_lines is None or not "\n".join(payload_lines).strip():
         raise HandoffError("malformed_handoff: missing payload")
 
@@ -174,6 +187,11 @@ def parse_handoff(block: str) -> Handoff:
         )
 
     owner_decision = None
+    if expected == "full_return" and "owner_decision" in headers:
+        raise HandoffError(
+            "malformed_handoff: owner_decision is REQUIRED iff enum_comparison "
+            "— a full_return envelope must not carry one"
+        )
     if expected == "enum_comparison":
         raw_decision = headers.get("owner_decision", "")
         if not raw_decision:

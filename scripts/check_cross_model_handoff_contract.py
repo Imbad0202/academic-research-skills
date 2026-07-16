@@ -40,21 +40,28 @@ ORCH = "academic-pipeline/agents/pipeline_orchestrator_agent.md"
 # (codex #527 round-1 P1). The enum owners additionally pin their
 # owner_decision blindness clause.
 OWNER_BLINDNESS_CLAUSE = "never forwarded to the cross-model"
+ALL_THREE_FIELDS_CLAUSE = "all three fields, the envelope grammar rejects a bare decision"
 OWNERS = {
     "deep-research/agents/research_architect_agent.md": (
         "`checkpoint_kind: design_freeze`",
         "`expected_result: enum_comparison`",
         OWNER_BLINDNESS_CLAUSE,
+        ALL_THREE_FIELDS_CLAUSE,
+        # Payload exclusion: the primary's judgment never rides the payload.
+        "with the Design-Freeze Checkpoint Audit section (and any other self-judgment, scores, or reasoning) stripped out",
     ),
     "academic-paper-reviewer/agents/editorial_synthesizer_agent.md": (
         "`checkpoint_kind: editorial_decision`",
         "`expected_result: enum_comparison`",
         OWNER_BLINDNESS_CLAUSE,
+        ALL_THREE_FIELDS_CLAUSE,
+        "**Never include your decision, the scoring matrix outcome, or your rationale**",
     ),
     "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md": (
         "`checkpoint_kind: da_critique`",
         "`expected_result: full_return`",
         "no `owner_decision` header",
+        "without your own DA findings",
     ),
 }
 
@@ -66,7 +73,11 @@ SHARED_REQUIRED = [
     "checkpoint_kind: design_freeze | editorial_decision | da_critique",
     "expected_result: enum_comparison | full_return",
     "correlation_id:",
+    "owner_agent:",
     "owner_decision:",
+    "REQUIRED iff enum_comparison",
+    "Structured decisions carry ALL THREE fields (`decision`, `drivers`, `confidence`)",
+    "must not contain a fence-shaped line",
     "NEVER forwarded to the cross-model",
     "payload only",
     "[CROSS-MODEL-ERROR: malformed_handoff]",

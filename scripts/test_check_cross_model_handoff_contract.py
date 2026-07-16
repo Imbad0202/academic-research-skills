@@ -113,6 +113,34 @@ class HandoffContractLintTests(unittest.TestCase):
             msg=f"errors: {errors}",
         )
 
+    def test_owner_payload_exclusion_inverted(self) -> None:
+        """codex round-2 P1: inverting the editorial payload exclusion would
+        leak the primary judgment into the transported payload — must fire."""
+        path = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
+        owners = dict(self.owners)
+        owners[path] = owners[path].replace(
+            "**Never include your decision, the scoring matrix outcome, or your rationale**",
+            "**Include your decision for context**",
+        )
+        errors = self._check(owners=owners)
+        self.assertTrue(
+            any(e.startswith("invariant 2") and path in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_shared_all_three_fields_narrowed(self) -> None:
+        mutated = self.shared.replace(
+            "Structured decisions carry ALL THREE fields (`decision`, `drivers`, `confidence`)",
+            "Structured decisions carry a decision field",
+        )
+        errors = self._check(shared=mutated)
+        self.assertTrue(any(e.startswith("invariant 1") for e in errors), msg=f"{errors}")
+
+    def test_shared_owner_agent_header_renamed(self) -> None:
+        mutated = self.shared.replace("owner_agent:", "agent:")
+        errors = self._check(shared=mutated)
+        self.assertTrue(any(e.startswith("invariant 1") for e in errors), msg=f"{errors}")
+
     def test_owner_kind_swapped(self) -> None:
         """Adverse-value: the DA owner claims enum_comparison — must fire."""
         path = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
