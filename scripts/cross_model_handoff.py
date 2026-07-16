@@ -107,8 +107,18 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
     return obj
 
 
+def _reject_constant(name: str):
+    # NaN / Infinity / -Infinity are not standard JSON — a "strict" decision
+    # object must not smuggle them through (codex #527 round-13 P1).
+    raise ValueError(f"non-standard JSON constant {name!r}")
+
+
 def _loads_strict(raw: str):
-    return json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
+    return json.loads(
+        raw,
+        object_pairs_hook=_reject_duplicate_keys,
+        parse_constant=_reject_constant,
+    )
 
 
 def _is_blank(text: str) -> bool:
@@ -219,7 +229,10 @@ def parse_handoff(block: str) -> Handoff:
         headers[key] = value
 
     for key in _REQUIRED_HEADERS:
-        if not headers.get(key):
+        # A value that is blank after Cf-folding (e.g. a zero-width-only
+        # correlation_id) is missing, not a stable token (codex #527
+        # round-13 P1).
+        if key not in headers or _is_blank(headers[key]):
             raise HandoffError(f"malformed_handoff: missing header {key!r}")
     unknown = set(headers) - set(_REQUIRED_HEADERS) - {"owner_decision"}
     if unknown:

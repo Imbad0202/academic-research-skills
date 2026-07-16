@@ -82,6 +82,23 @@ class ModuleConstantsTests(unittest.TestCase):
         r = cmh.route_result(h, transport_ok=True, raw_result=raw)
         self.assertEqual(r.outcome, "unavailable")
 
+    def test_exactly_three_drivers_accepted(self) -> None:
+        """codex round-13 P1: the documented maximum (three drivers) is
+        VALID — an off-by-one tightening must fail this witness."""
+        h = cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND))
+        raw = json.dumps({"decision": "sound", "drivers": ["a", "b", "c"], "confidence": "low"})
+        r = cmh.route_result(h, transport_ok=True, raw_result=raw)
+        self.assertEqual(r.outcome, "agreement_fill_no_reinvoke")
+
+    def test_nan_infinity_rejected_on_both_paths(self) -> None:
+        """codex round-13 P1: NaN/Infinity are not standard JSON."""
+        bad = '{"decision": "sound", "drivers": ["x"], "confidence": "high", "extra": NaN}'
+        h = cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND))
+        r = cmh.route_result(h, transport_ok=True, raw_result=bad)
+        self.assertEqual(r.outcome, "unavailable")
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", bad))
+
     def test_out_of_contract_confidence_rejected(self) -> None:
         h = cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND))
         raw = json.dumps({"decision": "sound", "drivers": [], "confidence": "unbounded"})
@@ -287,6 +304,29 @@ class ParseTests(unittest.TestCase):
             self.assertNotEqual(mutated, base, msg=name)
             with self.assertRaises(cmh.HandoffError, msg=name):
                 cmh.parse_handoff(mutated)
+
+    def test_missing_payload_marker_is_handoff_error(self) -> None:
+        """codex round-13 P1: an envelope with NO payload: marker at all must
+        raise HandoffError, never TypeError."""
+        block = "\n".join([
+            cmh.OPEN_FENCE,
+            "checkpoint_kind: da_critique",
+            "owner_agent: devils_advocate_reviewer_agent",
+            "correlation_id: da-demo-003",
+            "expected_result: full_return",
+            cmh.CLOSE_FENCE,
+        ])
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(block)
+
+    def test_invisible_only_correlation_id_is_missing(self) -> None:
+        """codex round-13 P1: a zero-width-only correlation_id is not a
+        stable token."""
+        block = _envelope("design_freeze", "enum_comparison", OWNER_SOUND).replace(
+            "correlation_id: design-freeze-demo-001", "correlation_id: ​"
+        )
+        with self.assertRaises(cmh.HandoffError):
+            cmh.parse_handoff(block)
 
     def test_invisible_only_payload_is_missing(self) -> None:
         """codex round-11 P1: a Cf-only payload is blank — no substance to
