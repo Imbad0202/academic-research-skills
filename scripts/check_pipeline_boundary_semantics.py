@@ -217,6 +217,11 @@ TRACKER_STAGE6_ENTRY = '''"6": {
 # row must carry the Methodology Blueprint like every other Stage 1→2 surface
 # (codex round-8 P1), and Stage 6 must be a known target stage.
 TRACKER_PREREQ_STAGE2_ROW = "| Stage 2 | None (but Stage 1 output recommended) | RQ Brief, Methodology Blueprint, Bibliography, Synthesis |"
+# The tracker's accepted-value declarations — the terminal wiring calls are
+# pinned, but a renamed enum value would make the named consumer reject them
+# (codex round-10 P1).
+TRACKER_STATUS_ENUM_ROW = '| status | "pending", "in_progress", "completed", "skipped", "blocked" |'
+TRACKER_GLOBAL_COMPLETED = "- `completed`"
 TRACKER_PREREQ_STAGE6_ROW = "| Stage 6 | None (Final Paper already delivered at Stage 5) |"
 # The skip-command validator only honors explicitly-skippable stages — the
 # decline path requires Stage 6 on the skippable list (codex round-8 P1).
@@ -476,6 +481,17 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             errors.append(
                 f"invariant 4 ({TRACKER}): check_prerequisites lost its "
                 f"Stage 6 row: {TRACKER_PREREQ_STAGE6_ROW!r}"
+            )
+        if not _line_pinned(tracker, TRACKER_STATUS_ENUM_ROW):
+            errors.append(
+                f"invariant 4 ({TRACKER}): update_stage status enum drifted "
+                f"from the pinned form (the terminal wiring depends on "
+                f"'completed'/'skipped'): {TRACKER_STATUS_ENUM_ROW!r}"
+            )
+        if not _line_pinned(tracker, TRACKER_GLOBAL_COMPLETED):
+            errors.append(
+                f"invariant 4 ({TRACKER}): update_pipeline_state legal "
+                f"values lost `completed`: {TRACKER_GLOBAL_COMPLETED!r}"
             )
 
     return errors

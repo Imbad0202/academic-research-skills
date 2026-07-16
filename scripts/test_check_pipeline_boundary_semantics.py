@@ -775,6 +775,32 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             msg=f"errors: {errors}",
         )
 
+    # --- codex round-10 witnesses ---
+
+    def test_inv4_tracker_status_enum_renamed(self) -> None:
+        """Adverse-value mutation (codex round-10 P1): the tracker renames
+        `skipped` in its status enum — the pinned decline wiring would then
+        be rejected by the consumer — must fire."""
+        mutated = self.tracker.replace(
+            '| status | "pending", "in_progress", "completed", "skipped", "blocked" |',
+            '| status | "pending", "in_progress", "completed", "declined", "blocked" |',
+        )
+        self.assertNotEqual(mutated, self.tracker)
+        errors = self._check(tracker=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "status enum" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
+    def test_inv4_tracker_global_completed_renamed(self) -> None:
+        mutated = self.tracker.replace("- `completed`", "- `finished`")
+        self.assertNotEqual(mutated, self.tracker)
+        errors = self._check(tracker=mutated)
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "legal" in e and "completed" in e for e in errors),
+            msg=f"errors: {errors}",
+        )
+
     def test_inv4_tracker_stage6_dropped(self) -> None:
         """Adverse-value mutation (codex round-3 P1): the state_tracker enum
         reverts to '1'..'5' — must fire."""
