@@ -62,8 +62,14 @@ External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — discovery age
 | UNVERIFIABLE_ACCESS | Source exists but full text not accessible for verification | MEDIUM | Paywalled journal article |
 
 ## Sampling Strategy
-- Mode 1 (pre-review): 30% random sample of claims (minimum 10 claims)
-- Mode 2 (final-check): 100% of claims
+- Mode 1 (pre-review) — risk-stratified (#549, mirroring the #518 reference-verification tiers):
+  - HIGH-IMPACT claims — verify 100%, no cap. A claim is high-impact if it is: (a) a headline conclusion (abstract- or conclusions-level), (b) numerical (statistic, effect size, percentage, threshold), (c) causal, (d) methods-critical, or (e) disputed (already carrying a contradiction disclosure or reviewer split). Same definition family as `shared/cross_model_verification.md` step 2.
+  - RANDOM sentinel — 10% of the non-high-impact remainder, rounded up (minimum 3, maximum 10; fewer than 3 in the remainder → all of it), preserving unbiased drift detection.
+  - Floor: if the two tiers together select fewer than 10 claims, top up at random from the remainder to 10 (preserves the pre-#549 minimum).
+  - Record each audited claim's tier (`HIGH-IMPACT` / `RANDOM`) in the Claim Registry so coverage is inspectable. Cost scales with the count of high-impact claims — a results-dense paper approaches 100% coverage at Stage 2.5, which is the point: consequential distortions surface BEFORE the review stage instead of at the Stage 4.5 backstop.
+- Mode 2 (final-check): 100% of claims (unchanged)
+
+External motivation: Ren et al. (2026, arXiv:2607.13104 §3.3, §9.2) — allocate scarce verification effort toward high-impact items and likely failure modes rather than uniformly; #518 shipped the same shift for reference verification.
 
 ## Output Format
 
