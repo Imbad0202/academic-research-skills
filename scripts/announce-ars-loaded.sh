@@ -117,13 +117,21 @@ escape_json() {
   raw="${raw//\"/\\\"}"
   raw="${raw//$'\n'/\\n}"
   raw="${raw//$'\r'/}"
-  # Defense-in-depth (belt-and-suspenders): the #544 checker's strict version
-  # grammar already blocks control bytes upstream, but strip any remaining raw
-  # C0 control bytes (0x01-0x1f) here too so nothing can corrupt the JSON
-  # envelope. Real newlines were already converted to the literal two-char
-  # `\n` above, so this drops only stray control bytes, never legitimate text.
-  # `tr` is POSIX and always present; LC_ALL=C keeps the byte range literal.
-  raw="$(printf '%s' "${raw}" | LC_ALL=C tr -d '\001-\037')"
+  # Defense-in-depth (belt-and-suspenders): the #544 checker's strict, bounded
+  # version grammar already blocks control bytes upstream, but strip any
+  # remaining raw C0 control bytes (0x01-0x1f) here too so nothing can corrupt
+  # the JSON envelope. Real newlines were already converted to the literal
+  # two-char `\n` above (bytes 0x5C 0x6E), so this drops only stray control
+  # bytes, never legitimate text — and never the reminder's `\n\n` separator.
+  #
+  # `tr` is POSIX but not guaranteed on a constrained PATH (e.g. PATH=/bin on
+  # macOS, where tr lives in /usr/bin): guard on `command -v tr` so the strip
+  # is skipped when tr is absent rather than blowing up the whole pipeline and
+  # returning an empty additionalContext (P2-b). Skipping is safe — this pass
+  # is defense-in-depth on top of the upstream grammar, not the sole barrier.
+  if command -v tr >/dev/null 2>&1; then
+    raw="$(printf '%s' "${raw}" | LC_ALL=C tr -d '\001-\037')"
+  fi
   printf '%s' "${raw}"
 }
 

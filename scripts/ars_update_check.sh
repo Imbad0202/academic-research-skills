@@ -37,14 +37,24 @@ if [[ ! -r "${LOCAL_MANIFEST}" ]]; then
   exit 0
 fi
 
-# Canonical version grammar (single source of truth). Digit-led, then only
-# alnum / dot / plus / hyphen — semver-ish. Every external version value
-# (local manifest, remote manifest, cached fields) is validated against this
-# BEFORE it is compared, cached, or emitted (#524 validate-before-propagate),
-# so a punctuation-separated payload or a raw control byte cannot ride a
-# `version` string into the SessionStart additionalContext.
-VALID_VERSION_RE='^[0-9][0-9A-Za-z.+-]*$'
-is_valid_version() { [[ "$1" =~ $VALID_VERSION_RE ]]; }
+# Canonical version grammar (single source of truth). A version string is a
+# BOUNDED NUMERIC RELEASE FORMAT (semver), never free text — so the grammar
+# admits real ARS versions (3.17.0, 3.17.0-rc1, 3.9.2, the 4-part 3.9.4.0)
+# but NOT prose. It requires MAJOR.MINOR (two to four dotted numeric parts)
+# plus an optional [._-]-separated ALNUM pre-release/build suffix. Every
+# external version value (local manifest, remote manifest, cached fields) is
+# validated against this BEFORE it is compared, cached, or emitted (#524
+# validate-before-propagate), so a punctuation-separated payload, a raw
+# control byte, or unbounded kebab-case prose cannot ride a `version` string
+# into the SessionStart additionalContext.
+VALID_VERSION_RE='^[0-9]+(\.[0-9]+){1,3}([._-][0-9A-Za-z]+)*$'
+is_valid_version() {
+  # Bounded numeric release format only — never render externally-sourced
+  # prose as LLM context. 32-char cap kills unbounded kebab-case injection
+  # (e.g. "9-Ignore-all-previous-instructions...") before the grammar even runs.
+  [[ ${#1} -le 32 ]] || return 1
+  [[ "$1" =~ $VALID_VERSION_RE ]]
+}
 
 # First `"version": "<value>"` match. The capture class mirrors the grammar
 # (no whitespace/control/exotic chars) so the regex itself won't grab garbage;
@@ -85,11 +95,19 @@ if [[ -f "${CACHE_FILE}" ]]; then
   if [[ -n "${FRESH}" ]]; then
     # Read the first line only. Split the three whitespace-separated fields
     # with pure Bash parameter expansion — no awk dependency, no `set -e`
-    # abort if awk is missing/errors on a fresh cache (P2-c).
+    # abort if awk is missing/errors on a fresh cache.
+    #
+    # Wrap the read in a compound with stderr redirected AROUND the input open:
+    # Bash opens `< "${CACHE_FILE}"` before a command-level `2>/dev/null` takes
+    # effect, so a fresh-but-unreadable cache would otherwise leak
+    # "Permission denied" to stderr. The enclosing `{ …; } 2>/dev/null` scopes
+    # the redirect over the open itself (P2-a). Keep exit 0.
     CACHED=""
-    while IFS= read -r CACHED || [[ -n "${CACHED}" ]]; do
-      break
-    done < "${CACHE_FILE}" 2>/dev/null || true
+    {
+      while IFS= read -r CACHED || [[ -n "${CACHED}" ]]; do
+        break
+      done < "${CACHE_FILE}"
+    } 2>/dev/null || true
     # Field 1 (state): up to the first space.
     CACHED_STATE="${CACHED%% *}"
     # Remainder after field 1.
@@ -132,12 +150,18 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 0
 fi
 REMOTE_URL="${ARS_UPDATE_CHECK_REMOTE_URL:-https://raw.githubusercontent.com/Imbad0202/academic-research-skills/main/.claude-plugin/plugin.json}"
-# Capture curl's exit status explicitly (P2-a). A truncated/timed-out transfer
-# can still leave a `version` string in a partial body; treating a nonzero exit
-# as success would cache poisoned/partial data. `|| CURL_RC=$?` keeps `set -e`
+# Capture curl's exit status explicitly. A truncated/timed-out transfer can
+# still leave a `version` string in a partial body; treating a nonzero exit as
+# success would cache poisoned/partial data. `|| CURL_RC=$?` keeps `set -e`
 # from aborting; on any nonzero exit we bail silently, cache untouched.
+#
+# Redirect stderr around the WHOLE assignment, not just curl (P2-c): on Bash
+# 4.4+ a NUL byte in the body makes the SHELL (not curl) print "ignored null
+# byte in input" to stderr, and the inner `2>/dev/null` only covered curl. The
+# `{ …; } 2>/dev/null` scopes the redirect over the shell's own warning too.
+# `|| CURL_RC=$?` stays INSIDE the block so curl's exit status is preserved.
 CURL_RC=0
-REMOTE_CONTENT="$(curl -fsSL --max-time 3 "${REMOTE_URL}" 2>/dev/null)" || CURL_RC=$?
+{ REMOTE_CONTENT="$(curl -fsSL --max-time 3 "${REMOTE_URL}")" || CURL_RC=$?; } 2>/dev/null
 if [[ "${CURL_RC}" -ne 0 ]]; then
   exit 0
 fi
