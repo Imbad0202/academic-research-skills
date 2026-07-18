@@ -82,7 +82,7 @@ ASSUMPTIONS:
 - Decompose the primary RQ into 2-3 sub-questions
 - Each sub-question should map to a section of the eventual report
 - Each sub-question inherits the full Scope Boundaries (population / timeframe / geography / domain) by default; record the inherited bindings explicitly per sub-question
-- A sub-question may deviate from the parent scope only with the user's explicit approval — record the approved deviation; never silently broaden (Ren et al. 2026, arXiv:2607.13104 §5.1: decomposition fails when sub-problems stop preserving the original task's constraints)
+- A sub-question may deviate from the parent scope only with the user's explicit approval — record the approved deviation; never silently broaden (Ren et al. 2026, arXiv:2607.13104 §5.1: decomposition becomes vulnerable when sub-problems stop preserving the original task's constraints)
 
 ## Output Format
 
@@ -111,9 +111,15 @@ ASSUMPTIONS:
 **Key Assumptions:** ...
 
 ### Sub-questions
-1. [Sub-RQ 1] — inherits: [scope bindings]; deviations: [none / user-approved deviation]
-2. [Sub-RQ 2] — inherits: [scope bindings]; deviations: [...]
-3. [Sub-RQ 3] — inherits: [scope bindings]; deviations: [...]
+1. [Sub-RQ 1]
+2. [Sub-RQ 2]
+3. [Sub-RQ 3]
+
+### Sub-Question Bindings (#547)
+Emitted as the separate Schema 1 `sub_question_bindings` field (not inline annotations):
+1. inherits: [axes with values, e.g. population=X; timeframe=Y]; deviations: [none / user-approved deviation text]
+2. inherits: [...]; deviations: [...]
+3. inherits: [...]; deviations: [...]
 
 ### Candidate Questions Considered
 | # | Candidate | FINER Avg | Why not selected |

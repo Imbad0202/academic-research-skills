@@ -34,7 +34,7 @@ Consuming agents should validate input and request re-generation if schema viola
 | `socratic_insights` | list[string] | Key insights from Socratic dialogue (if socratic mode) |
 | `hypothesis` | string | Preliminary hypothesis (if applicable) |
 | `exclusion_criteria` | list[string] | What is explicitly out of scope |
-| `sub_question_bindings` | list[object] | Per-sub-question inherited scope constraints (#547): `{sub_question: 1-based index, inherits: subset of scope keys (population/timeframe/geography/domain) with values, deviations: list[string] of user-approved divergences (default empty)}`. Absent = every sub-question inherits the full `scope` object unchanged. External motivation: Ren et al. arXiv:2607.13104 §5.1 (decomposition that stops preserving the parent task's constraints). |
+| `sub_question_bindings` | list[object] | Per-sub-question inherited scope constraints (#547): `{sub_question: 1-based index, inherits: subset of scope keys (population/timeframe/geography/domain) with values, deviations: list[string] of user-approved divergences (default empty)}`. Effective-scope semantics: axes named in `inherits` use those values; omitted axes inherit the parent `scope` value; each approved deviation replaces the bound on its axis. Absent field = every sub-question inherits the full `scope` object unchanged. External motivation: Ren et al. arXiv:2607.13104 §5.1 (decomposition that stops preserving the parent task's constraints). |
 | `stakeholders` | list[string] | Key stakeholders affected by the research |
 | `ethical_flags` | list[string] | Preliminary ethical considerations |
 

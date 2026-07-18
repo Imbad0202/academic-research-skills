@@ -507,7 +507,7 @@ Flag any discrepancies with verdict.
 
 #### E4. Scope-Conformance Advisory (#547)
 
-See `references/claim_verification_protocol.md` § E4 (authority). During E3, additionally compare each audited claim's population / timeframe / geography / domain against the scope its section inherits from the RQ Brief (`sub_question_bindings` when present, else the whole `scope` object). Emit advisory `SCOPE-BROADENED` rows (claim location, inherited scope, drafted scope, broadened axis). Advisory-only: never changes Phase E verdicts or the gate verdict; rows surface at the checkpoint for the user's accept-or-narrow decision.
+See `references/claim_verification_protocol.md` § E4 (authority). Inputs come from the dispatch context (RQ Brief `scope`, `sub_question_bindings`, section→sub-question map); when absent, skip with `[E4-SKIPPED: no scope context]` — never guess a scope. During E3, additionally compare each audited claim's population / timeframe / geography / domain against the section's EFFECTIVE scope (named `inherits` axes → their values; omitted axes → parent `scope`; approved deviations replace their axis, so approved extensions are never re-flagged). Emit advisory `SCOPE-BROADENED` rows (claim location, effective scope, drafted scope, broadened axis). Advisory-only: never changes Phase E verdicts or the gate verdict; rows are not issues, stay outside the gate's issue count, and may remain open when the gate passes — they surface at the checkpoint for the user's accept-or-narrow decision.
 
 ---
 

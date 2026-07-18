@@ -26,13 +26,15 @@ Verifies that quantitative and factual claims in the paper are accurately suppor
 
 ## E4: Scope-Conformance Advisory (#547 — advisory-only)
 
-When the RQ Brief / Material Passport carries a `scope` object (and, if present, `sub_question_bindings`), compare each audited claim's population, timeframe, geography, and domain against the scope the claim's section inherits:
+**Inputs**: the RQ Brief `scope` object, `sub_question_bindings` (when present), and the outline's section→sub-question map — carried in the integrity dispatch context per the pipeline handoff table (Stage 2→2.5 / Stage 4→4.5). When the dispatch context lacks them (standalone runs, pre-#547 artifacts), SKIP E4 and note `[E4-SKIPPED: no scope context]` in the report — never reconstruct or guess a scope.
 
-1. Resolve the section's inherited bindings (section → serves sub-question → bindings; fall back to the whole `scope` object when no bindings exist).
-2. Flag claims whose stated scope exceeds the inherited scope on any axis as `SCOPE-BROADENED`, recording: claim location, inherited scope, drafted scope, broadened axis.
-3. ADVISORY ONLY: `SCOPE-BROADENED` rows never change Phase E verdicts and never gate PASS/FAIL. They surface at the Stage 2.5 / 4.5 checkpoint for the user's per-row decision — accept the broadening (with a note to justify it in the text) or narrow the wording. No automatic rewriting.
+Compare each audited claim's population, timeframe, geography, and domain against the **effective scope** the claim's section inherits:
 
-External motivation: Ren et al. (2026, arXiv:2607.13104 §5.1) — decomposition-based generation fails when sub-problems stop preserving the constraints of the original task; a drafted claim is the last link in that chain.
+1. Resolve the section's effective scope (section → serves sub-question → bindings; fall back to the whole `scope` object when no bindings exist). Axes named in `inherits` use those values; omitted axes inherit the parent `scope` value; each recorded user-approved deviation REPLACES the bound on its axis — so an already-approved extension is never re-flagged.
+2. Flag claims whose stated scope exceeds the effective scope on any axis as `SCOPE-BROADENED`, recording: claim location, effective scope, drafted scope, broadened axis.
+3. ADVISORY ONLY: `SCOPE-BROADENED` rows never change Phase E verdicts and never gate PASS/FAIL — they are not issues, do not enter the gate's issue count, and may remain open when the gate passes. They surface at the Stage 2.5 / 4.5 checkpoint for the user's per-row decision — accept the broadening (with a note to justify it in the text) or narrow the wording. No automatic rewriting.
+
+External motivation: Ren et al. (2026, arXiv:2607.13104 §5.1) — decomposition-based generation becomes vulnerable when sub-problems stop preserving the constraints of the original task (design inference: a drafted claim is the last link in that chain).
 
 ## Verdict Taxonomy
 
