@@ -34,6 +34,7 @@ Consuming agents should validate input and request re-generation if schema viola
 | `socratic_insights` | list[string] | Key insights from Socratic dialogue (if socratic mode) |
 | `hypothesis` | string | Preliminary hypothesis (if applicable) |
 | `exclusion_criteria` | list[string] | What is explicitly out of scope |
+| `sub_question_bindings` | list[object] | Per-sub-question inherited scope constraints (#547): `{sub_question: 1-based index, inherits: subset of scope keys (population/timeframe/geography/domain) with values, deviations: list[string] of user-approved divergences (default empty)}`. Absent = every sub-question inherits the full `scope` object unchanged. External motivation: Ren et al. arXiv:2607.13104 §5.1 (decomposition that stops preserving the parent task's constraints). |
 | `stakeholders` | list[string] | Key stakeholders affected by the research |
 | `ethical_flags` | list[string] | Preliminary ethical considerations |
 
@@ -48,6 +49,11 @@ Consuming agents should validate input and request re-generation if schema viola
 1. What types of AI-assisted formative assessment tools are currently used in Taiwan HEI STEM courses?
 2. What measurable learning outcome improvements have been documented?
 3. What student and faculty perceptions exist regarding AI-assisted assessment?
+
+**Sub-Question Bindings** (#547, optional):
+1. inherits: population=Undergraduate STEM students; timeframe=2018-2025; geography=Taiwan — deviations: none
+2. inherits: same as parent scope — deviations: none
+3. inherits: same as parent scope — deviations: extends population to faculty (user-approved)
 
 **FINER Scores**: Feasible: 8, Interesting: 9, Novel: 7, Ethical: 9, Relevant: 10
 
