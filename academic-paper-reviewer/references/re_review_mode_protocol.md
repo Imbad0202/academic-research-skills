@@ -9,7 +9,7 @@ Input:
 1. Original Revision Roadmap (Stage 3 output)
 2. Revised manuscript
 3. Response to Reviewers (optional)
-4. Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record's Round-1 provenance; absent → "unknown (pre-#540 letter)")
+4. Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record's Round-1 provenance; absent → "unknown (provenance block absent)")
 
 Phase 0: Reads the Revision Roadmap, builds a checklist
 Phase 1: EIC checks each item (other reviewers not activated)
@@ -102,7 +102,7 @@ If Re-Review Decision = Major Revision:
 ## Judge Record (#539)
 
 - **Verification judge**: [model family/id running this re-review — the session's own]
-- **Round-1 panel provenance**: [copied seat-level from the Editorial Decision Letter's Review Panel Provenance block (#540); "unknown (pre-#540 letter)" when absent]
+- **Round-1 panel provenance**: [copied seat-level from the Editorial Decision Letter's Review Panel Provenance block (#540); "unknown (provenance block absent)" when absent — record the reason when known, e.g. "guided-mode Round 1 (no letter emitted)" or "pre-#540 letter"]
 - **Independent cross-model pass**: [ran — [family/id], see the Cross-model matrix column / not_configured / failed — [reason]; the latter two apply the single-family disclosure]
 - **Prompt/rubric surfaces**: [the re-review protocol + verification-logic sections used, by file reference; rubric/contract version]
 - **Evidence seen by the judge**: [revised manuscript + Response to Reviewers + Revision Roadmap / list deviations]

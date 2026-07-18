@@ -376,7 +376,7 @@ score_trajectory: {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `judge_record` | object | #539 judge transparency: `{verification_judge, round1_panel_provenance, cross_model_pass: "ran"|"not_configured"|"failed", cross_model_id?, failure_reason?, prompt_rubric_surfaces, evidence_seen, judging_budget_note}`. `round1_panel_provenance` is copied seat-level from the #540 Review Panel Provenance block ("unknown (pre-#540 letter)" when absent — a singular revision-driving judge is not well-defined for a mixed-family panel). Emitted by re-review (Stage 3'); absent = pre-#539 report. External motivation: Ren et al. arXiv:2607.13104 §8.1.2. |
+| `judge_record` | object | #539 judge transparency: `{verification_judge, round1_panel_provenance, cross_model_pass: "ran"|"not_configured"|"failed", cross_model_id?, failure_reason?, prompt_rubric_surfaces, evidence_seen, judging_budget_note}`. `round1_panel_provenance` is copied seat-level from the #540 Review Panel Provenance block ("unknown (provenance block absent)" when absent — a singular revision-driving judge is not well-defined for a mixed-family panel). Emitted by re-review (Stage 3'); absent = pre-#539 report. External motivation: Ren et al. arXiv:2607.13104 §8.1.2. |
 
 ### ReviewerReport Object
 

@@ -253,7 +253,7 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | Revision Roadmap | Stage 3 | Stage 4 (input) | Required |
 | Revised Draft | Stage 4 | Stage 3' (Phase 0) | Required |
 | Response to Reviewers | Stage 4 | Stage 3' (input) | Recommended |
-| Editorial Decision Letter (Schema 6) | Stage 3 | Stage 3' (input) | Recommended (#539 — its Review Panel Provenance block feeds the Judge Record; absent → "unknown (pre-#540 letter)") |
+| Editorial Decision Letter (Schema 6) | Stage 3 | Stage 3' (input) | Recommended (#539 — its Review Panel Provenance block feeds the Judge Record; absent → "unknown (provenance block absent)") |
 | **Re-Review Report** | **Stage 3'** | **Stage 4' (input)** | **Required (if Major)** |
 | **Re-Revised Draft** | **Stage 4'** | **Stage 4.5 (input)** | **Required (if executed)** |
 | **Integrity Report (Final)** | **Stage 4.5** | **Stage 5 (prerequisite)** | **Required** |

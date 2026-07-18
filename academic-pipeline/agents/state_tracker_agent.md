@@ -371,7 +371,7 @@ Check whether prerequisite materials for entering the specified stage are availa
 | Stage 2.5 | Paper Draft | -- |
 | Stage 3 | **Verified Paper Draft + Integrity Report (Pre)** | -- |
 | Stage 4 | Review Reports + Revision Roadmap | Paper Draft |
-| Stage 3' | Revised Draft | Response to Reviewers |
+| Stage 3' | Revised Draft | Response to Reviewers; Editorial Decision Letter (#539 Judge Record input) |
 | Stage 4' | Re-Review Report (Decision: Major) | Revised Draft |
 | Stage 4.5 | Revised Draft or Re-Revised Draft | -- |
 | Stage 5 | **Integrity Report (Final) — verdict: PASS** | -- |
