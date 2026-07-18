@@ -126,11 +126,11 @@ Executing: Phase A (Reference Verification) + Phase B (Citation Context, 31% spo
 
 ---
 
-#### Phase E: Claim Verification (#549 risk-stratified, 10/18 claims)
+#### Phase E: Claim Verification (#549 risk-stratified, 18/18 claims)
 
-Of the 18 registry claims, C1-C7 classified `HIGH-IMPACT` (headline / numerical / causal) and were all selected (100% of tier). The 11-claim remainder sampled at 10% rounds up to 2, lifted to the min-3 sentinel → `RANDOM`: C8, C9, C11. Selected total 7+3 = 10 ≥ min(10, 18), so no `TOP-UP` was needed; the remaining 8 claims are recorded `NOT-SELECTED` in the Claim Registry. Results are reported in Phase C.
+All 18 registry claims are quantitative, so every one classifies `HIGH-IMPACT` under the #549 rule (numerical claims are high-impact by definition) and is selected — 100% of the tier, uncapped. The non-high-impact remainder is empty, so there is no `RANDOM` sentinel, no `TOP-UP`, and no `NOT-SELECTED` row this run: a claim-dense paper approaches full coverage at Stage 2.5, which is the design intent. Results are reported in Phase C.
 
-**Phase E Summary**: 10 claims checked (7 `HIGH-IMPACT` + 3 `RANDOM`), 6 VERIFIED, 1 MAJOR_DISTORTION, 3 MINOR_DISTORTION
+**Phase E Summary**: 18 claims checked (18 `HIGH-IMPACT`), 15 VERIFIED, 1 MAJOR_DISTORTION, 2 MINOR_DISTORTION
 
 ---
 
