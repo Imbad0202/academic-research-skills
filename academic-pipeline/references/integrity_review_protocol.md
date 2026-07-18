@@ -13,7 +13,7 @@ Execution steps:
    - Phase B: >= 30% citation context spot-check
    - Phase C: 100% statistical data verification
    - Phase D: >= 30% originality spot-check + self-plagiarism check
-   - Phase E: risk-stratified claim verification (#549): 100% of HIGH-IMPACT claims (headline / numerical / causal / methods-critical / disputed) + 10% random sentinel of the remainder (minimum 10 claims total)
+   - Phase E: risk-stratified claim verification (#549): 100% of HIGH-IMPACT claims (headline / numerical / causal / methods-critical / disputed) + 10% random sentinel of the remainder (rounded up, min 3 / max 10; remainder <3 → all of it), topped up to min(10, total claims) — bounds per `claim_verification_protocol.md` § Sampling Strategy
    - Phase E additionally emits the scope-conformance advisory (#547) and the novelty-claim classification (#548) — both advisory-only, never gate; advisory rows are not issues and may remain open on PASS — see `claim_verification_protocol.md` § E4-E5
 3. Result handling:
    - PASS -> checkpoint -> Stage 3

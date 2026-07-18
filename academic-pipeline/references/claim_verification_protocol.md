@@ -11,11 +11,11 @@ Verifies that quantitative and factual claims in the paper are accurately suppor
 
 ## E1: Claim Extraction
 - Scan the paper for all quantitative/factual claims
-- For each claim, record: claim text, cited source(s), paper section, page/line
+- For each claim, record: claim text, cited source(s), paper section, page/line, selection tier (#549 — Mode 1: `HIGH-IMPACT` / `RANDOM` / `TOP-UP` / `NOT-SELECTED`; Mode 2: `ALL`)
 - Expected output: Claim Registry table
 
 ## E2: Source Tracing
-- For each claim, locate the specific passage in the cited source that supports it
+- For each SELECTED claim (Mode 1: the #549 risk-stratified selection — tiers `HIGH-IMPACT` / `RANDOM` / `TOP-UP`; Mode 2: every claim in the registry), locate the specific passage in the cited source that supports it
 - Use WebSearch + DOI lookup to find the original source
 - If source is behind paywall, note as UNVERIFIABLE_ACCESS
 
@@ -65,22 +65,24 @@ External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — discovery age
 - Mode 1 (pre-review) — risk-stratified (#549, mirroring the #518 reference-verification tiers):
   - HIGH-IMPACT claims — verify 100%, no cap. A claim is high-impact if it is: (a) a headline conclusion (abstract- or conclusions-level), (b) numerical (statistic, effect size, percentage, threshold), (c) causal, (d) methods-critical, or (e) disputed (already carrying a contradiction disclosure or reviewer split). Same definition family as `shared/cross_model_verification.md` step 2.
   - RANDOM sentinel — 10% of the non-high-impact remainder, rounded up (minimum 3, maximum 10; fewer than 3 in the remainder → all of it), preserving unbiased drift detection.
-  - Floor: if the two tiers together select fewer than 10 claims, top up at random from the remainder to 10 (preserves the pre-#549 minimum).
+  - Floor: if the two tiers together select fewer than min(10, total claims), top up at random from the remainder; a paper with fewer than 10 claims total is audited in full (preserves the pre-#549 minimum).
   - Record each audited claim's tier (`HIGH-IMPACT` / `RANDOM`) in the Claim Registry so coverage is inspectable. Cost scales with the count of high-impact claims — a results-dense paper approaches 100% coverage at Stage 2.5, which is the point: consequential distortions surface BEFORE the review stage instead of at the Stage 4.5 backstop.
 - Mode 2 (final-check): 100% of claims (unchanged)
 
-External motivation: Ren et al. (2026, arXiv:2607.13104 §3.3, §9.2) — allocate scarce verification effort toward high-impact items and likely failure modes rather than uniformly; #518 shipped the same shift for reference verification.
+External motivation: Ren et al. (2026, arXiv:2607.13104): §3.3 frames active data-acquisition as targeting frequent failure modes and verifier disagreement; §9.2 frames improvement as resource optimization (gating expensive evaluations, penalizing waste). The high-impact-first allocation here is ARS's design inference from those principles, mirroring #518's reference-verification shift.
 
 ## Output Format
 
 ### Claim Verification Report
-| # | Claim | Source | Section | Verdict | Detail |
-|---|-------|-------|---------|---------|--------|
-| 1 | [claim text] | [source] | [section] | VERIFIED | Exact match |
-| 2 | [claim text] | [source] | [section] | MAJOR_DISTORTION | Paper says X, source says Y |
+| # | Claim | Source | Section | Tier | Verdict | Detail |
+|---|-------|-------|---------|------|---------|--------|
+| 1 | [claim text] | [source] | [section] | HIGH-IMPACT | VERIFIED | Exact match |
+| 2 | [claim text] | [source] | [section] | RANDOM | MAJOR_DISTORTION | Paper says X, source says Y |
+
+The report table lists selected claims only; the Claim Registry (E1) records the tier for EVERY claim, including `NOT-SELECTED`, so coverage is auditable.
 
 ### Summary
-- Total claims checked: [N]
+- Total claims checked: [N] of [registry total] (Mode 1 tiers — HIGH-IMPACT: [N] (100% of tier), RANDOM: [N], TOP-UP: [N])
 - VERIFIED: [N]
 - MINOR_DISTORTION: [N]
 - MAJOR_DISTORTION: [N] (must be 0 for PASS)

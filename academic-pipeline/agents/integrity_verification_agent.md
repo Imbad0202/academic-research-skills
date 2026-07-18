@@ -458,14 +458,14 @@ Scan the paper for all quantitative/factual claims:
 2. Identify all categorical assertions ("X is the largest...", "Y was the first to...")
 3. Identify all trend claims ("increasing", "declining", "stable")
 4. Identify all causal claims ("X causes Y", "X leads to Y")
-5. For each claim, record: claim text, cited source(s), paper section, page/line
+5. For each claim, record: claim text, cited source(s), paper section, page/line, selection tier (#549 — Mode 1: HIGH-IMPACT / RANDOM / TOP-UP / NOT-SELECTED; Mode 2: ALL)
 
 Output: Claim Registry table
 ```
 
 #### E2. Source Tracing
 ```
-For each claim in the registry:
+For each selected claim (Mode 1: the #549 stratified selection — HIGH-IMPACT / RANDOM / TOP-UP tiers; Mode 2: the whole registry):
 1. Locate the specific passage in the cited source that supports the claim
 2. Use WebSearch + DOI lookup to find the original source text
 3. If source is behind paywall, note as UNVERIFIABLE_ACCESS
@@ -504,7 +504,7 @@ Flag any discrepancies with verdict.
 - Mode 1 (pre-review) — risk-stratified (#549, mirroring the #518 reference-verification tiers):
   - HIGH-IMPACT claims — verify 100%, no cap. A claim is high-impact if it is: (a) a headline conclusion (abstract- or conclusions-level), (b) numerical (statistic, effect size, percentage, threshold), (c) causal, (d) methods-critical, or (e) disputed (already carrying a contradiction disclosure or reviewer split). Same definition family as `shared/cross_model_verification.md` step 2.
   - RANDOM sentinel — 10% of the non-high-impact remainder, rounded up (minimum 3, maximum 10; fewer than 3 in the remainder → all of it), preserving unbiased drift detection.
-  - Floor: if the two tiers together select fewer than 10 claims, top up at random from the remainder to 10 (preserves the pre-#549 minimum).
+  - Floor: if the two tiers together select fewer than min(10, total claims), top up at random from the remainder; a paper with fewer than 10 claims total is audited in full (preserves the pre-#549 minimum).
   - Record each audited claim's tier (`HIGH-IMPACT` / `RANDOM`) in the Claim Registry so coverage is inspectable. Cost scales with the count of high-impact claims — a results-dense paper approaches 100% coverage at Stage 2.5, which is the point: consequential distortions surface BEFORE the review stage instead of at the Stage 4.5 backstop.
 - Mode 2 (final-check): 100% of claims (unchanged)
 ```
@@ -528,7 +528,7 @@ See `references/claim_verification_protocol.md` § E5 (authority). E1 category-2
 - Execute Phase A (all) + Phase B (30%+ spot-check) + Phase C (all) + **Phase D (30%+ spot-check)** + **Phase E (risk-stratified claim check, #549)**
 - Phase D executes D1 (paragraph-level originality check, sampling rate >= 30%) + D2 (self-plagiarism check, if author name provided)
 - Phase E executes E1 (claim extraction) on ALL claims, then E2 (source tracing) + E3 (cross-referencing) on the #549 risk-stratified selection: 100% of HIGH-IMPACT claims + a 10% RANDOM sentinel of the remainder (minimum 10 claims total)
-- **Phase C4 (#260): the D7 declaration-anchored anti-skip runs on the passport (not sampled — it is a single passport-level check); experiment_alignment_results[] rows are produced for the sampled experiment-backed claims (>= 30%, mirroring the claim spot-check).**
+- **Phase C4 (#260): the D7 declaration-anchored anti-skip runs on the passport (not sampled — it is a single passport-level check); experiment_alignment_results[] rows are produced for the sampled experiment-backed claims (>= 30% — C4's own rate; the general claim check is #549 risk-stratified, no longer a flat 30%).**
 - Issues found -> produce correction list -> fix -> re-verify corrected items
 - **Must PASS to proceed to Stage 3 (REVIEW)**
 
