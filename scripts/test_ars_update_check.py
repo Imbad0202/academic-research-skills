@@ -231,3 +231,77 @@ def test_local_version_changed_invalidates_fresh_cache(tmp_path):
     )
     assert r.stdout == ""
     assert (state / "update-check").read_text().strip() == "UP_TO_DATE 3.18.0 3.18.0"
+
+
+# -------------------------------------------------------- announce integration
+
+
+def run_announce(source_json, env_overrides):
+    env = base_env()
+    env.update(env_overrides)
+    return subprocess.run(
+        ["bash", str(ANNOUNCE)],
+        input=source_json,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
+
+
+def _additional_context(stdout):
+    return json.loads(stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def test_announce_prepends_reminder_when_behind(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    env = {
+        "CLAUDE_PLUGIN_ROOT": str(root),
+        "ARS_UPDATE_CHECK_STATE_DIR": str(state),
+        "ARS_UPDATE_CHECK_REMOTE_URL": make_remote(tmp_path, "3.18.0"),
+    }
+    r = run_announce('{"source":"startup"}', env)
+    ctx = _additional_context(r.stdout)
+    assert ctx.startswith(
+        "ARS update available: v3.18.0 (installed: v3.17.0). "
+        "Run /plugin update academic-research-skills, "
+        "or enable auto-update in /plugin -> Marketplaces."
+    )
+    assert "ARS (academic-research-skills) plugin loaded." in ctx
+
+
+def test_announce_unchanged_when_current(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    # Baseline: no CLAUDE_PLUGIN_ROOT at all == pre-#544 output.
+    baseline = run_announce('{"source":"startup"}', {})
+    env = {
+        "CLAUDE_PLUGIN_ROOT": str(root),
+        "ARS_UPDATE_CHECK_STATE_DIR": str(state),
+        "ARS_UPDATE_CHECK_REMOTE_URL": make_remote(tmp_path, "3.17.0"),
+    }
+    r = run_announce('{"source":"startup"}', env)
+    assert r.stdout == baseline.stdout
+
+
+def test_announce_unchanged_when_checker_missing(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0", with_checker=False)
+    baseline = run_announce('{"source":"startup"}', {})
+    r = run_announce('{"source":"startup"}', {"CLAUDE_PLUGIN_ROOT": str(root)})
+    assert r.stdout == baseline.stdout
+
+
+def test_announce_resume_never_runs_checker(tmp_path):
+    # Structural pin for "checker lives inside the startup|clear arm": on
+    # resume the checker must not run at all, so no cache file may appear.
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    env = {
+        "CLAUDE_PLUGIN_ROOT": str(root),
+        "ARS_UPDATE_CHECK_STATE_DIR": str(state),
+        "ARS_UPDATE_CHECK_REMOTE_URL": make_remote(tmp_path, "3.18.0"),
+    }
+    r = run_announce('{"source":"resume"}', env)
+    assert "update available" not in r.stdout
+    assert not (state / "update-check").exists()

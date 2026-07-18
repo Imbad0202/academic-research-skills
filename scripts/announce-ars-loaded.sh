@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# version: 1.1.0
+# version: 1.2.0
 #
 # SessionStart hook script for the ARS Claude Code plugin (v3.7.0+).
 #
@@ -57,7 +57,24 @@ case "${SOURCE}" in
     ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent."
     ;;
   startup|clear|*)
-    ANNOUNCE="ARS (academic-research-skills) plugin loaded.
+    # -----------------------------------------------------------------
+    # #544 update reminder. The checker is consulted INSIDE this arm so
+    # compact/resume structurally never run it (no network mid-session).
+    # Any checker failure degrades to "no reminder" — the announce must
+    # never break. Wording lives here, not in the checker (single wording
+    # surface; ASCII "->" keeps the JSON escaping path trivial).
+    # -----------------------------------------------------------------
+    UPDATE_LINE=""
+    if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+      _UPD=$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/ars_update_check.sh" 2>/dev/null || true)
+      _UPDATE_RE='^UPDATE_AVAILABLE[[:space:]]([^[:space:]]+)[[:space:]]([^[:space:]]+)$'
+      if [[ "${_UPD}" =~ ${_UPDATE_RE} ]]; then
+        UPDATE_LINE="ARS update available: v${BASH_REMATCH[2]} (installed: v${BASH_REMATCH[1]}). Run /plugin update academic-research-skills, or enable auto-update in /plugin -> Marketplaces.
+
+"
+      fi
+    fi
+    ANNOUNCE="${UPDATE_LINE}ARS (academic-research-skills) plugin loaded.
 
 Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy modes inherit the session model (the v3.7.0 opus floor was retired in the 2026-06 harness pass):
   /ars-full              inherit Full pipeline (research → write → review → revise → finalize)
