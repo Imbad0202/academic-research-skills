@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **SessionStart update-available reminder for plugin installs (#543 → #544).** New `scripts/ars_update_check.sh` (Bash 3.2, no jq, always-exit-0 fail-silent) compares the installed plugin version against `main`'s `.claude-plugin/plugin.json` — 24 h cache at `~/.cache/ars/update-check`, 3 s network ceiling, `ARS_UPDATE_CHECK=0` kill switch — and the SessionStart announce prepends a one-line reminder pointing at `/plugin update academic-research-skills` when behind. Motivated by #543 (reporter six minor versions behind on a long-fixed bug): third-party marketplaces default auto-update OFF and surface no behind-signal. Hermetic 15-test suite (`scripts/test_ars_update_check.py`, manifest id `544-update-reminder`). Spec: `docs/design/2026-07-18-544-update-reminder-spec.md`.
+
 ## [3.17.0] - 2026-07-16 — Pipeline boundary semantics, canonical cross-model handoff envelope, executable panel checker
 
 ### Security

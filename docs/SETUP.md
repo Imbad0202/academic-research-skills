@@ -207,6 +207,8 @@ The four skills (`deep-research`, `academic-paper`, `academic-paper-reviewer`, `
 
 **Strongly recommended: open auto-update.** Open the `/plugin` UI, find `academic-research-skills`, and toggle auto-update on. ARS releases roughly every 1–2 weeks; auto-update keeps you in sync without manual refreshes. To refresh manually: `/plugin update academic-research-skills`. (`/plugin marketplace update academic-research-skills` only refreshes the marketplace source list, not the installed plugin itself.)
 
+**Built-in update reminder.** The plugin also nudges you on its own: at session start it compares your installed version against `main` (at most one network request per day, 3-second ceiling, silent on any failure) and, when you are behind, prepends one line to the session-start announce pointing at `/plugin update academic-research-skills`. Set `ARS_UPDATE_CHECK=0` to disable the check entirely. Privacy: the check performs a single HTTPS GET of this repository's public `.claude-plugin/plugin.json` and transmits no user data.
+
 **Plugin platform scope:**
 - ✅ Claude Code CLI / VS Code extension / JetBrains extension — full support
 - ❌ claude.ai web / Claude for Work / Anthropic API direct calls — plugins not supported; use Method 1 / 2 / 3 below

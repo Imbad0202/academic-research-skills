@@ -207,6 +207,8 @@ Claude 會在 `<install-root>/<skill-name>/SKILL.md` 尋找 skills。這個 repo
 
 **強烈建議開啟 auto-update。** 進 `/plugin` UI 找到 `academic-research-skills`，把 auto-update 開起來。ARS 大約 1–2 週發新版，開了之後會自動同步。手動更新已安裝的 plugin：`/plugin update academic-research-skills`。（`/plugin marketplace update academic-research-skills` 只重新拉 marketplace 來源，不會更新已裝 plugin。）
 
+**內建更新提醒。** Plugin 也會自己提醒你：session 啟動時比對已安裝版本與 `main` 上的最新版本（每天最多查一次網路、3 秒上限、任何失敗都靜默），落後時在開場訊息前加一行提醒，指向 `/plugin update academic-research-skills`。設 `ARS_UPDATE_CHECK=0` 可完全關閉。隱私：檢查只對本 repo 公開的 `.claude-plugin/plugin.json` 發一次 HTTPS GET，不傳送任何使用者資料。
+
 **Plugin 平台支援範圍：**
 - ✅ Claude Code CLI / VS Code extension / JetBrains extension — 完整支援
 - ❌ claude.ai 網頁版 / Claude for Work / Anthropic API 直呼 — 不支援 plugin，請改用方法一 / 二 / 三

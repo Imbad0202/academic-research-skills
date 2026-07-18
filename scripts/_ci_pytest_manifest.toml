@@ -299,3 +299,7 @@ path = "scripts/test_cross_model_handoff.py"
 [[pytest]]
 id = "527-handoff-contract-lint"
 path = "scripts/test_check_cross_model_handoff_contract.py"
+
+[[pytest]]
+id = "544-update-reminder"
+path = "scripts/test_ars_update_check.py"
