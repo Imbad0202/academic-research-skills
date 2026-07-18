@@ -126,3 +126,108 @@ def test_update_available_token_and_cache(tmp_path):
     assert (
         state / "update-check"
     ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+
+
+# ------------------------------------------------- cache + failure semantics
+
+
+def test_fresh_update_available_cache_renders_without_fetch(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    _write_cache(state, "UPDATE_AVAILABLE 3.17.0 3.18.0")
+    # The remote holds a THIRD version: if the checker fetched, both the
+    # token and the cache would say 3.19.0. They must not.
+    r = run_checker(
+        plugin_root=root,
+        remote_url=make_remote(tmp_path, "3.19.0"),
+        state_dir=state,
+    )
+    assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (
+        state / "update-check"
+    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+
+
+def test_fresh_up_to_date_cache_suppresses_fetch(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    _write_cache(state, "UP_TO_DATE 3.17.0 3.17.0")
+    r = run_checker(
+        plugin_root=root,
+        remote_url=make_remote(tmp_path, "3.18.0"),
+        state_dir=state,
+    )
+    assert r.stdout == ""
+    assert (state / "update-check").read_text().strip() == "UP_TO_DATE 3.17.0 3.17.0"
+
+
+def test_expired_cache_refetches(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    _write_cache(state, "UP_TO_DATE 3.17.0 3.17.0", age_seconds=25 * 3600)
+    r = run_checker(
+        plugin_root=root,
+        remote_url=make_remote(tmp_path, "3.18.0"),
+        state_dir=state,
+    )
+    assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (
+        state / "update-check"
+    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+
+
+def test_expired_cache_unreachable_remote_is_silent_and_preserved(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    _write_cache(state, "UPDATE_AVAILABLE 3.17.0 3.18.0", age_seconds=25 * 3600)
+    r = run_checker(
+        plugin_root=root,
+        remote_url="file://" + str(tmp_path / "nonexistent.json"),
+        state_dir=state,
+    )
+    assert r.returncode == 0
+    assert r.stdout == ""
+    assert (
+        state / "update-check"
+    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+
+
+def test_malformed_remote_is_silent_cache_untouched(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    bad = tmp_path / "bad.json"
+    bad.write_text("<html>rate limited</html>\n")
+    r = run_checker(plugin_root=root, remote_url="file://" + str(bad), state_dir=state)
+    assert r.returncode == 0
+    assert r.stdout == ""
+    assert not (state / "update-check").exists()
+
+
+def test_corrupt_cache_refetches(tmp_path):
+    root = make_plugin_root(tmp_path, "3.17.0")
+    state = tmp_path / "state"
+    _write_cache(state, "GARBAGE")
+    r = run_checker(
+        plugin_root=root,
+        remote_url=make_remote(tmp_path, "3.18.0"),
+        state_dir=state,
+    )
+    assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (
+        state / "update-check"
+    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+
+
+def test_local_version_changed_invalidates_fresh_cache(tmp_path):
+    # The user updated: current local equals the cached <latest>. The fresh
+    # cache must NOT render a reminder; the checker refetches and goes quiet.
+    root = make_plugin_root(tmp_path, "3.18.0")
+    state = tmp_path / "state"
+    _write_cache(state, "UPDATE_AVAILABLE 3.17.0 3.18.0")
+    r = run_checker(
+        plugin_root=root,
+        remote_url=make_remote(tmp_path, "3.18.0"),
+        state_dir=state,
+    )
+    assert r.stdout == ""
+    assert (state / "update-check").read_text().strip() == "UP_TO_DATE 3.18.0 3.18.0"
