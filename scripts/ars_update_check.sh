@@ -38,22 +38,27 @@ if [[ ! -r "${LOCAL_MANIFEST}" ]]; then
 fi
 
 # Canonical version grammar (single source of truth). A version string is a
-# BOUNDED NUMERIC RELEASE FORMAT (semver), never free text — so the grammar
-# admits real ARS versions (3.17.0, 3.17.0-rc1, 3.9.2, the 4-part 3.9.4.0)
-# but NOT prose. It requires MAJOR.MINOR (two to four dotted numeric parts)
-# plus an optional [._-]-separated ALNUM pre-release/build suffix. Every
-# external version value (local manifest, remote manifest, cached fields) is
-# validated against this BEFORE it is compared, cached, or emitted (#524
-# validate-before-propagate), so a punctuation-separated payload, a raw
-# control byte, or unbounded kebab-case prose cannot ride a `version` string
-# into the SessionStart additionalContext.
-VALID_VERSION_RE='^[0-9]+(\.[0-9]+){1,3}([._-][0-9A-Za-z]+)*$'
+# BOUNDED NUMERIC RELEASE FORMAT (semver), never free text. Every external
+# version value (local manifest, remote manifest, cached fields) is validated
+# against this BEFORE it is compared, cached, or emitted (#524 validate-before-
+# propagate), so a punctuation-separated payload, a raw control byte, or
+# kebab-case prose cannot ride a `version` string into the SessionStart
+# additionalContext.
+#
+# Numeric core: 2 to 4 dot-separated numeric components (3.17.0, 3.9.4.0).
+# Optional suffix: exactly ONE recognized release marker, not arbitrary words.
+# Allow-known (not deny-shape): a value is a version only if it is a bounded
+# numeric core plus at most one known marker — so externally-sourced text can
+# never smuggle readable prose (e.g. "-ignore-previous-instructions") into the
+# SessionStart context, regardless of length.
+VERSION_CORE_RE='^[0-9]+(\.[0-9]+){1,3}$'
+VERSION_PRERELEASE_RE='^[0-9]+(\.[0-9]+){1,3}[-._](0|[1-9][0-9]*|(rc|alpha|beta|pre|dev|post|rev|build)([.-]?[0-9]+)?)$'
 is_valid_version() {
-  # Bounded numeric release format only — never render externally-sourced
-  # prose as LLM context. 32-char cap kills unbounded kebab-case injection
-  # (e.g. "9-Ignore-all-previous-instructions...") before the grammar even runs.
+  # 32-char hard cap first (ReDoS-free rejection), then allow-known grammar:
+  # a bare numeric core, OR a numeric core + exactly one recognized marker.
   [[ ${#1} -le 32 ]] || return 1
-  [[ "$1" =~ $VALID_VERSION_RE ]]
+  [[ "$1" =~ $VERSION_CORE_RE ]] && return 0
+  [[ "$1" =~ $VERSION_PRERELEASE_RE ]]
 }
 
 # First `"version": "<value>"` match. The capture class mirrors the grammar
@@ -71,7 +76,14 @@ extract_version() {
 # Step 3: local version — extract, then positively validate before use. A
 # malformed installed version is treated like an unparseable local manifest:
 # silent exit 0.
-LOCAL_CONTENT="$(cat "${LOCAL_MANIFEST}" 2>/dev/null || true)"
+#
+# Redirect stderr around the WHOLE assignment, not just cat (P2-a): on Bash
+# 4.4+ a NUL byte in the local manifest makes the SHELL (not cat) print
+# "ignored null byte in input" to stderr, and a command-level `2>/dev/null`
+# only covers cat. The `{ …; } 2>/dev/null` scopes the redirect over the
+# shell's own warning too. Keep exit 0.
+LOCAL_CONTENT=""
+{ LOCAL_CONTENT="$(cat "${LOCAL_MANIFEST}")" || true; } 2>/dev/null
 LOCAL_VER="$(extract_version "${LOCAL_CONTENT}")"
 if [[ -z "${LOCAL_VER}" ]] || ! is_valid_version "${LOCAL_VER}"; then
   exit 0
@@ -186,10 +198,16 @@ TMP_FILE="${CACHE_FILE}.tmp.$$"
 # an "cannot create" error to stderr: Bash opens `> "${TMP_FILE}"` before the
 # command-level `2>/dev/null` applies, so the redirect must be scoped by the
 # enclosing block instead (P2-b).
+#
+# Every cleanup path must return 0. If the write/mv fails AND rm is unavailable
+# or also fails (constrained PATH with neither mv nor rm), `set -e` would abort
+# the fallback before `exit 0`, returning 127 and leaving the temp file. The
+# trailing `|| :` on the rm and the `exit 0` immediately after guarantee the
+# always-exit-0 contract holds even when mv/rm are absent.
 {
   printf '%s %s %s\n' "${STATE}" "${LOCAL_VER}" "${REMOTE_VER}" > "${TMP_FILE}" \
     && mv -f "${TMP_FILE}" "${CACHE_FILE}"
-} 2>/dev/null || { rm -f "${TMP_FILE}" 2>/dev/null; exit 0; }
+} 2>/dev/null || { rm -f "${TMP_FILE}" 2>/dev/null || :; exit 0; }
 
 if [[ "${STATE}" == "UPDATE_AVAILABLE" ]]; then
   printf 'UPDATE_AVAILABLE %s %s\n' "${LOCAL_VER}" "${REMOTE_VER}"
