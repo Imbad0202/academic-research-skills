@@ -82,7 +82,7 @@ External motivation: Ren et al. (2026, arXiv:2607.13104): §3.3 frames active da
 The report table lists selected claims only; the Claim Registry (E1) records the tier for EVERY claim, including `NOT-SELECTED`, so coverage is auditable.
 
 ### Summary
-- Total claims checked: [N] of [registry total] (Mode 1 tiers — HIGH-IMPACT: [N] (100% of tier), RANDOM: [N], TOP-UP: [N])
+- Total claims checked: [N] of [registry total] — Mode 1: tiers HIGH-IMPACT: [N] (100% of tier), RANDOM: [N], TOP-UP: [N], NOT-SELECTED: [N]. Mode 2: ALL: [N]
 - VERIFIED: [N]
 - MINOR_DISTORTION: [N]
 - MAJOR_DISTORTION: [N] (must be 0 for PASS)
