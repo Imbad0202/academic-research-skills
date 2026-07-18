@@ -42,12 +42,12 @@ E1 already extracts categorical assertions of primacy ("Y was the first to...").
 
 | Classification | Definition |
 |----------------|------------|
-| `SUPPORTED_WITHIN_SEARCH` | Wording is search-bounded ("to our knowledge, based on searches of [databases] through [date]...") AND consistent with the documented `search_strategy`; nearest prior work from the bibliography is acknowledged where it exists |
-| `UNRESOLVED` | Absolute wording ("first", "no prior work", "only") without a search bound, OR the stated bound does not match the documented `search_strategy`, OR no documented search basis exists |
+| `SUPPORTED_WITHIN_SEARCH` | Wording is search-bounded ("to our knowledge, based on searches of [databases] covering [date_range], as of [last_searched_at]...") AND the named databases + date range match the documented `search_strategy` exactly AND `last_searched_at` is recorded — a bound with no search-execution date is not verifiable and classifies `UNRESOLVED` with the note "record last_searched_at to resolve"; the nearest prior work (bibliography `relevance: core` on the same phenomenon, tie-broken by `relevance_score`, then `supporting`) is acknowledged where it exists, or its absence within the search is stated explicitly |
+| `UNRESOLVED` | Absolute wording ("first", "no prior work", "only") without a search bound, OR the stated bound does not match the documented `search_strategy`, OR `last_searched_at` is not recorded, OR no documented search basis exists |
 
 Never emit a "globally verified" novelty verdict — a search-bounded claim is verified WITHIN its search, nothing more.
 
-ADVISORY ONLY: `UNRESOLVED` rows never change Phase E verdicts and never gate PASS/FAIL. They surface at the Stage 2.5 / 4.5 checkpoint for the user's per-row decision — reword to the bounded form, or explicitly confirm keeping the absolute form (confirmation recorded and carried into the AI-usage disclosure).
+ADVISORY ONLY: `UNRESOLVED` rows never change Phase E verdicts and never gate PASS/FAIL — they are not issues, stay outside the gate's issue count, and may remain open when the gate passes. Each row carries a stable ID `ADV-E5-<n>` and is recorded in the Integrity Report's advisory table. Checkpoint options per row: **proceed open** (default, recorded) or **explicitly confirm the absolute form** (the confirmation is recorded in the row; the advisory table travels with the Integrity Report, so it reaches the AI-usage disclosure inputs). A user who wants the bounded rewording uses the existing revision machinery — at Stage 2.5 the coaching round folds user-selected rows (cited by their ADV-E5 IDs) into the Revision Roadmap and the reword rides the normal Stage 4 revision; at Stage 4.5 (verify-only final gate) rows are record-only, and still-open rows carry into the Stage 6 Process Record. No new dispatch path.
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — discovery agents cannot easily verify novelty on their own and may exploit weak proxies.
 

@@ -84,7 +84,7 @@ Consuming agents should validate input and request re-generation if schema viola
 | Field | Type | Description |
 |-------|------|-------------|
 | `sources` | list[Source] | All identified sources (minimum 15 for full mode, 5 for quick mode) |
-| `search_strategy` | object | `{databases: list[string], keywords: list[string], inclusion_criteria: list[string], exclusion_criteria: list[string], date_range: string, last_searched_at?: ISO date (optional, #548 — when the search was last executed; consumed by the search-bounded novelty template and E5)}` |
+| `search_strategy` | object | `{databases: list[string], keywords: list[string], inclusion_criteria: list[string], exclusion_criteria: list[string], date_range: string, last_searched_at?: ISO date (#548 — when the search was last executed; producers SHOULD record it: E5 requires it for SUPPORTED_WITHIN_SEARCH, and the search-bounded novelty template consumes it)}` |
 | `coverage_assessment` | string | Self-assessment of literature coverage completeness |
 | `minimum_sources` | integer | 15 (full mode), 5 (quick mode) |
 

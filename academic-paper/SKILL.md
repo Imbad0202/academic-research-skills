@@ -422,7 +422,7 @@ Explicit prohibitions to prevent common failure modes:
 ## Quality Standards
 
 ### Writing Quality
-1. **Every claim must have a citation** or be supported by the paper's own data
+1. **Every claim must have a citation** or be supported by the paper's own data — or, for #548 absence/novelty claims, carry documented-search provenance plus the named nearest prior work (no source can cite an absence)
 2. **Zero citation orphans** — in-text citations <-> reference list must perfectly match
 3. **Consistent register** — academic tone appropriate for the discipline
 4. **Logical flow** — clear transitions between paragraphs and sections
