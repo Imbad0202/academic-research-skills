@@ -210,17 +210,20 @@ The DA agent, after completing its checkpoint report, should:
 
 ### Cross-Model Reviewer Track (#540 — academic-paper-reviewer full mode)
 
-**When `ARS_CROSS_MODEL` is set:**
+**Activation — consent, not configuration:** the track activates only inside the same consent boundary as every cross-model feature in this document (the manuscript is uploaded to the external provider): `ARS_CROSS_MODEL` being set is configuration, and the user's explicit cross-model consent for the session is the authorization. Configured-but-unconsented runs behave exactly like the not-set case below.
+
+**When active:**
 - ONE existing peer-reviewer slot (Reviewer 2 by default) runs on the cross-model family instead of the session model. The panel stays FIVE seats — this is a substrate swap inside a fixed slot, NOT the retired "6th reviewer" (see the retirement note above: its five counterproductive conditions — score averaging, role duplication, findings-as-confirmed-defects, majority-vote false confidence, synthesizer context burn — all attach to an ADDED generic seat; none applies to swapping the substrate of an existing persona with an unchanged role and an unchanged vote).
-- Transport follows #523 ownership: the dispatching layer (the main session running the reviewer skill — not a Bucket A agent) executes the API calls. Two calls preserve the v3.6.2 sprint-contract split: call 1 sends the persona + contract for the paper-blind Phase 1 pre-commitment; call 2 sends the Phase 1 output (delimited as data) + the paper for Phase 2 scoring.
-- The slot's report enters the panel matrix exactly as that slot's report always does — heterogeneity itself is the §5.2 safeguard. The synthesizer additionally marks matrix rows where the cross-model slot diverges from the same-model majority as `[CROSS-FAMILY-DIVERGENCE]` — a visibility flag for the user, never a vote change, never averaged away.
+- Transport follows #523 ownership: the dispatching layer (the main session running the reviewer skill — not a Bucket A agent) executes the API calls, mirroring the in-session phase inputs exactly: call 1 = the Phase 1 system persona + the contract JSON + the paper METADATA that in-session Phase 1 receives (paper content withheld, per the sprint protocol's Phase 1 input spec); call 2 = the re-injected contract + the Phase 2 system prompt + call 1's output wrapped in the `<phase1_output>` data delimiter + the paper. The delimiter is the conversation linkage — no server-side session state is assumed.
+- The dispatching layer hands the synthesizer the slot's report PLUS a provenance stamp (which family ran the seat, or the fallback reason) — the synthesizer fills the Review Panel Provenance block from that stamp, never from inference.
+- The slot's report enters the panel matrix exactly as that slot's report always does — heterogeneity itself is the §5.2 safeguard. The synthesizer computes NO cross-family aggregate and NO "same-model majority" (any such aggregation is on its forbidden-operations list): cross-family splits are visible by inspection in the panel matrix the user already receives, and the provenance block names which seat ran on which family.
 - An ungrounded compatible provider is first-class here (same class as DA critique: persona judgment needs no web grounding); its factual claims about literature remain subject to the normal citation gates.
 - Degradation: a failed/unavailable cross-model dispatch falls back to running the slot on the session model, and the Editorial Decision Letter's provenance line states the fallback — never a silent swap-back.
 
-**When `ARS_CROSS_MODEL` is not set:**
+**When not active** (env unset, or consent not given):
 - All five personas run on the session model, and the Editorial Decision Letter carries the correlated-error disclosure (see the template's Review Panel Provenance block) instead of silently implying independence.
 
-External motivation: Ren et al. (2026, arXiv:2607.13104 §5.2) — when a model is confidently wrong, repeated sampling converges on the same wrong conclusion; heterogeneous critique models are the named safeguard.
+External motivation: Ren et al. (2026, arXiv:2607.13104 §5.2) — consistency-derived feedback is fragile when errors correlate across samples of one model, and repeated sampling may amplify a confidently-wrong conclusion; heterogeneous critique models are among the safeguards it names.
 
 ### Blind Disagreement Checkpoints (research-design freeze + final editorial decision)
 

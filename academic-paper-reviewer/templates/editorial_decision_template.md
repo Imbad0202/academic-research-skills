@@ -19,7 +19,7 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 ## Review Panel Provenance (#540)
 
 [Exactly one of:
-- "Reviewer 2 ran on [cross-model family] via the cross-model reviewer track; the remaining reviewers ran on [primary family]. Cross-family divergences, if any, are marked [CROSS-FAMILY-DIVERGENCE] in the synthesis." /
+- "Reviewer 2 ran on [cross-model family] via the cross-model reviewer track; the remaining reviewers ran on [primary family]. Cross-family splits are visible in the panel matrix (no aggregate is computed)." /
 - "All five reviewer personas ran on a single model family ([family]). Persona diversity is not model diversity — blind spots may be correlated across reviewers (Ren et al. 2026, arXiv:2607.13104 §5.2)." /
 - "Cross-model dispatch for Reviewer 2 failed ([reason]); the slot fell back to [primary family]. Single-family caveat applies."]
 
