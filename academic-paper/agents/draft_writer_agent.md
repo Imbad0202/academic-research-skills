@@ -256,7 +256,7 @@ Total word count monitoring (after assembly):
 | Check Item | Pass Criteria | Failure Handling |
 |--------|---------|-----------|
 | Section completeness | All sections from outline have been written | Write missing sections |
-| Citation density | Every factual claim has at least 1 citation (exception: #548 absence/novelty claims cannot cite a source for an absence — they carry documented-search provenance in the bounded form and cite the named nearest prior work instead) | Identify uncited paragraphs, add citations |
+| Citation density | Every factual claim has at least 1 citation (exception: #548 absence/novelty claims cannot cite a source for an absence — they carry documented-search provenance in the bounded form and cite the named nearest prior work where adjacent work exists; the explicit absence-of-adjacent-work statement satisfies the check otherwise) | Identify uncited paragraphs, add citations |
 | Total word count | Deviation <= +/-10% from target | Adjust per word count monitoring mechanism |
 | Section word count | Each section deviation <= +/-15% | Expand or trim that section |
 | Paragraph structure | >=80% of paragraphs follow TEEL structure | Rewrite non-compliant paragraphs |
@@ -343,7 +343,7 @@ Quality gate not passed ->
 ## Quality Criteria
 
 - All sections from the outline are present and complete
-- Every factual claim has at least one citation (#548 absence/novelty claims: documented-search provenance + citation to the named nearest prior work instead)
+- Every factual claim has at least one citation (#548 absence/novelty claims: documented-search provenance + the named nearest prior work where one exists, or the explicit absence-of-adjacent-work statement)
 - Word count within +/-10% of overall target
 - No section deviates >15% from its allocation
 - Paragraph structure follows topic-evidence-analysis pattern
@@ -389,7 +389,7 @@ Your task is to write the complete paper draft, then self-score it against your 
 
 **Required output sections in this order** (4 lint checks):
 
-1. `## Draft Body` — the complete paper text, following the Paper Outline section structure and the Argument Blueprint's CER chains. Per-section word counts must respect the Paper Configuration Record (per dimension D5). Total draft word count must stay within ±10% of the overall target (per dimension D4). Every factual claim cites at least one source from the Annotated Bibliography (per dimension D2; #548 absence/novelty claims satisfy D2 via documented-search provenance plus a citation to the named nearest prior work).
+1. `## Draft Body` — the complete paper text, following the Paper Outline section structure and the Argument Blueprint's CER chains. Per-section word counts must respect the Paper Configuration Record (per dimension D5). Total draft word count must stay within ±10% of the overall target (per dimension D4). Every factual claim cites at least one source from the Annotated Bibliography (per dimension D2; #548 absence/novelty claims satisfy D2 via documented-search provenance plus the named nearest prior work where one exists — the explicit absence-of-adjacent-work statement satisfies D2 otherwise).
 2. `## Dimension Scores` — one `### <Dn>: <name>` subsection per writer dimension D1–D7 (seven subsections). Each subsection assigns one of `block` / `warn` / `pass` and one paragraph of evidence. The seven dimensions are exactly those declared in `shared/contracts/writer/full.json` (D1 section_completeness, D2 citation_density, D3 argument_blueprint_fidelity, D4 total_word_count, D5 per_section_word_count, D6 acknowledged_limitations, D7 register_consistency).
 3. `## Failure Condition Checks` — one `### <Fn>` subsection per F-condition F1 / F4 / F2 / F3 / F0 (five subsections, severity-ordered). Each subsection states whether the condition fired (`fired` / `did not fire`) and, if fired, the dimensions involved.
 4. `## Writer Decision` — exactly one `writer_decision=accept` / `writer_decision=revise_in_phase_4b` / `writer_decision=escalate_to_evaluator` value, derived from F-condition severity precedence (highest-severity fired condition wins; F0 is the accept-grade baseline).
@@ -594,7 +594,7 @@ Rules:
 
 1. **Default emission is search-bounded.** Write novelty/priority statements in the bounded form: "To our knowledge, based on searches of [databases] covering [date_range], as of [last_searched_at], no prior study has ..." — with the bracketed content filled from the Schema 2 `search_strategy` actually used, never invented. When `last_searched_at` is not recorded, ask the user for it; a bound without a search-execution date classifies `UNRESOLVED` at Phase E (advisory).
 2. **Name the nearest prior work.** Select it from the bibliography: `relevance: core` sources addressing the same phenomenon, tie-broken by `relevance_score` (then `supporting`); state the delta from it precisely instead of claiming a vacuum. If no adjacent work exists within the search, say so explicitly ("we found no directly comparable study within this search").
-3. **The bounding qualifier is a protected hedge.** Mark "To our knowledge, based on searches of ..." per `shared/references/protected_hedging_phrases.md` AND list it verbatim in the draft's closing `**Protected Hedges**:` list (the final lines of the Draft Body — inside the body, never a new output section). That in-body list is the transport: `abstract_bilingual_agent` § Protected Hedges consumes it for paper abstracts; deep-research report flows use the report-compiler dispatch roster. An empty list is permitted when nothing is marked.
+3. **The bounding qualifier is a protected hedge.** Mark "To our knowledge, based on searches of ..." per `shared/references/protected_hedging_phrases.md` AND emit it in a `<!--protected-hedges: <phrase 1> | <phrase 2>-->` comment on the final line of the Draft Body — the same HTML-comment convention as `<!--ref:-->` / `<!--anchor:-->`, so it is invisible in rendered output and never reader-facing prose. That comment is the transport: `abstract_bilingual_agent` § Protected Hedges consumes it for paper abstracts; deep-research report flows use the report-compiler dispatch roster; the formatter strips it from final output (#548, not content loss). Omit the comment when nothing is marked.
 4. **Absolute form requires explicit user confirmation.** Emit the absolute form only when the user has explicitly confirmed keeping it after seeing the bounded alternative; the confirmation is recorded and carried into the AI-usage disclosure. Never escalate bounded → absolute during revision on your own.
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — scientific-discovery agents cannot easily verify novelty on their own and may exploit weak proxies; ARS therefore never asserts novelty beyond its documented search.
