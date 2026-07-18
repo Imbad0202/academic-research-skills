@@ -310,7 +310,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.18.0（2026-07-18）— 自我改进 survey 整合：advisory 质量层、风险分层 claim 关卡、跨模型评审席与裁判独立
 
-> **新增**：由 Ren et al.（2026，arXiv:2607.13104）驱动的八项质量机制——子问题范围绑定＋Phase E 范围一致性 advisory（#547）、有界化 novelty 主张＋E5 分类（#548，均 advisory-only、在 MANDATORY 检查点逐行显示）；Stage 2.5 风险分层 claim 查核（HIGH-IMPACT 全查＋随机哨兵，#549）；引用查验 gate 接通缓存层＋时效 advisory＋opt-in 实时重验（#541）；同意制跨模型评审席（五席面板一席换底座，#540）与复审裁判独立性＋Judge Record（#539）；路由/关卡措辞稳健性测试集 v0.1（#550，并补齐 reviewer skill 缺失的中文触发词）；survey 本身列为第三个 human-in-the-loop 文献锚点（#542）。`academic-pipeline` 随套件升至 v3.18.0；其余三个 skill 版本不变。
+> **新增**：由 Ren et al.（2026，arXiv:2607.13104）驱动的八项质量机制——子问题范围绑定＋Phase E 范围一致性 advisory（#547）、有界化 novelty 主张＋E5 分类（#548，均 advisory-only、在 MANDATORY 检查点逐行显示）；Stage 2.5 风险分层 claim 查核（HIGH-IMPACT 全查＋随机哨兵，#549）；引用查验 gate 接通缓存层＋时效 advisory＋opt-in 实时重验（#541）；同意制跨模型评审席（五席面板一席换底座，#540）与复审裁判独立性＋Judge Record（#539）；路由/关卡措辞稳健性测试集 v0.1（#550，并补齐 reviewer skill 缺失的中文触发词）；survey 本身列为第三个 human-in-the-loop 文献锚点（#542）。另有一项独立于 survey 轨的功能：#544 SessionStart 更新提醒——plugin 安装落后 main 时提示 `/plugin update`（`ARS_UPDATE_CHECK=0` 可关闭）。`academic-pipeline` 随套件升至 v3.18.0；其余三个 skill 版本不变。
 
 ### v3.17.0（2026-07-16）— Pipeline 边界语义、跨模型交接信封、可执行 panel checker
 

@@ -312,7 +312,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.18.0（2026-07-18）— 自我改進 survey 整合：advisory 品質層、風險分層 claim 關卡、跨模型審查席與判官獨立
 
-> **新增**：由 Ren et al.（2026，arXiv:2607.13104）驅動的八項品質機制——子問題範圍綁定＋Phase E 範圍一致性 advisory（#547）、有界化 novelty 主張＋E5 分類（#548，皆 advisory-only、於 MANDATORY 檢查點逐列顯示）；Stage 2.5 風險分層 claim 查核（HIGH-IMPACT 全查＋隨機哨兵，#549）；引用查驗 gate 真正接上快取層＋時效 advisory＋opt-in 即時重驗（#541，補完 v3.11 Delta-2 forward-decl）；同意制跨模型審查席（五席面板一席換基座，#540）與再審判官獨立性＋Judge Record（#539）；路由/關卡措辭穩健性測試集 v0.1（#550，並補上 reviewer skill 缺失的中文觸發詞）；survey 本身列為第三個 human-in-the-loop 文獻錨點（#542）。`academic-pipeline` 隨套件升至 v3.18.0；其餘三個 skill 版本不變。
+> **新增**：由 Ren et al.（2026，arXiv:2607.13104）驅動的八項品質機制——子問題範圍綁定＋Phase E 範圍一致性 advisory（#547）、有界化 novelty 主張＋E5 分類（#548，皆 advisory-only、於 MANDATORY 檢查點逐列顯示）；Stage 2.5 風險分層 claim 查核（HIGH-IMPACT 全查＋隨機哨兵，#549）；引用查驗 gate 真正接上快取層＋時效 advisory＋opt-in 即時重驗（#541，補完 v3.11 Delta-2 forward-decl）；同意制跨模型審查席（五席面板一席換基座，#540）與再審判官獨立性＋Judge Record（#539）；路由/關卡措辭穩健性測試集 v0.1（#550，並補上 reviewer skill 缺失的中文觸發詞）；survey 本身列為第三個 human-in-the-loop 文獻錨點（#542）。另有一項獨立於 survey 軌的功能：#544 SessionStart 更新提醒——plugin 安裝落後 main 時提示 `/plugin update`（`ARS_UPDATE_CHECK=0` 可關閉）。`academic-pipeline` 隨套件升至 v3.18.0；其餘三個 skill 版本不變。
 
 ### v3.17.0（2026-07-16）— Pipeline 邊界語意、跨模型交接信封、可執行 panel checker
 
