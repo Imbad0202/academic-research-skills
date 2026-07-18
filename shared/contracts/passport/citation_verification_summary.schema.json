@@ -68,11 +68,11 @@
     "cache_age_days": {
       "type": "number",
       "minimum": 0,
-      "description": "#541 — age in days of the oldest live cache row this verification was served from; absent when nothing was cache-served. Advisory metadata, never a gate input."
+      "description": "#541 — citation-level age in days (rounded to 0.1) of the OLDEST live cache row for this citation across resolvers/query forms — deliberately conservative: an unexpired row for an obsolete query form can flag a citation whose latest verification is fresh (accepted advisory-direction false positive). Present only when at least one resolver outcome was served from cache. Never a gate input."
     },
     "cache_stale_advisory": {
       "type": "boolean",
-      "description": "#541 — true when cache_age_days exceeds ARS_CACHE_STALE_ADVISORY_DAYS (default 30; 0 disables). Advisory-only: surfaces as an ADV-CACHE row at the integrity checkpoint, never gates."
+      "description": "#541 — true when the emitted (rounded) cache_age_days exceeds ARS_CACHE_STALE_ADVISORY_DAYS (default 30; 0 disables). Advisory-only: surfaces as an ADV-CACHE row at the integrity checkpoint, never gates."
     }
   },
   "$defs": {

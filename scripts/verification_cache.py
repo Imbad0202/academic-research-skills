@@ -73,6 +73,19 @@ CREATE TABLE IF NOT EXISTS verification_cache (
 """
 
 
+def _parse_ts(verification_timestamp: str) -> datetime | None:
+    """Parse a stored ISO timestamp defensively (#541): naive timestamps
+    (written by older/other tools) are read as UTC; malformed strings return
+    None (callers treat the row as a miss / skip it — never abort)."""
+    try:
+        stored = datetime.fromisoformat(verification_timestamp)
+    except (ValueError, TypeError):
+        return None
+    if stored.tzinfo is None:
+        stored = stored.replace(tzinfo=timezone.utc)
+    return stored
+
+
 def _resolve_path(path: str | None) -> Path:
     """Explicit arg wins over the env override, which wins over the default."""
     if path is not None:
@@ -175,8 +188,14 @@ class VerificationCache:
 
     def entry_age_days(self, citation_key: str) -> float | None:
         """Age in days of the OLDEST live (non-expired) cached row for a
-        citation, across resolvers and query forms — the most conservative
-        staleness signal (#541). None when the citation has no live rows.
+        citation, across resolvers and query forms — deliberately the most
+        conservative citation-level signal (#541): an unexpired row for an
+        obsolete query form can flag a citation whose latest verification is
+        fresh. That false-positive direction is accepted (advisory-only; a
+        stale warning that prompts one unnecessary look is cheaper than a
+        missed stale source). None when the citation has no live rows.
+        Malformed timestamps are skipped; naive timestamps are read as UTC;
+        clock-skewed future timestamps clamp to age 0.
         """
         with closing(self._connect()) as conn:
             rows = conn.execute(
@@ -189,8 +208,33 @@ class VerificationCache:
         for (ts,) in rows:
             if self._is_expired(ts):
                 continue
-            ages.append((now - datetime.fromisoformat(ts)).total_seconds() / 86400.0)
+            stored = _parse_ts(ts)
+            if stored is None:
+                continue
+            ages.append(max(0.0, (now - stored).total_seconds() / 86400.0))
         return max(ages) if ages else None
+
+    def row_age_days(
+        self, citation_key: str, resolver_name: str, query_form: str,
+    ) -> float | None:
+        """Age in days of ONE live cached row (#541 per-row form — backs the
+        stale-revalidate bypass, which must judge exactly the row it would
+        serve). None on miss / expired / malformed timestamp. Future
+        timestamps clamp to 0."""
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT verification_timestamp FROM verification_cache "
+                "WHERE citation_key = ? AND resolver_name = ? AND query_form = ?",
+                (citation_key, resolver_name, query_form),
+            ).fetchone()
+        if row is None or self._is_expired(row[0]):
+            return None
+        stored = _parse_ts(row[0])
+        if stored is None:
+            return None
+        return max(
+            0.0, (datetime.now(timezone.utc) - stored).total_seconds() / 86400.0
+        )
 
     def stale_report(
         self, citation_keys: list[str],
@@ -210,13 +254,20 @@ class VerificationCache:
             age = self.entry_age_days(key)
             if age is None:
                 continue
+            rounded = round(age, 1)
+            # The flag is computed from the SAME rounded value the report
+            # emits, so the emitted pair is always self-consistent (a raw age
+            # of threshold+epsilon that rounds down to the threshold does not
+            # flag).
             report[key] = {
-                "cache_age_days": round(age, 1),
-                "cache_stale_advisory": bool(threshold and age > threshold),
+                "cache_age_days": rounded,
+                "cache_stale_advisory": bool(threshold and rounded > threshold),
             }
         return report
 
     @staticmethod
     def _is_expired(verification_timestamp: str) -> bool:
-        stored = datetime.fromisoformat(verification_timestamp)
+        stored = _parse_ts(verification_timestamp)
+        if stored is None:
+            return True  # malformed timestamp = expired = miss, never an abort
         return datetime.now(timezone.utc) - stored > timedelta(days=_TTL_DAYS)

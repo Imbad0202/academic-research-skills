@@ -293,11 +293,11 @@ Verification result: [PASS / PASS WITH NOTES / FAIL]
 - Data verification: [X/X] passed
 - Originality check: [PASS/ISSUES]
 - Claim verification: [X/X] verified [PASS/ISSUES]
-- Advisory rows (#547/#548, non-gating): [none / N rows, listed below]
+- Advisory rows (#547/#548/#541, non-gating): [none / N rows, listed below]
 
 [If FAIL: list correction items with severity]
 
-[If advisory rows exist: list each row with its ADV-E4-<n> / ADV-E5-<n> ID and content, then ask the user per row — proceed open (default) or accept-with-justification / confirm-absolute — and record each response in this checkpoint dialogue. Advisory rows never block continuation.]
+[If advisory rows exist: list each row with its ADV-E4-<n> / ADV-E5-<n> / ADV-CACHE-<n> ID and content, then ask the user per row — proceed open (default) or accept-with-justification / confirm-absolute / (cache rows) note the invalidate option — and record each response in this checkpoint dialogue. Advisory rows never block continuation.]
 
 Flagged: [issues requiring attention]
 

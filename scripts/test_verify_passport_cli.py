@@ -16,6 +16,13 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolated_cache(tmp_path, monkeypatch):
+    """#541: the CLI defaults to cache-through — point every test at a tmp DB
+    so no test ever touches the user's real ~/.cache/ars/verification.db."""
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "cli-v.db"))
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent

@@ -224,6 +224,75 @@ def _query_form(*, id_label: str, id_value: str | None, title: str) -> str:
     return f"{id_label}:{id_value or ''}|title:{title}"
 
 
+def _cached_verdict_detailed(
+    *,
+    cache,
+    citation_key,
+    resolver_name: str,
+    query_form: str,
+    compute,
+    bypass_stale: bool = False,
+    require_queried_by: bool = True,
+) -> tuple[bool, str | None, str | None, bool]:
+    """#541 detailed form of `_cached_verdict`: returns
+    (unmatched, matched_by, queried_by, served_from_cache) so the
+    verification-gate layer keeps the C-V6(a) queried_by signal on cache hits.
+
+    Hit criteria are `_cached_verdict`'s (payload has `matched`, decision
+    version matches) PLUS — for gate callers (`require_queried_by=True`, the
+    default) — `queried_by` present: a foreign row without it cannot feed the
+    gate's outcome contract, so it is a miss there. The bool-only signal layer
+    (`_cached_verdict`) passes `require_queried_by=False`, preserving its
+    historical hit criteria byte-for-byte. When
+    `bypass_stale` is True (#541 `ARS_CACHE_REVALIDATE`), a hit whose OWN row
+    age exceeds the stale-advisory threshold is treated as a miss — forcing a
+    live re-verification that then re-populates the row. cache=None runs live.
+    """
+    if cache is None:
+        unmatched, matched_by, queried_by = compute()
+        return unmatched, matched_by, queried_by, False
+    cached = cache.get(citation_key, resolver_name, query_form)
+    if (
+        cached is not None
+        and "matched" in cached
+        and (not require_queried_by or "queried_by" in cached)
+        and cached.get("decision_version") == RESOLVER_DECISION_VERSION
+    ):
+        stale_bypassed = False
+        if bypass_stale:
+            threshold = _stale_advisory_days()
+            age = cache.row_age_days(citation_key, resolver_name, query_form)
+            stale_bypassed = bool(
+                threshold and age is not None and age > threshold
+            )
+        if not stale_bypassed:
+            return (
+                not cached["matched"],
+                cached.get("matched_by"),
+                cached.get("queried_by"),
+                True,
+            )
+    unmatched, matched_by, queried_by = compute()
+    cache.put(
+        citation_key,
+        resolver_name,
+        query_form,
+        {"matched": not unmatched, "matched_by": matched_by,
+         "queried_by": queried_by,
+         "decision_version": RESOLVER_DECISION_VERSION},
+    )
+    return unmatched, matched_by, queried_by, False
+
+
+def _stale_advisory_days() -> int:
+    """Lazy import of the #541 threshold (avoids a hard import cycle)."""
+    try:
+        from verification_cache import stale_advisory_days
+    except ImportError:  # pragma: no cover - dual-path import
+        from scripts.verification_cache import stale_advisory_days
+    return stale_advisory_days()
+
+
 def _cached_verdict(
     *,
     cache,
@@ -244,34 +313,16 @@ def _cached_verdict(
     The stored payload carries `matched_by` + `queried_by` so a cached negative
     keeps the C-V6(a) ID-keyed signal the narrowed-false reducer needs.
     """
-    if cache is None:
-        unmatched, _, _ = compute()
-        return unmatched
-    cached = cache.get(citation_key, resolver_name, query_form)
-    # #431 §0.12.3b: a hit is reusable ONLY when its stored decision version
-    # matches the current logic. A row missing `matched` (written by an
-    # older/other tool) OR carrying a stale/absent decision version (e.g. any
-    # pre-v5 `matched_by=title` row written under the author-agree tiers) is
-    # treated as a MISS — forcing a live recompute under the current logic
-    # rather than reusing a verdict a different decision path produced. Without
-    # this the #431 pivot is a no-op for every citation already cached.
-    if (
-        cached is not None
-        and "matched" in cached
-        and cached.get("decision_version") == RESOLVER_DECISION_VERSION
-    ):
-        return not cached["matched"]
-    unmatched, matched_by, queried_by = compute()
-    # query_form is the cache key, not part of the value — no need to echo it
-    # into the stored payload (nothing reads it back). The decision version is
-    # stamped into the value so a future run under a newer logic re-resolves.
-    cache.put(
-        citation_key,
-        resolver_name,
-        query_form,
-        {"matched": not unmatched, "matched_by": matched_by,
-         "queried_by": queried_by,
-         "decision_version": RESOLVER_DECISION_VERSION},
+    # #431 §0.12.3b hit-reuse rule + #541 queried_by requirement live in the
+    # detailed form — single logic path; this wrapper keeps the historical
+    # bool-only return for the signal-layer callers.
+    unmatched, _, _, _ = _cached_verdict_detailed(
+        cache=cache,
+        citation_key=citation_key,
+        resolver_name=resolver_name,
+        query_form=query_form,
+        compute=compute,
+        require_queried_by=False,
     )
     return unmatched
 
@@ -552,3 +603,76 @@ def clear_signal_omission(entry: MutableMapping[str, Any], field: str) -> bool:
     if not omissions:
         del entry[_OMISSIONS_FIELD]
     return True
+
+
+
+# ---------------------------------------------------------------------------
+# #541 gate-facing detailed wrappers (verification_gate cache-through)
+# ---------------------------------------------------------------------------
+
+def resolve_doi_then_title_detailed(
+    entry: Mapping[str, Any], client, *, resolver_name: str, cache=None,
+    bypass_stale: bool = False,
+) -> tuple[bool, str | None, str | None, bool]:
+    """Cache-through detailed form of the crossref/openalex flow for the
+    verification gate (#541): same cache key as `_resolve_by_doi_then_title`
+    (interoperable rows), returns (unmatched, matched_by, queried_by,
+    served_from_cache). No manual exemption here — the gate short-circuits
+    manual entries upstream. Degradation exceptions propagate uncaught.
+    """
+    return _cached_verdict_detailed(
+        cache=cache,
+        citation_key=entry.get("citation_key"),
+        resolver_name=resolver_name,
+        query_form=_query_form(
+            id_label="doi", id_value=entry.get("doi"),
+            title=entry.get("title", ""),
+        ),
+        compute=lambda: _resolve_doi_then_title(entry, client),
+        bypass_stale=bypass_stale,
+    )
+
+
+def resolve_arxiv_detailed(
+    entry: Mapping[str, Any], client, *, cache=None, bypass_stale: bool = False,
+) -> tuple[bool, str | None, str | None, bool]:
+    """Cache-through detailed arXiv flow for the verification gate (#541).
+    Same cache key as `resolve_arxiv_unmatched` (interoperable rows).
+    Precondition: entry carries arxiv_id (the gate skips otherwise).
+    """
+    return _cached_verdict_detailed(
+        cache=cache,
+        citation_key=entry.get("citation_key"),
+        resolver_name="arxiv",
+        query_form=_query_form(
+            id_label="arxiv", id_value=entry.get("arxiv_id"),
+            title=entry.get("title", ""),
+        ),
+        compute=lambda: _resolve_arxiv_id_then_title(entry, client),
+        bypass_stale=bypass_stale,
+    )
+
+
+def resolve_s2_detailed(
+    entry: Mapping[str, Any], client, *, cache=None, bypass_stale: bool = False,
+) -> tuple[bool, str | None, str | None, bool]:
+    """Cache-through detailed S2 flow for the verification gate (#541).
+    Same cache key as `compute_ss_unmatched_signal` (interoperable rows).
+    SemanticScholarUnavailable propagates (the gate maps it to unreachable);
+    degradations are never cached (put runs only on compute success).
+    """
+    return _cached_verdict_detailed(
+        cache=cache,
+        citation_key=entry.get("citation_key"),
+        resolver_name="semantic_scholar",
+        query_form=_query_form(
+            id_label="doi", id_value=entry.get("doi"),
+            title=entry.get("title", ""),
+        ),
+        compute=lambda: (
+            not bool(client.lookup(entry).get("matched", False)),
+            None,
+            queried_by_for(entry, id_field="doi"),
+        ),
+        bypass_stale=bypass_stale,
+    )

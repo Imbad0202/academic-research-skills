@@ -318,13 +318,75 @@ def test_verify_passport_outputs_are_schema_valid():
         assert errors == [], f"summary must validate: {errors}"
 
 
-def test_cache_argument_is_honest_not_silent_noop():
-    """cache wiring at this layer is a forward-decl; passing a non-None cache
-    must raise (not silently drop it), so a caller is never misled into
-    thinking caching took effect."""
+def _tmp_cache(tmp_path, monkeypatch):
+    from verification_cache import VerificationCache
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "v.db"))
+    return VerificationCache()
+
+
+def test_cache_through_miss_populates_then_hit_skips_network(tmp_path, monkeypatch):
+    """#541 (closes the Delta-2 forward-decl): first run with a cache populates
+    it (network runs); second run with FRESH clients is served from cache and
+    makes no resolver call; the fresh-hit summary carries the #541 advisory
+    fields with a young age and no advisory flag."""
     from verification_gate import verify_citation
-    with pytest.raises(NotImplementedError):
-        verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG, cache=object())
+
+    cache = _tmp_cache(tmp_path, monkeypatch)
+    monkeypatch.delenv("ARS_CACHE_STALE_ADVISORY_DAYS", raising=False)
+
+    first_clients = _clients()
+    s1 = verify_citation(_entry(), first_clients, ref_slug=_DEFAULT_REF_SLUG,
+                         cache=cache)
+    assert first_clients["crossref"].doi_lookup_with_title_check.called
+
+    second_clients = _clients()
+    s2 = verify_citation(_entry(), second_clients, ref_slug=_DEFAULT_REF_SLUG,
+                         cache=cache)
+    second_clients["crossref"].doi_lookup_with_title_check.assert_not_called()
+    second_clients["semantic_scholar"].lookup.assert_not_called()
+    assert s2["lookup_verified"] == s1["lookup_verified"]
+    assert s2["cache_age_days"] >= 0.0
+    assert s2["cache_stale_advisory"] is False
+
+
+def test_cache_none_is_byte_equivalent_live_path():
+    """cache=None keeps the historical live path: no #541 fields on the summary."""
+    from verification_gate import verify_citation
+
+    s = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
+    assert "cache_age_days" not in s
+    assert "cache_stale_advisory" not in s
+
+
+def test_revalidate_stale_bypasses_old_rows(tmp_path, monkeypatch):
+    """#541 ARS_CACHE_REVALIDATE: a hit older than the threshold is recomputed
+    live (network runs again) and re-cached; without the flag the old row is
+    served with the stale advisory set."""
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    from verification_gate import verify_citation
+
+    cache = _tmp_cache(tmp_path, monkeypatch)
+    monkeypatch.delenv("ARS_CACHE_STALE_ADVISORY_DAYS", raising=False)
+
+    verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG, cache=cache)
+    ts = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+    with sqlite3.connect(cache.path) as conn:
+        conn.execute("UPDATE verification_cache SET verification_timestamp = ?", (ts,))
+
+    served = _clients()
+    s = verify_citation(_entry(), served, ref_slug=_DEFAULT_REF_SLUG, cache=cache)
+    served["crossref"].doi_lookup_with_title_check.assert_not_called()
+    assert s["cache_stale_advisory"] is True
+    assert s["cache_age_days"] > 30
+
+    revalidated = _clients()
+    s2 = verify_citation(_entry(), revalidated, ref_slug=_DEFAULT_REF_SLUG,
+                         cache=cache, revalidate_stale=True)
+    assert revalidated["crossref"].doi_lookup_with_title_check.called
+    # rows were re-populated fresh -> no advisory (fields present only if any
+    # outcome was cache-served; a full live recompute may omit them entirely)
+    assert not s2.get("cache_stale_advisory", False)
 
 
 @pytest.mark.parametrize("bad", [None, "", 0, 123, ["slug"], {"slug": 1}])
