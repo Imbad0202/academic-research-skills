@@ -372,6 +372,12 @@ score_trajectory: {
 | `revision_roadmap` | list[RoadmapItem] | Prioritized list of required changes |
 | `confidence_score` | integer | 0-100 editorial confidence |
 
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `judge_record` | object | #539 judge transparency: `{verification_judge, revision_driving_judge, cross_model_pass: bool, cross_model_id?, rubric_version, evidence_seen, judging_budget_note}`. Emitted by re-review (Stage 3'); absent = pre-#539 report. External motivation: Ren et al. arXiv:2607.13104 §8.1.2 (judge identity, rubric, and budget transparency; evaluator independence for final reporting). |
+
 ### ReviewerReport Object
 
 | Field | Type | Description |

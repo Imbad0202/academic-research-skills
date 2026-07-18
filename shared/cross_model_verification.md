@@ -225,6 +225,10 @@ The DA agent, after completing its checkpoint report, should:
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §5.2) — consistency-derived feedback is fragile when errors correlate across samples of one model, and repeated sampling may amplify a confidently-wrong conclusion; heterogeneous critique models are among the safeguards it names.
 
+### Re-Review Judge Independence (#539 — Stage 3' verification round)
+
+**When `ARS_CROSS_MODEL` is set:** each Priority 1 roadmap item's addressed-ness verdict in the Stage 3' re-review gets an independent cross-model pass (dispatching-layer transport per #523; item + author claim + revised passage sent as data). Divergences are marked `[CROSS-FAMILY-DIVERGENCE]` on the R&R Traceability Matrix for the EIC — a review trigger, never a vote. **When not set:** single-family disclosure line in the Re-Review Output (never omitted). Both cases record the Judge Record (judge identity per role, rubric version, evidence seen, judging budget separate from generation) — Schema 6 optional `judge_record`. Authority: `academic-paper-reviewer/references/re_review_mode_protocol.md` § Judge Independence. External motivation: Ren et al. §8.1.2 — evaluator independence for final reporting + judge transparency; the reviewer's calibration mode (gold-set FNR/FPR) is the same section's calibration-against-a-verifiable-subset safeguard, already shipped.
+
 ### Blind Disagreement Checkpoints (research-design freeze + final editorial decision)
 
 Two irreversible checkpoints gain an optional cross-model check when `ARS_CROSS_MODEL` is set and the consent gate has been passed:

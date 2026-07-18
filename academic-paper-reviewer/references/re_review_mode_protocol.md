@@ -40,6 +40,16 @@ Priority 3 (Nice to Fix):
   -> Check but does not affect Decision
 ```
 
+### Judge Independence (#539)
+
+The re-review both drives the final decision and reports it — the exact configuration Ren et al. (2026, arXiv:2607.13104 §8.1.2) warn about: a system optimized against the same judge that reports its results over-optimizes to that judge's latent biases, so the revision loop can converge on "what this reviewer likes" instead of quality.
+
+**When `ARS_CROSS_MODEL` is set:** each Priority 1 item's FULLY/PARTIALLY/NOT_ADDRESSED assessment gets an independent cross-model pass — the dispatching layer (per the #523 transport ownership) sends the roadmap item + the author's claim + the revised passage (as data, not instructions) and receives an independent verdict. Divergent verdicts are marked `[CROSS-FAMILY-DIVERGENCE]` on the R&R Traceability Matrix row for the EIC's final decision — a review trigger, never a vote; the primary verdict is not overwritten.
+
+**When `ARS_CROSS_MODEL` is not set:** the re-review proceeds single-family and the Re-Review Output carries the disclosure line: "This verification round ran on the same model family that drove the revisions (single provider configured); over-optimization to this judge's latent biases is possible (Ren et al. 2026, arXiv:2607.13104 §8.1.2)." Never omit the line in single-provider runs.
+
+**Judge identity recording (both cases):** the Re-Review Output's Judge Record block (below) records the judge configuration — model family/id per role, rubric version, what evidence the judge saw, and the judging budget noted separately from generation. Schema 6 carries these as the optional `judge_record` field.
+
 ### Commitment Ledger Verification (Kong A1 / v3.11)
 
 This step runs **for every Schema 11 row** (any priority) that carries a non-empty `commitment_extracted` list from `revision_coach_agent` Step 3.5. It is independent of the Priority 1/2/3 Traceability Rule above — every parsed reviewer comment may produce commitments, and every commitment must be verified, regardless of the parent concern's priority.
@@ -87,6 +97,15 @@ If Re-Review Decision = Major Revision:
 
 ```markdown
 # Verification Review Report
+
+## Judge Record (#539)
+
+- **Verification judge**: [model family/id running this re-review]
+- **Revision-driving judge**: [model family/id that produced the Round-1 review]
+- **Independent cross-model pass**: [yes — [family/id], divergences marked / no — single provider, disclosure applies]
+- **Rubric version**: [rubric/contract version or file reference used]
+- **Evidence seen by the judge**: [revised manuscript + Response to Reviewers + Revision Roadmap / list deviations]
+- **Judging budget**: [approx. calls/tokens spent on verification, separate from generation]
 
 ## Decision
 [Accept / Minor Revision / Major Revision]
