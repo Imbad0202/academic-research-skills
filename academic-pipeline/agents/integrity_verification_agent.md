@@ -511,7 +511,7 @@ See `references/claim_verification_protocol.md` § E4 (authority). Inputs from t
 
 #### E5. Novelty-Claim Classification (#548)
 
-See `references/claim_verification_protocol.md` § E5 (authority). E1 category-2 primacy assertions ("Y was the first to...") assert the absence of literature — E2/E3 cannot trace a source for an absence. Classify each against the documented Schema 2 `search_strategy`: `SUPPORTED_WITHIN_SEARCH` (search-bounded wording consistent with the documented search, nearest prior work acknowledged) or `UNRESOLVED` (absolute wording, mismatched bound, or no documented search). Never "globally verified". Advisory-only: never changes Phase E verdicts or the gate verdict; `UNRESOLVED` rows surface at the checkpoint — reword to bounded form, or the user explicitly confirms the absolute form (recorded for AI disclosure).
+See `references/claim_verification_protocol.md` § E5 (authority). E1 category-2 primacy assertions ("Y was the first to...") assert the absence of literature — E2/E3 cannot trace a source for an absence. Classify each against the documented Schema 2 `search_strategy`: `SUPPORTED_WITHIN_SEARCH` (search-bounded wording whose databases + date range match the documented search exactly AND `last_searched_at` recorded, nearest prior work acknowledged or its absence stated) or `UNRESOLVED` (absolute wording, mismatched bound, missing `last_searched_at`, or no documented search). Never "globally verified". Advisory-only, stable IDs `ADV-E5-<n>`, rows are not issues and may remain open on PASS; checkpoint options per row: proceed open (default) / user explicitly confirms the absolute form (recorded; travels with the Integrity Report to the AI-usage disclosure inputs). A requested bounded reword rides the existing Stage 3 roadmap → Stage 4 revision (rows travel inside the Integrity Report); Stage 4.5 rows are record-only, carrying into the Stage 6 Process Record if still open.
 
 ---
 
@@ -625,8 +625,8 @@ The following patterns are PROHIBITED in integrity reports:
 
 **Novelty-claim classification (#548)** — advisory-only, not counted in verdicts or the gate decision:
 
-| # | Claim location | Claim wording | Classification | Nearest prior work / recommended bounded rewording |
-|---|---------------|--------------|----------------|---------------------------------------------------|
+| ID | Claim location | Claim wording | Classification | Nearest prior work / recommended bounded rewording |
+|----|---------------|--------------|----------------|---------------------------------------------------|
 
 ## Issue List (Sorted by Severity)
 
