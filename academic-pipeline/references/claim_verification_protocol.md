@@ -36,6 +36,21 @@ Compare each audited claim's population, timeframe, geography, and domain agains
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §5.1) — decomposition-based generation becomes vulnerable when sub-problems stop preserving the constraints of the original task (design inference: a drafted claim is the last link in that chain).
 
+## E5: Novelty-Claim Classification (#548 — advisory-only)
+
+E1 already extracts categorical assertions of primacy ("Y was the first to..."). Such claims assert the ABSENCE of prior literature, so E2/E3 source-tracing structurally cannot verify them — there is no cited source to trace. Classify them against the documented search (Schema 2 `search_strategy`) instead:
+
+| Classification | Definition |
+|----------------|------------|
+| `SUPPORTED_WITHIN_SEARCH` | Wording is search-bounded ("to our knowledge, based on searches of [databases] through [date]...") AND consistent with the documented `search_strategy`; nearest prior work from the bibliography is acknowledged where it exists |
+| `UNRESOLVED` | Absolute wording ("first", "no prior work", "only") without a search bound, OR the stated bound does not match the documented `search_strategy`, OR no documented search basis exists |
+
+Never emit a "globally verified" novelty verdict — a search-bounded claim is verified WITHIN its search, nothing more.
+
+ADVISORY ONLY: `UNRESOLVED` rows never change Phase E verdicts and never gate PASS/FAIL. They surface at the Stage 2.5 / 4.5 checkpoint for the user's per-row decision — reword to the bounded form, or explicitly confirm keeping the absolute form (confirmation recorded and carried into the AI-usage disclosure).
+
+External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — discovery agents cannot easily verify novelty on their own and may exploit weak proxies.
+
 ## Verdict Taxonomy
 
 | Verdict | Definition | Severity | Example |
