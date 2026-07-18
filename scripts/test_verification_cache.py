@@ -211,3 +211,70 @@ def test_non_dict_payload_is_miss(tmp_path, monkeypatch):
     conn.close()
 
     assert c.get("list2024", "crossref", "10.5555/list") is None
+
+
+# ---------------------------------------------------------------------------
+# #541 staleness advisory (Ren et al. arXiv:2607.13104 §6.2.3)
+# ---------------------------------------------------------------------------
+
+
+def _backdate(cache, citation_key, days):
+    """Rewrite every row for a key to `days` days ago."""
+    ts = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    with sqlite3.connect(cache.path) as conn:
+        conn.execute(
+            "UPDATE verification_cache SET verification_timestamp = ? "
+            "WHERE citation_key = ?", (ts, citation_key))
+
+
+def test_stale_threshold_default_env_zero_and_malformed(monkeypatch):
+    import verification_cache as vc
+
+    monkeypatch.delenv(vc._STALE_ADVISORY_ENV, raising=False)
+    assert vc.stale_advisory_days() == vc._STALE_ADVISORY_DEFAULT_DAYS
+    monkeypatch.setenv(vc._STALE_ADVISORY_ENV, "7")
+    assert vc.stale_advisory_days() == 7
+    monkeypatch.setenv(vc._STALE_ADVISORY_ENV, "0")
+    assert vc.stale_advisory_days() == 0
+    monkeypatch.setenv(vc._STALE_ADVISORY_ENV, "not-a-number")
+    assert vc.stale_advisory_days() == vc._STALE_ADVISORY_DEFAULT_DAYS
+    monkeypatch.setenv(vc._STALE_ADVISORY_ENV, "-5")
+    assert vc.stale_advisory_days() == vc._STALE_ADVISORY_DEFAULT_DAYS
+
+
+def test_entry_age_none_without_rows(cache):
+    assert cache.entry_age_days("absent") is None
+
+
+def test_entry_age_oldest_live_row_wins(cache):
+    cache.put("k1", "crossref", "10.1/x", {"matched": True})
+    _backdate(cache, "k1", 40)
+    cache.put("k1", "openalex", "10.1/x", {"matched": True})
+    age = cache.entry_age_days("k1")
+    assert age is not None
+    assert age > 39  # the oldest (40d) row wins over the fresh one
+
+
+def test_entry_age_ignores_expired_rows(cache):
+    cache.put("k2", "crossref", "10.1/y", {"matched": True})
+    _backdate(cache, "k2", 120)  # past the 90-day TTL -> not a live row
+    assert cache.entry_age_days("k2") is None
+
+
+def test_stale_report_flags_omits_and_disable(cache, monkeypatch):
+    import verification_cache as vc
+
+    monkeypatch.delenv(vc._STALE_ADVISORY_ENV, raising=False)
+    cache.put("fresh", "crossref", "10.1/f", {"matched": True})
+    cache.put("old", "crossref", "10.1/o", {"matched": True})
+    _backdate(cache, "old", 40)
+
+    report = cache.stale_report(["fresh", "old", "absent"])
+    assert "absent" not in report  # nothing cache-served -> nothing to warn
+    assert report["fresh"]["cache_stale_advisory"] is False
+    assert report["old"]["cache_stale_advisory"] is True
+    assert report["old"]["cache_age_days"] > 39
+
+    monkeypatch.setenv(vc._STALE_ADVISORY_ENV, "0")  # disabled
+    report = cache.stale_report(["old"])
+    assert report["old"]["cache_stale_advisory"] is False

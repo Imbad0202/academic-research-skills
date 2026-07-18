@@ -98,6 +98,14 @@ Before WebSearch-based verification, run a batch S2 API check on ALL references.
 | `DOI_MISMATCH` | Flag as SERIOUS — possible DOI Misdirection (Compound Deception Pattern #5) |
 | `API_UNAVAILABLE` | Skip A0, proceed to A1 for all references |
 
+#### A0.5 Cache Staleness Advisory (#541 — advisory-only)
+
+When Phase A serves any verification from the persistent cache (`scripts/verification_cache.py`), obtain the citation-level staleness report (`stale_report`; threshold `ARS_CACHE_STALE_ADVISORY_DAYS`, default 30, `0` disables). For each cache-served citation flagged `cache_stale_advisory`, emit an advisory row with stable ID `ADV-CACHE-<n>` (citation_key, cache age in days, threshold) into the Integrity Report's advisory table — the same advisory-row semantics as E4/E5: not an issue, never gates, displayed with per-row options at the MANDATORY checkpoint (proceed open is the default; the user may run `/ars-cache-invalidate <citation_key>` to force a live re-verification next run). Stamp `cache_age_days` + `cache_stale_advisory` on the affected rows of the citation verification summary (optional schema fields).
+
+**Opt-in live re-verification (`ARS_CACHE_REVALIDATE=1`)**: when set, a reference that BOTH supports a `HIGH-IMPACT` claim (#549 tier) AND is `cache_stale_advisory` is verified live (cache bypassed, then re-populated) instead of cache-served — the executable form of periodic re-validation for high-use sources. Default off; when off, behavior is advisory-only.
+
+**Invalidation cascade**: when a re-validation (manual invalidate + re-verify, or the opt-in path above) changes a source's existence status, metadata, or retrieved evidence, the dependent artifacts — that citation's verification summary row and any Phase E audit verdicts that relied on it — are stale: re-run them for the affected citation at this gate before emitting the report. External motivation: Ren et al. (2026, arXiv:2607.13104 §6.2.3) — scheduled review and attenuation instead of manual-invalidation-only.
+
 A0 is additive — it does not replace A1. The audit trail must record both A0 and A1 results.
 
 #### A1. Existence Check
@@ -632,6 +640,11 @@ The following patterns are PROHIBITED in integrity reports:
 
 | ID | Claim location | Claim wording | Classification | Nearest prior work / recommended bounded rewording |
 |----|---------------|--------------|----------------|---------------------------------------------------|
+
+**Cache staleness advisory (#541)** — advisory-only, not counted in verdicts or the gate decision:
+
+| ID | Citation key | Cache age (days) | Threshold | Re-verified live? |
+|----|-------------|------------------|-----------|-------------------|
 
 ## Issue List (Sorted by Severity)
 

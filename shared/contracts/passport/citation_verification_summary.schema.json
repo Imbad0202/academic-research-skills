@@ -64,6 +64,15 @@
           "$ref": "#/$defs/resolver_outcome"
         }
       }
+    },
+    "cache_age_days": {
+      "type": "number",
+      "minimum": 0,
+      "description": "#541 — age in days of the oldest live cache row this verification was served from; absent when nothing was cache-served. Advisory metadata, never a gate input."
+    },
+    "cache_stale_advisory": {
+      "type": "boolean",
+      "description": "#541 — true when cache_age_days exceeds ARS_CACHE_STALE_ADVISORY_DAYS (default 30; 0 disables). Advisory-only: surfaces as an ADV-CACHE row at the integrity checkpoint, never gates."
     }
   },
   "$defs": {

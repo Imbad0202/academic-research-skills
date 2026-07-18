@@ -32,6 +32,32 @@ from typing import Any
 # Spec OQ-1: 90-day window is a guess, deferred for empirical tuning.
 _TTL_DAYS = 90
 
+# #541 staleness advisory (Ren et al. arXiv:2607.13104 §6.2.3 "scheduled review
+# and attenuation"): entries older than this many days are still HITS (the TTL
+# above is the only miss boundary) but carry an advisory flag so stale evidence
+# is visible exactly where it is used. 0 disables the advisory. Advisory-only —
+# never a gate input.
+_STALE_ADVISORY_ENV = "ARS_CACHE_STALE_ADVISORY_DAYS"
+_STALE_ADVISORY_DEFAULT_DAYS = 30
+
+
+def stale_advisory_days() -> int:
+    """The #541 advisory threshold in days (env-overridable; 0 disables).
+
+    A malformed or negative override falls back to the default rather than
+    erroring: the advisory is a convenience layer and must never break a run.
+    """
+    raw = os.environ.get(_STALE_ADVISORY_ENV)
+    if raw is None:
+        return _STALE_ADVISORY_DEFAULT_DAYS
+    try:
+        value = int(raw)
+    except ValueError:
+        return _STALE_ADVISORY_DEFAULT_DAYS
+    if value < 0:
+        return _STALE_ADVISORY_DEFAULT_DAYS
+    return value
+
 _DEFAULT_PATH = Path.home() / ".cache" / "ars" / "verification.db"
 _ENV_PATH = "ARS_VERIFICATION_CACHE_PATH"
 
@@ -146,6 +172,49 @@ class VerificationCache:
                 "DELETE FROM verification_cache WHERE citation_key = ?",
                 (citation_key,),
             )
+
+    def entry_age_days(self, citation_key: str) -> float | None:
+        """Age in days of the OLDEST live (non-expired) cached row for a
+        citation, across resolvers and query forms — the most conservative
+        staleness signal (#541). None when the citation has no live rows.
+        """
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT verification_timestamp FROM verification_cache "
+                "WHERE citation_key = ?",
+                (citation_key,),
+            ).fetchall()
+        ages = []
+        now = datetime.now(timezone.utc)
+        for (ts,) in rows:
+            if self._is_expired(ts):
+                continue
+            ages.append((now - datetime.fromisoformat(ts)).total_seconds() / 86400.0)
+        return max(ages) if ages else None
+
+    def stale_report(
+        self, citation_keys: list[str],
+    ) -> dict[str, dict[str, Any]]:
+        """Per-citation #541 staleness report for the integrity gate.
+
+        Returns {citation_key: {"cache_age_days": float,
+        "cache_stale_advisory": bool}} for keys that have at least one live
+        cached row; keys with no live rows are omitted (nothing cache-served =
+        nothing to warn about). `cache_stale_advisory` is True iff the
+        threshold is enabled (>0) and the oldest live row exceeds it.
+        Advisory-only: callers MUST NOT gate on this report.
+        """
+        threshold = stale_advisory_days()
+        report: dict[str, dict[str, Any]] = {}
+        for key in citation_keys:
+            age = self.entry_age_days(key)
+            if age is None:
+                continue
+            report[key] = {
+                "cache_age_days": round(age, 1),
+                "cache_stale_advisory": bool(threshold and age > threshold),
+            }
+        return report
 
     @staticmethod
     def _is_expired(verification_timestamp: str) -> bool:

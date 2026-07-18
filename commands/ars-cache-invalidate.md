@@ -7,6 +7,8 @@ Invalidate the persistent verification cache for one citation key, so the next p
 
 The cache (spec v3.11 #182 Delta 2) is a local SQLite store at `~/.cache/ars/verification.db` (override via `ARS_VERIFICATION_CACHE_PATH`), keyed by `(citation_key, resolver_name, query_form)` with a 90-day TTL. This command removes **every** cached entry for the named citation key (all four resolvers, all query forms); other citations are untouched. It is idempotent — invalidating a key with no cached rows succeeds as a no-op.
 
+**Invalidation cascade (#541)**: invalidation changes what the next gate sees — if the re-verification then changes the source's existence status or metadata, the dependent artifacts (that citation's verification summary row, Phase E audit verdicts that relied on it) are stale and are re-run for the affected citation at the next integrity gate. An age-based advisory also surfaces stale cache entries automatically at the gates (`ARS_CACHE_STALE_ADVISORY_DAYS`, default 30; opt-in live re-verification via `ARS_CACHE_REVALIDATE=1`).
+
 To invalidate the **entire** cache at once (e.g. after a systemic resolver bug cached many false negatives), delete the database file directly: `rm ~/.cache/ars/verification.db`. It is recreated empty on the next run.
 
 Implementation:
