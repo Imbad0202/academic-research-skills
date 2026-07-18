@@ -116,6 +116,14 @@ escape_json() {
   raw="${raw//\\/\\\\}"
   raw="${raw//\"/\\\"}"
   raw="${raw//$'\n'/\\n}"
+  raw="${raw//$'\r'/}"
+  # Defense-in-depth (belt-and-suspenders): the #544 checker's strict version
+  # grammar already blocks control bytes upstream, but strip any remaining raw
+  # C0 control bytes (0x01-0x1f) here too so nothing can corrupt the JSON
+  # envelope. Real newlines were already converted to the literal two-char
+  # `\n` above, so this drops only stray control bytes, never legitimate text.
+  # `tr` is POSIX and always present; LC_ALL=C keeps the byte range literal.
+  raw="$(printf '%s' "${raw}" | LC_ALL=C tr -d '\001-\037')"
   printf '%s' "${raw}"
 }
 
