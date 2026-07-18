@@ -208,6 +208,20 @@ The DA agent, after completing its checkpoint report, should:
 3. Any cross-model finding not already covered → add to report as `[CROSS-MODEL-FINDING]`
 4. Log: `[CROSS-MODEL: X findings received, Y novel (not in primary DA report)]`
 
+### Cross-Model Reviewer Track (#540 — academic-paper-reviewer full mode)
+
+**When `ARS_CROSS_MODEL` is set:**
+- ONE existing peer-reviewer slot (Reviewer 2 by default) runs on the cross-model family instead of the session model. The panel stays FIVE seats — this is a substrate swap inside a fixed slot, NOT the retired "6th reviewer" (see the retirement note above: its five counterproductive conditions — score averaging, role duplication, findings-as-confirmed-defects, majority-vote false confidence, synthesizer context burn — all attach to an ADDED generic seat; none applies to swapping the substrate of an existing persona with an unchanged role and an unchanged vote).
+- Transport follows #523 ownership: the dispatching layer (the main session running the reviewer skill — not a Bucket A agent) executes the API calls. Two calls preserve the v3.6.2 sprint-contract split: call 1 sends the persona + contract for the paper-blind Phase 1 pre-commitment; call 2 sends the Phase 1 output (delimited as data) + the paper for Phase 2 scoring.
+- The slot's report enters the panel matrix exactly as that slot's report always does — heterogeneity itself is the §5.2 safeguard. The synthesizer additionally marks matrix rows where the cross-model slot diverges from the same-model majority as `[CROSS-FAMILY-DIVERGENCE]` — a visibility flag for the user, never a vote change, never averaged away.
+- An ungrounded compatible provider is first-class here (same class as DA critique: persona judgment needs no web grounding); its factual claims about literature remain subject to the normal citation gates.
+- Degradation: a failed/unavailable cross-model dispatch falls back to running the slot on the session model, and the Editorial Decision Letter's provenance line states the fallback — never a silent swap-back.
+
+**When `ARS_CROSS_MODEL` is not set:**
+- All five personas run on the session model, and the Editorial Decision Letter carries the correlated-error disclosure (see the template's Review Panel Provenance block) instead of silently implying independence.
+
+External motivation: Ren et al. (2026, arXiv:2607.13104 §5.2) — when a model is confidently wrong, repeated sampling converges on the same wrong conclusion; heterogeneous critique models are the named safeguard.
+
 ### Blind Disagreement Checkpoints (research-design freeze + final editorial decision)
 
 Two irreversible checkpoints gain an optional cross-model check when `ARS_CROSS_MODEL` is set and the consent gate has been passed:

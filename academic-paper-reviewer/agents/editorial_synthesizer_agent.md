@@ -420,3 +420,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 - In Guided Mode, do not produce a full Editorial Decision Letter
 - Instead: Based on the 4 reports, prepare an "issue list" and discuss with the author one by one in priority order
 - Start from the EIC's perspective, gradually introducing other reviewers' perspectives
+
+## Cross-Model Reviewer Track (#540)
+
+Fill the Editorial Decision Letter's `## Review Panel Provenance (#540)` block with exactly one of its three statements (cross-model slot active / single-family disclosure / dispatch-failure fallback) — never omit it and never imply model independence that did not exist. When the cross-model slot is active, mark panel-matrix rows where that slot's verdict diverges from the same-model majority with `[CROSS-FAMILY-DIVERGENCE]` — a visibility flag only: it changes no quantifier evaluation, no precedence resolution, and no fired condition (the forbidden-operations list holds unchanged). External motivation: Ren et al. (2026, arXiv:2607.13104 §5.2).

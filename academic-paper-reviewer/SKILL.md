@@ -281,6 +281,10 @@ The Devil's Advocate uses a dedicated format, not the standard reviewer template
 
 The Editorial Decision Letter structure is detailed in `templates/editorial_decision_template.md`.
 
+## Cross-Model Reviewer Track (#540)
+
+With `ARS_CROSS_MODEL` configured, Reviewer 2 runs on the cross-model family (a substrate swap inside the fixed five-seat panel — NOT the retired 6th-reviewer design; authority: `shared/cross_model_verification.md` § Cross-Model Reviewer Track, incl. the #523 dispatching-layer transport and the two-call sprint-contract split). Without it, all five personas share one model family and the Editorial Decision Letter's Review Panel Provenance block discloses the correlated-error caveat (Ren et al. 2026, arXiv:2607.13104 §5.2). Dispatch failure falls back to the session model with the fallback disclosed — never silent.
+
 ---
 
 ## Integration
