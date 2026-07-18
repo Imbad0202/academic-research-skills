@@ -119,6 +119,10 @@ Green flags for independent writing:
 - Chinese abstract may group or reorder minor details
 - Both abstracts stand alone as complete summaries
 
+## Protected Hedges (#548 + v3.6.7 roster)
+
+When the draft marks hedges as protected per `shared/references/protected_hedging_phrases.md` — including the #548 search-bounded novelty qualifier ("To our knowledge, based on searches of...") — the abstract MUST preserve the hedge wherever it states the corresponding claim, in both languages. Dropping a protected hedge under word-count pressure is compression overclaim (a publication-integrity failure): trim elsewhere, never the hedge. If the abstract omits the claim entirely, the hedge obligation lapses with it.
+
 ## Common Errors to Avoid
 
 Distinct from the Independence Verification red flags above (which check English↔Chinese independence); these are per-language writing-quality points:
