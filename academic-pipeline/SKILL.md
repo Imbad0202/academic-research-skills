@@ -281,7 +281,7 @@ After user confirmation:
    - Stage 2  --> 2.5: Pass complete paper to integrity_verification_agent
    - Stage 2.5 --> 3: Pass verified paper to reviewer
    - Stage 3  --> 4: Pass Revision Roadmap to academic-paper revision mode
-   - Stage 4  --> 3': Pass revised draft and Response to Reviewers to reviewer
+   - Stage 4  --> 3': Pass revised draft, Response to Reviewers, and the Editorial Decision Letter (its Review Panel Provenance block feeds the #539 Judge Record) to reviewer
    - Stage 3' --> 4': Pass new Revision Roadmap + R&R Traceability Matrix (Schema 11) to academic-paper revision mode
    - Stage 4/4' --> 4.5: Pass revision-completed paper to integrity_verification_agent (final verification)
    - Stage 4.5 --> 5: Pass verified final draft to format-convert mode

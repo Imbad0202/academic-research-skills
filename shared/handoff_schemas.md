@@ -788,7 +788,7 @@ See `shared/style_calibration_protocol.md` for full consumption rules and confli
 
 ### Schema 11: R&R Traceability Matrix
 
-> #539 optional per-row fields: `cross_model_verdict` (FULLY_ADDRESSED / PARTIALLY_ADDRESSED / NOT_ADDRESSED / MADE_WORSE) + `cross_model_status` (`agree` / `diverges` / `unavailable`) — populated by the dispatching layer's independent pass when cross-model is active; absent = pre-#539 row.
+> #539 optional per-row fields: `cross_model_verdict` (FULLY_ADDRESSED / PARTIALLY_ADDRESSED / NOT_ADDRESSED / MADE_WORSE; present only on `diverges`/`agree` rows) + `cross_model_status` (`agree` / `diverges` / `unavailable` / `not_configured`). A #539-era row ALWAYS carries `cross_model_status` (`not_configured` when cross-model is not active); a row with neither field = pre-#539.
 
 **Producer (multi-stage, Kong A1 / v3.11)**:
 - `concern_id` / `priority` / `original_comment` / `reviewer_source`: academic-paper-reviewer (first-round review)
