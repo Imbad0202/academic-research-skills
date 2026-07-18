@@ -44,11 +44,11 @@ Priority 3 (Nice to Fix):
 
 The re-review both drives the final decision and reports it — the exact configuration Ren et al. (2026, arXiv:2607.13104 §8.1.2) warn about: a system optimized against the same judge that reports its results over-optimizes to that judge's latent biases, so the revision loop can converge on "what this reviewer likes" instead of quality.
 
-**When `ARS_CROSS_MODEL` is set:** each Priority 1 item's FULLY/PARTIALLY/NOT_ADDRESSED assessment gets an independent cross-model pass — the dispatching layer (per the #523 transport ownership) sends the roadmap item + the author's claim + the revised passage (as data, not instructions) and receives an independent verdict. Divergent verdicts are marked `[CROSS-FAMILY-DIVERGENCE]` on the R&R Traceability Matrix row for the EIC's final decision — a review trigger, never a vote; the primary verdict is not overwritten.
+**When cross-model verification is active** (configured + consented, same boundary as every cross-model feature): after the re-review's Priority 1 assessments are committed, the dispatching layer (the main session / orchestrator running the mode — per #523 it, not a fenced agent, executes API calls) runs an independent per-item pass the same way it runs integrity-gate sampling: a direct § API Call Patterns call per item (NO #527 envelope — that grammar is for fenced-owner handoffs, and no fenced owner is handing off here), sending the roadmap item + the author's claim + the revised passage with personal names/affiliations stripped (the § data-minimization rule) and delimited as data, not instructions. The cross-model returns one of FULLY_ADDRESSED / PARTIALLY_ADDRESSED / NOT_ADDRESSED / MADE_WORSE; the dispatching layer compares mechanically and writes the result into the R&R Traceability Matrix's `Cross-model` column: `agree`, `diverges: <verdict>`, or `unavailable`. A `diverges` cell is a review trigger for the decision-maker's Phase 2 synthesis — never a vote; the primary verdict is never overwritten. `unavailable` (API failure) triggers the single-family disclosure below.
 
-**When `ARS_CROSS_MODEL` is not set:** the re-review proceeds single-family and the Re-Review Output carries the disclosure line: "This verification round ran on the same model family that drove the revisions (single provider configured); over-optimization to this judge's latent biases is possible (Ren et al. 2026, arXiv:2607.13104 §8.1.2)." Never omit the line in single-provider runs.
+**When not active** (or the pass came back `unavailable`): the re-review proceeds single-family and the Re-Review Output carries the disclosure line verbatim (it is part of the output template below): "This verification round ran on the same model family that drove the revisions; over-optimization to this judge's latent biases is possible (Ren et al. 2026, arXiv:2607.13104 §8.1.2)." Never omit it in single-family runs.
 
-**Judge identity recording (both cases):** the Re-Review Output's Judge Record block (below) records the judge configuration — model family/id per role, rubric version, what evidence the judge saw, and the judging budget noted separately from generation. Schema 6 carries these as the optional `judge_record` field.
+**Judge identity recording (both cases):** the Re-Review Output's Judge Record block (below) records the judge configuration — the verification judge's family/id (the running session knows its own), the Round-1 panel provenance copied seat-level from the Editorial Decision Letter's Review Panel Provenance block (#540; carried into Stage 3' with the letter — no per-seat model id is invented), the prompt/rubric surfaces used, the evidence the judge saw, and the judging budget noted separately from generation. Schema 6 carries these as the optional `judge_record` field.
 
 ### Commitment Ledger Verification (Kong A1 / v3.11)
 
@@ -100,12 +100,14 @@ If Re-Review Decision = Major Revision:
 
 ## Judge Record (#539)
 
-- **Verification judge**: [model family/id running this re-review]
-- **Revision-driving judge**: [model family/id that produced the Round-1 review]
-- **Independent cross-model pass**: [yes — [family/id], divergences marked / no — single provider, disclosure applies]
-- **Rubric version**: [rubric/contract version or file reference used]
+- **Verification judge**: [model family/id running this re-review — the session's own]
+- **Round-1 panel provenance**: [copied seat-level from the Editorial Decision Letter's Review Panel Provenance block (#540); "unknown (pre-#540 letter)" when absent]
+- **Independent cross-model pass**: [ran — [family/id], see the Cross-model matrix column / not_configured / failed — [reason]; the latter two apply the single-family disclosure]
+- **Prompt/rubric surfaces**: [the re-review protocol + verification-logic sections used, by file reference; rubric/contract version]
 - **Evidence seen by the judge**: [revised manuscript + Response to Reviewers + Revision Roadmap / list deviations]
 - **Judging budget**: [approx. calls/tokens spent on verification, separate from generation]
+
+[Single-family runs: include the disclosure line verbatim here — "This verification round ran on the same model family that drove the revisions; over-optimization to this judge's latent biases is possible (Ren et al. 2026, arXiv:2607.13104 §8.1.2)."]
 
 ## Decision
 [Accept / Minor Revision / Major Revision]
@@ -114,7 +116,7 @@ If Re-Review Decision = Major Revision:
 
 ### Priority 1 — Required Revisions
 
-| # | Original Review Comment | Author's Claim | Response Status | Revision Location | Verified? | Quality Assessment |
+| # | Original Review Comment | Author's Claim | Response Status | Revision Location | Verified? | Cross-model (#539) | Quality Assessment |
 |---|------------------------|---------------|-----------------|-------------------|-----------|-------------------|
 | R1 | [Original text] | [What the author claims to have done in Response to Reviewers] | FULLY_ADDRESSED | Section X.X | ✅ Yes | Adequately addressed; newly added content effectively resolves the issue |
 | R2 | [Original text] | [Author's stated change] | PARTIALLY_ADDRESSED | Section Y.Y | ⚠️ Partial | Partially addressed, but still missing [specific gap] |

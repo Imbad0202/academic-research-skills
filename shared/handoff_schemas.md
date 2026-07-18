@@ -376,7 +376,7 @@ score_trajectory: {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `judge_record` | object | #539 judge transparency: `{verification_judge, revision_driving_judge, cross_model_pass: bool, cross_model_id?, rubric_version, evidence_seen, judging_budget_note}`. Emitted by re-review (Stage 3'); absent = pre-#539 report. External motivation: Ren et al. arXiv:2607.13104 §8.1.2 (judge identity, rubric, and budget transparency; evaluator independence for final reporting). |
+| `judge_record` | object | #539 judge transparency: `{verification_judge, round1_panel_provenance, cross_model_pass: "ran"|"not_configured"|"failed", cross_model_id?, failure_reason?, prompt_rubric_surfaces, evidence_seen, judging_budget_note}`. `round1_panel_provenance` is copied seat-level from the #540 Review Panel Provenance block ("unknown (pre-#540 letter)" when absent — a singular revision-driving judge is not well-defined for a mixed-family panel). Emitted by re-review (Stage 3'); absent = pre-#539 report. External motivation: Ren et al. arXiv:2607.13104 §8.1.2. |
 
 ### ReviewerReport Object
 
@@ -787,6 +787,8 @@ See `shared/style_calibration_protocol.md` for full consumption rules and confli
 ---
 
 ### Schema 11: R&R Traceability Matrix
+
+> #539 optional per-row fields: `cross_model_verdict` (FULLY_ADDRESSED / PARTIALLY_ADDRESSED / NOT_ADDRESSED / MADE_WORSE) + `cross_model_status` (`agree` / `diverges` / `unavailable`) — populated by the dispatching layer's independent pass when cross-model is active; absent = pre-#539 row.
 
 **Producer (multi-stage, Kong A1 / v3.11)**:
 - `concern_id` / `priority` / `original_comment` / `reviewer_source`: academic-paper-reviewer (first-round review)
