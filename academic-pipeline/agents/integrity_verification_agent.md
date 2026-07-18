@@ -601,7 +601,7 @@ The following patterns are PROHIBITED in integrity reports:
 | Internal Consistency | -- | Pass/Fail | X inconsistencies |
 | Originality Check (D1) | X (spot-check Z%) | X | X (CLOSE_MATCH / VERBATIM) |
 | Self-Plagiarism (D2) | X | X | X |
-| Claim Verification (E) | X (spot-check Z%) | X | X (MAJOR_DISTORTION / UNVERIFIABLE) |
+| Claim Verification (E) | X of [registry total] (#549 tiers — HIGH-IMPACT: X, RANDOM: X, TOP-UP: X; NOT-SELECTED: X) | X | X (MAJOR_DISTORTION / UNVERIFIABLE) |
 
 ## Phase D: Originality Verification Results
 
