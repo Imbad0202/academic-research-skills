@@ -56,7 +56,7 @@ Entering Stage 2.5 (INTEGRITY) -- Mode 1 (Pre-Review)
 Loading integrity_verification_agent...
 Executing: Phase A (Reference Verification) + Phase B (Citation Context, 31% spot-check)
          + Phase C (Data Verification) + Phase D (Originality, 33% spot-check)
-         + Phase E (Claim Verification, 30% spot-check)
+         + Phase E (Claim Verification, #549 risk-stratified: 100% HIGH-IMPACT + 10% random sentinel, min(10, total))
 ```
 
 ### integrity_verification_agent Output
@@ -126,11 +126,11 @@ Executing: Phase A (Reference Verification) + Phase B (Citation Context, 31% spo
 
 ---
 
-#### Phase E: Claim Verification (30% spot-check, 6/18 claims)
+#### Phase E: Claim Verification (#549 risk-stratified, 10/18 claims)
 
-Claims C1-C6 above were selected for the 30% spot-check. Results are reported in Phase C.
+Of the 18 registry claims, C1-C7 classified `HIGH-IMPACT` (headline / numerical / causal) and were all selected (100% of tier). The 11-claim remainder sampled at 10% rounds up to 2, lifted to the min-3 sentinel → `RANDOM`: C8, C9, C11. Selected total 7+3 = 10 ≥ min(10, 18), so no `TOP-UP` was needed; the remaining 8 claims are recorded `NOT-SELECTED` in the Claim Registry. Results are reported in Phase C.
 
-**Phase E Summary**: 6 claims checked, 3 VERIFIED, 1 MAJOR_DISTORTION, 2 MINOR_DISTORTION
+**Phase E Summary**: 10 claims checked (7 `HIGH-IMPACT` + 3 `RANDOM`), 6 VERIFIED, 1 MAJOR_DISTORTION, 3 MINOR_DISTORTION
 
 ---
 
