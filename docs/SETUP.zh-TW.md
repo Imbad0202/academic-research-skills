@@ -125,9 +125,9 @@ ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 sessi
 | `ARS_PASSPORT_RESET=1` | v3.6.3 | 把每個 FULL checkpoint 提升為 context 重置邊界。**emit** boundary entry 必須設此 flag；新 session 用 `resume_from_passport=<hash>` 續跑**不需要** flag。`systematic-review` 模式下 flag ON 時，每個 FULL checkpoint 一律強制重置。 | `academic-pipeline/references/passport_as_reset_boundary.md` |
 | `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | 跨模型完整性抽查的取樣間隔（advisory） | `shared/cross_model_verification.md` |
 | `ARS_VERIFICATION_CACHE_PATH` | v3.11 | 覆寫引用查驗 cache 的位置（見下節）。不是 on/off flag——cache 預設開啟，此變數只改位置。 | `scripts/verification_cache.py` |
-| `ARS_CACHE_STALE_ADVISORY_DAYS` | Unreleased (#541) | cache 時效 advisory 的天數門檻：由 cache 供應且超過此天數的查驗結果，會在誠信檢查點以 `ADV-CACHE` advisory 列呈現（永不擋關）。預設 30；`0` 停用；格式錯誤或負值回落預設。 | `scripts/verification_cache.py` |
-| `ARS_CACHE_REVALIDATE=1` | Unreleased (#541) | 選擇性即時重驗（gate 層）：超過時效門檻的快取列改為逐列繞過、即時查驗並回寫。成本隨過期列數量增加。預設關閉＝僅 advisory。 | `scripts/verification_gate/__init__.py` + `integrity_verification_agent.md` § A0.5 |
-| `ARS_MODEL_TIERING` | Unreleased (#517) | Opt-in 模型分層：`economy`（frontier session——execution 型 agent 降一階，樓地板 Opus 級）或 `quality-boost`（低於 frontier 的 session——judgment 型 agent 在檢查點表面跳升到 frontier 級：Stage 2.5/4.5 關卡、opt-in 的 Stage 4→5 claim–ref audit、最終審查）。未設定 = 全部用 session model；未知值警告一次後視同未設定。 | `shared/model_tiering.md` |
+| `ARS_CACHE_STALE_ADVISORY_DAYS` | v3.18.0 (#541) | cache 時效 advisory 的天數門檻：由 cache 供應且超過此天數的查驗結果，會在誠信檢查點以 `ADV-CACHE` advisory 列呈現（永不擋關）。預設 30；`0` 停用；格式錯誤或負值回落預設。 | `scripts/verification_cache.py` |
+| `ARS_CACHE_REVALIDATE=1` | v3.18.0 (#541) | 選擇性即時重驗（gate 層）：超過時效門檻的快取列改為逐列繞過、即時查驗並回寫。成本隨過期列數量增加。預設關閉＝僅 advisory。 | `scripts/verification_gate/__init__.py` + `integrity_verification_agent.md` § A0.5 |
+| `ARS_MODEL_TIERING` | v3.16.0 (#517) | Opt-in 模型分層：`economy`（frontier session——execution 型 agent 降一階，樓地板 Opus 級）或 `quality-boost`（低於 frontier 的 session——judgment 型 agent 在檢查點表面跳升到 frontier 級：Stage 2.5/4.5 關卡、opt-in 的 Stage 4→5 claim–ref audit、最終審查）。未設定 = 全部用 session model；未知值警告一次後視同未設定。 | `shared/model_tiering.md` |
 
 ---
 

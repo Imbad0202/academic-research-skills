@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.17.0)
+[![Version](https://img.shields.io/badge/version-v3.18.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.18.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -257,7 +257,7 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 
 7-agent multi-perspective review with **0-100 quality rubrics**. Modes: full, re-review, quick, methodology-focus, guided, calibration. **Decision mapping:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. First-round review team vs. narrow re-review team boundary: see ARCHITECTURE.md §3 Stage 3 / Stage 3'.
 
-### Academic Pipeline (v3.17.0)
+### Academic Pipeline (v3.18.0)
 
 10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) cannot be skipped; R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
 
@@ -343,6 +343,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.18.0 (2026-07-18) — Self-improvement survey integration: advisory quality layers, risk-stratified claim gate, cross-model reviewer & judge tracks
+
+> **Added:** eight quality mechanisms motivated by Ren et al. (2026, arXiv:2607.13104, *Self-Improvements in Modern Agentic Systems: A Survey*): per-sub-question scope bindings + a Phase E scope-conformance advisory (#547) and search-bounded novelty claims + an E5 novelty classification (#548) — both advisory-only, displayed per-row at the MANDATORY integrity checkpoints; risk-stratified Stage 2.5 claim verification (100% of HIGH-IMPACT claims + a random sentinel, extending the #518 reference tiers to claim level, #549); cache-through wired into the citation-verification gate with an age-based staleness advisory + opt-in live re-validation (#541, closing the v3.11 Delta-2 forward-decl); a consent-gated cross-model reviewer track — one seat of the fixed five-seat panel on the second model family (#540) — and re-review judge independence with a transparent Judge Record (#539); a metamorphic routing/gate robustness eval seed set (#550), which also shipped the reviewer skill's missing zh-TW trigger aliases; and the survey itself as a third human-in-the-loop literature anchor (#542). `academic-pipeline` tracks the suite at v3.18.0; the other three skill versions are unchanged.
 
 ### v3.17.0 (2026-07-16) — Pipeline boundary semantics, canonical cross-model handoff envelope, executable panel checker
 

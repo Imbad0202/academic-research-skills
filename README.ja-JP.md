@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.17.0)
+[![Version](https://img.shields.io/badge/version-v3.18.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.18.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -244,7 +244,7 @@ You: "status"
 
 **0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューチーム vs. 限定的な再レビューチームの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.17.0）
+### Academic Pipeline（v3.18.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）はスキップできない。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -324,6 +324,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.18.0 (2026-07-18) — 自己改善サーベイ統合：アドバイザリ品質層、リスク層別クレームゲート、クロスモデル査読席と審査独立性
+
+> **追加**：Ren et al.（2026、arXiv:2607.13104）に動機づけられた 8 つの品質メカニズム — サブ質問スコープ束縛＋Phase E スコープ整合アドバイザリ（#547）、検索範囲で有界化されたノベルティ主張＋E5 分類（#548、いずれも advisory-only、MANDATORY チェックポイントで行単位表示）；Stage 2.5 リスク層別クレーム検証（HIGH-IMPACT 全数＋ランダム歩哨、#549）；引用検証ゲートへのキャッシュ接続＋鮮度アドバイザリ＋opt-in 再検証（#541）；同意制クロスモデル査読席（固定 5 席の 1 席を別モデルファミリで、#540）と再査読の審査独立性＋Judge Record（#539）；ルーティング/ゲート頑健性評価シードセット（#550）；サーベイ自体を第 3 の human-in-the-loop 文献アンカーとして追加（#542）。`academic-pipeline` はスイートに追従して v3.18.0 へ；他 3 スキルのバージョンは不変。
 
 ### v3.17.0 (2026-07-16) — パイプライン境界セマンティクス、正準クロスモデルハンドオフ・エンベロープ、実行可能パネルチェッカー
 

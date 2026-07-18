@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.17.0)
+[![Version](https://img.shields.io/badge/version-v3.18.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.18.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -244,7 +244,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，搭配 **0-100 质量量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**决策对照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一轮审查团队 vs. 精简再审团队的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.17.0)
+### Academic Pipeline (v3.18.0)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）不可跳过；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -307,6 +307,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新纪录
+
+### v3.18.0（2026-07-18）— 自我改进 survey 整合：advisory 质量层、风险分层 claim 关卡、跨模型评审席与裁判独立
+
+> **新增**：由 Ren et al.（2026，arXiv:2607.13104）驱动的八项质量机制——子问题范围绑定＋Phase E 范围一致性 advisory（#547）、有界化 novelty 主张＋E5 分类（#548，均 advisory-only、在 MANDATORY 检查点逐行显示）；Stage 2.5 风险分层 claim 查核（HIGH-IMPACT 全查＋随机哨兵，#549）；引用查验 gate 接通缓存层＋时效 advisory＋opt-in 实时重验（#541）；同意制跨模型评审席（五席面板一席换底座，#540）与复审裁判独立性＋Judge Record（#539）；路由/关卡措辞稳健性测试集 v0.1（#550，并补齐 reviewer skill 缺失的中文触发词）；survey 本身列为第三个 human-in-the-loop 文献锚点（#542）。`academic-pipeline` 随套件升至 v3.18.0；其余三个 skill 版本不变。
 
 ### v3.17.0（2026-07-16）— Pipeline 边界语义、跨模型交接信封、可执行 panel checker
 

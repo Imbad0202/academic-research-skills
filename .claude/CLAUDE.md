@@ -9,7 +9,20 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.11.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.17.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.18.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.18 Key Additions (self-improvement survey integration — advisory quality layers + cross-model tracks)
+
+**External motivation:** Ren et al. (2026), *Self-Improvements in Modern Agentic Systems: A Survey* (arXiv:2607.13104). All eight issues (#539–#542, #547–#550) derive from a two-reader (Claude + codex) full read of the survey; every mechanism is advisory-or-opt-in and preserves the human-in-the-loop positioning.
+
+- **Scope-conformance advisory (#547 → #552).** RQ Brief Schema 1 gains optional `sub_question_bindings` (inherited axes + user-approved deviations; effective-scope semantics); outline sections name the sub-question they serve; Phase E4 compares audited claims against the inherited effective scope and emits `ADV-E4-<n>` rows — advisory-only, never gating, displayed per-row at the MANDATORY integrity checkpoint template (which now carries an advisory-rows block + per-row recording instruction).
+- **Search-bounded novelty claims (#548 → #556).** Absolute priority language ("first study to…") defaults to the bounded form filled from Schema 2 `search_strategy` (+ new `last_searched_at`, emitted by both producers; bibliography F2 hash re-baselined); Phase E5 classifies `SUPPORTED_WITHIN_SEARCH` / `UNRESOLVED`, never "globally verified"; the bounding qualifier rides a `<!--protected-hedges:-->` comment consumed by `abstract_bilingual_agent` and stripped by the formatter; the absence-claim exception is propagated to every D2/D3/anti-leakage enforcement surface.
+- **Risk-stratified Stage 2.5 claim verification (#549 → #554).** Phase E Mode 1 moves from uniform 30% random to 100% of HIGH-IMPACT claims + a 10% RANDOM sentinel (min 3 / max 10), topped to min(10, total); tier recorded per claim (HIGH-IMPACT / RANDOM / TOP-UP / NOT-SELECTED); Mode 2 (100%) unchanged.
+- **Cache staleness advisory + live re-validation (#541 → #557).** `verify_citation` / `verify_passport` run cache-through by default (omitted-argument sentinel; explicit `cache=None` = live opt-out), closing the v3.11 Delta-2 forward-decl; summaries carry `cache_age_days` + `cache_stale_advisory` (`ARS_CACHE_STALE_ADVISORY_DAYS`, default 30, 0 disables); `ARS_CACHE_REVALIDATE=1` re-verifies stale rows live per-row; unconditional invalidation cascade; typed hit validation; `ADV-CACHE-<n>` advisory rows at the checkpoints.
+- **Cross-model reviewer track (#540 → #558).** `reviewer_full` only, consent-gated (the env var is configuration, not consent): Reviewer 2 runs on the second model family — a substrate swap inside the fixed five-seat panel, explicitly NOT the retired 6th reviewer; no synthesizer aggregation (cross-family splits visible in the panel matrix); the Editorial Decision Letter gains a Review Panel Provenance block (active / single-family correlated-error caveat / disclosed fallback, tiering-orthogonal).
+- **Re-review judge independence + Judge Record (#539 → #559).** Stage 3' Priority-1 verdicts get a judgment-specific cross-model pass (provider transport reused, no grounding gate, closed verdict set incl. MADE_WORSE; `agree` / `diverges` / `unavailable` / `not_configured` per row; run-level `partial — N/M`); the Editorial Decision Letter travels the Stage 4→3' handoff on all nine operative surfaces; Schema 6 optional `judge_record`.
+- **Pipeline behavior robustness evals (#550 → #555).** `evals/heldout/pipeline_behavior_robustness/` seed v0.1: 8 documented-ground-truth base scenarios × 3 perturbations (terse/verbose/padding, en + zh-TW), full-expectation scoring (behavior + skill + mode), per-item `rule_anchor`; also shipped the reviewer skill's missing zh-TW trigger aliases.
+- **Docs anchor (#542 → #551).** The survey joins The AI Scientist and Zhao et al. as the third human-in-the-loop literature anchor (README en/zh-TW motivation sections + calibration protocol §8.1.2 framing), cited as design rationale, not empirical proof.
 
 ## v3.17 Key Additions (pipeline boundary semantics + canonical cross-model handoff envelope + executable panel checker)
 
@@ -313,7 +326,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.17.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-07-16
+- **Suite version**: 3.18.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-07-18
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

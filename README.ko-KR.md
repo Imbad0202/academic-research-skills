@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.17.0)
+[![Version](https://img.shields.io/badge/version-v3.18.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.18.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -251,7 +251,7 @@ You: "status"
 
 **0-100 품질 루브릭**을 갖춘 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. **결정 매핑:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. 1차 심사팀 대 좁은 re-review 팀 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.17.0)
+### Academic Pipeline (v3.18.0)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 건너뛸 수 없고, R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -337,6 +337,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 변경 이력
+
+### v3.18.0 (2026-07-18) — 자기개선 서베이 통합: 어드바이저리 품질 계층, 위험 계층화 클레임 게이트, 크로스모델 리뷰어 좌석과 심판 독립성
+
+> **추가**: Ren et al.(2026, arXiv:2607.13104)에서 동기를 얻은 8가지 품질 메커니즘 — 하위질문 범위 바인딩＋Phase E 범위 정합 어드바이저리(#547), 검색 범위로 한정된 novelty 주장＋E5 분류(#548, 모두 advisory-only, MANDATORY 체크포인트에서 행 단위 표시); Stage 2.5 위험 계층화 클레임 검증(HIGH-IMPACT 전수＋랜덤 센티널, #549); 인용 검증 게이트에 캐시 연결＋신선도 어드바이저리＋opt-in 실시간 재검증(#541); 동의 기반 크로스모델 리뷰어 좌석(고정 5석 중 1석을 다른 모델 패밀리로, #540)과 재심사 심판 독립성＋Judge Record(#539); 라우팅/게이트 강건성 평가 시드셋(#550); 서베이 자체를 세 번째 human-in-the-loop 문헌 앵커로 추가(#542). `academic-pipeline`은 스위트를 따라 v3.18.0으로; 나머지 세 스킬 버전은 불변.
 
 ### v3.17.0 (2026-07-16) — 파이프라인 경계 시맨틱스, 정규 크로스모델 핸드오프 엔벨로프, 실행 가능한 패널 체커
 

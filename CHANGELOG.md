@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.18.0] - 2026-07-18 — Self-improvement survey integration: advisory quality layers, risk-stratified claim gate, cross-model reviewer & judge tracks, cache re-validation
+
 ### Added
 
 - **Re-review judge independence + judge record (#539).** The Stage 3' re-review judges revisions on the same model family that drove them — an analogous correlated-judge configuration to the one §8.1.2 warns about. When cross-model verification is active (configured + consented), every Priority 1 roadmap item's addressed-ness verdict gets an independent judgment-specific cross-model pass (provider transport reused, no grounding gate, closed verdict set incl. MADE_WORSE, non-conforming → `unavailable`); results land in the R&R matrix's Cross-model column (`agree` / `diverges: <verdict>` / `unavailable` / `not_configured`) — `diverges` is a Phase 2 synthesis review trigger, never a vote. Single-family runs carry a never-omitted verbatim disclosure line. Both cases emit a Judge Record (verification judge; Round-1 panel provenance copied seat-level from the #540 provenance block — carried into Stage 3' via the Editorial Decision Letter, now named on all handoff surfaces incl. the re-hashed state-machine lock; prompt/rubric surfaces; evidence seen; judging budget separate from generation) — Schema 6 optional `judge_record`, Schema 11 optional Priority-1 row fields. External motivation: Ren et al. (2026, arXiv:2607.13104 §8.1.2).
