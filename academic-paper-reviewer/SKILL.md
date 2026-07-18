@@ -239,7 +239,7 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 Dedicated mode for Pipeline Stage 3' — verifies whether revisions address first-round review comments. Uses R&R Traceability Matrix (Schema 11) with Author's Claim + Verified? columns.
 
-**Input**: Original Revision Roadmap + Revised manuscript + Response to Reviewers (optional)
+**Input**: Original Revision Roadmap + Revised manuscript + Response to Reviewers (optional) + Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record)
 **Output**: Verification Review Report with traceability matrix + new issues + Decision
 
 > See `references/re_review_mode_protocol.md` for full verification logic, output format template, and Socratic guidance details.

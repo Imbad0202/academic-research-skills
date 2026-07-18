@@ -9,6 +9,7 @@ Input:
 1. Original Revision Roadmap (Stage 3 output)
 2. Revised manuscript
 3. Response to Reviewers (optional)
+4. Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record's Round-1 provenance; absent → "unknown (pre-#540 letter)")
 
 Phase 0: Reads the Revision Roadmap, builds a checklist
 Phase 1: EIC checks each item (other reviewers not activated)
@@ -121,7 +122,7 @@ If Re-Review Decision = Major Revision:
 | R1 | [Original text] | [What the author claims to have done in Response to Reviewers] | FULLY_ADDRESSED | Section X.X | ✅ Yes | agree | Adequately addressed; newly added content effectively resolves the issue |
 | R2 | [Original text] | [Author's stated change] | PARTIALLY_ADDRESSED | Section Y.Y | ⚠️ Partial | diverges: NOT_ADDRESSED | Partially addressed, but still missing [specific gap] |
 
-Cross-model cell vocabulary: `agree` / `diverges: <verdict>` / `unavailable` (dispatch failed — single-family disclosure applies) / `not_configured` (cross-model not active — every row carries it, single-family disclosure applies).
+Cross-model cell vocabulary (Priority 1 rows only — the pass does not evaluate Priority 2/3, whose tables omit the column): `agree` / `diverges: <verdict>` / `unavailable` (dispatch failed — single-family disclosure applies) / `not_configured` (cross-model not active — every Priority 1 row carries it, single-family disclosure applies).
 
 ### Priority 2 — Suggested Revisions
 
