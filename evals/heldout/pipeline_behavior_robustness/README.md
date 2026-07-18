@@ -32,13 +32,17 @@ mandates it. A change to those rules invalidates the affected items — update t
 
 ## Metrics
 
-- **Paired consistency rate**: fraction of (base, variant) pairs with matching observed
-  behavior. Primary metric; report per perturbation axis.
-- **Long-context degradation**: consistency of `-p` variants alone (the axis §8.2.1 singles
-  out).
-- **Absolute correctness**: fraction of ALL items (bases included) matching
-  `expected.behavior`. Secondary — a base that itself misroutes is a routing bug, not a
-  robustness finding, and files as its own issue.
+- **Paired consistency rate**: fraction of (base, variant) pairs whose observed behavior
+  matches — for `route_direct` items this means behavior AND the structured
+  `expected.skill` + `expected.mode` fields, so a variant that routes *somewhere* different
+  from its base never scores as consistent. Primary metric; report per perturbation axis.
+- **Long-context degradation**: absolute correctness of the `-p` variants MINUS absolute
+  correctness of their bases (a signed delta; 0 = no degradation). Distinct from the
+  paired-consistency metric, which cannot distinguish "both wrong the same way" from
+  "both right".
+- **Absolute correctness**: fraction of ALL items (bases included) matching the full
+  expectation (`behavior` + `skill`/`mode` when present). Secondary — a base that itself
+  misroutes is a routing bug, not a robustness finding, and files as its own issue.
 
 ## Running a measurement
 
