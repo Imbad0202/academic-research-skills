@@ -14,7 +14,7 @@ Execution steps:
    - Phase C: 100% statistical data verification
    - Phase D: >= 30% originality spot-check + self-plagiarism check
    - Phase E: 30% claim verification spot-check (minimum 10 claims)
-   - Phase E additionally emits the scope-conformance advisory (#547; advisory-only, never gates; advisory rows are not issues and may remain open on PASS) — see `claim_verification_protocol.md` § E4
+   - Phase E additionally emits the scope-conformance advisory (#547) and the novelty-claim classification (#548) — both advisory-only, never gate; advisory rows are not issues and may remain open on PASS — see `claim_verification_protocol.md` § E4-E5
 3. Result handling:
    - PASS -> checkpoint -> Stage 3
    - FAIL -> produce correction list -> fix item by item -> re-verify corrected items
@@ -36,7 +36,7 @@ Execution steps:
    - Phase C: 100% statistical data verification
    - Phase D: >= 50% originality spot-check (100% for newly added/modified paragraphs)
    - Phase E: 100% claim verification (zero MAJOR_DISTORTION + zero UNVERIFIABLE required)
-   - Phase E additionally emits the scope-conformance advisory (#547; advisory-only, never gates; advisory rows are not issues, stay outside the zero-issues PASS count, and may remain open) — see `claim_verification_protocol.md` § E4
+   - Phase E additionally emits the scope-conformance advisory (#547) and the novelty-claim classification (#548) — both advisory-only, never gate; advisory rows are not issues, stay outside the zero-issues PASS count, and may remain open — see `claim_verification_protocol.md` § E4-E5
 3. Special check: Compare with Stage 2.5 results to confirm all previous issues are resolved
 4. Result handling:
    - PASS (zero issues) -> checkpoint -> Stage 5

@@ -585,3 +585,16 @@ and return control to the caller. The escalation decision (re-emit in full vs na
 **Role boundary (§3.5).** You emit; you never apply. You cannot run `ars_apply_revision_patch.py` (Bash denied), and the agent that wants the change must not be the agent that lands it. Post-apply facts — fresh block IDs, `change_block_ids`, `word_count_delta` — are unknowable at emission time: emit **provisional** Schema 8 response items (response text, status, decline justifications — the judgment content) and leave the mechanical fields to the orchestrator, which completes them from the apply report.
 
 **Integrity-correction rounds (#89 Item 8).** When the caller dispatches revision mode with an **integrity correction list** instead of a Revision Roadmap (Stage 2.5 / 4.5 FAIL correction), the emission rules above apply with two differences: `roadmap_item_ids` carries the integrity report's stable correction IDs (the `IL-<SEVERITY>-<n>` Issue List IDs — `IL-SERIOUS-1`, `IL-MEDIUM-2` — or, for an experiment-alignment finding, its native `EA-NNN` ID; never invent an ID or use a bare bucket row number, which collides across severity buckets), and you emit **no provisional Schema 8 response items** — response items are review-round artifacts and no review round occurred. The correction list is the round's roadmap-equivalent: every op still publicly claims the finding it serves. Your chat output carries the Revision Log table mapping each op to its correction ID, nothing more; the applied output returns to the integrity gate for re-verification (the caller's routing, per the orchestrator's integrity-correction variant).
+
+## Search-Bounded Novelty Claims (#548)
+
+Absolute priority language — "the first study to...", "no prior work has...", "the only study that..." — asserts the ABSENCE of literature. No cited source can support an absence claim, so the citation machinery structurally cannot verify it; the only defensible basis is the documented search (Schema 2 `search_strategy`: databases, keywords, inclusion/exclusion criteria, date range).
+
+Rules:
+
+1. **Default emission is search-bounded.** Write novelty/priority statements in the bounded form: "To our knowledge, based on searches of [databases] through [date range], no prior study has ..." — with the bracketed content filled from the Schema 2 `search_strategy` actually used, never invented.
+2. **Name the nearest prior work.** Where the bibliography contains adjacent work (`relevance: core` or `supporting`), state the delta from it precisely instead of claiming a vacuum.
+3. **The bounding qualifier is a protected hedge.** Mark "To our knowledge, based on searches of ..." per `shared/references/protected_hedging_phrases.md` so abstract/summary compression cannot strip it and silently restore the absolute claim.
+4. **Absolute form requires explicit user confirmation.** Emit the absolute form only when the user has explicitly confirmed keeping it after seeing the bounded alternative; the confirmation is recorded and carried into the AI-usage disclosure. Never escalate bounded → absolute during revision on your own.
+
+External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — scientific-discovery agents cannot easily verify novelty on their own and may exploit weak proxies; ARS therefore never asserts novelty beyond its documented search.
