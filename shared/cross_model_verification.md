@@ -218,10 +218,10 @@ The DA agent, after completing its checkpoint report, should:
 - The dispatching layer hands the synthesizer the slot's report PLUS a provenance stamp (which family ran the seat, or the fallback reason) — the synthesizer fills the Review Panel Provenance block from that stamp, never from inference.
 - The slot's report enters the panel matrix exactly as that slot's report always does — heterogeneity itself is the §5.2 safeguard. The synthesizer computes NO cross-family aggregate and NO "same-model majority" (any such aggregation is on its forbidden-operations list): cross-family splits are visible by inspection in the panel matrix the user already receives, and the provenance block names which seat ran on which family.
 - An ungrounded compatible provider is first-class here (same class as DA critique: persona judgment needs no web grounding); its factual claims about literature remain subject to the normal citation gates.
-- Degradation: a failed/unavailable cross-model dispatch falls back to running the slot on the session model, and the Editorial Decision Letter's provenance line states the fallback — never a silent swap-back.
+- Degradation: a failed/unavailable cross-model dispatch falls back to the normal primary-family routing for that seat (the session model, as adjusted by any active `ARS_MODEL_TIERING` policy — tiering is orthogonal and never overridden by this track), and the Editorial Decision Letter's provenance line states the fallback — never a silent swap-back.
 
 **When not active** (env unset, or consent not given):
-- All five personas run on the session model, and the Editorial Decision Letter carries the correlated-error disclosure (see the template's Review Panel Provenance block) instead of silently implying independence.
+- All five personas run on the normal primary-family routing (session model + any active `ARS_MODEL_TIERING` policy), and the Editorial Decision Letter carries the correlated-error disclosure (see the template's Review Panel Provenance block) instead of silently implying independence.
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §5.2) — consistency-derived feedback is fragile when errors correlate across samples of one model, and repeated sampling may amplify a confidently-wrong conclusion; heterogeneous critique models are among the safeguards it names.
 
