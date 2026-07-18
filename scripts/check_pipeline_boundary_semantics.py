@@ -71,7 +71,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # ---------------------------------------------------------------------------
 CONTENT_LOCKS = {
     "academic-pipeline/SKILL.md": "085245226e00a9ed716fc7d0552f3df2e2cafa6662e259c6e95a4c3ad7639ec2",
-    "academic-pipeline/agents/pipeline_orchestrator_agent.md": "e81083ac84498941790a933fe0b81c95dafcf7a24c5aa4a98fd63ce502c551c6",
+    "academic-pipeline/agents/pipeline_orchestrator_agent.md": "f93ab8e976ad4669d4e97a45e5ef905fadd84d2d07cd2658b0f39ddc92749f96",
     "academic-pipeline/agents/state_tracker_agent.md": "b648eac4d4b35c217150539502c20fccc2f3fd026dda8efbb6178b199a288256",
     "academic-pipeline/references/pipeline_state_machine.md": "d507f3694cd4d282b9b3247d0d1855330c836c23ab6e5d41f280c6d455b4ed7f",
     "academic-pipeline/references/process_summary_protocol.md": "5c7053230d73b39d0a5d9d6f5e9f339c12570ae6d3aa2eae2eaf74f51d571e94",

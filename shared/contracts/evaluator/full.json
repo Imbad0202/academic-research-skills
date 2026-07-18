@@ -19,7 +19,7 @@
     {
       "id": "D3",
       "name": "evidence_sufficiency",
-      "description": "Every claim is supported by adequate citations or data; no unsupported assertions; no cherry-picking.",
+      "description": "Every claim is supported by adequate citations or data; no unsupported assertions; no cherry-picking. Exception (#548): a search-bounded absence/novelty claim is supported by documented-search provenance plus the named nearest prior work (or its explicit absence within the search) — do not penalize it for lacking a citation to the absence itself.",
       "priority": "mandatory"
     },
     {
