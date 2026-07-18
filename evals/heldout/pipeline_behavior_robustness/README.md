@@ -48,8 +48,10 @@ mandates it. A change to those rules invalidates the affected items — update t
 
 Mirror the `rq_framing_offlist` measurement protocol: fresh session per item (no
 cross-item contamination), the item's `prompt_text` as the first user message, record the
-session's first substantive action (skill routed / clarification asked / refusal issued /
-gate decision), then judge match vs `expected.behavior` mechanically. Store results as
+session's first substantive action (skill routed — including WHICH skill and mode — /
+clarification asked / refusal issued / gate decision), then judge match against the FULL
+expectation mechanically: `expected.behavior` plus `expected.skill` and `expected.mode`
+when present. Store results as
 `measurement-YYYY-MM-DD.json` beside this README (same convention as the #505 runs).
 Fresh-session isolation matters: routing state (e.g., an earlier explicit skill choice)
 legitimately changes later routing inside one session.

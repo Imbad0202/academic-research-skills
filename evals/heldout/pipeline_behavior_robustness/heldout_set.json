@@ -89,7 +89,7 @@
       "expected": {
         "behavior": "route_direct",
         "detail": "academic-paper-reviewer full mode",
-        "rule_anchor": "academic-paper-reviewer trigger list ('simulate review' / 模擬審查) + Routing Discipline step 1",
+        "rule_anchor": "academic-paper-reviewer trigger list (模擬審查 / simulate review — zh-TW aliases shipped with this PR) + Routing Discipline step 1",
         "skill": "academic-paper-reviewer",
         "mode": "full"
       }
@@ -103,7 +103,7 @@
       "expected": {
         "behavior": "route_direct",
         "detail": "academic-paper-reviewer full mode",
-        "rule_anchor": "academic-paper-reviewer trigger list ('simulate review' / 模擬審查) + Routing Discipline step 1",
+        "rule_anchor": "academic-paper-reviewer trigger list (模擬審查 / simulate review — zh-TW aliases shipped with this PR) + Routing Discipline step 1",
         "skill": "academic-paper-reviewer",
         "mode": "full"
       }
@@ -117,7 +117,7 @@
       "expected": {
         "behavior": "route_direct",
         "detail": "academic-paper-reviewer full mode",
-        "rule_anchor": "academic-paper-reviewer trigger list ('simulate review' / 模擬審查) + Routing Discipline step 1",
+        "rule_anchor": "academic-paper-reviewer trigger list (模擬審查 / simulate review — zh-TW aliases shipped with this PR) + Routing Discipline step 1",
         "skill": "academic-paper-reviewer",
         "mode": "full"
       }
@@ -132,7 +132,7 @@
       "expected": {
         "behavior": "route_direct",
         "detail": "academic-paper-reviewer full mode",
-        "rule_anchor": "academic-paper-reviewer trigger list ('simulate review' / 模擬審查) + Routing Discipline step 1",
+        "rule_anchor": "academic-paper-reviewer trigger list (模擬審查 / simulate review — zh-TW aliases shipped with this PR) + Routing Discipline step 1",
         "skill": "academic-paper-reviewer",
         "mode": "full"
       }
