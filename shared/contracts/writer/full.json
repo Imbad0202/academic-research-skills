@@ -13,7 +13,7 @@
     {
       "id": "D2",
       "name": "citation_density",
-      "description": "Every factual claim carries at least one citation; uncited claims either gain a source or are rewritten with hedging language. Exception (#548): absence/novelty claims cannot cite a source for an absence — they satisfy this dimension via documented-search provenance in the bounded form plus a citation to the named nearest prior work.",
+      "description": "Every factual claim carries at least one citation; uncited claims either gain a source or are rewritten with hedging language. Exception (#548): absence/novelty claims cannot cite a source for an absence — they satisfy this dimension via documented-search provenance in the bounded form plus a citation to the named nearest prior work where adjacent work exists; the explicit absence-of-adjacent-work statement satisfies it otherwise.",
       "priority": "mandatory"
     },
     {

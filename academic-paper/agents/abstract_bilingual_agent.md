@@ -121,7 +121,7 @@ Green flags for independent writing:
 
 ## Protected Hedges (#548 + v3.6.7 roster)
 
-Consume the draft's closing `**Protected Hedges**:` list (the #548 transport, emitted by `draft_writer_agent` at the end of the Draft Body), plus any dispatch-context roster per `shared/references/protected_hedging_phrases.md`. Every listed hedge — including the #548 search-bounded novelty qualifier ("To our knowledge, based on searches of...") — MUST be preserved wherever the abstract states the corresponding claim, in both languages. A draft with no such list (pre-#548) carries no obligation. Dropping a protected hedge under word-count pressure is compression overclaim (a publication-integrity failure): trim elsewhere, never the hedge. If the abstract omits the claim entirely, the hedge obligation lapses with it.
+Consume the draft's closing `<!--protected-hedges: ...-->` comment (the #548 transport, emitted by `draft_writer_agent` on the final line of the Draft Body), plus any dispatch-context roster per `shared/references/protected_hedging_phrases.md`. Every listed hedge — including the #548 search-bounded novelty qualifier ("To our knowledge, based on searches of...") — MUST be preserved wherever the abstract states the corresponding claim, in both languages. A draft with no such comment (pre-#548) carries no obligation. Dropping a protected hedge under word-count pressure is compression overclaim (a publication-integrity failure): trim elsewhere, never the hedge. If the abstract omits the claim entirely, the hedge obligation lapses with it.
 
 ## Common Errors to Avoid
 

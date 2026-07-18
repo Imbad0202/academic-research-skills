@@ -792,7 +792,7 @@ Template D: "The data that support the findings of this study are available from
 ```
 === Content Integrity ===
 □ All sections exist and are complete (compare with Draft section by section)
-□ Format conversion did not cause content loss (word count comparison: deviation < 1%)
+□ Format conversion did not cause content loss (word count comparison: deviation < 1%; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss — it is machine transport, consumed upstream by the abstract stage)
 □ Tables fully preserved (row and column counts match)
 □ Figure reference paths correct
 □ All in-text citations preserved

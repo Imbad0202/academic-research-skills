@@ -216,7 +216,7 @@ This advisory never blocks lit-review output, never downgrades included sources,
 ## Literature Search Report
 
 ### Search Strategy
-[Databases, search strings, date range, filters]
+[Databases, search strings, date range, last-searched date (Schema 2 `last_searched_at`, #548), filters]
 
 ### Coverage Distribution Advisory
 [Emit `DISTRIBUTIONAL_SKEW_ADVISORY` blocks for any dimension with >= 70% concentration; otherwise state "No distributional skew advisory triggered."]
