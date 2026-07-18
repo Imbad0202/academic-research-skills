@@ -32,6 +32,15 @@ from pathlib import Path
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _isolated_default_cache(tmp_path, monkeypatch):
+    """#541: gate cache-through is default-ON (omitted-argument sentinel) — point
+    every test at a per-test tmp DB so no test touches the user's real cache or
+    another test's rows, and keep revalidation env-clean."""
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "gate-v.db"))
+    monkeypatch.delenv("ARS_CACHE_REVALIDATE", raising=False)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))

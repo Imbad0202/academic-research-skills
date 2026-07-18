@@ -255,8 +255,19 @@ def _cached_verdict_detailed(
     if (
         cached is not None
         and "matched" in cached
-        and (not require_queried_by or "queried_by" in cached)
         and cached.get("decision_version") == RESOLVER_DECISION_VERSION
+        and (
+            not require_queried_by
+            # Gate callers additionally require TYPED payload values: matched
+            # must be a real bool (a string "false" is truthy and would launder
+            # into lookup_verified="true") and queried_by must be a valid
+            # C-V6(a) value. The bool signal wrapper keeps the looser
+            # historical criteria (require_queried_by=False).
+            or (
+                isinstance(cached.get("matched"), bool)
+                and cached.get("queried_by") in ("id", "title")
+            )
+        )
     ):
         stale_bypassed = False
         if bypass_stale:

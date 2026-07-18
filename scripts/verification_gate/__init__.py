@@ -71,6 +71,28 @@ except ImportError:  # pragma: no cover - dual-path import
 
 _ANCHOR_PRESENT_KINDS = frozenset({"quote", "page", "section", "paragraph"})
 
+# #541 omitted-argument sentinel: omission = default cache-through (a
+# VerificationCache at the default/env path) + revalidation derived from
+# ARS_CACHE_REVALIDATE; an EXPLICIT cache=None is the live opt-out.
+_UNSET = object()
+
+
+def _default_cache():
+    try:
+        from verification_cache import VerificationCache
+    except ImportError:  # pragma: no cover - dual-path import
+        from scripts.verification_cache import VerificationCache
+    return VerificationCache()
+
+
+def _resolve_cache_args(cache, revalidate_stale):
+    import os
+    if cache is _UNSET:
+        cache = _default_cache()
+    if revalidate_stale is _UNSET:
+        revalidate_stale = os.environ.get("ARS_CACHE_REVALIDATE") == "1"
+    return cache, revalidate_stale
+
 
 def _is_valid_ref_slug(ref_slug: Any) -> bool:
     """A ref_slug is valid iff it is a non-empty string: the summary schema
@@ -173,8 +195,8 @@ def verify_citation(
     *,
     ref_slug: str,
     anchor: Mapping[str, Any] | None = None,
-    cache=None,
-    revalidate_stale: bool = False,
+    cache=_UNSET,
+    revalidate_stale=_UNSET,
 ) -> dict[str, Any]:
     """Verify one citation's existence across the four resolvers.
 
@@ -195,8 +217,10 @@ def verify_citation(
 
     `cache` (#541, closes the Delta-2 follow-up): an optional VerificationCache
     threaded through the four resolvers (same cache keys as the
-    contamination-signals layer — interoperable rows). cache=None is
-    byte-equivalent to the historical live path. When any resolver outcome was
+    contamination-signals layer — interoperable rows). OMITTING the argument gives the
+    default cache-through (VerificationCache at the default/env path) with
+    revalidation derived from ARS_CACHE_REVALIDATE; passing cache=None
+    EXPLICITLY is the live opt-out, byte-equivalent to the historical path. When any resolver outcome was
     served from cache, the summary additionally carries `cache_age_days`
     (citation-level oldest-live-row age, rounded to 0.1) and
     `cache_stale_advisory` (that rounded value > ARS_CACHE_STALE_ADVISORY_DAYS,
@@ -209,6 +233,7 @@ def verify_citation(
      verification_timestamp, resolver_outcomes} (+ the two #541 fields when
     cache-served).
     """
+    cache, revalidate_stale = _resolve_cache_args(cache, revalidate_stale)
     if not _is_valid_ref_slug(ref_slug):
         # ref_slug is the prose-join key stamped verbatim into the summary, which
         # the schema requires as a non-empty string. This is the single emission
@@ -272,8 +297,8 @@ def verify_passport(
     *,
     ref_slug_by_key: Mapping[str, str],
     anchors: Mapping[str, Mapping[str, Any]] | None = None,
-    cache=None,
-    revalidate_stale: bool = False,
+    cache=_UNSET,
+    revalidate_stale=_UNSET,
 ) -> list[dict[str, Any]]:
     """Batch helper: run verify_citation over every entry in the passport's
     literature_corpus[].
@@ -295,6 +320,7 @@ def verify_passport(
     verification (one entry under several ref slugs) is a different API shape, out
     of scope here.
     """
+    cache, revalidate_stale = _resolve_cache_args(cache, revalidate_stale)
     corpus = passport.get("literature_corpus") or []
     anchors = anchors or {}
     outcomes: list[dict[str, Any]] = []

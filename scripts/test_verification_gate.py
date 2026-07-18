@@ -16,6 +16,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _isolated_default_cache(tmp_path, monkeypatch):
+    """#541: gate cache-through is default-ON (omitted-argument sentinel) — point
+    every test at a per-test tmp DB so no test touches the user's real cache or
+    another test's rows, and keep revalidation env-clean."""
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "gate-v.db"))
+    monkeypatch.delenv("ARS_CACHE_REVALIDATE", raising=False)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -349,13 +358,61 @@ def test_cache_through_miss_populates_then_hit_skips_network(tmp_path, monkeypat
     assert s2["cache_stale_advisory"] is False
 
 
-def test_cache_none_is_byte_equivalent_live_path():
-    """cache=None keeps the historical live path: no #541 fields on the summary."""
+def test_explicit_cache_none_is_the_live_opt_out():
+    """EXPLICIT cache=None keeps the historical live path (no #541 fields);
+    omission means default cache-through per the sentinel semantics."""
     from verification_gate import verify_citation
 
-    s = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
+    s = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG,
+                        cache=None)
     assert "cache_age_days" not in s
     assert "cache_stale_advisory" not in s
+
+
+def test_omitted_cache_defaults_on_and_env_drives_revalidation(tmp_path, monkeypatch):
+    """#541 sentinel: omitting cache constructs the default VerificationCache
+    (env-pathed) — a second omitted-arg call is served from cache; and
+    ARS_CACHE_REVALIDATE=1 alone (no explicit argument) bypasses a stale row."""
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    from verification_gate import verify_citation
+    from verification_cache import VerificationCache
+
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "d.db"))
+    verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
+    second = _clients()
+    s = verify_citation(_entry(), second, ref_slug=_DEFAULT_REF_SLUG)
+    second["crossref"].doi_lookup_with_title_check.assert_not_called()
+    assert "cache_age_days" in s
+
+    ts = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+    with sqlite3.connect(VerificationCache().path) as conn:
+        conn.execute("UPDATE verification_cache SET verification_timestamp = ?", (ts,))
+    monkeypatch.setenv("ARS_CACHE_REVALIDATE", "1")
+    reval = _clients()
+    verify_citation(_entry(), reval, ref_slug=_DEFAULT_REF_SLUG)
+    assert reval["crossref"].doi_lookup_with_title_check.called
+
+
+def test_malformed_typed_payload_is_a_miss_for_the_gate(tmp_path, monkeypatch):
+    """#541 typed-hit validation: a current-version row with a string
+    "matched" or an invalid queried_by never serves the gate (live recompute
+    runs), so it cannot launder into lookup_verified."""
+    from verification_gate import verify_citation
+    from verification_cache import VerificationCache
+    from contamination_signals import RESOLVER_DECISION_VERSION
+
+    monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "m.db"))
+    cache = VerificationCache()
+    qf = "doi:10.5555/abc|title:Attention Is All You Need"
+    for resolver in ("crossref", "openalex", "semantic_scholar"):
+        cache.put("vaswani2017", resolver, qf, {
+            "matched": "false", "queried_by": None,
+            "decision_version": RESOLVER_DECISION_VERSION})
+    clients = _clients()
+    s = verify_citation(_entry(), clients, ref_slug=_DEFAULT_REF_SLUG, cache=cache)
+    assert clients["crossref"].doi_lookup_with_title_check.called
+    assert s["lookup_verified"] != "true"
 
 
 def test_revalidate_stale_bypasses_old_rows(tmp_path, monkeypatch):
