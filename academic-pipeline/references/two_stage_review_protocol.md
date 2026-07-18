@@ -15,7 +15,7 @@ EIC uses Socratic dialogue to guide the user in understanding review comments an
 
 ## Stage 3': Second Review (Verification Review)
 
-- **Input**: Revised draft + Response to Reviewers + original Revision Roadmap
+- **Input**: Revised draft + Response to Reviewers + original Revision Roadmap + Editorial Decision Letter (#539 — its Review Panel Provenance block feeds the Judge Record)
 - **Mode**: `academic-paper-reviewer` re-review mode
 - **Output**: Revision response comparison table + new issues list + new Editorial Decision + R&R Traceability Matrix (Schema 11)
 - **Decision branches**: Accept|Minor -> Stage 4.5 / Major -> Residual Coaching -> Stage 4'
