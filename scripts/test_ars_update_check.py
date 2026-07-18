@@ -98,6 +98,21 @@ def test_no_plugin_root_is_silent(tmp_path):
     assert not (state / "update-check").exists()
 
 
+def test_home_unset_no_state_dir_is_silent(tmp_path):
+    # [I-1] HOME unset + no ARS_UPDATE_CHECK_STATE_DIR: exit 0, silent, no fetch.
+    root = make_plugin_root(tmp_path, "3.17.0")
+    env = base_env()
+    env.pop("HOME", None)
+    env["CLAUDE_PLUGIN_ROOT"] = str(root)
+    env["ARS_UPDATE_CHECK_REMOTE_URL"] = make_remote(tmp_path, "9.9.9")
+    r = subprocess.run(
+        ["bash", str(CHECKER)], capture_output=True, text=True, env=env, timeout=30
+    )
+    assert r.returncode == 0
+    assert r.stdout == ""
+    assert r.stderr == ""
+
+
 def test_up_to_date_silent_and_caches(tmp_path):
     root = make_plugin_root(tmp_path, "3.17.0")
     state = tmp_path / "state"

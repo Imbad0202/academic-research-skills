@@ -54,6 +54,12 @@ if [[ -z "${LOCAL_VER}" ]]; then
   exit 0
 fi
 
+# No resolvable state dir (HOME unset, no override): skip silently rather than
+# run cacheless — a cacheless check would fetch every session start, violating
+# the once-per-24h steady-state invariant (#544 spec, Invariant 2).
+if [[ -z "${ARS_UPDATE_CHECK_STATE_DIR:-}" && -z "${HOME:-}" ]]; then
+  exit 0
+fi
 STATE_DIR="${ARS_UPDATE_CHECK_STATE_DIR:-$HOME/.cache/ars}"
 CACHE_FILE="${STATE_DIR}/update-check"
 
