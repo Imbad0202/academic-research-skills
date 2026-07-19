@@ -148,9 +148,12 @@ def run_preflight(path) -> dict:
     # Non-whitespace bytes after the LAST %%EOF are that signature: record the warning
     # now, veto PASS at the verdict step. A complete incremental update always ends
     # with its own %%EOF, so legitimate multi-revision files are not flagged.
+    # PDF whitespace per ISO 32000 §7.2.2 — NOT Python's: NUL is whitespace (common
+    # padding after %%EOF, must not veto), vertical tab 0x0B is NOT (r3 P1).
+    _PDF_WS = b"\x00\x09\x0a\x0c\x0d\x20"
     trailing_ok = True
     eof_at = data.rfind(b"%%EOF")
-    if eof_at != -1 and data[eof_at + 5 :].strip():
+    if eof_at != -1 and data[eof_at + 5 :].translate(None, _PDF_WS):
         trailing_ok = False
         warnings.append(
             f"trailing-data: {len(data) - (eof_at + 5)} bytes after the final %%EOF "
@@ -232,11 +235,10 @@ def run_preflight(path) -> dict:
                 compressed = getattr(reader, "xref_objStm", None)
                 if isinstance(compressed, dict):
                     known_objs.update(compressed.keys())
-                raw_objs = {
-                    int(m.group(1))
-                    for m in re.finditer(rb"(?m)^\s*(\d{1,9})\s+\d+\s+obj\b", data)
-                }
-                orphaned = raw_objs - {int(n) for n in known_objs}
+                raw_offsets: dict[int, list[int]] = {}
+                for m in re.finditer(rb"(?m)^\s*(\d{1,9})\s+\d+\s+obj\b", data):
+                    raw_offsets.setdefault(int(m.group(1)), []).append(m.start(1))
+                orphaned = set(raw_offsets) - {int(n) for n in known_objs}
                 if orphaned:
                     warnings.append(
                         "xref-coverage: object number(s) "
@@ -245,6 +247,35 @@ def run_preflight(path) -> dict:
                         "unreachable newer revision)"
                     )
                     trailing_ok = False
+                # Redefined-object variant (r3 P1): a malformed update can append a
+                # REPLACEMENT body for an existing object number plus a stale
+                # startxref — number-membership alone then sees no orphan while
+                # pypdf reads the old copy. The newest raw copy of every directly-
+                # stored object must be the one the active chain references.
+                # Calibration guard: pypdf applies a global delta when a file has
+                # junk before %PDF; if NO active offset matches any raw offset the
+                # comparison is uncalibrated — skip rather than mass-flag.
+                direct_offsets = {}
+                for gen_table in xref_map.values():
+                    if isinstance(gen_table, dict):
+                        for objnum, off in gen_table.items():
+                            if isinstance(off, int) and int(objnum) in raw_offsets:
+                                direct_offsets[int(objnum)] = off
+                if direct_offsets and any(
+                    off in raw_offsets[n] for n, off in direct_offsets.items()
+                ):
+                    superseded = sorted(
+                        n
+                        for n, off in direct_offsets.items()
+                        if max(raw_offsets[n]) > off
+                    )
+                    if superseded:
+                        warnings.append(
+                            "xref-coverage: later unreferenced revision(s) of object "
+                            f"number(s) {superseded[:5]} exist after the copy the "
+                            "active xref chain references (possible stale startxref)"
+                        )
+                        trailing_ok = False
         except Exception as exc:  # best-effort cross-check, never a crash path
             warnings.append(f"xref-coverage-skipped: {exc}")
     finally:

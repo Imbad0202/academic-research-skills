@@ -205,6 +205,29 @@ class PreflightVerdictTest(unittest.TestCase):
         self.assertNotEqual(r["verdict"], "PASS", r)
         self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
 
+    def test_nul_padding_after_final_eof_still_passes(self):
+        # NUL is PDF whitespace (ISO 32000 §7.2.2) and a common post-%%EOF padding;
+        # Python's strip() does not know that (codex #512 r3 P1).
+        r = self.run_on(_flat_pdf(2) + b"\x00" * 16)
+        self.assertEqual(r["verdict"], "PASS", r)
+
+    def test_vertical_tab_after_final_eof_vetoes_pass(self):
+        # 0x0B is Python whitespace but NOT PDF whitespace — it is data.
+        r = self.run_on(_flat_pdf(2) + b"\x0b")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+
+    def test_redefined_object_with_stale_startxref_never_passes(self):
+        # Malformed update variant (codex #512 r3 P1): a REPLACEMENT body for an
+        # EXISTING object number is appended, then a stale copy of the original
+        # startxref/%%EOF. Object-number membership sees no orphan; the newest-copy-
+        # must-be-referenced check must flag it.
+        base = _flat_pdf(2)
+        old_startxref = base[base.rfind(b"startxref") :]
+        replacement = b"\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        r = self.run_on(base + replacement + old_startxref, name="redefined.pdf")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+        self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
+
     def test_non_integer_count_unavailable(self):
         # /Count 1.0 — int() would truncate-coerce and agree with one real leaf; a
         # malformed page tree must be UNAVAILABLE, not PASS (codex #512 r2 P1).
