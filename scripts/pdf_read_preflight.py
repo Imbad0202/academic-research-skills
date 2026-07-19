@@ -235,12 +235,17 @@ def run_preflight(path) -> dict:
                 compressed = getattr(reader, "xref_objStm", None)
                 if isinstance(compressed, dict):
                     known_objs.update(compressed.keys())
-                # Explicit [\r\n] boundary, not (?m)^: PDF permits bare-CR line
-                # endings, which Python's multiline anchor does not treat as a
-                # line start — a CR-only file would otherwise scan as having no
-                # object headers at all, blinding both coverage checks (r4 P1).
+                # Explicit PDF-whitespace boundary, not (?m)^ and not Python \s:
+                # PDF permits bare-CR line endings (r4 P1) and treats NUL as
+                # whitespace while \s does not (r5 P1) — a header preceded only by
+                # NUL padding must still be seen, or a CR-only / NUL-padded file
+                # blinds both coverage checks.
+                _ws = rb"[\x00\t\n\x0c\r ]"
                 raw_offsets: dict[int, list[int]] = {}
-                for m in re.finditer(rb"(?:^|[\r\n])\s*(\d{1,9})\s+\d+\s+obj\b", data):
+                for m in re.finditer(
+                    rb"(?:^|" + _ws + rb")" + _ws + rb"*(\d{1,9})" + _ws + rb"+\d+" + _ws + rb"+obj\b",
+                    data,
+                ):
                     raw_offsets.setdefault(int(m.group(1)), []).append(m.start(1))
                 orphaned = set(raw_offsets) - {int(n) for n in known_objs}
                 if orphaned:
@@ -278,6 +283,39 @@ def run_preflight(path) -> dict:
                             "xref-coverage: later unreferenced revision(s) of object "
                             f"number(s) {superseded[:5]} exist after the copy the "
                             "active xref chain references (possible stale startxref)"
+                        )
+                        trailing_ok = False
+                # Compressed-object variant (r5 P1): the active copy of N lives
+                # inside an object stream (no direct offset in reader.xref), so the
+                # loop above never inspects it — but a direct raw replacement of N
+                # appended AFTER its container, with a stale startxref, is exactly
+                # the unreachable-newer-revision case. A raw copy BEFORE the
+                # container is the legitimate superseded-into-objstm update and is
+                # not flagged.
+                if isinstance(compressed, dict):
+                    compressed_superseded = []
+                    for objnum, ref in compressed.items():
+                        n = int(objnum)
+                        if n not in raw_offsets or n in direct_offsets:
+                            continue
+                        container = ref[0] if isinstance(ref, (tuple, list)) and ref else None
+                        container_off = None
+                        if container is not None:
+                            for gen_table in xref_map.values():
+                                if (
+                                    isinstance(gen_table, dict)
+                                    and container in gen_table
+                                    and isinstance(gen_table[container], int)
+                                ):
+                                    container_off = gen_table[container]
+                                    break
+                        if container_off is not None and max(raw_offsets[n]) > container_off:
+                            compressed_superseded.append(n)
+                    if compressed_superseded:
+                        warnings.append(
+                            "xref-coverage: direct replacement(s) of compressed object "
+                            f"number(s) {sorted(compressed_superseded)[:5]} appear after "
+                            "their object-stream container (possible stale startxref)"
                         )
                         trailing_ok = False
         except Exception as exc:  # best-effort cross-check, never a crash path

@@ -98,6 +98,40 @@ def _encrypted_pdf():
     )
 
 
+def _objstm_pdf():
+    """PDF 1.5-style fixture: catalog/pages/page live in an object stream (obj 4),
+    the xref is a cross-reference stream (obj 5); both unfiltered so offsets stay
+    computable. Exercises the compressed-object side of the coverage checks."""
+    import struct
+
+    bodies = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    ]
+    offs, payload = [], b""
+    for b in bodies:
+        offs.append(len(payload))
+        payload += b + b" "
+    header = b" ".join(b"%d %d" % (i + 1, o) for i, o in enumerate(offs)) + b" "
+    content = header + payload
+    out = bytearray(b"%PDF-1.5\n%\xe2\xe3\xcf\xd3\n")
+    objstm_at = len(out)
+    out += (
+        b"4 0 obj\n<< /Type /ObjStm /N 3 /First %d /Length %d >>\nstream\n"
+        % (len(header), len(content))
+    ) + content + b"\nendstream\nendobj\n"
+    xref_at = len(out)
+    rows = [(0, 0, 0), (2, 4, 0), (2, 4, 1), (2, 4, 2), (1, objstm_at, 0), (1, xref_at, 0)]
+    xdata = b"".join(struct.pack(">BHB", *r) for r in rows)
+    out += (
+        b"5 0 obj\n<< /Type /XRef /Size 6 /Root 1 0 R /W [1 2 1] /Index [0 6] /Length %d >>\nstream\n"
+        % len(xdata)
+    ) + xdata + b"\nendstream\nendobj\n"
+    out += b"startxref\n%d\n%%%%EOF\n" % xref_at
+    return bytes(out)
+
+
 def _write(tmpdir, name, data):
     p = Path(tmpdir) / name
     p.write_bytes(data)
@@ -241,6 +275,33 @@ class PreflightVerdictTest(unittest.TestCase):
         old_startxref = base[base.rfind(b"startxref") :]
         replacement = b"\r2 0 obj\r<< /Type /Pages /Kids [3 0 R] /Count 1 >>\rendobj\r"
         r = self.run_on(base + replacement + old_startxref, name="cr_stale.pdf")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+        self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
+
+    def test_objstm_xref_stream_pdf_passes(self):
+        # Object-stream + cross-reference-stream layout must parse and PASS.
+        r = self.run_on(_objstm_pdf(), name="objstm.pdf")
+        self.assertEqual(r["verdict"], "PASS", r)
+        self.assertEqual(r["enumerated_page_count"], 1)
+
+    def test_direct_replacement_of_compressed_object_never_passes(self):
+        # r5 P1: active copy of object 2 lives inside an object stream; a direct raw
+        # replacement appended AFTER the container with a stale startxref is
+        # unreachable but is neither orphaned nor covered by the direct-offset loop.
+        base = _objstm_pdf()
+        old_startxref = base[base.rfind(b"startxref") :]
+        replacement = b"\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        r = self.run_on(base + replacement + old_startxref, name="objstm_stale.pdf")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+        self.assertTrue(any("compressed object" in w for w in r["warnings"]), r["warnings"])
+
+    def test_nul_preceded_replacement_header_never_passes(self):
+        # r5 P1: NUL is PDF whitespace; a replacement header preceded only by NUL
+        # padding must still be seen by the coverage scan.
+        base = _flat_pdf(2)
+        old_startxref = base[base.rfind(b"startxref") :]
+        replacement = b"\x002 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        r = self.run_on(base + replacement + old_startxref, name="nul_stale.pdf")
         self.assertNotEqual(r["verdict"], "PASS", r)
         self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
 
