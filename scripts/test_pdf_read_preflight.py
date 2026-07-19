@@ -228,6 +228,22 @@ class PreflightVerdictTest(unittest.TestCase):
         self.assertNotEqual(r["verdict"], "PASS", r)
         self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
 
+    def test_cr_only_line_endings_still_pass(self):
+        # ISO 32000 permits bare-CR line endings; byte count is unchanged so the
+        # xref offsets stay valid.
+        r = self.run_on(_flat_pdf(2).replace(b"\n", b"\r"), name="cr.pdf")
+        self.assertEqual(r["verdict"], "PASS", r)
+
+    def test_cr_only_stale_startxref_never_passes(self):
+        # r4 P1: a CR-only file must not blind the object-header scan — the stale
+        # startxref variant has to be caught in this convention too.
+        base = _flat_pdf(2).replace(b"\n", b"\r")
+        old_startxref = base[base.rfind(b"startxref") :]
+        replacement = b"\r2 0 obj\r<< /Type /Pages /Kids [3 0 R] /Count 1 >>\rendobj\r"
+        r = self.run_on(base + replacement + old_startxref, name="cr_stale.pdf")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+        self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
+
     def test_non_integer_count_unavailable(self):
         # /Count 1.0 — int() would truncate-coerce and agree with one real leaf; a
         # malformed page tree must be UNAVAILABLE, not PASS (codex #512 r2 P1).

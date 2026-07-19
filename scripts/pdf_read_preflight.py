@@ -235,8 +235,12 @@ def run_preflight(path) -> dict:
                 compressed = getattr(reader, "xref_objStm", None)
                 if isinstance(compressed, dict):
                     known_objs.update(compressed.keys())
+                # Explicit [\r\n] boundary, not (?m)^: PDF permits bare-CR line
+                # endings, which Python's multiline anchor does not treat as a
+                # line start — a CR-only file would otherwise scan as having no
+                # object headers at all, blinding both coverage checks (r4 P1).
                 raw_offsets: dict[int, list[int]] = {}
-                for m in re.finditer(rb"(?m)^\s*(\d{1,9})\s+\d+\s+obj\b", data):
+                for m in re.finditer(rb"(?:^|[\r\n])\s*(\d{1,9})\s+\d+\s+obj\b", data):
                     raw_offsets.setdefault(int(m.group(1)), []).append(m.start(1))
                 orphaned = set(raw_offsets) - {int(n) for n in known_objs}
                 if orphaned:
