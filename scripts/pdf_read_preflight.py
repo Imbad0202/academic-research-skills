@@ -235,15 +235,17 @@ def run_preflight(path) -> dict:
                 compressed = getattr(reader, "xref_objStm", None)
                 if isinstance(compressed, dict):
                     known_objs.update(compressed.keys())
-                # Explicit PDF-whitespace boundary, not (?m)^ and not Python \s:
-                # PDF permits bare-CR line endings (r4 P1) and treats NUL as
-                # whitespace while \s does not (r5 P1) — a header preceded only by
-                # NUL padding must still be seen, or a CR-only / NUL-padded file
-                # blinds both coverage checks.
+                # Header token separators implement the FULL ISO 32000 lexer model,
+                # not Python's \s and not just whitespace: PDF permits bare-CR line
+                # endings (r4 P1), treats NUL as whitespace (r5 P1), and treats
+                # %-comments-to-end-of-line as token separators (r7 P1) — so
+                # `2 0%note\nobj` is a valid header. Anything the PDF lexer accepts
+                # as a separator must not hide a header from the coverage checks.
                 _ws = rb"[\x00\t\n\x0c\r ]"
+                _sep = rb"(?:" + _ws + rb"|%[^\r\n]*[\r\n])"
                 raw_offsets: dict[int, list[int]] = {}
                 for m in re.finditer(
-                    rb"(?:^|" + _ws + rb")" + _ws + rb"*(\d{1,10})" + _ws + rb"+\d+" + _ws + rb"+obj\b",
+                    rb"(?:^|" + _sep + rb")" + _sep + rb"*(\d{1,10})" + _sep + rb"+\d+" + _sep + rb"+obj\b",
                     data,
                 ):
                     raw_offsets.setdefault(int(m.group(1)), []).append(m.start(1))

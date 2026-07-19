@@ -315,6 +315,16 @@ class PreflightVerdictTest(unittest.TestCase):
         self.assertNotEqual(r["verdict"], "PASS", r)
         self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
 
+    def test_comment_separated_replacement_header_never_passes(self):
+        # r7 P1: %-comments are token separators in the PDF lexer, so
+        # `2 0%note\nobj` is a valid object header the scan must still see.
+        base = _flat_pdf(2)
+        old_startxref = base[base.rfind(b"startxref") :]
+        replacement = b"\n2 0%note\nobj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        r = self.run_on(base + replacement + old_startxref, name="comment_stale.pdf")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+        self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
+
     def test_non_integer_count_unavailable(self):
         # /Count 1.0 — int() would truncate-coerce and agree with one real leaf; a
         # malformed page tree must be UNAVAILABLE, not PASS (codex #512 r2 P1).
