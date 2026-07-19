@@ -325,6 +325,21 @@ class PreflightVerdictTest(unittest.TestCase):
         self.assertNotEqual(r["verdict"], "PASS", r)
         self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
 
+    def test_signed_or_zero_padded_replacement_header_never_passes(self):
+        # r8 P1: ISO 32000 integers permit a leading sign (and arbitrary zero
+        # padding); pypdf's header reader coerces via int(), so these header forms
+        # must not hide from the scan.
+        base = _flat_pdf(2)
+        old_startxref = base[base.rfind(b"startxref") :]
+        for header in (b"+2 0 obj", b"00000000002 0 obj"):
+            with self.subTest(header=header):
+                replacement = (
+                    b"\n" + header + b"\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+                )
+                r = self.run_on(base + replacement + old_startxref, name="signed_stale.pdf")
+                self.assertNotEqual(r["verdict"], "PASS", r)
+                self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
+
     def test_non_integer_count_unavailable(self):
         # /Count 1.0 — int() would truncate-coerce and agree with one real leaf; a
         # malformed page tree must be UNAVAILABLE, not PASS (codex #512 r2 P1).

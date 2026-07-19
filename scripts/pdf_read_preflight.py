@@ -241,11 +241,16 @@ def run_preflight(path) -> dict:
                 # %-comments-to-end-of-line as token separators (r7 P1) — so
                 # `2 0%note\nobj` is a valid header. Anything the PDF lexer accepts
                 # as a separator must not hide a header from the coverage checks.
+                # Numeric tokens carry the full ISO 32000 integer form too (r8 P1):
+                # an optional sign and any leading-zero padding are valid and
+                # accepted by pypdf's int() coercion, so `+2 0 obj` or
+                # `00000000002 0 obj` must not hide from the scan either.
                 _ws = rb"[\x00\t\n\x0c\r ]"
                 _sep = rb"(?:" + _ws + rb"|%[^\r\n]*[\r\n])"
+                _num = rb"[+-]?0*\d{1,10}"
                 raw_offsets: dict[int, list[int]] = {}
                 for m in re.finditer(
-                    rb"(?:^|" + _sep + rb")" + _sep + rb"*(\d{1,10})" + _sep + rb"+\d+" + _sep + rb"+obj\b",
+                    rb"(?:^|" + _sep + rb")" + _sep + rb"*(" + _num + rb")" + _sep + rb"+" + _num + _sep + rb"+obj\b",
                     data,
                 ):
                     raw_offsets.setdefault(int(m.group(1)), []).append(m.start(1))
