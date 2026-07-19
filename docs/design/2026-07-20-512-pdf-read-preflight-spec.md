@@ -37,13 +37,24 @@ page-count signals** on top of it:
 Parser warnings are captured from the `pypdf` logger (repair chatter is exactly the
 "silently repaired xref" signal the issue names) and recorded.
 
+**Trailing-data check** (cross-model review round 1, P1): a PDF truncated partway through
+an incremental update keeps an OLDER valid `%%EOF`; pypdf silently reads that previous
+revision, so all three counts agree on the OLD page tree — the exact truncation case the
+preflight exists to catch. Non-whitespace bytes after the LAST `%%EOF` are that
+signature: recorded as a `trailing-data` warning and a PASS veto. Complete incremental
+updates always end with their own `%%EOF`, so legitimate multi-revision files pass.
+
 **Verdict** (single enum, mirrors the repo's PASS-posture vocabulary):
 
 | Verdict | Condition |
 |---|---|
-| `PASS` | all three counts agree, count > 0, and no captured parser warnings |
+| `PASS` | all three counts agree, count > 0, no captured parser warnings, no trailing data after the final `%%EOF` |
 | `FAIL` | parse completed but the counts disagree — the truncation/mispagination signal |
-| `UNAVAILABLE` | anything preventing a confident parse: unreadable/missing file, encryption, missing/malformed page tree, cycle or node-budget hit, pypdf not installed, count agreement but parser-repair warnings present |
+| `UNAVAILABLE` | anything preventing a confident parse: unreadable/missing file, encryption, missing/malformed page tree, cycle or node-budget hit, pypdf not installed, count agreement but parser-repair warnings or trailing data present |
+
+Parser warnings captured before a structural failure survive every early exit (they are
+appended in the capture handler's `finally`), so a repair warning that preceded a later
+encryption/tree error still reaches the sidecar.
 
 `UNAVAILABLE` (not `FAIL`) on repair warnings with agreeing counts: a repaired read may
 still be complete, but the preflight cannot vouch for it — and only `PASS` licenses a page
@@ -87,14 +98,28 @@ errors only — so orchestration can always consume the JSON without exit-code b
   carries a file hash, so a hash cannot be the primary key. Non-`PASS` or missing sidecar
   becomes the `[pdf_read_integrity_unverified]` advisory rationale tag (never an UNSUPPORTED
   verdict on this basis alone — terminality stays with the existing formatter gate machinery).
+- **Executable audit path** (cross-model review round 1, P1): the prose rule alone never
+  executes in `scripts/claim_audit_pipeline.py`. `run_audit_pipeline` gains
+  `pdf_preflight_sidecars: dict[ref_slug → sidecar] | None` — `None` (unwired caller) is
+  byte-equivalent legacy; a provided map tags every completed `manual_pdf` page-anchor row
+  without a `PASS` sidecar at the single Step-6 emission point, AFTER cache resolution, so a
+  cache hit cannot bypass the check and the tag never enters the cached judge body. The tag
+  is appended (INV-6/INV-14 `startswith` contracts untouched) within the rationale budget.
+  `claim_audit_finalizer.classify_claim_audit_result` surfaces
+  `[LOW-WARN-PDF-READ-INTEGRITY-UNVERIFIED]` (advisory, never gate-refuse) on SUPPORTED rows
+  carrying the tag — otherwise the expected common case (content-based fallback finds
+  support) would render the advisory invisible at the formatter.
 - **`pipeline_orchestrator_agent`** (the layer that CAN run Bash): run the preflight once per
-  locally-read PDF in the `literature_corpus[]` — deliberately NOT "only PDFs that sourced a
-  page anchor": anchor→file provenance is not recorded anywhere the orchestrator can read, an
-  extra preflight is cheap and deterministic, and the audit side narrows via `manual_pdf`.
-  Sidecars ride into the audit (and, when known early, drafting) context keyed by `ref_slug`.
-  This file is one of the five #528 content-locked surfaces — the `CONTENT_LOCKS` hash in
-  `scripts/check_pipeline_boundary_semantics.py` is updated in the same commit per that
-  lint's documented procedure.
+  locally-read PDF in the `literature_corpus[]` **at Stage 1 corpus intake, independent of
+  audit mode** (cross-model review round 1, P1: the Stage 4→5 audit is opt-in default OFF
+  while the emitters run earlier — an audit-gated preflight would leave default-mode runs
+  sidecar-less at R-L3-1-D, forcing valid local-PDF page citations to `anchor:none` and a
+  gate refusal). Deliberately NOT "only PDFs that sourced a page anchor": anchor→file
+  provenance is not recorded anywhere the orchestrator can read, an extra preflight is cheap
+  and deterministic, and the audit side narrows via `manual_pdf`. Sidecars ride the emitters'
+  and audit contexts keyed by `ref_slug`. This file is one of the five #528 content-locked
+  surfaces — the `CONTENT_LOCKS` hash in `scripts/check_pipeline_boundary_semantics.py` is
+  updated in the same commit per that lint's documented procedure.
 
 ## Out of scope (deliberate, from the issue)
 

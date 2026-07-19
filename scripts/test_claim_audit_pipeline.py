@@ -2289,5 +2289,92 @@ class TP360NonStringJudgeRationale(_PipelineTestBase):
         self.assertEqual(self._validate_passport(out, [manifest]), [])
 
 
+
+# ---------------------------------------------------------------------------
+# T-512 — PDF read-integrity tag on manual_pdf page-anchor rows (#512).
+# ---------------------------------------------------------------------------
+
+
+class T512PdfReadIntegrityTag(_PipelineTestBase):
+    """#512: completed manual_pdf page-anchor rows are tagged when the preflight
+    sidecar is missing or non-PASS; cache hits cannot bypass; None = legacy."""
+
+    @staticmethod
+    def _manual_pdf(citation: dict[str, Any]) -> dict[str, Any]:
+        return {"ref_retrieval_method": "manual_pdf", "retrieved_excerpt": "uploaded excerpt"}
+
+    def _tag(self) -> str:
+        from scripts.claim_audit_pipeline import PDF_READ_INTEGRITY_TAG
+
+        return PDF_READ_INTEGRITY_TAG
+
+    def test_missing_sidecar_tags_rationale(self) -> None:
+        out = self.run_pipeline(
+            citations=[_citation()], retrieve_fn=self._manual_pdf, pdf_preflight_sidecars={}
+        )
+        self.assertIn(self._tag(), out["claim_audit_results"][0]["rationale"])
+
+    def test_pass_sidecar_not_tagged(self) -> None:
+        out = self.run_pipeline(
+            citations=[_citation()],
+            retrieve_fn=self._manual_pdf,
+            pdf_preflight_sidecars={"smith2024preprints": {"verdict": "PASS"}},
+        )
+        self.assertNotIn(self._tag(), out["claim_audit_results"][0]["rationale"])
+
+    def test_fail_and_unavailable_sidecars_tagged(self) -> None:
+        for verdict in ("FAIL", "UNAVAILABLE"):
+            with self.subTest(verdict=verdict):
+                out = self.run_pipeline(
+                    citations=[_citation()],
+                    retrieve_fn=self._manual_pdf,
+                    pdf_preflight_sidecars={"smith2024preprints": {"verdict": verdict}},
+                )
+                self.assertIn(self._tag(), out["claim_audit_results"][0]["rationale"])
+
+    def test_none_param_is_legacy_untagged(self) -> None:
+        out = self.run_pipeline(citations=[_citation()], retrieve_fn=self._manual_pdf)
+        self.assertNotIn(self._tag(), out["claim_audit_results"][0]["rationale"])
+
+    def test_api_rows_never_tagged(self) -> None:
+        out = self.run_pipeline(citations=[_citation()], pdf_preflight_sidecars={})
+        self.assertNotIn(self._tag(), out["claim_audit_results"][0]["rationale"])
+
+    def test_non_page_anchor_never_tagged(self) -> None:
+        out = self.run_pipeline(
+            citations=[_citation(anchor_kind="quote", anchor_value="verbatim%20text")],
+            retrieve_fn=self._manual_pdf,
+            pdf_preflight_sidecars={},
+        )
+        self.assertNotIn(self._tag(), out["claim_audit_results"][0]["rationale"])
+
+    def test_cache_hit_cannot_bypass_tag(self) -> None:
+        cache: dict[str, Any] = {}
+        first = self.run_pipeline(
+            citations=[_citation()],
+            retrieve_fn=self._manual_pdf,
+            cache=cache,
+            pdf_preflight_sidecars={},
+        )
+        self.assertEqual(len(cache), 1)
+        second = self.run_pipeline(
+            citations=[_citation()],
+            retrieve_fn=self._manual_pdf,
+            cache=cache,
+            pdf_preflight_sidecars={},
+        )
+        for out in (first, second):
+            self.assertIn(self._tag(), out["claim_audit_results"][0]["rationale"])
+        # Tag never contaminates the cached judge body (run-context only).
+        (cached,) = cache.values()
+        self.assertNotIn(self._tag(), str(cached))
+
+    def test_tagged_row_passes_consistency_lint(self) -> None:
+        out = self.run_pipeline(
+            citations=[_citation()], retrieve_fn=self._manual_pdf, pdf_preflight_sidecars={}
+        )
+        self.assertEqual(self._validate_passport(out), [])
+
+
 if __name__ == "__main__":
     unittest.main()

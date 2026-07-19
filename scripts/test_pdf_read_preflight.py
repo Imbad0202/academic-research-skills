@@ -173,6 +173,43 @@ class PreflightVerdictTest(unittest.TestCase):
         r = self.run_on(_flat_pdf(0))
         self.assertNotEqual(r["verdict"], "PASS", r)
 
+    def test_trailing_data_after_final_eof_never_passes(self):
+        # A PDF truncated partway through an incremental update keeps the OLDER valid
+        # %%EOF; pypdf silently reads that revision and all three counts agree on the
+        # old tree. The trailing-bytes check must veto PASS (codex #512 P1).
+        data = _flat_pdf(2) + b"6 0 obj\n<< /Type /Page /Parent 2 0 R >>\n"
+        r = self.run_on(data, name="cut_incremental.pdf")
+        self.assertEqual(r["verdict"], "UNAVAILABLE", r)
+        self.assertTrue(any("trailing-data" in w for w in r["warnings"]), r["warnings"])
+
+    def test_whitespace_after_final_eof_still_passes(self):
+        r = self.run_on(_flat_pdf(2) + b"\n\n  \n")
+        self.assertEqual(r["verdict"], "PASS", r)
+
+    def test_parser_warnings_survive_early_exit(self):
+        # pypdf logs a repair warning, THEN parsing dies: the sidecar must carry BOTH
+        # the captured warning and the later error (codex #512 P2 — early returns must
+        # not drop collector messages).
+        import logging as _logging
+
+        class _StubReader:
+            def __init__(self, stream):
+                _logging.getLogger("pypdf").warning("synthetic repair warning")
+                raise ValueError("boom")
+
+        class _StubPypdf:
+            PdfReader = _StubReader
+
+        real = preflight.pypdf
+        preflight.pypdf = _StubPypdf
+        try:
+            r = self.run_on(_flat_pdf(1))
+        finally:
+            preflight.pypdf = real
+        self.assertEqual(r["verdict"], "UNAVAILABLE", r)
+        self.assertTrue(any(w == "pypdf: synthetic repair warning" for w in r["warnings"]), r["warnings"])
+        self.assertTrue(any(w.startswith("parse-error:") for w in r["warnings"]), r["warnings"])
+
 
 class SidecarShapeTest(unittest.TestCase):
     def setUp(self):

@@ -140,6 +140,22 @@ def run_preflight(path) -> dict:
         return result
     result["sha256"] = sha256_hex(data)
 
+    # Structural check independent of the parser: a PDF truncated partway through an
+    # incremental update keeps an OLDER valid %%EOF, and pypdf silently reads that
+    # previous revision — all three counts then agree on the OLD page tree, which would
+    # PASS the exact truncation case this preflight exists to catch (codex #512 P1).
+    # Non-whitespace bytes after the LAST %%EOF are that signature: record the warning
+    # now, veto PASS at the verdict step. A complete incremental update always ends
+    # with its own %%EOF, so legitimate multi-revision files are not flagged.
+    trailing_ok = True
+    eof_at = data.rfind(b"%%EOF")
+    if eof_at != -1 and data[eof_at + 5 :].strip():
+        trailing_ok = False
+        warnings.append(
+            f"trailing-data: {len(data) - (eof_at + 5)} bytes after the final %%EOF "
+            "include non-whitespace content (possible truncated incremental update)"
+        )
+
     if pypdf is None:
         warnings.append("pypdf-not-installed: preflight cannot parse the document")
         return result
@@ -185,9 +201,10 @@ def run_preflight(path) -> dict:
         result["reader_page_count"] = reader_count
     finally:
         pypdf_logger.removeHandler(collector)
-
-    parser_warnings = [f"pypdf: {m}" for m in collector.messages]
-    warnings.extend(parser_warnings)
+        # Append captured parser chatter HERE so every early return above (encryption,
+        # unresolvable tree, walk problems) still carries it — the repair warning that
+        # preceded a later structural error is part of the sidecar contract too.
+        warnings.extend(f"pypdf: {m}" for m in collector.messages)
 
     if not (declared == enumerated == reader_count):
         result["verdict"] = FAIL
@@ -195,8 +212,9 @@ def run_preflight(path) -> dict:
     if declared <= 0:
         warnings.append("empty-page-tree: agreeing counts but zero pages")
         return result
-    if parser_warnings:
-        # Counts agree, but the parse needed repair — cannot vouch, per the spec.
+    if collector.messages or not trailing_ok:
+        # Counts agree, but the parse needed repair or the file carries data after its
+        # final %%EOF — cannot vouch, per the spec.
         return result
     result["verdict"] = PASS
     return result

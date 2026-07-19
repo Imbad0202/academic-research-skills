@@ -939,5 +939,41 @@ class TUAFFinalizerRouting(unittest.TestCase):
                 self.assertIn(expected, annotations)
 
 
+
+# T-512 — SUPPORTED row carrying the PDF read-integrity tag surfaces the advisory.
+
+
+class T512PdfReadIntegrityAdvisory(unittest.TestCase):
+    def test_supported_with_tag_gets_low_warn_advisory(self) -> None:
+        from scripts.claim_audit_finalizer import (
+            ANNOTATION_LOW_WARN_PDF_READ_INTEGRITY,
+            PDF_READ_INTEGRITY_TAG,
+        )
+
+        out = classify_claim_audit_result(
+            _result(
+                judgment="SUPPORTED",
+                defect_stage=None,
+                ref_retrieval_method="manual_pdf",
+                rationale=f"supported via content match {PDF_READ_INTEGRITY_TAG}",
+            )
+        )
+        self.assertEqual(out["annotation"], ANNOTATION_LOW_WARN_PDF_READ_INTEGRITY)
+        self.assertEqual(out["tier"], "low_warn")
+        self.assertFalse(out["gate_refuse"])
+
+    def test_supported_without_tag_unchanged(self) -> None:
+        out = classify_claim_audit_result(
+            _result(judgment="SUPPORTED", defect_stage=None, ref_retrieval_method="manual_pdf")
+        )
+        self.assertIsNone(out["annotation"])
+
+    def test_tag_constants_in_lockstep_with_pipeline(self) -> None:
+        from scripts.claim_audit_finalizer import PDF_READ_INTEGRITY_TAG as fin_tag
+        from scripts.claim_audit_pipeline import PDF_READ_INTEGRITY_TAG as pipe_tag
+
+        self.assertEqual(fin_tag, pipe_tag)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

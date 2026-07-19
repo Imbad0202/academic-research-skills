@@ -50,6 +50,11 @@ TIER_HIGH_WARN = "high_warn"
 # Changing a literal here MUST coordinate with the formatter prose update.
 # ---------------------------------------------------------------------------
 
+# #512 PDF read-integrity: pipeline-side tag substring (keep in lockstep with
+# claim_audit_pipeline.PDF_READ_INTEGRITY_TAG) + the advisory annotation it drives.
+PDF_READ_INTEGRITY_TAG = "[pdf_read_integrity_unverified]"
+ANNOTATION_LOW_WARN_PDF_READ_INTEGRITY = "[LOW-WARN-PDF-READ-INTEGRITY-UNVERIFIED]"
+
 ANNOTATION_CLAIM_AUDIT_AMBIGUOUS = "[CLAIM-AUDIT-AMBIGUOUS]"
 ANNOTATION_HIGH_WARN_CLAIM_NOT_SUPPORTED = "[HIGH-WARN-CLAIM-NOT-SUPPORTED]"
 ANNOTATION_HIGH_WARN_NEGATIVE_CONSTRAINT_VIOLATION = (
@@ -168,6 +173,16 @@ def classify_claim_audit_result(entry: dict[str, Any]) -> dict[str, Any]:
     rationale = entry.get("rationale", "")
 
     if judgment == "SUPPORTED":
+        # #512: a SUPPORTED row that reached support through an unverified local-PDF
+        # page anchor still surfaces an advisory — without this branch the pipeline's
+        # rationale tag would be invisible at the formatter for the expected common
+        # case (content-based fallback finds support). Advisory only, never a gate.
+        if PDF_READ_INTEGRITY_TAG in rationale:
+            return {
+                "annotation": ANNOTATION_LOW_WARN_PDF_READ_INTEGRITY,
+                "tier": TIER_LOW_WARN,
+                "gate_refuse": False,
+            }
         return {"annotation": None, "tier": TIER_NONE, "gate_refuse": False}
 
     if judgment == "AMBIGUOUS":
