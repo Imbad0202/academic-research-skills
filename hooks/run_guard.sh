@@ -1,5 +1,5 @@
 #!/bin/sh
-# version: 1.0.0
+# version: 1.0.1
 #
 # ARS write-scope guard LAUNCHER — PreToolUse hook (#454 Windows portability fix).
 #
@@ -132,6 +132,14 @@ run_bounded() {
         { "$@" >"$_rb_out" <&3 3<&- & } 3<&0
     fi
     _cmd_pid=$!
+    # The watchdog subshell (and the `sleep` it forks) must NOT inherit our stdout: when the
+    # caller captures run_bounded via `$(...)`, an inherited fd1 IS that pipe, and after we
+    # kill the subshell its orphaned `sleep` keeps the write end open — the caller's `$(...)`
+    # then blocks until the FULL bound elapses even though the job finished in milliseconds.
+    # That stall happened on every healthy probe/guard run on every timeout-less host (~2x
+    # bound per hook call, measured 6.1s at the default bound on stock macOS) and is the
+    # load-margin flake #545 documents. Same reasoning as note (2) above for the job itself;
+    # the watchdog writes nothing to stdout, so /dev/null loses nothing.
     ( sleep "$PROBE_BOUND"
       # If the parent already signalled completion, the child finished within the bound: do NOT
       # kill (its pid may have been recycled to an innocent process) and do NOT flag a timeout.
@@ -145,7 +153,7 @@ run_bounded() {
               kill -KILL "-$_cmd_pid" 2>/dev/null || kill -KILL "$_cmd_pid" 2>/dev/null
           fi
       fi
-    ) &
+    ) >/dev/null 2>&1 &
     _watch_pid=$!
     wait "$_cmd_pid" 2>/dev/null
     _st=$?

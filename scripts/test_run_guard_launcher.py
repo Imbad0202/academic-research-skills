@@ -70,6 +70,19 @@ _SYS_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
 _SH = shutil.which("sh") or "/bin/sh"
 _LAUNCHER_TIMEOUT = 45  # generous so a (bounded) hanging-candidate test can't false-fail
 
+# #545: GENEROUS default bound. For decision-forwarding tests the bound is pure safety
+# margin — it only ever elapses when a candidate actually hangs — and the old pinned "1"
+# left so little margin that interpreter startup + the guard run could overrun it under
+# machine load (worse on hosts without a `timeout` binary, where the watchdog's done-file
+# handshake races completions near the bound). The launcher then degraded BY DESIGN to
+# pass-through and deny-expecting tests failed in rotation. Hanging-candidate tests are
+# the ONLY ones whose runtime scales with the bound (they wait it out to kill the hung
+# probe), so they override with _HANG_PROBE_BOUND — small for speed, but not the flaky
+# "1": the same bound also clocks the real python3 probe and the guard run inside them,
+# so it still needs load headroom.
+_DEFAULT_PROBE_BOUND = "30"
+_HANG_PROBE_BOUND = "5"
+
 
 def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER):
     """Run the launcher with PATH = bin_dir + system dirs (bin_dir first, so injected
@@ -82,8 +95,7 @@ def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER):
     path = bin_dir + os.pathsep + _SYS_PATH
     env = {
         "PATH": path,
-        # Short probe bound keeps the suite fast; a hanging-candidate is killed in ~1s.
-        "ARS_PROBE_BOUND": "1",
+        "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND,  # #545: see the constant's comment
         # The launcher must resolve the guard from its OWN path, not any var (codex P1).
         # We deliberately do NOT set CLAUDE_PLUGIN_ROOT in most tests.
     }
@@ -289,7 +301,7 @@ class LauncherSelfResolveTest(unittest.TestCase):
             _fake_real_python(os.path.join(bin_dir, "python3"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             env = {"PATH": bin_dir + os.pathsep + _SYS_PATH, "CLAUDE_PROJECT_DIR": ws,
-                   "ARS_PROBE_BOUND": "1"}
+                   "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND}
             proc = subprocess.run([_SH, os.path.join(spaced, "hooks", "run_guard.sh")],
                                   input=json.dumps(payload), env=env, capture_output=True,
                                   text=True, timeout=_LAUNCHER_TIMEOUT)
@@ -364,14 +376,17 @@ class LauncherHangingCandidateTest(unittest.TestCase):
     """A candidate interpreter that hangs must be killed within a bound, then move on —
     the hot path must never hang (spec §3.3 watchdog)."""
 
+    _HANG_BOUND = {"ARS_PROBE_BOUND": _HANG_PROBE_BOUND}  # #545: see _DEFAULT_PROBE_BOUND
+
     def test_hanging_py_then_real_python3(self):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             # py hangs on the marker probe; python3 is real. Launcher must kill py's probe
-            # and fall through to python3 within the test's 30s subprocess timeout.
+            # and fall through to python3 within the test's _LAUNCHER_TIMEOUT.
             _write_exec(os.path.join(bin_dir, "py"), "#!/bin/sh\nsleep 60\n")
             _fake_real_python(os.path.join(bin_dir, "python3"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            code, out, err = _run_launcher(bin_dir, payload,
+                                           extra_env={"CLAUDE_PROJECT_DIR": ws, **self._HANG_BOUND})
             self.assertEqual(code, 0, f"must not hang/error on a hanging candidate; err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
                              "must kill the hanging py and use the real python3")
@@ -391,10 +406,28 @@ class LauncherHangingCandidateTest(unittest.TestCase):
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(bin_dir, payload,
                                            extra_env={"CLAUDE_PROJECT_DIR": ws,
-                                                      "ARS_GUARD_FORCE_WATCHDOG": "1"})
+                                                      "ARS_GUARD_FORCE_WATCHDOG": "1",
+                                                      **self._HANG_BOUND})
             self.assertEqual(code, 0, f"watchdog must reap the hung probe; err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
                              "watchdog must kill the hanging py and fall through to python3")
+
+
+class LauncherSlowInterpreterTest(unittest.TestCase):
+    """#545 regression pin: a SLOW but working interpreter (what a loaded machine
+    produces) must not be false-degraded into pass-through. Under the harness default
+    bound a python3 that takes ~1.5s per invocation must still produce the real deny
+    decision — see _DEFAULT_PROBE_BOUND for the full mechanism."""
+
+    def test_slow_but_working_python_forwards_deny(self):
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _write_exec(os.path.join(bin_dir, "python3"),
+                        f'#!/bin/sh\nsleep 1.5\nexec "{REAL_PY}" "$@"\n')
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "a slow-but-real interpreter must not be false-degraded to pass-through")
 
 
 class LauncherWatchdogRobustnessTest(unittest.TestCase):
