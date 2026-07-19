@@ -81,7 +81,7 @@ Status applies to first-party routes only; compatible-route ids are user-declare
 
 New subsection in the canonical doc operationalizing the five measures already named in the provisional note.
 
-- **Entry gate:** `scripts/cross_model_smoke_test.sh` passes against the candidate id.
+- **Entry gate:** the smoke test for the transport in use passes against the candidate id — `scripts/cross_model_smoke_test.sh` (OpenAI API-key route) or `scripts/cross_model_smoke_test_codex.sh` (Codex subscription route). On the Codex route the model-id-echo and effort-echo checks are transport-limited, not skipped: `codex exec --json` events carry no model or effort field, so the run report must state the behavioral evidence substituted for them. *(Amended 2026-07-19 per the first bakeoff's audit Finding 7 — `audits/cross-model-promotion-bakeoff-gpt-5.6-sol-2026-07-16.md`: that run used the Codex-route gate while this spec named only the API-key script.)*
 - **Probe-set precondition:** the 30-reference probe set (20 real: 10 easy DOI-keyed + 10 hard preprints/DOI-less/non-English; 10 synthetic plausible fabrications) must be committed as a versioned, labeled fixture with its sha256 recorded in the run report before any run counts as a gate result.
 - **Procedure:** baseline (`gpt-5.5`) and candidate the same day, one call per reference, 3 repeats; per-reference verdict = ≥2/3 agreement, a 1–1–1 split is indeterminate and scored conservatively against the model that produced it.
 - **Non-inferiority thresholds (all five must pass):**
