@@ -186,6 +186,37 @@ class PreflightVerdictTest(unittest.TestCase):
         r = self.run_on(_flat_pdf(2) + b"\n\n  \n")
         self.assertEqual(r["verdict"], "PASS", r)
 
+    def test_stale_startxref_with_own_eof_never_passes(self):
+        # Malformed incremental update: new objects appended, then a syntactically
+        # complete startxref that still points at the PREVIOUS revision's xref,
+        # followed by its own %%EOF. The trailing-data check alone sees nothing after
+        # the final %%EOF; the xref-coverage check must flag the unreachable object
+        # (codex #512 r2 P1).
+        base = _build_pdf(
+            [
+                b"<< /Type /Catalog /Pages 2 0 R >>",
+                b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                _page(2),
+            ]
+        )
+        old_startxref = base[base.rfind(b"startxref") :]  # points at revision-1 xref
+        stale = base + b"\n4 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\n" + old_startxref
+        r = self.run_on(stale, name="stale.pdf")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+        self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
+
+    def test_non_integer_count_unavailable(self):
+        # /Count 1.0 — int() would truncate-coerce and agree with one real leaf; a
+        # malformed page tree must be UNAVAILABLE, not PASS (codex #512 r2 P1).
+        objects = [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1.0 >>",
+            _page(2),
+        ]
+        r = self.run_on(_build_pdf(objects), name="floatcount.pdf")
+        self.assertEqual(r["verdict"], "UNAVAILABLE", r)
+        self.assertTrue(any("not an integer" in w for w in r["warnings"]), r["warnings"])
+
     def test_parser_warnings_survive_early_exit(self):
         # pypdf logs a repair warning, THEN parsing dies: the sidecar must carry BOTH
         # the captured warning and the later error (codex #512 P2 — early returns must

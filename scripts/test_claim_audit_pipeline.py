@@ -2369,6 +2369,24 @@ class T512PdfReadIntegrityTag(_PipelineTestBase):
         (cached,) = cache.values()
         self.assertNotIn(self._tag(), str(cached))
 
+    def test_retrieve_fn_receives_preflight_verdict(self) -> None:
+        seen: list[Any] = []
+
+        def spy_retrieve(citation: dict[str, Any]) -> dict[str, Any]:
+            seen.append(citation.get("pdf_preflight_verdict"))
+            return {"ref_retrieval_method": "manual_pdf", "retrieved_excerpt": "x"}
+
+        self.run_pipeline(
+            citations=[_citation()],
+            retrieve_fn=spy_retrieve,
+            pdf_preflight_sidecars={"smith2024preprints": {"verdict": "FAIL"}},
+        )
+        self.run_pipeline(
+            citations=[_citation()], retrieve_fn=spy_retrieve, pdf_preflight_sidecars={}
+        )
+        self.run_pipeline(citations=[_citation()], retrieve_fn=spy_retrieve)
+        self.assertEqual(seen, ["FAIL", "MISSING", None])
+
     def test_tagged_row_passes_consistency_lint(self) -> None:
         out = self.run_pipeline(
             citations=[_citation()], retrieve_fn=self._manual_pdf, pdf_preflight_sidecars={}

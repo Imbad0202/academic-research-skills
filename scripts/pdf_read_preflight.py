@@ -41,6 +41,7 @@ import argparse
 import io
 import json
 import logging
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -178,7 +179,18 @@ def run_preflight(path) -> dict:
             root = reader.trailer["/Root"].get_object()
             pages_node = root["/Pages"]
             pages_obj = pages_node.get_object()
-            declared = int(pages_obj["/Count"])
+            raw_count = pages_obj["/Count"]
+            # Require an actual PDF integer object. `int()` would coerce a float
+            # /Count 2.7 to 2 (or a text string "2") and then agree with two real
+            # leaves — a malformed page tree must be UNAVAILABLE, not PASS (r2 P1).
+            # pypdf NumberObject subclasses int; FloatObject subclasses float.
+            if isinstance(raw_count, bool) or not isinstance(raw_count, int):
+                warnings.append(
+                    f"page-tree-unresolvable: /Count is not an integer object "
+                    f"({type(raw_count).__name__}: {raw_count!r})"
+                )
+                return result
+            declared = int(raw_count)
         except Exception as exc:
             warnings.append(f"page-tree-unresolvable: {exc}")
             return result
@@ -199,6 +211,42 @@ def run_preflight(path) -> dict:
             warnings.append(f"reader-page-list: {exc}")
             return result
         result["reader_page_count"] = reader_count
+
+        # Xref-coverage check (r2 P1): a malformed incremental update can append new
+        # objects PLUS a syntactically complete startxref that still points at the
+        # PREVIOUS revision's xref, followed by its own %%EOF — the trailing-data
+        # check then sees nothing after the final %%EOF while pypdf silently reads
+        # the old revision. Cross-check: every raw `N M obj` header in the file must
+        # be an object number the parsed xref chain knows about. An unreferenced
+        # object number = a revision the active xref chain cannot see. (Offsets are
+        # deliberately not compared — pypdf normalizes them; object-number coverage
+        # is the stable signal. Best-effort: if pypdf's xref internals are absent,
+        # skip rather than crash.)
+        try:
+            xref_map = getattr(reader, "xref", None)
+            if isinstance(xref_map, dict) and xref_map:
+                known_objs = set()
+                for gen_table in xref_map.values():
+                    if isinstance(gen_table, dict):
+                        known_objs.update(gen_table.keys())
+                compressed = getattr(reader, "xref_objStm", None)
+                if isinstance(compressed, dict):
+                    known_objs.update(compressed.keys())
+                raw_objs = {
+                    int(m.group(1))
+                    for m in re.finditer(rb"(?m)^\s*(\d{1,9})\s+\d+\s+obj\b", data)
+                }
+                orphaned = raw_objs - {int(n) for n in known_objs}
+                if orphaned:
+                    warnings.append(
+                        "xref-coverage: object number(s) "
+                        f"{sorted(orphaned)[:5]} present in the file but absent from "
+                        "the active xref chain (possible stale startxref / "
+                        "unreachable newer revision)"
+                    )
+                    trailing_ok = False
+        except Exception as exc:  # best-effort cross-check, never a crash path
+            warnings.append(f"xref-coverage-skipped: {exc}")
     finally:
         pypdf_logger.removeHandler(collector)
         # Append captured parser chatter HERE so every early return above (encryption,

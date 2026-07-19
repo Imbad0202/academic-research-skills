@@ -1048,7 +1048,16 @@ def run_audit_pipeline(
     byte-equivalent behavior, no tagging. When provided (even empty), every
     completed `manual_pdf` row with `anchor_kind == "page"` whose sidecar is
     missing or non-`PASS` gets `PDF_READ_INTEGRITY_TAG` appended to its
-    rationale at the Step-6 emission point, cache hit or not.
+    rationale at the Step-6 emission point, cache hit or not. Additionally,
+    page-anchor citations handed to `retrieve_fn` carry a
+    `pdf_preflight_verdict` key (`PASS`/`FAIL`/`UNAVAILABLE`/`MISSING`):
+    retrieve_fn implementations SHOULD locate the passage by content rather
+    than by the page scope when the verdict is not `PASS` — the judge must
+    never be fed a passage selected by an untrusted page number. Sidecar
+    freshness is the CALLER's contract: this function does no file I/O, so
+    the orchestrator re-hashes each PDF against its sidecar `sha256` before
+    dispatch and re-runs the preflight on mismatch (a stale `PASS` from a
+    replaced file must not license the new bytes).
 
     Returns:
         dict with six aggregate arrays keyed by passport-aggregate name:
@@ -1188,8 +1197,20 @@ def run_audit_pipeline(
         # surface as INV-14 retrieval_* audit_tool_failure rows instead of
         # aborting the pass (Step 13 R2 codex P2 finding, symmetric to the
         # R1 _invoke_judge wrapper).
+        # #512 r2: when the preflight layer is wired, page-anchor citations carry
+        # the sidecar verdict INTO retrieval so implementations can locate the
+        # passage by content instead of the untrusted page scope BEFORE the judge
+        # sees it — tagging after the fact cannot fix a judge that already read
+        # the wrong passage. Copy-on-write; API-path retrieve_fns ignore the key.
+        retrieval_citation = citation
+        if pdf_preflight_sidecars is not None and anchor_kind == "page":
+            _sc = pdf_preflight_sidecars.get(citation["ref_slug"])
+            retrieval_citation = dict(citation)
+            retrieval_citation["pdf_preflight_verdict"] = (
+                _sc.get("verdict") if _sc else "MISSING"
+            )
         try:
-            retrieval = _invoke_retrieve(retrieve_fn, citation)
+            retrieval = _invoke_retrieve(retrieve_fn, retrieval_citation)
         except RetrievalInvocationError as ret_err:
             entry = _retrieval_failure_entry(
                 citation,
