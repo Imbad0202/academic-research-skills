@@ -305,6 +305,16 @@ class PreflightVerdictTest(unittest.TestCase):
         self.assertNotEqual(r["verdict"], "PASS", r)
         self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
 
+    def test_ten_digit_object_id_replacement_never_passes(self):
+        # r6 P1: object numbers may reach ten digits; the header scan's digit cap
+        # must not blind the coverage checks to such replacements.
+        base = _flat_pdf(2)
+        old_startxref = base[base.rfind(b"startxref") :]
+        replacement = b"\n1000000001 0 obj\n<< /Type /Pages /Count 9 >>\nendobj\n"
+        r = self.run_on(base + replacement + old_startxref, name="tendigit.pdf")
+        self.assertNotEqual(r["verdict"], "PASS", r)
+        self.assertTrue(any("xref-coverage" in w for w in r["warnings"]), r["warnings"])
+
     def test_non_integer_count_unavailable(self):
         # /Count 1.0 — int() would truncate-coerce and agree with one real leaf; a
         # malformed page tree must be UNAVAILABLE, not PASS (codex #512 r2 P1).

@@ -243,7 +243,7 @@ def run_preflight(path) -> dict:
                 _ws = rb"[\x00\t\n\x0c\r ]"
                 raw_offsets: dict[int, list[int]] = {}
                 for m in re.finditer(
-                    rb"(?:^|" + _ws + rb")" + _ws + rb"*(\d{1,9})" + _ws + rb"+\d+" + _ws + rb"+obj\b",
+                    rb"(?:^|" + _ws + rb")" + _ws + rb"*(\d{1,10})" + _ws + rb"+\d+" + _ws + rb"+obj\b",
                     data,
                 ):
                     raw_offsets.setdefault(int(m.group(1)), []).append(m.start(1))
