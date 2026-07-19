@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **SETUP Method 4a description-length figure de-drifted.** `docs/SETUP.md` / `docs/SETUP.zh-TW.md` stated the four skill `description` fields "currently sit in the 440-842 range"; the actual lengths have since grown to 566-986 characters. Replaced the hardcoded range with the durable comparative statement (each exceeds claude.ai's 200-character upload cap while staying under Claude Code's 1,024-character allowance), so the sentence cannot silently drift again as descriptions evolve. Rationale for not trimming the descriptions themselves is unchanged.
+
 ## [3.18.0] - 2026-07-18 — Self-improvement survey integration: advisory quality layers, risk-stratified claim gate, cross-model reviewer & judge tracks, cache re-validation
 
 ### Added
