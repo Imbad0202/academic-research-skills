@@ -48,7 +48,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["level"],
-      "description": "#513 honest-coverage attestation: how much of the source the user actually read. Declaration-only — adapters and agents never infer or backfill it.",
+      "description": "#513 honest-coverage attestation: how much of the source the user actually read. Declaration-only — adapters and agents never infer or backfill it. Locators require level: sections (the if/then below mirrors the CLI's write-time refusal of the contradictory combination).",
+      "if": { "required": ["locators"] },
+      "then": {
+        "properties": { "level": { "const": "sections" } }
+      },
       "properties": {
         "level": {
           "type": "string",

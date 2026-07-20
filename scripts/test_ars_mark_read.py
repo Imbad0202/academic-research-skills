@@ -510,6 +510,32 @@ class TestReadScopeAttestation(unittest.TestCase):
             self.assertEqual(len(entry["read_scope"]["locators"][0]), 200)
             self.assertEqual(len(entry["read_scope"]["note"]), 1000)
 
+    def test_schema_rejects_locators_on_non_sections_level(self):
+        # codex #513 r2: the sidecar schema mirrors the CLI's locators-require-
+        # sections rule so audit-time validation matches the writer contract.
+        import json
+
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest("jsonschema not installed")
+        schema_path = (
+            Path(SCRIPT).resolve().parent.parent
+            / "shared" / "contracts" / "passport" / "human_read_log.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        bad = {
+            "session_id": "s", "created_at": "2026-07-20T00:00:00Z",
+            "human_read": [{
+                "citation_key": "smith2024", "marked_at": "2026-07-20T00:00:00Z",
+                "read_scope": {"level": "full_text", "locators": ["pp. 1-2"]},
+            }],
+        }
+        with self.assertRaises(jsonschema.ValidationError):
+            jsonschema.validate(bad, schema)
+        bad["human_read"][0]["read_scope"] = {"level": "sections", "locators": ["pp. 1-2"]}
+        jsonschema.validate(bad, schema)  # sections+locators stays valid
+
     def test_ledger_validates_against_sidecar_schema(self):
         import json
 

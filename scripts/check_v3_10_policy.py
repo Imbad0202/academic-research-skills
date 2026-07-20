@@ -88,7 +88,10 @@ V3_10_FORMATTER_HEADER = "## Cite-Time Terminal Policy Gate (v3.10)"
 #                 severity=HIGH-BLOCK policy=<p> reason=<r> mode=<m> policy_hash=<slug>-->
 # Legacy v3.9.0 markers carry NO policy_hash and are recognized separately.
 _REF_MARKER_RE = re.compile(r"<!--ref:(?P<inner>[^>]*?)-->")
-_BASE_STATUS = ("ok", "LOW-WARN")
+# #513: LOW-WARN-PARTIAL-COVERAGE is the acknowledged-partial state emitted by the
+# read-scope-aware promotion — it behaves as LOW-WARN for every base-status
+# mechanism (contamination suffixes, policy_hash stamping, terminal policies).
+_BASE_STATUS = ("ok", "LOW-WARN", "LOW-WARN-PARTIAL-COVERAGE")
 
 
 # Recognized key=value prefixes inside a finalized marker. A token that is
