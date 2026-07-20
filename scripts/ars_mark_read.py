@@ -20,6 +20,15 @@ Behavior summary:
   `rescinded_at` to the matching entry, never deletes.
 - First-time write creates the file with the YAML schema header. Not a
   fail-fast condition.
+- #513 read_scope attestation (declaration-only, never inferred): optional
+  `--scope {full_text,sections,abstract_only,toc_only,unknown}` records HOW
+  MUCH of the source was read; `--locator` (repeatable, requires
+  `--scope sections`) names the read sections/pages; `--note` free text
+  (requires `--scope`). Absent `--scope` writes no `read_scope` field —
+  consumers treat absence as `unknown`; nothing is fabricated or backfilled.
+  Attestation args are rejected with `--unmark` (rescinding takes no
+  attestation). One invocation's attestation applies to every key in the
+  batch. Sidecar schema: shared/contracts/passport/human_read_log.schema.json.
 """
 from __future__ import annotations
 
@@ -33,6 +42,10 @@ from pathlib import Path
 import yaml
 
 ERR_PREFIX = "[ARS-MARK-READ ERROR:"
+
+# #513 closed level enum — keep in lockstep with
+# shared/contracts/passport/human_read_log.schema.json.
+READ_SCOPE_LEVELS = ("full_text", "sections", "abstract_only", "toc_only", "unknown")
 
 
 def _err(msg: str) -> str:
@@ -128,10 +141,45 @@ def _save_log(log_path: Path, data: dict) -> None:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
 
-def _mark(log: dict, citation_key: str) -> None:
-    log["human_read"].append(
-        {"citation_key": citation_key, "marked_at": _now_iso()}
-    )
+def _mark(log: dict, citation_key: str, read_scope: dict | None = None) -> None:
+    entry: dict = {"citation_key": citation_key, "marked_at": _now_iso()}
+    if read_scope is not None:
+        entry["read_scope"] = read_scope
+    log["human_read"].append(entry)
+
+
+def _build_read_scope(args: argparse.Namespace) -> dict | None:
+    """Validate the #513 attestation flags and build the read_scope object.
+
+    Returns None when no attestation was given (legacy mark shape), the
+    read_scope dict when valid, or raises SystemExit(2) with the canonical
+    error surface on a contradictory attestation — a contradictory or
+    partial attestation is refused, never recorded ambiguously."""
+    errors: list[str] = []
+    if args.unmark and (args.scope or args.locator or args.note):
+        errors.append("--scope/--locator/--note cannot be combined with --unmark (rescinding takes no attestation)")
+    elif args.scope is None:
+        if args.locator:
+            errors.append("--locator requires --scope sections (an attestation needs a declared level)")
+        if args.note:
+            errors.append("--note requires --scope (an attestation needs a declared level)")
+    elif args.locator and args.scope != "sections":
+        errors.append(
+            f"--locator requires --scope sections; with --scope {args.scope} "
+            "locators are redundant or contradict the declared level"
+        )
+    if errors:
+        for e in errors:
+            print(_err(e), file=sys.stderr)
+        raise SystemExit(2)
+    if args.scope is None:
+        return None
+    read_scope: dict = {"level": args.scope}
+    if args.locator:
+        read_scope["locators"] = list(args.locator)
+    if args.note:
+        read_scope["note"] = args.note
+    return read_scope
 
 
 def _unmark(log: dict, citation_key: str) -> bool:
@@ -164,8 +212,27 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Rescind prior marks (write rescinded_at instead of marked_at).",
     )
+    parser.add_argument(
+        "--scope",
+        choices=READ_SCOPE_LEVELS,
+        default=None,
+        help="#513 read_scope attestation: how much of the source was read. "
+        "Absent = no read_scope recorded (consumers treat as unknown).",
+    )
+    parser.add_argument(
+        "--locator",
+        action="append",
+        default=None,
+        help="Which sections/pages were read (repeatable; requires --scope sections).",
+    )
+    parser.add_argument(
+        "--note",
+        default=None,
+        help="Free-text attestation note (requires --scope).",
+    )
     args = parser.parse_args(argv)
 
+    read_scope = _build_read_scope(args)
     passport_path, log_path = _validate_passport_environment(args.passport_path)
     corpus_keys = _load_corpus_keys(passport_path)
 
@@ -197,7 +264,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     else:
         for k in args.citation_keys:
-            _mark(log, k)
+            _mark(log, k, read_scope)
 
     _save_log(log_path, log)
     return 0

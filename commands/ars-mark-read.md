@@ -7,6 +7,8 @@ Acknowledge that the user has personally read the source(s) backing the named ci
 
 The dispatching agent substitutes `<path>` below with the active Material Passport path from session context before executing (the quoting is preserved so paths containing spaces remain a single argument). The CLI handles validation (citation_key must exist in `literature_corpus[]`; on miss emit `[ARS-MARK-READ ERROR: citation_key '<slug>' not in literature_corpus[]]` and refuse to write), 4 fail-fast environment checks (no active passport / passport not found / parent unreadable / read-log unwritable), and append-only write per §3.6 firm rule 3.
 
+Optional read-scope attestation (#513, declaration-only — pass through whatever the user states, never infer): `--scope {full_text,sections,abstract_only,toc_only,unknown}` records how much of the source was read; `--locator "<text>"` (repeatable, requires `--scope sections`) names the read sections/pages; `--note "<text>"` free text (requires `--scope`). Without `--scope`, no `read_scope` is recorded and downstream treats the mark as `unknown` (pre-#513 behavior). A partial-coverage attestation means the finalizer promotes LOW-WARN → ok only for anchors falling within declared coverage — see the Read-scope-aware promotion paragraph in `pipeline_orchestrator_agent.md`.
+
 Implementation:
 ```bash
 python3 scripts/ars_mark_read.py $ARGUMENTS --passport-path "<path>"

@@ -59,6 +59,12 @@ Schemas for Material Passport input ports.
   `phase2_investigation/version_records.yaml` sidecar for academic citation version
   families (preprint -> proceedings -> journal extension). This is deliberately a
   sidecar: `literature_corpus_entry.schema.json` stays adapter-owned and unmodified.
+- `passport/human_read_log.schema.json` (#513) — the user-owned human-read ledger
+  (`<passport-stem>_human_read_log.yaml`, written by `scripts/ars_mark_read.py`),
+  including the optional #513 `read_scope` honest-coverage attestation
+  (`level`/`locators`/`note`, declaration-only). Deliberately a sidecar for the same
+  reason as above: corpus entries MUST NOT carry human-read state (v3.6.8 firm rule 3).
+  Audit/test-time validation only — the CLI stays dependency-light at runtime.
 
 ## Audit artifact contracts (v3.6.7 Step 6)
 

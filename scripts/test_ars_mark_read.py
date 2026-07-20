@@ -353,5 +353,134 @@ class TestReadLogUnwritableExistingFile(unittest.TestCase):
                 log_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
 
+
+
+class TestReadScopeAttestation(unittest.TestCase):
+    """#513: optional read_scope attestation on ledger marks — declaration-only,
+    all-or-nothing batch validation, byte-shape backward compat when absent."""
+
+    def _mark(self, tmp, *extra, keys=("smith2024",)):
+        root = Path(tmp)
+        passport = root / "p.yaml"
+        _write_passport(passport, citation_keys=["smith2024", "lee2023"])
+        result = run_script(SCRIPT, *keys, "--passport-path", str(passport), *extra)
+        return passport, result
+
+    def test_scope_less_mark_writes_no_read_scope_key(self):
+        with TemporaryDirectory() as tmp:
+            passport, result = self._mark(tmp)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            (entry,) = _read_log(passport)["human_read"]
+            self.assertNotIn("read_scope", entry)
+
+    def test_each_level_persisted(self):
+        for level in ("full_text", "abstract_only", "toc_only", "unknown"):
+            with self.subTest(level=level), TemporaryDirectory() as tmp:
+                passport, result = self._mark(tmp, "--scope", level)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                (entry,) = _read_log(passport)["human_read"]
+                self.assertEqual(entry["read_scope"], {"level": level})
+
+    def test_sections_with_locators_and_note(self):
+        with TemporaryDirectory() as tmp:
+            passport, result = self._mark(
+                tmp, "--scope", "sections", "--locator", "pp. 10-24",
+                "--locator", "section 3", "--note", "methods read closely",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            (entry,) = _read_log(passport)["human_read"]
+            self.assertEqual(
+                entry["read_scope"],
+                {"level": "sections", "locators": ["pp. 10-24", "section 3"],
+                 "note": "methods read closely"},
+            )
+
+    def test_batch_applies_same_scope_to_every_key(self):
+        with TemporaryDirectory() as tmp:
+            passport, result = self._mark(
+                tmp, "--scope", "full_text", keys=("smith2024", "lee2023"),
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            entries = _read_log(passport)["human_read"]
+            self.assertEqual(len(entries), 2)
+            for entry in entries:
+                self.assertEqual(entry["read_scope"], {"level": "full_text"})
+
+    def test_invalid_level_rejected_no_write(self):
+        with TemporaryDirectory() as tmp:
+            passport, result = self._mark(tmp, "--scope", "skimmed")
+            self.assertNotEqual(result.returncode, 0)
+            log_path = passport.parent / f"{passport.stem}_human_read_log.yaml"
+            self.assertFalse(log_path.exists(), "invalid attestation must not write")
+
+    def test_locator_requires_sections_level(self):
+        for level in ("full_text", "abstract_only", "toc_only", "unknown"):
+            with self.subTest(level=level), TemporaryDirectory() as tmp:
+                passport, result = self._mark(
+                    tmp, "--scope", level, "--locator", "pp. 1-2",
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("[ARS-MARK-READ ERROR:", result.stderr)
+                log_path = passport.parent / f"{passport.stem}_human_read_log.yaml"
+                self.assertFalse(log_path.exists())
+
+    def test_locator_or_note_without_scope_rejected(self):
+        for extra in (("--locator", "pp. 1-2"), ("--note", "read it")):
+            with self.subTest(extra=extra), TemporaryDirectory() as tmp:
+                passport, result = self._mark(tmp, *extra)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("[ARS-MARK-READ ERROR:", result.stderr)
+
+    def test_attestation_args_rejected_with_unmark(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            passport = root / "p.yaml"
+            _write_passport(passport, citation_keys=["smith2024"])
+            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            result = run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--unmark", "--scope", "full_text",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("[ARS-MARK-READ ERROR:", result.stderr)
+            (entry,) = _read_log(passport)["human_read"]
+            self.assertNotIn("rescinded_at", entry, "rejected unmark must not write")
+
+    def test_legacy_entries_untouched_by_new_scoped_mark(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            passport = root / "p.yaml"
+            _write_passport(passport, citation_keys=["smith2024", "lee2023"])
+            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            result = run_script(
+                SCRIPT, "lee2023", "--passport-path", str(passport),
+                "--scope", "abstract_only",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            first, second = _read_log(passport)["human_read"]
+            self.assertNotIn("read_scope", first)
+            self.assertEqual(second["read_scope"], {"level": "abstract_only"})
+
+    def test_ledger_validates_against_sidecar_schema(self):
+        import json
+
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest("jsonschema not installed")
+        schema_path = (
+            Path(SCRIPT).resolve().parent.parent
+            / "shared" / "contracts" / "passport" / "human_read_log.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        with TemporaryDirectory() as tmp:
+            passport, result = self._mark(
+                tmp, "--scope", "sections", "--locator", "pp. 1-9",
+                "--note", "intro only",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            run_script(SCRIPT, "smith2024", "--passport-path", str(passport), "--unmark")
+            jsonschema.validate(_read_log(passport), schema)
+
 if __name__ == "__main__":
     unittest.main()
