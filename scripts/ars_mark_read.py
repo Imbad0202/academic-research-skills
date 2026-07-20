@@ -43,9 +43,14 @@ import yaml
 
 ERR_PREFIX = "[ARS-MARK-READ ERROR:"
 
-# #513 closed level enum — keep in lockstep with
-# shared/contracts/passport/human_read_log.schema.json.
+# #513 closed level enum + text bounds — keep in lockstep with
+# shared/contracts/passport/human_read_log.schema.json (level enum; locators
+# items minLength 1 / maxLength 200; note minLength 1 / maxLength 1000). The
+# CLI enforces the bounds at write time so it can never produce a ledger the
+# committed schema rejects (codex #513 r1 P1).
 READ_SCOPE_LEVELS = ("full_text", "sections", "abstract_only", "toc_only", "unknown")
+LOCATOR_MAX_LEN = 200
+NOTE_MAX_LEN = 1000
 
 
 def _err(msg: str) -> str:
@@ -155,19 +160,38 @@ def _build_read_scope(args: argparse.Namespace) -> dict | None:
     read_scope dict when valid, or raises SystemExit(2) with the canonical
     error surface on a contradictory attestation — a contradictory or
     partial attestation is refused, never recorded ambiguously."""
+    # Presence is `is not None`, NEVER truthiness: `--note ""` is an explicitly
+    # supplied (invalid) attestation argument, not an absent one — truthiness
+    # would let it bypass both the requires-scope rule and the unmark rejection
+    # (codex #513 r1 P1).
+    locator_given = args.locator is not None
+    note_given = args.note is not None
     errors: list[str] = []
-    if args.unmark and (args.scope or args.locator or args.note):
+    if args.unmark and (args.scope is not None or locator_given or note_given):
         errors.append("--scope/--locator/--note cannot be combined with --unmark (rescinding takes no attestation)")
     elif args.scope is None:
-        if args.locator:
+        if locator_given:
             errors.append("--locator requires --scope sections (an attestation needs a declared level)")
-        if args.note:
+        if note_given:
             errors.append("--note requires --scope (an attestation needs a declared level)")
-    elif args.locator and args.scope != "sections":
-        errors.append(
-            f"--locator requires --scope sections; with --scope {args.scope} "
-            "locators are redundant or contradict the declared level"
-        )
+    else:
+        if locator_given and args.scope != "sections":
+            errors.append(
+                f"--locator requires --scope sections; with --scope {args.scope} "
+                "locators are redundant or contradict the declared level"
+            )
+        if locator_given:
+            for loc in args.locator:
+                if not 1 <= len(loc) <= LOCATOR_MAX_LEN:
+                    errors.append(
+                        f"--locator value must be 1-{LOCATOR_MAX_LEN} characters "
+                        f"(got {len(loc)}); the sidecar schema would reject the ledger"
+                    )
+        if note_given and not 1 <= len(args.note) <= NOTE_MAX_LEN:
+            errors.append(
+                f"--note must be 1-{NOTE_MAX_LEN} characters (got {len(args.note)}); "
+                "the sidecar schema would reject the ledger"
+            )
     if errors:
         for e in errors:
             print(_err(e), file=sys.stderr)
@@ -175,9 +199,9 @@ def _build_read_scope(args: argparse.Namespace) -> dict | None:
     if args.scope is None:
         return None
     read_scope: dict = {"level": args.scope}
-    if args.locator:
+    if locator_given:
         read_scope["locators"] = list(args.locator)
-    if args.note:
+    if note_given:
         read_scope["note"] = args.note
     return read_scope
 

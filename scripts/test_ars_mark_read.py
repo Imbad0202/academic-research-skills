@@ -461,6 +461,55 @@ class TestReadScopeAttestation(unittest.TestCase):
             self.assertNotIn("read_scope", first)
             self.assertEqual(second["read_scope"], {"level": "abstract_only"})
 
+    def test_empty_string_note_is_present_not_absent(self):
+        # codex #513 r1: --note "" is an explicitly supplied attestation arg;
+        # truthiness checks would let it bypass the requires-scope rule.
+        with TemporaryDirectory() as tmp:
+            passport, result = self._mark(tmp, "--note", "")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("[ARS-MARK-READ ERROR:", result.stderr)
+
+    def test_empty_note_with_unmark_rejected(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            passport = root / "p.yaml"
+            _write_passport(passport, citation_keys=["smith2024"])
+            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            result = run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--unmark", "--note", "",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            (entry,) = _read_log(passport)["human_read"]
+            self.assertNotIn("rescinded_at", entry)
+
+    def test_schema_bounds_enforced_at_write_time(self):
+        # codex #513 r1: the CLI must never produce a ledger the sidecar schema
+        # rejects — empty and oversize locator/note values are refused.
+        cases = [
+            ("--scope", "sections", "--locator", ""),
+            ("--scope", "sections", "--locator", "x" * 201),
+            ("--scope", "full_text", "--note", "x" * 1001),
+        ]
+        for extra in cases:
+            with self.subTest(extra=extra[-1][:10] or "(empty)"), TemporaryDirectory() as tmp:
+                passport, result = self._mark(tmp, *extra)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("[ARS-MARK-READ ERROR:", result.stderr)
+                log_path = passport.parent / f"{passport.stem}_human_read_log.yaml"
+                self.assertFalse(log_path.exists())
+
+    def test_max_length_boundary_values_accepted(self):
+        with TemporaryDirectory() as tmp:
+            passport, result = self._mark(
+                tmp, "--scope", "sections",
+                "--locator", "x" * 200, "--note", "y" * 1000,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            (entry,) = _read_log(passport)["human_read"]
+            self.assertEqual(len(entry["read_scope"]["locators"][0]), 200)
+            self.assertEqual(len(entry["read_scope"]["note"]), 1000)
+
     def test_ledger_validates_against_sidecar_schema(self):
         import json
 

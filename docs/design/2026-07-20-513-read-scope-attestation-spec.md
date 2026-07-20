@@ -70,18 +70,36 @@ paragraph, no nested heading — the `check_v3_6_8_cite_provenance_pipeline.py` 
 extractor terminates at headings). The LOW-WARN → `ok` transition consults the mark's
 `read_scope`:
 
+The governing signal follows the existing latest-timestamped-event-wins rule (§3.6):
+promotion is considered only when the slug's latest event overall is a mark — a latest
+rescind keeps row 3 regardless of older non-rescinded marks — and the attestation
+consulted is the one on that latest mark (codex r1: "most recent non-rescinded" would
+have contradicted the settled precedence and resurrected rescinded promotions).
+
 | `read_scope.level` | Promotion of the citation's anchor |
 |---|---|
 | absent / `unknown` | promotes (legacy marks keep their pre-#513 behavior — the optional field must not impose a de-facto migration) |
 | `full_text` | promotes |
-| `abstract_only` / `toc_only` | does NOT promote — the marker stays `LOW-WARN` and the per-section checklist entry carries an explicit coverage note (e.g. `read_scope abstract_only does not cover anchor page:12`) |
-| `sections` | promotes ONLY when the anchor (`page` / `section` / `paragraph`) falls unambiguously within a declared locator; ambiguity or no match ⇒ stays `LOW-WARN` + coverage note. `quote` anchors promote only under `full_text` / `unknown` — with partial coverage the finalizer cannot vouch that the quoted passage lies in a read section |
+| `abstract_only` / `toc_only` | does NOT promote — the marker resolves to `LOW-WARN-PARTIAL-COVERAGE` and the per-section checklist entry carries an explicit coverage note (e.g. `read_scope abstract_only does not cover anchor page:12`) |
+| `sections` | promotes ONLY when the anchor (`page` / `section` / `paragraph`) falls unambiguously within a declared locator; ambiguity or no match ⇒ `LOW-WARN-PARTIAL-COVERAGE` + coverage note. `quote` anchors promote only under `full_text` / `unknown` — with partial coverage the finalizer cannot vouch that the quoted passage lies in a read section |
 
-The degradation is a retained `LOW-WARN` with an explicit note — never a new WARN class,
-never a demotion below the pre-mark state, and never a hard gate (the formatter's
-existing LOW-WARN handling is unchanged). The judgment "falls unambiguously within" is
+`LOW-WARN-PARTIAL-COVERAGE` (codex r1: a partial acknowledgment that left the plain
+`LOW-WARN` marker was indistinguishable from an unacknowledged citation at the terminal
+gate, forcing the formatter to either refuse an acknowledged mark or pass unacknowledged
+ones) is a draft-visible acknowledged-partial state: same severity tier as `LOW-WARN`,
+contamination suffixes attach identically, and the formatter passes it as an
+acknowledged LOW-WARN variant with the coverage note surfaced — never refused, never a
+new severity. The v3.7.3 ref-marker grammar (`[\w-]+` status tokens) admits it without
+lint changes. The idempotency rule's evidence enumeration now names the governing
+mark's attestation explicitly — a `read_scope` change between passes is an evidence
+change and re-resolves the marker. The judgment "falls unambiguously within" is
 conservative by instruction: locators are free text; the finalizer promotes only on a
-clear containment match and otherwise keeps LOW-WARN with the note.
+clear containment match.
+
+CLI bounds (codex r1): `--locator` values 1-200 chars and `--note` 1-1000 chars are
+enforced at write time — in lockstep with the sidecar schema — so the CLI can never
+produce a ledger the committed schema rejects; presence checks use `is not None`, so an
+explicitly supplied empty string is an invalid attestation argument, not an absent one.
 
 ### Doc surfaces updated in lockstep
 
