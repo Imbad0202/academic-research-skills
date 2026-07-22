@@ -246,7 +246,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查團隊 vs. 精簡再審團隊的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.18.0)
+### Academic Pipeline (v3.19.0)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）不可跳過；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -310,7 +310,11 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## 更新紀錄
 
-### v3.18.0（2026-07-18）— 自我改進 survey 整合：advisory 品質層、風險分層 claim 關卡、跨模型審查席與判官獨立
+### v3.19.0（2026-07-22）— 修訂輪次的主張漂移防護、PDF 讀取完整性預檢、read-scope 誠實覆蓋標記
+
+> **新增**：三個 advisory-or-opt-in 的完整性層加一個 launcher 修復。**修訂輪次主張漂移防護（#569/#570）**：一條主張強度階梯（`is associated with < predicts < causes`，未經授權的 roadmap 項目不得靜默移動）接進修訂草擬與新的 advisory Phase E6，外加一支決定性的數值/引註 token 守恆檢查器——兩者合起來補上 #390 honest-claim 殘餘的認知面與 token 面（被改動的 block 內部原本沒有完整性檢查）。先在當前前沿模型量測 baseline（`evals/heldout/revision_claim_drift/`），機制形狀出處歸功 [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills)。**PDF 讀取完整性預檢（#512）**：三信號的頁數交叉檢查，讓被截斷／頁碼錯位的 PDF 讀取無法產生一個看似有效的 `page` 錨點。**read_scope 誠實覆蓋標記（#513）**：在人工讀取台帳上可選地宣告誠實覆蓋範圍（`full_text` / `sections` / `abstract_only` / `toc_only`），讓 finalizer 的引用晉升具備 read-scope 意識。**launcher watchdog 修復（#545）**：移除一個會讓每次正常 PreToolUse write-scope-guard 呼叫卡滿整個 wall-clock 上限的 pipe 停滯。套件 → v3.19.0；底層三個 skill 版本不變。
+
+### v3.18.0（2026-07-18）— 自我改進 survey 整合
 
 > **新增**：由 Ren et al.（2026，arXiv:2607.13104）驅動的八項品質機制——子問題範圍綁定＋Phase E 範圍一致性 advisory（#547）、有界化 novelty 主張＋E5 分類（#548，皆 advisory-only、於 MANDATORY 檢查點逐列顯示）；Stage 2.5 風險分層 claim 查核（HIGH-IMPACT 全查＋隨機哨兵，#549）；引用查驗 gate 真正接上快取層＋時效 advisory＋opt-in 即時重驗（#541，補完 v3.11 Delta-2 forward-decl）；同意制跨模型審查席（五席面板一席換基座，#540）與再審判官獨立性＋Judge Record（#539）；路由/關卡措辭穩健性測試集 v0.1（#550，並補上 reviewer skill 缺失的中文觸發詞）；survey 本身列為第三個 human-in-the-loop 文獻錨點（#542）。另有一項獨立於 survey 軌的功能：#544 SessionStart 更新提醒——plugin 安裝落後 main 時提示 `/plugin update`（`ARS_UPDATE_CHECK=0` 可關閉）。`academic-pipeline` 隨套件升至 v3.18.0；其餘三個 skill 版本不變。
 

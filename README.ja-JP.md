@@ -244,7 +244,7 @@ You: "status"
 
 **0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューチーム vs. 限定的な再レビューチームの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.18.0）
+### Academic Pipeline（v3.19.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）はスキップできない。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -325,7 +325,11 @@ https://github.com/Imbad0202/academic-research-skills
 
 ## Changelog
 
-### v3.18.0 (2026-07-18) — 自己改善サーベイ統合：アドバイザリ品質層、リスク層別クレームゲート、クロスモデル査読席と審査独立性
+### v3.19.0 (2026-07-22) — 改訂ラウンドのクレームドリフト防御、PDF 読み取り整合性プリフライト、read-scope アテステーション
+
+> **追加**：3 つの advisory-or-opt-in 整合性層とランチャー修正。**改訂ラウンドのクレームドリフト防御（#569/#570）**：クレーム強度ラダー（`is associated with < predicts < causes` を、権限を与えるロードマップ項目なしに黙って動かさない）を改訂ドラフトと新しい advisory Phase E6 に接続し、決定論的な数値/引用トークン保存チェッカーを追加 — #390 の honest-claim 残余（触れたブロック内部に整合性チェックがなかった）の認識面とトークン面を閉じる。現行フロンティアモデルでベースラインを先に測定（`evals/heldout/revision_claim_drift/`）、メカニズムの着想は [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills) に帰属。**PDF 読み取り整合性プリフライト（#512）**：3 信号のページ数クロスチェックにより、切り詰め/ページ番号ずれの PDF 読み取りが一見有効な `page` アンカーを生成できないようにする。**read_scope アテステーション（#513）**：人間読了台帳への任意の誠実カバレッジ宣言（`full_text` / `sections` / `abstract_only` / `toc_only`）で、ファイナライザの引用昇格を read-scope 対応にする。**ランチャー watchdog 修正（#545）**：正常な PreToolUse write-scope-guard 呼び出しを wall-clock 全体ブロックしていたパイプ停止を除去。スイートは v3.19.0 へ；基盤 3 スキルのバージョンは不変。
+
+### v3.18.0 (2026-07-18) — 自己改善サーベイ統合
 
 > **追加**：Ren et al.（2026、arXiv:2607.13104）に動機づけられた 8 つの品質メカニズム — サブ質問スコープ束縛＋Phase E スコープ整合アドバイザリ（#547）、検索範囲で有界化されたノベルティ主張＋E5 分類（#548、いずれも advisory-only、MANDATORY チェックポイントで行単位表示）；Stage 2.5 リスク層別クレーム検証（HIGH-IMPACT 全数＋ランダム歩哨、#549）；引用検証ゲートへのキャッシュ接続＋鮮度アドバイザリ＋opt-in 再検証（#541）；同意制クロスモデル査読席（固定 5 席の 1 席を別モデルファミリで、#540）と再査読の審査独立性＋Judge Record（#539）；ルーティング/ゲート頑健性評価シードセット（#550）；サーベイ自体を第 3 の human-in-the-loop 文献アンカーとして追加（#542）。サーベイ・トラックとは独立に、#544 SessionStart 更新リマインダーも搭載（インストール版が main より古い場合に `/plugin update` を案内；`ARS_UPDATE_CHECK=0` で無効化可）。`academic-pipeline` はスイートに追従して v3.18.0 へ；他 3 スキルのバージョンは不変。
 
