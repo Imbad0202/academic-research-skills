@@ -9,7 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.11.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.18.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.19.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.19 Key Additions (revision-round claim-drift guards + PDF read-integrity preflight + read-scope attestation)
+
+- **Revision-round claim-drift guards: claim-strength ladder + deterministic token conservation (#569 / #570).** Closes the epistemic and token halves of the #390 honest-claim residual — the block-anchored patch confines silent-distortion exposure to touched blocks but never checks a touched block's *interior* (DELEGATE-52, arXiv:2604.15597). Two advisory-first layers, mechanism shape borrowed from [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills) by @MissOrangePeel. (1) **Claim-strength ladder** (`shared/references/claim_strength_ladder.md`): an ordered epistemic scale whose invariant is "no silent move, either direction, without an authorizing roadmap item" — wired into `draft_writer_agent` revision mode and a new advisory Phase E6 (`STRENGTH-DRIFTED` → `ADV-E6-<n>`, consuming the per-round Revision-Evidence Bundle). (2) **Deterministic token conservation** (`scripts/check_revision_token_conservation.py`): stdlib checker over numeric/citation/protected-term tokens, pair mode or per-op against a #390 patch, with Unicode fold-before-split; wired as orchestrator revision step 3a. Rather than cite an earlier-generation-model study, a held-out set (`evals/heldout/revision_claim_drift/`) measured the current frontier model's baseline first: 2/8 claim-strength/hedge drift under pressure. 31 tests. Dual-track pre-ship review closed 6 codex findings (0 security).
+- **PDF read-integrity preflight for locally-extracted page anchors (#512).** `scripts/pdf_read_preflight.py` (pypdf-backed) cross-checks three independent page-count signals and emits a JSON verdict sidecar so a truncated / mispaginated PDF read cannot mint an apparently-valid `page` anchor. Firm rule R-L3-1-D on the three v3.7.3 emitters (a locally-read PDF `page` anchor requires a PASS sidecar), the §3.6 orchestrator runs the preflight at Stage 1 corpus intake, FAIL-vs-UNAVAILABLE split (positive truncation evidence refuses; mere absence of verification is an explicit-warning advisory). 8-round cross-model review closed the ISO 32000 lexer-fidelity family.
+- **`read_scope` honest-coverage attestation + anchor-aware finalizer promotion (#513).** `/ars-mark-read` gains an optional declaration-only attestation (`--scope {full_text,sections,abstract_only,toc_only,unknown}` + `--locator` + `--note`) on the user-owned human-read ledger; the Cite-Time Provenance Finalizer's LOW-WARN → ok promotion becomes read-scope-aware (`abstract_only`/`toc_only` → `LOW-WARN-PARTIAL-COVERAGE`; `sections` promotes only inside a declared locator). Sidecar schema, absent = `unknown` never backfilled.
+- **Write-scope guard launcher watchdog stall + flaky launcher tests (#545).** `hooks/run_guard.sh`'s watchdog subshell leaked its capture pipe to a forked `sleep`, blocking every healthy PreToolUse call for the full wall-clock bound (~6 s); redirecting to `/dev/null` cuts it to ~0.15 s. Test-harness `ARS_PROBE_BOUND` default raised to 30 s to end load-dependent flakiness; regression pinned by `LauncherSlowInterpreterTest`.
+- **SETUP Method 4a description-length figure de-drifted (#564).** Replaced a hardcoded 440-842 character range (now stale at 566-986) with a durable comparative statement so it cannot silently drift as descriptions evolve.
 
 ## v3.18 Key Additions (self-improvement survey integration — advisory quality layers + cross-model tracks)
 
@@ -327,7 +335,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.18.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-07-18
+- **Suite version**: 3.19.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-07-22
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
