@@ -51,6 +51,20 @@ ADVISORY ONLY: `UNRESOLVED` rows never change Phase E verdicts and never gate PA
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — discovery agents cannot easily verify novelty on their own and may exploit weak proxies.
 
+## E6: Claim-Strength Drift (#569 — advisory-only, revision rounds)
+
+**Runs only** at a Stage 4.5 (or Stage 2.5 re-verification) invocation that follows a revision round — i.e. when a prior draft of the same block-anchored paper exists. On a first-pass audit with no prior draft, SKIP with `[E6-SKIPPED: no prior draft]`. This phase is the epistemic complement to the deterministic numeric/citation conservation check (`scripts/check_revision_token_conservation.py`, #570): that script conserves tokens; E6 covers what token-matching cannot see — whether a claim's epistemic strength moved along the ladder.
+
+**Inputs**: the prior draft's claim-bearing blocks, the current draft, the round's Revision Roadmap, and (when present) the revision patch's per-op `roadmap_item_ids`. Reference: `shared/references/claim_strength_ladder.md`.
+
+For each claim whose block was touched this round, compare its ladder rung (and its load-bearing hedges / null results / limitations / causal caveats) against the prior draft:
+
+1. If the rung moved (either direction) or a hedge/null/caveat was dropped, check whether a roadmap item authorized *that strength change* (not merely touching the block). An authorized move is recorded and closed.
+2. Flag an unauthorized move as `STRENGTH-DRIFTED`, recording: claim location, prior rung → current rung (or the dropped qualifier), the roadmap items the op claimed, and the direction (up / down).
+3. ADVISORY ONLY: `STRENGTH-DRIFTED` rows never change Phase E verdicts and never gate PASS/FAIL — they are not issues, do not enter the gate's issue count, and may remain open when the gate passes. Each row carries a stable ID `ADV-E6-<n>` and is recorded in the Integrity Report's advisory table. Checkpoint options per row: **proceed open** (default, recorded) or **accept the change** (with a note justifying the strength change; recorded) or the user asks for the rung restored as an ordinary revision instruction. E6 defines no reword route and places no obligation on any downstream agent — the advisory table travels with the Integrity Report, rows citable by their ADV-E6 IDs. No automatic rewriting, no new dispatch path.
+
+External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corrupts content by subtle modification; the #390 patch confines exposure to touched blocks but does not check their epistemic interior. Baseline evidence that the drift is real on the current frontier model: `evals/heldout/revision_claim_drift/` (2026-07-22: 2/8 under hedge-drop / null-reframe pressure). Mechanism shape borrowed from Yila-AI/sci-ssci-skills (@MissOrangePeel).
+
 ## Verdict Taxonomy
 
 | Verdict | Definition | Severity | Example |

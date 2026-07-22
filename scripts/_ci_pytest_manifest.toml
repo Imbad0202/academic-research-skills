@@ -303,3 +303,7 @@ path = "scripts/test_check_cross_model_handoff_contract.py"
 [[pytest]]
 id = "544-update-reminder"
 path = "scripts/test_ars_update_check.py"
+
+[[pytest]]
+id = "570-revision-token-conservation"
+path = "scripts/test_check_revision_token_conservation.py"

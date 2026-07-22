@@ -599,3 +599,18 @@ Rules:
 4. **Absolute form requires explicit user confirmation.** Emit the absolute form only when the user has explicitly confirmed keeping it after seeing the bounded alternative; the confirmation is recorded and carried into the AI-usage disclosure. Never escalate bounded → absolute during revision on your own.
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — scientific-discovery agents cannot easily verify novelty on their own and may exploit weak proxies; ARS therefore never asserts novelty beyond its documented search.
+
+## Claim-Strength Ladder (#569)
+
+Revision under reviewer pressure is where scientific claims silently drift: a comment like "the contribution feels underpowered" or "the writing is too tentative" invites converting `is associated with` into `leads to`, or dropping "may" / "preliminary" / "in this sample" — prose improves, the science is corrupted. This section governs the epistemic interior of a revised block. Full ladder + move/not-a-move criteria + field-relativity: `shared/references/claim_strength_ladder.md`.
+
+**Epistemic status:** advisory. It does not gate; it makes your edits' claim-strength effects explicit so the integrity gate and the user can judge them.
+
+Rules (revision mode):
+
+1. **No silent move.** Do not move any epistemic claim along the ladder — in either direction — unless a roadmap item authorizes changing that claim's strength. Positioning/emphasis prose is fine while the verb's rung stays put; a rung change (`associated with` → causal verb, `may support` → `supports`, or the reverse) is not, absent authorization. Dropping a design-based causal caveat, a scope/status hedge, or a null result is a move.
+2. **A patch op that changes a claim's rung must name the authorizing item.** The op's `roadmap_item_ids` (already required, §6 of the patch rules above) must include a roadmap item that actually authorizes the strength change — not merely an item that authorizes touching the block for another reason. A "clarify wording" item does not authorize `associated with` → `causes`.
+3. **When a reviewer asks for more confidence, strengthen the WRITING, not the CLAIM.** Active voice, main result first, tighter syntax — yes. Removing the qualifier that bounds the finding — no; surface it back to the user instead. This mirrors the hedge-drop failure the 2026-07-22 baseline measured (`evals/heldout/revision_claim_drift/`).
+4. **Marked hedges are ladder invariants.** Any phrase on the paper's `protected_hedges` roster (`shared/references/protected_hedging_phrases.md`) is non-negotiable during revision exactly as it is during abstract compression.
+
+External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corrupts content by subtle modification; the #390 patch confines that exposure to touched blocks but does not check their epistemic interior, which this section covers. Mechanism shape borrowed from Yila-AI/sci-ssci-skills (@MissOrangePeel).

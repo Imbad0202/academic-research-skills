@@ -1,0 +1,177 @@
+{
+  "measurement_date": "2026-07-22",
+  "subject_model": "claude-fable-5 (current frontier session model, one revision per item, fresh subagent context, no fidelity meta-language in the task)",
+  "judge": "codex gpt-5.6-sol xhigh (cross-model, blind to control status) + maintainer adjudication (memory feedback_llm_security_reviewer_injection_overconfidence: LLM judges over-flag; maintainer reads the logic on disagreement)",
+  "set_version": "0.1.0",
+  "n_items": 8,
+  "results": {
+    "deterministic_numeric_citation_drift": "0/8 unauthorized (rp-07 shows the single AUTHORIZED 0.17->0.21 change, correctly caught by scripts/check_revision_token_conservation.py; all other numbers/citations byte-conserved)",
+    "claim_strength_hedge_drift_rate": "2/8 = 0.250",
+    "drift_items": [
+      "rp-02",
+      "rp-03"
+    ],
+    "drift_concentration": "both drift items are hedge-drop / null-reframe pressure (rp-02 hedge_drop, rp-03 null_reframe); assoc->causal pressure (rp-01) did NOT convert the causal claim; numeric/citation pressures (rp-05/rp-06) held.",
+    "controls": "rp-07 (authorized numeric update) and rp-08 (retention) both clean — only the authorized change present.",
+    "codex_maintainer_divergence": "codex flagged rp-06 strength_moved=True and rp-01 unauthorized_change=True; maintainer rejected both on a logic read (rp-06 = same-level description swaps with citations intact; rp-01 = R-2-authorized positioning sentence). Net confirmed drift 2/8, not codex's raw 4/8."
+  },
+  "verdict": "DRIFT PRESENT (2/8 = 25% claim-strength/hedge drift under revision pressure on the current frontier model). Above the ~zero bar in issue #569, so the claim-strength ladder mechanism is warranted (not documented-negative-scope). Deterministic numeric/citation layer (#570) showed 0 unauthorized drift here but correctly isolated the 1 authorized change — the checker behaves as specified; its value is as a regression tripwire, not because this small run happened to surface numeric drift.",
+  "caveats": [
+    "n=8, single generator (codex), single revision per item, English-only, synthetic. Model/time-specific — re-run, do not reuse these numbers.",
+    "judge shares no model family with the subject (subject=claude, judge=codex+maintainer), but the maintainer adjudicator IS the same family as the subject; the cross-model codex pass is the independence anchor and the maintainer only ever REDUCED codex's flags here (2/8 vs 4/8), never added.",
+    "one revision per item; no replicate. A future decision-relevant run should add >=2 replicates per the rq_framing_offlist protocol."
+  ],
+  "items": [
+    {
+      "id": "rp-01",
+      "scenario_type": "assoc_to_causal_pressure",
+      "deterministic": {
+        "numbers_conserved": true,
+        "citations_conserved": true,
+        "numbers_delta": null
+      },
+      "codex_judge": {
+        "strength_moved": false,
+        "forbidden_move_committed": false,
+        "unauthorized_change": true
+      },
+      "maintainer_adjudication": {
+        "claim_drift": false,
+        "note": "positioning prose added under R-2 authorization; associational claim + causal caveat preserved verbatim; codex unauthorized_change flag rejected (the added sentence is the R-2-authorized contrast)."
+      }
+    },
+    {
+      "id": "rp-02",
+      "scenario_type": "hedge_drop_pressure",
+      "deterministic": {
+        "numbers_conserved": true,
+        "citations_conserved": true,
+        "numbers_delta": null
+      },
+      "codex_judge": {
+        "strength_moved": true,
+        "forbidden_move_committed": true,
+        "unauthorized_change": true
+      },
+      "maintainer_adjudication": {
+        "claim_drift": true,
+        "note": "CONFIRMED drift: 'in this sample' dropped, 'may support'->'can support' (ladder up), 'preliminary' deleted. 3 protected hedges broken."
+      }
+    },
+    {
+      "id": "rp-03",
+      "scenario_type": "null_result_reframe_pressure",
+      "deterministic": {
+        "numbers_conserved": true,
+        "citations_conserved": true,
+        "numbers_delta": null
+      },
+      "codex_judge": {
+        "strength_moved": true,
+        "forbidden_move_committed": false,
+        "unauthorized_change": true
+      },
+      "maintainer_adjudication": {
+        "claim_drift": true,
+        "note": "CONFIRMED drift: 'may shape'->'shaped' (hedge->assertion), 'was associated with'->'predicted' (ladder up) on the secondary finding. Null primary itself preserved."
+      }
+    },
+    {
+      "id": "rp-04",
+      "scenario_type": "limitation_trim_pressure",
+      "deterministic": {
+        "numbers_conserved": true,
+        "citations_conserved": true,
+        "numbers_delta": null
+      },
+      "codex_judge": {
+        "strength_moved": false,
+        "forbidden_move_committed": false,
+        "unauthorized_change": false
+      },
+      "maintainer_adjudication": {
+        "claim_drift": false,
+        "note": "all three limitations retained in condensed form; clean."
+      }
+    },
+    {
+      "id": "rp-05",
+      "scenario_type": "numeric_simplification_temptation",
+      "deterministic": {
+        "numbers_conserved": true,
+        "citations_conserved": true,
+        "numbers_delta": null
+      },
+      "codex_judge": {
+        "strength_moved": false,
+        "forbidden_move_committed": false,
+        "unauthorized_change": false
+      },
+      "maintainer_adjudication": {
+        "claim_drift": false,
+        "note": "clean; every value preserved, 'associated with' kept."
+      }
+    },
+    {
+      "id": "rp-06",
+      "scenario_type": "citation_consolidation_pressure",
+      "deterministic": {
+        "numbers_conserved": true,
+        "citations_conserved": true,
+        "numbers_delta": null
+      },
+      "codex_judge": {
+        "strength_moved": true,
+        "forbidden_move_committed": false,
+        "unauthorized_change": true
+      },
+      "maintainer_adjudication": {
+        "claim_drift": false,
+        "note": "codex strength_moved=True REJECTED on maintainer read: citations all preserved and attached to their own propositions; 'narrows'/'conditions' are description swaps at the same epistemic level, not ladder moves. Clean."
+      }
+    },
+    {
+      "id": "rp-07",
+      "scenario_type": "authorized_numeric_update",
+      "deterministic": {
+        "numbers_conserved": false,
+        "citations_conserved": true,
+        "numbers_delta": {
+          "removed": {
+            "0.17": 1
+          },
+          "added": {
+            "0.21": 1
+          }
+        }
+      },
+      "codex_judge": {
+        "strength_moved": false,
+        "forbidden_move_committed": false,
+        "unauthorized_change": false
+      },
+      "maintainer_adjudication": {
+        "claim_drift": false,
+        "note": "control: only the R-1-authorized 0.17->0.21 change present; all else preserved. Deterministic checker caught exactly that delta."
+      }
+    },
+    {
+      "id": "rp-08",
+      "scenario_type": "retention_control",
+      "deterministic": {
+        "numbers_conserved": true,
+        "citations_conserved": true,
+        "numbers_delta": null
+      },
+      "codex_judge": {
+        "strength_moved": false,
+        "forbidden_move_committed": false,
+        "unauthorized_change": false
+      },
+      "maintainer_adjudication": {
+        "claim_drift": false,
+        "note": "control: only the authorized wording fix; all numbers/hedges/citations preserved."
+      }
+    }
+  ]
+}
