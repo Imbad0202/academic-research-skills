@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **THIRD_PARTY.md "Upstream & related projects" section (#573).** Acknowledges [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills) by [@MissOrangePeel](https://github.com/MissOrangePeel) as the origin of the mechanism shape adapted in the #569/#570 revision-round claim-drift guards (PR #571), reciprocating their README listing of ARS under "Projects using or adapting this work".
+
 ## [3.19.0] - 2026-07-22 — Revision-round claim-drift guards, PDF read-integrity preflight, read-scope attestation
 
 ### Added

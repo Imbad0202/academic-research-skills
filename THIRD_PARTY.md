@@ -1,7 +1,8 @@
 # Third-party projects
 
 This page lists third-party projects, platforms, and services that build on, wrap,
-or integrate Academic Research Skills (ARS).
+or integrate Academic Research Skills (ARS). It also acknowledges upstream projects
+whose mechanisms ARS has adapted (see **Upstream & related projects** below).
 
 ## Disclaimer
 
@@ -51,3 +52,13 @@ directory listing. See the Platform Port Reminder policy and open an issue to di
 that submitted / operates it · **What it does** a one-line neutral description ·
 **Link** where it lives. Descriptions are the submitters' own claims, restated
 neutrally; the maintainer has not verified them.
+
+## Upstream & related projects
+
+The reverse direction: independent projects whose mechanisms ARS has adapted, with
+credit recorded in the corresponding issues and pull requests. Listing here is
+acknowledgement, not endorsement, and implies no affiliation.
+
+| Project | Maintainer | Relationship | Link |
+|---------|-----------|--------------|------|
+| sci-ssci-skills | [@MissOrangePeel](https://github.com/MissOrangePeel) (Yila-AI) | Origin of the claim-strength ladder + deterministic invariant-checking mechanism shape adapted into the v3.19.0 revision-round claim-drift guards (#569 / #570, PR [#571](https://github.com/Imbad0202/academic-research-skills/pull/571)) | [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills) |
