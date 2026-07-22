@@ -53,11 +53,14 @@ External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — discovery age
 
 ## E6: Claim-Strength Drift (#569 — advisory-only, revision rounds)
 
-**Runs only** at a Stage 4.5 (or Stage 2.5 re-verification) invocation that follows a revision round — i.e. when a prior draft of the same block-anchored paper exists. On a first-pass audit with no prior draft, SKIP with `[E6-SKIPPED: no prior draft]`. This phase is the epistemic complement to the deterministic numeric/citation conservation check (`scripts/check_revision_token_conservation.py`, #570): that script conserves tokens; E6 covers what token-matching cannot see — whether a claim's epistemic strength moved along the ladder.
+**Runs only** at a Stage 4.5 (or Stage 2.5 re-verification) invocation that follows a revision round. This phase is the epistemic complement to the deterministic numeric/citation conservation check (`scripts/check_revision_token_conservation.py`, #570): that script conserves tokens; E6 covers what token-matching cannot see — whether a claim's epistemic strength moved along the ladder.
 
-**Inputs**: the prior draft's claim-bearing blocks, the current draft, the round's Revision Roadmap, and (when present) the revision patch's per-op `roadmap_item_ids`. Reference: `shared/references/claim_strength_ladder.md`.
+**Inputs (artifact-based, graceful — mirrors E4's scope-absence handling).** E6 consumes the **revision-evidence bundle** the orchestrator names in the dispatch context (§ Revision-Evidence Bundle in `pipeline_orchestrator_agent.md`): the per-round revision patch sidecars (`phase6_*/revision_patch_round<N>.json`, each carrying its ops' `old`/`new_text` + `roadmap_item_ids`), the pre-round anchored draft(s), and the round's Revision Roadmap (or the integrity-correction Issue List on a FAIL-correction round). The patch sidecars are the primary source — each op already records exactly which block changed, its before/after text, and the roadmap items it claims, so E6 needs no separate prior-draft diff when they are present. Reference: `shared/references/claim_strength_ladder.md`.
 
-For each claim whose block was touched this round, compare its ladder rung (and its load-bearing hedges / null results / limitations / causal caveats) against the prior draft:
+- **No revision evidence in context** (bundle absent — a first-pass audit, or a standalone run with no patch chain): SKIP with `[E6-SKIPPED: no revision evidence]`. Never reconstruct a prior draft or guess a roadmap.
+- **Multiple revision rounds before this gate** (e.g. the Stage 3→4→3' Major→4' path reaches the single Stage 4.5 after rev0→rev1 and rev1→rev2): consume **every** round's patch sidecar in the bundle, not only the latest. A drift introduced in an earlier round and carried unchanged into the current draft is still unauthorized; auditing only the last pair would miss it. Report each round's rows under the same `ADV-E6-<n>` sequence (the row names the round).
+
+For each claim-bearing op across the consumed rounds, compare its ladder rung (and its load-bearing hedges / null results / limitations / causal caveats) between the op's `old` and `new_text`:
 
 1. If the rung moved (either direction) or a hedge/null/caveat was dropped, check whether a roadmap item authorized *that strength change* (not merely touching the block). An authorized move is recorded and closed.
 2. Flag an unauthorized move as `STRENGTH-DRIFTED`, recording: claim location, prior rung → current rung (or the dropped qualifier), the roadmap items the op claimed, and the direction (up / down).

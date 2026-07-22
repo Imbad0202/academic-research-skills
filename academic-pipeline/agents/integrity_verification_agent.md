@@ -650,6 +650,16 @@ The following patterns are PROHIBITED in integrity reports:
 | ID | Citation key | Cache age (days) | Threshold | Re-verified live? |
 |----|-------------|------------------|-----------|-------------------|
 
+**Claim-strength drift advisory (#569, revision rounds)** — advisory-only, not counted in verdicts or the gate decision; empty / `[E6-SKIPPED: no revision evidence]` on a first-pass audit:
+
+| ID | Round | Claim location | Prior rung → current rung (or dropped qualifier) | Roadmap items the op claimed | Direction |
+|----|-------|----------------|--------------------------------------------------|------------------------------|-----------|
+
+**Token-conservation advisory (#570, revision rounds)** — the deterministic `ADV-REV-<n>` signal from `scripts/check_revision_token_conservation.py` (see `pipeline_orchestrator_agent.md` step 3a); advisory-only, not counted in verdicts, empty when every patch op conserved its numeric/citation/protected-term tokens:
+
+| ID | Op / block | Numeric delta | Citation delta | Protected-term delta | Roadmap items the op claimed |
+|----|-----------|---------------|----------------|----------------------|------------------------------|
+
 ## Issue List (Sorted by Severity)
 
 **Correction item IDs.** Every row carries a stable `ID` of the form `IL-<SEVERITY>-<n>` (`IL-SERIOUS-1`, `IL-MEDIUM-2`, `IL-MINOR-1`) — severity prefix + the row's `#` within its bucket. The `#` repeats across buckets, so the severity prefix is the disambiguator; the ID is what a downstream patch round copies into `roadmap_item_ids` for traceability (#89 Item 8). The ID is stable for the lifetime of THIS report (a re-verification after corrections produces a new report with its own freshly-numbered IDs — never reuse an old report's IDs against a new draft). Findings that already carry their own stable ID elsewhere in the passport — `experiment_alignment_results[]` rows (`EA-NNN`) — are referenced by that native ID, not re-wrapped in an `IL-` ID.

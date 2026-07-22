@@ -71,6 +71,21 @@ class NumberExtractionTests(unittest.TestCase):
             extract_numbers("(HR = 0.73, 95% CI: 0.58-0.92)"),
         )
 
+    def test_sign_inside_brackets_and_after_comma_is_kept(self):
+        # A CI lower bound or a comma-separated negative must keep its sign:
+        # [-0.45, 0.12] flipping to [0.45, 0.12] is a real change, not conserved.
+        numbers = extract_numbers("CI [-0.45, 0.12] and slope of -1.3, 0.7")
+        self.assertEqual(
+            dict(numbers), {"-0.45": 1, "0.12": 1, "-1.3": 1, "0.7": 1}
+        )
+
+    def test_scientific_exponent_is_part_of_the_token(self):
+        # 6.02e23 must not truncate to 6.02 (which would let 6.02e23 -> 6.02e24
+        # pass as conserved).
+        self.assertEqual(dict(extract_numbers("Avogadro 6.02e23 units")), {"6.02e23": 1})
+        self.assertEqual(dict(extract_numbers("p = 1.2E-5 overall")), {"1.2E-5": 1})
+        self.assertFalse(audit_pair("6.02e23 units", "6.02e24 units")["conserved"])
+
     def test_letter_adjacent_identifier_digits_are_not_prose_numbers(self):
         numbers = extract_numbers("Contrary to H2, Model-A7 held at T0.")
         self.assertEqual(dict(numbers), {})
@@ -102,6 +117,21 @@ class CitationExtractionTests(unittest.TestCase):
         self.assertEqual(
             extract_citation_tokens(source), extract_citation_tokens(revision)
         )
+
+    def test_narrative_author_swap_with_same_slug_is_a_delta(self):
+        # A narrative citation carries the author OUTSIDE the parenthesized year;
+        # swapping "Smith (2020)" -> "Jones (2020)" while keeping the same
+        # <!--ref:smith2020--> slug must not read as conserved (the visible
+        # attribution changed even though the marker and year did not).
+        result = audit_pair(
+            "Smith (2020)<!--ref:smith2020--> found X.",
+            "Jones (2020)<!--ref:smith2020--> found X.",
+        )
+        self.assertFalse(result["conserved"])
+
+    def test_narrative_author_year_token_includes_author(self):
+        tokens = extract_citation_tokens("As Okonkwo and Vidal (2021) showed,")
+        self.assertIn("Okonkwo and Vidal (2021)", dict(tokens))
 
     def test_resolved_ref_marker_keys_on_slug(self):
         # The finalizer resolves <!--ref:slug--> into 0/1/2-status-token forms

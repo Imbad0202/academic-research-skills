@@ -58,19 +58,35 @@ COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 # vanish under COMMENT_RE, the exact miss this checker exists to prevent).
 REF_MARKER_RE = re.compile(r"<!--ref:([A-Za-z][A-Za-z0-9_:-]*)(?:\s[^>]*)?-->")
 ANCHOR_MARKER_RE = re.compile(r"<!--(anchor:[^>]+?)-->")
-# Sign attaches only when preceded by start/whitespace/(/=/:/,/; — never
+# Sign attaches only when preceded by start/whitespace/([/=/:/,/; — never
 # between digits, so `0.58-0.92` stays two unsigned range endpoints while
-# `β = -0.45` keeps its sign. Letter-adjacent embedded digits (H2,
-# Model-A7, T0, v2.7.10a) are identifier fragments — entity-layer tokens
-# for `--protected-terms`, not prose numbers — so the unsigned branch
-# excludes them with an explicit [A-Za-z] guard (NOT \w: CJK-adjacent
-# numbers like 共612名 must still count).
+# `β = -0.45`, `CI [-0.45, ...]`, and a comma-led `-1.3` keep their sign.
+# Letter-adjacent embedded digits (H2, Model-A7, T0, v2.7.10a) are identifier
+# fragments — entity-layer tokens for `--protected-terms`, not prose numbers —
+# so the unsigned branch excludes them with an explicit [A-Za-z] guard (NOT
+# \w: CJK-adjacent numbers like 共612名 must still count). A scientific
+# exponent (`6.02e23`, `1.2E-5`) is part of the token, so `6.02e23`→`6.02e24`
+# is a delta, not a truncation to a conserved `6.02`.
+_MANTISSA = r"(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)"
+_EXPONENT = r"(?:[eE][-+]?\d+)?"
 NUMBER_RE = re.compile(
-    r"(?:(?<=[\s(=:,;])|^)-?(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)%?"
-    r"|(?<![A-Za-z\d.])(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)%?"
+    rf"(?:(?<=[\s(\[=:,;])|^)-?{_MANTISSA}{_EXPONENT}%?"
+    rf"|(?<![A-Za-z\d.]){_MANTISSA}{_EXPONENT}%?"
 )
 SQUARE_CITATION_RE = re.compile(r"\[(?:\d+[-,;\s]*)+\]")
-AUTHOR_YEAR_RE = re.compile(r"\([^()]*\b(?:19|20)\d{2}[a-z]?\b[^()]*\)")
+# Parenthetical author-year: `(Li & Chen, 2023)`. Also capture an optional
+# NARRATIVE author phrase immediately preceding a bare `(year)` —
+# `Smith (2020)`, `Okonkwo and Vidal (2021)`, `Al-Masri et al. (2019)` — so a
+# `Smith`→`Jones` swap that keeps the same year and the same ref marker still
+# surfaces as a citation delta. The author phrase is capitalized-word runs
+# joined by `&` / `and` / `et al.`; the year alone is the parenthetical form.
+_NARRATIVE_AUTHOR = (
+    r"(?:[A-Z][\w'’-]+(?:\s+(?:&|and|et\s+al\.?)\s*)?)+"
+    r"(?:\s+et\s+al\.?)?\s+"
+)
+AUTHOR_YEAR_RE = re.compile(
+    rf"(?:{_NARRATIVE_AUTHOR})?\((?:[^()]*\b(?:19|20)\d{{2}}[a-z]?\b[^()]*|(?:19|20)\d{{2}}[a-z]?)\)"
+)
 
 _DASH_FOLD = str.maketrans({"–": "-", "—": "-", "−": "-"})
 
