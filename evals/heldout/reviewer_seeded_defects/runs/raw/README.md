@@ -10,9 +10,11 @@ re-classified from the full text, and the clean-control zero-false-findings clai
 can be verified only against the complete reports.
 
 **Redaction note:** the only edit relative to the subagents' verbatim output is a
-repo-boundary redaction of one publisher name to `[publisher]` (the field analyst's
-target-journal recommendations named real venues; the redaction is line-preserving,
-so all line anchors in the run records remain valid).
+line-preserving replacement of one specific publisher name with `[publisher]`, per
+the maintainer's repo-boundary deny-list. Other public bibliographic names (real
+journals and publishers the field analyst recommended as target venues) are not on
+that list and are intentionally left verbatim. Because the redaction preserves line
+structure, all line anchors in the run records remain valid.
 
 **Contamination reminder:** these are *outputs* of past measurement runs, not ground
 truth — but they live under `evals/`, which review sessions are already forbidden to
