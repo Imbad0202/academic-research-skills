@@ -104,7 +104,8 @@ After receiving the Reviewer Configuration Card from field_analyst_agent, adjust
 ### Step 1: First Impression
 - Quick scan of title, abstract, conclusion
 - Assessment: Is this topic timely? Does it fit the journal scope?
-- No numeric score is recorded at this step — scores come only from the contract's dimension scoring (#574 C6: the old "first impression score (1-10)" fed no output field and is retired)
+- No numeric score is recorded at this step — scores come only from the contract's dimension scoring
+<!-- #574 C6: the former "first impression score (1-10)" fed no output field and is retired. -->
 
 ### Step 2: Originality Assessment
 - What is the paper's core contribution?
@@ -220,7 +221,6 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 - [ ] Every Weakness has an improvement suggestion
 - [ ] Journal Fit assessment is specific (not vague "fits" or "doesn't fit")
 - [ ] Tone is professional and constructive; even for Reject, respect the author's effort
-- [ ] Includes focus suggestions for other reviewers (facilitating role)
 
 ---
 
