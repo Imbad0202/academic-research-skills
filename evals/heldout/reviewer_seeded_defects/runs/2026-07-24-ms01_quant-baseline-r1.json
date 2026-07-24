@@ -24,16 +24,16 @@
     "SD-04": 1.0,
     "SD-05": 1.0,
     "SD-06": 0.5,
-    "SD-07": 0.5,
+    "SD-07": 1.0,
     "SD-08": 1.0,
     "SD-09": 0.0,
     "SD-10": 0.5,
-    "mean": 0.667
+    "mean": 0.722
   },
   "clean_control_false_findings": [],
   "raw_output": "raw/2026-07-24-ms01_quant-baseline-r1.review.md",
   "severity_source_fallback": {
-    "SD-07": "no detecting-seat per-finding tag; Editorial Decision Letter R5 severity 'Major' per the README severity-source ladder (severity re-derived from the retried synthesis; unchanged)"
+    "SD-07": "no detecting-seat per-finding tag; retried Editorial Decision Letter R5 severity 'Critical' per the README severity-source ladder (dual-track round 5 correction: an earlier truncated read recorded Major)"
   },
-  "notes": "Blinded isolated run per README protocol. Panel decision: Major Revision (F1/F2/F3; reject_or_major_revision resolved to major). Strict recall 9/10; critical-band 3/4. SD-01 (GRIM-impossible mean 3.847) = PARTIAL: the value is flagged only as false precision (EIC minor issues; DA notes decimal mismatch); R1 recomputed t-vs-p (explicit p~=.19) and checked df-vs-N unprompted, but no seat ran the achievability/granularity recompute — same miss class as every other MS01 run (#574 A4). Severity via the ladder: DA rows govern where DA detected (C1 bundles causal+worldwide at critical -> SD-04 1.0 / SD-10 0.5; C2 = abstract-vs-results r at critical vs expected minor -> SD-09 0; M3 bundles df/t-p/Table2 at major -> SD-02 0.5, SD-03 1.0, SD-08 1.0; M1 Ferro major -> 1.0; m1 sampling at MINOR vs expected major -> SD-06 0.5). Note the DA banding differs from the in-context attempt on the same manuscript (stats bundle critical there, major here) — cross-run band instability, #574 A3. Protocol event (dual-track round 4): the run's first synthesis emitted the fired_conditions/editorial_decision pair twice, violating the §8.1 pinned grammar; it was voided per protocol and the synthesis was retried as a fresh call over the unchanged five Phase-2 cards (the synthesizer never sees the paper, so the retry is untainted). The voided output is preserved at raw/voided/; the retried synthesis reproduces the same fired set (F1/F2/F3) and the same operative decision (Major Revision with re-review), and all letter-fallback severity cells were re-derived from the retried letter (unchanged)."
+  "notes": "Blinded isolated run per README protocol. Panel decision: Major Revision (F1/F2/F3; reject_or_major_revision resolved to major). Strict recall 9/10; critical-band 3/4. SD-01 (GRIM-impossible mean 3.847) = PARTIAL: the value is flagged only as false precision (EIC minor issues; DA notes decimal mismatch); R1 recomputed t-vs-p (explicit p~=.19) and checked df-vs-N unprompted, but no seat ran the achievability/granularity recompute — same miss class as every other MS01 run (#574 A4). Severity via the ladder: DA rows govern where DA detected (C1 bundles causal+worldwide at critical -> SD-04 1.0 / SD-10 0.5; C2 = abstract-vs-results r at critical vs expected minor -> SD-09 0; M3 bundles df/t-p/Table2 at major -> SD-02 0.5, SD-03 1.0, SD-08 1.0; M1 Ferro major -> 1.0; m1 sampling at MINOR vs expected major -> SD-06 0.5). Note the DA banding differs from the in-context attempt on the same manuscript (stats bundle critical there, major here) — cross-run band instability, #574 A3. Protocol event (dual-track round 4): the run's first synthesis emitted the fired_conditions/editorial_decision pair twice, violating the §8.1 pinned grammar; it was voided per protocol and the synthesis was retried as a fresh call over the unchanged five Phase-2 cards (the synthesizer never sees the paper, so the retry is untainted). The voided output is preserved at raw/voided/; the retried synthesis reproduces the same fired set (F1/F2/F3) and the same operative decision (Major Revision with re-review), and all letter-fallback severity cells were re-derived from the retried letter (round-5 correction: R5's severity is Critical, so SD-07 scores 1.0)."
 }

@@ -14,7 +14,7 @@ the parent `runs/` directory.
 Comparative note (why these are still informative): the isolated re-run reproduced
 the in-context attempt's headline numbers almost exactly (MS01 strict recall 0.90 in
 both designs with the same sole GRIM miss; clean-control false findings 0 in both;
-severity agreement 0.597 vs 0.599) — evidence that the Phase-1 blindness leak was
+severity agreement 0.625 operative vs 0.599 superseded) — evidence that the Phase-1 blindness leak was
 not inflating recall, and that the measurand is robust to this dispatch difference.
 The one substantive divergence: the in-context MS02-r1 panel only PARTIALLY caught
 the undescribed-interview-instrument defect, while both isolated MS02 panels named
