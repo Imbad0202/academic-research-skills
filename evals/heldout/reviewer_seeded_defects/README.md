@@ -23,7 +23,7 @@ repo convention: state what was measured, nothing more.
 |---------|------|--------------|
 | MS01 — quantitative (educational technology, cross-sectional survey + LMS logs) | `manuscripts/ms01_quant_defective.md` | `manifests/ms01_quant.defects.json` (10 defects) |
 | MS02 — qualitative/mixed (higher-education policy, interviews + small survey) | `manuscripts/ms02_qual_defective.md` | `manifests/ms02_qual.defects.json` (9 defects) |
-| MS00 — clean control (educational technology survey, deliberately sound at its scale) | `manuscripts/ms00_clean_control.md` | none — zero planted defects; every asserted defect-class finding against it is a false positive |
+| MS00 — clean control (educational technology survey, deliberately sound at its scale) | `manuscripts/ms00_clean_control.md` | none — zero planted defects; findings against it are scored per protocol step 5 (only factually-false assertions count as false findings) |
 
 All content is synthetic: fictional authors, fictional institutions, `10.5555/…`
 reserved-prefix DOIs. Defect classes: `statistical`, `inference`,

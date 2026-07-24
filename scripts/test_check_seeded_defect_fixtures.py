@@ -182,6 +182,12 @@ class SeededDefectCheckerTest(unittest.TestCase):
         (self.root / "manifests" / "ms01_quant.defects.json").unlink()
         self.assertEqual(mod.main(), 1)
 
+    def test_duplicate_fixture_id_across_manifests_fails(self):
+        src = self.root / "manifests" / "ms01_quant.defects.json"
+        extra = self.root / "manifests" / "ms01_extra.defects.json"
+        extra.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        self.assertEqual(mod.main(), 1)
+
     def test_unmanifested_defective_manuscript_fails(self):
         (self.root / "manuscripts" / "ms03_orphan_defective.md").write_text(
             "# Orphan defective manuscript with no manifest\n", encoding="utf-8"

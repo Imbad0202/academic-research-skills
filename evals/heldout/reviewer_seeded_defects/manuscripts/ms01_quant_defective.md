@@ -36,7 +36,7 @@ This study used an observational, cross-sectional design conducted within a sing
 
 ### 3.2 Participants and Sampling
 
-Participants were drawn from the course enrollment using a random sample of students enrolled in the course section. A total of 142 students provided complete behavioral log and retention data and constitute the primary analytic sample. A subset of these students additionally completed the full perceived-control scale and were used for the scale-based descriptive analyses.
+Participants were drawn from the course enrollment using a random sample of students enrolled in the course section. A total of 142 students provided complete behavioral log and retention data and constitute the primary analytic sample. A subset of these students additionally answered the perceived-control item and were used for the perceived-control descriptive analyses.
 
 Recruitment proceeded as follows. Midway through the term, an announcement was posted to the course LMS inviting students to complete a short survey about their study habits and their use of the dashboard. Students who chose to respond, and who consented to the survey, formed the study sample; those who did not respond were excluded. Because participation depended on students electing to answer the announcement, the resulting sample reflects those who volunteered during the recruitment window. The behavioral log data were drawn from the LMS for the same set of respondents. Students were not informed that their dashboard activity data would be analyzed for this study.
 
@@ -61,7 +61,7 @@ The mean perceived-control score across the 87 survey respondents who answered t
 | Measure | M | SD | Min | Max |
 |---|---|---|---|---|
 | Dashboard sessions | 14.6 | 9.1 | 0 | 48 |
-| Perceived control (1-5) | 3.847 | 0.62 | 1.8 | 5.0 |
+| Perceived control (1-5) | 3.847 | 0.62 | 1 | 5 |
 | Final exam score (0-100) | 71.3 | 12.4 | 32 | 98 |
 
 ### 4.2 Dashboard Engagement and Retention

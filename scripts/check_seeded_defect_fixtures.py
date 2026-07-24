@@ -138,19 +138,24 @@ def main() -> int:
     manifest_paths = sorted(MANIFESTS.glob("*.defects.json"))
     if not manifest_paths:
         errors.append(f"inv1: no manifests found under {MANIFESTS}")
-    seen_fixture_ids: set[str] = set()
+    seen_fixture_ids: list[str] = []
     manifested_manuscripts: set[str] = set()
     for path in manifest_paths:
         check_manifest(path, errors)
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            seen_fixture_ids.add(data.get("fixture_id", ""))
+            seen_fixture_ids.append(data.get("fixture_id", ""))
             manifested_manuscripts.add(data.get("manuscript", ""))
         except (OSError, json.JSONDecodeError):
             pass  # already reported by check_manifest
-    if seen_fixture_ids != EXPECTED_FIXTURES:
+    if len(seen_fixture_ids) != len(set(seen_fixture_ids)):
         errors.append(
-            f"inv6: manifest fixture_ids {sorted(seen_fixture_ids)} != expected "
+            "inv6: duplicate fixture_id across manifests — an extra manifest "
+            "reusing an expected id would corrupt or double-count the inventory"
+        )
+    if set(seen_fixture_ids) != EXPECTED_FIXTURES:
+        errors.append(
+            f"inv6: manifest fixture_ids {sorted(set(seen_fixture_ids))} != expected "
             f"{sorted(EXPECTED_FIXTURES)} — a missing manifest silently shrinks "
             f"the acceptance set; update EXPECTED_FIXTURES deliberately instead"
         )
