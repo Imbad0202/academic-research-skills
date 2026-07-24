@@ -54,6 +54,19 @@ manuscript) so adjudication is anchored, not vibes.
    0 and is reported separately). Severity agreement is scored over `DETECTED`
    defects using the highest-severity assessment among the seats that detected
    it: exact band = 1, adjacent band = 0.5, further = 0, averaged.
+   **Severity-source ladder (frozen 2026-07-24, applies identically to baseline
+   and post-change runs):** a seat's severity is its explicit per-finding tag
+   (the DA always carries one; other seats only when their report happens to tag
+   the finding — pre-A3 they usually don't). When NO detecting seat carries an
+   explicit tag, fall back to the Editorial Decision Letter's severity for the
+   matching roadmap item (`Critical`/`Major` words; where a letter gives only
+   priorities, P1 → major, P2/P3 → minor), and record the fallback in the run
+   record. Rationale: before the #574 A3 change the non-DA seats emit no
+   per-finding severity, so the "highest among detecting seats" rule is not
+   fully computable from seat output alone; the ladder is the deterministic
+   proxy that keeps baseline and post-change severity numbers comparable —
+   post-change runs MUST use the same ladder (a post-A3 run will simply hit the
+   fallback rung less often, which is itself part of what A3 is buying).
 5. **Clean control — what counts as a false finding.** Count only findings that
    assert a defect that is FACTUALLY NOT PRESENT (fabricated flaw, invented
    inconsistency, mis-recomputed statistic). Deduplicate by defect concept
@@ -70,9 +83,13 @@ manuscript) so adjudication is anchored, not vibes.
    set's measurand, and the fixtures cannot carry real citations.
 6. **Record per run** (committed): write `runs/<date>-<fixture>-<baseline|post>-r<k>.json`
    with `{model_id, suite_commit, date, condition, per_defect: {SD-xx: verdict},
-   severity_scores, clean_control_false_findings: [...concepts...], notes}`, so
-   every baseline is auditable and re-adjudicable — the summary table below is
-   derived from these records, never the only artifact.
+   severity_scores, clean_control_false_findings: [...concepts...], notes}`, AND
+   commit the run's complete raw panel output (all reviewer reports + the
+   Editorial Decision Letter) under `runs/raw/<same-stem>.review.md` — verdicts
+   without the underlying reports are not re-adjudicable (DETECTED/PARTIAL
+   reclassification, severity recomputation, and clean-control zero-false-finding
+   verification all need the full text). The summary table below is derived from
+   these records, never the only artifact.
 
 **Acceptance gates for a reviewer-prompt change** (all three, on replicate means):
 mean strict recall does not regress (overall AND within the `critical` band);
