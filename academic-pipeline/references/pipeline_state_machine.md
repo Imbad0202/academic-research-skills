@@ -166,7 +166,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 4 | Decision = Minor/Major, user confirms | Pass Revision Roadmap |
 | checkpoint | Stage 4.5 | Decision = Accept, user confirms | Skip revision, go directly to final verification |
 | Stage 4 | **checkpoint** | Stage 4 completed | Wait for user confirmation |
-| checkpoint | Stage 3' | User confirms | Pass Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity) |
+| checkpoint | Stage 3' | User confirms | Pass Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity). Re-review-mode transfer (default); a user-requested fresh full review at 3' passes Revised Draft + available context only (no Roadmap/cards; full mode runs field_analyst) |
 | Stage 3' | **checkpoint** | Decision produced | Wait for user confirmation |
 | checkpoint | Stage 4.5 | Decision = Accept/Minor, user confirms | Pass final draft to final verification |
 | checkpoint | Stage 4' | Decision = Major, user confirms | Pass new Revision Roadmap |
