@@ -79,11 +79,9 @@ from scripts._block_parser import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PATCH_SCHEMA_PATH = REPO_ROOT / "shared" / "contracts" / "patch" / "revision_patch.schema.json"
 DOC_BODY_START = "DOC-BODY-START"
-# 1.1: report gains `output_draft_hash` (same 12-hex format as
-# `base_draft_hash`) so the report is bound to the exact revised-draft bytes
-# it describes — any post-apply rewrite (finalizer pass, manual edit) is
-# detectable at the Stage 4 -> 3' handoff. Additive; consumers reading 1.0
-# fields are unaffected.
+# 1.1: adds `output_draft_hash` (12-hex, same format as `base_draft_hash`),
+# binding the report to the exact revised-draft bytes it describes.
+# Additive; consumers reading 1.0 fields are unaffected.
 REPORT_FORMAT_VERSION = "1.1"
 # #424 Slice B ship decision (spec §3.3 required it; recorded in the spec's
 # amendment log). Strict `>` comparator per the spec's "above a threshold":
