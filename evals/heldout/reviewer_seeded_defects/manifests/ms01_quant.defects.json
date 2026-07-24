@@ -1,0 +1,97 @@
+{
+  "fixture_id": "ms01_quant",
+  "manuscript": "manuscripts/ms01_quant_defective.md",
+  "defect_count": 10,
+  "defects": [
+    {
+      "defect_id": "SD-01",
+      "class": "statistical",
+      "expected_severity": "critical",
+      "section": "4 Results / 4.1 Descriptive Statistics",
+      "anchor_quote": "The mean perceived-control score across the 87 survey respondents with complete scale data was 3.847",
+      "description": "GRIM-inconsistent mean: with N=87 on a 1-5 integer, six-item mean scale, 87 x 3.847 = 334.689 is not an integer sum, so a mean of 3.847 is arithmetically unreachable; the nearest achievable means are 3.839 (sum 334) or 3.851 (sum 335).",
+      "expected_detector": "statistics"
+    },
+    {
+      "defect_id": "SD-02",
+      "class": "statistical",
+      "expected_severity": "critical",
+      "section": "4 Results / 4.3 Group Comparisons",
+      "anchor_quote": "greater perceived control than students in the low-engagement group, t(156) = 3.02, p = .003",
+      "description": "Degrees of freedom are impossible for the design: an independent-samples t-test on a sample whose maximum N is 142 cannot have df=156; for two groups the correct df is at most N-2=140, and df cannot exceed the sample size.",
+      "expected_detector": "statistics"
+    },
+    {
+      "defect_id": "SD-03",
+      "class": "statistical",
+      "expected_severity": "major",
+      "section": "4 Results / 4.3 Group Comparisons",
+      "anchor_quote": "the difference was small, t(140) = 1.31, p = .008",
+      "description": "Reported p-value is inconsistent with the test statistic: t(140)=1.31 gives a two-tailed p of approximately .19 (one-tailed approximately .10), not p=.008; the reported p is far too small and would flip the non-significant result to significant.",
+      "expected_detector": "statistics"
+    },
+    {
+      "defect_id": "SD-04",
+      "class": "inference",
+      "expected_severity": "critical",
+      "section": "5 Discussion",
+      "anchor_quote": "dashboard engagement improved course retention: students who engaged more with the learning analytics dashboard were retained at higher rates",
+      "description": "Causal claim ('improved', 'raises the probability') drawn from an explicitly cross-sectional, correlational design that cannot support causation; the observed association is confounded and directionally ambiguous.",
+      "expected_detector": "methodology"
+    },
+    {
+      "defect_id": "SD-05",
+      "class": "citation_claim_mismatch",
+      "expected_severity": "major",
+      "section": "2 Literature Review",
+      "anchor_quote": "Dashboards have been shown to reliably improve outcomes for lower-achieving students",
+      "description": "The cited source (Ferro & Nakamura, 2021) is titled 'When dashboards demotivate: Peer comparison and the lower-achieving student', which argues the opposite of the claim it is cited to support; the citation is used to back a conclusion contrary to the reference's own stated finding.",
+      "expected_detector": "domain"
+    },
+    {
+      "defect_id": "SD-06",
+      "class": "methods",
+      "expected_severity": "major",
+      "section": "3 Methods / 3.2 Participants and Sampling",
+      "anchor_quote": "Participants were drawn from the course enrollment using a random sample of students enrolled in the course section",
+      "description": "Sampling is described as 'random' but the recruitment paragraph two paragraphs later reveals a self-selected volunteer convenience sample (students who chose to respond to an LMS announcement), with no acknowledgment of the contradiction.",
+      "expected_detector": "methodology"
+    },
+    {
+      "defect_id": "SD-07",
+      "class": "ethics",
+      "expected_severity": "critical",
+      "section": "3 Methods / 3.2 Participants and Sampling",
+      "anchor_quote": "Students were not informed that their dashboard activity data would be analyzed for this study",
+      "description": "Human-subjects data (LMS logs plus survey) are used with no IRB/ethics approval, consent, or data-governance statement anywhere, and the manuscript neutrally notes that students were not informed their activity data would be analyzed.",
+      "expected_detector": "ethics"
+    },
+    {
+      "defect_id": "SD-08",
+      "class": "internal_consistency",
+      "expected_severity": "major",
+      "section": "4 Results / 4.3 Group Comparisons",
+      "anchor_quote": "All 142 students in the primary analytic sample were classified into engagement groups for this comparison",
+      "description": "Table 2 subgroup sizes (High engagement n=66 + Low engagement n=61 = 127) do not sum to the N=142 stated in the prose immediately above the table; 15 students are unaccounted for with no explanation.",
+      "expected_detector": "internal_consistency"
+    },
+    {
+      "defect_id": "SD-09",
+      "class": "internal_consistency",
+      "expected_severity": "minor",
+      "section": "Abstract",
+      "anchor_quote": "Dashboard engagement correlated positively with retention (r = .42)",
+      "description": "The Abstract reports the engagement-retention correlation as r=.42 while the Results (Section 4.2) report the same correlation as r=.24; the two values are inconsistent.",
+      "expected_detector": "internal_consistency"
+    },
+    {
+      "defect_id": "SD-10",
+      "class": "overclaim",
+      "expected_severity": "major",
+      "section": "6 Conclusion",
+      "anchor_quote": "For higher education institutions worldwide, the implication is clear",
+      "description": "The Conclusion generalizes a dependable, scalable recommendation to 'higher education institutions worldwide' from a single-institution, single-course sample, and the Limitations paragraph conspicuously omits any generalizability hedge.",
+      "expected_detector": "domain"
+    }
+  ]
+}

@@ -307,3 +307,7 @@ path = "scripts/test_ars_update_check.py"
 [[pytest]]
 id = "570-revision-token-conservation"
 path = "scripts/test_check_revision_token_conservation.py"
+
+[[pytest]]
+id = "574-seeded-defect-fixtures"
+path = "scripts/test_check_seeded_defect_fixtures.py"

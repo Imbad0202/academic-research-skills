@@ -435,6 +435,19 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_216_surface_form.py
 
+      - name: Run #574 reviewer seeded-defect fixture integrity lint
+        # Structure-only gate for evals/heldout/reviewer_seeded_defects/ (the E4
+        # acceptance instrument for reviewer-prompt changes): manifest schema +
+        # closed enums + defect-count agreement + every anchor_quote verbatim-unique
+        # in its manuscript + clean control present and never manifested. Fixture
+        # integrity, NOT a behavioral measurer (baseline runs are the manual
+        # protocol in the set's README). Companion
+        # test_check_seeded_defect_fixtures.py (mutation suite) runs via the
+        # unified manifest (#156). Issue #574 E4.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_seeded_defect_fixtures.py
+
       - name: Run v3.10 #134 write-scope three-way name cross-check lint
         # THE FAIL-OPEN GUARD for the Slice 1 write-scope hook. Asserts the 23 Bucket A
         # agent names match across the classification roster, the scope manifest keys,

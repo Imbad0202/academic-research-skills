@@ -1,0 +1,88 @@
+{
+  "fixture_id": "ms02_qual",
+  "manuscript": "manuscripts/ms02_qual_defective.md",
+  "defect_count": 9,
+  "defects": [
+    {
+      "defect_id": "SD-01",
+      "class": "methods",
+      "expected_severity": "critical",
+      "section": "Findings",
+      "anchor_quote": "These themes emerged systematically from the structured protocol, giving us confidence that the pattern was not an artifact",
+      "description": "The interview instrument is never described anywhere in Methods — no protocol, no question domains, no piloting, no interview guide — yet Findings asserts the themes 'emerged systematically from the structured protocol.' There is no structured protocol in the paper to have emerged from; the claim of methodological rigor is unsupported by any described instrument.",
+      "expected_detector": "methodology"
+    },
+    {
+      "defect_id": "SD-02",
+      "class": "methods",
+      "expected_severity": "major",
+      "section": "Findings",
+      "anchor_quote": "respondents' overall institutional quality culture score was moderately positive (M=3.9, SD=0.6)",
+      "description": "The survey construct 'institutional quality culture' is never operationalized: no items are described, no source or validated instrument is named, and no validity or reliability evidence is offered — yet it is reported as a precise scored quantity (M=3.9, SD=0.6). A reader cannot know what was measured or how.",
+      "expected_detector": "methodology"
+    },
+    {
+      "defect_id": "SD-03",
+      "class": "inference",
+      "expected_severity": "critical",
+      "section": "Discussion",
+      "anchor_quote": "these findings demonstrate that universities across the sector treat QA as a negotiated accomplishment",
+      "description": "Findings from 12 interviews at 3 institutions are generalized to the entire higher-education sector and stated as established fact ('demonstrate that universities across the sector...'; 'the higher education sector as a whole'). A small purposive qualitative sample cannot license a sector-wide demonstrative claim.",
+      "expected_detector": "methodology"
+    },
+    {
+      "defect_id": "SD-04",
+      "class": "internal_consistency",
+      "expected_severity": "major",
+      "section": "Abstract",
+      "anchor_quote": "Fourteen administrators were interviewed in depth, and a supplementary survey of 48 mid-level staff",
+      "description": "The Abstract states 'Fourteen administrators were interviewed in depth' while the Methods section reports twelve senior administrators (n=12). The interview sample size is internally inconsistent between Abstract and Methods.",
+      "expected_detector": "internal_consistency"
+    },
+    {
+      "defect_id": "SD-05",
+      "class": "qual_rigor",
+      "expected_severity": "major",
+      "section": "Findings",
+      "anchor_quote": "the study achieved balanced representation of perspectives, capturing the full range of administrator views",
+      "description": "The paper claims 'balanced representation of perspectives,' yet every quoted participant supports the same reading of QA, there is no negative or disconfirming case, and the paper openly admits that skeptical/dissenting participants' views 'these were excluded for space.' The balance claim is directly contradicted by the disclosed exclusion of disconfirming voices.",
+      "expected_detector": "methodology"
+    },
+    {
+      "defect_id": "SD-06",
+      "class": "ethics",
+      "expected_severity": "major",
+      "section": "Findings",
+      "anchor_quote": "As the quality director of the largest private university in the region said",
+      "description": "The Methods/Ethics statement claims data were 'fully anonymized' so that no individual could be identified, but quotes are attributed with role-plus-institution-type identifiers specific enough to re-identify participants (e.g., 'the quality director of the largest private university in the region'). The anonymization claim is inconsistent with the reporting practice, an ethics/confidentiality breach.",
+      "expected_detector": "ethics"
+    },
+    {
+      "defect_id": "SD-07",
+      "class": "statistical",
+      "expected_severity": "major",
+      "section": "Findings",
+      "anchor_quote": "we found a statistically significant difference (p<.05) in perceived quality culture",
+      "description": "A 'statistically significant difference (p<.05)' is claimed between two survey subgroups (n=9 and n=11) with no test named and no test statistic, degrees of freedom, or effect size reported. The significance claim is unverifiable and rests on very small subgroups.",
+      "expected_detector": "statistics"
+    },
+    {
+      "defect_id": "SD-08",
+      "class": "citation_claim_mismatch",
+      "expected_severity": "minor",
+      "section": "Discussion",
+      "anchor_quote": "who recommends that institutions treat broad stakeholder consultation as the central mechanism for building a healthy quality culture",
+      "description": "The Discussion attributes to Delacroix (2018) a recommendation to treat stakeholder consultation as the central mechanism for building quality culture, but the reference-list annotation for the same source states that Delacroix argues against relying on stakeholder consultation as evidence of quality culture. The in-text attribution reverses the cited source's actual position.",
+      "expected_detector": "domain"
+    },
+    {
+      "defect_id": "SD-09",
+      "class": "overclaim",
+      "expected_severity": "minor",
+      "section": "Conclusion",
+      "anchor_quote": "This paper has offered the first comprehensive account of how university administrators experience and enact QA implementation",
+      "description": "The Conclusion asserts primacy ('the first comprehensive account') with no search bound, date, or qualifier establishing the basis for the claim. An unbounded first-to-do claim is an overclaim.",
+      "expected_detector": "domain"
+    }
+  ]
+}
