@@ -1,0 +1,33 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms02_qual",
+  "replicate": 2,
+  "per_defect": {
+    "SD-01": "DETECTED",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-01": 0.5,
+    "SD-02": 0.5,
+    "SD-03": 0.5,
+    "SD-04": 0.5,
+    "SD-05": 1.0,
+    "SD-06": 0.5,
+    "SD-07": 0.5,
+    "SD-08": 0.0,
+    "SD-09": 0.5,
+    "mean": 0.5
+  },
+  "clean_control_false_findings": [],
+  "notes": "Same blinded protocol and severity mapping rule. Panel decision: Major Revision (F1+F2). Strict recall 9/9; critical-band recall 2/2. Replicate severity instability vs r1: SD-01 (undescribed instrument) critical->major, SD-02 (unoperationalized construct) roadmap-Major->P2-suggested placement, SD-06 (anonymization breach) and SD-07 (bare p<.05) major->CRITICAL — same defects, different bands across replicates (#574 A3). Process observation: the reviewing agent transparently worked through the panel_size=5-vs-4-scoring-seats tension in the sprint contract (the DA does not score dimensions) before committing its F2 computation — live confirmation of #574 audit finding C3, which was not in the #578 fix list and remains open."
+}

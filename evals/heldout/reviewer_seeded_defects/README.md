@@ -84,7 +84,8 @@ product outcome).
 
 | Date | Commit | Model | Runs | MS01 recall (strict) | MS02 recall (strict) | Clean-control false findings | Severity agreement | Notes |
 |------|--------|-------|------|----------------------|----------------------|------------------------------|--------------------|-------|
-| pending | — | — | — | — | — | — | — | Baseline runs happen in fresh sessions on `main` BEFORE the #574 behavior batch lands; re-run, don't reuse, after model upgrades |
+| 2026-07-24 | 307ef24 | claude-opus-4-8 (reasoning effort xhigh; isolated blinded subagent per run) | 2 per fixture (6) | **0.90** (9/10 both replicates; critical band 0.75 — SD-01 GRIM = PARTIAL in both, the only non-detection) | **1.00** (9/9 both replicates; critical band 1.00) | **0** (both replicates; both decisions were nonetheless Major Revision — severity inflation on true-but-minor observations, see run notes) | **0.639** (per-run 0.667 / 0.722 / 0.667 / 0.500) | Recall losses are recompute-class only (GRIM); severity-agreement losses are DA bundling + replicate band instability, the #574 A3/A4/B1 targets. Per-run records in `runs/2026-07-24-*.json` |
+| pending (post-change) | — | — | — | — | — | — | — | Re-measure after the #574 behavior batch (A1/A2/A3/B1); re-run, don't reuse, after model upgrades |
 
 ## Integrity checking
 

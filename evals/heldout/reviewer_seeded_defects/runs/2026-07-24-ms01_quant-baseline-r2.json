@@ -1,0 +1,34 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms01_quant",
+  "replicate": 2,
+  "per_defect": {
+    "SD-01": "PARTIAL",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED",
+    "SD-10": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-02": 1.0,
+    "SD-03": 0.5,
+    "SD-04": 1.0,
+    "SD-05": 0.5,
+    "SD-06": 1.0,
+    "SD-07": 1.0,
+    "SD-08": 0.5,
+    "SD-09": 0.0,
+    "SD-10": 1.0,
+    "mean": 0.722
+  },
+  "clean_control_false_findings": [],
+  "notes": "Same blinded protocol and severity mapping rule as r1 (see 2026-07-24-ms01_quant-baseline-r1.json). Panel decision: Major Revision (F1/F2/F3; letter records contingent conversion-to-Reject clauses for failed re-analysis or absent ethics approval). Strict recall 9/10; critical-band recall 3/4. SD-01 again PARTIAL for the same reason (precision-style observations by EIC/R1/DA; no achievability recompute) — the only non-detected defect in both MS01 replicates is the recompute-class GRIM defect. Replicate severity instability vs r1: SD-05 (inverted citation) major->critical (r2's DA promoted it to a CRITICAL row; R2 also emitted an ad-hoc per-finding 'Severity: Critical' tag not required by its output format), SD-07 (consent) major->critical, SD-10 (worldwide) critical->major (r2's DA split the causal claim and the universal-scope claim into separate rows where r1 bundled them) — per-finding severity is not stably transported across replicates (#574 A3/B1 evidence)."
+}

@@ -1,0 +1,33 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms02_qual",
+  "replicate": 1,
+  "per_defect": {
+    "SD-01": "DETECTED",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-01": 1.0,
+    "SD-02": 1.0,
+    "SD-03": 0.5,
+    "SD-04": 0.5,
+    "SD-05": 0.5,
+    "SD-06": 1.0,
+    "SD-07": 1.0,
+    "SD-08": 0.0,
+    "SD-09": 0.5,
+    "mean": 0.667
+  },
+  "clean_control_false_findings": [],
+  "notes": "Blinded isolated run per README protocol (same dispatch and severity mapping rule as the ms01_quant r1 record). Panel decision: Major Revision (F1+F2; 4 DA CRITICAL rows). Strict recall 9/9; critical-band recall 2/2. All nine seeded defects named substantively, most by multiple seats from independent angles; the panel additionally surfaced one true unseeded inconsistency (survey subgroups 9+11=20 vs N=48 with 28 respondents unaccounted, DA minor row) — not counted, recorded for fixture-improvement interest. Severity-agreement losses: DA rated the Delacroix reversal (expected minor; the fixture seeds it as self-contained against the paper's own reference annotation) and the abstract-count contradiction (expected major) as CRITICAL, and rated sector-generalization (expected critical) only MAJOR — direction of the mismatch is not uniformly harsher, it is unanchored (#574 A3 evidence)."
+}
