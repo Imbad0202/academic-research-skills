@@ -5,6 +5,7 @@
   "condition": "baseline",
   "fixture": "ms01_quant",
   "replicate": 2,
+  "dispatch": "isolated per-seat two-phase calls (same design as r1); assembly note: the file-writer step hit an output-length cap, so the committed raw file was reconstructed verbatim from the workflow journal's agent outputs — content identical, assembly-level only",
   "per_defect": {
     "SD-01": "PARTIAL",
     "SD-02": "DETECTED",
@@ -18,18 +19,21 @@
     "SD-10": "DETECTED"
   },
   "severity_scores": {
-    "SD-02": 1.0,
+    "SD-02": 0.5,
     "SD-03": 0.5,
     "SD-04": 1.0,
-    "SD-05": 0.5,
+    "SD-05": 1.0,
     "SD-06": 1.0,
-    "SD-07": 1.0,
-    "SD-08": 0.5,
+    "SD-07": 0.5,
+    "SD-08": 1.0,
     "SD-09": 0.0,
     "SD-10": 0.5,
     "mean": 0.667
   },
   "clean_control_false_findings": [],
   "raw_output": "raw/2026-07-24-ms01_quant-baseline-r2.review.md",
-  "notes": "Same blinded protocol and severity mapping rule as r1 (see 2026-07-24-ms01_quant-baseline-r1.json). Panel decision: Major Revision (F1/F2/F3; letter records contingent conversion-to-Reject clauses for failed re-analysis or absent ethics approval). Strict recall 9/10; critical-band recall 3/4. SD-01 again PARTIAL for the same reason (precision-style observations by EIC/R1/DA; no achievability recompute) — the only non-detected defect in both MS01 replicates is the recompute-class GRIM defect. Unlike r1, this replicate's R1/R2/R3 emitted ad-hoc explicit per-finding severity tags (not required by their output formats — itself A3 evidence of format instability); per the severity-source ladder those tags govern where present: SD-07 takes R3's explicit 'Severity: Critical' (raw L721, no fallback needed) and SD-10 takes R3's explicit 'Severity: Critical' on the worldwide generalization (raw L725, outranking DA M3 MAJOR) -> 0.5 vs expected major. Replicate severity instability vs r1: SD-05 (inverted citation) major->critical (DA promoted it to a CRITICAL row; R2 tagged it Critical too), SD-07 (consent) major->critical, SD-10 (worldwide) r1-critical-via-DA-bundle vs r2-critical-via-R3-tag while r2's DA rated it only MAJOR — per-finding severity is not stably transported across replicates or across seats (#574 A3/B1 evidence). Severity corrections in this record (SD-10 1.0->0.5, SD-07 fallback->explicit-tag source) were applied in dual-track round 2 after the raw outputs were committed and audited."
+  "severity_source_fallback": {
+    "SD-07": "no detecting-seat per-finding tag; Editorial Decision Letter R5 priority P1 -> major per the README severity-source ladder"
+  },
+  "notes": "Blinded isolated run per README protocol. Panel decision: Major Revision (F1/F2/F3). Strict recall 9/10; critical-band 3/4. SD-01 again PARTIAL (false-precision note only; no achievability recompute) — across all four MS01 runs in both dispatch designs, the GRIM defect is the only non-detection, cleanly isolating the #574 A4 recompute gap to the granularity class. Severity via the ladder from this run's DA rows: C1 = r-mismatch critical vs expected minor -> SD-09 0; C2 = impossible t/p critical vs expected major -> SD-03 0.5; C3 bundles causal+dependable/generalizable critical -> SD-04 1.0, SD-10 0.5; M1 df=156 major vs expected critical -> SD-02 0.5; M2 Table-2 mismatch major -> SD-08 1.0; M3 Ferro major -> SD-05 1.0; M4 sampling mislabel major -> SD-06 1.0. The Phase-2 seats verified their Phase-1 triggers against the paper before scoring (visible in the R1 card), and the blind Phase-1 plans contain no manuscript-specific content — the deviation the superseded attempt was rejected for does not recur."
 }

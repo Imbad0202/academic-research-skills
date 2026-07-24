@@ -1,0 +1,33 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms02_qual",
+  "replicate": 1,
+  "per_defect": {
+    "SD-01": "PARTIAL",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-02": 1.0,
+    "SD-03": 0.5,
+    "SD-04": 0.5,
+    "SD-05": 0.5,
+    "SD-06": 1.0,
+    "SD-07": 0.5,
+    "SD-08": 0.0,
+    "SD-09": 0.5,
+    "mean": 0.563
+  },
+  "clean_control_false_findings": [],
+  "raw_output": "raw/2026-07-24-ms02_qual-baseline-r1.review.md",
+  "notes": "Blinded isolated run per README protocol (same dispatch and severity mapping rule as the ms01_quant r1 record). Panel decision: Major Revision (F1+F2; 4 DA CRITICAL rows). Strict recall 8/9; critical-band recall 1/2. SD-01 (interview instrument never described) = PARTIAL, corrected from DETECTED in dual-track round 2: the panel attacked the anchor sentence but diagnosed only the semi-structured-vs-structured label contradiction (R1 W1, raw L242-245) and the missing analysis-stage trustworthiness apparatus (R1 W3, raw L251-255), while R1's Data Collection comment explicitly calls the interview logistics 'adequately described' (raw L279) — no seat names the seeded absence (no interview guide, no question domains, no protocol content), so the symptom was noticed and misdiagnosed. The other eight defects are named substantively, most by multiple seats. This replicate's R1/R2/R3 all emitted explicit per-finding severity tags (raw L245-265, L378-393, L501-516), so the severity-source ladder never reaches the fallback rung here: SD-02 takes R1 W4 / R2 W2 'Major' (1.0), SD-07 takes R1 W2 'Severity: Critical' (raw L250, outranking DA M3 MAJOR; 0.5 vs expected major, corrected from 1.0 in round 2), SD-03 takes R3 W1 'Major' + DA M1 (0.5 vs expected critical). The panel's DA additionally raised a minor observation that survey subgroups 9+11=20 leave 28 of N=48 unaccounted in the contrast; adjudication note: this is NOT an inconsistency — the design has three institutions and the manuscript never claims the two contrasted subgroups exhaust the survey sample, so the remaining 28 can be third-site respondents. Recorded only as a fixture-observation; it does not affect any count (false-finding counting applies to the clean control only). Severity-agreement losses: DA rated the Delacroix reversal (expected minor; the fixture seeds it as self-contained against the paper's own reference annotation) and the abstract-count contradiction (expected major) as CRITICAL, and rated sector-generalization (expected critical) only MAJOR — direction of the mismatch is not uniformly harsher, it is unanchored (#574 A3 evidence)."
+}

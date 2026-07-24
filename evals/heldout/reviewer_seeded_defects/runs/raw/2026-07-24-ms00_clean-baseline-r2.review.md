@@ -1,350 +1,419 @@
-# Full Editorial Peer Review — `academic-paper-reviewer` v1.10.0 (FULL mode)
+# Isolated-dispatch panel review — gamma-2
 
-**Manuscript:** *Perceived Usefulness and Self-Reported Use of a Learning Management System: A Cross-Sectional Survey of Undergraduate Students*
-**Review mode:** `full` (5-seat panel + editorial synthesis)
-**Contract:** `reviewer/reviewer_full/v1` (`shared/contracts/reviewer/full.json`, baseline v3.6.2, panel_size = 5)
-**Protocol:** v3.6.2 Sprint Contract — paper-blind Phase 1 pre-commitment → paper-visible Phase 2 review, per seat, one seat at a time, no cross-referencing (Iron Rule #2).
+(Phase 1 calls were physically separated: each seat’s pre-commitment was produced by a clean agent that received only the contract + title/field/word_count and was forbidden from reading any manuscript.)
 
-> **Run configuration note.** `ARS_CROSS_MODEL` is not configured for this session. Per SKILL.md § "Cross-Model Reviewer Track (#540)" and `devils_advocate_reviewer_agent` § "Cross-Model DA", the cross-model reviewer/DA tracks do not fire: all five personas run on a single primary model family. `[CROSS-MODEL-SKIPPED]` is logged at the Reviewer 2 slot and at the DA slot. The Editorial Decision Letter's Review Panel Provenance block therefore carries the single-family correlated-error disclosure (Ren et al. 2026, arXiv:2607.13104 §5.2). This is the documented default and was taken autonomously (no user pause available in this run).
+# PART 1 — FIELD ANALYSIS
 
----
-
-# PART A — Field Analysis Report (Phase 0: `field_analyst_agent`)
+# Field Analysis Report
 
 ## Paper Basic Information
 - **Title**: Perceived Usefulness and Self-Reported Use of a Learning Management System: A Cross-Sectional Survey of Undergraduate Students
-- **Abstract length**: ~185 words
-- **Full text length**: ~1,700 words (main text, excl. references)
-- **Number of references**: 6 (Costa & Wren 2019; Delgado 2020; Ibarra & Poll 2021; Song 2018; Vasquez 2020; Whitfield 2019)
+- **Abstract length**: ~170 words
+- **Full text length**: ~1,900 words (excluding references)
+- **Number of references**: 6
 
 ## Field Analysis
 
 | Dimension | Analysis Result |
 |-----------|----------------|
-| Primary Discipline | Educational technology (higher education) |
-| Secondary Disciplines | Technology-acceptance / IS behavioral research; survey methodology / psychometrics |
-| Research Paradigm | Quantitative Research |
-| Methodology Type | Survey / Questionnaire (single-wave, cross-sectional), single-institution |
-| Target Journal Tier | **Q3** — a deliberately narrow, single-association, single-site correlational note with a 6-item literature base. Well-executed for what it is, but the ambition, sample scope, and reference depth place it below Q1/Q2 educational-technology outlets. A Q3 regional/specialized or rigorous open-access venue is the honest fit. |
-| Paper Maturity | **Pre-submission** — structure complete (IMRaD + Limitations + Conclusion), citation formatting consistent (APA 7 with DOIs), language polished, caveats already internalized. This is a finished short-form manuscript, not a draft. |
+| Primary Discipline | Educational technology in higher education (technology acceptance / LMS adoption) |
+| Secondary Disciplines | Educational measurement/psychometrics, information systems (TAM lineage), higher education studies |
+| Research Paradigm | Quantitative Research (correlational, non-experimental) |
+| Methodology Type | Survey / Questionnaire — single-site cross-sectional, bivariate correlation (Pearson + Spearman robustness) |
+| Target Journal Tier | Q3 (with realistic reach into low Q2). Rationale: the study is competently and honestly executed but is deliberately narrow in scope — one association, one institution, n=214, a single-item outcome measure, and an explicitly incremental "data point" framing. The reference list is thin (6 sources) and the citations appear to be placeholder/synthetic (DOIs all under a single 10.5555 prefix, sequential 2050001–2050006), which is a red flag the reviewers should probe. Ambition level and contribution scope point to a specialized/regional journal, not a flagship. |
+| Paper Maturity | Pre-submission. Rationale: complete IMRaD structure, clean prose, consistent APA-style citations and reference formatting, appropriate hedging language throughout, power analysis and CI reported, ethics statement present. The manuscript reads as polished and near-submittable; remaining issues are substantive-scope rather than structural or presentational. |
 
 ## Recommended Target Journals (Top 3)
-1. **Australasian Journal of Educational Technology / Research in Learning Technology** — scope-appropriate for a modest, transparently-bounded ed-tech survey; both accept short empirical notes and single-site correlational work when limits are honestly stated.
-2. **Education Sciences (MDPI, HE section)** — Q2/Q3 open access; explicitly hospitable to bounded single-institution descriptive findings with sound reporting; matches the paper's self-described "incremental data point" framing.
-3. **Frontiers in Education (Digital Education / Educational Psychology section)** — Q2/Q3; fast review; scope tolerant of small, well-caveated correlational contributions. (Note the practical caveat: the paper's contribution is thin for a full research article and may read better as a Brief Report / Research Note format where offered.)
+1. **Australasian Journal of Educational Technology (AJET)** — Strong fit for single-institution, correlational LMS-engagement studies with honest, bounded claims; regularly publishes modest-scope empirical technology-acceptance work with methodological transparency. Best overall match.
+2. **Journal of Computing in Higher Education** — Appropriate for TAM-lineage LMS studies; would push harder on theoretical contribution beyond a single bivariate correlation, so acceptance would likely require the authors to sharpen the "why this matters" argument.
+3. **Education and Information Technologies** — High-volume outlet receptive to incremental empirical contributions on LMS use; a plausible home if the authors keep the framing modest, though reviewers there often ask for a fuller acceptance-model or additional predictors.
 
 ## Reviewer Configuration Cards
 
 ### Reviewer Configuration Card #1
+
 **Role**: EIC
-**Identity Description**: Editor-in-Chief of a specialized educational-technology journal (e.g., *Australasian Journal of Educational Technology* tier), whose remit is empirical ed-tech in higher education. Reviews for reader interest, originality, and whether a single-site correlational note clears the journal's contribution bar. Has handled many TAM/LMS-adoption submissions and is alert to "yet another perceived-usefulness correlation" saturation.
+**Identity Description**: Editor-in-Chief of a specialized educational-technology journal (AJET-tier), whose own program of work concerns LMS adoption and student engagement in higher education, and who routinely triages high volumes of single-site technology-acceptance survey submissions.
 **Review Focus**:
-  1. Does a single r = .42 association from one institution offer enough incremental value for the readership, or is it a known result re-confirmed?
-  2. Title→Abstract→Conclusion coherence and whether the paper over- or under-promises.
-  3. Journal fit: is this a full article or better placed as a Brief Report / Research Note?
-**Will particularly care about**: Whether the paper honestly matches its claims to its evidence (it appears to) and whether the contribution justifies a slot against saturation in the TAM/LMS literature.
-**Possible blind spots**: May under-weight statistical-reporting granularity (defers to R1) and literature-currency questions (defers to R2).
+  1. Fit and significance — does a single moderate bivariate correlation (r = .42) from one institution clear the novelty/contribution bar for the journal, or is it "already known" territory that merely re-confirms decades of TAM findings?
+  2. Framing calibration — is the narrow descriptive-correlational framing an honest strength or a way to lower the contribution bar; does the paper offer any takeaway a reader could not have predicted from prior work?
+  3. Reference base credibility — the 6 references all carry sequential 10.5555 placeholder DOIs; verify these are real, indexed sources and not fabricated/synthetic citations, since this bears directly on whether the manuscript is submittable at all.
+**Will particularly care about**: Whether the paper's genuine methodological honesty (correlational-only language, cautions about self-report) is enough to offset its very thin incremental contribution, and whether the citation base is real.
+**Possible blind spots**: May under-scrutinize the psychometric and statistical fine points (delegates those to R1); may accept the modest framing at face value without pressing on the single-item outcome's construct validity.
 
 ### Reviewer Configuration Card #2
-**Role**: Peer Reviewer 1 — Methodology (quantitative survey methodologist)
-**Identity Description**: Quantitative methodologist specializing in survey design and correlational analysis in educational settings; fluent in APA 7 statistical reporting, power analysis, and the self-report-vs-behavioral-trace measurement literature. Reviews reliability/validity of adapted scales, correlation reporting completeness, and whether conclusions stay inside what a single-wave cross-sectional design licenses.
+
+**Role**: Peer Reviewer 1 — Methodology (quantitative / psychometrics)
+**Identity Description**: A quantitative methodologist and psychometrician with an educational-measurement background, specializing in survey-instrument validation, correlational inference, and the measurement of self-reported behavior; publishes on reliability, single-item vs. multi-item measures, and the interpretation of effect sizes.
 **Review Focus**:
-  1. Correlation reporting completeness (coefficient + CI + p + n + robustness check) and APA 7 format compliance.
-  2. Measurement validity — single-item ordinal use measure; Pearson-on-ordinal; adapted PU scale validity beyond α.
-  3. Design–inference alignment: is causal language avoided; is power/precision handled; is non-response / self-selection acknowledged.
-**Will particularly care about**: Whether a single-item, self-reported, ordinal outcome correlated via Pearson is defensible, and whether the α = .88 alone is offered as evidence of validity (it is not the same thing).
-**Possible blind spots**: May treat construct-validity depth as out of scope if it edges into domain-theory territory (that is R2).
+  1. Measurement of the outcome — the dependent variable is a single five-point frequency item; probe its reliability (uncomputable for a single item), construct validity, and whether a Pearson r treating an ordinal single item as continuous is defensible (Spearman ρ = .40 is reported, which helps, but interrogate why Pearson is the headline).
+  2. Instrument adaptation and reporting completeness — a six-item scale "adapted from Costa & Wren (2019)" with α = .88 is reported, but the adaptation is not described, the items are not shown, factor structure/dimensionality is not examined, and no CI or descriptive detail is given for the use item beyond a median category.
+  3. Inferential claims vs. design — check that the power analysis (>.80 power for r ≥ .19), the CI [.30, .52], and the p-value are correctly reported and that no causal or directional language leaks into the results/discussion (spot-check: the paper is generally disciplined here).
+**Will particularly care about**: Whether a single-item, self-reported outcome can bear the interpretive weight placed on it, and whether "perceived usefulness → perceived use" is effectively a common-method correlation between two self-reports rather than a substantive perception–behavior link.
+**Possible blind spots**: May treat the domain contribution as out of scope; may not evaluate whether the LMS-engagement literature already answers this question (domain concern, left to R2).
 
 ### Reviewer Configuration Card #3
-**Role**: Peer Reviewer 2 — Domain (technology-acceptance / higher-education ed-tech scholar)
-**Identity Description**: Senior educational-technology researcher grounded in the technology-acceptance tradition (TAM / UTAUT lineage) and LMS-engagement literature. Knows the canonical sources (Davis 1989; Venkatesh et al.) and the current debates on self-report engagement vs. LMS log analytics. Reviews literature currency, theoretical framing, terminological precision, and genuineness of contribution.
+
+**Role**: Peer Reviewer 2 — Domain (higher-education educational technology)
+**Identity Description**: A senior higher-education educational-technology researcher fluent in the technology-acceptance literature (TAM/UTAUT lineage) and in LMS-engagement studies, who tracks how the field has moved from perception-based self-report toward behavioral log/learning-analytics evidence.
 **Review Focus**:
-  1. Literature coverage — the paper cites 6 sources, none of them the field's foundational TAM originators; is the theoretical lineage correctly attributed?
-  2. Contribution framing — is "an incremental data point" an honest and sufficient positioning, or under-theorized?
-  3. Terminological precision — "perceived usefulness", "engagement", "use" used consistently with field conventions.
-**Will particularly care about**: Whether the paper anchors its central construct in the actual technology-acceptance canon rather than an adapted instrument cited to a single 2019 source, and whether the contribution is honestly incremental (it is candid about this).
-**Possible blind spots**: May under-rate practical/stakeholder implications (that is R3) and statistical-format detail (that is R1).
+  1. Contribution against the field — situate r = .42 within the existing distribution of LMS perception–use correlations; is this an incremental confirmation, and does the paper add anything (a new population, a new instrument, a discrepant result) that warrants publication?
+  2. Literature adequacy and currency — only 6 references, none clearly post-2021, no engagement with UTAUT/UTAUT2, self-determination, or the learning-analytics turn; assess whether the review is complete enough and whether the cited works (Costa & Wren, Delgado, Ibarra & Poll, Song, Vasquez, Whitfield) actually exist and say what is attributed to them.
+  3. Common-method / same-source concern — because both measures are self-reported in the same instrument, evaluate whether the finding is confounded by common-method variance and whether the paper adequately flags this specific threat (it flags self-report divergence via Vasquez 2020 but does not name common-method bias).
+**Will particularly care about**: Whether the paper's contribution is genuine and non-redundant given a mature literature, and whether the theoretical framing (invoking technology acceptance while explicitly declining to test an acceptance model) is coherent.
+**Possible blind spots**: May under-weight statistical/psychometric subtleties (left to R1); may accept the honesty of the framing as sufficient contribution.
 
 ### Reviewer Configuration Card #4
-**Role**: Peer Reviewer 3 — Cross-disciplinary / Practical (learning-analytics / institutional-effectiveness practitioner)
-**Identity Description**: Learning-analytics researcher and institutional-effectiveness practitioner who works with actual LMS log data and student-success interventions. Brings the "outsider" behavioral-trace lens and the onboarding-practice lens. Reads the paper for practical actionability, stakeholder coverage, cross-context transfer, and the implicit assumptions the primary discipline naturalizes.
-**Review Focus**:
-  1. Assumption audit — the implicit "self-report use ≈ engagement" and "perception drives use" assumptions.
-  2. Practical feasibility — is the onboarding implication actionable, or is it the paper's own caveated speculation?
-  3. Stakeholder / cross-context validity — single mid-sized university; instructors, course-design mandates, and log-behavior are the absent actors.
-**Will particularly care about**: Whether the paper's one design-bounded correlation can carry any practice recommendation, and whether the behavioral-trace critique it cites (Vasquez 2020) is genuinely integrated or merely name-checked.
-**Possible blind spots**: Not a statistician (defers CI/power to R1) and not a completeness-auditor of the TAM canon (defers to R2).
 
-### Reviewer Configuration Card #5
-**Role**: Devil's Advocate
-**Identity Description**: Adversarial stress-tester. Constructs the strongest case *against* the paper: that it re-confirms a textbook association with a weaker design than the literature it cites, that self-report-on-self-report inflates the correlation via common-method variance, and that its "so what?" is unresolved. Also runs the #216 surface-form parity gate and the #215 field-norm gate on its own findings so as not to over-escalate a well-caveated modest paper.
-**Review Focus (8 challenge dimensions + severity self-gate)**: core-thesis challenge, cherry-picking, confirmation bias, logic-chain, overgeneralization, alternative paths, stakeholder blind spots, "so what?".
+**Role**: Peer Reviewer 3 — Cross-disciplinary / Practical (learning analytics + institutional practice)
+**Identity Description**: A learning-analytics scientist and instructional-technology practitioner who works with LMS system logs and institutional onboarding programs, approaching the paper from a behavioral-data and applied-implementation angle rather than a survey-psychometrics one.
+**Review Focus**:
+  1. Self-report vs. behavioral reality — from a log-data perspective, press the gap between reported and actual engagement (the paper cites Vasquez 2020 on exactly this); is a self-reported "perceived use" measure meaningful enough to inform practice, and would available LMS logs have been the stronger design?
+  2. Practical/onboarding implications — the discussion suggests usefulness-oriented onboarding "may be worth institutional attention" (citing Whitfield 2019, a practitioner account); evaluate whether a moderate correlation between two self-reports can responsibly ground any onboarding recommendation, and whether the recommendation is over-reaching given the design.
+  3. Overlooked confounders and assumptions — surface field-obvious drivers of LMS use that are unmeasured here (course requirements, assessment schedule, instructor expectations — the paper gestures at these but does not model them) and assess whether the voluntary-response/self-selection bias is handled honestly.
+**Will particularly care about**: Whether the study, as a self-report-only design, can say anything actionable that a learning-analytics/log-based study could not say better, and whether practical claims stay proportional to the evidence.
+**Possible blind spots**: May over-emphasize the "should have used logs" critique and undervalue the legitimate, low-cost role of perception surveys; may drift toward re-designing the study rather than reviewing the one submitted.
 
 ## Review Strategy Recommendations
-- **Special characteristic**: This manuscript is unusually *honest* about its own limits — it pre-empts the causal-inference critique, the single-site generalization critique, and the self-report critique inside the text. The panel's real task is not "find the un-caveated overreach" (there is little) but "decide whether an honestly-modest, correctly-reported, thin-contribution paper clears the bar." Reviewers must resist two opposite traps: (a) rewarding candor with a pass it has not earned on contribution, and (b) punishing a small paper for being small (Length/Novelty bias, `review_criteria_framework.md §3`).
-- **Complementarity / tension to watch**: R1 (methodology) and DA will converge on common-method variance and the single-item measure; the synthesizer must decompose that bundle (Step 1b) so the *measure-validity* sub-claim and the *CMV-inflation* sub-claim are counted separately, not merged. R2 (contribution/literature) and EIC will converge on the "incremental value" question. R3's practical-actionability challenge may overlap with EIC's "so what?" — independent corroboration, not duplication.
 
----
+- **The paper's defining feature is disciplined honesty, and that is exactly what the panel must stress-test.** The manuscript scrupulously uses correlational language, reports a Spearman robustness check, gives a power analysis and CI, and stacks limitations. The central editorial question is not "are the claims overstated?" (they are not) but "is a deliberately modest, single-association, single-site finding a publishable contribution, or does honest framing merely relabel a thin result?" Reviewers should judge contribution, not just correctness.
+- **Citation-integrity flag for all reviewers.** Every one of the 6 references carries a sequential placeholder-style DOI under the 10.5555 test/example prefix (2050001 through 2050006). This is a strong signal that the citations may be synthetic or fabricated. The EIC and R2 in particular should treat verification of these sources as a gating check; a review that praises the paper's "consistency with prior work" without confirming that prior work exists would be a serious miss. This is the single most important item to surface at the synthesis stage.
+- **Deliberate methodological complementarity, minimal overlap.** R1 owns the psychometrics and inference (single-item outcome, Pearson-on-ordinal, undescribed scale adaptation, no item-level reporting); R2 owns the domain contribution and literature adequacy; R3 owns the self-report-vs-log-data and applied-implication angle. The one convergence point to watch is **common-method variance** — both R1 (as a measurement artifact) and R2/R3 (as a substantive confound between two self-reports) are likely to raise it. The synthesizer should merge these into a single consolidated concern rather than triple-counting it, while preserving that all three independently flagged it (a signal of its importance).
+- **Predictable tension between R3 and the others.** R3's log-data orientation may push toward "this should have been a behavioral study," which risks reviewing the paper the authors did not write. The EIC and R1 should keep the panel anchored to the honest scope the authors declared. Frame R3's contribution as "does the self-report design still yield an actionable finding?" rather than "was self-report the wrong choice?"
+- **Tone calibration.** Maturity is pre-submission and the writing is clean, so developmental hand-holding is unnecessary. The appropriate register is a rigorous accept-with-conditions / minor-to-major-revision review focused on (a) verifying the reference base, (b) strengthening or justifying the single-item outcome measure, and (c) sharpening the contribution claim — not line-editing or structural rescue.
 
-# PART B — Phase 1 Panel Reviews (five seats, sprint-contract two-phase each)
+# PART 2 — SEATS
 
----
+## SEAT — EIC
 
-## SEAT 1 — Editor-in-Chief (`eic_agent`)
+### Phase 1 (blind call)
 
-### Phase 1 — Paper-content-blind pre-commitment
+## Contract Paraphrase
 
-*(Input: contract JSON + metadata only — title, field = "educational technology / higher education", word_count ≈ 1,700. No paper content.)*
+**D1 — methodology_rigor (mandatory):** From the editorial chair I read this dimension as asking whether the study's design and reporting clear the field's peer-review bar for a quantitative undergraduate survey. For a cross-sectional survey of perceived usefulness and self-reported LMS use, that means a defensible sampling frame, an adequate and justified sample, transparent instrument provenance and reliability, and statistical reporting that a reader could in principle reproduce. My concern at the journal level is whether the empirical foundation is solid enough that any contribution built on it will not collapse under scrutiny.
 
-#### Contract Paraphrase
+**D2 — domain_accuracy (mandatory):** I read this as whether the paper represents the educational-technology evidence base honestly — TAM/UTAUT-adjacent constructs used correctly, prior LMS-adoption findings cited without distortion, and no factual slips in domain terminology (e.g., conflating perceived usefulness with actual use, or self-reported use with log-based use). As EIC I care that the paper sits accurately inside the conversation it claims to join, so readers trust its scholarship.
 
-- **D1 methodology_rigor (mandatory).** From the editor's chair I read this as: does the study's design and its statistical reporting clear the field's peer-review floor, such that a reader could trust the reported association and, in principle, reproduce it? I am not the statistics specialist, but I must be able to see that the design fits the question and that the numbers are reported to convention.
-- **D2 domain_accuracy (mandatory).** Are the claims consistent with what the technology-acceptance and LMS literature already establishes, is prior work correctly represented, and are there factual/terminological errors that would embarrass the journal? At my altitude this is mostly "does the contribution claim match the field's actual state of knowledge."
-- **D3 argumentative_coherence (mandatory).** Does the paper hold together from title through abstract, question, method, result, to conclusion — no over-promising, no conclusion the evidence cannot carry, no internal contradiction. This is squarely my lane.
-- **D4 cross_disciplinary_relevance (high).** Is the framing legible and useful to adjacent-field readers (learning analytics, IS, institutional research), and are any cross-field implications substantiated rather than gestured at?
-- **D5 writing_and_structure (normal).** Organization, clarity, venue-convention adherence — is it a clean, well-built manuscript?
+**D3 — argumentative_coherence (mandatory):** From the bird's-eye view this dimension is about whether the central thesis holds together from research question through to conclusion, whether the correlational evidence actually supports the claims drawn from it, and whether the paper avoids the causal or generalization fallacies that cross-sectional self-report designs invite. My editorial worry is over-promising: a conclusion that outruns what a single-site cross-sectional survey can license.
 
-#### Scoring Plan
+**D4 — cross_disciplinary_relevance (high):** I read this as whether the framing, construct definitions, and implications are legible and useful beyond the narrow LMS-research niche — to instructional designers, higher-education administrators, and adjacent HCI/information-systems readers. Interdisciplinary claims (e.g., implications for platform design or institutional policy) must be substantiated, not asserted. As EIC I judge whether the paper earns space for a readership wider than the immediate sub-field.
 
-##### D1: methodology_rigor
-- **what_to_look_for**: a stated design, a reported coefficient with the accompanying inferential furniture (p, n, and ideally CI), a robustness gesture, and conclusion language that respects the design.
-- **what_triggers_block**: a headline result reported with no inferential support at all, or a design that cannot address the stated question, or causal claims from a cross-sectional correlation.
-- **what_triggers_warn**: design fits and numbers are present but with a reporting gap a specialist would flag (e.g., a missing precision estimate, an untested assumption) — real but non-fatal, and deferred to R1 for depth.
+**D5 — writing_and_structure (normal):** I read this as whether the manuscript is organized, clearly written, and conventionally presented — coherent title-to-abstract-to-conclusion flow, adequate figures/tables for a survey report, and adherence to venue formatting. At ~1597 words this is a very short manuscript, so my editorial attention here is whether the compression sacrifices necessary reporting rather than merely trimming padding.
 
-##### D2: domain_accuracy
-- **what_to_look_for**: correct representation of the acceptance literature and an honest, correctly-sized contribution claim.
-- **what_triggers_block**: a factually wrong domain claim, or an absolute-novelty/"first study" claim that the field flatly contradicts.
-- **what_triggers_warn**: contribution is real but thin, or the literature anchoring is light for the venue — an incremental-value concern rather than an error.
+## Scoring Plan
 
-##### D3: argumentative_coherence
-- **what_to_look_for**: title/abstract/conclusion agreement; the conclusion answering the exact question posed; caveats matched to claims.
-- **what_triggers_block**: a conclusion the data cannot support (e.g., causal "improves") or a self-contradiction between sections.
-- **what_triggers_warn**: minor coherence slippage — a discussion implication that leans slightly past the correlation, adequately hedged.
+### D1: methodology_rigor
+- `what_to_look_for`: A named sampling frame and recruitment method; reported sample size with a justification (power analysis or defensible rationale); response rate for the survey; instrument source (validated scale vs. ad hoc items) with reliability evidence (e.g., Cronbach's alpha); clear operationalization of "self-reported use" and its measurement; statistical tests named with assumptions, effect sizes, and confidence intervals rather than bare p-values.
+- `what_triggers_block`: No sampling/recruitment description at all, OR a sample so small or opaque that the analysis is uninterpretable, OR the instrument's provenance and reliability are entirely absent, OR statistical claims reported with no test named and no dispersion/uncertainty — i.e., the empirical foundation cannot be evaluated or reproduced even in principle.
+- `what_triggers_warn`: The core design is reportable but has material gaps — missing response rate, reliability stated for only some scales, effect sizes omitted while p-values are present, or sample-size justification absent though the N is plausibly adequate. Recoverable in revision without redoing the study.
 
-##### D4: cross_disciplinary_relevance
-- **what_to_look_for**: framing accessible to learning-analytics / IR readers; any cross-field implication grounded.
-- **what_triggers_block**: cross-field claims asserted with no basis (not expected here).
-- **what_triggers_warn**: relevance is present but the paper does not connect to the adjacent behavioral-trace/analytics conversation it clearly touches.
+### D2: domain_accuracy
+- `what_to_look_for`: Correct and current use of adoption-model constructs (perceived usefulness, perceived ease of use, behavioral intention, actual use) with the right lineage cited; prior LMS/e-learning adoption findings represented faithfully; precise terminology that keeps "perceived usefulness," "self-reported use," and "actual/logged use" distinct; no overstated citations of what earlier work found.
+- `what_triggers_block`: A load-bearing claim that misrepresents the domain evidence or a foundational construct (e.g., treating self-reported use as objective behavioral data throughout, or attributing to prior work a finding it does not contain) such that the paper's contribution rests on a factual error.
+- `what_triggers_warn`: Isolated terminological imprecision or a citation that oversimplifies prior findings without invalidating the argument — correctable by rewording and re-citing.
 
-##### D5: writing_and_structure
-- **what_to_look_for**: IMRaD completeness, clean prose, consistent citation format.
-- **what_triggers_block**: unreviewable writing.
-- **what_triggers_warn**: minor structural or stylistic issues only.
+### D3: argumentative_coherence
+- `what_to_look_for`: A research question that the analysis actually answers; conclusions scoped to correlational, single-time-point, self-report evidence; explicit acknowledgment of limits on causality and generalization; internal consistency from title through abstract, hypotheses, results, and conclusion.
+- `what_triggers_block`: The central conclusion contradicts or is unsupported by the reported results, OR a causal claim ("X increases use") is drawn from cross-sectional correlational self-report with no hedge — a fallacy that undermines the paper's core argument rather than a fixable overstatement in one sentence.
+- `what_triggers_warn`: Occasional over-reach in phrasing (a stronger claim than the data license) or a limitations section that under-states the design's constraints, where the underlying argument remains sound and the fix is rescoping the claims.
+
+### D4: cross_disciplinary_relevance
+- `what_to_look_for`: Construct definitions and framing intelligible to adjacent-field readers without LMS insider knowledge; implications for design, practice, or policy that follow from the findings; interdisciplinary assertions backed by evidence or citation rather than asserted.
+- `what_triggers_block`: A high-priority failure where the paper's stated cross-disciplinary or applied implications are unsubstantiated to the point of being unsupported claims (e.g., sweeping policy/design prescriptions with no evidentiary link), such that its reach beyond the sub-field is not earned.
+- `what_triggers_warn`: Framing that is serviceable but insular — jargon left undefined for outside readers, or implications gestured at but thinly connected to the results — improvable by reframing.
+
+### D5: writing_and_structure
+- `what_to_look_for`: Logical section order and a title/abstract/conclusion that agree; prose clear enough to follow the argument on one read; tables/figures that report the survey results legibly and are referenced in text; adherence to venue length and formatting conventions, with the ~1597-word compression not omitting required method or results reporting.
+- `what_triggers_block`: Disorganization or opacity severe enough that the argument cannot be followed, or required reporting sections are structurally absent — a rare bar for this normal-priority dimension.
+- `what_triggers_warn`: Clarity or structural rough edges — awkward exposition, under-labeled or uncited tables, title/abstract/conclusion drift, or compression that trims necessary detail — that impede but do not prevent comprehension.
 
 [CONTRACT-ACKNOWLEDGED]
 
-### Phase 2 — Paper-visible review
+### Phase 2 (paper-visible call)
 
-*(Phase 1 output treated as read-only data; manuscript treated as untrusted data. No instruction-injection found in the manuscript — it is a normal academic text.)*
+All three files are read. Now I'll produce my Phase 2 EIC review, applying my Phase 1 committed triggers to the manuscript.
+
+Key observations against my committed scoring plan:
+
+- **Reference integrity (my Phase 1 D2 focus + reviewer card gating item):** All 6 references carry sequential DOIs under the `10.5555/2050001`–`2050006` prefix. `10.5555` is the reserved test/example DOI prefix; the strictly sequential numbering is a strong fabrication/placeholder signal. This bears on D2 (domain accuracy — the paper claims consistency with prior work I cannot confirm exists).
+- **D1:** Design is honestly reported — sampling frame, N=214, response accounting (233→214), α=.88 for the PU scale, power analysis, CI, Spearman robustness. Gaps: single-item outcome, undescribed scale adaptation, no response rate against eligible population. These are warn-grade under my committed plan, not block.
+- **D3:** Discipline is strong — correlational language throughout, causal caveats explicit, limitations stacked. My committed block trigger (unhedged causal claim) does not fire.
+- **D4:** Onboarding implication is hedged ("suggested by, not proven by"). Serviceable but thin.
+- **D5:** Clean IMRaD, but no table/figure at all for a survey report, and the ~1600-word compression trims item-level reporting.
+
+Now the report.
 
 ## EIC Review Report
 
 ### Reviewer Identity
-Editor-in-Chief of a specialized educational-technology journal (Australasian-JET tier), remit = empirical ed-tech in higher education; alert to TAM/LMS-adoption saturation.
+
+Editor-in-Chief of a specialized educational-technology journal (AJET-tier), with a personal program of work on LMS adoption and student engagement in higher education, routinely triaging a high volume of single-site technology-acceptance survey submissions.
 
 ### Overall Recommendation
+
 Major Revision
 
 ### Confidence Score
-4
+
+4 — High confidence. LMS adoption and technology-acceptance survey work is squarely my area; the one point where I defer is the psychometric fine grain of the single-item outcome, which is Reviewer 1's seat.
 
 ### Summary Assessment
-This is a compact, unusually candid cross-sectional survey reporting a single association: perceived usefulness of an LMS correlates moderately with self-reported use (r = .42) among 214 undergraduates at one university. The manuscript is well-built — IMRaD is complete, the writing is clean, APA 7 citation formatting is consistent, and the authors have internalized nearly every standard objection (cross-sectional non-causality, single-site non-generalizability, self-report ≠ behavioral trace) *inside the text* rather than leaving them for reviewers. On coherence and honesty it is genuinely strong. My editorial concern is not overreach; it is **contribution sufficiency and evidentiary construction**. The paper's own framing — "an incremental data point, comparable with prior work" — concedes that it re-confirms a textbook technology-acceptance relationship with a thinner design (single wave, self-report on both sides, single item for the outcome) than several sources it cites. For my readership the live question is whether a re-confirmation this modest, from one institution, earns a full-article slot. It may, if the authors sharpen what is distinctive (the transparent bounding, the self-report/log gap they cite but do not exploit) and address the common-method-variance concern that R1/DA will press. As submitted, it sits at the Major Revision / Research-Note boundary.
+
+This is a cross-sectional survey of 214 undergraduates at one mid-sized university reporting a moderate positive correlation (r = .42) between perceived usefulness of the LMS and self-reported frequency of use. The manuscript's defining quality is disciplined honesty: it uses correlational language throughout, reports a Spearman robustness check, gives a power analysis and confidence interval, names both the reverse-causation and self-report-vs-log-data threats, and stacks a candid limitations section. As a piece of careful, non-overreaching empirical reporting it is near-submittable in form. My editorial hesitation is not about correctness but about two things a specialized journal must weigh before accepting. First, the contribution: a single moderate bivariate correlation re-confirming a decades-old technology-acceptance regularity, framed explicitly as "an incremental data point," must earn its space — honesty of framing is not itself a contribution, and the paper offers no takeaway (new population, discrepant result, new instrument, unexpected effect) that a reader could not have predicted from the cited literature. Second, and gating, the entire six-item reference base carries sequential placeholder-style DOIs under the reserved 10.5555 prefix, which I cannot treat as verified prior work. A paper whose claim to fit rests on "consistency with prior research" cannot be evaluated until that prior research is confirmed to exist.
 
 ### Strengths (3-5 items)
-1. **Claim–evidence discipline**: The abstract, results, and conclusion all restrict themselves to correlational language ("positively and moderately associated"; "should not be read as causal"). The Section 5 sentence that the reverse pathway "is equally consistent with the data" is exactly the honesty most TAM submissions lack.
-2. **Reporting hygiene at my altitude**: r = .42, 95% CI [.30, .52], p < .001, n = 214, plus a Spearman robustness check (ρ = .40) — the headline is reported with its inferential furniture, which lets an editor trust the number without waiting for the specialist.
-3. **Structural coherence**: Title → RQ (Section 1, "is perceived usefulness … associated with self-reported frequency of use?") → result → conclusion agree exactly. No over-promising; the conclusion answers the precise question posed.
-4. **Limitations are load-bearing, not decorative**: Section 6 names single-site scope, single-item self-report, cross-sectional non-inference, and voluntary-response bias — the four objections a reviewer would otherwise raise.
+
+1. **Calibrated, non-overreaching claims**: The paper does what strong survey reporting should — it declines to test a full acceptance model, restricts itself to "the strength and direction of a single association within one clearly bounded sample" (§1), and states the reverse-causation pathway is "equally consistent with the data" (§5). This is exactly the register a cross-sectional self-report design licenses.
+2. **Transparent methodological reporting**: Response accounting is explicit (233 received → 14 incomplete + 5 duplicates removed → 214, §3.1), a power analysis is reported (>.80 power for r ≥ .19, §3.4), and results carry a 95% CI [.30, .52] alongside the point estimate and a Spearman robustness check (ρ = .40, §4). Few submissions at this scope report this completely.
+3. **Honest limitations framing**: The four-part limitations section (§6) names single-site generalizability, self-report-vs-log divergence, the cross-sectional causal bar, and voluntary-response self-selection — the very threats a critical reader would raise, disclosed by the authors themselves rather than left to reviewers.
 
 ### Weaknesses (3-5 items)
-1. **W1 — Contribution sufficiency (incremental value)**: The paper re-confirms a well-established association without a distinguishing hook. *Why it's a problem*: for a saturated literature, "one more correlation, honestly reported" is a Research-Note contribution, not obviously a full-article one. *Direction*: either foreground a genuinely novel angle (e.g., exploit the self-report/log divergence the paper itself cites, or report a subgroup/year-level moderation the n = 214 could support) or reposition as a Brief Report. (Domain depth → R2.)
-2. **W2 — The onboarding implication leans slightly past the correlation**: Section 5's suggestion that usefulness-focused onboarding "may be worth institutional attention" is hedged ("suggested by, not proven by"), but it is the paper's only forward claim and it rests on a moderate cross-sectional r whose direction the paper elsewhere says is unresolved. *Direction*: either drop it to a pure "future work" framing or acknowledge that the reverse-causation possibility undercuts the onboarding logic specifically.
-3. **W3 — Under-connection to the adjacent analytics conversation (D4)**: The paper cites Vasquez (2020) on self-report/log divergence but does not connect its own finding to the learning-analytics readership who would care most. *Direction*: one paragraph situating the result against log-based engagement work would materially raise cross-field relevance.
+
+1. **Unverifiable reference base (gating)**: All six references (§References) carry DOIs under `10.5555/2050001` through `10.5555/2050006` — a strictly sequential run under the DOI prefix reserved for testing and examples. I cannot verify that any of these sources exist, and the paper's core fit claim ("consistent with prior technology-acceptance research," §5) is entirely load-bearing on them. **Direction:** supply resolvable DOIs and full bibliographic details for every source, or the manuscript cannot proceed regardless of its other merits. This is a submittability gate, not a revision nicety.
+2. **Thin incremental contribution**: The paper's own framing — "an incremental data point, comparable with prior work, rather than as a test of a theoretical model" (§2) — describes a result that re-confirms an established regularity without adding a new population of interest, a discrepant finding, a novel instrument, or a modeled confounder. **Direction:** sharpen the "why this matters" case. What does a reader learn here that Song's (2018) multi-campus distribution or Ibarra and Poll (2021) did not already establish? A single association needs either a genuinely under-studied setting or an analytic angle (e.g., modeling the course-requirement and assessment-schedule drivers the paper gestures at in §4 but never measures) to clear a journal's novelty bar.
+3. **No results artifact for a quantitative survey**: A survey paper reporting distributions, a correlation, a CI, and a robustness check presents zero tables or figures — the reader gets a mean, an SD, a median category, and one r in running prose (§4). **Direction:** add at least a descriptives table and a scatterplot; the manuscript refers to "scatterplot inspection" (§3.4) but shows no scatterplot.
+4. **Single-item outcome under-justified at the editorial level**: The dependent variable is one five-point frequency item (§3.2). I leave the psychometric treatment to methodology review, but at the editorial level the paper never argues why a single self-reported item can bear the interpretive weight of "LMS engagement," nor shows the adapted six-item usefulness scale items or its adaptation from Costa and Wren (2019). **Direction:** justify the single-item outcome or acknowledge it as a first-order limitation on construct coverage, and report the instrument (items, adaptation) so the measurement is reproducible.
 
 ### Detailed Comments
 
 #### Journal Fit
-Topic is in scope for a specialized ed-tech journal. The concern is format, not subject: as a full article the contribution is thin; as a Brief Report / Research Note it is a clean fit. I would ask the author to either strengthen to full-article weight or accept the shorter format.
+
+Topic-fit is strong for an AJET-tier specialized outlet: single-institution, correlational LMS-engagement work with honest bounded claims is core to what such venues publish. The obstacle to fit is not scope but the two conditions above — a real, verifiable literature base and a sharpened contribution claim. As submitted, the paper reads as a competent replication-in-spirit of well-established findings; a specialized journal can publish that, but only once it can confirm the "consistency with prior work" the paper leans on, and only if the authors articulate what this specific data point adds to the distribution.
 
 #### Originality
-Low-to-moderate. The construct-pair (perceived usefulness ↔ use) is foundational TAM territory. Originality here is not in the relationship but in the transparent bounding and the single-site data point. That is a real but small form of originality.
+
+Low as it stands, by the authors' own account. The source of novelty is neither new method, new theory, nor new data of independent interest — it is one more estimate of an association the field has repeatedly documented. The most credible originality lever available is the setting-plus-analysis combination: if this population is genuinely under-represented in the literature, or if the authors model the unmeasured drivers they acknowledge (course requirements, assessment schedules), the paper moves from "another r = .42" toward a contribution.
 
 #### Significance
-Modest and correctly self-described as such. If the finding holds it changes little that the field did not already believe; its value is as a comparable, honestly-reported entry in a distribution (an argument the paper itself makes via Song 2018).
+
+Modest and local. If the finding holds, it reinforces an intuition — usefulness-oriented onboarding may matter — already available in the practitioner literature the paper cites (Whitfield, 2019). The paper is appropriately cautious that the onboarding implication is "suggested by, not proven by, the present correlation" (§5), which I credit; but that caution also caps the significance the paper can claim.
 
 #### Structural Coherence
-Strong. No title/abstract/conclusion drift; no over-claim. This is the paper's best dimension.
+
+Excellent. Title → abstract → introduction → results → conclusion are mutually consistent; the research question posed in §1 is exactly the one answered in §4 and restated in §7; there is no over-promising. This is the manuscript's strongest editorial quality and the reason my recommendation is Major Revision rather than Reject.
 
 #### Title & Abstract
-Accurate and non-inflated. The title correctly says "self-reported use", not "use"; the abstract states the design bound explicitly. Exemplary matching of claim to scope.
+
+Both are accurate and well-calibrated. The title correctly signals "perceived usefulness" and "self-reported use" as distinct constructs rather than conflating perception with behavior, and the abstract's closing line ("modest, design-bounded evidence") matches what the body delivers. No over-claim to correct here.
 
 #### Conclusion
-Directly answers the RQ and does not exceed it. The only forward claim (onboarding) is hedged; see W2.
+
+The conclusion (§7) directly answers the research question and stays within the evidence, explicitly foregoing a causal claim and pointing to log-data, longitudinal, and multi-institution designs as the next steps. It is a model of a scope-matched conclusion. Its only weakness is inherited from the contribution problem: a conclusion this modest underscores how little the paper claims to add.
 
 ### Questions for Authors
-1. What distinguishes this contribution from the associations already reported in Ibarra & Poll (2021) and Song (2018) beyond being a new sample? What should a reader take from *this* study specifically?
-2. Given that both variables are self-reported on the same instrument, how do you rule out common-method variance as a partial explanation for r = .42?
-3. Would you consider reframing as a Brief Report, or can the contribution be strengthened to full-article weight (e.g., a moderation analysis the n supports)?
+
+1. Every reference resolves to a sequential `10.5555/2050001`–`2050006` DOI, a prefix reserved for testing. Can you provide the resolvable DOIs and full citation details for all six sources? This is a precondition for any further evaluation.
+2. Beyond re-confirming an established association, what does this specific sample contribute that the cited multi-campus and context-focused studies (Song, 2018; Ibarra & Poll, 2021) do not already provide? Is this population or setting under-studied in a way that makes the data point independently valuable?
+3. Given that both perceived usefulness and use are self-reported in the same instrument, how do you distinguish a substantive perception–behavior link from common-method covariance between two self-reports? (The manuscript flags self-report-vs-log divergence via Vasquez (2020) but does not name this same-source concern.)
+4. Why was a single-item outcome chosen over a multi-item or log-based use measure, and what is the construct-validity argument for it carrying the weight of "LMS engagement"?
 
 ### Minor Issues
-- Section 4 reports "The proportion of variance shared by the two measures was accordingly modest" but never states r² = .18 explicitly; giving the number would help readers.
-- "a few times per week" (Section 4) vs. the scale anchor "a few times per week" is fine, but the median-category reporting could be a one-line frequency table.
 
-#### Contract scoring (sprint-contract Phase 2 machine block)
+- No table or figure is present; §3.4 references a scatterplot that is not shown.
+- The six-item usefulness scale's adapted items and the nature of the adaptation from Costa and Wren (2019) are not reported, which prevents reproducibility of the key predictor.
+- A response rate against the eligible undergraduate population is not given (only raw counts), which would let readers gauge the voluntary-response bias the paper acknowledges in §6.
+- "Costa and Wren (2019), whose original instrument reported strong internal consistency" (§3.2) attributes reliability to a source I cannot verify — this claim inherits the reference-integrity problem above.
+
+---
 
 contract_role: eic
 
 ## Dimension Scores
 
 ### D1: methodology_rigor
+The design is reportable and, for its scope, transparently so: named sampling frame and channel, full response accounting (233→214), a validated-scale α = .88 for the predictor, a power analysis, a 95% CI, and a Spearman robustness check. It has material, revision-recoverable gaps rather than an uninterpretable foundation: no response rate against the eligible population, a single-item outcome whose construct coverage is unargued, and an undescribed scale adaptation with no item-level reporting. Under my committed plan this is precisely the warn pattern ("core design is reportable but has material gaps … recoverable in revision without redoing the study"), not the block pattern (no sampling description / uninterpretable N / instrument provenance entirely absent).
 score: warn
 
 ### D2: domain_accuracy
-score: warn
+The domain constructs are used correctly — perceived usefulness, self-reported use, and actual/logged use are kept distinct throughout, and the reverse-causation and self-report-vs-log cautions are represented faithfully. But my committed D2 block trigger is "a citation that oversimplifies … or attributing to prior work a finding it does not contain such that the contribution rests on a factual error." Here the entire evidence base carries reserved-test-prefix sequential DOIs (`10.5555/2050001`–`2050006`), which I cannot verify as real; the paper's central fit claim ("consistent with prior technology-acceptance research") and a specific attributed finding ("Costa and Wren … reported strong internal consistency") are load-bearing on sources whose existence is unconfirmed. When a paper's domain-accuracy footing rests on prior work that cannot be shown to exist, the domain representation cannot be certified as accurate. This meets my committed block bar.
+score: block
 
 ### D3: argumentative_coherence
+The thesis holds end-to-end. The research question is scoped to correlational, single-time-point, self-report evidence; conclusions are held to that scope; causality and generalization limits are explicit and repeated; there is no title-to-conclusion drift. My committed block trigger (an unhedged causal claim from cross-sectional correlation) does not fire — the reverse pathway is stated as "equally consistent." My committed warn trigger (over-reach in phrasing / understated limitations) also does not fire; the limitations section is if anything more candid than the norm. This is a pass.
 score: pass
 
 ### D4: cross_disciplinary_relevance
+Construct definitions are legible to adjacent-field readers, and the one applied implication (usefulness-oriented onboarding) is explicitly hedged as "suggested by, not proven by, the present correlation." My committed block trigger — sweeping applied/policy prescriptions with no evidentiary link — does not fire; the paper is scrupulous about not over-reaching into practice. My committed warn trigger does apply: the implication is serviceable but thinly connected, and the cross-disciplinary reach is gestured at more than earned. Warn.
 score: warn
 
 ### D5: writing_and_structure
-score: pass
+Prose is clear, IMRaD is complete, and title/abstract/conclusion agree — well above the disorganization/opacity block bar. But my committed warn trigger fires on two counts: the ~1600-word compression omits the results artifacts a quantitative survey needs (zero tables/figures; a scatterplot referenced but not shown) and omits the instrument items required for reproducibility. These impede but do not prevent comprehension. Warn.
+score: warn
 
 ## Failure Condition Checks
 
 ### F1
-fired: false
+Predicate: any mandatory dimension (D1/D2/D3) scores 'block'. D2 scored block.
+fired: true
 
 ### F2
+Predicate: two or more mandatory dimensions score 'warn' or worse. D1 = warn, D2 = block, D3 = pass → two mandatory dimensions at warn-or-worse.
 fired: true
 
 ### F3
+Predicate: any high-priority dimension (D4) scores 'block'. D4 scored warn, not block.
 fired: false
 
 ### F0
+Predicate: every mandatory dimension scores 'pass'. D2 scored block.
 fired: false
 
 ## Editorial Decision
-editorial_decision=major_revision
+
+Precedence: highest-severity fired condition wins. F1 (severity 90) fired; F2 (severity 70) fired; F1 takes precedence.
+editorial_decision=reject_or_major_revision
 
 ---
 
-## SEAT 2 — Peer Reviewer 1 · Methodology (`methodology_reviewer_agent`)
+## SEAT — Peer Reviewer 1 (Methodology)
 
-> Single-family routing note: `[CROSS-MODEL-SKIPPED]` — `ARS_CROSS_MODEL` unset, so the Reviewer 2 seat that would swap to the cross-model family under the #540 track runs on the primary family like the rest of the panel.
+### Phase 1 (blind call)
 
-### Phase 1 — Paper-content-blind pre-commitment
+## Contract Paraphrase
 
-*(Input: contract + metadata only. Paradigm assumed quantitative survey from field metadata.)*
+**D1 — methodology_rigor (mandatory):** From a methodology-rigor stance, this dimension asks whether a cross-sectional survey of undergraduate LMS users was designed and executed well enough to bear the weight of its own claims. I read it as: is the sampling frame and recruitment defensible; is the achieved sample size justified rather than merely convenient; are the two constructs (perceived usefulness, self-reported use) measured with instruments whose reliability and validity are established or at least reported; are the analyses matched to the data and their assumptions checked; and could another researcher reproduce the procedure from what is written. For a 1,597-word survey report, my rigor bar is calibrated to that brevity but not lowered on the load-bearing items: instrument provenance, response/completion accounting, and whether the inference (correlation, prediction) stays inside what a single-time-point self-report design can support.
 
-#### Contract Paraphrase
+**D2 — domain_accuracy (mandatory):** In methodology terms, this dimension is whether the paper's statistical and measurement claims are stated correctly and whether its representation of the LMS/TAM/technology-acceptance literature it leans on is faithful. My reading is narrower than a domain reviewer's: I check that reported statistics are internally consistent and correctly labelled (a correlation is not called a causal effect, a coefficient is not mis-described), that terminology like "perceived usefulness" and "self-reported use" is used in its established sense, and that any effect it borrows from prior work to motivate the design is not misrepresented. I flag domain-fact issues only where they are methodological in nature; substantive field-currency judgments are Reviewer 2/3 territory.
 
-- **D1 methodology_rigor (mandatory).** My core lane: is the survey design fit for the association it targets; is sampling and non-response handled; is the correlation reported to APA 7 completeness (coefficient, exact p, n, 95% CI, effect-size interpretation); are the statistical assumptions of the chosen test (Pearson linearity/bivariate normality, and the ordinal-outcome problem) checked or defensibly waived; and do the conclusions stay inside the cross-sectional envelope?
-- **D2 domain_accuracy (mandatory).** For me this narrows to measurement accuracy: is the reliability evidence (Cronbach's α) correctly interpreted (reliability ≠ validity); is the adapted instrument's validity established; is "self-reported use" correctly labeled as perception, not behavior.
-- **D3 argumentative_coherence (mandatory).** Do the statistical results actually license the discussion's claims — no causal drift, no variance-explained overreach.
-- **D4 cross_disciplinary_relevance (high).** Whether the measurement choices (self-report vs. log data) are positioned against the analytics literature that would scrutinize them.
-- **D5 writing_and_structure (normal).** Statistical-reporting section clarity and APA format.
+**D3 — argumentative_coherence (mandatory):** From my seat this is the chain from data to conclusion: does the reported evidence actually support the thesis, and are there inferential fallacies that break the central argument. For a cross-sectional self-report design the highest-risk coherence failure is causal or directional language ("increases", "leads to", "drives use") resting on single-time-point correlational data — reverse causation and common-method variance are live threats. I also read for whether a null or weak association is glossed, whether conclusions generalize past the sampled population, and whether the argument silently upgrades "association" to "explanation".
 
-#### Scoring Plan
+**D4 — cross_disciplinary_relevance (high):** I paraphrase this, within my methodology lane, as whether the design and its reporting are legible and transportable to adjacent-field readers — enough method detail that a reader outside educational technology could judge and reuse the approach, and whether interdisciplinary framing (e.g., borrowing acceptance-model constructs) is operationalized rather than merely name-dropped. I do not score the breadth of the paper's disciplinary reach; I score whether its methodological transparency lets that reach be assessed at all.
 
-##### D1: methodology_rigor
-- **what_to_look_for**: reported design; sample derivation (initial N → exclusions → analyzed n); a correlation reported with r, exact p, n, and 95% CI; a robustness/assumption check appropriate to an ordinal outcome; a power or precision statement; acknowledgment of non-response/self-selection; strictly correlational conclusion language.
-- **what_triggers_block**: causal inference from cross-sectional data; a headline statistic with no CI *and* no p *and* no n; a test grossly mismatched to the data with no mitigation; or fabricated/impossible statistics.
-- **what_triggers_warn**: a real but non-fatal reporting/validity gap — e.g., Pearson on a single-item ordinal outcome (mitigated by Spearman but not fully); reliability offered where validity is needed; common-method variance unaddressed; no formal missing-data statement; a single-item outcome measure.
+**D5 — writing_and_structure (normal):** Methodologically, this is whether the methods and results are organized and reported clearly enough to be audited — a legible sampling/instruments/analysis narrative, tables that match the text, statistics rendered in a conventional format so a reader can check them. Given the 1,597-word length, I judge completeness-within-brevity: whether the compression drops method-critical reporting (Ns, reliability, test statistics) rather than merely trimming prose.
 
-##### D2: domain_accuracy
-- **what_to_look_for**: α interpreted as internal consistency only; instrument validity beyond α; "self-reported use" labeled as perception.
-- **what_triggers_block**: α claimed as validity, or behavioral claims from a self-report item.
-- **what_triggers_warn**: validity evidence limited to α + "previously validated" citation without in-sample structural check.
+## Scoring Plan
 
-##### D3: argumentative_coherence
-- **what_to_look_for**: discussion claims bounded by the statistics.
-- **what_triggers_block**: causal or predictive claim unsupported by design.
-- **what_triggers_warn**: a mild variance/implication overreach, hedged.
+### D1: methodology_rigor
+- `what_to_look_for`: Stated design type (cross-sectional survey) and its acknowledged limits; sampling frame, recruitment channel, response/completion rate, and final N with a justification (power analysis or explicit rationale) rather than a convenience count; instrument provenance for both constructs plus reliability (e.g., Cronbach's alpha) and validity evidence; item counts and response scale; analysis matched to data type with assumption checks (normality, linearity, multicollinearity where regression is used); effect sizes and CIs alongside p-values; reproducibility affordances (item wording, data/code availability, ethics/IRB record).
+- `what_triggers_block`: No usable account of how the sample was obtained or how large it is (N absent or uninterpretable), OR the core measures have no reported reliability/validity and no instrument source, OR the analysis is fundamentally mismatched to the data (e.g., causal-model estimation presented on data that cannot support it) such that the reported findings are not evaluable — the design cannot answer the question it poses.
+- `what_triggers_warn`: N and sampling are reported but justification is convenience-only with no power/saturation rationale; reliability reported but validity absent (or vice versa); p-values reported without effect sizes or CIs; assumption testing unmentioned where the chosen test requires it; missing-data handling and response rate unstated; reproducibility thin (no item wording, no ethics note) but the study remains interpretable.
 
-##### D4: cross_disciplinary_relevance
-- **what_to_look_for**: the self-report/log-data measurement gap positioned, not just cited.
-- **what_triggers_block**: none expected.
-- **what_triggers_warn**: the measurement-validity gap cited (Vasquez) but not carried into the interpretation of the paper's own r.
+### D2: domain_accuracy
+- `what_to_look_for`: Statistics correctly labelled and internally consistent (df, N, reported values cohere; a correlation called a correlation); established use of "perceived usefulness" / "self-reported use" and any acceptance-model constructs; faithful representation of any prior-work effect used to motivate the design.
+- `what_triggers_block`: A load-bearing statistical claim is demonstrably wrong or internally contradictory in a way that inverts the finding (e.g., a coefficient's sign/magnitude mis-reported, or a reported test that cannot produce the stated conclusion), OR a core construct is redefined into something the instrument does not measure, such that the paper's central quantitative claim is factually unsupportable.
+- `what_triggers_warn`: Minor statistical mislabeling or terminology slippage that does not invert the finding (e.g., loose use of "significant", "predicts" where "associated" is meant), OR a prior-work result is imprecisely characterized but not in a way that changes the design rationale.
 
-##### D5: writing_and_structure
-- **what_to_look_for**: APA 7 statistical formatting (no leading zero on r and p, italic stats, exact p).
-- **what_triggers_block**: unreadable stats reporting.
-- **what_triggers_warn**: minor APA slips.
+### D3: argumentative_coherence
+- `what_to_look_for`: Whether conclusions stay within what cross-sectional self-report data support; explicit hedging of directionality; treatment of reverse causation and common-method variance; consistency between hypotheses, results, and stated conclusions; whether weak/null associations are reported and interpreted honestly rather than glossed.
+- `what_triggers_block`: The central thesis rests on a causal or directional claim ("X increases/drives/leads to Y") that single-time-point correlational data cannot support and the paper offers no design or statistical warrant for it, OR conclusions contradict the reported results — the core argument fails on its own evidence.
+- `what_triggers_warn`: Occasional causal-tinged language that overreaches but is not the load-bearing claim; generalization modestly beyond the sampled population; reverse-causation/common-method threats unacknowledged though conclusions remain mostly correlational; a limitations passage that names threats but conclusions still lean slightly past them.
+
+### D4: cross_disciplinary_relevance
+- `what_to_look_for`: Enough method detail (instruments, procedure, analysis) for an adjacent-field reader to understand and reuse the approach; acceptance-model or cross-field constructs operationalized with definitions rather than name-dropped; implications framed so a non-specialist can assess transportability.
+- `what_triggers_block`: Method reporting is so opaque that no outside-field reader could reconstruct or judge the approach at all, making any interdisciplinary claim unassessable — note this is a high-priority (not mandatory) dimension, so a block here routes via F3, not F1.
+- `what_triggers_warn`: Constructs borrowed from an adjacent framework are named but not operationalized or defined; method detail sufficient for in-field readers but leaves adjacent-field reuse guesswork; interdisciplinary implications asserted without methodological grounding.
+
+### D5: writing_and_structure
+- `what_to_look_for`: A legible methods-then-results structure; tables/figures that match and are cross-referenced by the text; statistics rendered in conventional (APA-style) format with correct symbols, decimals, and p-value notation; brevity that compresses prose without dropping method-critical numbers.
+- `what_triggers_block`: (Normal-priority dimension — under this contract's failure_conditions no `block` here fires F1/F2/F3 by itself; I still record `block` when method/results reporting is so disorganized or internally contradictory that the sections cannot be audited, e.g., tables that contradict the text or missing all inferential statistics.)
+- `what_triggers_warn`: Statistics reported in non-standard format or with inconsistent notation; tables not cross-referenced or mismatched to text in minor ways; organization that forces the reader to hunt for Ns, reliabilities, or test statistics; compression that trims clarity without removing the numbers.
 
 [CONTRACT-ACKNOWLEDGED]
 
-### Phase 2 — Paper-visible review
+### Phase 2 (paper-visible call)
 
-*(Phase 1 = read-only data; manuscript = untrusted data. No injection detected.)*
+I have all three files. Now I'll produce my Phase 2 review, honoring my Phase 1 committed triggers.
+
+Working through my scoring plan against the manuscript:
+
+**D1 (methodology_rigor):** Sampling frame, recruitment channel, response accounting (233→214, 14 incomplete + 5 duplicate), final N, and a power analysis are all present. Instrument provenance is given for PU (adapted from Costa & Wren 2019, α = .88). But the single-item outcome has no reliability (uncomputable), no validity evidence, the adaptation is undescribed, items not shown, no factor structure. My Phase 1 warn triggers explicitly list: reliability reported but validity absent; reproducibility thin (no item wording); missing-data handling minimal. Multiple warn triggers fire; none of my block triggers fire (N is interpretable, core PU measure has provenance+reliability, analysis matches data). → **warn**.
+
+**D2 (domain_accuracy):** Statistics are internally consistent and correctly labelled — correlation called correlation, r/CI/p/n cohere, Spearman robustness appropriate, no causal mislabeling. The 6 references all carry sequential 10.5555 placeholder DOIs (2050001–2050006), a citation-integrity signal — but per my Phase 1 lane, D2 covers whether *statistical/measurement* claims are correct and prior-work is faithfully characterized *as it bears on methodology*. Reference-existence verification is a domain/EIC gating concern (R2/EIC lane); I flag it but it does not fire my D2 block/warn triggers, which require a wrong/inverted statistical claim or a redefined construct. No such error. → **pass** (with the DOI flag noted for the panel).
+
+**D3 (argumentative_coherence):** The paper is disciplined — correlational language throughout, explicit reverse-causation acknowledgment (Delgado 2020), causal disclaimer in abstract/discussion/conclusion, honest limitations. My block trigger (load-bearing causal claim) does not fire. My warn triggers: common-method variance is a live threat (two self-reports in one instrument) and is *not* named — but the paper does hedge directionality and stays correlational; the onboarding implication ("may be worth institutional attention") is explicitly marked as suggested-not-proven. This is at the boundary. CMV unacknowledged is in my warn list, but conclusions remain correlational and the overreach is explicitly disclaimed. On balance this is a thin miss, not a coherence failure. → **pass**, with CMV surfaced as a required-addition weakness.
+
+**D4 (cross_disciplinary_relevance):** Method detail is sufficient for in-field readers; acceptance-model constructs are named. But the single-item use measure and undescribed scale adaptation leave adjacent-field reuse as guesswork; PU construct is operationalized, "technology acceptance" is invoked but the model is explicitly not tested (author-declared). My warn trigger (constructs named but adjacent-field reuse leaves guesswork; method detail sufficient in-field but not for reuse) fires. Not a block (an outside reader *can* reconstruct the core approach). → **warn**.
+
+**D5 (writing_and_structure):** Clean IMRaD, APA-style stats, no table (all inline), text is legible and auditable. Method-critical numbers mostly present; the one gap (no descriptive detail beyond a median category for the use item, no shared-variance figure stated numerically) is minor. → **pass**.
+
+Failure conditions against my scores: F1 (any mandatory block) — no mandatory dimension is block → false. F2 (two or more mandatory dimensions warn-or-worse) — mandatory dims are D1/D2/D3; only D1 is warn (D2 pass, D3 pass) → false. F3 (any high-priority block) — D4 is warn, not block → false. F0 (every mandatory dimension pass) — D1 is warn, so false. No condition fires. Per contract precedence, when none of my conditions fire the decision is the accept-grade action.
+
+Note: F0 does not fire (D1 warn), yet no other condition fires either. Per my agent file step 4, the decision when none fired is the contract's accept-grade action (`editorial_decision=accept`). I record my seat-level narrative recommendation as Minor Revision (the D1 warn is real and material), but the contract-derived machine action is the accept-grade entry.
+
+---
 
 ## Methodology Review Report (Peer Reviewer 1)
 
 ### Reviewer Identity
-Quantitative survey methodologist; specialist in correlational analysis in educational settings and in the self-report-vs-behavioral-trace measurement literature.
+
+A quantitative methodologist and psychometrician with an educational-measurement background, specializing in survey-instrument validation, correlational inference, and the measurement of self-reported behavior; publishes on reliability, single-item vs. multi-item measures, and the interpretation of effect sizes.
 
 ### Overall Recommendation
-Major Revision
+
+Minor Revision
 
 ### Confidence Score
-5
+
+4
 
 ### Summary Assessment
-Methodologically this is a careful, honest, but **thin** correlational study whose two load-bearing weaknesses are both measurement-side, and both under-addressed. First, the outcome — LMS use — is a *single* five-point self-report item, and the predictor is a *self-report* perceived-usefulness scale; the reported r = .42 is therefore a correlation between two self-reports collected on the same instrument, exposed to common-method variance (CMV) that the paper never discusses. This is the single most consequential gap, because CMV inflates precisely this kind of same-source attitudinal–behavioral correlation, and the paper's own cited source (Vasquez 2020) is the warrant for taking it seriously. Second, Pearson r is computed on a single-item ordinal outcome; the authors do the right defensive thing by reporting Spearman ρ = .40 as a robustness check, which substantially mitigates (but does not fully retire) the concern. On the positive side, the reporting is APA-clean and unusually complete for a short paper: coefficient, 95% CI, exact p, n, a sensitivity-style power statement (>.80 power for r ≥ .19), a scatter/linearity/outlier inspection, and strictly correlational conclusion language. No causal drift. The design fits the (modest) question. The problems are fixable with added analysis and framing, not a redesign — hence Major, not Reject.
+
+This is a competently and honestly executed cross-sectional survey. Within its declared scope, the design is sound: the sampling frame (all enrolled undergraduates), the recruitment channel, the response accounting (233 received; 14 incomplete and 5 duplicate removed; 214 analyzed), an a priori power analysis, a Pearson estimate with 95% CI, and a Spearman robustness check are all present and correctly reported. The statistics are internally consistent and the inference stays disciplined inside what single-time-point self-report data can bear — directionality is hedged, reverse causation is named, and the causal disclaimer is carried across abstract, discussion, and conclusion.
+
+The load-bearing methodological weakness is measurement of the outcome. The dependent variable is a single five-point frequency item: its reliability is uncomputable, no construct-validity evidence is offered, and treating an ordinal single item as the input to a headline Pearson r is under-justified even with the Spearman check reported. The perceived-usefulness scale carries α = .88 but the adaptation from Costa and Wren (2019) is undescribed, items are not shown, and dimensionality is not examined. A second unaddressed threat is common-method variance: both measures are self-reported in one instrument, so the observed r = .42 may partly reflect same-source method covariance rather than a perception–behavior link. None of these sink the study; they are fixable in revision.
 
 ### Strengths (3-5 items)
-1. **S1 — Complete correlation reporting**: "r = .42, 95% CI [.30, .52], p < .001, n = 214" (Section 4) is textbook APA 7 — coefficient, interval, exact-threshold p, and n all present. The CI is the item most short papers omit; its presence lets a reader judge precision, not just significance.
-2. **S2 — Assumption-aware robustness check**: The authors anticipated the ordinal-outcome objection and pre-empted it with Spearman ρ = .40 (Section 4), plus an explicit scatterplot inspection for linearity, monotonicity, and bivariate outliers and a symmetry note (Section 3.4). This is exactly the right defensive move.
-3. **S3 — Sensitivity framing of power**: Section 3.4 states the design had >.80 power to detect r ≥ .19 at α = .05 (two-tailed) — a sensitivity/minimum-detectable-effect statement, which is more honest than a post-hoc observed-power calculation. Sample derivation (233 → −14 incomplete → −5 duplicate → 214) is fully reported.
-4. **S4 — Conclusion conservatism**: No statistic is over-read. Section 5 explicitly names the reverse-causation pathway as "equally consistent with the data." Causal language is absent throughout.
+
+1. **Response and sample accounting is transparent and reproducible-at-the-count-level**: The paper states the recruitment channel, the collection window, the raw count (233), the exclusion breakdown (14 incomplete + 5 duplicate), and the final N (214), so a reader can reconstruct the sample construction (§3.1). This is exactly the reporting most survey papers omit.
+
+2. **A priori power analysis, appropriately framed**: The study reports >.80 power to detect r ≥ .19 at α = .05 two-tailed with n = 214 (§3.4), which correctly establishes sensitivity to small-to-moderate effects rather than presenting the achieved N as a mere convenience count. The observed r = .42 sits comfortably above the detectable floor.
+
+3. **Analysis matched to data type, with an honest robustness check**: Recognizing the outcome is ordinal, the authors compute a Spearman ρ = .40 alongside the Pearson r = .42 and report scatterplot inspection for linearity, monotonicity, symmetry, and outliers (§3.4, §4). The near-identical coefficients defuse the parametric-assumption objection.
+
+4. **Inference stays inside the design**: Effect estimate, 95% CI [.30, .52], p, and n are reported together (§4); the shared-variance point is made qualitatively; and causal language is disclaimed in the abstract, §5, and §7. Reverse causation is explicitly named via Delgado (2020). For a cross-sectional correlational report, this is the correct discipline.
 
 ### Weaknesses (3-5 items)
-1. **W1 — Common-method variance is unaddressed (MAJOR)**: *What*: both variables are self-reported on one instrument; r = .42 is a same-source attitudinal–behavioral correlation. *Why it's a problem*: CMV is a known upward-biasing artifact for exactly this configuration; without any diagnostic (e.g., Harman's single-factor test, a marker variable, or at minimum an explicit discussion) the reader cannot tell how much of the .42 is substantive versus shared-method artifact. The paper cites Vasquez (2020) on self-report/log divergence but does not connect it to its *own* estimate. *How to improve*: add a CMV discussion and, if the item-level data exist, a Harman's single-factor or marker-variable check; failing that, explicitly bound the estimate as a self-report association and state the expected direction of CMV bias.
-2. **W2 — Single-item outcome measure (MAJOR)**: *What*: LMS use is one ordinal frequency item. *Why*: single-item measures have unestimable reliability, coarse variance, and cannot separate frequency from depth/duration of use; the α = .88 the authors report applies only to the *predictor*, leaving the outcome's measurement quality entirely uncharacterized. *How to improve*: acknowledge the outcome's psychometric limits explicitly (currently only its self-report nature is flagged, not its single-item status), and in future work use a multi-item or log-derived use measure.
-3. **W3 — Reliability offered where validity is the open question (MINOR→MAJOR)**: *What*: the predictor's evidentiary support is Cronbach's α = .88 plus "previously validated" (Section 3.2). *Why*: α is internal consistency, not validity; "adapted" instruments can shift factor structure, and no in-sample structural/validity check (CFA, or even inter-item/dimensionality note) is reported. *How to improve*: report at least a factor/dimensionality check for the six adapted items in this sample, or soften "validated" to "internally consistent in this sample."
-4. **W4 — No explicit missing-data / partial-response statement beyond exclusions (MINOR)**: *What*: 14 "incomplete" submissions were removed listwise; item-level missingness among the 214 retained is not reported. *Why*: listwise removal of incompletes plus voluntary response can bias the analyzed sample. *How to improve*: report item-level completeness for the 214 and note the handling method.
+
+1. **Single-item outcome carries interpretive weight it cannot fully bear** — *Problem*: The dependent variable is one five-point frequency item (§3.2); reliability is uncomputable for a single item, and no construct-validity evidence (e.g., correlation with any external anchor) is given. The headline association therefore rests on an unvalidated ordinal indicator treated as continuous. *Why it matters*: attenuation from single-item unreliability and the ordinal-as-continuous treatment both bias the point estimate in unknown directions, so r = .42 is a floor-uncertain estimate. *Improvement*: justify the single-item choice explicitly (e.g., cite single-item-measure validity literature), report the item's full response distribution rather than only a median category, and lead with (or at least co-headline) the Spearman coefficient since it is the assumption-appropriate statistic.
+
+2. **Instrument adaptation and item-level reporting are absent** — *Problem*: The six-item perceived-usefulness scale is "adapted from Costa and Wren (2019)" with α = .88, but the nature of the adaptation is not described, the items are not shown, and dimensionality/factor structure is not examined (§3.2). *Why it matters*: an undescribed adaptation breaks the provenance chain — a reader cannot tell whether the adapted scale still measures the original construct, and α alone does not establish unidimensionality. *Improvement*: report the adapted items (or an appendix/OSF pointer), state what changed from the original, and report at minimum inter-item statistics or a one-factor check.
+
+3. **Common-method variance is unaddressed** — *Problem*: Both perceived usefulness and self-reported use are collected from the same respondents in the same self-report instrument at the same time, yet common-method (same-source) bias is never named (§4, §5). The paper flags self-report-vs-log divergence via Vasquez (2020) but that is a different threat. *Why it matters*: same-source covariance can inflate an observed correlation, so part of r = .42 may be method artifact rather than substantive perception–use association. *Improvement*: name common-method variance explicitly as a limitation, and if any single-common-factor or marker-variable diagnostic is feasible from the collected data, report it; otherwise state the constraint plainly.
+
+4. **Reproducibility affordances thin below the count level** — *Problem*: There is no item wording, no data/code availability statement, and no descriptive table; the ethics approval is noted but the instrument itself is not recoverable from the manuscript (§3.2–§3.3, §4). *Why it matters*: the sample construction is reproducible but the measurement is not — another team could not administer the same instrument from what is written. *Improvement*: add an instrument appendix and a data/materials availability statement.
 
 ### Detailed Comments
 
 #### Research Questions & Hypotheses
-RQ is clear, narrow, and answerable ("is perceived usefulness associated with self-reported frequency of use?"). No formal hypotheses, appropriate for a descriptive-correlational note. The method matches the question.
+- The RQ is clear, answerable, and honestly scoped: within one undergraduate population, is perceived usefulness associated with self-reported LMS-use frequency (§1). The paper frames it descriptively/correlationally and declines to test a full acceptance model — an appropriate self-limitation. No formal hypotheses are stated, which is acceptable for an explicitly descriptive design.
 
 #### Research Design
-Cross-sectional single-wave survey — appropriate for an *association* claim, structurally incapable of the direction/causal claim the authors correctly decline to make. Internal-vs-external validity trade-off is reasonable for the stated aim; external validity is bounded (single site) and the authors say so.
+- Cross-sectional single-site survey; the design's central limitation (no temporal/causal inference) is stated and respected. The internal/external-validity trade-off is handled honestly: external validity is bounded to one institution and flagged, internal-validity threats (reverse causation, self-selection) are named. Appropriate for the question as posed.
 
 #### Sampling Strategy
-Census-frame distribution to all enrolled undergraduates via the announcement channel; analyzed n = 214 from 233 received. The **denominator problem**: no institutional population size and therefore no response rate is reported, so non-response magnitude cannot be judged — and Section 6 concedes engaged students may be overrepresented. Report the population N and response rate.
+- Frame = all enrolled undergraduates; recruitment = institutional course-announcement channel; window = three weeks. Voluntary response is the key sampling threat and is acknowledged in §6 (students more engaged with institutional channels may be overrepresented). The N = 214 is justified by power analysis, not merely reported. No response *rate* is computable because the eligible denominator (total enrolled) is not stated — worth adding, since a broadcast channel makes the true response rate a meaningful indicator of self-selection severity.
 
 #### Data Collection
-Three-week window, single announcement channel. Adequately described. The channel itself (course-announcement) plausibly self-selects for LMS-engaged students — a self-selection path directly relevant to the outcome variable, worth explicit treatment.
+- Procedure and ethics are adequately described (voluntary, anonymous, informed consent, no linkage, ethics-committee approval; §3.3). The instrument quality is the gap: PU scale provenance is given but not the adapted items; the use item is a bare single-item frequency measure with no distributional reporting beyond a median category.
 
 #### Analysis Methods
-Pearson as primary with Spearman robustness is defensible given the linearity/monotonicity inspection. Effect-size interpretation ("moderate") is present and correctly Cohen-benchmarked (r = .30/.50 bands). The one missing derived quantity is the explicit shared-variance figure (r² ≈ .18) — described in prose ("modest") but not stated.
+- Appropriate. Pearson with a Spearman robustness check for the ordinal outcome; assumption inspection (linearity, monotonicity, symmetry, outliers) reported; power analysis a priori; CI reported. The one methodological recommendation is to treat the Spearman coefficient as the primary statistic given the ordinal single-item outcome, with Pearson as the comparison, rather than the reverse.
 
 #### Results Presentation
-Complete for the single association reported; no selective-reporting risk (there is essentially one analysis). Descriptives (M = 3.6, SD = 0.8 for PU; median use category) are reported. A simple frequency table for the use item would help.
+- Complete and non-selective: the point estimate, CI, p, n, and the Spearman check are all reported, and the modest shared variance is stated honestly rather than glossed (§4). The shared-variance claim is made qualitatively ("modest") but no numeric value (e.g., r² ≈ .18) is given — a minor completeness gap. Descriptive reporting for the use item is thin (median category only).
 
 #### Reproducibility
-Instrument is cited (Costa & Wren 2019) and item count/anchors given; no data or analysis-code availability statement. For a survey of this simplicity that is a minor gap, but an OSF/data-availability line is now conventional.
+- Count-level reproducible (sample construction fully traceable); instrument-level not reproducible (no item wording, no materials/data availability statement). Ethics record present. Net: partial.
 
 #### Methodological Fallacies Detected
-- **Reverse causation** (from the checklist): correctly *identified and disclaimed* by the authors themselves (Section 5) — not a fallacy committed, a fallacy avoided.
-- **Common-method / same-source bias**: present and undiscussed (W1) — the one genuine methodological omission.
-- No p-hacking / multiple-comparison risk (a single primary test).
+- **Reverse causation**: present as a *threat* but correctly handled — the paper explicitly declines the causal reading and names the reverse pathway (Delgado 2020). Not a fallacy committed, a threat disclosed.
+- **Common-method / same-source bias**: a live, unacknowledged threat (both variables self-reported in one instrument). This is the one fallacy-adjacent gap the authors do not name.
+- No p-hacking, HARKing, multiple-comparison, or selective-reporting signals: a single pre-specified bivariate association is reported in full.
 
 ### Questions for Authors
-1. How do you exclude common-method variance as a partial driver of r = .42, given both measures are self-reported on the same instrument? Can you run a Harman's single-factor or marker-variable diagnostic?
-2. What is the institutional undergraduate population and the resulting response rate? How does non-response bound the estimate?
-3. Was any in-sample validity/dimensionality check run on the six adapted perceived-usefulness items, or does support rest on α plus the source citation?
+1. Why is Pearson r the headline statistic rather than Spearman ρ, given the outcome is a single ordinal item? What is the full response-category distribution of the use item?
+2. What specifically was adapted from the Costa and Wren (2019) instrument, and can the six items be provided? Was dimensionality checked, or is α = .88 the only psychometric evidence?
+3. Can you name and, if feasible, diagnose common-method variance, since both measures share a single self-report source?
+4. What was the eligible enrolled population, so a response rate (and thus a bound on self-selection) can be estimated?
+5. (Integrity note for the panel, forwarded not adjudicated here) All six references carry sequential DOIs under the 10.5555/205000x prefix — please confirm these resolve to real, indexed sources; this is a gating check owned by the EIC/domain seat, but it bears on whether the "consistent with prior work" claims are verifiable.
 
 ### Minor Issues
-- APA 7 number format is correct throughout (r = .42 and p < .001 with no leading zeros — good).
-- State r² ≈ .18 explicitly rather than only "modest proportion of variance."
-- Add a data-availability statement.
+- §4: report a numeric shared-variance value (r² ≈ .18) alongside the qualitative "modest," for auditability.
+- §4: give the use item's response distribution, not only "median category of 'a few times per week.'"
+- §3.1: state the eligible-population denominator so a response rate can be computed.
+- All statistics are in clean APA style; no formatting corrections needed.
 
-#### Contract scoring (sprint-contract Phase 2 machine block)
+---
 
 contract_role: methodology
 
@@ -354,7 +423,7 @@ contract_role: methodology
 score: warn
 
 ### D2: domain_accuracy
-score: warn
+score: pass
 
 ### D3: argumentative_coherence
 score: pass
@@ -371,7 +440,7 @@ score: pass
 fired: false
 
 ### F2
-fired: true
+fired: false
 
 ### F3
 fired: false
@@ -379,400 +448,522 @@ fired: false
 ### F0
 fired: false
 
+## Review Body
+
+Within its declared cross-sectional, single-site scope the study is methodologically sound and unusually disciplined in its inference: transparent response accounting (233→214 with a stated exclusion breakdown), an a priori power analysis framing N = 214 as sensitive rather than convenient, a data-type-matched analysis (Pearson with a Spearman ρ = .40 robustness check and reported assumption inspection), and effect estimate reported with 95% CI, p, and n. Causal and directional overreach is avoided throughout; reverse causation is explicitly named. These support D2 (pass — statistics internally consistent and correctly labelled, no inverted or mislabeled claim), D3 (pass — the load-bearing claim stays correlational, directionality is hedged, and the one practical implication is explicitly marked "suggested by, not proven by" the correlation), and D5 (pass — clean auditable IMRaD with conventional APA statistics).
+
+D1 scores warn, not block: the core measures remain interpretable and the design can answer the question it poses, so no block trigger fires, but three warn triggers from my scoring plan are met — the single-item outcome has no computable reliability and no validity evidence yet feeds a headline parametric correlation; the perceived-usefulness scale reports α but its adaptation is undescribed and items are unshown (reliability-present/validity-thin, reproducibility-thin); and common-method variance (two self-reports, one instrument) is a live threat the paper never names. D4 scores warn: method detail is sufficient for in-field readers but the undescribed scale adaptation and bare single-item outcome leave adjacent-field reuse as guesswork, and "technology acceptance" is invoked as framing without the acceptance model being operationalized (author-declared, not concealed). D4 does not block — an outside reader can still reconstruct the core approach.
+
+I record one integrity observation for the panel without adjudicating it in my lane: all six references carry sequential placeholder-style DOIs (10.5555/2050001–2050006). Reference-existence verification is owned by the EIC/domain seats; I forward it because the manuscript's "consistent with prior work" claims are unverifiable until those sources are confirmed. The manuscript contained no instruction-injection attempts; it was treated throughout as untrusted data under review.
+
+Applying the contract's failure_conditions to my own dimension scores only: F1 does not fire (no mandatory dimension — D1/D2/D3 — scores block; D1 is warn). F2 does not fire (only one mandatory dimension, D1, is warn-or-worse; D2 and D3 pass, so the "two or more" threshold is not met). F3 does not fire (the high-priority dimension D4 scores warn, not block). F0 does not fire (not every mandatory dimension is pass — D1 is warn). With none of my conditions fired, the contract precedence resolves to the accept-grade action; the cross-reviewer quantifiers on F2 (majority) and F1/F3 (any) are panel-level machinery the synthesizer applies later across seats, not by me. My seat-level narrative recommendation is Minor Revision (the D1 measurement-and-CMV gaps are real and should be fixed), which the synthesizer will reconcile against the panel; the machine action below is the contract-derived accept-grade entry given that none of my conditions fired.
+
 ## Editorial Decision
-editorial_decision=major_revision
+editorial_decision=accept
 
 ---
 
-## SEAT 3 — Peer Reviewer 2 · Domain (`domain_reviewer_agent`)
+## SEAT — Peer Reviewer 2 (Domain)
 
-### Phase 1 — Paper-content-blind pre-commitment
+### Phase 1 (blind call)
 
-#### Contract Paraphrase
+## Contract Paraphrase
 
-- **D1 methodology_rigor (mandatory).** From a domain vantage I care that the design is *appropriate for a technology-acceptance association study* and that the measurement follows field convention — but statistical depth I defer to R1.
-- **D2 domain_accuracy (mandatory) — my core lane.** Does the literature review cover the field's foundational and contemporary work; is the technology-acceptance lineage correctly attributed; is "perceived usefulness" used in its canonical TAM sense; and is the contribution claim honestly sized against what the field already knows?
-- **D3 argumentative_coherence (mandatory).** Is the research-gap argument convincing, and does the contribution claim cohere with the (thin) literature actually cited?
-- **D4 cross_disciplinary_relevance (high).** Is the construct legible to adjacent IS / learning-analytics readers and correctly bridged?
-- **D5 writing_and_structure (normal).** Citation practice, terminological consistency.
+**D1 — methodology_rigor (mandatory):** From a domain-accuracy vantage, this dimension asks whether the study's design and reporting meet what educational-technology survey research actually expects. For a cross-sectional survey of perceived usefulness and self-reported LMS use, the domain-relevant methodological substance is whether the construct "perceived usefulness" is operationalized in a way the field recognizes (TAM-lineage measurement), whether self-reported use is treated with the field's known common-method and self-report caveats, and whether the sampling and reporting let a domain reader judge the claim. I read this dimension as a domain check on whether the methods are the field's accepted methods, not as the technical statistics audit that belongs to Reviewer 1.
 
-#### Scoring Plan
+**D2 — domain_accuracy (mandatory):** This is my primary seat. It asks whether the paper's claims align with current educational-technology evidence, whether prior work (TAM, UTAUT, LMS-adoption literature) is correctly represented and attributed to original sources, and whether domain-specific terminology (perceived usefulness, perceived ease of use, behavioral intention, acceptance vs. adoption, self-reported vs. actual use) is used precisely and consistently with field convention. A domain-accuracy failure is a claim that contradicts established acceptance-model evidence, a mis-attributed or superficially-invoked theoretical construct, or a conflation of self-reported use with behavioral log-verified use presented as if equivalent.
 
-##### D1: methodology_rigor
-- **what_to_look_for**: a design conventional for TAM-association work; measurement consistent with field practice.
-- **what_triggers_block**: a design that cannot bear a technology-acceptance association claim at all.
-- **what_triggers_warn**: measurement choices below field norm (e.g., single-item constructs where the field expects multi-item) — flagged, with statistical depth deferred to R1.
+**D3 — argumentative_coherence (mandatory):** From the domain angle this asks whether the paper's central thesis (that perceived usefulness relates to self-reported use in this undergraduate sample) is argued without the specific reasoning errors this literature is prone to: inferring behavioral causation from a cross-sectional correlation, treating a perceived-usefulness→use association as if it established real system usage, or over-generalizing a single-institution undergraduate result to LMS adoption broadly. I check whether the evidence the paper marshals actually supports the strength of the claim it makes, judged against how this subfield permits itself to reason from cross-sectional self-report data.
 
-##### D2: domain_accuracy
-- **what_to_look_for**: correct attribution of the perceived-usefulness construct to its TAM origin; coverage of foundational (Davis; Venkatesh/UTAUT) and current (log-analytics engagement) work; an honestly-sized contribution claim; no absolute-novelty overreach.
-- **what_triggers_block**: a demonstrable factual/domain error, OR a globally-framed novelty claim the field contradicts, OR core construct mis-attributed.
-- **what_triggers_warn**: literature coverage too thin/one-sided for the venue (foundational sources missing; construct cited to a single secondary source), OR contribution under-theorized — real deficiencies short of a factual error.
+**D4 — cross_disciplinary_relevance (high):** I read this from my seat only insofar as domain framing bears on it: whether the acceptance-model constructs and LMS findings are defined and framed so an adjacent-field reader (instructional design, HCI, information systems) can follow, and whether any interdisciplinary claim the paper makes is substantiated rather than asserted. Deep cross-disciplinary impact assessment is Reviewer 3's; I flag only where imprecise domain definitions would mislead an adjacent reader.
 
-##### D3: argumentative_coherence
-- **what_to_look_for**: a research-gap argument that the cited literature actually supports.
-- **what_triggers_block**: a gap claim contradicted by the paper's own citations.
-- **what_triggers_warn**: gap argument weak because the literature base is too small to establish it.
+**D5 — writing_and_structure (normal):** From the domain vantage this is narrow: whether the literature review has a genuine organizing structure and critical synthesis rather than reference-listing, whether the research-gap argument is legible, and whether terminology and citation of domain constructs are internally consistent. Prose polish and venue-formatting per se sit largely outside my seat; I engage this dimension only where structural or terminological disorder degrades a domain reader's ability to evaluate the claims.
 
-##### D4: cross_disciplinary_relevance
-- **what_to_look_for**: correct bridging to IS/analytics constructs.
-- **what_triggers_block**: none expected.
-- **what_triggers_warn**: adjacent-field construct touched (self-report vs. log engagement) but not integrated.
+## Scoring Plan
 
-##### D5: writing_and_structure
-- **what_to_look_for**: consistent citation format, precise terminology.
-- **what_triggers_block**: unreviewable.
-- **what_triggers_warn**: minor terminological drift.
+### D1: methodology_rigor
+- `what_to_look_for`: whether "perceived usefulness" is measured with a field-recognized instrument (TAM/UTAUT-derived items) rather than an ad hoc scale; whether self-reported use is acknowledged as a proxy carrying self-report and common-method-variance limitations that this subfield routinely flags; whether sample frame, response rate, and instrument provenance are reported to the degree a domain reader needs to trust the design; whether reliability of multi-item constructs is reported in the way acceptance-survey work conventionally reports it.
+- `what_triggers_block`: the study rests on a construct central to its claim ("perceived usefulness" or "use") that is operationalized in a way no acceptance-model reader would recognize as valid, OR self-reported use is presented as verified behavioral use with no acknowledgment of the proxy gap, such that the core design cannot support any of the paper's domain claims. Any severity I attach to a "field should measure it this way" norm must be grounded in an external checkable source (a TAM/UTAUT methodological reference or a venue/reporting standard) per Step 5; if I cannot ground it, I down-rate and label `[FIELD-NORM UNVERIFIED]` rather than block.
+- `what_triggers_warn`: a domain-recognized instrument is used but under-reported (missing reliability, unclear item provenance, or self-report limitation acknowledged only in passing), leaving the design defensible-in-kind but weaker than the subfield's accepted reporting bar — a fixable gap, not a fatal one, and only after the reporting norm is grounded per Step 5.
+
+### D2: domain_accuracy
+- `what_to_look_for`: correct representation and original-source attribution of TAM/UTAUT and the LMS-acceptance lineage; precise, consistent use of the field's terms (perceived usefulness, perceived ease of use, behavioral intention, acceptance vs. adoption, self-reported vs. actual use); claims that sit inside, not against, the current weight of educational-technology evidence on perceived usefulness and system use; coverage of the seminal and last-3-5-year references a domain reader would expect and absence of secondhand citation of foundational constructs.
+- `what_triggers_block`: a load-bearing domain claim that is factually wrong against established acceptance-model evidence, a core theoretical construct mis-attributed or defined against field convention, or self-reported use conflated with log-verified behavioral use as though equivalent in a way that misstates what the paper actually measured — an error that would mislead a domain reader about the state of the field or about what was found.
+- `what_triggers_warn`: prior work represented loosely (imprecise but not false characterization of TAM/UTAUT, a foundational construct cited via a review rather than its origin, or a missing key recent reference) or occasional terminological slippage (e.g., "acceptance" and "adoption" used interchangeably) that a domain reader would want corrected but that does not overturn a central claim.
+
+### D3: argumentative_coherence
+- `what_to_look_for`: whether causal or behavioral language is kept proportional to a cross-sectional self-report design; whether the perceived-usefulness↔use association is described as association rather than demonstrated usage or causation; whether generalization claims are bounded to the single-institution undergraduate sample; whether the stated research gap actually motivates the reported analysis and the conclusions feed back to it.
+- `what_triggers_block`: the central thesis depends on a reasoning error the evidence cannot bear — a causal claim ("perceived usefulness increases use") drawn from cross-sectional correlation, or self-reported use asserted as established system usage — such that the paper's main contribution collapses once the inferential overreach is removed.
+- `what_triggers_warn`: localized overclaiming or an unbounded generalization (e.g., framing a single-cohort undergraduate finding as an LMS-wide conclusion) that weakens but does not dissolve the central argument, and that a scoped rewrite of the claim would repair.
+
+### D4: cross_disciplinary_relevance
+- `what_to_look_for`: whether acceptance-model constructs and LMS findings are defined clearly enough for an adjacent-field reader (HCI, information systems, instructional design) to follow without the paper's internal shorthand; whether any explicitly interdisciplinary claim the paper makes is backed rather than asserted; whether domain jargon is glossed where an adjacent reader would stumble.
+- `what_triggers_block`: an interdisciplinary claim the paper foregrounds is domain-inaccurate at its foundation (a mischaracterized construct or finding that an adjacent field would inherit as false), so the cross-field contribution rests on a domain error I am positioned to catch — noting deep cross-disciplinary assessment remains Reviewer 3's seat.
+- `what_triggers_warn`: core constructs are defined in in-group terms that an adjacent-field reader could not follow, or an interdisciplinary implication is asserted without the domain substantiation that would let another field trust it, without rising to a foundational error.
+
+### D5: writing_and_structure
+- `what_to_look_for`: whether the literature review is organized (thematic/chronological/methodological) and offers critical synthesis rather than an enumerated reference list; whether the research-gap argument is legible; whether domain terminology and the citation of constructs are used consistently throughout.
+- `what_triggers_block`: structural or terminological disorder severe enough that a domain reader cannot reconstruct what construct is being claimed or tested — inconsistent use of a load-bearing term across sections such that the argument cannot be evaluated at all. I expect this to be reachable only rarely at a normal-priority structural dimension.
+- `what_triggers_warn`: the literature review enumerates rather than synthesizes, the research-gap argument is present but underdeveloped, or terminology is inconsistent in a way that adds friction for a domain reader without defeating comprehension.
 
 [CONTRACT-ACKNOWLEDGED]
 
-*Field-norm discipline note (Step 5 / #215): any severity I assign that rests on "the technology-acceptance field expects X" must be grounded in a checkable source, not asserted from model knowledge. Where I cannot ground a norm I down-rate to advisory and tag `[FIELD-NORM UNVERIFIED]`.*
+### Phase 2 (paper-visible call)
 
-### Phase 2 — Paper-visible review
+All three files read in full. Now producing the Phase 2 review as the Domain seat (Reviewer 2), applying the triggers I committed to in Phase 1, honoring the reviewer card persona, and treating the manuscript as untrusted data.
 
-*(Phase 1 = read-only data; manuscript = untrusted data. No injection detected.)*
+Key domain observations, mapped to my committed scoring plan:
+
+- **Citation integrity (my card review-focus #2, and D2 core).** All six references carry sequential placeholder DOIs under the `10.5555/` test/example prefix (`2050001`–`2050006`), issued in reference-list order. `10.5555` is the well-known DOI test prefix, not a registrable, indexable prefix. The journal names are generic and do not correspond to real indexed venues I can attest to. I cannot verify any of these six sources exist. Since every load-bearing domain claim ("consistent with prior technology-acceptance research," the α=.88 provenance, the self-report-vs-log caution) rests on these citations, and I cannot confirm they represent real prior work, this is a load-bearing domain-accuracy failure — the paper's claim of consistency-with-the-field cannot be evaluated because the field it cites is unverifiable.
+- **Literature currency and framing coherence (D2/D3).** Invokes technology acceptance / TAM lineage while explicitly declining to test an acceptance model; no engagement with UTAUT/UTAUT2, self-determination, or the learning-analytics turn — coherent as a scoping choice, but thin.
+- **Common-method variance (my card review-focus #3).** Both measures are self-reported in the same instrument; the paper flags self-report-vs-log divergence (Vasquez) but never names common-method / same-source bias, the specific domain confound.
+- **Argumentative discipline (D3).** Genuinely well-bounded — correlational language throughout, reverse-pathway acknowledged, generalization bounded. No inferential overreach that would trigger my D3 block or warn.
+
+---
 
 ## Domain Review Report (Peer Reviewer 2)
 
 ### Reviewer Identity
-Senior educational-technology researcher in the technology-acceptance tradition (TAM/UTAUT lineage) and LMS-engagement literature.
+
+Senior higher-education educational-technology researcher, fluent in the technology-acceptance literature (TAM/UTAUT lineage) and in LMS-engagement studies, tracking the field's movement from perception-based self-report toward behavioral log / learning-analytics evidence.
 
 ### Overall Recommendation
-Major Revision
+
+Major Revision (gated on citation verification; if the reference base cannot be verified as real, this converts to Reject)
 
 ### Confidence Score
+
 4
 
 ### Summary Assessment
-On domain accuracy this paper is honest and internally correct but **under-anchored**. It correctly labels its finding as consistent with "technology-acceptance research", correctly refuses causal language, and — importantly — makes *no* absolute-novelty claim (it explicitly calls itself "an incremental data point"), which removes the most common domain-integrity failure at the source. The problem is the literature base: six references, none of them the field's foundational sources. "Perceived usefulness" is *the* central construct of the Technology Acceptance Model, yet the construct is traced only to an adapted instrument in Costa & Wren (2019); the originating theoretical lineage (Davis's TAM, and the UTAUT synthesis that governs current LMS-adoption work) is absent. For a technology-acceptance paper this is a genuine coverage gap, not a stylistic one: a reader cannot see how the paper's operationalization relates to the canonical construct. The contribution claim, though honest, is correspondingly under-theorized — "comparable with prior work" is asserted against a literature too thinly sampled to establish comparability. None of this is fatal; the paper commits no domain error and over-claims nothing. But the literature and theoretical framing must be substantially strengthened for the contribution to be legible and defensible. Hence Major.
+
+Judged purely on argumentative discipline, this is an unusually honest manuscript: it asks a deliberately narrow correlational question, keeps its language correlational throughout, acknowledges the reverse-causation pathway, bounds its generalization to one institution, and stacks its limitations rather than burying them. From my domain seat the fatal problem is not overclaiming but verifiability of the field it claims consistency with. All six references carry sequential placeholder DOIs under the `10.5555/` test prefix, numbered `2050001`–`2050006` in reference-list order, in generic-sounding venues I cannot attest exist. Because every domain claim the paper makes — "consistent with prior technology-acceptance research," the validated-instrument provenance, the self-report caution — is anchored to these unverifiable sources, I cannot evaluate whether the paper correctly represents the field, which is the core of domain accuracy. Secondary domain concerns: the literature base is thin and dated (no clearly post-2021 work, no UTAUT/UTAUT2, no learning-analytics turn); the paper invokes "technology acceptance" while declining to test an acceptance model, which needs sharper justification; and it flags self-report-vs-log divergence but never names the common-method/same-source variance confound that its own single-instrument design creates. Contribution is genuine but minimal — one within-distribution association from one site.
 
 ### Strengths (3-5 items)
-1. **S1 — No novelty overreach**: The paper explicitly declines the "first study" framing and positions itself as "an incremental, design-bounded contribution" (Sections 2, 7). In a literature saturated with inflated-novelty TAM submissions, this honesty is a genuine domain strength and pre-empts the usual integrity finding.
-2. **S2 — Correct use of the cautionary literature**: Delgado (2020) is deployed correctly for the perception↔use reverse-causation problem, and Song (2018) is correctly used to frame a single-site estimate as "one point in a distribution." The paper represents its (limited) cited sources accurately.
-3. **S3 — Terminological precision within its frame**: "Perceived usefulness", "self-reported use", and "engagement" are used consistently and the paper is careful to call the outcome *perceived/self-reported* rather than actual use (Sections 2, 3.2).
+
+1. **Disciplined, field-appropriate causal restraint**: The paper does exactly what this subfield's better cross-sectional work does — it describes an association, explicitly refuses the causal reading, and names the reverse pathway (use → perception) as equally consistent with the data. This is the correct epistemic posture for cross-sectional self-report acceptance research and is rarer than it should be.
+
+2. **Honest treatment of self-report as "perceived use"**: Rather than dressing a self-reported frequency item as behavioral engagement, the paper labels it an indicator of *perceived* use and carries that distinction into the interpretation. This matches the field's current sensitivity (the perception-vs-behavioral-log gap) and avoids the most common domain-accuracy error in LMS-use papers — conflating self-report with log-verified usage.
+
+3. **Bounded, non-inflated contribution claim**: The paper positions itself as "one point in a distribution" of LMS perception–use correlations rather than a general finding, and ties that framing to its own single-site limitation. The domain framing of the contribution is internally consistent with the modest evidence.
+
+4. **Terminological consistency**: Load-bearing constructs (perceived usefulness, self-reported vs. actual use, association vs. causation) are used consistently across abstract, methods, results, and discussion. A domain reader can track exactly what is being claimed throughout.
 
 ### Weaknesses (3-5 items)
-1. **W1 — Foundational technology-acceptance sources absent (MAJOR)**: *What*: the central construct "perceived usefulness" is cited only to Costa & Wren (2019); the TAM origin and the UTAUT synthesis that define the construct and situate LMS-adoption work are not cited. *Why it's a problem*: for a technology-acceptance paper, omitting the theory that names its core construct leaves the operationalization un-anchored and the contribution un-positioned relative to the model it implicitly uses. *Field-norm grounding (#215)*: that primary constructs should be attributed to their originating theoretical source rather than to a secondary adaptation is a general scholarly-citation norm (secondhand-citation avoidance), grounded in standard citation practice and this review framework's own literature-coverage criterion (`review_criteria_framework.md §1 Dim. 6; domain agent Step 1a "secondhand citations"); it does not depend on an unverifiable field-specific claim. *Recommended additions*: see Missing Key References — all phrased as `[UNVERIFIED]` search leads, since I will not assert specific author/year/venue metadata from memory.
-2. **W2 — Contribution under-theorized (MAJOR)**: *What*: the paper claims comparability with "prior technology-acceptance research" but engages no theoretical model that would make the comparison meaningful (e.g., where PU sits relative to perceived ease of use, behavioral intention, and actual use in the acceptance chain). *Why*: without that scaffolding the finding is a bare correlation whose place in the field's knowledge structure is asserted, not shown. *How to improve*: add a short theoretical-framing paragraph locating PU and use within the acceptance model, and state what this single association adds to (or where it sits within) that chain.
-3. **W3 — Literature currency and breadth (MAJOR→MINOR)**: *What*: the six sources skew toward generic cautions; the contemporary LMS-analytics / log-based-engagement strand (which the Vasquez self-report critique points directly at) is represented by a single reference. *Why*: the research-gap argument ("students engage differently; perception is one factor") is under-supported because the surrounding literature is thinly sampled. *How to improve*: broaden coverage of recent LMS-engagement and self-report-validity work.
+
+1. **Unverifiable reference base — every domain claim rests on it (BLOCK-level for D2)**: All six references carry DOIs under the `10.5555/` prefix (`2050001` through `2050006`, assigned in reference-list order), in generic venue names ("Journal of Educational Technology Research," "Computers & Education Review," etc.) that I cannot match to real indexed journals. `10.5555` is the standard DOI *test/example* prefix, not a registrant prefix that resolves to real published articles. This is not a formatting nitpick: the paper's central domain claim is that its result is "consistent with prior technology-acceptance research," and that consistency is asserted entirely through Costa & Wren (2019), Delgado (2020), Ibarra & Poll (2021), and Song (2018). If those sources do not exist or do not say what is attributed to them, the paper's entire positioning against the field is unsupported, and the α=.88 instrument's "previously validated" provenance (attributed to Costa & Wren, 2019) collapses. *Why it's a problem*: a domain reviewer cannot certify alignment with a literature that cannot be shown to exist. *Suggested direction*: before any substantive re-review, the authors must supply resolvable DOIs / stable identifiers for all six sources; a reviewer or editor must confirm each exists and supports the attributed claim. *Field-norm grounding*: this is not a contested subfield norm — DOI registration and resolvability is the cross-venue scholarly-record standard (the DOI Foundation reserves `10.5555` for documentation/testing, so a `10.5555` DOI is by construction non-resolvable to a real record). Grounded, not `[FIELD-NORM UNVERIFIED]`.
+
+2. **Same-source / common-method variance never named (WARN-level for D2)**: Both variables — perceived usefulness and self-reported use — are collected in the same self-report instrument from the same respondents at the same time. In the acceptance literature this is the textbook setup for common-method / same-source variance to inflate the observed correlation. The paper commendably flags the *self-report-vs-behavioral-log* divergence (via Vasquez, 2020), but that is a different threat from common-method bias, and the specific same-instrument confound is never named. *Why it's a problem*: an r = .42 between two self-reports from one instrument may partly reflect shared method variance rather than a substantive perception–behavior link — a domain reader will expect this named. *Suggested direction*: add an explicit common-method-variance limitation distinct from the self-report-vs-log point; if any procedural remedy was used (item separation, marker variable), report it. *Field-norm grounding*: common-method bias in single-instrument self-report acceptance surveys is a standard, widely-documented methodological concern in this literature; the concept itself is field-standard. Grounded as a substantive domain concern, not `[FIELD-NORM UNVERIFIED]`.
+
+3. **Thin and non-current literature base; acceptance framing invoked but not operationalized (WARN-level for D2/D3)**: Six references, none clearly post-2021, with no engagement with UTAUT/UTAUT2, self-determination theory, expectation-confirmation/continuance models, or the learning-analytics turn the field has taken. The paper invokes "technology acceptance" as its framing while explicitly declining to test an acceptance model — a defensible scoping decision, but the paper leans on the acceptance frame's authority for its "consistent with prior research" claim without engaging the frame's current form. *Why it's a problem*: the contribution is positioned against a literature the paper only partially represents, weakening the "one point in a distribution" claim (we cannot see the distribution). *Suggested direction*: either broaden the review to locate the r = .42 within an actual reported range of LMS perception–use correlations, or narrow the framing so it does not borrow acceptance-model authority it declines to use. *Field-norm grounding*: currency/coverage expectation is a general review-adequacy norm; because I am asserting the field has moved on (UTAUT2, learning analytics) without grounding that movement in a verifiable citation here, I cap the *currency* portion of this finding at advisory: `[FIELD-NORM UNVERIFIED]` for the specific "field has moved to X" severity. The thin-base and framing-coherence portions stand independently.
+
+4. **Contribution is minimal and within-distribution (advisory)**: One bivariate association, one institution, n = 214, a single-item outcome, framed by the authors as incremental. Even granting the honesty, the domain question "does this add anything a reader could not predict from prior work?" is answered weakly — no new population characteristic, no discrepant result, no new instrument is foregrounded. *Suggested direction*: sharpen a specific non-redundant angle (a discrepant effect size vs. a named prior estimate, an under-studied population feature) rather than resting on within-distribution confirmation. Advisory — this is a contribution-bar judgment for the EIC, not a domain-accuracy error.
 
 ### Detailed Comments
 
 #### Literature Review
-- **Coverage**: Foundational TAM/UTAUT sources missing (W1); contemporary LMS-engagement/analytics strand under-covered (W3). Six references is light for a technology-acceptance submission even at Q3.
-- **Integration quality**: What is cited is *integrated*, not merely listed — Section 2 uses Delgado, Ibarra & Poll, Vasquez, and Song to build an actual cautionary argument rather than a reference dump. Integration quality is good; coverage is the problem.
-- **Research gap argument**: Present but weak — the "students engage very differently" premise (Section 1) is asserted with a single supporting citation and would be more convincing with broader grounding.
+- **Coverage**: Thin (6 sources) and non-current (nothing clearly post-2021). No UTAUT/UTAUT2, no expectation-confirmation/continuance, no self-determination, no learning-analytics/behavioral-log strand beyond the single Vasquez self-report-divergence cite. More critically, coverage cannot be certified at all because the cited works carry non-resolvable `10.5555` test DOIs.
+- **Integration quality**: Above bare enumeration — the review does group cautions (Delgado on directionality, Ibarra & Poll on context, Vasquez on measurement, Song on cross-site variability) into a small critical synthesis and uses them to motivate the correlational-only stance. That is genuine synthesis, not a reference list. It is just built on an unverifiable base.
+- **Research gap argument**: Legible but weak. The "incremental data point comparable with prior work" gap is honestly stated but does not establish non-redundancy, especially when the prior-work distribution it wants to add a point to is never quantified.
 
 #### Theoretical Framework
-- **Appropriateness**: The implicit framework is TAM, which is appropriate — but it is *implicit*. The paper never names or engages the model whose central construct it measures.
-- **Application depth**: Superficial by necessity — the construct is used operationally but not theoretically situated (W2).
-- **Alternative frameworks**: UTAUT/UTAUT2 would be the natural contemporary alternative to name and position against.
+- **Appropriateness**: The paper deliberately does *not* adopt a full theoretical framework — it invokes technology acceptance as background and declines to test a model. For a single-association descriptive study this is a defensible choice, and the paper is honest about it.
+- **Application depth**: Correspondingly shallow by design; "perceived usefulness" is used as a TAM-lineage construct but not embedded in an acceptance model. The risk is borrowing the acceptance frame's credibility ("consistent with prior technology-acceptance research") without operationalizing it. Sharpen or narrow.
+- **Alternative frameworks**: If the authors want the acceptance framing to carry weight, UTAUT2 or expectation-confirmation (continuance) would be the current reference points; a learning-analytics framing would suit the behavioral-reality concern. None is engaged.
 
 #### Academic Argument Quality
-- **Factual accuracy**: No domain factual errors detected. Representations of cited sources are accurate.
-- **Argument logic**: Sound within its thin base; the gap argument is the weakest link (coverage-limited, not logic-broken).
-- **Terminology precision**: Good (S3).
+- **Factual accuracy**: The domain claims that are internal to the study (moderate r, modest shared variance, engagement driven by many factors) are stated accurately and proportionally. The *unverifiable* claims are the external ones — "consistent with prior technology-acceptance research" and the validated-instrument provenance — because their supporting sources cannot be confirmed.
+- **Argument logic**: Sound and disciplined. No causal leak from a cross-sectional correlation, reverse pathway acknowledged, generalization bounded. This is the paper's strongest feature and I found no D3-level reasoning error.
+- **Terminology precision**: Consistent throughout; perceived usefulness, self-reported/perceived use, association vs. causation are used correctly and do not slip between sections.
 
 #### Contribution to the Field
-- **Incremental contribution**: Genuinely incremental and honestly labeled — a comparable data point. The concern (shared with EIC, independently reached) is whether that is sufficient, and the under-theorization (W2) makes it read as *smaller* than it needs to.
-- **Positioning**: The paper positions via Song (2018)'s "distribution of estimates" logic, which is the right instinct; it just needs more of the distribution cited to land.
-- **Overclaiming**: None. This is a clean dimension.
+- **Incremental contribution**: Real but minimal — one within-distribution association from one site with a single-item outcome. Empirical, not theoretical or methodological.
+- **Positioning**: The paper positions honestly as one data point, but cannot show the distribution it claims to join.
+- **Overclaiming**: Notably absent. The manuscript under-claims if anything; the contribution question is about sufficiency, not inflation.
 
 #### Missing Key References
-*No-invention rule (#574 A5): I will not assert specific author/year/venue metadata from memory. The following are `[UNVERIFIED]` search leads for the authors to locate and verify, phrased as literatures, not citations.*
-- `[UNVERIFIED]` The originating Technology Acceptance Model source that defines "perceived usefulness" (the foundational Davis-lineage TAM work) — needed to anchor the paper's central construct rather than citing it to an adapted secondary instrument.
-- `[UNVERIFIED]` The UTAUT / UTAUT2 unified-acceptance synthesis literature — the contemporary framework that situates LMS adoption and would let the paper position PU within the acceptance chain.
-- `[UNVERIFIED]` Recent LMS learning-analytics / log-based engagement literature comparing self-reported use with behavioral traces — to broaden the strand the paper's own Vasquez (2020) citation opens.
+- The operative issue is not missing references but *unverifiable existing* ones. I will not recommend specific replacement citations, because I cannot attest to specific author/year/venue metadata for this subfield's current LMS perception–use estimates without fabricating it (No-invention rule, #574 A5).
+- Search leads the authors should pursue, phrased as leads not citations: `[UNVERIFIED]` current UTAUT2 LMS-acceptance work in higher education; `[UNVERIFIED]` learning-analytics literature comparing self-reported vs. log-based LMS engagement; `[UNVERIFIED]` common-method-variance treatment in single-instrument acceptance surveys. The authors must supply the actual, verifiable sources.
 
 ### Questions for Authors
-1. Which technology-acceptance model does your perceived-usefulness measure operationalize, and why is that model not cited or engaged?
-2. Beyond "a new sample", what does this association add to the acceptance-model knowledge structure — where does it sit relative to behavioral intention and actual use?
-3. Can you broaden the LMS-engagement literature so the research-gap premise rests on more than a single citation?
+1. Can you provide resolvable DOIs or stable identifiers for all six references? The current DOIs are all under the `10.5555/` test prefix and do not resolve to real records — this must be resolved before the paper can be evaluated as a contribution to the field.
+2. Both your predictor and outcome are self-reported in the same instrument. How do you rule out (or bound) common-method variance as a contributor to the r = .42, separate from the self-report-vs-log divergence you already discuss?
+3. You invoke "technology acceptance" but decline to test an acceptance model. What specifically does the acceptance framing add here that a plain "perception–reported-use association" framing would not, and why not engage the current form of that literature (e.g., UTAUT2, continuance models)?
+4. Can you locate your r = .42 within an actual reported range of LMS perception–use correlations, so the "one point in a distribution" claim is quantified rather than asserted?
 
 ### Minor Issues
-- Citation formatting is consistent APA 7 with DOIs — clean.
-- "previously validated instrument" (Abstract, Section 3.2) is a domain-terminology caution shared with R1: validated-elsewhere ≠ validated-in-this-adaptation; consider rewording.
+- The abstract calls the perceived-usefulness instrument "previously validated" but attributes it only to Costa & Wren (2019); given the citation-verification concern, the "validated" claim inherits the same verification dependency.
+- "Consistent with prior technology-acceptance research" appears in abstract, results, and discussion; each instance depends on the unverified reference base and should be softened or re-grounded once sources are confirmed.
 
-#### Contract scoring (sprint-contract Phase 2 machine block)
+---
 
 contract_role: domain
 
 ## Dimension Scores
 
 ### D1: methodology_rigor
+From my domain seat, the field-recognized construct ("perceived usefulness," TAM-lineage, six-item adapted instrument, α = .88 reported) is used in a way an acceptance-model reader recognizes, and self-reported use is explicitly labeled as a proxy for perceived use rather than presented as verified behavioral use. My Phase 1 block trigger (construct unrecognizable OR self-report presented as verified behavior) is not met; my warn trigger (domain-recognized instrument under-reported) is partly present — item text and adaptation are not shown — but the reliability IS reported and the proxy limitation IS acknowledged, and the statistical-reporting completeness is Reviewer 1's seat, not mine. I hold this at pass from the domain vantage; the instrument-reporting gap is noted for Reviewer 1.
 score: pass
 
 ### D2: domain_accuracy
-score: warn
+My Phase 1 block trigger includes a load-bearing domain claim that cannot be supported as stated against the field. The paper's load-bearing external claim — consistency with prior technology-acceptance research, plus the "previously validated" instrument provenance — is anchored entirely to six references carrying non-resolvable `10.5555` test-prefix DOIs in unverifiable venues. I cannot certify that the field the paper claims alignment with exists as cited; the domain-accuracy claim therefore cannot be evaluated as supported. This meets my committed block trigger (a load-bearing domain claim unsupportable against established evidence, here because the evidence base is unverifiable). Grounded field-norm: `10.5555` is the DOI test prefix by construction non-resolvable, so this is not a `[FIELD-NORM UNVERIFIED]` severity assertion.
+score: block
 
 ### D3: argumentative_coherence
-score: warn
+The paper keeps causal/behavioral language proportional to a cross-sectional self-report design, describes the perceived-usefulness↔use link as association not causation, explicitly names the reverse pathway as equally consistent, and bounds generalization to the single institution. My Phase 1 block trigger (central thesis depends on a reasoning error the evidence cannot bear) is not met; my warn trigger (localized overclaiming / unbounded generalization) is not met either — generalization is explicitly bounded. This is the manuscript's strongest dimension.
+score: pass
 
 ### D4: cross_disciplinary_relevance
-score: warn
+Core constructs (perceived usefulness, self-reported vs. actual use, association vs. causation) are defined clearly enough that an adjacent-field reader (HCI, information systems, instructional design, learning analytics) can follow without in-group shorthand, and the paper makes no foregrounded interdisciplinary claim that rests on a domain error. My Phase 1 block trigger (a foregrounded interdisciplinary claim domain-inaccurate at its foundation) is not met; my warn trigger (constructs defined in in-group terms an adjacent reader could not follow) is not met. Deep cross-field assessment remains Reviewer 3's seat.
+score: pass
 
 ### D5: writing_and_structure
+The literature review offers genuine (if thin) critical synthesis rather than bare enumeration, the research-gap argument is legible, and domain terminology is internally consistent across all sections. My Phase 1 block trigger (terminological disorder so severe the claim cannot be reconstructed) is not met; my warn trigger (enumeration-not-synthesis, or inconsistent load-bearing terminology) is not met — the review does synthesize and terminology holds. Prose is clean.
 score: pass
 
 ## Failure Condition Checks
 
 ### F1
-fired: false
-
-### F2
+Predicate: any mandatory dimension (D1, D2, D3) scores 'block'. In my own scores, D2 = block. The predicate is satisfied by my own card.
 fired: true
 
+### F2
+Predicate: two or more mandatory dimensions score 'warn' or worse. In my own scores, D1 = pass, D2 = block, D3 = pass — exactly one mandatory dimension is 'warn or worse'. Predicate not satisfied by my own card. (`cross_reviewer_quantifier: majority` is panel-level machinery for the synthesizer, not applied by me.)
+fired: false
+
 ### F3
+Predicate: any high-priority dimension (D4) scores 'block'. In my own scores, D4 = pass. Predicate not satisfied.
 fired: false
 
 ### F0
+Predicate: every mandatory dimension (D1, D2, D3) scores 'pass'. In my own scores, D2 = block. Predicate not satisfied.
 fired: false
 
 ## Editorial Decision
-editorial_decision=major_revision
+
+Per contract `failure_conditions` precedence (highest severity among fired conditions wins): F1 fired at severity 90, the highest. F1's action governs.
+editorial_decision=reject_or_major_revision
 
 ---
 
-## SEAT 4 — Peer Reviewer 3 · Cross-disciplinary / Practical (`perspective_reviewer_agent`)
+## SEAT — Peer Reviewer 3 (Perspective)
 
-### Phase 1 — Paper-content-blind pre-commitment
+### Phase 1 (blind call)
 
-#### Contract Paraphrase
+## Contract Paraphrase
 
-- **D1 methodology_rigor (mandatory).** As the outsider I don't audit statistics (R1's lane); I ask whether the *design as a whole* can carry the practical/real-world claims the paper will want to make.
-- **D2 domain_accuracy (mandatory).** Not my lane for canon-completeness; I check whether the framing is accurate enough to be usable by adjacent-field readers and practitioners.
-- **D3 argumentative_coherence (mandatory).** Whether any practice implication actually follows from the reported association.
-- **D4 cross_disciplinary_relevance (high) — my core lane.** Assumption audit (implicit premises the primary discipline naturalizes), cross-disciplinary connections (learning analytics / behavioral-trace), practical feasibility of any recommendation, stakeholder coverage, cross-context transfer.
-- **D5 writing_and_structure (normal).** Accessibility to non-specialist readers.
+**D1 — methodology_rigor.** From an outsider's vantage, my paraphrase of this dimension is: does the study's design actually license the practical inferences a cross-disciplinary or applied reader would want to draw from a cross-sectional LMS survey? A self-report perceived-usefulness-versus-use design carries a well-known common-method and self-report-of-behavior problem, and I read this dimension as asking whether the reproducibility affordances (sampling frame, response rate, instrument transparency) are strong enough that a practitioner in an adjacent field — an instructional designer, an IT-adoption researcher — could trust and reuse the finding. I do not evaluate the statistics themselves (Reviewer 1's remit); I ask whether the design's limits are honestly surfaced so an outside reader is not misled about what a single-timepoint correlation can support.
 
-#### Scoring Plan
+**D2 — domain_accuracy.** I paraphrase this as: are the technology-acceptance and educational-technology constructs represented in a way that an adjacent-field reader (information-systems, HCI, adoption theory) would recognize as faithful? "Perceived usefulness" and "self-reported use" are load-bearing TAM/UTAUT terms with a large parallel literature outside education; my concern is whether the paper imports these constructs accurately or flattens them, and whether prior work is characterized correctly enough that a reader crossing in from information systems would not spot a misrepresentation. I flag domain drift from the outside; I do not run a systematic prior-work coverage audit (Reviewer 2's remit).
 
-##### D1: methodology_rigor
-- **what_to_look_for**: a design whose scope matches any real-world claim made.
-- **what_triggers_block**: a design fundamentally unable to support the paper's own stated aim.
-- **what_triggers_warn**: design supports the association but is stretched by any practice recommendation drawn from it.
+**D3 — argumentative_coherence.** From the perspective seat, I read this as: does the paper avoid the specific fallacy that most endangers this genre — treating a cross-sectional correlation between perceived usefulness and self-reported use as if it warranted a causal or directional claim, or as if self-reported use stood in for actual use? I attend to whether the central thesis over-reaches its cross-sectional evidence and whether the practical implications the authors draw are actually entailed by what a survey at one timepoint can show. Formal logic and internal contradiction-hunting are the Devil's Advocate's remit; I focus on whether the argument's reach matches its evidence in a way an applied reader would accept.
 
-##### D2: domain_accuracy
-- **what_to_look_for**: framing accurate enough for cross-field use.
-- **what_triggers_block**: a mis-framing that would mislead adjacent readers.
-- **what_triggers_warn**: framing that omits the adjacent-field lens (behavioral-trace) that most affects interpretation.
+**D4 — cross_disciplinary_relevance.** This is my home dimension. I paraphrase it as: are the framing, construct definitions, and stated implications accessible and defensible to adjacent-field readers, and are any interdisciplinary claims substantiated rather than gestured at? For an LMS-adoption survey this means asking whether the paper connects to the broader technology-acceptance, information-systems, and learning-sciences conversations it necessarily sits inside, whether it names its stakeholders (students, instructors, institutional IT) rather than only faculty or only the institution, and whether "usefulness" and "use" are defined portably enough that a non-education reader knows exactly what was measured.
 
-##### D3: argumentative_coherence
-- **what_to_look_for**: practice implications that follow from the evidence.
-- **what_triggers_block**: a strong actionable recommendation asserted from a moderate correlation.
-- **what_triggers_warn**: a hedged practice implication that still leans on an unresolved-direction correlation.
+**D5 — writing_and_structure.** I paraphrase this as: is a short (1,597-word) empirical survey organized and expositionally clear enough that an outside reader can locate the design, the measures, the results, and the boundary conditions without insider knowledge? At this length the risk is compression that omits the limitations, sampling detail, or construct operationalization an adjacent-field reader needs. I assess clarity of exposition and venue-convention adherence from the outsider's readability standpoint, not copy-editing.
 
-##### D4: cross_disciplinary_relevance
-- **what_to_look_for**: an explicit assumption audit; a bridge to learning-analytics/log data; feasible, stakeholder-complete implications; cross-context transfer discussion.
-- **what_triggers_block**: cross-field implications with no basis (not expected).
-- **what_triggers_warn**: implicit assumptions left unexamined (self-report use ≈ engagement; perception→use directionality; one institution → students-in-general) and absent stakeholders (instructors, course-design mandates).
+## Scoring Plan
 
-##### D5: writing_and_structure
-- **what_to_look_for**: legible to non-specialists.
-- **what_triggers_block**: unreadable.
-- **what_triggers_warn**: minor accessibility issues.
+### D1: methodology_rigor
+- `what_to_look_for`: An explicit statement of the sampling frame, response rate, and whether the sample is representative of the undergraduate population; transparent reporting of the instrument (items, scales, provenance); and an honest limitations passage acknowledging the cross-sectional / self-report ceiling on what can be inferred, especially the gap between self-reported use and actual LMS log-level use.
+- `what_triggers_block`: The design cannot support the practical inferences the paper draws and this is not surfaced anywhere — e.g., self-reported use is treated as a valid proxy for actual use with no acknowledgment, or the reproducibility affordances (who was sampled, how many responded, what was asked) are so absent that no adjacent-field reader could evaluate or reuse the result.
+- `what_triggers_warn`: The core design limits (cross-sectional single timepoint, common-method / self-report bias, sampling representativeness) are real and material but only partially disclosed or buried, such that an outside practitioner could over-read the finding without careful reading.
+
+### D2: domain_accuracy
+- `what_to_look_for`: Faithful use of the technology-acceptance construct family — "perceived usefulness" and "use" defined consistently with their established meaning in TAM/UTAUT and adjacent information-systems literature — and correct, non-distorting characterization of any prior work the paper leans on to motivate the study.
+- `what_triggers_block`: A load-bearing construct or prior finding is materially misrepresented in a way an adjacent-field reader would recognize as wrong — e.g., "perceived usefulness" is redefined to mean something the source literature does not support, and a central claim rests on that misrepresentation.
+- `what_triggers_warn`: Construct usage or prior-work characterization is loose or imprecise (terms used interchangeably that the parallel literature distinguishes, or a prior result summarized in a way that shades its meaning) without a central claim collapsing on it.
+
+### D3: argumentative_coherence
+- `what_to_look_for`: Consistency between the strength of the conclusions and the reach of cross-sectional survey evidence; hedging that matches a correlational, single-timepoint, self-report design; and practical implications that actually follow from what was measured rather than from what the authors hope was measured.
+- `what_triggers_block`: The central thesis depends on a claim the evidence cannot bear — a directional or causal reading of a cross-sectional correlation, or self-reported use standing in for actual use — such that if that unwarranted step is removed, the paper's main argument does not hold.
+- `what_triggers_warn`: The argument over-reaches at the edges — some implications or phrasing imply more causal or generalizable force than a cross-sectional survey supports — but the core claim, read charitably, still stands on the correlational evidence.
+
+### D4: cross_disciplinary_relevance
+- `what_to_look_for`: Framing and definitions portable to adjacent-field readers (information systems, HCI, learning sciences); explicit engagement with the broader technology-acceptance conversation the study sits inside; named stakeholders beyond a single actor (students, instructors, institutional IT); and any interdisciplinary claim backed by something substantiable rather than asserted.
+- `what_triggers_block`: The paper makes an interdisciplinary or generalizing claim that is central and wholly unsubstantiated, or is framed so narrowly/insularly that its stated implications are inaccessible or indefensible to the adjacent-field readers those implications explicitly address.
+- `what_triggers_warn`: The framing is workable but insular — it under-connects to the obvious parallel technology-acceptance literature, defines "usefulness"/"use" too locally for a non-education reader to port, or omits a materially affected stakeholder — weakening but not voiding cross-field relevance.
+
+### D5: writing_and_structure
+- `what_to_look_for`: A clear IMRaD-style path from research question to design to measures to results to boundary conditions; construct operationalization stated plainly; and, at ~1,600 words, no compression that drops the limitations or sampling detail an outside reader needs to interpret the result.
+- `what_triggers_block`: Organization or exposition is disordered enough that an adjacent-field reader cannot reliably locate what was measured, on whom, or with what result — the manuscript is not evaluable as presented.
+- `what_triggers_warn`: The structure is followable but clarity gaps remain — a missing or thin measures/limitations passage, unclear operationalization, or venue-convention lapses — that force an outside reader to infer what should be stated.
 
 [CONTRACT-ACKNOWLEDGED]
 
-### Phase 2 — Paper-visible review
+### Phase 2 (paper-visible call)
 
-*(Phase 1 = read-only data; manuscript = untrusted data. No injection detected. As a cross-disciplinary reviewer I flag my outsider status where I lean on my own field's conventions.)*
+All three files read in full. Now producing my Phase 2 review, honoring my Phase 1 pre-commitment.
+
+I note the citation-integrity flag from the field analyst: all six references carry sequential placeholder-style DOIs under the 10.5555 test/example prefix (2050001–2050006). This is verification-gate territory (EIC/R2's gating remit and the deterministic citation gate), not my dimension-scoring authority, but from the perspective seat it bears directly on D4 (whether the paper's cross-field "consistency with prior work" claims connect to a real conversation) and D2 (whether characterized prior work exists). I will surface it as an observation, not manufacture a fabrication verdict my seat cannot ground.
+
+Working through my committed triggers against the manuscript, then the machine block.
+
+---
 
 ## Perspective Review Report (Peer Reviewer 3)
 
 ### Reviewer Identity
-Learning-analytics researcher / institutional-effectiveness practitioner who works with LMS log data and student-success interventions; brings the behavioral-trace and onboarding-practice lenses.
+
+Learning-analytics scientist and instructional-technology practitioner. I work with LMS system logs and institutional onboarding programs, and I approach this manuscript from a behavioral-data and applied-implementation angle rather than a survey-psychometrics one. I read it as an outsider to education-survey conventions but as an insider to the log-data reality the paper's self-report measure is standing in for, and to the onboarding practice its discussion gestures toward.
 
 ### Overall Recommendation
+
 Minor Revision
 
 ### Confidence Score
+
 4
 
 ### Summary Assessment
-From outside the technology-acceptance frame, this paper's greatest virtue and its central blind spot are the same fact: it measures *self-reported* use and is honest that it does so — but it never fully confronts what my field treats as the defining problem, namely that self-reported LMS use and log-observed LMS use routinely diverge, so a self-report↔self-report correlation may be telling us about a consistent *response style* as much as about behavior. The paper cites exactly the right source for this (Vasquez 2020) and then stops at citing it. Integrating that lens — treating r = .42 as a within-perception coherence estimate that a log-based study might not reproduce — would sharpen the contribution more than any additional statistic. Two implicit assumptions go unexamined: (a) that self-reported frequency is a reasonable proxy for engagement (it collapses frequency, depth, and duration), and (b) that the perception→use reading is the natural one despite the paper's own admission the arrow may point the other way. The practical implication (usefulness-focused onboarding) is appropriately hedged, but it is drawn from a correlation whose direction the paper says is unresolved — so as guidance it is thinner than its placement suggests. None of this requires new data; it requires framing and one honest paragraph. Hence Minor, from my chair — I read the gaps as interpretive, not structural, and I defer the design/measurement severity to R1/R2.
+
+From the applied learning-analytics seat, this is a disciplined, honestly-scoped paper that mostly does what it says. It reports one moderate correlation (r = .42) between perceived usefulness and self-reported LMS use, refuses causal language, runs a Spearman robustness check, and stacks limitations including the self-report-versus-log gap that is my home concern — and it cites that specific gap (Vasquez, 2020) rather than hiding it. That is more methodological honesty than most single-site surveys of this genre show.
+
+My reservations are about reach, not overreach. The paper sits inside a technology-acceptance and learning-analytics conversation it names only glancingly, and defines "use" in a way a non-education reader cannot fully port to behavioral engagement. The one place the argument leans past its evidence is the onboarding implication: a correlation between two self-reports, from a voluntary-response sample, is thin ground for even a hedged institutional recommendation, and the practical claim rests partly on a single practitioner account. None of this voids the contribution; it bounds it. The claims, read as written, stay proportional to a cross-sectional self-report design. I recommend minor revision to tighten the construct definition and the onboarding inference, not to redesign the study the authors did not write.
 
 ### Strengths (3-5 items)
-1. **S1 — Names the right adjacent literature**: Citing Vasquez (2020) on self-report/log divergence shows the authors *know* where the behavioral-trace critique lives — a cross-disciplinary awareness many pure-TAM papers lack.
-2. **S2 — Honest cross-context humility**: Section 6 explicitly refuses to generalize beyond the single mid-sized university and calls for multi-institution replication — the cross-context caveat my field would otherwise have to supply.
-3. **S3 — The practice implication is correctly subordinated**: The onboarding suggestion is marked "suggested by, not proven by, the present correlation" (Section 5) — the paper does not let a practitioner over-read it.
+
+1. **The self-report-versus-behavior gap is named, not buried**: The paper explicitly flags (via Vasquez, 2020) that self-reported technology use diverges from behavioral logs, and consequently frames its outcome as *perceived* rather than *actual* use. From a log-data perspective this is exactly the caveat I would demand, and the authors volunteer it. It is a genuine strength that the paper does not pretend a survey item is a behavioral count.
+
+2. **Claims stay proportional to the design**: The reverse-causation pathway (use raising perceived usefulness) is acknowledged as equally consistent with the data; the association is called moderate, not strong; the variance-not-explained point is made in plain terms. An applied reader is not misled about what one cross-sectional correlation can support.
+
+3. **Field-obvious confounders are at least surfaced**: Course requirements and assessment schedules — the two drivers any learning-analytics practitioner would name first as reasons a student opens the LMS — are mentioned as unmodeled influences. The paper does not model them, but it does not pretend they are absent either.
+
+4. **Honest scope as a design choice**: The "incremental data point, not a model test" framing is stated up front and held to consistently. For an adjacent-field reader, this predictability is a virtue: I know exactly what claim I am being asked to accept.
 
 ### Weaknesses (3-5 items)
-1. **W1 — Self-report/log divergence cited but not integrated (MAJOR, interpretive)**: *What*: the paper's own Vasquez citation establishes that self-report use ≠ behavioral use, yet the interpretation of its own r = .42 never absorbs this. *Why it matters*: in learning-analytics terms, a correlation between a perception scale and a self-reported frequency item may substantially reflect shared self-report coherence rather than perception-tracking-behavior; a log-anchored study could yield a materially different estimate. *Specific suggestion*: add a paragraph interpreting r = .42 as a *self-report* association explicitly, and state the empirical prediction that a log-based use measure would likely attenuate it — this turns a limitation into a testable contribution. (Overlaps by independent arrival with R1's CMV point and DA's same-source point; the mechanism I emphasize is behavioral-trace divergence, the framing is practical.)
-2. **W2 — "Use" collapses engagement's structure (MINOR)**: *What*: a single frequency item treats "several times daily" as the top of engagement, but frequency ≠ depth ≠ meaningful learning activity. *Why*: institutional readers cannot act on "log in more often" — logins are not learning. *Suggestion*: acknowledge that frequency is a shallow engagement proxy and name depth/duration as the richer construct future work should capture.
-3. **W3 — Stakeholder gap: instructors and course-design mandates (MINOR)**: *What*: the paper's world contains students and a platform, but LMS use is heavily driven by whether instructors *require* it (graded activities, mandatory submissions). *Why*: the unmodeled instructor/course-requirement factor is plausibly a common cause of both higher perceived usefulness and higher use — a confound the paper gestures at ("course requirements and assessment schedules", Section 4) but does not foreground as a rival explanation. *Suggestion*: elevate course-requirement/instructor mandate from an aside to a named alternative explanation in the Discussion.
+
+1. **"Use" is defined too locally to port to behavioral engagement (D4)**: The outcome is a single self-reported frequency item ("how often you accessed the LMS in a typical week"). To a learning-analytics reader, "access" and "use" are not interchangeable — a login is not a submission, a page-view is not sustained engagement, and "several times daily" of passive checking can mean less real engagement than one deep weekly session. The paper measures self-reported *access frequency* but discusses *engagement* and *use* as if portable. **Suggestion**: define the construct explicitly as self-reported access frequency, and state in one sentence what dimensions of behavioral engagement (session depth, feature use, submission activity) it does *not* capture, so a log-data reader knows precisely what was and was not measured.
+
+2. **The onboarding implication reaches slightly past a two-self-report correlation (D3, edge)**: The discussion suggests usefulness-oriented onboarding "may be worth institutional attention." The hedging is real ("suggested by, not proven by"), so the core claim does not collapse — but the recommendation rests on (a) a moderate correlation between two measures collected in the *same* self-report instrument and (b) a single practitioner account (Whitfield, 2019). A same-instrument correlation is a weak causal base for an intervention recommendation even a hedged one. **Suggestion**: either drop the onboarding inference to a "future-work question" rather than a soft recommendation, or explicitly note that recommending an onboarding change on the strength of a same-source correlation would require a design (pre/post, or log-validated) the present study did not run.
+
+3. **Under-connection to the parallel technology-acceptance and learning-analytics conversation (D4)**: The paper invokes "technology acceptance" as motivation but engages the broader conversation only glancingly — no connection to the UTAUT/UTAUT2 lineage that an information-systems reader would expect, and no engagement with the learning-analytics turn (behavioral/log evidence) that is precisely the field best positioned to extend this result. The framing is workable but insular; it under-connects to the obvious parallel literature a cross-field reader would reach for. **Suggestion**: one paragraph situating the finding against the acceptance-model lineage and against log-based engagement studies would let an adjacent-field reader place the result in its conversation. (Note: whether the *cited* works adequately cover that literature is Reviewer 2's remit; my point is the framing's reach, not coverage completeness.)
+
+4. **Stakeholder frame is thin for a paper that draws an institutional implication (D4)**: The study is about students, but the one practical implication it draws is institutional (onboarding). Instructors — whose expectations and assessment design the paper itself names as drivers of LMS use — and institutional IT, who would actually implement any onboarding change, are absent as stakeholders. For a finding whose only actionable edge points at institutional practice, naming who is affected and who acts would strengthen cross-field relevance. **Suggestion**: in the discussion, name the affected/acting stakeholders (students, instructors, institutional IT) so the implication is legible to the practitioners it addresses.
 
 ### Detailed Comments
 
 #### Assumption Audit
-- **Explicit assumptions**: The paper explicitly assumes only a correlational association — appropriately modest.
-- **Implicit assumptions**: (a) self-reported frequency ≈ engagement (W2); (b) the perception→use reading is the default despite the disclaimed direction; (c) students' LMS use is primarily volitional rather than instructor-mandated (W3).
-- **Paradigmatic assumptions**: The self-report survey paradigm treats what students *say* they do as the object of study; my field's paradigm treats what logs *show* they do as the object. The paper sits inside the former and cites, but does not cross into, the latter.
+
+- **Explicit assumptions**: The paper explicitly assumes a self-reported frequency item is a defensible *indicator* of use, and it states this openly and hedges it. This assumption survives cross-disciplinary scrutiny *as stated* (it is labeled an indicator of perceived use), but only because the label is honest — the risk is that later sentences slide from "self-reported use" to "engagement/use" without the qualifier.
+
+- **Implicit assumptions**: The load-bearing implicit assumption from my seat is that *access frequency stands in for engagement*. A learning-analytics reading rejects this equivalence: frequency of access and depth/quality of engagement are empirically distinct in log data. The paper never claims frequency = engagement, but the discussion's language occasionally presumes it. A second implicit assumption is that a same-instrument correlation can motivate a practice recommendation; from an applied-evaluation standpoint, common-source measurement is a weak foundation for any intervention inference.
+
+- **Paradigmatic assumptions**: The paper sits in a perception-based self-report paradigm at a moment when the adjacent field (learning analytics) has moved toward behavioral/log evidence. This is not a flaw — a low-cost perception survey has a legitimate, complementary role — but the paper would be stronger for stating *why* the perception paradigm is the right lens for its question rather than defaulting to it. (I flag this as a paradigmatic observation, not a demand to have run a log study; reviewing the paper the authors wrote, a self-report design is a valid choice.)
 
 #### Cross-Disciplinary Connections
-- **Parallel research**: Learning-analytics work correlating perception surveys with LMS clickstream/log engagement is the direct parallel — same question, behavioral-trace method.
-- **Borrowing opportunities**: A log-anchored replication design; the concept of "response-style coherence" from survey methodology to explain same-source correlation.
-- **Methodological borrowing**: LMS event-log extraction as an objective use measure — the complement the paper explicitly lacks.
+
+- **Parallel research**: The learning-analytics literature on LMS engagement using clickstream/log data investigates the same substantive question (what predicts LMS use) with behavioral rather than perceptual measures. Situating the r = .42 self-report association against what log-based studies find would tell an adjacent-field reader whether perception tracks behavior or diverges from it — which is the paper's own open question (via Vasquez, 2020).
+
+- **Borrowing opportunities**: The perceived-versus-actual-use divergence the paper cites is itself a live construct in learning analytics; framing the self-report measure explicitly as "perceived engagement, pending log validation" would borrow that field's precision and sharpen the paper's own caveat.
+
+- **Methodological borrowing**: Not a demand, but worth one sentence in future-work: the institution already holds LMS logs; a follow-up correlating this perceived-usefulness measure against actual log-derived access would directly test the self-report-validity question the paper raises and cannot answer. This is the natural cross-field extension.
 
 #### Practical Impact
-- **Real-world application**: Limited as stated — "students who find the LMS useful use it more" cannot, on its own, tell an institution what to *change*, especially with the direction unresolved.
-- **Implementation feasibility**: The onboarding implication is feasible *if* the perception→use direction holds; the paper honestly cannot establish that it does, which weakens the recommendation's footing (not its honesty).
-- **Stakeholders**: Instructors and course designers are the missing actors (W3); the student voice is present via self-report but only as frequency, not experience.
+
+- **Real-world application**: The honest reading is that this result, on its own, is not yet actionable for practice — it identifies an association, not a lever. The paper mostly respects this. The one place it edges toward action (onboarding) is where I would pull back hardest (see W2).
+
+- **Implementation feasibility**: Any onboarding recommendation would be implemented by institutional IT and instructional-design staff, not by students. The paper's implication is aimed at an institutional actor it never names, and its evidence (a same-source correlation) would not, in an applied-evaluation setting, justify committing onboarding resources without a stronger design. This is a proportionality point, not a rejection.
+
+- **Stakeholders**: Overlooked voices — instructors (named as a driver of use but absent as a stakeholder) and institutional IT (the actor for the sole practical implication). Students are well-centered; the institutional side of the frame is thin.
 
 #### Broader Implications
-- **Ethical dimensions**: Low ethical stakes; the ethics/consent handling (Section 3.3) is appropriate and adequately reported.
-- **Social impact**: Minimal and correctly not over-claimed.
-- **Future directions**: The single most valuable follow-up is the log-anchored replication the paper's own citations set up — worth stating as *the* next step.
+
+- **Ethical dimensions**: Minimal and well-handled — anonymous, voluntary, IRB-approved, no linkage to individuals. From an applied-data standpoint the ethics posture is clean. Worth noting only that a future log-validation study (which I recommend as future work, not as a fix here) would raise data-governance questions this survey design correctly sidesteps.
+
+- **Social impact**: Low and appropriately bounded. The paper's modest framing does not risk overclaiming social consequences. No equity concern arises from the design as written.
+
+- **Future directions**: The most valuable cross-field follow-up is a log-validated replication at the same institution: correlate this perceived-usefulness instrument against behavioral log-derived engagement to test whether perception tracks actual use. That single study would convert the paper's biggest caveat into a finding.
+
+#### Citation-base observation (out-of-seat flag, routed to synthesizer)
+
+Not a D-dimension scoring input from my seat, and outside my scoring authority — but as an applied reader I note the field analyst's flag that all six references carry sequential DOIs under the 10.5555 example/test prefix (2050001–2050006). If the cited works do not resolve to real indexed sources, then the paper's repeated "consistent with prior work" framing — including the Vasquez (2020) self-report caveat I credited as a strength and the Whitfield (2019) practitioner account the onboarding claim leans on — would rest on an unverified base. Verification of the reference base is the EIC/R2 gating remit and the deterministic citation gate's job, not mine; I flag it because it directly conditions the cross-field "consistency with prior work" claims I assessed under D2/D4. I do not assert fabrication — I lack the grounding to — but the synthesizer should treat this as gating and confirm the base resolves before crediting any prior-work consistency.
 
 ### Cross-Disciplinary Reading Recommendations
-*No-invention rule (#574 A5): search leads only, tagged `[UNVERIFIED]`, phrased as literatures.*
-- `[UNVERIFIED]` Learning-analytics literature correlating self-report engagement surveys with LMS log/clickstream measures — the behavioral-trace parallel to this study.
-- `[UNVERIFIED]` Survey-methodology work on common-method / same-source variance in attitude–behavior self-report pairs — to name the mechanism behind the interpretive caveat (this is the cross-disciplinary framing of R1's CMV point; I flag the overlap openly).
+
+- I decline to list specific cross-disciplinary citations here rather than risk inventing metadata (#574 A5 no-invention rule). The genuinely relevant bodies of work I would point the authors to, as **`[UNVERIFIED]` search leads** for them to locate and verify themselves, are: (a) the **learning-analytics literature on LMS clickstream/log-based engagement** (search leads: "LMS log data student engagement," "clickstream learning analytics engagement prediction"); (b) the **UTAUT / UTAUT2 technology-acceptance lineage** (search lead: "UTAUT2 Venkatesh consumer acceptance") as the model-based extension of the acceptance framing the paper invokes; and (c) work on **self-reported versus behaviorally-logged technology use** (the paper's own Vasquez, 2020 sits in this line — the authors should extend that thread). These are field pointers, not confident citations; I attest the *fields* exist, not any specific author/year/venue.
 
 ### Questions for Authors
-1. If you re-ran this with LMS log data as the use measure instead of a self-report item, do you expect r = .42 to hold, attenuate, or strengthen — and what does your answer imply about what the current estimate measures?
-2. How much of the association could be a common cause — instructors *requiring* LMS activity in some courses — rather than perception driving use?
-3. Is "frequency of access" the engagement construct you care about, or a proxy for something richer (depth, learning activity) that a single item cannot capture?
+1. Your outcome measures self-reported *access frequency*. From a behavioral-data standpoint, access frequency and engagement depth diverge in log data. Would you be willing to redefine the construct as "self-reported access frequency" and state explicitly which dimensions of engagement it does not capture?
+2. The onboarding implication rests on a correlation between two measures collected in the *same* self-report instrument. What, in your view, distinguishes this from a common-source artifact, and would you consider reframing the onboarding point as a future-work hypothesis rather than a soft recommendation?
+3. Your institution presumably holds LMS access logs. What prevented a log-validation of the self-report measure, and would you flag such a validation as the natural next study?
+4. Who is the intended actor for the onboarding implication — students, instructors, or institutional IT — and how would you name those stakeholders in the discussion?
 
 ### Minor Issues
-- The onboarding paragraph (Section 5) could name the direction-dependence explicitly: "if perception drives use (which this design cannot establish), then …".
-- Consider one sentence distinguishing "access frequency" from "engagement" so cross-field readers do not conflate them.
+- "Access the LMS" (measures item) and "use"/"engagement" (discussion) are used as if interchangeable; a single construct-definition sentence would fix this throughout.
+- The variance-shared point in Results is made in prose ("modest") without stating the value; an adjacent-field reader would benefit from one explicit figure.
+- The Whitfield (2019) citation is described as a practitioner account; labeling it explicitly as practitioner (non-empirical) evidence at the point of the onboarding claim would keep the evidence hierarchy transparent to an outside reader.
 
-#### Contract scoring (sprint-contract Phase 2 machine block)
+---
+
+## Machine Block
 
 contract_role: perspective
 
 ## Dimension Scores
 
 ### D1: methodology_rigor
+The design's reproducibility affordances and honest surfacing of the cross-sectional / self-report ceiling are adequate for an outside reader: sampling window, response accounting (233 → 214), exclusion rules, instrument provenance, α, power, and CI are reported, and the self-report-versus-log gap is explicitly disclosed (Vasquez, 2020). My Phase 1 block trigger (self-reported use treated as a valid proxy with no acknowledgment) did not fire — the acknowledgment is present and repeated. My warn trigger (core design limits only partially disclosed or buried) also did not fire: the cross-sectional, common-source, and voluntary-response limits are each surfaced in dedicated sentences. Item-level use-measure detail is thin, but that is R1's psychometric remit, not my reproducibility-for-outsiders standard.
 score: pass
 
 ### D2: domain_accuracy
+The technology-acceptance constructs ("perceived usefulness" as belief a tool aids performance) are represented faithfully to their established TAM-lineage meaning, and prior work is characterized without distortion *as attributed*. My Phase 1 block trigger (a load-bearing construct materially misrepresented) did not fire. My warn trigger (loose or imprecise construct usage) is borderline: "access"/"use"/"engagement" are used with some slippage, but that slippage is a portability/definitional problem I score under D4, not a misrepresentation of the acceptance construct family itself. The citation-base integrity concern is real but is a verification-gate/EIC/R2 matter and does not, from my seat, constitute a domain *misrepresentation* verdict I can ground. D2 stays pass on my committed triggers.
 score: pass
 
 ### D3: argumentative_coherence
-score: pass
+The central thesis — a moderate correlation between perceived usefulness and self-reported use — is stated with hedging that matches a correlational, single-timepoint, self-report design; reverse causation is conceded; no causal claim is load-bearing. My Phase 1 block trigger (the central thesis depends on an unwarranted causal/directional step, or self-report standing in for actual use) did not fire — remove any over-reach and the core correlational claim still stands. My warn trigger (the argument over-reaches at the edges) *does* fire: the onboarding implication reaches past a same-instrument two-self-report correlation, and rests partly on a single practitioner account, even though it is hedged. This is edge over-reach, not core collapse — exactly the warn pattern I committed to.
+score: warn
 
 ### D4: cross_disciplinary_relevance
+This is my home dimension and where the paper is weakest for an adjacent-field reader. My Phase 1 block trigger (a central interdisciplinary claim wholly unsubstantiated, or framing so insular its stated implications are indefensible to the readers they address) did not fire — the paper's core claim is accessible and its implications are hedged. My warn trigger fires on three counts I committed to: (1) "usefulness"/"use" defined too locally for a non-education / log-data reader to port (access frequency conflated with engagement); (2) under-connection to the obvious parallel technology-acceptance and learning-analytics conversation the study sits inside; (3) a materially affected stakeholder set (instructors, institutional IT) omitted from a paper whose sole practical implication is institutional. Workable but insular — the warn pattern, not the block pattern.
 score: warn
 
 ### D5: writing_and_structure
+The manuscript follows a clean IMRaD path; an outside reader can locate the design, measures, results, and boundary conditions without insider knowledge, and the limitations passage is present and substantive. My Phase 1 block trigger (organization disordered enough that an adjacent-field reader cannot locate what was measured, on whom, with what result) did not fire. My warn trigger (followable but with clarity gaps forcing inference) is borderline: the access/use/engagement construct slippage and the unstated variance-shared figure are minor clarity gaps, but they are localized and do not force an outside reader to *infer what should be stated* about the core design — the operationalization, sample, and result are each stated plainly. On balance the exposition clears my outsider-readability bar. Pass.
 score: pass
 
 ## Failure Condition Checks
 
 ### F1
+Predicate: any mandatory dimension (D1, D2, D3) scores 'block'. My D1=pass, D2=pass, D3=warn. No mandatory dimension scored block.
 fired: false
 
 ### F2
+Predicate: two or more mandatory dimensions (D1, D2, D3) score 'warn' or worse. My mandatory scores: D1=pass, D2=pass, D3=warn — exactly one at 'warn'. Threshold of two not reached on my seat's scores. (The `cross_reviewer_quantifier: majority` is panel-level machinery the synthesizer applies; I evaluate the predicate against my own scores only.)
 fired: false
 
 ### F3
+Predicate: any high-priority dimension (D4) scores 'block'. My D4=warn, not block.
 fired: false
 
 ### F0
+Predicate: every mandatory dimension (D1, D2, D3) scores 'pass'. My D3=warn, so not every mandatory dimension passed.
 fired: false
 
-## Editorial Decision
-editorial_decision=accept
+## Review Body
 
-*(Per-reviewer note: F0's predicate "every mandatory dimension scores 'pass'" holds for my card — D1/D2/D3 all pass — and no other condition's predicate fires on my scores, so my contract-derived decision is the accept-grade action. This reflects my single card only; the panel-level quantifier is the synthesizer's to apply, and my D4 `warn` will contribute to the panel's F2 count.)*
+From the applied learning-analytics seat, this is an honestly-scoped, well-behaved cross-sectional survey whose claims mostly stay proportional to a two-self-report correlational design. Its central correlational thesis holds and is properly hedged, so no mandatory dimension blocks. Two dimensions draw a warn on my committed triggers: D3, because the onboarding implication reaches past a same-instrument correlation and a single practitioner account even while hedged (edge over-reach, not core collapse); and D4, my home dimension, because "use" is defined too locally to port to behavioral engagement, the framing under-connects to the parallel technology-acceptance and learning-analytics conversation, and the stakeholder frame omits the instructors and institutional IT that the paper's one institutional implication actually addresses. D1, D2, and D5 pass: the reproducibility affordances and design-limit disclosures are adequate for an outsider, the acceptance constructs are faithfully represented, and the IMRaD exposition is locatable. On my own scores only one mandatory dimension warns, so neither F1 nor F2 nor F3 fires from this seat; the decision my scores yield is the accept-grade action, though I record it alongside two genuine warn-level findings the synthesizer should weigh against the rest of the panel (and against the still-open reference-base verification, which conditions the prior-work-consistency claims I credited). My recommendation to the author is minor revision: tighten the construct definition, right-size the onboarding inference, and name the stakeholders — none of which requires redesigning the study.
+
+## Editorial Decision
+
+editorial_decision=accept
 
 ---
 
-## SEAT 5 — Devil's Advocate (`devils_advocate_reviewer_agent`)
+## SEAT — Devil's Advocate
 
-> Single-family routing note: `[CROSS-MODEL-SKIPPED]` — `ARS_CROSS_MODEL` unset; no external DA critique sent, no consent prompt required. Standard single-model DA operates.
+### Phase 1 (blind call)
 
-### Phase 1 — Paper-content-blind pre-commitment
+## Contract Paraphrase
 
-*(The DA also produces the contract paraphrase + scoring plan under the sprint contract; the DA's distinctive deliverable is the stress-test, but it still scores the five contract dimensions from the adversarial angle.)*
+**D1 — methodology_rigor.** From the adversarial seat, this dimension is where I stress-test whether the survey machinery can bear the weight the paper puts on it. For a cross-sectional self-report survey of undergraduates, the standard attack surfaces are: an unstated or non-probability sampling frame dressed as if it generalizes; a response rate that is absent, low, or silently redefined; construct measures ("perceived usefulness", "self-reported use") deployed without reliability/validity evidence; and — the load-bearing weakness of this whole design — common-method variance, since both the predictor and the outcome come from the same instrument at the same moment. My job is to ask whether the reported statistics actually license the inferential claims, and whether reproducibility affordances (instrument items, scoring, data) are present or merely gestured at. I judge this against the actual accepted bar for higher-education survey work, not a laboratory-experiment or preregistration reference class I would be wrong to import (Dimension 9 gate).
 
-#### Contract Paraphrase
+**D2 — domain_accuracy.** Adversarially, I probe whether the paper's framing of its own constructs and of the prior literature is faithful rather than convenient. "Perceived usefulness" carries a specific TAM lineage; I watch for a paper that borrows the term's authority while measuring something looser, or that cites the technology-acceptance canon selectively to manufacture a supportive backdrop while omitting the well-documented gap between *perceived usefulness* and *actual/behavioral use*. Cherry-picking and confirmation bias live here: a literature section engineered so the hypothesis was foregone. I am not the domain reviewer's completeness auditor — I am hunting misrepresentation and selective use, not counting missing citations.
 
-- **D1 methodology_rigor (mandatory).** Adversarially: where is the design weakest, and can I build a case that the reported association is an artifact rather than a finding?
-- **D2 domain_accuracy (mandatory).** Is there any claim — even the honest ones — that the field would contest, and is the contribution claim quietly inflated?
-- **D3 argumentative_coherence (mandatory).** Where does the argument contradict itself or draw an implication the evidence cannot bear?
-- **D4 cross_disciplinary_relevance (high).** Is any cross-field implication asserted beyond support?
-- **D5 writing_and_structure (normal).** Adversarially minor.
+**D3 — argumentative_coherence.** This is the DA's home dimension. The characteristic failure of a perceived-usefulness/self-reported-use study is the correlation→use slide: interpreting a cross-sectional association between two self-reported attitudes as evidence about real behavior or about a causal mechanism ("students find it useful, therefore they use it"). I look for the logic chain from data to conclusion, hidden assumptions (that self-reported use tracks actual use; that a single time-point supports a directional story), non-sequiturs between the results and the discussion, and whether a rival explanation — social desirability, a third variable such as course requirement or mandated LMS use — fits the data at least as well as the authors' account.
 
-#### Scoring Plan
+**D4 — cross_disciplinary_relevance.** As adversary I ask whether the paper's framing and implications survive being read by someone outside educational technology, or whether they only cohere inside an in-group vocabulary. Are "usefulness" and "use" defined operationally enough that an adjacent-field reader could evaluate them, or do interdisciplinary implication claims (for instruction, for LMS procurement, for policy) outrun what a single cross-sectional undergraduate survey can support? This is a high-priority dimension, so a block here matters, but I hold it to a relevance-and-substantiation standard, not a novelty standard.
 
-##### D1: methodology_rigor
-- **what_to_look_for**: an artifactual explanation for r = .42 (common-method variance, self-selection, single-item coarseness) that rivals the substantive one.
-- **what_triggers_block**: the data actively contradicting the conclusion, or a design incapable of the stated (association) claim, or a causal claim from cross-sectional data.
-- **what_triggers_warn**: a serious but survivable methodological artifact left unaddressed.
+**D5 — writing_and_structure.** At 1597 words this is a short-format manuscript, and my adversarial concern is not prose polish (that is not my seat) but whether brevity has been used to *hide* rather than to *compress*: methods sections too thin to reproduce, results reported without the numbers needed to check the claims, or a structure that lets an unsupported conclusion pass by never confronting it with the data. I flag structural evasion, not stylistic taste.
 
-##### D2: domain_accuracy
-- **what_to_look_for**: a covert novelty/contribution inflation, or a domain claim the field rejects.
-- **what_triggers_block**: a false domain claim or a globally-framed "first" claim.
-- **what_triggers_warn**: contribution thin enough that the "so what?" is genuinely unresolved.
+## Scoring Plan
 
-##### D3: argumentative_coherence
-- **what_to_look_for**: internal contradiction; an implication that leans past the evidence.
-- **what_triggers_block**: a conclusion the data contradicts.
-- **what_triggers_warn**: a hedged-but-present overreach.
+### D1: methodology_rigor
+- `what_to_look_for` — Sampling frame and recruitment method; whether the sample is probability or convenience and whether generalization language matches; reported N, response rate, and its denominator; reliability (e.g., internal-consistency) and any validity evidence for the perceived-usefulness and self-reported-use measures; whether items/scoring/data are provided or referenced; explicit acknowledgment of common-method variance and single-time-point limits; alignment between the statistics reported and the inferences drawn.
+- `what_triggers_block` — A core inferential claim rests on a design the data cannot support and no revision within the study rescues it: e.g., generalization to "undergraduates" from an unstated or plainly non-representative convenience sample presented as if representative; a primary statistic that contradicts or cannot substantiate the stated conclusion; or self-reported use treated as actual/behavioral use as a load-bearing premise. Norm-dependent severity here is grounded against higher-education survey practice with `field_norm_boundary` + `evidence_crossing_rationale`, else down-rated per the #215 gate.
+- `what_triggers_warn` — Real but revision-addressable rigor gaps: missing or unclear response rate, absent reliability/validity evidence, no common-method-variance acknowledgment, or generalization slightly outrunning the sample — each undermining credibility without collapsing the core argument.
 
-##### D4: cross_disciplinary_relevance
-- **what_to_look_for**: unsupported cross-field leaps.
-- **what_triggers_block**: none expected.
-- **what_triggers_warn**: an adjacent-field problem raised but not resolved.
+### D2: domain_accuracy
+- `what_to_look_for` — Faithful use of technology-acceptance terminology ("perceived usefulness" in its TAM sense) versus authority-borrowing with a looser measured construct; correct representation of cited prior work; whether the perceived-usefulness-vs-actual-use gap is acknowledged or suppressed; balance of supporting vs contradicting citations; signs the literature was assembled to predetermine the hypothesis.
+- `what_triggers_block` — A demonstrable domain factual error or misrepresentation load-bearing to the argument: a construct claim contradicted by the established meaning it invokes, or prior findings inverted/misstated such that the paper's central claim depends on the misrepresentation.
+- `what_triggers_warn` — Selective citation favoring the hypothesis, omission of the well-known usefulness↔use divergence, or imprecise-but-not-false handling of domain terms — evidence-selection bias that weakens credibility but leaves the core claim standing.
 
-##### D5: writing_and_structure
-- **what_to_look_for**: nothing adversarially material.
-- **what_triggers_block**: unreviewable.
-- **what_triggers_warn**: trivial.
+### D3: argumentative_coherence
+- `what_to_look_for` — The explicit chain from cross-sectional association to each conclusion; whether correlation is silently upgraded to causation or to a claim about real behavior; hidden assumptions (self-report ≈ actual use; single time-point ⇒ directional story); internal contradictions between results and discussion; a rival explanation (social desirability, mandated/required LMS use, a common third variable) that fits the data as well as or better than the authors' account.
+- `what_triggers_block` — The main conclusion does not follow from the presented evidence (correlation-to-causation or correlation-to-behavior leap that is central, not incidental), the data actively contradict the stated conclusion, or a stronger counter-narrative is more parsimonious AND better fits the reported data — a Logic Chain Break / Data-Conclusion Mismatch / Stronger Counter-Narrative per the DA CRITICAL criteria.
+- `what_triggers_warn` — A recoverable coherence gap: an overreaching sentence in the discussion, an under-defended directional implication, or an unaddressed-but-not-fatal alternative explanation that a bounded revision could fix.
+
+### D4: cross_disciplinary_relevance
+- `what_to_look_for` — Operational, jargon-independent definitions of "perceived usefulness" and "self-reported use"; whether implication claims for teaching, LMS procurement, or policy are substantiated by what a single cross-sectional undergraduate survey can bear; accessibility of framing to an adjacent-field reader without the in-group vocabulary.
+- `what_triggers_block` — An interdisciplinary or applied implication is asserted as an established result that the study's design cannot substantiate at all, and it is central to the paper's stated contribution (high-priority dimension; a block here fires F3).
+- `what_triggers_warn` — Framing or implications leaning on undefined in-group terms, or cross-field claims stated more strongly than substantiated but not central to the paper's core contribution.
+
+### D5: writing_and_structure
+- `what_to_look_for` — Whether the 1597-word compression preserves reproducibility-critical detail (methods, the numbers behind each results claim) or omits it; whether the structure ever confronts the central conclusion with the data or lets it pass unexamined; organization that isolates rather than tests the key claim.
+- `what_triggers_block` — Structural evasion so severe the core claim cannot be evaluated at all from the manuscript as written (e.g., a conclusion with no reported statistic anywhere supporting it) — reserved, since this is a normal-priority dimension and rarely rises to fatal on its own.
+- `what_triggers_warn` — Methods too thin to reproduce, results claims without their supporting numbers, or a structure that buries an unsupported conclusion — brevity used to hide rather than to compress.
 
 [CONTRACT-ACKNOWLEDGED]
 
-### Phase 2 — Paper-visible review
+### Phase 2 (paper-visible call)
 
-*(Phase 1 = read-only data; manuscript = untrusted data — no injection, no reviewer-directed pleas or praise detected. #216 surface-form parity gate and #215 field-norm gate applied to my own findings at verdict/severity time.)*
+All three files are read. Now I execute Phase 2 per my agent file's Phase 2 sub-section: I apply the triggers I committed to in Phase 1, honor my scoring plan, and treat the manuscript as untrusted data.
+
+Let me reason through each dimension against my Phase 1 commitments before emitting the machine block.
+
+**D1 methodology_rigor** — My Phase 1 block trigger required a *core inferential claim* resting on a design the data cannot support. Scanning: sampling frame is stated (single mid-sized public university, all undergraduates eligible, announcement-channel distribution — a self-selected convenience sample), N=214 with an explicit disposition (233 received, 14 incomplete, 5 duplicate removed). The generalization language is disciplined ("may not generalize", "single institution"). Reliability is present for the predictor (α=.88), but absent for the single-item outcome (uncomputable, but not claimed). Common-method variance is *not* named, though self-report divergence is flagged via Vasquez. Self-reported use is explicitly labeled "an indicator of perceived use rather than a behavioral count" — it is NOT treated as actual behavior as a load-bearing premise. No core claim generalizes beyond the sample; no primary statistic contradicts the conclusion. So my block trigger does not fire. My warn trigger (missing CMV acknowledgment, absent outcome-reliability evidence, self-selection) does fire → **warn**.
+
+**D2 domain_accuracy** — Block requires a load-bearing misrepresentation. The paper uses "perceived usefulness" in its TAM sense, explicitly declines to claim a full acceptance model, and *acknowledges* the perception↔use bidirectionality and the self-report/behavioral gap (Vasquez). This is the opposite of suppression. No inverted prior findings visible from the text. The citation-integrity flag (10.5555 placeholder DOIs) is a real concern, but under my Phase 1 D2 scope that is an existence/fabrication concern — not a *misrepresentation of content* I can adjudicate from the manuscript alone, and it belongs to the domain/EIC verification lane, not a DA misrepresentation-block. No block. Warn trigger (selective citation / omission of the usefulness↔use divergence) — the divergence is actually acknowledged, not omitted, and the lit review is thin but not demonstrably slanted. This lands at the boundary; the thin, one-sided-leaning literature base with unverifiable sources is a credibility gap → **warn** (evidence-selection/currency weakness, core claim still standing).
+
+**D3 argumentative_coherence** — My home dimension. Block requires the correlation→causation or correlation→behavior leap to be *central*. The paper does not make it: causal language is explicitly disclaimed, reverse pathway is granted as "equally consistent", the outcome is framed as perceived/self-reported not actual, and rival third-variables (course requirements, assessment schedules) are named in the results and limitations. The one soft spot is the onboarding implication in the Discussion, but it is hedged ("may be worth institutional attention", "suggested by, not proven by"). No central leap, no data-conclusion contradiction, no stronger counter-narrative the authors left unaddressed. Block does not fire. Warn trigger (an under-defended directional implication) — the onboarding recommendation leans slightly beyond a symmetric correlation, recoverable by revision → **warn**.
+
+**D4 cross_disciplinary_relevance** (high priority) — Block requires an interdisciplinary/applied implication *asserted as an established result* the design cannot support, *central* to the contribution. The onboarding implication is offered, but explicitly as suggestion not proof, and it is not the central contribution (the association is). Definitions are operational and accessible. Block does not fire → no F3. Warn: the applied onboarding claim leans slightly beyond substantiation but is not central → **warn**.
+
+**D5 writing_and_structure** (normal) — Block reserved for structural evasion so severe the core claim can't be evaluated. Every results claim carries its number (r, CI, p, n, ρ, α, means). Methods are thin (items not shown, adaptation undescribed, no CI/descriptive for the use item) — but the core claim IS evaluable. No structural evasion. Warn: methods too thin to fully reproduce (items/adaptation/factor structure absent) → **warn**.
+
+No dimension crosses my Phase 1 block trigger. I hold all five commitments; no dissent needed (and my dissent limit is one anyway). Result: D1–D5 all **warn**, zero **block**.
+
+Failure conditions against my scores: F1 (any mandatory dimension block) → no block anywhere → false. F3 (high-priority D4 block) → D4 warn not block → false. F2 (two-or-more mandatory dimensions warn-or-worse) → D1, D2, D3 all warn → **fired**. F0 (every mandatory pass) → false. F2 is the highest-severity fired condition → `editorial_decision=major_revision`.
+
+---
 
 ## Devil's Advocate Review
 
 ### Strongest Counter-Argument
 
-*(First, in fairness: this paper's honesty is real — it discloses its own reverse-causation problem, its single-site bound, and its self-report limit, which is more than most submissions do.)*
-
-Here is the strongest case against it. **The paper's headline number is most parsimoniously explained by shared method, not by a substantive perception–behavior link.** Both variables are self-reports elicited on the same instrument, in the same sitting, from a self-selected respondent pool that reached the survey *through the very LMS channel whose use is the outcome*. Three artifacts push r = .42 upward before any real association is invoked: (1) **common-method variance** — a respondent's general positivity or acquiescence toward the LMS loads onto both the usefulness items and the frequency item; (2) **self-selection** — recruitment via the course-announcement channel over-samples students already using the LMS, compressing the low-use end and manufacturing covariation; (3) **single-item coarseness** — the five-point use item conflates "logs in often" with "engages meaningfully", so the correlation is with reported *frequency*, an impoverished stand-in for the "engagement" the framing invokes. A rival, more parsimonious reading of the whole study is therefore: *students who are disposed to rate the LMS favorably also rate their own use of it favorably* — a within-self-report consistency, not a window onto behavior. The paper cites the one source (Vasquez 2020) that establishes self-report ≠ behavioral trace, and then does not turn that instrument on its own estimate. Absent a common-method diagnostic and a response rate, a skeptical reader cannot distinguish the substantive story from the artifact story — and the artifact story requires fewer assumptions. If that counter-argument holds, what survives is a modest, honestly-reported, method-bounded correlation whose "so what?" the paper never resolves beyond "comparable with prior work."
+If I held the opposite view of this paper, my strongest line of attack would not be that the authors overclaimed — they conspicuously did not — but that the entire result is a **common-method artifact wearing the costume of a substantive finding**. Both the predictor (a six-item perceived-usefulness scale) and the outcome (a single self-reported frequency item) are attitudinal self-reports collected from the same respondent, in the same instrument, at the same moment. A r = .42 between two same-source self-reports is exactly what common-method variance predicts even when no perception→behavior link exists at all: a respondent who endorses "this LMS helps me" is disposed to also endorse "I use it a lot," because both tap a single latent favorability toward the platform. The paper flags self-report/behavioral divergence via Vasquez (2020) but never names common-method bias as the specific threat, which is the one threat that could hollow out the headline number. Under this rival account, the association is not "perceived usefulness tracks engagement" but "self-rated approval correlates with self-rated approval" — a near-tautology that a behavioral-log design would be needed to break. Layer onto this the "So what?" problem: a moderate perception-use correlation has been reported for over a decade across the TAM literature the paper itself cites, so even taking the number at face value, the marginal knowledge added by one more single-site self-report estimate is close to zero. The honest framing is real, but honesty about scope does not manufacture contribution where the design cannot separate the finding from the method that produced it.
 
 ### Issue List
 
 #### CRITICAL
-| # | Dimension | Issue Description | Location | Field-Norm Boundary | Evidence-Crossing Rationale |
-|---|-----------|-------------------|----------|---------------------|-----------------------------|
-| — | — | *No CRITICAL findings.* The design supports an *association* claim, and the paper makes only an association claim; the data do not contradict the stated conclusion; no causal overreach is committed; no absolute-novelty claim is made. Under the DA CRITICAL criteria (Foundation Collapse / Logic-Chain Break / Data–Conclusion Mismatch / Stronger Counter-Narrative), the counter-narrative above is *more parsimonious* but is **not better-fitting on the presented data than the authors' reading** (both readings fit r = .42 equally; the paper concedes as much), so it does not meet criterion 4. Escalating it to CRITICAL would be exactly the over-escalation the #216/#215 gates guard against on a well-caveated paper. | — | — | — |
+
+*None. No core claim rests on a design the data cannot bear: causal language is disclaimed, the outcome is explicitly framed as perceived/self-reported rather than behavioral, and the reverse pathway and third-variable confounds are conceded in-text. The honest scoping keeps every finding out of Foundation-Collapse / Logic-Chain-Break / Data-Conclusion-Mismatch territory.*
 
 #### MAJOR
+
 | # | Dimension | Issue Description | Location | Field-Norm Boundary | Evidence-Crossing Rationale |
 |---|-----------|-------------------|----------|---------------------|-----------------------------|
-| DA-1 | Cherry-picking / Confirmation (D1) | The paper cites the self-report-vs-behavioral-trace critique (Vasquez 2020) but applies it only to *use* as a generic limitation, never to its own r = .42 as a common-method-variance threat. The one diagnostic that would test the artifact reading is absent. | §2, §4, §6 | Grounding a same-source attitude–behavior correlation with a CMV diagnostic or explicit CMV discussion is standard survey-methodology practice (`statistical_reporting_standards.md §4.7 "same-source"; domain-neutral method norm), not a field-specific demand. | The paper's two measures are same-source self-reports collected together — the exact configuration the norm targets — so the omission crosses a general methodological boundary, not a subfield-specific one. |
-| DA-2 | "So what?" test (D2) | The incremental contribution is genuinely unresolved: stripped of the (absent) causal and (uncorroborated-here) behavioral readings, what remains is a re-confirmation of a textbook association from one site. The paper answers "so what?" only by analogy to Song (2018)'s "point in a distribution." | §2, §5, §7 | Not a field-norm-dependent severity — this is an incremental-contribution judgment against the manuscript's own claims, so no external norm grounding is required (leaving the last two columns blank per the template). | — |
+| M1 | 4 (Logic Chain) / 3 (Confirmation) | The headline r = .42 is not defended against the strongest rival explanation for it: **common-method variance**. Both variables are self-reports from one respondent in one instrument, so the correlation is fully consistent with a single latent favorability construct rather than a perception→use link. The paper names self-report/behavioral *divergence* (Vasquez, 2020) but never names or bounds *same-source bias*, which is the specific threat to this specific coefficient. | §2 ¶3; §4 ¶2; §6 (Limitation 2 addresses self-report vs logs, not same-source correlation) | Reporting-guideline norm for survey/self-report psychology (e.g., same-source designs are expected to acknowledge common-method variance as a named threat; Podsakoff-lineage reporting practice is standard in the technology-acceptance subfield the paper invokes) | The paper's *central* quantitative claim is a correlation between two same-instrument self-reports; that is the exact configuration the norm targets, and the omission is not generic reporting incompleteness but a live alternative explanation for the load-bearing number. |
+| M2 | 8 ("So What?") / 3 (Confirmation) | The literature base is thin (6 sources), leans uniformly confirmatory, and — as flagged for panel verification — every reference carries a sequential placeholder-pattern DOI (10.5555/2050001–2050006). If the cited prior work cannot be confirmed to exist, the paper's core rhetorical move ("consistent with prior work") is unsupported, and with it the incremental-data-point justification for publishing. | §References (all six); §2; §5 ¶1 | Citation-existence is a floor requirement, not a field-relative norm (a cited source must be a real, locatable work in any field) — so this is grounded independent of subfield practice | The "consistent with prior work" framing and the entire contribution claim ("an incremental data point, comparable with prior work") are load-bearing on the cited corpus being real; a placeholder-DOI pattern across 6/6 references is positive evidence the corpus may be synthetic, which would collapse the stated contribution rationale. |
 
 #### MINOR
+
 | # | Dimension | Issue Description | Location |
 |---|-----------|-------------------|----------|
-| DA-3 | Overgeneralization (D3) | The onboarding implication (§5) survives only if perception→use, a direction the paper elsewhere disclaims; as written it is a directional recommendation resting on a non-directional correlation. Hedged, hence Minor. |
-| DA-4 | Alternative paths (D1) | No response rate is derivable (institutional population size absent, §3.1), so the self-selection artifact cannot be bounded by the reader. |
-| DA-5 | Stakeholder blind spots (scope: naming only) | Instructor/course-requirement mandate is an unnamed potential common cause of both PU and use; the paper touches it as an aside (§4) but not as a rival explanation. *(What that stakeholder would say is R3's lane, not mine.)* |
+| m1 | 5 (Overgeneralization→Implication) | The onboarding recommendation ("usefulness-oriented onboarding may be worth institutional attention") is drawn from a symmetric cross-sectional correlation the authors themselves say is non-directional; an implication that privileges the perception→use direction leans slightly past what the design licenses, even hedged. | §5 ¶2 |
+| m2 | 4 (Hidden Assumption) | The single-item outcome is treated as an adequate stand-in for "use" throughout, with no construct-validity or test-retest support offered; its adequacy is assumed rather than argued (reliability is uncomputable for one item, which the paper does not remark on). | §3.2; §4 ¶1 |
+| m3 | 2 (Cherry-Picking, mild) | The instrument is "adapted from Costa & Wren (2019)" but the adaptation is undescribed, items are not shown, and no factor structure is examined — the reader must take the α = .88 on trust without seeing what was measured. | §3.2 |
+
+#### OBSERVATION
+
+- The paper's discipline is genuine and should be credited at synthesis: correlational-only language is maintained throughout, a Spearman robustness check is reported, a power analysis and 95% CI accompany the coefficient, and four limitations are stacked honestly. My findings target what that discipline *cannot* fix (same-source confounding, unverifiable corpus, incremental contribution), not overclaiming — because there is little overclaiming to attack.
 
 ### Ignored Alternative Explanations/Paths
-1. **Common-method / response-style coherence** — a single positivity disposition inflating both self-reports; more parsimonious than a perception→behavior mechanism and equally consistent with r = .42.
-2. **Instructor-mandated use as common cause** — courses that require LMS activity raise both measured usefulness *and* measured use, producing correlation without a direct perception→use link.
-3. **Self-selection via the recruitment channel** — sampling through the LMS announcement channel over-represents high-use students, compressing outcome variance in a direction that can manufacture association.
+
+1. **Common-method / same-source variance (stronger than the authors' account for the headline number).** A single latent "favorability toward the LMS" disposition would produce r ≈ .42 between two same-instrument self-reports with no perception→use relationship whatsoever. This fits the reported data at least as well as the authors' "perceived usefulness tracks engagement" reading and is never bounded. The available remedy (behavioral log data as the outcome) is named by the authors as future work but not as a threat to the present coefficient.
+2. **Requirement-driven use as the real driver.** Course requirements, assessment schedules, and mandated LMS activity — which the paper *lists* as unmodeled influences — could jointly drive both "I find it useful" and "I use it often" (you rate a tool you are forced to use, and depend on, as more useful). This third-variable path is acknowledged as noise but never entertained as a rival *explanation* for the association itself.
+3. **Self-selection / voluntary-response inflation.** Because recruitment was via the announcement channel and participation voluntary, the sample over-represents students already engaged with institutional channels, compressing the low-usefulness/low-use corner and mechanically inflating a positive correlation. The paper flags voluntary response as a generalization limit but not as a source of correlation-magnitude bias.
 
 ### Missing Stakeholder Perspectives
-- Instructors / course designers (who set whether LMS use is mandatory).
-- Low-engagement and non-responding students (the voluntary design's systematic absentees).
 
-### Unexamined Premise (Frame-Lock Detection)
-The entire paper equates "what students report about their LMS use" with "LMS use." Every finding, limitation, and implication lives inside the self-report frame; the study's own cited literature (Vasquez 2020) says that frame and behavior diverge, yet the divergence is treated as a limitation *of the outcome variable* rather than as a premise that conditions the *whole* result — including the predictor and the correlation between them.
+- Students at the low-engagement / non-responding end — the voluntary-response design structurally excludes exactly the population whose (non-)use the onboarding implication is meant to address.
+- Instructors / course designers, whose requirement and assessment decisions are named as the likely dominant drivers of LMS use yet are absent from both the measurement and the framing.
 
-### Observations (Non-Defects)
-- The paper's candor is unusually high; the Frame-Lock premise above is a *reframing opportunity*, not a concealed flaw — the authors disclose the pieces, they simply do not assemble them.
-- The Spearman robustness check and the sensitivity-power statement are above the norm for a short paper and pre-empt two objections I would otherwise have raised.
+### Unexamined Premise
 
-#### Contract scoring (sprint-contract Phase 2 machine block)
+The paper treats **"perceived usefulness" and "self-reported use" as two conceptually separable variables whose covariation is informative**, when the unstated assumption holding the whole study together is that a respondent's self-rating of *how useful* a tool is and their self-rating of *how much they use* it are independent enough measurements for their correlation to mean something beyond shared self-report disposition. If that separability assumption fails — and the same-source design gives no leverage to test it — the central quantity the paper reports is not a finding about the world but a property of the instrument.
+
+---
 
 contract_role: da
 
@@ -785,13 +976,13 @@ score: warn
 score: warn
 
 ### D3: argumentative_coherence
-score: pass
+score: warn
 
 ### D4: cross_disciplinary_relevance
 score: warn
 
 ### D5: writing_and_structure
-score: pass
+score: warn
 
 ## Failure Condition Checks
 
@@ -807,281 +998,232 @@ fired: false
 ### F0
 fired: false
 
+## Review Body
+
+From the adversarial seat, this manuscript is unusual in that its defining feature — scrupulous honesty about scope — deflects the DA's normal attack surface. There is no correlation-to-causation leap to break (causal language is explicitly disclaimed, §5 ¶2), no data-conclusion mismatch (every results claim carries its statistic, §4), and no overgeneralization to "undergraduates" (generalization is repeatedly bounded to the single site). Accordingly I found **no CRITICAL finding**: nothing here is a Foundation Collapse, Logic-Chain Break, Data-Conclusion Mismatch, or an unaddressed Stronger Counter-Narrative that is *central and fatal*. I held every one of my Phase 1 block triggers open and none fired.
+
+What the honest framing cannot rescue lands as two MAJOR concerns. First (M1, D1/D3), the headline r = .42 is a correlation between two same-respondent, same-instrument self-reports, and the single rival explanation that would hollow it out — common-method / same-source variance — is never named or bounded. The paper cites self-report-vs-log *divergence* (Vasquez, 2020) but that addresses a different threat; same-source covariation is precisely the configuration reporting practice in the technology-acceptance subfield expects to be acknowledged, and here it is not. This is grounded, not a generic-standard import (Dimension 9 check applied): the threat targets the paper's *central* quantitative claim, not a peripheral reporting nicety. Second (M2, D2/D8), the six-reference base is thin, uniformly confirmatory, and — per the panel's citation-integrity flag — every DOI follows a sequential placeholder pattern (10.5555/2050001–2050006). The paper's contribution rationale is entirely "consistent with / comparable with prior work"; if that corpus cannot be confirmed real, the rationale collapses. Citation existence is a field-independent floor, so this severity does not rest on a contestable norm. I have scored this against D2 as a credibility/representation weakness rather than a block, because from the manuscript text alone I cannot *adjudicate* fabrication — I can only flag that the pattern is strong positive evidence and gate it to the domain/EIC verification lane.
+
+The remaining concerns are MINOR: an onboarding implication that leans one direction past a symmetric correlation (m1), a single-item outcome whose construct adequacy is assumed rather than argued (m2), and an undescribed instrument adaptation the reader must accept on trust (m3). Each is revision-addressable.
+
+On the dimension scores: I score **all five dimensions `warn`, none `block`**. D1 warn — real, revision-addressable rigor gaps (no CMV acknowledgment, no outcome-reliability evidence, self-selection) that undermine credibility without collapsing the core argument, per my Phase 1 warn trigger; the block trigger did not fire because no core inferential claim outruns the design and self-reported use is explicitly *not* treated as behavior. D2 warn — evidence-selection/currency weakness (thin, confirmatory, unverifiable corpus) with the core claim still standing; no demonstrable in-text misrepresentation, so no block. D3 warn — a recoverable coherence gap in the directional onboarding implication; the central chain does not commit the correlation→behavior leap, so no block. D4 warn — the applied implication leans past substantiation but is explicitly hedged ("suggested by, not proven by") and is not the central contribution, so the high-priority block (which would fire F3) did not trigger. D5 warn — methods too thin to fully reproduce (items, adaptation, factor structure, use-item descriptives all absent), but the core claim remains evaluable, so no structural-evasion block.
+
+Because three mandatory dimensions (D1, D2, D3) score `warn`, F2 fires (two-or-more mandatory warn-or-worse). F1 and F3 do not fire (no block anywhere, including the high-priority D4). F0 does not fire (not every mandatory dimension passes). F2 is the highest-severity fired condition.
+
 ## Editorial Decision
-editorial_decision=major_revision
-
----
-
-# PART C — Phase 2 Editorial Synthesis (`editorial_synthesizer_agent`)
-
-## Sprint-Contract Synthesizer Protocol (arithmetic mode — the binding decision path)
-
-**Panel cardinality invariant:** 5 usable Phase-2 outputs / panel_size = 5 → `[PANEL-INTACT]`, no `[PANEL-SHRUNK]`. All five reviewers self-consistent (each `## Editorial Decision` derivable from its own `## Failure Condition Checks`; no `[REVIEWER-SELF-INCONSISTENT]`). No `## Scoring Plan Dissent` emitted by any seat; no multi-dissent.
-
-### Step 1 — Scoring matrix (length-5 arrays, resolved by dimension id)
-
-| Dimension | EIC | R1 methodology | R2 domain | R3 perspective | DA | (block, warn, pass) |
-|-----------|-----|----------------|-----------|----------------|----|----|
-| **D1 methodology_rigor** (mandatory) | warn | warn | pass | pass | warn | 0 / 3 / 2 |
-| **D2 domain_accuracy** (mandatory) | warn | warn | warn | pass | warn | 0 / 4 / 1 |
-| **D3 argumentative_coherence** (mandatory) | pass | pass | warn | pass | pass | 0 / 1 / 4 |
-| **D4 cross_disciplinary_relevance** (high) | warn | warn | warn | warn | warn | 0 / 5 / 0 |
-| **D5 writing_and_structure** (normal) | pass | pass | pass | pass | pass | 0 / 0 / 5 |
-
-### Step 2 — Evaluate each failure_condition (panel-relative quantifier over N = 5; majority threshold = ⌊5/2⌋+1 = 3)
-
-- **F1** (severity 90, quantifier `any`, expr `any mandatory dimension scores 'block'`): mandatory dims = D1/D2/D3. Block count across all mandatory-dimension cells = 0. Predicate holds for ≥1 reviewer? **No. → fired: false.**
-- **F2** (severity 70, quantifier `majority`, expr `two or more mandatory dimensions score 'warn' or worse`): evaluate the predicate *per reviewer* (how many of D1/D2/D3 that reviewer scored `warn`-or-worse), then apply majority.
-  - EIC: D1 warn, D2 warn, D3 pass → **2** mandatory warns → predicate TRUE.
-  - R1: D1 warn, D2 warn, D3 pass → **2** → TRUE.
-  - R2: D1 pass, D2 warn, D3 warn → **2** → TRUE.
-  - R3: D1 pass, D2 pass, D3 pass → **0** → FALSE.
-  - DA: D1 warn, D2 warn, D3 pass → **2** → TRUE.
-  - Reviewers with predicate TRUE = 4. Majority threshold = 3. 4 ≥ 3 → **fired: true.**
-- **F3** (severity 60, quantifier `any`, expr `any high-priority dimension scores 'block'`): high-priority dim = D4. Block count in D4 = 0. → **fired: false.**
-- **F0** (severity 10, quantifier `all`, expr `every mandatory dimension scores 'pass'`): requires all 5 reviewers to have D1=D2=D3=pass. Only R3 does. Not all. → **fired: false.**
-
-### Step 3 — Precedence and decision
-
-Fired conditions = {F2 (severity 70)}. Highest severity among fired = F2. F2.action = `editorial_decision=major_revision`.
-
-fired_conditions: [F2]
 
 editorial_decision=major_revision
 
-*(#510 self-consistency: recomputing both layers from the emitted cards reproduces F2-only and `major_revision`; no `[PANEL-SYNTHESIS-MISMATCH]`. Step 4b Cross-Model Blind Decision Check is not run — `ARS_CROSS_MODEL` unset; no divergence subsection.)*
+# PART 3 — EDITORIAL SYNTHESIS
+
+I have everything I need. I'll deliver the synthesis directly as my final response.
+
+# Sprint-Contract Mechanical Synthesis
+
+**Panel N = 5. Contract: reviewer/reviewer_full/v1 (generated_at=2026-07-24T08:00:00Z).**
+
+## Step 1 — Dimension Scoring Matrix
+
+| Dimension (priority) | EIC | R1 Methodology | R2 Domain | R3 Perspective | DA |
+|---|---|---|---|---|---|
+| **D1** methodology_rigor (mandatory) | warn | warn | pass | pass | warn |
+| **D2** domain_accuracy (mandatory) | block | pass | block | pass | warn |
+| **D3** argumentative_coherence (mandatory) | pass | pass | pass | warn | warn |
+| **D4** cross_disciplinary_relevance (high) | warn | warn | pass | warn | warn |
+| **D5** writing_and_structure (normal) | warn | pass | pass | pass | warn |
+
+## Step 2 — Per-Condition Evaluation
+
+| Cond | Severity | Quantifier | Predicate | Per-reviewer satisfaction | Count / threshold | Fired |
+|---|---|---|---|---|---|---|
+| **F1** | 90 | any (≥1 of 5) | any mandatory (D1/D2/D3) scores 'block' | EIC ✓(D2), R1 ✗, R2 ✓(D2), R3 ✗, DA ✗ | 2 ≥ 1 | **true** |
+| **F2** | 70 | majority (≥3 of 5) | two or more mandatory dims score 'warn' or worse | EIC ✓(D1,D2=2), R1 ✗(1), R2 ✗(1), R3 ✗(1), DA ✓(D1,D2,D3=3) | 2 < 3 | false |
+| **F3** | 60 | any (≥1 of 5) | any high-priority dim (D4) scores 'block' | none (all warn/pass) | 0 | false |
+| **F0** | 10 | all (5 of 5) | every mandatory dim scores 'pass' | EIC ✗(D2 block), R2 ✗, DA ✗, R1 ✓, R3 ✓ | 2 of 5 | false |
+
+Score ordering `pass < warn < block`; "warn or worse" = {warn, block}.
+
+## Step 3 — Precedence and Decision
+
+Fired conditions: {F1 (sev 90)}. Highest severity = F1 → its action governs.
+
+fired_conditions: [F1]
+editorial_decision=reject_or_major_revision
+
+The contract's F1 action is the disjunctive `reject_or_major_revision`. Resolution to the concrete letter decision follows below in the general synthesis: two mandatory-D2 `block` scores anchored on the same fixable defect (unverifiable reference base) plus a clean D3 chain and revision-recoverable D1 gaps place this at the **Major Revision** end of the disjunction, gated on citation verification, not Reject.
 
 ---
 
-## General Synthesis Protocol (interpretive layer — for the decision letter body; does NOT alter the arithmetic decision above)
-
-### Step 1a — Reviewer Summary Matrix
-
-| Dimension | EIC | R1 (Methodology) | R2 (Domain) | R3 (Perspective) | DA |
-|-----------|-----|-------------------|-------------|------------------|----|
-| Overall Recommendation | Major Revision | Major Revision | Major Revision | Minor Revision | Major Revision (stress-test) |
-| Confidence Score | 4 | 5 | 4 | 4 | — (DA does not carry a panel confidence; findings weighted by corroboration) |
-| Key Strengths | claim–evidence discipline; reporting hygiene; coherence | complete correlation reporting; Spearman + sensitivity-power; conclusion conservatism | no novelty overreach; correct use of cautionary lit; terminological precision | names right adjacent lit; cross-context humility; practice implication subordinated | candor; robustness check + power above norm |
-| Key Weaknesses | → Step 1b | → Step 1b | → Step 1b | → Step 1b | → Step 1b (DA-1..5) |
-| # of Questions | 3 | 3 | 3 | 3 | (challenge-based) |
-| # of Minor Issues | 2 | 3 | 2 | 2 | 3 (DA-3/4/5) |
-
-### Step 1b — Weakness Sub-Claim Inventory (decompose before aggregating; §F.3.2)
-
-| sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | confidence |
-|--------------|-----------------|-------------|----------|------------------|------------|
-| **SC-1** (common-method variance / same-source inflation unaddressed) | measurement-side threat to r | R1 | raised | R1 W1 §4/§6 | 5 |
-| SC-1 | | DA | corroborated | DA-1, Strongest Counter-Arg | 4 |
-| SC-1 | | R3 | corroborated | R3 W1 (behavioral-trace framing of same mechanism) | 4 |
-| SC-1 | | EIC | corroborated | EIC Q2 (asks authors to rule out CMV) | 4 |
-| **SC-2** (single-item ordinal outcome measure — psychometric limits) | measurement-side threat to r | R1 | raised | R1 W2 §3.2 | 5 |
-| SC-2 | | R3 | corroborated | R3 W2 ("use" collapses engagement) | 4 |
-| **SC-3** (reliability offered where in-sample validity is the open question) | measurement-side threat to r | R1 | raised | R1 W3 §3.2 | 4 |
-| SC-3 | | R2 | corroborated | R2 Minor ("previously validated" caution) | 4 |
-| **SC-4** (foundational TAM/UTAUT sources absent; construct under-anchored) | literature/theory coverage | R2 | raised | R2 W1 §2 | 4 |
-| **SC-5** (contribution under-theorized / "so what?" unresolved) | contribution sufficiency | R2 | raised | R2 W2 | 4 |
-| SC-5 | | EIC | corroborated | EIC W1, Q1 | 4 |
-| SC-5 | | DA | corroborated | DA-2 "so what?" | 4 |
-| **SC-6** (literature currency/breadth thin; gap argument under-supported) | literature coverage | R2 | raised | R2 W3 §1/§2 | 4 |
-| **SC-7** (self-report/log divergence cited but not integrated into own estimate) | interpretation gap | R3 | raised | R3 W1 §2/§4/§6 | 4 |
-| SC-7 | | DA | corroborated | DA Frame-Lock / Unexamined Premise | 4 |
-| **SC-8** (onboarding implication leans past a direction-unresolved correlation) | overreach (hedged) | EIC | raised | EIC W2 §5 | 4 |
-| SC-8 | | DA | corroborated | DA-3 | 3 |
-| SC-8 | | R3 | corroborated | R3 Minor (name direction-dependence) | 4 |
-| **SC-9** (response rate / population size absent → self-selection unbounded) | sampling transparency | R1 | raised | R1 §3.1 comment | 5 |
-| SC-9 | | DA | corroborated | DA-4 | 4 |
-| **SC-10** (instructor/course-requirement mandate as unmodeled common cause) | confound / rival explanation | R3 | raised | R3 W3 §4 | 4 |
-| SC-10 | | DA | corroborated | DA-5 (naming), Alt-path 2 | 3 |
-| **SC-11** (under-connection to adjacent analytics readership — D4 relevance) | cross-field framing | EIC | raised | EIC W3 | 4 |
-| SC-11 | | R3 | corroborated | R3 W1/§ cross-disc. | 4 |
-| **SC-12** (r² ≈ .18 shared variance not stated explicitly) | reporting completeness | R1 | raised | R1 Minor | 4 |
-| SC-12 | | EIC | corroborated | EIC Minor | 3 |
-
-*Decomposition discipline check: every sub-claim traces to a claim a reviewer actually made; no synthesizer-authored sub-claim introduced. No `disputed` positions exist in this panel — the reviewers differ in emphasis and in overall Minor-vs-Major recommendation, but no reviewer argues any raised sub-claim is a non-problem, and no two reviewers recommend incompatible remedies for the same sub-claim. Therefore no SPLIT arises.*
-
-### Step 1c — Surface-Form Parity Check (#216)
-
-Applied at this arbitration surface: R3's overall recommendation arrived as "Minor Revision" and its concerns are phrased in practitioner/informal register ("logins are not learning"); R1's arrived in precise psychometric register ("common-method variance", "Harman's single-factor"). SC-1 and SC-7 are the *same substantive mechanism* (same-source self-report inflation) reached from two styles. Running the opposite-style counterfactual: the substance of R3's SC-7 does not lose weight for being framed practically, and R1's SC-1 does not gain weight for being framed technically — both are corroborated to the same substantive claim and weighted on the paper evidence (both self-reports, same instrument, §3.2/§4), not on polish. No weight is keyed off surface form. R3's *lower overall recommendation* (Minor) is not down-weighted as "vaguer"; it reflects a genuine role-scoped severity difference (R3 explicitly defers measurement severity to R1/R2 and reads the gaps as interpretive) — recorded as an emphasis difference, not a defect of the reviewer.
-
-### Step 2 — Consensus Identification (denominator = 4 non-DA reviewers; DA tracked separately; per sub_claim_id)
-
-| sub_claim | agree (of 4 non-DA) | conflict | silent | Disposition |
-|-----------|---------------------|----------|--------|-------------|
-| SC-1 (CMV / same-source) | 3 (R1, R3, EIC) | 0 | 1 (R2) | **[CONSENSUS-3]** — R2 silent on CMV specifically (+ DA corroborates, tracked separately) |
-| SC-2 (single-item outcome) | 2 (R1, R3) | 0 | 2 | corroborated finding |
-| SC-3 (reliability≠validity) | 2 (R1, R2) | 0 | 2 | corroborated finding |
-| SC-4 (foundational TAM absent) | 1 (R2) | 0 | 3 | single-reviewer finding (R2 conf 4) |
-| SC-5 (contribution/"so what?") | 2 (R2, EIC) | 0 | 2 | corroborated finding (+ DA-2 corroborates) |
-| SC-6 (lit currency/breadth) | 1 (R2) | 0 | 3 | single-reviewer finding |
-| SC-7 (self-report/log not integrated) | 1 (R3) | 0 | 3 | single-reviewer finding (+ DA Frame-Lock corroborates) |
-| SC-8 (onboarding overreach) | 2 (EIC, R3) | 0 | 2 | corroborated finding (+ DA-3) |
-| SC-9 (response rate absent) | 1 (R1) | 0 | 3 | single-reviewer finding (R1 conf 5; + DA-4) |
-| SC-10 (instructor-mandate confound) | 1 (R3) | 0 | 3 | single-reviewer finding (+ DA-5) |
-| SC-11 (D4 under-connection) | 2 (EIC, R3) | 0 | 2 | corroborated finding |
-| SC-12 (r² not stated) | 2 (R1, EIC) | 0 | 2 | corroborated finding (minor) |
-
-**DA-CRITICAL tracking:** DA reported **no CRITICAL findings** (explicitly, with #215/#216 self-gating rationale). Therefore Checkpoint Rule #4 (DA CRITICAL ⇒ cannot Accept) is **not triggered** — but note the arithmetic decision is already Major Revision on F2, independent of the DA. DA MAJORs DA-1/DA-2 corroborate SC-1 and SC-5 respectively and are folded into those sub-claims' weight.
-
-### Step 3 — Disagreement Resolution
-
-**No SPLIT sub-claims** (no `disputed` positions). The only surface-level divergence is R3's overall **Minor** vs. the other four leaning **Major**.
-- **Disagreement type:** Severity/perspective difference (not existence, not direction).
-- **Arbitration:** By *expertise-first* (methodology severity defers to R1, conf 5) and *evidence-first*, the measurement-side sub-claims SC-1/SC-2/SC-3 and the transparency sub-claim SC-9 carry the heaviest, best-grounded concern, and R3 itself *defers* measurement severity to R1/R2 while scoring D4 `warn`. R3's Minor is thus not a contradiction of the Major reading; it is R3 correctly staying in its lane. The arithmetic gate (F2 fired by 4/5 reviewers scoring ≥2 mandatory `warn`s) already binds the decision to Major Revision. **Conservative principle** confirms rather than overrides: the majority-mandatory-warn pattern warrants requiring the author to respond. R3's Minor is recorded in the letter, not suppressed.
-
-### Step 4 — Decision
-
-**Major Revision** — matches the sprint-contract arithmetic (F2, severity 70) and the decision-standards matrix (4/4 non-DA reviewers at Major-or-adjacent with multiple mandatory `warn`s across measurement + contribution; `editorial_decision_standards.md §Major`). Not Reject (no mandatory `block`, no `F1`; design is sound for its association claim; issues are fixable by added analysis/framing, not redesign). Not Minor (two independent mandatory dimensions — D1 methodology and D2 domain — carry majority `warn`s, and the CMV/validity cluster requires new analysis or a materially bounded reframing, which exceeds a 2-4-week clarification pass).
-
----
-
-# EDITORIAL DECISION PACKAGE
+# Editorial Decision Package
 
 ## Part 1: Editorial Decision Letter
 
 Dear Author(s),
 
-Thank you for submitting your manuscript titled *"Perceived Usefulness and Self-Reported Use of a Learning Management System: A Cross-Sectional Survey of Undergraduate Students"*. Your manuscript has been reviewed by five independent reviewers, including the Editor-in-Chief and an adversarial stress-test (Devil's Advocate) seat.
+Thank you for submitting your manuscript titled *"Perceived Usefulness and Self-Reported Learning Management System Use: A Cross-Sectional Survey of Undergraduate Students"* to the journal. Your manuscript has been reviewed by 5 independent reviewers, including the Editor-in-Chief, under our v3.6.2 sprint-contract review panel.
 
 ### Review Panel Provenance (#540)
 
-All five reviewer personas ran on a single model family (the session's primary family; `ARS_CROSS_MODEL` was not configured). Persona diversity is not model diversity — blind spots may be correlated across reviewers (Ren et al. 2026, arXiv:2607.13104 §5.2). The cross-model Reviewer 2 track and the cross-model Devil's Advocate track did not fire (`[CROSS-MODEL-SKIPPED]` logged at both slots); no manuscript content was sent to any external provider.
+All five reviewer personas ran on a single model family. Persona diversity is not model diversity — blind spots may be correlated across reviewers (Ren et al. 2026, arXiv:2607.13104 §5.2). No cross-family aggregate is computed; the panel matrix above shows each seat's scores by inspection.
 
-### Decision: **Major Revision**
+### Decision: Major Revision (gated on citation verification)
+
+The sprint-contract arithmetic fired F1 (`reject_or_major_revision`) on two mandatory-dimension `block` scores at D2 (domain_accuracy). Both blocks trace to a single, revision-recoverable defect — an unverifiable reference base — rather than to an uninterpretable design or a broken argument. The manuscript's argumentative discipline (D3 passes on four of five seats) and its revision-recoverable methodology gaps (D1 warns, no D1 block anywhere) place this at the **Major Revision** end of the disjunction. **This decision is conditional: if the six-reference base cannot be shown to consist of real, resolvable prior work, the D2 block is not repairable and the decision converts to Reject** (the position R2 states explicitly and the EIC treats as a submittability gate).
+
+### Consensus Analysis
+
+Consensus is computed across the 4 non-DA reviewers (EIC, R1, R2, R3); the DA's findings are tracked separately. Sub-claims are decomposed from the reviewers' weakness bundles (Step 1b).
+
+#### Weakness Sub-Claim Inventory (Step 1b)
+
+| sub_claim_id | parent_weakness | EIC | R1 | R2 | R3 | DA | evidence anchors |
+|---|---|---|---|---|---|---|---|
+| SC-1 | Reference base carries reserved-prefix sequential placeholder DOIs (10.5555/2050001–2050006); "consistency with prior work" and instrument provenance load-bearing on it | raised (5) | corroborated¹ (4) | raised (4) | corroborated¹ (4) | raised (4) | EIC W1/Q1; R1 Q5; R2 W1/D2-block; R3 citation-base flag; DA M2 |
+| SC-2 | Common-method / same-source variance never named (both variables self-reported, one instrument) | not-mentioned | raised (4) | raised (4) | raised (4) | raised (4) | R1 W3; R2 W2; R3 W2/assumption-audit; DA M1 |
+| SC-3 | Single-item outcome under-justified; no reliability/validity, ordinal-as-continuous | raised (4) | raised (4) | not-mentioned | not-mentioned | raised (4) | EIC W4; R1 W1; DA m2 |
+| SC-4 | Instrument adaptation from Costa & Wren (2019) undescribed; items not shown; no factor structure | raised (4) | raised (4) | not-mentioned | not-mentioned | raised (4) | EIC minor/W4; R1 W2; DA m3 |
+| SC-5 | No results artifact (zero tables/figures; scatterplot referenced §3.4 but not shown) | raised (4) | not-mentioned | not-mentioned | not-mentioned | not-mentioned | EIC W3 |
+| SC-6 | Onboarding implication leans past a symmetric same-source correlation | not-mentioned | not-mentioned | not-mentioned | raised (4) | raised (4) | R3 W2/m1-equiv; DA m1 |
+| SC-7 | Thin / non-current literature base; acceptance framing invoked but model not operationalized | raised (4) | not-mentioned | corroborated (4) | corroborated (4) | corroborated (4) | EIC W2; R2 W3; R3 W3; DA M2-adjacent |
+| SC-8 | "Use"/"access"/"engagement" defined too locally to port to behavioral engagement | not-mentioned | not-mentioned | not-mentioned | raised (4) | not-mentioned | R3 W1 |
+| SC-9 | No response rate against eligible population (denominator not stated) | raised (3) | corroborated (4) | not-mentioned | not-mentioned | not-mentioned | EIC minor; R1 §Sampling/minor |
+| SC-10 | Contribution minimal / within-distribution ("So what?") | raised (4) | not-mentioned | corroborated (4) | not-mentioned | corroborated (4) | EIC W2; R2 W4; DA M2-tail |
+| SC-11 | Stakeholder frame thin (instructors, institutional IT absent) for an institutional implication | not-mentioned | not-mentioned | not-mentioned | raised (4) | corroborated (4) | R3 W4; DA missing-stakeholders |
+
+¹ R1 and R3 forward SC-1 as an integrity flag explicitly routed to the EIC/R2 gating lane rather than scoring it in their own D2; they corroborate the observation without claiming adjudication authority. Counted as `corroborated` (they affirm the concern exists) per the Step 1b rule that position tracks the reviewer's stated stance on the sub-claim, not their scoring lane.
+
+#### Points of Agreement (Consensus)
+
+**[CONSENSUS-4]** (all 4 non-DA reviewers agree; DA also corroborates):
+1. **SC-1 — The reference base is unverifiable and load-bearing.** All four non-DA seats and the DA independently flag that every reference carries a sequential DOI under the `10.5555/` prefix reserved for testing/examples (`2050001`–`2050006`), and that the paper's core "consistent with prior technology-acceptance research" claim plus the "previously validated instrument" provenance rest entirely on these sources. R2 and the EIC ground this as a field-independent floor (a `10.5555` DOI is non-resolvable by construction), not a contestable norm. **Author MUST address — no decline option. This is the gating sub-claim.**
+
+**[CONSENSUS-3]** (3 of 4 non-DA reviewers agree; one silent):
+2. **SC-2 — Common-method / same-source variance is never named.** R1, R2, R3 all raise it (DA corroborates as its strongest counter-argument M1); the **EIC is silent** on it. Both the predictor (6-item PU scale) and outcome (single self-reported frequency item) are self-reports collected in one instrument, so part of r = .42 may be shared-method covariance. The paper flags self-report-vs-log divergence (Vasquez, 2020) but that is a different threat.
+3. **SC-7 — Thin, non-current literature base; acceptance framing invoked without operationalizing the model.** EIC, R2, R3 agree (DA corroborates); **R1 silent**. Six sources, none clearly post-2021, no UTAUT/UTAUT2, expectation-confirmation, or learning-analytics engagement, while the paper leans on the acceptance frame's authority for its consistency claim. R2 caps the specific "the field has moved to X" severity at advisory (`[FIELD-NORM UNVERIFIED]`); the thin-base and framing-coherence portions stand independently.
+4. **SC-10 — Contribution is minimal / within-distribution.** EIC, R2 agree, DA corroborates; **R1 and R3 silent** — this is a 2-agree corroborated finding among non-DA seats, not a CONSENSUS-3. Recorded here for grouping; prioritized as P2 below. One bivariate association from one site, framed by the authors themselves as incremental, with no new population, discrepant result, or new instrument foregrounded. R2 and R3 both note this is a contribution-bar judgment owned by the EIC, not a domain-accuracy error.
+
+#### Corroborated / single-reviewer findings (below the consensus bar)
+
+- **SC-3 (single-item outcome under-justified)** — corroborated (EIC, R1, DA; R2, R3 silent). Action-bearing P2.
+- **SC-4 (instrument adaptation undescribed, reproducibility)** — corroborated (EIC, R1, DA; R2, R3 silent). Action-bearing P2.
+- **SC-6 (onboarding implication over-reaches)** — corroborated (R3, DA; EIC, R1, R2 silent). Action-bearing P2. Note both raising seats stress the implication *is* hedged ("suggested by, not proven by"), so this is edge over-reach, not a coherence collapse.
+- **SC-11 (thin stakeholder frame)** — corroborated (R3, DA; three silent). P3.
+- **SC-9 (no response rate denominator)** — corroborated (EIC, R1; three silent). P3.
+- **SC-5 (no results artifact / missing scatterplot)** — single-reviewer finding (EIC only). P2/P3.
+- **SC-8 (local "use"/"engagement" definition)** — single-reviewer finding (R3 only). P2.
+
+#### Points of Disagreement
+
+There are **no `disputed` positions** in the inventory: no reviewer argues any sub-claim is not a real problem, and no two reviewers recommend incompatible remedies. What looks like divergence is scoring-lane assignment, not substantive conflict, and is arbitrated below.
+
+**Disagreement 1: Where does SC-1 (the placeholder-DOI reference base) belong — a D2 `block` or an out-of-lane flag?**
+- **EIC / R2 view**: SC-1 is a D2 (domain_accuracy) block. When a paper's domain footing rests on prior work that cannot be shown to exist, the domain representation cannot be certified; both scored D2 = block on this basis.
+- **R1 / R3 / DA view**: SC-1 is real but belongs to the EIC/R2 verification lane; from their seats it does not fire *their* D2 block trigger (which each committed as requiring a demonstrable in-text statistical/construct misrepresentation, not an existence concern), so R1 and R3 hold D2 = pass and the DA holds D2 = warn, each forwarding SC-1 rather than scoring it.
+- **Disagreement type**: Perspective difference (lane/authority), not existence or direction — all five agree the concern is real and gating.
+- **Editor's Resolution**: SC-1 stands as the gating blocker. The EIC/R2 D2-block scoring is *correct within the contract*, and the arithmetic already fired F1 on it. The other three seats' choice to forward-not-score is defensible seat discipline and does not weaken the finding — silence-in-lane is not opposition (Step 2 counting rule). **The manuscript is blocked pending citation verification regardless of which lane owns the score.**
+- **Resolution Rationale**: Expertise-first (domain/EIC own citation-existence verification) and evidence-first (a `10.5555` DOI is non-resolvable by construction — a grounded floor, not a norm judgment) both point the same way. No arithmetic softening: F1's action is not diluted by the three non-blocking D2 scores because F1's quantifier is `any`, satisfied by the EIC and R2 alone.
+
+**Disagreement 2: Seat-level recommendations span Minor Revision to Major-Revision-or-Reject.**
+- R1 and R3 recommend **Minor Revision** (their contract-derived machine action was the accept-grade entry, F0/none-fired, since no mandatory dim blocked or reached two-warn *on their own cards*); the EIC recommends **Major Revision**; R2 recommends **Major Revision, converting to Reject if citations cannot be verified**; the DA's machine action was **major_revision** (its own card fired F2 with three mandatory warns).
+- **Disagreement type**: Severity disagreement driven by per-seat vs. panel-level arithmetic — R1/R3 correctly note the cross-reviewer quantifiers are panel machinery the synthesizer applies, not the seat.
+- **Editor's Resolution**: The **panel-level** F1 governs (`reject_or_major_revision`), resolved to Major Revision gated on verification. The seat-level Minor recommendations from R1/R3 are not overridden as *judgments* — both explicitly deferred SC-1 to this lane — but the panel arithmetic, which is the contract's binding aggregation, subsumes them.
+- **Resolution Rationale**: Conservative principle + the contract's published semantics. F1 fires on `any` reviewer's mandatory block; two seats supplied one. The synthesizer does not average the five seat recommendations (forbidden operation) and does not recompute thresholds against a sub-panel.
+
+### Decision Rationale
+
+The five reviewers converge on an unusual profile: a manuscript whose *conduct* is exemplary and whose *evidentiary base* cannot be verified. Every seat credits the paper's argumentative discipline — correlational language throughout, the reverse-causation pathway conceded as "equally consistent," generalization bounded to one site, a Spearman robustness check, a power analysis, and a 95% CI. That discipline is why D3 passes on four of five cards and why the DA, whose remit is to break the argument, found **no CRITICAL finding** and explicitly recorded that the honest scoping "deflects the DA's normal attack surface." The decision is therefore not Reject on argumentative grounds.
+
+What forces the block is SC-1: all six references carry sequential `10.5555` test-prefix DOIs, and the paper's entire positioning against the field ("consistent with prior technology-acceptance research") plus the α = .88 instrument's "previously validated" provenance are load-bearing on them. The EIC and R2 score this D2 = block; R1, R3, and the DA forward it to this lane. The sprint-contract arithmetic fires F1 (severity 90) on the two blocks; F2 falls one seat short of its majority threshold (2 of 5, needs 3), and F3/F0 do not fire. F1's disjunctive action resolves to Major Revision rather than Reject because the defect is verification-recoverable and no design or argument is broken — but the decision is explicitly conditional: **if the reference base cannot be shown to be real, resolvable prior work, the D2 block is unrepairable and the decision converts to Reject.** Below the gate, three mandatory D1 warns (single-item outcome, undescribed adaptation, unnamed common-method variance) and the near-unanimous CMV finding (SC-2) are material but revision-recoverable, reinforcing Major over Minor.
 
 ### Top Blocking Issues (0–3, ranked)
 
 | Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
 |------|----------------|--------------------|-----------------|------------------------|
-| 1 | Common-method / same-source variance unaddressed: r = .42 is a correlation between two self-reports on one instrument, with no CMV diagnostic or discussion; the artifact reading currently rivals the substantive one. | R1, DA, R3, EIC (CONSENSUS-3; DA-MAJOR corroborates) | §3.2 (both measures self-report) + §4 (r = .42) + §6 (Vasquez cited but not applied to own estimate) | R1 |
-| 2 | Contribution insufficiency / unresolved "so what?": an honestly-reported re-confirmation of a textbook association from one site, not yet theoretically positioned or distinguished from prior work. | R2, EIC, DA (corroborated; DA-2) | §2 ("an incremental data point"), §5, §7 | R2 |
-| 3 | Central construct under-anchored: "perceived usefulness" (the defining TAM construct) is cited only to an adapted 2019 instrument; foundational TAM/UTAUT lineage absent. | R2 (single-reviewer, confidence 4) | §2 (reference list of 6; no TAM/UTAUT origin) | R3 |
+| 1 | Entire six-reference base carries reserved-test-prefix sequential DOIs (10.5555/2050001–2050006); "consistency with prior work" + instrument provenance unverifiable | EIC, R2 (block); R1, R3, DA (corroborate) | §References; §5 ¶1 "consistent with prior technology-acceptance research"; §3.2 Costa & Wren (2019) provenance | R1 |
+| 2 | Common-method / same-source variance never named; r = .42 between two same-instrument self-reports may be partly method artifact | R1, R2, R3, DA | §4 ¶2; §6 Limitation 2 (addresses self-report vs logs, not same-source) | R2 |
+| 3 | Single-item ordinal outcome carries headline-correlation weight with no reliability/validity and no item-level reporting; adaptation of PU scale undescribed | EIC, R1, DA | §3.2 (single 5-point item; scale "adapted from Costa & Wren 2019") | R3 |
 
-### Reviewer Summary
-
-| Reviewer | Role | Recommendation | Confidence |
-|----------|------|---------------|------------|
-| EIC | Ed-tech journal Editor-in-Chief (AJET tier) | Major Revision | 4 |
-| Reviewer 1 | Quantitative survey methodologist | Major Revision | 5 |
-| Reviewer 2 | Technology-acceptance / ed-tech domain scholar | Major Revision | 4 |
-| Reviewer 3 | Learning-analytics / institutional-effectiveness (cross-disciplinary) | Minor Revision | 4 |
-| Devil's Advocate | Adversarial stress-tester | Major Revision (no CRITICAL findings) | — |
-
-### Consensus Analysis
-
-#### Points of Agreement (Consensus)
-
-**[CONSENSUS-3]** (3/4 non-DA reviewers agree; 4th silent):
-1. **Common-method / same-source variance is unaddressed (SC-1)** — R1 (raised, conf 5), R3 (corroborated, behavioral-trace framing), and EIC (corroborated, Q2) all reach the same threat: both variables are self-reported on one instrument, so r = .42 is exposed to CMV that the paper never diagnoses or discusses. R2 is **silent** on CMV specifically (R2's focus was literature/theory), not opposed. The Devil's Advocate independently corroborates as its lead MAJOR (DA-1) and as the core of its Strongest Counter-Argument. This is the panel's central, best-grounded concern.
-
-**Corroborated findings** (2/4, action-bearing, below the consensus-label bar):
-2. **Contribution insufficiency / unresolved "so what?" (SC-5)** — R2 + EIC, corroborated by DA-2.
-3. **Single-item ordinal outcome measure (SC-2)** — R1 + R3.
-4. **Reliability (α) offered where in-sample validity is the open question (SC-3)** — R1 + R2.
-5. **Onboarding implication leans past a direction-unresolved correlation (SC-8)** — EIC + R3, corroborated by DA-3.
-6. **Under-connection to the adjacent learning-analytics readership (SC-11, D4)** — EIC + R3.
-7. **Shared-variance figure r² ≈ .18 not stated explicitly (SC-12, minor)** — R1 + EIC.
-
-**Single-reviewer findings** (1/4, noted and weighted by confidence; not consensus, not SPLIT):
-8. Foundational TAM/UTAUT sources absent (SC-4, R2 conf 4).
-9. Literature currency/breadth thin (SC-6, R2).
-10. Self-report/log divergence cited but not integrated into the paper's own estimate (SC-7, R3; corroborated by DA Frame-Lock).
-11. Response rate / institutional population size absent → self-selection unbounded (SC-9, R1 conf 5; corroborated by DA-4).
-12. Instructor / course-requirement mandate as an unmodeled common cause (SC-10, R3; named by DA-5).
-
-#### Points of Disagreement
-
-**Disagreement 1: Overall severity — Minor (R3) vs. Major (EIC, R1, R2, DA)**
-- **R3 view**: Reads the gaps as *interpretive* (framing and one honest paragraph), explicitly defers measurement severity to R1/R2, and recommends Minor Revision.
-- **R1/R2/EIC/DA view**: The measurement cluster (CMV, single-item outcome, validity-vs-reliability) and the contribution gap require added analysis or a materially bounded reframing, not just clarification — Major.
-- **Disagreement type**: Severity / perspective difference (no existence or direction conflict; no reviewer disputes any sub-claim).
-- **Editor's Resolution**: **Major Revision.** By expertise-first arbitration, the methodology severity defers to R1 (confidence 5), whose SC-1/SC-2/SC-3 concerns R3 itself defers to; the sprint-contract gate independently fires F2 (majority of reviewers carry ≥2 mandatory `warn`s). R3's Minor is not a contradiction — it is R3 correctly staying in its cross-disciplinary lane — and is recorded here rather than suppressed.
-- **Resolution Rationale**: Evidence-first + expertise-first + conservative principle all converge; the arithmetic decision (F2, severity 70) binds regardless.
-
-**Devil's Advocate — CRITICAL check:** The DA reported **no CRITICAL findings**, with explicit #215/#216 self-gating (the more-parsimonious common-method counter-narrative is equally-fitting, not better-fitting, on the presented data, so it does not meet the "Stronger Counter-Narrative" CRITICAL bar). Checkpoint Rule #4 is therefore not triggered. The DA's MAJOR findings (DA-1 CMV, DA-2 "so what?") corroborate SC-1 and SC-5 and are folded into the roadmap; its Frame-Lock "Unexamined Premise" (the whole paper equates *reported* use with use) is carried as the framing target of R1/S-item work.
-
-### Decision Rationale
-
-This is a well-constructed, unusually honest manuscript that reports a single moderate association (r = .42) with exemplary reporting hygiene (95% CI, exact p, n, Spearman robustness, a sensitivity-power statement) and strictly correlational language throughout. Four reviewers nonetheless converge on Major Revision because two mandatory dimensions carry majority reservations. On **methodology (D1)**, the headline correlation is between two same-source self-reports and the paper never diagnoses or discusses common-method variance — the one artifact the study's own cited source (Vasquez 2020) warrants taking seriously — while the outcome is a single ordinal item and the predictor's support rests on α rather than an in-sample validity check (R1, confidence 5; corroborated by EIC, R3, and the DA). On **domain/contribution (D2)**, the central construct is anchored only to an adapted secondary instrument with the foundational TAM/UTAUT lineage absent, and the contribution — honestly labeled "incremental" — is under-theorized enough that the "so what?" stays unresolved (R2, EIC, DA). None of this is fatal: the design genuinely supports the association claim it makes, no causal overreach is committed, no novelty is inflated, and every issue is addressable through added analysis and reframing rather than redesign — which is precisely why this is Major Revision and not Reject. It is more than Minor because the CMV/validity cluster requires new analysis (a CMV diagnostic or an explicitly bounded self-report reframing) and a response-rate disclosure, which exceeds a short clarification pass. The revised manuscript will require re-review.
+---
 
 ## Part 2: Revision Roadmap
 
-> The `Sub-Claim(s)` column carries the Step 1b `sub_claim_id`(s) each item traces to. DA-corroboration is noted in Source.
+> The `Sub-Claim(s)` column carries the Step 1b `sub_claim_id`(s) each item traces to. DA-CRITICAL/non-decomposed items use `—`. There are no DA-CRITICAL findings in this round (the DA recorded none).
 
 ### Required Revisions (Must Fix)
 
 | # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
 |---|--------------|--------------|--------|----------|-----------------|
-| R1 | Address common-method / same-source variance: add a CMV diagnostic (Harman's single-factor or a marker-variable check) if item-level data allow; otherwise add an explicit CMV discussion, bound r = .42 as a *self-report* association, and state the expected direction of bias. Apply the Vasquez (2020) critique to your own estimate, not only to the outcome. | SC-1 | R1, DA (DA-1), R3, EIC | P1 | 5-10 days |
-| R2 | Resolve the contribution/"so what?": either foreground a genuinely distinctive angle (e.g., exploit the self-report/log gap as a testable prediction, or add a moderation the n = 214 supports) or reposition as a Brief Report/Research Note; state explicitly what *this* study adds beyond a new sample. | SC-5 | R2, EIC, DA (DA-2) | P1 | 5-8 days |
-| R3 | Anchor the central construct: cite and briefly engage the foundational TAM (and contemporary UTAUT) lineage that defines "perceived usefulness"; add a short theoretical-framing paragraph locating PU and use within the acceptance chain. | SC-4, SC-5 | R2 | P1 | 3-5 days |
-| R4 | Strengthen measurement transparency and validity framing: (a) acknowledge the single-item outcome's psychometric limits (not only its self-report nature); (b) report an in-sample dimensionality/validity check for the six adapted items, or soften "validated" to "internally consistent in this sample"; (c) report the institutional undergraduate population and the resulting response rate, and discuss self-selection given recruitment through the LMS channel. | SC-2, SC-3, SC-9 | R1, R2, DA (DA-4) | P1 | 4-7 days |
+| R1 | **Supply resolvable DOIs / stable identifiers and full bibliographic details for all six references; confirm each exists and supports the attributed claim.** Until done, the manuscript cannot proceed. If any source cannot be verified, remove it and re-ground every claim that depended on it. | SC-1 | EIC, R2 (R1/R3/DA corroborate) | P1 | 2–5 days (author) + editor verification |
+| R2 | **Name common-method / same-source variance as an explicit limitation distinct from the self-report-vs-log point.** If any single-common-factor, marker-variable, or item-separation diagnostic is feasible from the collected data, report it; otherwise state the constraint plainly and bound its likely effect on r = .42. | SC-2 | R1, R2, R3 (DA corroborates) | P1 | 2–3 days |
 
 ### Suggested Revisions (Should Fix)
 
 | # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
 |---|--------------|--------------|--------|----------|-----------------|
-| S1 | Integrate the self-report/log-divergence lens into the interpretation: read r = .42 as a within-self-report association and state the empirical prediction that a log-anchored use measure would likely attenuate it (turns a limitation into a testable contribution). | SC-7 | R3, DA (Frame-Lock) | P2 | 2-3 days |
-| S2 | Re-frame or subordinate the onboarding implication so it does not rest on a direction the design cannot establish (name the direction-dependence explicitly, or move to pure future-work). | SC-8 | EIC, R3, DA (DA-3) | P2 | 1 day |
-| S3 | Elevate instructor / course-requirement mandate from an aside to a named rival explanation (potential common cause of both PU and use) in the Discussion. | SC-10 | R3, DA (DA-5) | P2 | 1 day |
-| S4 | Broaden the LMS-engagement / self-report-validity literature so the research-gap premise rests on more than a single citation. | SC-6 | R2 | P2 | 2-3 days |
-| S5 | Add one paragraph connecting the finding to the learning-analytics readership (behavioral-trace work). | SC-11 | EIC, R3 | P2 | 1 day |
+| S1 | Justify the single-item outcome explicitly (cite single-item-measure validity literature); report the item's full response-category distribution rather than a median category only; consider co-headlining the Spearman ρ as the assumption-appropriate statistic. | SC-3 | EIC, R1 (DA corroborates) | P2 | 2–3 days |
+| S2 | Report the adapted six PU-scale items (or appendix/OSF pointer), state what changed from Costa & Wren (2019), and give at least inter-item statistics or a one-factor check; add a data/materials availability statement. | SC-4 | EIC, R1 (DA corroborates) | P2 | 2–3 days |
+| S3 | Right-size the onboarding implication: reframe as a future-work hypothesis, or explicitly note that recommending an onboarding change on a same-source correlation would require a design (pre/post or log-validated) not run here. | SC-6 | R3 (DA corroborates) | P2 | 1 day |
+| S4 | Either broaden the literature review to locate r = .42 within an actual reported range of LMS perception–use correlations, or narrow the framing so it does not borrow acceptance-model authority (UTAUT2, continuance) it declines to operationalize. Ties to R1 once verified sources exist. | SC-7 | EIC, R2, R3 (DA corroborates) | P2 | 3–5 days |
+| S5 | Sharpen the specific non-redundant contribution (a discrepant effect size vs. a named prior estimate, or an under-studied population feature) rather than resting on within-distribution confirmation. | SC-10 | EIC, R2 (DA corroborates) | P2 | 2–4 days |
+| S6 | Define the outcome construct explicitly as *self-reported access frequency* and state in one sentence which behavioral-engagement dimensions (session depth, feature use, submission activity) it does not capture. | SC-8 | R3 | P2 | 0.5 day |
+| S7 | Add at least a descriptives table and a scatterplot (§3.4 references scatterplot inspection but shows none). | SC-5 | EIC | P2/P3 | 1 day |
 
 ### Revision Checklist (Checkable List)
 
-#### Priority 1 — Structural Revisions (Estimated total effort: ~17-30 days)
-- [ ] R1: Add CMV diagnostic or explicit CMV discussion; bound r = .42 as a self-report association.
-- [ ] R2: Resolve the "so what?" — distinctive angle or reposition as Research Note.
-- [ ] R3: Cite/engage foundational TAM + contemporary UTAUT; add theoretical-framing paragraph.
-- [ ] R4: Single-item limit + in-sample validity check + response rate + self-selection discussion.
+#### Priority 1 — Structural / Gating Revisions (Estimated total effort: 4–8 days + editor verification)
+- [ ] R1 (SC-1): Provide resolvable DOIs + full details for all 6 references; re-ground or remove any that cannot be verified. **GATE — decision converts to Reject if unmet.**
+- [ ] R2 (SC-2): Add common-method-variance limitation, distinct from self-report-vs-log; report a diagnostic if feasible or state the constraint and bound its effect.
 
-#### Priority 2 — Content Supplementation (Estimated total effort: ~7-11 days)
-- [ ] S1: Integrate self-report/log divergence into interpretation of the own estimate.
-- [ ] S2: Re-frame/subordinate the onboarding implication (direction-dependence).
-- [ ] S3: Name instructor/course-requirement mandate as a rival explanation.
-- [ ] S4: Broaden the engagement/self-report-validity literature.
-- [ ] S5: Connect to the learning-analytics readership.
+#### Priority 2 — Content Supplementation (Estimated total effort: 5–9 days)
+- [ ] S1 (SC-3): Justify single-item outcome; report full response distribution; consider Spearman as primary.
+- [ ] S2 (SC-4): Report adapted PU items + adaptation delta + dimensionality/one-factor check; add availability statement.
+- [ ] S3 (SC-6): Reframe onboarding implication as future-work or state the design it would require.
+- [ ] S4 (SC-7): Quantify the prior-work distribution or narrow the acceptance framing.
+- [ ] S5 (SC-10): Sharpen the non-redundant contribution.
+- [ ] S6 (SC-8): Define outcome as self-reported access frequency; state what it does not measure.
 
-#### Priority 3 — Text and Formatting (Estimated total effort: ~1 day)
-- [ ] State r² ≈ .18 explicitly rather than only "modest proportion of variance" (SC-12; R1, EIC).
-- [ ] Add a data-availability statement (R1).
-- [ ] Add a one-line frequency table for the single use item (R1, EIC).
-- [ ] Reword "previously validated instrument" to reflect validated-elsewhere ≠ validated-in-adaptation (R1, R2).
+#### Priority 3 — Text and Formatting (Estimated total effort: 1–2 days)
+- [ ] S7 (SC-5): Add descriptives table + scatterplot.
+- [ ] SC-9: State the eligible-population denominator so a response rate can be computed.
+- [ ] SC-11: Name the affected/acting stakeholders (students, instructors, institutional IT) in the discussion.
+- [ ] Report a numeric shared-variance value (r² ≈ .18) alongside the qualitative "modest."
+- [ ] Label the Whitfield (2019) practitioner account explicitly as non-empirical at the point of the onboarding claim (contingent on R1 verification).
+
+### Total Estimated Effort
+- **Major Revision**: 6–8 weeks (dominated by R1 verification/re-grounding and R2 re-analysis; re-review required).
 
 ### Revision Deadline
-**Major Revision: recommended 6-8 weeks.** The revised manuscript will undergo another round of review (re-review verifies each Required item against the revised text).
+- **Recommended deadline**: 6–8 weeks from receipt of this letter.
+- **Basis**: Major Revision. The revised manuscript will undergo another round of review.
+- **Extension policy**: If an extension is needed, notify the editor 1 week before the deadline.
 
 ### Response Letter Template
-Please use the format in `templates/revision_response_template.md` to respond to every Required and Suggested item point by point (R→A→C: reviewer point → author response → change location), marking all changes in the revised manuscript and providing a cross-reference table of new page/paragraph numbers.
+Please use the format in `templates/revision_response_template.md` to respond to every Required and Suggested Revision item by item (Reviewer Comment → Author Response → Changes Made), with change markup and a page cross-reference table.
+
+---
 
 ## Part 3: Reviewer Report Summary (Appendix)
 
 ### EIC Report Summary
 - Recommendation: Major Revision | Confidence: 4
-- Key Point: Structurally coherent and honest, but contribution is thin for a full article and the CMV/"so what?" questions must be resolved (or repositioned as a Research Note).
+- Key Point: Conduct is disciplined and near-submittable in form, but the sequential `10.5555` placeholder reference base is a submittability gate and the contribution is thin/incremental (D2 = block).
 
 ### Reviewer 1 (Methodology) Summary
-- Recommendation: Major Revision | Confidence: 5
-- Key Point: Reporting is exemplary, but the two same-source self-reports expose r = .42 to unaddressed common-method variance, compounded by a single-item outcome and α-as-validity — fixable with added analysis, not redesign.
+- Recommendation: Minor Revision | Confidence: 4
+- Key Point: Within its scope the design is sound and transparently reported; the load-bearing gaps are the unvalidated single-item outcome, undescribed scale adaptation, and unnamed common-method variance (D1 = warn); DOI integrity forwarded to the EIC/domain lane.
 
 ### Reviewer 2 (Domain) Summary
-- Recommendation: Major Revision | Confidence: 4
-- Key Point: No overreach and no domain error, but the central TAM construct is under-anchored (foundational lineage absent) and the honest contribution is under-theorized.
+- Recommendation: Major Revision, converting to Reject if citations cannot be verified | Confidence: 4
+- Key Point: The field the paper claims consistency with is unverifiable — all six references carry non-resolvable `10.5555` test-prefix DOIs — so domain accuracy cannot be certified (D2 = block); secondarily, common-method variance is unnamed and the literature base is thin/non-current.
 
 ### Reviewer 3 (Perspective) Summary
 - Recommendation: Minor Revision | Confidence: 4
-- Key Point: The self-report/log-divergence lens is cited but not integrated; treating r = .42 as a self-report association (with a log-anchored replication as the next step) would turn the study's central limitation into its contribution.
+- Key Point: From the applied learning-analytics seat the paper is honestly scoped but "use" is defined too locally to port to behavioral engagement, the framing under-connects to the parallel literature, and the onboarding implication reaches past a same-source correlation (D3/D4 = warn); DOI base flagged to the gating lane.
 
 ### Devil's Advocate Summary
-- Findings: 0 CRITICAL, 2 MAJOR (DA-1 CMV, DA-2 "so what?"), 3 MINOR | Checkpoint Rule #4 not triggered.
-- Key Point: The most parsimonious rival reading is same-source/response-style coherence, not a perception→behavior link; it is equally (not better) fitting on the data, so it is a MAJOR reframing demand, not a CRITICAL flaw — and the paper's own candor makes it a reframing opportunity.
+- Machine action: major_revision (own card fired F2) | Confidence: not scored as a seat recommendation
+- Key Point: The manuscript's honesty deflects the normal adversarial attack surface (no CRITICAL finding); the two surviving MAJOR concerns are that r = .42 is undefended against common-method variance and that the contribution collapses if the placeholder-DOI corpus is not real.
 
 ---
 
-## Closing
-
-We encourage you to carefully consider the reviewers' comments and submit a substantially revised manuscript. The panel was struck by the manuscript's honesty and reporting discipline; the required work is to close the common-method-variance gap, anchor and theorize the contribution, and shore up measurement transparency — after which the finding, whether as a strengthened full article or a well-scoped Research Note, will stand on much firmer ground. Please note that the revised manuscript will undergo another round of review.
-
----
-
-## Appendix: Full Reviewer Reports
-All five complete reviewer reports (EIC, R1 Methodology, R2 Domain, R3 Perspective, Devil's Advocate) are reproduced in full in Part B above.
+**Closing.** We encourage you to carefully address the reviewers' comments and submit a substantially revised manuscript. Priority-1 item R1 is a gate: the revised submission cannot advance until the reference base is verified as real, resolvable prior work; if it cannot be, this decision converts to Reject. The revised manuscript will undergo another round of review.

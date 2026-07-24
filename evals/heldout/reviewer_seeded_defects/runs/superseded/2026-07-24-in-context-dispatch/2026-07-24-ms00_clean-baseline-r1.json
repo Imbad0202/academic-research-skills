@@ -1,0 +1,13 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms00_clean",
+  "replicate": 1,
+  "per_defect": {},
+  "severity_scores": {},
+  "clean_control_false_findings": [],
+  "raw_output": "raw/2026-07-24-ms00_clean-baseline-r1.review.md",
+  "notes": "Blinded isolated run per README protocol (same dispatch as the defective-fixture records). False findings after concept-dedup across seats and letter: ZERO. Every asserted weakness was verified against the manuscript as either a true observation about a genuine absence (single-item DV; common-method variance never named; response-rate denominator absent; power-computation tool unnamed; no results table/scatterplot; no TAM primary-source anchor) or hedged interpretive advice (contribution-sufficiency judgment; onboarding-implication lean) — per protocol step 5 none of these count as false findings. Placeholder-DOI existence complaints were raised (EIC/R2/DA) and are excluded by design. No fabricated flaw, no invented inconsistency, no mis-recomputed statistic (the panel's r^2~=.18 recompute is correct; the 233-14-5=214 sample accounting was verified consistent by R1). Panel decision recorded as an observation, NOT a measurand: Major Revision — the mechanical sprint-contract floor yielded the accept-grade action (fired_conditions = []), and the interpretive synthesis layer escalated to Major via the editorial-decision-standards one-outlier + conservative rules over true-but-minor findings. The DA's severity self-gating visibly worked: its only CRITICAL candidate (CMV) was down-rated to MAJOR with explicit #215/#216 rationale, and 0 CRITICALs were emitted on the clean paper."
+}

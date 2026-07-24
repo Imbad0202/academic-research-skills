@@ -5,6 +5,7 @@
   "condition": "baseline",
   "fixture": "ms02_qual",
   "replicate": 2,
+  "dispatch": "isolated per-seat two-phase calls (same design as the ms01 records)",
   "per_defect": {
     "SD-01": "DETECTED",
     "SD-02": "DETECTED",
@@ -17,21 +18,23 @@
     "SD-09": "DETECTED"
   },
   "severity_scores": {
-    "SD-01": 0.5,
+    "SD-01": 0.0,
     "SD-02": 0.5,
     "SD-03": 0.5,
     "SD-04": 0.5,
-    "SD-05": 1.0,
-    "SD-06": 0.5,
-    "SD-07": 0.5,
+    "SD-05": 0.5,
+    "SD-06": 1.0,
+    "SD-07": 1.0,
     "SD-08": 0.0,
-    "SD-09": 0.5,
-    "mean": 0.5
+    "SD-09": 0.0,
+    "mean": 0.444
   },
   "clean_control_false_findings": [],
   "raw_output": "raw/2026-07-24-ms02_qual-baseline-r2.review.md",
   "severity_source_fallback": {
-    "SD-02": "no detecting-seat per-finding tag; Editorial Decision Letter placement P2 (Suggested) mapped to minor per the README severity-source ladder"
+    "SD-02": "no detecting-seat per-finding tag; Editorial Decision Letter S1 priority P2 -> minor per the README severity-source ladder",
+    "SD-06": "no detecting-seat per-finding tag; Editorial Decision Letter R6 priority P1 -> major",
+    "SD-07": "no detecting-seat per-finding tag; Editorial Decision Letter R4 priority P1 -> major"
   },
-  "notes": "Same blinded protocol and severity mapping rule. Panel decision: Major Revision (F1+F2). Strict recall 9/9; critical-band recall 2/2. Replicate severity instability vs r1: SD-01 (undescribed instrument) critical->major, SD-02 (unoperationalized construct) roadmap-Major->P2-suggested placement, SD-06 (anonymization breach) and SD-07 (bare p<.05) major->CRITICAL — same defects, different bands across replicates (#574 A3). Process observation: in this replicate the DA seat emitted NO dimension scores, quoting its agent file's challenge-not-score language (raw L729), and the synthesis computed F2 over the 4 scoring seats (raw L882-894, decision robust under either 4-seat or 5-seat majority denominator); in the other five runs the same DA agent file yielded full D1-D5 DA scores. This replicate-level divergence in protocol interpretation is live evidence of the DA agent file's internal challenge-vs-score contradiction (the #574 role-scoped-scoring finding, spec A territory) interacting with the synthesizer's 5-cards-vs-4-reports ambiguity (audit C3, not in the #578 fix list, still open). The panel stayed cardinally intact (5 usable Phase-2 cards incl. the DA's challenge report), so no [PANEL-SHRUNK] applied; the F2/Major-Revision outcome is denominator-robust."
+  "notes": "Blinded isolated run per README protocol. Panel decision: Major Revision (F1+F2). Strict recall 9/9 (R1 W5 names 'no interview protocol or topic guide is provided'; every seeded defect substantively named); critical-band 2/2. Severity via the ladder from this run's DA rows, which nearly INVERT the expected band structure: C1 Delacroix critical vs expected minor -> SD-08 0; C2 first-comprehensive/self-nullified-thesis critical vs expected minor -> SD-09 0; M1 sector-generalization major vs expected critical -> SD-03 0.5; m1 structured-protocol confidence MINOR vs expected critical -> SD-01 0; m2 sample-count contradictions MINOR vs expected major -> SD-04 0.5; m3 buried-exclusion MINOR vs expected major -> SD-05 0.5. The same defects sit in different DA bands than the r1 panel assigned the same day — the sharpest cross-replicate severity-instability evidence in the baseline (#574 A3/B1): recall is stable at 100% while band placement swings a full tier on five of nine defects."
 }

@@ -1,0 +1,35 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms01_quant",
+  "replicate": 2,
+  "per_defect": {
+    "SD-01": "PARTIAL",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED",
+    "SD-10": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-02": 1.0,
+    "SD-03": 0.5,
+    "SD-04": 1.0,
+    "SD-05": 0.5,
+    "SD-06": 1.0,
+    "SD-07": 1.0,
+    "SD-08": 0.5,
+    "SD-09": 0.0,
+    "SD-10": 0.5,
+    "mean": 0.667
+  },
+  "clean_control_false_findings": [],
+  "raw_output": "raw/2026-07-24-ms01_quant-baseline-r2.review.md",
+  "notes": "Same blinded protocol and severity mapping rule as r1 (see 2026-07-24-ms01_quant-baseline-r1.json). Panel decision: Major Revision (F1/F2/F3; letter records contingent conversion-to-Reject clauses for failed re-analysis or absent ethics approval). Strict recall 9/10; critical-band recall 3/4. SD-01 again PARTIAL for the same reason (precision-style observations by EIC/R1/DA; no achievability recompute) — the only non-detected defect in both MS01 replicates is the recompute-class GRIM defect. Unlike r1, this replicate's R1/R2/R3 emitted ad-hoc explicit per-finding severity tags (not required by their output formats — itself A3 evidence of format instability); per the severity-source ladder those tags govern where present: SD-07 takes R3's explicit 'Severity: Critical' (raw L721, no fallback needed) and SD-10 takes R3's explicit 'Severity: Critical' on the worldwide generalization (raw L725, outranking DA M3 MAJOR) -> 0.5 vs expected major. Replicate severity instability vs r1: SD-05 (inverted citation) major->critical (DA promoted it to a CRITICAL row; R2 tagged it Critical too), SD-07 (consent) major->critical, SD-10 (worldwide) r1-critical-via-DA-bundle vs r2-critical-via-R3-tag while r2's DA rated it only MAJOR — per-finding severity is not stably transported across replicates or across seats (#574 A3/B1 evidence). Severity corrections in this record (SD-10 1.0->0.5, SD-07 fallback->explicit-tag source) were applied in dual-track round 2 after the raw outputs were committed and audited."
+}

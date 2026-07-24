@@ -1,0 +1,37 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms02_qual",
+  "replicate": 2,
+  "per_defect": {
+    "SD-01": "DETECTED",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-01": 0.5,
+    "SD-02": 0.5,
+    "SD-03": 0.5,
+    "SD-04": 0.5,
+    "SD-05": 1.0,
+    "SD-06": 0.5,
+    "SD-07": 0.5,
+    "SD-08": 0.0,
+    "SD-09": 0.5,
+    "mean": 0.5
+  },
+  "clean_control_false_findings": [],
+  "raw_output": "raw/2026-07-24-ms02_qual-baseline-r2.review.md",
+  "severity_source_fallback": {
+    "SD-02": "no detecting-seat per-finding tag; Editorial Decision Letter placement P2 (Suggested) mapped to minor per the README severity-source ladder"
+  },
+  "notes": "Same blinded protocol and severity mapping rule. Panel decision: Major Revision (F1+F2). Strict recall 9/9; critical-band recall 2/2. Replicate severity instability vs r1: SD-01 (undescribed instrument) critical->major, SD-02 (unoperationalized construct) roadmap-Major->P2-suggested placement, SD-06 (anonymization breach) and SD-07 (bare p<.05) major->CRITICAL — same defects, different bands across replicates (#574 A3). Process observation: in this replicate the DA seat emitted NO dimension scores, quoting its agent file's challenge-not-score language (raw L729), and the synthesis computed F2 over the 4 scoring seats (raw L882-894, decision robust under either 4-seat or 5-seat majority denominator); in the other five runs the same DA agent file yielded full D1-D5 DA scores. This replicate-level divergence in protocol interpretation is live evidence of the DA agent file's internal challenge-vs-score contradiction (the #574 role-scoped-scoring finding, spec A territory) interacting with the synthesizer's 5-cards-vs-4-reports ambiguity (audit C3, not in the #578 fix list, still open). The panel stayed cardinally intact (5 usable Phase-2 cards incl. the DA's challenge report), so no [PANEL-SHRUNK] applied; the F2/Major-Revision outcome is denominator-robust."
+}

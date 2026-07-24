@@ -1,0 +1,13 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms00_clean",
+  "replicate": 2,
+  "per_defect": {},
+  "severity_scores": {},
+  "clean_control_false_findings": [],
+  "raw_output": "raw/2026-07-24-ms00_clean-baseline-r2.review.md",
+  "notes": "Same blinded protocol. False findings after concept-dedup: ZERO. Concept space closely tracks r1 (CMV unaddressed; single-item DV; validated-elsewhere-vs-validated-here wording; TAM/UTAUT anchoring; response rate/population size absent; instructor-mandate confound as rival explanation; r^2 stated only in prose) — all factually grounded or interpretive, zero fabrication; placeholder-DOI existence complaints excluded by design. DA again emitted 0 CRITICALs with explicit gating rationale. Decision observation: Major Revision again, but via a DIFFERENT route than r1 — here the warn-assignment was heavier (4/5 seats put >=2 mandatory dimensions at warn) so F2 fired mechanically, where r1's panel produced an accept-grade mechanical floor that the interpretive layer overrode. Same manuscript, same final decision, mechanically divergent paths driven by replicate variance in warn-assignment on true-but-minor observations — B1(a) asymmetric-decision-guard / C5 two-decision-layers evidence. Micro-note (protocol-anchor imprecision, not a manuscript false finding): r2's DA cited statistical_reporting_standards.md '4.7 same-source' as a norm anchor; 4.7 exists but is titled 'Other Red Flags' (#574 A2-adjacent: anchors to internal authority documents are also quotable-and-checkable surfaces). The EIC report still carries the 'Weaknesses (3-5 items)' quota header and emitted exactly the 3-item floor on a deliberately sound paper (#574 A1 evidence)."
+}

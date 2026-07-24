@@ -1,0 +1,38 @@
+{
+  "model_id": "claude-opus-4-8",
+  "suite_commit": "307ef24ff9d92ca0fabfe9645c8616ca97030d4f",
+  "date": "2026-07-24",
+  "condition": "baseline",
+  "fixture": "ms01_quant",
+  "replicate": 1,
+  "per_defect": {
+    "SD-01": "PARTIAL",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED",
+    "SD-10": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-02": 1.0,
+    "SD-03": 0.5,
+    "SD-04": 1.0,
+    "SD-05": 1.0,
+    "SD-06": 1.0,
+    "SD-07": 0.5,
+    "SD-08": 0.5,
+    "SD-09": 0.0,
+    "SD-10": 0.5,
+    "mean": 0.667
+  },
+  "clean_control_false_findings": [],
+  "raw_output": "raw/2026-07-24-ms01_quant-baseline-r1.review.md",
+  "severity_source_fallback": {
+    "SD-07": "no detecting-seat per-finding tag; Editorial Decision Letter roadmap R6 severity 'Major' used per the README severity-source ladder"
+  },
+  "notes": "Blinded isolated run per README protocol: manuscript copied outside the repo as neutral-named manuscript.md, full-mode five-seat panel + sprint-contract two-phase executed by an isolated subagent (reasoning effort xhigh) forbidden from reading evals/; adjudicated by the maintainer-delegate against the manifest after all six runs completed. Panel decision: Major Revision (fired F1/F2/F3). Strict recall 9/10; critical-band recall 3/4. SD-01 (GRIM-impossible mean 3.847) = PARTIAL: two seats flagged the value only as a decimal-precision/style inconsistency (R1 minor issues; DA MINOR 'false precision') — the anomalous number drew attention but no seat ran the achievability recomputation, so the symptom was noticed and misdiagnosed. Notably the panel DID recompute t-vs-p (SD-03, explicit p~=.19) and df-vs-N (SD-02) unprompted; the granularity-class recompute is the one that did not fire (#574 A4 evidence). Severity mapping rule used for all runs (= the README severity-source ladder): a detecting seat's severity is its explicit per-finding tag (DA rows always carry one — CRITICAL/MAJOR/MINOR/OBSERVATION -> critical/major/minor bands; other seats' explicit tags used where their reports happen to carry them, e.g. this fixture's r2 R2 'Severity: Critical'); when NO detecting seat carries a tag, the Editorial Decision Letter severity for the matching roadmap item is the recorded fallback (Critical/Major words, or P1->major / P2-P3->minor), listed per run under severity_source_fallback; score = highest band among detecting seats vs expected (exact 1 / adjacent 0.5 / further 0). Severity-agreement losses here are dominated by DA bundling: one CRITICAL row (C2) bundled SD-02/SD-03/SD-08 (+SD-09 via C1), dragging expected-major/minor defects into the critical band (#574 A3 severity-transport evidence)."
+}

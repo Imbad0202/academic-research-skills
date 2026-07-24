@@ -40,6 +40,14 @@ manuscript) so adjudication is anchored, not vibes.
    this directory's name leak the condition; a repo-enabled session can also read
    the sibling manifests. The `manifests/` files are held-out ground truth — they
    must NEVER enter a review session's context (contamination voids the run).
+   **Dispatch shape (frozen 2026-07-24):** full mode must be executed with the
+   sprint contract's physically separated calls (`sprint_contract_protocol.md`
+   §2) — each seat's Phase 1 produced by a clean, paper-blind call receiving only
+   the contract + title/field/word_count, Phase 2 by a separate paper-visible
+   call, structural §§4-5 lints enforced at dispatch. Single-context whole-panel
+   simulation observably leaks manuscript content into the "blind" Phase 1
+   (see `runs/superseded/2026-07-24-in-context-dispatch/`) and is NOT the
+   measured condition; post-change runs must use the same isolated dispatch.
 2. **Replicates.** At least **2 independent runs per manuscript per condition**
    (baseline and post-change). Full-mode output is stochastic; a single run's
    recall moves ~10 points on one defect flip. Report each run; gates use the
@@ -101,7 +109,7 @@ product outcome).
 
 | Date | Commit | Model | Runs | MS01 recall (strict) | MS02 recall (strict) | Clean-control false findings | Severity agreement | Notes |
 |------|--------|-------|------|----------------------|----------------------|------------------------------|--------------------|-------|
-| 2026-07-24 | 307ef24 | claude-opus-4-8 (reasoning effort xhigh; isolated blinded subagent per run) | 2 per fixture (6) | **0.90** (9/10 both replicates; critical band 0.75 — SD-01 GRIM = PARTIAL in both, the only non-detection) | **0.94** (r1 8/9 — SD-01 undescribed-instrument adjudicated PARTIAL, r2 9/9; critical band 0.75) | **0** (both replicates; both decisions were nonetheless Major Revision — severity inflation on true-but-minor observations, see run notes) | **0.599** (per-run 0.667 / 0.667 / 0.563 / 0.500) | All 3 PARTIALs are absence/recompute-class (GRIM arithmetic ×2, undescribed-instrument ×1); severity-agreement losses are DA bundling + cross-seat and cross-replicate band instability, the #574 A3/A4/B1 targets. Per-run records in `runs/2026-07-24-*.json`, raw panel outputs in `runs/raw/` |
+| 2026-07-24 | 307ef24 | claude-opus-4-8 (reasoning effort xhigh; isolated per-seat two-phase dispatch per the frozen dispatch shape) | 2 per fixture (6) | **0.90** (9/10 both replicates; critical band 0.75 — SD-01 GRIM = PARTIAL in both, the only non-detection across all MS01 runs in both dispatch designs) | **1.00** (9/9 both replicates; critical band 1.00 — both panels explicitly name the absent interview protocol) | **0** (both replicates; decisions Minor Revision / "Major Revision gated on citation verification" — the latter driven entirely by the excluded-by-design synthetic-DOI class, see run notes) | **0.597** (per-run 0.667 / 0.667 / 0.611 / 0.444) | Recall losses are recompute-class only (GRIM); severity-agreement losses are DA band placement — the same defects swing a full band across replicates and seats (#574 A3/A4/B1 targets). One PANEL-SHRUNK abort (DA multi-dissent) recovered via the protocol §5 retry. Records in `runs/2026-07-24-*.json` + `runs/raw/`; the superseded single-context attempt (near-identical numbers — the leak did not inflate recall) in `runs/superseded/` |
 | pending (post-change) | — | — | — | — | — | — | — | Re-measure after the #574 behavior batch (A1/A2/A3/B1); re-run, don't reuse, after model upgrades |
 
 ## Integrity checking
