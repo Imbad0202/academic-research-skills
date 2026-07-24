@@ -24,7 +24,7 @@ The present study contributes a single, transparently reported association from 
 
 ### 3.1 Design and participants
 
-This was a cross-sectional survey study conducted at one mid-sized public university. All enrolled undergraduates were eligible. The survey was distributed through the institution's course-announcement channel over a three-week window. Of the responses received, 214 valid responses were retained after removing incomplete submissions and duplicate entries. The analyzed sample of 214 students spanned all four year levels.
+This was a cross-sectional survey study conducted at one mid-sized public university. All enrolled undergraduates were eligible. The survey was distributed through the institution's course-announcement channel over a three-week window. A total of 233 responses were received; 14 incomplete submissions and 5 duplicate entries were removed, leaving 214 valid responses. The analyzed sample of 214 students spanned all four year levels.
 
 ### 3.2 Measures
 
@@ -38,13 +38,13 @@ The study protocol was reviewed and approved by the university's research ethics
 
 ### 3.4 Analysis
 
-We computed descriptive statistics for both measures and estimated the Pearson correlation between perceived-usefulness scores and the self-reported use item. Because the use item is ordinal, we also computed a Spearman correlation as a robustness check. Analyses were conducted at a conventional significance threshold, and we report the correlation coefficient alongside its p value and sample size.
+We computed descriptive statistics for both measures and estimated the Pearson correlation between perceived-usefulness scores and the self-reported use item. Because the use item is ordinal, we also computed a Spearman correlation as a robustness check. Scatterplot inspection showed an approximately linear, monotonic association with no extreme bivariate outliers, and both distributions were approximately symmetric. With n = 214, the study had greater than .80 power to detect a correlation of r >= .19 at alpha = .05 (two-tailed), so the design was sensitive to small-to-moderate associations. Analyses were conducted at a conventional significance threshold, and we report the correlation coefficient alongside its 95% confidence interval, p value, and sample size.
 
 ## 4. Results
 
 The 214 respondents reported a mean perceived-usefulness score of 3.6 (SD = 0.8) on the five-point scale. Self-reported LMS use had a median category of "a few times per week."
 
-Perceived usefulness was positively and moderately associated with self-reported LMS use, r = .42, p < .001, n = 214. The Spearman robustness check yielded a comparable coefficient (ρ = .40), indicating that the association did not depend on the parametric assumption. In plain terms, students who perceived the LMS as more useful tended to report using it more often, though the association was moderate and a substantial share of the variation in reported use was not accounted for by perceived usefulness alone. The proportion of variance shared by the two measures was accordingly modest, consistent with the view that reported engagement reflects many influences beyond perceived usefulness, including course requirements and assessment schedules.
+Perceived usefulness was positively and moderately associated with self-reported LMS use, r = .42, 95% CI [.30, .52], p < .001, n = 214. The Spearman robustness check yielded a comparable coefficient (ρ = .40), indicating that the association did not depend on the parametric assumption. In plain terms, students who perceived the LMS as more useful tended to report using it more often, though the association was moderate and a substantial share of the variation in reported use was not accounted for by perceived usefulness alone. The proportion of variance shared by the two measures was accordingly modest, consistent with the view that reported engagement reflects many influences beyond perceived usefulness, including course requirements and assessment schedules.
 
 ## 5. Discussion
 

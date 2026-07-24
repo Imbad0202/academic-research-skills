@@ -62,6 +62,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
             mock.patch.object(
                 mod, "CLEAN_CONTROL", self.root / "manuscripts" / "ms00_clean_control.md"
             ),
+            mock.patch.object(mod, "EXPECTED_FIXTURES", {"ms01_quant"}),
         ]
         for p in patches:
             p.start()
@@ -137,6 +138,54 @@ class SeededDefectCheckerTest(unittest.TestCase):
 
     def test_missing_clean_control_fails(self):
         (self.root / "manuscripts" / "ms00_clean_control.md").unlink()
+        self.assertEqual(mod.main(), 1)
+
+    def test_invalid_json_fails(self):
+        path = self.root / "manifests" / "ms01_quant.defects.json"
+        path.write_text("{not json", encoding="utf-8")
+        self.assertEqual(mod.main(), 1)
+
+    def test_missing_top_level_key_fails(self):
+        def drop(d):
+            del d["fixture_id"]
+
+        self.assertEqual(self.mutate(drop), 1)
+
+    def test_missing_defect_field_fails(self):
+        def drop(d):
+            del d["defects"][0]["description"]
+
+        self.assertEqual(self.mutate(drop), 1)
+
+    def test_unknown_detector_fails(self):
+        self.assertEqual(
+            self.mutate(
+                lambda d: d["defects"][0].update({"expected_detector": "psychic"})
+            ),
+            1,
+        )
+
+    def test_anchor_too_long_fails(self):
+        long_anchor = " ".join(f"w{i}" for i in range(26))
+        ms = self.root / "manuscripts" / "ms01_quant_defective.md"
+        ms.write_text(
+            ms.read_text(encoding="utf-8") + f"\n{long_anchor}\n", encoding="utf-8"
+        )
+        self.assertEqual(
+            self.mutate(
+                lambda d: d["defects"][0].update({"anchor_quote": long_anchor})
+            ),
+            1,
+        )
+
+    def test_deleted_manifest_fails_inventory_pin(self):
+        (self.root / "manifests" / "ms01_quant.defects.json").unlink()
+        self.assertEqual(mod.main(), 1)
+
+    def test_unmanifested_defective_manuscript_fails(self):
+        (self.root / "manuscripts" / "ms03_orphan_defective.md").write_text(
+            "# Orphan defective manuscript with no manifest\n", encoding="utf-8"
+        )
         self.assertEqual(mod.main(), 1)
 
     def test_duplicate_defect_id_fails(self):

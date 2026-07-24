@@ -42,7 +42,7 @@ Recruitment proceeded as follows. Midway through the term, an announcement was p
 
 ### 3.3 Measures
 
-*Dashboard engagement* was operationalized from LMS logs as the number of distinct sessions in which a student opened the dashboard view during the term. A session was defined as a dashboard view preceded by at least thirty minutes of inactivity, following the platform's default sessionization rule. *Course retention* was coded dichotomously as whether the student remained enrolled and completed the final assessment. Students who withdrew before the final assessment, or who were enrolled but did not sit the final, were coded as not retained. *Perceived control over learning* was measured with a six-item self-report scale adapted for this course, each item rated on a 1-5 integer response scale, with higher scores indicating greater perceived control. Scale scores were computed as the mean of the six items for respondents who answered all items; respondents with any missing item were excluded from the scale analyses.
+*Dashboard engagement* was operationalized from LMS logs as the number of distinct sessions in which a student opened the dashboard view during the term. A session was defined as a dashboard view preceded by at least thirty minutes of inactivity, following the platform's default sessionization rule. *Course retention* was coded dichotomously as whether the student remained enrolled and completed the final assessment. Students who withdrew before the final assessment, or who were enrolled but did not sit the final, were coded as not retained. *Perceived control over learning* was measured with a single-item overall rating ("Overall, I feel in control of my learning in this course"), rated on a 1-5 integer response scale, with higher scores indicating greater perceived control; single-item overall ratings are common in dashboard studies to limit survey burden. Respondents who skipped the item were excluded from the perceived-control analyses.
 
 For the group comparisons, students were split at the median number of dashboard sessions into high-engagement and low-engagement groups. This median split is a coarse simplification of a continuous measure and was adopted for interpretability rather than statistical efficiency.
 
@@ -54,7 +54,7 @@ Associations between continuous measures were assessed with Pearson correlations
 
 ### 4.1 Descriptive Statistics
 
-The mean perceived-control score across the 87 survey respondents with complete scale data was 3.847 (SD = 0.62) on the 1-5 scale, indicating a moderately high average sense of control. Dashboard engagement was right-skewed, with a small number of highly active students accounting for a disproportionate share of dashboard sessions. Descriptive statistics for the primary measures appear in Table 1.
+The mean perceived-control score across the 87 survey respondents who answered the item was 3.847 (SD = 0.62) on the 1-5 scale, indicating a moderately high average sense of control. Dashboard engagement was right-skewed, with a small number of highly active students accounting for a disproportionate share of dashboard sessions. Descriptive statistics for the primary measures appear in Table 1.
 
 **Table 1. Descriptive statistics for primary measures**
 
@@ -78,8 +78,8 @@ A parallel comparison on final exam performance did not reach a comparable level
 
 | Engagement group | n | M final exam | SD |
 |---|---|---|---|
-| High engagement | 66 | 73.8 | 11.2 |
-| Low engagement | 61 | 69.1 | 13.0 |
+| High engagement | 66 | 72.0 | 11.1 |
+| Low engagement | 61 | 69.2 | 13.0 |
 
 As shown in Table 2, both groups performed within a similar range, though the high-engagement group held a modest numerical advantage.
 

@@ -16,6 +16,9 @@ Invariants:
   4. Every `anchor_quote` (8-25 words) appears VERBATIM exactly once in its
      manuscript.
   5. The clean control manuscript exists and no manifest points at it.
+  6. The manifest set is exactly the expected fixture inventory (a deleted
+     manifest cannot silently shrink the acceptance set), and every
+     `*_defective.md` manuscript is covered by a manifest.
 
 Run: python3 scripts/check_seeded_defect_fixtures.py
 Exit 0 on pass; 1 with per-invariant messages on failure.
@@ -30,6 +33,9 @@ REPO = Path(__file__).resolve().parent.parent
 ROOT = REPO / "evals" / "heldout" / "reviewer_seeded_defects"
 MANIFESTS = ROOT / "manifests"
 CLEAN_CONTROL = ROOT / "manuscripts" / "ms00_clean_control.md"
+
+# Expected inventory — update deliberately when fixtures are added/retired.
+EXPECTED_FIXTURES = {"ms01_quant", "ms02_qual"}
 
 REQUIRED_TOP = {"fixture_id", "manuscript", "defect_count", "defects"}
 REQUIRED_DEFECT = {
@@ -132,8 +138,26 @@ def main() -> int:
     manifest_paths = sorted(MANIFESTS.glob("*.defects.json"))
     if not manifest_paths:
         errors.append(f"inv1: no manifests found under {MANIFESTS}")
+    seen_fixture_ids: set[str] = set()
+    manifested_manuscripts: set[str] = set()
     for path in manifest_paths:
         check_manifest(path, errors)
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            seen_fixture_ids.add(data.get("fixture_id", ""))
+            manifested_manuscripts.add(data.get("manuscript", ""))
+        except (OSError, json.JSONDecodeError):
+            pass  # already reported by check_manifest
+    if seen_fixture_ids != EXPECTED_FIXTURES:
+        errors.append(
+            f"inv6: manifest fixture_ids {sorted(seen_fixture_ids)} != expected "
+            f"{sorted(EXPECTED_FIXTURES)} — a missing manifest silently shrinks "
+            f"the acceptance set; update EXPECTED_FIXTURES deliberately instead"
+        )
+    for ms in sorted((ROOT / "manuscripts").glob("*_defective.md")):
+        rel = f"manuscripts/{ms.name}"
+        if rel not in manifested_manuscripts:
+            errors.append(f"inv6: defective manuscript {rel} has no manifest")
     if not CLEAN_CONTROL.is_file():
         errors.append(f"inv5: clean control missing: {CLEAN_CONTROL}")
 

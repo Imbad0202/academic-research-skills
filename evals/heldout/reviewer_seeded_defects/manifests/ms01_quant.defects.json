@@ -8,8 +8,8 @@
       "class": "statistical",
       "expected_severity": "critical",
       "section": "4 Results / 4.1 Descriptive Statistics",
-      "anchor_quote": "The mean perceived-control score across the 87 survey respondents with complete scale data was 3.847",
-      "description": "GRIM-inconsistent mean: with N=87 on a 1-5 integer, six-item mean scale, 87 x 3.847 = 334.689 is not an integer sum, so a mean of 3.847 is arithmetically unreachable; the nearest achievable means are 3.839 (sum 334) or 3.851 (sum 335).",
+      "anchor_quote": "The mean perceived-control score across the 87 survey respondents who answered the item was 3.847",
+      "description": "GRIM-inconsistent mean: a single-item 1-5 integer rating over N=87 has granularity 1/87; 87 x 3.847 = 334.689 is not an integer sum (nearest achievable means are 334/87 = 3.839 and 335/87 = 3.851), so 3.847 is arithmetically impossible.",
       "expected_detector": "statistics"
     },
     {
@@ -63,7 +63,7 @@
       "expected_severity": "critical",
       "section": "3 Methods / 3.2 Participants and Sampling",
       "anchor_quote": "Students were not informed that their dashboard activity data would be analyzed for this study",
-      "description": "Human-subjects data (LMS logs plus survey) are used with no IRB/ethics approval, consent, or data-governance statement anywhere, and the manuscript neutrally notes that students were not informed their activity data would be analyzed.",
+      "description": "LMS activity logs are analyzed without disclosure or consent (the manuscript states students were not informed), and no IRB/ethics approval or data-governance statement appears anywhere; the survey's own consent covers the survey only, not the log linkage.",
       "expected_detector": "ethics"
     },
     {
@@ -90,7 +90,7 @@
       "expected_severity": "major",
       "section": "6 Conclusion",
       "anchor_quote": "For higher education institutions worldwide, the implication is clear",
-      "description": "The Conclusion generalizes a dependable, scalable recommendation to 'higher education institutions worldwide' from a single-institution, single-course sample, and the Limitations paragraph conspicuously omits any generalizability hedge.",
+      "description": "The Conclusion's 'higher education institutions worldwide' recommendation overrides the Limitations section's own single-course, single-interface caveats - the defect is the contradiction between the stated limitations and the worldwide generalization, not an absent hedge.",
       "expected_detector": "domain"
     }
   ]
