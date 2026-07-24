@@ -34,8 +34,15 @@ ROOT = REPO / "evals" / "heldout" / "reviewer_seeded_defects"
 MANIFESTS = ROOT / "manifests"
 CLEAN_CONTROL = ROOT / "manuscripts" / "ms00_clean_control.md"
 
-# Expected inventory — update deliberately when fixtures are added/retired.
-EXPECTED_FIXTURES = {"ms01_quant", "ms02_qual"}
+# Expected inventory — update deliberately when fixtures/defects are
+# added/retired. Values are the EXACT defect-ID sets: a coordinated
+# row-deletion + defect_count decrement (or an SD-* rename that would orphan
+# per_defect run records) must fail CI, not shrink the denominator silently.
+EXPECTED_DEFECT_IDS = {
+    "ms01_quant": {f"SD-{i:02d}" for i in range(1, 11)},
+    "ms02_qual": {f"SD-{i:02d}" for i in range(1, 10)},
+}
+EXPECTED_FIXTURES = set(EXPECTED_DEFECT_IDS)
 
 REQUIRED_TOP = {"fixture_id", "manuscript", "defect_count", "defects"}
 REQUIRED_DEFECT = {
@@ -148,6 +155,24 @@ def main() -> int:
             manifested_manuscripts.add(data.get("manuscript", ""))
         except (OSError, json.JSONDecodeError):
             pass  # already reported by check_manifest
+    for path in manifest_paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue  # already reported
+        fid = data.get("fixture_id", "")
+        expected_ids = EXPECTED_DEFECT_IDS.get(fid)
+        if expected_ids is None:
+            continue  # unknown fixture_id handled by the set-equality check
+        actual_ids = {
+            row.get("defect_id", "") for row in data.get("defects", [])
+        }
+        if actual_ids != expected_ids:
+            errors.append(
+                f"inv6 {path.name}: defect ids {sorted(actual_ids)} != expected "
+                f"{sorted(expected_ids)} — deleting/renaming a defect must be a "
+                f"deliberate EXPECTED_DEFECT_IDS update, never a silent shrink"
+            )
     if len(seen_fixture_ids) != len(set(seen_fixture_ids)):
         errors.append(
             "inv6: duplicate fixture_id across manifests — an extra manifest "

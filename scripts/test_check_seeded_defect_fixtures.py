@@ -63,6 +63,9 @@ class SeededDefectCheckerTest(unittest.TestCase):
                 mod, "CLEAN_CONTROL", self.root / "manuscripts" / "ms00_clean_control.md"
             ),
             mock.patch.object(mod, "EXPECTED_FIXTURES", {"ms01_quant"}),
+            mock.patch.object(
+                mod, "EXPECTED_DEFECT_IDS", {"ms01_quant": {"SD-01"}}
+            ),
         ]
         for p in patches:
             p.start()
@@ -181,6 +184,18 @@ class SeededDefectCheckerTest(unittest.TestCase):
     def test_deleted_manifest_fails_inventory_pin(self):
         (self.root / "manifests" / "ms01_quant.defects.json").unlink()
         self.assertEqual(mod.main(), 1)
+
+    def test_coordinated_deletion_fails_defect_id_pin(self):
+        def shrink(d):
+            d["defects"] = []
+            d["defect_count"] = 0
+
+        self.assertEqual(self.mutate(shrink), 1)
+
+    def test_renamed_defect_id_fails_pin(self):
+        self.assertEqual(
+            self.mutate(lambda d: d["defects"][0].update({"defect_id": "SD-99"})), 1
+        )
 
     def test_duplicate_fixture_id_across_manifests_fails(self):
         src = self.root / "manifests" / "ms01_quant.defects.json"
