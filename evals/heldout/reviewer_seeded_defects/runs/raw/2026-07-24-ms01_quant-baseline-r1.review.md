@@ -996,222 +996,283 @@ editorial_decision=reject_or_major_revision
 
 # PART 3 — EDITORIAL SYNTHESIS
 
-I have all four required files. Now let me execute the mechanical sprint-contract protocol, then the general synthesis. Let me build the scoring matrix from the five reviewers' `## Dimension Scores`.
+*(Protocol §8.1 synthesis retry: the first synthesis emitted the fired_conditions/editorial_decision pair twice, violating the pinned grammar, and was voided — preserved at `voided/2026-07-24-ms01_quant-baseline-r1.synthesis-voided.md`. The synthesis below is the retried call over the unchanged five Phase-2 cards.)*
 
-**Matrix (N=5):**
+I now have everything I need. Let me execute the mechanical protocol.
 
-| Dim | EIC | R1 (Meth) | R2 (Domain) | R3 (Persp) | DA |
-|-----|-----|-----------|-------------|------------|-----|
+**Step 1 — Scoring matrix** (N=5, reviewers in order EIC, R1, R2, R3, DA):
+
+| Dim | EIC | R1 | R2 | R3 | DA |
+|-----|-----|-----|-----|-----|-----|
 | D1 (mandatory) | block | block | warn | block | block |
 | D2 (mandatory) | warn | warn | block | warn | warn |
 | D3 (mandatory) | block | block | block | block | block |
 | D4 (high) | warn | warn | block | block | warn |
 | D5 (normal) | warn | block | warn | warn | warn |
 
-**Condition evaluation:**
-- **F1** (any, "any mandatory dimension scores 'block'"): predicate holds for any reviewer with ≥1 mandatory (D1/D2/D3) = block. All 5 reviewers have D3=block (and most D1=block). Quantifier `any` → fires. **FIRED.**
-- **F2** (majority, "two or more mandatory dimensions score 'warn' or worse"): per-reviewer predicate = ≥2 of D1/D2/D3 at warn-or-worse. EIC: D1 block, D2 warn, D3 block → 3, holds. R1: D1 block, D2 warn, D3 block → 3, holds. R2: D2 block, D3 block → 2, holds. R3: D1 block, D2 warn, D3 block → 3, holds. DA: D1 block, D2 warn, D3 block → 3, holds. 5/5 ≥ ⌊5/2⌋+1=3 → fires. **FIRED.**
-- **F3** (any, "any high-priority dimension scores 'block'"): D4=block for R2 and R3. `any` → fires. **FIRED.**
-- **F0** (all, "every mandatory dimension scores 'pass'"): no reviewer has all-pass. Not fired.
+**Step 2 — Evaluate conditions:**
+- F1 (`any` × "any mandatory dimension scores block"): D1 block in ≥1 reviewer (4 of 5), D3 block in all 5. Predicate holds for ≥1 → **fires**.
+- F2 (`majority` × "two or more mandatory dimensions score warn or worse"): each reviewer — EIC (D1 block, D2 warn, D3 block = 3), R1 (3), R2 (3), R3 (3), DA (3). All 5 reviewers satisfy ≥2 mandatory at warn-or-worse. Majority threshold (⌊5/2⌋+1=3) met → **fires**.
+- F3 (`any` × "any high-priority dimension scores block"): D4 block in R2 and R3 (≥1) → **fires**.
+- F0 (`all` × "every mandatory dimension scores pass"): no reviewer has all mandatory at pass → **does not fire**.
 
-**Precedence:** fired = {F1 sev90, F2 sev70, F3 sev60}. Highest severity = F1 (90) → `editorial_decision=reject_or_major_revision`.
+**Step 3 — Precedence:** Fired = F1(90), F2(70), F3(60). Highest severity = F1 → action `editorial_decision=reject_or_major_revision`.
 
-Now I'll produce the deliverable.
+Now the deliverable.
 
----
+# Editorial Decision Package
 
-# Sprint-Contract Mechanical Synthesis
+## Sprint-Contract Mechanical Synthesis (v3.6.2)
 
-## Step 1 — Scoring Matrix (N = panel_size = 5)
+### Scoring Matrix (N = 5; columns in panel order: EIC, R1 Methodology, R2 Domain, R3 Perspective, DA)
 
-| Dimension (id / priority) | EIC | R1 (Methodology) | R2 (Domain) | R3 (Perspective) | DA |
-|---|---|---|---|---|---|
-| **D1** methodology_rigor (mandatory) | block | block | warn | block | block |
-| **D2** domain_accuracy (mandatory) | warn | warn | block | warn | warn |
-| **D3** argumentative_coherence (mandatory) | block | block | block | block | block |
-| **D4** cross_disciplinary_relevance (high) | warn | warn | block | block | warn |
-| **D5** writing_and_structure (normal) | warn | block | warn | warn | warn |
+| Dimension | Priority | EIC | R1 | R2 | R3 | DA |
+|-----------|----------|-----|-----|-----|-----|-----|
+| D1 methodology_rigor | mandatory | block | block | warn | block | block |
+| D2 domain_accuracy | mandatory | warn | warn | block | warn | warn |
+| D3 argumentative_coherence | mandatory | block | block | block | block | block |
+| D4 cross_disciplinary_relevance | high | warn | warn | block | block | warn |
+| D5 writing_and_structure | normal | warn | block | warn | warn | warn |
 
-## Step 2 — Per-Condition Evaluation
+### Per-Condition Evaluation
 
-| Condition | severity | quantifier | expression (pattern §9) | per-reviewer predicate | reviewers holding | threshold | fired |
-|---|---|---|---|---|---|---|---|
-| **F1** | 90 | any | pattern 1 — any mandatory dimension scores 'block' | ≥1 of {D1,D2,D3} = block | EIC, R1, R2, R3, DA (5/5) | ≥1 of 5 | **true** |
-| **F2** | 70 | majority | pattern 2 — two or more mandatory dimensions score 'warn' or worse | ≥2 of {D1,D2,D3} ∈ {warn,block} | EIC(3), R1(3), R2(2), R3(3), DA(3) → 5/5 | ⌊5/2⌋+1 = 3 | **true** |
-| **F3** | 60 | any | pattern 1 (high-priority variant) — any high-priority dimension scores 'block' | D4 = block | R2, R3 (2/5) | ≥1 of 5 | **true** |
-| **F0** | 10 | all | pattern 3 — every mandatory dimension scores 'pass' | D1=D2=D3=pass | none (0/5) | all 5 | false |
+| Condition | Severity | Quantifier | Expression | Predicate result across panel | Fired |
+|-----------|----------|------------|------------|-------------------------------|-------|
+| F1 | 90 | any | any mandatory dimension scores 'block' | D3 = block for all 5; D1 = block for 4/5 → holds for ≥ 1 | **true** |
+| F2 | 70 | majority | two or more mandatory dimensions score 'warn' or worse | 5/5 reviewers have ≥ 2 mandatory dims at warn-or-worse (each has D1+D2+D3 ≥ warn); ≥ ⌊5/2⌋+1 = 3 | **true** |
+| F3 | 60 | any | any high-priority dimension (D4) scores 'block' | D4 = block for R2, R3 → holds for ≥ 1 | **true** |
+| F0 | 10 | all | every mandatory dimension scores 'pass' | No reviewer scores all mandatory dims 'pass' | false |
 
-## Step 3 — Precedence & Decision
+### Precedence
 
-Fired conditions: F1 (sev 90), F2 (sev 70), F3 (sev 60). Highest severity = **F1** (90). No tie. F1's action governs.
+Fired conditions: F1 (90), F2 (70), F3 (60). Highest severity = **F1** (severity 90). Its action governs.
 
 fired_conditions: [F1, F2, F3]
+
 editorial_decision=reject_or_major_revision
 
 ---
 
-# Editorial Decision Package
+# Editorial Decision
 
-## Part 1: Editorial Decision Letter
+## Manuscript Information
+- **Title**: Dashboard Engagement and Course Retention: Evidence from an Undergraduate Learning Analytics Deployment
+- **Manuscript ID**: [Not supplied]
+- **Submission Date**: [Not supplied]
+- **Decision Date**: 2026-07-24
+- **Review Round**: Round 1
 
-Dear Author(s),
+## Review Panel Provenance (#540)
 
-Thank you for submitting your manuscript titled *"Dashboard Engagement and Course Retention: Evidence from an Undergraduate Learning Analytics Deployment"* to the *Journal of Learning Analytics*. Your manuscript has been reviewed by 5 independent reviewers, including the Editor-in-Chief.
-
-### Decision: Major Revision
-
-The contract's highest-severity fired condition (F1) authorizes `reject_or_major_revision`. The panel is unanimous that a defensible, appropriately-scoped **associational** contribution is recoverable from the materials already present — §1–§2 already contain the caution the paper needs, and the underlying data (a modest engagement–retention association plus a perceived-control signal in one course) supports a legitimate single-site note. Because the honest paper is recoverable rather than fatally unfounded, the editorial office resolves the F1 disjunction toward **Major Revision, with mandatory re-review**, not outright rejection. This is a conditional invitation: if the causal/generalization framing cannot be retreated and the statistical record cannot be reconciled, the resubmission will not survive a second round.
-
-### Review Panel Provenance (#540)
-
-All five reviewer personas ran on a single model family (Anthropic). Persona diversity is not model diversity — blind spots may be correlated across reviewers (Ren et al. 2026, arXiv:2607.13104 §5.2).
-
-### Reviewer Summary
-
-| Reviewer | Role | Recommendation | Confidence |
-|----------|------|----------------|------------|
-| EIC | Editor-in-Chief, *Journal of Learning Analytics* (student-facing feedback systems) | Major Revision | 4 |
-| Reviewer 1 | Quantitative educational-measurement methodologist (LMS trace data, observational designs) | Reject (resubmit as correlational note) | 5 |
-| Reviewer 2 | Senior learning-analytics scholar (student-facing dashboards, SRL) | Reject (major-revision-eligible) | 5 |
-| Reviewer 3 | Educational research-ethics & data-governance specialist | Reject (major revision minimum) | 5 |
-| Devil's Advocate | Adversarial challenge (logic-chain, self-contradiction, overgeneralization) | reject_or_major_revision | — |
-
-### Consensus Analysis
-
-The synthesizer decomposed each reviewer weakness into atomic sub-claims before aggregating (Step 1b). The denominator for consensus is the **4 non-DA reviewers** (EIC, R1, R2, R3); the DA's findings are tracked separately (DA-CRITICAL) and never enter the consensus count. `not-mentioned` is silence, not opposition.
-
-#### Weakness Sub-Claim Inventory (Step 1b)
-
-| sub_claim_id | parent_weakness | EIC | R1 | R2 | R3 | DA (sep.) | max conf. |
-|---|---|---|---|---|---|---|---|
-| **SC-1** | Causal/predictive verbs on a cross-sectional design (§5 "improved"/"raises"; §6 "dependable lever") | raised | raised | raised | raised | raised | 5 |
-| **SC-2** | Abstract r=.42 vs Results §4.2 r=.24 (headline effect-size contradiction) | raised | raised | not-mentioned | not-mentioned | raised | 5 |
-| **SC-3** | Degrees of freedom irreconcilable with any stated N; t(140)=1.31 ≠ p=.008 (impossible pairing); Table 2 n=127 vs "all 142 classified" | corroborated | raised | corroborated | corroborated | raised | 5 |
-| **SC-4** | Overgeneralization: single intro-stats section → "institutions worldwide"/"across programs and disciplines" | raised | raised | raised | raised | raised | 5 |
-| **SC-5** | Ferro & Nakamura (2021) characterization inverts its own titled finding | raised (warn) | raised (warn) | raised (block) | raised (warn) | raised | 5 |
-| **SC-6** | Ethics/consent gap: students not informed dashboard data analyzed; no IRB statement | raised | raised | not-mentioned | raised | flagged (defers to R3) | 5 |
-| **SC-7** | Sampling contradiction: "random sample" vs volunteer announcement-response recruitment; non-responders excluded | raised | raised | not-mentioned | raised | raised | 5 |
-| **SC-8** | Self-selection / reverse causation / confounding (prior achievement, baseline motivation) unaddressed | not-mentioned | raised | raised | raised | raised | 5 |
-| **SC-9** | Perceived control invoked as "mediating construct" on a single item; no mediation tested | raised (minor) | raised | raised | raised | raised | 4 |
-| **SC-10** | Paper contradicts its own Lit Review (Osei 2020 demotivation; Vandermeer 2023 proxy caveat) abandoned in §5–§6 | not-mentioned | not-mentioned | raised | raised | raised | 5 |
-| **SC-11** | False precision (M=3.847 on a 1–5 single item) | raised (minor) | raised (minor) | raised (minor) | not-mentioned | not-mentioned | 3 |
-| **SC-12** | No power analysis / no CIs / no confounder-adjusted model; Pearson r on a binary outcome | not-mentioned | raised | corroborated | not-mentioned | not-mentioned | 5 |
-| **SC-13** | Equity/deployment recommendation not stratified by achievement (inherits SC-5/SC-10) | not-mentioned | not-mentioned | raised | raised | flagged | 5 |
-
-#### Points of Agreement (Consensus)
-
-**[CONSENSUS-4]** (all 4 non-DA reviewers agree, conflict = 0; DA corroborates each):
-1. **SC-1 — Causal overreach the design cannot bear.** EIC (W1, D1/D3 block), R1 (W2, D1/D3 block), R2 (W2, D2/D3 block), R3 (W2, D1/D3/D4 block) all hold that §5–§6's "improved"/"raises the probability"/"dependable, generalizable lever" language is not licensable by a single-timepoint correlation with no temporal ordering, no counterfactual, and no confounder control. Highest weight. **Author MUST address — no decline option.**
-2. **SC-4 — Catastrophic generalization past a single section.** All four flag "institutions worldwide"/"across programs and disciplines" from one intro-stats section as unsubstantiated. **Author MUST address.**
-3. **SC-5 — Ferro & Nakamura (2021) characterization inverts its cited source.** All four raise that §2 ¶2 ("reliably improve outcomes for lower-achieving students") contradicts the reference-list title *"When dashboards demotivate…"* Note the **severity split**: R2 scores this D2 = **block** (a key prior result credited/characterized wrongly, grounded in the manuscript's own reference list); EIC, R1, R3 hold it at D2 = **warn**, framing it as an author-clarification query rather than an assertion of fabrication. This severity divergence is arbitrated below. The **existence** of the defect is unanimous. **Author MUST address (reconcile in-text claim vs reference metadata).**
-4. **SC-9 — "Mediating construct" overstated on a single-item measure with no mediation test.** All four raise it (EIC/R1 at minor grade, R2/R3 substantively). **Author must address** (soften to "a correlate consistent with, but not a test of, the SRL account").
-
-**[CONSENSUS-3]** (3/4 agree, 4th silent — silent reviewer named; conflict = 0):
-1. **SC-2 — Abstract r=.42 vs Results r=.24 headline contradiction.** Raised by EIC (W2), R1 (W1a), and corroborated by DA (C2); **R2 and R3 are silent** on this specific numeric pair. Because the denominator is the 4 non-DA reviewers and only EIC + R1 speak to it there, this is a **2/4 corroborated finding, not CONSENSUS-3** — but the DA independently makes it a load-bearing CRITICAL (C2), and its confidence is 5. Treated as a **P1 Required Revision** on strength of two Score-5 reviewers plus DA corroboration. *(Recorded here for transparency; formally a corroborated finding by the counting rule, elevated by confidence weight.)*
-2. **SC-6 — Ethics/consent gap + missing IRB statement.** Raised by EIC (W5), R1 (W5, as a reproducibility-record defect), R3 (W1, as the owning ethics seat); **R2 is silent**. This is a genuine **CONSENSUS-3** (3 agree, R2 silent, conflict = 0). R3 owns the primary determination and flags it as potentially independently decision-driving. **Author MUST address.**
-3. **SC-7 — Sampling self-contradiction ("random" vs volunteer).** Raised by EIC (Q3), R1 (W3), R3 (implied in W4/selection); **R2 silent** on the "random" wording specifically. CONSENSUS-3. **Author must address.**
-4. **SC-8 — Self-selection / reverse causation / confounding unaddressed.** Raised by R1 (W2/W4), R2 (W1/W2), R3 (W4); **EIC silent** as a standalone item (folds it into W1). CONSENSUS-3, confidence 5. **Author MUST address.**
-
-**Corroborated findings (agree = 2, conflict = 0 — action-bearing, not a consensus label):**
-- **SC-3** (statistical impossibilities/df reconciliation): R1 owns it (Score 5, W1b/W1c); EIC, R2, R3, DA all corroborate at editorial altitude while deferring the recomputation to R1. Effectively near-unanimous in existence; **P1 on R1's confidence-5 ownership.**
-- **SC-10** (paper contradicts its own Lit Review): R2 (W1/W3) + R3 (W3) + DA (C3). Two non-DA + DA corroboration → P1-adjacent.
-- **SC-12** (no power/CI/adjusted model): R1 (W4) raised, R2 corroborates. Corroborated finding → P2.
-- **SC-13** (equity claim not stratified): R2 (W4) + R3 (Practical Impact) → P2.
-- **SC-11** (false precision 3.847): EIC + R1 + R2 (all minor) → P3.
-
-#### Points of Disagreement
-
-**Disagreement 1: Severity of the Ferro & Nakamura (2021) citation defect (SC-5)**
-- **R2 view**: D2 = **block**. Per R2's Phase-1 D2 block trigger ("a key prior result misstated or credited to the wrong source"), the in-text claim points opposite to the source's own titled finding, is grounded in the manuscript's own reference list (no external norm invoked), and the §2 equity rationale + §6 deployment recommendation lean on it. A load-bearing claim stands on a misread source.
-- **EIC / R1 / R3 / DA view**: D2 = **warn**. All four hold the defect is real and correctable but frame it as an **author-clarification query** (a two-findings reading is possible: one paper reporting benefit and demotivation for different subgroups), not a unilateral fabrication finding — and the paper's contribution does not *rest* on this single citation.
-- **Disagreement type**: Severity disagreement (existence is unanimous; grade differs).
-- **Editor's Resolution**: The **defect is confirmed and required** regardless of grade. On severity, the editorial office **does not need to adjudicate block-vs-warn to reach the decision** — F1 already fires on D3 (unanimous) and D1 (4/5), so the aggregate decision is invariant to this dimension's grade. For the roadmap, the item is placed at **P1** (a claim characterized against its own cited source is core-accuracy, and R2 holds domain expertise here — Expertise-first principle). The author must **reconcile the two**: either the §2 claim is wrong and must be rewritten to reflect the demotivation finding (which would materially change the equity argument and §6), or the reference metadata is wrong and must be corrected — and state which. If a genuine two-findings reading exists, quote the supporting passage.
-- **Resolution Rationale**: Expertise-first (R2 is the domain seat) + Conservative principle (lean toward requiring author response). The severity split does not change the decision; it changes only how emphatically the roadmap frames the fix.
-
-**Disagreement 2: D5 (writing_and_structure) — one block vs four warn**
-- **R1 view**: D5 = **block** — "the empirical core cannot be audited at all": text disagrees with tables, a headline result carries a p-value its own test statistic cannot produce, no CIs.
-- **EIC / R2 / R3 / DA view**: D5 = **warn** — prose is fluent and structure complete; the deep numeric contradictions are scored under D1/D3 rather than D5, leaving residual writing-level defects (sample-size narrative, false precision) at warn.
-- **Disagreement type**: Perspective difference (where to *book* the same defect — R1 books auditability under writing/reporting; the others book it under methodology/coherence).
-- **Editor's Resolution**: D5 is a **normal-priority** dimension and appears in **no** failure condition, so its grade **cannot** change the editorial decision under any resolution. The underlying defects (SC-2, SC-3) are already captured at P1 under D1/D3. Resolution: **no arbitration needed for the decision**; the reporting-integrity defects are actioned at P1 via SC-2/SC-3, and the residual style-level items (SC-11) sit at P3. R1's booking is noted as legitimate; it is a classification choice, not a substantive conflict.
-
-**Disagreement 3: D1 grade — R2 warn vs four block**
-- **R2 view**: D1 = **warn** from the domain-adequacy angle: confounds are acknowledged as caveats and engagement is at least defined well enough to interpret; the interpretability-defeating problems (statistical inconsistency, design–claim mismatch) are booked under D2/D3 at R2's seat.
-- **EIC / R1 / R3 / DA view**: D1 = **block**.
-- **Disagreement type**: Severity disagreement (seat-scope difference — R2 routes the same substance to D2/D3).
-- **Editor's Resolution**: Immaterial to the decision. F1 fires on D3 unanimously; even setting D1 aside entirely, the decision is unchanged. R2's D1=warn is internally consistent with R2 booking the block-grade substance elsewhere. **No decision-level arbitration required.**
-
-### Decision Rationale
-
-The panel is unanimous on the load-bearing defect, viewed from five seats: a systematic gap between what the Results report (a modest cross-sectional association, r = .24) and what the Discussion and Conclusion claim (engagement "improved" retention, "raises the probability" of completion, a "dependable, generalizable lever" for "institutions worldwide"). All five reviewers score D3 (argumentative_coherence) = block; four of five score D1 (methodology_rigor) = block. Under the contract, F1 (severity 90, "any mandatory dimension scores block") fires on the unanimous D3 alone; F2 (severity 70) and F3 (severity 60) also fire but are subordinate. F1's action, `reject_or_major_revision`, governs.
-
-The editorial office resolves that disjunction toward **Major Revision with mandatory re-review** rather than rejection because three independent seats (EIC, R1, R2) converge on the same recoverability judgment: the paper's own §1 stated question is correctly associational, §2 is genuinely cautious (even citing Ibarra 2023 on causal overreach — the exact move §6 then makes), and §5.1 already names the key limitations. The honest paper is present in the materials; §5–§6 abandon it. Two further blocking-grade concerns require resolution before the paper can advance: R1's confidence-5 finding that the reported statistics are mutually inconsistent and partly arithmetically impossible (r = .42 vs .24; degrees of freedom matching no stated N; t(140) = 1.31 ≠ p = .008), and R3's confidence-5 ethics finding (students not informed their dashboard data would be analyzed; no IRB statement) which may prove independently decision-driving. Rejection is not chosen because no defect is unfixable; a stricter-than-major decision would discard a genuine, publishable single-site contribution. A less-strict decision is impossible: four blocking mandatory-dimension scores cannot be waved through as minor.
-
-### Top Blocking Issues (0–3, ranked)
-
-| Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
-|------|----------------|--------------------|-----------------|------------------------|
-| 1 | Causal/predictive/generalization claims (§5–§6) unlicensable by a single-site cross-sectional correlation; contradicts the paper's own §3.1 design label and §2 caution | EIC, R1, R2, R3, DA (unanimous D3 block; 4/5 D1 block) | §5 "improved course retention"/"raises the probability"; §6 "dependable strategy"/"practical and generalizable lever"/"institutions worldwide" vs §3.1 "observational, cross-sectional" | R1 |
-| 2 | Statistical record internally inconsistent and partly impossible; empirical core cannot be audited | R1 (Score 5, owner); corroborated by EIC, R2, R3, DA | Abstract r=.42 vs §4.2 r=.24; t(156)/t(140) match no stated N; t(140)=1.31 ≠ p=.008; Table 2 n=66+61=127 vs "all 142 classified" | R2 |
-| 3 | Undisclosed analysis of student behavioral data + no IRB/ethics statement, under a paper that then recommends scaled deployment | R3 (Score 5, owning seat); corroborated by EIC, R1 | §3.2 "students were not informed that their dashboard activity data would be analyzed"; no IRB statement anywhere | R3 |
+All five reviewer personas ran on a single model family (primary family). Persona diversity is not model diversity — blind spots may be correlated across reviewers (Ren et al. 2026, arXiv:2607.13104 §5.2).
 
 ---
 
-## Part 2: Revision Roadmap
+## Decision
 
-> The `Sub-Claim(s)` column carries the Step 1b `sub_claim_id`(s) each item traces to. DA-CRITICAL or non-decomposed items use `—`.
+### Reject or Major Revision
 
-### Required Revisions (Must Fix)
+The fired sprint-contract condition (F1, severity 90) carries the action `reject_or_major_revision`. Under the manuscript's current claims the paper cannot be accepted; a defensible, re-scoped associational contribution is recoverable from the same data, so the operative editorial route is **Major Revision with mandatory re-review** rather than terminal rejection. The reject option stands open if the authors cannot retreat the causal and generalization framing to what an observational single-site design supports.
 
-| # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
-|---|---------------|--------------|--------|----------|------------------|
-| R1 | Retreat every causal/predictive verb in §5–§6 to associational language ("was associated with," "co-occurred with"); remove "improved"/"raises the probability"/"dependable"/"lever"; add a reverse-causation + selection + confounding (prior achievement, baseline motivation) paragraph to Limitations | SC-1, SC-8 | EIC, R1, R2, R3, DA | P1 | 4–6 days |
-| R2 | Recompute every reported statistic from the analytic dataset; reconcile r (.42 vs .24), degrees of freedom, per-analysis Ns, and p-values against one another and a single stated sample; report exact test statistics, df, effect sizes, and 95% CIs; fix the t(140)=1.31/p=.008 pairing | SC-2, SC-3, SC-12 | R1 (owner), EIC, R2, R3, DA | P1 | 5–7 days |
-| R3 | Add an explicit ethics/IRB-approval statement and the consent/waiver basis for the behavioral-log analysis, given §3.2 states students were not informed; if a waiver applied, state and justify it | SC-6 | R3 (owner), EIC, R1 | P1 | 2–3 days |
-| R4 | Rescope §6 implications from "institutions worldwide"/"across programs and disciplines" to "this single-course deployment suggests…" with explicit boundary conditions and a call for replication | SC-4 | EIC, R1, R2, R3, DA | P1 | 2–3 days |
-| R5 | Reconcile the Ferro & Nakamura (2021) characterization (§2 ¶2 "reliably improve outcomes for lower-achieving students") with the reference-list title *"When dashboards demotivate…"*: correct the in-text claim or the metadata, state which, and if a two-findings reading holds, quote the supporting passage | SC-5 | R2 (owner, D2 block), EIC, R1, R3, DA | P1 | 1–2 days |
-| R6 | Resolve the sampling self-contradiction: remove "random sample," describe the actual volunteer/announcement-response recruitment, report response and attrition rates, and bound the generalizability claim accordingly | SC-7 | EIC, R1, R3 | P1 | 2 days |
+---
 
-### Suggested Revisions (Should Fix)
+## Top Blocking Issues (0–3, ranked)
 
-| # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
-|---|---------------|--------------|--------|----------|------------------|
-| S1 | Downgrade "perceived control as a mediating construct" (§5) to "a correlate consistent with, but not a test of, the SRL account"; no mediation was tested and the measure is a single item | SC-9 | EIC, R1, R2, R3 | P2 | 0.5 day |
-| S2 | Add a confounder-adjusted model for the binary retention outcome (logistic or discrete-time on prior achievement + enrollment intensity) rather than a bare Pearson r; report a-priori or post-hoc-exploratory power framing | SC-12 | R1, R2 | P2 | 3–4 days |
-| S3 | Engage the paper's own demotivation/equity evidence (Osei 2020; correctly-read Ferro & Nakamura 2021) before any deployment recommendation; either stratify the association by prior achievement or decline the scaled-deployment claim | SC-10, SC-13 | R2, R3, DA | P2 | 2–3 days |
-| S4 | Keep the §2 click-proxy caveat (Vandermeer 2023) live in §5: treat engagement explicitly as a behavioral proxy, not the substantive construct that "improved" retention; keep course-level completion distinct from institutional retention | SC-10 | R2, R3 | P2 | 1 day |
-| S5 | Name and version the statistical software (not "standard statistical software"); add a data/code-availability statement to support reproducibility | — | R1 | P2/P3 | 0.5 day |
+| Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
+|------|----------------|--------------------|-----------------|------------------------|
+| 1 | Causal / prescriptive conclusion built on a single-site cross-sectional correlation with no confounder control, temporal ordering, or counterfactual — drives D1 and D3 to block | EIC, R1, R2, R3, DA | §5 "dashboard engagement improved course retention… raises the probability that a student completes"; §6 "dependable strategy… practical and generalizable lever" vs §3.1 "observational, cross-sectional" | R1 |
+| 2 | Internally inconsistent / partly impossible statistics: Abstract r = .42 vs §4.2 r = .24; df matching no stated N (t(156), t(140) vs n=142 / 87 / Table 2 = 127); t(140)=1.31 cannot yield p=.008 | R1, EIC, DA | Abstract vs §4.2; §4.1–§4.3; Table 2 | R2 |
+| 3 | Source characterization inverts its own reference: Ferro & Nakamura (2021) cited in §2 as dashboards "reliably improve outcomes for lower-achieving students" while the reference title is "When dashboards demotivate…" — drives D2 to block at the domain seat | R2, EIC, R3, DA | §2 ¶2 vs References (Ferro & Nakamura 2021) | R3 |
 
-### Revision Checklist (Checkable List)
+---
 
-#### Priority 1 — Structural Revisions (Estimated total effort: ~16–23 days)
-- [ ] R1: Retreat causal verbs to associational; add reverse-causation/selection/confounding limitations paragraph
-- [ ] R2: Recompute and reconcile all statistics (r, df, Ns, p, CIs); fix the impossible t/p pairing
-- [ ] R3: Add ethics/IRB statement + consent/waiver basis for log-data analysis
-- [ ] R4: Rescope §6 from worldwide generalization to single-deployment implications + replication call
-- [ ] R5: Reconcile the Ferro & Nakamura (2021) characterization vs its reference-list title; state which is corrected
-- [ ] R6: Fix sampling description ("random" → actual volunteer recruitment); report response/attrition rates
+## Reviewer Summary
 
-#### Priority 2 — Content Supplementation (Estimated total effort: ~7–9 days)
-- [ ] S1: Soften "mediating construct" to a non-tested correlate
-- [ ] S2: Add confounder-adjusted retention model + power framing
-- [ ] S3: Engage demotivation/equity evidence before deployment recommendation; stratify or decline
-- [ ] S4: Keep the click-proxy caveat live in §5; separate course-completion from institutional retention
-- [ ] S5: Name/version software; add data/code-availability statement
+| Reviewer | Role | Recommendation | Confidence |
+|----------|------|---------------|------------|
+| EIC | Editor-in-Chief, *Journal of Learning Analytics* | Major Revision | 4 |
+| Reviewer 1 | Quantitative educational-measurement methodologist | Reject (resubmit as correlational note) | 5 |
+| Reviewer 2 | Senior learning-analytics / SRL domain scholar | Reject (major-revision-eligible) | 5 |
+| Reviewer 3 | Educational research-ethics & data-governance specialist | Reject (major revision at minimum) | 5 |
+| Devil's Advocate | Adversarial challenge across logic / evidence dimensions | (block-grade challenge; no numeric recommendation) | — |
 
-#### Priority 3 — Text and Formatting (Estimated total effort: ~1 day)
-- [ ] Reduce false precision (perceived-control M reported to three decimals, 3.847, on a 1–5 single item → two significant figures) [SC-11]
-- [ ] Add one reconciling sentence for the sample-size narrative (142 primary / 87 survey / 127 in Table 2), stating each analysis's N once in one place
-- [ ] General language/citation-format polishing pass
+---
 
-### Revision Deadline
+## Consensus Analysis
 
-- **Recommended deadline**: 6–8 weeks from this letter (Major Revision).
-- **Basis**: Major Revision requires re-analysis (statistical reconciliation, confounder-adjusted model), section rewriting (§5–§6), and an ethics-record addition. The revised manuscript will undergo another round of review.
-- **Extension policy**: If an extension is needed, notify the editorial office at least 1 week before the deadline.
+### Step 1b — Weakness Sub-Claim Inventory (decomposed; non-DA reviewers counted, DA tracked separately)
 
-### Response Letter Instructions
+| sub_claim_id | parent_weakness | EIC | R1 | R2 | R3 | agree/conflict/silent | disposition |
+|--------------|-----------------|-----|-----|-----|-----|----------------------|-------------|
+| SC-1 | Causal/prescriptive claims exceed observational design (§5–§6 vs §3.1) | raised | raised | raised | raised | 4 / 0 / 0 | [CONSENSUS-4] |
+| SC-2 | Abstract r=.42 vs Results r=.24 headline contradiction | raised | raised | not-mentioned | not-mentioned | 2 / 0 / 2 | corroborated finding |
+| SC-3 | df / N / p statistics irreconcilable & partly impossible (t(140)=1.31→p=.008; df vs n) | corroborated (defers detail) | raised | not-mentioned | not-mentioned | 2 / 0 / 2 | corroborated finding |
+| SC-4 | Worldwide / cross-programs over-generalization from one course | raised | raised | raised | raised | 4 / 0 / 0 | [CONSENSUS-4] |
+| SC-5 | Ferro & Nakamura (2021) characterization inverts its own reference | raised | raised (as reporting flag) | raised | raised | 4 / 0 / 0 | [CONSENSUS-4] |
+| SC-6 | "Random sample" contradicted by volunteer/announcement recruitment; self-selection unhandled | raised | raised | not-mentioned | raised | 3 / 0 / 1 | [CONSENSUS-3] (R2 silent) |
+| SC-7 | Consent gap: students not informed dashboard data analyzed; no IRB statement | raised | raised (as reproducibility record) | not-mentioned | raised | 3 / 0 / 1 | [CONSENSUS-3] (R2 silent) |
+| SC-8 | Perceived control as "mediating construct" overstated; single item, no mediation test | raised | raised | raised | raised | 4 / 0 / 0 | [CONSENSUS-4] |
+| SC-9 | Sample-size narrative (142 / 87 / 127) not reconciled across text and Table 2 | raised | raised | raised | raised | 4 / 0 / 0 | [CONSENSUS-4] |
+| SC-10 | False precision (perceived control M = 3.847 on 1–5 single item) | raised | raised | raised | raised | 4 / 0 / 0 | [CONSENSUS-4] |
+| SC-11 | Demotivation/equity harm to lower achievers unaddressed before deployment recommendation | not-mentioned | not-mentioned | raised | raised | 2 / 0 / 2 | corroborated finding |
 
-Please use the format in `templates/revision_response_template.md` to respond to every revision item and every reviewer comment, one by one (Reviewer Comment → Author Response → Changes Made). Must include: (1) a response and change description for each Required Revision R1–R6; (2) a response for each Suggested Revision S1–S5 (adopted, or reason for not adopting); (3) change markup in the revised manuscript (tracked changes or color); (4) a cross-reference table of new page/paragraph numbers.
+### Points of Agreement (Consensus)
+
+**[CONSENSUS-4]** (all 4 non-DA reviewers agree):
+1. **SC-1 — Causal overreach beyond an observational design.** All four reviewers independently score the correlation-to-causation step as decision-driving. The Methods correctly label the design "observational, cross-sectional" (§3.1), yet §5–§6 assert engagement "improved" retention, "raises the probability" of completion, and constitutes a "dependable, generalizable lever." No temporal ordering, no counterfactual, no confounder control.
+2. **SC-4 — Catastrophic generalization.** A finding from one introductory statistics section is offered to "institutions worldwide" and "across programs and disciplines" (§6) with no boundary conditions.
+3. **SC-5 — Source inversion.** §2 ¶2 credits Ferro & Nakamura (2021) with showing dashboards "reliably improve outcomes for lower-achieving students," while the reference title is "When dashboards demotivate: Peer comparison and the lower-achieving student." All four flag it; R1 and R2 ground it as an internal contradiction checkable within the submitted document.
+4. **SC-8 — "Mediating construct" overclaim.** Perceived control is invoked as a mediator (§5) though it is a single-item measure and no mediation was tested.
+5. **SC-9 — Unreconciled sample sizes.** n = 142 primary, 87 survey respondents, Table 2 sums to 127 while §4.3 says "All 142 students… classified."
+6. **SC-10 — False precision.** M = 3.847 reported against a coarse single-item 1–5 scale.
+
+**[CONSENSUS-3]** (3/4 agree, 4th silent):
+1. **SC-6 — Sampling contradiction + unhandled self-selection.** EIC, R1, R3 agree (R2 silent): "random sample" (§3.2) is contradicted in the same subsection by volunteer, announcement-response recruitment with non-responders excluded; self-selection into engagement is never modeled.
+2. **SC-7 — Consent / ethics gap.** EIC, R1, R3 agree (R2 silent): §3.2 states students "were not informed that their dashboard activity data would be analyzed," and no IRB/ethics-approval statement appears. R3 (Confidence 5, ethics seat) owns this and treats it as potentially independently blocking.
+
+**Corroborated findings** (2 reviewers, no conflict — action-bearing, below the consensus label):
+- **SC-2 — Abstract/Results r discrepancy** (EIC, R1): r = .42 vs r = .24 for the same association.
+- **SC-3 — Impossible / irreconcilable statistics** (R1 owns, EIC corroborates at editorial altitude): df match no stated N; t(140)=1.31 cannot yield p=.008 (correct p ≈ .19).
+- **SC-11 — Equity/demotivation harm to lower achievers unaddressed** (R2, R3): the paper's own §2 (Osei 2020; Ferro & Nakamura) flags demotivation risk that §6's universal-encouragement recommendation never engages.
+
+### Points of Disagreement
+
+**No genuine SPLIT arose.** Every sub-claim has `conflict = 0` — no reviewer disputed another's existence claim, remedy, or severity. The five seats converge on direction (associational re-scoping + statistical reconciliation + citation correction + ethics disclosure). The only cross-seat *variation* is which dimension each seat routes a shared concern through (e.g., the causal overreach lands as D1 for R1/R3/EIC/DA and simultaneously as D3 for all five), which the mechanical matrix already captures without arbitration.
+
+The one item worth an explicit editor note is the **D2 domain_accuracy seat-split on the Ferro & Nakamura characterization**: R2 (Confidence 5, domain seat) scores it `block` as a key-prior-result misrepresentation grounded in the manuscript's own reference list; EIC, R1, R3, and DA hold it at `warn`, framing it as an author-clarification query pending the possibility of a two-findings source. This is a severity/altitude difference, **not** a SPLIT (no reviewer disputes that a real defect exists). **Editor's resolution:** by the Confidence Score Weighting rule (a Score-5 reviewer within their primary domain takes precedence on a domain-fidelity call), the domain seat's `block` stands at the mechanical layer, and F1 fires on the mandatory blocks regardless. For the author, the resolution is procedural, not adversarial: reconcile the in-text claim against the reference-list title and state which is correct (roadmap R3). The decision does not turn on this arbitration — D1 and D3 block independently at four and five seats respectively.
+
+### DA-Critical Disposition
+
+The Devil's Advocate raised three CRITICAL findings, each corroborated by named panel reviewers; none introduces a defect absent from the four-reviewer inventory:
+- **DA-C1 (logic chain / overgeneralization)** = SC-1 + SC-4. Corroborated by all four non-DA reviewers. EIC assessment: valid; drives the F1 block.
+- **DA-C2 (data–conclusion mismatch, r=.42 vs .24)** = SC-2. Corroborated by EIC and R1. EIC assessment: valid conclusion-integrity defect; author must reconcile.
+- **DA-C3 (paper contradicts its own Literature Review — demotivation + click-proxy caveats abandoned in §5–§6)** = SC-5 + SC-11 threads. Corroborated by R2 and R3. EIC assessment: valid; the recommendation assumes what the paper's own §2 denies.
+
+Per protocol, the author must acknowledge each DA-CRITICAL issue in the response letter even where it duplicates a consensus finding.
+
+---
+
+## Decision Rationale
+
+Three of the three mandatory acceptance dimensions block on the panel: D3 (argumentative_coherence) blocks at all five seats, D1 (methodology_rigor) blocks at four, and F1 (the highest-severity fired condition, severity 90) therefore governs. The load-bearing defect is unanimous and singular in mechanism: the manuscript's own Methods correctly declare the design observational and cross-sectional, yet the Discussion and Conclusion assert causation ("improved," "raises the probability"), reliability ("dependable strategy"), and universal transfer ("generalizable lever… institutions worldwide") that a single-site, single-timepoint correlation with no confounder control cannot license (EIC W1; R1 W2; R2 W2; R3 W2/W4; DA C1). Compounding it, the headline effect size is not even internally fixed — Abstract r = .42 versus Results r = .24 (EIC, R1, DA) — and the reported inferential statistics do not survive recomputation: degrees of freedom match no stated sample, and t(140) = 1.31 cannot produce p = .008 (R1, Confidence 5). The domain seat additionally blocks D2 on a source characterization that inverts its own reference (R2, Confidence 5), and D4 blocks at two seats on the worldwide-generalization claim. A stricter terminal Reject is not chosen because §1–§2 demonstrate the authors already possess the correct associational framing and the raw material for an honest paper (all five reviewers note the recoverable core, r = .24 in one course). A more lenient Minor Revision is impossible because the fixes are structural — every causal verb must be retreated, the statistics recomputed and reconciled, the citation corrected, and the ethics status disclosed — and the paper must be re-reviewed. Hence Major Revision with mandatory re-review, the reject route reserved for a resubmission that cannot retreat its claims to its evidence.
+
+[CROSS-MODEL-CHECKPOINT: not run — `ARS_CROSS_MODEL` not set / no consent stamp on file. Single-model decision.]
+
+---
+
+## Required Revisions (Must Fix)
+
+| # | Revision Item | Sub-Claim(s) | Source Reviewer | Severity | Section | Estimated Effort |
+|---|--------------|--------------|----------------|----------|---------|-----------------|
+| R1 | Retreat every causal / prescriptive claim to associational language; add reverse-causation, selection, and confounder (prior achievement, baseline motivation) limitations; consider a covariate-adjusted model (e.g., logistic regression) for the binary retention outcome | SC-1 | EIC, R1, R2, R3, DA | Critical | §5, §6, §5.1 | 5–7 days |
+| R2 | Recompute and reconcile all statistics from the analytic dataset: fix the Abstract/Results r discrepancy (.42 vs .24), align df with a single stated N, correct the t/p pairing (t(140)=1.31 ≠ p=.008), report exact test statistics, effect sizes, and 95% CIs | SC-2, SC-3, SC-9 | R1, EIC, DA | Critical | Abstract, §4.1–§4.3, Table 2 | 3–5 days |
+| R3 | Reconcile the Ferro & Nakamura (2021) characterization with its own reference-list title; state which is correct and rewrite §2 accordingly (this may materially change the equity rationale and §6) | SC-5 | R2, EIC, R3, DA | Critical/Major | §2 ¶2, References | 1–2 days |
+| R4 | Re-scope every generalization to the demonstrated context ("this single deployment suggests… warrants replication"); delete "institutions worldwide," "across programs and disciplines," "dependable/generalizable lever" | SC-4 | EIC, R1, R2, R3, DA | Critical | §6, Abstract | 1–2 days |
+| R5 | Add an ethics/IRB-approval statement and clarify the consent/waiver basis for the behavioral-log analysis, given §3.2 states students were not informed | SC-7 | R3, EIC, R1 | Critical | §3.2 (new statement) | 1–3 days (external if approval must be obtained) |
+| R6 | Resolve the sampling description: remove "random sample," describe the actual volunteer/announcement recruitment, report response and attrition rates, and characterize self-selection into engagement as a rival account | SC-6 | EIC, R1, R3 | Major | §3.2 | 2–3 days |
+
+### Required Item Details
+
+**R1: Retreat causal claims to what the design supports**
+- **Problem**: §5–§6 assert the dashboard "improved" retention and is a "dependable, generalizable lever," while §3.1 declares the design observational and cross-sectional. No temporal ordering, counterfactual, or confounder control exists.
+- **Source**: EIC W1; R1 W2; R2 W2; R3 W2; DA C1 — all four non-DA reviewers plus DA.
+- **Requirement**: Replace every causal verb with associational language; add a Limitations paragraph on reverse causation, selection, and prior-achievement/motivation confounding; where feasible, present a covariate-adjusted model for the binary outcome.
+- **Acceptance criteria**: No sentence in §5–§6 attributes a change in retention to dashboard engagement; the confound and reverse-causation accounts are named and left unresolved by the design.
+
+**R2: Recompute and reconcile the statistics**
+- **Problem**: The same association is reported as r = .42 (Abstract) and r = .24 (§4.2); df match no stated N; t(140)=1.31 is paired with an impossible p=.008.
+- **Source**: R1 W1 (Confidence 5); EIC W2; DA C2/M3.
+- **Requirement**: Recompute every statistic from the analytic dataset; fix the r; align df, group Ns, and p-values against one stated sample; report exact statistics, standardized effect sizes, and 95% CIs.
+- **Acceptance criteria**: A reader can reconstruct each reported statistic from the stated Ns; no t/df/p triple is arithmetically impossible; Abstract and Results report the same primary effect.
+
+**R3: Correct the source characterization**
+- **Problem**: §2 credits Ferro & Nakamura (2021) with a benefit finding while the reference title concerns dashboard demotivation.
+- **Source**: R2 W1 (Confidence 5, domain seat); EIC W4; R3; DA M1.
+- **Requirement**: State whether the in-text claim or the reference metadata is wrong; if the source genuinely reports both directions, quote the supporting passage; rewrite §2 and any dependent equity argument (§6) accordingly.
+- **Acceptance criteria**: The in-text characterization and the reference-list entry point in the same direction, or the two-findings reading is explicitly documented with a quotation.
+
+**R4: Re-scope generalizations**
+- **Problem**: A single-section finding is generalized to "institutions worldwide" and "across programs and disciplines."
+- **Source**: EIC W3; R1 W2; R2 W2; R3 W2; DA C1/m2.
+- **Requirement**: Bound all implications to this deployment; call for replication rather than asserting transfer.
+- **Acceptance criteria**: No claim of cross-institution or cross-discipline generalizability remains; "dependable/lever" framing removed.
+
+**R5: Supply ethics record and consent basis**
+- **Problem**: §3.2 discloses non-notification of the log analysis; no IRB statement appears.
+- **Source**: R3 W1 (Confidence 5, ethics seat); EIC W5; R1 W5.
+- **Requirement**: Add an ethics-approval statement; describe the consent or waiver basis for the behavioral-log analysis and justify a waiver if one applied.
+- **Acceptance criteria**: An ethics-review status and a stated consent/waiver basis for the trace-data analysis are present.
+
+**R6: Fix the sampling description and address self-selection**
+- **Problem**: "Random sample" contradicts the described volunteer recruitment; self-selection is unmodeled.
+- **Source**: EIC (Question 3); R1 W3; R3 W4.
+- **Requirement**: Remove "random"; describe the actual recruitment; report response/attrition rates; discuss self-selection as a bound on inference.
+- **Acceptance criteria**: The sampling description is internally consistent and self-selection is named as a threat to the association's generalizability.
+
+---
+
+## Suggested Revisions (Should Fix)
+
+| # | Revision Item | Sub-Claim(s) | Source Reviewer | Priority | Section | Expected Improvement |
+|---|--------------|--------------|----------------|----------|---------|---------------------|
+| S1 | Soften "perceived control as a mediating construct" to "a correlate consistent with, but not a test of, the SRL account"; do not imply a mediation analysis that was not run | SC-8 | EIC, R1, R2, R3 | P2 | §5 | Aligns the theoretical claim with the analysis performed |
+| S2 | Engage the demotivation/equity literature the paper itself cites (Osei 2020; correctly-read Ferro & Nakamura) before any deployment recommendation; consider an achievement-stratified analysis | SC-11 | R2, R3 | P2 | §2, §6 | Confronts differential-harm risk to lower achievers |
+| S3 | Keep "engagement" explicitly a behavioral proxy in the Discussion, honoring the §2/§5.1 click-proxy caveat (Vandermeer 2023) | SC-1 (proxy thread) | R2, R3 | P2 | §5 | Prevents the proxy caveat from being silently abandoned |
+| S4 | Name and version the analysis software; add a data/code availability statement | SC-3 (reproducibility) | R1 | P2/P3 | §3, back matter | Improves reproducibility/auditability |
+
+---
+
+## Revision Roadmap
+
+### Priority 1 — Structural Revisions (Estimated total effort: 13–19 days)
+- [ ] R1: Retreat all causal/prescriptive claims to associational language; add confound/reverse-causation/selection limitations; consider a covariate-adjusted retention model
+- [ ] R2: Recompute and reconcile all statistics (r discrepancy, df vs N, impossible t/p); report exact statistics, effect sizes, and 95% CIs
+- [ ] R3: Reconcile the Ferro & Nakamura (2021) characterization with its reference-list title; rewrite §2 and dependent claims
+- [ ] R4: Re-scope every generalization to this single deployment; remove worldwide/cross-discipline and "dependable lever" framing
+- [ ] R5: Add ethics/IRB statement and clarify the consent/waiver basis for the log analysis
+- [ ] R6: Fix the sampling description (remove "random"), report response/attrition rates, address self-selection
+
+### Priority 2 — Content Supplementation (Estimated total effort: 3–5 days)
+- [ ] S1: Downgrade "mediating construct" language for the single-item perceived-control measure
+- [ ] S2: Engage demotivation/equity literature and (if possible) stratify by prior achievement before recommending deployment
+- [ ] S3: Preserve engagement as a behavioral proxy throughout the Discussion
+- [ ] S4: Name/version software; add data/code availability statement
+
+### Priority 3 — Text and Formatting (Estimated total effort: 1 day)
+- [ ] Reduce false-precision reporting (perceived control M to two significant figures, not 3.847)
+- [ ] Keep "retention" (course completion) terminologically distinct from institutional persistence
+- [ ] State the n underlying each analysis (142 / 87 / 127) once, in one place
+- [ ] Treat the continuous correlation as primary; demote the median split to a supplementary illustration
+
+### Total Estimated Effort
+- **Major Revision**: 3–4 weeks (plus external time if IRB approval must be obtained for R5)
+
+---
+
+## Revision Deadline
+
+- **Recommended deadline**: 6–8 weeks from decision date (2026-07-24)
+- **Basis**: Major revision with re-analysis and mandatory re-review
+- **Extension policy**: If an extension is needed, notify the editorial office one week before the deadline
+
+---
+
+## Response Letter Instructions
+
+Please use the format in `templates/revision_response_template.md` to respond to every reviewer comment item by item.
+
+**Must include**:
+1. Response and revision description for each Required Revision (R1–R6)
+2. Response for each Suggested Revision (S1–S4: adopted, or reason for not adopting)
+3. Change markup (mark all changes in the revised manuscript with color or track changes)
+4. Cross-reference table of new page numbers/paragraphs
+5. Explicit acknowledgement of each DA-CRITICAL issue (DA-C1, DA-C2, DA-C3), even where it duplicates a consensus finding
+
+---
+
+## Closing
+
+We encourage you to carefully consider the reviewers' comments and submit a substantially revised manuscript. The panel is unanimous that a genuine, publishable associational contribution is present in these data (a modest engagement–retention association in one introductory course), and that §1–§2 already demonstrate the correctly-scoped framing the rest of the paper needs. The path to acceptance runs through matching the claims to the design, reconciling the numbers, correcting the citation, and disclosing the ethics status. Please note that the revised manuscript will undergo another round of review.
 
 ---
 
@@ -1219,27 +1280,20 @@ Please use the format in `templates/revision_response_template.md` to respond to
 
 ### EIC Report Summary
 - Recommendation: Major Revision | Confidence: 4
-- Key Point: A fluent, well-fit manuscript whose confident causal and worldwide-generalization claims (§5–§6) the journal cannot underwrite on a single-site cross-sectional design; the honest associational paper is recoverable from §1–§2 and §5.1.
+- Key Point: A well-fit, fluently written paper whose Discussion and Conclusion assert causal, generalizable claims the observational single-site design cannot license, compounded by an Abstract/Results effect-size contradiction.
 
 ### Reviewer 1 (Methodology) Summary
-- Recommendation: Reject (resubmit as an explicitly correlational note) | Confidence: 5
-- Key Point: The empirical core cannot be audited — headline effect size, degrees of freedom, group Ns, and p-values are mutually inconsistent or arithmetically impossible (t(140)=1.31 ≠ p=.008), and the causal claim rests on an uncontrolled single-timepoint correlation.
+- Recommendation: Reject (resubmit as correlational note) | Confidence: 5
+- Key Point: Three independent blocking defects — internally inconsistent and partly arithmetically impossible statistics, causal claims a correlational design cannot support, and a self-contradictory sampling narrative; the empirical core cannot currently be audited.
 
 ### Reviewer 2 (Domain) Summary
 - Recommendation: Reject (major-revision-eligible) | Confidence: 5
-- Key Point: The paper cites Ferro & Nakamura (2021) against that source's own titled finding (D2 block) and abandons its own cautious Literature Review when §5–§6 convert a correlation into a "dependable, generalizable lever."
+- Key Point: The paper contradicts itself between its literature review and its cited evidence — most damagingly a source misrepresentation (Ferro & Nakamura 2021) — and abandons its own correctly-scoped Methods for a causal, worldwide-generalizable Conclusion.
 
 ### Reviewer 3 (Perspective) Summary
-- Recommendation: Reject (major revision minimum) | Confidence: 5
-- Key Point: From a research-ethics/deployment seat, the paper spends its evidence irresponsibly — an undisclosed behavioral-data analysis with no IRB statement, a procurement-grade "worldwide" claim on one volunteer course, and unengaged demotivation/equity risk for the very students the equity rationale invokes.
+- Recommendation: Reject (major revision at minimum) | Confidence: 5
+- Key Point: From a research-ethics/deployment seat, the paper spends its evidence irresponsibly: an undisclosed data analysis with no IRB statement, a procurement-grade generalization unsupported by one course, and an unengaged demotivation/equity risk to the lower achievers the deployment would most affect.
 
 ### Devil's Advocate Summary
-- Recommendation: reject_or_major_revision | Confidence: — (adversarial track; not a consensus seat)
-- Key Point: The conclusion does not follow from the evidence — three undefeated rival explanations (common prior cause, reverse causation, selection into the volunteer sample) fit r=.24 at least as well as the dashboard-causal story, the abstract's r=.42 is not the body's finding, and §5–§6 assume exactly what §2 denies. Unexamined premise: that *opening* the dashboard is the causally active ingredient rather than a marker of pre-existing disposition.
-
----
-
-**Note on manuscript-as-untrusted-data (#574 A6):** Every non-DA reviewer and the DA independently reported finding no instruction-injection attempts embedded in the manuscript; the overreach here is ordinary scholarly overclaiming, not an attempt to manipulate the review. The synthesizer introduced no sub-claim that no reviewer raised (Phase Boundary / no-invention rule), computed no cross-family aggregate (single-family panel per the Provenance block), and did not soften F1's action on any post-hoc ground.
-
-fired_conditions: [F1, F2, F3]
-editorial_decision=reject_or_major_revision
+- Recommendation: Block-grade adversarial challenge (no numeric recommendation) | Confidence: —
+- Key Point: The paper refutes itself — a single unadjusted correlation (r = .24) is carried into causal policy claims with common-prior-cause, reverse-causation, and selection each fitting the data at least as well and none ruled out, while the Abstract's r = .42 contradicts the body and the §6 recommendation assumes what §2 denies.

@@ -26,8 +26,8 @@
     "SD-06": 1.0,
     "SD-07": 1.0,
     "SD-08": 0.0,
-    "SD-09": 0.0,
-    "mean": 0.444
+    "SD-09": 0.5,
+    "mean": 0.5
   },
   "clean_control_false_findings": [],
   "raw_output": "raw/2026-07-24-ms02_qual-baseline-r2.review.md",
@@ -36,5 +36,5 @@
     "SD-06": "no detecting-seat per-finding tag; Editorial Decision Letter R6 priority P1 -> major",
     "SD-07": "no detecting-seat per-finding tag; Editorial Decision Letter R4 priority P1 -> major"
   },
-  "notes": "Blinded isolated run per README protocol. Panel decision: Major Revision (F1+F2). Strict recall 9/9 (R1 W5 names 'no interview protocol or topic guide is provided'; every seeded defect substantively named); critical-band 2/2. Severity via the ladder from this run's DA rows, which nearly INVERT the expected band structure: C1 Delacroix critical vs expected minor -> SD-08 0; C2 first-comprehensive/self-nullified-thesis critical vs expected minor -> SD-09 0; M1 sector-generalization major vs expected critical -> SD-03 0.5; m1 structured-protocol confidence MINOR vs expected critical -> SD-01 0; m2 sample-count contradictions MINOR vs expected major -> SD-04 0.5; m3 buried-exclusion MINOR vs expected major -> SD-05 0.5. The same defects sit in different DA bands than the r1 panel assigned the same day — the sharpest cross-replicate severity-instability evidence in the baseline (#574 A3/B1): recall is stable at 100% while band placement swings a full tier on five of nine defects."
+  "notes": "Blinded isolated run per README protocol. Panel decision: Major Revision (F1+F2). Strict recall 9/9 (R1 W5 names 'no interview protocol or topic guide is provided'; every seeded defect substantively named); critical-band 2/2. Severity via the ladder from this run's DA rows, which nearly INVERT the expected band structure: C1 Delacroix critical vs expected minor -> SD-08 0; C2 (stronger-counter-narrative whose self-nullification hinge is the balanced-representation-vs-excluded-dissent contradiction, raw L895) maps to SD-05 at critical vs expected major -> 0.5; M1 (raw L901) bundles the sector-wide generalization AND the section-6 'first comprehensive account' at MAJOR -> SD-03 0.5 (vs expected critical) and SD-09 0.5 (vs expected minor); m1 structured-protocol confidence MINOR vs expected critical -> SD-01 0; m2 sample-count contradictions MINOR vs expected major -> SD-04 0.5. (SD-09's mapping was corrected in dual-track round 4: an earlier reading assigned C2 to SD-09; C2's text says 'presented as the finding', not 'first', and its evidence hinge is the dissent exclusion.) The same defects sit in different DA bands than the r1 panel assigned the same day — the sharpest cross-replicate severity-instability evidence in the baseline (#574 A3/B1): recall is stable at 100% while band placement swings a full tier on five of nine defects."
 }

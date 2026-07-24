@@ -16,6 +16,10 @@ this round; the repo-boundary deny-list scan came back clean). The
 `superseded/2026-07-24-in-context-dispatch/` directory holds the earlier
 single-context attempt these runs replace.
 
+**Voided artifacts:** `voided/` holds any synthesis output voided under the protocol
+§8.1 grammar rule, preserved verbatim; the operative retried synthesis lives in the
+parent run file's PART 3 with a provenance note.
+
 **Contamination reminder:** these are *outputs* of past measurement runs, not ground
 truth — but they live under `evals/`, which review sessions are already forbidden to
 read under the measurement protocol. Never paste them into a review session's context.
