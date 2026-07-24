@@ -76,7 +76,7 @@ For each stage transition, the following handoff procedure applies:
 |------|--------|
 | **Who hands off** | Lead Author |
 | **Who receives** | Review Coordinator |
-| **Materials** | Revised Draft + Response to Reviewers (Schema 8) + Editorial Decision Letter (Schema 6 — its Review Panel Provenance block feeds the #539 Judge Record) |
+| **Materials** | Revised Draft + Response to Reviewers (Schema 8) + Editorial Decision Letter (Schema 6 — its Review Panel Provenance block feeds the #539 Judge Record) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity — `re_review_mode_protocol.md` § Yardstick Continuity) |
 | **Approval needed** | Lead Author confirms all addressable items are handled |
 | **Handoff checklist** | Response to Reviewers covers every roadmap item; new references verified |
 

@@ -166,7 +166,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 4 | Decision = Minor/Major, user confirms | Pass Revision Roadmap |
 | checkpoint | Stage 4.5 | Decision = Accept, user confirms | Skip revision, go directly to final verification |
 | Stage 4 | **checkpoint** | Stage 4 completed | Wait for user confirmation |
-| checkpoint | Stage 3' | User confirms | Pass Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) |
+| checkpoint | Stage 3' | User confirms | Pass Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity) |
 | Stage 3' | **checkpoint** | Decision produced | Wait for user confirmation |
 | checkpoint | Stage 4.5 | Decision = Accept/Minor, user confirms | Pass final draft to final verification |
 | checkpoint | Stage 4' | Decision = Major, user confirms | Pass new Revision Roadmap |
@@ -250,10 +250,12 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | **Verified Paper Draft** | **Stage 2.5** | **Stage 3 (Phase 0)** | **Required** |
 | Review Reports (x5) | Stage 3 | Stage 4 (input) | Required |
 | Editorial Decision | Stage 3 | Stage 4 (input) | Required |
-| Revision Roadmap | Stage 3 | Stage 4 (input) | Required |
+| Revision Roadmap | Stage 3 | Stage 4 (input) + Stage 3' (verification checklist basis) | Required |
 | Revised Draft | Stage 4 | Stage 3' (Phase 0) | Required |
 | Response to Reviewers | Stage 4 | Stage 3' (input) | Recommended |
 | Editorial Decision Letter (Schema 6) | Stage 3 | Stage 3' (input) | Recommended (#539 — its Review Panel Provenance block feeds the Judge Record; absent → "unknown (provenance block absent)") |
+| Apply report(s) (#390 sidecar) | Stage 4 | Stage 3' (input) + Stage 4.5 (input) | Recommended (patch-apply rounds only; `output_draft_hash` checked against the Revised Draft first) |
+| Reviewer Configuration Cards | Stage 3 (field_analyst) | Stage 3' (yardstick continuity — field_analyst NOT re-run) | Recommended (absent → visible regeneration fallback, `re_review_mode_protocol.md` § Yardstick Continuity) |
 | **Re-Review Report** | **Stage 3'** | **Stage 4' (input)** | **Required (if Major)** |
 | **Re-Revised Draft** | **Stage 4'** | **Stage 4.5 (input)** | **Required (if executed)** |
 | **Integrity Report (Final)** | **Stage 4.5** | **Stage 5 (prerequisite)** | **Required** |
