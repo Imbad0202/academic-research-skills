@@ -302,6 +302,7 @@ R5: [v] Rewrote Introduction paragraphs 2-3, added school closure data
 **Stage 4 Deliverables:**
 - Revised Draft (6,800 words, 1,600 words more than original)
 - Response to Reviewers (R-A-C format, point-by-point response)
+- Apply report sidecar (`<output>.apply-report.json`, #390 — retained beside the Revised Draft; transferred to Stage 3' as untouched-block evidence)
 
 ---
 

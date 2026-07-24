@@ -78,7 +78,7 @@ For each stage transition, the following handoff procedure applies:
 | **Who receives** | Review Coordinator |
 | **Materials** | Revised Draft + Response to Reviewers (Schema 8) + Editorial Decision Letter (Schema 6 — its Review Panel Provenance block feeds the #539 Judge Record) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity — `re_review_mode_protocol.md` § Yardstick Continuity). Re-review-mode transfer (default); a user-requested fresh full review at 3' hands over the Revised Draft + available context only |
 | **Approval needed** | Lead Author confirms all addressable items are handled |
-| **Handoff checklist** | Response to Reviewers covers every roadmap item; new references verified |
+| **Handoff checklist** | Re-review mode: Response to Reviewers covers every roadmap item; new references verified. Fresh full review at 3': no roadmap-coverage check (no Round-1 Roadmap exists); new references verified |
 
 ### Stage 4.5 -> Stage 5 (Final Integrity -> Finalize)
 

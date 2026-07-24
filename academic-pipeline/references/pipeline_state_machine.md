@@ -250,7 +250,7 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | **Verified Paper Draft** | **Stage 2.5** | **Stage 3 (Phase 0)** | **Required** |
 | Review Reports (x5) | Stage 3 | Stage 4 (input) | Required |
 | Editorial Decision | Stage 3 | Stage 4 (input) | Required |
-| Revision Roadmap | Stage 3 | Stage 4 (input) + Stage 3' (verification checklist basis) | Required |
+| Revision Roadmap | Stage 3 | Stage 4 (input) + Stage 3' (re-review mode — verification checklist basis; the fresh-full-review branch consumes none) | Required (Stage 3' consumption re-review-mode-only) |
 | Revised Draft | Stage 4 | Stage 3' (Phase 0) | Required |
 | Response to Reviewers | Stage 4 | Stage 3' (input) | Recommended |
 | Editorial Decision Letter (Schema 6) | Stage 3 | Stage 3' (input) | Recommended (#539 — its Review Panel Provenance block feeds the Judge Record; absent → "unknown (provenance block absent)") |
