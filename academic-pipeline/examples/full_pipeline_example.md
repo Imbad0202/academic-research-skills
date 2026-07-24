@@ -318,7 +318,7 @@ Revision results:
 - Response to Reviewers completed
 
 Next step is Stage 3' (RE-REVIEW).
-Using full mode to confirm revision quality.
+Using re-review mode to verify the revisions against the Round-1 Roadmap.
 This is revision cycle 1 (max 2 cycles).
 
 Submit for re-review?
@@ -330,12 +330,12 @@ Progress: [v]Research -> [v]Writing -> [v]Review -> [v]Revision -> [..]Re-review
 
 ---
 
-### Stage 3': RE-REVIEW (full mode, Loop 1)
+### Stage 3': RE-REVIEW (re-review mode, Loop 1)
 
 ```
 Entering Stage 3' (RE-REVIEW) -- Loop 1/2
 
-Loading academic-paper-reviewer SKILL.md...
+Loading academic-paper-reviewer SKILL.md (re-review mode)...
 Passing Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity)...
 EIC verifying each roadmap item (Round-1 reviewer configuration reused — field_analyst not re-run)...
 ```

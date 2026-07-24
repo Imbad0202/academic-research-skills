@@ -419,7 +419,10 @@ Per the quality rubrics: 65-79 = Minor Revision, >= 80 = Accept. Score of 78.0 i
 ### Editorial Synthesizer Assessment
 
 ```
-All 5 reviewers concur: revision quality is strong.
+EIC verification (Round-1 configuration reused): revision quality is strong.
+Every Round-1 concern — including R1's and the DA's — is checked against the
+revised manuscript per the Traceability Rule; the panel is not re-convened
+at re-review.
 
 Key improvements:
 1. The DA-CRITICAL strawman reframing is the most significant improvement.

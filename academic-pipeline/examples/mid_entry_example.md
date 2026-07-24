@@ -235,10 +235,10 @@ Entering Stage 3' (RE-REVIEW) -- full mode, Loop 1/2
 
 Loading academic-paper-reviewer SKILL.md (full mode)...
 Passing Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input)...
-field_analyst_agent analyzing (legitimate here: this is FULL mode, not re-review mode —
-Round 1 was an external human review, so no ARS Round-1 Reviewer Configuration Cards
-exist; the re-review yardstick freeze in re_review_mode_protocol.md § Yardstick
-Continuity governs re-review mode only)...
+field_analyst_agent analyzing (legitimate here: the user requested a NEW full review
+of the revised version — a fresh review, not a verification re-review — and full mode
+runs field_analyst by definition; Round 1 was an ARS quick assessment. The yardstick
+freeze in re_review_mode_protocol.md § Yardstick Continuity governs re-review mode only)...
 ```
 
 **Reviewer Configuration:**
