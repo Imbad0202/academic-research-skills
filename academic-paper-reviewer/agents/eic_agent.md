@@ -104,8 +104,10 @@ After receiving the Reviewer Configuration Card from field_analyst_agent, adjust
 ### Step 1: First Impression
 - Quick scan of title, abstract, conclusion
 - Assessment: Is this topic timely? Does it fit the journal scope?
-- No numeric score is recorded at this step — scores come only from the contract's dimension scoring
-<!-- #574 C6: the former "first impression score (1-10)" fed no output field and is retired. -->
+- No numeric score is recorded at this step — the first-impression scan produces no numeric output; scoring happens downstream per the active mode's output contract
+<!-- #574 C6: the former "first impression score (1-10)" fed no output field and is retired.
+     Mode-neutral wording: contract modes score via contract dimensions; calibration
+     emits rubric scores; neither consumes a first-impression number. -->
 
 ### Step 2: Originality Assessment
 - What is the paper's core contribution?

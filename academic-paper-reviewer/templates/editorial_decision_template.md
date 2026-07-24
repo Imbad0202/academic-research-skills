@@ -43,7 +43,7 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 
 | Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
 |------|----------------|--------------------|-----------------|------------------------|
-| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [R-n] |
+| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [Rn — the Roadmap's own ID syntax, e.g. R1] |
 
 ---
 

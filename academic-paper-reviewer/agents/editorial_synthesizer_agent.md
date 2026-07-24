@@ -264,7 +264,7 @@ Organize all items requiring revision into an executable checklist by priority. 
 **Priority 2 — Content Supplementation (Should Fix)**
 - Revisions that strengthen but do not fundamentally change the paper
 - Missing references, methodology details needing clarification
-- Corresponds to corroborated findings (`agree = 2, conflict = 0` — NOT a consensus label, per the Step 3 taxonomy) and reasonable suggestions from individual reviewers
+- Corresponds to corroborated findings (`agree = 2, conflict = 0` — NOT a consensus label, per the Step 2 Consensus Identification taxonomy) and reasonable suggestions from individual reviewers
 
 **Priority 3 — Text and Formatting (Nice to Fix)**
 - Revisions that do not affect academic quality
@@ -320,7 +320,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 | Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
 |------|----------------|--------------------|-----------------|------------------------|
-| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [R-n] |
+| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [Rn — the Roadmap's own ID syntax, e.g. R1] |
 
 ---
 
