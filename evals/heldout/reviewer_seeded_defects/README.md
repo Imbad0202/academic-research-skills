@@ -48,6 +48,13 @@ manuscript) so adjudication is anchored, not vibes.
    simulation observably leaks manuscript content into the "blind" Phase 1
    (see `runs/superseded/2026-07-24-in-context-dispatch/`) and is NOT the
    measured condition; post-change runs must use the same isolated dispatch.
+   **Isolation mechanism note:** once a baseline exists, any orchestrating
+   session is manifest-aware by construction, so contamination isolation rests
+   on the dispatch fence — review/synthesis agents receive only the
+   neutral-named manuscript path, the reviewer skill files, the contract, and
+   prior-phase outputs as delimited data, with `evals/` reads forbidden and no
+   defect-related vocabulary in any prompt — never on orchestrator ignorance.
+   Record the fence in the run records.
 2. **Replicates.** At least **2 independent runs per manuscript per condition**
    (baseline and post-change). Full-mode output is stochastic; a single run's
    recall moves ~10 points on one defect flip. Report each run; gates use the
@@ -109,7 +116,7 @@ product outcome).
 
 | Date | Commit | Model | Runs | MS01 recall (strict) | MS02 recall (strict) | Clean-control false findings | Severity agreement | Notes |
 |------|--------|-------|------|----------------------|----------------------|------------------------------|--------------------|-------|
-| 2026-07-24 | 307ef24 | claude-opus-4-8 (reasoning effort xhigh; isolated per-seat two-phase dispatch per the frozen dispatch shape) | 2 per fixture (6) | **0.90** (9/10 both replicates; critical band 0.75 — SD-01 GRIM = PARTIAL in both, the only non-detection across all MS01 runs in both dispatch designs) | **1.00** (9/9 both replicates; critical band 1.00 — both panels explicitly name the absent interview protocol) | **0** (both replicates; decisions Minor Revision / "Major Revision gated on citation verification" — the latter driven entirely by the excluded-by-design synthetic-DOI class, see run notes) | **0.625** (per-run 0.722 / 0.667 / 0.611 / 0.500) | Recall losses are recompute-class only (GRIM); severity-agreement losses are DA band placement — the same defects swing a full band across replicates and seats (#574 A3/A4/B1 targets). Two protocol events, both recovered per protocol: one PANEL-SHRUNK abort (DA multi-dissent, §5 retry) and one voided-and-retried synthesis (§8.1 duplicate emission pair, voided output preserved in `runs/raw/voided/`). Records in `runs/2026-07-24-*.json` + `runs/raw/`; the superseded single-context attempt (near-identical numbers — the leak did not inflate recall) in `runs/superseded/` |
+| 2026-07-24 | 307ef24 | claude-opus-4-8 (reasoning effort xhigh; isolated per-seat two-phase dispatch per the frozen dispatch shape) | 2 per fixture (6) | **0.90** (9/10 both replicates; critical band 0.75 — SD-01 GRIM = PARTIAL in both, the only non-detection across all MS01 runs in both dispatch designs) | **1.00** (9/9 both replicates; critical band 1.00 — both panels explicitly name the absent interview protocol) | **0** (both replicates; decisions Minor Revision / "Major Revision gated on citation verification" — the latter driven entirely by the excluded-by-design synthetic-DOI class, see run notes) | **0.625** (per-run 0.722 / 0.667 / 0.611 / 0.500) | Recall losses are recompute-class only (GRIM); severity-agreement losses split between DA band placement (dominant; same defects swing a full band across replicates/seats) and three letter-fallback 0.5-losses where no seat carried a tag — both halves of the #574 A3 gap (A4/B1 also evidenced). Two protocol events, both recovered per protocol: one PANEL-SHRUNK abort (DA multi-dissent, §5 retry) and one voided-and-retried synthesis (§8.1 duplicate emission pair, voided output preserved in `runs/raw/voided/`). Records in `runs/2026-07-24-*.json` + `runs/raw/`; the superseded single-context attempt (near-identical numbers — the leak did not inflate recall) in `runs/superseded/` |
 | pending (post-change) | — | — | — | — | — | — | — | Re-measure after the #574 behavior batch (A1/A2/A3/B1); re-run, don't reuse, after model upgrades |
 
 ## Integrity checking
