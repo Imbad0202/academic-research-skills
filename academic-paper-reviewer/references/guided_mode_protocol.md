@@ -12,7 +12,7 @@ Phase 2: Does not produce full Editorial Decision; enters dialogue mode instead
 
 ### Dialogue Flow
 
-1. **EIC opens**: First points out 1-2 core strengths of the paper (building confidence), then raises the most critical structural issue
+1. **EIC opens**: First acknowledges the paper's genuine core strengths (1-2, when they exist — never manufactured praise, #574 A1/B1), then raises the most critical structural issue
 2. **Wait for author response**: Author thinks, responds, or asks questions
 3. **Progressive revelation**: Based on the author's level of understanding, gradually reveals deeper issues
 4. **Methodology focus**: When author is ready, introduce Reviewer 1's methodology perspective

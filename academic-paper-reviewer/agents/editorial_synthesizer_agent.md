@@ -98,18 +98,19 @@ A single weakness a reviewer raises often bundles several sub-claims (e.g. *"sta
 Split each weakness bundle into atomic sub-claims and record one row per `(sub_claim, reviewer)` position:
 
 ```markdown
-| sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | confidence |
-|--------------|-----------------|-------------|----------|------------------|------------|
-| SC-1 | (bundle label) | R1 | raised | (card §/quote) | 4 |
-| SC-1 | (bundle label) | R2 | corroborated | (card §/quote) | 3 |
-| SC-2 | (bundle label) | R1 | raised | (card §/quote) | 4 |
+| sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | severity | confidence |
+|--------------|-----------------|-------------|----------|------------------|----------|------------|
+| SC-1 | (bundle A) | R1 | raised | (card §/quote) | major | 4 |
+| SC-1 | (bundle A) | R2 | corroborated | (card §/quote) | major | 3 |
+| SC-2 | (bundle B) | R1 | raised | (card §/quote) | minor | 4 |
 ```
 
 - `sub_claim_id`: `SC-<n>`, synthesizer-assigned, stable within this synthesis.
 - `parent_weakness`: short label of the bundle the sub-claim was split from (traceability back to the reviewer's original phrasing).
 - `position` ∈ `{raised, corroborated, not-mentioned, disputed}`. **`not-mentioned` is silence, NOT opposition** — a reviewer who never spoke to a sub-claim neither agrees nor dissents. `disputed` is the one conflicting position: use it when a reviewer either (a) argues the sub-claim is NOT a real problem, OR (b) agrees the problem exists but recommends an **incompatible remedy / materially different severity** than another reviewer. Both an existence conflict and an action/severity conflict are `disputed`.
-- `evidence_pointer`: where in the reviewer's card the sub-claim is grounded.
-- `confidence`: that reviewer's existing Confidence Score (1–5) for the finding; it drives the weighting rule below at the sub-claim level.
+- `evidence_pointer`: where in the reviewer's card the sub-claim is grounded — copy the finding's typed Evidence Anchor when the card carries one (#574 A2).
+- `severity`: TRANSPORTED, never re-derived (#574 A3) — copy the seat's explicit per-finding **Severity** tag for the parent weakness (every current-format card carries one per weakness; the DA's tables carry it as the section band). All sub-claims decomposed from one parent share the parent's transported severity — a severity difference between sub-claims means they came from different parent weaknesses, never from re-rating. If a legacy card lacks the tag, derive from context and mark the row `[SEVERITY-SOURCE: letter-fallback]` so the provenance stays visible.
+- `confidence`: the reviewer's per-finding **Confidence** (1-5) from the weakness entry (#574 A3); it drives the weighting rule below at the sub-claim level. A legacy card without per-finding confidence falls back to its report-level Confidence Score — mark the row `[CONFIDENCE-SOURCE: report-level]`.
 
 **Decomposition discipline:** you may only split a claim a reviewer actually made into its atomic parts. You MUST NOT introduce a sub-claim no reviewer raised — that would be authoring a new review comment, which the Phase Boundary forbids.
 
@@ -176,6 +177,7 @@ The labels are pinned to absolute counts over 4 and are **mutually exclusive**. 
   - Whether any other reviewer corroborated it
   - The EIC's assessment of its validity
   - Required author response (even if EIC disagrees with DA, the author must acknowledge)
+- This is adjudication and visibility, never an automatic veto (#574 B1): a VALIDATED or genuinely unresolved DA-CRITICAL blocks Accept; one the EIC adjudicates and rejects is recorded with its rejection rationale and does not by itself change the decision — an unvalidated negative claim carries the same evidence burden as a positive one
 
 ### Confidence Score Weighting Rules
 
@@ -206,7 +208,7 @@ When reviewer opinions conflict:
 **3b. Arbitration principles**
 1. **Evidence first**: Which side has better evidence to support their argument?
 2. **Expertise first**: Which side is more within their professional domain? (Methodology issues defer to R1, domain issues defer to R2)
-3. **Conservative principle**: When disagreements cannot be resolved, lean toward requiring the author to respond rather than directly dismissing
+3. **Unresolved-dissent principle**: When a disagreement cannot be resolved on evidence or expertise, neither auto-keep nor auto-dismiss the concern — record it as unresolved dissent, require the author to address it, and state explicitly that the panel did not resolve it (#574 B1: no directional prior on unresolved disputes)
 4. **Author autonomy**: Some disagreements can be left to the author's judgment, only requiring the author to explain their reasoning
 
 **3c. Arbitration record**
@@ -221,14 +223,14 @@ Based on the decision matrix in `references/editorial_decision_standards.md`:
 
 **Accept** (Direct acceptance)
 - Conditions: All reviewers recommend Accept or Minor Revision, no Major issues
-- Rare — most papers don't pass on the first round
+- Granted whenever the criteria are met — the decision follows the evidence against `references/editorial_decision_standards.md`, never a base rate or target distribution (#574 B1)
 
 **Minor Revision** (Minor revisions)
 - Conditions: Most reviewers recommend Minor Revision, issues can be resolved in 2-4 weeks
 - Modifications mainly involve supplementation or clarification, not core restructuring
 
 **Major Revision** (Major revisions)
-- Conditions: Any reviewer recommends Major Revision, or multiple Minor items accumulate to Major
+- Conditions: a validated — or genuinely unresolved — Major issue exists, or multiple Minor items accumulate to Major. A lone Major recommendation goes through arbitration FIRST (One-Outlier handling, `references/editorial_decision_standards.md`): an outlier whose rationale arbitration finds insufficient does not escalate the decision by itself (#574 B1)
 - Requires re-analysis, section rewriting, or additional data
 - Requires re-review after revision
 
@@ -269,7 +271,7 @@ Organize all items requiring revision into an executable checklist by priority. 
 **Priority 3 — Text and Formatting (Nice to Fix)**
 - Revisions that do not affect academic quality
 - Language polishing, citation formatting, figure/table improvements
-- Combines Minor Issues from all reviewers
+- Combines Minor Issues from all reviewers (an aggregated EDITORIAL channel — Minor Issues sit below the finding threshold and carry no transported metadata; Schema 7 items built from them set `source_kind: "editorial"` (#574 A3))
 
 ---
 
@@ -320,7 +322,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 | Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
 |------|----------------|--------------------|-----------------|------------------------|
-| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [Rn — the Roadmap's own ID syntax, e.g. R1] |
+| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [typed — `<type>: <locator>`, transported from the finding (#574 A2)] | [Rn — the Roadmap's own ID syntax, e.g. R1] |
 
 ---
 
@@ -330,19 +332,21 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ### Required Revisions (Must Fix)
 
-| # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
-|---|--------------|--------------|--------|----------|-----------------|
-| R1 | [Description] | [SC-n] | [EIC/R1/R2/R3] | P1 | [Time] |
-| R2 | [Description] | [SC-n] | [Source] | P1 | [Time] |
+| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Priority | Estimated Effort |
+|---|--------------|--------------|----------|-----------------|------------|--------|----------|-----------------|
+| R1 | [Description] | [SC-n] | [transported: critical/major (+ fallback tag if any)] | [`<type>: <locator>`] | [n — basis] | [EIC/R1/R2/R3] | P1 | [Time] |
+| R2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P1 | [Time] |
 ...
 
 ### Suggested Revisions (Should Fix)
 
-| # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |
-|---|--------------|--------------|--------|----------|-----------------|
-| S1 | [Description] | [SC-n] | [Source] | P2 | [Time] |
-| S2 | [Description] | [SC-n] | [Source] | P2/P3 | [Time] |
+| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Priority | Estimated Effort |
+|---|--------------|--------------|----------|-----------------|------------|--------|----------|-----------------|
+| S1 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P2 | [Time] |
+| S2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P2/P3 | [Time] |
 ...
+
+> Transported metadata reaches the emitted package ON EVERY ROW, never dies in the Step 1b working inventory (#574 A2/A3): each item carries the driving sub-claim's transported Severity (fallback tags like `[SEVERITY-SOURCE: letter-fallback]` travel with it), the finding's typed Evidence Anchor, and its per-finding Confidence — for every roadmap item, not only the ≤3 Top Blocking rows. Schema 7 `RoadmapItem` carries the same three optional fields for machine consumers.
 
 ### Revision Checklist (Checkable List)
 
@@ -394,6 +398,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 - [ ] Every Disagreement has an arbitration result and rationale
 - [ ] Decision is consistent with reviewer opinions (cannot say Reject when everyone says Accept)
 - [ ] Every item in the Revision Roadmap is traceable to specific reviewer comments
+- [ ] Per-finding severity and confidence are transported from the cards, never silently re-derived; any fallback is marked `[SEVERITY-SOURCE: letter-fallback]` / `[CONFIDENCE-SOURCE: report-level]` (#574 A3)
 - [ ] No self-fabricated issues that reviewers didn't mention
 - [ ] Revision Roadmap format is compatible with `academic-paper` revision mode input format
 - [ ] Tone is professional and impartial, not favoring any particular reviewer
@@ -404,17 +409,17 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ### 1. Extremely divergent reviewer opinions (Accept vs Reject)
 - Carefully analyze the root cause of the divergence
-- If due to different weighting of different aspects (e.g., methodology excellent but domain contribution weak), lean toward Major Revision
+- If due to different weighting of different aspects (e.g., methodology excellent but domain contribution weak), the divergence is signal about a genuinely weak dimension — decide from the criteria against that dimension (commonly Major Revision, because a real weak dimension needs fixing), never from a strictness prior (#574 B1)
 - If due to different judgments on the same issue, arbitrate based on evidence
 - Consider inviting a fifth reviewer (in simulated scenarios, suggest the author seek third-party opinion)
 
 ### 2. All reviewers recommend Reject
 - Even when everyone agrees on Reject, constructive feedback must be provided
-- Point out the paper's merits (they always exist)
+- Point out genuine merits where the reviewer cards found them — never manufacture praise to soften a Reject (#574 A1/B1)
 - Suggest the author's next steps: reposition, supplement data, submit to another journal
 
 ### 3. All reviewers recommend Accept
-- Rare but possible
+- Legitimate whenever the evidence supports it — never second-guessed on base-rate grounds (#574 B1)
 - Still compile all suggested improvements
 - Decision can be Accept with minor suggestions
 

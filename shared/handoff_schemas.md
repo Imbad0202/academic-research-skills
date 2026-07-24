@@ -385,17 +385,22 @@ score_trajectory: {
 | `reviewer_id` | string | Reviewer identifier (e.g., `EIC`, `R1`, `R2`, `R3`, `DA`) |
 | `role` | string | Reviewer role description |
 | `dimension_scores` | object | Per-dimension scores (skill-specific) |
-| `strengths` | list[string] | Paper strengths identified |
+| `strengths` | list[string \| Strength] | Paper strengths identified. Current-format cards emit Strength objects `{description: string, evidence_anchor: object}` — the same typed-anchor shape as Weakness, since A2's every-finding rule covers both polarities (#574 A2; a section-level locator suffices for a strength). A bare string = legacy card (consumers treat it as description-only). |
 | `weaknesses` | list[Weakness] | Paper weaknesses identified |
 | `questions` | list[string] | Questions for the authors |
+| `coverage_receipt` | object | *(conditional, #574 A1)* REQUIRED when `strengths` or `weaknesses` is EMPTY: `{covers: "strengths" \| "weaknesses" \| "both", rows: [{dimension: string, checked: string, basis: string}]}` — preserves the reviewer's Coverage Receipt so consumers can distinguish a reviewed-empty list from a thin or truncated review. Absent with empty lists = legacy/invalid current-format card |
+| `reviewer_confidence` | integer | *(optional, #574 A3)* The reviewer's report-level Confidence Score, 1-5 (template § Confidence Score) — the legacy-card fallback target when a weakness lacks per-finding `confidence` (`[CONFIDENCE-SOURCE: report-level]`). Deliberately distinct from the TOP-LEVEL `confidence_score`, which is 0-100 EDITORIAL confidence — the two scales never interchange. |
 
 ### Weakness Object
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `description` | string | What the weakness is |
-| `severity` | enum | `critical` / `major` / `minor` |
+| `severity` | enum | `critical` / `major` / `minor` — the CANONICAL single source for finding severity across the reviewer stack (#574 A3). Reviewer cards and templates carry it explicitly per finding (title-case `Critical`/`Major`/`Minor` on prose surfaces maps to this enum; the DA's `OBSERVATION` category is a non-defect channel that never enters `weaknesses[]`). Consumers transport it, never re-derive it; a legacy card without per-finding tags is marked `[SEVERITY-SOURCE: letter-fallback]` by the synthesizer. |
 | `type` | enum | `methodology` / `theory` / `evidence` / `writing` / `structure` / `ethics` |
+| `evidence_anchor` | object | *(optional, #574 A2)* Typed anchor: `{anchor_type: "text" \| "table" \| "figure" \| "equation" \| "dataset" \| "absence", locator: string, quote: string, absence_scope: string, check_performed: string}`. Conditional members: `quote` (≤ 25 words) is REQUIRED when `anchor_type = "text"`; `absence_scope` and `check_performed` are REQUIRED when `anchor_type = "absence"`; all three are omitted for other types. Critical/major weaknesses are expected to carry an adequate, applicable anchor; absent field = legacy card. |
+| `confidence` | integer | *(optional, #574 A3)* Per-finding confidence 1-5 from the reporting reviewer. Absent = legacy card; consumers fall back to the report-level Confidence Score and mark `[CONFIDENCE-SOURCE: report-level]`. |
+| `competence_basis` | string | *(optional, #574 A3)* One-phrase basis for `confidence` (e.g. `"core expertise: psychometrics"`, `"adjacent field: applying general standards"`). |
 
 ---
 
@@ -422,8 +427,16 @@ score_trajectory: {
 | `id` | string | Unique revision ID (e.g., `REV-001`) |
 | `description` | string | What needs to change |
 | `reviewer` | string | Which reviewer(s) raised this (e.g., `R1, R3`) |
-| `type` | enum | `"Major"` / `"Minor"` / `"Editorial"` |
+| `type` | enum | `"Major"` / `"Minor"` / `"Editorial"` — the revision-MAGNITUDE label (how big the change is), deliberately distinct from finding severity (#574 A3): a Critical finding's fix can be a small change and vice versa |
 | `priority` | enum | `"must_fix"` / `"should_fix"` / `"consider"` |
+| `severity` | enum | *(optional, #574 A3)* Transported Schema 6 finding severity (`critical`/`major`/`minor`) of the driving sub-claim; absent = legacy roadmap |
+| `severity_source` | string | *(optional, #574 A3)* Fallback provenance for `severity` — the verbatim tag, e.g. `[SEVERITY-SOURCE: letter-fallback]`; absent = direct per-finding seat tag (the enum value alone cannot carry the tag) |
+| `evidence_anchor` | object | *(optional, #574 A2)* The driving finding's typed anchor — same shape as the Schema 6 Weakness `evidence_anchor`; absent = legacy roadmap |
+| `confidence` | integer | *(optional, #574 A3)* The driving finding's per-finding confidence 1-5; absent = legacy roadmap |
+| `competence_basis` | string | *(optional, #574 A3)* The driving finding's one-phrase competence basis — the rationale half of the emitted `[n — basis]` cell; absent = legacy roadmap |
+| `confidence_source` | string | *(optional, #574 A3)* Fallback provenance for `confidence` — the verbatim tag, e.g. `[CONFIDENCE-SOURCE: report-level]`; absent = per-finding value |
+| `corroborating_sources` | list[object] | *(optional, #574 A2/A3)* When an item consolidates MULTIPLE corroborating findings: the singular `severity`/`evidence_anchor`/`confidence` fields carry the DRIVING finding (highest severity; ties broken by confidence), and each remaining source rides here as `{reviewer, severity, evidence_anchor, confidence, competence_basis?, severity_source?, confidence_source?}` — nothing is dropped or merged |
+| `source_kind` | enum | *(optional, #574 A3)* `"question"` / `"editorial"` — an item with NO driving finding (author-question follow-up, aggregated editorial task) sets this and legitimately omits ALL transported fields. Absent transported fields WITHOUT `source_kind` = legacy roadmap |
 | `target_section` | string | Section of the paper to modify |
 | `suggested_action` | string | How to address the item |
 | `consensus_level` | enum | `"CONSENSUS-4"` / `"CONSENSUS-3"` / `"SPLIT"` / `"DA-CRITICAL"` |

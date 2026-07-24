@@ -116,13 +116,19 @@ This paper examines a highly timely topic in East Asian higher education policy 
 
 #### Strengths
 1. **S1: Timeliness and practical value**: Declining birth rates are a common challenge for East Asian higher education (Japan, Korea, Taiwan), and the paper directly addresses an urgent policy issue.
+   **Evidence Anchor**: `text: §1 "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities"`
 2. **S2: Rich empirical data**: In-depth interviews with 24 senior administrators, covering 6 universities with different pressure levels, drawing from diverse data sources.
+   **Evidence Anchor**: `text: §3.2 "24 senior administrators across six universities"`
 3. **S3: Clear structure**: Complete paper structure with a clear logical thread from research questions to conclusions.
+   **Evidence Anchor**: `text: §1-§7 section flow "Introduction … Discussion … Conclusion" — complete and logically ordered`
 
 #### Weaknesses
 1. **W1: Unclear theoretical contribution**: The three strategy types (differentiation, transformation, exit) are common classifications in strategic management literature. The paper needs to more clearly explain what unique implications these three strategies have in the higher education context, rather than just applying business classifications to universities. Suggest adding a "Theoretical Contribution" discussion paragraph.
+   - **Severity**: Major | **Evidence Anchor**: `text: §5 "three strategy types: differentiation, transformation, exit"` | **Confidence**: 4 — journal-fit and originality assessment within EIC's core remit
 2. **W2: Insufficient international generalizability**: The paper focuses almost entirely on the Taiwan context, but lacks comparison with Japan, Korea, or other countries facing similar issues. Even without empirical comparison, the discussion should address cross-national implications.
+   - **Severity**: Major | **Evidence Anchor**: `absence: §6 Discussion — expected cross-national implications discussion; checked §6 Discussion, §7 Conclusion` | **Confidence**: 4 — journal-fit assessment for an internationally-read venue
 3. **W3: Title and abstract too descriptive**: The title could better highlight the theoretical angle (such as strategy theory contribution) rather than just describing the research topic.
+   - **Severity**: Minor | **Evidence Anchor**: `text: title — "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities: A Multiple Case Study"` | **Confidence**: 3 — editorial framing judgment, somewhat subjective
 
 #### Questions for Authors
 1. Do you believe these three strategy types are unique to Taiwan, or would they also appear in other countries with declining birth rates? If the latter, can your theoretical framework predict which strategy would emerge under what conditions?
@@ -146,27 +152,36 @@ The author's choice of Eisenhardt's (1989) multiple case study method is appropr
 
 #### Strengths
 1. **S1: Sound theoretical sampling design**: Selecting 6 universities with different enrollment pressure levels (2 mild, 2 moderate, 2 severe) follows Eisenhardt's recommended polar type selection logic.
+   **Evidence Anchor**: `text: §3.1 "2 mild, 2 moderate, 2 severe" enrollment pressure tiers`
 2. **S2: Multiple data sources**: Combining interviews, institutional documents, and Ministry of Education statistics achieves methodological triangulation.
+   **Evidence Anchor**: `text: §3.2 "semi-structured interviews and document analysis"`
 3. **S3: Appropriate respondent level**: Interviewing presidents, vice presidents, deans, and enrollment directors covers different levels of strategic decision-making.
+   **Evidence Anchor**: `text: §3.2 "presidents, vice presidents, deans, and enrollment directors"`
 
 #### Weaknesses
 1. **W1: Insufficiently systematic cross-case analysis**:
    **Problem**: The findings are presented by strategy type, but lack Eisenhardt's (1989) recommended two-stage presentation of within-case analysis -> cross-case patterns.
+   **Evidence Anchor**: `absence: §4 Findings — expected a within-case-analysis stage preceding cross-case patterns; checked §4 Findings, §3 Methodology`
    **Why it matters**: Readers cannot see the complete picture of each university, nor judge whether cross-case patterns have sufficient evidence base.
    **Suggestion**: Add a within-case summary table (1 paragraph per university), then conduct cross-case pattern comparison.
    **Severity**: Major
+   **Confidence**: 5 — core expertise: multiple case study methodology
 
 2. **W2: Insufficient coding process transparency**:
    **Problem**: The paper mentions using thematic analysis but does not describe specific coding steps (initial coding -> focused coding -> theme extraction), nor provides a codebook or coding examples.
+   **Evidence Anchor**: `absence: §3.3 Data Analysis — expected coding-stage description and a codebook; checked §3.3 Data Analysis, appendix`
    **Why it matters**: Affects the study's traceability and trustworthiness.
    **Suggestion**: Add a methodology detail section describing coding stages, and provide a codebook summary in the appendix.
    **Severity**: Major
+   **Confidence**: 5 — core expertise: qualitative coding transparency standards
 
 3. **W3: Missing data saturation argument**:
    **Problem**: Was theoretical saturation achieved with 24 respondents? The paper does not argue this.
+   **Evidence Anchor**: `absence: §3.1 Sampling — expected a saturation argument; checked §3.1 Sampling, §3.2 Data Collection, §8 Limitations`
    **Why it matters**: The sample size in qualitative research needs to be justified, not just by numbers.
    **Suggestion**: Explain after which respondent no new themes emerged, or explain how the 6 universities x 4 people sampling logic ensures saturation.
    **Severity**: Minor
+   **Confidence**: 5 — core expertise: qualitative sampling adequacy
 
 #### Questions for Authors
 1. Is the interview guide included in the appendix? If not, can it be provided?
@@ -190,30 +205,39 @@ The author has chosen a topic of vital importance to Taiwan's higher education. 
 
 #### Strengths
 1. **S1: Directly confronting a sensitive topic**: Private university exit is a politically sensitive topic in Taiwan. The author's willingness to directly investigate, and ability to obtain president-level interviews, is very impressive.
+   **Evidence Anchor**: `text: §3.2 "presidents" among the interviewed respondent roles`
 2. **S2: Covering schools with different pressure levels**: Not just looking at schools facing exit, but also examining how schools with less pressure make preventive adjustments, offering a more comprehensive perspective than most studies.
+   **Evidence Anchor**: `text: §3.1 "6 private universities facing different levels of enrollment pressure"`
 3. **S3: Specific practical implications**: Recommendations for private university administrators and Ministry of Education policymakers are specific and actionable.
+   **Evidence Anchor**: `text: §7 "practical implications for Taiwan's higher education policymakers and private university administrators"`
 
 #### Weaknesses
 1. **W1: Policy context needs updating**:
    **Problem**: The exit-related regulations cited in the paper are from the 2018 version, but the "Act for the Exit of Private Senior Secondary Schools and Above" was passed in May 2022, fundamentally changing the exit mechanism (including criteria for designating schools for special guidance, suspension timelines, faculty/staff placement, etc.).
+   **Evidence Anchor**: `text: §2 Policy Context "the 2018 Private School Act amendments" cited as the governing exit regulation`
    **Why it matters**: If data collection occurred before 2022, this needs to be clearly stated; if after, it must reflect the new legislation's impact.
    **Suggestion**: Update the policy context section, clearly stating the relationship between data collection timeline and the Exit Act.
    **Severity**: Critical
+   **Confidence**: 5 — core expertise: Taiwan private university exit mechanisms and policy
 
 2. **W2: Missing key Chinese-language literature**:
    **Problem**: The following important references are not cited:
    - Tai, H.H. (2020) on Taiwan's higher education marketization
    - Yang, Y. (2019) on quality assurance and exit mechanisms
    - Ministry of Education's Higher Education Sprout Project effectiveness evaluation report
+   **Evidence Anchor**: `absence: §2 Literature Review — expected coverage of Taiwan-specific marketization/exit-mechanism literature; checked §2 Literature Review, References list`
    **Why it matters**: These are key contextual references for understanding Taiwan's private university strategy choices.
    **Suggestion**: Add the above references and integrate them into relevant sections of the literature review.
    **Severity**: Major
+   **Confidence**: 5 — core expertise: Taiwan higher education policy literature
 
 3. **W3: Unclear positioning of strategy classification against existing research**:
    **Problem**: Taiwan's higher education research already has similar strategy classifications (such as the transformation, merger, exit trichotomy), but the paper does not clearly compare its classification with existing ones.
+   **Evidence Anchor**: `absence: §6 Discussion — expected comparison against existing Taiwan strategy-classification literature; checked §2 Literature Review, §6 Discussion`
    **Why it matters**: Readers cannot judge this study's incremental contribution.
    **Suggestion**: Add a paragraph in the discussion comparing this study's classification with existing ones, explaining this study's new findings.
    **Severity**: Major
+   **Confidence**: 4 — adjacent expertise: familiar with the classification literature, less central than the policy-timeline finding above
 
 #### Missing Key References
 - Tai, H.H. (2020). Marketization and quality assurance in Taiwan's higher education. *Bulletin of Educational Research*.
@@ -243,27 +267,36 @@ The author uses Porter's competitive strategy and RBV to analyze university stra
 
 #### Strengths
 1. **S1: Cross-disciplinary theoretical borrowing attempt is commendable**: Applying strategic management theory to higher education management has potential for generating interesting cross-disciplinary insights.
+   **Evidence Anchor**: `text: §2 Theoretical Framework "Porter's competitive strategy theory and Resource-Based View (RBV)"`
 2. **S2: Three strategy types are empirically grounded**: Not an a priori theoretical classification, but extracted from data, possessing groundedness.
+   **Evidence Anchor**: `text: §4 Findings "three strategy types emerged from the cross-case analysis"`
 3. **S3: Direct value for practical administrators**: The decision factor analysis for strategy choices has immediate reference value for private university administrators.
+   **Evidence Anchor**: `text: §7 Conclusion "practical implications for private university administrators"`
 
 #### Weaknesses
 1. **W1: Applicability of Porter's competitive strategy framework to the higher education context is not justified**:
    **Problem**: Porter's differentiation/cost leadership/focus strategies presuppose competitors in a free market. But Taiwan's university market is highly regulated — tuition is capped, enrollment quotas are controlled, exits are government-led. In such an environment, the meaning of "competitive strategy" requires fundamental redefinition.
+   **Evidence Anchor**: `absence: §2 Theoretical Framework — expected a discussion of Porter's applicability boundaries in a regulated market; checked §2 Theoretical Framework, §6 Discussion`
    **Why it matters**: Without discussing the theory's applicability boundaries, the paper's theoretical contribution will be questioned as "mechanical application."
    **Suggestion**: Add a "Theoretical Contextualization" section discussing modifications to Porter's framework in highly regulated markets. Reference Jongbloed (2003) on the spectrum of higher education marketization.
    **Severity**: Critical
+   **Confidence**: 5 — core expertise: strategic management theory boundary conditions
 
 2. **W2: Organizational decline theory overlooked**:
    **Problem**: Universities facing declining birth rates are essentially undergoing "organizational decline." Cameron & Zammuto's (1983) and Weitzel & Jonsson's (1989) decline stage models can better explain why different universities adopt different strategies — possibly because they are at different stages of decline.
+   **Evidence Anchor**: `absence: §2 Theoretical Framework — expected engagement with organizational decline theory; checked §2 Theoretical Framework, References list`
    **Why it matters**: Introducing decline theory can transform "strategy choice" from a static classification into a dynamic process, significantly enhancing theoretical contribution.
    **Suggestion**: No need to completely replace Porter/RBV, but suggest adding organizational decline theory as a supplementary framework, especially when explaining "why different universities choose different strategies."
    **Severity**: Major
+   **Confidence**: 5 — core expertise: organizational decline and transformation literature
 
 3. **W3: Implicit assumption of "university as enterprise"**:
    **Problem**: The paper implicitly treats universities as rational strategic actors, but universities are typical "organized anarchies" (Cohen & March, 1974) — goals are ambiguous, technology is uncertain, participation is fluid. In such organizations, "strategy" is formed very differently from businesses, closer to Mintzberg's emergent strategy rather than deliberate strategy.
+   **Evidence Anchor**: `absence: §5 Analysis — expected reflection on the rational-actor assumption; checked §5 Analysis, §6 Discussion`
    **Why it matters**: Without reflecting on this assumption, the analysis may over-rationalize university decision-making processes.
    **Suggestion**: Add a reflective paragraph in the discussion on "whether university strategies are truly conscious choices."
    **Severity**: Major
+   **Confidence**: 4 — adjacent expertise: organizational theory applied to a non-corporate setting
 
 #### Cross-Disciplinary Reading Recommendations
 - Cameron, K.S. & Zammuto, R.F. (1983). Matching managerial strategies to conditions of decline. *Human Resource Management*, 22(4), 359-375.
@@ -320,21 +353,22 @@ This paper investigates an important and timely topic with solid data collection
 #### Revision Roadmap
 
 **Priority 1 — Structural Revisions (Estimated effort: 10-14 days)**
-- [ ] R1: Update policy context to the 2022 Exit Act (Source: R2-W1, Critical)
-- [ ] R2: Justify Porter/RBV applicability boundaries in the regulated higher education market (Source: R3-W1, Critical)
-- [ ] R3: Add organizational decline theory as a supplementary framework (Source: R3-W2, Major)
-- [ ] R4: Add within-case summary + systematic cross-case analysis (Source: R1-W1, Major)
+- [ ] R1: Update policy context to the 2022 Exit Act (Source: R2-W1) — Severity: Critical | Anchor: `text: §2 Policy Context "the 2018 Private School Act amendments" cited as the governing exit regulation` | Confidence: 5
+- [ ] R2: Justify Porter/RBV applicability boundaries in the regulated higher education market (Source: R3-W1) — Severity: Critical | Anchor: `absence: §2 Theoretical Framework — expected a discussion of Porter's applicability boundaries in a regulated market; checked §2 Theoretical Framework, §6 Discussion` | Confidence: 5
+- [ ] R3: Add organizational decline theory as a supplementary framework (Source: R3-W2) — Severity: Major | Anchor: `absence: §2 Theoretical Framework — expected engagement with organizational decline theory; checked §2 Theoretical Framework, References list` | Confidence: 5
+- [ ] R4: Add within-case summary + systematic cross-case analysis (Source: R1-W1) — Severity: Major | Anchor: `absence: §4 Findings — expected a within-case-analysis stage preceding cross-case patterns; checked §4 Findings, §3 Methodology` | Confidence: 5
 
 **Priority 2 — Content Supplementation (Estimated effort: 5-7 days)**
-- [ ] S1: Supplement missing Chinese-language literature (Source: R2-W2, Major)
-- [ ] S2: Compare this study's classification with existing classifications (Source: R2-W3 + EIC-W1, Major)
-- [ ] S3: Add international comparison discussion section (Source: EIC-W2, Major)
-- [ ] S4: Supplement coding process and codebook (Source: R1-W2, Major)
-- [ ] S5: Reflect on the "university as rational strategic actor" assumption (Source: R3-W3, Major)
+- [ ] S1: Supplement missing Chinese-language literature (Source: R2-W2) — Severity: Major | Anchor: `absence: §2 Literature Review — expected coverage of Taiwan-specific marketization/exit-mechanism literature; checked §2 Literature Review, References list` | Confidence: 5
+- [ ] S2a: Compare this study's classification with existing classifications (Source: R2-W3) — Severity: Major | Anchor: `absence: §6 Discussion — expected comparison against existing Taiwan strategy-classification literature; checked §2 Literature Review, §6 Discussion` | Confidence: 4
+- [ ] S2b: Position the three strategy types against prior typologies when comparing (Source: EIC-W1, corroborates S2a) — Severity: Major | Anchor: `text: §5 "three strategy types: differentiation, transformation, exit"` | Confidence: 4
+- [ ] S3: Add international comparison discussion section (Source: EIC-W2) — Severity: Major | Anchor: `absence: §6 Discussion — expected cross-national implications discussion; checked §6 Discussion, §7 Conclusion` | Confidence: 4
+- [ ] S4: Supplement coding process and codebook (Source: R1-W2) — Severity: Major | Anchor: `absence: §3.3 Data Analysis — expected coding-stage description and a codebook; checked §3.3 Data Analysis, appendix` | Confidence: 5
+- [ ] S5: Reflect on the "university as rational strategic actor" assumption (Source: R3-W3) — Severity: Major | Anchor: `absence: §5 Analysis — expected reflection on the rational-actor assumption; checked §5 Analysis, §6 Discussion` | Confidence: 4
 
 **Priority 3 — Text and Formatting (Estimated effort: 2-3 days)**
-- [ ] Improve title to highlight theoretical angle (Source: EIC-W3)
-- [ ] Add data saturation argument (Source: R1-W3)
+- [ ] Improve title to highlight theoretical angle (Source: EIC-W3) — Severity: Minor | Anchor: `text: title — "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities: A Multiple Case Study"` | Confidence: 3
+- [ ] Add data saturation argument (Source: R1-W3) — Severity: Minor | Anchor: `absence: §3.1 Sampling — expected a saturation argument; checked §3.1 Sampling, §3.2 Data Collection, §8 Limitations` | Confidence: 5
 - [ ] Attach interview guide (Source: R1-Q1)
 - [ ] Fix minor citation format issues
 

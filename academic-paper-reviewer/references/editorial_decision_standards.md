@@ -6,6 +6,14 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 
 ## 1. Decision Categories
 
+### Decision Symmetry and Register Independence (#574 B1)
+
+These principles govern every category below:
+
+- **Symmetric evidence standards.** An Accept conclusion and a Reject conclusion carry the same evidence burden: Accept requires positive, anchored verification that each criterion is met, exactly as Reject requires anchored evidence that criteria failed. Neither direction gets a wider margin of caution.
+- **Decisions follow criteria, not distributions.** Review rigor comes from the venue's actual criteria and article-type expectations (Reviewer Configuration Card), never from acceptance-rate base rates or an expected decision distribution. Base rates describe other papers, not this one; a review round that produces more rejections is not thereby a better round.
+- **Register is independent of severity.** Tone rules (respectful, constructive) govern WORDING only. They never lower a finding's severity or soften a decision, and adversarial or rigor-signaling framing never raises a severity or hardens a decision.
+
 ### Accept
 
 **Definition**: The paper can be published without further review.
@@ -23,7 +31,7 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 
 **Typical scenarios**:
 - Paper has undergone multiple revision rounds, all issues resolved
-- Rare first-pass acceptance (< 5% of submissions at top-tier journals)
+- First-pass acceptance when the paper genuinely meets every criterion — the decision follows the criteria, never a frequency expectation (#574 B1: no base-rate anchoring, qualitative or numeric)
 
 ---
 
@@ -102,7 +110,7 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 | **Reject — Resubmit Encouraged** | Has potential but needs fundamental restructuring | Provide detailed restructuring suggestions |
 
 **Even with Reject, must**:
-- Affirm the paper's merits
+- Affirm genuine merits where they exist — do not manufacture praise to soften the decision (#574 A1/B1)
 - Provide specific improvement suggestions
 - Recommend more suitable journals (if it's a scope issue)
 - Maintain professional, respectful tone
@@ -134,7 +142,7 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 **Split Decision (evenly divided)**:
 - Example: Accept + Accept + Reject + Reject
 - EIC (or synthesizer) needs to deeply analyze the cause of disagreement
-- Lean toward conservative strategy: Major Revision, requiring the author to respond to the Reject side's comments
+- Resolve on the arbitration principles (evidence first, expertise first). A genuinely unresolvable split records the dissent and routes the author to respond to it — revision is the vehicle for that response, not a policy of rounding splits toward the stricter verdict (#574 B1)
 - May consider inviting a fifth reviewer
 
 **One Outlier (one unusual opinion)**:
@@ -157,14 +165,16 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 | 2 (Low) | For reference only, not used as a decisive opinion |
 | 1 (Very Low) | Ignore this reviewer's recommendation (but retain specific comments) |
 
-### Cross-Dimension Severity Assessment
+### Cross-Dimension Decision Impact
 
-| Situation | Severity | Handling |
-|-----------|----------|---------|
-| Methodology has fatal flaw (R1 score = 1) | Critical | Even if other dimensions are excellent, lean toward Reject |
-| Major literature review omission (R2 score = 2) | Serious | Major Revision, require supplementation |
-| Cross-disciplinary perspective overlooked (R3 score = 2) | Moderate | Minor/Major, depends on other dimensions |
-| Poor writing quality (score = 2) | Minor | Does not affect academic decision, but require language revision |
+Finding severity is transported from the reviewer cards (the Schema 6 enum, `shared/handoff_schemas.md` § Weakness Object) — this table assigns NO severities (#574 A3); it describes how dimension-score patterns bear on the DECISION only.
+
+| Situation | Decision impact |
+|-----------|-----------------|
+| Methodology has fatal flaw (R1 score = 1) | Even if other dimensions are excellent, lean toward Reject |
+| Major literature review omission (R2 score = 2) | Major Revision, require supplementation |
+| Cross-disciplinary perspective overlooked (R3 score = 2) | Minor or Major Revision, depends on other dimensions |
+| Poor writing quality (score = 2) | Does not affect the academic decision, but require language revision |
 
 ---
 

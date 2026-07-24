@@ -71,10 +71,12 @@ This template helps authors systematically respond to all review comments. The f
 
 ## Response to Reviewer 1 (Methodology)
 
-### Strengths Acknowledged
+### Strengths Acknowledged (only when the review reported strengths)
 We thank Reviewer 1 for acknowledging the following aspects:
 1. [Quote Reviewer 1's positive comments]
 2. [...]
+
+[A zero-strength review legitimately has no entries here — skip this block rather than invent praise to fill it (#574 A1).]
 
 ### R1-W1: [Weakness title]
 > [Direct quote of Reviewer 1's weakness description]
@@ -110,6 +112,11 @@ We thank Reviewer 1 for acknowledging the following aspects:
 
 ---
 
+### R1-W4..Wn
+[Repeat the same structure for EVERY additional weakness in the report — weakness lists are unbounded (#574 A1), and every emitted weakness gets a response entry; none may be dropped for exceeding a template count.]
+
+---
+
 ### R1 Questions
 
 #### R1-Q1
@@ -142,13 +149,13 @@ We thank Reviewer 1 for acknowledging the following aspects:
 
 ## Response to Reviewer 2 (Domain Expert)
 
-[Same format as above: Strengths Acknowledged → W1-W5 → Questions → Minor Issues]
+[Same format as above: Strengths Acknowledged → W1..Wn (every emitted weakness, unbounded — #574 A1) → Questions → Minor Issues]
 
 ---
 
 ## Response to Reviewer 3 (Interdisciplinary Perspective)
 
-[Same format as above: Strengths Acknowledged → W1-W5 → Questions → Minor Issues]
+[Same format as above: Strengths Acknowledged → W1..Wn (every emitted weakness, unbounded — #574 A1) → Questions → Minor Issues]
 
 ---
 

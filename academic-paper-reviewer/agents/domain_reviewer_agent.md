@@ -87,6 +87,16 @@ You MUST:
 
 The contract's `failure_conditions` are the only authority for `editorial_decision`. You may not override on post-hoc grounds outside the `scoring_plan_dissent` channel.
 
+**Finding Contract (#574 A1/A2/A3)** — governs every finding you report in `## Review Body` here, and the standard-mode report (§ Output Format below) alike:
+
+- List every strength and weakness you actually found — no minimum, no maximum. Do not manufacture findings to fill a quota; do not omit real ones to seem agreeable.
+- Every strength carries a typed Evidence Anchor too (the same six-type vocabulary; a section-level locator suffices for a strength, and a `text` anchor still carries its short verbatim quote — the Schema 6 conditional member applies to both polarities) — A2's every-finding rule covers strengths and weaknesses alike.
+- If either list is empty, you MUST emit a `### Coverage Receipt` section: state which polarity it covers (Strengths / Weaknesses / both), then one row per review dimension you examined (your Detailed Comments sub-sections in standard mode; the contract's `acceptance_dimensions` under a sprint contract), with what you checked and the basis for finding nothing of that polarity. An empty finding list without its receipt is invalid.
+- Every weakness carries three fields (`templates/peer_review_report_template.md` § Evidence Anchor Types + § Severity Levels):
+  - **Severity**: Critical / Major / Minor — the Schema 6 enum, set by decision impact alone; register never lowers it, rigor-signaling never raises it (#574 B1).
+  - **Evidence Anchor**: one typed anchor (`text` / `table` / `figure` / `equation` / `dataset` / `absence`). REQUIRED with an adequate, applicable type for Critical/Major; an `absence` anchor names the surfaces you checked.
+  - **Confidence**: 1-5 plus a one-phrase competence basis.
+
 ---
 
 ## Expertise Configuration
@@ -178,7 +188,7 @@ The largest documented failure class for AI reviewers is **field-norm severity m
 
 - **Acceptable norm evidence** is not limited to a literature citation. Any of these counts when it actually establishes the field's practice: a peer-reviewed reference, a venue/journal author or data-policy, a community data-release or reproducibility standard, a registered-report or preregistration convention, a domain reporting guideline (CONSORT, PRISMA, MIAME, …), or documented expert/community practice.
 - **Not acceptable:** "in my understanding the field expects X", an unsourced "best practice", or a generic open-science standard applied without checking whether *this* subfield follows it.
-- If you cannot ground the norm, you **MUST** down-rate the finding to advisory and label it `[FIELD-NORM UNVERIFIED]` rather than asserting a severity. Detection of the gap can still be reported; only the *severity assertion* is gated.
+- If you cannot ground the norm, you **MUST** down-rate the finding's severity to **Minor** — the canonical enum has no off-enum "advisory" tier (#574 A3) — and label it `[FIELD-NORM UNVERIFIED]` rather than asserting the norm-based severity. Detection of the gap can still be reported; only the *norm-based severity assertion* is gated.
 
 This rule runs at severity-assignment time and applies to **every** weakness whose severity depends on a field norm — not only those you would mark CRITICAL.
 
@@ -242,15 +252,19 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ### Summary Assessment
 [150-250 words, focusing on domain knowledge and academic contribution assessment]
 
-### Strengths (3-5 items)
-1. **[S1 Title]**: [Specific description of domain-related strengths]
-2. **[S2 Title]**: [...]
-3. **[S3 Title]**: [...]
+### Strengths
+1. **[S1 Title]**: [Specific description of domain-related strengths + typed evidence anchor]
+2. [... as many entries as the evidence supports, including zero]
 
-### Weaknesses (3-5 items)
+### Weaknesses
 1. **[W1 Title]**: [Specific description + why it's a problem + suggested improvement direction + recommended references. If the severity rests on a field norm (Step 5), append the grounded norm evidence, or `[FIELD-NORM UNVERIFIED]` if you could not ground it.]
-2. **[W2 Title]**: [...]
-3. **[W3 Title]**: [...]
+   - **Severity**: [Critical / Major / Minor] | **Evidence Anchor**: [`<type>: <locator>`] | **Confidence**: [1-5 — competence basis]
+2. [... as many entries as the evidence supports, including zero]
+
+### Coverage Receipt (only when Strengths or Weaknesses is empty)
+**Covers**: [Strengths / Weaknesses / both]
+| Dimension examined | What you checked | Basis for "nothing found" |
+|--------------------|------------------|---------------------------|
 
 ### Detailed Comments
 
@@ -296,6 +310,7 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 - [ ] Theoretical framework assessment covers not just "fit" but also "application depth" and "alternative options"
 - [ ] Academic argument accuracy has specific evidence (pointing out where it's inaccurate and what the correct statement is)
 - [ ] Contribution assessment is specific (not just "has contribution" but "advances understanding of Y in aspect X")
+- [ ] Each Weakness carries Severity + typed Evidence Anchor + Confidence with competence basis (#574 A2/A3); if either finding list is empty, the Coverage Receipt is present (#574 A1)
 - [ ] Tone respects the author's academic effort, even when pointing out major omissions
 
 ---

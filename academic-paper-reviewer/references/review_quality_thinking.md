@@ -26,7 +26,7 @@ Ask in order:
 4. Would the findings hold in a different context/culture/time?
 5. What are the boundary conditions the authors don't mention?
 
-**Judgment heuristic**: Most authors overstate generalizability. If the sample is from one university in one country, findings cannot claim to apply "generally" without qualification.
+**Judgment heuristic**: Check the manuscript's claimed scope of generalization against its sampling frame — a criterion-only comparison, never an author-population base rate (#574 B1). If the sample is from one university in one country, findings cannot claim to apply "generally" without qualification; if the claims already match the evidence's scope, there is no finding here.
 
 ### Lens 3: Contribution — "So what?"
 
@@ -54,5 +54,5 @@ Ask in order:
 1. If this paper were published as-is, would it mislead readers? (If yes → Major Revision or Reject)
 2. Could the authors reasonably address my concerns in one revision cycle? (If no → Reject)
 3. Am I being harder on this paper than I would be on my own work? (Calibration check)
-4. Did I identify at least one genuine strength? (Balance check)
+4. Did I acknowledge every genuine strength I found — and manufacture none? (Evidence-driven balance check, #574 A1/B1)
 5. Would my review help the authors improve, even if the paper is rejected? (Constructiveness check)

@@ -43,7 +43,7 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 
 | Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
 |------|----------------|--------------------|-----------------|------------------------|
-| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [Rn — the Roadmap's own ID syntax, e.g. R1] |
+| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [typed — `<type>: <locator>`, transported from the finding (#574 A2)] | [Rn — the Roadmap's own ID syntax, e.g. R1] |
 
 ---
 
@@ -77,7 +77,7 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 - **R[Y] view**: [Specific viewpoint, citing report]
 - **Disagreement type**: [Perspective difference / Severity disagreement / Existence disagreement / Direction disagreement]
 - **Editor's Resolution**: [Arbitration result]
-- **Resolution Rationale**: [Arbitration rationale — based on evidence/expertise/conservative principle]
+- **Resolution Rationale**: [Arbitration rationale — based on evidence/expertise/unresolved-dissent principle (#574 B1)]
 
 **Disagreement 2: [Issue name]**
 - [Same format as above]
@@ -100,11 +100,11 @@ Requirements:
 
 [Only needed for Minor Revision and Major Revision]
 
-| # | Revision Item | Sub-Claim(s) | Source Reviewer | Severity | Section | Estimated Effort |
-|---|--------------|--------------|----------------|----------|---------|-----------------|
-| R1 | [Description] | [SC-n] | [EIC/R1/R2/R3] | Critical | [Section name] | [X days] |
-| R2 | [Description] | [SC-n] | [Source] | Critical/Major | [Section name] | [X days] |
-| R3 | [Description] | [SC-n] | [Source] | Major | [Section name] | [X days] |
+| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source Reviewer | Section | Estimated Effort |
+|---|--------------|--------------|----------|-----------------|------------|----------------|---------|-----------------|
+| R1 | [Description] | [SC-n] | [transported: critical/major (+ fallback tag if any)] | [`<type>: <locator>`] | [n — basis] | [EIC/R1/R2/R3] | [Section name] | [X days] |
+| R2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | [Section name] | [X days] |
+| R3 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | [Section name] | [X days] |
 ...
 
 The `Sub-Claim(s)` column carries the Step 1b `sub_claim_id`(s) the item traces to (e.g. `SC-1`); a DA-CRITICAL or non-decomposed item uses `—`.
@@ -124,10 +124,10 @@ The `Sub-Claim(s)` column carries the Step 1b `sub_claim_id`(s) the item traces 
 
 ## Suggested Revisions (Should Fix)
 
-| # | Revision Item | Sub-Claim(s) | Source Reviewer | Priority | Section | Expected Improvement |
-|---|--------------|--------------|----------------|----------|---------|---------------------|
-| S1 | [Description] | [SC-n] | [Source] | P2 | [Section name] | [What it improves] |
-| S2 | [Description] | [SC-n] | [Source] | P2/P3 | [Section name] | [What it improves] |
+| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source Reviewer | Priority | Section | Expected Improvement |
+|---|--------------|--------------|----------|-----------------|------------|----------------|----------|---------|---------------------|
+| S1 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P2 | [Section name] | [What it improves] |
+| S2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P2/P3 | [Section name] | [What it improves] |
 ...
 
 ---
@@ -218,4 +218,6 @@ After careful consideration, we are unable to accept your manuscript for publica
 | Critical | P1 | Required Revision |
 | Major | P1/P2 | Required / Strongly Suggested |
 | Minor | P2/P3 | Suggested |
-| Cosmetic | P3 | Optional |
+| Editorial (not a finding severity — formatting/language items, Schema 7 `type`) | P3 | Optional |
+
+Finding severity is the Schema 6 enum (`critical` / `major` / `minor`) transported from the reviewer cards (#574 A3) — the roadmap never re-derives it.

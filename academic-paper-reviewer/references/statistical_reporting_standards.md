@@ -246,6 +246,8 @@ All quantitative research papers **must** report the following items. Check each
 
 The following patterns during review should raise red flags, requiring further investigation or author clarification:
 
+> **Triage levels, not finding severities (#574 A3).** The HIGH/MEDIUM/LOW labels in the tables below rank how urgently a red flag deserves scrutiny — they are detection triage, never a severity vocabulary. When a red flag becomes a reported weakness, its severity is the Schema 6 enum (Critical / Major / Minor), assigned by decision impact per the Finding Contract — never copied from the triage label.
+
 ### 4.1 P-hacking Indicators
 
 | Red Flag | Description | Severity |

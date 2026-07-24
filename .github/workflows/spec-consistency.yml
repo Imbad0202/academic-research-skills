@@ -448,6 +448,30 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_seeded_defect_fixtures.py
 
+      - name: Run #574 reviewer data-fence lint (A6 / PR #578 pin)
+        # Pins the <paper_content> + <phase1_output> data-fence contract across
+        # all five reviewer panel agents (both canonical paragraphs verbatim,
+        # exactly once each), the sprint-contract delivery side, and the
+        # cross-model Reviewer 2 transport — so a prompt edit cannot silently
+        # drop or weaken the untrusted-manuscript boundary. Companion
+        # test_check_reviewer_data_fences.py (mutation suite) runs via the
+        # unified manifest (#156). Issue #574 A6 (shipped with the behavior batch).
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_reviewer_data_fences.py
+
+      - name: Run #574 reviewer finding-contract lint (behavior batch pin)
+        # Pins the A1/A2/A3/B1 behavior-batch surfaces: no finding quotas +
+        # Coverage Receipt (A1), typed evidence-anchor vocabulary + DA anchor
+        # columns (A2), Schema 6 severity single-source + synthesizer transport
+        # tags (A3), decision-symmetry section + no base-rate anchors (B1), and
+        # the P0-3 overlap-prohibition residue. Companion
+        # test_check_reviewer_finding_contract.py (mutation suite) runs via the
+        # unified manifest (#156). Issue #574 behavior batch.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_reviewer_finding_contract.py
+
       - name: Run v3.10 #134 write-scope three-way name cross-check lint
         # THE FAIL-OPEN GUARD for the Slice 1 write-scope hook. Asserts the 23 Bucket A
         # agent names match across the classification roster, the scope manifest keys,

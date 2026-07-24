@@ -202,7 +202,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 
 ### 4. Extremely low quality paper (first draft level)
 - Clearly mark in Paper Maturity
-- Suggest reviewers adopt "developmental feedback" as the main approach, rather than strict "accept/reject" judgment
+- Suggest reviewers adopt "developmental feedback" as the REGISTER — the recommendation itself stays evidence-based against the criteria (#574 B1: tone changes wording, never the verdict)
 - Adjust reviewer tone to be more constructive
 
 ### 5. Non-English / non-Chinese papers

@@ -204,7 +204,7 @@ How to use this prior:
 
 - The **direction** is a working prior, not a law: FARS measured one setup (ICLR-style ML reviewing, one reviewer system), so carrying its sign to other domains, rubrics, or this panel is a heuristic extrapolation — which is exactly why it lands as a default-until-measured assumption rather than a fact. Under this prior, a panel "accept" is weaker evidence than a panel "reject", and a panel score is better read as a relative ranking within a batch than as an acceptance probability.
 - The **magnitude** (~1.8 points) is **NOT portable** across domains, rubrics, or model setups. Never apply it as a correction factor, threshold shift, or score adjustment — if you need a number for your setup, measure it with this mode (Phases 2/4, using the optional human reviewer scores in the gold set).
-- This is an interpretive caveat only: no behavior, schema, gate, or threshold changes. The simulated panel remains advisory infrastructure behind human checkpoints — the caveat is about how to read its output, not about its authority.
+- This is an interpretive caveat only: no behavior, schema, gate, or threshold changes. The simulated panel remains advisory infrastructure behind human checkpoints — the caveat is about how to read its output, not about its authority. In particular it is a **measurement-reading prior for calibration**, not a decision rule: at decision time the symmetric evidence standards of `editorial_decision_standards.md` § Decision Symmetry and Register Independence (#574 B1) govern, and no verdict is shaded stricter on this prior's account.
 
 ---
 

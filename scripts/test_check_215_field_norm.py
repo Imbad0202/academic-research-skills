@@ -164,8 +164,8 @@ class TestMutations(unittest.TestCase):
             head = t[:idx]
             tail = t[idx:]
             tail = tail.replace(
-                "| # | Dimension | Issue Description | Location | Field-Norm Boundary | Evidence-Crossing Rationale |",
-                "| # | Dimension | Issue Description | Location |",
+                "| # | Dimension | Issue Description | Evidence Anchor | Confidence | Field-Norm Boundary | Evidence-Crossing Rationale |",
+                "| # | Dimension | Issue Description | Evidence Anchor | Confidence |",
                 1,
             )
             return head + tail

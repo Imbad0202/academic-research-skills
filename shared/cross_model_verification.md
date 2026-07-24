@@ -197,7 +197,9 @@ The DA agent, after completing its checkpoint report, should:
 1. Send the reviewed material + a simplified DA prompt to the cross-model:
    ```
    You are a devil's advocate reviewing this [research/paper].
-   Find the 3 most serious weaknesses. For each, state:
+   Find the most serious weaknesses — every one the evidence supports,
+   ranked most severe first; no fixed count, and do not pad to reach one
+   (#574 A1). For each, state:
    - What the weakness is
    - Why it matters
    - What the strongest counter-argument would be

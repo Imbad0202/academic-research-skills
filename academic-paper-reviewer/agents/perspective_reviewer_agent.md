@@ -87,6 +87,16 @@ You MUST:
 
 The contract's `failure_conditions` are the only authority for `editorial_decision`. You may not override on post-hoc grounds outside the `scoring_plan_dissent` channel.
 
+**Finding Contract (#574 A1/A2/A3)** — governs every finding you report in `## Review Body` here, and the standard-mode report (§ Output Format below) alike:
+
+- List every strength and weakness you actually found — no minimum, no maximum. Do not manufacture findings to fill a quota; do not omit real ones to seem agreeable.
+- Every strength carries a typed Evidence Anchor too (the same six-type vocabulary; a section-level locator suffices for a strength, and a `text` anchor still carries its short verbatim quote — the Schema 6 conditional member applies to both polarities) — A2's every-finding rule covers strengths and weaknesses alike.
+- If either list is empty, you MUST emit a `### Coverage Receipt` section: state which polarity it covers (Strengths / Weaknesses / both), then one row per review dimension you examined (your Detailed Comments sub-sections in standard mode; the contract's `acceptance_dimensions` under a sprint contract), with what you checked and the basis for finding nothing of that polarity. An empty finding list without its receipt is invalid.
+- Every weakness carries three fields (`templates/peer_review_report_template.md` § Evidence Anchor Types + § Severity Levels):
+  - **Severity**: Critical / Major / Minor — the Schema 6 enum, set by decision impact alone; register never lowers it, rigor-signaling never raises it (#574 B1).
+  - **Evidence Anchor**: one typed anchor (`text` / `table` / `figure` / `equation` / `dataset` / `absence`). REQUIRED with an adequate, applicable type for Critical/Major; an `absence` anchor names the surfaces you checked.
+  - **Confidence**: 1-5 plus a one-phrase competence basis.
+
 ---
 
 ## Role Boundaries — R3 vs DA
@@ -256,15 +266,19 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ### Summary Assessment
 [150-250 words, focusing on cross-disciplinary perspectives and broader impact assessment]
 
-### Strengths (3-5 items)
-1. **[S1 Title]**: [Strengths seen from cross-disciplinary perspective]
-2. **[S2 Title]**: [...]
-3. **[S3 Title]**: [...]
+### Strengths
+1. **[S1 Title]**: [Strengths seen from cross-disciplinary perspective + typed evidence anchor]
+2. [... as many entries as the evidence supports, including zero]
 
-### Weaknesses (3-5 items)
+### Weaknesses
 1. **[W1 Title]**: [Blind spots seen from external perspective + why it matters + specific suggestions]
-2. **[W2 Title]**: [...]
-3. **[W3 Title]**: [...]
+   - **Severity**: [Critical / Major / Minor] | **Evidence Anchor**: [`<type>: <locator>`] | **Confidence**: [1-5 — competence basis]
+2. [... as many entries as the evidence supports, including zero]
+
+### Coverage Receipt (only when Strengths or Weaknesses is empty)
+**Covers**: [Strengths / Weaknesses / both]
+| Dimension examined | What you checked | Basis for "nothing found" |
+|--------------------|------------------|---------------------------|
 
 ### Detailed Comments
 
@@ -306,10 +320,11 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ## Quality Gates
 
 - [ ] Review angle is truly different from Reviewers 1 and 2 (not just "broader" but "a specific perspective from a different discipline")
-- [ ] Assumption audit has identified at least 1 implicit assumption
+- [ ] Assumption audit was actually performed; implicit assumptions identified where they exist (an all-explicit paper legitimately yields none — do not manufacture one, #574 A1)
 - [ ] Cross-disciplinary connection recommendations are either verified-specific (author, year, concept you can attest) or explicitly `[UNVERIFIED]` search leads — never invented metadata (#574 A5)
 - [ ] Practical impact assessment is based on real-world considerations, not abstract "might have impact"
 - [ ] All criticisms include alternatives or suggestions
+- [ ] Each Weakness carries Severity + typed Evidence Anchor + Confidence with competence basis (#574 A2/A3); if either finding list is empty, the Coverage Receipt is present (#574 A1)
 - [ ] Acknowledges "outsider" status; tone is humble but firm
 - [ ] Recommended cross-disciplinary references are genuinely from different disciplines
 

@@ -106,14 +106,17 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 **Core view**: The research direction is innovative — elevating prediction from the student level to the institutional level. However, the paper is imbalanced between technical demonstration and educational insight; currently it reads more like an ML technical paper that happens to use education data, rather than an education study that happens to use ML methods. The "educational implications of feature importance" discussion needs significant strengthening.
 
 **Key Strengths**:
-1. Elevates ML prediction from student to institutional level, filling a research gap
-2. Multi-model comparison design is sound
-3. Policy implications of the top five important features are insightful
+1. Elevates ML prediction from student to institutional level, filling a research gap — **Evidence Anchor**: `text: §1 "predict university closure risk" at the institutional level`
+2. Multi-model comparison design is sound — **Evidence Anchor**: `text: abstract "Random Forest, XGBoost, Logistic Regression, and SVM"`
+3. Policy implications of the top five important features are insightful — **Evidence Anchor**: `table: Table with top-5 feature importances (enrollment rate, current liability ratio, faculty turnover, graduate enrollment achievement, industry-academia revenue share)`
 
 **Key Weaknesses**:
 1. Imbalance between technical and educational insight — Discussion almost exclusively discusses model performance, lacking dialogue with educational theory
+   - **Severity**: Major | **Evidence Anchor**: `absence: §6 Discussion — expected dialogue with educational/organizational theory on feature importance; checked §6 Discussion, §7 Conclusion` | **Confidence**: 4 — journal-fit and cross-disciplinary balance within EIC's core remit
 2. Model stability with 12 positive cases is concerning
+   - **Severity**: Major | **Evidence Anchor**: `text: abstract "12 institutions that had ceased operations or been designated for special guidance after 2018"` | **Confidence**: 3 — adjacent expertise: general model-stability concern, technical depth deferred to R1
 3. Lacks external model validation (e.g., using data from other countries/regions)
+   - **Severity**: Minor | **Evidence Anchor**: `absence: §5 Discussion/Limitations — expected external (cross-national) validation; checked §4 Results, §5 Discussion` | **Confidence**: 4 — journal-fit generalizability judgment
 
 ---
 
@@ -124,15 +127,19 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 **Core view**: There are several important technical issues with the ML methodology that need to be resolved. Twelve positive cases are this paper's biggest methodological challenge — not insurmountable, but requiring more careful handling and more conservative claims.
 
 **Key Strengths**:
-1. Four-model comparison (RF, XGBoost, LR, SVM) design is sound
-2. Using SMOTE for class imbalance at least shows the authors are aware of this issue
-3. Using AUC rather than Accuracy as the primary metric is correct
+1. Four-model comparison (RF, XGBoost, LR, SVM) design is sound — **Evidence Anchor**: `text: abstract "comparing the predictive performance of four classification models"`
+2. Using SMOTE for class imbalance at least shows the authors are aware of this issue — **Evidence Anchor**: `text: abstract "employing SMOTE to address class imbalance"`
+3. Using AUC rather than Accuracy as the primary metric is correct — **Evidence Anchor**: `text: abstract "XGBoost performed best (AUC = 0.94, F1 = 0.87)"`
 
 **Key Weaknesses**:
 1. **Temporal Leakage Risk** (Critical): The paper uses the complete 2010-2023 dataset for k-fold CV, but closure is a time-series event. The correct approach is temporal split (e.g., train on 2010-2019, validate on 2020-2023), otherwise the model may use "future" information
+   - **Severity**: Critical | **Evidence Anchor**: `absence: §3 Methods — expected a temporal (out-of-time) split; checked §3 Methods, §4 Results` | **Confidence**: 5 — core expertise: time-series validation design for classification models
 2. **SMOTE with Extremely Small Positives** (Critical): 12 positive cases with SMOTE-generated synthetic samples, but SMOTE's effectiveness is very unstable with extremely small samples. Suggest comparing SMOTE vs ADASYN vs cost-sensitive learning
+   - **Severity**: Critical | **Evidence Anchor**: `text: abstract "12 institutions... employing SMOTE to address class imbalance"` | **Confidence**: 5 — core expertise: class-imbalance handling for small-N classification
 3. **Overfitting** (Major): 47 features + 12 positive cases -> feature count far exceeds positive count, overfitting risk is extremely high. Must report feature selection (e.g., recursive feature elimination) results
+   - **Severity**: Major | **Evidence Anchor**: `absence: §3 Methods — expected a feature-selection step reported against 47 features vs. 12 positive cases; checked §3 Methods, §4 Results` | **Confidence**: 5 — core expertise: overfitting risk in high-dimension/small-N classification
 4. **Missing Confidence Intervals** (Major): AUC=0.94 but no bootstrapped 95% CI; with 12 positive cases the CI may be extremely wide
+   - **Severity**: Major | **Evidence Anchor**: `absence: §4 Results — expected a bootstrapped 95% CI on AUC = 0.94; checked §4 Results, tables` | **Confidence**: 5 — core expertise: model evaluation reporting standards
 
 **Questions for Authors**:
 1. Please provide temporal split results. If there are only 12 positive cases and most closures occurred in recent years, temporal split may further reduce the positive count — how would you handle this?
@@ -147,14 +154,17 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 **Core view**: From an institutional research perspective, the paper's data handling is basically sound, and the 47 features cover the main institutional indicators. However, there are several key data quality and definition issues that need clarification.
 
 **Key Strengths**:
-1. 47 feature variables cover enrollment, finance, faculty, research, and industry-academia collaboration — five major dimensions, more comprehensive than most similar studies
-2. Using publicly available Ministry of Education data provides high research reproducibility
-3. Top five features are consistent with practical experience in institutional research
+1. 47 feature variables cover enrollment, finance, faculty, research, and industry-academia collaboration — five major dimensions, more comprehensive than most similar studies — **Evidence Anchor**: `text: abstract "47 feature variables were included (enrollment rate, financial indicators, faculty structure, industry-academia collaboration, etc.)"`
+2. Using publicly available Ministry of Education data provides high research reproducibility — **Evidence Anchor**: `text: abstract "publicly available Ministry of Education data (2010-2023, covering 152 higher education institutions)"`
+3. Top five features are consistent with practical experience in institutional research — **Evidence Anchor**: `table: Table with top-5 feature importances — "freshman enrollment rate, current liability ratio, full-time faculty turnover rate, graduate program enrollment achievement rate, industry-academia collaboration revenue share"`
 
 **Key Weaknesses**:
 1. **"Closure" Definition Not Precise Enough** (Major): Do the 12 positive cases include both "cessation" and "merger"? The causes may be completely different — some mergers are strategic (such as successful merger upgrades) and should not be categorized as "closure failure"
+   - **Severity**: Major | **Evidence Anchor**: `absence: §3 Methods — expected an operational definition distinguishing cessation from merger among the 12 positive cases; checked §3 Methods, Data section` | **Confidence**: 5 — core expertise: institutional research operational definitions
 2. **Missing Non-Quantifiable but Critical Factors** (Major): Private university closure is often highly correlated with the following factors that are difficult to quantify — board governance quality, campus location (rural), institution type (religious, upgraded from vocational college). The paper needs to clearly indicate this in the limitations discussion
+   - **Severity**: Major | **Evidence Anchor**: `absence: §5 Discussion/Limitations — expected acknowledgment of non-quantifiable factors (governance, location, institution type); checked §3 Methods feature list, §5 Discussion` | **Confidence**: 5 — core expertise: Taiwan institutional research indicator systems
 3. **Cross-Year Data Consistency** (Minor): Have the indicator definitions changed from 2010-2023 (such as adjustments to Ministry of Education statistical items)? This needs explanation
+   - **Severity**: Minor | **Evidence Anchor**: `absence: §3 Methods Data section — expected a cross-year definitional-consistency note for 2010-2023; checked §3 Methods, §5 Discussion/Limitations` | **Confidence**: 4 — adjacent expertise: familiar with the data source, less central than the definitional finding above
 
 ---
 
@@ -165,14 +175,17 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 **Core view**: From the perspective of AI in public policy applications, this paper touches on an important but dangerous territory — using algorithms to "flag" universities that may close. Technically it may be feasible, but ethical and policy considerations are seriously insufficient.
 
 **Key Strengths**:
-1. Willingness to explore predictive AI applications in higher education policy, at the research frontier
-2. Feature importance analysis provides a preliminary attempt at explainability
-3. Clear practical motivation for the research
+1. Willingness to explore predictive AI applications in higher education policy, at the research frontier — **Evidence Anchor**: `text: §1 Introduction "machine learning offers a new evidence base for closure-risk policy"`
+2. Feature importance analysis provides a preliminary attempt at explainability — **Evidence Anchor**: `table: Table with top-5 feature importances`
+3. Clear practical motivation for the research — **Evidence Anchor**: `text: abstract "provides an empirical basis for early warning tools for education authorities"`
 
 **Key Weaknesses**:
 1. **Self-Fulfilling Prophecy** (Critical): If the Ministry of Education uses this model, institutions labeled "high risk" may face — more difficult enrollment (parents and students seeing the prediction and avoiding the school), banks refusing loans, top faculty departing. The model's prediction could directly accelerate the school's closure. The paper completely fails to discuss this ethical issue. Suggest adding an "Ethical Implications" section.
+   - **Severity**: Critical | **Evidence Anchor**: `absence: §5/§6 Discussion — expected an ethical-implications discussion of prediction-induced closure risk; checked §5 Discussion, §6 Conclusion` | **Confidence**: 4 — core expertise: AI ethics in public-sector policy application
 2. **Algorithmic Fairness** (Major): Could the model have systematic bias against certain types of institutions? For example: rural institutions naturally have lower enrollment rates; vocational institutions have different financial structures from regular universities; indigenous colleges are established for purposes other than scale. Without considering these structural differences, the model may "punish" institutions that are already disadvantaged.
+   - **Severity**: Major | **Evidence Anchor**: `absence: §3 Methods — expected a fairness/subgroup-bias analysis across institution type; checked §3 Methods, §4 Results` | **Confidence**: 4 — core expertise: algorithmic fairness in public-sector models
 3. **Black Box Problem and Policy Acceptability** (Major): XGBoost's explainability is insufficient to support high-stakes policy decisions. At minimum, suggest providing SHAP (SHapley Additive exPlanations) analysis so that each institution's prediction results can be explained. In public policy, "why the model made this judgment" is more important than "whether the model is accurate."
+   - **Severity**: Major | **Evidence Anchor**: `absence: §3/§4 Methods/Results — expected case-level explainability (e.g. SHAP) beyond aggregate feature importance; checked §3 Methods, §4 Results` | **Confidence**: 3 — adjacent expertise: policy-acceptability judgment, technical explainability detail deferred to R1
 
 **Cross-Disciplinary Reading Recommendations**:
 - O'Neil, C. (2016). *Weapons of Math Destruction*. Crown.
@@ -209,23 +222,24 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 **Disagreement 2: Weight of ethical issues**
 - **R3**: Self-fulfilling prophecy is Critical level
 - **R1/R2**: Ethics is important but doesn't affect academic quality judgment
-- **Resolution**: R3's confidence is only 3/5, but their viewpoint is a widely recognized core issue in public policy AI applications. Listed as P1 but handled by "adding a discussion section" approach, without requiring the author to modify the model.
+- **Resolution**: R3's per-finding Confidence on this issue is 4 (core expertise: AI ethics in public-sector policy application — the per-finding value governs arbitration, not the report-level score, #574 A3), and the viewpoint is a widely recognized core issue in public policy AI applications. Listed as P1 but handled by "adding a discussion section" approach, without requiring the author to modify the model.
 
 ### Revision Roadmap
 
 **Priority 1 — Structural Revisions (Estimated effort: 12-16 days)**
-- [ ] R1: Execute temporal split validation and report results (Source: R1-W1, Critical)
-- [ ] R2: Compare SMOTE vs ADASYN vs cost-sensitive learning (Source: R1-W2, Critical)
-- [ ] R3: Add "Ethical Implications" section, discussing self-fulfilling prophecy and algorithmic fairness (Source: R3-W1/W2, Critical)
-- [ ] R4: Add SHAP analysis, providing case-level explainability (Source: R3-W3, Major)
-- [ ] R5: Execute feature selection, report reduced model performance (Source: R1-W3, Major)
+- [ ] R1: Execute temporal split validation and report results (Source: R1-W1) — Severity: Critical | Anchor: `absence: §3 Methods — expected a temporal (out-of-time) split; checked §3 Methods, §4 Results` | Confidence: 5
+- [ ] R2: Compare SMOTE vs ADASYN vs cost-sensitive learning (Source: R1-W2) — Severity: Critical | Anchor: `text: abstract "12 institutions... employing SMOTE to address class imbalance"` | Confidence: 5
+- [ ] R3a: Add "Ethical Implications" section discussing the self-fulfilling prophecy risk (Source: R3-W1) — Severity: Critical | Anchor: `absence: §5/§6 Discussion — expected an ethical-implications discussion of prediction-induced closure risk; checked §5 Discussion, §6 Conclusion` | Confidence: 4
+- [ ] R3b: Add a fairness/subgroup-bias analysis across institution types (Source: R3-W2) — Severity: Major | Anchor: `absence: §3 Methods — expected a fairness/subgroup-bias analysis across institution type; checked §3 Methods, §4 Results` | Confidence: 4
+- [ ] R4: Add SHAP analysis, providing case-level explainability (Source: R3-W3) — Severity: Major | Anchor: `absence: §3/§4 Methods/Results — expected case-level explainability (e.g. SHAP) beyond aggregate feature importance; checked §3 Methods, §4 Results` | Confidence: 3
+- [ ] R5: Execute feature selection, report reduced model performance (Source: R1-W3) — Severity: Major | Anchor: `absence: §3 Methods — expected a feature-selection step reported against 47 features vs. 12 positive cases; checked §3 Methods, §4 Results` | Confidence: 5
 
 **Priority 2 — Content Supplementation (Estimated effort: 6-8 days)**
-- [ ] S1: Report bootstrapped 95% CI (Source: R1-W4)
-- [ ] S2: Precisely define "closure," distinguishing cessation from merger (Source: R2-W1)
-- [ ] S3: Strengthen educational theory dialogue on feature importance in the discussion (Source: EIC-W1)
-- [ ] S4: Discuss the absence of non-quantifiable factors in limitations (Source: R2-W2)
-- [ ] S5: Discuss cross-year data consistency handling (Source: R2-W3)
+- [ ] S1: Report bootstrapped 95% CI (Source: R1-W4) — Severity: Major | Anchor: `absence: §4 Results — expected a bootstrapped 95% CI on AUC = 0.94; checked §4 Results, tables` | Confidence: 5
+- [ ] S2: Precisely define "closure," distinguishing cessation from merger (Source: R2-W1) — Severity: Major | Anchor: `absence: §3 Methods — expected an operational definition distinguishing cessation from merger among the 12 positive cases; checked §3 Methods, Data section` | Confidence: 5
+- [ ] S3: Strengthen educational theory dialogue on feature importance in the discussion (Source: EIC-W1) — Severity: Major | Anchor: `absence: §6 Discussion — expected dialogue with educational/organizational theory on feature importance; checked §6 Discussion, §7 Conclusion` | Confidence: 4
+- [ ] S4: Discuss the absence of non-quantifiable factors in limitations (Source: R2-W2) — Severity: Major | Anchor: `absence: §5 Discussion/Limitations — expected acknowledgment of non-quantifiable factors (governance, location, institution type); checked §3 Methods feature list, §5 Discussion` | Confidence: 5
+- [ ] S5: Discuss cross-year data consistency handling (Source: R2-W3) — Severity: Minor | Anchor: `absence: §3 Methods Data section — expected a cross-year definitional-consistency note for 2010-2023; checked §3 Methods, §5 Discussion/Limitations` | Confidence: 4
 
 **Priority 3 — Text and Formatting (Estimated effort: 2 days)**
 - [ ] Adjust title to highlight the predictive model's policy implications

@@ -64,66 +64,60 @@ This template is used by all reviewer agents (EIC, Reviewers 1-3). Each reviewer
 Requirements:
 - Sentences 1-2: What the paper does (topic, methods, main findings)
 - Sentences 3-4: Overall quality assessment (from your review focus perspective)
-- Sentences 5-6: Most critical strengths and weaknesses
+- Sentences 5-6: Most critical strengths and weaknesses among the findings you actually made — a one-polarity review mentions only that polarity, never manufactured balance (#574 A1)
 - Final: Your recommendation rationale
 
 ---
 
 ## Strengths *
 
-List 3-5 strengths of the paper. Each must:
+List every genuine strength you actually found — no minimum, no maximum (#574 A1). Do not manufacture praise to fill a quota; an empty list is valid and triggers the Coverage Receipt below. Each strength must:
 - Have a specific title
-- Cite passages, data, or page numbers from the paper
+- Carry a typed evidence anchor (see § Evidence Anchor Types under Format Guidelines)
 - Explain why it is a strength
 
-### S1: [Strength title] *
+### S1: [Strength title]
 [Specific description. E.g., "The research design uses a quasi-experimental pretest-posttest control group design (p. X), effectively controlling for..."]
+**Evidence Anchor**: [`<type>: <locator>` — see § Evidence Anchor Types]
 
-### S2: [Strength title] *
-[Specific description]
-
-### S3: [Strength title] *
-[Specific description]
-
-### S4: [Strength title]
-[Optional]
-
-### S5: [Strength title]
-[Optional]
+### S2..Sn
+[Repeat the S1 structure for each additional strength — as many entries as the evidence supports, including zero.]
 
 ---
 
 ## Weaknesses *
 
-List 3-5 weaknesses of the paper. Each must:
+List every weakness you actually found — no minimum, no maximum (#574 A1). Do not manufacture findings to fill a quota, and do not omit real ones to seem agreeable; an empty list is valid and triggers the Coverage Receipt below. Each weakness must:
 - Have a specific title
 - Describe the specific problem
 - Explain why it is a problem
 - Provide specific improvement suggestions
+- Carry a typed Evidence Anchor, a Severity, and a per-finding Confidence (fields below)
 
-### W1: [Weakness title] *
-**Problem**: [Specific description of the problem, citing paper passages]
+### W1: [Weakness title]
+**Problem**: [Specific description of the problem]
+**Evidence Anchor**: [`<type>: <locator>` per § Evidence Anchor Types — REQUIRED with an adequate, applicable type for Critical/Major findings (#574 A2)]
 **Why it matters**: [Explain the impact of this problem]
 **Suggestion**: [Specific improvement direction]
-**Severity**: [Critical / Major / Minor]
+**Severity**: [Critical / Major / Minor] — the Schema 6 enum (§ Severity Levels below); set by decision impact alone (#574 A3/B1)
+**Confidence**: [1-5] — [competence basis, one phrase: e.g. "core expertise: psychometrics" / "adjacent field: applying general standards"] (#574 A3)
 
-### W2: [Weakness title] *
-**Problem**: [...]
-**Why it matters**: [...]
-**Suggestion**: [...]
-**Severity**: [Critical / Major / Minor]
+### W2..Wn
+[Repeat the W1 structure for each additional weakness — as many entries as the evidence supports, including zero.]
 
-### W3: [Weakness title] *
-**Problem**: [...]
-**Why it matters**: [...]
-**Suggestion**: [...]
-**Severity**: [Critical / Major / Minor]
+---
 
-### W4: [Weakness title]
-[Optional, same format as above]
+## Coverage Receipt (conditional *)
 
-### W5: [Weakness title]
-[Optional, same format as above]
+REQUIRED whenever the Strengths list or the Weaknesses list above is EMPTY (#574 A1): removing the finding quotas is not permission for a thin review. State which polarity the receipt covers, then one row per review dimension you actually examined (use your Detailed Comments sub-sections as the dimension list):
+
+**Covers**: [Strengths / Weaknesses / both]
+
+| Dimension examined | What you checked | Basis for "nothing found" |
+|--------------------|------------------|---------------------------|
+| [e.g. Sampling strategy] | [what you looked at] | [why nothing of the covered polarity rose to a finding] |
+
+The basis column speaks only to the covered polarity — "no strength found" or "no weakness found", never a blanket "no finding" when the other list is populated. An empty finding list without its Coverage Receipt is invalid.
 
 ---
 
@@ -190,6 +184,8 @@ List 2-4 questions requiring author response. These questions should:
 
 List minor issues that don't affect academic quality but need correction.
 
+**Non-finding channel (#574 A2/A3 boundary):** entries here are copyedit-level items BELOW the finding threshold — they carry no Severity/Evidence Anchor/Confidence fields and never enter Schema 6 `weaknesses[]` (the synthesizer merges them into Priority 3 as aggregated editorial items, not transported findings). Anything with decision impact belongs in Weaknesses with the full field set.
+
 ### Language / Grammar
 - [Page X, Line Y: Specific language issue]
 - [...]
@@ -236,16 +232,37 @@ Score each dimension 0-100 using the rubrics in `references/quality_rubrics.md`.
 | **Major** | Significantly affects paper quality | Strongly Recommended |
 | **Minor** | Better if fixed, acceptable if not | Suggested |
 
-### How to Cite Paper Passages
+These levels ARE the Schema 6 `severity` enum (`shared/handoff_schemas.md` § Weakness Object) — the single source for finding severity across the reviewer stack (#574 A3). Every weakness entry carries its level explicitly; the Devil's Advocate's OBSERVATION category is a non-defect channel that never maps into this enum. Severity is set by these decision-impact definitions alone: respectful register never lowers a level, and adversarial or rigor-signaling framing never raises one (#574 B1).
+
+### Evidence Anchor Types (#574 A2)
+
+Every finding carries ONE typed evidence anchor matched to its evidence — a verbatim quote + page is one type, not a universal requirement:
+
+| Type | Use for | Locator content |
+|------|---------|-----------------|
+| `text` | Claims the manuscript states | Verbatim quote (≤ 25 words) + section/page/paragraph |
+| `table` | Numeric/tabular evidence | Table number + row/column or the cell value cited |
+| `figure` | Visual evidence | Figure number + panel/feature |
+| `equation` | Formal/mathematical content | Equation number (or section) + the term at issue |
+| `dataset` | Data/artifact properties as reported in the manuscript | Artifact name + the property at issue |
+| `absence` | Omissions — missing statement, section, analysis, or reference | `absence_scope` (where it should appear) + what was expected + which surfaces you checked |
+
+Rules:
+- **Critical/Major findings MUST carry an adequate anchor of an applicable type** (#574 A2). A Critical/Major claim you cannot anchor with any applicable type is not yet a finding — do the check that produces the anchor, or route it to Questions for Authors.
+- An `absence` anchor is only checkable if it names where you looked — "the paper never states X" requires "checked Methods, Limitations, appendix".
+- Minor findings carry an anchor too; a section-level locator suffices.
 
 ```
-# Correct
-"The author states on p. 12: 'AI can replace human judgment in QA processes,' but..."
+# Correct (text)
+Evidence Anchor: text: p. 12 "AI can replace human judgment in QA processes"
 
-# Correct
-"The data in Table 3 shows p = 0.04, but the author does not report effect sizes..."
+# Correct (table)
+Evidence Anchor: table: Table 3 — p = 0.04 reported without an effect size
 
-# Incorrect (too vague)
+# Correct (absence)
+Evidence Anchor: absence: Methods — expected a consent/ethics statement; checked §3, §6, appendix
+
+# Incorrect (untyped, unlocated)
 "Methodology has problems"
 "Literature review is not comprehensive enough"
 ```
@@ -265,3 +282,5 @@ Score each dimension 0-100 using the rubrics in `references/quality_rubrics.md`.
 # Bad
 "This method is wrong."
 ```
+
+Tone is register, not severity (#574 B1): these phrasing rules change WORDING only — they never lower a finding's severity, and blunt phrasing never raises one.

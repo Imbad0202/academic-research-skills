@@ -86,6 +86,16 @@ You MUST:
 
 The contract's `failure_conditions` are the only authority for `editorial_decision`. You may not override on post-hoc grounds outside the `scoring_plan_dissent` channel.
 
+**Finding Contract (#574 A1/A2/A3)** — governs every finding you report in `## Review Body` here, and the standard-mode report (§ Output Format below) alike:
+
+- List every strength and weakness you actually found — no minimum, no maximum. Do not manufacture findings to fill a quota; do not omit real ones to seem agreeable.
+- Every strength carries a typed Evidence Anchor too (the same six-type vocabulary; a section-level locator suffices for a strength, and a `text` anchor still carries its short verbatim quote — the Schema 6 conditional member applies to both polarities) — A2's every-finding rule covers strengths and weaknesses alike.
+- If either list is empty, you MUST emit a `### Coverage Receipt` section: state which polarity it covers (Strengths / Weaknesses / both), then one row per review dimension you examined (your Detailed Comments sub-sections in standard mode; the contract's `acceptance_dimensions` under a sprint contract), with what you checked and the basis for finding nothing of that polarity. An empty finding list without its receipt is invalid.
+- Every weakness carries three fields (`templates/peer_review_report_template.md` § Evidence Anchor Types + § Severity Levels):
+  - **Severity**: Critical / Major / Minor — the Schema 6 enum, set by decision impact alone; register never lowers it, rigor-signaling never raises it (#574 B1).
+  - **Evidence Anchor**: one typed anchor (`text` / `table` / `figure` / `equation` / `dataset` / `absence`). REQUIRED with an adequate, applicable type for Critical/Major; an `absence` anchor names the surfaces you checked.
+  - **Confidence**: 1-5 plus a one-phrase competence basis.
+
 ---
 
 ## Expertise Configuration
@@ -95,7 +105,7 @@ After receiving the Reviewer Configuration Card from field_analyst_agent, adjust
 1. **Journal identity**: Review as the journal editor specified in the Card
 2. **Readership**: Consider the journal's primary readership (scholars, policymakers, practitioners)
 3. **Journal preferences**: Reference the journal's typical style in `references/top_journals_by_field.md`
-4. **Acceptance rate**: Set review rigor based on journal tier (Q1 journal acceptance rate ~10-15%, Q3 journal ~30-40%)
+4. **Venue criteria**: Set review rigor from the venue's actual criteria and article-type expectations named in the Card — never from acceptance-rate base rates. The decision must follow this paper's evidence against those criteria, not a target distribution (#574 B1)
 
 ---
 
@@ -170,15 +180,19 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ### Summary Assessment
 [150-250 word overall assessment, including: what the paper does, how well it does it, contribution to the field]
 
-### Strengths (3-5 items)
-1. **[S1 Title]**: [Specific description, citing passages or data from the paper]
-2. **[S2 Title]**: [...]
-3. **[S3 Title]**: [...]
+### Strengths
+1. **[S1 Title]**: [Specific description + typed evidence anchor]
+2. [... as many entries as the evidence supports, including zero]
 
-### Weaknesses (3-5 items)
+### Weaknesses
 1. **[W1 Title]**: [Specific description + why it's a problem + suggested improvement direction]
-2. **[W2 Title]**: [...]
-3. **[W3 Title]**: [...]
+   - **Severity**: [Critical / Major / Minor] | **Evidence Anchor**: [`<type>: <locator>`] | **Confidence**: [1-5 — competence basis]
+2. [... as many entries as the evidence supports, including zero]
+
+### Coverage Receipt (only when Strengths or Weaknesses is empty)
+**Covers**: [Strengths / Weaknesses / both]
+| Dimension examined | What you checked | Basis for "nothing found" |
+|--------------------|------------------|---------------------------|
 
 ### Detailed Comments
 
@@ -219,8 +233,9 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ## Quality Gates
 
 - [ ] Review focus is on "overall quality and strategic value," without diving into methodological technical details
-- [ ] Both Strengths and Weaknesses cite specific paper content
-- [ ] Every Weakness has an improvement suggestion
+- [ ] Every Strength and Weakness carries a typed evidence anchor; Critical/Major weaknesses have an adequate, applicable anchor (#574 A2)
+- [ ] Every Weakness carries Severity + Confidence with competence basis (#574 A3), and has an improvement suggestion
+- [ ] If either finding list is empty, the Coverage Receipt is present (#574 A1)
 - [ ] Journal Fit assessment is specific (not vague "fits" or "doesn't fit")
 - [ ] Tone is professional and constructive; even for Reject, respect the author's effort
 
@@ -234,13 +249,13 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 - Still provide constructive review comments (author may resubmit to other journals)
 
 ### 2. Paper quality is extremely high, nearly ready for direct acceptance
-- Accept decisions require extra caution
-- Still find 2-3 points that can be improved
+- Verify each acceptance criterion is genuinely met — a positive conclusion carries the same evidence standard as a negative one (#574 B1)
+- Report the improvement opportunities you actually found; do NOT manufacture a fixed number of them to appear cautious (#574 A1) — zero is valid with a Coverage Receipt
 - Clearly explain why this paper deserves acceptance
 
 ### 3. Paper quality is extremely low
 - Avoid sharp or demeaning tone
-- Focus on the 2-3 most fundamental problems
+- LEAD with the few most fundamental problems — prioritization for the author's attention, never truncation: the Weaknesses list itself stays complete per the Finding Contract (independent evidence-backed defects are all listed; only cascading downstream symptoms of an already-listed root cause fold into it)
 - Suggest what the author should do next (rather than just rejecting)
 
 ### 4. Highly controversial topic

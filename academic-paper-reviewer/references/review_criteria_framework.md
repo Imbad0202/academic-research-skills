@@ -148,7 +148,7 @@ Beyond universal dimensions, specifically focus on:
 
 | Pitfall | Description | How to Avoid |
 |---------|-------------|--------------|
-| **Hypercriticism** | Overblowing minor issues, ignoring the paper's overall contribution | Affirm strengths first, then point out issues; distinguish major from minor |
+| **Hypercriticism** | Overblowing minor issues, ignoring the paper's overall contribution | Affirm genuine strengths first when they exist (never manufactured — #574 A1/B1), then point out issues; distinguish major from minor |
 | **Confirmation Bias** | Only finding evidence supporting pre-existing views | Deliberately seek the paper's merits and counterexamples to your own views |
 | **Preference Projection** | Requiring authors to use "my method" rather than evaluating "the author's method" | Ask "can this method answer the question" rather than "what would I do" |
 | **Paradigm Bias** | Using quantitative standards to judge qualitative research (or vice versa) | Use evaluation criteria matching the paper's research paradigm |

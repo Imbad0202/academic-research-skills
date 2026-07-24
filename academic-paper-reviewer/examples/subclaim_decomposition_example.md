@@ -10,10 +10,12 @@ It is a focused illustration of one weakness bundle, not a full Phase 0–2 walk
 
 The paper reports a multi-site mixed-effects analysis. Three reviewers raised concerns that **look like "one statistics weakness"** but are actually two distinct claims:
 
-- **R1 (Methodology), Confidence 5:** "Two problems. First, the statistical reporting is inconsistent — Table 3 gives standardized betas, Table 4 raw coefficients, with no key. Second, the mixed-model random-effects grouping is never specified: are sites or participants the grouping factor?"
-- **R2 (Domain), Confidence 4:** "I agree the random-effects structure is unclear — the paper doesn't say what the grouping variable is."
-- **R3 (Cross-disciplinary), Confidence 3:** "The reporting tables were hard to follow; the units shift between tables."
+- **R1 (Methodology), Severity: Major, Confidence 5** (anchors: `absence: §3 Methods — random-effects grouping factor never specified; checked §3 Methods, §4 Results` / `table: Table 3 standardized betas vs Table 4 raw coefficients, no key`; competence: core expertise — multi-site mixed-effects design): "Two problems. First, the statistical reporting is inconsistent — Table 3 gives standardized betas, Table 4 raw coefficients, with no key. Second, the mixed-model random-effects grouping is never specified: are sites or participants the grouping factor?"
+- **R2 (Domain), Severity: Major, Confidence 4** (anchor: `absence: §3 Methods — grouping variable unspecified; checked §3 Methods`; competence: core expertise — quantitative methods in the domain): "I agree the random-effects structure is unclear — the paper doesn't say what the grouping variable is."
+- **R3 (Cross-disciplinary), Severity: Major, Confidence 3** (anchor: `table: Tables 3–4 — units shift between tables, no key`; competence: adjacent — reporting clarity, not mixed-model design): "The reporting tables were hard to follow; the units shift between tables."
 - **EIC, Confidence 4:** Did not comment on the statistics specifically.
+
+> **Atomicity note (#574 A2/A3):** R1's card bundles two sub-claims into ONE weakness — a fully-conformant current-format card would have emitted them as two separate atomic weaknesses, each with its own single `evidence_anchor` object (Schema 6). Step 1b decomposition is the synthesizer's guard for bundles that still arrive; the two parenthetical anchors above are the bundle's internal evidence, and the transport rows below carry each sub-claim's own anchor.
 
 ---
 
@@ -31,18 +33,18 @@ What went wrong: the bundle holds **two** sub-claims with **different** support 
 
 ### Step 1b — Weakness Sub-Claim Inventory
 
-| sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | confidence |
-|--------------|-----------------|-------------|----------|------------------|------------|
-| SC-1 | Statistics | R1 | raised | "random-effects grouping never specified" | 5 |
-| SC-1 | Statistics | R2 | corroborated | "random-effects structure is unclear" | 4 |
-| SC-1 | Statistics | R3 | not-mentioned | — | — |
-| SC-1 | Statistics | EIC | not-mentioned | — | — |
-| SC-2 | Statistics | R1 | raised | "Table 3 betas vs Table 4 raw coeffs, no key" | 5 |
-| SC-2 | Statistics | R3 | corroborated | "units shift between tables" | 3 |
-| SC-2 | Statistics | R2 | not-mentioned | — | — |
-| SC-2 | Statistics | EIC | not-mentioned | — | — |
+| sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | severity | confidence |
+|--------------|-----------------|-------------|----------|------------------|----------|------------|
+| SC-1 | Statistics | R1 | raised | `absence: §3 Methods — grouping factor never specified; checked §3, §4` | major | 5 |
+| SC-1 | Statistics | R2 | corroborated | `absence: §3 Methods — grouping variable unspecified; checked §3 Methods` | major | 4 |
+| SC-1 | Statistics | R3 | not-mentioned | — | — | — |
+| SC-1 | Statistics | EIC | not-mentioned | — | — | — |
+| SC-2 | Statistics | R1 | raised | `table: Table 3 standardized betas vs Table 4 raw coefficients, no key` | major | 5 |
+| SC-2 | Statistics | R3 | corroborated | `table: Tables 3–4 — units shift between tables, no key` | major | 3 |
+| SC-2 | Statistics | R2 | not-mentioned | — | — | — |
+| SC-2 | Statistics | EIC | not-mentioned | — | — | — |
 
-Two atomic sub-claims fall out of the one "statistics" bundle. `not-mentioned` is recorded as silence, not opposition.
+Two atomic sub-claims fall out of the one "statistics" bundle. `not-mentioned` is recorded as silence, not opposition. Note the severity column: both R1 rows carry the SAME transported severity — they decompose from R1's one "Statistics" weakness, whose single per-finding Severity is inherited by every sub-claim split from it (#574 A3); a severity difference between sub-claims requires different parent weaknesses, never re-rating.
 
 ### Step 2 — consensus per sub_claim (denominator = 4 non-DA reviewers)
 
@@ -58,10 +60,10 @@ Neither sub-claim triggers EIC arbitration — there is no `disputed` position a
 Instead of one blurred "fix the statistics" line, two separately-prioritized, traceable items:
 
 > **Priority 1 — Structural (Must Fix)**
-> - **[SC-1]** Specify the mixed-model random-effects grouping factor (sites vs participants) and re-state the model. *Raised R1 (conf 5), corroborated R2 (conf 4).*
+> - **[SC-1]** Specify the mixed-model random-effects grouping factor (sites vs participants) and re-state the model. *Severity: major (transported) | Anchor: `absence: §3 Methods — random-effects grouping factor never specified; checked §3 Methods, §4 Results` (transported) | Raised R1 (conf 5), corroborated R2 (conf 4).*
 >
 > **Priority 2 — Content Supplementation (Should Fix)**
-> - **[SC-2]** Standardize coefficient reporting across Tables 3–4 (one convention + a key). *Raised R1 (conf 5), corroborated R3 (conf 3).*
+> - **[SC-2]** Standardize coefficient reporting across Tables 3–4 (one convention + a key). *Severity: major (transported) | Anchor: `table: Table 3 standardized betas vs Table 4 raw coefficients, no key` (transported) | Raised R1 (conf 5), corroborated R3 (conf 3).*
 
 Each item carries its `sub_claim_id`, traces back to the Step 1b inventory, and flows forward into `academic-paper` revision mode unchanged in format. The minority-risk sub-claim (the grouping factor) is now its own Priority-1 item rather than buried in a bundle.
 

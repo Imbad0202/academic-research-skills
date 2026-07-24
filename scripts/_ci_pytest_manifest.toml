@@ -311,3 +311,11 @@ path = "scripts/test_check_revision_token_conservation.py"
 [[pytest]]
 id = "574-seeded-defect-fixtures"
 path = "scripts/test_check_seeded_defect_fixtures.py"
+
+[[pytest]]
+id = "574-reviewer-data-fences"
+path = "scripts/test_check_reviewer_data_fences.py"
+
+[[pytest]]
+id = "574-reviewer-finding-contract"
+path = "scripts/test_check_reviewer_finding_contract.py"
