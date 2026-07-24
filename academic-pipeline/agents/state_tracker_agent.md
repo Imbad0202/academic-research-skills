@@ -371,7 +371,7 @@ Check whether prerequisite materials for entering the specified stage are availa
 | Stage 2.5 | Paper Draft | -- |
 | Stage 3 | **Verified Paper Draft + Integrity Report (Pre)** | -- |
 | Stage 4 | Review Reports + Revision Roadmap | Paper Draft |
-| Stage 3' | Revised Draft + Round-1 Revision Roadmap | Response to Reviewers; Editorial Decision Letter (#539 Judge Record input); apply report(s) (#390); Round-1 Reviewer Configuration Cards (yardstick continuity) |
+| Stage 3' | Revised Draft + Round-1 Revision Roadmap (re-review mode — the default Stage 3'; not required when the user explicitly requests a fresh full review instead, e.g. the mid-entry quick→full path) | Response to Reviewers; Editorial Decision Letter (#539 Judge Record input); apply report(s) (#390); Round-1 Reviewer Configuration Cards (yardstick continuity) |
 | Stage 4' | Re-Review Report (Decision: Major) | Revised Draft |
 | Stage 4.5 | Revised Draft or Re-Revised Draft | -- |
 | Stage 5 | **Integrity Report (Final) — verdict: PASS** | -- |
