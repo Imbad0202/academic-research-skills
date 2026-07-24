@@ -255,7 +255,7 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | Response to Reviewers | Stage 4 | Stage 3' (input) | Recommended |
 | Editorial Decision Letter (Schema 6) | Stage 3 | Stage 3' (input) | Recommended (#539 — its Review Panel Provenance block feeds the Judge Record; absent → "unknown (provenance block absent)") |
 | Apply report(s) (#390 sidecar) | Stage 4 | Stage 3' (input) + Stage 4.5 (input) | Recommended (patch-apply rounds only; `output_draft_hash` checked against the Revised Draft first) |
-| Reviewer Configuration Cards | Stage 3 (field_analyst) | Stage 3' (yardstick continuity — field_analyst NOT re-run) | Recommended (absent → visible regeneration fallback, `re_review_mode_protocol.md` § Yardstick Continuity) |
+| Reviewer Configuration Cards | Stage 3 (field_analyst) | Stage 3' (re-review mode — yardstick continuity; field_analyst NOT re-run) | Recommended (absent → visible regeneration fallback, `re_review_mode_protocol.md` § Yardstick Continuity; a fresh full review at 3' regenerates by definition) |
 | **Re-Review Report** | **Stage 3'** | **Stage 4' (input)** | **Required (if Major)** |
 | **Re-Revised Draft** | **Stage 4'** | **Stage 4.5 (input)** | **Required (if executed)** |
 | **Integrity Report (Final)** | **Stage 4.5** | **Stage 5 (prerequisite)** | **Required** |
