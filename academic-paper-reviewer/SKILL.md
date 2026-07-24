@@ -213,7 +213,7 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 | Mode | Trigger | Agents | Output |
 |------|---------|--------|--------|
 | `full` | Default / "full review" | All 7 agents | 5 review reports + Editorial Decision + Revision Roadmap |
-| **`re-review`** | **Pipeline Stage 3' / "verification review"** | **field_analyst + eic + editorial_synthesizer** | **Revision response checklist + residual issues + new Decision** |
+| **`re-review`** | **Pipeline Stage 3' / "verification review"** | **eic + editorial_synthesizer (Round-1 Reviewer Configuration Cards reused — field_analyst NOT re-run; fallback marker `[YARDSTICK-REGENERATED]`, see `re_review_mode_protocol.md` § Yardstick Continuity)** | **Revision response checklist + residual issues + new Decision** |
 | `quick` | "quick review" | field_analyst + eic | EIC quick assessment + key issues list (15-minute version) |
 | `methodology-focus` | "check methodology" | field_analyst + eic + methodology_reviewer | In-depth methodology review report (panel 2 under v3.6.2 sprint contract: EIC + methodology) |
 | `guided` | "guide me" | All + Socratic dialogue | Socratic issue-by-issue guided review |

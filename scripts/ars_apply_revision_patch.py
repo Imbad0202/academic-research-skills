@@ -79,7 +79,12 @@ from scripts._block_parser import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PATCH_SCHEMA_PATH = REPO_ROOT / "shared" / "contracts" / "patch" / "revision_patch.schema.json"
 DOC_BODY_START = "DOC-BODY-START"
-REPORT_FORMAT_VERSION = "1.0"
+# 1.1: report gains `output_draft_hash` (same 12-hex format as
+# `base_draft_hash`) so the report is bound to the exact revised-draft bytes
+# it describes — any post-apply rewrite (finalizer pass, manual edit) is
+# detectable at the Stage 4 -> 3' handoff. Additive; consumers reading 1.0
+# fields are unaffected.
+REPORT_FORMAT_VERSION = "1.1"
 # #424 Slice B ship decision (spec §3.3 required it; recorded in the spec's
 # amendment log). Strict `>` comparator per the spec's "above a threshold":
 # 1.0 disables the trigger because touched/total never exceeds 1.0.
@@ -576,7 +581,8 @@ def run(
     if len(ids) != len(set(ids)):  # pragma: no cover - parser already rejects
         raise AssertionError("self-check: duplicate markers in apply output")
 
-    atomic_write_bytes(output_path, output_text.encode("utf-8"))
+    output_bytes = output_text.encode("utf-8")
+    atomic_write_bytes(output_path, output_bytes)
 
     counters_base = analysis["counters_base"]
     blocks_total = counters_base["blocks_total"]
@@ -588,6 +594,7 @@ def run(
         "base_path": str(base_path),
         "output_path": str(output_path),
         "base_draft_hash": patch["base_draft_hash"],
+        "output_draft_hash": base_draft_hash(output_bytes),
         "revision_round": patch["revision_round"],
         "ops_applied": phase2["ops_applied"],
         "fresh_block_ids": phase2["fresh_block_ids"],

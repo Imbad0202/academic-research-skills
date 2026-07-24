@@ -884,6 +884,52 @@ class TestAtomicityAndSelfCheck(ApplyHarness):
         self.assertTrue(all(i is not None for i in ids))
 
 
+class TestReportOutputHash(ApplyHarness):
+    """#576 pre-work: the apply report binds the revised draft it describes.
+
+    Without an output-side hash, a report can be paired with a draft that was
+    rewritten after apply (e.g. a finalizer pass) and nothing detects the swap
+    at the Stage 4 -> 3' handoff.
+    """
+
+    def _single_replace_patch(self, anchored: str) -> dict:
+        return _base_patch(
+            anchored,
+            [
+                {
+                    "op": "replace_block",
+                    "block_id": "B0003",
+                    "old_hash": _hash_of(anchored, "B0003"),
+                    "new_text": "Second paragraph, fully revised.",
+                    "roadmap_item_ids": ["REV-001"],
+                }
+            ],
+        )
+
+    def test_report_carries_output_draft_hash_of_written_bytes(self):
+        anchored = self.anchored_fixture()
+        self._write(anchored, self._single_replace_patch(anchored))
+        report = self._run()
+        self.assertEqual(
+            report["output_draft_hash"],
+            base_draft_hash(self.output_path.read_bytes()),
+        )
+        self.assertNotEqual(report["output_draft_hash"], report["base_draft_hash"])
+
+    def test_persisted_report_matches_returned_report(self):
+        anchored = self.anchored_fixture()
+        self._write(anchored, self._single_replace_patch(anchored))
+        report = self._run()
+        persisted = json.loads(self.report_path.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["output_draft_hash"], report["output_draft_hash"])
+
+    def test_report_format_version_bumped_for_output_hash(self):
+        anchored = self.anchored_fixture()
+        self._write(anchored, self._single_replace_patch(anchored))
+        report = self._run()
+        self.assertEqual(report["report_format_version"], "1.1")
+
+
 class TestCliExitCodes(ApplyHarness):
     def test_ok_is_0_rejection_is_2_structural_is_3(self):
         anchored = self.anchored_fixture()

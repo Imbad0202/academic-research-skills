@@ -10,11 +10,19 @@ Input:
 2. Revised manuscript
 3. Response to Reviewers (optional)
 4. Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record's Round-1 provenance; absent → "unknown (provenance block absent)")
+5. Round-1 Reviewer Configuration Cards (field_analyst output from the Round-1 review — see § Yardstick Continuity; absent → regeneration fallback with visible marker)
+6. Apply report(s) (`<output>.apply-report.json`, #390 — required when the revision round produced one via patch apply; absent for revisions made outside the patch toolchain. Check its `output_draft_hash` against the revised manuscript first — a mismatch means the draft was rewritten after apply and the untouched-block evidence is stale)
 
-Phase 0: Reads the Revision Roadmap, builds a checklist
+Phase 0: Loads the Round-1 Reviewer Configuration Cards (yardstick continuity), reads the Revision Roadmap, builds a checklist
 Phase 1: EIC checks each item (other reviewers not activated)
 Phase 2: Editorial Synthesis -> New Decision
 ```
+
+### Yardstick Continuity (Reviewer Configuration Freeze)
+
+Re-review MUST reuse the Round-1 Reviewer Configuration Cards. `field_analyst_agent` is **not** re-invoked at Stage 3': re-running it over the revised manuscript would regenerate the field analysis and reviewer focus from the post-revision text, silently changing the yardstick between rounds — Round-2 verdicts would then be judged against a different configuration than the one that produced the Roadmap being verified. The same freeze applies to the target venue: a changed target venue is a new review, not a re-review.
+
+**Fallback (cards unavailable):** when re-review is invoked standalone without the Round-1 review package, `field_analyst_agent` may be re-run — over the ORIGINAL (pre-revision) manuscript when it is available, else over the revised manuscript — and the Judge Record's Reviewer-configuration line MUST carry the visible marker `[YARDSTICK-REGENERATED: <original|revised> manuscript — <reason cards were unavailable>]`. Advisory, not a block: the marker makes the continuity break visible to the decision-maker and the user instead of hiding it.
 
 ### Verification Logic
 
@@ -105,7 +113,8 @@ If Re-Review Decision = Major Revision:
 - **Round-1 panel provenance**: [copied seat-level from the Editorial Decision Letter's Review Panel Provenance block (#540); "unknown (provenance block absent)" when absent — record the reason when known, e.g. "guided-mode Round 1 (no letter emitted)" or "pre-#540 letter"]
 - **Independent cross-model pass**: [ran — [family/id], see the Cross-model matrix column / partial — N/M items judged, [family/id] / not_configured / failed — [reason]; not_configured and failed apply the run-level single-family disclosure, partial applies it per unavailable row]
 - **Prompt/rubric surfaces**: [the re-review protocol + verification-logic sections used, by file reference; rubric/contract version]
-- **Evidence seen by the judge**: [revised manuscript + Response to Reviewers + Revision Roadmap / list deviations]
+- **Reviewer configuration**: [Round-1 cards reused / `[YARDSTICK-REGENERATED: <original|revised> manuscript — <reason>]` per § Yardstick Continuity]
+- **Evidence seen by the judge**: [revised manuscript + Response to Reviewers + Revision Roadmap + apply report(s) when present (`output_draft_hash` checked: match / MISMATCH — stale) / list deviations]
 - **Judging budget**: [approx. calls/tokens spent on verification, separate from generation]
 
 [Single-family runs: include the disclosure line verbatim here — "This verification round ran on the same model family that drove the revisions; over-optimization to this judge's latent biases is possible (Ren et al. 2026, arXiv:2607.13104 §8.1.2)."]
