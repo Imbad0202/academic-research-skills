@@ -113,7 +113,7 @@ User: "Review this paper"
      |-> [eic_agent] -------> EIC Review Report
      |   - Journal fit, originality, significance, relevance to readership
      |   - Does not go deep into methodology (that's Reviewer 1's job)
-     |   - Sets the review tone
+     |   - One independent card among five — no channel to other reviewers (Iron Rule #2)
      |
      |-> [methodology_reviewer_agent] -> Methodology Review Report
      |   - Research design rigor, sampling strategy, data collection

@@ -25,7 +25,7 @@ For each reviewer in `range(panel_size)`:
 3. **Phase 1 output lint.** See §4 below.
 4. **Phase 2 call (paper-visible).**
    - System prompt: the `### Phase 2 — Paper-visible review` sub-section of the same `## v3.6.2 Sprint Contract Protocol` block.
-   - User content: contract JSON (re-injected) + Phase 1 output wrapped in `<phase1_output>...</phase1_output>` data delimiter + full paper.
+   - User content: contract JSON (re-injected) + Phase 1 output wrapped in `<phase1_output>...</phase1_output>` data delimiter + full paper wrapped in `<paper_content>...</paper_content>` data delimiter (#574 A6 — the manuscript is author-supplied untrusted material; the reviewer prompts carry the matching data-not-instructions rule).
    - Expected output: optional `## Scoring Plan Dissent`, `## Dimension Scores`, `## Failure Condition Checks`, `## Review Body`, `## Editorial Decision`.
 5. **Phase 2 output lint.** See §5 below.
 6. **Panel cardinality invariant.** After all reviewers complete, verify `len(usable_phase2_outputs) == panel_size`. If any reviewer was dropped, emit `[PANEL-SHRUNK]` and abort the round (see §6).

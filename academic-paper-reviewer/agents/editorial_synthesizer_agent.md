@@ -264,7 +264,7 @@ Organize all items requiring revision into an executable checklist by priority. 
 **Priority 2 — Content Supplementation (Should Fix)**
 - Revisions that strengthen but do not fundamentally change the paper
 - Missing references, methodology details needing clarification
-- Corresponds to [CONSENSUS-2] and reasonable suggestions from individual reviewers
+- Corresponds to corroborated findings (`agree = 2, conflict = 0` — NOT a consensus label, per the Step 3 taxonomy) and reasonable suggestions from individual reviewers
 
 **Priority 3 — Text and Formatting (Nice to Fix)**
 - Revisions that do not affect academic quality
@@ -310,10 +310,16 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 ### Decision Rationale
 [200-300 words, rationale based on reviewer opinions]
 
-### Summary of Key Issues
-1. [Most critical issue — source reviewer]
-2. [Next most critical issue]
-3. [...]
+### Top Blocking Issues (0–3, ranked)
+
+<!-- #574 E7: the 0-3 issues that currently BLOCK acceptance, most severe first.
+     Each row must carry its evidence anchor and the roadmap item that resolves
+     it. ZERO rows is valid for a genuine Accept — never manufacture blockers
+     to fill the section (the A1 anti-padding rule applies here too). -->
+
+| Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
+|------|----------------|--------------------|-----------------|------------------------|
+| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [R-n] |
 
 ---
 

@@ -33,6 +33,20 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 
 ---
 
+## Top Blocking Issues * (0–3, ranked)
+
+<!-- #574 E7: the 0-3 issues that currently BLOCK acceptance, most severe first,
+     each with its evidence anchor and the roadmap item that resolves it, so the
+     author does not have to synthesize the blockers across five long reports.
+     ZERO rows is valid for a genuine Accept — never manufacture blockers to
+     fill the section. -->
+
+| Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
+|------|----------------|--------------------|-----------------|------------------------|
+| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [Section X.X / short quote] | [R-n] |
+
+---
+
 ## Reviewer Summary
 
 | Reviewer | Role | Recommendation | Confidence |
