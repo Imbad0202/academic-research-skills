@@ -185,6 +185,12 @@ target, so it does not reintroduce the base-rate anchors B1 removed.
     block) — without D6, a wholly out-of-scope paper that is otherwise sound mechanically
     Accepts. Methodology-focus deliberately does NOT gain it (§5.2). Grounding and
     fatal/repairable mapping in §5.1/§8.2.
+14. **A DA-CRITICAL terminal consistency gate closes the accept-conflict state**
+    (cross-model round-3 finding): a mechanical `accept` coexisting with a VALIDATED or
+    UNRESOLVED DA-CRITICAL adjudication emits `[DA-CRITICAL-VS-ACCEPT]` and escalates to
+    the user instead of silently finalizing — an escalation, never a decision change
+    (§8.3). This restores the mechanical expressibility the iron rule lost when the DA's
+    scoring footprint narrowed to D3.
 
 ## 4. Contract Schema 13.2
 
@@ -509,7 +515,46 @@ Design notes:
 - Severity values keep gaps (95/90/70/60/40/10) for future insertions; ties remain
   ordinal-position-broken (unchanged engine rule).
 
-### 8.3 Canonical decision tokens
+### 8.3 DA-CRITICAL terminal consistency gate (sprint mode)
+
+Role scoping opens a gap v1 never had: in v1 the DA scored every dimension, so a DA
+CRITICAL discovery in any area could drive that dimension to `block` and fire F1 —
+the "validated or genuinely unresolved DA-CRITICAL blocks Accept" iron rule (SKILL.md
+Checkpoint Rule #4, #581 visible-adjudication form) was mechanically expressible. In v2
+the DA scores only D3, so a validated DA-CRITICAL methodology finding coexists with an
+all-pass panel: F0 fires, and the synthesizer's forbidden-operations list rightly bars it
+from softening or hardening the fired action. Without a defined route, the iron rule and
+the mechanical layer contradict each other exactly when they disagree.
+
+The route is an **escalation gate, not a decision change** (the same shape as the #518
+blind-disagreement checkpoints: a review trigger, never a vote):
+
+- The synthesizer performs the DA-CRITICAL adjudication exactly as today (every
+  DA-CRITICAL entry gets VALIDATED / REJECTED-with-rationale / UNRESOLVED in the letter).
+- If the mechanical decision is `accept` AND any DA-CRITICAL adjudication is VALIDATED or
+  UNRESOLVED, the synthesizer still emits the mechanical block unchanged
+  (`dimension_verdicts` / `fired_conditions` / `editorial_decision=accept`) but appends
+  exactly one marker line `[DA-CRITICAL-VS-ACCEPT: <n> validated/unresolved]` — and the
+  orchestrator does NOT finalize the Accept: the round escalates to the user with both
+  artifacts (the mechanical result and the adjudication), the decision deferred to human
+  judgment. No auto-downgrade exists — an auto-downgrade would be the synthesizer
+  changing a fired action, which stays forbidden.
+- A REJECTED-with-rationale adjudication does not trigger the gate — Accept finalizes
+  with the rejection rationale on record (#574 B1: an adjudicated-and-rejected negative
+  claim does not veto).
+- `check_panel_synthesis.py` verifies the gate mechanically: it already parses the DA
+  report's CRITICAL table (§10.5 grammar); given the synthesis output, decision `accept`
+  + a letter adjudication block containing VALIDATED/UNRESOLVED entries + a missing
+  marker line is exit 1 (synthesis-layer failure), and a marker line under any other
+  decision is likewise exit 1 (the marker exists only for the accept-conflict state).
+- E4 observable (diagnostic): escalation rate on the clean control, expected ≈ 0.
+
+This preserves both committed invariants simultaneously: decisions still move only
+through scores and conditions (the marker never changes an action), and a validated or
+unresolved DA-CRITICAL still blocks Accept — by blocking silent *finalization*, with the
+human as the deciding layer.
+
+### 8.4 Canonical decision tokens
 
 Sprint tokens ↔ Schema 6 enum, fixed total mapping, single-sourced:
 
@@ -687,6 +732,7 @@ NOT delivered to sprint runs.
 | Removal of per-seat Failure Condition Checks / Editorial Decision | `### Phase 2` subsection, all 5 agents (steps 3–4 rewritten) | protocol §5; checker grammar |
 | Finding Contract + B1 band anchors (compact) | inside `### Phase 2` subsection — canonical block, byte-identical across the 4 scoring agents; DA variant carries the same anchor sentences | template § Severity Levels (expanded table); lint owns the literals |
 | Two-stage panel arithmetic + `dimension_verdicts` emission + fatal atoms | synthesizer's `## v3.6.2 Sprint Contract Synthesizer Protocol` section | protocol §8/§9; checker |
+| DA-CRITICAL terminal consistency gate (`[DA-CRITICAL-VS-ACCEPT]`, §8.3) | synthesizer's sprint protocol section (marker emission) + orchestrator wiring in protocol §8 (escalation, no finalization) | SKILL.md Checkpoint Rule #4; checker |
 | DA role rewording (score-eligible-dims-only) | DA Phase Boundary MUST-NOT list + `### Phase 2` subsection | — |
 | C5 authority table + governor sentence | `editorial_decision_standards.md` §0 | SKILL.md; protocol |
 | C3 canonical wording (5 cards; 4-seat findings consensus; per-dimension score denominators) | synthesizer Core Mission / Step 1a / Step 2 | SKILL.md mode table |
@@ -775,7 +821,11 @@ Mutation/inverse suites, hardcoded expectations throughout:
    scores WOULD flip the decision, asserting the v2 result ignores them (the overlay's
    named mutation test); majority n=1 owner-decides; `[DIMENSION-UNASSESSED]` abort;
    `dimension_verdicts` mismatch → exit 1; fatal-atom firing incl. F1-over-F2 precedence;
-   v1-grammar report (with Failure Condition Checks section) → loud grammar failure.
+   v1-grammar report (with Failure Condition Checks section) → loud grammar failure;
+   DA-CRITICAL gate fixtures — mechanical accept + VALIDATED (and separately UNRESOLVED)
+   adjudication with the marker line present (pass) and absent (exit 1), accept +
+   REJECTED-with-rationale without marker (pass), and a marker line under a non-accept
+   decision (exit 1).
 3. **Decision-contract exhaustiveness**: enumerate ALL seat-score profiles — per dimension,
    every assignment of `{pass, warn, block, block(fatal)}` to each assessed eligible seat,
    PLUS the valid partial-abstention states (on the two-eligible D3, each seat additionally
@@ -880,7 +930,10 @@ monitors, expected ≈ 0).
   DA's *formal score* footprint.
 - **No new hard-block on report format beyond the existing unusable-reviewer semantics**;
   severity/anchor requirements continue to gate report validity, not the editorial decision
-  directly (#574 non-goal preserved — the decision moves only through scores and conditions).
+  directly (#574 non-goal preserved — the decision moves only through scores and
+  conditions, with exactly one named escape: the §8.3 DA-CRITICAL terminal consistency
+  gate, which never changes an action but prevents silent finalization of an Accept that
+  the preserved iron rule forbids).
 - **Cross-model tracks (#540 reviewer track, #518 blind checkpoints) untouched**; role
   scoping is orthogonal to which model family a seat runs on.
 - **Semantic adequacy judging of Phase-1 triggers** beyond the deterministic floor: still
