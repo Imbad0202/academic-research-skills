@@ -178,6 +178,13 @@ target, so it does not reintroduce the base-rate anchors B1 removed.
 12. **C5 gets one authority table** (§9) declaring, per mode, which decision engine and scale
     govern — pinned by a new defrift lint (§13) so the #399-class propagation failure cannot
     recur.
+13. **Full mode gains a decision-bearing venue-fit dimension** (D6
+    `venue_fit_and_contribution`, mandatory, EIC-owned; cross-model round-1 finding). The
+    EIC's core remit was never expressible in the mechanical gate, and role scoping removes
+    the informal escape valve (an EIC scope objection smuggled through another dimension's
+    block) — without D6, a wholly out-of-scope paper that is otherwise sound mechanically
+    Accepts. Methodology-focus deliberately does NOT gain it (§5.2). Grounding and
+    fatal/repairable mapping in §5.1/§8.2.
 
 ## 4. Contract Schema 13.2
 
@@ -250,6 +257,7 @@ Grounded in each agent's documented remit (Role & Identity + DO/DON'T lists):
 | D3 | argumentative_coherence | mandatory | `[da, methodology]` | da | DA's DO list IS D3 (logic chain, evidence gaps, counter-arguments, data–conclusion mismatch); methodology's "are the conclusions supported by data?" overlaps on inference validity — two eligible seats keep the one DA-owned mandatory gate redundant |
 | D4 | cross_disciplinary_relevance | high | `[perspective]` | perspective | R1/R2 explicitly route cross-disciplinary impact to R3 |
 | D5 | writing_and_structure | normal | `[eic]` | eic | EIC's structural-coherence + venue-convention + readership steps are D5's definition |
+| D6 | venue_fit_and_contribution | mandatory | `[eic]` | eic | NEW dimension — the EIC's core remit (journal fit, originality, significance) was never decision-bearing: no v1 dimension expresses it, and under role scoping the EIC loses the informal valve of expressing a scope objection through a D1–D4 block. Without it, a sound, coherent, well-written but wholly out-of-scope paper passes every dimension and F0 mechanically emits Accept, while the decision standards define Reject — Out of Scope as a first-class outcome. Fatality carries the subtype: a repairable D6 block (fit recoverable by reframing/repositioning) drives Major Revision via F2; a fatal D6 block (topic outside scope no revision can cure — the standards' "even with revision" bar) drives Reject via F1 |
 
 ### 5.2 `methodology_focus.json` → `reviewer/reviewer_methodology_focus/v2`
 
@@ -261,6 +269,19 @@ Grounded in each agent's documented remit (Role & Identity + DO/DON'T lists):
 Note the design consequence: in v2 the EIC no longer scores D1 in methodology-focus mode —
 which is exactly what its own role definition says it should not have been doing. The EIC
 seat still reviews the whole paper and reports findings on anything (decision 3).
+Methodology-focus deliberately carries NO venue-fit dimension: it is a focused methods
+gate the user invokes for methodology verification, not an editorial fitness decision —
+its output speaks to methods and presentation only (the §9 authority table row states
+this scope).
+
+D6 design notes (full mode): eligibility is deliberately EIC-only. The domain seat's
+"is the contribution genuine and incremental" remit overlaps the contribution half, but
+venue fit is exclusively editorial — a mixed eligible set would let a venue-blind seat
+outvote the one seat configured with the venue identity. The domain seat's contribution
+judgment still reaches the decision through its D2 score and its findings. Adding D6
+keeps the overlay's venue-aware separation intact: venue mismatch drives the decision
+through its OWN dimension with the Out-of-Scope subtype, never by mislabeling sound
+science as a D1–D3 failure.
 
 `panel_size` is unchanged (5 / 2): it remains the cardinality invariant (all seats run, all
 produce cards, `[PANEL-SHRUNK]` semantics untouched). Eligibility narrows who *scores*, not
@@ -349,7 +370,7 @@ discipline as #510):
 Exactly one of each pinned line:
 
 ```
-dimension_verdicts: [D1=block(fatal), D2=pass, D3=warn, D4=pass, D5=pass]
+dimension_verdicts: [D1=block(fatal), D2=pass, D3=warn, D4=pass, D5=pass, D6=pass]
 fired_conditions: [F1, F2, F5]
 editorial_decision=reject
 ```
@@ -393,13 +414,22 @@ Quantifier thresholds over n = assessed eligible seats of the dimension:
 ### 7.1 Expression vocabulary v2 (§9 lockstep)
 
 The five recognised patterns keep their surface strings, re-read under the two-stage
-semantics above, plus one new atom form:
+semantics above, plus **four new atom forms** (6–9). The additions exist because the §8.2
+v2 condition sets use them — without them the shipped templates would abort with
+`[EXPRESSION-UNRECOGNISED]` on their own conditions:
 
 6. **Fatal block:** `any <priority> dimension has a fatal block` |
    `<Dn> has a fatal block`
+7. **Unscoped any + threshold:** `any dimension scores '<score>' or worse`
+   (no priority scope = ranges over ALL contract dimensions; ordered comparison
+   `pass < warn < block`)
+8. **Dimension-literal threshold:** `<Dn> scores '<score>' or worse`
+9. **Unscoped universal:** `every dimension scores '<score>'`
+   (no priority scope = all contract dimensions)
 
 Protocol §9, the synthesizer prompt's recognised-pattern list, and the checker's expression
-grammar update **in lockstep in the same PR** (standing §9 rule). The semantic shift of
+grammar update **in lockstep in the same PR** (standing §9 rule; patterns 6–9 follow the
+protocol's existing closed-vocabulary extension route). The semantic shift of
 patterns 1–5 (per-dimension verdicts instead of per-seat multi-dimension predicates) is
 called out explicitly in §9's text — it is a deliberate breaking reinterpretation, required
 because per-seat predicates are undefined under role scoping (§3 decision 5).
@@ -456,6 +486,10 @@ Design notes:
   `accept_grade_action`) becomes provably unreachable for the shipped templates; it is
   retained in the engine as belt-and-suspenders for custom contracts, and the test suite
   proves unreachability for the shipped ones by enumeration (§15).
+- **The conditions are priority-scoped, so D6 rides them without new entries**: a fatal D6
+  block hits F1 (reject — the Out-of-Scope subtype), a repairable one hits F2, its warns
+  count toward F3/F5, and F0's accept now REQUIRES the venue-fit dimension to pass —
+  Accept mechanically certifies fit, matching the standards' Accept criteria.
 - **methodology-focus stays deliberately stricter** (sole-mandatory warn ⇒ major_revision,
   preserving v1's intent for a methods-gate mode), while full mode's single-mandatory-warn ⇒
   minor_revision replaces v1's accept fall-through. Both are strict improvements toward the
@@ -484,7 +518,7 @@ SKILL.md and the sprint protocol pointing at it:
 | Mode | Decision engine | Working scale | Output |
 |------|-----------------|---------------|--------|
 | `full` (sprint contract) | mechanical synthesizer over contract v2 (§7–§8); the recommendation matrix and rubric mapping NEVER override it | `block/warn/pass` + `block_class` | four-value enum |
-| `methodology-focus` (sprint contract) | same | same | four-value enum |
+| `methodology-focus` (sprint contract) | same | same | four-value enum — scoped to methods + presentation; carries no venue-fit dimension by design |
 | `full`/`methodology-focus` without a contract (legacy standard protocol) | Synthesis Protocol Steps 1–4 + decision matrix + arbitration (this file §§1–2) | reviewer recommendations (four-value) | four-value enum |
 | `re-review` | #576 scope (spec B); until then `re_review_mode_protocol.md` governs | — | four-value enum |
 | `quick` | EIC assessment only; explicitly NOT an editorial decision (advisory signal) | — | signal, not a decision letter |
@@ -509,14 +543,28 @@ Single-sourcing repairs in the same PR:
 New `scripts/check_phase_conformance.py`, per-seat:
 
 ```
-python scripts/check_phase_conformance.py --contract C.json \
-    --phase1 <seat>.phase1.md --phase2 <seat>.phase2.md [--manuscript m.md]
+python scripts/check_phase_conformance.py --contract C.json --role <role> \
+    --phase1 <seat>.phase1.md --phase2 <seat>.phase2.md --manuscript m.md
 ```
+
+`--role` and `--manuscript` are both REQUIRED. `--role` is the dispatch-assigned role
+(the orchestrator knows which seat it invoked); the checker fails (exit 3) unless it
+equals the report's self-declared `contract_role` line — otherwise two swapped reports
+could each have their out-of-role scores accepted under the other's eligibility while
+the panel-level role-set check still passes. `--manuscript` omission is exit 2
+(infra), never a silent skip — an optional flag would let the leakage family (check 2)
+be disabled by invocation shape, contradicting the fail-closed posture (§14).
 
 Exit codes: 0 pass / 2 contract-infra / 3 conformance failure (⇒ that reviewer unusable,
 protocol §5 class). Shares the contract loader and markdown parsing helpers with
-`check_panel_synthesis.py` by import (reused, never forked). Five check families, all
+`check_panel_synthesis.py` by import (reused, never forked). Six check families, all
 fail-closed:
+
+0. **Role binding.** `--role` ∈ `ROLE_SETS[mode]` (else exit 2) and equals the report's
+   `contract_role` (else exit 3). `check_panel_synthesis.py` gains the panel-side
+   counterpart: an optional `--roles r1,...,rN` list positionally matched to the
+   `--report` order; when provided, any mismatch with a report's `contract_role` is
+   exit 3 — the orchestrator MUST provide it in operational runs (protocol §5 wiring).
 
 1. **Plan adequacy (Phase 1).** Per eligible dimension: all five committed fields present and
    non-empty; `what_triggers_block` ≠ `what_triggers_warn` ≠ `what_triggers_fatal` as
@@ -524,12 +572,14 @@ fail-closed:
    not failure): any trigger under 8 words. Deeper semantic adequacy (are the triggers
    concrete and discriminating?) remains the documented judge-layer limitation — this floor
    is deterministic on purpose.
-2. **Manuscript leakage (Phase 1).** When `--manuscript` is given: every 12-word shingle
-   (whitespace-normalized, case-folded) of the manuscript body is literal-searched in the
-   Phase 1 output; any hit that does not also occur in the contract JSON or the metadata
-   (title/field) fails the seat. This is the executable form of the E4 campaign's
-   single-context-leak lesson; 12 words is conservative against idiom collisions, and
-   literal containment (no regex over manuscript text) keeps it injection- and ReDoS-inert.
+2. **Manuscript leakage (Phase 1).** Every 12-word shingle (whitespace-normalized,
+   case-folded) of the manuscript body is literal-searched in the Phase 1 output; any hit
+   that does not also occur in the contract JSON or the metadata (title/field) fails the
+   seat. This is the executable form of the E4 campaign's single-context-leak lesson;
+   12 words is conservative against idiom collisions, and literal containment (no regex
+   over manuscript text) keeps it injection- and ReDoS-inert. The manuscript input is
+   mandatory (see the CLI contract above), so this family cannot be skipped by
+   invocation shape.
 3. **Trigger binding (Phase 2).** Every `trigger:` line's quoted text must be a verbatim
    substring (whitespace-normalized) of the SAME seat's Phase-1 committed trigger of the
    matching kind for that dimension. Score without a trigger line, trigger text absent from
@@ -538,11 +588,16 @@ fail-closed:
    `## Scoring Plan Dissent`.
 4. **Dissent cap.** ≥ 2 dissent dimensions → fail (the prompt/orchestrator rule becomes
    machine-checked).
-5. **Anchor presence (Phase 2 Review Body).** Every finding whose `**Severity**:` is Critical
-   or Major must carry an `**Evidence Anchor**:` field with a valid type token
-   (`text|table|figure|equation|dataset|absence`); `text` anchors must contain a quoted
-   string of ≤ 25 words; `absence` anchors must name checked surfaces (non-empty tail after
-   the type token). Minor findings: advisory only. (The Finding Contract's prose rule gets a
+5. **Anchor presence (Phase 2 Review Body).** Role-aware, matching the two committed
+   report grammars: for the four scoring seats, every finding whose `**Severity**:` is
+   Critical or Major must carry an `**Evidence Anchor**:` field with a valid type token
+   (`text|table|figure|equation|dataset|absence`); for `role=da`, findings live as table
+   rows under the `#### CRITICAL` / `#### MAJOR` issue-table headings (severity is the
+   section band, anchors are the `Evidence Anchor` column), so the checker parses those
+   tables and fails any CRITICAL/MAJOR row whose anchor cell is empty or carries no valid
+   type token. In both grammars: `text` anchors must contain a quoted string of ≤ 25
+   words; `absence` anchors must name checked surfaces (non-empty tail after the type
+   token). Minor findings: advisory only. (The Finding Contract's prose rule gets a
    machine gate at the same boundary that feeds synthesis.)
 
 Orchestrator wiring: protocol §5 gains "run `check_phase_conformance.py` per seat before
@@ -701,20 +756,31 @@ Mutation/inverse suites, hardcoded expectations throughout:
    `dimension_verdicts` mismatch → exit 1; fatal-atom firing incl. F1-over-F2 precedence;
    v1-grammar report (with Failure Condition Checks section) → loud grammar failure.
 3. **Decision-contract exhaustiveness**: enumerate ALL seat-score profiles — per dimension,
-   every assignment of `{pass, warn, block, block(fatal)}` to its assessed eligible seats
-   (full v2: 4×4×4²×4×4 = 4096 profiles; methodology-focus v2: 4×4 = 16) — assert ≥ 1
-   condition fires in every profile (zero-fired unreachable for the shipped templates) and
-   exactly one action is selected; spot-assert the mapped decisions for the boundary states
-   (single mandatory warn ⇒ minor_revision in full / major_revision in mf; single normal
-   block ⇒ minor_revision; any fatal mandatory block ⇒ reject; D3 split block —
+   every assignment of `{pass, warn, block, block(fatal)}` to each assessed eligible seat,
+   PLUS the valid partial-abstention states (on the two-eligible D3, each seat additionally
+   takes the `abstained` state, excluding the both-abstained profile, which is the separately
+   tested `[DIMENSION-UNASSESSED]` abort — 24 non-aborting D3 states; single-eligible
+   dimensions have no non-aborting abstention state). Full v2: 4⁵ × 24 = 24,576 profiles;
+   methodology-focus v2: 4×4 = 16. Assert ≥ 1 condition fires in every profile (zero-fired
+   unreachable for the shipped templates) and exactly one action is selected; spot-assert
+   the mapped decisions for the boundary states (single mandatory warn ⇒ minor_revision in
+   full / major_revision in mf; single normal block ⇒ minor_revision; any fatal mandatory
+   block ⇒ reject, including a fatal D6 block — the Out-of-Scope path; D3 split block —
    one eligible seat blocks, the other passes — fires F2 (`any`) but not an
-   `all`-quantified condition).
-4. **Conformance checker**: per check family, one failing and one passing fixture — missing
-   fatal trigger field; identical block/warn triggers; a 12-word manuscript shingle in
-   Phase 1 (and the title-collision inverse: title text does NOT fire); Phase 2 trigger text
-   absent from Phase 1 (drift) and kind-mismatch (fatal block binding warn trigger);
-   two-dissent report; Critical finding with no anchor / with `text` anchor over 25 words /
-   `absence` anchor without checked surfaces (fail) and the compliant forms (pass).
+   `all`-quantified condition; D3 with one abstained seat exercises the dynamic
+   majority-n=1 path for both choices of abstaining seat).
+4. **Conformance checker**: per check family, one failing and one passing fixture —
+   `--role` absent or not in the mode's role set (exit 2); `--role` ≠ the report's
+   `contract_role` (exit 3 — the swapped-reports case); `--manuscript` absent (exit 2,
+   never a skip); missing fatal trigger field; identical block/warn triggers; a 12-word
+   manuscript shingle in Phase 1 (and the title-collision inverse: title text does NOT
+   fire); Phase 2 trigger text absent from Phase 1 (drift) and kind-mismatch (fatal block
+   binding warn trigger); two-dissent report; Critical finding with no anchor / with `text`
+   anchor over 25 words / `absence` anchor without checked surfaces (fail) and the
+   compliant forms (pass); DA-grammar fixtures — a `#### CRITICAL` table row with an empty
+   Evidence Anchor cell (fail) and a fully-anchored DA table (pass). Panel-side: a
+   `--roles` list mismatching a report's `contract_role` (exit 3) and the matching
+   inverse (pass).
 5. **Lints**: mutation tests flipping each witnessed literal (eligibility map cell, grammar
    sentence, enum token, threshold residency) → lint fails; `_mirror` lists updated in the
    same commit as every newly-read file.
