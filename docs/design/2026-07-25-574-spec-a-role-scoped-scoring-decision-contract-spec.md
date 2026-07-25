@@ -217,9 +217,12 @@ target, so it does not reintroduce the base-rate anchors B1 removed.
   routing by source dimension. It has **no arithmetic role** in v2 panel evaluation
   (no owner-weighting — quantifiers treat eligible seats uniformly).
 
-`measurement_procedure.scoring_plan_schema.required` gains a fifth canonical field
-`what_triggers_fatal` (enum-constrained alongside the existing four; `minItems` 4 → 5).
-Phase 1 scoring plans pre-commit the fatality anchor per eligible dimension (§8.1).
+`measurement_procedure.scoring_plan_schema.required`'s item enum gains a fifth canonical
+field `what_triggers_fatal` (`minItems` 4 → 5). Its per-dimension applicability is
+**mandatory-priority dimensions only** — fatality is reject authority, and reject
+authority lives exclusively in mandatory dimensions (§6.2, §8.1); the schema field list
+is flat, so the mandatory-only scoping is a checker rule (§6.1 grammar / §10.1), not a
+JSON-Schema conditional.
 
 ### 4.2 Conditional gates (new allOf branches)
 
@@ -245,6 +248,9 @@ Validator (`check_sprint_contract.py`) hard invariants (errors, not SC warnings)
 - Every role in `ROLE_SETS[mode]` is eligible on ≥ 1 dimension (a seat with zero scoring
   duties would make its Phase-1 scoring plan empty; if a future contract genuinely wants a
   non-scoring seat, that is a deliberate schema revision, not a silent state).
+- No fatal atom (§7.1 pattern 6) scopes a non-mandatory priority or a non-mandatory
+  dimension literal — such a condition is unsatisfiable by construction and therefore
+  fail-open (CONTRACT-INVALID, mirrored as a checker load-time error).
 
 New SC warnings: SC-12 — a `mandatory` dimension with `len(eligible_roles) == 1` is flagged
 informationally (single-judge mandatory gate; accepted in the shipped templates, see §5,
@@ -315,11 +321,28 @@ who *reviews*.
 - `## Contract Paraphrase`: unchanged — one paragraph per dimension, ALL dimensions
   (understanding the whole contract is blind-safe and keeps the seat able to *report
   findings* everywhere).
-- `## Scoring Plan`: one `### <Dn>: <name>` subsection **per eligible dimension only**, each
-  carrying the five committed fields (`dimension_id`, `what_to_look_for`,
-  `what_triggers_block`, `what_triggers_warn`, `what_triggers_fatal`). A scoring-plan
-  subsection for an ineligible dimension is a Phase-1 lint failure (it would manufacture the
-  out-of-role vote's paper trail).
+- `## Scoring Plan`: one `### <Dn>: <name>` subsection **per eligible dimension only**. A
+  scoring-plan subsection for an ineligible dimension is a Phase-1 lint failure (it would
+  manufacture the out-of-role vote's paper trail). Each subsection follows a **pinned line
+  grammar** (anchored full lines, exactly once each, single-line non-empty values, fenced
+  code stripped — the same parsing discipline as #510; the loose bullet/dash spellings do
+  NOT parse):
+
+  ```
+  ### D1: methodology_rigor
+  dimension_id: D1
+  what_to_look_for: <single-line non-empty text>
+  what_triggers_block: <single-line non-empty text>
+  what_triggers_warn: <single-line non-empty text>
+  what_triggers_fatal: <single-line non-empty text>
+  ```
+
+  `dimension_id` must equal the subsection heading's `Dn`. The `what_triggers_fatal` line
+  is REQUIRED on mandatory-priority eligible dimensions and FORBIDDEN on non-mandatory
+  ones (fatality is mandatory-only, §6.2). This grammar is what the conformance checker's
+  trigger-binding and adequacy families (§10.1/§10.3) parse — Phase-1 values are
+  single-line by construction, so "verbatim substring after whitespace normalization" is
+  well-defined. Protocol §4's lint description updates in lockstep.
 - `[CONTRACT-ACKNOWLEDGED]` terminal tag: unchanged.
 
 ### 6.2 Phase 2 (paper-visible)
@@ -354,7 +377,14 @@ Grammar rules (machine-parsed, anchored full lines, fenced code stripped — sam
 discipline as #510):
 
 - `score: <block|warn|pass|not_assessed>` exactly once per subsection.
-- `block_class: <fatal|repairable>` REQUIRED iff `score: block`; forbidden otherwise.
+- `block_class: <fatal|repairable>` REQUIRED iff `score: block` on a MANDATORY-priority
+  dimension; FORBIDDEN otherwise — including on non-mandatory blocks, which are
+  repairable by definition. Rationale: `fatal` means unfixable-by-revision, which is
+  reject-grade decision impact, and reject authority lives only in mandatory dimensions —
+  a fatal-classified D5 block feeding F5's Minor Revision would assert "unfixable" and
+  "fix it in minor revision" simultaneously. A seat convinced a non-mandatory flaw is
+  unfixable reports that as a finding; it cannot carry reject weight through a dimension
+  whose decision impact is bounded at Minor/Major.
 - `trigger: "<text>"` REQUIRED iff `score ∈ {block, warn}`; the quoted text must be a
   verbatim substring (after whitespace normalization) of that seat's Phase-1
   `what_triggers_block` / `what_triggers_warn` / `what_triggers_fatal` (matching the score:
@@ -385,8 +415,13 @@ Exactly one of each pinned line:
 ```
 dimension_verdicts: [D1=block(fatal), D2=pass, D3=warn, D4=pass, D5=pass, D6=pass]
 fired_conditions: [F1, F2, F5]
+da_critical_adjudications: [C1=VALIDATED]
 editorial_decision=reject
 ```
+
+(The `da_critical_adjudications` line is always present in sprint synthesis — empty list
+`[]` when the DA reported no CRITICAL findings; full grammar and the ID-matching /
+rationale / marker rules in §8.3.)
 
 The `dimension_verdicts` line is new — an **audit artifact**, defined as the worst score
 among the dimension's assessed eligible seats (`pass < warn < block`), carrying the
@@ -432,7 +467,11 @@ v2 condition sets use them — without them the shipped templates would abort wi
 `[EXPRESSION-UNRECOGNISED]` on their own conditions:
 
 6. **Fatal block:** `any <priority> dimension has a fatal block` |
-   `<Dn> has a fatal block`
+   `<Dn> has a fatal block` — valid ONLY over mandatory scope: a fatal atom whose
+   priority scope is non-mandatory, or whose dimension literal has non-mandatory
+   priority, is CONTRACT-INVALID at load time (unsatisfiable by construction, since
+   non-mandatory dimensions can never carry a fatal block, §6.2 — a vacuous-truth
+   condition would be fail-open)
 7. **Unscoped any + threshold:** `any dimension scores '<score>' or worse`
    (no priority scope = ranges over ALL contract dimensions; ordered comparison
    `pass < warn < block`)
@@ -455,11 +494,12 @@ A `block` on a mandatory dimension is Major Revision when the flaw is fixable by
 Reject when it is not (`editorial_decision_standards.md`: Reject = "fundamental unfixable
 issues"). v2 makes that boundary **pre-committed and seat-owned**:
 
-- Phase 1: each eligible seat commits `what_triggers_fatal` per dimension — the evidence
-  pattern that would make the dimension's failure unfixable-by-revision (e.g. for D1: "the
-  design cannot answer the RQ even in principle; no reanalysis of the collected data can
-  recover validity"). Committed paper-blind, same anti-rationalization mechanism as
-  block/warn triggers.
+- Phase 1: each eligible seat commits `what_triggers_fatal` per MANDATORY dimension — the
+  evidence pattern that would make the dimension's failure unfixable-by-revision (e.g. for
+  D1: "the design cannot answer the RQ even in principle; no reanalysis of the collected
+  data can recover validity"). Committed paper-blind, same anti-rationalization mechanism
+  as block/warn triggers. Non-mandatory dimensions carry no fatal trigger and can never
+  produce a fatal block (§6.2).
 - Phase 2: `score: block` carries `block_class: fatal` only when the fatal trigger fired, and
   the `trigger:` line must bind to the committed fatal trigger text. This binding survives
   dissent: the dissent channel can override block/warn placement but can NEVER mint
@@ -527,26 +567,40 @@ from softening or hardening the fired action. Without a defined route, the iron 
 the mechanical layer contradict each other exactly when they disagree.
 
 The route is an **escalation gate, not a decision change** (the same shape as the #518
-blind-disagreement checkpoints: a review trigger, never a vote):
+blind-disagreement checkpoints: a review trigger, never a vote), and it rides a
+**machine-addressable adjudication contract** — pinned grammar on both sides, so an
+omitted or phantom adjudication cannot evade it:
 
-- The synthesizer performs the DA-CRITICAL adjudication exactly as today (every
-  DA-CRITICAL entry gets VALIDATED / REJECTED-with-rationale / UNRESOLVED in the letter).
-- If the mechanical decision is `accept` AND any DA-CRITICAL adjudication is VALIDATED or
+- **Stable finding IDs (DA side).** In sprint mode the DA's `#### CRITICAL` issue-table
+  `#` column carries IDs `C1..Cn` (unique, dense from C1). A delivered Phase-2 rule on
+  the DA seat; format enforced by the conformance checker (§10.5).
+- **Pinned adjudication record (synthesizer side).** The sprint emission block (§6.3)
+  gains exactly one line — always present, empty list allowed:
+  `da_critical_adjudications: [C1=REJECTED, C2=VALIDATED]`
+  with each value ∈ `{VALIDATED, REJECTED, UNRESOLVED}`. ID matching is exact and total:
+  every ID parsed from the DA's CRITICAL table appears exactly once; an ID that appears
+  here but not in the DA table (phantom) or vice versa (omitted — the C2-never-adjudicated
+  case) is a synthesis-layer failure. For every `C<n>=REJECTED`, the synthesis must also
+  carry one anchored line `C<n> rejection rationale: <nonempty>` (the deterministic floor
+  under the prose adjudication the letter already writes).
+- **Marker.** If the mechanical decision is `accept` AND ≥ 1 entry is VALIDATED or
   UNRESOLVED, the synthesizer still emits the mechanical block unchanged
-  (`dimension_verdicts` / `fired_conditions` / `editorial_decision=accept`) but appends
-  exactly one marker line `[DA-CRITICAL-VS-ACCEPT: <n> validated/unresolved]` — and the
-  orchestrator does NOT finalize the Accept: the round escalates to the user with both
-  artifacts (the mechanical result and the adjudication), the decision deferred to human
-  judgment. No auto-downgrade exists — an auto-downgrade would be the synthesizer
-  changing a fired action, which stays forbidden.
-- A REJECTED-with-rationale adjudication does not trigger the gate — Accept finalizes
-  with the rejection rationale on record (#574 B1: an adjudicated-and-rejected negative
-  claim does not veto).
-- `check_panel_synthesis.py` verifies the gate mechanically: it already parses the DA
-  report's CRITICAL table (§10.5 grammar); given the synthesis output, decision `accept`
-  + a letter adjudication block containing VALIDATED/UNRESOLVED entries + a missing
-  marker line is exit 1 (synthesis-layer failure), and a marker line under any other
-  decision is likewise exit 1 (the marker exists only for the accept-conflict state).
+  (`dimension_verdicts` / `fired_conditions` / `editorial_decision=accept`) plus exactly
+  one marker line `[DA-CRITICAL-VS-ACCEPT: <n> validated/unresolved]`, where `<n>` equals
+  the count of VALIDATED + UNRESOLVED entries — and the orchestrator does NOT finalize
+  the Accept: the round escalates to the user with both artifacts (the mechanical result
+  and the adjudication), the decision deferred to human judgment. No auto-downgrade
+  exists — an auto-downgrade would be the synthesizer changing a fired action, which
+  stays forbidden.
+- REJECTED entries do not trigger the gate — Accept finalizes with the rejection
+  rationale on record (#574 B1: an adjudicated-and-rejected negative claim does not veto).
+- **Checker verification (`check_panel_synthesis.py`).** The DA CRITICAL-table parser is
+  a **shared helper** consumed by BOTH the conformance checker (§10.5 anchor gate) and
+  the panel checker (this gate) — one grammar, never forked. The panel checker
+  cross-checks: ID-set equality between the DA table and the adjudication line;
+  exactly-once adjudication per ID; rationale lines for every REJECTED; marker present
+  iff decision is `accept` ∧ VALIDATED+UNRESOLVED count > 0, with `<n>` equal to that
+  count; marker under any other state is likewise exit 1.
 - E4 observable (diagnostic): escalation rate on the clean control, expected ≈ 0.
 
 This preserves both committed invariants simultaneously: decisions still move only
@@ -625,12 +679,15 @@ fail-closed:
    `--report` order; when provided, any mismatch with a report's `contract_role` is
    exit 3 — the orchestrator MUST provide it in operational runs (protocol §5 wiring).
 
-1. **Plan adequacy (Phase 1).** Per eligible dimension: all five committed fields present and
-   non-empty; the three trigger fields are PAIRWISE distinct as normalized strings —
-   `len({norm(block), norm(warn), norm(fatal)}) == 3`, so `block == fatal` with a
-   differing `warn` fails exactly like any other collision (a fatal trigger identical to
-   the repairable-block trigger would let the same evidence be classified either way,
-   turning Major Revision into Reject at the seat's discretion). Advisory (warning,
+1. **Plan adequacy (Phase 1).** Per eligible dimension, against the §6.1 pinned line
+   grammar: all committed fields present exactly once and non-empty (five on mandatory
+   dimensions, four on non-mandatory — a `what_triggers_fatal` line on a non-mandatory
+   dimension is itself a failure); the trigger fields are PAIRWISE distinct as normalized
+   strings — on mandatory dimensions `len({norm(block), norm(warn), norm(fatal)}) == 3`,
+   so `block == fatal` with a differing `warn` fails exactly like any other collision (a
+   fatal trigger identical to the repairable-block trigger would let the same evidence be
+   classified either way, turning Major Revision into Reject at the seat's discretion);
+   on non-mandatory dimensions `norm(block) != norm(warn)`. Advisory (warning,
    not failure): any trigger under 8 words. Deeper semantic adequacy (are the triggers
    concrete and discriminating?) remains the documented judge-layer limitation — this floor
    is deterministic on purpose.
@@ -732,7 +789,8 @@ NOT delivered to sprint runs.
 | Removal of per-seat Failure Condition Checks / Editorial Decision | `### Phase 2` subsection, all 5 agents (steps 3–4 rewritten) | protocol §5; checker grammar |
 | Finding Contract + B1 band anchors (compact) | inside `### Phase 2` subsection — canonical block, byte-identical across the 4 scoring agents; DA variant carries the same anchor sentences | template § Severity Levels (expanded table); lint owns the literals |
 | Two-stage panel arithmetic + `dimension_verdicts` emission + fatal atoms | synthesizer's `## v3.6.2 Sprint Contract Synthesizer Protocol` section | protocol §8/§9; checker |
-| DA-CRITICAL terminal consistency gate (`[DA-CRITICAL-VS-ACCEPT]`, §8.3) | synthesizer's sprint protocol section (marker emission) + orchestrator wiring in protocol §8 (escalation, no finalization) | SKILL.md Checkpoint Rule #4; checker |
+| DA-CRITICAL terminal consistency gate (§8.3): `da_critical_adjudications` line + rationale lines + `[DA-CRITICAL-VS-ACCEPT]` marker | synthesizer's sprint protocol section (emission grammar) + orchestrator wiring in protocol §8 (escalation, no finalization) | SKILL.md Checkpoint Rule #4; checker |
+| DA CRITICAL-table row IDs `C1..Cn` (§8.3) | DA's `### Phase 2` subsection (table format rule) | conformance checker §10.5 |
 | DA role rewording (score-eligible-dims-only) | DA Phase Boundary MUST-NOT list + `### Phase 2` subsection | — |
 | C5 authority table + governor sentence | `editorial_decision_standards.md` §0 | SKILL.md; protocol |
 | C3 canonical wording (5 cards; 4-seat findings consensus; per-dimension score denominators) | synthesizer Core Mission / Step 1a / Step 2 | SKILL.md mode table |
@@ -813,8 +871,10 @@ Mutation/inverse suites, hardcoded expectations throughout:
 
 1. **Schema/validator**: v2 templates validate; a reviewer contract without
    `eligible_roles`/`owner_role` fails branch 13; `owner_role ∉ eligible_roles` fails;
-   `eligible_roles ⊄ ROLE_SETS[mode]` fails; the hybrid action fails branch 4; writer /
-   evaluator shipped templates still validate byte-identically (zero-touch regression pair).
+   `eligible_roles ⊄ ROLE_SETS[mode]` fails; the hybrid action fails branch 4; a fatal
+   atom scoped to a non-mandatory priority or dimension literal fails (both validator and
+   checker load-time); writer / evaluator shipped templates still validate byte-identically
+   (zero-touch regression pair).
 2. **Checker (panel arithmetic)**: out-of-role real score → exit 3; ineligible-seat
    `not_assessed` accepted; eligible-seat `not_assessed` without reason → exit 3;
    **denominator exclusion** — a fixture panel where counting ineligible seats' would-be
@@ -824,18 +884,23 @@ Mutation/inverse suites, hardcoded expectations throughout:
    v1-grammar report (with Failure Condition Checks section) → loud grammar failure;
    DA-CRITICAL gate fixtures — mechanical accept + VALIDATED (and separately UNRESOLVED)
    adjudication with the marker line present (pass) and absent (exit 1), accept +
-   REJECTED-with-rationale without marker (pass), and a marker line under a non-accept
-   decision (exit 1).
-3. **Decision-contract exhaustiveness**: enumerate ALL seat-score profiles — per dimension,
-   every assignment of `{pass, warn, block, block(fatal)}` to each assessed eligible seat,
-   PLUS the valid partial-abstention states (on the two-eligible D3, each seat additionally
-   takes the `abstained` state, excluding the both-abstained profile, which is the separately
-   tested `[DIMENSION-UNASSESSED]` abort — 24 non-aborting D3 states; single-eligible
-   dimensions have no non-aborting abstention state). Full v2: 4⁵ × 24 = 24,576 profiles;
-   methodology-focus v2: 4×4 = 16. Assert ≥ 1 condition fires in every profile (zero-fired
-   unreachable for the shipped templates) and exactly one action is selected; spot-assert
-   the mapped decisions for the boundary states (single mandatory warn ⇒ minor_revision in
-   full / major_revision in mf; single normal block ⇒ minor_revision; any fatal mandatory
+   REJECTED-with-rationale without marker (pass), a marker line under a non-accept
+   decision (exit 1), an OMITTED adjudication (DA table has C2, adjudication line does
+   not — exit 1), a PHANTOM ID (adjudication names C3, DA table has no C3 — exit 1),
+   a REJECTED entry without its rationale line (exit 1), and a marker whose `<n>`
+   mismatches the VALIDATED+UNRESOLVED count (exit 1).
+3. **Decision-contract exhaustiveness**: enumerate ALL seat-score profiles — per MANDATORY
+   dimension every assignment of `{pass, warn, block, block(fatal)}` to each assessed
+   eligible seat, per NON-MANDATORY dimension `{pass, warn, block}` (fatality is
+   mandatory-only), PLUS the valid partial-abstention states (on the two-eligible D3, each
+   seat additionally takes the `abstained` state, excluding the both-abstained profile,
+   which is the separately tested `[DIMENSION-UNASSESSED]` abort — 24 non-aborting D3
+   states; single-eligible dimensions have no non-aborting abstention state). Full v2:
+   D1/D2/D6 4 each × D3 24 × D4/D5 3 each = 13,824 profiles; methodology-focus v2:
+   4 × 3 = 12. Assert ≥ 1 condition fires in every profile (zero-fired unreachable for
+   the shipped templates) and exactly one action is selected; spot-assert the mapped
+   decisions for the boundary states (single mandatory warn ⇒ minor_revision in full /
+   major_revision in mf; single normal block ⇒ minor_revision; any fatal mandatory
    block ⇒ reject, including a fatal D6 block — the Out-of-Scope path; D3 split block —
    one eligible seat blocks, the other passes — fires F2 (`any`) but not an
    `all`-quantified condition; D3 with one abstained seat exercises the dynamic
@@ -851,11 +916,16 @@ Mutation/inverse suites, hardcoded expectations throughout:
    trigger text absent from Phase 1 (drift) and kind-mismatch (fatal block binding warn
    trigger); a dissented dimension carrying `block_class: fatal` (exit 3 — the
    fatality-minting path) and the dissent-with-repairable-block inverse (pass);
-   two-dissent report; Critical finding with no anchor / with `text` anchor over 25 words
-   / `absence` anchor without checked surfaces (fail) and the compliant forms (pass);
-   DA-grammar fixtures — a `#### CRITICAL` table row with an empty Evidence Anchor cell
-   (fail) and a fully-anchored DA table (pass). Panel-side: a `--roles` list mismatching
-   a report's `contract_role` (exit 3) and the matching inverse (pass).
+   two-dissent report; a non-mandatory block carrying a `block_class` line (exit 3);
+   a `what_triggers_fatal` line on a non-mandatory dimension (Phase-1 failure); Phase-1
+   line-grammar variants — the bullet form `- what_triggers_fatal: …` and the dash form
+   `what_triggers_fatal — …` both FAIL, the canonical form passes; Critical finding with
+   no anchor / with `text` anchor over 25 words / `absence` anchor without checked
+   surfaces (fail) and the compliant forms (pass); DA-grammar fixtures — a `#### CRITICAL`
+   table row with an empty Evidence Anchor cell (fail), a CRITICAL table whose `#` column
+   is not dense `C1..Cn` (fail), and a fully-anchored conforming DA table (pass).
+   Panel-side: a `--roles` list mismatching a report's `contract_role` (exit 3) and the
+   matching inverse (pass).
 5. **Lints**: mutation tests flipping each witnessed literal (eligibility map cell, grammar
    sentence, enum token, threshold residency) → lint fails; `_mirror` lists updated in the
    same commit as every newly-read file.
