@@ -1,0 +1,39 @@
+{
+  "model_id": "claude-opus-5",
+  "suite_commit": "f7d9d07f8c4b879783cd47a27a503057c0828a0c",
+  "date": "2026-07-25",
+  "condition": "baseline",
+  "fixture": "ms01_quant",
+  "replicate": 2,
+  "dispatch": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, thinking enabled via MAX_THINKING_TOKENS): field analyst (paper-visible), then per seat a physically separate paper-blind Phase 1 call (contract + title/field/word_count only, manuscript reads forbidden) and a paper-visible Phase 2 call, then synthesizer over the five Phase-2 cards; structural Phase-1/Phase-2 lints enforced at dispatch (protocol §§4-5) and the §8.1 checker run in-flow (exit 1 → single void-and-retry). Contamination fence: cwd outside the repo, readable roots limited to academic-paper-reviewer/ + shared/ of the condition tree (repo-root CLAUDE.md and evals/ unreachable), neutral manuscript filename, no defect vocabulary in any prompt, explicit English-output instruction (headless context carries the user-global CLAUDE.md, which contains no fixture or defect content)",
+  "per_defect": {
+    "SD-01": "PARTIAL",
+    "SD-02": "DETECTED",
+    "SD-03": "DETECTED",
+    "SD-04": "DETECTED",
+    "SD-05": "DETECTED",
+    "SD-06": "DETECTED",
+    "SD-07": "DETECTED",
+    "SD-08": "DETECTED",
+    "SD-09": "DETECTED",
+    "SD-10": "DETECTED"
+  },
+  "severity_scores": {
+    "SD-02": 1.0,
+    "SD-03": 0.5,
+    "SD-04": 1.0,
+    "SD-05": 0.5,
+    "SD-06": 0.5,
+    "SD-07": 1.0,
+    "SD-08": 0.5,
+    "SD-09": 0.0,
+    "SD-10": 0.5,
+    "mean": 0.611
+  },
+  "clean_control_false_findings": [],
+  "severity_source_fallback": {
+    "SD-07": "no tagged detecting seat (DA down-rates its ethics item to advisory register); letter roadmap R2 severity Critical per the ladder"
+  },
+  "raw_output": "raw/2026-07-25-ms01_quant-baseline-r2.review.md",
+  "notes": "Blinded isolated run per README protocol, dispatched via headless CLI (see dispatch field). Adjudication provenance: per-defect facts (detecting seats, verbatim evidence, explicit per-finding severity tags, letter roadmap severities, per-seat tag coverage) were extracted by a claude-opus-5 adjudication assistant that read the complete raw doc; every DETECTED credit, severity source, and clean-control ruling was then re-verified by the maintainer by grepping the quoted evidence back into the raw file and reading the full lines (two formatting-artifact mismatches found, both resolved in favor of the raw text). Verdicts and severity scores are maintainer decisions, not assistant output. Model context: the 2026-07-24 baseline ran claude-opus-4-8; the `opus` dispatch alias moved to claude-opus-5 on 2026-07-25, so per the README rule (re-run, don't reuse, after model upgrades) BOTH conditions were re-measured on claude-opus-5 — this row's condition pairs with the same-day opposite-condition rows, not with the 2026-07-24 opus-4-8 rows. Pre-#581 prompts. Panel decision reject_or_major_revision. Strict recall 9/10: SD-01 = PARTIAL — all four mentions of 3.847 (EIC, R1, R2, DA m5) are decimal-precision/spurious-precision complaints; no seat runs the achievability recompute (grep for the arithmetic returns nothing in this raw). Same miss class as every opus-4-8 MS01 run. Severity: DA tags 7 of its 8 detected-defect rows CRITICAL (band inflation dominates the ladder max); SD-07 has no tagged detecting seat (DA down-rates its ethics item to advisory) → letter-fallback Critical → 1.0. SD-10 scores 0.5 via DA MINOR tag (m4) as the only explicit tag among five detecting seats."
+}

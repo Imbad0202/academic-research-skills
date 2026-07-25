@@ -1,0 +1,17 @@
+{
+  "model_id": "claude-opus-5",
+  "suite_commit": "f7d9d07f8c4b879783cd47a27a503057c0828a0c",
+  "date": "2026-07-25",
+  "condition": "baseline",
+  "fixture": "ms00_clean",
+  "replicate": 2,
+  "dispatch": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, thinking enabled via MAX_THINKING_TOKENS): field analyst (paper-visible), then per seat a physically separate paper-blind Phase 1 call (contract + title/field/word_count only, manuscript reads forbidden) and a paper-visible Phase 2 call, then synthesizer over the five Phase-2 cards; structural Phase-1/Phase-2 lints enforced at dispatch (protocol §§4-5) and the §8.1 checker run in-flow (exit 1 → single void-and-retry). Contamination fence: cwd outside the repo, readable roots limited to academic-paper-reviewer/ + shared/ of the condition tree (repo-root CLAUDE.md and evals/ unreachable), neutral manuscript filename, no defect vocabulary in any prompt, explicit English-output instruction (headless context carries the user-global CLAUDE.md, which contains no fixture or defect content)",
+  "per_defect": {},
+  "severity_scores": {},
+  "clean_control_false_findings": [
+    "dedup-vs-anonymity \"cannot both be fully true\" (DA M4 + echoes)",
+    "recruitment channel \"inside the LMS being studied\" asserted as fact (DA M3)"
+  ],
+  "raw_output": "raw/2026-07-25-ms00_clean-baseline-r2.review.md",
+  "notes": "Blinded isolated run per README protocol, dispatched via headless CLI (see dispatch field). Adjudication provenance: per-defect facts (detecting seats, verbatim evidence, explicit per-finding severity tags, letter roadmap severities, per-seat tag coverage) were extracted by a claude-opus-5 adjudication assistant that read the complete raw doc; every DETECTED credit, severity source, and clean-control ruling was then re-verified by the maintainer by grepping the quoted evidence back into the raw file and reading the full lines (two formatting-artifact mismatches found, both resolved in favor of the raw text). Verdicts and severity scores are maintainer decisions, not assistant output. Model context: the 2026-07-24 baseline ran claude-opus-4-8; the `opus` dispatch alias moved to claude-opus-5 on 2026-07-25, so per the README rule (re-run, don't reuse, after model upgrades) BOTH conditions were re-measured on claude-opus-5 — this row's condition pairs with the same-day opposite-condition rows, not with the 2026-07-24 opus-4-8 rows. Pre-#581 prompts, CLEAN control. Panel decision reject_or_major_revision, driven by two D2 blocks (R2 + DA) on the engagement-vs-access-frequency terminology reading — a textually-accurate interpretive severity call, recorded as decision-layer noise (B1), NOT a false finding. TWO false findings per step 5: (1) §3.1 dedup vs §3.3 anonymity asserted logically incompatible (DA M4 \"cannot both be fully true\"; echoed by meth/persp) — same invented-inconsistency concept as r1; (2) DA M3 asserts the course-announcement channel is \"a channel inside the LMS being studied\" and derives a structural selection defect — hosting never stated in the manuscript (other seats' hedged versions would not count on their own). \"Year level collected but never analysed\" not counted (plausible inference from §3.1, not established false). No mis-recomputed statistic anywhere: R1/DA independently reproduced the Fisher-z CI, n reconciliation, and sensitivity figure."
+}
