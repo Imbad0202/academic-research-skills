@@ -359,6 +359,13 @@ discipline as #510):
 - `## Scoring Plan Dissent` unchanged (one-dimension cap, retry-from-Phase-1 on multi-dissent);
   a dissented dimension is exempt from trigger binding — the dissent entry itself must name
   the dimension and the override rationale, and only that one dimension is exempt.
+  **Exception: `block_class: fatal` is FORBIDDEN on a dissented dimension** (conformance
+  failure, exit 3). Fatality is the one classification with reject authority, so it is
+  exactly the one that must never ride an un-pre-committed judgment (§8.1): a seat whose
+  dissent surfaces what looks like an unfixable flaw scores `block` +
+  `block_class: repairable` (driving Major Revision) and reports the fatality concern as a
+  finding — the escalation to Reject then goes through human review or a later round with
+  a fresh paper-blind commitment, never through a paper-visible reclassification.
 - `## Failure Condition Checks` and `## Editorial Decision` are REMOVED (decision 6). Their
   presence in a v2 report is a grammar failure (loud, not tolerated — prevents a stale
   prompt from half-running v1).
@@ -448,7 +455,9 @@ issues"). v2 makes that boundary **pre-committed and seat-owned**:
   recover validity"). Committed paper-blind, same anti-rationalization mechanism as
   block/warn triggers.
 - Phase 2: `score: block` carries `block_class: fatal` only when the fatal trigger fired, and
-  the `trigger:` line must bind to the committed fatal trigger text.
+  the `trigger:` line must bind to the committed fatal trigger text. This binding survives
+  dissent: the dissent channel can override block/warn placement but can NEVER mint
+  fatality (§6.2) — no path exists to a fatal block that was not committed paper-blind.
 - The synthesizer/checker aggregate fatality with the condition's quantifier like any other
   indicator (§7); no interpretive fixability judgment ever happens at synthesis
   ("arithmetic, not interpretive" preserved).
@@ -544,16 +553,21 @@ New `scripts/check_phase_conformance.py`, per-seat:
 
 ```
 python scripts/check_phase_conformance.py --contract C.json --role <role> \
-    --phase1 <seat>.phase1.md --phase2 <seat>.phase2.md --manuscript m.md
+    --phase1 <seat>.phase1.md --phase2 <seat>.phase2.md \
+    --manuscript m.md --metadata meta.json
 ```
 
-`--role` and `--manuscript` are both REQUIRED. `--role` is the dispatch-assigned role
-(the orchestrator knows which seat it invoked); the checker fails (exit 3) unless it
-equals the report's self-declared `contract_role` line — otherwise two swapped reports
-could each have their out-of-role scores accepted under the other's eligibility while
-the panel-level role-set check still passes. `--manuscript` omission is exit 2
-(infra), never a silent skip — an optional flag would let the leakage family (check 2)
-be disabled by invocation shape, contradicting the fail-closed posture (§14).
+`--role`, `--manuscript`, and `--metadata` are all REQUIRED (omission = exit 2, never a
+silent skip — an optional input would let its check family be disabled by invocation
+shape, contradicting the fail-closed posture, §14). `--role` is the dispatch-assigned
+role (the orchestrator knows which seat it invoked); the checker fails (exit 3) unless
+it equals the report's self-declared `contract_role` line — otherwise two swapped
+reports could each have their out-of-role scores accepted under the other's eligibility
+while the panel-level role-set check still passes. `--metadata` is the same
+title/field/word_count envelope the Phase-1 call received as user content (protocol §2
+step 2) — the leakage exemption (check 2) is defined over it, so the checker consumes
+the actual dispatched values rather than guessing at title extraction from the
+manuscript.
 
 Exit codes: 0 pass / 2 contract-infra / 3 conformance failure (⇒ that reviewer unusable,
 protocol §5 class). Shares the contract loader and markdown parsing helpers with
@@ -567,19 +581,26 @@ fail-closed:
    exit 3 — the orchestrator MUST provide it in operational runs (protocol §5 wiring).
 
 1. **Plan adequacy (Phase 1).** Per eligible dimension: all five committed fields present and
-   non-empty; `what_triggers_block` ≠ `what_triggers_warn` ≠ `what_triggers_fatal` as
-   normalized strings (a copy-pasted identical trigger set is not a plan). Advisory (warning,
+   non-empty; the three trigger fields are PAIRWISE distinct as normalized strings —
+   `len({norm(block), norm(warn), norm(fatal)}) == 3`, so `block == fatal` with a
+   differing `warn` fails exactly like any other collision (a fatal trigger identical to
+   the repairable-block trigger would let the same evidence be classified either way,
+   turning Major Revision into Reject at the seat's discretion). Advisory (warning,
    not failure): any trigger under 8 words. Deeper semantic adequacy (are the triggers
    concrete and discriminating?) remains the documented judge-layer limitation — this floor
    is deterministic on purpose.
 2. **Manuscript leakage (Phase 1).** Every 12-word shingle (whitespace-normalized,
-   case-folded) of the manuscript body is literal-searched in the Phase 1 output; any hit
-   that does not also occur in the contract JSON or the metadata (title/field) fails the
-   seat. This is the executable form of the E4 campaign's single-context-leak lesson;
-   12 words is conservative against idiom collisions, and literal containment (no regex
-   over manuscript text) keeps it injection- and ReDoS-inert. The manuscript input is
-   mandatory (see the CLI contract above), so this family cannot be skipped by
-   invocation shape.
+   case-folded) of the FULL manuscript text is literal-searched in the Phase 1 output; a
+   hit fails the seat UNLESS the shingle also occurs in the `--metadata` envelope values
+   or the contract JSON. The exemption is defined purely over the checker's inputs — no
+   manuscript-side "body extraction" or title parsing exists, so the rule is
+   deterministic across manuscript formats: a title reproduced verbatim at the top of the
+   manuscript and echoed in Phase 1 is exempt because the title is a metadata value, not
+   because the checker guessed where the body starts. This is the executable form of the
+   E4 campaign's single-context-leak lesson; 12 words is conservative against idiom
+   collisions, and literal containment (no regex over manuscript text) keeps it
+   injection- and ReDoS-inert. Both inputs are mandatory (CLI contract above), so this
+   family cannot be skipped by invocation shape.
 3. **Trigger binding (Phase 2).** Every `trigger:` line's quoted text must be a verbatim
    substring (whitespace-normalized) of the SAME seat's Phase-1 committed trigger of the
    matching kind for that dimension. Score without a trigger line, trigger text absent from
@@ -771,16 +792,20 @@ Mutation/inverse suites, hardcoded expectations throughout:
    majority-n=1 path for both choices of abstaining seat).
 4. **Conformance checker**: per check family, one failing and one passing fixture —
    `--role` absent or not in the mode's role set (exit 2); `--role` ≠ the report's
-   `contract_role` (exit 3 — the swapped-reports case); `--manuscript` absent (exit 2,
-   never a skip); missing fatal trigger field; identical block/warn triggers; a 12-word
-   manuscript shingle in Phase 1 (and the title-collision inverse: title text does NOT
-   fire); Phase 2 trigger text absent from Phase 1 (drift) and kind-mismatch (fatal block
-   binding warn trigger); two-dissent report; Critical finding with no anchor / with `text`
-   anchor over 25 words / `absence` anchor without checked surfaces (fail) and the
-   compliant forms (pass); DA-grammar fixtures — a `#### CRITICAL` table row with an empty
-   Evidence Anchor cell (fail) and a fully-anchored DA table (pass). Panel-side: a
-   `--roles` list mismatching a report's `contract_role` (exit 3) and the matching
-   inverse (pass).
+   `contract_role` (exit 3 — the swapped-reports case); `--manuscript` or `--metadata`
+   absent (exit 2, never a skip); missing fatal trigger field; trigger-collision fixtures
+   for ALL THREE pairs (block==warn, block==fatal with distinct warn, warn==fatal — each
+   exit 3) and the pairwise-distinct inverse (pass); a 12-word manuscript shingle in
+   Phase 1 (fail) and the metadata-exemption inverse (the title, present verbatim in both
+   the manuscript and Phase 1, does NOT fire because it is a `--metadata` value); Phase 2
+   trigger text absent from Phase 1 (drift) and kind-mismatch (fatal block binding warn
+   trigger); a dissented dimension carrying `block_class: fatal` (exit 3 — the
+   fatality-minting path) and the dissent-with-repairable-block inverse (pass);
+   two-dissent report; Critical finding with no anchor / with `text` anchor over 25 words
+   / `absence` anchor without checked surfaces (fail) and the compliant forms (pass);
+   DA-grammar fixtures — a `#### CRITICAL` table row with an empty Evidence Anchor cell
+   (fail) and a fully-anchored DA table (pass). Panel-side: a `--roles` list mismatching
+   a report's `contract_role` (exit 3) and the matching inverse (pass).
 5. **Lints**: mutation tests flipping each witnessed literal (eligibility map cell, grammar
    sentence, enum token, threshold residency) → lint fails; `_mirror` lists updated in the
    same commit as every newly-read file.
