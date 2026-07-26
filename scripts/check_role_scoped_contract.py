@@ -228,6 +228,12 @@ PROTOCOL_PHASE2_LIVE_WITNESSES = (
     "Strength subsections never carry a `Severity` field or a "
     "`Severity: Strength` sentinel",
 )
+PROTOCOL_DA_TABLE_GATE_WITNESS = (
+    "The two tables are the terminal suffix of `## Review Body`: every prose "
+    "paragraph precedes `#### CRITICAL`; only blank lines may separate the end "
+    "of CRITICAL from `#### MAJOR` or follow MAJOR to the end of Review Body. "
+    "DA reports may not contain HTML comments"
+)
 TEMPLATE_STRENGTH_SEVERITY_WITNESS = (
     "Omit the Severity field entirely — never emit `Severity: Strength`; "
     "Severity is weakness-only"
@@ -616,6 +622,7 @@ def check(root: Path) -> list[str]:
     if protocol_phase2 is not None:
         for witness in (
             *PROTOCOL_PHASE2_LIVE_WITNESSES,
+            PROTOCOL_DA_TABLE_GATE_WITNESS,
             PHASE2_TERMINAL_PREFLIGHT_WITNESS,
         ):
             if norm_ws(witness) not in norm_ws(protocol_phase2):

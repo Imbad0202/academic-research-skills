@@ -874,6 +874,10 @@ def test_protocol_live_grammar_mutations_fail(tmp_path):
             "these tables are the terminal suffix of `## Review Body`",
             "these tables may be followed by additional Review Body content",
         ),
+        (
+            "The two tables are the terminal suffix of `## Review Body`",
+            "The two tables may be followed by additional Review Body content",
+        ),
     )
     for index, (old, new) in enumerate(mutations):
         root = mirror(tmp_path / str(index))
