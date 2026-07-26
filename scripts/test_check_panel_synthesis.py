@@ -815,6 +815,26 @@ def test_da_typed_anchor_payload_alone_fails_synthesis():
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+def test_da_escaped_pipe_cell_evasion_fails_synthesis():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        r"| [\#<!--\|-->](https://x.test) | Issue | "
+        r"[Evidence<!--\|--> Anchor](https://x.test) |" "\n"
+        "|---|---|---|\n"
+        r"| [C<!--\|-->9](https://x.test) | impossible df | "
+        r'[text<!--\|-->: "n=41" p. 4](https://x.test) |' "\n\n"
+    )
+    da_report.text = da_report.text.replace(
+        "#### MAJOR", block + "#### MAJOR", 1
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
 def test_da_empty_major_id_fails_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")

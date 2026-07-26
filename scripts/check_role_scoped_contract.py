@@ -132,6 +132,10 @@ DA_PARSER_WITNESSES = (
     "    re.IGNORECASE,\n"
     ")",
     "_DA_SEVERITY_DECL_RE.search(line)",
+    "def _split_gfm_cells(row: str) -> list[str]:",
+    'if char == "|":',
+    "if backslashes % 2 == 0:",
+    "return _split_gfm_cells(stripped)",
     "for candidate in lines:",
     'current_h2 == "Review Body"',
     "raw_cells = _possible_markdown_cells(candidate)",

@@ -943,6 +943,21 @@ def test_da_typed_anchor_payload_alone_fails_phase():
         phase.check_da_anchors(report)
 
 
+def test_da_escaped_pipe_cell_evasion_fails_phase():
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        r"| [\#<!--\|-->](https://x.test) | Issue | "
+        r"[Evidence<!--\|--> Anchor](https://x.test) |" "\n"
+        "|---|---|---|\n"
+        r"| [C<!--\|-->9](https://x.test) | impossible df | "
+        r'[text<!--\|-->: "n=41" p. 4](https://x.test) |' "\n\n"
+    )
+    text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table"):
+        phase.check_da_anchors(report)
+
+
 @pytest.mark.parametrize(
     "row,fragment",
     [

@@ -189,11 +189,30 @@ def exactly_one(
     return hits[0] if hits else None
 
 
+def _split_gfm_cells(row: str) -> list[str]:
+    cells: list[str] = []
+    current: list[str] = []
+    for char in row:
+        if char == "|":
+            backslashes = 0
+            for previous in reversed(current):
+                if previous != "\\":
+                    break
+                backslashes += 1
+            if backslashes % 2 == 0:
+                cells.append("".join(current).strip())
+                current = []
+                continue
+        current.append(char)
+    cells.append("".join(current).strip())
+    return cells
+
+
 def _markdown_cells(line: str) -> list[str]:
     stripped = line.strip()
     if not stripped.startswith("|") or not stripped.endswith("|"):
         return []
-    return [cell.strip() for cell in stripped[1:-1].split("|")]
+    return _split_gfm_cells(stripped[1:-1])
 
 
 def _possible_markdown_cells(line: str) -> list[str]:
@@ -205,7 +224,7 @@ def _possible_markdown_cells(line: str) -> list[str]:
         stripped = stripped[1:]
     if stripped.endswith("|"):
         stripped = stripped[:-1]
-    return [cell.strip() for cell in stripped.split("|")]
+    return _split_gfm_cells(stripped)
 
 
 class _VisibleTextHTMLParser(HTMLParser):

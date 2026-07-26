@@ -294,6 +294,17 @@ def test_da_issue_payload_normalized_iterator_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_gfm_escaped_pipe_splitter_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "if backslashes % 2 == 0:",
+        "if True:",
+    )
+    assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
