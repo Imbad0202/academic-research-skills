@@ -434,8 +434,30 @@ def _parse_da_table_block(
             f"[{parse_tag}: {path}: missing or malformed Markdown table separator]"
         )
     rows: list[list[str]] = []
-    for line in block[header_index + 2:]:
+    table_tail = block[header_index + 2:]
+    for index, line in enumerate(table_tail):
         if not line.strip():
+            for trailing in table_tail[index + 1:]:
+                raw_cells = _possible_markdown_cells(trailing)
+                cells = {
+                    _rendered_header_cell(cell) for cell in raw_cells
+                }
+                issue_payload = any(
+                    _DA_ISSUE_ID_RE.fullmatch(cell)
+                    or _DA_TYPED_ANCHOR_RE.search(cell)
+                    for cell in cells
+                )
+                if (
+                    _markdown_cells(trailing)
+                    or "#" in cells
+                    or "evidence anchor" in cells
+                    or issue_payload
+                ):
+                    raise ReportError(
+                        f"[{parse_tag}: {path}: issue-table rows must be "
+                        "contiguous; no table surface may follow the blank "
+                        "line that ends the table]"
+                    )
             break
         cells = _markdown_cells(line)
         if len(cells) != len(header):

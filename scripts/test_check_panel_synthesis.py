@@ -564,7 +564,9 @@ def test_da_major_section_drift_fails_in_synthesis_path(mutation):
     da_report.text = mutation(da_report.text)
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
-    with pytest.raises(cps.ReportError, match="DA-MAJOR-PARSE"):
+    with pytest.raises(
+        cps.ReportError, match=r"DA-(?:CRITICAL|MAJOR)-PARSE"
+    ):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
@@ -617,6 +619,36 @@ def test_da_post_table_prose_passes_in_synthesis_path():
     assert cps.layer2_check(
         panel_reports, FULL, expressions, synthesis, []
     ) == []
+
+
+@pytest.mark.parametrize(
+    "late_surface",
+    (
+        '| C2 | Late issue | text: "late quoted evidence" p. 2 |',
+        "| X9 | Bogus issue |  |",
+        (
+            "| # | Issue | Evidence Anchor |\n"
+            "|---|-------|-----------------|\n"
+            "| C9 | Shadow issue |  |"
+        ),
+    ),
+)
+def test_da_post_boundary_table_surfaces_fail_in_synthesis_path(
+    late_surface,
+):
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "\n\n#### MAJOR",
+        f"\n\n{late_surface}\n\n#### MAJOR",
+        1,
+    )
+    synthesis_text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED"}, marker_count=1
+    )
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    with pytest.raises(cps.ReportError, match="must be contiguous"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
 @pytest.mark.parametrize(

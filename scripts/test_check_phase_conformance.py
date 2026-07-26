@@ -1210,6 +1210,34 @@ def test_da_post_table_prose_passes_phase_checker():
 
 
 @pytest.mark.parametrize(
+    "late_surface",
+    (
+        '| C2 | Late issue | text: "late quoted evidence" p. 2 |',
+        "| X9 | Bogus issue |  |",
+        (
+            "| # | Issue | Evidence Anchor |\n"
+            "|---|-------|-----------------|\n"
+            "| C9 | Shadow issue |  |"
+        ),
+    ),
+)
+def test_da_post_boundary_table_surfaces_fail_phase_checker(
+    late_surface,
+):
+    text = da_text(ids=("C1",)).replace(
+        "\n\n#### MAJOR",
+        f"\n\n{late_surface}\n\n#### MAJOR",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match="must be contiguous",
+    ):
+        phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize(
     "old,new,fragment",
     [
         ("#### CRITICAL", "#### Critical", "DA-CRITICAL-PARSE"),
