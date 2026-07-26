@@ -635,7 +635,8 @@ def test_da_separator_drift_fails_phase_checker(old, new):
         "da.md", da_text().replace(old, new, 1), FULL
     )
     with pytest.raises(
-        (panel.ReportError, phase.panel.ReportError), match="separator"
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match="separator",
     ):
         phase.check_da_anchors(report)
 
@@ -651,7 +652,7 @@ def test_da_row_without_outer_pipes_fails_phase_checker():
         FULL,
     )
     with pytest.raises(
-        (panel.ReportError, phase.panel.ReportError),
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
         match="outer-pipe-delimited",
     ):
         phase.check_da_anchors(report)
