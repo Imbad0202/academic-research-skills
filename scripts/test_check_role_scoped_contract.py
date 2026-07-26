@@ -160,6 +160,28 @@ def test_da_parser_witness_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_first_nonblank_header_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "header_index = nonblank[0] if nonblank else None",
+        "header_index = nonblank[-1] if nonblank else None",
+    )
+    assert lint.check(root)
+
+
+def test_da_standalone_severity_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "_DA_SEVERITY_DECL_RE.search(line)",
+        "_DA_SEVERITY_DECL_RE.match(line)",
+    )
+    assert lint.check(root)
+
+
 def test_da_separator_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

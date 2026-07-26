@@ -35,6 +35,38 @@ CONTRACTS = (
     "shared/contracts/reviewer/full.json",
     "shared/contracts/reviewer/methodology_focus.json",
 )
+CONDITION_FIELDS = (
+    "condition_id", "severity", "cross_reviewer_quantifier", "expression", "action",
+)
+EXPECTED_CONDITIONS = {
+    CONTRACTS[0]: (
+        ("F1", 95, "any", "any mandatory dimension has a fatal block",
+         "editorial_decision=reject"),
+        ("F2", 90, "any", "any mandatory dimension scores 'block'",
+         "editorial_decision=major_revision"),
+        ("F3", 70, "majority",
+         "two or more mandatory dimensions score 'warn' or worse",
+         "editorial_decision=major_revision"),
+        ("F4", 60, "any", "any high-priority dimension scores 'block'",
+         "editorial_decision=major_revision"),
+        ("F5", 40, "any", "any dimension scores 'warn' or worse",
+         "editorial_decision=minor_revision"),
+        ("F0", 10, "all", "every dimension scores 'pass'",
+         "editorial_decision=accept"),
+    ),
+    CONTRACTS[1]: (
+        ("F1", 95, "any", "D1 has a fatal block",
+         "editorial_decision=reject"),
+        ("F2", 90, "any", "D1 scores 'block'",
+         "editorial_decision=major_revision"),
+        ("F3", 70, "any", "D1 scores 'warn'",
+         "editorial_decision=major_revision"),
+        ("F4", 40, "any", "D2 scores 'warn' or worse",
+         "editorial_decision=minor_revision"),
+        ("F0", 10, "all", "every dimension scores 'pass'",
+         "editorial_decision=accept"),
+    ),
+}
 LIVE_ROOTS = (
     "academic-paper-reviewer",
     "shared/contracts/reviewer",
@@ -127,6 +159,12 @@ HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<title>\S.*)$")
 SCHEMA6_ENUM_ROW = (
     '| `editorial_decision` | enum | `"Accept"` / `"Minor Revision"` / '
     '`"Major Revision"` / `"Reject"` |'
+)
+DECISION_MAPPING_ROWS = (
+    "| >= 80 | Accept |",
+    "| 65-79 | Minor Revision |",
+    "| 50-64 | Major Revision |",
+    "| < 50 | Reject |",
 )
 
 
@@ -241,12 +279,16 @@ def check(root: Path) -> list[str]:
         errors.append(f"{PANEL}: ACTION_ENUM must be exactly {list(ACTIONS)}")
 
     for rel in CONTRACTS:
-        actions = {
-            condition["action"]
-            for condition in json.loads(_read(root, rel))["failure_conditions"]
-        }
+        conditions = json.loads(_read(root, rel))["failure_conditions"]
+        actions = {condition["action"] for condition in conditions}
         if not actions <= set(ACTIONS) or not set(ACTIONS) <= actions:
             errors.append(f"{rel}: four-action coverage drift: {sorted(actions)}")
+        actual = tuple(
+            tuple(condition[field] for field in CONDITION_FIELDS)
+            for condition in conditions
+        )
+        if actual != EXPECTED_CONDITIONS[rel]:
+            errors.append(f"{rel}: failure-condition table drift: {actual}")
 
     handoff = heading_section(
         _read(root, HANDOFF),
@@ -293,6 +335,9 @@ def check(root: Path) -> list[str]:
     for threshold in thresholds:
         if quality.count(threshold) != 1:
             errors.append(f"{QUALITY}: threshold residency drift for {threshold}")
+    for row in DECISION_MAPPING_ROWS:
+        if quality.count(row) != 1:
+            errors.append(f"{QUALITY}: decision mapping row drift for {row}")
     live_paths: set[Path] = set()
     for live_root in LIVE_ROOTS:
         base = root / live_root

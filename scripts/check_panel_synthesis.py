@@ -95,6 +95,7 @@ _FENCE_OPEN_RE = re.compile(
 _FENCE_CLOSE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})[ \t]*$"
 )
+_COMMONMARK_LINE_END_RE = re.compile(r"\r\n?|\n")
 _H2_RE = re.compile(r"^## (.+?)\s*$")
 _H3_RE = re.compile(r"^### (.+?)\s*$")
 _H4_RE = re.compile(r"^#### (.+?)\s*$")
@@ -108,6 +109,10 @@ _DECISION_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
 _RETIRED_DECISION_RE = re.compile(
     r"^\s*editorial_decision=\S+\s*$", re.IGNORECASE
 )
+_DA_SEVERITY_DECL_RE = re.compile(
+    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity(?:\*\*)?\s*:",
+    re.IGNORECASE,
+)
 
 
 def strip_fences(text: str) -> list[str]:
@@ -115,7 +120,7 @@ def strip_fences(text: str) -> list[str]:
     out: list[str] = []
     fence_char: str | None = None
     fence_len = 0
-    for line in text.splitlines():
+    for line in _COMMONMARK_LINE_END_RE.split(text):
         if fence_char is not None:
             match = _FENCE_CLOSE_RE.fullmatch(line)
             if match:
@@ -229,20 +234,19 @@ def _parse_da_table_block(
         if _H2_RE.fullmatch(line) or _H3_RE.fullmatch(line) or _H4_RE.fullmatch(line):
             break
         block.append(line)
-    header_index = next(
-        (
-            i for i, line in enumerate(block)
-            if "#" in _markdown_cells(line)
-            and "Evidence Anchor" in _markdown_cells(line)
-        ),
-        None,
-    )
+    nonblank = [i for i, line in enumerate(block) if line.strip()]
+    header_index = nonblank[0] if nonblank else None
     if header_index is None:
         raise ReportError(
             f"[{parse_tag}: {path}: missing table header with # and "
             "Evidence Anchor columns]"
         )
     header = _markdown_cells(block[header_index])
+    if "#" not in header or "Evidence Anchor" not in header:
+        raise ReportError(
+            f"[{parse_tag}: {path}: missing table header: first nonblank "
+            "line must have # and Evidence Anchor columns]"
+        )
     if header.count("#") != 1 or header.count("Evidence Anchor") != 1:
         raise ReportError(
             f"[{parse_tag}: {path}: table header must contain exactly one # "
@@ -291,6 +295,11 @@ def parse_da_tables(
             f"[DA-TABLE-PARSE: {path}: expected exactly one ## Review Body]"
         )
     review_lines = sections["Review Body"]
+    if any(_DA_SEVERITY_DECL_RE.search(line) for line in review_lines):
+        raise ReportError(
+            f"[DA-FINDING-GRAMMAR: {path}: standalone Severity declarations "
+            "are forbidden; use the CRITICAL and MAJOR issue tables]"
+        )
     critical_lines, critical_id_col, critical_anchor_col = _parse_da_table_block(
         review_lines, "CRITICAL", path
     )

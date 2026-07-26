@@ -1,6 +1,7 @@
 """Mutation tests for check_decision_contract.py."""
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -71,6 +72,31 @@ def test_schema6_enum_extra_value_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    (
+        ("condition_id", "FX"),
+        ("severity", 61),
+        ("cross_reviewer_quantifier", "all"),
+        ("expression", "any normal dimension scores 'block'"),
+        ("action", "editorial_decision=minor_revision"),
+    ),
+)
+def test_shipped_condition_tuple_field_mutation_fails(
+    tmp_path, field, replacement
+):
+    root = mirror(tmp_path)
+    path = root / lint.CONTRACTS[0]
+    contract = json.loads(path.read_text(encoding="utf-8"))
+    condition = next(
+        item for item in contract["failure_conditions"]
+        if item["condition_id"] == "F4"
+    )
+    condition[field] = replacement
+    path.write_text(json.dumps(contract), encoding="utf-8")
+    assert lint.check(root)
+
+
 def test_hybrid_token_on_live_agent_surface_fails(tmp_path):
     root = mirror(tmp_path)
     rel = "academic-paper-reviewer/agents/eic_agent.md"
@@ -91,6 +117,17 @@ def test_authority_row_mutation_fails(tmp_path):
 def test_threshold_removed_from_single_residency_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(root, lint.QUALITY, "| 65-79 |", "| 66-79 |")
+    assert lint.check(root)
+
+
+def test_threshold_mapping_label_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.QUALITY,
+        "| >= 80 | Accept |",
+        "| >= 80 | Reject |",
+    )
     assert lint.check(root)
 
 

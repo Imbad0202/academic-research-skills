@@ -222,6 +222,17 @@ def test_fenced_v1_bare_decision_decoy_is_ignored():
     cps.parse_report("eic.md", text, FULL)
 
 
+@pytest.mark.parametrize("fence", ("```", "~~~"))
+def test_malformed_fence_closer_does_not_expose_bare_decision(fence):
+    text = (
+        report_text("eic")
+        + f"\n{fence}text\n{fence}not-a-close\n"
+        "editorial_decision=accept\n"
+        f"{fence}\n"
+    )
+    cps.parse_report("eic.md", text, FULL)
+
+
 def test_malformed_fence_closer_keeps_reviewer_report_hidden():
     text = "```text\n```not-a-close\n" + report_text("eic") + "\n```\n"
     with pytest.raises(cps.ReportError, match="Dimension Scores"):
@@ -233,6 +244,18 @@ def test_malformed_fence_closer_keeps_synthesis_hidden():
     text = "~~~text\n~~~not-a-close\n" + synthesis + "\n~~~\n"
     with pytest.raises(cps.SynthesisError, match="fired_conditions"):
         cps.parse_synthesis("s.md", text, FULL)
+
+
+@pytest.mark.parametrize("separator", ("\x85", "\u2028", "\u2029"))
+def test_unicode_separator_cannot_close_commonmark_fence(separator):
+    text = (
+        "```text\n```"
+        + separator
+        + report_text("methodology", {"D1": "fatal"})
+        + "\n```\n"
+    )
+    with pytest.raises(cps.ReportError, match="Dimension Scores"):
+        cps.parse_report("hidden-methodology.md", text, FULL)
 
 
 @pytest.mark.parametrize("score", ("warn", "block"))
@@ -531,6 +554,44 @@ def test_da_header_and_critical_id_gates_fail_in_synthesis_path(
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+def test_da_shadow_table_fails_in_synthesis_path():
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    canonical = (
+        '| # | Issue | Evidence Anchor |\n'
+        '|---|-------|-----------------|\n'
+        '| C1 | Issue | text: "quoted evidence" p. 1 |'
+    )
+    shadowed = (
+        '| ID | Issue | Anchor |\n'
+        '|---|-------|--------|\n'
+        '| C1 | Issue | text: "quoted evidence" p. 1 |\n\n'
+        '| # | Issue | Evidence Anchor |\n'
+        '|---|-------|-----------------|'
+    )
+    da_report.text = da_report.text.replace(canonical, shadowed, 1)
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="first nonblank line"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_standalone_critical_fails_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### CRITICAL",
+        "### Further adversarial challenge\n"
+        "- **Severity**: Critical | **Confidence**: 5 (statistics)\n\n"
+        "#### CRITICAL",
+        1,
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="standalone Severity"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
 def test_da_empty_major_id_fails_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
@@ -678,6 +739,17 @@ def test_methodology_focus_exhaustive_12_profiles():
     assert decisions == cps.ACTION_ENUM
 
 
+def test_methodology_focus_d1_warn_is_major_revision():
+    contract, expressions = cps.load_contract(MF_PATH)
+    fired, decision = _evaluate_profile(
+        contract,
+        expressions,
+        {"D1": [state("warn")], "D2": [state("pass")]},
+    )
+    assert fired == ["F3"]
+    assert decision == "editorial_decision=major_revision"
+
+
 def test_methodology_focus_layer2_has_empty_da_gate():
     contract, expressions = cps.load_contract(MF_PATH)
     panel_reports = []
@@ -719,6 +791,10 @@ def test_boundary_decisions_and_d3_split_dynamic_majority():
     normal_block = {**base, "D5": [state("block")]}
     assert _evaluate_profile(contract, expressions, normal_block)[1] == \
         "editorial_decision=minor_revision"
+
+    high_block = {**base, "D4": [state("block")]}
+    assert _evaluate_profile(contract, expressions, high_block)[1] == \
+        "editorial_decision=major_revision"
 
     fatal_venue = {**base, "D6": [state("fatal")]}
     assert _evaluate_profile(contract, expressions, fatal_venue)[1] == \

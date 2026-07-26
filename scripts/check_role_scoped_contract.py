@@ -76,7 +76,11 @@ DA_FINDING_WITNESS = (
     "emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` "
     "section, always present even when empty. Each is a Markdown table whose "
     "header includes exact `#` and `Evidence Anchor` columns; every data row "
-    "is outer-pipe-delimited and has exactly the header column count"
+    "is outer-pipe-delimited and has exactly the header column count; CRITICAL "
+    "IDs are unique and dense `C1..Cn`, and are the synthesizer's "
+    "machine-addressable adjudication keys. Standalone `**Severity**:` "
+    "declarations are forbidden: every DA Critical or Major issue must be a "
+    "row in its matching band table"
 )
 PATTERNS = (
     "any <priority> dimension scores '<score>'",
@@ -117,6 +121,8 @@ PHASE_FINDING_REGEX_WITNESSES = (
     r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
 )
 DA_PARSER_WITNESSES = (
+    "_DA_SEVERITY_DECL_RE.search(line)",
+    "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
     're.fullmatch(r":?-{3,}:?", cell)',
     're.fullmatch(r"C[1-9]\\d*", finding_id)',

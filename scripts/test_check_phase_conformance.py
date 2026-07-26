@@ -258,6 +258,20 @@ def test_trigger_binding_rechecks_required_trigger_defence_in_depth():
         )
 
 
+def test_trigger_binding_rechecks_surplus_trigger_defence_in_depth():
+    report, _ = parse_report("methodology")
+    report.scores["D1"] = panel.DimensionScore(
+        "pass", trigger="surplus post hoc trigger"
+    )
+    with pytest.raises(phase.ConformanceError, match="TRIGGER-GRAMMAR"):
+        phase.check_trigger_binding(
+            report,
+            parse_plan(),
+            {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
+            set(),
+        )
+
+
 def test_fatal_block_cannot_bind_warn_trigger():
     report, _ = parse_report("methodology", {"D1": "fatal"})
     report.scores["D1"] = panel.DimensionScore(
@@ -675,6 +689,39 @@ def test_da_header_and_critical_id_gates_fail_phase_checker(
         (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
         match=fragment,
     ):
+        phase.check_da_anchors(report)
+
+
+def test_da_shadow_table_fails_phase_checker():
+    canonical = (
+        '| # | Issue | Evidence Anchor |\n'
+        '|---|-------|-----------------|\n'
+        '| C1 | Issue | text: "quote" p. 1 |'
+    )
+    shadowed = (
+        '| ID | Issue | Anchor |\n'
+        '|---|-------|--------|\n'
+        '| C1 | Issue | text: "quoted evidence" p. 1 |\n\n'
+        '| # | Issue | Evidence Anchor |\n'
+        '|---|-------|-----------------|'
+    )
+    report = panel.parse_report(
+        "da.md", da_text(ids=("C1",)).replace(canonical, shadowed, 1), FULL
+    )
+    with pytest.raises(phase.ConformanceError, match="first nonblank line"):
+        phase.check_da_anchors(report)
+
+
+def test_da_standalone_critical_fails_phase_checker():
+    text = da_text().replace(
+        "#### CRITICAL",
+        "### Further adversarial challenge\n"
+        "- **Severity**: Critical | **Confidence**: 5 (statistics)\n\n"
+        "#### CRITICAL",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="standalone Severity"):
         phase.check_da_anchors(report)
 
 
