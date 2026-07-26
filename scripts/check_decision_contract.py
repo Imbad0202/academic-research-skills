@@ -67,6 +67,45 @@ EXPECTED_CONDITIONS = {
          "editorial_decision=accept"),
     ),
 }
+EXPECTED_AUTHORITY_ROWS = (
+    (
+        "`full` (sprint contract)",
+        "Mechanical synthesizer over reviewer contract v2; the matrix below "
+        "never overrides it",
+        "`block/warn/pass` + `block_class`",
+        "Accept / Minor Revision / Major Revision / Reject",
+    ),
+    (
+        "`methodology-focus` (sprint contract)",
+        "Same mechanical engine, scoped to methods + presentation; no "
+        "venue-fit dimension",
+        "same",
+        "four-value enum",
+    ),
+    (
+        "`full` / `methodology-focus` without a contract",
+        "Synthesis Protocol + the qualitative criteria and recommendation "
+        "matrix in this file",
+        "reviewer recommendations",
+        "four-value enum",
+    ),
+    (
+        "`re-review`",
+        "`re_review_mode_protocol.md` until #576 Spec B replaces its contract",
+        "—",
+        "four-value enum",
+    ),
+    ("`quick`", "EIC assessment only; advisory, not an editorial decision",
+     "—", "signal"),
+    ("`guided`", "Issue-list dialogue; no editorial decision letter",
+     "—", "—"),
+    (
+        "`calibration`",
+        "`quality_rubrics.md` 0–100 Decision Mapping, measurement-only",
+        "0–100",
+        "four-value labels against the gold set",
+    ),
+)
 LIVE_ROOTS = (
     "academic-paper-reviewer",
     "shared/contracts/reviewer",
@@ -306,12 +345,20 @@ def check(root: Path) -> list[str]:
     if authority is None:
         errors.append(f"{STANDARDS}: §0 authority table missing")
     else:
-        for mode in (
-            "`full` (sprint contract)", "`methodology-focus` (sprint contract)",
-            "`re-review`", "`quick`", "`guided`", "`calibration`",
-        ):
-            if mode not in authority:
-                errors.append(f"{STANDARDS}: authority row missing {mode}")
+        authority_rows = []
+        for line in authority.splitlines():
+            if not line.startswith("|") or not line.endswith("|"):
+                continue
+            cells = tuple(cell.strip() for cell in line[1:-1].split("|"))
+            if len(cells) != 4 or cells[0] == "Mode" or all(
+                set(cell) <= {"-", ":"} for cell in cells
+            ):
+                continue
+            authority_rows.append(cells)
+        if tuple(authority_rows) != EXPECTED_AUTHORITY_ROWS:
+            errors.append(
+                f"{STANDARDS}: authority table semantic drift: {authority_rows}"
+            )
         if norm_ws("Under a sprint contract, the mechanical synthesizer governs") \
                 not in norm_ws(authority):
             errors.append(f"{STANDARDS}: mechanical governor sentence missing")

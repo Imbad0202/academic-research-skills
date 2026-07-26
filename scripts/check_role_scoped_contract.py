@@ -80,7 +80,7 @@ DA_FINDING_WITNESS = (
     "IDs are unique and dense `C1..Cn`, and are the synthesizer's "
     "machine-addressable adjudication keys. Standalone `**Severity**:` "
     "declarations are forbidden: every DA Critical or Major issue must be a "
-    "row in its matching band table"
+    "row in its matching band table. Do not create any other H4 issue-table band"
 )
 PATTERNS = (
     "any <priority> dimension scores '<score>'",
@@ -121,7 +121,10 @@ PHASE_FINDING_REGEX_WITNESSES = (
     r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
 )
 DA_PARSER_WITNESSES = (
+    '_DA_SEVERITY_DECL_RE = re.compile(\n'
+    r'    r"\*\*Severity(?:\*\*)?\s*:",',
     "_DA_SEVERITY_DECL_RE.search(line)",
+    'if "#" in cells and "Evidence Anchor" in cells:',
     "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
     're.fullmatch(r":?-{3,}:?", cell)',

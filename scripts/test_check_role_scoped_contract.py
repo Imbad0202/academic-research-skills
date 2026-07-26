@@ -182,6 +182,28 @@ def test_da_standalone_severity_witness_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_severity_regex_body_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        r'r"\*\*Severity(?:\*\*)?\s*:",',
+        r'r"^\*\*Severity(?:\*\*)?\s*:",',
+    )
+    assert lint.check(root)
+
+
+def test_da_extra_band_table_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        'if "#" in cells and "Evidence Anchor" in cells:',
+        'if False and "#" in cells and "Evidence Anchor" in cells:',
+    )
+    assert lint.check(root)
+
+
 def test_da_separator_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

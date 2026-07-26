@@ -110,7 +110,7 @@ _RETIRED_DECISION_RE = re.compile(
     r"^\s*editorial_decision=\S+\s*$", re.IGNORECASE
 )
 _DA_SEVERITY_DECL_RE = re.compile(
-    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity(?:\*\*)?\s*:",
+    r"\*\*Severity(?:\*\*)?\s*:",
     re.IGNORECASE,
 )
 
@@ -306,6 +306,26 @@ def parse_da_tables(
     major_lines, major_id_col, major_anchor_col = _parse_da_table_block(
         review_lines, "MAJOR", path
     )
+    for index, line in enumerate(review_lines):
+        heading_match = _H4_RE.fullmatch(line)
+        if not heading_match or heading_match.group(1) in {"CRITICAL", "MAJOR"}:
+            continue
+        block: list[str] = []
+        for candidate in review_lines[index + 1:]:
+            if (
+                _H2_RE.fullmatch(candidate)
+                or _H3_RE.fullmatch(candidate)
+                or _H4_RE.fullmatch(candidate)
+            ):
+                break
+            block.append(candidate)
+        first = next((candidate for candidate in block if candidate.strip()), "")
+        cells = _markdown_cells(first)
+        if "#" in cells and "Evidence Anchor" in cells:
+            raise ReportError(
+                f"[DA-TABLE-PARSE: {path}: unexpected issue-table band "
+                f"#### {heading_match.group(1)}]"
+            )
 
     rows: dict[str, str] = {}
     for cells in critical_lines:

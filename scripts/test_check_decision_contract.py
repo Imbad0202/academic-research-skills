@@ -114,6 +114,28 @@ def test_authority_row_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+@pytest.mark.parametrize(
+    ("old", "new"),
+    (
+        ("`full` (sprint contract)", "`complete` (sprint contract)"),
+        (
+            "Mechanical synthesizer over reviewer contract v2; the matrix "
+            "below never overrides it",
+            "The qualitative matrix overrides the mechanical synthesizer",
+        ),
+        ("`block/warn/pass` + `block_class`", "reviewer recommendations"),
+        (
+            "| Accept / Minor Revision / Major Revision / Reject |",
+            "| advisory signal |",
+        ),
+    ),
+)
+def test_authority_table_cell_mutation_fails(tmp_path, old, new):
+    root = mirror(tmp_path)
+    mutate(root, lint.STANDARDS, old, new)
+    assert lint.check(root)
+
+
 def test_threshold_removed_from_single_residency_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(root, lint.QUALITY, "| 65-79 |", "| 66-79 |")

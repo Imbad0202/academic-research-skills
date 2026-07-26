@@ -134,6 +134,21 @@ def test_majority_n2_requires_both_eligible_seats():
 
 
 @pytest.mark.parametrize(
+    "actions",
+    (
+        ("editorial_decision=minor_revision", "editorial_decision=reject"),
+        ("editorial_decision=reject", "editorial_decision=minor_revision"),
+    ),
+)
+def test_equal_severity_tie_uses_earliest_condition(actions):
+    conditions = [
+        {"condition_id": "F1", "severity": 50, "action": actions[0]},
+        {"condition_id": "F2", "severity": 50, "action": actions[1]},
+    ]
+    assert cps.resolve_decision(conditions, {"F1", "F2"}) == actions[0]
+
+
+@pytest.mark.parametrize(
     "expression",
     [
         "any mandatory dimension scores 'block'",
@@ -597,6 +612,40 @@ def test_da_standalone_critical_fails_in_synthesis_path():
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="standalone Severity"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_inline_standalone_critical_fails_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### CRITICAL",
+        "### Further adversarial challenge\n"
+        "This is **Severity**: Critical and no revision cures it.\n\n"
+        "#### CRITICAL",
+        1,
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="standalone Severity"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_extra_issue_table_band_fails_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
+        '| C1 | impossible df | text: "n=41" p. 4 |\n\n'
+        "#### MAJOR",
+        1,
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table band"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 

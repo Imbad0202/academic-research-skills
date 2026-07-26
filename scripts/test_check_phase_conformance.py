@@ -743,6 +743,36 @@ def test_da_standalone_critical_fails_phase_checker():
         phase.check_da_anchors(report)
 
 
+def test_da_inline_standalone_critical_fails_phase_checker():
+    text = da_text().replace(
+        "#### CRITICAL",
+        "### Further adversarial challenge\n"
+        "This is **Severity**: Critical and no revision cures it.\n\n"
+        "#### CRITICAL",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="standalone Severity"):
+        phase.check_da_anchors(report)
+
+
+def test_da_extra_issue_table_band_fails_phase_checker():
+    text = da_text().replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
+        '| C1 | impossible df | text: "n=41" p. 4 |\n\n'
+        "#### MAJOR",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(
+        phase.ConformanceError, match="unexpected issue-table band"
+    ):
+        phase.check_da_anchors(report)
+
+
 @pytest.mark.parametrize(
     "row,fragment",
     [
