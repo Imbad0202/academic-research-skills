@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 from _skill_lint import heading_section, norm_ws, read_or_exit2
+from check_panel_synthesis import ReportError, validate_evidence_anchor
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = {
@@ -43,6 +45,16 @@ SYNTH = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
 PANEL_CHECKER = "scripts/check_panel_synthesis.py"
 PHASE_CHECKER = "scripts/check_phase_conformance.py"
 TEMPLATE = "academic-paper-reviewer/templates/peer_review_report_template.md"
+SHIPPED_EXAMPLES = (
+    "academic-paper-reviewer/examples/subclaim_decomposition_example.md",
+)
+SHIPPED_EXAMPLE_ANCHOR_COUNTS = {
+    SHIPPED_EXAMPLES[0]: 10,
+}
+SHIPPED_EXAMPLE_ANCHOR_RE = re.compile(
+    r"`(?P<anchor>(?:text|table|figure|equation|dataset|absence): [^`\n]+)`",
+    re.IGNORECASE,
+)
 SPRINT = "## v3.6.2 Sprint Contract Protocol"
 PHASE1 = "### Phase 1 — Paper-content-blind pre-commitment"
 PHASE2 = "### Phase 2 — Paper-visible review"
@@ -86,7 +98,8 @@ ANCHOR_VALUE_GRAMMAR_WITNESS = (
     "excerpt at most 25 words. An `absence:` anchor uses the exact grammar "
     "`absence: <where> — expected <item>; checked <surfaces>`, including the "
     "literal single space after the semicolon and non-empty content for every "
-    "placeholder"
+    "placeholder. The reserved ` — expected ` and `; checked ` separator "
+    "sequences each occur exactly once"
 )
 ANCHOR_VALIDATOR_REGEX_WITNESS = (
     r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
@@ -114,10 +127,20 @@ ANCHOR_QUOTE_SCANNER_WITNESS = '''def _quoted_excerpts(text: str) -> list[str] |
 ANCHOR_QUOTE_USAGE_WITNESS = (
     "quote_texts = _quoted_excerpts(tail)"
 )
-ANCHOR_ABSENCE_REGEX_WITNESS = (
-    r'r"(?P<where>\S.*?)\s+—\s+expected\s+(?P<expected>\S.*?);"' "\n"
-    r'            r" checked\s+(?P<surfaces>\S.*)"'
-)
+ANCHOR_ABSENCE_PARSER_WITNESS = '''def _absence_parts(text: str) -> tuple[str, str, str] | None:
+    """Parse the two reserved absence separators without regex backtracking."""
+    expected_separator = " — expected "
+    checked_separator = "; checked "
+    if (
+        text.count(expected_separator) != 1
+        or text.count(checked_separator) != 1
+    ):
+        return None
+    where, remainder = text.split(expected_separator, 1)
+    expected, surfaces = remainder.split(checked_separator, 1)
+    parts = (where, expected, surfaces)
+    return parts if all(part.strip() for part in parts) else None'''
+ANCHOR_ABSENCE_USAGE_WITNESS = "if _absence_parts(tail) is None:"
 ANCHOR_WRAPPER_WITNESSES = (
     'if value.startswith("["):',
     'if not value.endswith("]"):',
@@ -356,8 +379,10 @@ def check(root: Path) -> list[str]:
         errors.append(f"{PANEL_CHECKER}: anchor-quote scanner witness missing")
     if ANCHOR_QUOTE_USAGE_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-quote scanner usage missing")
-    if ANCHOR_ABSENCE_REGEX_WITNESS not in checker:
-        errors.append(f"{PANEL_CHECKER}: anchor-absence regex witness missing")
+    if ANCHOR_ABSENCE_PARSER_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-absence parser witness missing")
+    if ANCHOR_ABSENCE_USAGE_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-absence parser usage missing")
     for witness in ANCHOR_WRAPPER_WITNESSES:
         if witness not in checker:
             errors.append(
@@ -381,6 +406,23 @@ def check(root: Path) -> list[str]:
     for witness in TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES:
         if witness not in template:
             errors.append(f"{TEMPLATE}: anchor placeholder witness missing")
+    for rel in SHIPPED_EXAMPLES:
+        example = _read(root, rel)
+        anchors = [
+            match.group("anchor")
+            for match in SHIPPED_EXAMPLE_ANCHOR_RE.finditer(example)
+        ]
+        expected_count = SHIPPED_EXAMPLE_ANCHOR_COUNTS[rel]
+        if len(anchors) != expected_count:
+            errors.append(
+                f"{rel}: expected {expected_count} shipped typed anchors, "
+                f"found {len(anchors)}"
+            )
+        for index, anchor in enumerate(anchors, 1):
+            try:
+                validate_evidence_anchor(anchor, f"{rel}:anchor-{index}")
+            except ReportError as exc:
+                errors.append(str(exc))
     return errors
 
 

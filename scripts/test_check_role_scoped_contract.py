@@ -10,7 +10,7 @@ REPO = Path(__file__).resolve().parents[1]
 MIRROR_FILES = tuple(lint.CONTRACTS) + tuple(lint.AGENTS) + (
     lint.PROTOCOL, lint.SYNTH, lint.PANEL_CHECKER, lint.PHASE_CHECKER,
     lint.TEMPLATE,
-)
+) + tuple(lint.SHIPPED_EXAMPLES)
 
 
 def mirror(tmp_path: Path) -> Path:
@@ -497,13 +497,39 @@ def test_anchor_validator_quote_scanner_usage_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
-def test_anchor_validator_absence_regex_mutation_fails(tmp_path):
+def test_anchor_validator_absence_parser_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
         root,
         lint.PANEL_CHECKER,
-        lint.ANCHOR_ABSENCE_REGEX_WITNESS,
-        r'r"(?P<where>\S.*)"',
+        lint.ANCHOR_ABSENCE_PARSER_WITNESS,
+        lint.ANCHOR_ABSENCE_PARSER_WITNESS.replace(
+            "text.count(expected_separator) != 1",
+            "text.count(expected_separator) >= 1",
+            1,
+        ),
+    )
+    assert lint.check(root)
+
+
+def test_anchor_validator_absence_parser_usage_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        lint.ANCHOR_ABSENCE_USAGE_WITNESS,
+        "if False:",
+    )
+    assert lint.check(root)
+
+
+def test_shipped_example_absence_separator_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.SHIPPED_EXAMPLES[0],
+        "; checked",
+        ";checked",
     )
     assert lint.check(root)
 

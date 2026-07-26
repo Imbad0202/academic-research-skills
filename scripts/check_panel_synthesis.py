@@ -308,6 +308,21 @@ def _quoted_excerpts(text: str) -> list[str] | None:
     return None if stack else excerpts
 
 
+def _absence_parts(text: str) -> tuple[str, str, str] | None:
+    """Parse the two reserved absence separators without regex backtracking."""
+    expected_separator = " — expected "
+    checked_separator = "; checked "
+    if (
+        text.count(expected_separator) != 1
+        or text.count(checked_separator) != 1
+    ):
+        return None
+    where, remainder = text.split(expected_separator, 1)
+    expected, surfaces = remainder.split(checked_separator, 1)
+    parts = (where, expected, surfaces)
+    return parts if all(part.strip() for part in parts) else None
+
+
 def validate_evidence_anchor(anchor: str, context: str) -> None:
     """Validate the shared finding-anchor grammar for either checker."""
     value = anchor.strip()
@@ -349,13 +364,7 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
                 "quoted excerpts of at most 25 words]"
             )
     elif match.group("type").casefold() == "absence":
-        absence = re.fullmatch(
-            r"(?P<where>\S.*?)\s+—\s+expected\s+(?P<expected>\S.*?);"
-            r" checked\s+(?P<surfaces>\S.*)",
-            tail,
-            re.IGNORECASE,
-        )
-        if not absence:
+        if _absence_parts(tail) is None:
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: absence anchor needs "
                 "<where> — expected <item>; checked <surfaces>]"

@@ -22,6 +22,7 @@ ROLES = ("eic", "methodology", "domain", "perspective", "da")
         "absence: x",
         "absence: Methods — expected ethics;checked appendix",
         "absence: Methods — expected ethics;  checked appendix",
+        "absence: Methods — expected ; checked appendix — expected ethics; checked supplement",
         "absence: Methods — expected ethics; checked appendix]",
         "[absence: Methods — expected ethics; checked appendix",
         '`text: §5 "short exact quote"',
@@ -906,6 +907,20 @@ def test_da_canonical_rows_allow_escaped_pipes():
     critical, major = cps.parse_da_tables(text, "da.md")
     assert list(critical) == ["C1"]
     assert major == ['text: "quoted evidence" p. 1']
+
+
+def test_da_repeated_absence_separators_fail_in_synthesis_path():
+    malformed = (
+        "absence: Methods — expected ; checked appendix "
+        "— expected ethics; checked supplement"
+    )
+    text = report_text("da", da_ids=("C1",)).replace(
+        'text: "quoted evidence" p. 1',
+        malformed,
+        1,
+    )
+    with pytest.raises(cps.ReportError, match="ANCHOR-INVALID"):
+        cps.parse_da_tables(text, "da.md")
 
 
 @pytest.mark.parametrize(

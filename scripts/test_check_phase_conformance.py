@@ -462,6 +462,9 @@ def test_nonmandatory_block_class_fails_phase_checker(tmp_path):
         "**Evidence Anchor**: absence: Methods — expected ethics statement;checked appendix",
         "### W1: doubled separator space\n**Severity**: Critical\n"
         "**Evidence Anchor**: absence: Methods — expected ethics statement;  checked appendix",
+        "### W1: repeated separators\n**Severity**: Critical\n"
+        "**Evidence Anchor**: absence: Methods — expected ; checked appendix "
+        "— expected ethics statement; checked supplement",
     ],
 )
 def test_critical_major_anchor_failures(body):
