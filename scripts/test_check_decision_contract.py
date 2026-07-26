@@ -136,6 +136,26 @@ def test_authority_table_cell_mutation_fails(tmp_path, old, new):
     assert lint.check(root)
 
 
+@pytest.mark.parametrize(
+    "extra_row",
+    (
+        "`full` (sprint contract) | The matrix overrides mechanics | "
+        "reviewer recommendations | four-value enum",
+        "| `full` (sprint contract) | The matrix overrides mechanics | "
+        "reviewer recommendations | four-value enum | ignored |",
+    ),
+)
+def test_authority_table_extra_gfm_row_fails(tmp_path, extra_row):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.STANDARDS,
+        "| `calibration` |",
+        f"{extra_row}\n| `calibration` |",
+    )
+    assert lint.check(root)
+
+
 def test_threshold_removed_from_single_residency_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(root, lint.QUALITY, "| 65-79 |", "| 66-79 |")

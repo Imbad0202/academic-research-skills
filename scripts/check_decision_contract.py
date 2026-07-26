@@ -347,11 +347,18 @@ def check(root: Path) -> list[str]:
     else:
         authority_rows = []
         for line in authority.splitlines():
-            if not line.startswith("|") or not line.endswith("|"):
+            stripped = line.strip()
+            if "|" not in stripped:
                 continue
-            cells = tuple(cell.strip() for cell in line[1:-1].split("|"))
-            if len(cells) != 4 or cells[0] == "Mode" or all(
-                set(cell) <= {"-", ":"} for cell in cells
+            if stripped.startswith("|"):
+                stripped = stripped[1:]
+            if stripped.endswith("|"):
+                stripped = stripped[:-1]
+            cells = tuple(cell.strip() for cell in stripped.split("|"))
+            if cells == ("Mode", "Decision engine", "Working scale", "Output"):
+                continue
+            if len(cells) == 4 and all(
+                re.fullmatch(r":?-{3,}:?", cell) for cell in cells
             ):
                 continue
             authority_rows.append(cells)

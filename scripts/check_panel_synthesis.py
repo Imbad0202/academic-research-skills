@@ -190,6 +190,18 @@ def _markdown_cells(line: str) -> list[str]:
     return [cell.strip() for cell in stripped[1:-1].split("|")]
 
 
+def _possible_markdown_cells(line: str) -> list[str]:
+    """Return cells from either outer-pipe or pipe-less GFM table rows."""
+    stripped = line.strip()
+    if "|" not in stripped:
+        return []
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    if stripped.endswith("|"):
+        stripped = stripped[:-1]
+    return [cell.strip() for cell in stripped.split("|")]
+
+
 def validate_evidence_anchor(anchor: str, context: str) -> None:
     """Validate the shared finding-anchor grammar for either checker."""
     value = anchor.strip()
@@ -319,13 +331,16 @@ def parse_da_tables(
             ):
                 break
             block.append(candidate)
-        first = next((candidate for candidate in block if candidate.strip()), "")
-        cells = _markdown_cells(first)
-        if "#" in cells and "Evidence Anchor" in cells:
-            raise ReportError(
-                f"[DA-TABLE-PARSE: {path}: unexpected issue-table band "
-                f"#### {heading_match.group(1)}]"
-            )
+        for candidate in block:
+            cells = {
+                re.sub(r"\s+", " ", cell).casefold()
+                for cell in _possible_markdown_cells(candidate)
+            }
+            if "#" in cells and "evidence anchor" in cells:
+                raise ReportError(
+                    f"[DA-TABLE-PARSE: {path}: unexpected issue-table band "
+                    f"#### {heading_match.group(1)}]"
+                )
 
     rows: dict[str, str] = {}
     for cells in critical_lines:

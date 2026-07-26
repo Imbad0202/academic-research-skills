@@ -615,13 +615,14 @@ def test_da_standalone_critical_fails_in_synthesis_path():
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
-def test_da_inline_standalone_critical_fails_in_synthesis_path():
+@pytest.mark.parametrize("label", ("severity", "sEvErItY"))
+def test_da_case_variant_standalone_critical_fails_in_synthesis_path(label):
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text = da_report.text.replace(
         "#### CRITICAL",
         "### Further adversarial challenge\n"
-        "This is **Severity**: Critical and no revision cures it.\n\n"
+        f"This is **{label}**: Critical and no revision cures it.\n\n"
         "#### CRITICAL",
         1,
     )
@@ -640,6 +641,35 @@ def test_da_extra_issue_table_band_fails_in_synthesis_path():
         "| # | Issue | Evidence Anchor |\n"
         "|---|-------|-----------------|\n"
         '| C1 | impossible df | text: "n=41" p. 4 |\n\n'
+        "#### MAJOR",
+        1,
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table band"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+@pytest.mark.parametrize(
+    ("lead_in", "header"),
+    (
+        ("The following issues invalidate the claim:\n\n",
+         "| # | Issue | Evidence Anchor |"),
+        ("", "| # | Issue | evidence anchor |"),
+        ("", "# | Issue | Evidence Anchor"),
+    ),
+)
+def test_da_disguised_extra_issue_table_band_fails_in_synthesis_path(
+    lead_in, header
+):
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        f"{lead_in}{header}\n"
+        "|---|-------|-----------------|\n"
+        '| C9 | impossible df | text: "n=41" p. 4 |\n\n'
         "#### MAJOR",
         1,
     )

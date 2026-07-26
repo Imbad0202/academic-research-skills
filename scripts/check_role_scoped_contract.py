@@ -122,9 +122,12 @@ PHASE_FINDING_REGEX_WITNESSES = (
 )
 DA_PARSER_WITNESSES = (
     '_DA_SEVERITY_DECL_RE = re.compile(\n'
-    r'    r"\*\*Severity(?:\*\*)?\s*:",',
+    r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
+    "    re.IGNORECASE,\n"
+    ")",
     "_DA_SEVERITY_DECL_RE.search(line)",
-    'if "#" in cells and "Evidence Anchor" in cells:',
+    'for cell in _possible_markdown_cells(candidate)',
+    'if "#" in cells and "evidence anchor" in cells:',
     "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
     're.fullmatch(r":?-{3,}:?", cell)',

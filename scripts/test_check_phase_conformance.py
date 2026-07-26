@@ -743,11 +743,12 @@ def test_da_standalone_critical_fails_phase_checker():
         phase.check_da_anchors(report)
 
 
-def test_da_inline_standalone_critical_fails_phase_checker():
+@pytest.mark.parametrize("label", ("severity", "sEvErItY"))
+def test_da_case_variant_standalone_critical_fails_phase_checker(label):
     text = da_text().replace(
         "#### CRITICAL",
         "### Further adversarial challenge\n"
-        "This is **Severity**: Critical and no revision cures it.\n\n"
+        f"This is **{label}**: Critical and no revision cures it.\n\n"
         "#### CRITICAL",
         1,
     )
@@ -763,6 +764,34 @@ def test_da_extra_issue_table_band_fails_phase_checker():
         "| # | Issue | Evidence Anchor |\n"
         "|---|-------|-----------------|\n"
         '| C1 | impossible df | text: "n=41" p. 4 |\n\n'
+        "#### MAJOR",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(
+        phase.ConformanceError, match="unexpected issue-table band"
+    ):
+        phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize(
+    ("lead_in", "header"),
+    (
+        ("The following issues invalidate the claim:\n\n",
+         "| # | Issue | Evidence Anchor |"),
+        ("", "| # | Issue | evidence anchor |"),
+        ("", "# | Issue | Evidence Anchor"),
+    ),
+)
+def test_da_disguised_extra_issue_table_band_fails_phase_checker(
+    lead_in, header
+):
+    text = da_text().replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        f"{lead_in}{header}\n"
+        "|---|-------|-----------------|\n"
+        '| C9 | impossible df | text: "n=41" p. 4 |\n\n'
         "#### MAJOR",
         1,
     )

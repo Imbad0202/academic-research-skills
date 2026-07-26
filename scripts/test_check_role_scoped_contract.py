@@ -193,13 +193,27 @@ def test_da_severity_regex_body_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_severity_regex_ignorecase_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
+        "    re.IGNORECASE,\n"
+        ")",
+        r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
+        ")",
+    )
+    assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
         root,
         lint.PANEL_CHECKER,
-        'if "#" in cells and "Evidence Anchor" in cells:',
-        'if False and "#" in cells and "Evidence Anchor" in cells:',
+        'if "#" in cells and "evidence anchor" in cells:',
+        'if False and "#" in cells and "evidence anchor" in cells:',
     )
     assert lint.check(root)
 
