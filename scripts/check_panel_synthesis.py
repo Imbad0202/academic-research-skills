@@ -89,7 +89,12 @@ class Synthesis:
 
 # --- Markdown helpers shared with check_phase_conformance.py -------------------
 
-_FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
+_FENCE_OPEN_RE = re.compile(
+    r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<info>[^\n]*)$"
+)
+_FENCE_CLOSE_RE = re.compile(
+    r"^ {0,3}(?P<fence>`{3,}|~{3,})[ \t]*$"
+)
 _H2_RE = re.compile(r"^## (.+?)\s*$")
 _H3_RE = re.compile(r"^### (.+?)\s*$")
 _H4_RE = re.compile(r"^#### (.+?)\s*$")
@@ -111,17 +116,21 @@ def strip_fences(text: str) -> list[str]:
     fence_char: str | None = None
     fence_len = 0
     for line in text.splitlines():
-        match = _FENCE_RE.match(line)
+        if fence_char is not None:
+            match = _FENCE_CLOSE_RE.fullmatch(line)
+            if match:
+                token = match.group("fence")
+                if token[0] == fence_char and len(token) >= fence_len:
+                    fence_char, fence_len = None, 0
+            continue
+        match = _FENCE_OPEN_RE.fullmatch(line)
         if match:
-            token = match.group(1)
-            if fence_char is None:
+            token = match.group("fence")
+            info = match.group("info")
+            if token[0] != "`" or "`" not in info:
                 fence_char, fence_len = token[0], len(token)
                 continue
-            if token[0] == fence_char and len(token) >= fence_len:
-                fence_char, fence_len = None, 0
-                continue
-        if fence_char is None:
-            out.append(line)
+        out.append(line)
     return out
 
 

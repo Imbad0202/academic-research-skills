@@ -180,6 +180,12 @@ def test_canonical_phase1_line_form_passes():
     parse_plan()
 
 
+def test_malformed_fence_closer_keeps_phase1_plan_hidden():
+    text = "```text\n```not-a-close\n" + phase1_text("eic") + "\n```\n"
+    with pytest.raises(phase.ConformanceError, match="Scoring Plan required"):
+        phase.parse_phase1("p1.md", text, FULL, "eic")
+
+
 def test_manuscript_12_word_shingle_leaks():
     manuscript = (
         "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu "
@@ -189,7 +195,12 @@ def test_manuscript_12_word_shingle_leaks():
         "\nalpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
     )
     with pytest.raises(phase.ConformanceError, match="MANUSCRIPT-LEAK"):
-        phase.check_manuscript_leakage(leaked, manuscript, {}, FULL)
+        phase.check_manuscript_leakage(
+            leaked,
+            manuscript,
+            {"title": "Synthetic", "field": "testing", "word_count": 14},
+            FULL,
+        )
 
 
 def test_metadata_title_shingle_is_exempt():
@@ -200,6 +211,27 @@ def test_metadata_title_shingle_is_exempt():
         {"title": title, "field": "testing", "word_count": 4},
         FULL,
     )
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {
+            "title": "Synthetic",
+            "field": "testing",
+            "word_count": 12,
+            "unexpected_body": (
+                "alpha beta gamma delta epsilon zeta eta theta iota "
+                "kappa lambda mu"
+            ),
+        },
+        {"title": "Synthetic", "field": "testing"},
+        {"title": "Synthetic", "field": "testing", "word_count": True},
+    ],
+)
+def test_metadata_envelope_shape_fails_closed(metadata):
+    with pytest.raises(phase.panel.ContractError, match="METADATA-INVALID"):
+        phase.validate_metadata_envelope(metadata)
 
 
 def test_trigger_text_absent_from_phase1_fails():

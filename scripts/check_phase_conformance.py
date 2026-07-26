@@ -23,6 +23,7 @@ import check_panel_synthesis as panel  # noqa: E402
 EXIT_PASS = 0
 EXIT_CONTRACT = 2
 EXIT_CONFORMANCE = 3
+_METADATA_KEYS = frozenset({"title", "field", "word_count"})
 _FIELD_PATTERNS = {
     "dimension_id": re.compile(r"^dimension_id: (?P<value>D\d+)$"),
     "what_to_look_for": re.compile(r"^what_to_look_for: (?P<value>\S.*)$"),
@@ -186,9 +187,36 @@ def _flatten_metadata_values(value) -> list[str]:
     return []
 
 
+def validate_metadata_envelope(metadata) -> None:
+    if not isinstance(metadata, dict) or set(metadata) != _METADATA_KEYS:
+        actual = (
+            sorted(metadata)
+            if isinstance(metadata, dict)
+            else type(metadata).__name__
+        )
+        raise panel.ContractError(
+            "[METADATA-INVALID: expected exact title/field/word_count "
+            f"envelope, got {actual}]"
+        )
+    if (
+        not isinstance(metadata["title"], str)
+        or not metadata["title"].strip()
+        or not isinstance(metadata["field"], str)
+        or not metadata["field"].strip()
+        or isinstance(metadata["word_count"], bool)
+        or not isinstance(metadata["word_count"], int)
+        or metadata["word_count"] < 0
+    ):
+        raise panel.ContractError(
+            "[METADATA-INVALID: title and field must be non-empty strings; "
+            "word_count must be a non-negative integer]"
+        )
+
+
 def check_manuscript_leakage(
     phase1_text: str, manuscript_text: str, metadata: dict, contract: dict
 ) -> None:
+    validate_metadata_envelope(metadata)
     phase1_norm = _normalise(phase1_text)
     words = _normalise(manuscript_text).split()
     exemption_haystacks = [

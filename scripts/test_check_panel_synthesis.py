@@ -222,6 +222,19 @@ def test_fenced_v1_bare_decision_decoy_is_ignored():
     cps.parse_report("eic.md", text, FULL)
 
 
+def test_malformed_fence_closer_keeps_reviewer_report_hidden():
+    text = "```text\n```not-a-close\n" + report_text("eic") + "\n```\n"
+    with pytest.raises(cps.ReportError, match="Dimension Scores"):
+        cps.parse_report("eic.md", text, FULL)
+
+
+def test_malformed_fence_closer_keeps_synthesis_hidden():
+    synthesis, _ = synthesis_for(reports())
+    text = "~~~text\n~~~not-a-close\n" + synthesis + "\n~~~\n"
+    with pytest.raises(cps.SynthesisError, match="fired_conditions"):
+        cps.parse_synthesis("s.md", text, FULL)
+
+
 def test_nonmandatory_block_cannot_carry_block_class():
     text = report_text("perspective", {"D4": "pass"}).replace(
         "### D4: cross_disciplinary_relevance\nscore: pass",
