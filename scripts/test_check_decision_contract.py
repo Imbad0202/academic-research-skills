@@ -131,6 +131,17 @@ def test_threshold_mapping_label_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_threshold_mapping_duplicate_row_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.QUALITY,
+        "| >= 80 | Accept |",
+        "| >= 80 | Accept |\n| >= 80 | Accept |",
+    )
+    assert lint.check(root)
+
+
 def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

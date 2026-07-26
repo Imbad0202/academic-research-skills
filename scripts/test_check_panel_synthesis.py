@@ -258,6 +258,14 @@ def test_unicode_separator_cannot_close_commonmark_fence(separator):
         cps.parse_report("hidden-methodology.md", text, FULL)
 
 
+@pytest.mark.parametrize("separator", ("\x85", "\u2028", "\u2029"))
+def test_unicode_separator_keeps_synthesis_fenced(separator):
+    synthesis, _ = synthesis_for(reports())
+    text = "~~~text\n~~~" + separator + synthesis + "\n~~~\n"
+    with pytest.raises(cps.SynthesisError, match="fired_conditions"):
+        cps.parse_synthesis("hidden-synthesis.md", text, FULL)
+
+
 @pytest.mark.parametrize("score", ("warn", "block"))
 def test_eligible_nonpass_score_requires_trigger(score):
     text = report_text("methodology", {"D1": score}).replace(

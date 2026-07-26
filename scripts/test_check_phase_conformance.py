@@ -186,6 +186,13 @@ def test_malformed_fence_closer_keeps_phase1_plan_hidden():
         phase.parse_phase1("p1.md", text, FULL, "eic")
 
 
+@pytest.mark.parametrize("separator", ("\x85", "\u2028", "\u2029"))
+def test_unicode_separator_keeps_phase1_plan_fenced(separator):
+    text = "```text\n```" + separator + phase1_text("eic") + "\n```\n"
+    with pytest.raises(phase.ConformanceError, match="Scoring Plan required"):
+        phase.parse_phase1("hidden-p1.md", text, FULL, "eic")
+
+
 def test_manuscript_12_word_shingle_leaks():
     manuscript = (
         "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu "
@@ -258,15 +265,26 @@ def test_trigger_binding_rechecks_required_trigger_defence_in_depth():
         )
 
 
-def test_trigger_binding_rechecks_surplus_trigger_defence_in_depth():
-    report, _ = parse_report("methodology")
-    report.scores["D1"] = panel.DimensionScore(
-        "pass", trigger="surplus post hoc trigger"
-    )
+@pytest.mark.parametrize(
+    "role,did,value",
+    (
+        ("methodology", "D1", panel.DimensionScore(
+            "pass", trigger="surplus post hoc trigger"
+        )),
+        ("eic", "D1", panel.DimensionScore(
+            "not_assessed", trigger="surplus structural trigger"
+        )),
+    ),
+)
+def test_trigger_binding_rechecks_surplus_trigger_defence_in_depth(
+    role, did, value
+):
+    report, _ = parse_report(role)
+    report.scores[did] = value
     with pytest.raises(phase.ConformanceError, match="TRIGGER-GRAMMAR"):
         phase.check_trigger_binding(
             report,
-            parse_plan(),
+            parse_plan(role),
             {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
             set(),
         )
