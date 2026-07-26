@@ -16,6 +16,34 @@ FULL = json.loads(FULL_PATH.read_text(encoding="utf-8"))
 ROLES = ("eic", "methodology", "domain", "perspective", "da")
 
 
+@pytest.mark.parametrize(
+    "anchor",
+    (
+        "absence: x",
+        '`text: §5 "short exact quote"',
+        'text: §5 "short exact quote"`',
+        '``text: §5 "short exact quote"``',
+        'text: §5 "short exact quote”',
+        'text: §5 “short exact quote"',
+    ),
+)
+def test_shared_anchor_validator_rejects_incomplete_or_unpaired_shapes(anchor):
+    with pytest.raises(cps.ReportError, match="ANCHOR-INVALID"):
+        cps.validate_evidence_anchor(anchor, "probe")
+
+
+@pytest.mark.parametrize(
+    "anchor",
+    (
+        "absence: Methods — expected an ethics statement; checked Methods, appendix",
+        '`text: §5 "short exact quote"`',
+        "text: §5 “short exact quote”",
+    ),
+)
+def test_shared_anchor_validator_accepts_complete_paired_shapes(anchor):
+    cps.validate_evidence_anchor(anchor, "inverse")
+
+
 def state(value: str) -> cps.DimensionScore:
     if value == "fatal":
         return cps.DimensionScore("block", "fatal", "fatal trigger")

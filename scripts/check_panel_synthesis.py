@@ -277,9 +277,23 @@ def _rendered_header_cell(cell: str) -> str:
 def validate_evidence_anchor(anchor: str, context: str) -> None:
     """Validate the shared finding-anchor grammar for either checker."""
     value = anchor.strip()
-    if value.startswith("[") and value.endswith("]"):
+    if value.startswith("["):
+        if not value.endswith("]"):
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: unpaired square wrapper]"
+            )
         value = value[1:-1].strip()
-    value = value.strip("`").strip()
+    if value.startswith("`") or value.endswith("`"):
+        if not (value.startswith("`") and value.endswith("`")):
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: unpaired backtick wrapper]"
+            )
+        inner = value[1:-1]
+        if "`" in inner:
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: repeated backtick wrapper]"
+            )
+        value = inner.strip()
     match = re.match(
         r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"
         r"(?P<tail>\S.*)$",
@@ -290,11 +304,31 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
         tag = "ANCHOR-MISSING" if not value else "ANCHOR-INVALID"
         raise ReportError(f"[{tag}: {context}: expected typed anchor]")
     if match.group("type").casefold() == "text":
-        quote = re.search(r'["“](?P<quote>[^"”]+)["”]', match.group("tail"))
-        if not quote or len(quote.group("quote").split()) > 25:
+        quote = re.search(
+            r'"(?P<straight_quote>[^"]+)"|“(?P<curly_quote>[^”]+)”',
+            match.group("tail"),
+        )
+        quote_text = (
+            quote.group("straight_quote") or quote.group("curly_quote")
+            if quote
+            else None
+        )
+        if not quote_text or len(quote_text.split()) > 25:
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: text anchor needs a quoted "
                 "excerpt of at most 25 words]"
+            )
+    elif match.group("type").casefold() == "absence":
+        absence = re.fullmatch(
+            r"(?P<where>\S.*?)\s+—\s+expected\s+(?P<expected>\S.*?);"
+            r"\s*checked\s+(?P<surfaces>\S.*)",
+            match.group("tail"),
+            re.IGNORECASE,
+        )
+        if not absence:
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: absence anchor needs "
+                "<where> — expected <item>; checked <surfaces>]"
             )
 
 

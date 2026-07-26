@@ -75,19 +75,30 @@ SCORING_FIELD_VARIANT_WITNESS = (
 )
 ANCHOR_VALUE_GRAMMAR_WITNESS = (
     "Every Evidence Anchor value begins with the literal `<type>: <locator>` "
-    "grammar. Backticks or square brackets may enclose the whole value (for "
-    'example, `text: §3 "short quote"` or [`text: §3 "short quote"`]); '
-    "nothing may appear between the type and its colon, so `` `text`: §3 `` "
-    "and `` `text` — §3 `` are both invalid. A `text:` anchor includes a "
-    "straight or curly double-quoted excerpt of at most 25 words; an "
-    "`absence:` anchor names where the missing item should appear, what was "
-    "expected, and every surface checked"
+    "grammar. Backticks or square brackets may enclose the whole value only as "
+    'a matched pair (for example, `text: §3 "short quote"` or '
+    '[`text: §3 "short quote"`]); nothing may appear between the type and '
+    "its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. "
+    "A `text:` anchor includes a matched pair of straight or curly double "
+    "quotes around an excerpt of at most 25 words. An `absence:` anchor uses "
+    "the exact grammar `absence: <where> — expected <item>; checked "
+    "<surfaces>`, with every placeholder replaced by non-empty content"
 )
 ANCHOR_VALIDATOR_REGEX_WITNESS = (
     r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
     r'        r"(?P<tail>\S.*)$"'
 )
-ANCHOR_QUOTE_REGEX_WITNESS = """r'["“](?P<quote>[^"”]+)["”]'"""
+ANCHOR_QUOTE_REGEX_WITNESS = (
+    """r'"(?P<straight_quote>[^"]+)"|“(?P<curly_quote>[^”]+)”'"""
+)
+ANCHOR_ABSENCE_REGEX_WITNESS = (
+    r'r"(?P<where>\S.*?)\s+—\s+expected\s+(?P<expected>\S.*?);"' "\n"
+    r'            r"\s*checked\s+(?P<surfaces>\S.*)"'
+)
+ANCHOR_WRAPPER_WITNESSES = (
+    'if not (value.startswith("`") and value.endswith("`")):',
+    'if "`" in inner:',
+)
 TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES = (
     "**Evidence Anchor**: [`<type>: <locator>`]\n"
     "[Replace the complete backticked value above; never wrap `<type>` alone. "
@@ -315,6 +326,13 @@ def check(root: Path) -> list[str]:
         errors.append(f"{PANEL_CHECKER}: anchor-validator regex witness missing")
     if ANCHOR_QUOTE_REGEX_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-quote regex witness missing")
+    if ANCHOR_ABSENCE_REGEX_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-absence regex witness missing")
+    for witness in ANCHOR_WRAPPER_WITNESSES:
+        if witness not in checker:
+            errors.append(
+                f"{PANEL_CHECKER}: anchor-wrapper witness missing: {witness}"
+            )
     if (
         protocol_phase2 is None
         or norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(protocol_phase2)

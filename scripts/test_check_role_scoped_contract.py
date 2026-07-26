@@ -454,8 +454,8 @@ def test_protocol_anchor_value_grammar_mutation_fails(tmp_path):
     mutate(
         root,
         lint.PROTOCOL,
-        "an `absence:` anchor names where the missing item should appear",
-        "an `absence:` anchor may omit where the missing item should appear",
+        "An `absence:` anchor uses the exact grammar",
+        "An `absence:` anchor may use an approximate grammar",
     )
     assert lint.check(root)
 
@@ -471,15 +471,43 @@ def test_anchor_validator_colon_regex_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
-def test_anchor_validator_curly_quote_regex_mutation_fails(tmp_path):
+def test_anchor_validator_paired_quote_regex_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
         root,
         lint.PANEL_CHECKER,
+        lint.ANCHOR_QUOTE_REGEX_WITNESS,
         """r'["“](?P<quote>[^"”]+)["”]'""",
-        """r'"(?P<quote>[^"]+)"'""",
     )
     assert lint.check(root)
+
+
+def test_anchor_validator_absence_regex_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        lint.ANCHOR_ABSENCE_REGEX_WITNESS,
+        r'r"(?P<where>\S.*)"',
+    )
+    assert lint.check(root)
+
+
+def test_anchor_validator_wrapper_mutations_fail(tmp_path):
+    replacements = (
+        (
+            'if not (value.startswith("`") and value.endswith("`")):',
+            'if False and not (value.startswith("`") and value.endswith("`")):',
+        ),
+        (
+            'if "`" in inner:',
+            'if False and "`" in inner:',
+        ),
+    )
+    for index, (old, new) in enumerate(replacements):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.PANEL_CHECKER, old, new)
+        assert lint.check(root)
 
 
 def test_template_anchor_placeholder_tail_mutations_fail(tmp_path):

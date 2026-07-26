@@ -106,7 +106,7 @@ List every weakness you actually found — no minimum, no maximum (#574 A1). Do 
 
 Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. The complete typed anchor value, including its type and locator, may be bare, backtick-wrapped, or square-bracketed; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
 
-Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar. Backticks or square brackets may enclose the whole value (for example, `text: §3 "short quote"` or [`text: §3 "short quote"`]); nothing may appear between the type and its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. A `text:` anchor includes a straight or curly double-quoted excerpt of at most 25 words; an `absence:` anchor names where the missing item should appear, what was expected, and every surface checked.
+Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar. Backticks or square brackets may enclose the whole value only as a matched pair (for example, `text: §3 "short quote"` or [`text: §3 "short quote"`]); nothing may appear between the type and its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. A `text:` anchor includes a matched pair of straight or curly double quotes around an excerpt of at most 25 words. An `absence:` anchor uses the exact grammar `absence: <where> — expected <item>; checked <surfaces>`, with every placeholder replaced by non-empty content.
 
 ### W2..Wn
 [Repeat the W1 structure for each additional weakness — as many entries as the evidence supports, including zero.]
