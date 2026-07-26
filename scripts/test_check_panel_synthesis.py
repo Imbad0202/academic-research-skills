@@ -866,6 +866,24 @@ def test_da_zero_width_issue_payload_fails_synthesis():
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+def test_da_fullwidth_issue_payload_fails_synthesis():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "| ＃ | Issue | Ｅｖｉｄｅｎｃｅ Ａｎｃｈｏｒ |\n"
+        "|---|---|---|\n"
+        '| Ｃ９ | impossible df | ｔｅｘｔ： "n=41" p. 4 |\n\n'
+    )
+    da_report.text = da_report.text.replace(
+        "#### MAJOR", block + "#### MAJOR", 1
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
 def test_da_raw_html_issue_table_fails_synthesis():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
@@ -873,6 +891,22 @@ def test_da_raw_html_issue_table_fails_synthesis():
         "#### ADDITIONAL CRITICAL FINDINGS\n"
         "<table><tr><th>ID</th><th>Evidence</th></tr>"
         "<tr><td>C9</td><td>text: n=41</td></tr></table>\n\n"
+    )
+    da_report.text = da_report.text.replace(
+        "#### MAJOR", block + "#### MAJOR", 1
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="raw HTML issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_bare_html_row_fails_synthesis():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "<tr><td>C9</td><td>text: n=41</td></tr>\n\n"
     )
     da_report.text = da_report.text.replace(
         "#### MAJOR", block + "#### MAJOR", 1

@@ -147,7 +147,8 @@ DA_PARSER_WITNESSES = (
     r'rendered = re.sub(r"\[([^\]]+)\]", r"\1", rendered)',
     "parser = _VisibleTextHTMLParser()",
     "parser.feed(rendered)",
-    'rendered = unicodedata.normalize("NFKC", rendered)',
+    'rendered = unicodedata.normalize("NFKC", rendered)\n'
+    '    rendered = "".join(',
     'unicodedata.category(char) != "Cf"',
     'rendered = re.sub(r"[*_~`]+", "", rendered)',
     'return re.sub(r"\\s+", " ", rendered).strip().casefold()',
@@ -158,6 +159,9 @@ DA_PARSER_WITNESSES = (
     "            or _DA_TYPED_ANCHOR_RE.search(cell)\n"
     "            for cell in cells\n"
     "        )",
+    '_RAW_HTML_TABLE_RE = re.compile(\n'
+    '    r"<\\s*/?\\s*(?:table|thead|tbody|tr|th|td)\\b", re.IGNORECASE\n'
+    ")",
     "_RAW_HTML_TABLE_RE.search(candidate)",
     'if "#" in cells or "evidence anchor" in cells or issue_payload:',
     "header_index = nonblank[0] if nonblank else None",

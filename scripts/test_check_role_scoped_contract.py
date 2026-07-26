@@ -333,6 +333,18 @@ def test_da_unicode_format_normalization_mutations_fail(tmp_path):
         assert lint.check(root)
 
 
+def test_da_nfkc_conditional_bypass_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        'rendered = unicodedata.normalize("NFKC", rendered)',
+        'rendered = unicodedata.normalize("NFKC", rendered) '
+        "if False else rendered",
+    )
+    assert lint.check(root)
+
+
 def test_da_raw_html_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
@@ -340,6 +352,17 @@ def test_da_raw_html_table_witness_mutation_fails(tmp_path):
         lint.PANEL_CHECKER,
         "_RAW_HTML_TABLE_RE.search(candidate)",
         "False",
+    )
+    assert lint.check(root)
+
+
+def test_da_raw_html_pattern_body_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        r"(?:table|thead|tbody|tr|th|td)",
+        r"(?:table)",
     )
     assert lint.check(root)
 
