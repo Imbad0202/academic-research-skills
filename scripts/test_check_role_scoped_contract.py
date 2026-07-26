@@ -100,16 +100,43 @@ def test_delivered_phase2_role_placement_mutations_fail(tmp_path):
 
 
 def test_delivered_phase2_role_token_mutations_fail(tmp_path):
-    for index, (rel, role) in enumerate(lint.AGENTS.items()):
+    mutations = (
+        (
+            "academic-paper-reviewer/agents/eic_agent.md",
+            "eic",
+            "domain",
+        ),
+        (
+            "academic-paper-reviewer/agents/methodology_reviewer_agent.md",
+            "methodology",
+            "domain",
+        ),
+        (
+            "academic-paper-reviewer/agents/domain_reviewer_agent.md",
+            "domain",
+            "eic",
+        ),
+        (
+            "academic-paper-reviewer/agents/perspective_reviewer_agent.md",
+            "perspective",
+            "domain",
+        ),
+        (
+            "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md",
+            "da",
+            "domain",
+        ),
+    )
+    for index, (rel, role, wrong_role) in enumerate(mutations):
         root = mirror(tmp_path / str(index))
-        wrong_role = "domain" if role != "domain" else "eic"
         mutate(
             root,
             rel,
             f"`contract_role: {role}`",
             f"`contract_role: {wrong_role}`",
         )
-        assert lint.check(root)
+        errors = lint.check(root)
+        assert f"{rel}: Phase 2 live-grammar witness missing" in errors
 
 
 def test_delivered_phase2_strength_severity_mutations_fail(tmp_path):
