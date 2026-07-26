@@ -128,6 +128,7 @@ def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
         "80 or higher is the Accept band.",
         "A composite of 65 or more earns Minor Revision.",
         "Accept requires 80 or more.",
+        "Accept requires 80 points.",
         "At or above 80, the decision is Accept.",
         "The Accept band opens at 80 points.",
     ),

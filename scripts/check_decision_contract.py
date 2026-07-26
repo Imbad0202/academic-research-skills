@@ -112,6 +112,7 @@ THRESHOLD_ATOM_RE = re.compile(
     r"(?:(?:or|and)\s+(?:higher|above|more|over|up)|\+)"
     r"|(?<![\d.])(?:80|65|50)\s*[-–—]\s*(?:100|79|64)\b"
     r"|(?<![\d.])(?:80|65|50)\s+out\s+of\s+100\b"
+    r"|(?<![\d.])(?:80|65|50)\s+points?\b"
     r")"
 )
 HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<title>\S.*)$")
