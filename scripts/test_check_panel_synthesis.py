@@ -604,11 +604,14 @@ def test_da_trailing_row_without_outer_pipes_fails_in_synthesis_path():
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
-def test_da_post_table_prose_passes_in_synthesis_path():
+def test_da_pre_table_prose_passes_in_synthesis_path():
     panel_reports = reports(da_ids=("C1",))
     da_report = next(report for report in panel_reports if report.role == "da")
-    da_report.text += (
-        "\n\nPost-table adversarial commentary remains Review Body prose."
+    da_report.text = da_report.text.replace(
+        "#### CRITICAL",
+        "Ordinary adversarial commentary precedes the terminal tables.\n\n"
+        "#### CRITICAL",
+        1,
     )
     synthesis_text, expressions = synthesis_for(
         panel_reports, {"C1": "VALIDATED"}, marker_count=1
@@ -619,7 +622,7 @@ def test_da_post_table_prose_passes_in_synthesis_path():
     ) == []
 
 
-def test_da_post_critical_table_prose_passes_in_synthesis_path():
+def test_da_post_critical_table_prose_fails_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text = da_report.text.replace(
@@ -629,9 +632,8 @@ def test_da_post_critical_table_prose_passes_in_synthesis_path():
     )
     synthesis_text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
-    assert cps.layer2_check(
-        panel_reports, FULL, expressions, synthesis, []
-    ) == []
+    with pytest.raises(cps.ReportError, match="issue tables are terminal"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
 @pytest.mark.parametrize(
@@ -648,6 +650,9 @@ def test_da_post_critical_table_prose_passes_in_synthesis_path():
         '— | Late issue | text: "late quoted evidence"',
         "# | Issue | Evidence Anchor",
         "C2\nLate issue without pipes\nfigure: Figure 2",
+        "- C2\n- Late critical issue\n- figure: Figure 2",
+        "> Ordinary post-table commentary",
+        "##### Additional commentary",
     ),
 )
 def test_da_post_boundary_table_surfaces_fail_in_synthesis_path(
@@ -664,7 +669,20 @@ def test_da_post_boundary_table_surfaces_fail_in_synthesis_path(
         panel_reports, {"C1": "VALIDATED"}, marker_count=1
     )
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
-    with pytest.raises(cps.ReportError, match="must be contiguous"):
+    with pytest.raises(cps.ReportError, match="issue tables are terminal"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_html_commented_tables_fail_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### CRITICAL", "<!--\n#### CRITICAL", 1
+    )
+    da_report.text += "\n-->"
+    synthesis_text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    with pytest.raises(cps.ReportError, match="HTML comments are forbidden"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
@@ -968,7 +986,7 @@ def test_da_escaped_pipe_cell_evasion_fails_synthesis():
     )
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
-    with pytest.raises(cps.ReportError, match="unexpected issue-table"):
+    with pytest.raises(cps.ReportError, match="HTML comments are forbidden"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 

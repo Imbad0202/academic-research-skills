@@ -157,7 +157,12 @@ PHASE2_TERMINAL_PREFLIGHT_WITNESS = (
     "present even when empty, with no standalone Severity. Each table header "
     "contains exactly one column named `#` and exactly one named "
     "`Evidence Anchor`; every row is outer-pipe-delimited with the header's "
-    "column count, and CRITICAL IDs are unique and dense `C1..Cn`. "
+    "column count, and CRITICAL IDs are unique and dense `C1..Cn`. For the "
+    "DA, these tables are the terminal suffix of `## Review Body`: put every "
+    "prose paragraph before `#### CRITICAL`; after the CRITICAL table emit "
+    "only blank lines until `#### MAJOR`, and after the MAJOR table emit only "
+    "blank lines to the end of Review Body. Do not emit HTML comments anywhere "
+    "in a DA report. "
     "7. Anchors: no findings share an anchor. Every anchor uses a valid typed "
     "`<type>: <locator>` value with balanced wrappers. Every `text:` anchor "
     "contains at least one balanced quoted verbatim excerpt, and each quoted "
@@ -314,7 +319,12 @@ DA_FINDING_WITNESS = (
     "IDs are unique and dense `C1..Cn`, and are the synthesizer's "
     "machine-addressable adjudication keys. Standalone `**Severity**:` "
     "declarations are forbidden: every DA Critical or Major issue must be a "
-    "row in its matching band table. Do not create any other H4 issue-table band"
+    "row in its matching band table. Do not create any other H4 issue-table "
+    "band. These tables are the terminal suffix of `## Review Body`: put "
+    "every prose paragraph before `#### CRITICAL`; after the CRITICAL table "
+    "emit only blank lines until `#### MAJOR`, and after the MAJOR table emit "
+    "only blank lines to the end of Review Body. Do not emit HTML comments "
+    "anywhere in a DA report"
 )
 DEFAULT_IGNORABLE_RANGES_WITNESS = (
     "_DEFAULT_IGNORABLE_RANGES = (\n"
@@ -412,7 +422,15 @@ DA_PARSER_WITNESSES = (
     '    r"<\\s*/?\\s*(?:table|thead|tbody|tr|th|td)\\b", re.IGNORECASE\n'
     ")",
     "_RAW_HTML_TABLE_RE.search(candidate)",
+    r'_HTML_COMMENT_RE = re.compile(r"<!--|-->")',
+    "_HTML_COMMENT_RE.search(line)",
     'if "#" in cells or "evidence anchor" in cells or issue_payload:',
+    "block = review_lines[start + 1:end]",
+    "if any(\n"
+    "                trailing.strip() for trailing in table_tail[index + 1:]\n"
+    "            ):",
+    "if critical_start >= major_start:",
+    'f"[DA-TABLE-PARSE: {path}: #### CRITICAL must precede #### MAJOR]"',
     "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
     're.fullmatch(r":?-{3,}:?", cell)',

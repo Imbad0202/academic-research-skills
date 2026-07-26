@@ -203,6 +203,10 @@ def test_delivered_phase2_terminal_preflight_mutations_fail(tmp_path):
             "CRITICAL IDs may be sparse or duplicated",
         ),
         (
+            "these tables are the terminal suffix of `## Review Body`",
+            "these tables may be followed by additional Review Body content",
+        ),
+        (
             "quoted excerpt is at most 25 words",
             "quoted excerpt is at most 50 words",
         ),
@@ -631,6 +635,45 @@ def test_da_raw_html_pattern_body_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_html_comment_guard_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "_HTML_COMMENT_RE.search(line)",
+        "False",
+    )
+    assert lint.check(root)
+
+
+def test_da_terminal_table_guard_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        (
+            "if any(\n"
+            "                trailing.strip() for trailing in "
+            "table_tail[index + 1:]\n"
+            "            ):"
+        ),
+        "if False:",
+    )
+    assert lint.check(root)
+
+
+def test_da_detailed_terminal_delivery_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    rel = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
+    mutate(
+        root,
+        rel,
+        "These tables are the terminal suffix of `## Review Body`",
+        "These tables may be followed by additional Review Body content",
+    )
+    assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
@@ -782,6 +825,10 @@ def test_protocol_live_grammar_mutations_fail(tmp_path):
         (
             "CRITICAL IDs are unique and dense `C1..Cn`",
             "CRITICAL IDs may be sparse or duplicated",
+        ),
+        (
+            "these tables are the terminal suffix of `## Review Body`",
+            "these tables may be followed by additional Review Body content",
         ),
     )
     for index, (old, new) in enumerate(mutations):

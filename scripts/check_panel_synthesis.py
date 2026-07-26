@@ -123,6 +123,7 @@ _DA_TYPED_ANCHOR_RE = re.compile(
 _RAW_HTML_TABLE_RE = re.compile(
     r"<\s*/?\s*(?:table|thead|tbody|tr|th|td)\b", re.IGNORECASE
 )
+_HTML_COMMENT_RE = re.compile(r"<!--|-->")
 _DEFAULT_IGNORABLE_RANGES = (
     (0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C),
     (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
@@ -402,15 +403,11 @@ def _require_single_da_table_heading(
 
 
 def _parse_da_table_block(
-    review_lines: list[str], heading: str, path: str, start: int
+    review_lines: list[str], heading: str, path: str, start: int, end: int
 ) -> tuple[list[list[str]], int, int]:
     """Return table data lines plus ``#`` and anchor column positions."""
     parse_tag = f"DA-{heading}-PARSE"
-    block: list[str] = []
-    for line in review_lines[start + 1:]:
-        if _H2_RE.fullmatch(line) or _H3_RE.fullmatch(line) or _H4_RE.fullmatch(line):
-            break
-        block.append(line)
+    block = review_lines[start + 1:end]
     nonblank = [i for i, line in enumerate(block) if line.strip()]
     header_index = nonblank[0] if nonblank else None
     if header_index is None:
@@ -445,33 +442,14 @@ def _parse_da_table_block(
     table_tail = block[header_index + 2:]
     for index, line in enumerate(table_tail):
         if not line.strip():
-            for trailing in table_tail[index + 1:]:
-                raw_cells = _possible_markdown_cells(trailing)
-                cells = {
-                    _rendered_header_cell(cell) for cell in raw_cells
-                }
-                issue_payload = any(
-                    _DA_ISSUE_ID_RE.fullmatch(cell)
-                    or _DA_TYPED_ANCHOR_RE.search(cell)
-                    for cell in cells
+            if any(
+                trailing.strip() for trailing in table_tail[index + 1:]
+            ):
+                raise ReportError(
+                    f"[{parse_tag}: {path}: the DA issue tables are terminal; "
+                    "put Review Body prose before #### CRITICAL and emit no "
+                    "nonblank content after a table ends]"
                 )
-                rendered_line = _rendered_header_cell(trailing)
-                standalone_issue_payload = (
-                    _DA_ISSUE_ID_RE.fullmatch(rendered_line)
-                    or _DA_TYPED_ANCHOR_RE.search(rendered_line)
-                )
-                if (
-                    _markdown_cells(trailing)
-                    or "#" in cells
-                    or "evidence anchor" in cells
-                    or issue_payload
-                    or standalone_issue_payload
-                ):
-                    raise ReportError(
-                        f"[{parse_tag}: {path}: issue-table rows must be "
-                        "contiguous; no table surface may follow the blank "
-                        "line that ends the table]"
-                    )
             break
         cells = _markdown_cells(line)
         if len(cells) != len(header):
@@ -483,40 +461,8 @@ def _parse_da_table_block(
     return rows, header.index("#"), header.index("Evidence Anchor")
 
 
-def parse_da_tables(
-    text: str, path: str = "<report>"
-) -> tuple[dict[str, str], list[str]]:
-    """Parse both mandatory DA tables from the report's ``Review Body``.
-
-    Returns ``(critical_id_to_anchor, major_anchors)``. Both exact H4 sections
-    and their exact ``#`` / ``Evidence Anchor`` columns are required even when
-    their tables are empty. This is the single structural parser used by both
-    the phase-conformance and synthesis checkers.
-    """
-    lines = strip_fences(text)
-    sections, dupes = split_sections(lines)
-    if "Review Body" in dupes or "Review Body" not in sections:
-        raise ReportError(
-            f"[DA-TABLE-PARSE: {path}: expected exactly one ## Review Body]"
-        )
-    review_lines = sections["Review Body"]
-    if any(_DA_SEVERITY_DECL_RE.search(line) for line in lines):
-        raise ReportError(
-            f"[DA-FINDING-GRAMMAR: {path}: standalone Severity declarations "
-            "are forbidden; use the CRITICAL and MAJOR issue tables]"
-        )
-    critical_start = _require_single_da_table_heading(
-        review_lines, "CRITICAL", path
-    )
-    major_start = _require_single_da_table_heading(
-        review_lines, "MAJOR", path
-    )
-    critical_lines, critical_id_col, critical_anchor_col = _parse_da_table_block(
-        review_lines, "CRITICAL", path, critical_start
-    )
-    major_lines, major_id_col, major_anchor_col = _parse_da_table_block(
-        review_lines, "MAJOR", path, major_start
-    )
+def _check_da_shadow_issue_surfaces(lines: list[str], path: str) -> None:
+    """Reject issue-table surfaces outside the two canonical DA bands."""
     current_h2: str | None = None
     in_canonical_da_band = False
     for candidate in lines:
@@ -552,6 +498,51 @@ def parse_da_tables(
                 f"[DA-TABLE-PARSE: {path}: unexpected issue-table band outside "
                 "the canonical CRITICAL and MAJOR bands]"
             )
+
+
+def parse_da_tables(
+    text: str, path: str = "<report>"
+) -> tuple[dict[str, str], list[str]]:
+    """Parse both mandatory DA tables from the report's ``Review Body``.
+
+    Returns ``(critical_id_to_anchor, major_anchors)``. Both exact H4 sections
+    and their exact ``#`` / ``Evidence Anchor`` columns are required even when
+    their tables are empty. This is the single structural parser used by both
+    the phase-conformance and synthesis checkers.
+    """
+    lines = strip_fences(text)
+    if any(_HTML_COMMENT_RE.search(line) for line in lines):
+        raise ReportError(
+            f"[DA-TABLE-PARSE: {path}: HTML comments are forbidden in DA reports]"
+        )
+    sections, dupes = split_sections(lines)
+    if "Review Body" in dupes or "Review Body" not in sections:
+        raise ReportError(
+            f"[DA-TABLE-PARSE: {path}: expected exactly one ## Review Body]"
+        )
+    review_lines = sections["Review Body"]
+    if any(_DA_SEVERITY_DECL_RE.search(line) for line in lines):
+        raise ReportError(
+            f"[DA-FINDING-GRAMMAR: {path}: standalone Severity declarations "
+            "are forbidden; use the CRITICAL and MAJOR issue tables]"
+        )
+    critical_start = _require_single_da_table_heading(
+        review_lines, "CRITICAL", path
+    )
+    major_start = _require_single_da_table_heading(
+        review_lines, "MAJOR", path
+    )
+    if critical_start >= major_start:
+        raise ReportError(
+            f"[DA-TABLE-PARSE: {path}: #### CRITICAL must precede #### MAJOR]"
+        )
+    _check_da_shadow_issue_surfaces(lines, path)
+    critical_lines, critical_id_col, critical_anchor_col = _parse_da_table_block(
+        review_lines, "CRITICAL", path, critical_start, major_start
+    )
+    major_lines, major_id_col, major_anchor_col = _parse_da_table_block(
+        review_lines, "MAJOR", path, major_start, len(review_lines)
+    )
 
     rows: dict[str, str] = {}
     for cells in critical_lines:

@@ -1069,7 +1069,7 @@ def test_da_escaped_pipe_cell_evasion_fails_phase():
     )
     text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
     report = panel.parse_report("da.md", text, FULL)
-    with pytest.raises(phase.ConformanceError, match="unexpected issue-table"):
+    with pytest.raises(phase.ConformanceError, match="HTML comments are forbidden"):
         phase.check_da_anchors(report)
 
 
@@ -1197,26 +1197,34 @@ def test_da_row_without_outer_pipes_fails_phase_checker():
         phase.check_da_anchors(report)
 
 
-def test_da_post_table_prose_passes_phase_checker():
+def test_da_pre_table_prose_passes_phase_checker():
     report = panel.parse_report(
         "da.md",
         da_text(
             major_rows=('| M1 | Issue | text: "short quote" |',)
-        )
-        + "\n\nPost-table adversarial commentary remains Review Body prose.",
+        ).replace(
+            "#### CRITICAL",
+            "Ordinary adversarial commentary precedes the terminal tables.\n\n"
+            "#### CRITICAL",
+            1,
+        ),
         FULL,
     )
     phase.check_da_anchors(report)
 
 
-def test_da_post_critical_table_prose_passes_phase_checker():
+def test_da_post_critical_table_prose_fails_phase_checker():
     text = da_text(ids=()).replace(
         "\n\n#### MAJOR",
         "\n\n*None. Ordinary adversarial commentary.*\n\n#### MAJOR",
         1,
     )
     report = panel.parse_report("da.md", text, FULL)
-    phase.check_da_anchors(report)
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match="issue tables are terminal",
+    ):
+        phase.check_da_anchors(report)
 
 
 @pytest.mark.parametrize(
@@ -1233,6 +1241,9 @@ def test_da_post_critical_table_prose_passes_phase_checker():
         '— | Late issue | text: "late quoted evidence"',
         "# | Issue | Evidence Anchor",
         "C2\nLate issue without pipes\nfigure: Figure 2",
+        "- C2\n- Late critical issue\n- figure: Figure 2",
+        "> Ordinary post-table commentary",
+        "##### Additional commentary",
     ),
 )
 def test_da_post_boundary_table_surfaces_fail_phase_checker(
@@ -1246,7 +1257,20 @@ def test_da_post_boundary_table_surfaces_fail_phase_checker(
     report = panel.parse_report("da.md", text, FULL)
     with pytest.raises(
         (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
-        match="must be contiguous",
+        match="issue tables are terminal",
+    ):
+        phase.check_da_anchors(report)
+
+
+def test_da_html_commented_tables_fail_phase_checker():
+    text = da_text(ids=()).replace(
+        "#### CRITICAL", "<!--\n#### CRITICAL", 1
+    )
+    text += "\n-->"
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match="HTML comments are forbidden",
     ):
         phase.check_da_anchors(report)
 
