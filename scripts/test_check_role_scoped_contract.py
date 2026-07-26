@@ -65,6 +65,19 @@ def test_delivered_phase1_live_grammar_mutations_fail(tmp_path):
         assert lint.check(root)
 
 
+def test_delivered_phase1_terminal_preflight_mutations_fail(tmp_path):
+    for index, rel in enumerate(lint.AGENTS):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            rel,
+            "`what_triggers_fatal:` must occur zero times",
+            "`what_triggers_fatal:` may occur once",
+        )
+        errors = lint.check(root)
+        assert f"{rel}: Phase 1 terminal-preflight witness missing" in errors
+
+
 def test_delivered_phase2_literal_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
@@ -85,6 +98,40 @@ def test_delivered_phase2_no_dissent_mutations_fail(tmp_path):
             "emit a `## Scoring Plan Dissent` section containing `none`",
         )
         assert lint.check(root)
+
+
+def test_delivered_phase2_terminal_dissent_preflight_mutations_fail(tmp_path):
+    for index, rel in enumerate(lint.AGENTS):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            rel,
+            "delete the heading and every placeholder line beneath it",
+            "keep the heading and an omitted placeholder beneath it",
+        )
+        errors = lint.check(root)
+        assert f"{rel}: Phase 2 live-grammar witness missing" in errors
+
+
+def test_delivered_phase2_terminal_dissent_preflight_relocation_fails(tmp_path):
+    for index, rel in enumerate(lint.AGENTS):
+        root = mirror(tmp_path / str(index))
+        path = root / rel
+        text = path.read_text(encoding="utf-8")
+        witness_line = next(
+            line
+            for line in text.splitlines()
+            if "Terminal dissent preflight (mandatory)" in line
+        )
+        text = text.replace(witness_line + "\n", "", 1)
+        text = text.replace(
+            "**Finding Contract (#574",
+            witness_line + "\n\n**Finding Contract (#574",
+            1,
+        )
+        path.write_text(text, encoding="utf-8")
+        errors = lint.check(root)
+        assert f"{rel}: Phase 2 terminal preflight is not terminal" in errors
 
 
 def test_delivered_phase2_role_placement_mutations_fail(tmp_path):
@@ -588,6 +635,14 @@ def test_protocol_live_grammar_mutations_fail(tmp_path):
         (
             "Before output, count each quoted excerpt",
             "Before output, do not count each quoted excerpt",
+        ),
+        (
+            "`what_triggers_fatal:` must occur zero times",
+            "`what_triggers_fatal:` may occur once",
+        ),
+        (
+            "delete the heading and every placeholder line beneath it",
+            "keep the heading and an omitted placeholder beneath it",
         ),
     )
     for index, (old, new) in enumerate(mutations):

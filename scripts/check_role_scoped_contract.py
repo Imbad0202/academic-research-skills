@@ -82,6 +82,13 @@ PHASE1_LIVE_GRAMMAR_WITNESS = (
     "`what_triggers_fatal:` line; never emit that key with `NOT_APPLICABLE`, "
     "`none`, or any other sentinel"
 )
+PHASE1_TERMINAL_PREFLIGHT_WITNESS = (
+    "Terminal preflight (mandatory): inspect the text you are about to send. "
+    "In every non-mandatory scoring-plan subsection, the literal key "
+    "`what_triggers_fatal:` must occur zero times; delete the entire line if "
+    "it appears. In every mandatory subsection, that key must occur exactly "
+    "once. Do not send until these counts hold"
+)
 PHASE2_WITNESSES = (
     "`dimension_id: <Dn>` and `rationale: <nonempty explanation>`",
     "score: <block|warn|pass|not_assessed>",
@@ -93,6 +100,15 @@ PHASE2_WITNESSES = (
 PHASE2_NO_DISSENT_WITNESS = (
     "If no dimension needs dissent, omit the entire `## Scoring Plan Dissent` "
     "section; never emit an empty section or a `none` placeholder"
+)
+PHASE2_TERMINAL_DISSENT_PREFLIGHT_WITNESS = (
+    "Terminal dissent preflight (mandatory): inspect the text you are about "
+    "to send. If it contains a line exactly `## Scoring Plan Dissent`, that "
+    "section must contain exactly one unbulleted `dimension_id: <Dn>` line "
+    "and exactly one unbulleted `rationale: <nonempty explanation>` line. If "
+    "you have no real one-dimension dissent, delete the heading and every "
+    "placeholder line beneath it before sending. `none`, `omitted`, "
+    "`not applicable`, and similar placeholders are never a dissent."
 )
 PHASE2_ROLE_PLACEMENT_WITNESS_SUFFIX = (
     "Place this single report-level line immediately before "
@@ -386,6 +402,8 @@ def check(root: Path) -> list[str]:
                 errors.append(f"{rel}: Phase 1 field witness missing: {field}")
         if norm_ws(PHASE1_LIVE_GRAMMAR_WITNESS) not in phase1_norm:
             errors.append(f"{rel}: Phase 1 live-grammar witness missing")
+        if norm_ws(PHASE1_TERMINAL_PREFLIGHT_WITNESS) not in phase1_norm:
+            errors.append(f"{rel}: Phase 1 terminal-preflight witness missing")
         score_scope = (
             "Score only dimensions whose `eligible_roles` includes "
             f"`{role}`; every other dimension must say `score: not_assessed`"
@@ -399,7 +417,11 @@ def check(root: Path) -> list[str]:
             "Declare your panel role exactly once, on its own line: "
             f"`contract_role: {role}`. {PHASE2_ROLE_PLACEMENT_WITNESS_SUFFIX}"
         )
-        for witness in (PHASE2_NO_DISSENT_WITNESS, role_placement_witness):
+        for witness in (
+            PHASE2_NO_DISSENT_WITNESS,
+            PHASE2_TERMINAL_DISSENT_PREFLIGHT_WITNESS,
+            role_placement_witness,
+        ):
             if norm_ws(witness) not in phase2_norm:
                 errors.append(f"{rel}: Phase 2 live-grammar witness missing")
         finding_witness = (
@@ -416,6 +438,11 @@ def check(root: Path) -> list[str]:
             errors.append(f"{rel}: Phase 2 strength-Severity witness missing")
         if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 anchor-value grammar witness missing")
+        phase2_content_norm = phase2_norm.removesuffix(" ---")
+        if not phase2_content_norm.endswith(
+            norm_ws(PHASE2_TERMINAL_DISSENT_PREFLIGHT_WITNESS)
+        ):
+            errors.append(f"{rel}: Phase 2 terminal preflight is not terminal")
 
     da = _read(root, "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md")
     if "Score the paper — your job is to challenge, not score." in da:
@@ -493,11 +520,17 @@ def check(root: Path) -> list[str]:
     if protocol_phase1 is None:
         errors.append(f"{PROTOCOL}: Phase 1 output-lint section missing")
     else:
-        for witness in PROTOCOL_PHASE1_LIVE_WITNESSES:
+        for witness in (
+            *PROTOCOL_PHASE1_LIVE_WITNESSES,
+            PHASE1_TERMINAL_PREFLIGHT_WITNESS,
+        ):
             if norm_ws(witness) not in norm_ws(protocol_phase1):
                 errors.append(f"{PROTOCOL}: Phase 1 live-grammar witness missing")
     if protocol_phase2 is not None:
-        for witness in PROTOCOL_PHASE2_LIVE_WITNESSES:
+        for witness in (
+            *PROTOCOL_PHASE2_LIVE_WITNESSES,
+            PHASE2_TERMINAL_DISSENT_PREFLIGHT_WITNESS,
+        ):
             if norm_ws(witness) not in norm_ws(protocol_phase2):
                 errors.append(f"{PROTOCOL}: Phase 2 live-grammar witness missing")
     template = _read(root, TEMPLATE)

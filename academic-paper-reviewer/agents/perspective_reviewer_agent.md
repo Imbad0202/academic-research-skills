@@ -54,6 +54,7 @@ You MUST produce, in exactly this order:
    - `what_triggers_warn: <single-line non-empty text>`
    - `what_triggers_fatal: <single-line non-empty text>` — required only for a `mandatory` dimension and forbidden otherwise. The block, warn, and fatal triggers must be pairwise distinct.
    For every scoring-plan heading, copy the exact dimension ID and name from the contract. For a non-mandatory dimension, omit the entire `what_triggers_fatal:` line; never emit that key with `NOT_APPLICABLE`, `none`, or any other sentinel.
+   Terminal preflight (mandatory): inspect the text you are about to send. In every non-mandatory scoring-plan subsection, the literal key `what_triggers_fatal:` must occur zero times; delete the entire line if it appears. In every mandatory subsection, that key must occur exactly once. Do not send until these counts hold.
 3. End with the exact tag on its own line:
 
 ```
@@ -89,7 +90,6 @@ You MUST:
    - Under the required `## Review Body`, each finding with a Severity has its own `### W<n>: <title>` subsection, exactly one `**Severity**:` line, and its own `**Evidence Anchor**:` line when Critical or Major. Findings never share an anchor. Strength subsections never carry a `**Severity**:` field or a `Severity: Strength` sentinel; Severity is weakness-only.
    - Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. The complete typed anchor value, including its type and locator, may be bare, backtick-wrapped, or square-bracketed; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
    - Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar. An opening backtick or `[` immediately before `<type>` starts an outer wrapper and requires its matching closer; nothing may appear between the type and its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. Wrapper-like characters inside a locator are content and must be locally balanced — a bracketed locator such as `equation: Eq. [3]` and a locator naming inline code such as ``text: §3 "quote" per `df``` are valid. A `text:` anchor includes only balanced pairs of straight or curly double quotes, with every quoted excerpt at most 25 words. Before output, count each quoted excerpt in a `text:` anchor and shorten it to at most 25 words; never place commentary inside the quotation. An `absence:` anchor uses the exact grammar `absence: <where> — expected <item>; checked <surfaces>`, including the literal single space after the semicolon and non-empty content for every placeholder. The reserved ` — expected ` and `; checked ` separator sequences each occur exactly once.
-
 **Finding Contract (#574 A1/A2/A3)** — governs every finding you report in `## Review Body` here, and the standard-mode report (§ Output Format below) alike:
 
 - List every strength and weakness you actually found — no minimum, no maximum. Do not manufacture findings to fill a quota; do not omit real ones to seem agreeable.
@@ -102,6 +102,7 @@ You MUST:
 - **Band anchors (per finding, never distributional targets):** Critical means this single defect, uncorrected, invalidates the core claim or makes acceptance impossible; it alone would justify `block` on a mandatory dimension. Major materially weakens a core claim and requires substantial re-analysis, rewriting, or new data, while the core survives. Minor improves quality or clarity without changing core claims.
 - **Anti-bundling:** assign each finding the band justified by its own decision impact; it never inherits a cluster or narrative's band. Joint impact belongs in the dimension score and synthesis.
 - **Singleton-Critical:** if a defect needs sibling findings to reach rejection-level impact, it is not Critical alone. These tests operationalize severity-by-decision-impact and never prescribe expected band frequencies.
+- Terminal dissent preflight (mandatory): inspect the text you are about to send. If it contains a line exactly `## Scoring Plan Dissent`, that section must contain exactly one unbulleted `dimension_id: <Dn>` line and exactly one unbulleted `rationale: <nonempty explanation>` line. If you have no real one-dimension dissent, delete the heading and every placeholder line beneath it before sending. `none`, `omitted`, `not applicable`, and similar placeholders are never a dissent.
 
 ---
 
