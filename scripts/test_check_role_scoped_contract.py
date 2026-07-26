@@ -471,6 +471,21 @@ def test_anchor_validator_colon_regex_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_anchor_square_balance_helper_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        lint.ANCHOR_SQUARE_BALANCE_WITNESS,
+        lint.ANCHOR_SQUARE_BALANCE_WITNESS.replace(
+            "if depth < 0:",
+            "if False:",
+            1,
+        ),
+    )
+    assert lint.check(root)
+
+
 def test_anchor_validator_quote_scanner_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
@@ -555,6 +570,10 @@ def test_anchor_validator_wrapper_mutations_fail(tmp_path):
             'if False and not value.endswith("]"):',
         ),
         (
+            "square_inner = value[1:-1]",
+            "square_inner = value[1:-1].strip()",
+        ),
+        (
             "if square_inner != square_inner.strip():",
             "if False:",
         ),
@@ -565,6 +584,10 @@ def test_anchor_validator_wrapper_mutations_fail(tmp_path):
         (
             'if not value.endswith("`"):',
             'if False and not value.endswith("`"):',
+        ),
+        (
+            "backtick_inner = value[1:-1]",
+            "backtick_inner = value[1:-1].strip()",
         ),
         (
             "if backtick_inner != backtick_inner.strip():",

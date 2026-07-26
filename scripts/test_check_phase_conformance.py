@@ -651,6 +651,7 @@ def test_type_only_wrapping_anchor_is_rejected(anchor):
         '` text: §5 "short exact quote" `',
         '[`text: §5 "short exact quote"]',
         '[text: §5 "short exact quote"`]',
+        "equation: Eq. ]3[",
     ),
 )
 def test_unpaired_or_repeated_whole_value_wrappers_are_rejected(anchor):

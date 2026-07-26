@@ -109,6 +109,17 @@ ANCHOR_VALIDATOR_REGEX_WITNESS = (
     r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
     r'        r"(?P<tail>\S.*)$"'
 )
+ANCHOR_SQUARE_BALANCE_WITNESS = '''def _balanced_square_brackets(text: str) -> bool:
+    """Return whether square brackets are ordered and balanced in locator text."""
+    depth = 0
+    for char in text:
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0'''
 ANCHOR_QUOTE_SCANNER_WITNESS = '''def _quoted_excerpts(text: str) -> list[str] | None:
     """Return every balanced straight/curly excerpt, including nested pairs."""
     stack: list[tuple[str, int]] = []
@@ -154,11 +165,11 @@ ANCHOR_ABSENCE_USAGE_WITNESS = "if _absence_parts(tail) is None:"
 ANCHOR_WRAPPER_WITNESSES = (
     'if value.startswith("["):',
     'if not value.endswith("]"):',
-    "square_inner = value[1:-1]",
+    "square_inner = value[1:-1]\n",
     "if square_inner != square_inner.strip():",
     'if value.startswith("`"):',
     'if not value.endswith("`"):',
-    "backtick_inner = value[1:-1]",
+    "backtick_inner = value[1:-1]\n",
     "if backtick_inner != backtick_inner.strip():",
 )
 ANCHOR_CONTENT_BALANCE_WITNESSES = (
@@ -389,6 +400,8 @@ def check(root: Path) -> list[str]:
             )
     if ANCHOR_VALIDATOR_REGEX_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-validator regex witness missing")
+    if ANCHOR_SQUARE_BALANCE_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: square-balance helper witness missing")
     if ANCHOR_QUOTE_SCANNER_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-quote scanner witness missing")
     if ANCHOR_QUOTE_USAGE_WITNESS not in checker:

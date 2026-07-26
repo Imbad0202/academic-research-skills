@@ -24,6 +24,7 @@ ROLES = ("eic", "methodology", "domain", "perspective", "da")
         "absence: Methods — expected ethics;  checked appendix",
         "absence: Methods — expected ; checked appendix — expected ethics; checked supplement",
         "absence: Methods; checked appendix — expected ethics",
+        "equation: Eq. ]3[",
         "absence: Methods — expected ethics; checked appendix]",
         "[absence: Methods — expected ethics; checked appendix",
         '[ text: §5 "short exact quote" ]',
@@ -937,6 +938,7 @@ def test_da_repeated_absence_separators_fail_in_synthesis_path():
     (
         "absence: Methods; checked appendix — expected ethics",
         '[ text: §5 "short exact quote" ]',
+        "equation: Eq. ]3[",
     ),
 )
 def test_da_misordered_absence_or_padded_wrapper_fails_synthesis(malformed):
