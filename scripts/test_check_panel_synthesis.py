@@ -27,6 +27,7 @@ ROLES = ("eic", "methodology", "domain", "perspective", "da")
         "equation: Eq. ]3[",
         "absence: Methods — expected ethics; checked appendix]",
         "[absence: Methods — expected ethics; checked appendix",
+        "text: §References, six DOI strings in list order",
         '[ text: §5 "short exact quote" ]',
         '` text: §5 "short exact quote" `',
         '`text: §5 "short exact quote"',

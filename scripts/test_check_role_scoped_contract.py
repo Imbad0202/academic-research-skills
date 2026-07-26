@@ -207,6 +207,10 @@ def test_delivered_phase2_terminal_preflight_mutations_fail(tmp_path):
             "quoted excerpt is at most 50 words",
         ),
         (
+            "contains at least one balanced quoted verbatim excerpt",
+            "may omit a balanced quoted verbatim excerpt",
+        ),
+        (
             "a Critical is singleton rejection-level",
             "a Critical may need sibling findings to reach rejection level",
         ),
@@ -306,8 +310,8 @@ def test_delivered_phase2_quote_preflight_mutations_fail(tmp_path):
         mutate(
             root,
             rel,
-            "Before output, count each quoted excerpt",
-            "Before output, do not count each quoted excerpt",
+            "Before output, confirm at least one quoted excerpt exists",
+            "Before output, allow anchors with no quoted excerpt",
         )
         assert lint.check(root)
 
@@ -732,8 +736,8 @@ def test_protocol_live_grammar_mutations_fail(tmp_path):
             "Strength subsections may carry a `Severity` field",
         ),
         (
-            "Before output, count each quoted excerpt",
-            "Before output, do not count each quoted excerpt",
+            "Before output, confirm at least one quoted excerpt exists",
+            "Before output, allow anchors with no quoted excerpt",
         ),
         (
             "`what_triggers_fatal:` occurs zero times",
@@ -793,8 +797,8 @@ def test_template_live_grammar_mutations_fail(tmp_path):
             "Emit the Severity field on strengths",
         ),
         (
-            "Before output, count each quoted excerpt",
-            "Before output, do not count each quoted excerpt",
+            "Before output, confirm at least one quoted excerpt exists",
+            "Before output, allow anchors with no quoted excerpt",
         ),
     )
     for index, (old, new) in enumerate(mutations):

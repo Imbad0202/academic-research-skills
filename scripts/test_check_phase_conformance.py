@@ -127,7 +127,10 @@ def test_role_swap_is_conformance_failure(tmp_path):
 
 
 def test_missing_fatal_trigger_fails():
-    with pytest.raises(phase.ConformanceError, match="what_triggers_fatal"):
+    with pytest.raises(
+        phase.ConformanceError,
+        match=r"what_triggers_fatal: line for dimension D1, found 0",
+    ):
         parse_plan("methodology", {"D1": {"what_triggers_fatal": None}})
 
 

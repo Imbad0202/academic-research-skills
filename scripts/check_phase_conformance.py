@@ -73,7 +73,12 @@ def _normalise(text: str) -> str:
 
 
 def _one_field(
-    lines: list[str], field: str, path: str, *, required: bool
+    lines: list[str],
+    field: str,
+    path: str,
+    *,
+    required: bool,
+    dimension_id: str,
 ) -> str | None:
     hits = [match.group("value") for line in lines
             if (match := _FIELD_PATTERNS[field].fullmatch(line))]
@@ -81,7 +86,7 @@ def _one_field(
     if (required and len(hits) != 1) or (not required and len(hits) > 1):
         raise ConformanceError(
             f"[PHASE1-GRAMMAR: {path}: expected {expected} canonical "
-            f"{field}: line, found {len(hits)}]"
+            f"{field}: line for dimension {dimension_id}, found {len(hits)}]"
         )
     return hits[0] if hits else None
 
@@ -125,7 +130,13 @@ def parse_phase1(
                 f"[PHASE1-GRAMMAR: {path}: {did} name mismatch]"
             )
         fields = {
-            field: _one_field(sublines, field, path, required=True)
+            field: _one_field(
+                sublines,
+                field,
+                path,
+                required=True,
+                dimension_id=did,
+            )
             for field in (
                 "dimension_id", "what_to_look_for",
                 "what_triggers_block", "what_triggers_warn",
@@ -133,7 +144,11 @@ def parse_phase1(
         }
         mandatory = dimensions[did]["priority"] == "mandatory"
         fields["what_triggers_fatal"] = _one_field(
-            sublines, "what_triggers_fatal", path, required=mandatory
+            sublines,
+            "what_triggers_fatal",
+            path,
+            required=mandatory,
+            dimension_id=did,
         )
         if not mandatory and fields["what_triggers_fatal"] is not None:
             raise ConformanceError(
