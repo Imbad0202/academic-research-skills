@@ -564,9 +564,7 @@ def test_da_major_section_drift_fails_in_synthesis_path(mutation):
     da_report.text = mutation(da_report.text)
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
-    with pytest.raises(
-        cps.ReportError, match=r"DA-(?:CRITICAL|MAJOR)-PARSE"
-    ):
+    with pytest.raises(cps.ReportError, match="DA-MAJOR-PARSE"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
@@ -621,6 +619,21 @@ def test_da_post_table_prose_passes_in_synthesis_path():
     ) == []
 
 
+def test_da_post_critical_table_prose_passes_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "\n\n#### MAJOR",
+        "\n\n*None. Ordinary adversarial commentary.*\n\n#### MAJOR",
+        1,
+    )
+    synthesis_text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    assert cps.layer2_check(
+        panel_reports, FULL, expressions, synthesis, []
+    ) == []
+
+
 @pytest.mark.parametrize(
     "late_surface",
     (
@@ -631,6 +644,10 @@ def test_da_post_table_prose_passes_in_synthesis_path():
             "|---|-------|-----------------|\n"
             "| C9 | Shadow issue |  |"
         ),
+        'C2 | Late issue | text: "late quoted evidence" p. 2',
+        '— | Late issue | text: "late quoted evidence"',
+        "# | Issue | Evidence Anchor",
+        "C2\nLate issue without pipes\nfigure: Figure 2",
     ),
 )
 def test_da_post_boundary_table_surfaces_fail_in_synthesis_path(

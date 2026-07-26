@@ -1209,6 +1209,16 @@ def test_da_post_table_prose_passes_phase_checker():
     phase.check_da_anchors(report)
 
 
+def test_da_post_critical_table_prose_passes_phase_checker():
+    text = da_text(ids=()).replace(
+        "\n\n#### MAJOR",
+        "\n\n*None. Ordinary adversarial commentary.*\n\n#### MAJOR",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    phase.check_da_anchors(report)
+
+
 @pytest.mark.parametrize(
     "late_surface",
     (
@@ -1219,6 +1229,10 @@ def test_da_post_table_prose_passes_phase_checker():
             "|---|-------|-----------------|\n"
             "| C9 | Shadow issue |  |"
         ),
+        'C2 | Late issue | text: "late quoted evidence" p. 2',
+        '— | Late issue | text: "late quoted evidence"',
+        "# | Issue | Evidence Anchor",
+        "C2\nLate issue without pipes\nfigure: Figure 2",
     ),
 )
 def test_da_post_boundary_table_surfaces_fail_phase_checker(

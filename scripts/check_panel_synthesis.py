@@ -383,10 +383,10 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
             )
 
 
-def _parse_da_table_block(
+def _require_single_da_table_heading(
     review_lines: list[str], heading: str, path: str
-) -> tuple[list[list[str]], int, int]:
-    """Return table data lines plus ``#`` and anchor column positions."""
+) -> int:
+    """Return the sole exact DA issue-table heading position."""
     parse_tag = f"DA-{heading}-PARSE"
     starts = [
         i for i, line in enumerate(review_lines)
@@ -398,8 +398,16 @@ def _parse_da_table_block(
             f"[{parse_tag}: {path}: expected exactly one "
             f"#### {heading} section, found {len(starts)}]"
         )
+    return starts[0]
+
+
+def _parse_da_table_block(
+    review_lines: list[str], heading: str, path: str, start: int
+) -> tuple[list[list[str]], int, int]:
+    """Return table data lines plus ``#`` and anchor column positions."""
+    parse_tag = f"DA-{heading}-PARSE"
     block: list[str] = []
-    for line in review_lines[starts[0] + 1:]:
+    for line in review_lines[start + 1:]:
         if _H2_RE.fullmatch(line) or _H3_RE.fullmatch(line) or _H4_RE.fullmatch(line):
             break
         block.append(line)
@@ -447,11 +455,17 @@ def _parse_da_table_block(
                     or _DA_TYPED_ANCHOR_RE.search(cell)
                     for cell in cells
                 )
+                rendered_line = _rendered_header_cell(trailing)
+                standalone_issue_payload = (
+                    _DA_ISSUE_ID_RE.fullmatch(rendered_line)
+                    or _DA_TYPED_ANCHOR_RE.search(rendered_line)
+                )
                 if (
                     _markdown_cells(trailing)
                     or "#" in cells
                     or "evidence anchor" in cells
                     or issue_payload
+                    or standalone_issue_payload
                 ):
                     raise ReportError(
                         f"[{parse_tag}: {path}: issue-table rows must be "
@@ -491,11 +505,17 @@ def parse_da_tables(
             f"[DA-FINDING-GRAMMAR: {path}: standalone Severity declarations "
             "are forbidden; use the CRITICAL and MAJOR issue tables]"
         )
-    critical_lines, critical_id_col, critical_anchor_col = _parse_da_table_block(
+    critical_start = _require_single_da_table_heading(
         review_lines, "CRITICAL", path
     )
-    major_lines, major_id_col, major_anchor_col = _parse_da_table_block(
+    major_start = _require_single_da_table_heading(
         review_lines, "MAJOR", path
+    )
+    critical_lines, critical_id_col, critical_anchor_col = _parse_da_table_block(
+        review_lines, "CRITICAL", path, critical_start
+    )
+    major_lines, major_id_col, major_anchor_col = _parse_da_table_block(
+        review_lines, "MAJOR", path, major_start
     )
     current_h2: str | None = None
     in_canonical_da_band = False
