@@ -421,6 +421,18 @@ def test_same_line_duplicate_anchor_declarations_fail():
         phase.check_scoring_seat_anchors(report)
 
 
+def test_same_line_duplicate_minor_anchor_declarations_fail():
+    body = (
+        "### W1: duplicate optional anchors\n"
+        "**Severity**: Minor\n"
+        '**Evidence Anchor**: text: "first" and '
+        '**Evidence Anchor**: text: "second"'
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
+        phase.check_scoring_seat_anchors(report)
+
+
 def test_indented_bullet_fields_still_enforce_anchor_gate():
     body = """### W1: indented finding
   - **Severity**: Critical

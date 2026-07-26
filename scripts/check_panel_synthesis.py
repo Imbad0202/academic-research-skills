@@ -100,6 +100,7 @@ _BLOCK_CLASS_RE = re.compile(r"^block_class: (?P<value>fatal|repairable)\s*$")
 _TRIGGER_RE = re.compile(r'^trigger: "(?P<value>[^"\n]+)"\s*$')
 _ABSTAIN_RE = re.compile(r"^abstain_reason: (?P<value>\S.*)\s*$")
 _DECISION_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
+_RETIRED_DECISION_RE = re.compile(r"^editorial_decision=\S+\s*$")
 
 
 def strip_fences(text: str) -> list[str]:
@@ -175,7 +176,7 @@ def _markdown_cells(line: str) -> list[str]:
 
 def _parse_da_table_block(
     review_lines: list[str], heading: str, path: str
-) -> tuple[list[str], int, int]:
+) -> tuple[list[list[str]], int, int]:
     """Return table data lines plus ``#`` and anchor column positions."""
     parse_tag = f"DA-{heading}-PARSE"
     starts = [
@@ -224,9 +225,18 @@ def _parse_da_table_block(
         raise ReportError(
             f"[{parse_tag}: {path}: missing or malformed Markdown table separator]"
         )
-    return block[header_index + 2:], header.index("#"), header.index(
-        "Evidence Anchor"
-    )
+    rows: list[list[str]] = []
+    for line in block[header_index + 2:]:
+        if not line.strip():
+            continue
+        cells = _markdown_cells(line)
+        if len(cells) != len(header):
+            raise ReportError(
+                f"[{parse_tag}: {path}: every data row must be an "
+                "outer-pipe-delimited row with the header column count]"
+            )
+        rows.append(cells)
+    return rows, header.index("#"), header.index("Evidence Anchor")
 
 
 def parse_da_tables(
@@ -254,14 +264,7 @@ def parse_da_tables(
     )
 
     rows: dict[str, str] = {}
-    for line in critical_lines:
-        cells = _markdown_cells(line)
-        if not cells:
-            continue
-        if max(critical_id_col, critical_anchor_col) >= len(cells):
-            raise ReportError(
-                f"[DA-CRITICAL-PARSE: {path}: malformed CRITICAL row]"
-            )
+    for cells in critical_lines:
         finding_id = cells[critical_id_col]
         if not re.fullmatch(r"C[1-9]\d*", finding_id):
             raise ReportError(
@@ -275,14 +278,7 @@ def parse_da_tables(
         rows[finding_id] = cells[critical_anchor_col]
 
     major_anchors: list[str] = []
-    for line in major_lines:
-        cells = _markdown_cells(line)
-        if not cells:
-            continue
-        if max(major_id_col, major_anchor_col) >= len(cells):
-            raise ReportError(
-                f"[DA-MAJOR-PARSE: {path}: malformed MAJOR row]"
-            )
+    for cells in major_lines:
         if not cells[major_id_col]:
             raise ReportError(
                 f"[DA-MAJOR-PARSE: {path}: empty MAJOR # cell]"
@@ -355,7 +351,7 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
                 f"[V1-GRAMMAR-RETIRED: {path}: ## {retired} is forbidden "
                 "under Schema 13.2]"
             )
-    if any(_DECISION_RE.fullmatch(line) for line in lines):
+    if any(_RETIRED_DECISION_RE.fullmatch(line) for line in lines):
         raise ReportError(
             f"[V1-GRAMMAR-RETIRED: {path}: bare editorial_decision line is "
             "forbidden under Schema 13.2]"

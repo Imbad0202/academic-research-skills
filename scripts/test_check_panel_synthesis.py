@@ -188,10 +188,22 @@ def test_v1_sections_fail_loudly():
         cps.parse_report("eic.md", text, FULL)
 
 
-def test_v1_bare_decision_line_fails_loudly():
-    text = report_text("eic") + "\neditorial_decision=reject\n"
+@pytest.mark.parametrize(
+    "action",
+    ("reject", "Reject", "reject-or-major-revision", "unknown_v1_value"),
+)
+def test_v1_bare_decision_line_fails_loudly(action):
+    text = report_text("eic") + f"\neditorial_decision={action}\n"
     with pytest.raises(cps.ReportError, match="V1-GRAMMAR-RETIRED"):
         cps.parse_report("eic.md", text, FULL)
+
+
+def test_fenced_v1_bare_decision_decoy_is_ignored():
+    text = (
+        report_text("eic")
+        + "\n```text\neditorial_decision=Reject\n```\n"
+    )
+    cps.parse_report("eic.md", text, FULL)
 
 
 def test_nonmandatory_block_cannot_carry_block_class():
@@ -399,6 +411,22 @@ def test_da_separator_drift_fails_in_synthesis_path(old, new):
     )
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="separator"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_trailing_row_without_outer_pipes_fails_in_synthesis_path():
+    panel_reports = reports(da_ids=("C1", "C2"))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        '| C2 | Issue | text: "quoted evidence" p. 1 |',
+        'C2 | Issue | text: "quoted evidence" p. 1',
+        1,
+    )
+    synthesis_text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED", "C2": "VALIDATED"}, marker_count=2
+    )
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    with pytest.raises(cps.ReportError, match="outer-pipe-delimited"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 

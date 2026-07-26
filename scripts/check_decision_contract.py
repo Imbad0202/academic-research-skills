@@ -54,7 +54,7 @@ THRESHOLD_DRIFT_PATTERNS = (
         "decision-linked trailing comparator",
         re.compile(
             r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
-            r".{0,80}\b(?:80|65|50)\s*points?\s*"
+            r".{0,80}\b(?:80|65|50)(?:\s+points?)?\s*"
             r"(?:or higher|and higher|or above|and above|\+)"
         ),
     ),
@@ -67,7 +67,12 @@ THRESHOLD_DRIFT_PATTERNS = (
     ),
     (
         "numeric decision range",
-        re.compile(r"\b(?:65|50)\s*[-–—]\s*(?:79|64)\b"),
+        re.compile(
+            r"(?i)(?:(?:accept(?:ance)?|minor revision|major revision|"
+            r"reject(?:ion)?).{0,80}\b(?:65|50)\s*[-–—]\s*(?:79|64)\b|"
+            r"\b(?:65|50)\s*[-–—]\s*(?:79|64)\b.{0,80}"
+            r"(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?))"
+        ),
     ),
     (
         "below-50 decision boundary",

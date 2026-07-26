@@ -78,7 +78,7 @@ def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
         root,
         lint.STANDARDS,
         "## 0. Decision Authority by Mode",
-        "Duplicate threshold: 65-79\n\n## 0. Decision Authority by Mode",
+        "Minor Revision threshold: 65-79\n\n## 0. Decision Authority by Mode",
     )
     assert lint.check(root)
 
@@ -87,8 +87,13 @@ def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
     "wording",
     (
         "Accept applies to scores of 80 points or higher.",
+        "Accept applies to a score of 80 or higher.",
         "Minor Revision applies to 65 points and above.",
+        "Minor Revision begins with 65 or above.",
         "Major Revision applies to 50 points and above.",
+        "Major Revision covers 50 and higher.",
+        "Minor Revision starts at 65.",
+        "Accept requires a composite of 80 out of 100.",
         "Reject applies below 50 points.",
     ),
 )
@@ -113,6 +118,37 @@ def test_unrelated_decision_count_does_not_false_positive(tmp_path):
         "## 0. Decision Authority by Mode",
     )
     assert lint.check(root) == []
+
+
+def test_unrelated_numeric_range_does_not_false_positive(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.STANDARDS,
+        "## 0. Decision Authority by Mode",
+        "The panel reviewed 50 - 64 submissions before making a decision.\n\n"
+        "## 0. Decision Authority by Mode",
+    )
+    assert lint.check(root) == []
+
+
+@pytest.mark.parametrize(
+    "wording",
+    (
+        "Minor Revision spans 65 - 79 points.",
+        "Major Revision covers 50–64 points.",
+        "Scores of 50 — 64 require Major Revision.",
+    ),
+)
+def test_decision_linked_numeric_range_fails(tmp_path, wording):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.STANDARDS,
+        "## 0. Decision Authority by Mode",
+        f"{wording}\n\n## 0. Decision Authority by Mode",
+    )
+    assert lint.check(root)
 
 
 def test_retired_one_to_five_threshold_in_standards_fails(tmp_path):

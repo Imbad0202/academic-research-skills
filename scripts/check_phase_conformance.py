@@ -383,8 +383,6 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
                 f"[FINDING-GRAMMAR: {report.path}: {title} must contain "
                 "exactly one parseable Severity declaration]"
             )
-        if severities[0] not in {"Critical", "Major"}:
-            continue
         anchor_declarations = sum(
             line.count("**Evidence Anchor**") for line in block
         )
@@ -392,6 +390,15 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
             match.group("value") for line in block
             for match in _ANCHOR_RE.finditer(line)
         ]
+        if severities[0] not in {"Critical", "Major"}:
+            if anchor_declarations > 1 or len(anchors) != anchor_declarations:
+                raise ConformanceError(
+                    f"[FINDING-GRAMMAR: {report.path}: {title} may contain "
+                    "at most one parseable Evidence Anchor declaration]"
+                )
+            if anchors:
+                _validate_anchor(anchors[0], f"{report.path}:{title}")
+            continue
         if len(anchors) != 1 or anchor_declarations != 1:
             raise ConformanceError(
                 f"[ANCHOR-MISSING: {report.path}: {title} "
