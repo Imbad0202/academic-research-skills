@@ -13,7 +13,7 @@ The `disclosure` mode dispatches on the author-supplied selector:
 
 | Selector | Track | Lookup source | Output shape |
 |---|---|---|---|
-| `--venue=<v>` (v3.2, default) | Venue track | `venue_disclosure_policies.md` v1 database (ICLR / NeurIPS / Nature / Science / ACL / EMNLP) | Single venue-tailored disclosure paragraph + placement instruction |
+| `--venue=<v>` (v3.2, default) | Venue track | `venue_disclosure_policies.md` database (v2, 15 venues: ICLR / NeurIPS / Nature / Science / ACL / EMNLP + the #596 medical set — ICMJE / NEJM / The Lancet / JAMA / BMJ / PLOS / Frontiers / 中华护理杂志社 Chinese Nursing Journals Publishing House / 国际眼科杂志 International Eye Science) | Single venue-tailored disclosure paragraph + placement instruction |
 | `--policy-anchor=<a>` (#108) | Anchor track | `policy_anchor_table.md` 4-anchor × 16-field matrix | 4-anchor-conditioned render per `policy_anchor_disclosure_protocol.md` |
 
 The two tracks are **selector-mutually-exclusive by default** — one selector picks one track. When the author supplies **both** selectors in the same invocation, the renderer evaluates compatibility per concern #7 rules: a consistent pair (Nature venue + nature anchor, both sourced from `shared/policy_data/nature_policy.md`) proceeds; any other pair is **rejected with an explicit error** listing the policy conflict. Silent precedence between selectors is forbidden. See [policy_anchor_disclosure_protocol.md §5](policy_anchor_disclosure_protocol.md) for the full conflict-resolution detail.
@@ -41,7 +41,7 @@ The v3.2 venue track closes the venue-specific gap. The #108 anchor track closes
 1. **Paper draft**: current manuscript text (the mode needs to know what the AI actually did in order to describe it accurately).
 
 2. **Selector** (one of):
-   - **Target venue (`--venue=<v>`)**: journal or conference name (v3.2 path). If the venue is in the v1 database (ICLR, NeurIPS, Nature, Science, ACL, EMNLP), use the cached policy. If not, refuse to guess — prompt the user to paste the venue's current AI policy text from the venue's submission page.
+   - **Target venue (`--venue=<v>`)**: journal or conference name (v3.2 path). If the venue is in the database (v2: ICLR, NeurIPS, Nature, Science, ACL, EMNLP, plus the medical venues ICMJE, NEJM, The Lancet, JAMA, BMJ, PLOS, Frontiers, Chinese Nursing Journals Publishing House 中华护理杂志社, International Eye Science 国际眼科杂志), use the cached policy. If not, refuse to guess — prompt the user to paste the venue's current AI policy text from the venue's submission page.
    - **Policy anchor (`--policy-anchor=<a>`)**: one of `prisma-trAIce, icmje, nature, ieee` (#108 path). Anchor lookup follows `policy_anchor_disclosure_protocol.md`.
 
 3. **Pipeline signal** (#108 anchor path only): `slr_lineage=true|false` set by the upstream pipeline orchestrator. Required for `--policy-anchor=prisma-trAIce` per §4.3 G2 invariant. Cold-start invocation requires explicit `mode=<value>` parameter; silent fallback to general track is forbidden.
@@ -55,13 +55,13 @@ The v3.2 venue track closes the venue-specific gap. The #108 anchor track closes
 ### Phase 1: Intake + lookup (selector-aware)
 
 **Step 1a — selector dispatch:**
-- Both `--venue=<v>` and `--policy-anchor=<a>` supplied → check policy compatibility per the Two-parallel-tracks section above. **Consistent pair (currently only any Nature Portfolio venue + `--policy-anchor=nature`, where "Nature Portfolio venue" includes canonical labels {"Nature", "Nature Portfolio", "Nature (Nature Publishing Group)", "Nature Publishing Group"} and the journal-family prefix `"Nature "` matching e.g. "Nature Medicine", "Nature Communications", "Nature Climate Change", etc.) → route the consistent pair to **step 1c (anchor path)** so the shared canonical source `shared/policy_data/nature_policy.md` drives rendering; step 1b's v1 venue database does not need to contain every Nature Portfolio journal**. Conflicting pair → reject with explicit error.
+- Both `--venue=<v>` and `--policy-anchor=<a>` supplied → check policy compatibility per the Two-parallel-tracks section above. **Consistent pair (currently only any Nature Portfolio venue + `--policy-anchor=nature`, where "Nature Portfolio venue" includes canonical labels {"Nature", "Nature Portfolio", "Nature (Nature Publishing Group)", "Nature Publishing Group"} and the journal-family prefix `"Nature "` matching e.g. "Nature Medicine", "Nature Communications", "Nature Climate Change", etc.) → route the consistent pair to **step 1c (anchor path)** so the shared canonical source `shared/policy_data/nature_policy.md` drives rendering; step 1b's venue database (v2) does not need to contain every Nature Portfolio journal**. Conflicting pair → reject with explicit error.
 - `--venue=<v>` only → step 1b (venue path).
 - `--policy-anchor=<a>` only → step 1c (anchor path).
 - Neither supplied → prompt the user to specify selector.
 
 **Step 1b — venue lookup (v3.2 path, unchanged):**
-- If venue is in the v1 database → load policy from `venue_disclosure_policies.md`.
+- If venue is in the database (v2) → load policy from `venue_disclosure_policies.md`.
 - If venue is unknown → halt. Print: "I do not have a cached policy for {venue}. Please paste the venue's current AI-usage / generative-AI policy text so I don't guess." Do NOT fabricate a policy.
 - If the user pastes a policy for an unknown venue, use it for this session only. Do NOT auto-persist it to the database — policies drift, and the database needs curation.
 
@@ -129,22 +129,22 @@ If the venue requires placement in multiple locations (e.g., Methods + cover let
 
 ## Failure cases this mode does NOT cover
 
-- **Venues outside the v1 database**: the mode halts and asks the user. It does not guess.
+- **Venues outside the database**: the mode halts and asks the user. It does not guess.
 - **Policies that have changed since the database snapshot**: the mode records the access date in the placement instructions. Users should verify against the current venue page before submission.
 - **Analysis assistance**: if the AI actually ran computations or generated analysis results (not just writing), most venues require a separate disclosure in a Code Availability or Analysis section. This mode flags the case and produces a separate paragraph; the user must place it manually.
-- **Co-authored AI**: as of the 2026 policy snapshot, no venue in the v1 database accepts AI as a listed author. The mode refuses to produce author-list text and instead produces authorship-rejection text plus the disclosure.
+- **Co-authored AI**: as of the 2026 policy snapshot, no venue in the database (v1 or v2) accepts AI as a listed author. The mode refuses to produce author-list text and instead produces authorship-rejection text plus the disclosure.
 
 ---
 
 ## Integration with existing journal_submission_guide.md
 
-`journal_submission_guide.md` retains the two generic templates (Minimal / Detailed) as fallback for venues not in the v1 database. Disclosure mode's output supersedes those templates when the venue is known. The guide is updated to point to this mode for known venues.
+`journal_submission_guide.md` retains the two generic templates (Minimal / Detailed) as fallback for venues not in the database. Disclosure mode's output supersedes those templates when the venue is known. The guide is updated to point to this mode for known venues.
 
 ---
 
 ## References
 
-- `venue_disclosure_policies.md` — v1 policy database (ICLR, NeurIPS, Nature, Science, ACL, EMNLP)
+- `venue_disclosure_policies.md` — policy database (v2: the 6 ML/NLP venues plus 9 medical venues incl. the ICMJE umbrella and the database's first Chinese-language entries; see its Scope line)
 - `policy_anchor_table.md` — #108 4-anchor × 16-field matrix (PRISMA-trAIce, ICMJE, Nature, IEEE) for the policy-anchor track
 - `policy_anchor_disclosure_protocol.md` — #108 policy-anchor track render protocol (per-anchor flows, G10 7-row precedence table, auto-promotion forbiddance, §4.4 11 concerns resolved paths)
 - `journal_submission_guide.md` — existing generic templates (fallback)

@@ -593,7 +593,7 @@ Lu et al. (2026, *Nature* 651:914-919) — 블라인드 동료 심사를 통과�
 
 - **7-mode AI Research Failure Mode Checklist** — 의심되는 구현 버그, 환각된 결과, 지름길 의존, 버그를 통찰로, 방법론 날조, 프레임 고착에 대해 Stage 2.5/4.5에서 파이프라인을 차단. 기존 5종 인용 환각 분류를 확장.
 - **Reviewer Calibration Mode**(academic-paper-reviewer v1.8) — 사용자 제공 골드셋에 대한 옵트인 FNR/FPR/balanced-accuracy 측정. 5× ensembling, 교차 모델 기본 ON, 세션 범위 신뢰도 공개.
-- **Disclosure Mode**(academic-paper v2.9) — venue별 AI 사용 명시문 생성기. v1은 ICLR, NeurIPS, Nature, Science, ACL, EMNLP 커버.
+- **Disclosure Mode**(academic-paper v2.9) — venue별 AI 사용 명시문 생성기. v1은 ICLR, NeurIPS, Nature, Science, ACL, EMNLP 커버. (이후 확장: v2 데이터베이스(#596)는 9개 의학 venue — ICMJE, NEJM, The Lancet, JAMA, BMJ, PLOS, Frontiers, 그리고 데이터베이스 최초의 중국어 venue 2종(中华护理杂志社, 国际眼科杂志) — 를 추가.)
 - **Early-Stopping Criterion**(academic-pipeline v3.1) — 파이프라인 시작 시 수렴 점검 + 예산 투명성.
 - **Fidelity-Originality Mode Spectrum** — Lu 2026 Fig 1c에 따라 3개 스킬 전반의 모든 모드를 분류.
 - 새 버전: academic-paper v2.9, academic-paper-reviewer v1.8, academic-pipeline v3.1

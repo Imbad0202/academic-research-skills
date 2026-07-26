@@ -12,7 +12,7 @@ This protocol document is the runtime instruction set the LLM follows when the u
 
 ## 0. Why this protocol exists
 
-ARS's v3.2 `disclosure` mode renders venue-targeted AI disclosure text (ICLR, NeurIPS, Nature, Science, ACL, EMNLP). The 4-anchor `--policy-anchor=<a>` track parallels v3.2's venue track when the author targets a **policy anchor** (PRISMA-trAIce, ICMJE, Nature Portfolio, IEEE) rather than a specific journal venue. The two tracks coexist; v3.2 venue path remains the default for journal submissions.
+ARS's v3.2 `disclosure` mode renders venue-targeted AI disclosure text (15 venues as of the v2 database: ICLR, NeurIPS, Nature, Science, ACL, EMNLP, plus the #596 medical set — see `venue_disclosure_policies.md`). The 4-anchor `--policy-anchor=<a>` track parallels v3.2's venue track when the author targets a **policy anchor** (PRISMA-trAIce, ICMJE, Nature Portfolio, IEEE) rather than a specific journal venue. The two tracks coexist; v3.2 venue path remains the default for journal submissions.
 
 ---
 

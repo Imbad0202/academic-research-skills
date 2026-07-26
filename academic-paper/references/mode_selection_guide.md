@@ -204,7 +204,7 @@ User Input →
 
 **Applicable Scenarios**:
 - Paper is drafted and you need a venue-specific AI-usage disclosure paragraph
-- Submitting to a venue with a defined AI-disclosure policy (ICLR, NeurIPS, Nature, Science, ACL, EMNLP)
+- Submitting to a venue with a defined AI-disclosure policy (ICLR, NeurIPS, Nature, Science, ACL, EMNLP, or a covered medical venue: ICMJE, NEJM, The Lancet, JAMA, BMJ, PLOS, Frontiers, 中华护理杂志社, 国际眼科杂志)
 - Need placement guidance for where the statement goes in the manuscript
 
 **Not Applicable When**:

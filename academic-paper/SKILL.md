@@ -390,7 +390,7 @@ See `agents/intake_agent.md` for the complete field definitions of the Phase 0 c
 - Domain: `hei_domain_glossary` (bilingual), `journal_submission_guide`, `latex_template_reference`, `domain_evidence_profiles` (advisory screening profiles)
 - Process: `failure_paths` (12 scenarios), `mode_selection_guide` (11 modes), `plan_mode_protocol`, `workflow_phase_details`, `revision_patch_protocol` (#390 Mode B commands + marker lifecycle)
 - Ethics: `credit_authorship_guide` (CRediT 14 roles), `funding_statement_guide`, `statistical_visualization_standards`
-- Disclosure (v3.2): `disclosure_mode_protocol` (venue-specific AI-usage statement generation), `venue_disclosure_policies` (v1 database: ICLR, NeurIPS, Nature, Science, ACL, EMNLP)
+- Disclosure (v3.2): `disclosure_mode_protocol` (venue-specific AI-usage statement generation), `venue_disclosure_policies` (v2 database: ICLR, NeurIPS, Nature, Science, ACL, EMNLP, plus medical venues — ICMJE, NEJM, The Lancet, JAMA, BMJ, PLOS, Frontiers, Chinese Nursing Journals Publishing House 中华护理杂志社, International Eye Science 国际眼科杂志)
 - Integrity (v3.3): `anti_leakage_protocol` (knowledge isolation), `vlm_figure_verification` (optional VLM figure check)
 - Policy anchors (#108): `policy_anchor_table`, `policy_anchor_disclosure_protocol`
 - Meta: `changelog` (version history)

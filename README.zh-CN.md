@@ -569,7 +569,7 @@ v3.5.1 添加 Socratic Mentor 的选用式诚实探测（设置 `ARS_SOCRATIC_RE
 
 - **7 类 AI 研究失败模式检查清单** — 在 Stage 2.5/4.5 阻断管线：检测实现错误、幻觉实验结果、取巧特征依赖、错误包装为发现、方法伪造、框架锁定。扩充现有 5 类引用幻觉分类。
 - **Reviewer 校准模式**（academic-paper-reviewer v1.8）— opt-in 的 FNR/FPR/balanced accuracy 测量，用户提供 gold set。5 次集成、跨模型默认打开、session 内强制附加信心披露。
-- **AI 使用声明模式**（academic-paper v2.9）— 针对特定期刊/会议的 AI 使用声明生成器。v1 涵盖 ICLR、NeurIPS、Nature、Science、ACL、EMNLP。
+- **AI 使用声明模式**（academic-paper v2.9）— 针对特定期刊/会议的 AI 使用声明生成器。v1 涵盖 ICLR、NeurIPS、Nature、Science、ACL、EMNLP。（后续扩充：v2 数据库（#596）新增 9 个医学 venue — ICMJE、NEJM、The Lancet、JAMA、BMJ、PLOS、Frontiers，以及数据库首批两个中文 venue：中华护理杂志社、国际眼科杂志。）
 - **提前停止机制**（academic-pipeline v3.1）— 收敛检查 + pipeline 开始时的 token 预算透明化。
 - **忠实度-原创性模式光谱** — 按 Lu 2026 Fig 1c 分类所有 3 个 skill 的模式。
 - 新版本：academic-paper v2.9、academic-paper-reviewer v1.8、academic-pipeline v3.1

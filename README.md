@@ -602,7 +602,7 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 
 - **7-mode AI Research Failure Mode Checklist** — blocks pipeline at Stage 2.5/4.5 on suspected implementation bugs, hallucinated results, shortcut reliance, bug-as-insight, methodology fabrication, frame-lock. Extends existing 5-type citation hallucination taxonomy.
 - **Reviewer Calibration Mode** (academic-paper-reviewer v1.8) — opt-in FNR/FPR/balanced-accuracy measurement against user-supplied gold set. 5× ensembling, cross-model default-on, session-scoped confidence disclosure.
-- **Disclosure Mode** (academic-paper v2.9) — venue-specific AI-usage statement generator. v1 covers ICLR, NeurIPS, Nature, Science, ACL, EMNLP.
+- **Disclosure Mode** (academic-paper v2.9) — venue-specific AI-usage statement generator. v1 covers ICLR, NeurIPS, Nature, Science, ACL, EMNLP. (Since expanded: the v2 database (#596) adds 9 medical venues — ICMJE, NEJM, The Lancet, JAMA, BMJ, PLOS, Frontiers, and the database's first two Chinese-language venues, 中华护理杂志社 and 国际眼科杂志.)
 - **Early-Stopping Criterion** (academic-pipeline v3.1) — convergence check + budget transparency at pipeline start.
 - **Fidelity-Originality Mode Spectrum** — classifies all modes across 3 skills per Lu 2026 Fig 1c.
 - New versions: academic-paper v2.9, academic-paper-reviewer v1.8, academic-pipeline v3.1
