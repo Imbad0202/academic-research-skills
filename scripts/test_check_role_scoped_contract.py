@@ -66,16 +66,48 @@ def test_delivered_phase1_live_grammar_mutations_fail(tmp_path):
 
 
 def test_delivered_phase1_terminal_preflight_mutations_fail(tmp_path):
+    mutations = (
+        (
+            "only dimensions eligible for your dispatch role appear",
+            "all contract dimensions may appear",
+        ),
+        (
+            "contains exactly one unbulleted `dimension_id:`",
+            "contains any number of `dimension_id:` lines",
+        ),
+        (
+            "`what_triggers_fatal:` occurs zero times",
+            "`what_triggers_fatal:` may occur once",
+        ),
+        (
+            "The final nonblank output line is exactly",
+            "The acknowledgement may appear anywhere as",
+        ),
+        (
+            "contains no manuscript-specific claim",
+            "may contain manuscript-specific claims",
+        ),
+    )
+    for agent_index, rel in enumerate(lint.AGENTS):
+        for mutation_index, (old, new) in enumerate(mutations):
+            root = mirror(tmp_path / f"{agent_index}-{mutation_index}")
+            mutate(root, rel, old, new)
+            errors = lint.check(root)
+            assert f"{rel}: Phase 1 terminal-preflight witness missing" in errors
+
+
+def test_delivered_phase1_terminal_preflight_relocation_fails(tmp_path):
+    marker = "Do not send until every check holds."
     for index, rel in enumerate(lint.AGENTS):
         root = mirror(tmp_path / str(index))
-        mutate(
-            root,
-            rel,
-            "`what_triggers_fatal:` must occur zero times",
-            "`what_triggers_fatal:` may occur once",
-        )
+        path = root / rel
+        text = path.read_text(encoding="utf-8")
+        marker_index = text.index(marker)
+        insertion = marker_index + len(marker)
+        text = text[:insertion] + "\nAdditional Phase 1 rule." + text[insertion:]
+        path.write_text(text, encoding="utf-8")
         errors = lint.check(root)
-        assert f"{rel}: Phase 1 terminal-preflight witness missing" in errors
+        assert f"{rel}: Phase 1 terminal preflight is not terminal" in errors
 
 
 def test_delivered_phase2_literal_mutation_fails(tmp_path):
@@ -101,34 +133,49 @@ def test_delivered_phase2_no_dissent_mutations_fail(tmp_path):
 
 
 def test_delivered_phase2_terminal_dissent_preflight_mutations_fail(tmp_path):
-    for index, rel in enumerate(lint.AGENTS):
-        root = mirror(tmp_path / str(index))
-        mutate(
-            root,
-            rel,
-            "delete the heading and every placeholder line beneath it",
-            "keep the heading and an omitted placeholder beneath it",
-        )
-        errors = lint.check(root)
-        assert f"{rel}: Phase 2 live-grammar witness missing" in errors
+    mutations = (
+        (
+            "If it differs on two or more, abort with",
+            "If it differs on two or more, select one and continue with",
+        ),
+        (
+            "`## Dimension Scores` and nowhere else",
+            "`## Dimension Scores` and inside each dimension",
+        ),
+        (
+            "a character-for-character substring",
+            "a semantic paraphrase",
+        ),
+        (
+            "every mandatory `block` has exactly one `block_class:`",
+            "a mandatory `block` may omit `block_class:`",
+        ),
+        (
+            "the DA uses exactly one CRITICAL table and one MAJOR table",
+            "the DA may omit empty CRITICAL and MAJOR tables",
+        ),
+        (
+            "quoted excerpt is at most 25 words",
+            "quoted excerpt is at most 50 words",
+        ),
+    )
+    for agent_index, rel in enumerate(lint.AGENTS):
+        for mutation_index, (old, new) in enumerate(mutations):
+            root = mirror(tmp_path / f"{agent_index}-{mutation_index}")
+            mutate(root, rel, old, new)
+            errors = lint.check(root)
+            assert f"{rel}: Phase 2 live-grammar witness missing" in errors
 
 
 def test_delivered_phase2_terminal_dissent_preflight_relocation_fails(tmp_path):
+    marker = "Do not send until every check holds."
     for index, rel in enumerate(lint.AGENTS):
         root = mirror(tmp_path / str(index))
         path = root / rel
         text = path.read_text(encoding="utf-8")
-        witness_line = next(
-            line
-            for line in text.splitlines()
-            if "Terminal dissent preflight (mandatory)" in line
-        )
-        text = text.replace(witness_line + "\n", "", 1)
-        text = text.replace(
-            "**Finding Contract (#574",
-            witness_line + "\n\n**Finding Contract (#574",
-            1,
-        )
+        marker_index = text.rindex(marker)
+        insertion = marker_index + len(marker)
+        text = text[:insertion] + "\nAdditional Phase 2 rule." + text[insertion:]
         path.write_text(text, encoding="utf-8")
         errors = lint.check(root)
         assert f"{rel}: Phase 2 terminal preflight is not terminal" in errors
@@ -637,12 +684,20 @@ def test_protocol_live_grammar_mutations_fail(tmp_path):
             "Before output, do not count each quoted excerpt",
         ),
         (
-            "`what_triggers_fatal:` must occur zero times",
+            "`what_triggers_fatal:` occurs zero times",
             "`what_triggers_fatal:` may occur once",
         ),
         (
-            "delete the heading and every placeholder line beneath it",
-            "keep the heading and an omitted placeholder beneath it",
+            "The final nonblank output line is exactly",
+            "The acknowledgement may appear anywhere as",
+        ),
+        (
+            "If it differs on two or more, abort with",
+            "If it differs on two or more, select one and continue with",
+        ),
+        (
+            "a character-for-character substring",
+            "a semantic paraphrase",
         ),
     )
     for index, (old, new) in enumerate(mutations):

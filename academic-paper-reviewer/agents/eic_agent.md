@@ -53,7 +53,6 @@ You MUST produce, in exactly this order:
    - `what_triggers_warn: <single-line non-empty text>`
    - `what_triggers_fatal: <single-line non-empty text>` — required only for a `mandatory` dimension and forbidden otherwise. The block, warn, and fatal triggers must be pairwise distinct.
    For every scoring-plan heading, copy the exact dimension ID and name from the contract. For a non-mandatory dimension, omit the entire `what_triggers_fatal:` line; never emit that key with `NOT_APPLICABLE`, `none`, or any other sentinel.
-   Terminal preflight (mandatory): inspect the text you are about to send. In every non-mandatory scoring-plan subsection, the literal key `what_triggers_fatal:` must occur zero times; delete the entire line if it appears. In every mandatory subsection, that key must occur exactly once. Do not send until these counts hold.
 3. End with the exact tag on its own line:
 
 ```
@@ -64,6 +63,13 @@ Hard prohibitions in Phase 1:
 - Do not speculate about paper content.
 - Do not produce `dimension_scores`, `review_body`, or `editorial_decision`.
 - Do not reference specific paper content (you have none).
+
+Terminal Phase 1 structural preflight (mandatory). Silently inspect the exact text you are about to send:
+1. Every `### <Dn>: <name>` heading copies the contract ID and name exactly, and only dimensions eligible for your dispatch role appear.
+2. Each scoring-plan subsection contains exactly one unbulleted `dimension_id:`, `what_to_look_for:`, `what_triggers_block:`, and `what_triggers_warn:` line; its block and warn texts are distinct.
+3. In every non-mandatory subsection, the literal key `what_triggers_fatal:` occurs zero times; delete the entire line and any sentinel if it appears. In every mandatory subsection, that key occurs exactly once and its text is distinct from block and warn.
+4. The final nonblank output line is exactly `[CONTRACT-ACKNOWLEDGED]`, and the output contains no manuscript-specific claim.
+Do not send until every check holds.
 
 ### Phase 2 — Paper-visible review
 
@@ -101,7 +107,14 @@ You MUST:
 - **Band anchors (per finding, never distributional targets):** Critical means this single defect, uncorrected, invalidates the core claim or makes acceptance impossible; it alone would justify `block` on a mandatory dimension. Major materially weakens a core claim and requires substantial re-analysis, rewriting, or new data, while the core survives. Minor improves quality or clarity without changing core claims.
 - **Anti-bundling:** assign each finding the band justified by its own decision impact; it never inherits a cluster or narrative's band. Joint impact belongs in the dimension score and synthesis.
 - **Singleton-Critical:** if a defect needs sibling findings to reach rejection-level impact, it is not Critical alone. These tests operationalize severity-by-decision-impact and never prescribe expected band frequencies.
-- Terminal dissent preflight (mandatory): inspect the text you are about to send. If it contains a line exactly `## Scoring Plan Dissent`, that section must contain exactly one unbulleted `dimension_id: <Dn>` line and exactly one unbulleted `rationale: <nonempty explanation>` line. If you have no real one-dimension dissent, delete the heading and every placeholder line beneath it before sending. `none`, `omitted`, `not applicable`, and similar placeholders are never a dissent.
+Terminal Phase 2 structural preflight (mandatory). Silently inspect the exact text you are about to send against your supplied Phase 1:
+1. Dissent: if your Phase 2 view differs on exactly one dimension, include `## Scoring Plan Dissent` with exactly one unbulleted `dimension_id: <Dn>` line and exactly one unbulleted `rationale: <nonempty explanation>` line. If it differs on two or more, abort with `[PROTOCOL-VIOLATION: multi_dissent=true]` instead of drafting a card. If none differs, delete the heading and every placeholder beneath it; `none`, `omitted`, and `not applicable` are never a dissent.
+2. Role and dimensions: emit exactly one report-level `contract_role: <your dispatch role>` immediately before `## Dimension Scores` and nowhere else. Emit every contract dimension exactly once with its exact ID/name; ineligible dimensions use only `score: not_assessed`.
+3. Trigger binding: for every `warn` or `block`, the quoted `trigger:` text is a character-for-character substring of the matching Phase 1 trigger kind for the same dimension. Never paraphrase it. `pass` and `not_assessed` have no `trigger:`.
+4. Fatality: every mandatory `block` has exactly one `block_class:`; `fatal` binds to the Phase 1 fatal trigger, a dissented dimension cannot be fatal, and a non-mandatory dimension has no `block_class:`.
+5. Finding grammar: apply the role-specific grammar above. Scoring seats put every Severity under its own `### W<n>` heading; the DA uses exactly one CRITICAL table and one MAJOR table with no standalone Severity. Strengths never carry Severity.
+6. Anchors: every Critical/Major finding has its own valid typed anchor; no findings share one. Every `text:` quoted excerpt is at most 25 words, and every `absence:` anchor uses the exact required separators and non-empty fields.
+Do not send until every check holds.
 
 ---
 
