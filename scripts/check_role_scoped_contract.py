@@ -69,17 +69,23 @@ SCORING_FINDING_WITNESS = (
 SCORING_FIELD_VARIANT_WITNESS = (
     "Finding fields may be unindented or Markdown-list-indented, and may be "
     "separate lines or pipe-delimited on one line. The complete typed anchor "
-    "value, including its type and locator, may be bare or backtick-wrapped; "
-    "these presentation variants do not weaken the "
+    "value, including its type and locator, may be bare, backtick-wrapped, or "
+    "square-bracketed; these presentation variants do not weaken the "
     "one-finding/one-Severity/one-anchor gate"
 )
 ANCHOR_VALUE_GRAMMAR_WITNESS = (
     "Every Evidence Anchor value begins with the literal `<type>: <locator>` "
-    'grammar (for example, `text: §3 "short quote"`); the complete value may '
-    "be bare or backtick-wrapped, but wrapping only the type and separating "
-    "it from the locator with a dash is invalid. A `text:` anchor includes a "
-    "quoted excerpt of at most 25 words; an `absence:` anchor names the "
-    "expected item and every surface checked"
+    "grammar. Backticks or square brackets may enclose the whole value (for "
+    'example, `text: §3 "short quote"` or [`text: §3 "short quote"`]); '
+    "nothing may appear between the type and its colon, so `` `text`: §3 `` "
+    "and `` `text` — §3 `` are both invalid. A `text:` anchor includes a "
+    "straight or curly double-quoted excerpt of at most 25 words; an "
+    "`absence:` anchor names where the missing item should appear, what was "
+    "expected, and every surface checked"
+)
+ANCHOR_VALIDATOR_REGEX_WITNESS = (
+    r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
+    r'        r"(?P<tail>\S.*)$"'
 )
 DA_FINDING_WITNESS = (
     "emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` "
@@ -260,6 +266,7 @@ def check(root: Path) -> list[str]:
         errors.append("DA role-scoped Phase Boundary clause missing")
 
     protocol = heading_section(_read(root, PROTOCOL), "## 9. Recognised expression vocabulary")
+    protocol_phase2 = heading_section(_read(root, PROTOCOL), "## 5. Phase 2 output lint")
     synth = heading_section(_read(root, SYNTH), SPRINT.replace("Protocol", "Synthesizer Protocol"))
     checker = _read(root, PANEL_CHECKER)
     phase_checker = _read(root, PHASE_CHECKER)
@@ -294,6 +301,13 @@ def check(root: Path) -> list[str]:
             errors.append(
                 f"{PANEL_CHECKER}: DA parser witness missing: {witness}"
             )
+    if ANCHOR_VALIDATOR_REGEX_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-validator regex witness missing")
+    if (
+        protocol_phase2 is None
+        or norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(protocol_phase2)
+    ):
+        errors.append(f"{PROTOCOL}: Phase 2 anchor-value grammar witness missing")
     if norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in norm_ws(_read(root, TEMPLATE)):
         errors.append(f"{TEMPLATE}: finding-field variant witness missing")
     if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(_read(root, TEMPLATE)):

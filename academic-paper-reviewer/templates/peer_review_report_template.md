@@ -78,7 +78,7 @@ List every genuine strength you actually found — no minimum, no maximum (#574 
 
 ### S1: [Strength title]
 [Specific description. E.g., "The research design uses a quasi-experimental pretest-posttest control group design (p. X), effectively controlling for..."]
-**Evidence Anchor**: [`<type>: <locator>` — see § Evidence Anchor Types]
+**Evidence Anchor**: [`<type>: <locator>`] — replace the complete backticked value; never wrap `<type>` alone (see § Evidence Anchor Types)
 
 ### S2..Sn
 [Repeat the S1 structure for each additional strength — as many entries as the evidence supports, including zero.]
@@ -96,15 +96,15 @@ List every weakness you actually found — no minimum, no maximum (#574 A1). Do 
 
 ### W1: [Weakness title]
 **Problem**: [Specific description of the problem]
-**Evidence Anchor**: [`<type>: <locator>` per § Evidence Anchor Types — REQUIRED with an adequate, applicable type for Critical/Major findings (#574 A2)]
+**Evidence Anchor**: [`<type>: <locator>`] — replace the complete backticked value; never wrap `<type>` alone; REQUIRED with an adequate, applicable type for Critical/Major findings (#574 A2; see § Evidence Anchor Types)
 **Why it matters**: [Explain the impact of this problem]
 **Suggestion**: [Specific improvement direction]
 **Severity**: [Critical / Major / Minor] — the Schema 6 enum (§ Severity Levels below); set by decision impact alone (#574 A3/B1)
 **Confidence**: [1-5] — [competence basis, one phrase: e.g. "core expertise: psychometrics" / "adjacent field: applying general standards"] (#574 A3)
 
-Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. The complete typed anchor value, including its type and locator, may be bare or backtick-wrapped; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
+Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. The complete typed anchor value, including its type and locator, may be bare, backtick-wrapped, or square-bracketed; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
 
-Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar (for example, `text: §3 "short quote"`); the complete value may be bare or backtick-wrapped, but wrapping only the type and separating it from the locator with a dash is invalid. A `text:` anchor includes a quoted excerpt of at most 25 words; an `absence:` anchor names the expected item and every surface checked.
+Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar. Backticks or square brackets may enclose the whole value (for example, `text: §3 "short quote"` or [`text: §3 "short quote"`]); nothing may appear between the type and its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. A `text:` anchor includes a straight or curly double-quoted excerpt of at most 25 words; an `absence:` anchor names where the missing item should appear, what was expected, and every surface checked.
 
 ### W2..Wn
 [Repeat the W1 structure for each additional weakness — as many entries as the evidence supports, including zero.]

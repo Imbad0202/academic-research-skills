@@ -576,14 +576,39 @@ def test_indented_bullet_fields_still_enforce_anchor_gate():
         phase.check_scoring_seat_anchors(report)
 
 
-def test_backticked_template_anchor_is_normalised_and_accepted():
+@pytest.mark.parametrize(
+    "anchor",
+    (
+        '`text: §5 "short exact quote"`',
+        '[`text: §5 "short exact quote"`]',
+    ),
+)
+def test_whole_value_wrapped_template_anchor_is_normalised_and_accepted(anchor):
     body = (
         "### W1: template-shaped finding\n"
         "**Severity**: Critical\n"
-        "**Evidence Anchor**: `text: §5 \"short exact quote\"`"
+        f"**Evidence Anchor**: {anchor}"
     )
     report, _ = parse_report("eic", body=body)
     phase.check_scoring_seat_anchors(report)
+
+
+@pytest.mark.parametrize(
+    "anchor",
+    (
+        '[`text`: §5 "short exact quote"]',
+        '`text` — §5 "short exact quote"',
+    ),
+)
+def test_type_only_wrapping_anchor_is_rejected(anchor):
+    body = (
+        "### W1: malformed type wrapping\n"
+        "**Severity**: Critical\n"
+        f"**Evidence Anchor**: {anchor}"
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="ANCHOR-INVALID"):
+        phase.check_scoring_seat_anchors(report)
 
 
 def test_combined_template_fields_are_parsed():

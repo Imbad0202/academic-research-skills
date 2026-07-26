@@ -420,8 +420,8 @@ def test_template_field_variant_witness_mutation_fails(tmp_path):
     mutate(
         root,
         lint.TEMPLATE,
-        "including its type and locator, may be bare or backtick-wrapped",
-        "including only its type, may be bare or backtick-wrapped",
+        "including its type and locator, may be bare, backtick-wrapped, or square-bracketed",
+        "including only its type, may be bare, backtick-wrapped, or square-bracketed",
     )
     assert lint.check(root)
 
@@ -432,8 +432,8 @@ def test_delivered_anchor_value_grammar_mutations_fail(tmp_path):
         mutate(
             root,
             rel,
-            "wrapping only the type and separating it from the locator with a dash is invalid",
-            "wrapping only the type and separating it from the locator with a dash is valid",
+            "nothing may appear between the type and its colon",
+            "content may appear between the type and its colon",
         )
         assert lint.check(root)
 
@@ -445,6 +445,28 @@ def test_template_anchor_value_grammar_mutation_fails(tmp_path):
         lint.TEMPLATE,
         "Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar",
         "Every Evidence Anchor value should usually include a type and locator",
+    )
+    assert lint.check(root)
+
+
+def test_protocol_anchor_value_grammar_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PROTOCOL,
+        "an `absence:` anchor names where the missing item should appear",
+        "an `absence:` anchor may omit where the missing item should appear",
+    )
+    assert lint.check(root)
+
+
+def test_anchor_validator_colon_regex_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"',
+        r'r"^(?P<type>text|table|figure|equation|dataset|absence)(?::|-)\s*"',
     )
     assert lint.check(root)
 
