@@ -99,6 +99,19 @@ def test_delivered_phase2_role_placement_mutations_fail(tmp_path):
         assert lint.check(root)
 
 
+def test_delivered_phase2_role_token_mutations_fail(tmp_path):
+    for index, (rel, role) in enumerate(lint.AGENTS.items()):
+        root = mirror(tmp_path / str(index))
+        wrong_role = "domain" if role != "domain" else "eic"
+        mutate(
+            root,
+            rel,
+            f"`contract_role: {role}`",
+            f"`contract_role: {wrong_role}`",
+        )
+        assert lint.check(root)
+
+
 def test_delivered_phase2_strength_severity_mutations_fail(tmp_path):
     non_da_agents = [
         rel for rel, role in lint.AGENTS.items() if role != "da"

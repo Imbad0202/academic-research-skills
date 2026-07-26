@@ -94,7 +94,7 @@ PHASE2_NO_DISSENT_WITNESS = (
     "If no dimension needs dissent, omit the entire `## Scoring Plan Dissent` "
     "section; never emit an empty section or a `none` placeholder"
 )
-PHASE2_ROLE_PLACEMENT_WITNESS = (
+PHASE2_ROLE_PLACEMENT_WITNESS_SUFFIX = (
     "Place this single report-level line immediately before "
     "`## Dimension Scores`; never repeat it inside any dimension subsection"
 )
@@ -395,10 +395,11 @@ def check(root: Path) -> list[str]:
         for witness in PHASE2_WITNESSES:
             if norm_ws(witness) not in phase2_norm:
                 errors.append(f"{rel}: Phase 2 grammar witness missing: {witness}")
-        for witness in (
-            PHASE2_NO_DISSENT_WITNESS,
-            PHASE2_ROLE_PLACEMENT_WITNESS,
-        ):
+        role_placement_witness = (
+            "Declare your panel role exactly once, on its own line: "
+            f"`contract_role: {role}`. {PHASE2_ROLE_PLACEMENT_WITNESS_SUFFIX}"
+        )
+        for witness in (PHASE2_NO_DISSENT_WITNESS, role_placement_witness):
             if norm_ws(witness) not in phase2_norm:
                 errors.append(f"{rel}: Phase 2 live-grammar witness missing")
         finding_witness = (
