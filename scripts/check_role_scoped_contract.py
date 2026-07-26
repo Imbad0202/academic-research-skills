@@ -68,9 +68,18 @@ SCORING_FINDING_WITNESS = (
 )
 SCORING_FIELD_VARIANT_WITNESS = (
     "Finding fields may be unindented or Markdown-list-indented, and may be "
-    "separate lines or pipe-delimited on one line. A typed anchor value may "
-    "be bare or backtick-wrapped; these presentation variants do not weaken "
-    "the one-finding/one-Severity/one-anchor gate"
+    "separate lines or pipe-delimited on one line. The complete typed anchor "
+    "value, including its type and locator, may be bare or backtick-wrapped; "
+    "these presentation variants do not weaken the "
+    "one-finding/one-Severity/one-anchor gate"
+)
+ANCHOR_VALUE_GRAMMAR_WITNESS = (
+    "Every Evidence Anchor value begins with the literal `<type>: <locator>` "
+    'grammar (for example, `text: §3 "short quote"`); the complete value may '
+    "be bare or backtick-wrapped, but wrapping only the type and separating "
+    "it from the locator with a dash is invalid. A `text:` anchor includes a "
+    "quoted excerpt of at most 25 words; an `absence:` anchor names the "
+    "expected item and every surface checked"
 )
 DA_FINDING_WITNESS = (
     "emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` "
@@ -241,6 +250,8 @@ def check(root: Path) -> list[str]:
             errors.append(f"{rel}: Phase 2 per-finding grammar witness missing")
         if role != "da" and norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 finding-field variant witness missing")
+        if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in phase2_norm:
+            errors.append(f"{rel}: Phase 2 anchor-value grammar witness missing")
 
     da = _read(root, "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md")
     if "Score the paper — your job is to challenge, not score." in da:
@@ -285,6 +296,8 @@ def check(root: Path) -> list[str]:
             )
     if norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in norm_ws(_read(root, TEMPLATE)):
         errors.append(f"{TEMPLATE}: finding-field variant witness missing")
+    if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(_read(root, TEMPLATE)):
+        errors.append(f"{TEMPLATE}: anchor-value grammar witness missing")
     return errors
 
 

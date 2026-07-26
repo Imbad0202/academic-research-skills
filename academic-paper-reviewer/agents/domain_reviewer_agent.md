@@ -86,7 +86,8 @@ You MUST:
    - An eligible `warn` or `block` carries `trigger: "<verbatim substring of the matching Phase 1 trigger>"`; `pass` and `not_assessed` carry no trigger.
    - A `block` on a mandatory dimension carries `block_class: <fatal|repairable>`; `fatal` must bind to `what_triggers_fatal`, is forbidden on a dissented dimension, and no non-mandatory dimension carries `block_class`.
    - Under the required `## Review Body`, each finding with a Severity has its own `### W<n>: <title>` subsection, exactly one `**Severity**:` line, and its own `**Evidence Anchor**:` line when Critical or Major. Findings never share an anchor.
-   - Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. A typed anchor value may be bare or backtick-wrapped; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
+   - Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. The complete typed anchor value, including its type and locator, may be bare or backtick-wrapped; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
+   - Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar (for example, `text: §3 "short quote"`); the complete value may be bare or backtick-wrapped, but wrapping only the type and separating it from the locator with a dash is invalid. A `text:` anchor includes a quoted excerpt of at most 25 words; an `absence:` anchor names the expected item and every surface checked.
 
 **Finding Contract (#574 A1/A2/A3)** — governs every finding you report in `## Review Body` here, and the standard-mode report (§ Output Format below) alike:
 

@@ -420,8 +420,31 @@ def test_template_field_variant_witness_mutation_fails(tmp_path):
     mutate(
         root,
         lint.TEMPLATE,
-        "may be bare or backtick-wrapped",
-        "must always be bare",
+        "including its type and locator, may be bare or backtick-wrapped",
+        "including only its type, may be bare or backtick-wrapped",
+    )
+    assert lint.check(root)
+
+
+def test_delivered_anchor_value_grammar_mutations_fail(tmp_path):
+    for rel in lint.AGENTS:
+        root = mirror(tmp_path / Path(rel).stem)
+        mutate(
+            root,
+            rel,
+            "wrapping only the type and separating it from the locator with a dash is invalid",
+            "wrapping only the type and separating it from the locator with a dash is valid",
+        )
+        assert lint.check(root)
+
+
+def test_template_anchor_value_grammar_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.TEMPLATE,
+        "Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar",
+        "Every Evidence Anchor value should usually include a type and locator",
     )
     assert lint.check(root)
 

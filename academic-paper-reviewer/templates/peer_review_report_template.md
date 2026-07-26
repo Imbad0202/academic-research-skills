@@ -102,7 +102,9 @@ List every weakness you actually found — no minimum, no maximum (#574 A1). Do 
 **Severity**: [Critical / Major / Minor] — the Schema 6 enum (§ Severity Levels below); set by decision impact alone (#574 A3/B1)
 **Confidence**: [1-5] — [competence basis, one phrase: e.g. "core expertise: psychometrics" / "adjacent field: applying general standards"] (#574 A3)
 
-Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. A typed anchor value may be bare or backtick-wrapped; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
+Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. The complete typed anchor value, including its type and locator, may be bare or backtick-wrapped; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
+
+Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar (for example, `text: §3 "short quote"`); the complete value may be bare or backtick-wrapped, but wrapping only the type and separating it from the locator with a dash is invalid. A `text:` anchor includes a quoted excerpt of at most 25 words; an `absence:` anchor names the expected item and every surface checked.
 
 ### W2..Wn
 [Repeat the W1 structure for each additional weakness — as many entries as the evidence supports, including zero.]
