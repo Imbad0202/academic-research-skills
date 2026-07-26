@@ -604,6 +604,21 @@ def test_da_trailing_row_without_outer_pipes_fails_in_synthesis_path():
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+def test_da_post_table_prose_passes_in_synthesis_path():
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text += (
+        "\n\nPost-table adversarial commentary remains Review Body prose."
+    )
+    synthesis_text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED"}, marker_count=1
+    )
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    assert cps.layer2_check(
+        panel_reports, FULL, expressions, synthesis, []
+    ) == []
+
+
 @pytest.mark.parametrize(
     "old,new,fragment",
     [

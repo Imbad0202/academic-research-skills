@@ -436,7 +436,7 @@ def _parse_da_table_block(
     rows: list[list[str]] = []
     for line in block[header_index + 2:]:
         if not line.strip():
-            continue
+            break
         cells = _markdown_cells(line)
         if len(cells) != len(header):
             raise ReportError(

@@ -1197,6 +1197,18 @@ def test_da_row_without_outer_pipes_fails_phase_checker():
         phase.check_da_anchors(report)
 
 
+def test_da_post_table_prose_passes_phase_checker():
+    report = panel.parse_report(
+        "da.md",
+        da_text(
+            major_rows=('| M1 | Issue | text: "short quote" |',)
+        )
+        + "\n\nPost-table adversarial commentary remains Review Body prose.",
+        FULL,
+    )
+    phase.check_da_anchors(report)
+
+
 @pytest.mark.parametrize(
     "old,new,fragment",
     [
