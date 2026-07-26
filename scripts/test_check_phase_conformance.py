@@ -859,6 +859,30 @@ def test_da_internal_header_whitespace_fails_phase_checker():
 
 
 @pytest.mark.parametrize(
+    "header",
+    (
+        "| ID | Issue | Evidence Anchor |",
+        "| # | Issue | Evidence |",
+        "| **#** | Issue | **Evidence Anchor** |",
+        "| `#` | Issue | `Evidence Anchor` |",
+    ),
+)
+def test_da_partial_or_formatted_issue_header_fails_phase(header):
+    text = da_text().replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        f"{header}\n"
+        "|---|-------|-----------------|\n"
+        '| C9 | impossible df | text: "n=41" p. 4 |\n\n'
+        "#### MAJOR",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table"):
+        phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize(
     "row,fragment",
     [
         ("| M1 | Issue |  |", "ANCHOR-MISSING"),

@@ -202,6 +202,15 @@ def _possible_markdown_cells(line: str) -> list[str]:
     return [cell.strip() for cell in stripped.split("|")]
 
 
+def _rendered_header_cell(cell: str) -> str:
+    """Normalize common inline Markdown wrappers to their visible cell text."""
+    rendered = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", cell)
+    rendered = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", rendered)
+    rendered = re.sub(r"</?[A-Za-z][^>]*>", "", rendered)
+    rendered = re.sub(r"[*_~`]+", "", rendered)
+    return re.sub(r"\s+", " ", rendered).strip().casefold()
+
+
 def validate_evidence_anchor(anchor: str, context: str) -> None:
     """Validate the shared finding-anchor grammar for either checker."""
     value = anchor.strip()
@@ -337,10 +346,10 @@ def parse_da_tables(
         if in_canonical_da_band:
             continue
         cells = {
-            re.sub(r"\s+", " ", cell).casefold()
+            _rendered_header_cell(cell)
             for cell in _possible_markdown_cells(candidate)
         }
-        if "#" in cells and "evidence anchor" in cells:
+        if "#" in cells or "evidence anchor" in cells:
             raise ReportError(
                 f"[DA-TABLE-PARSE: {path}: unexpected issue-table band outside "
                 "the canonical CRITICAL and MAJOR bands]"

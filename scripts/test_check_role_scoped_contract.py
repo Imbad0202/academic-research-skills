@@ -223,8 +223,19 @@ def test_da_header_whitespace_normalization_mutation_fails(tmp_path):
     mutate(
         root,
         lint.PANEL_CHECKER,
-        're.sub(r"\\s+", " ", cell).casefold()',
-        "cell.casefold()",
+        'return re.sub(r"\\s+", " ", rendered).strip().casefold()',
+        "return rendered.casefold()",
+    )
+    assert lint.check(root)
+
+
+def test_da_header_inline_markup_normalization_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        'rendered = re.sub(r"[*_~`]+", "", rendered)',
+        "rendered = rendered",
     )
     assert lint.check(root)
 
@@ -234,8 +245,8 @@ def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     mutate(
         root,
         lint.PANEL_CHECKER,
+        'if "#" in cells or "evidence anchor" in cells:',
         'if "#" in cells and "evidence anchor" in cells:',
-        'if False and "#" in cells and "evidence anchor" in cells:',
     )
     assert lint.check(root)
 
