@@ -218,6 +218,18 @@ def parse_dissent_dimensions(text: str) -> set[str]:
         )
     if "Scoring Plan Dissent" not in sections:
         return set()
+    h2_positions = {
+        match.group(1): index
+        for index, line in enumerate(lines)
+        if (match := panel._H2_RE.fullmatch(line))
+    }
+    if h2_positions["Scoring Plan Dissent"] > h2_positions.get(
+        "Dimension Scores", -1
+    ):
+        raise ConformanceError(
+            "[DISSENT-GRAMMAR: ## Scoring Plan Dissent must precede "
+            "## Dimension Scores]"
+        )
     dims = [match.group("dim") for line in sections["Scoring Plan Dissent"]
             if (match := _DISSENT_DIM_RE.fullmatch(line))]
     if not dims:
@@ -253,6 +265,12 @@ def check_trigger_binding(
     if unknown:
         raise ConformanceError(
             f"[DISSENT-GRAMMAR: unknown dimensions {sorted(unknown)}]"
+        )
+    uncommitted = dissent - set(plan.commitments)
+    if uncommitted:
+        raise ConformanceError(
+            f"[DISSENT-GRAMMAR: dissent dimensions were not committed by "
+            f"this seat {sorted(uncommitted)}]"
         )
     for did, value in report.scores.items():
         if did in dissent:

@@ -283,6 +283,43 @@ def test_dissent_requires_rationale():
         phase.parse_dissent_dimensions(text)
 
 
+def test_late_dissent_fails_closed_at_cli_boundary(tmp_path):
+    args = write_cli_files(tmp_path, "methodology")
+    phase2_path = Path(args[args.index("--phase2") + 1])
+    text = phase2_text(
+        "methodology", {"D1": "block"}, dissent=("D1",)
+    )
+    dissent_block = (
+        "## Scoring Plan Dissent\n\n"
+        "dimension_id: D1\n"
+        "rationale: plan was inadequate\n\n"
+    )
+    text = text.replace(dissent_block, "", 1).replace(
+        "## Review Body",
+        f"{dissent_block}## Review Body",
+        1,
+    ).replace(
+        'trigger: "block evidence pattern for D1"',
+        'trigger: "novel post hoc trigger"',
+        1,
+    )
+    phase2_path.write_text(text, encoding="utf-8")
+    assert phase.main(args + ["--role", "methodology"]) == \
+        phase.EXIT_CONFORMANCE
+
+
+def test_dissent_must_name_a_dimension_committed_by_the_seat():
+    report, _ = parse_report("methodology", dissent=("D2",))
+    with pytest.raises(
+        phase.ConformanceError, match="not committed by this seat"
+    ):
+        phase.check_trigger_binding(
+            report, parse_plan(),
+            {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
+            {"D2"},
+        )
+
+
 def test_dissent_repairable_block_passes_binding_exemption():
     report, _ = parse_report(
         "methodology", {"D1": "block"}, dissent=("D1",)

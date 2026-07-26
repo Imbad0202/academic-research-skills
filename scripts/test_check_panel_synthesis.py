@@ -128,6 +128,11 @@ def test_majority_n1_is_owner_decides():
     assert cps.quantifier_fires("majority", [False], []) is False
 
 
+def test_majority_n2_requires_both_eligible_seats():
+    assert cps.quantifier_fires("majority", [True, False], []) is False
+    assert cps.quantifier_fires("majority", [True, True], []) is True
+
+
 @pytest.mark.parametrize(
     "expression",
     [
@@ -688,3 +693,18 @@ def test_boundary_decisions_and_d3_split_dynamic_majority():
         dynamic = {**base, "D3": assessed_d3}
         fired, _ = _evaluate_profile(contract, expressions, dynamic)
         assert ("F5" in fired) == (assessed_d3[0].score == "warn")
+
+
+def test_n2_majority_split_cannot_harden_the_decision():
+    contract, expressions = cps.load_contract(FULL_PATH)
+    assessed = {
+        "D1": [state("warn")],
+        "D2": [state("pass")],
+        "D3": [state("warn"), state("pass")],
+        "D4": [state("pass")],
+        "D5": [state("pass")],
+        "D6": [state("pass")],
+    }
+    fired, decision = _evaluate_profile(contract, expressions, assessed)
+    assert fired == ["F5"]
+    assert decision == "editorial_decision=minor_revision"
