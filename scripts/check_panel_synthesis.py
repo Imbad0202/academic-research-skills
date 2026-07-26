@@ -287,6 +287,27 @@ def _balanced_square_brackets(text: str) -> bool:
     return depth == 0
 
 
+def _quoted_excerpts(text: str) -> list[str] | None:
+    """Return every balanced straight/curly excerpt, including nested pairs."""
+    stack: list[tuple[str, int]] = []
+    excerpts: list[str] = []
+    for index, char in enumerate(text):
+        if char == "“":
+            stack.append(("curly", index + 1))
+        elif char == "”":
+            if not stack or stack[-1][0] != "curly":
+                return None
+            _, start = stack.pop()
+            excerpts.append(text[start:index])
+        elif char == '"':
+            if stack and stack[-1][0] == "straight":
+                _, start = stack.pop()
+                excerpts.append(text[start:index])
+            else:
+                stack.append(("straight", index + 1))
+    return None if stack else excerpts
+
+
 def validate_evidence_anchor(anchor: str, context: str) -> None:
     """Validate the shared finding-anchor grammar for either checker."""
     value = anchor.strip()
@@ -317,26 +338,9 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
             f"[ANCHOR-INVALID: {context}: locator delimiters must be balanced]"
         )
     if match.group("type").casefold() == "text":
-        quote_pairs = re.findall(
-            r'"(?P<straight_quote>[^"]+)"|“(?P<curly_quote>[^”]+)”',
-            tail,
-        )
-        quote_texts = [
-            straight_quote or curly_quote
-            for straight_quote, curly_quote in quote_pairs
-        ]
-        straight_pairs = sum(bool(straight_quote)
-                             for straight_quote, _ in quote_pairs)
-        curly_pairs = sum(bool(curly_quote)
-                          for _, curly_quote in quote_pairs)
-        balanced_quotes = (
-            tail.count('"') == 2 * straight_pairs
-            and tail.count("“") == curly_pairs
-            and tail.count("”") == curly_pairs
-        )
+        quote_texts = _quoted_excerpts(tail)
         if (
-            not balanced_quotes
-            or not quote_texts
+            not quote_texts
             or any(not text.strip() or len(text.split()) > 25
                    for text in quote_texts)
         ):

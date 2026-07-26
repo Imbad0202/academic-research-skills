@@ -34,6 +34,8 @@ ROLES = ("eic", "methodology", "domain", "perspective", "da")
         'text: §5 "short exact quote”',
         'text: §5 “short exact quote"',
         'text: §5 "outer “inner”',
+        'text: §5 “outer "inner”"',
+        "text: §5 “outer “” tail”",
     ),
 )
 def test_shared_anchor_validator_rejects_incomplete_or_unpaired_shapes(anchor):
@@ -53,10 +55,26 @@ def test_shared_anchor_validator_rejects_incomplete_or_unpaired_shapes(anchor):
         'text: §4 "short quote" [emphasis added]',
         'text: §3 "short quote" per `df`',
         '`text: §3 "short quote" per `df``',
+        "text: §2 “the term “quality culture” is undefined”",
+        'text: §2 "he said “quality culture” often"',
     ),
 )
 def test_shared_anchor_validator_accepts_complete_paired_shapes(anchor):
     cps.validate_evidence_anchor(anchor, "inverse")
+
+
+def test_shared_anchor_validator_checks_nested_quote_word_limit_per_pair():
+    words_25 = " ".join(["word"] * 25)
+    words_26 = " ".join(["word"] * 26)
+    cps.validate_evidence_anchor(
+        f"text: §2 ““{words_25}””",
+        "nested-25-word-boundary",
+    )
+    with pytest.raises(cps.ReportError, match="at most 25 words"):
+        cps.validate_evidence_anchor(
+            f"text: §2 ““{words_26}””",
+            "nested-26-word-boundary",
+        )
 
 
 def state(value: str) -> cps.DimensionScore:

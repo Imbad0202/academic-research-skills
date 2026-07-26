@@ -92,8 +92,27 @@ ANCHOR_VALIDATOR_REGEX_WITNESS = (
     r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
     r'        r"(?P<tail>\S.*)$"'
 )
-ANCHOR_QUOTE_REGEX_WITNESS = (
-    """r'"(?P<straight_quote>[^"]+)"|“(?P<curly_quote>[^”]+)”'"""
+ANCHOR_QUOTE_SCANNER_WITNESS = '''def _quoted_excerpts(text: str) -> list[str] | None:
+    """Return every balanced straight/curly excerpt, including nested pairs."""
+    stack: list[tuple[str, int]] = []
+    excerpts: list[str] = []
+    for index, char in enumerate(text):
+        if char == "“":
+            stack.append(("curly", index + 1))
+        elif char == "”":
+            if not stack or stack[-1][0] != "curly":
+                return None
+            _, start = stack.pop()
+            excerpts.append(text[start:index])
+        elif char == '"':
+            if stack and stack[-1][0] == "straight":
+                _, start = stack.pop()
+                excerpts.append(text[start:index])
+            else:
+                stack.append(("straight", index + 1))
+    return None if stack else excerpts'''
+ANCHOR_QUOTE_USAGE_WITNESS = (
+    "quote_texts = _quoted_excerpts(tail)"
 )
 ANCHOR_ABSENCE_REGEX_WITNESS = (
     r'r"(?P<where>\S.*?)\s+—\s+expected\s+(?P<expected>\S.*?);"' "\n"
@@ -107,9 +126,6 @@ ANCHOR_WRAPPER_WITNESSES = (
 )
 ANCHOR_CONTENT_BALANCE_WITNESSES = (
     "if not _balanced_square_brackets(tail) or tail.count(\"`\") % 2:",
-    """tail.count('"') == 2 * straight_pairs""",
-    'tail.count("“") == curly_pairs',
-    'tail.count("”") == curly_pairs',
 )
 TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES = (
     "**Evidence Anchor**: [`<type>: <locator>`]\n"
@@ -336,8 +352,10 @@ def check(root: Path) -> list[str]:
             )
     if ANCHOR_VALIDATOR_REGEX_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-validator regex witness missing")
-    if ANCHOR_QUOTE_REGEX_WITNESS not in checker:
-        errors.append(f"{PANEL_CHECKER}: anchor-quote regex witness missing")
+    if ANCHOR_QUOTE_SCANNER_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-quote scanner witness missing")
+    if ANCHOR_QUOTE_USAGE_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-quote scanner usage missing")
     if ANCHOR_ABSENCE_REGEX_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-absence regex witness missing")
     for witness in ANCHOR_WRAPPER_WITNESSES:

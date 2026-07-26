@@ -471,13 +471,28 @@ def test_anchor_validator_colon_regex_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
-def test_anchor_validator_paired_quote_regex_mutation_fails(tmp_path):
+def test_anchor_validator_quote_scanner_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
         root,
         lint.PANEL_CHECKER,
-        lint.ANCHOR_QUOTE_REGEX_WITNESS,
-        """r'["“](?P<quote>[^"”]+)["”]'""",
+        lint.ANCHOR_QUOTE_SCANNER_WITNESS,
+        lint.ANCHOR_QUOTE_SCANNER_WITNESS.replace(
+            'if not stack or stack[-1][0] != "curly":',
+            'if not stack:',
+            1,
+        ),
+    )
+    assert lint.check(root)
+
+
+def test_anchor_validator_quote_scanner_usage_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        lint.ANCHOR_QUOTE_USAGE_WITNESS,
+        "quote_texts = []",
     )
     assert lint.check(root)
 
@@ -523,18 +538,6 @@ def test_anchor_validator_content_balance_mutations_fail(tmp_path):
         (
             "if not _balanced_square_brackets(tail) or tail.count(\"`\") % 2:",
             "if False:",
-        ),
-        (
-            """tail.count('"') == 2 * straight_pairs""",
-            """tail.count('"') >= 2 * straight_pairs""",
-        ),
-        (
-            'tail.count("“") == curly_pairs',
-            'tail.count("“") >= curly_pairs',
-        ),
-        (
-            'tail.count("”") == curly_pairs',
-            'tail.count("”") >= curly_pairs',
         ),
     )
     for index, (old, new) in enumerate(replacements):

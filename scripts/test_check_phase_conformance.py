@@ -599,6 +599,8 @@ def test_indented_bullet_fields_still_enforce_anchor_gate():
         "[equation: Eq. [3]]",
         'text: §5 "short exact quote" per `df`',
         '`text: §5 "short exact quote" per `df``',
+        "text: §2 “the term “quality culture” is undefined”",
+        'text: §2 "he said “quality culture” often"',
     ),
 )
 def test_whole_value_wrapped_template_anchor_is_normalised_and_accepted(anchor):
@@ -661,6 +663,7 @@ def test_unpaired_or_repeated_whole_value_wrappers_are_rejected(anchor):
         'text: §5 "short exact quote”',
         'text: §5 “short exact quote"',
         'text: §5 "outer “inner”',
+        'text: §5 “outer "inner”"',
     ),
 )
 def test_hybrid_double_quote_pairs_are_rejected(anchor):
