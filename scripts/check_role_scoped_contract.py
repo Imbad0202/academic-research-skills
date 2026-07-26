@@ -47,9 +47,13 @@ PHASE_CHECKER = "scripts/check_phase_conformance.py"
 TEMPLATE = "academic-paper-reviewer/templates/peer_review_report_template.md"
 SHIPPED_EXAMPLES = (
     "academic-paper-reviewer/examples/subclaim_decomposition_example.md",
+    "academic-paper-reviewer/examples/hei_paper_review_example.md",
+    "academic-paper-reviewer/examples/interdisciplinary_review_example.md",
 )
 SHIPPED_EXAMPLE_ANCHOR_COUNTS = {
     SHIPPED_EXAMPLES[0]: 10,
+    SHIPPED_EXAMPLES[1]: 36,
+    SHIPPED_EXAMPLES[2]: 36,
 }
 SHIPPED_EXAMPLE_ANCHOR_RE = re.compile(
     r"`(?P<anchor>(?:text|table|figure|equation|dataset|absence): [^`\n]+)`",
@@ -127,6 +131,10 @@ ANCHOR_QUOTE_SCANNER_WITNESS = '''def _quoted_excerpts(text: str) -> list[str] |
 ANCHOR_QUOTE_USAGE_WITNESS = (
     "quote_texts = _quoted_excerpts(tail)"
 )
+ANCHOR_QUOTE_LIMIT_WITNESS = (
+    "any(not text.strip() or len(text.split()) > 25\n"
+    "                   for text in quote_texts)"
+)
 ANCHOR_ABSENCE_PARSER_WITNESS = '''def _absence_parts(text: str) -> tuple[str, str, str] | None:
     """Parse the two reserved absence separators without regex backtracking."""
     expected_separator = " — expected "
@@ -136,16 +144,22 @@ ANCHOR_ABSENCE_PARSER_WITNESS = '''def _absence_parts(text: str) -> tuple[str, s
         or text.count(checked_separator) != 1
     ):
         return None
-    where, remainder = text.split(expected_separator, 1)
-    expected, surfaces = remainder.split(checked_separator, 1)
+    where, found_expected, remainder = text.partition(expected_separator)
+    expected, found_checked, surfaces = remainder.partition(checked_separator)
+    if not found_expected or not found_checked:
+        return None
     parts = (where, expected, surfaces)
     return parts if all(part.strip() for part in parts) else None'''
 ANCHOR_ABSENCE_USAGE_WITNESS = "if _absence_parts(tail) is None:"
 ANCHOR_WRAPPER_WITNESSES = (
     'if value.startswith("["):',
     'if not value.endswith("]"):',
+    "square_inner = value[1:-1]",
+    "if square_inner != square_inner.strip():",
     'if value.startswith("`"):',
     'if not value.endswith("`"):',
+    "backtick_inner = value[1:-1]",
+    "if backtick_inner != backtick_inner.strip():",
 )
 ANCHOR_CONTENT_BALANCE_WITNESSES = (
     "if not _balanced_square_brackets(tail) or tail.count(\"`\") % 2:",
@@ -379,6 +393,8 @@ def check(root: Path) -> list[str]:
         errors.append(f"{PANEL_CHECKER}: anchor-quote scanner witness missing")
     if ANCHOR_QUOTE_USAGE_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-quote scanner usage missing")
+    if ANCHOR_QUOTE_LIMIT_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-quote pair limit missing")
     if ANCHOR_ABSENCE_PARSER_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-absence parser witness missing")
     if ANCHOR_ABSENCE_USAGE_WITNESS not in checker:

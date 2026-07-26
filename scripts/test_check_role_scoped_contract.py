@@ -497,6 +497,20 @@ def test_anchor_validator_quote_scanner_usage_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_anchor_validator_quote_pair_limit_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        lint.ANCHOR_QUOTE_LIMIT_WITNESS,
+        (
+            "not quote_texts[0].strip() "
+            "or len(quote_texts[0].split()) > 25"
+        ),
+    )
+    assert lint.check(root)
+
+
 def test_anchor_validator_absence_parser_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
@@ -524,14 +538,10 @@ def test_anchor_validator_absence_parser_usage_mutation_fails(tmp_path):
 
 
 def test_shipped_example_absence_separator_mutation_fails(tmp_path):
-    root = mirror(tmp_path)
-    mutate(
-        root,
-        lint.SHIPPED_EXAMPLES[0],
-        "; checked",
-        ";checked",
-    )
-    assert lint.check(root)
+    for index, rel in enumerate(lint.SHIPPED_EXAMPLES):
+        root = mirror(tmp_path / str(index))
+        mutate(root, rel, "; checked", ";checked")
+        assert lint.check(root)
 
 
 def test_anchor_validator_wrapper_mutations_fail(tmp_path):
@@ -545,12 +555,20 @@ def test_anchor_validator_wrapper_mutations_fail(tmp_path):
             'if False and not value.endswith("]"):',
         ),
         (
+            "if square_inner != square_inner.strip():",
+            "if False:",
+        ),
+        (
             'if value.startswith("`"):',
             'if False and value.startswith("`"):',
         ),
         (
             'if not value.endswith("`"):',
             'if False and not value.endswith("`"):',
+        ),
+        (
+            "if backtick_inner != backtick_inner.strip():",
+            "if False:",
         ),
     )
     for index, (old, new) in enumerate(replacements):

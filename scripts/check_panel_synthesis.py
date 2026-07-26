@@ -317,8 +317,10 @@ def _absence_parts(text: str) -> tuple[str, str, str] | None:
         or text.count(checked_separator) != 1
     ):
         return None
-    where, remainder = text.split(expected_separator, 1)
-    expected, surfaces = remainder.split(checked_separator, 1)
+    where, found_expected, remainder = text.partition(expected_separator)
+    expected, found_checked, surfaces = remainder.partition(checked_separator)
+    if not found_expected or not found_checked:
+        return None
     parts = (where, expected, surfaces)
     return parts if all(part.strip() for part in parts) else None
 
@@ -331,13 +333,23 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: unpaired square wrapper]"
             )
-        value = value[1:-1].strip()
+        square_inner = value[1:-1]
+        if square_inner != square_inner.strip():
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: padded square wrapper]"
+            )
+        value = square_inner
     if value.startswith("`"):
         if not value.endswith("`"):
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: unpaired backtick wrapper]"
             )
-        value = value[1:-1].strip()
+        backtick_inner = value[1:-1]
+        if backtick_inner != backtick_inner.strip():
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: padded backtick wrapper]"
+            )
+        value = backtick_inner
     match = re.match(
         r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"
         r"(?P<tail>\S.*)$",

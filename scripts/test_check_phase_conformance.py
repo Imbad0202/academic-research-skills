@@ -465,6 +465,8 @@ def test_nonmandatory_block_class_fails_phase_checker(tmp_path):
         "### W1: repeated separators\n**Severity**: Critical\n"
         "**Evidence Anchor**: absence: Methods — expected ; checked appendix "
         "— expected ethics statement; checked supplement",
+        "### W1: reversed separators\n**Severity**: Critical\n"
+        "**Evidence Anchor**: absence: Methods; checked appendix — expected ethics statement",
     ],
 )
 def test_critical_major_anchor_failures(body):
@@ -643,8 +645,10 @@ def test_type_only_wrapping_anchor_is_rejected(anchor):
         'text: §5 "short exact quote"]',
         'text: §5 "short exact quote"`]',
         '[text: §5 "short exact quote"] trailing]',
+        '[ text: §5 "short exact quote" ]',
         '[[text: §5 "short exact quote"]]',
         '``text: §5 "short exact quote"``',
+        '` text: §5 "short exact quote" `',
         '[`text: §5 "short exact quote"]',
         '[text: §5 "short exact quote"`]',
     ),
