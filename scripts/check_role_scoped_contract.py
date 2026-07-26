@@ -76,6 +76,12 @@ PHASE1_FIELDS = (
     "`what_triggers_warn: <single-line non-empty text>`",
     "`what_triggers_fatal: <single-line non-empty text>`",
 )
+PHASE1_LIVE_GRAMMAR_WITNESS = (
+    "For every scoring-plan heading, copy the exact dimension ID and name from "
+    "the contract. For a non-mandatory dimension, omit the entire "
+    "`what_triggers_fatal:` line; never emit that key with `NOT_APPLICABLE`, "
+    "`none`, or any other sentinel"
+)
 PHASE2_WITNESSES = (
     "`dimension_id: <Dn>` and `rationale: <nonempty explanation>`",
     "score: <block|warn|pass|not_assessed>",
@@ -84,10 +90,22 @@ PHASE2_WITNESSES = (
     "block_class: <fatal|repairable>",
     "Do not emit `## Failure Condition Checks`, `## Editorial Decision`",
 )
+PHASE2_NO_DISSENT_WITNESS = (
+    "If no dimension needs dissent, omit the entire `## Scoring Plan Dissent` "
+    "section; never emit an empty section or a `none` placeholder"
+)
+PHASE2_ROLE_PLACEMENT_WITNESS = (
+    "Place this single report-level line immediately before "
+    "`## Dimension Scores`; never repeat it inside any dimension subsection"
+)
 SCORING_FINDING_WITNESS = (
     "each finding with a Severity has its own `### W<n>: <title>` subsection, "
     "exactly one `**Severity**:` line, and its own `**Evidence Anchor**:` line "
     "when Critical or Major. Findings never share an anchor"
+)
+SCORING_STRENGTH_SEVERITY_WITNESS = (
+    "Strength subsections never carry a `**Severity**:` field or a "
+    "`Severity: Strength` sentinel; Severity is weakness-only"
 )
 SCORING_FIELD_VARIANT_WITNESS = (
     "Finding fields may be unindented or Markdown-list-indented, and may be "
@@ -106,11 +124,33 @@ ANCHOR_VALUE_GRAMMAR_WITNESS = (
     "`equation: Eq. [3]` and a locator naming inline code such as "
     "``text: §3 \"quote\" per `df``` are valid. A `text:` anchor includes only "
     "balanced pairs of straight or curly double quotes, with every quoted "
-    "excerpt at most 25 words. An `absence:` anchor uses the exact grammar "
+    "excerpt at most 25 words. Before output, count each quoted excerpt in a "
+    "`text:` anchor and shorten it to at most 25 words; never place commentary "
+    "inside the quotation. An `absence:` anchor uses the exact grammar "
     "`absence: <where> — expected <item>; checked <surfaces>`, including the "
     "literal single space after the semicolon and non-empty content for every "
     "placeholder. The reserved ` — expected ` and `; checked ` separator "
     "sequences each occur exactly once"
+)
+PROTOCOL_PHASE1_LIVE_WITNESSES = (
+    "Copy each dimension ID and name exactly from the contract",
+    "For a non-mandatory dimension, omit the entire `what_triggers_fatal:` "
+    "line; never emit that key with `NOT_APPLICABLE`, `none`, or another "
+    "sentinel",
+)
+PROTOCOL_PHASE2_LIVE_WITNESSES = (
+    "`## Scoring Plan Dissent` is optional only when a dimension actually "
+    "dissents; when there is no dissent, omit the whole section rather than "
+    "emitting an empty or `none` placeholder",
+    "Each report declares its dispatch role exactly once on one "
+    "`contract_role: <role>` line immediately before `## Dimension Scores`; "
+    "never repeat that report-level line inside dimension subsections",
+    "Strength subsections never carry a `Severity` field or a "
+    "`Severity: Strength` sentinel",
+)
+TEMPLATE_STRENGTH_SEVERITY_WITNESS = (
+    "Omit the Severity field entirely — never emit `Severity: Strength`; "
+    "Severity is weakness-only"
 )
 ANCHOR_VALIDATOR_REGEX_WITNESS = (
     r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
@@ -344,6 +384,8 @@ def check(root: Path) -> list[str]:
         for field in PHASE1_FIELDS:
             if norm_ws(field) not in phase1_norm:
                 errors.append(f"{rel}: Phase 1 field witness missing: {field}")
+        if norm_ws(PHASE1_LIVE_GRAMMAR_WITNESS) not in phase1_norm:
+            errors.append(f"{rel}: Phase 1 live-grammar witness missing")
         score_scope = (
             "Score only dimensions whose `eligible_roles` includes "
             f"`{role}`; every other dimension must say `score: not_assessed`"
@@ -353,6 +395,12 @@ def check(root: Path) -> list[str]:
         for witness in PHASE2_WITNESSES:
             if norm_ws(witness) not in phase2_norm:
                 errors.append(f"{rel}: Phase 2 grammar witness missing: {witness}")
+        for witness in (
+            PHASE2_NO_DISSENT_WITNESS,
+            PHASE2_ROLE_PLACEMENT_WITNESS,
+        ):
+            if norm_ws(witness) not in phase2_norm:
+                errors.append(f"{rel}: Phase 2 live-grammar witness missing")
         finding_witness = (
             DA_FINDING_WITNESS if role == "da" else SCORING_FINDING_WITNESS
         )
@@ -360,6 +408,11 @@ def check(root: Path) -> list[str]:
             errors.append(f"{rel}: Phase 2 per-finding grammar witness missing")
         if role != "da" and norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 finding-field variant witness missing")
+        if (
+            role != "da"
+            and norm_ws(SCORING_STRENGTH_SEVERITY_WITNESS) not in phase2_norm
+        ):
+            errors.append(f"{rel}: Phase 2 strength-Severity witness missing")
         if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 anchor-value grammar witness missing")
 
@@ -369,8 +422,10 @@ def check(root: Path) -> list[str]:
     if "Score any dimension outside the contract's `eligible_roles` for `da`" not in da:
         errors.append("DA role-scoped Phase Boundary clause missing")
 
-    protocol = heading_section(_read(root, PROTOCOL), "## 9. Recognised expression vocabulary")
-    protocol_phase2 = heading_section(_read(root, PROTOCOL), "## 5. Phase 2 output lint")
+    protocol_raw = _read(root, PROTOCOL)
+    protocol = heading_section(protocol_raw, "## 9. Recognised expression vocabulary")
+    protocol_phase1 = heading_section(protocol_raw, "## 4. Phase 1 output lint")
+    protocol_phase2 = heading_section(protocol_raw, "## 5. Phase 2 output lint")
     synth = heading_section(_read(root, SYNTH), SPRINT.replace("Protocol", "Synthesizer Protocol"))
     checker = _read(root, PANEL_CHECKER)
     phase_checker = _read(root, PHASE_CHECKER)
@@ -434,11 +489,23 @@ def check(root: Path) -> list[str]:
         or norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(protocol_phase2)
     ):
         errors.append(f"{PROTOCOL}: Phase 2 anchor-value grammar witness missing")
+    if protocol_phase1 is None:
+        errors.append(f"{PROTOCOL}: Phase 1 output-lint section missing")
+    else:
+        for witness in PROTOCOL_PHASE1_LIVE_WITNESSES:
+            if norm_ws(witness) not in norm_ws(protocol_phase1):
+                errors.append(f"{PROTOCOL}: Phase 1 live-grammar witness missing")
+    if protocol_phase2 is not None:
+        for witness in PROTOCOL_PHASE2_LIVE_WITNESSES:
+            if norm_ws(witness) not in norm_ws(protocol_phase2):
+                errors.append(f"{PROTOCOL}: Phase 2 live-grammar witness missing")
     template = _read(root, TEMPLATE)
     if norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in norm_ws(template):
         errors.append(f"{TEMPLATE}: finding-field variant witness missing")
     if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(template):
         errors.append(f"{TEMPLATE}: anchor-value grammar witness missing")
+    if norm_ws(TEMPLATE_STRENGTH_SEVERITY_WITNESS) not in norm_ws(template):
+        errors.append(f"{TEMPLATE}: strength-Severity witness missing")
     for witness in TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES:
         if witness not in template:
             errors.append(f"{TEMPLATE}: anchor placeholder witness missing")

@@ -53,6 +53,18 @@ def test_delivered_phase1_literal_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_delivered_phase1_live_grammar_mutations_fail(tmp_path):
+    for index, rel in enumerate(lint.AGENTS):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            rel,
+            "omit the entire `what_triggers_fatal:` line",
+            "emit a `what_triggers_fatal:` sentinel line",
+        )
+        assert lint.check(root)
+
+
 def test_delivered_phase2_literal_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
@@ -61,6 +73,57 @@ def test_delivered_phase2_literal_mutation_fails(tmp_path):
         "block_kind: <fatal|repairable>",
     )
     assert lint.check(root)
+
+
+def test_delivered_phase2_no_dissent_mutations_fail(tmp_path):
+    for index, rel in enumerate(lint.AGENTS):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            rel,
+            "omit the entire `## Scoring Plan Dissent` section",
+            "emit a `## Scoring Plan Dissent` section containing `none`",
+        )
+        assert lint.check(root)
+
+
+def test_delivered_phase2_role_placement_mutations_fail(tmp_path):
+    for index, rel in enumerate(lint.AGENTS):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            rel,
+            "never repeat it inside any dimension subsection",
+            "repeat it inside each dimension subsection",
+        )
+        assert lint.check(root)
+
+
+def test_delivered_phase2_strength_severity_mutations_fail(tmp_path):
+    non_da_agents = [
+        rel for rel, role in lint.AGENTS.items() if role != "da"
+    ]
+    for index, rel in enumerate(non_da_agents):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            rel,
+            "Strength subsections never carry a `**Severity**:` field",
+            "Strength subsections may carry a `**Severity**:` field",
+        )
+        assert lint.check(root)
+
+
+def test_delivered_phase2_quote_preflight_mutations_fail(tmp_path):
+    for index, rel in enumerate(lint.AGENTS):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            rel,
+            "Before output, count each quoted excerpt",
+            "Before output, do not count each quoted excerpt",
+        )
+        assert lint.check(root)
 
 
 def test_delivered_phase2_per_finding_grammar_mutation_fails(tmp_path):
@@ -458,6 +521,56 @@ def test_protocol_anchor_value_grammar_mutation_fails(tmp_path):
         "An `absence:` anchor may use an approximate grammar",
     )
     assert lint.check(root)
+
+
+def test_protocol_live_grammar_mutations_fail(tmp_path):
+    mutations = (
+        (
+            "Copy each dimension ID and name exactly from the contract",
+            "Paraphrase each dimension ID and name from the contract",
+        ),
+        (
+            "omit the entire `what_triggers_fatal:` line",
+            "emit a `what_triggers_fatal:` sentinel line",
+        ),
+        (
+            "omit the whole section rather than emitting an empty or `none` placeholder",
+            "emit the whole section with an empty or `none` placeholder",
+        ),
+        (
+            "immediately before `## Dimension Scores`; never repeat that report-level line",
+            "anywhere near `## Dimension Scores`; repeat that report-level line",
+        ),
+        (
+            "Strength subsections never carry a `Severity` field",
+            "Strength subsections may carry a `Severity` field",
+        ),
+        (
+            "Before output, count each quoted excerpt",
+            "Before output, do not count each quoted excerpt",
+        ),
+    )
+    for index, (old, new) in enumerate(mutations):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.PROTOCOL, old, new)
+        assert lint.check(root)
+
+
+def test_template_live_grammar_mutations_fail(tmp_path):
+    mutations = (
+        (
+            "Omit the Severity field entirely",
+            "Emit the Severity field on strengths",
+        ),
+        (
+            "Before output, count each quoted excerpt",
+            "Before output, do not count each quoted excerpt",
+        ),
+    )
+    for index, (old, new) in enumerate(mutations):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.TEMPLATE, old, new)
+        assert lint.check(root)
 
 
 def test_anchor_validator_colon_regex_mutation_fails(tmp_path):
