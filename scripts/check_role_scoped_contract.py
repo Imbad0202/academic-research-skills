@@ -59,6 +59,16 @@ PHASE2_WITNESSES = (
     "block_class: <fatal|repairable>",
     "Do not emit `## Failure Condition Checks`, `## Editorial Decision`",
 )
+SCORING_FINDING_WITNESS = (
+    "each finding with a Severity has its own `### W<n>: <title>` subsection, "
+    "exactly one `**Severity**:` line, and its own `**Evidence Anchor**:` line "
+    "when Critical or Major. Findings never share an anchor"
+)
+DA_FINDING_WITNESS = (
+    "emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` "
+    "section, always present even when empty. Each is a Markdown table whose "
+    "header includes exact `#` and `Evidence Anchor` columns"
+)
 PATTERNS = (
     "any <priority> dimension scores '<score>'",
     "any dimension with priority=<priority> scores '<score>'",
@@ -72,6 +82,22 @@ PATTERNS = (
     "any dimension scores '<score>' or worse",
     "<Dn> scores '<score>' or worse",
     "every dimension scores '<score>'",
+)
+# Hardcoded textual witnesses for the executable regex bodies. Identifiers alone
+# are insufficient: an editor could preserve ``fatal_priority`` while widening
+# or otherwise changing the grammar it executes.
+EXECUTABLE_PATTERN_WITNESSES = (
+    r'r"^any (?:(?P<p1>[a-z]+) dimension|dimension with priority="',
+    r'r"(?P<p2>[a-z]+)|(?P<p3>[a-z]+)-priority dimension) scores "',
+    r'r"^two or more (?:(?P<p1>[a-z]+) dimensions|dimensions with priority="',
+    r'r"(?P<p2>[a-z]+)) score " + _SCORE + r" or worse$"',
+    r'r"^every (?P<p1>[a-z]+) dimension scores " + _SCORE + r"$"',
+    r'r"^(?P<dim>D\d+) scores " + _SCORE + r"$"',
+    r'r"^any (?P<p1>[a-z]+) dimension has a fatal block$"',
+    r'r"^(?P<dim>D\d+) has a fatal block$"',
+    r'r"^any dimension scores " + _SCORE + r" or worse$"',
+    r'r"^(?P<dim>D\d+) scores " + _SCORE + r" or worse$"',
+    r'r"^every dimension scores " + _SCORE + r"$"',
 )
 
 
@@ -119,6 +145,11 @@ def check(root: Path) -> list[str]:
         for witness in PHASE2_WITNESSES:
             if norm_ws(witness) not in phase2_norm:
                 errors.append(f"{rel}: Phase 2 grammar witness missing: {witness}")
+        finding_witness = (
+            DA_FINDING_WITNESS if role == "da" else SCORING_FINDING_WITNESS
+        )
+        if norm_ws(finding_witness) not in phase2_norm:
+            errors.append(f"{rel}: Phase 2 per-finding grammar witness missing")
 
     da = _read(root, "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md")
     if "Score the paper — your job is to challenge, not score." in da:
@@ -137,14 +168,19 @@ def check(root: Path) -> list[str]:
                 errors.append(f"{PROTOCOL}: expression pattern missing: {pattern}")
             if pattern not in synth:
                 errors.append(f"{SYNTH}: expression pattern missing: {pattern}")
-    # A third, independent surface witness: the executable grammar must carry
-    # all four v2-specific atom-family identifiers.
+    # A third, independent surface witness: pin executable regex source, not
+    # merely the stable tuple identifiers surrounding it.
     for token in (
         '"fatal_priority"', '"fatal_dim"', '"any_all"',
         '"dim_threshold"', '"every_all"',
     ):
         if token not in checker:
             errors.append(f"{PANEL_CHECKER}: executable pattern token missing: {token}")
+    for witness in EXECUTABLE_PATTERN_WITNESSES:
+        if witness not in checker:
+            errors.append(
+                f"{PANEL_CHECKER}: executable regex witness missing: {witness}"
+            )
     return errors
 
 

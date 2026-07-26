@@ -62,12 +62,44 @@ def test_delivered_phase2_literal_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_delivered_phase2_per_finding_grammar_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root, next(iter(lint.AGENTS)),
+        "Findings never share an anchor.",
+        "Findings may share an anchor.",
+    )
+    assert lint.check(root)
+
+
+def test_da_required_table_grammar_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md",
+        "always present even when empty",
+        "optional when empty",
+    )
+    assert lint.check(root)
+
+
 def test_protocol_pattern_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
         root, lint.PROTOCOL,
         "any dimension scores '<score>' or worse",
         "some dimension scores '<score>' or worse",
+    )
+    assert lint.check(root)
+
+
+def test_executable_regex_mutation_fails_even_when_identifier_remains(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        r"^any (?P<p1>[a-z]+) dimension has a fatal block$",
+        r"^any (?P<p1>[a-z]+) dimension has any fatal block$",
     )
     assert lint.check(root)
 

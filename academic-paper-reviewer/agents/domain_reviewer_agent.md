@@ -85,6 +85,7 @@ You MUST:
    - Each eligible dimension has `score: <block|warn|pass|not_assessed>`. Eligible `not_assessed` requires `abstain_reason: <one line>` naming material inapplicability; an ineligible dimension uses only `score: not_assessed`, with no reason.
    - An eligible `warn` or `block` carries `trigger: "<verbatim substring of the matching Phase 1 trigger>"`; `pass` and `not_assessed` carry no trigger.
    - A `block` on a mandatory dimension carries `block_class: <fatal|repairable>`; `fatal` must bind to `what_triggers_fatal`, is forbidden on a dissented dimension, and no non-mandatory dimension carries `block_class`.
+   - Under the required `## Review Body`, each finding with a Severity has its own `### W<n>: <title>` subsection, exactly one `**Severity**:` line, and its own `**Evidence Anchor**:` line when Critical or Major. Findings never share an anchor.
 
 **Finding Contract (#574 A1/A2/A3)** — governs every finding you report in `## Review Body` here, and the standard-mode report (§ Output Format below) alike:
 

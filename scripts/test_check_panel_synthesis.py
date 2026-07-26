@@ -59,7 +59,7 @@ def report_text(role: str, overrides=None, da_ids=()) -> str:
                 lines.append("score: pass")
         lines.append("")
     lines += ["## Review Body", "", "No scored findings.", ""]
-    if role == "da" and da_ids:
+    if role == "da":
         lines += [
             "#### CRITICAL",
             "| # | Issue | Evidence Anchor |",
@@ -69,6 +69,12 @@ def report_text(role: str, overrides=None, da_ids=()) -> str:
             lines.append(
                 f'| {finding_id} | Issue | text: "quoted evidence" p. 1 |'
             )
+        lines += [
+            "",
+            "#### MAJOR",
+            "| # | Issue | Evidence Anchor |",
+            "|---|-------|-----------------|",
+        ]
     return "\n".join(lines)
 
 
@@ -322,6 +328,27 @@ def test_da_gate_negative_fixtures(
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     assert any(fragment in item for item in
                cps.layer2_check(panel_reports, FULL, expressions, synthesis, []))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda text: text.replace("#### CRITICAL", "#### Critical", 1),
+        lambda text: text.replace("#### CRITICAL", "#### CRITICAL ISSUES", 1),
+        lambda text: text.replace(
+            "#### CRITICAL",
+            "#### CRITICAL\n"
+            "| # | Issue | Evidence Anchor |\n"
+            "|---|-------|-----------------|\n\n"
+            "#### CRITICAL",
+            1,
+        ),
+    ],
+)
+def test_da_critical_section_drift_fails_closed(mutation):
+    da_report = next(report for report in reports() if report.role == "da")
+    with pytest.raises(cps.ReportError, match="exactly one #### CRITICAL"):
+        cps.parse_da_critical_table(mutation(da_report.text), da_report.path)
 
 
 def test_marker_forbidden_under_nonaccept():

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -225,6 +226,43 @@ def test_fatal_block_cannot_bind_warn_trigger():
         )
 
 
+@pytest.mark.parametrize(
+    "score,shared_fields",
+    [
+        ("fatal", ("what_triggers_block", "what_triggers_fatal")),
+        ("block", ("what_triggers_block", "what_triggers_warn")),
+        ("warn", ("what_triggers_warn", "what_triggers_fatal")),
+    ],
+)
+def test_trigger_substring_must_bind_one_kind_only(score, shared_fields):
+    shared = "shared evidence pattern appears"
+    overrides = {
+        "what_triggers_block":
+            "repairable evidence pattern requires bounded revision",
+        "what_triggers_warn":
+            "warning evidence pattern requires clarification only",
+        "what_triggers_fatal":
+            "fatal evidence pattern proves the core cannot recover",
+    }
+    for field in shared_fields:
+        overrides[field] = f"{shared} and then diverges for {field}"
+    plan = parse_plan("methodology", {"D1": overrides})
+    report, _ = parse_report("methodology", {"D1": score})
+    report.scores["D1"] = panel.DimensionScore(
+        "warn" if score == "warn" else "block",
+        "fatal" if score == "fatal" else (
+            "repairable" if score == "block" else None
+        ),
+        shared,
+    )
+    with pytest.raises(phase.ConformanceError, match="TRIGGER-AMBIGUOUS"):
+        phase.check_trigger_binding(
+            report, plan,
+            {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
+            set(),
+        )
+
+
 def test_dissent_cannot_mint_fatality():
     report, _ = parse_report(
         "methodology", {"D1": "fatal"}, dissent=("D1",)
@@ -322,6 +360,63 @@ def test_compliant_critical_major_anchors_pass(body):
     phase.check_scoring_seat_anchors(report)
 
 
+def test_two_findings_cannot_share_one_anchor():
+    body = (
+        "### W1: first\n"
+        "**Severity**: Critical\n"
+        '**Evidence Anchor**: text: "first quote" p. 1\n'
+        "**Severity**: Major\n"
+        "### W2: second\n"
+        "**Severity**: Major"
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_two_independently_anchored_findings_pass():
+    body = (
+        "### W1: first\n"
+        "**Severity**: Critical\n"
+        '**Evidence Anchor**: text: "first quote" p. 1\n'
+        "### W2: second\n"
+        "**Severity**: Major\n"
+        "**Evidence Anchor**: absence: checked Methods and appendix"
+    )
+    report, _ = parse_report("eic", body=body)
+    phase.check_scoring_seat_anchors(report)
+
+
+def test_multiple_minor_severities_in_one_finding_fail():
+    body = """### W1: bundled minor findings
+**Severity**: Minor
+first
+**Severity**: Minor
+second"""
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_flat_severity_without_finding_heading_fails():
+    report, _ = parse_report(
+        "eic",
+        body=(
+            "**Severity**: Critical\n"
+            '**Evidence Anchor**: text: "quote" p. 1'
+        ),
+    )
+    with pytest.raises(phase.ConformanceError, match="own ### finding"):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_missing_review_body_fails_anchor_family():
+    report, _ = parse_report("eic")
+    report.text = report.text.replace("## Review Body", "## Commentary")
+    with pytest.raises(phase.ConformanceError, match="REVIEW-BODY-MISSING"):
+        phase.check_scoring_seat_anchors(report)
+
+
 def da_text(ids=("C1",), anchors=None):
     anchors = anchors or {finding_id: 'text: "quote" p. 1' for finding_id in ids}
     rows = "\n".join(
@@ -333,7 +428,10 @@ def da_text(ids=("C1",), anchors=None):
         body=(
             "#### CRITICAL\n"
             "| # | Issue | Evidence Anchor |\n"
-            "|---|-------|-----------------|\n" + rows
+            "|---|-------|-----------------|\n" + rows + "\n\n"
+            "#### MAJOR\n"
+            "| # | Issue | Evidence Anchor |\n"
+            "|---|-------|-----------------|"
         ),
     )
 
@@ -353,6 +451,24 @@ def test_da_ids_must_be_dense():
 def test_da_conforming_table_passes():
     report = panel.parse_report("da.md", da_text(ids=("C1", "C2")), FULL)
     phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize(
+    "old,new,fragment",
+    [
+        ("#### CRITICAL", "#### Critical", "DA-CRITICAL-PARSE"),
+        ("#### MAJOR", "#### Major", "DA-MAJOR-PARSE"),
+        ("#### MAJOR", "#### MAJOR\n\n#### MAJOR", "DA-MAJOR-PARSE"),
+    ],
+)
+def test_da_required_sections_fail_closed(old, new, fragment):
+    report = panel.parse_report(
+        "da.md", da_text().replace(old, new, 1), FULL
+    )
+    with pytest.raises(
+        (phase.ConformanceError, phase.panel.ReportError), match=re.escape(fragment)
+    ):
+        phase.check_da_anchors(report)
 
 
 def write_cli_files(tmp_path: Path, role: str) -> list[str]:

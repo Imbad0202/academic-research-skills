@@ -70,6 +70,17 @@ def test_threshold_removed_from_single_residency_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.STANDARDS,
+        "## 0. Decision Authority by Mode",
+        "Duplicate threshold: 65-79\n\n## 0. Decision Authority by Mode",
+    )
+    assert lint.check(root)
+
+
 def test_retired_one_to_five_threshold_in_standards_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

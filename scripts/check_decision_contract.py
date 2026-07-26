@@ -111,6 +111,24 @@ def check(root: Path) -> list[str]:
     for threshold in thresholds:
         if quality.count(threshold) != 1:
             errors.append(f"{QUALITY}: threshold residency drift for {threshold}")
+    live_paths: set[Path] = set()
+    for live_root in LIVE_ROOTS:
+        base = root / live_root
+        for path in base.rglob("*"):
+            if path.is_file() and path.suffix in {".md", ".json", ".py"}:
+                live_paths.add(path)
+    live_paths.update(root / rel for rel in LIVE_FILES)
+    for path in sorted(live_paths):
+        rel = str(path.relative_to(root))
+        if rel == QUALITY:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for threshold in thresholds:
+            if threshold in text:
+                errors.append(
+                    f"{rel}: decision threshold {threshold} must reside only "
+                    f"in {QUALITY}"
+                )
     standards = _read(root, STANDARDS)
     for retired in ("4.0", "3.5", "2.5-3.4", "< 2.5", "score = 1", "score = 2"):
         if retired in standards:

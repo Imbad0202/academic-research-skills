@@ -8,8 +8,10 @@ from pathlib import Path
 import pytest
 
 from scripts import check_sprint_contract as checker
+from tests.test_helpers import run_script
 
 REPO = Path(__file__).resolve().parents[1]
+SCRIPT = REPO / "scripts/check_sprint_contract.py"
 FULL_PATH = REPO / "shared/contracts/reviewer/full.json"
 MF_PATH = REPO / "shared/contracts/reviewer/methodology_focus.json"
 WRITER_PATH = REPO / "shared/contracts/writer/full.json"
@@ -185,3 +187,211 @@ def test_cli_valid_and_invalid(tmp_path):
     path = tmp_path / "bad.json"
     path.write_text(json.dumps(bad), encoding="utf-8")
     assert checker.validate(bad)
+
+
+SCHEMA_MUTATIONS = (
+    "missing_contract_id",
+    "missing_mode",
+    "missing_stage",
+    "missing_baseline_version",
+    "missing_dimensions",
+    "missing_conditions",
+    "bad_contract_id",
+    "bad_mode",
+    "empty_stage",
+    "zero_panel",
+    "empty_dimensions",
+    "bad_dimension_id",
+    "bad_dimension_name",
+    "empty_description",
+    "bad_priority",
+    "empty_eligible_roles",
+    "bad_eligible_role",
+    "bad_owner_role",
+    "extra_dimension_field",
+    "short_scoring_schema",
+    "duplicate_scoring_field",
+    "typo_scoring_field",
+    "zero_paraphrase_minimum",
+    "empty_conditions",
+    "bad_condition_id",
+    "negative_severity",
+    "excessive_severity",
+    "bad_quantifier",
+    "empty_expression",
+    "bad_action",
+    "missing_quantifier",
+    "missing_panel",
+    "short_override_ladder",
+    "misordered_override_ladder",
+)
+
+
+def apply_schema_mutation(contract: dict, case: str) -> None:
+    dim = contract["acceptance_dimensions"][0]
+    condition = contract["failure_conditions"][0]
+    if case.startswith("missing_") and case.removeprefix("missing_") in {
+        "contract_id", "mode", "stage", "baseline_version",
+    }:
+        contract.pop(case.removeprefix("missing_"))
+    elif case == "missing_dimensions":
+        contract.pop("acceptance_dimensions")
+    elif case == "missing_conditions":
+        contract.pop("failure_conditions")
+    elif case == "bad_contract_id":
+        contract["contract_id"] = "BAD"
+    elif case == "bad_mode":
+        contract["mode"] = "reviewer_quick"
+    elif case == "empty_stage":
+        contract["stage"] = ""
+    elif case == "zero_panel":
+        contract["panel_size"] = 0
+    elif case == "empty_dimensions":
+        contract["acceptance_dimensions"] = []
+    elif case == "bad_dimension_id":
+        dim["id"] = "D01"
+    elif case == "bad_dimension_name":
+        dim["name"] = "Bad Name"
+    elif case == "empty_description":
+        dim["description"] = ""
+    elif case == "bad_priority":
+        dim["priority"] = "urgent"
+    elif case == "empty_eligible_roles":
+        dim["eligible_roles"] = []
+    elif case == "bad_eligible_role":
+        dim["eligible_roles"] = ["copyeditor"]
+    elif case == "bad_owner_role":
+        dim["owner_role"] = "copyeditor"
+    elif case == "extra_dimension_field":
+        dim["scoring_scale"] = ["pass"]
+    elif case == "short_scoring_schema":
+        contract["measurement_procedure"]["scoring_plan_schema"]["required"].pop()
+    elif case == "duplicate_scoring_field":
+        required = contract["measurement_procedure"]["scoring_plan_schema"]["required"]
+        required[-1] = required[0]
+    elif case == "typo_scoring_field":
+        contract["measurement_procedure"]["scoring_plan_schema"]["required"][-1] = (
+            "fatal_trigger"
+        )
+    elif case == "zero_paraphrase_minimum":
+        contract["measurement_procedure"]["paraphrase_minimum_dimensions"] = 0
+    elif case == "empty_conditions":
+        contract["failure_conditions"] = []
+    elif case == "bad_condition_id":
+        condition["condition_id"] = "F01"
+    elif case == "negative_severity":
+        condition["severity"] = -1
+    elif case == "excessive_severity":
+        condition["severity"] = 101
+    elif case == "bad_quantifier":
+        condition["cross_reviewer_quantifier"] = "plurality"
+    elif case == "empty_expression":
+        condition["expression"] = ""
+    elif case == "bad_action":
+        condition["action"] = "editorial_decision=revise"
+    elif case == "missing_quantifier":
+        condition.pop("cross_reviewer_quantifier")
+    elif case == "missing_panel":
+        contract.pop("panel_size")
+    elif case in {"short_override_ladder", "misordered_override_ladder"}:
+        contract["override_ladder"] = [
+            {"round": 1, "trigger": "first", "required": ["a"]},
+            {"round": 2, "trigger": "second", "required": ["b"]},
+            {"round": 3, "trigger": "third", "required": ["c"]},
+        ]
+        if case == "short_override_ladder":
+            contract["override_ladder"].pop()
+        else:
+            contract["override_ladder"][0]["round"] = 2
+    else:  # pragma: no cover - guards the test table itself
+        raise AssertionError(case)
+
+
+@pytest.mark.parametrize("case", SCHEMA_MUTATIONS)
+def test_legacy_schema_mutations_still_fail(case):
+    contract = full()
+    apply_schema_mutation(contract, case)
+    assert checker.validate(contract), case
+
+
+WARNING_CASES = (
+    ("sc1_lag", "SC-1", True),
+    ("sc1_exact_two", "SC-1", False),
+    ("sc1_no_current", "SC-1", False),
+    ("sc2_single", "SC-2", True),
+    ("sc3_no_mandatory", "SC-3", True),
+    ("sc4_orphan", "SC-4", True),
+    ("sc5_missing_output", "SC-5", True),
+    ("sc7_conflict", "SC-7", True),
+    ("sc9_impossible", "SC-9", True),
+    ("sc10_unreferenced", "SC-10", True),
+    ("sc11_single", "SC-11", True),
+    ("sc11_mode_mismatch", "SC-11", True),
+    ("writer_no_sc5", "SC-5", False),
+    ("writer_no_sc11", "SC-11", False),
+)
+
+
+@pytest.mark.parametrize("case,fragment,present", WARNING_CASES)
+def test_legacy_warning_boundaries(case, fragment, present):
+    contract = full()
+    current = None
+    if case == "sc1_lag":
+        contract["baseline_version"], current = "v3.3.0", "v3.6.2"
+    elif case == "sc1_exact_two":
+        contract["baseline_version"], current = "v3.4.0", "v3.6.2"
+    elif case == "sc1_no_current":
+        contract["baseline_version"] = "v3.3.0"
+    elif case == "sc2_single":
+        contract["acceptance_dimensions"] = contract["acceptance_dimensions"][:1]
+    elif case == "sc3_no_mandatory":
+        for dim in contract["acceptance_dimensions"]:
+            dim["priority"] = "normal"
+    elif case == "sc4_orphan":
+        contract["failure_conditions"][0]["expression"] = "D99 scores 'block'"
+    elif case == "sc5_missing_output":
+        contract["measurement_procedure"]["reviewer_must_output_before_paper"] = [
+            "contract_paraphrase"
+        ]
+    elif case == "sc7_conflict":
+        contract["failure_conditions"][1]["severity"] = (
+            contract["failure_conditions"][0]["severity"]
+        )
+    elif case == "sc9_impossible":
+        contract["measurement_procedure"]["paraphrase_minimum_dimensions"] = 99
+    elif case == "sc10_unreferenced":
+        contract["failure_conditions"] = [
+            {
+                "condition_id": "F0",
+                "severity": 0,
+                "cross_reviewer_quantifier": "all",
+                "expression": "every dimension scores 'pass'",
+                "action": "editorial_decision=accept",
+            }
+        ]
+    elif case == "sc11_single":
+        contract["panel_size"] = 1
+    elif case == "sc11_mode_mismatch":
+        contract["panel_size"] = 4
+    elif case.startswith("writer_"):
+        contract = load(WRITER_PATH)
+    else:  # pragma: no cover - guards the test table itself
+        raise AssertionError(case)
+    warnings = checker.warn_suspicious(contract, current)
+    assert any(
+        warning.startswith(f"{fragment} WARNING") for warning in warnings
+    ) is present
+
+
+@pytest.mark.parametrize("case,expected", (("valid", 0), ("missing", 1), ("bad_json", 1)))
+def test_cli_executes_real_process(tmp_path, case, expected):
+    if case == "missing":
+        path = tmp_path / "missing.json"
+    elif case == "bad_json":
+        path = tmp_path / "bad.json"
+        path.write_text("{", encoding="utf-8")
+    else:
+        path = tmp_path / "valid.json"
+        path.write_text(json.dumps(full()), encoding="utf-8")
+    result = run_script(SCRIPT, str(path))
+    assert result.returncode == expected, result.stderr

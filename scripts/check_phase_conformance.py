@@ -274,6 +274,22 @@ def check_trigger_binding(
                 f"[TRIGGER-DRIFT: {did} {field} does not contain emitted "
                 "trigger text]"
             )
+        matching_fields = {
+            candidate
+            for candidate in (
+                "what_triggers_block", "what_triggers_warn",
+                "what_triggers_fatal",
+            )
+            if plan.commitments.get(did, {}).get(candidate)
+            and _normalise(value.trigger) in _normalise(
+                plan.commitments[did][candidate]
+            )
+        }
+        if matching_fields != {field}:
+            raise ConformanceError(
+                f"[TRIGGER-AMBIGUOUS: {did} emitted trigger matches "
+                f"{sorted(matching_fields)}, expected only {field}]"
+            )
 
 
 def _validate_anchor(anchor: str, context: str) -> None:
@@ -305,30 +321,52 @@ def _validate_anchor(anchor: str, context: str) -> None:
 def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
     lines = panel.strip_fences(report.text)
     sections, _ = panel.split_sections(lines)
-    review_lines = sections.get("Review Body", [])
+    if "Review Body" not in sections:
+        raise ConformanceError(
+            f"[REVIEW-BODY-MISSING: {report.path}]"
+        )
+    review_lines = sections["Review Body"]
     blocks, _ = panel.split_subsections(review_lines)
-    candidate_blocks = list(blocks.items())
-    if not candidate_blocks:
-        candidate_blocks = [("Review Body", review_lines)]
-    for title, block in candidate_blocks:
+    current_finding = None
+    for line in review_lines:
+        if match := panel._H3_RE.fullmatch(line):
+            current_finding = match.group(1)
+        elif _SEVERITY_RE.match(line) and current_finding is None:
+            raise ConformanceError(
+                f"[FINDING-GRAMMAR: {report.path}: every finding with "
+                "Severity must have its own ### finding heading]"
+            )
+    for title, block in blocks.items():
         severities = [
             match.group("severity") for line in block
             if (match := _SEVERITY_RE.match(line))
         ]
-        for severity in severities:
-            if severity not in {"Critical", "Major"}:
-                continue
-            anchors = [match.group("value") for line in block
-                       if (match := _ANCHOR_RE.match(line))]
-            if len(anchors) != 1:
-                raise ConformanceError(
-                    f"[ANCHOR-MISSING: {report.path}: {title} {severity} "
-                    "finding needs exactly one Evidence Anchor]"
-                )
-            _validate_anchor(anchors[0], f"{report.path}:{title}")
+        if not severities:
+            continue
+        if len(severities) != 1:
+            raise ConformanceError(
+                f"[FINDING-GRAMMAR: {report.path}: {title} must contain "
+                "exactly one Severity line]"
+            )
+        if severities[0] not in {"Critical", "Major"}:
+            continue
+        anchors = [match.group("value") for line in block
+                   if (match := _ANCHOR_RE.match(line))]
+        if len(anchors) != 1:
+            raise ConformanceError(
+                f"[ANCHOR-MISSING: {report.path}: {title} "
+                f"{severities[0]} finding needs exactly one Evidence Anchor]"
+            )
+        _validate_anchor(anchors[0], f"{report.path}:{title}")
 
 
 def check_da_anchors(report: panel.ReviewerReport) -> None:
+    lines = panel.strip_fences(report.text)
+    sections, _ = panel.split_sections(lines)
+    if "Review Body" not in sections:
+        raise ConformanceError(
+            f"[REVIEW-BODY-MISSING: {report.path}]"
+        )
     rows = panel.parse_da_critical_table(report.text, report.path)
     expected = [f"C{index}" for index in range(1, len(rows) + 1)]
     if list(rows) != expected:
@@ -346,11 +384,16 @@ def check_da_anchors(report: panel.ReviewerReport) -> None:
     # MAJOR uses the same table grammar except that IDs are not the DA terminal
     # contract. Parse its Evidence Anchor cells locally while retaining the
     # shared CRITICAL parser as the single DA-ID authority.
-    lines = panel.strip_fences(report.text)
-    start = next((i for i, line in enumerate(lines)
-                  if line.strip() == "#### MAJOR"), None)
-    if start is None:
-        return
+    major_starts = [
+        i for i, line in enumerate(lines)
+        if line.strip() == "#### MAJOR"
+    ]
+    if len(major_starts) != 1:
+        raise ConformanceError(
+            f"[DA-MAJOR-PARSE: {report.path}: expected exactly one "
+            f"#### MAJOR section, found {len(major_starts)}]"
+        )
+    start = major_starts[0]
     table_lines = []
     for line in lines[start + 1:]:
         if re.match(r"^#{2,4} ", line):

@@ -176,17 +176,23 @@ def _markdown_cells(line: str) -> list[str]:
 def parse_da_critical_table(text: str, path: str = "<report>") -> dict[str, str]:
     """Parse the DA ``#### CRITICAL`` table.
 
-    Returned mapping is ``C<n> -> Evidence Anchor cell``. Empty/no table means
-    no CRITICAL findings. Dense IDs and anchor semantics are checked by the
+    Returned mapping is ``C<n> -> Evidence Anchor cell``. The table is required
+    even when empty. Dense IDs and anchor semantics are checked by the
     phase-conformance checker; this shared parser owns row recognition for both
     checkers.
     """
     lines = strip_fences(text)
-    start = next((i for i, line in enumerate(lines)
-                  if _H4_RE.fullmatch(line)
-                  and _H4_RE.fullmatch(line).group(1) == "CRITICAL"), None)
-    if start is None:
-        return {}
+    starts = [
+        i for i, line in enumerate(lines)
+        if _H4_RE.fullmatch(line)
+        and _H4_RE.fullmatch(line).group(1) == "CRITICAL"
+    ]
+    if len(starts) != 1:
+        raise ReportError(
+            f"[DA-CRITICAL-PARSE: {path}: expected exactly one "
+            f"#### CRITICAL section, found {len(starts)}]"
+        )
+    start = starts[0]
     block: list[str] = []
     for line in lines[start + 1:]:
         if _H2_RE.fullmatch(line) or _H3_RE.fullmatch(line) or _H4_RE.fullmatch(line):
