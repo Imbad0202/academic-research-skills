@@ -47,8 +47,14 @@ _ANCHOR_RE = re.compile(
     r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"
     r"(?P<value>[^|]+)"
 )
-_SEVERITY_DECL_RE = re.compile(r"\*\*Severity(?:\*\*)?\s*:")
-_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor(?:\*\*)?\s*:")
+_SEVERITY_DECL_RE = re.compile(
+    r"\*\*Severity(?:\*\*)?\s*:",
+    re.IGNORECASE,
+)
+_ANCHOR_DECL_RE = re.compile(
+    r"\*\*Evidence Anchor(?:\*\*)?\s*:",
+    re.IGNORECASE,
+)
 _FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")
 
 

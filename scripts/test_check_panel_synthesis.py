@@ -679,6 +679,45 @@ def test_da_disguised_extra_issue_table_band_fails_in_synthesis_path(
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+@pytest.mark.parametrize("placement", ("preamble", "extra_h2"))
+def test_da_issue_table_outside_canonical_bands_fails_synthesis(placement):
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    table = (
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
+        '| C9 | impossible df | text: "n=41" p. 4 |\n'
+    )
+    if placement == "preamble":
+        da_report.text = da_report.text.replace(
+            "#### CRITICAL", table + "\n#### CRITICAL", 1
+        )
+    else:
+        da_report.text += "\n## Appendix\n" + table
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_internal_header_whitespace_fails_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "# | Issue | Evidence   Anchor\n"
+        "---|-------|-----------------\n"
+        'C9 | impossible df | text: "n=41" p. 4\n\n'
+        "#### MAJOR",
+        1,
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
 def test_da_empty_major_id_fails_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")

@@ -132,8 +132,8 @@ def test_severity_declaration_sentinel_mutation_fails(tmp_path):
     mutate(
         root,
         lint.PHASE_CHECKER,
-        r'_SEVERITY_DECL_RE = re.compile(r"\*\*Severity(?:\*\*)?\s*:")',
-        r'_SEVERITY_DECL_RE = re.compile(r"\*\*Severity\*\*:")',
+        r'    r"\*\*Severity(?:\*\*)?\s*:",',
+        r'    r"\*\*Severity\*\*:",',
     )
     assert lint.check(root)
 
@@ -143,8 +143,8 @@ def test_anchor_declaration_sentinel_mutation_fails(tmp_path):
     mutate(
         root,
         lint.PHASE_CHECKER,
-        r'_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor(?:\*\*)?\s*:")',
-        r'_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor\*\*:")',
+        r'    r"\*\*Evidence Anchor(?:\*\*)?\s*:",',
+        r'    r"\*\*Evidence Anchor\*\*:",',
     )
     assert lint.check(root)
 
@@ -207,6 +207,28 @@ def test_da_severity_regex_ignorecase_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_global_table_scan_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "for candidate in lines:",
+        "for candidate in review_lines:",
+    )
+    assert lint.check(root)
+
+
+def test_da_header_whitespace_normalization_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        're.sub(r"\\s+", " ", cell).casefold()',
+        "cell.casefold()",
+    )
+    assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
@@ -216,6 +238,21 @@ def test_da_extra_band_table_witness_mutation_fails(tmp_path):
         'if False and "#" in cells and "evidence anchor" in cells:',
     )
     assert lint.check(root)
+
+
+def test_phase_finding_declaration_ignorecase_mutations_fail(tmp_path):
+    for name in ("Severity", "Evidence Anchor"):
+        current = mirror(tmp_path / name.replace(" ", "-"))
+        mutate(
+            current,
+            lint.PHASE_CHECKER,
+            rf'    r"\*\*{name}(?:\*\*)?\s*:",' "\n"
+            "    re.IGNORECASE,\n"
+            ")",
+            rf'    r"\*\*{name}(?:\*\*)?\s*:",' "\n"
+            ")",
+        )
+        assert lint.check(current)
 
 
 def test_da_separator_witness_mutation_fails(tmp_path):

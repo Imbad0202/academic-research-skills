@@ -632,6 +632,30 @@ def test_flat_severity_without_finding_heading_fails():
         phase.check_scoring_seat_anchors(report)
 
 
+@pytest.mark.parametrize("label", ("severity", "sEvErItY"))
+def test_case_variant_severity_without_finding_heading_fails(label):
+    report, _ = parse_report(
+        "eic",
+        body=f"Commentary line with **{label}**: Critical",
+    )
+    with pytest.raises(phase.ConformanceError, match="own ### finding"):
+        phase.check_scoring_seat_anchors(report)
+
+
+@pytest.mark.parametrize("label", ("evidence anchor", "eViDeNcE aNcHoR"))
+def test_case_variant_optional_anchor_declaration_fails(label):
+    report, _ = parse_report(
+        "eic",
+        body=(
+            "### W1: malformed optional anchor\n"
+            "**Severity**: Minor\n"
+            f'**{label}**: text: "quote"'
+        ),
+    )
+    with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
+        phase.check_scoring_seat_anchors(report)
+
+
 def test_missing_review_body_fails_anchor_family():
     report, _ = parse_report("eic")
     report.text = report.text.replace("## Review Body", "## Commentary")
@@ -799,6 +823,38 @@ def test_da_disguised_extra_issue_table_band_fails_phase_checker(
     with pytest.raises(
         phase.ConformanceError, match="unexpected issue-table band"
     ):
+        phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize("placement", ("preamble", "extra_h2"))
+def test_da_issue_table_outside_canonical_bands_fails_phase(placement):
+    table = (
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
+        '| C9 | impossible df | text: "n=41" p. 4 |\n'
+    )
+    text = da_text()
+    if placement == "preamble":
+        text = text.replace("#### CRITICAL", table + "\n#### CRITICAL", 1)
+    else:
+        text += "\n## Appendix\n" + table
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table"):
+        phase.check_da_anchors(report)
+
+
+def test_da_internal_header_whitespace_fails_phase_checker():
+    text = da_text().replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "# | Issue | Evidence   Anchor\n"
+        "---|-------|-----------------\n"
+        'C9 | impossible df | text: "n=41" p. 4\n\n'
+        "#### MAJOR",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table"):
         phase.check_da_anchors(report)
 
 

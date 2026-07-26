@@ -307,7 +307,7 @@ def parse_da_tables(
             f"[DA-TABLE-PARSE: {path}: expected exactly one ## Review Body]"
         )
     review_lines = sections["Review Body"]
-    if any(_DA_SEVERITY_DECL_RE.search(line) for line in review_lines):
+    if any(_DA_SEVERITY_DECL_RE.search(line) for line in lines):
         raise ReportError(
             f"[DA-FINDING-GRAMMAR: {path}: standalone Severity declarations "
             "are forbidden; use the CRITICAL and MAJOR issue tables]"
@@ -318,29 +318,33 @@ def parse_da_tables(
     major_lines, major_id_col, major_anchor_col = _parse_da_table_block(
         review_lines, "MAJOR", path
     )
-    for index, line in enumerate(review_lines):
-        heading_match = _H4_RE.fullmatch(line)
-        if not heading_match or heading_match.group(1) in {"CRITICAL", "MAJOR"}:
+    current_h2: str | None = None
+    in_canonical_da_band = False
+    for candidate in lines:
+        if h2_match := _H2_RE.fullmatch(candidate):
+            current_h2 = h2_match.group(1)
+            in_canonical_da_band = False
             continue
-        block: list[str] = []
-        for candidate in review_lines[index + 1:]:
-            if (
-                _H2_RE.fullmatch(candidate)
-                or _H3_RE.fullmatch(candidate)
-                or _H4_RE.fullmatch(candidate)
-            ):
-                break
-            block.append(candidate)
-        for candidate in block:
-            cells = {
-                re.sub(r"\s+", " ", cell).casefold()
-                for cell in _possible_markdown_cells(candidate)
-            }
-            if "#" in cells and "evidence anchor" in cells:
-                raise ReportError(
-                    f"[DA-TABLE-PARSE: {path}: unexpected issue-table band "
-                    f"#### {heading_match.group(1)}]"
-                )
+        if _H3_RE.fullmatch(candidate):
+            in_canonical_da_band = False
+            continue
+        if h4_match := _H4_RE.fullmatch(candidate):
+            in_canonical_da_band = (
+                current_h2 == "Review Body"
+                and h4_match.group(1) in {"CRITICAL", "MAJOR"}
+            )
+            continue
+        if in_canonical_da_band:
+            continue
+        cells = {
+            re.sub(r"\s+", " ", cell).casefold()
+            for cell in _possible_markdown_cells(candidate)
+        }
+        if "#" in cells and "evidence anchor" in cells:
+            raise ReportError(
+                f"[DA-TABLE-PARSE: {path}: unexpected issue-table band outside "
+                "the canonical CRITICAL and MAJOR bands]"
+            )
 
     rows: dict[str, str] = {}
     for cells in critical_lines:

@@ -116,8 +116,14 @@ EXECUTABLE_PATTERN_WITNESSES = (
 PHASE_FINDING_REGEX_WITNESSES = (
     r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity\*\*:\s*"',
     r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"',
-    r'_SEVERITY_DECL_RE = re.compile(r"\*\*Severity(?:\*\*)?\s*:")',
-    r'_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor(?:\*\*)?\s*:")',
+    '_SEVERITY_DECL_RE = re.compile(\n'
+    r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
+    "    re.IGNORECASE,\n"
+    ")",
+    '_ANCHOR_DECL_RE = re.compile(\n'
+    r'    r"\*\*Evidence Anchor(?:\*\*)?\s*:",' "\n"
+    "    re.IGNORECASE,\n"
+    ")",
     r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
 )
 DA_PARSER_WITNESSES = (
@@ -126,7 +132,10 @@ DA_PARSER_WITNESSES = (
     "    re.IGNORECASE,\n"
     ")",
     "_DA_SEVERITY_DECL_RE.search(line)",
+    "for candidate in lines:",
+    'current_h2 == "Review Body"',
     'for cell in _possible_markdown_cells(candidate)',
+    're.sub(r"\\s+", " ", cell).casefold()',
     'if "#" in cells and "evidence anchor" in cells:',
     "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
