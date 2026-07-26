@@ -301,6 +301,13 @@ def check_trigger_binding(
             f"this seat {sorted(uncommitted)}]"
         )
     for did, value in report.scores.items():
+        eligible = report.role in dimensions[did]["eligible_roles"]
+        needs_trigger = eligible and value.score in {"block", "warn"}
+        if needs_trigger != bool(value.trigger):
+            raise ConformanceError(
+                f"[TRIGGER-GRAMMAR: {report.path}: {did} trigger is required "
+                "iff an eligible dimension scores block or warn]"
+            )
         if did in dissent:
             if value.block_class == "fatal":
                 raise ConformanceError(

@@ -235,6 +235,32 @@ def test_malformed_fence_closer_keeps_synthesis_hidden():
         cps.parse_synthesis("s.md", text, FULL)
 
 
+@pytest.mark.parametrize("score", ("warn", "block"))
+def test_eligible_nonpass_score_requires_trigger(score):
+    text = report_text("methodology", {"D1": score}).replace(
+        f'trigger: "{score} trigger"\n', "", 1
+    )
+    with pytest.raises(cps.ReportError, match="TRIGGER-GRAMMAR"):
+        cps.parse_report("methodology.md", text, FULL)
+
+
+@pytest.mark.parametrize(
+    "role,did,score_line",
+    (
+        ("methodology", "D1", "score: pass"),
+        ("eic", "D1", "score: not_assessed"),
+    ),
+)
+def test_nontriggering_score_forbids_trigger(role, did, score_line):
+    text = report_text(role).replace(
+        f"### {did}:", f'### {did}:', 1
+    ).replace(
+        score_line, score_line + '\ntrigger: "post hoc trigger"', 1
+    )
+    with pytest.raises(cps.ReportError, match="TRIGGER-GRAMMAR"):
+        cps.parse_report(f"{role}.md", text, FULL)
+
+
 def test_nonmandatory_block_cannot_carry_block_class():
     text = report_text("perspective", {"D4": "pass"}).replace(
         "### D4: cross_disciplinary_relevance\nscore: pass",

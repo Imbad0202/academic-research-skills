@@ -169,6 +169,30 @@ def test_threshold_in_decision_heading_section_fails(tmp_path, wording):
     assert lint.check(root)
 
 
+@pytest.mark.parametrize(
+    "wording",
+    (
+        "**Accept**\n- Weighted average of 80 or higher",
+        "**Minor Revision**\n- 65 points and above",
+        "- Accept\n  - score of 80 or higher",
+        (
+            "| Accept | Minor Revision | Major Revision | Reject |\n"
+            "|---|---|---|---|\n"
+            "| 80 or higher | 65 or higher | 50 or higher | below 50 |"
+        ),
+    ),
+)
+def test_cross_line_threshold_relocation_fails(tmp_path, wording):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.STANDARDS,
+        "## 0. Decision Authority by Mode",
+        f"{wording}\n\n## 0. Decision Authority by Mode",
+    )
+    assert lint.check(root)
+
+
 def test_unrelated_decision_count_does_not_false_positive(tmp_path):
     root = mirror(tmp_path)
     mutate(

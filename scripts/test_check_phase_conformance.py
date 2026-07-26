@@ -246,6 +246,18 @@ def test_trigger_text_absent_from_phase1_fails():
         )
 
 
+def test_trigger_binding_rechecks_required_trigger_defence_in_depth():
+    report, _ = parse_report("methodology", {"D1": "warn"})
+    report.scores["D1"] = panel.DimensionScore("warn")
+    with pytest.raises(phase.ConformanceError, match="TRIGGER-GRAMMAR"):
+        phase.check_trigger_binding(
+            report,
+            parse_plan(),
+            {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
+            set(),
+        )
+
+
 def test_fatal_block_cannot_bind_warn_trigger():
     report, _ = parse_report("methodology", {"D1": "fatal"})
     report.scores["D1"] = panel.DimensionScore(

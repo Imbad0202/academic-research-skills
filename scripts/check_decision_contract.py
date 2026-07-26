@@ -203,6 +203,29 @@ def _inline_threshold_drift(text: str) -> bool:
     return False
 
 
+def _nearby_threshold_drift(text: str) -> bool:
+    """Detect a label and threshold atom across a compact Markdown block."""
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if not DECISION_LABEL_RE.search(line):
+            continue
+        start = index
+        while start > 0 and index - start < 2 and lines[start - 1].strip():
+            start -= 1
+        end = index + 1
+        while (
+            end < len(lines)
+            and end - index <= 2
+            and lines[end].strip()
+            and not HEADING_RE.match(lines[end])
+        ):
+            end += 1
+        block = "\n".join(lines[start:end])
+        if THRESHOLD_ATOM_RE.search(block):
+            return True
+    return False
+
+
 def check(root: Path) -> list[str]:
     errors: list[str] = []
     schema = json.loads(_read(root, SCHEMA))
@@ -293,7 +316,11 @@ def check(root: Path) -> list[str]:
                 errors.append(
                     f"{rel}: {label} must reside only in {QUALITY}"
                 )
-        if _inline_threshold_drift(text) or _heading_threshold_drift(text):
+        if (
+            _inline_threshold_drift(text)
+            or _nearby_threshold_drift(text)
+            or _heading_threshold_drift(text)
+        ):
             errors.append(
                 f"{rel}: decision-linked threshold variant must reside only "
                 f"in {QUALITY}"
