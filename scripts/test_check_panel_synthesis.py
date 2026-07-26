@@ -20,8 +20,13 @@ ROLES = ("eic", "methodology", "domain", "perspective", "da")
     "anchor",
     (
         "absence: x",
+        "absence: Methods — expected ethics; checked appendix]",
+        "[absence: Methods — expected ethics; checked appendix",
         '`text: §5 "short exact quote"',
         'text: §5 "short exact quote"`',
+        'text: §5 "short exact quote"]',
+        'text: §5 "short exact quote"`]',
+        '[[text: §5 "short exact quote"]]',
         '``text: §5 "short exact quote"``',
         'text: §5 "short exact quote”',
         'text: §5 “short exact quote"',

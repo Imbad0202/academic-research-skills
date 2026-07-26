@@ -626,6 +626,10 @@ def test_type_only_wrapping_anchor_is_rejected(anchor):
     (
         '`text: §5 "short exact quote"',
         'text: §5 "short exact quote"`',
+        '[text: §5 "short exact quote"',
+        'text: §5 "short exact quote"]',
+        'text: §5 "short exact quote"`]',
+        '[[text: §5 "short exact quote"]]',
         '``text: §5 "short exact quote"``',
         '[`text: §5 "short exact quote"]',
         '[text: §5 "short exact quote"`]',

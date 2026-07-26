@@ -496,6 +496,15 @@ def test_anchor_validator_absence_regex_mutation_fails(tmp_path):
 def test_anchor_validator_wrapper_mutations_fail(tmp_path):
     replacements = (
         (
+            'if not (value.startswith("[") and value.endswith("]")):',
+            'if False and not (value.startswith("[") and value.endswith("]")):',
+        ),
+        (
+            'if square_inner.startswith("[") or square_inner.endswith("]"):',
+            'if False and (square_inner.startswith("[") '
+            'or square_inner.endswith("]")):',
+        ),
+        (
             'if not (value.startswith("`") and value.endswith("`")):',
             'if False and not (value.startswith("`") and value.endswith("`")):',
         ),

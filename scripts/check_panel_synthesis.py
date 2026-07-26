@@ -277,12 +277,17 @@ def _rendered_header_cell(cell: str) -> str:
 def validate_evidence_anchor(anchor: str, context: str) -> None:
     """Validate the shared finding-anchor grammar for either checker."""
     value = anchor.strip()
-    if value.startswith("["):
-        if not value.endswith("]"):
+    if value.startswith("[") or value.endswith("]"):
+        if not (value.startswith("[") and value.endswith("]")):
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: unpaired square wrapper]"
             )
-        value = value[1:-1].strip()
+        square_inner = value[1:-1]
+        if square_inner.startswith("[") or square_inner.endswith("]"):
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: repeated square wrapper]"
+            )
+        value = square_inner.strip()
     if value.startswith("`") or value.endswith("`"):
         if not (value.startswith("`") and value.endswith("`")):
             raise ReportError(

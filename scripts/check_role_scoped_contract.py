@@ -96,6 +96,8 @@ ANCHOR_ABSENCE_REGEX_WITNESS = (
     r'            r"\s*checked\s+(?P<surfaces>\S.*)"'
 )
 ANCHOR_WRAPPER_WITNESSES = (
+    'if not (value.startswith("[") and value.endswith("]")):',
+    'if square_inner.startswith("[") or square_inner.endswith("]"):',
     'if not (value.startswith("`") and value.endswith("`")):',
     'if "`" in inner:',
 )
