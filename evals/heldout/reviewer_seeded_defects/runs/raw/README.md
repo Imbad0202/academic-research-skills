@@ -20,6 +20,13 @@ single-context attempt these runs replace.
 §8.1 grammar rule, preserved verbatim; the operative retried synthesis lives in the
 parent run file's PART 3 with a provenance note.
 
+**Blocked artifacts:** `blocked/` holds partial panel evidence when fail-loud
+conformance stops a run before a complete panel exists. These bundles are paired with
+machine-readable records under `../blocked/`, are never scored, and must never enter
+replicate means or gate calculations. Missing downstream calls stay missing: do not
+impute them, redraw only the failed Phase 2, or launch a replacement panel to hide an
+abort.
+
 **Contamination reminder:** these are *outputs* of past measurement runs, not ground
 truth — but they live under `evals/`, which review sessions are already forbidden to
 read under the measurement protocol. Never paste them into a review session's context.

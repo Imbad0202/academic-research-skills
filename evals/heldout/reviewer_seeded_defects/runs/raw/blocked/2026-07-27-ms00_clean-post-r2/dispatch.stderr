@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/imbad/Projects/academic-research-skills/scripts/.tmp_run_574_prc_panel.py", line 532, in <module>
+    raise SystemExit(main())
+  File "/Users/imbad/Projects/academic-research-skills/scripts/.tmp_run_574_prc_panel.py", line 527, in main
+    run_panel(args.fixture, args.replicate)
+  File "/Users/imbad/Projects/academic-research-skills/scripts/.tmp_run_574_prc_panel.py", line 387, in run_panel
+    raise RuntimeError(
+RuntimeError: perspective: conformance exit 3: [DISSENT-GRAMMAR: dissent section must name dimension_id]

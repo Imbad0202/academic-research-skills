@@ -1,0 +1,16 @@
+{
+  "model_id": "claude-opus-5",
+  "suite_commit": "19bc8727df8d9d61e9cb7271b337e11b083c7374",
+  "date": "2026-07-27",
+  "condition": "post",
+  "fixture": "ms00_clean",
+  "replicate": 1,
+  "dispatch": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS=31999, no session persistence): field analyst (paper-visible), then per seat a physically separate paper-blind Phase 1 call (contract + title/field/word_count only, manuscript reads forbidden) and paper-visible Phase 2 call, then synthesizer over five conforming Phase-2 cards. The v2 sprint-contract and phase-conformance checkers ran in-flow; one paper-blind methodology Phase 1 structural retry was used after the first response omitted D3's mandatory fatal trigger. No Phase 2 retry was used. Contamination fence: neutral manuscript filename in a fresh root outside the repository, no eval or defect vocabulary in model prompts, reviewer calls received only their delivered phase subsection and bounded inputs, and synthesis received only the contract, metadata, field analysis, and five Phase-2 cards.",
+  "per_defect": {},
+  "severity_scores": {},
+  "clean_control_false_findings": [
+    "deduplication-versus-anonymity incompatibility assertion (methodology/perspective and synthesis; anonymous cookie- or response-pattern deduplication satisfies both)"
+  ],
+  "raw_output": "raw/2026-07-27-ms00_clean-post-r1.review.md",
+  "notes": "Spec-A post-change clean-control replicate. The panel completed and passed both in-flow checkers; editorial_decision=major_revision. Maintainer adjudication under protocol step 5 counts one factually false concept: the reports turn an undisclosed duplicate-detection mechanism into an operational contradiction with anonymity, although non-identifying session-cookie or response-pattern deduplication satisfies both statements. Correct observations about genuine reporting absences and wording/scope preferences are not counted. Synthetic-reference/10.5555 findings remain excluded by design. This single completed replicate is descriptive evidence only: replicate 2 aborted on Phase-2 conformance, so no clean-control replicate mean or acceptance-gate verdict is computed from it."
+}
