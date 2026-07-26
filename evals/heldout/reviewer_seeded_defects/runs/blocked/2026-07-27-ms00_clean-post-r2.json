@@ -46,11 +46,13 @@
     "planned_panels": 6,
     "launched_panels": 2,
     "completed_panels": 1,
+    "score_eligible_panels": 0,
+    "provenance_invalid_panels": 1,
     "conformance_aborts": 1,
     "not_launched_panels": 4,
     "observed_panel_abort_rate": 0.5
   },
   "gate_verdict": "NOT_COMPUTABLE",
-  "raw_bundle": "raw/blocked/2026-07-27-ms00_clean-post-r2/",
+  "raw_bundle": "../raw/blocked/2026-07-27-ms00_clean-post-r2/",
   "notes": "Protocol permits one paper-blind Phase 1 structural retry and a Phase 2 retry only for multi-dissent. This malformed empty dissent is not multi-dissent, so the panel was aborted immediately: no Phase 2 redraw, no replacement panel, and no continuation to DA, synthesis, or defective fixtures. The observed clean-cohort conformance-abort rate is 1/2 (0.50) against the Spec-A diagnostic expectation of approximately zero. Because the required 2 replicates x 3 fixtures did not complete, strict-recall, clean-control, severity-agreement, DA-critical-versus-Accept, and release gate verdicts are all not computable. This record is stored under `runs/blocked/` so scored-run consumers cannot mistake it for a valid run."
 }

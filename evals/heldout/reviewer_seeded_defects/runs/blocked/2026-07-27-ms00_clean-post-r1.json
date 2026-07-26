@@ -1,0 +1,20 @@
+{
+  "measurement_status": "invalid_incomplete_provenance",
+  "panel_completion_status": "completed",
+  "score_eligible": false,
+  "model_id": "claude-opus-5",
+  "suite_commit": "19bc8727df8d9d61e9cb7271b337e11b083c7374",
+  "date": "2026-07-27",
+  "condition": "post",
+  "fixture": "ms00_clean",
+  "replicate": 1,
+  "dispatch": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS=31999, no session persistence): field analyst (paper-visible), then per seat a physically separate paper-blind Phase 1 call (contract + title/field/word_count only, manuscript reads forbidden) and paper-visible Phase 2 call, then synthesizer over five conforming Phase-2 cards. The v2 sprint-contract and phase-conformance checkers ran in-flow; one paper-blind methodology Phase 1 structural retry was used after the first response omitted D3's mandatory fatal trigger. No Phase 2 retry was used. Contamination fence: neutral manuscript filename in a fresh root outside the repository, no eval or defect vocabulary in model prompts, reviewer calls received only their delivered phase subsection and bounded inputs, and synthesis received only the contract, metadata, field analysis, and five Phase-2 cards.",
+  "per_defect": {},
+  "severity_scores": {},
+  "clean_control_false_findings": [
+    "deduplication-versus-anonymity incompatibility assertion (methodology/perspective and synthesis; anonymous cookie- or response-pattern deduplication satisfies both)"
+  ],
+  "gate_verdict": "NOT_COMPUTABLE",
+  "raw_output": "../raw/blocked/2026-07-27-ms00_clean-post-r1/final-panel.review.md",
+  "notes": "INVALID FOR SCORING because retry provenance is incomplete. The panel reached synthesis and its final state passed both in-flow checkers; editorial_decision=major_revision. However, the first methodology Phase 1 response was overwritten when the protocol-permitted structural retry ran, so an independent auditor cannot verify that response's paper blindness or confirm the retry eligibility from raw model output. The exact checker diagnostic and dispatch chronology are preserved, but they do not replace the missing response. The listed clean-control false-finding concept is therefore an unscored maintainer observation only: the final reports turn an undisclosed duplicate-detection mechanism into an operational contradiction with anonymity, although non-identifying session-cookie or response-pattern deduplication satisfies both statements. Correct observations about genuine reporting absences and wording/scope preferences are not listed; synthetic-reference/10.5555 findings remain excluded by design. This record lives under `runs/blocked/`, not the normal scored-run namespace, and contributes no value to replicate means or acceptance gates."
+}
