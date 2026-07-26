@@ -625,6 +625,20 @@ def test_template_anchor_placeholder_tail_mutations_fail(tmp_path):
         assert lint.check(root)
 
 
+def test_template_canonical_anchor_example_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.TEMPLATE,
+        (
+            "Evidence Anchor: absence: Methods — expected a consent/ethics "
+            "statement; checked §3, §6, appendix"
+        ),
+        "Evidence Anchor: absence: checked §3, §6, appendix",
+    )
+    assert lint.check(root)
+
+
 def test_da_old_no_scoring_clause_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

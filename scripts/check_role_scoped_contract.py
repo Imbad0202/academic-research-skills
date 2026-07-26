@@ -59,6 +59,12 @@ SHIPPED_EXAMPLE_ANCHOR_RE = re.compile(
     r"`(?P<anchor>(?:text|table|figure|equation|dataset|absence): [^`\n]+)`",
     re.IGNORECASE,
 )
+TEMPLATE_EXAMPLE_ANCHOR_COUNT = 3
+TEMPLATE_EXAMPLE_ANCHOR_RE = re.compile(
+    r"^Evidence Anchor: "
+    r"(?P<anchor>(?:text|table|figure|equation|dataset|absence): \S.*)$",
+    re.IGNORECASE | re.MULTILINE,
+)
 SPRINT = "## v3.6.2 Sprint Contract Protocol"
 PHASE1 = "### Phase 1 — Paper-content-blind pre-commitment"
 PHASE2 = "### Phase 2 — Paper-visible review"
@@ -435,6 +441,20 @@ def check(root: Path) -> list[str]:
     for witness in TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES:
         if witness not in template:
             errors.append(f"{TEMPLATE}: anchor placeholder witness missing")
+    template_anchors = [
+        match.group("anchor")
+        for match in TEMPLATE_EXAMPLE_ANCHOR_RE.finditer(template)
+    ]
+    if len(template_anchors) != TEMPLATE_EXAMPLE_ANCHOR_COUNT:
+        errors.append(
+            f"{TEMPLATE}: expected {TEMPLATE_EXAMPLE_ANCHOR_COUNT} canonical "
+            f"anchor examples, found {len(template_anchors)}"
+        )
+    for index, anchor in enumerate(template_anchors, 1):
+        try:
+            validate_evidence_anchor(anchor, f"{TEMPLATE}:example-{index}")
+        except ReportError as exc:
+            errors.append(str(exc))
     for rel in SHIPPED_EXAMPLES:
         example = _read(root, rel)
         anchors = [
