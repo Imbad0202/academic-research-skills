@@ -46,7 +46,7 @@ THRESHOLD_DRIFT_PATTERNS = (
         "decision-linked boundary",
         re.compile(
             r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
-            r".{0,80}(?:(?:>=|≥|>|at least|begins? at|from)\s*)"
+            r".{0,80}(?:(?:>=|≥|>|at least|begins? at|starts? at|from)\s*)"
             r"(?:80|65|50)\b"
         ),
     ),
@@ -63,6 +63,13 @@ THRESHOLD_DRIFT_PATTERNS = (
         re.compile(
             r"(?i)\b(?:80|65|50)\s*points?.{0,80}"
             r"(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
+        ),
+    ),
+    (
+        "decision-linked out-of-scale boundary",
+        re.compile(
+            r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
+            r".{0,80}(?<![\d.])(?:80|65|50)\s+out of\s+100\b"
         ),
     ),
     (

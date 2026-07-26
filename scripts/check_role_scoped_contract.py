@@ -75,7 +75,8 @@ SCORING_FIELD_VARIANT_WITNESS = (
 DA_FINDING_WITNESS = (
     "emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` "
     "section, always present even when empty. Each is a Markdown table whose "
-    "header includes exact `#` and `Evidence Anchor` columns"
+    "header includes exact `#` and `Evidence Anchor` columns; every data row "
+    "is outer-pipe-delimited and has exactly the header column count"
 )
 PATTERNS = (
     "any <priority> dimension scores '<score>'",
@@ -111,6 +112,7 @@ EXECUTABLE_PATTERN_WITNESSES = (
 PHASE_FINDING_REGEX_WITNESSES = (
     r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity\*\*:\s*"',
     r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"',
+    r'_SEVERITY_DECL_RE = re.compile(r"\*\*Severity(?:\*\*)?\s*:")',
     r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
 )
 

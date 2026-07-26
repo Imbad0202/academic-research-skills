@@ -50,6 +50,7 @@ _ANCHOR_RE = re.compile(
     r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"
     r"(?P<value>[^|]+)"
 )
+_SEVERITY_DECL_RE = re.compile(r"\*\*Severity(?:\*\*)?\s*:")
 _FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")
 
 
@@ -336,7 +337,7 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
     for line in lines:
         if match := panel._H2_RE.fullmatch(line):
             current_h2 = match.group(1)
-        elif "**Severity**" in line and current_h2 != "Review Body":
+        elif _SEVERITY_DECL_RE.search(line) and current_h2 != "Review Body":
             raise ConformanceError(
                 f"[FINDING-GRAMMAR: {report.path}: Severity outside "
                 "## Review Body]"
@@ -352,14 +353,14 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
         if panel._H3_RE.fullmatch(line):
             break
         preamble.append(line)
-    if any("**Severity**" in line for line in preamble):
+    if any(_SEVERITY_DECL_RE.search(line) for line in preamble):
         raise ConformanceError(
             f"[FINDING-GRAMMAR: {report.path}: every finding with "
             "Severity must have its own ### finding heading]"
         )
     for title, block in blocks.items():
         severity_declarations = sum(
-            line.count("**Severity**") for line in block
+            len(_SEVERITY_DECL_RE.findall(line)) for line in block
         )
         severities = [
             match.group("severity") for line in block

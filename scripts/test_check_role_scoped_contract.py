@@ -127,6 +127,17 @@ def test_phase_finding_regex_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_severity_declaration_sentinel_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PHASE_CHECKER,
+        r'_SEVERITY_DECL_RE = re.compile(r"\*\*Severity(?:\*\*)?\s*:")',
+        r'_SEVERITY_DECL_RE = re.compile(r"\*\*Severity\*\*:")',
+    )
+    assert lint.check(root)
+
+
 def test_template_field_variant_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
