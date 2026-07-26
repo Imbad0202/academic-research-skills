@@ -5,6 +5,7 @@
   "model_id": "claude-opus-5",
   "suite_commit": "19bc8727df8d9d61e9cb7271b337e11b083c7374",
   "date": "2026-07-27",
+  "evidence_contract": "reviewer-e4/2026-07-27",
   "condition": "post",
   "fixture": "ms00_clean",
   "replicate": 1,

@@ -106,6 +106,10 @@ manuscript) so adjudication is anchored, not vibes.
    verification all need the full text). The summary table below is derived from
    these records, never the only artifact.
 
+   Every non-grandfathered normal or blocked record MUST also carry
+   `"evidence_contract": "reviewer-e4/2026-07-27"` (or a named later contract
+   that retains at least the same retry-evidence requirement).
+
    **Blocked-run separation:** if a fail-loud checker stops the panel before all
    five cards and synthesis exist, or any retry response/checker output is not
    preserved, do not write a normal scored-run record. Preserve the available
@@ -117,21 +121,42 @@ manuscript) so adjudication is anchored, not vibes.
    do not impute missing responses or seats, and do not launch a replacement draw to
    conceal the abort.
 
-   **Prospective evidence boundary (adopted 2026-07-27):** the blocked-run rule
-   applies to attempts dispatched on or after 2026-07-27. It does not
-   retroactively reclassify the 2026-07-24 or 2026-07-25 rows, which were
-   accepted under the collection contract then in force: preserve the five
-   accepted final reviewer reports plus the Editorial Decision Letter. That
-   earlier contract permitted a multi-dissent restart but did not require the
-   rejected response or its checker transcript to be retained. This is
-   protocol versioning, not evidence reconstruction: the preserved accepted
-   outputs remain re-adjudicable for the recorded recall, severity, and
-   false-finding measurands, while those historical rows make no independent
-   claim that retry eligibility or the rejected response's paper blindness can
-   now be re-adjudicated. Applying a new evidence requirement after observing
-   the registered baseline and post-change outcomes would itself change the
-   comparison set post hoc. Every newly dispatched attempt, including both
-   conditions after a model upgrade, uses the current fail-closed rule.
+   **Prospective retry-evidence boundary (adopted 2026-07-27):** only the new
+   requirement to preserve every rejected retry response and its checker output
+   has a grandfathered exception. Every other blocked-run rule above — complete
+   panel requirement, exclusion from means, no imputation, and no replacement
+   draw that conceals an abort — applies to every attempt regardless of date.
+   The exception is a closed artifact set: only the normal scored records
+   already committed as `runs/2026-07-24-*.json` and
+   `runs/2026-07-25-*.json`, together with the accepted final panels they
+   reference, remain governed by the earlier collection contract. No other
+   pre-adoption abort, raw root, or unregistered attempt may be promoted into
+   the scored namespace.
+
+   That earlier contract required the five accepted final reviewer reports plus
+   the Editorial Decision Letter. It permitted a multi-dissent restart but did
+   not require the rejected response or its checker transcript to be retained.
+   This is protocol versioning, not evidence reconstruction: the preserved
+   accepted outputs remain re-adjudicable for the recorded recall, severity,
+   and false-finding measurands, while the grandfathered rows make no
+   independent claim that retry eligibility or the rejected response's paper
+   blindness can now be re-adjudicated. Applying a new evidence requirement
+   after observing the registered baseline and post-change outcomes would
+   itself change the comparison set post hoc. Every non-grandfathered attempt,
+   including both conditions after a model upgrade, uses
+   `reviewer-e4/2026-07-27` or a named later contract that preserves this
+   fail-closed minimum.
+
+   **Contract-sensitivity disclosure:** the 2026-07-25 MS02 baseline r1 would
+   not be score-eligible if dispatched under `reviewer-e4/2026-07-27`; it
+   remains eligible only under its governing earlier contract. Any citation of
+   the registered 2026-07-25 gate verdicts MUST carry that non-attestation. As
+   a diagnostic only, omitting that panel changes baseline severity agreement
+   from 0.663 to `(0.650 + 0.611 + 0.722) / 3 = 0.661`, still above the
+   post-change 0.536, so the severity direction remains a regression. MS02
+   baseline recall remains 1.00 on the single retained replicate and the clean
+   controls are unaffected, but the two-replicate requirement would be broken;
+   these sensitivities are not a recomputed formal gate.
 
 **Acceptance gates for a reviewer-prompt change** (all three, on replicate means):
 mean strict recall does not regress (overall AND within the `critical` band);
@@ -140,6 +165,12 @@ score does not regress. "Stricter" alone is not an improvement (#574 rescope,
 product outcome).
 
 ## Baseline
+
+The 2026-07-24 and 2026-07-25 table rows are the closed grandfathered set
+described above. In particular, the 2026-07-24 row's PANEL-SHRUNK re-dispatch
+and the 2026-07-25 MS02 r1 multi-dissent retry were accepted under that earlier
+contract; neither row claims those recovery events would be eligible under
+`reviewer-e4/2026-07-27`.
 
 | Date | Commit | Model | Runs | MS01 recall (strict) | MS02 recall (strict) | Clean-control false findings | Severity agreement | Notes |
 |------|--------|-------|------|----------------------|----------------------|------------------------------|--------------------|-------|
