@@ -146,8 +146,11 @@ DA_PARSER_WITNESSES = (
     'return re.sub(r"\\s+", " ", rendered).strip().casefold()',
     r'_DA_ISSUE_ID_RE = re.compile(r"^[CM][1-9]\d*$", re.IGNORECASE)',
     r'r"^(?:text|table|figure|equation|dataset|absence)\s*:",',
-    "_DA_ISSUE_ID_RE.fullmatch(cell)",
-    "_DA_TYPED_ANCHOR_RE.search(cell)",
+    "issue_payload = any(\n"
+    "            _DA_ISSUE_ID_RE.fullmatch(cell)\n"
+    "            or _DA_TYPED_ANCHOR_RE.search(cell)\n"
+    "            for cell in cells\n"
+    "        )",
     'if "#" in cells or "evidence anchor" in cells or issue_payload:',
     "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',

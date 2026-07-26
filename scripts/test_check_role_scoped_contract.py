@@ -275,6 +275,25 @@ def test_da_issue_payload_sentinel_mutations_fail(tmp_path):
         assert lint.check(root)
 
 
+def test_da_issue_payload_normalized_iterator_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "issue_payload = any(\n"
+        "            _DA_ISSUE_ID_RE.fullmatch(cell)\n"
+        "            or _DA_TYPED_ANCHOR_RE.search(cell)\n"
+        "            for cell in cells\n"
+        "        )",
+        "issue_payload = any(\n"
+        "            _DA_ISSUE_ID_RE.fullmatch(cell)\n"
+        "            or _DA_TYPED_ANCHOR_RE.search(cell)\n"
+        "            for cell in raw_cells\n"
+        "        )",
+    )
+    assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
