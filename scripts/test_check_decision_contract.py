@@ -124,6 +124,12 @@ def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
         "| 80-100 | Accept |",
         "A score of 80 or higher leads to Accept.",
         "A result of 50 out of 100 means Major Revision.",
+        "Scores of 80 and above map to Accept.",
+        "80 or higher is the Accept band.",
+        "A composite of 65 or more earns Minor Revision.",
+        "Accept requires 80 or more.",
+        "At or above 80, the decision is Accept.",
+        "The Accept band opens at 80 points.",
     ),
 )
 def test_equivalent_threshold_wording_on_live_surface_fails(tmp_path, wording):

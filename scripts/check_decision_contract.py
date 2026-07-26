@@ -105,10 +105,11 @@ DECISION_LABEL_RE = re.compile(
 THRESHOLD_ATOM_RE = re.compile(
     r"(?ix)"
     r"(?:"
-    r"(?:>=|≥|>|<=|≤|<|at\s+least|begins?\s+at|starts?\s+at|from|"
+    r"(?:>=|≥|>|<=|≤|<|at\s+least|at\s+or\s+above|no\s+less\s+than|"
+    r"minimum(?:\s+of)?|begins?\s+at|starts?\s+at|opens?\s+at|from|"
     r"below|under|less\s+than)\s*(?:80|65|50)\b"
     r"|(?<![\d.])(?:80|65|50)(?:\s+points?)?\s*"
-    r"(?:or\s+(?:higher|above)|and\s+(?:higher|above)|\+)"
+    r"(?:(?:or|and)\s+(?:higher|above|more|over|up)|\+)"
     r"|(?<![\d.])(?:80|65|50)\s*[-–—]\s*(?:100|79|64)\b"
     r"|(?<![\d.])(?:80|65|50)\s+out\s+of\s+100\b"
     r")"
