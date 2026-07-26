@@ -29,6 +29,14 @@ def mutate(root: Path, rel: str, old: str, new: str):
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
+def mutate_last(root: Path, rel: str, old: str, new: str):
+    path = root / rel
+    text = path.read_text(encoding="utf-8")
+    before, separator, after = text.rpartition(old)
+    assert separator
+    path.write_text(before + new + after, encoding="utf-8")
+
+
 def test_unmutated_mirror_passes(tmp_path):
     assert lint.check(mirror(tmp_path)) == []
 
@@ -68,6 +76,14 @@ def test_delivered_phase1_live_grammar_mutations_fail(tmp_path):
 def test_delivered_phase1_terminal_preflight_mutations_fail(tmp_path):
     mutations = (
         (
+            "The only H2 sections are exactly one `## Contract Paraphrase`",
+            "Additional H2 sections may precede one `## Contract Paraphrase`",
+        ),
+        (
+            "The paraphrase meets `measurement_procedure.paraphrase_minimum_dimensions`",
+            "The paraphrase may ignore `measurement_procedure.paraphrase_minimum_dimensions`",
+        ),
+        (
             "only dimensions eligible for your dispatch role appear",
             "all contract dimensions may appear",
         ),
@@ -84,8 +100,12 @@ def test_delivered_phase1_terminal_preflight_mutations_fail(tmp_path):
             "The acknowledgement may appear anywhere as",
         ),
         (
-            "contains no manuscript-specific claim",
-            "may contain manuscript-specific claims",
+            "No `## Dimension Scores`, `## Review Body`",
+            "A `## Dimension Scores` or `## Review Body` may appear",
+        ),
+        (
+            "no manuscript-specific claim appears",
+            "manuscript-specific claims may appear",
         ),
     )
     for agent_index, rel in enumerate(lint.AGENTS):
@@ -132,15 +152,31 @@ def test_delivered_phase2_no_dissent_mutations_fail(tmp_path):
         assert lint.check(root)
 
 
-def test_delivered_phase2_terminal_dissent_preflight_mutations_fail(tmp_path):
+def test_delivered_phase2_terminal_preflight_mutations_fail(tmp_path):
     mutations = (
         (
             "If it differs on two or more, abort with",
             "If it differs on two or more, select one and continue with",
         ),
         (
+            "emit exactly one `## Dimension Scores` followed by exactly one `## Review Body`",
+            "emit `## Dimension Scores`; `## Review Body` is optional",
+        ),
+        (
+            "Delete `## Failure Condition Checks`, `## Editorial Decision`",
+            "Keep `## Failure Condition Checks` and `## Editorial Decision`",
+        ),
+        (
             "`## Dimension Scores` and nowhere else",
             "`## Dimension Scores` and inside each dimension",
+        ),
+        (
+            "eligible `not_assessed` has exactly one non-empty `abstain_reason:`",
+            "eligible `not_assessed` may omit `abstain_reason:`",
+        ),
+        (
+            "ineligible dimension uses only `score: not_assessed` with no `abstain_reason:`",
+            "ineligible dimensions may carry a real score or `abstain_reason:`",
         ),
         (
             "a character-for-character substring",
@@ -151,23 +187,39 @@ def test_delivered_phase2_terminal_dissent_preflight_mutations_fail(tmp_path):
             "a mandatory `block` may omit `block_class:`",
         ),
         (
-            "the DA uses exactly one CRITICAL table and one MAJOR table",
-            "the DA may omit empty CRITICAL and MAJOR tables",
+            "every weakness is its own `### W<n>` subsection",
+            "weaknesses may share one subsection",
+        ),
+        (
+            "If either finding polarity is empty, include its required Coverage Receipt",
+            "Empty finding polarities need no Coverage Receipt",
+        ),
+        (
+            "Each table header contains exactly one column named `#`",
+            "Table headers may omit the `#` column",
+        ),
+        (
+            "CRITICAL IDs are unique and dense `C1..Cn`",
+            "CRITICAL IDs may be sparse or duplicated",
         ),
         (
             "quoted excerpt is at most 25 words",
             "quoted excerpt is at most 50 words",
         ),
+        (
+            "a Critical is singleton rejection-level",
+            "a Critical may need sibling findings to reach rejection level",
+        ),
     )
     for agent_index, rel in enumerate(lint.AGENTS):
         for mutation_index, (old, new) in enumerate(mutations):
             root = mirror(tmp_path / f"{agent_index}-{mutation_index}")
-            mutate(root, rel, old, new)
+            mutate_last(root, rel, old, new)
             errors = lint.check(root)
             assert f"{rel}: Phase 2 live-grammar witness missing" in errors
 
 
-def test_delivered_phase2_terminal_dissent_preflight_relocation_fails(tmp_path):
+def test_delivered_phase2_terminal_preflight_relocation_fails(tmp_path):
     marker = "Do not send until every check holds."
     for index, rel in enumerate(lint.AGENTS):
         root = mirror(tmp_path / str(index))
@@ -688,6 +740,14 @@ def test_protocol_live_grammar_mutations_fail(tmp_path):
             "`what_triggers_fatal:` may occur once",
         ),
         (
+            "The only H2 sections are exactly one `## Contract Paraphrase`",
+            "Additional H2 sections may precede one `## Contract Paraphrase`",
+        ),
+        (
+            "No `## Dimension Scores`, `## Review Body`",
+            "A `## Dimension Scores` or `## Review Body` may appear",
+        ),
+        (
             "The final nonblank output line is exactly",
             "The acknowledgement may appear anywhere as",
         ),
@@ -698,6 +758,26 @@ def test_protocol_live_grammar_mutations_fail(tmp_path):
         (
             "a character-for-character substring",
             "a semantic paraphrase",
+        ),
+        (
+            "eligible `not_assessed` has exactly one non-empty `abstain_reason:`",
+            "eligible `not_assessed` may omit `abstain_reason:`",
+        ),
+        (
+            "Delete `## Failure Condition Checks`, `## Editorial Decision`",
+            "Keep `## Failure Condition Checks` and `## Editorial Decision`",
+        ),
+        (
+            "If either finding polarity is empty, include its required Coverage Receipt",
+            "Empty finding polarities need no Coverage Receipt",
+        ),
+        (
+            "Each table header contains exactly one column named `#`",
+            "Table headers may omit the `#` column",
+        ),
+        (
+            "CRITICAL IDs are unique and dense `C1..Cn`",
+            "CRITICAL IDs may be sparse or duplicated",
         ),
     )
     for index, (old, new) in enumerate(mutations):

@@ -66,10 +66,12 @@ Hard prohibitions in Phase 1:
 - Do not reference specific paper content (you have none).
 
 Terminal Phase 1 structural preflight (mandatory). Silently inspect the exact text you are about to send:
-1. Every `### <Dn>: <name>` heading copies the contract ID and name exactly, and only dimensions eligible for your dispatch role appear.
-2. Each scoring-plan subsection contains exactly one unbulleted `dimension_id:`, `what_to_look_for:`, `what_triggers_block:`, and `what_triggers_warn:` line; its block and warn texts are distinct.
-3. In every non-mandatory subsection, the literal key `what_triggers_fatal:` occurs zero times; delete the entire line and any sentinel if it appears. In every mandatory subsection, that key occurs exactly once and its text is distinct from block and warn.
-4. The final nonblank output line is exactly `[CONTRACT-ACKNOWLEDGED]`, and the output contains no manuscript-specific claim.
+1. The only H2 sections are exactly one `## Contract Paraphrase` followed by exactly one `## Scoring Plan`. The paraphrase meets `measurement_procedure.paraphrase_minimum_dimensions`: `"all"` means one paragraph per contract dimension; integer `k` means at least `k` paragraphs tied to distinct dimensions.
+2. Every `### <Dn>: <name>` heading copies the contract ID and name exactly, and only dimensions eligible for your dispatch role appear.
+3. Each scoring-plan subsection contains exactly one unbulleted `dimension_id:`, `what_to_look_for:`, `what_triggers_block:`, and `what_triggers_warn:` line; its block and warn texts are distinct.
+4. In every non-mandatory subsection, the literal key `what_triggers_fatal:` occurs zero times; delete the entire line and any sentinel if it appears. In every mandatory subsection, that key occurs exactly once and its text is distinct from block and warn.
+5. No `## Dimension Scores`, `## Review Body`, `## Failure Condition Checks`, `## Editorial Decision`, `dimension_scores`, `review_body`, or bare `editorial_decision=` appears, and no manuscript-specific claim appears.
+6. The final nonblank output line is exactly `[CONTRACT-ACKNOWLEDGED]`.
 Do not send until every check holds.
 
 ### Phase 2 — Paper-visible review
@@ -110,11 +112,13 @@ You MUST:
 - **Singleton-Critical:** if a defect needs sibling findings to reach rejection-level impact, it is not Critical alone. These tests operationalize severity-by-decision-impact and never prescribe expected band frequencies.
 Terminal Phase 2 structural preflight (mandatory). Silently inspect the exact text you are about to send against your supplied Phase 1:
 1. Dissent: if your Phase 2 view differs on exactly one dimension, include `## Scoring Plan Dissent` with exactly one unbulleted `dimension_id: <Dn>` line and exactly one unbulleted `rationale: <nonempty explanation>` line. If it differs on two or more, abort with `[PROTOCOL-VIOLATION: multi_dissent=true]` instead of drafting a card. If none differs, delete the heading and every placeholder beneath it; `none`, `omitted`, and `not applicable` are never a dissent.
-2. Role and dimensions: emit exactly one report-level `contract_role: <your dispatch role>` immediately before `## Dimension Scores` and nowhere else. Emit every contract dimension exactly once with its exact ID/name; ineligible dimensions use only `score: not_assessed`.
-3. Trigger binding: for every `warn` or `block`, the quoted `trigger:` text is a character-for-character substring of the matching Phase 1 trigger kind for the same dimension. Never paraphrase it. `pass` and `not_assessed` have no `trigger:`.
-4. Fatality: every mandatory `block` has exactly one `block_class:`; `fatal` binds to the Phase 1 fatal trigger, a dissented dimension cannot be fatal, and a non-mandatory dimension has no `block_class:`.
-5. Finding grammar: apply the role-specific grammar above. Scoring seats put every Severity under its own `### W<n>` heading; the DA uses exactly one CRITICAL table and one MAJOR table with no standalone Severity. Strengths never carry Severity.
-6. Anchors: every Critical/Major finding has its own valid typed anchor; no findings share one. Every `text:` quoted excerpt is at most 25 words, and every `absence:` anchor uses the exact required separators and non-empty fields.
+2. Sections and role: emit exactly one `## Dimension Scores` followed by exactly one `## Review Body`. Put exactly one report-level `contract_role: <your dispatch role>` immediately before `## Dimension Scores` and nowhere else. Delete `## Failure Condition Checks`, `## Editorial Decision`, and every bare `editorial_decision=` line.
+3. Dimensions and abstentions: emit every contract dimension exactly once with its exact ID/name. An eligible dimension uses `block`, `warn`, `pass`, or `not_assessed`; eligible `not_assessed` has exactly one non-empty `abstain_reason:`, while an ineligible dimension uses only `score: not_assessed` with no `abstain_reason:`. No other score carries `abstain_reason:`.
+4. Trigger binding: for every `warn` or `block`, the quoted `trigger:` text is a character-for-character substring of the matching Phase 1 trigger kind for the same dimension. Never paraphrase it. `pass` and `not_assessed` have no `trigger:`.
+5. Fatality: every mandatory `block` has exactly one `block_class:`; `fatal` binds to the Phase 1 fatal trigger, a dissented dimension cannot be fatal, and a non-mandatory dimension has no `block_class:`.
+6. Finding grammar: apply the role-specific grammar above. For a scoring seat, every weakness is its own `### W<n>` subsection with exactly one parseable Severity, one typed Evidence Anchor, and one Confidence; every strength has a typed Evidence Anchor and no Severity. If either finding polarity is empty, include its required Coverage Receipt. For the DA, emit exactly one `#### CRITICAL` table and one `#### MAJOR` table, both present even when empty, with no standalone Severity. Each table header contains exactly one column named `#` and exactly one named `Evidence Anchor`; every row is outer-pipe-delimited with the header's column count, and CRITICAL IDs are unique and dense `C1..Cn`.
+7. Anchors: no findings share an anchor. Every anchor uses a valid typed `<type>: <locator>` value with balanced wrappers. Every `text:` quoted excerpt is at most 25 words, and every `absence:` anchor uses the exact required separators and non-empty fields.
+8. Bands: assign each weakness by its own decision impact, never by a target distribution or bundled cluster; a Critical is singleton rejection-level.
 Do not send until every check holds.
 
 ---
