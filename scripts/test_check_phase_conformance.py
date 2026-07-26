@@ -958,13 +958,13 @@ def test_da_escaped_pipe_cell_evasion_fails_phase():
         phase.check_da_anchors(report)
 
 
-def test_da_zero_width_issue_payload_fails_phase():
-    zwsp = "\u200b"
+@pytest.mark.parametrize("invisible", ("\u200b", "\u034f", "\ufe0e", "\u3164"))
+def test_da_invisible_issue_payload_fails_phase(invisible):
     block = (
         "#### ADDITIONAL CRITICAL FINDINGS\n"
-        f"| #{zwsp} | Issue | Evidence{zwsp} Anchor |\n"
+        f"| #{invisible} | Issue | Evidence{invisible} Anchor |\n"
         "|---|---|---|\n"
-        f'| C{zwsp}9 | impossible df | text{zwsp}: "n=41" p. 4 |\n\n'
+        f'| C{invisible}9 | impossible df | text{invisible}: "n=41" p. 4 |\n\n'
     )
     text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
     report = panel.parse_report("da.md", text, FULL)
@@ -992,6 +992,17 @@ def test_da_raw_html_issue_table_fails_phase():
         "<tr><td>C9</td><td>text: n=41</td></tr></table>\n\n"
     )
     text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="raw HTML issue-table"):
+        phase.check_da_anchors(report)
+
+
+def test_da_nested_html_issue_table_in_canonical_row_fails_phase():
+    nested = (
+        "real issue <table><tr><th>#</th><th>Evidence Anchor</th></tr>"
+        '<tr><td>C9</td><td>text: "impossible df" p. 4</td></tr></table>'
+    )
+    text = da_text().replace("Issue | text:", nested + " | text:", 1)
     report = panel.parse_report("da.md", text, FULL)
     with pytest.raises(phase.ConformanceError, match="raw HTML issue-table"):
         phase.check_da_anchors(report)

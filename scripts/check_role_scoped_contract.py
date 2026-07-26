@@ -149,7 +149,9 @@ DA_PARSER_WITNESSES = (
     "parser.feed(rendered)",
     'rendered = unicodedata.normalize("NFKC", rendered)\n'
     '    rendered = "".join(',
-    'unicodedata.category(char) != "Cf"',
+    "def _is_default_ignorable(char: str) -> bool:",
+    "for start, end in _DEFAULT_IGNORABLE_RANGES",
+    "if not _is_default_ignorable(char)",
     'rendered = re.sub(r"[*_~`]+", "", rendered)',
     'return re.sub(r"\\s+", " ", rendered).strip().casefold()',
     r'_DA_ISSUE_ID_RE = re.compile(r"^[CM][1-9]\d*$", re.IGNORECASE)',

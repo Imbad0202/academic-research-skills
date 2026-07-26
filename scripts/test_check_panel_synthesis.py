@@ -847,15 +847,15 @@ def test_da_canonical_rows_allow_escaped_pipes():
     assert major == ['text: "quoted evidence" p. 1']
 
 
-def test_da_zero_width_issue_payload_fails_synthesis():
+@pytest.mark.parametrize("invisible", ("\u200b", "\u034f", "\ufe0e", "\u3164"))
+def test_da_invisible_issue_payload_fails_synthesis(invisible):
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
-    zwsp = "\u200b"
     block = (
         "#### ADDITIONAL CRITICAL FINDINGS\n"
-        f"| #{zwsp} | Issue | Evidence{zwsp} Anchor |\n"
+        f"| #{invisible} | Issue | Evidence{invisible} Anchor |\n"
         "|---|---|---|\n"
-        f'| C{zwsp}9 | impossible df | text{zwsp}: "n=41" p. 4 |\n\n'
+        f'| C{invisible}9 | impossible df | text{invisible}: "n=41" p. 4 |\n\n'
     )
     da_report.text = da_report.text.replace(
         "#### MAJOR", block + "#### MAJOR", 1
@@ -894,6 +894,29 @@ def test_da_raw_html_issue_table_fails_synthesis():
     )
     da_report.text = da_report.text.replace(
         "#### MAJOR", block + "#### MAJOR", 1
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="raw HTML issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_nested_html_issue_table_in_canonical_row_fails_synthesis():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    nested = (
+        "real issue <table><tr><th>#</th><th>Evidence Anchor</th></tr>"
+        '<tr><td>C9</td><td>text: "impossible df" p. 4</td></tr></table>'
+    )
+    da_report.text = da_report.text.replace(
+        "#### MAJOR\n"
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|",
+        "#### MAJOR\n"
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
+        f'| M1 | {nested} | text: "quote" p. 1 |',
+        1,
     )
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)

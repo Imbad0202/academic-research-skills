@@ -123,6 +123,14 @@ _DA_TYPED_ANCHOR_RE = re.compile(
 _RAW_HTML_TABLE_RE = re.compile(
     r"<\s*/?\s*(?:table|thead|tbody|tr|th|td)\b", re.IGNORECASE
 )
+_DEFAULT_IGNORABLE_RANGES = (
+    (0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C),
+    (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
+    (0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x206F),
+    (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF),
+    (0xFFA0, 0xFFA0), (0x1BCA0, 0x1BCA3), (0x1D173, 0x1D17A),
+    (0xE0000, 0xE0FFF),
+)
 
 
 def strip_fences(text: str) -> list[str]:
@@ -240,6 +248,11 @@ class _VisibleTextHTMLParser(HTMLParser):
         self.parts.append(data)
 
 
+def _is_default_ignorable(char: str) -> bool:
+    codepoint = ord(char)
+    return any(start <= codepoint <= end for start, end in _DEFAULT_IGNORABLE_RANGES)
+
+
 def _rendered_header_cell(cell: str) -> str:
     """Normalize common inline Markdown wrappers to their visible cell text."""
     rendered = re.sub(r"\\([^\w\s])", r"\1", cell)
@@ -252,7 +265,7 @@ def _rendered_header_cell(cell: str) -> str:
     rendered = "".join(parser.parts)
     rendered = unicodedata.normalize("NFKC", rendered)
     rendered = "".join(
-        char for char in rendered if unicodedata.category(char) != "Cf"
+        char for char in rendered if not _is_default_ignorable(char)
     )
     rendered = re.sub(r"[*_~`]+", "", rendered)
     return re.sub(r"\s+", " ", rendered).strip().casefold()
@@ -390,13 +403,13 @@ def parse_da_tables(
                 and h4_match.group(1) in {"CRITICAL", "MAJOR"}
             )
             continue
-        if in_canonical_da_band:
-            continue
         if _RAW_HTML_TABLE_RE.search(candidate):
             raise ReportError(
                 f"[DA-TABLE-PARSE: {path}: unexpected raw HTML issue-table "
                 "surface outside the canonical CRITICAL and MAJOR bands]"
             )
+        if in_canonical_da_band:
+            continue
         raw_cells = _possible_markdown_cells(candidate)
         cells = {_rendered_header_cell(cell) for cell in raw_cells}
         issue_payload = any(

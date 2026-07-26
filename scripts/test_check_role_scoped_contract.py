@@ -323,8 +323,8 @@ def test_da_unicode_format_normalization_mutations_fail(tmp_path):
             "rendered = rendered",
         ),
         (
-            'unicodedata.category(char) != "Cf"',
-            "True",
+            "if not _is_default_ignorable(char)",
+            "if True",
         ),
     )
     for index, (old, new) in enumerate(mutations):
