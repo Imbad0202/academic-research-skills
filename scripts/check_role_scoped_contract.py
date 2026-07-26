@@ -60,6 +60,7 @@ SHIPPED_EXAMPLE_ANCHOR_RE = re.compile(
     re.IGNORECASE,
 )
 TEMPLATE_EXAMPLE_ANCHOR_COUNT = 3
+TEMPLATE_EXAMPLE_ANCHOR_TYPES = ("text", "table", "absence")
 TEMPLATE_EXAMPLE_ANCHOR_RE = re.compile(
     r"^Evidence Anchor: "
     r"(?P<anchor>(?:text|table|figure|equation|dataset|absence): \S.*)$",
@@ -449,6 +450,14 @@ def check(root: Path) -> list[str]:
         errors.append(
             f"{TEMPLATE}: expected {TEMPLATE_EXAMPLE_ANCHOR_COUNT} canonical "
             f"anchor examples, found {len(template_anchors)}"
+        )
+    template_anchor_types = tuple(
+        anchor.partition(":")[0].lower() for anchor in template_anchors
+    )
+    if template_anchor_types != TEMPLATE_EXAMPLE_ANCHOR_TYPES:
+        errors.append(
+            f"{TEMPLATE}: expected ordered canonical anchor types "
+            f"{TEMPLATE_EXAMPLE_ANCHOR_TYPES}, found {template_anchor_types}"
         )
     for index, anchor in enumerate(template_anchors, 1):
         try:

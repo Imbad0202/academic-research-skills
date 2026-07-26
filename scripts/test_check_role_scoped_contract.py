@@ -639,6 +639,18 @@ def test_template_canonical_anchor_example_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_template_canonical_anchor_type_substitutions_fail(tmp_path):
+    substitutions = (
+        ("Evidence Anchor: text:", "Evidence Anchor: figure:"),
+        ("Evidence Anchor: table:", "Evidence Anchor: dataset:"),
+        ("Evidence Anchor: absence:", "Evidence Anchor: equation:"),
+    )
+    for index, (old, new) in enumerate(substitutions):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.TEMPLATE, old, new)
+        assert lint.check(root)
+
+
 def test_da_old_no_scoring_clause_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
