@@ -104,15 +104,21 @@ manuscript) so adjudication is anchored, not vibes.
    without the underlying reports are not re-adjudicable (DETECTED/PARTIAL
    reclassification, severity recomputation, and clean-control zero-false-finding
    verification all need the full text). The summary table below is derived from
-   these records, never the only artifact.
+   these records, never the only artifact. Under
+   `reviewer-e4/2026-07-27`, also commit every model response that a checker
+   rejected before a retry plus that checker's output. A re-dispatch after a
+   transport, quota, or session failure that produced no model response has no
+   rejected response or checker output to preserve; disclose the no-response
+   event in `notes`, but it is not a retry-evidence violation.
 
    Every non-grandfathered normal or blocked record MUST also carry
    `"evidence_contract": "reviewer-e4/2026-07-27"` (or a named later contract
    that retains at least the same retry-evidence requirement).
 
    **Blocked-run separation:** if a fail-loud checker stops the panel before all
-   five cards and synthesis exist, or any retry response/checker output is not
-   preserved, do not write a normal scored-run record. Preserve the available
+   five cards and synthesis exist, or any checker-rejected response followed by
+   a retry or its checker output is not preserved, do not write a normal
+   scored-run record. Preserve the available
    evidence under `runs/raw/blocked/<same-stem>/` and a status record under
    `runs/blocked/<same-stem>.json`. A completed final panel with incomplete retry
    provenance is still invalid for scoring because paper blindness and retry
@@ -122,10 +128,11 @@ manuscript) so adjudication is anchored, not vibes.
    conceal the abort.
 
    **Prospective retry-evidence boundary (adopted 2026-07-27):** only the new
-   requirement to preserve every rejected retry response and its checker output
-   has a grandfathered exception. Every other blocked-run rule above — complete
-   panel requirement, exclusion from means, no imputation, and no replacement
-   draw that conceals an abort — applies to every attempt regardless of date.
+   requirement to preserve every checker-rejected response followed by a retry
+   and its checker output has a grandfathered exception. Every other
+   blocked-run rule above — complete panel requirement, exclusion from means,
+   no imputation, and no replacement draw that conceals an abort — applies to
+   every attempt regardless of date.
    The exception is a closed artifact set: only the normal scored records
    already committed as `runs/2026-07-24-*.json` and
    `runs/2026-07-25-*.json`, together with the accepted final panels they
@@ -147,16 +154,26 @@ manuscript) so adjudication is anchored, not vibes.
    `reviewer-e4/2026-07-27` or a named later contract that preserves this
    fail-closed minimum.
 
-   **Contract-sensitivity disclosure:** the 2026-07-25 MS02 baseline r1 would
-   not be score-eligible if dispatched under `reviewer-e4/2026-07-27`; it
-   remains eligible only under its governing earlier contract. Any citation of
-   the registered 2026-07-25 gate verdicts MUST carry that non-attestation. As
-   a diagnostic only, omitting that panel changes baseline severity agreement
-   from 0.663 to `(0.650 + 0.611 + 0.722) / 3 = 0.661`, still above the
-   post-change 0.536, so the severity direction remains a regression. MS02
-   baseline recall remains 1.00 on the single retained replicate and the clean
-   controls are unaffected, but the two-replicate requirement would be broken;
-   these sensitivities are not a recomputed formal gate.
+   **Contract-sensitivity disclosure:** the 2026-07-24 MS02 baseline r1 and
+   2026-07-25 MS02 baseline r1 would not be score-eligible if dispatched under
+   `reviewer-e4/2026-07-27`; each remains eligible only under its governing
+   earlier contract. Any new or amended citation on or after 2026-07-27 of the
+   registered 2026-07-25 gate verdicts MUST carry that non-attestation.
+   Pre-adoption historical text is not retroactively rewritten, but quoting or
+   reusing it in a current decision triggers the disclosure.
+
+   As diagnostics only, omitting the affected 2026-07-24 panel changes that
+   row's severity agreement from 0.625 to
+   `(0.722 + 0.667 + 0.500) / 3 = 0.630`; omitting the affected 2026-07-25
+   panel changes its baseline severity agreement from 0.663 to
+   `(0.650 + 0.611 + 0.722) / 3 = 0.661`, still above the post-change 0.536,
+   so the registered severity direction remains a regression. In each
+   counterfactual, MS02 baseline recall remains 1.00 on the single retained
+   replicate and clean controls are unaffected, but the two-replicate
+   requirement is broken; neither sensitivity is a recomputed formal gate.
+   The disclosed no-response transport re-dispatches in the 2026-07-25 post
+   records produced no checker-rejected response, so they do not create a
+   symmetric missing-artifact exposure.
 
 **Acceptance gates for a reviewer-prompt change** (all three, on replicate means):
 mean strict recall does not regress (overall AND within the `critical` band);
