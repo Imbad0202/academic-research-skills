@@ -1,0 +1,16 @@
+{
+  "responseCode": 1,
+  "handle": "10.5555/ars.cn.cnki.2026.0042",
+  "values": [
+    {
+      "index": 1,
+      "type": "URL",
+      "data": {
+        "format": "string",
+        "value": "https://example.invalid/Resolution/Handler"
+      },
+      "ttl": 86400,
+      "timestamp": "2026-01-01T00:00:00Z"
+    }
+  ]
+}

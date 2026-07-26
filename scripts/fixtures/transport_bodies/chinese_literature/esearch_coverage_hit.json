@@ -1,0 +1,15 @@
+{
+  "header": {
+    "type": "esearch",
+    "version": "0.3"
+  },
+  "esearchresult": {
+    "count": "4242",
+    "retmax": "1",
+    "retstart": "0",
+    "idlist": [
+      "999999901"
+    ],
+    "translationset": []
+  }
+}

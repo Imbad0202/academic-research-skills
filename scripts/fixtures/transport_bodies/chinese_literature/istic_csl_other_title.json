@@ -1,0 +1,18 @@
+{
+  "DOI": "10.5555/ars.cn.istic.2026.0042",
+  "id": "10.5555/ars.cn.istic.2026.0042",
+  "title": "完全不相关的另一篇合成论文题名",
+  "type": "article-journal",
+  "container-title": "合成测试医学杂志",
+  "volume": "88",
+  "page": "1201",
+  "issued": {
+    "date-parts": [
+      [
+        2026,
+        1,
+        1
+      ]
+    ]
+  }
+}

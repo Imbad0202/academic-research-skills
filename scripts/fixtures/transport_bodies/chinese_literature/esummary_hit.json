@@ -1,0 +1,43 @@
+{
+  "header": {
+    "type": "esummary",
+    "version": "0.3"
+  },
+  "result": {
+    "uids": [
+      "999999901"
+    ],
+    "999999901": {
+      "uid": "999999901",
+      "pubdate": "2026 Mar 01",
+      "source": "Hecheng Ceshi Yi Xue Za Zhi",
+      "authors": [
+        {
+          "name": "Hecheng CS",
+          "authtype": "Author"
+        }
+      ],
+      "title": "[Deterministic evaluation of a synthetic citation verification gate].",
+      "volume": "88",
+      "issue": "13",
+      "pages": "8801-8809",
+      "lang": [
+        "chi"
+      ],
+      "nlmuniqueid": "999999901",
+      "issn": "0000-0000",
+      "articleids": [
+        {
+          "idtype": "pubmed",
+          "idtypen": 1,
+          "value": "999999901"
+        },
+        {
+          "idtype": "doi",
+          "idtypen": 3,
+          "value": "10.5555/ars.cn.istic.2026.0042"
+        }
+      ]
+    }
+  }
+}

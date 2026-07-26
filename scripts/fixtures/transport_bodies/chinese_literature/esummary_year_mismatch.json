@@ -1,0 +1,31 @@
+{
+  "header": {
+    "type": "esummary",
+    "version": "0.3"
+  },
+  "result": {
+    "uids": [
+      "999999901"
+    ],
+    "999999901": {
+      "uid": "999999901",
+      "pubdate": "1999 Jan 01",
+      "source": "Hecheng Ceshi Yi Xue Za Zhi",
+      "title": "[A different synthetic article occupying the same coordinates].",
+      "volume": "88",
+      "issue": "13",
+      "pages": "8801-8809",
+      "lang": [
+        "chi"
+      ],
+      "issn": "0000-0000",
+      "articleids": [
+        {
+          "idtype": "pubmed",
+          "idtypen": 1,
+          "value": "999999901"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "header": {
+    "type": "esearch",
+    "version": "0.3"
+  },
+  "esearchresult": {
+    "count": "1",
+    "retmax": "1",
+    "retstart": "0",
+    "idlist": [
+      "999999901"
+    ],
+    "translationset": [],
+    "querytranslation": "\"Hecheng Ceshi Yi Xue Za Zhi\"[Journal] AND \"88\"[Volume] AND \"8801\"[Pagination]"
+  }
+}

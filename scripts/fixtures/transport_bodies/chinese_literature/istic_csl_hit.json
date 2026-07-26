@@ -1,0 +1,25 @@
+{
+  "DOI": "10.5555/ars.cn.istic.2026.0042",
+  "id": "10.5555/ars.cn.istic.2026.0042",
+  "URL": "https://example.invalid/LinkIn.do?DOI=10.5555/ars.cn.istic.2026.0042",
+  "title": "合成引文核验闸的确定性评估方法研究",
+  "type": "article-journal",
+  "author": [
+    {
+      "given": "Hecheng Ceshi"
+    }
+  ],
+  "container-title": "合成测试医学杂志",
+  "volume": "88",
+  "issue": "13",
+  "page": "8801",
+  "issued": {
+    "date-parts": [
+      [
+        2026,
+        3,
+        1
+      ]
+    ]
+  }
+}

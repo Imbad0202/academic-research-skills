@@ -1,0 +1,31 @@
+{
+  "header": {
+    "type": "esummary",
+    "version": "0.3"
+  },
+  "result": {
+    "uids": [
+      "999999901"
+    ],
+    "999999901": {
+      "uid": "999999901",
+      "pubdate": "2026 Mar 01",
+      "source": "A Different Synthetic Journal",
+      "title": "[A record from a different journal at the same coordinates].",
+      "volume": "88",
+      "issue": "13",
+      "pages": "8801-8809",
+      "lang": [
+        "chi"
+      ],
+      "issn": "0000-0001",
+      "articleids": [
+        {
+          "idtype": "pubmed",
+          "idtypen": 1,
+          "value": "999999901"
+        }
+      ]
+    }
+  }
+}
