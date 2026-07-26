@@ -20,16 +20,20 @@ ROLES = ("eic", "methodology", "domain", "perspective", "da")
     "anchor",
     (
         "absence: x",
+        "absence: Methods — expected ethics;checked appendix",
+        "absence: Methods — expected ethics;  checked appendix",
         "absence: Methods — expected ethics; checked appendix]",
         "[absence: Methods — expected ethics; checked appendix",
         '`text: §5 "short exact quote"',
         'text: §5 "short exact quote"`',
         'text: §5 "short exact quote"]',
         'text: §5 "short exact quote"`]',
+        '[text: §5 "short exact quote"] trailing]',
         '[[text: §5 "short exact quote"]]',
         '``text: §5 "short exact quote"``',
         'text: §5 "short exact quote”',
         'text: §5 “short exact quote"',
+        'text: §5 "outer “inner”',
     ),
 )
 def test_shared_anchor_validator_rejects_incomplete_or_unpaired_shapes(anchor):
@@ -43,6 +47,12 @@ def test_shared_anchor_validator_rejects_incomplete_or_unpaired_shapes(anchor):
         "absence: Methods — expected an ethics statement; checked Methods, appendix",
         '`text: §5 "short exact quote"`',
         "text: §5 “short exact quote”",
+        "equation: Eq. [3]",
+        "table: Table 2 [Panel B]",
+        "[equation: Eq. [3]]",
+        'text: §4 "short quote" [emphasis added]',
+        'text: §3 "short quote" per `df`',
+        '`text: §3 "short quote" per `df``',
     ),
 )
 def test_shared_anchor_validator_accepts_complete_paired_shapes(anchor):

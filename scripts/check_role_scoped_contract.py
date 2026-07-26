@@ -75,14 +75,18 @@ SCORING_FIELD_VARIANT_WITNESS = (
 )
 ANCHOR_VALUE_GRAMMAR_WITNESS = (
     "Every Evidence Anchor value begins with the literal `<type>: <locator>` "
-    "grammar. Backticks or square brackets may enclose the whole value only as "
-    'a matched pair (for example, `text: §3 "short quote"` or '
-    '[`text: §3 "short quote"`]); nothing may appear between the type and '
-    "its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. "
-    "A `text:` anchor includes a matched pair of straight or curly double "
-    "quotes around an excerpt of at most 25 words. An `absence:` anchor uses "
-    "the exact grammar `absence: <where> — expected <item>; checked "
-    "<surfaces>`, with every placeholder replaced by non-empty content"
+    "grammar. An opening backtick or `[` immediately before `<type>` starts an "
+    "outer wrapper and requires its matching closer; nothing may appear "
+    "between the type and its colon, so `` `text`: §3 `` and `` `text` — §3 `` "
+    "are both invalid. Wrapper-like characters inside a locator are content "
+    "and must be locally balanced — a bracketed locator such as "
+    "`equation: Eq. [3]` and a locator naming inline code such as "
+    "``text: §3 \"quote\" per `df``` are valid. A `text:` anchor includes only "
+    "balanced pairs of straight or curly double quotes, with every quoted "
+    "excerpt at most 25 words. An `absence:` anchor uses the exact grammar "
+    "`absence: <where> — expected <item>; checked <surfaces>`, including the "
+    "literal single space after the semicolon and non-empty content for every "
+    "placeholder"
 )
 ANCHOR_VALIDATOR_REGEX_WITNESS = (
     r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
@@ -93,13 +97,19 @@ ANCHOR_QUOTE_REGEX_WITNESS = (
 )
 ANCHOR_ABSENCE_REGEX_WITNESS = (
     r'r"(?P<where>\S.*?)\s+—\s+expected\s+(?P<expected>\S.*?);"' "\n"
-    r'            r"\s*checked\s+(?P<surfaces>\S.*)"'
+    r'            r" checked\s+(?P<surfaces>\S.*)"'
 )
 ANCHOR_WRAPPER_WITNESSES = (
-    'if not (value.startswith("[") and value.endswith("]")):',
-    'if square_inner.startswith("[") or square_inner.endswith("]"):',
-    'if not (value.startswith("`") and value.endswith("`")):',
-    'if "`" in inner:',
+    'if value.startswith("["):',
+    'if not value.endswith("]"):',
+    'if value.startswith("`"):',
+    'if not value.endswith("`"):',
+)
+ANCHOR_CONTENT_BALANCE_WITNESSES = (
+    "if not _balanced_square_brackets(tail) or tail.count(\"`\") % 2:",
+    """tail.count('"') == 2 * straight_pairs""",
+    'tail.count("“") == curly_pairs',
+    'tail.count("”") == curly_pairs',
 )
 TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES = (
     "**Evidence Anchor**: [`<type>: <locator>`]\n"
@@ -334,6 +344,11 @@ def check(root: Path) -> list[str]:
         if witness not in checker:
             errors.append(
                 f"{PANEL_CHECKER}: anchor-wrapper witness missing: {witness}"
+            )
+    for witness in ANCHOR_CONTENT_BALANCE_WITNESSES:
+        if witness not in checker:
+            errors.append(
+                f"{PANEL_CHECKER}: anchor-content-balance witness missing: {witness}"
             )
     if (
         protocol_phase2 is None

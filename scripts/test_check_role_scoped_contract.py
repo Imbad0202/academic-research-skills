@@ -496,21 +496,45 @@ def test_anchor_validator_absence_regex_mutation_fails(tmp_path):
 def test_anchor_validator_wrapper_mutations_fail(tmp_path):
     replacements = (
         (
-            'if not (value.startswith("[") and value.endswith("]")):',
-            'if False and not (value.startswith("[") and value.endswith("]")):',
+            'if value.startswith("["):',
+            'if False and value.startswith("["):',
         ),
         (
-            'if square_inner.startswith("[") or square_inner.endswith("]"):',
-            'if False and (square_inner.startswith("[") '
-            'or square_inner.endswith("]")):',
+            'if not value.endswith("]"):',
+            'if False and not value.endswith("]"):',
         ),
         (
-            'if not (value.startswith("`") and value.endswith("`")):',
-            'if False and not (value.startswith("`") and value.endswith("`")):',
+            'if value.startswith("`"):',
+            'if False and value.startswith("`"):',
         ),
         (
-            'if "`" in inner:',
-            'if False and "`" in inner:',
+            'if not value.endswith("`"):',
+            'if False and not value.endswith("`"):',
+        ),
+    )
+    for index, (old, new) in enumerate(replacements):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.PANEL_CHECKER, old, new)
+        assert lint.check(root)
+
+
+def test_anchor_validator_content_balance_mutations_fail(tmp_path):
+    replacements = (
+        (
+            "if not _balanced_square_brackets(tail) or tail.count(\"`\") % 2:",
+            "if False:",
+        ),
+        (
+            """tail.count('"') == 2 * straight_pairs""",
+            """tail.count('"') >= 2 * straight_pairs""",
+        ),
+        (
+            'tail.count("“") == curly_pairs',
+            'tail.count("“") >= curly_pairs',
+        ),
+        (
+            'tail.count("”") == curly_pairs',
+            'tail.count("”") >= curly_pairs',
         ),
     )
     for index, (old, new) in enumerate(replacements):

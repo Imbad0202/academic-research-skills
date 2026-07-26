@@ -458,6 +458,10 @@ def test_nonmandatory_block_class_fails_phase_checker(tmp_path):
         "**Evidence Anchor**: absence: Methods — expected ; checked appendix",
         "### W1: missing checked surfaces\n**Severity**: Critical\n"
         "**Evidence Anchor**: absence: Methods — expected ethics statement; checked",
+        "### W1: missing literal separator space\n**Severity**: Critical\n"
+        "**Evidence Anchor**: absence: Methods — expected ethics statement;checked appendix",
+        "### W1: doubled separator space\n**Severity**: Critical\n"
+        "**Evidence Anchor**: absence: Methods — expected ethics statement;  checked appendix",
     ],
 )
 def test_critical_major_anchor_failures(body):
@@ -591,6 +595,10 @@ def test_indented_bullet_fields_still_enforce_anchor_gate():
         '[`text: §5 "short exact quote"`]',
         '[text: §5 "short exact quote"]',
         "text: §5 “short exact quote”",
+        "equation: Eq. [3]",
+        "[equation: Eq. [3]]",
+        'text: §5 "short exact quote" per `df`',
+        '`text: §5 "short exact quote" per `df``',
     ),
 )
 def test_whole_value_wrapped_template_anchor_is_normalised_and_accepted(anchor):
@@ -629,6 +637,7 @@ def test_type_only_wrapping_anchor_is_rejected(anchor):
         '[text: §5 "short exact quote"',
         'text: §5 "short exact quote"]',
         'text: §5 "short exact quote"`]',
+        '[text: §5 "short exact quote"] trailing]',
         '[[text: §5 "short exact quote"]]',
         '``text: §5 "short exact quote"``',
         '[`text: §5 "short exact quote"]',
@@ -651,6 +660,7 @@ def test_unpaired_or_repeated_whole_value_wrappers_are_rejected(anchor):
     (
         'text: §5 "short exact quote”',
         'text: §5 “short exact quote"',
+        'text: §5 "outer “inner”',
     ),
 )
 def test_hybrid_double_quote_pairs_are_rejected(anchor):

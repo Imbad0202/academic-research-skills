@@ -274,31 +274,34 @@ def _rendered_header_cell(cell: str) -> str:
     return re.sub(r"\s+", " ", rendered).strip().casefold()
 
 
+def _balanced_square_brackets(text: str) -> bool:
+    """Return whether square brackets are ordered and balanced in locator text."""
+    depth = 0
+    for char in text:
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0
+
+
 def validate_evidence_anchor(anchor: str, context: str) -> None:
     """Validate the shared finding-anchor grammar for either checker."""
     value = anchor.strip()
-    if value.startswith("[") or value.endswith("]"):
-        if not (value.startswith("[") and value.endswith("]")):
+    if value.startswith("["):
+        if not value.endswith("]"):
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: unpaired square wrapper]"
             )
-        square_inner = value[1:-1]
-        if square_inner.startswith("[") or square_inner.endswith("]"):
-            raise ReportError(
-                f"[ANCHOR-INVALID: {context}: repeated square wrapper]"
-            )
-        value = square_inner.strip()
-    if value.startswith("`") or value.endswith("`"):
-        if not (value.startswith("`") and value.endswith("`")):
+        value = value[1:-1].strip()
+    if value.startswith("`"):
+        if not value.endswith("`"):
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: unpaired backtick wrapper]"
             )
-        inner = value[1:-1]
-        if "`" in inner:
-            raise ReportError(
-                f"[ANCHOR-INVALID: {context}: repeated backtick wrapper]"
-            )
-        value = inner.strip()
+        value = value[1:-1].strip()
     match = re.match(
         r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"
         r"(?P<tail>\S.*)$",
@@ -308,26 +311,44 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
     if not match:
         tag = "ANCHOR-MISSING" if not value else "ANCHOR-INVALID"
         raise ReportError(f"[{tag}: {context}: expected typed anchor]")
+    tail = match.group("tail")
+    if not _balanced_square_brackets(tail) or tail.count("`") % 2:
+        raise ReportError(
+            f"[ANCHOR-INVALID: {context}: locator delimiters must be balanced]"
+        )
     if match.group("type").casefold() == "text":
-        quote = re.search(
+        quote_pairs = re.findall(
             r'"(?P<straight_quote>[^"]+)"|“(?P<curly_quote>[^”]+)”',
-            match.group("tail"),
+            tail,
         )
-        quote_text = (
-            quote.group("straight_quote") or quote.group("curly_quote")
-            if quote
-            else None
+        quote_texts = [
+            straight_quote or curly_quote
+            for straight_quote, curly_quote in quote_pairs
+        ]
+        straight_pairs = sum(bool(straight_quote)
+                             for straight_quote, _ in quote_pairs)
+        curly_pairs = sum(bool(curly_quote)
+                          for _, curly_quote in quote_pairs)
+        balanced_quotes = (
+            tail.count('"') == 2 * straight_pairs
+            and tail.count("“") == curly_pairs
+            and tail.count("”") == curly_pairs
         )
-        if not quote_text or len(quote_text.split()) > 25:
+        if (
+            not balanced_quotes
+            or not quote_texts
+            or any(not text.strip() or len(text.split()) > 25
+                   for text in quote_texts)
+        ):
             raise ReportError(
-                f"[ANCHOR-INVALID: {context}: text anchor needs a quoted "
-                "excerpt of at most 25 words]"
+                f"[ANCHOR-INVALID: {context}: text anchor needs balanced "
+                "quoted excerpts of at most 25 words]"
             )
     elif match.group("type").casefold() == "absence":
         absence = re.fullmatch(
             r"(?P<where>\S.*?)\s+—\s+expected\s+(?P<expected>\S.*?);"
-            r"\s*checked\s+(?P<surfaces>\S.*)",
-            match.group("tail"),
+            r" checked\s+(?P<surfaces>\S.*)",
+            tail,
             re.IGNORECASE,
         )
         if not absence:
