@@ -78,7 +78,8 @@ List every genuine strength you actually found — no minimum, no maximum (#574 
 
 ### S1: [Strength title]
 [Specific description. E.g., "The research design uses a quasi-experimental pretest-posttest control group design (p. X), effectively controlling for..."]
-**Evidence Anchor**: [`<type>: <locator>`] — replace the complete backticked value; never wrap `<type>` alone (see § Evidence Anchor Types)
+**Evidence Anchor**: [`<type>: <locator>`]
+[Replace the complete backticked value above; never wrap `<type>` alone. See § Evidence Anchor Types.]
 
 ### S2..Sn
 [Repeat the S1 structure for each additional strength — as many entries as the evidence supports, including zero.]
@@ -96,7 +97,8 @@ List every weakness you actually found — no minimum, no maximum (#574 A1). Do 
 
 ### W1: [Weakness title]
 **Problem**: [Specific description of the problem]
-**Evidence Anchor**: [`<type>: <locator>`] — replace the complete backticked value; never wrap `<type>` alone; REQUIRED with an adequate, applicable type for Critical/Major findings (#574 A2; see § Evidence Anchor Types)
+**Evidence Anchor**: [`<type>: <locator>`]
+[Replace the complete backticked value above; never wrap `<type>` alone. Critical/Major findings require an adequate, applicable type (#574 A2); see § Evidence Anchor Types.]
 **Why it matters**: [Explain the impact of this problem]
 **Suggestion**: [Specific improvement direction]
 **Severity**: [Critical / Major / Minor] — the Schema 6 enum (§ Severity Levels below); set by decision impact alone (#574 A3/B1)

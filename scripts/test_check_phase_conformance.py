@@ -581,6 +581,7 @@ def test_indented_bullet_fields_still_enforce_anchor_gate():
     (
         '`text: §5 "short exact quote"`',
         '[`text: §5 "short exact quote"`]',
+        "text: §5 “short exact quote”",
     ),
 )
 def test_whole_value_wrapped_template_anchor_is_normalised_and_accepted(anchor):

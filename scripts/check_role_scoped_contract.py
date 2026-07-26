@@ -87,6 +87,16 @@ ANCHOR_VALIDATOR_REGEX_WITNESS = (
     r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
     r'        r"(?P<tail>\S.*)$"'
 )
+ANCHOR_QUOTE_REGEX_WITNESS = """r'["“](?P<quote>[^"”]+)["”]'"""
+TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES = (
+    "**Evidence Anchor**: [`<type>: <locator>`]\n"
+    "[Replace the complete backticked value above; never wrap `<type>` alone. "
+    "See § Evidence Anchor Types.]",
+    "**Evidence Anchor**: [`<type>: <locator>`]\n"
+    "[Replace the complete backticked value above; never wrap `<type>` alone. "
+    "Critical/Major findings require an adequate, applicable type (#574 A2); "
+    "see § Evidence Anchor Types.]",
+)
 DA_FINDING_WITNESS = (
     "emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` "
     "section, always present even when empty. Each is a Markdown table whose "
@@ -303,15 +313,21 @@ def check(root: Path) -> list[str]:
             )
     if ANCHOR_VALIDATOR_REGEX_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-validator regex witness missing")
+    if ANCHOR_QUOTE_REGEX_WITNESS not in checker:
+        errors.append(f"{PANEL_CHECKER}: anchor-quote regex witness missing")
     if (
         protocol_phase2 is None
         or norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(protocol_phase2)
     ):
         errors.append(f"{PROTOCOL}: Phase 2 anchor-value grammar witness missing")
-    if norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in norm_ws(_read(root, TEMPLATE)):
+    template = _read(root, TEMPLATE)
+    if norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in norm_ws(template):
         errors.append(f"{TEMPLATE}: finding-field variant witness missing")
-    if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(_read(root, TEMPLATE)):
+    if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(template):
         errors.append(f"{TEMPLATE}: anchor-value grammar witness missing")
+    for witness in TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES:
+        if witness not in template:
+            errors.append(f"{TEMPLATE}: anchor placeholder witness missing")
     return errors
 
 

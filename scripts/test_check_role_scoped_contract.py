@@ -471,6 +471,29 @@ def test_anchor_validator_colon_regex_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_anchor_validator_curly_quote_regex_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        """r'["“](?P<quote>[^"”]+)["”]'""",
+        """r'"(?P<quote>[^"]+)"'""",
+    )
+    assert lint.check(root)
+
+
+def test_template_anchor_placeholder_tail_mutations_fail(tmp_path):
+    for index, witness in enumerate(lint.TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES):
+        root = mirror(tmp_path / str(index))
+        mutate(
+            root,
+            lint.TEMPLATE,
+            witness,
+            witness.replace("]\n[Replace", "] — Replace", 1),
+        )
+        assert lint.check(root)
+
+
 def test_da_old_no_scoring_clause_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
