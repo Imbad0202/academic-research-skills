@@ -110,7 +110,8 @@ def parse_phase1(
     )
     if subsection_dupes:
         raise ConformanceError(
-            f"[PHASE1-GRAMMAR: {path}: duplicate scoring-plan subsection]"
+            f"[PHASE1-GRAMMAR: {path}: duplicate scoring-plan subsection: "
+            f"{', '.join(sorted(subsection_dupes))}]"
         )
     commitments: dict[str, dict[str, str]] = {}
     warnings: list[str] = []

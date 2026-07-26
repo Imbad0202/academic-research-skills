@@ -134,6 +134,18 @@ def test_missing_fatal_trigger_fails():
         parse_plan("methodology", {"D1": {"what_triggers_fatal": None}})
 
 
+def test_duplicate_scoring_plan_diagnostic_names_dimension():
+    text = phase1_text("methodology").replace(
+        "\n[CONTRACT-ACKNOWLEDGED]",
+        "\n### D3: argumentative_coherence\n[CONTRACT-ACKNOWLEDGED]",
+    )
+    with pytest.raises(
+        phase.ConformanceError,
+        match=r"duplicate scoring-plan subsection: D3: argumentative_coherence",
+    ):
+        phase.parse_phase1("p1.md", text, FULL, "methodology")
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
