@@ -323,14 +323,25 @@ def test_da_unicode_format_normalization_mutations_fail(tmp_path):
             "rendered = rendered",
         ),
         (
-            "if not _is_default_ignorable(char)",
-            "if True",
+            "and not _is_default_ignorable(char)",
+            "and True",
         ),
     )
     for index, (old, new) in enumerate(mutations):
         root = mirror(tmp_path / str(index))
         mutate(root, lint.PANEL_CHECKER, old, new)
         assert lint.check(root)
+
+
+def test_da_default_ignorable_range_table_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "(0x202A, 0x202E)",
+        "(0x202A, 0x202D)",
+    )
+    assert lint.check(root)
 
 
 def test_da_nfkc_conditional_bypass_mutation_fails(tmp_path):

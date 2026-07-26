@@ -128,7 +128,8 @@ _DEFAULT_IGNORABLE_RANGES = (
     (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
     (0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x206F),
     (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF),
-    (0xFFA0, 0xFFA0), (0x1BCA0, 0x1BCA3), (0x1D173, 0x1D17A),
+    (0xFFA0, 0xFFA0), (0xFFF0, 0xFFF8), (0x1BCA0, 0x1BCA3),
+    (0x1D173, 0x1D17A),
     (0xE0000, 0xE0FFF),
 )
 
@@ -265,7 +266,9 @@ def _rendered_header_cell(cell: str) -> str:
     rendered = "".join(parser.parts)
     rendered = unicodedata.normalize("NFKC", rendered)
     rendered = "".join(
-        char for char in rendered if not _is_default_ignorable(char)
+        char for char in rendered
+        if unicodedata.category(char) != "Cf"
+        and not _is_default_ignorable(char)
     )
     rendered = re.sub(r"[*_~`]+", "", rendered)
     return re.sub(r"\s+", " ", rendered).strip().casefold()

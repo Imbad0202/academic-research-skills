@@ -958,7 +958,9 @@ def test_da_escaped_pipe_cell_evasion_fails_phase():
         phase.check_da_anchors(report)
 
 
-@pytest.mark.parametrize("invisible", ("\u200b", "\u034f", "\ufe0e", "\u3164"))
+@pytest.mark.parametrize(
+    "invisible", ("\u0600", "\u200b", "\u034f", "\ufe0e", "\u3164", "\ufff0")
+)
 def test_da_invisible_issue_payload_fails_phase(invisible):
     block = (
         "#### ADDITIONAL CRITICAL FINDINGS\n"

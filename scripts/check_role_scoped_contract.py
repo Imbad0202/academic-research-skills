@@ -82,6 +82,17 @@ DA_FINDING_WITNESS = (
     "declarations are forbidden: every DA Critical or Major issue must be a "
     "row in its matching band table. Do not create any other H4 issue-table band"
 )
+DEFAULT_IGNORABLE_RANGES_WITNESS = (
+    "_DEFAULT_IGNORABLE_RANGES = (\n"
+    "    (0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C),\n"
+    "    (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),\n"
+    "    (0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x206F),\n"
+    "    (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF),\n"
+    "    (0xFFA0, 0xFFA0), (0xFFF0, 0xFFF8), (0x1BCA0, 0x1BCA3),\n"
+    "    (0x1D173, 0x1D17A),\n"
+    "    (0xE0000, 0xE0FFF),\n"
+    ")"
+)
 PATTERNS = (
     "any <priority> dimension scores '<score>'",
     "any dimension with priority=<priority> scores '<score>'",
@@ -151,7 +162,9 @@ DA_PARSER_WITNESSES = (
     '    rendered = "".join(',
     "def _is_default_ignorable(char: str) -> bool:",
     "for start, end in _DEFAULT_IGNORABLE_RANGES",
-    "if not _is_default_ignorable(char)",
+    DEFAULT_IGNORABLE_RANGES_WITNESS,
+    'unicodedata.category(char) != "Cf"',
+    "and not _is_default_ignorable(char)",
     'rendered = re.sub(r"[*_~`]+", "", rendered)',
     'return re.sub(r"\\s+", " ", rendered).strip().casefold()',
     r'_DA_ISSUE_ID_RE = re.compile(r"^[CM][1-9]\d*$", re.IGNORECASE)',

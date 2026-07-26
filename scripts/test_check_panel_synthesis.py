@@ -847,7 +847,9 @@ def test_da_canonical_rows_allow_escaped_pipes():
     assert major == ['text: "quoted evidence" p. 1']
 
 
-@pytest.mark.parametrize("invisible", ("\u200b", "\u034f", "\ufe0e", "\u3164"))
+@pytest.mark.parametrize(
+    "invisible", ("\u0600", "\u200b", "\u034f", "\ufe0e", "\u3164", "\ufff0")
+)
 def test_da_invisible_issue_payload_fails_synthesis(invisible):
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
