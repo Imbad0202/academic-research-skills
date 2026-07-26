@@ -188,6 +188,12 @@ def test_v1_sections_fail_loudly():
         cps.parse_report("eic.md", text, FULL)
 
 
+def test_v1_bare_decision_line_fails_loudly():
+    text = report_text("eic") + "\neditorial_decision=reject\n"
+    with pytest.raises(cps.ReportError, match="V1-GRAMMAR-RETIRED"):
+        cps.parse_report("eic.md", text, FULL)
+
+
 def test_nonmandatory_block_cannot_carry_block_class():
     text = report_text("perspective", {"D4": "pass"}).replace(
         "### D4: cross_disciplinary_relevance\nscore: pass",
@@ -373,6 +379,26 @@ def test_da_major_section_drift_fails_in_synthesis_path(mutation):
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="DA-MAJOR-PARSE"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("|---|-------|-----------------|", ""),
+        ("|---|-------|-----------------|", "|--|-------|-----------------|"),
+        ("|---|-------|-----------------|", "|---|-------|"),
+    ],
+)
+def test_da_separator_drift_fails_in_synthesis_path(old, new):
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(old, new, 1)
+    text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED"}, marker_count=1
+    )
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="separator"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 

@@ -45,16 +45,24 @@ THRESHOLD_DRIFT_PATTERNS = (
     (
         "decision-linked boundary",
         re.compile(
-            r"(?i)(?:accept|minor revision|major revision|reject|decision)"
+            r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
             r".{0,80}(?:(?:>=|≥|>|at least|begins? at|from)\s*)"
             r"(?:80|65|50)\b"
+        ),
+    ),
+    (
+        "decision-linked trailing comparator",
+        re.compile(
+            r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
+            r".{0,80}\b(?:80|65|50)\s*points?\s*"
+            r"(?:or higher|and higher|or above|and above|\+)"
         ),
     ),
     (
         "boundary-linked decision",
         re.compile(
             r"(?i)\b(?:80|65|50)\s*points?.{0,80}"
-            r"(?:accept|minor revision|major revision|reject|decision)"
+            r"(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
         ),
     ),
     (
@@ -64,10 +72,10 @@ THRESHOLD_DRIFT_PATTERNS = (
     (
         "below-50 decision boundary",
         re.compile(
-            r"(?i)(?:(?:accept|minor revision|major revision|reject|decision)"
+            r"(?i)(?:(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
             r".{0,80}(?:<|below|under|less than)\s*50\b|"
             r"(?:<|below|under|less than)\s*50\b.{0,80}"
-            r"(?:accept|minor revision|major revision|reject|decision))"
+            r"(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?))"
         ),
     ),
 )

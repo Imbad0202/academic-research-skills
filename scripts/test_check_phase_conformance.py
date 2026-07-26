@@ -399,6 +399,28 @@ second"""
         phase.check_scoring_seat_anchors(report)
 
 
+def test_same_line_duplicate_severity_declarations_fail():
+    body = (
+        "### W1: hidden critical\n"
+        "**Severity**: Minor and **Severity**: Critical"
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_same_line_duplicate_anchor_declarations_fail():
+    body = (
+        "### W1: duplicate anchors\n"
+        "**Severity**: Critical\n"
+        '**Evidence Anchor**: text: "first" and '
+        '**Evidence Anchor**: text: "second"'
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="ANCHOR-MISSING"):
+        phase.check_scoring_seat_anchors(report)
+
+
 def test_indented_bullet_fields_still_enforce_anchor_gate():
     body = """### W1: indented finding
   - **Severity**: Critical
@@ -505,6 +527,23 @@ def test_da_ids_must_be_dense():
 def test_da_conforming_table_passes():
     report = panel.parse_report("da.md", da_text(ids=("C1", "C2")), FULL)
     phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("|---|-------|-----------------|", ""),
+        ("|---|-------|-----------------|", "|--|-------|-----------------|"),
+    ],
+)
+def test_da_separator_drift_fails_phase_checker(old, new):
+    report = panel.parse_report(
+        "da.md", da_text().replace(old, new, 1), FULL
+    )
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError), match="separator"
+    ):
+        phase.check_da_anchors(report)
 
 
 @pytest.mark.parametrize(

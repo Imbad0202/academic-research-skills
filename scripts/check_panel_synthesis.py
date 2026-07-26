@@ -207,6 +207,23 @@ def _parse_da_table_block(
             "Evidence Anchor columns]"
         )
     header = _markdown_cells(block[header_index])
+    if header.count("#") != 1 or header.count("Evidence Anchor") != 1:
+        raise ReportError(
+            f"[{parse_tag}: {path}: table header must contain exactly one # "
+            "and one Evidence Anchor column]"
+        )
+    separator_index = header_index + 1
+    separator = (
+        _markdown_cells(block[separator_index])
+        if separator_index < len(block) else []
+    )
+    if (
+        len(separator) != len(header)
+        or not all(re.fullmatch(r":?-{3,}:?", cell) for cell in separator)
+    ):
+        raise ReportError(
+            f"[{parse_tag}: {path}: missing or malformed Markdown table separator]"
+        )
     return block[header_index + 2:], header.index("#"), header.index(
         "Evidence Anchor"
     )
@@ -338,6 +355,11 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
                 f"[V1-GRAMMAR-RETIRED: {path}: ## {retired} is forbidden "
                 "under Schema 13.2]"
             )
+    if any(_DECISION_RE.fullmatch(line) for line in lines):
+        raise ReportError(
+            f"[V1-GRAMMAR-RETIRED: {path}: bare editorial_decision line is "
+            "forbidden under Schema 13.2]"
+        )
     role = exactly_one(lines, _ROLE_RE, "contract_role", path, "role")
     role_set = ROLE_SETS[contract["mode"]]
     if role not in role_set:

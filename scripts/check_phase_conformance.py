@@ -358,13 +358,15 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
             "Severity must have its own ### finding heading]"
         )
     for title, block in blocks.items():
-        severity_tokens = [line for line in block if "**Severity**" in line]
+        severity_declarations = sum(
+            line.count("**Severity**") for line in block
+        )
         severities = [
             match.group("severity") for line in block
             for match in _SEVERITY_RE.finditer(line)
         ]
         is_finding = _FINDING_H3_RE.fullmatch(title) is not None
-        if severity_tokens and not is_finding:
+        if severity_declarations and not is_finding:
             raise ConformanceError(
                 f"[FINDING-GRAMMAR: {report.path}: every finding with "
                 "Severity must have its own ### W<n>: <title> heading]"
@@ -376,19 +378,21 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
             )
         if not is_finding:
             continue
-        if len(severities) != 1 or len(severity_tokens) != 1:
+        if len(severities) != 1 or severity_declarations != 1:
             raise ConformanceError(
                 f"[FINDING-GRAMMAR: {report.path}: {title} must contain "
-                "exactly one parseable Severity line]"
+                "exactly one parseable Severity declaration]"
             )
         if severities[0] not in {"Critical", "Major"}:
             continue
-        anchor_tokens = [line for line in block if "**Evidence Anchor**" in line]
+        anchor_declarations = sum(
+            line.count("**Evidence Anchor**") for line in block
+        )
         anchors = [
             match.group("value") for line in block
             for match in _ANCHOR_RE.finditer(line)
         ]
-        if len(anchors) != 1 or len(anchor_tokens) != 1:
+        if len(anchors) != 1 or anchor_declarations != 1:
             raise ConformanceError(
                 f"[ANCHOR-MISSING: {report.path}: {title} "
                 f"{severities[0]} finding needs exactly one Evidence Anchor]"
