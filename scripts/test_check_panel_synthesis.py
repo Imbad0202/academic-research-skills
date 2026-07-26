@@ -202,6 +202,13 @@ def test_v1_bare_decision_line_fails_loudly(action):
         cps.parse_report("eic.md", text, FULL)
 
 
+@pytest.mark.parametrize("indent", ("  ", "\t"))
+def test_indented_v1_bare_decision_line_fails_loudly(indent):
+    text = report_text("eic") + f"\n{indent}editorial_decision=accept\n"
+    with pytest.raises(cps.ReportError, match="V1-GRAMMAR-RETIRED"):
+        cps.parse_report("eic.md", text, FULL)
+
+
 def test_fenced_v1_bare_decision_decoy_is_ignored():
     text = (
         report_text("eic")
@@ -432,6 +439,122 @@ def test_da_trailing_row_without_outer_pipes_fails_in_synthesis_path():
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
     with pytest.raises(cps.ReportError, match="outer-pipe-delimited"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+@pytest.mark.parametrize(
+    "old,new,fragment",
+    [
+        (
+            "| # | Issue | Evidence Anchor |",
+            "| # | # | Evidence Anchor |",
+            "exactly one #",
+        ),
+        (
+            "| # | Issue | Evidence Anchor |",
+            "| # | Evidence Anchor | Evidence Anchor |",
+            "exactly one #",
+        ),
+        (
+            "| # | Issue | Evidence Anchor |",
+            "| ID | Issue | Anchor |",
+            "missing table header",
+        ),
+        (
+            "| C2 | Issue |",
+            "| C1 | Issue |",
+            "duplicate CRITICAL ID",
+        ),
+        (
+            "| C2 | Issue |",
+            "| X2 | Issue |",
+            "invalid CRITICAL ID",
+        ),
+    ],
+)
+def test_da_header_and_critical_id_gates_fail_in_synthesis_path(
+    old, new, fragment
+):
+    panel_reports = reports(da_ids=("C1", "C2"))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(old, new, 1)
+    text, expressions = synthesis_for(
+        panel_reports,
+        {"C1": "VALIDATED", "C2": "VALIDATED"},
+        marker_count=2,
+    )
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match=fragment):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_empty_major_id_fails_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    marker = "|---|-------|-----------------|"
+    before, trailing = da_report.text.rsplit(marker, 1)
+    da_report.text = (
+        before + marker + '\n|  | Issue | text: "quote" |' + trailing
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(
+        (cps.ReportError, cps.SynthesisError), match="empty MAJOR # cell"
+    ):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_empty_critical_anchor_fails_in_synthesis_path():
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        '| C1 | Issue | text: "quoted evidence" p. 1 |',
+        "| C1 | Issue |  |",
+        1,
+    )
+    text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED"}, marker_count=1
+    )
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="ANCHOR-MISSING"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+@pytest.mark.parametrize(
+    "anchor,fragment",
+    [
+        ("", "ANCHOR-MISSING"),
+        ("see page 3", "ANCHOR-INVALID"),
+    ],
+)
+def test_da_major_anchor_fails_in_synthesis_path(anchor, fragment):
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    marker = "|---|-------|-----------------|"
+    before, trailing = da_report.text.rsplit(marker, 1)
+    da_report.text = (
+        before + marker + f"\n| M1 | Issue | {anchor} |" + trailing
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match=fragment):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_valid_major_anchor_passes_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    marker = "|---|-------|-----------------|"
+    before, trailing = da_report.text.rsplit(marker, 1)
+    da_report.text = (
+        before + marker
+        + '\n| M1 | Issue | text: "short quote" |'
+        + trailing
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    assert cps.layer2_check(
+        panel_reports, FULL, expressions, synthesis, []
+    ) == []
 
 
 def test_marker_forbidden_under_nonaccept():

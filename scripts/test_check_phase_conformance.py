@@ -526,7 +526,7 @@ def test_missing_review_body_fails_anchor_family():
         phase.check_scoring_seat_anchors(report)
 
 
-def da_text(ids=("C1",), anchors=None):
+def da_text(ids=("C1",), anchors=None, major_rows=()):
     anchors = anchors or {finding_id: 'text: "quote" p. 1' for finding_id in ids}
     rows = "\n".join(
         f"| {finding_id} | Issue | {anchors.get(finding_id, '')} |"
@@ -540,7 +540,7 @@ def da_text(ids=("C1",), anchors=None):
             "|---|-------|-----------------|\n" + rows + "\n\n"
             "#### MAJOR\n"
             "| # | Issue | Evidence Anchor |\n"
-            "|---|-------|-----------------|"
+            "|---|-------|-----------------|\n" + "\n".join(major_rows)
         ),
     )
 
@@ -559,6 +559,67 @@ def test_da_ids_must_be_dense():
 
 def test_da_conforming_table_passes():
     report = panel.parse_report("da.md", da_text(ids=("C1", "C2")), FULL)
+    phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize(
+    "old,new,fragment",
+    [
+        (
+            "| # | Issue | Evidence Anchor |",
+            "| # | # | Evidence Anchor |",
+            "exactly one #",
+        ),
+        (
+            "| # | Issue | Evidence Anchor |",
+            "| # | Evidence Anchor | Evidence Anchor |",
+            "exactly one #",
+        ),
+        (
+            "| # | Issue | Evidence Anchor |",
+            "| ID | Issue | Anchor |",
+            "missing table header",
+        ),
+        ("| C2 | Issue |", "| C1 | Issue |", "duplicate CRITICAL ID"),
+        ("| C2 | Issue |", "| X2 | Issue |", "invalid CRITICAL ID"),
+    ],
+)
+def test_da_header_and_critical_id_gates_fail_phase_checker(
+    old, new, fragment
+):
+    report = panel.parse_report(
+        "da.md", da_text(ids=("C1", "C2")).replace(old, new, 1), FULL
+    )
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match=fragment,
+    ):
+        phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize(
+    "row,fragment",
+    [
+        ("| M1 | Issue |  |", "ANCHOR-MISSING"),
+        ("| M1 | Issue | see page 3 |", "ANCHOR-INVALID"),
+        ('|  | Issue | text: "quote" |', "empty MAJOR # cell"),
+    ],
+)
+def test_da_major_row_gates_fail_phase_checker(row, fragment):
+    report = panel.parse_report("da.md", da_text(major_rows=(row,)), FULL)
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match=fragment,
+    ):
+        phase.check_da_anchors(report)
+
+
+def test_da_valid_major_row_passes_phase_checker():
+    report = panel.parse_report(
+        "da.md",
+        da_text(major_rows=('| M1 | Issue | text: "short quote" |',)),
+        FULL,
+    )
     phase.check_da_anchors(report)
 
 

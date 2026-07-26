@@ -101,7 +101,7 @@ _TRIGGER_RE = re.compile(r'^trigger: "(?P<value>[^"\n]+)"\s*$')
 _ABSTAIN_RE = re.compile(r"^abstain_reason: (?P<value>\S.*)\s*$")
 _DECISION_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
 _RETIRED_DECISION_RE = re.compile(
-    r"^editorial_decision=\S+\s*$", re.IGNORECASE
+    r"^\s*editorial_decision=\S+\s*$", re.IGNORECASE
 )
 
 
@@ -174,6 +174,30 @@ def _markdown_cells(line: str) -> list[str]:
     if not stripped.startswith("|") or not stripped.endswith("|"):
         return []
     return [cell.strip() for cell in stripped[1:-1].split("|")]
+
+
+def validate_evidence_anchor(anchor: str, context: str) -> None:
+    """Validate the shared finding-anchor grammar for either checker."""
+    value = anchor.strip()
+    if value.startswith("[") and value.endswith("]"):
+        value = value[1:-1].strip()
+    value = value.strip("`").strip()
+    match = re.match(
+        r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"
+        r"(?P<tail>\S.*)$",
+        value,
+        re.IGNORECASE,
+    )
+    if not match:
+        tag = "ANCHOR-MISSING" if not value else "ANCHOR-INVALID"
+        raise ReportError(f"[{tag}: {context}: expected typed anchor]")
+    if match.group("type").casefold() == "text":
+        quote = re.search(r'["“](?P<quote>[^"”]+)["”]', match.group("tail"))
+        if not quote or len(quote.group("quote").split()) > 25:
+            raise ReportError(
+                f"[ANCHOR-INVALID: {context}: text anchor needs a quoted "
+                "excerpt of at most 25 words]"
+            )
 
 
 def _parse_da_table_block(
@@ -277,7 +301,9 @@ def parse_da_tables(
             raise ReportError(
                 f"[DA-CRITICAL-PARSE: {path}: duplicate CRITICAL ID {finding_id}]"
             )
-        rows[finding_id] = cells[critical_anchor_col]
+        anchor = cells[critical_anchor_col]
+        validate_evidence_anchor(anchor, f"{path}:{finding_id}")
+        rows[finding_id] = anchor
 
     major_anchors: list[str] = []
     for cells in major_lines:
@@ -285,7 +311,9 @@ def parse_da_tables(
             raise ReportError(
                 f"[DA-MAJOR-PARSE: {path}: empty MAJOR # cell]"
             )
-        major_anchors.append(cells[major_anchor_col])
+        anchor = cells[major_anchor_col]
+        validate_evidence_anchor(anchor, f"{path}:DA MAJOR")
+        major_anchors.append(anchor)
     return rows, major_anchors
 
 

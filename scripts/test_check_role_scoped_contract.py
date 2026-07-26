@@ -149,6 +149,28 @@ def test_anchor_declaration_sentinel_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_parser_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
+        'header.count("#") < 1 or header.count("Evidence Anchor") < 1',
+    )
+    assert lint.check(root)
+
+
+def test_da_separator_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        're.fullmatch(r":?-{3,}:?", cell)',
+        're.fullmatch(r".*", cell)',
+    )
+    assert lint.check(root)
+
+
 def test_template_field_variant_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

@@ -47,7 +47,8 @@ THRESHOLD_DRIFT_PATTERNS = (
         "decision-linked boundary",
         re.compile(
             r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
-            r".{0,80}(?:(?:>=|≥|>|at least|begins? at|starts? at|from)\s*)"
+            r".{0,80}(?:(?:>=|≥|>|at least|no lower than|begins? at|"
+            r"starts? at|from)\s*)"
             r"(?:80|65|50)\b"
         ),
     ),
@@ -56,7 +57,7 @@ THRESHOLD_DRIFT_PATTERNS = (
         re.compile(
             r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
             r".{0,80}\b(?:80|65|50)(?:\s+points?)?\s*"
-            r"(?:or higher|and higher|or above|and above|\+)"
+            r"(?:(?:or|and)\s+(?:higher|above|better|greater|stronger)|\+)"
         ),
     ),
     (
@@ -84,8 +85,10 @@ THRESHOLD_DRIFT_PATTERNS = (
         "numeric decision range",
         re.compile(
             r"(?i)(?:(?:accept(?:ance)?|minor revision|major revision|"
-            r"reject(?:ion)?).{0,80}\b(?:65|50)\s*[-–—]\s*(?:79|64)\b|"
-            r"\b(?:65|50)\s*[-–—]\s*(?:79|64)\b.{0,80}"
+            r"reject(?:ion)?).{0,80}\b(?:65|50)"
+            r"(?:\s*[-–—]\s*|\s+(?:to|through)\s+)(?:79|64)\b|"
+            r"\b(?:65|50)(?:\s*[-–—]\s*|\s+(?:to|through)\s+)"
+            r"(?:79|64)\b.{0,80}"
             r"(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?))"
         ),
     ),
@@ -93,8 +96,8 @@ THRESHOLD_DRIFT_PATTERNS = (
         "below-50 decision boundary",
         re.compile(
             r"(?i)(?:(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
-            r".{0,80}(?:<|below|under|less than)\s*50\b|"
-            r"(?:<|below|under|less than)\s*50\b.{0,80}"
+            r".{0,80}(?:<|below|under|beneath|less than)\s*50\b|"
+            r"(?:<|below|under|beneath|less than)\s*50\b.{0,80}"
             r"(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?))"
         ),
     ),
@@ -106,12 +109,17 @@ THRESHOLD_ATOM_RE = re.compile(
     r"(?ix)"
     r"(?:"
     r"(?:>=|≥|>|<=|≤|<|at\s+least|at\s+or\s+above|no\s+less\s+than|"
+    r"no\s+lower\s+than|"
     r"minimum(?:\s+of)?|begins?\s+at|starts?\s+at|opens?\s+at|from|"
-    r"below|under|less\s+than)\s*(?:80|65|50)\b"
+    r"below|under|beneath|less\s+than)\s*(?:80|65|50)\b"
     r"|(?<![\d.])(?:80|65|50)(?:\s+points?)?\s*"
-    r"(?:(?:or|and)\s+(?:higher|above|more|over|up)|\+)"
-    r"|(?<![\d.])(?:80|65|50)\s*[-–—]\s*(?:100|79|64)\b"
+    r"(?:(?:or|and)\s+(?:higher|above|more|over|up|better|greater|stronger)|\+)"
+    r"|(?<![\d.])(?:80|65|50)"
+    r"(?:\s*[-–—]\s*|\s+(?:to|through)\s+)(?:100|79|64)\b"
     r"|(?<![\d.])(?:80|65|50)\s+out\s+of\s+100\b"
+    r"|(?<![\d.])(?:80|65|50)\s*/\s*100\b"
+    r"|(?:score|average|rubric|composite|threshold|cutoff|band)"
+    r"(?:\s+score)?\s*(?:of|is|:|=)?\s*(?:80|65|50)\b"
     r"|(?<![\d.])(?:80|65|50)\s+points?\b"
     r")"
 )

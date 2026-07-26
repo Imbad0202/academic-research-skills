@@ -23,10 +23,6 @@ import check_panel_synthesis as panel  # noqa: E402
 EXIT_PASS = 0
 EXIT_CONTRACT = 2
 EXIT_CONFORMANCE = 3
-ANCHOR_TYPES = frozenset({
-    "text", "table", "figure", "equation", "dataset", "absence"
-})
-
 _FIELD_PATTERNS = {
     "dimension_id": re.compile(r"^dimension_id: (?P<value>D\d+)$"),
     "what_to_look_for": re.compile(r"^what_to_look_for: (?P<value>\S.*)$"),
@@ -298,33 +294,10 @@ def check_trigger_binding(
 
 
 def _validate_anchor(anchor: str, context: str) -> None:
-    anchor = anchor.strip()
-    if anchor.startswith("[") and anchor.endswith("]"):
-        anchor = anchor[1:-1].strip()
-    anchor = anchor.strip("`").strip()
-    match = re.match(
-        r"^(?P<type>text|table|figure|equation|dataset|absence):\s*(?P<tail>\S.*)$",
-        anchor,
-        re.IGNORECASE,
-    )
-    if not match:
-        raise ConformanceError(
-            f"[ANCHOR-INVALID: {context}: expected typed anchor]"
-        )
-    anchor_type = match.group("type").casefold()
-    tail = match.group("tail")
-    if anchor_type == "text":
-        quote = re.search(r'["“](?P<quote>[^"”]+)["”]', tail)
-        if not quote or len(quote.group("quote").split()) > 25:
-            raise ConformanceError(
-                f"[ANCHOR-INVALID: {context}: text anchor needs a quoted "
-                "excerpt of at most 25 words]"
-            )
-    if anchor_type == "absence" and not tail.strip():
-        raise ConformanceError(
-            f"[ANCHOR-INVALID: {context}: absence anchor must name checked "
-            "surfaces]"
-        )
+    try:
+        panel.validate_evidence_anchor(anchor, context)
+    except panel.ReportError as exc:
+        raise ConformanceError(str(exc)) from exc
 
 
 def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
@@ -410,7 +383,10 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
 
 
 def check_da_anchors(report: panel.ReviewerReport) -> None:
-    rows, major_anchors = panel.parse_da_tables(report.text, report.path)
+    try:
+        rows, major_anchors = panel.parse_da_tables(report.text, report.path)
+    except panel.ReportError as exc:
+        raise ConformanceError(str(exc)) from exc
     expected = [f"C{index}" for index in range(1, len(rows) + 1)]
     if list(rows) != expected:
         raise ConformanceError(

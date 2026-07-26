@@ -116,6 +116,15 @@ PHASE_FINDING_REGEX_WITNESSES = (
     r'_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor(?:\*\*)?\s*:")',
     r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
 )
+DA_PARSER_WITNESSES = (
+    'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
+    're.fullmatch(r":?-{3,}:?", cell)',
+    're.fullmatch(r"C[1-9]\\d*", finding_id)',
+    "if finding_id in rows:",
+    "if not cells[major_id_col]:",
+    "validate_evidence_anchor(anchor, f\"{path}:{finding_id}\")",
+    "validate_evidence_anchor(anchor, f\"{path}:DA MAJOR\")",
+)
 
 
 def _read(root: Path, rel: str) -> str:
@@ -205,6 +214,11 @@ def check(root: Path) -> list[str]:
         if witness not in phase_checker:
             errors.append(
                 f"{PHASE_CHECKER}: finding regex witness missing: {witness}"
+            )
+    for witness in DA_PARSER_WITNESSES:
+        if witness not in checker:
+            errors.append(
+                f"{PANEL_CHECKER}: DA parser witness missing: {witness}"
             )
     if norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in norm_ws(_read(root, TEMPLATE)):
         errors.append(f"{TEMPLATE}: finding-field variant witness missing")

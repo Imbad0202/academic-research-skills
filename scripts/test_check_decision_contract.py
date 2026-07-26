@@ -131,6 +131,13 @@ def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
         "Accept requires 80 points.",
         "At or above 80, the decision is Accept.",
         "The Accept band opens at 80 points.",
+        "| Accept | 80 or better |",
+        "Accept: no lower than 80.",
+        "Minor Revision spans 65 through 79.",
+        "Major Revision covers the 50 to 64 band.",
+        "Accept 80/100 and above the line.",
+        "Reject when the score falls beneath 50.",
+        "A rubric score of 80 qualifies for Accept.",
     ),
 )
 def test_equivalent_threshold_wording_on_live_surface_fails(tmp_path, wording):
@@ -193,6 +200,18 @@ def test_unrelated_numeric_range_does_not_false_positive(tmp_path):
         lint.STANDARDS,
         "## 0. Decision Authority by Mode",
         "The panel reviewed 50 - 64 submissions before making a decision.\n\n"
+        "## 0. Decision Authority by Mode",
+    )
+    assert lint.check(root) == []
+
+
+def test_unrelated_word_range_does_not_false_positive(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.STANDARDS,
+        "## 0. Decision Authority by Mode",
+        "The audit covered 50 to 64 submissions before deliberation.\n\n"
         "## 0. Decision Authority by Mode",
     )
     assert lint.check(root) == []
