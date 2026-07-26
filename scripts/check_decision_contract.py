@@ -9,6 +9,7 @@ Exit 0 pass / 1 drift / 2 missing input.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -73,6 +74,13 @@ THRESHOLD_DRIFT_PATTERNS = (
         ),
     ),
     (
+        "decision-linked labelled score",
+        re.compile(
+            r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
+            r"\s*(?::|=|[-–—])\s*(?:80|65|50)(?:\s+points?)?\b"
+        ),
+    ),
+    (
         "numeric decision range",
         re.compile(
             r"(?i)(?:(?:accept(?:ance)?|minor revision|major revision|"
@@ -91,10 +99,98 @@ THRESHOLD_DRIFT_PATTERNS = (
         ),
     ),
 )
+DECISION_LABEL_RE = re.compile(
+    r"(?i)(?:accept(?:ance)?|minor revision|major revision|reject(?:ion)?)"
+)
+THRESHOLD_ATOM_RE = re.compile(
+    r"(?ix)"
+    r"(?:"
+    r"(?:>=|≥|>|<=|≤|<|at\s+least|begins?\s+at|starts?\s+at|from|"
+    r"below|under|less\s+than)\s*(?:80|65|50)\b"
+    r"|(?<![\d.])(?:80|65|50)(?:\s+points?)?\s*"
+    r"(?:or\s+(?:higher|above)|and\s+(?:higher|above)|\+)"
+    r"|(?<![\d.])(?:80|65|50)\s*[-–—]\s*(?:100|79|64)\b"
+    r"|(?<![\d.])(?:80|65|50)\s+out\s+of\s+100\b"
+    r")"
+)
+HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<title>\S.*)$")
+SCHEMA6_ENUM_ROW = (
+    '| `editorial_decision` | enum | `"Accept"` / `"Minor Revision"` / '
+    '`"Major Revision"` / `"Reject"` |'
+)
 
 
 def _read(root: Path, rel: str) -> str:
     return read_or_exit2(root, rel)
+
+
+def _panel_action_enum(panel: str) -> tuple[str, ...] | None:
+    """Return the literal ACTION_ENUM, rejecting aliases and computed values."""
+    try:
+        tree = ast.parse(panel)
+    except SyntaxError:
+        return None
+    matches: list[tuple[str, ...]] = []
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == "ACTION_ENUM"
+            for target in node.targets
+        ):
+            continue
+        value = node.value
+        if not (
+            isinstance(value, ast.Call)
+            and isinstance(value.func, ast.Name)
+            and value.func.id == "frozenset"
+            and len(value.args) == 1
+            and not value.keywords
+            and isinstance(value.args[0], ast.Set)
+        ):
+            return None
+        elements = value.args[0].elts
+        if not all(
+            isinstance(element, ast.Constant) and isinstance(element.value, str)
+            for element in elements
+        ):
+            return None
+        matches.append(tuple(element.value for element in elements))
+    return matches[0] if len(matches) == 1 else None
+
+
+def _heading_threshold_drift(text: str) -> bool:
+    """Detect threshold atoms anywhere inside a decision-labelled section."""
+    active_level: int | None = None
+    for line in text.splitlines():
+        heading = HEADING_RE.match(line)
+        if heading:
+            level = len(heading.group("marks"))
+            if active_level is not None and level <= active_level:
+                active_level = None
+            if DECISION_LABEL_RE.search(heading.group("title")):
+                active_level = level
+            continue
+        if active_level is not None and THRESHOLD_ATOM_RE.search(line):
+            return True
+    return False
+
+
+def _inline_threshold_drift(text: str) -> bool:
+    """Detect a decision label and threshold atom within 80 chars on one line."""
+    for line in text.splitlines():
+        labels = tuple(DECISION_LABEL_RE.finditer(line))
+        atoms = tuple(THRESHOLD_ATOM_RE.finditer(line))
+        for label in labels:
+            for atom in atoms:
+                gap = max(
+                    atom.start() - label.end(),
+                    label.start() - atom.end(),
+                    0,
+                )
+                if gap <= 80:
+                    return True
+    return False
 
 
 def check(root: Path) -> list[str]:
@@ -106,9 +202,10 @@ def check(root: Path) -> list[str]:
         errors.append(f"{SCHEMA}: branch 4 enum drift: {branch4}")
 
     panel = _read(root, PANEL)
-    for action in ACTIONS:
-        if panel.count(f'"{action}"') < 1:
-            errors.append(f"{PANEL}: ACTION_ENUM missing {action}")
+    panel_actions = _panel_action_enum(panel)
+    if panel_actions is None or len(panel_actions) != len(ACTIONS) or \
+            set(panel_actions) != set(ACTIONS):
+        errors.append(f"{PANEL}: ACTION_ENUM must be exactly {list(ACTIONS)}")
 
     for rel in CONTRACTS:
         actions = {
@@ -125,9 +222,10 @@ def check(root: Path) -> list[str]:
     if handoff is None:
         errors.append(f"{HANDOFF}: Schema 6 section missing")
     else:
-        for value in VALUES:
-            if value not in handoff:
-                errors.append(f"{HANDOFF}: Schema 6 decision enum missing {value}")
+        if handoff.count(SCHEMA6_ENUM_ROW) != 1:
+            errors.append(
+                f"{HANDOFF}: Schema 6 decision enum must be exactly {list(VALUES)}"
+            )
 
     authority = heading_section(_read(root, STANDARDS), "## 0. Decision Authority by Mode")
     if authority is None:
@@ -185,6 +283,11 @@ def check(root: Path) -> list[str]:
                 errors.append(
                     f"{rel}: {label} must reside only in {QUALITY}"
                 )
+        if _inline_threshold_drift(text) or _heading_threshold_drift(text):
+            errors.append(
+                f"{rel}: decision-linked threshold variant must reside only "
+                f"in {QUALITY}"
+            )
     standards = _read(root, STANDARDS)
     for retired in ("4.0", "3.5", "2.5-3.4", "< 2.5", "score = 1", "score = 2"):
         if retired in standards:

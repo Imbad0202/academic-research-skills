@@ -190,10 +190,14 @@ def test_v1_sections_fail_loudly():
 
 @pytest.mark.parametrize(
     "action",
-    ("reject", "Reject", "reject-or-major-revision", "unknown_v1_value"),
+    (
+        "reject", "Reject", "reject-or-major-revision", "unknown_v1_value",
+        "mixed_key_case",
+    ),
 )
 def test_v1_bare_decision_line_fails_loudly(action):
-    text = report_text("eic") + f"\neditorial_decision={action}\n"
+    key = "Editorial_Decision" if action == "mixed_key_case" else "editorial_decision"
+    text = report_text("eic") + f"\n{key}={action}\n"
     with pytest.raises(cps.ReportError, match="V1-GRAMMAR-RETIRED"):
         cps.parse_report("eic.md", text, FULL)
 

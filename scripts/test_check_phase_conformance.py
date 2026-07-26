@@ -443,6 +443,17 @@ def test_same_line_duplicate_minor_anchor_declarations_fail():
         phase.check_scoring_seat_anchors(report)
 
 
+def test_malformed_minor_anchor_declaration_fails():
+    body = (
+        "### W1: malformed optional anchor\n"
+        "**Severity**: Minor\n"
+        '**Evidence Anchor:** text: "quote"'
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
+        phase.check_scoring_seat_anchors(report)
+
+
 def test_indented_bullet_fields_still_enforce_anchor_gate():
     body = """### W1: indented finding
   - **Severity**: Critical

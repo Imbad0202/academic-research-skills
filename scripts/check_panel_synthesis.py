@@ -100,7 +100,9 @@ _BLOCK_CLASS_RE = re.compile(r"^block_class: (?P<value>fatal|repairable)\s*$")
 _TRIGGER_RE = re.compile(r'^trigger: "(?P<value>[^"\n]+)"\s*$')
 _ABSTAIN_RE = re.compile(r"^abstain_reason: (?P<value>\S.*)\s*$")
 _DECISION_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
-_RETIRED_DECISION_RE = re.compile(r"^editorial_decision=\S+\s*$")
+_RETIRED_DECISION_RE = re.compile(
+    r"^editorial_decision=\S+\s*$", re.IGNORECASE
+)
 
 
 def strip_fences(text: str) -> list[str]:

@@ -51,6 +51,7 @@ _ANCHOR_RE = re.compile(
     r"(?P<value>[^|]+)"
 )
 _SEVERITY_DECL_RE = re.compile(r"\*\*Severity(?:\*\*)?\s*:")
+_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor(?:\*\*)?\s*:")
 _FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")
 
 
@@ -385,7 +386,7 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
                 "exactly one parseable Severity declaration]"
             )
         anchor_declarations = sum(
-            line.count("**Evidence Anchor**") for line in block
+            len(_ANCHOR_DECL_RE.findall(line)) for line in block
         )
         anchors = [
             match.group("value") for line in block

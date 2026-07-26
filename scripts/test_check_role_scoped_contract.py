@@ -138,6 +138,17 @@ def test_severity_declaration_sentinel_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_anchor_declaration_sentinel_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PHASE_CHECKER,
+        r'_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor(?:\*\*)?\s*:")',
+        r'_ANCHOR_DECL_RE = re.compile(r"\*\*Evidence Anchor\*\*:")',
+    )
+    assert lint.check(root)
+
+
 def test_template_field_variant_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
