@@ -19,6 +19,7 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
@@ -118,6 +119,9 @@ _DA_ISSUE_ID_RE = re.compile(r"^[CM][1-9]\d*$", re.IGNORECASE)
 _DA_TYPED_ANCHOR_RE = re.compile(
     r"^(?:text|table|figure|equation|dataset|absence)\s*:",
     re.IGNORECASE,
+)
+_RAW_HTML_TABLE_RE = re.compile(
+    r"<\s*/?\s*(?:table|thead|tbody|tr|th|td)\b", re.IGNORECASE
 )
 
 
@@ -246,6 +250,10 @@ def _rendered_header_cell(cell: str) -> str:
     parser = _VisibleTextHTMLParser()
     parser.feed(rendered)
     rendered = "".join(parser.parts)
+    rendered = unicodedata.normalize("NFKC", rendered)
+    rendered = "".join(
+        char for char in rendered if unicodedata.category(char) != "Cf"
+    )
     rendered = re.sub(r"[*_~`]+", "", rendered)
     return re.sub(r"\s+", " ", rendered).strip().casefold()
 
@@ -384,6 +392,11 @@ def parse_da_tables(
             continue
         if in_canonical_da_band:
             continue
+        if _RAW_HTML_TABLE_RE.search(candidate):
+            raise ReportError(
+                f"[DA-TABLE-PARSE: {path}: unexpected raw HTML issue-table "
+                "surface outside the canonical CRITICAL and MAJOR bands]"
+            )
         raw_cells = _possible_markdown_cells(candidate)
         cells = {_rendered_header_cell(cell) for cell in raw_cells}
         issue_payload = any(

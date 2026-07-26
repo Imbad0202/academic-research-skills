@@ -958,6 +958,32 @@ def test_da_escaped_pipe_cell_evasion_fails_phase():
         phase.check_da_anchors(report)
 
 
+def test_da_zero_width_issue_payload_fails_phase():
+    zwsp = "\u200b"
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        f"| #{zwsp} | Issue | Evidence{zwsp} Anchor |\n"
+        "|---|---|---|\n"
+        f'| C{zwsp}9 | impossible df | text{zwsp}: "n=41" p. 4 |\n\n'
+    )
+    text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table"):
+        phase.check_da_anchors(report)
+
+
+def test_da_raw_html_issue_table_fails_phase():
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "<table><tr><th>ID</th><th>Evidence</th></tr>"
+        "<tr><td>C9</td><td>text: n=41</td></tr></table>\n\n"
+    )
+    text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="raw HTML issue-table"):
+        phase.check_da_anchors(report)
+
+
 @pytest.mark.parametrize(
     "row,fragment",
     [

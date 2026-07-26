@@ -135,6 +135,7 @@ DA_PARSER_WITNESSES = (
     "def _split_gfm_cells(row: str) -> list[str]:",
     'if char == "|":',
     "if backslashes % 2 == 0:",
+    "return _split_gfm_cells(stripped[1:-1])",
     "return _split_gfm_cells(stripped)",
     "for candidate in lines:",
     'current_h2 == "Review Body"',
@@ -146,6 +147,8 @@ DA_PARSER_WITNESSES = (
     r'rendered = re.sub(r"\[([^\]]+)\]", r"\1", rendered)',
     "parser = _VisibleTextHTMLParser()",
     "parser.feed(rendered)",
+    'rendered = unicodedata.normalize("NFKC", rendered)',
+    'unicodedata.category(char) != "Cf"',
     'rendered = re.sub(r"[*_~`]+", "", rendered)',
     'return re.sub(r"\\s+", " ", rendered).strip().casefold()',
     r'_DA_ISSUE_ID_RE = re.compile(r"^[CM][1-9]\d*$", re.IGNORECASE)',
@@ -155,6 +158,7 @@ DA_PARSER_WITNESSES = (
     "            or _DA_TYPED_ANCHOR_RE.search(cell)\n"
     "            for cell in cells\n"
     "        )",
+    "_RAW_HTML_TABLE_RE.search(candidate)",
     'if "#" in cells or "evidence anchor" in cells or issue_payload:',
     "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',

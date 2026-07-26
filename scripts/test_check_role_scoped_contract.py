@@ -305,6 +305,45 @@ def test_da_gfm_escaped_pipe_splitter_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_canonical_splitter_callsite_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "return _split_gfm_cells(stripped[1:-1])",
+        'return [cell.strip() for cell in stripped[1:-1].split("|")]',
+    )
+    assert lint.check(root)
+
+
+def test_da_unicode_format_normalization_mutations_fail(tmp_path):
+    mutations = (
+        (
+            'rendered = unicodedata.normalize("NFKC", rendered)',
+            "rendered = rendered",
+        ),
+        (
+            'unicodedata.category(char) != "Cf"',
+            "True",
+        ),
+    )
+    for index, (old, new) in enumerate(mutations):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.PANEL_CHECKER, old, new)
+        assert lint.check(root)
+
+
+def test_da_raw_html_table_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "_RAW_HTML_TABLE_RE.search(candidate)",
+        "False",
+    )
+    assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

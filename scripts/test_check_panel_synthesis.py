@@ -835,6 +835,54 @@ def test_da_escaped_pipe_cell_evasion_fails_synthesis():
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+def test_da_canonical_rows_allow_escaped_pipes():
+    text = report_text("da", da_ids=("C1",)).replace(
+        "| C1 | Issue |",
+        r"| C1 | Issue \| detail |",
+        1,
+    )
+    text += "\n" + r'| M1 | Issue \| detail | text: "quoted evidence" p. 1 |'
+    critical, major = cps.parse_da_tables(text, "da.md")
+    assert list(critical) == ["C1"]
+    assert major == ['text: "quoted evidence" p. 1']
+
+
+def test_da_zero_width_issue_payload_fails_synthesis():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    zwsp = "\u200b"
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        f"| #{zwsp} | Issue | Evidence{zwsp} Anchor |\n"
+        "|---|---|---|\n"
+        f'| C{zwsp}9 | impossible df | text{zwsp}: "n=41" p. 4 |\n\n'
+    )
+    da_report.text = da_report.text.replace(
+        "#### MAJOR", block + "#### MAJOR", 1
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_raw_html_issue_table_fails_synthesis():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    block = (
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        "<table><tr><th>ID</th><th>Evidence</th></tr>"
+        "<tr><td>C9</td><td>text: n=41</td></tr></table>\n\n"
+    )
+    da_report.text = da_report.text.replace(
+        "#### MAJOR", block + "#### MAJOR", 1
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="raw HTML issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
 def test_da_empty_major_id_fails_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
