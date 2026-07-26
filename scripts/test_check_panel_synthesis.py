@@ -745,6 +745,32 @@ def test_da_partial_or_formatted_issue_header_fails_synthesis(header):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+@pytest.mark.parametrize(
+    "header",
+    (
+        "| ID | Issue | [Evidence Anchor][anchor] |",
+        r"| \# | Issue | Evidence |",
+        '| ID | Issue | <span title="x>y">Evidence Anchor</span> |',
+    ),
+)
+def test_da_commonmark_visible_issue_header_fails_synthesis(header):
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        f"{header}\n"
+        "|---|-------|-----------------|\n"
+        '| C9 | impossible df | text: "n=41" p. 4 |\n\n'
+        "#### MAJOR",
+        1,
+    )
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="unexpected issue-table"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
 def test_da_empty_major_id_fails_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")

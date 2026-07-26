@@ -20,6 +20,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -202,11 +203,25 @@ def _possible_markdown_cells(line: str) -> list[str]:
     return [cell.strip() for cell in stripped.split("|")]
 
 
+class _VisibleTextHTMLParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+
 def _rendered_header_cell(cell: str) -> str:
     """Normalize common inline Markdown wrappers to their visible cell text."""
-    rendered = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", cell)
-    rendered = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", rendered)
-    rendered = re.sub(r"</?[A-Za-z][^>]*>", "", rendered)
+    rendered = re.sub(r"\\([^\w\s])", r"\1", cell)
+    rendered = re.sub(
+        r"!?\[([^\]]*)\](?:\([^)]+\)|\[[^\]]*\])", r"\1", rendered
+    )
+    rendered = re.sub(r"\[([^\]]+)\]", r"\1", rendered)
+    parser = _VisibleTextHTMLParser()
+    parser.feed(rendered)
+    rendered = "".join(parser.parts)
     rendered = re.sub(r"[*_~`]+", "", rendered)
     return re.sub(r"\s+", " ", rendered).strip().casefold()
 

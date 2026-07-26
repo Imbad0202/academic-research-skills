@@ -240,6 +240,24 @@ def test_da_header_inline_markup_normalization_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_header_commonmark_reduction_mutations_fail(tmp_path):
+    mutations = (
+        (
+            r'rendered = re.sub(r"\\([^\w\s])", r"\1", cell)',
+            "rendered = cell",
+        ),
+        (
+            r'r"!?\[([^\]]*)\](?:\([^)]+\)|\[[^\]]*\])", r"\1", rendered',
+            r'r"never-match", r"\1", rendered',
+        ),
+        ("parser.feed(rendered)", 'parser.feed("")'),
+    )
+    for index, (old, new) in enumerate(mutations):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.PANEL_CHECKER, old, new)
+        assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
