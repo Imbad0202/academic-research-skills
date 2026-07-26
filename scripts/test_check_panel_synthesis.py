@@ -622,6 +622,28 @@ def test_da_pre_table_prose_passes_in_synthesis_path():
     ) == []
 
 
+def test_da_bare_comment_closer_passes_in_synthesis_path():
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = da_report.text.replace(
+        "#### CRITICAL",
+        "The reported N moves 41 --> 38 without explanation.\n\n"
+        "#### CRITICAL",
+        1,
+    ).replace(
+        'text: "quoted evidence" p. 1',
+        'text: "N moves 41 --> 38" p. 1',
+        1,
+    )
+    synthesis_text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED"}, marker_count=1
+    )
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    assert cps.layer2_check(
+        panel_reports, FULL, expressions, synthesis, []
+    ) == []
+
+
 def test_da_post_critical_table_prose_fails_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
@@ -636,24 +658,28 @@ def test_da_post_critical_table_prose_fails_in_synthesis_path():
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
+_DA_TERMINAL_LATE_SURFACES = (
+    '| C2 | Late issue | text: "late quoted evidence" p. 2 |',
+    "| X9 | Bogus issue |  |",
+    (
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
+        "| C9 | Shadow issue |  |"
+    ),
+    'C2 | Late issue | text: "late quoted evidence" p. 2',
+    '— | Late issue | text: "late quoted evidence"',
+    "# | Issue | Evidence Anchor",
+    "C2\nLate issue without pipes\nfigure: Figure 2",
+    "- C2\n- Late critical issue\n- figure: Figure 2",
+    "> Ordinary post-table commentary",
+    "##### Additional commentary",
+    "### Closing note\nOrdinary late prose",
+)
+
+
 @pytest.mark.parametrize(
     "late_surface",
-    (
-        '| C2 | Late issue | text: "late quoted evidence" p. 2 |',
-        "| X9 | Bogus issue |  |",
-        (
-            "| # | Issue | Evidence Anchor |\n"
-            "|---|-------|-----------------|\n"
-            "| C9 | Shadow issue |  |"
-        ),
-        'C2 | Late issue | text: "late quoted evidence" p. 2',
-        '— | Late issue | text: "late quoted evidence"',
-        "# | Issue | Evidence Anchor",
-        "C2\nLate issue without pipes\nfigure: Figure 2",
-        "- C2\n- Late critical issue\n- figure: Figure 2",
-        "> Ordinary post-table commentary",
-        "##### Additional commentary",
-    ),
+    _DA_TERMINAL_LATE_SURFACES,
 )
 def test_da_post_boundary_table_surfaces_fail_in_synthesis_path(
     late_surface,
@@ -670,6 +696,47 @@ def test_da_post_boundary_table_surfaces_fail_in_synthesis_path(
     )
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
     with pytest.raises(cps.ReportError, match="issue tables are terminal"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+@pytest.mark.parametrize("late_surface", _DA_TERMINAL_LATE_SURFACES)
+def test_da_post_major_table_surfaces_fail_in_synthesis_path(
+    late_surface,
+):
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text += f"\n\n{late_surface}"
+    synthesis_text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED"}, marker_count=1
+    )
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    with pytest.raises(cps.ReportError, match="issue tables are terminal"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_fenced_payload_after_major_fails_in_synthesis_path():
+    panel_reports = reports(da_ids=("C1",))
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text += (
+        "\n\n```markdown\n"
+        '| C2 | Hidden critical issue | text: "hidden evidence" p. 2 |\n'
+        "```"
+    )
+    synthesis_text, expressions = synthesis_for(
+        panel_reports, {"C1": "VALIDATED"}, marker_count=1
+    )
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    with pytest.raises(cps.ReportError, match="issue tables are terminal"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
+def test_da_html_comment_inside_fence_fails_in_synthesis_path():
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text += "\n\n```\n<!-- hidden adjudication payload -->\n```"
+    synthesis_text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
+    with pytest.raises(cps.ReportError, match="HTML comments are forbidden"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 

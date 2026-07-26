@@ -1213,6 +1213,21 @@ def test_da_pre_table_prose_passes_phase_checker():
     phase.check_da_anchors(report)
 
 
+def test_da_bare_comment_closer_passes_phase_checker():
+    text = da_text(ids=("C1",)).replace(
+        "#### CRITICAL",
+        "The reported N moves 41 --> 38 without explanation.\n\n"
+        "#### CRITICAL",
+        1,
+    ).replace(
+        'text: "quote" p. 1',
+        'text: "N moves 41 --> 38" p. 1',
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    phase.check_da_anchors(report)
+
+
 def test_da_post_critical_table_prose_fails_phase_checker():
     text = da_text(ids=()).replace(
         "\n\n#### MAJOR",
@@ -1227,24 +1242,28 @@ def test_da_post_critical_table_prose_fails_phase_checker():
         phase.check_da_anchors(report)
 
 
+_DA_TERMINAL_LATE_SURFACES = (
+    '| C2 | Late issue | text: "late quoted evidence" p. 2 |',
+    "| X9 | Bogus issue |  |",
+    (
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
+        "| C9 | Shadow issue |  |"
+    ),
+    'C2 | Late issue | text: "late quoted evidence" p. 2',
+    '— | Late issue | text: "late quoted evidence"',
+    "# | Issue | Evidence Anchor",
+    "C2\nLate issue without pipes\nfigure: Figure 2",
+    "- C2\n- Late critical issue\n- figure: Figure 2",
+    "> Ordinary post-table commentary",
+    "##### Additional commentary",
+    "### Closing note\nOrdinary late prose",
+)
+
+
 @pytest.mark.parametrize(
     "late_surface",
-    (
-        '| C2 | Late issue | text: "late quoted evidence" p. 2 |',
-        "| X9 | Bogus issue |  |",
-        (
-            "| # | Issue | Evidence Anchor |\n"
-            "|---|-------|-----------------|\n"
-            "| C9 | Shadow issue |  |"
-        ),
-        'C2 | Late issue | text: "late quoted evidence" p. 2',
-        '— | Late issue | text: "late quoted evidence"',
-        "# | Issue | Evidence Anchor",
-        "C2\nLate issue without pipes\nfigure: Figure 2",
-        "- C2\n- Late critical issue\n- figure: Figure 2",
-        "> Ordinary post-table commentary",
-        "##### Additional commentary",
-    ),
+    _DA_TERMINAL_LATE_SURFACES,
 )
 def test_da_post_boundary_table_surfaces_fail_phase_checker(
     late_surface,
@@ -1258,6 +1277,46 @@ def test_da_post_boundary_table_surfaces_fail_phase_checker(
     with pytest.raises(
         (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
         match="issue tables are terminal",
+    ):
+        phase.check_da_anchors(report)
+
+
+@pytest.mark.parametrize("late_surface", _DA_TERMINAL_LATE_SURFACES)
+def test_da_post_major_table_surfaces_fail_phase_checker(
+    late_surface,
+):
+    report = panel.parse_report(
+        "da.md", da_text(ids=("C1",)) + f"\n\n{late_surface}", FULL
+    )
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match="issue tables are terminal",
+    ):
+        phase.check_da_anchors(report)
+
+
+def test_da_fenced_payload_after_major_fails_phase_checker():
+    text = da_text(ids=("C1",)) + (
+        "\n\n```markdown\n"
+        '| C2 | Hidden critical issue | text: "hidden evidence" p. 2 |\n'
+        "```"
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match="issue tables are terminal",
+    ):
+        phase.check_da_anchors(report)
+
+
+def test_da_html_comment_inside_fence_fails_phase_checker():
+    text = da_text(ids=()) + (
+        "\n\n```\n<!-- hidden adjudication payload -->\n```"
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(
+        (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
+        match="HTML comments are forbidden",
     ):
         phase.check_da_anchors(report)
 

@@ -646,6 +646,50 @@ def test_da_html_comment_guard_mutation_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_da_html_comment_pattern_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        r'_HTML_COMMENT_RE = re.compile(r"<!--")',
+        r'_HTML_COMMENT_RE = re.compile(r"<!--|-->")',
+    )
+    assert lint.check(root)
+
+
+def test_da_fenced_block_sentinel_call_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "lines = strip_fences(text, preserve_fenced_blocks=True)",
+        "lines = strip_fences(text)",
+    )
+    assert lint.check(root)
+
+
+def test_da_fenced_block_sentinel_body_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        "out.append(_DA_FENCED_BLOCK_SENTINEL)",
+        "pass",
+    )
+    assert lint.check(root)
+
+
+def test_da_major_terminal_boundary_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        'review_lines, "MAJOR", path, major_start, len(review_lines)',
+        'review_lines, "MAJOR", path, major_start, major_start + 1',
+    )
+    assert lint.check(root)
+
+
 def test_da_terminal_table_guard_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

@@ -422,8 +422,13 @@ DA_PARSER_WITNESSES = (
     '    r"<\\s*/?\\s*(?:table|thead|tbody|tr|th|td)\\b", re.IGNORECASE\n'
     ")",
     "_RAW_HTML_TABLE_RE.search(candidate)",
-    r'_HTML_COMMENT_RE = re.compile(r"<!--|-->")',
+    r'_HTML_COMMENT_RE = re.compile(r"<!--")',
+    r'_DA_FENCED_BLOCK_SENTINEL = "\0DA_FENCED_BLOCK\0"',
+    "if preserve_fenced_blocks:\n"
+    "                    out.append(_DA_FENCED_BLOCK_SENTINEL)",
+    "raw_lines = _COMMONMARK_LINE_END_RE.split(text)",
     "_HTML_COMMENT_RE.search(line)",
+    "lines = strip_fences(text, preserve_fenced_blocks=True)",
     'if "#" in cells or "evidence anchor" in cells or issue_payload:',
     "block = review_lines[start + 1:end]",
     "if any(\n"
@@ -431,6 +436,7 @@ DA_PARSER_WITNESSES = (
     "            ):",
     "if critical_start >= major_start:",
     'f"[DA-TABLE-PARSE: {path}: #### CRITICAL must precede #### MAJOR]"',
+    'review_lines, "MAJOR", path, major_start, len(review_lines)',
     "header_index = nonblank[0] if nonblank else None",
     'header.count("#") != 1 or header.count("Evidence Anchor") != 1',
     're.fullmatch(r":?-{3,}:?", cell)',

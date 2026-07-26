@@ -123,7 +123,8 @@ _DA_TYPED_ANCHOR_RE = re.compile(
 _RAW_HTML_TABLE_RE = re.compile(
     r"<\s*/?\s*(?:table|thead|tbody|tr|th|td)\b", re.IGNORECASE
 )
-_HTML_COMMENT_RE = re.compile(r"<!--|-->")
+_HTML_COMMENT_RE = re.compile(r"<!--")
+_DA_FENCED_BLOCK_SENTINEL = "\0DA_FENCED_BLOCK\0"
 _DEFAULT_IGNORABLE_RANGES = (
     (0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C),
     (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
@@ -135,8 +136,10 @@ _DEFAULT_IGNORABLE_RANGES = (
 )
 
 
-def strip_fences(text: str) -> list[str]:
-    """Remove CommonMark fenced blocks; prompt decoys inside do not parse."""
+def strip_fences(
+    text: str, *, preserve_fenced_blocks: bool = False
+) -> list[str]:
+    """Remove CommonMark fenced blocks; optionally retain an opaque sentinel."""
     out: list[str] = []
     fence_char: str | None = None
     fence_len = 0
@@ -154,6 +157,8 @@ def strip_fences(text: str) -> list[str]:
             info = match.group("info")
             if token[0] != "`" or "`" not in info:
                 fence_char, fence_len = token[0], len(token)
+                if preserve_fenced_blocks:
+                    out.append(_DA_FENCED_BLOCK_SENTINEL)
                 continue
         out.append(line)
     return out
@@ -510,11 +515,12 @@ def parse_da_tables(
     their tables are empty. This is the single structural parser used by both
     the phase-conformance and synthesis checkers.
     """
-    lines = strip_fences(text)
-    if any(_HTML_COMMENT_RE.search(line) for line in lines):
+    raw_lines = _COMMONMARK_LINE_END_RE.split(text)
+    if any(_HTML_COMMENT_RE.search(line) for line in raw_lines):
         raise ReportError(
             f"[DA-TABLE-PARSE: {path}: HTML comments are forbidden in DA reports]"
         )
+    lines = strip_fences(text, preserve_fenced_blocks=True)
     sections, dupes = split_sections(lines)
     if "Review Body" in dupes or "Review Body" not in sections:
         raise ReportError(
