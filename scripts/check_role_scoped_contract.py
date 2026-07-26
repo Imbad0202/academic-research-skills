@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""Pin Schema 13.2 role-scoped reviewer delivery surfaces.
+
+Threat model: accidental well-intentioned drift. Adversarial repository editors
+are out of scope because they can edit this lint too. Witnesses are hardcoded
+and parent-bound to the sprint-delivered Phase 1/Phase 2 subsections.
+
+Exit 0 pass / 1 drift / 2 missing input.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from _skill_lint import heading_section, norm_ws, read_or_exit2
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CONTRACTS = {
+    "shared/contracts/reviewer/full.json": {
+        "D1": (["methodology"], "methodology"),
+        "D2": (["domain"], "domain"),
+        "D3": (["da", "methodology"], "da"),
+        "D4": (["perspective"], "perspective"),
+        "D5": (["eic"], "eic"),
+        "D6": (["eic"], "eic"),
+    },
+    "shared/contracts/reviewer/methodology_focus.json": {
+        "D1": (["methodology"], "methodology"),
+        "D2": (["eic"], "eic"),
+    },
+}
+AGENTS = {
+    "academic-paper-reviewer/agents/eic_agent.md": "eic",
+    "academic-paper-reviewer/agents/methodology_reviewer_agent.md": "methodology",
+    "academic-paper-reviewer/agents/domain_reviewer_agent.md": "domain",
+    "academic-paper-reviewer/agents/perspective_reviewer_agent.md": "perspective",
+    "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md": "da",
+}
+PROTOCOL = "academic-paper-reviewer/references/sprint_contract_protocol.md"
+SYNTH = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
+PANEL_CHECKER = "scripts/check_panel_synthesis.py"
+SPRINT = "## v3.6.2 Sprint Contract Protocol"
+PHASE1 = "### Phase 1 — Paper-content-blind pre-commitment"
+PHASE2 = "### Phase 2 — Paper-visible review"
+PHASE1_FIELDS = (
+    "`dimension_id: <Dn>`",
+    "`what_to_look_for: <single-line non-empty text>`",
+    "`what_triggers_block: <single-line non-empty text>`",
+    "`what_triggers_warn: <single-line non-empty text>`",
+    "`what_triggers_fatal: <single-line non-empty text>`",
+)
+PHASE2_WITNESSES = (
+    "`dimension_id: <Dn>` and `rationale: <nonempty explanation>`",
+    "score: <block|warn|pass|not_assessed>",
+    "abstain_reason: <one line>",
+    'trigger: "<verbatim substring of the matching Phase 1 trigger>"',
+    "block_class: <fatal|repairable>",
+    "Do not emit `## Failure Condition Checks`, `## Editorial Decision`",
+)
+PATTERNS = (
+    "any <priority> dimension scores '<score>'",
+    "any dimension with priority=<priority> scores '<score>'",
+    "any <priority>-priority dimension scores '<score>'",
+    "two or more <priority> dimensions score '<score>' or worse",
+    "two or more dimensions with priority=<priority> score '<score>' or worse",
+    "every <priority> dimension scores '<score>'",
+    "<Dn> scores '<score>'",
+    "any <priority> dimension has a fatal block",
+    "<Dn> has a fatal block",
+    "any dimension scores '<score>' or worse",
+    "<Dn> scores '<score>' or worse",
+    "every dimension scores '<score>'",
+)
+
+
+def _read(root: Path, rel: str) -> str:
+    return read_or_exit2(root, rel)
+
+
+def check(root: Path) -> list[str]:
+    errors: list[str] = []
+    for rel, expected in CONTRACTS.items():
+        contract = json.loads(_read(root, rel))
+        actual = {
+            dim["id"]: (dim.get("eligible_roles"), dim.get("owner_role"))
+            for dim in contract["acceptance_dimensions"]
+        }
+        if actual != expected:
+            errors.append(
+                f"{rel}: eligibility map drift; expected={expected}, actual={actual}"
+            )
+
+    for rel, role in AGENTS.items():
+        raw = _read(root, rel)
+        sprint = heading_section(raw, SPRINT)
+        phase1 = heading_section(sprint, PHASE1) if sprint is not None else None
+        phase2 = heading_section(sprint, PHASE2) if sprint is not None else None
+        if phase1 is None or phase2 is None:
+            errors.append(f"{rel}: delivered Phase 1/Phase 2 subsection missing")
+            continue
+        phase1_norm, phase2_norm = norm_ws(phase1), norm_ws(phase2)
+        scope = (
+            "per dimension whose `eligible_roles` includes "
+            f"`{role}`; do not plan a score for any other dimension"
+        )
+        if norm_ws(scope) not in phase1_norm:
+            errors.append(f"{rel}: Phase 1 eligible-only scope witness missing")
+        for field in PHASE1_FIELDS:
+            if norm_ws(field) not in phase1_norm:
+                errors.append(f"{rel}: Phase 1 field witness missing: {field}")
+        score_scope = (
+            "Score only dimensions whose `eligible_roles` includes "
+            f"`{role}`; every other dimension must say `score: not_assessed`"
+        )
+        if norm_ws(score_scope) not in phase2_norm:
+            errors.append(f"{rel}: Phase 2 role-scoped score witness missing")
+        for witness in PHASE2_WITNESSES:
+            if norm_ws(witness) not in phase2_norm:
+                errors.append(f"{rel}: Phase 2 grammar witness missing: {witness}")
+
+    da = _read(root, "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md")
+    if "Score the paper — your job is to challenge, not score." in da:
+        errors.append("DA retired no-scoring clause returned")
+    if "Score any dimension outside the contract's `eligible_roles` for `da`" not in da:
+        errors.append("DA role-scoped Phase Boundary clause missing")
+
+    protocol = heading_section(_read(root, PROTOCOL), "## 9. Recognised expression vocabulary")
+    synth = heading_section(_read(root, SYNTH), SPRINT.replace("Protocol", "Synthesizer Protocol"))
+    checker = _read(root, PANEL_CHECKER)
+    if protocol is None or synth is None:
+        errors.append("protocol/synthesizer expression section missing")
+    else:
+        for pattern in PATTERNS:
+            if pattern not in protocol:
+                errors.append(f"{PROTOCOL}: expression pattern missing: {pattern}")
+            if pattern not in synth:
+                errors.append(f"{SYNTH}: expression pattern missing: {pattern}")
+    # A third, independent surface witness: the executable grammar must carry
+    # all four v2-specific atom-family identifiers.
+    for token in (
+        '"fatal_priority"', '"fatal_dim"', '"any_all"',
+        '"dim_threshold"', '"every_all"',
+    ):
+        if token not in checker:
+            errors.append(f"{PANEL_CHECKER}: executable pattern token missing: {token}")
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=REPO_ROOT)
+    args = parser.parse_args()
+    errors = check(args.root)
+    if errors:
+        for error in errors:
+            print(f"FAIL: {error}", file=sys.stderr)
+        return 1
+    print("check_role_scoped_contract: OK")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -126,6 +126,30 @@ DA_FINDING_CONTRACT = (
     "band on every seat (#574 B1)."
 )
 
+BAND_ANCHORS = (
+    "- **Band anchors (per finding, never distributional targets):** Critical "
+    "means this single defect, uncorrected, invalidates the core claim or makes "
+    "acceptance impossible; it alone would justify `block` on a mandatory "
+    "dimension. Major materially weakens a core claim and requires substantial "
+    "re-analysis, rewriting, or new data, while the core survives. Minor "
+    "improves quality or clarity without changing core claims.\n"
+    "- **Anti-bundling:** assign each finding the band justified by its own "
+    "decision impact; it never inherits a cluster or narrative's band. Joint "
+    "impact belongs in the dimension score and synthesis.\n"
+    "- **Singleton-Critical:** if a defect needs sibling findings to reach "
+    "rejection-level impact, it is not Critical alone. These tests "
+    "operationalize severity-by-decision-impact and never prescribe expected "
+    "band frequencies."
+)
+TEMPLATE_BAND_WITNESS = (
+    "Apply the test to each finding independently, never to its surrounding "
+    "narrative or defect cluster. A finding never inherits a higher band from "
+    "siblings; joint impact belongs in the dimension score and synthesis. If "
+    "a defect needs siblings to reach rejection-level impact, it is not "
+    "Critical alone. These are per-finding decision-impact tests, never "
+    "distributional targets: there is no expected frequency for any band."
+)
+
 # The per-weakness field line in the four agents' output skeletons.
 WEAKNESS_FIELD_LINE = (
     "- **Severity**: [Critical / Major / Minor] | **Evidence Anchor**: "
@@ -248,6 +272,11 @@ def check(root: Path) -> list[str]:
                 f"subsection — sprint-mode calls would never receive the "
                 f"A1/A2/A3 rules"
             )
+        if phase2 is not None and _norm(BAND_ANCHORS) not in _norm(phase2):
+            errors.append(
+                f"{rel}: B1 band anchors missing from the delivered Phase 2 "
+                "Finding Contract"
+            )
         _require(errors, norm, rel, WEAKNESS_FIELD_LINE, "per-weakness field line")
         _require(errors, norm, rel, COVERAGE_RECEIPT_SKELETON, "coverage-receipt skeleton")
         _require(errors, norm, rel, COVERAGE_RECEIPT_COVERS, "coverage-receipt Covers line")
@@ -347,6 +376,11 @@ def check(root: Path) -> list[str]:
             f"{DA_REL}: delivered Finding Contract (#574 A2/A3) missing from the "
             f"Phase 2 subsection or does not match the canonical verbatim block"
         )
+    if da_phase2 is not None and _norm(BAND_ANCHORS) not in _norm(da_phase2):
+        errors.append(
+            f"{DA_REL}: B1 band anchors missing from the delivered Phase 2 "
+            "Finding Contract"
+        )
     # Ungroundable field norms take a canonical enum disposition, never an
     # off-enum 'advisory' tier (round-2 P1).
     for phrase in ("down-rate to advisory", "down-rates to advisory"):
@@ -358,6 +392,10 @@ def check(root: Path) -> list[str]:
     tmpl_norm = _norm(tmpl)
     _require(errors, tmpl_norm, TEMPLATE_REL, "### Evidence Anchor Types (#574 A2)",
              "anchor vocabulary section")
+    _require(
+        errors, tmpl_norm, TEMPLATE_REL, TEMPLATE_BAND_WITNESS,
+        "expanded B1 per-finding/anti-bundling/singleton-Critical rules",
+    )
     for t in ANCHOR_TYPES:
         if not re.search(rf"^\| {re.escape(t)} \|", tmpl, re.M):
             errors.append(f"{TEMPLATE_REL}: anchor vocabulary missing type row {t}")

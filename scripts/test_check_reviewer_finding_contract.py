@@ -86,6 +86,37 @@ def test_unmutated_tree_passes(tmp_path):
     assert code == 0, f"baseline tree should PASS, stderr:\n{err}"
 
 
+def test_b1_band_anchor_mutation_fails(tmp_path):
+    root = _mirror(tmp_path)
+    _edit(
+        root, SCORING_AGENTS[0],
+        lambda text: text.replace(
+            "if a defect needs sibling findings to reach rejection-level "
+            "impact, it is not Critical alone.",
+            "clusters may promote each member to Critical.",
+            1,
+        ),
+    )
+    code, err = _run2(root)
+    assert code == 1
+    assert "B1 band anchors missing" in err
+
+
+def test_template_b1_anti_bundling_mutation_fails(tmp_path):
+    root = _mirror(tmp_path)
+    _edit(
+        root, TEMPLATE_REL,
+        lambda text: text.replace(
+            "A finding never inherits a higher band from siblings",
+            "A finding may inherit a higher band from siblings",
+            1,
+        ),
+    )
+    code, err = _run2(root)
+    assert code == 1
+    assert "expanded B1" in err
+
+
 # --- A1: quotas + receipt + contract block --------------------------------------
 
 def test_m1_quota_restored_in_agent(tmp_path):
@@ -827,13 +858,16 @@ def test_m62_synth_roadmap_severity_column_dropped(tmp_path):
 def test_m63_skill_unconditional_veto_restored(tmp_path):
     root = _mirror(tmp_path)
     _edit(root, SKILL_REL,
-          lambda t: t.replace(
-              "Every Devil's Advocate CRITICAL issue is adjudicated visibly in the "
-              "Editorial Decision — a validated or genuinely unresolved one blocks "
-              "Accept; one the EIC adjudicates and rejects is recorded with its "
-              "rejection rationale and does not veto by itself (#574 B1: an "
-              "unvalidated negative claim carries the same evidence burden as a "
-              "positive one). Silently bypassing a DA CRITICAL is never allowed.",
+              lambda t: t.replace(
+                  "Every Devil's Advocate CRITICAL issue is adjudicated visibly in the "
+                  "Editorial Decision — a validated or genuinely unresolved one blocks "
+                  "silent Accept finalization; under a sprint contract the mechanical "
+                  "Accept remains unchanged and `[DA-CRITICAL-VS-ACCEPT: <n> "
+                  "validated/unresolved]` escalates to the user. One the EIC adjudicates "
+                  "and rejects is recorded with its "
+                  "rejection rationale and does not veto by itself (#574 B1: an "
+                  "unvalidated negative claim carries the same evidence burden as a "
+                  "positive one). Silently bypassing a DA CRITICAL is never allowed.",
               "If the Devil's Advocate finds CRITICAL issues, the Editorial "
               "Decision cannot be Accept."))
     code, err = _run2(root)

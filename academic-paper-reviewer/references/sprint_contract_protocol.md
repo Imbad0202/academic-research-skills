@@ -1,7 +1,7 @@
 # Sprint Contract Protocol (v3.6.2)
 
 > Authoritative orchestration reference for the ARS v3.6.2 sprint-contract hard gate.
-> Schema: `shared/sprint_contract.schema.json` (Schema 13.1 since v3.6.6).
+> Schema: `shared/sprint_contract.schema.json` (Schema 13.2).
 > Templates: `shared/contracts/reviewer/*.json`.
 > Design spec: `docs/design/2026-04-23-ars-v3.6.2-sprint-contract-design.md`.
 >
@@ -26,8 +26,8 @@ For each reviewer in `range(panel_size)`:
 4. **Phase 2 call (paper-visible).**
    - System prompt: the `### Phase 2 — Paper-visible review` sub-section of the same `## v3.6.2 Sprint Contract Protocol` block.
    - User content: contract JSON (re-injected) + Phase 1 output wrapped in `<phase1_output>...</phase1_output>` data delimiter + full paper wrapped in `<paper_content>...</paper_content>` data delimiter (#574 A6 — the manuscript is author-supplied untrusted material; the reviewer prompts carry the matching data-not-instructions rule).
-   - Expected output: optional `## Scoring Plan Dissent`, `## Dimension Scores`, `## Failure Condition Checks`, `## Review Body`, `## Editorial Decision`.
-5. **Phase 2 output lint.** See §5 below.
+   - Expected output: optional `## Scoring Plan Dissent`, `## Dimension Scores`, `## Review Body`. Per-seat `## Failure Condition Checks` and `## Editorial Decision` are retired in v2 and fail loudly if present.
+5. **Phase 2 output lint.** Run `scripts/check_phase_conformance.py --contract <C> --role <dispatch-role> --phase1 <P1> --phase2 <P2> --manuscript <paper> --metadata <metadata.json>` before synthesis. Exit 3 emits `[PROTOCOL-VIOLATION: phase_conformance=<check>]` and makes the seat unusable; exit 2 is an infra abort. See §5.
 6. **Panel cardinality invariant.** After all reviewers complete, verify `len(usable_phase2_outputs) == panel_size`. If any reviewer was dropped, emit `[PANEL-SHRUNK]` and abort the round (see §6).
 7. Feed usable Phase 2 outputs into synthesizer (see §7).
 
@@ -35,7 +35,8 @@ For each reviewer in `range(panel_size)`:
 
 - **Template on disk is frozen.** Do not mutate. Deep-copy into an in-memory dict.
 - **Runtime-only fields:** `generated_at`, `agent_amendments.stage_specific_notes`, `agent_amendments.additional_measurement_hints`.
-- **Baseline fields are orchestrator-immutable.** Schema cannot enforce this; the orchestrator must not rewrite `acceptance_dimensions` / `failure_conditions` / `measurement_procedure` / `override_ladder` / `mode` / `stage` / `contract_id` / `baseline_version` / `panel_size` between template load and injection. Optional: emit sha256 of baseline-field subset to audit log for drift detection.
+- **Baseline fields are orchestrator-immutable.** Schema cannot enforce this; the orchestrator must not rewrite `acceptance_dimensions` (including `eligible_roles` and `owner_role`) / `failure_conditions` / `measurement_procedure` / `override_ladder` / `mode` / `stage` / `contract_id` / `baseline_version` / `panel_size` between template load and injection. Optional: emit sha256 of baseline-field subset to audit log for drift detection.
+- **v1 contracts fail loudly.** A reviewer contract without role-scoped dimensions, the five-field scoring-plan schema, and the four-token decision enum is `[CONTRACT-INVALID]`. Migrate it to v2; do not silently reinterpret it.
 
 ## 4. Phase 1 output lint
 
@@ -43,9 +44,9 @@ Structural checks (orchestrator, not validator). On failure retry Phase 1 once w
 
 - Required sections in order: `## Contract Paraphrase`, `## Scoring Plan`, terminal `[CONTRACT-ACKNOWLEDGED]`.
 - Paraphrase paragraph count ≥ `measurement_procedure.paraphrase_minimum_dimensions` (for `"all"`, one paragraph per dimension; for integer `k`, at least `k` paragraphs each matching a distinct dimension).
-- `## Scoring Plan` has one `### <Dn>: <name>` subsection per acceptance dimension (always full coverage, regardless of `paraphrase_minimum_dimensions`).
-- Each `scoring_plan` subsection contains lines matching `measurement_procedure.scoring_plan_schema.required`.
-- Phase 1 content refers to `<title>`, `<field>`, `<word_count>` only; no specific paper content. Not schema-enforced; behavioural rule in reviewer prompt.
+- `## Scoring Plan` has one `### <Dn>: <name>` subsection per dimension whose `eligible_roles` includes this dispatch role, and none for ineligible dimensions.
+- Every subsection uses the pinned, unbulleted line grammar exactly once: `dimension_id:`, `what_to_look_for:`, `what_triggers_block:`, `what_triggers_warn:`; a mandatory dimension also requires `what_triggers_fatal:`, which is forbidden on non-mandatory dimensions. The block/warn/fatal trigger strings are pairwise distinct.
+- `check_phase_conformance.py` searches every 12-word full-manuscript shingle against Phase 1 after whitespace normalization and case-folding. A hit fails unless it also occurs in the actual metadata-envelope values or the contract JSON. `--manuscript` and `--metadata` are mandatory, so this family cannot be skipped.
 
 **Lint is structural, not semantic.** A reviewer can in principle pass this lint by emitting generic boilerplate triggers — semantic judgement (whether triggers are concrete and discriminating) is deferred to a post-v3.6.2 judge-agent layer.
 
@@ -55,12 +56,11 @@ On second Phase 1 failure: emit `[PROTOCOL-VIOLATION: reviewer=<role>, contract=
 
 Structural checks run before handoff to synthesizer. **No Phase 2 retry** (reviewer has seen the paper; a second call is tainted) EXCEPT the multi-dissent case below.
 
-- Required sections: `## Dimension Scores`, `## Failure Condition Checks`, `## Review Body`, `## Editorial Decision`.
-- `## Dimension Scores` has one `### <Dn>: <name>` subsection per contract dimension; each carries a value in `$defs.score` (`block | warn | pass`).
-- `## Failure Condition Checks` has one subsection per `failure_conditions[]` entry with `fired: true | false`.
+- Required sections: `## Dimension Scores`, `## Review Body`. `## Failure Condition Checks` and `## Editorial Decision` are forbidden v1 grammar.
+- `## Dimension Scores` has one `### <Dn>: <name>` subsection per contract dimension. Eligible roles use `block | warn | pass`, or `not_assessed` with `abstain_reason`; ineligible roles must use structural `not_assessed` without a reason. An ineligible real score is an out-of-role vote and fails.
+- An eligible `warn`/`block` carries a quoted `trigger:` substring of the matching Phase-1 commitment. A mandatory block also carries `block_class: fatal|repairable`; fatal binds only to `what_triggers_fatal`, is forbidden on dissent, and non-mandatory dimensions never carry `block_class`.
 - **Multi-dissent rule:** If `## Scoring Plan Dissent` names two or more `dimension_id` entries, orchestrator aborts this reviewer and retries from **Phase 1** once. If the retried Phase 1/2 also multi-dissents, mark the reviewer unusable (`[PROTOCOL-VIOLATION]`). One-dimension-per-reviewer-per-Phase-2-call is the cap.
-- **Consistency check (structural):** For every dimension not under dissent, the Phase 2 score must substring-match the reviewer's Phase 1 `scoring_plan` trigger tokens. Vacuous triggers bypass this check — documented limitation.
-- `## Editorial Decision` is one of the `action` values derivable from `## Failure Condition Checks` via the synthesizer precedence rule (§8 step 3). Inconsistency marks the reviewer unusable.
+- **Anchor gate:** every Critical/Major finding carries a valid typed Evidence Anchor. `text` includes a quoted excerpt of at most 25 words; `absence` names checked surfaces. The DA's `#### CRITICAL` table uses dense IDs `C1..Cn` and the shared DA-table parser also checks its anchors.
 
 On any Phase 2 lint failure other than multi-dissent: emit `[PROTOCOL-VIOLATION]` and mark reviewer unusable. Do not synthesise a substitute score for the synthesizer.
 
@@ -84,20 +84,15 @@ The orchestrator uses `mode` to determine the panel and the contract's `panel_si
 
 ## 8. Synthesizer three-step protocol
 
-Let `N = contract.panel_size`.
-
-**Step 1 — Build scoring matrix.** For each `acceptance_dimensions[i]`, gather N reviewers' `## Dimension Scores` for that dimension into a length-N array of `$defs.score` values. Dimensions resolved by `id`.
+**Step 1 — Build role-scoped scoring matrix.** For each dimension, gather only assessed values from reports whose `contract_role` is in that dimension's `eligible_roles`. Ineligible/abstained values are excluded from numerator and denominator. Zero assessed eligible seats emits `[DIMENSION-UNASSESSED: <Dn>]` and aborts. Emit a `dimension_verdicts:` audit line with the worst assessed score, using `block(fatal)` if any assessed eligible seat declared fatal.
 
 **Step 2 — Evaluate each `failure_conditions[]`.** For each condition:
 
 1. Parse `expression` against the recognised patterns (see §9 vocabulary). Unrecognised → emit `[EXPRESSION-UNRECOGNISED]`, abort synthesizer.
-2. Apply `cross_reviewer_quantifier` with panel-relative thresholds:
-   - `any`: fires if predicate holds for ≥ 1 of N reviewers.
-   - `majority`: simple majority — for N ≥ 3, fires if ≥ `⌊N/2⌋ + 1` (N=5 → 3, N=3 → 2); for N == 2, fires if all 2; for N == 1, vacuous (never fires; SC-11 warns). Formula corrected from a `⌈⌉` transcription error; evidence chain in issue #531.
-   - `all`: fires if predicate holds for all N reviewers.
+2. Apply `cross_reviewer_quantifier` separately per selected dimension over its assessed eligible seats: `any` ≥1; `all` = n; `majority` = `⌊n/2⌋+1` for n≥3, both for n=2, and the single owner itself for n=1. Then apply the expression's dimension quantifier. Patterns 1–5 now use this two-stage meaning; the retired per-seat multi-dimension predicate is not valid under role scoping.
 3. Record `{condition_id, fired}`.
 
-**Step 3 — Precedence and decision.** Among fired conditions, pick the one with highest `severity`. Ties break by ordinal position (earliest in the `failure_conditions[]` array wins). Emit its `action` as `editorial_decision`. If no condition fired, emit the contract's accept-grade action (the `failure_conditions[]` entry whose `action` is `editorial_decision=accept` — F0 in the shipped templates). The synthesizer's sprint-mode output MUST carry the pinned emission block: exactly one line `fired_conditions: [<comma-separated condition_ids, empty allowed>]` and exactly one line stating the decision action string verbatim (e.g. `editorial_decision=major_revision`).
+**Step 3 — Precedence and decision.** Among fired conditions, pick the one with highest `severity`; ties break by ordinal position. Emit exactly one `dimension_verdicts: [...]`, `fired_conditions: [...]`, `da_critical_adjudications: [...]`, and `editorial_decision=<accept|minor_revision|major_revision|reject>` line. DA adjudications are exact and total over the DA's CRITICAL IDs; each REJECTED ID has `C<n> rejection rationale: <nonempty>`. If decision is Accept with one or more VALIDATED/UNRESOLVED DA CRITICALs, also emit `[DA-CRITICAL-VS-ACCEPT: <n> validated/unresolved]`; the orchestrator escalates and does not finalize. The marker never changes the mechanical action.
 
 **Forbidden operations (synthesizer prompt hard constraint):**
 - Introduce aggregation rules not derivable from `cross_reviewer_quantifier` + `severity`.
@@ -109,9 +104,9 @@ Let `N = contract.panel_size`.
 
 After the synthesizer emits its output, the orchestrator runs
 `scripts/check_panel_synthesis.py --contract <contract.json> --report <r1.md> ...
---report <rN.md> --synthesis <synthesis.md>` — a deterministic checker that
-re-derives both decision layers from the emitted artifacts (self-consistency
-gate, not a correctness gate). Consequences by exit code:
+--report <rN.md> --roles <r1,...,rN> --synthesis <synthesis.md>` — a deterministic checker that
+re-derives role-scoped panel arithmetic, checks dispatch-role binding, verifies
+the emission audit lines, and enforces the DA terminal gate. Consequences by exit code:
 
 - **Exit 1 (synthesis-layer failure)** — void this synthesis and re-run the
   synthesizer ONCE, appending the checker diagnostics wrapped in a data
@@ -121,13 +116,11 @@ gate, not a correctness gate). Consequences by exit code:
 - **Exit 2 (contract/infra failure)** — abort the round, no retry.
 - **Exit 3 (reviewer-report failure)** — that reviewer is unusable per §5 ⇒
   `[PANEL-SHRUNK]` abort; no synthesizer re-run. The orchestrator MAY catch
-  this earlier by running `--layer1-only` per reviewer at Phase-2 lint time
-  (accepts 1..panel_size reports; verifies score/fired/decision
-  self-consistency only — it does not replace the rest of the §5 lint).
+  this earlier by running `--layer1-only` per reviewer at Phase-2 lint time;
+  this parses v2 score grammar but does not replace `check_phase_conformance.py`.
 
 Reviewer reports must satisfy the pinned output grammar in each reviewer
-agent's Phase 2 section (role line, `score:` / `fired:` lines, exactly-once
-decision line); the checker parses that grammar and nothing looser.
+agent's delivered Phase 2 section; the checker parses that grammar and nothing looser.
 
 ## 9. Recognised expression vocabulary
 
@@ -138,10 +131,14 @@ Synthesizer recognises the following patterns (with accepted natural-English var
 3. **Universal over priority:** `every <priority> dimension scores '<score>'`
 4. **Single-dimension literal:** `<Dn> scores '<score>'`
 5. **Conjunction:** any of the above joined by `AND`
+6. **Fatal block:** `any <priority> dimension has a fatal block` | `<Dn> has a fatal block` (mandatory scope only)
+7. **Unscoped threshold:** `any dimension scores '<score>' or worse`
+8. **Dimension threshold:** `<Dn> scores '<score>' or worse`
+9. **Unscoped universal:** `every dimension scores '<score>'`
 
 Shipped template coverage:
-- `reviewer/full.json`: F1 pattern 1 (bare mandatory), F2 pattern 2, F3 pattern 1 (`high-priority` variant), F0 pattern 3.
-- `reviewer/methodology_focus.json`: F1 / F2 / F0 pattern 4 (literal D1).
+- `reviewer/full.json`: F1 pattern 6, F2 pattern 1, F3 pattern 2, F4 pattern 1, F5 pattern 7, F0 pattern 9.
+- `reviewer/methodology_focus.json`: F1 pattern 6, F2/F3 pattern 4, F4 pattern 8, F0 pattern 9.
 
 New expression forms require a PR updating this §9, the synthesizer prompt's recognised-pattern list, and the `scripts/check_panel_synthesis.py` expression grammar in lockstep.
 

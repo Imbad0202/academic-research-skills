@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/sprint_contract.schema.json",
-  "title": "ARS Sprint Contract (Schema 13.1)",
+  "title": "ARS Sprint Contract (Schema 13.2)",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,7 +12,7 @@
     "acceptance_dimensions",
     "failure_conditions"
   ],
-  "$comment": "Schema 13.1 (v3.6.6) lifts measurement_procedure and panel_size out of top-level required into reviewer-conditional gates (allOf branches 3 + 10). The base required list therefore drops those two compared to Schema 13. measurement_procedure is re-required for reviewer modes via allOf branch 3; panel_size is re-required for reviewer modes via allOf branch 10. Writer / evaluator contracts do not carry either field.",
+  "$comment": "Schema 13.2 retains Schema 13.1's mode-conditional measurement_procedure and panel_size gates, and adds reviewer role-scoping in branch 13. Writer / evaluator contracts remain byte-unchanged and do not carry reviewer role fields.",
   "properties": {
     "contract_id": {
       "type": "string",
@@ -46,7 +46,14 @@
           "id": { "type": "string", "pattern": "^D[1-9][0-9]?$" },
           "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
           "description": { "type": "string", "minLength": 1 },
-          "priority": { "$ref": "#/$defs/priority" }
+          "priority": { "$ref": "#/$defs/priority" },
+          "eligible_roles": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/reviewer_role" }
+          },
+          "owner_role": { "$ref": "#/$defs/reviewer_role" }
         }
       }
     },
@@ -71,17 +78,18 @@
           "properties": {
             "required": {
               "type": "array",
-              "minItems": 4,
+              "minItems": 5,
               "uniqueItems": true,
               "items": {
                 "enum": [
                   "dimension_id",
                   "what_to_look_for",
                   "what_triggers_block",
-                  "what_triggers_warn"
+                  "what_triggers_warn",
+                  "what_triggers_fatal"
                 ]
               },
-              "$comment": "Codex P2-2: the four canonical Phase-1 fields are fixed by sprint_contract_protocol.md §4. minItems:4 + uniqueItems:true + enum-constrained items rejects empty lists, partial lists, and typoed entries (e.g. what_trigger_block) at CI time instead of letting them fail at runtime as Phase-1 lint."
+              "$comment": "The five canonical Phase-1 fields are fixed by sprint_contract_protocol.md §4. minItems:5 + uniqueItems:true + enum-constrained items rejects empty lists, partial lists, and typoed entries at CI time instead of letting them fail at runtime as Phase-1 lint."
             }
           }
         },
@@ -299,7 +307,6 @@
                     "editorial_decision=accept",
                     "editorial_decision=minor_revision",
                     "editorial_decision=major_revision",
-                    "editorial_decision=reject_or_major_revision",
                     "editorial_decision=reject"
                   ]
                 }
@@ -450,9 +457,26 @@
       "then": {
         "required": ["disagreement_handling"]
       }
+    },
+    {
+      "$comment": "Branch 13 (Schema 13.2): reviewer dimensions require role-scoping metadata.",
+      "if": {
+        "properties": { "mode": { "pattern": "^reviewer_" } },
+        "required": ["mode"]
+      },
+      "then": {
+        "properties": {
+          "acceptance_dimensions": {
+            "items": { "required": ["eligible_roles", "owner_role"] }
+          }
+        }
+      }
     }
   ],
   "$defs": {
+    "reviewer_role": {
+      "enum": ["eic", "methodology", "domain", "perspective", "da"]
+    },
     "score": { "enum": ["block", "warn", "pass"] },
     "priority": { "enum": ["mandatory", "high", "normal"] }
   }

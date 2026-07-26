@@ -226,13 +226,15 @@ Score each dimension 0-100 using the rubrics in `references/quality_rubrics.md`.
 
 ### Severity Levels
 
-| Level | Definition | Revision Requirement |
-|-------|-----------|---------------------|
-| **Critical** | Cannot be accepted without fixing | Required Revision |
-| **Major** | Significantly affects paper quality | Strongly Recommended |
-| **Minor** | Better if fixed, acceptable if not | Suggested |
+| Level | Per-finding decision-impact test | Revision Requirement |
+|-------|----------------------------------|---------------------|
+| **Critical** | This single defect, uncorrected, invalidates the core claim or makes acceptance impossible. It alone would justify `block` on a mandatory dimension. | Required before acceptance; may be fatal or repairable at the dimension layer |
+| **Major** | This finding materially weakens confidence in a core claim and requires substantial re-analysis, rewriting, or new data, while the core survives. | Substantial revision |
+| **Minor** | Quality or clarity improves if fixed; core claims are unaffected. | Limited revision |
 
 These levels ARE the Schema 6 `severity` enum (`shared/handoff_schemas.md` § Weakness Object) — the single source for finding severity across the reviewer stack (#574 A3). Every weakness entry carries its level explicitly; the Devil's Advocate's OBSERVATION category is a non-defect channel that never maps into this enum. Severity is set by these decision-impact definitions alone: respectful register never lowers a level, and adversarial or rigor-signaling framing never raises one (#574 B1).
+
+Apply the test to each finding independently, never to its surrounding narrative or defect cluster. A finding never inherits a higher band from siblings; joint impact belongs in the dimension score and synthesis. If a defect needs siblings to reach rejection-level impact, it is not Critical alone. These are per-finding decision-impact tests, never distributional targets: there is no expected frequency for any band.
 
 ### Evidence Anchor Types (#574 A2)
 

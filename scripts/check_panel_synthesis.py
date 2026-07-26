@@ -1,31 +1,16 @@
 #!/usr/bin/env python3
-"""Executable sprint-contract panel checker (#510).
+"""Validate Schema 13.2 reviewer cards and recompute panel synthesis.
 
-Recomputes both decision layers of the v3.6.2 sprint-contract reviewer
-machinery from the primary artifacts and fails on mismatch:
+Schema 13.2 removes per-seat failure-condition decisions. This checker parses
+role-scoped dimension scores, evaluates each condition per dimension over only
+its assessed eligible seats, verifies the synthesizer audit lines, and enforces
+the DA-CRITICAL terminal consistency gate.
 
-  Layer 1 (per reviewer): own scores -> own declared fired conditions ->
-      own ``## Editorial Decision``.
-  Layer 2 (panel): scoring matrix -> quantifier thresholds -> precedence ->
-      the synthesizer's declared fired set AND emitted decision.
-
-This is a self-consistency gate on LLM output, not a correctness gate: it
-proves the stated decisions follow from the stated scores under the
-published rules (protocol §8/§8.1/§9); it does not judge the scores.
-
-Exit codes (classified by artifact source; multi-failure precedence 2 > 3 > 1):
-  0  pass
-  1  synthesis-layer failure (panel mismatch OR malformed synthesis output)
-  2  contract/infra failure (contract, cardinality/roles, expression, IO)
-  3  reviewer-report failure (unparseable OR internally inconsistent)
-
-Usage:
-  python scripts/check_panel_synthesis.py --contract C.json \\
-      --report r1.md ... --report rN.md --synthesis synth.md
-  python scripts/check_panel_synthesis.py --contract C.json \\
-      --report r1.md --layer1-only
-
-Design: docs/design/2026-07-15-510-panel-synthesis-checker-design.md
+Exit codes (precedence 2 > 3 > 1):
+  0 pass
+  1 synthesis-layer failure
+  2 contract/infra failure
+  3 reviewer-report failure
 """
 from __future__ import annotations
 
@@ -38,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import check_sprint_contract  # noqa: E402  reused, never forked
+import check_sprint_contract  # noqa: E402
 
 EXIT_PASS = 0
 EXIT_SYNTHESIS = 1
@@ -49,14 +34,10 @@ ACTION_ENUM = frozenset({
     "editorial_decision=accept",
     "editorial_decision=minor_revision",
     "editorial_decision=major_revision",
-    "editorial_decision=reject_or_major_revision",
     "editorial_decision=reject",
 })
 SCORE_ORDER = {"pass": 0, "warn": 1, "block": 2}
-ROLE_SETS = {
-    "reviewer_full": frozenset({"eic", "methodology", "domain", "perspective", "da"}),
-    "reviewer_methodology_focus": frozenset({"eic", "methodology"}),
-}
+ROLE_SETS = check_sprint_contract.ROLE_SETS
 
 
 class ContractError(Exception):
@@ -71,139 +52,84 @@ class SynthesisError(Exception):
     """Synthesis-output failure -> exit 1."""
 
 
-# --- §9 expression grammar (closed vocabulary; fail-closed) --------------------
-
-_SCORE_PART = r"'(?P<score>block|warn|pass)'"
-_ATOM_RES = (
-    ("any_priority", re.compile(
-        r"^any (?:(?P<p1>[a-z]+) dimension"
-        r"|dimension with priority=(?P<p2>[a-z]+)"
-        r"|(?P<p3>[a-z]+)-priority dimension) scores " + _SCORE_PART + r"$")),
-    ("count_priority", re.compile(
-        r"^two or more (?:(?P<p1>[a-z]+) dimensions"
-        r"|dimensions with priority=(?P<p2>[a-z]+)) score "
-        + _SCORE_PART + r" or worse$")),
-    ("every_priority", re.compile(
-        r"^every (?P<p1>[a-z]+) dimension scores " + _SCORE_PART + r"$")),
-    ("dim_literal", re.compile(r"^(?P<dim>D\d+) scores " + _SCORE_PART + r"$")),
-)
+@dataclass(frozen=True)
+class DimensionScore:
+    score: str
+    block_class: str | None = None
+    trigger: str | None = None
+    abstain_reason: str | None = None
 
 
-def parse_expression(expression, dims_by_priority, dim_ids, condition_id):
-    """Compile a §9 expression into a predicate over one reviewer's scores.
-
-    Returns callable(scores: dict[dim_id, score_token]) -> bool.
-    Raises ContractError on unrecognised syntax, an orphan dimension
-    literal, or a priority scope matching zero dimensions (no vacuous truth).
-    """
-    atoms = []
-    for part in expression.split(" AND "):
-        for kind, rx in _ATOM_RES:
-            m = rx.fullmatch(part)
-            if m:
-                break
-        else:
-            raise ContractError(
-                f"[EXPRESSION-UNRECOGNISED: condition_id={condition_id}, "
-                f"expression={expression}]")
-        score = m.group("score")
-        if kind == "dim_literal":
-            dim = m.group("dim")
-            if dim not in dim_ids:
-                raise ContractError(
-                    f"[EXPRESSION-SEMANTIC: condition_id={condition_id}: "
-                    f"unknown dimension {dim}]")
-            atoms.append(lambda scores, d=dim, s=score: scores[d] == s)
-            continue
-        prio = m.group("p1") or m.group("p2") or m.group("p3")
-        scoped = tuple(dims_by_priority.get(prio, ()))
-        if not scoped:
-            raise ContractError(
-                f"[EXPRESSION-SEMANTIC: condition_id={condition_id}: "
-                f"priority '{prio}' matches no contract dimension]")
-        if kind == "any_priority":
-            atoms.append(lambda scores, ds=scoped, s=score: any(
-                scores[d] == s for d in ds))
-        elif kind == "count_priority":
-            floor = SCORE_ORDER[score]
-            atoms.append(lambda scores, ds=scoped, f=floor: sum(
-                1 for d in ds if SCORE_ORDER[scores[d]] >= f) >= 2)
-        else:  # every_priority
-            atoms.append(lambda scores, ds=scoped, s=score: all(
-                scores[d] == s for d in ds))
-    return lambda scores, _atoms=tuple(atoms): all(a(scores) for a in _atoms)
+@dataclass
+class ReviewerReport:
+    path: str
+    role: str
+    scores: dict[str, DimensionScore]
+    text: str
 
 
-# --- quantifiers + precedence (protocol §8, majority corrected per #531) --------
-
-def quantifier_fires(quant, per_reviewer, warnings):
-    n = len(per_reviewer)
-    k = sum(1 for b in per_reviewer if b)
-    if quant == "any":
-        return k >= 1
-    if quant == "all":
-        return k == n
-    if quant == "majority":
-        if n == 1:
-            warnings.append(
-                "WARNING: majority quantifier with panel_size=1 never fires "
-                "(protocol §8)")
-            return False
-        threshold = 2 if n == 2 else n // 2 + 1
-        return k >= threshold
-    raise ContractError(f"unknown cross_reviewer_quantifier '{quant}'")
+@dataclass(frozen=True)
+class ExpressionAtom:
+    dimension_ids: tuple[str, ...]
+    dimension_quantifier: str
+    score: str | None = None
+    or_worse: bool = False
+    fatal: bool = False
 
 
-def accept_grade_action(conditions):
-    for cond in conditions:
-        if cond["action"] == "editorial_decision=accept":
-            return cond["action"]
-    raise ContractError(
-        "[CONTRACT-INELIGIBLE: no accept-grade failure_conditions entry "
-        "(action=editorial_decision=accept); zero-fired fallback undefined]")
+@dataclass
+class Synthesis:
+    fired: list[str]
+    decision: str
+    dimension_verdicts: dict[str, str]
+    adjudications: dict[str, str]
+    rejection_rationales: dict[str, str]
+    marker_count: int | None
 
 
-def resolve_decision(conditions, fired_ids):
-    fired = [(i, c) for i, c in enumerate(conditions)
-             if c["condition_id"] in fired_ids]
-    if not fired:
-        return accept_grade_action(conditions)
-    best = max(fired, key=lambda ic: (ic[1]["severity"], -ic[0]))
-    return best[1]["action"]
+# --- Markdown helpers shared with check_phase_conformance.py -------------------
 
-
-# --- markdown grammar (pinned; fenced code stripped; anchored full lines) -------
-
-_FENCE_RE = re.compile(r"^\s*```")
+_FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 _H2_RE = re.compile(r"^## (.+?)\s*$")
 _H3_RE = re.compile(r"^### (.+?)\s*$")
-_ROLE_RE = re.compile(r"^contract_role: (?P<role>[a-z_]+)\s*$")
-_SCORE_LINE_RE = re.compile(r"^score: (?P<score>block|warn|pass)\s*$")
-_FIRED_LINE_RE = re.compile(r"^fired: (?P<fired>true|false)\s*$")
-_DECISION_LINE_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
+_H4_RE = re.compile(r"^#### (.+?)\s*$")
 _DIM_H3_RE = re.compile(r"^(?P<dim>D\d+): (?P<name>.+)$")
+_ROLE_RE = re.compile(r"^contract_role: (?P<role>[a-z_]+)\s*$")
+_SCORE_RE = re.compile(r"^score: (?P<value>block|warn|pass|not_assessed)\s*$")
+_BLOCK_CLASS_RE = re.compile(r"^block_class: (?P<value>fatal|repairable)\s*$")
+_TRIGGER_RE = re.compile(r'^trigger: "(?P<value>[^"\n]+)"\s*$')
+_ABSTAIN_RE = re.compile(r"^abstain_reason: (?P<value>\S.*)\s*$")
+_DECISION_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
 
-REQUIRED_REPORT_SECTIONS = (
-    "Dimension Scores", "Failure Condition Checks", "Editorial Decision")
 
-
-def strip_fences(text):
-    out, in_fence = [], False
-    for line in text.split("\n"):
-        if _FENCE_RE.match(line):
-            in_fence = not in_fence
-            continue
-        if not in_fence:
+def strip_fences(text: str) -> list[str]:
+    """Remove CommonMark fenced blocks; prompt decoys inside do not parse."""
+    out: list[str] = []
+    fence_char: str | None = None
+    fence_len = 0
+    for line in text.splitlines():
+        match = _FENCE_RE.match(line)
+        if match:
+            token = match.group(1)
+            if fence_char is None:
+                fence_char, fence_len = token[0], len(token)
+                continue
+            if token[0] == fence_char and len(token) >= fence_len:
+                fence_char, fence_len = None, 0
+                continue
+        if fence_char is None:
             out.append(line)
     return out
 
 
-def _split_by(lines, heading_re):
-    sections, dupes, current = {}, set(), None
+def _split_by(lines: list[str], heading_re: re.Pattern[str]):
+    sections: dict[str, list[str]] = {}
+    dupes: set[str] = set()
+    current: list[str] | None = None
     for line in lines:
-        m = heading_re.match(line)
-        if m:
-            title = m.group(1)
+        match = heading_re.match(line)
+        if match:
+            title = match.group(1)
             if title in sections:
                 dupes.add(title)
             current = sections.setdefault(title, [])
@@ -213,143 +139,103 @@ def _split_by(lines, heading_re):
     return sections, dupes
 
 
-def split_sections(lines):
+def split_sections(lines: list[str]):
     return _split_by(lines, _H2_RE)
 
 
-def split_subsections(lines):
+def split_subsections(lines: list[str]):
     return _split_by(lines, _H3_RE)
 
 
-def _exactly_one(lines, rx, what, path, group):
-    hits = [m.group(group) for line in lines if (m := rx.match(line))]
-    if len(hits) != 1:
+def exactly_one(
+    lines: list[str],
+    pattern: re.Pattern[str],
+    field: str,
+    path: str,
+    group: str = "value",
+    *,
+    required: bool = True,
+) -> str | None:
+    hits = [m.group(group) for line in lines if (m := pattern.fullmatch(line))]
+    expected = "exactly one" if required else "at most one"
+    if (required and len(hits) != 1) or (not required and len(hits) > 1):
         raise ReportError(
-            f"[REPORT-PARSE: {path}: expected exactly one {what} line, "
-            f"found {len(hits)}]")
-    return hits[0]
+            f"[REPORT-PARSE: {path}: expected {expected} {field} line, "
+            f"found {len(hits)}]"
+        )
+    return hits[0] if hits else None
 
 
-@dataclass
-class ReviewerReport:
-    path: str
-    role: str
-    scores: dict
-    fired: dict
-    decision: str
+def _markdown_cells(line: str) -> list[str]:
+    stripped = line.strip()
+    if not stripped.startswith("|") or not stripped.endswith("|"):
+        return []
+    return [cell.strip() for cell in stripped[1:-1].split("|")]
 
 
-def parse_report(path, text, contract):
+def parse_da_critical_table(text: str, path: str = "<report>") -> dict[str, str]:
+    """Parse the DA ``#### CRITICAL`` table.
+
+    Returned mapping is ``C<n> -> Evidence Anchor cell``. Empty/no table means
+    no CRITICAL findings. Dense IDs and anchor semantics are checked by the
+    phase-conformance checker; this shared parser owns row recognition for both
+    checkers.
+    """
     lines = strip_fences(text)
-    sections, dupes = split_sections(lines)
-    for req in REQUIRED_REPORT_SECTIONS:
-        if req in dupes:
+    start = next((i for i, line in enumerate(lines)
+                  if _H4_RE.fullmatch(line)
+                  and _H4_RE.fullmatch(line).group(1) == "CRITICAL"), None)
+    if start is None:
+        return {}
+    block: list[str] = []
+    for line in lines[start + 1:]:
+        if _H2_RE.fullmatch(line) or _H3_RE.fullmatch(line) or _H4_RE.fullmatch(line):
+            break
+        block.append(line)
+    header_index = next((i for i, line in enumerate(block)
+                         if "#" in _markdown_cells(line)
+                         and "Evidence Anchor" in _markdown_cells(line)), None)
+    if header_index is None:
+        raise ReportError(
+            f"[DA-CRITICAL-PARSE: {path}: missing table header with # and "
+            "Evidence Anchor columns]"
+        )
+    header = _markdown_cells(block[header_index])
+    id_col = header.index("#")
+    anchor_col = header.index("Evidence Anchor")
+    rows: dict[str, str] = {}
+    for line in block[header_index + 2:]:
+        cells = _markdown_cells(line)
+        if not cells:
+            continue
+        if max(id_col, anchor_col) >= len(cells):
             raise ReportError(
-                f"[REPORT-PARSE: {path}: duplicated required section '## {req}']")
-        if req not in sections:
+                f"[DA-CRITICAL-PARSE: {path}: malformed CRITICAL row]"
+            )
+        finding_id = cells[id_col]
+        if not re.fullmatch(r"C[1-9]\d*", finding_id):
             raise ReportError(
-                f"[REPORT-PARSE: {path}: missing required section '## {req}']")
-    role = _exactly_one(lines, _ROLE_RE, "contract_role", path, "role")
-
-    dim_ids = [d["id"] for d in contract["acceptance_dimensions"]]
-    subs, sub_dupes = split_subsections(sections["Dimension Scores"])
-    if sub_dupes:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: duplicated Dimension Scores subsection(s) "
-            f"{sorted(sub_dupes)}]")
-    scores = {}
-    for title, sublines in subs.items():
-        m = _DIM_H3_RE.match(title)
-        if not m or m.group("dim") not in dim_ids:
+                f"[DA-CRITICAL-PARSE: {path}: invalid CRITICAL ID "
+                f"'{finding_id}'; expected C1..Cn]"
+            )
+        if finding_id in rows:
             raise ReportError(
-                f"[REPORT-PARSE: {path}: unknown Dimension Scores subsection "
-                f"'### {title}']")
-        scores[m.group("dim")] = _exactly_one(
-            sublines, _SCORE_LINE_RE, f"score ({m.group('dim')})", path, "score")
-    missing = [d for d in dim_ids if d not in scores]
-    if missing:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: missing Dimension Scores for {missing}]")
-
-    cond_ids = [c["condition_id"] for c in contract["failure_conditions"]]
-    fsubs, fdupes = split_subsections(sections["Failure Condition Checks"])
-    if fdupes:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: duplicated Failure Condition Checks "
-            f"subsection(s) {sorted(fdupes)}]")
-    fired = {}
-    for title, sublines in fsubs.items():
-        if title not in cond_ids:
-            raise ReportError(
-                f"[REPORT-PARSE: {path}: unknown Failure Condition Checks "
-                f"subsection '### {title}']")
-        fired[title] = _exactly_one(
-            sublines, _FIRED_LINE_RE, f"fired ({title})", path, "fired") == "true"
-    missing = [c for c in cond_ids if c not in fired]
-    if missing:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: missing Failure Condition Checks for {missing}]")
-
-    decision = _exactly_one(lines, _DECISION_LINE_RE, "decision", path, "action")
-    if decision not in ACTION_ENUM:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: unknown decision action token '{decision}']")
-    in_section = [m.group("action") for line in sections["Editorial Decision"]
-                  if (m := _DECISION_LINE_RE.match(line))]
-    if len(in_section) != 1:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: decision line must sit inside "
-            f"'## Editorial Decision']")
-    return ReviewerReport(path=path, role=role, scores=scores,
-                          fired=fired, decision=decision)
+                f"[DA-CRITICAL-PARSE: {path}: duplicate CRITICAL ID {finding_id}]"
+            )
+        rows[finding_id] = cells[anchor_col]
+    return rows
 
 
-# --- synthesis output parser ----------------------------------------------------
+# --- Contract and report parsing ----------------------------------------------
 
-_FIREDLIST_RE = re.compile(r"^fired_conditions: \[(?P<body>[^\]]*)\]\s*$")
-
-
-def parse_synthesis(path, text, contract):
-    lines = strip_fences(text)
-    bodies = [m.group("body") for line in lines
-              if (m := _FIREDLIST_RE.match(line))]
-    if len(bodies) != 1:
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: expected exactly one fired_conditions "
-            f"line, found {len(bodies)}]")
-    body = bodies[0].strip()
-    fired = [t.strip() for t in body.split(",") if t.strip()] if body else []
-    cond_ids = {c["condition_id"] for c in contract["failure_conditions"]}
-    unknown = [f for f in fired if f not in cond_ids]
-    if unknown:
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: unknown condition id(s) {unknown}]")
-    if len(fired) != len(set(fired)):
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: duplicate condition id in fired list]")
-    decisions = [m.group("action") for line in lines
-                 if (m := _DECISION_LINE_RE.match(line))]
-    if len(decisions) != 1:
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: expected exactly one decision line, "
-            f"found {len(decisions)}]")
-    if decisions[0] not in ACTION_ENUM:
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: unknown decision action token "
-            f"'{decisions[0]}']")
-    return fired, decisions[0]
-
-
-# --- contract loading + hard eligibility ----------------------------------------
-
-def _read_text(path):
+def _read_text(path: Path | str) -> str:
     try:
         return Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
         raise ContractError(f"[IO-ERROR: {path}: {exc}]") from exc
 
 
-def load_contract(path):
+def load_contract(path: Path | str):
     try:
         contract = json.loads(_read_text(path))
     except json.JSONDecodeError as exc:
@@ -358,82 +244,519 @@ def load_contract(path):
     problems += check_sprint_contract.check_structural_invariants(contract)
     if problems:
         raise ContractError(
-            f"[CONTRACT-INVALID: {path}: " + "; ".join(problems) + "]")
+            f"[CONTRACT-INVALID: {path}: {'; '.join(problems)}]"
+        )
     mode = contract.get("mode")
     if mode not in ROLE_SETS:
         raise ContractError(
-            f"[CONTRACT-INELIGIBLE: mode '{mode}' has no published panel "
-            f"mapping (protocol §7); supported: {sorted(ROLE_SETS)}]")
-    expected_size = check_sprint_contract.EXPECTED_PANEL_SIZE[mode]
-    if contract.get("panel_size") != expected_size:
+            f"[CONTRACT-INELIGIBLE: unsupported reviewer mode {mode}]"
+        )
+    expected = check_sprint_contract.EXPECTED_PANEL_SIZE[mode]
+    if contract.get("panel_size") != expected:
         raise ContractError(
             f"[CONTRACT-INELIGIBLE: panel_size={contract.get('panel_size')} "
-            f"inconsistent with mode={mode}; expected {expected_size}]")
+            f"inconsistent with mode={mode}; expected {expected}]"
+        )
     accept_grade_action(contract["failure_conditions"])
-    dims_by_priority, dim_ids = {}, set()
-    for d in contract["acceptance_dimensions"]:
-        dims_by_priority.setdefault(d["priority"], []).append(d["id"])
-        dim_ids.add(d["id"])
-    predicates = {
-        c["condition_id"]: parse_expression(
-            c["expression"], dims_by_priority, dim_ids, c["condition_id"])
-        for c in contract["failure_conditions"]
+    dimensions = {d["id"]: d for d in contract["acceptance_dimensions"]}
+    expressions = {
+        condition["condition_id"]: parse_expression(
+            condition["expression"], dimensions, condition["condition_id"]
+        )
+        for condition in contract["failure_conditions"]
     }
-    return contract, predicates
+    return contract, expressions
 
 
-# --- Layer 1: per-reviewer self-consistency --------------------------------------
+def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
+    lines = strip_fences(text)
+    sections, dupes = split_sections(lines)
+    if "Dimension Scores" in dupes:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: duplicated ## Dimension Scores]"
+        )
+    if "Dimension Scores" not in sections:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: missing ## Dimension Scores]"
+        )
+    for retired in ("Failure Condition Checks", "Editorial Decision"):
+        if retired in sections:
+            raise ReportError(
+                f"[V1-GRAMMAR-RETIRED: {path}: ## {retired} is forbidden "
+                "under Schema 13.2]"
+            )
+    role = exactly_one(lines, _ROLE_RE, "contract_role", path, "role")
+    role_set = ROLE_SETS[contract["mode"]]
+    if role not in role_set:
+        raise ReportError(
+            f"[REPORT-ROLE: {path}: role={role} is not valid for "
+            f"{contract['mode']}]"
+        )
 
-def layer1_check(report, contract, predicates, warnings):
-    diags = []
-    for cond in contract["failure_conditions"]:
-        cid = cond["condition_id"]
-        recomputed = predicates[cid](report.scores)
-        declared = report.fired[cid]
-        if recomputed != declared:
-            diags.append(
-                f"[REVIEWER-SELF-INCONSISTENT: reviewer={report.path}, "
-                f"condition={cid}, declared={str(declared).lower()}, "
-                f"recomputed={str(recomputed).lower()}]")
-    declared_fired = {cid for cid, f in report.fired.items() if f}
-    expected = resolve_decision(contract["failure_conditions"], declared_fired)
-    if expected != report.decision:
-        diags.append(
-            f"[REVIEWER-SELF-INCONSISTENT: reviewer={report.path}, "
-            f"decision_declared={report.decision}, "
-            f"decision_recomputed={expected}]")
-    return diags
+    dims = {d["id"]: d for d in contract["acceptance_dimensions"]}
+    subsections, subsection_dupes = split_subsections(sections["Dimension Scores"])
+    if subsection_dupes:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: duplicated Dimension Scores subsection(s) "
+            f"{sorted(subsection_dupes)}]"
+        )
+    scores: dict[str, DimensionScore] = {}
+    for title, sublines in subsections.items():
+        match = _DIM_H3_RE.fullmatch(title)
+        if not match or match.group("dim") not in dims:
+            raise ReportError(
+                f"[REPORT-PARSE: {path}: unknown Dimension Scores subsection "
+                f"'### {title}']"
+            )
+        did = match.group("dim")
+        if match.group("name") != dims[did]["name"]:
+            raise ReportError(
+                f"[REPORT-PARSE: {path}: {did} name mismatch]"
+            )
+        score = exactly_one(sublines, _SCORE_RE, f"score ({did})", path)
+        block_class = exactly_one(
+            sublines, _BLOCK_CLASS_RE, f"block_class ({did})", path,
+            required=False
+        )
+        trigger = exactly_one(
+            sublines, _TRIGGER_RE, f"trigger ({did})", path, required=False
+        )
+        abstain_reason = exactly_one(
+            sublines, _ABSTAIN_RE, f"abstain_reason ({did})", path,
+            required=False
+        )
+        eligible = role in dims[did]["eligible_roles"]
+        if eligible and score == "not_assessed" and not abstain_reason:
+            raise ReportError(
+                f"[ABSTENTION-INVALID: {path}: eligible role {role} must give "
+                f"abstain_reason for {did}]"
+            )
+        if not eligible and score != "not_assessed":
+            raise ReportError(
+                f"[OUT-OF-ROLE-SCORE: {path}: role {role} may not score {did}]"
+            )
+        if not eligible and abstain_reason:
+            raise ReportError(
+                f"[ABSTENTION-INVALID: {path}: structural abstention on {did} "
+                "must not carry abstain_reason]"
+            )
+        mandatory_block = (
+            eligible and score == "block" and dims[did]["priority"] == "mandatory"
+        )
+        if mandatory_block != bool(block_class):
+            raise ReportError(
+                f"[BLOCK-CLASS-INVALID: {path}: {did} block_class is required "
+                "iff an eligible mandatory dimension scores block]"
+            )
+        needs_trigger = eligible and score in {"block", "warn"}
+        if needs_trigger != bool(trigger):
+            raise ReportError(
+                f"[TRIGGER-GRAMMAR: {path}: {did} trigger is required iff an "
+                "eligible dimension scores block or warn]"
+            )
+        if score != "not_assessed" and abstain_reason:
+            raise ReportError(
+                f"[ABSTENTION-INVALID: {path}: {did} scored result may not "
+                "carry abstain_reason]"
+            )
+        scores[did] = DimensionScore(
+            score, block_class, trigger, abstain_reason
+        )
+    missing = [did for did in dims if did not in scores]
+    if missing:
+        raise ReportError(
+            f"[REPORT-PARSE: {path}: missing Dimension Scores for {missing}]"
+        )
+    return ReviewerReport(path, role, scores, text)
 
 
-# --- Layer 2: panel synthesis recomputation --------------------------------------
+# --- Closed expression grammar and two-stage evaluation -----------------------
 
-def layer2_check(reports, contract, predicates, declared_fired,
-                 declared_decision, warnings):
-    recomputed_fired = []
-    for cond in contract["failure_conditions"]:
-        cid = cond["condition_id"]
-        per_reviewer = [predicates[cid](r.scores) for r in reports]
-        if quantifier_fires(cond["cross_reviewer_quantifier"],
-                            per_reviewer, warnings):
-            recomputed_fired.append(cid)
-    recomputed_decision = resolve_decision(
-        contract["failure_conditions"], set(recomputed_fired))
-    if (sorted(recomputed_fired) != sorted(declared_fired)
-            or recomputed_decision != declared_decision):
-        return [
-            f"[PANEL-SYNTHESIS-MISMATCH: recomputed_fired={recomputed_fired}, "
-            f"declared_fired={list(declared_fired)}, "
-            f"recomputed={recomputed_decision}, stated={declared_decision}]"]
-    return []
+_SCORE = r"'(?P<score>block|warn|pass)'"
+_EXPRESSION_PATTERNS = (
+    ("any_priority", re.compile(
+        r"^any (?:(?P<p1>[a-z]+) dimension|dimension with priority="
+        r"(?P<p2>[a-z]+)|(?P<p3>[a-z]+)-priority dimension) scores "
+        + _SCORE + r"$")),
+    ("count_priority", re.compile(
+        r"^two or more (?:(?P<p1>[a-z]+) dimensions|dimensions with priority="
+        r"(?P<p2>[a-z]+)) score " + _SCORE + r" or worse$")),
+    ("every_priority", re.compile(
+        r"^every (?P<p1>[a-z]+) dimension scores " + _SCORE + r"$")),
+    ("dim_exact", re.compile(r"^(?P<dim>D\d+) scores " + _SCORE + r"$")),
+    ("fatal_priority", re.compile(
+        r"^any (?P<p1>[a-z]+) dimension has a fatal block$")),
+    ("fatal_dim", re.compile(r"^(?P<dim>D\d+) has a fatal block$")),
+    ("any_all", re.compile(
+        r"^any dimension scores " + _SCORE + r" or worse$")),
+    ("dim_threshold", re.compile(
+        r"^(?P<dim>D\d+) scores " + _SCORE + r" or worse$")),
+    ("every_all", re.compile(
+        r"^every dimension scores " + _SCORE + r"$")),
+)
 
 
-# --- CLI --------------------------------------------------------------------------
+def parse_expression(
+    expression: str, dimensions: dict[str, dict], condition_id: str
+) -> tuple[ExpressionAtom, ...]:
+    atoms: list[ExpressionAtom] = []
+    for part in expression.split(" AND "):
+        for kind, pattern in _EXPRESSION_PATTERNS:
+            match = pattern.fullmatch(part)
+            if match:
+                break
+        else:
+            raise ContractError(
+                f"[EXPRESSION-UNRECOGNISED: condition_id={condition_id}, "
+                f"expression={expression}]"
+            )
+        if kind in {"dim_exact", "fatal_dim", "dim_threshold"}:
+            did = match.group("dim")
+            if did not in dimensions:
+                raise ContractError(
+                    f"[EXPRESSION-SEMANTIC: condition_id={condition_id}: "
+                    f"unknown dimension {did}]"
+                )
+            dim_ids = (did,)
+        elif kind in {"any_all", "every_all"}:
+            dim_ids = tuple(dimensions)
+        else:
+            priority = match.group("p1") or match.groupdict().get("p2") \
+                or match.groupdict().get("p3")
+            dim_ids = tuple(
+                did for did, dim in dimensions.items()
+                if dim["priority"] == priority
+            )
+            if not dim_ids:
+                raise ContractError(
+                    f"[EXPRESSION-SEMANTIC: condition_id={condition_id}: "
+                    f"priority '{priority}' matches no dimension]"
+                )
+        fatal = kind in {"fatal_priority", "fatal_dim"}
+        if fatal and any(dimensions[did]["priority"] != "mandatory"
+                         for did in dim_ids):
+            raise ContractError(
+                f"[CONTRACT-INVALID: condition_id={condition_id}: fatal atom "
+                "may target mandatory dimensions only]"
+            )
+        dimension_quantifier = (
+            "count2" if kind == "count_priority"
+            else "every" if kind in {"every_priority", "every_all"}
+            else "any"
+        )
+        atoms.append(ExpressionAtom(
+            dimension_ids=dim_ids,
+            dimension_quantifier=dimension_quantifier,
+            score=None if fatal else match.groupdict().get("score"),
+            or_worse=kind in {
+                "count_priority", "any_all", "dim_threshold"
+            },
+            fatal=fatal,
+        ))
+    return tuple(atoms)
+
+
+def quantifier_fires(
+    quantifier: str, indicators: list[bool], warnings: list[str]
+) -> bool:
+    n = len(indicators)
+    if n == 0:
+        raise ContractError("[DIMENSION-UNASSESSED]")
+    k = sum(indicators)
+    if quantifier == "any":
+        return k >= 1
+    if quantifier == "all":
+        return k == n
+    if quantifier == "majority":
+        threshold = 1 if n == 1 else (2 if n == 2 else n // 2 + 1)
+        return k >= threshold
+    raise ContractError(f"unknown cross_reviewer_quantifier '{quantifier}'")
+
+
+def _seat_indicator(value: DimensionScore, atom: ExpressionAtom) -> bool:
+    if atom.fatal:
+        return value.score == "block" and value.block_class == "fatal"
+    if atom.or_worse:
+        return SCORE_ORDER[value.score] >= SCORE_ORDER[atom.score]
+    return value.score == atom.score
+
+
+def evaluate_expression(
+    atoms: tuple[ExpressionAtom, ...],
+    assessed: dict[str, list[DimensionScore]],
+    cross_quantifier: str,
+    warnings: list[str],
+) -> bool:
+    for atom in atoms:
+        dimension_results = []
+        for did in atom.dimension_ids:
+            values = assessed[did]
+            dimension_results.append(quantifier_fires(
+                cross_quantifier,
+                [_seat_indicator(value, atom) for value in values],
+                warnings,
+            ))
+        if atom.dimension_quantifier == "any":
+            result = any(dimension_results)
+        elif atom.dimension_quantifier == "every":
+            result = all(dimension_results)
+        else:
+            result = sum(dimension_results) >= 2
+        if not result:
+            return False
+    return True
+
+
+def accept_grade_action(conditions: list[dict]) -> str:
+    for condition in conditions:
+        if condition["action"] == "editorial_decision=accept":
+            return condition["action"]
+    raise ContractError(
+        "[CONTRACT-INELIGIBLE: no accept-grade failure condition]"
+    )
+
+
+def resolve_decision(conditions: list[dict], fired_ids: set[str]) -> str:
+    fired = [(index, condition) for index, condition in enumerate(conditions)
+             if condition["condition_id"] in fired_ids]
+    if not fired:
+        return accept_grade_action(conditions)
+    return max(
+        fired, key=lambda pair: (pair[1]["severity"], -pair[0])
+    )[1]["action"]
+
+
+def collect_assessed(
+    reports: list[ReviewerReport], contract: dict
+) -> dict[str, list[DimensionScore]]:
+    assessed: dict[str, list[DimensionScore]] = {}
+    for dim in contract["acceptance_dimensions"]:
+        did = dim["id"]
+        values = [
+            report.scores[did]
+            for report in reports
+            if report.role in dim["eligible_roles"]
+            and report.scores[did].score != "not_assessed"
+        ]
+        if not values:
+            raise ContractError(f"[DIMENSION-UNASSESSED: {did}]")
+        assessed[did] = values
+    return assessed
+
+
+def compute_dimension_verdicts(
+    assessed: dict[str, list[DimensionScore]]
+) -> dict[str, str]:
+    verdicts: dict[str, str] = {}
+    for did, values in assessed.items():
+        if any(value.score == "block" and value.block_class == "fatal"
+               for value in values):
+            verdicts[did] = "block(fatal)"
+        else:
+            verdicts[did] = max(values, key=lambda value:
+                                SCORE_ORDER[value.score]).score
+    return verdicts
+
+
+def recompute_panel(
+    reports: list[ReviewerReport],
+    contract: dict,
+    expressions: dict[str, tuple[ExpressionAtom, ...]],
+    warnings: list[str],
+):
+    assessed = collect_assessed(reports, contract)
+    fired: list[str] = []
+    for condition in contract["failure_conditions"]:
+        if evaluate_expression(
+            expressions[condition["condition_id"]],
+            assessed,
+            condition["cross_reviewer_quantifier"],
+            warnings,
+        ):
+            fired.append(condition["condition_id"])
+    decision = resolve_decision(contract["failure_conditions"], set(fired))
+    return assessed, fired, decision
+
+
+# --- Synthesis grammar and DA-CRITICAL gate ------------------------------------
+
+_LIST_BODY = r"(?P<body>[^\]]*)"
+_FIRED_LIST_RE = re.compile(r"^fired_conditions: \[" + _LIST_BODY + r"\]\s*$")
+_VERDICTS_RE = re.compile(r"^dimension_verdicts: \[" + _LIST_BODY + r"\]\s*$")
+_ADJUDICATIONS_RE = re.compile(
+    r"^da_critical_adjudications: \[" + _LIST_BODY + r"\]\s*$"
+)
+_RATIONALE_RE = re.compile(
+    r"^(?P<id>C[1-9]\d*) rejection rationale: (?P<text>\S.*)\s*$"
+)
+_MARKER_RE = re.compile(
+    r"^\[DA-CRITICAL-VS-ACCEPT: (?P<count>\d+) "
+    r"validated/unresolved\]\s*$"
+)
+
+
+def _one_body(
+    lines: list[str], pattern: re.Pattern[str], label: str, path: str
+) -> str:
+    bodies = [match.group("body") for line in lines
+              if (match := pattern.fullmatch(line))]
+    if len(bodies) != 1:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: expected exactly one {label} line, "
+            f"found {len(bodies)}]"
+        )
+    return bodies[0].strip()
+
+
+def _comma_tokens(body: str) -> list[str]:
+    return [token.strip() for token in body.split(",") if token.strip()]
+
+
+def parse_synthesis(path: str, text: str, contract: dict) -> Synthesis:
+    lines = strip_fences(text)
+    fired = _comma_tokens(_one_body(
+        lines, _FIRED_LIST_RE, "fired_conditions", path
+    ))
+    condition_ids = {c["condition_id"] for c in contract["failure_conditions"]}
+    if len(fired) != len(set(fired)) or set(fired) - condition_ids:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: invalid fired_conditions {fired}]"
+        )
+
+    verdict_tokens = _comma_tokens(_one_body(
+        lines, _VERDICTS_RE, "dimension_verdicts", path
+    ))
+    verdicts: dict[str, str] = {}
+    for token in verdict_tokens:
+        match = re.fullmatch(
+            r"(?P<dim>D\d+)=(?P<value>pass|warn|block|block\(fatal\))", token
+        )
+        if not match or match.group("dim") in verdicts:
+            raise SynthesisError(
+                f"[SYNTHESIS-PARSE: {path}: invalid dimension verdict "
+                f"'{token}']"
+            )
+        verdicts[match.group("dim")] = match.group("value")
+
+    adjudication_tokens = _comma_tokens(_one_body(
+        lines, _ADJUDICATIONS_RE, "da_critical_adjudications", path
+    ))
+    adjudications: dict[str, str] = {}
+    for token in adjudication_tokens:
+        match = re.fullmatch(
+            r"(?P<id>C[1-9]\d*)=(?P<value>VALIDATED|REJECTED|UNRESOLVED)",
+            token,
+        )
+        if not match or match.group("id") in adjudications:
+            raise SynthesisError(
+                f"[SYNTHESIS-PARSE: {path}: invalid DA adjudication "
+                f"'{token}']"
+            )
+        adjudications[match.group("id")] = match.group("value")
+
+    decisions = [match.group("action") for line in lines
+                 if (match := _DECISION_RE.fullmatch(line))]
+    if len(decisions) != 1 or decisions[0] not in ACTION_ENUM:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: expected exactly one valid decision]"
+        )
+    rationales: dict[str, str] = {}
+    for line in lines:
+        if match := _RATIONALE_RE.fullmatch(line):
+            if match.group("id") in rationales:
+                raise SynthesisError(
+                    f"[SYNTHESIS-PARSE: {path}: duplicate rejection rationale "
+                    f"for {match.group('id')}]"
+                )
+            rationales[match.group("id")] = match.group("text")
+    markers = [int(match.group("count")) for line in lines
+               if (match := _MARKER_RE.fullmatch(line))]
+    if len(markers) > 1:
+        raise SynthesisError(
+            f"[SYNTHESIS-PARSE: {path}: duplicate DA consistency marker]"
+        )
+    return Synthesis(
+        fired=fired,
+        decision=decisions[0],
+        dimension_verdicts=verdicts,
+        adjudications=adjudications,
+        rejection_rationales=rationales,
+        marker_count=markers[0] if markers else None,
+    )
+
+
+def check_da_terminal_gate(
+    reports: list[ReviewerReport], synthesis: Synthesis
+) -> list[str]:
+    da = next((report for report in reports if report.role == "da"), None)
+    da_ids = (
+        set(parse_da_critical_table(da.text, da.path))
+        if da is not None else set()
+    )
+    adjudicated_ids = set(synthesis.adjudications)
+    diagnostics: list[str] = []
+    if da_ids != adjudicated_ids:
+        diagnostics.append(
+            f"[DA-CRITICAL-ADJUDICATION-MISMATCH: report={sorted(da_ids)}, "
+            f"synthesis={sorted(adjudicated_ids)}]"
+        )
+    for finding_id, value in synthesis.adjudications.items():
+        if value == "REJECTED" and finding_id not in synthesis.rejection_rationales:
+            diagnostics.append(
+                f"[DA-CRITICAL-RATIONALE-MISSING: {finding_id}]"
+            )
+    active = sum(value in {"VALIDATED", "UNRESOLVED"}
+                 for value in synthesis.adjudications.values())
+    needs_marker = (
+        synthesis.decision == "editorial_decision=accept" and active > 0
+    )
+    if needs_marker and synthesis.marker_count != active:
+        diagnostics.append(
+            f"[DA-CRITICAL-VS-ACCEPT-MARKER: expected={active}, "
+            f"stated={synthesis.marker_count}]"
+        )
+    if not needs_marker and synthesis.marker_count is not None:
+        diagnostics.append(
+            "[DA-CRITICAL-VS-ACCEPT-MARKER: marker forbidden in this state]"
+        )
+    return diagnostics
+
+
+def layer2_check(
+    reports: list[ReviewerReport],
+    contract: dict,
+    expressions: dict[str, tuple[ExpressionAtom, ...]],
+    synthesis: Synthesis,
+    warnings: list[str],
+) -> list[str]:
+    assessed, fired, decision = recompute_panel(
+        reports, contract, expressions, warnings
+    )
+    verdicts = compute_dimension_verdicts(assessed)
+    diagnostics: list[str] = []
+    if (fired != synthesis.fired or decision != synthesis.decision
+            or verdicts != synthesis.dimension_verdicts):
+        diagnostics.append(
+            f"[PANEL-SYNTHESIS-MISMATCH: recomputed_verdicts={verdicts}, "
+            f"declared_verdicts={synthesis.dimension_verdicts}, "
+            f"recomputed_fired={fired}, declared_fired={synthesis.fired}, "
+            f"recomputed={decision}, stated={synthesis.decision}]"
+        )
+    diagnostics.extend(check_da_terminal_gate(reports, synthesis))
+    return diagnostics
+
+
+# --- CLI -----------------------------------------------------------------------
 
 def _parse_args(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--contract", required=True, type=Path)
     parser.add_argument("--report", required=True, action="append",
                         type=Path, dest="reports")
+    parser.add_argument(
+        "--roles",
+        help="Comma-separated dispatch roles, positionally matched to reports",
+    )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--synthesis", type=Path)
     group.add_argument("--layer1-only", action="store_true")
@@ -442,102 +765,113 @@ def _parse_args(argv):
 
 def main(argv=None):
     args = _parse_args(argv)
-    warnings, infra, reviewer_diags, synthesis_diags = [], [], [], []
-
+    warnings: list[str] = []
+    infra: list[str] = []
+    reviewer_diags: list[str] = []
+    synthesis_diags: list[str] = []
     try:
-        contract, predicates = load_contract(args.contract)
+        contract, expressions = load_contract(args.contract)
     except ContractError as exc:
         print(exc)
         return EXIT_CONTRACT
 
     panel_size = contract["panel_size"]
-    role_set = ROLE_SETS[contract["mode"]]
-
-    # cardinality: paths + content identity (both modes)
-    resolved = {p: p.resolve() for p in args.reports}
-    if len(set(resolved.values())) != len(args.reports):
+    resolved = [path.resolve() for path in args.reports]
+    if len(set(resolved)) != len(resolved):
         infra.append("[PANEL-CARDINALITY: duplicate report paths]")
-    if not args.layer1_only and len(args.reports) != panel_size:
-        infra.append(f"[PANEL-CARDINALITY: got={len(args.reports)}, "
-                     f"panel_size={panel_size}]")
-    if args.layer1_only and not (1 <= len(args.reports) <= panel_size):
-        infra.append(f"[PANEL-CARDINALITY: layer1-only accepts 1..{panel_size} "
-                     f"reports, got={len(args.reports)}]")
+    if args.layer1_only:
+        if not 1 <= len(args.reports) <= panel_size:
+            infra.append(
+                f"[PANEL-CARDINALITY: layer1-only accepts 1..{panel_size} "
+                f"reports, got={len(args.reports)}]"
+            )
+    elif len(args.reports) != panel_size:
+        infra.append(
+            f"[PANEL-CARDINALITY: got={len(args.reports)}, "
+            f"panel_size={panel_size}]"
+        )
 
-    texts, hashes, seen_resolved = {}, set(), set()
-    for p in args.reports:
+    texts: dict[Path, str] = {}
+    digests: set[str] = set()
+    seen_paths: set[Path] = set()
+    for path in args.reports:
         try:
-            texts[p] = _read_text(p)
+            texts[path] = _read_text(path)
         except ContractError as exc:
             infra.append(str(exc))
             continue
-        resolved_p = resolved[p]
-        if resolved_p in seen_resolved:
-            # Already processed under a prior --report occurrence of this same
-            # resolved path; the duplicate-path diagnostic above already
-            # covers it, so skip re-hashing to avoid a second, redundant
-            # byte-identical diagnostic for the identical file.
+        resolved_path = path.resolve()
+        if resolved_path in seen_paths:
             continue
-        seen_resolved.add(resolved_p)
-        digest = hashlib.sha256(texts[p].encode("utf-8")).hexdigest()
-        if digest in hashes:
-            infra.append(f"[PANEL-CARDINALITY: byte-identical report contents "
-                         f"({p})]")
-        hashes.add(digest)
+        seen_paths.add(resolved_path)
+        digest = hashlib.sha256(texts[path].encode()).hexdigest()
+        if digest in digests:
+            infra.append(
+                f"[PANEL-CARDINALITY: byte-identical report contents ({path})]"
+            )
+        digests.add(digest)
 
-    reports, parse_failed = [], False
-    for p in args.reports:
-        if p not in texts:
-            parse_failed = True
+    reports: list[ReviewerReport] = []
+    for path in args.reports:
+        if path not in texts:
             continue
         try:
-            reports.append(parse_report(str(p), texts[p], contract))
+            reports.append(parse_report(str(path), texts[path], contract))
         except ReportError as exc:
             reviewer_diags.append(str(exc))
-            parse_failed = True
 
-    roles = [r.role for r in reports]
-    if not parse_failed:
+    if len(reports) == len(args.reports):
+        roles = [report.role for report in reports]
+        role_set = ROLE_SETS[contract["mode"]]
         if args.layer1_only:
-            bad = [x for x in roles if x not in role_set]
-            if bad or len(set(roles)) != len(roles):
-                infra.append(f"[PANEL-CARDINALITY: roles {roles} invalid for "
-                             f"mode {contract['mode']}]")
+            if len(set(roles)) != len(roles):
+                infra.append(f"[PANEL-CARDINALITY: duplicate roles {roles}]")
         elif set(roles) != role_set or len(set(roles)) != len(roles):
-            infra.append(f"[PANEL-CARDINALITY: roles {sorted(roles)} != "
-                         f"required {sorted(role_set)}]")
-
-    for r in reports:
-        reviewer_diags.extend(layer1_check(r, contract, predicates, warnings))
-
-    if not args.layer1_only:
-        if parse_failed or infra:
-            synthesis_diags.append(
-                "[SUPPRESSED: panel recomputation skipped — upstream "
-                "reviewer/cardinality failure]")
-        else:
-            try:
-                declared_fired, declared_decision = parse_synthesis(
-                    str(args.synthesis), _read_text(args.synthesis), contract)
-            except ContractError as exc:      # IO on synthesis file
-                infra.append(str(exc))
-            except SynthesisError as exc:
-                synthesis_diags.append(str(exc))
+            infra.append(
+                f"[PANEL-CARDINALITY: roles {sorted(roles)} != "
+                f"required {sorted(role_set)}]"
+            )
+        if args.roles is not None:
+            dispatched = [role.strip() for role in args.roles.split(",")]
+            if len(dispatched) != len(reports):
+                infra.append(
+                    f"[ROLE-BINDING: --roles count={len(dispatched)} does not "
+                    f"match reports={len(reports)}]"
+                )
             else:
-                synthesis_diags.extend(layer2_check(
-                    reports, contract, predicates, declared_fired,
-                    declared_decision, warnings))
+                for index, (expected, report) in enumerate(
+                    zip(dispatched, reports)
+                ):
+                    if expected != report.role:
+                        reviewer_diags.append(
+                            f"[ROLE-BINDING: report[{index}] declares "
+                            f"{report.role}, dispatched as {expected}]"
+                        )
 
-    for line in warnings + infra + reviewer_diags + synthesis_diags:
-        print(line)
+    if not args.layer1_only and not infra and not reviewer_diags:
+        try:
+            synthesis = parse_synthesis(
+                str(args.synthesis), _read_text(args.synthesis), contract
+            )
+            synthesis_diags.extend(layer2_check(
+                reports, contract, expressions, synthesis, warnings
+            ))
+        except ContractError as exc:
+            infra.append(str(exc))
+        except ReportError as exc:
+            reviewer_diags.append(str(exc))
+        except SynthesisError as exc:
+            synthesis_diags.append(str(exc))
+
+    for diagnostic in warnings + infra + reviewer_diags + synthesis_diags:
+        print(diagnostic)
     if infra:
         return EXIT_CONTRACT
     if reviewer_diags:
         return EXIT_REVIEWER
-    if any(not d.startswith("[SUPPRESSED") for d in synthesis_diags):
+    if synthesis_diags:
         return EXIT_SYNTHESIS
-    print("PANEL-SYNTHESIS: PASS" if not args.layer1_only
-          else "LAYER1-ONLY: PASS")
+    print("LAYER1-ONLY: PASS" if args.layer1_only else "PANEL-SYNTHESIS: PASS")
     return EXIT_PASS
 
 

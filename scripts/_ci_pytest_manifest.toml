@@ -289,6 +289,22 @@ id = "510-panel-synthesis-checker"
 path = "scripts/test_check_panel_synthesis.py"
 
 [[pytest]]
+id = "574-schema-13-2-validator"
+path = "scripts/test_check_sprint_contract.py"
+
+[[pytest]]
+id = "574-phase-conformance-checker"
+path = "scripts/test_check_phase_conformance.py"
+
+[[pytest]]
+id = "574-role-scoped-contract-lint"
+path = "scripts/test_check_role_scoped_contract.py"
+
+[[pytest]]
+id = "574-decision-contract-lint"
+path = "scripts/test_check_decision_contract.py"
+
+[[pytest]]
 id = "528-pipeline-boundary-semantics"
 path = "scripts/test_check_pipeline_boundary_semantics.py"
 

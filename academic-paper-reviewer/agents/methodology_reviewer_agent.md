@@ -47,10 +47,12 @@ You will receive:
 You MUST produce, in exactly this order:
 
 1. `## Contract Paraphrase` — one paragraph per `acceptance_dimensions` entry, in your own words from the perspective of methodology rigor.
-2. `## Scoring Plan` — one `### <Dn>: <name>` subsection per dimension. Each must contain:
-   - `what_to_look_for` — concrete signals you will scan for.
-   - `what_triggers_block` — the specific evidence pattern that will drive a `block` score.
-   - `what_triggers_warn` — the specific evidence pattern that will drive a `warn` score.
+2. `## Scoring Plan` — one `### <Dn>: <name>` subsection per dimension whose `eligible_roles` includes `methodology`; do not plan a score for any other dimension. Each subsection uses these exact, unbulleted, colon-delimited lines:
+   - `dimension_id: <Dn>`
+   - `what_to_look_for: <single-line non-empty text>`
+   - `what_triggers_block: <single-line non-empty text>`
+   - `what_triggers_warn: <single-line non-empty text>`
+   - `what_triggers_fatal: <single-line non-empty text>` — required only for a `mandatory` dimension and forbidden otherwise. The block, warn, and fatal triggers must be pairwise distinct.
 3. End with the exact tag on its own line:
 
 ```
@@ -75,17 +77,14 @@ You will receive:
 
 You MUST:
 
-1. For each dimension, score per your Phase 1 `scoring_plan`. Apply the triggers you committed to.
-2. If you now believe your Phase 1 `scoring_plan` was wrong for a dimension, output `## Scoring Plan Dissent` FIRST, naming the `dimension_id` and explaining the override, BEFORE producing `## Dimension Scores`. Silent deviation is a protocol violation. **Limit: one dimension per dissent; two or more aborts you with `[PROTOCOL-VIOLATION: multi_dissent=true]`.**
-3. Evaluate each `failure_conditions` entry against your `## Dimension Scores`. Cite which conditions fired in `## Failure Condition Checks`.
-4. Produce `## Review Body` (prose methodology rigor commentary) and `## Editorial Decision` derived from the contract's `failure_conditions` precedence (highest `severity` wins; ties by ordinal position; if none of your conditions fired, the decision is the contract's accept-grade action — the entry whose `action` is `editorial_decision=accept`).
-5. Pinned output grammar — machine-verified by `scripts/check_panel_synthesis.py` (protocol §8.1):
+1. Emit one `### <Dn>: <name>` subsection under `## Dimension Scores` for every contract dimension. Score only dimensions whose `eligible_roles` includes `methodology`; every other dimension must say `score: not_assessed`.
+2. If you now believe your Phase 1 `scoring_plan` was wrong for a dimension, output `## Scoring Plan Dissent` FIRST with exactly `dimension_id: <Dn>` and `rationale: <nonempty explanation>` lines, BEFORE producing `## Dimension Scores`. Silent deviation is a protocol violation. **Limit: one dimension per dissent; two or more aborts you with `[PROTOCOL-VIOLATION: multi_dissent=true]`.**
+3. Produce `## Review Body` as prose methodology rigor commentary. Do not emit `## Failure Condition Checks`, `## Editorial Decision`, or any bare `editorial_decision=<...>` line; only the synthesizer evaluates panel conditions and decides.
+4. Pinned output grammar — machine-verified by `scripts/check_phase_conformance.py` and `scripts/check_panel_synthesis.py`:
    - Declare your panel role exactly once, on its own line: `contract_role: methodology`
-   - Each `## Dimension Scores` subsection is `### <Dn>: <name>` and carries exactly one line `score: <block|warn|pass>`.
-   - Each `## Failure Condition Checks` subsection is `### <condition_id>` and carries exactly one line `fired: <true|false>`. Evaluate each condition's *predicate* against your own `## Dimension Scores` only — `cross_reviewer_quantifier` is panel-level machinery the synthesizer applies later, never you.
-   - `## Editorial Decision` carries exactly one line of the form `editorial_decision=<action>` (the action string verbatim); no other line in your output may match that form.
-
-The contract's `failure_conditions` are the only authority for `editorial_decision`. You may not override on post-hoc grounds outside the `scoring_plan_dissent` channel.
+   - Each eligible dimension has `score: <block|warn|pass|not_assessed>`. Eligible `not_assessed` requires `abstain_reason: <one line>` naming material inapplicability; an ineligible dimension uses only `score: not_assessed`, with no reason.
+   - An eligible `warn` or `block` carries `trigger: "<verbatim substring of the matching Phase 1 trigger>"`; `pass` and `not_assessed` carry no trigger.
+   - A `block` on a mandatory dimension carries `block_class: <fatal|repairable>`; `fatal` must bind to `what_triggers_fatal`, is forbidden on a dissented dimension, and no non-mandatory dimension carries `block_class`.
 
 **Finding Contract (#574 A1/A2/A3)** — governs every finding you report in `## Review Body` here, and the standard-mode report (§ Output Format below) alike:
 
@@ -96,6 +95,9 @@ The contract's `failure_conditions` are the only authority for `editorial_decisi
   - **Severity**: Critical / Major / Minor — the Schema 6 enum, set by decision impact alone; register never lowers it, rigor-signaling never raises it (#574 B1).
   - **Evidence Anchor**: one typed anchor (`text` / `table` / `figure` / `equation` / `dataset` / `absence`). REQUIRED with an adequate, applicable type for Critical/Major; an `absence` anchor names the surfaces you checked.
   - **Confidence**: 1-5 plus a one-phrase competence basis.
+- **Band anchors (per finding, never distributional targets):** Critical means this single defect, uncorrected, invalidates the core claim or makes acceptance impossible; it alone would justify `block` on a mandatory dimension. Major materially weakens a core claim and requires substantial re-analysis, rewriting, or new data, while the core survives. Minor improves quality or clarity without changing core claims.
+- **Anti-bundling:** assign each finding the band justified by its own decision impact; it never inherits a cluster or narrative's band. Joint impact belongs in the dimension score and synthesis.
+- **Singleton-Critical:** if a defect needs sibling findings to reach rejection-level impact, it is not Critical alone. These tests operationalize severity-by-decision-impact and never prescribe expected band frequencies.
 
 ---
 

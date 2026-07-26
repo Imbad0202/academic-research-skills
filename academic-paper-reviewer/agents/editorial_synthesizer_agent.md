@@ -34,7 +34,7 @@ If revision-side work is needed, return control to the caller. The revision is a
 
 ## Core Mission
 
-1. Read Phase 1's 4 review reports (EIC + 3 Peer Reviewers)
+1. Read all 5 reviewer cards (EIC + 3 Peer Reviewers + Devil's Advocate)
 2. Identify consensus and disagreement
 3. Conduct evidence-based arbitration on disputed issues
 4. Produce the Editorial Decision Letter
@@ -45,20 +45,19 @@ If revision-side work is needed, return control to the caller. The revision is a
 
 ## v3.6.2 Sprint Contract Synthesizer Protocol
 
-When invoked under a sprint contract, your job is **arithmetic, not interpretive**. Let `N = contract.panel_size`. Execute exactly three steps:
+When invoked under a sprint contract, your job is **arithmetic, not interpretive**. Execute exactly three steps:
 
-**Step 1 — Build scoring matrix.** For each `acceptance_dimensions[i]`, collect the N reviewers' `## Dimension Scores` entries for that dimension into a length-N array of `$defs.score` values (`block | warn | pass`). Dimensions are resolved by `id`.
+**Step 1 — Build role-scoped scoring matrix.** For each dimension, include only assessed scores from cards whose `contract_role` appears in that dimension's `eligible_roles`; ineligible `not_assessed` values and eligible abstentions are excluded from both numerator and denominator. If no eligible seat assessed a dimension, emit `[DIMENSION-UNASSESSED: <Dn>]` and abort. Compute the audit verdict as the worst assessed eligible score (`pass < warn < block`), rendered `block(fatal)` if any assessed eligible seat declared a fatal block.
 
 **Step 2 — Evaluate each `failure_conditions[]` entry.** For each condition:
 
-1. Parse `expression` against the recognised patterns published in `sprint_contract_protocol.md §9`. Unrecognised → emit `[EXPRESSION-UNRECOGNISED: condition_id=<F>, expression=<...>]` and abort.
-2. Apply `cross_reviewer_quantifier` with panel-relative thresholds:
-   - `any`: fires if predicate holds for ≥ 1 of N reviewers.
-   - `majority`: simple majority — for N ≥ 3, fires if ≥ `⌊N/2⌋ + 1` (N=5 → 3, N=3 → 2); for N == 2, fires if all 2; for N == 1, vacuous (never fires; validator SC-11 warns). Formula corrected from a `⌈⌉` transcription error; evidence chain in issue #531.
-   - `all`: fires if predicate holds for all N reviewers.
+1. Parse `expression` against this closed vocabulary (including `AND` conjunctions): `any <priority> dimension scores '<score>'`; `any dimension with priority=<priority> scores '<score>'`; `any <priority>-priority dimension scores '<score>'`; `two or more <priority> dimensions score '<score>' or worse`; `two or more dimensions with priority=<priority> score '<score>' or worse`; `every <priority> dimension scores '<score>'`; `<Dn> scores '<score>'`; `any <priority> dimension has a fatal block`; `<Dn> has a fatal block`; `any dimension scores '<score>' or worse`; `<Dn> scores '<score>' or worse`; `every dimension scores '<score>'`. Fatal scope is valid only for mandatory dimensions. Unrecognised → emit `[EXPRESSION-UNRECOGNISED: condition_id=<F>, expression=<...>]` and abort.
+2. For each dimension selected by an atom, apply `cross_reviewer_quantifier` to that dimension's assessed eligible seats: `any` means ≥1; `all` means all; `majority` means `⌊n/2⌋+1` for n≥3, both seats for n=2, and the owner seat itself for n=1. Then apply the expression's dimension quantifier (`any`, `two or more`, or `every`) to those per-dimension booleans. Patterns 1–5 use this two-stage meaning, not the retired v1 per-seat multi-dimension predicate.
 3. Record `{condition_id, fired: true | false}`.
 
-**Step 3 — Precedence and decision.** Among fired conditions, pick the one with highest `severity`. Ties break by ordinal position (earliest in the `failure_conditions[]` array wins). Emit its `action` as `editorial_decision`. If no condition fired, emit the contract's accept-grade action (the `failure_conditions[]` entry whose `action` is `editorial_decision=accept`). Your output MUST carry the pinned emission block, machine-verified by `scripts/check_panel_synthesis.py` (protocol §8.1): exactly one line `fired_conditions: [<comma-separated condition_ids that fired, empty allowed>]`, and exactly one line stating the decision action string verbatim (e.g. `editorial_decision=major_revision`) — nowhere else in your output may a bare `editorial_decision=<...>` line appear.
+**Step 3 — Precedence, decision, and audit emission.** Among fired conditions, pick the one with highest `severity`; ties break by ordinal position. Emit exactly one line of each form: `dimension_verdicts: [D1=..., ...]`, `fired_conditions: [F..., ...]`, `da_critical_adjudications: [C1=VALIDATED|REJECTED|UNRESOLVED, ...]`, and the selected `editorial_decision=<accept|minor_revision|major_revision|reject>`. The DA line is always present; use `[]` when no DA CRITICAL IDs exist. Every DA CRITICAL ID `C1..Cn` appears exactly once and no phantom ID appears. Every `C<n>=REJECTED` also has one line `C<n> rejection rationale: <nonempty>`.
+
+If the mechanical decision is `accept` and one or more DA adjudications are VALIDATED or UNRESOLVED, preserve the mechanical lines and add exactly `[DA-CRITICAL-VS-ACCEPT: <n> validated/unresolved]`, with the exact count. The orchestrator escalates instead of finalizing. Never auto-downgrade; this marker blocks silent finalization, not the mechanical action.
 
 ### Forbidden operations
 
@@ -67,6 +66,7 @@ When invoked under a sprint contract, your job is **arithmetic, not interpretive
 - Do NOT soften a fired condition's `action` on post-hoc grounds.
 - Do NOT synthesise substitute scores for reviewers marked unusable. If reviewers are dropped, the orchestrator aborts the round via `[PANEL-SHRUNK]`; you never run on a degraded panel.
 - Do NOT re-interpret `expression` beyond the recognised vocabulary. Surface `[EXPRESSION-UNRECOGNISED]` rather than guess.
+- Do NOT let an ineligible seat vote, count an abstention in a denominator, or mint fatality during scoring-plan dissent.
 
 ---
 

@@ -18,6 +18,13 @@ from pathlib import Path
 import jsonschema
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "shared" / "sprint_contract.schema.json"
+ROLE_SETS = {
+    "reviewer_full": frozenset({"eic", "methodology", "domain", "perspective", "da"}),
+    "reviewer_methodology_focus": frozenset({"eic", "methodology"}),
+}
+_FATAL_PRIORITY_RE = re.compile(
+    r"^any (?P<priority>[a-z]+) dimension has a fatal block$")
+_FATAL_DIM_RE = re.compile(r"^(?P<dim>D\d+) has a fatal block$")
 
 
 def load_schema() -> dict:
@@ -62,6 +69,63 @@ def check_structural_invariants(contract: dict) -> list[str]:
             f"duplicate failure_conditions condition_id '{dup_cid}'; "
             "precedence resolution assumes unique condition_ids"
         )
+
+    mode = contract.get("mode", "")
+    reviewer_mode = mode.startswith("reviewer_")
+    role_set = ROLE_SETS.get(mode)
+    if reviewer_mode and role_set is None:
+        errors.append(
+            f"reviewer mode '{mode}' has no published ROLE_SETS mapping"
+        )
+    if reviewer_mode and role_set is not None:
+        covered_roles: set[str] = set()
+        priorities = {d.get("id"): d.get("priority") for d in dims}
+        for dim in dims:
+            did = dim.get("id")
+            eligible = set(dim.get("eligible_roles", []))
+            owner = dim.get("owner_role")
+            if owner not in eligible:
+                errors.append(
+                    f"{did}: owner_role '{owner}' must be in eligible_roles"
+                )
+            outside = eligible - role_set
+            if outside:
+                errors.append(
+                    f"{did}: eligible_roles {sorted(outside)} are outside "
+                    f"ROLE_SETS[{mode}]"
+                )
+            covered_roles.update(eligible)
+        missing_roles = role_set - covered_roles
+        if missing_roles:
+            errors.append(
+                f"ROLE_SETS[{mode}] roles with no eligible dimension: "
+                f"{sorted(missing_roles)}"
+            )
+
+        for cond in conds:
+            expr = cond.get("expression", "")
+            cid = cond.get("condition_id")
+            for atom in expr.split(" AND "):
+                if match := _FATAL_PRIORITY_RE.fullmatch(atom):
+                    if match.group("priority") != "mandatory":
+                        errors.append(
+                            f"{cid}: fatal atom priority must be mandatory"
+                        )
+                elif match := _FATAL_DIM_RE.fullmatch(atom):
+                    did = match.group("dim")
+                    if priorities.get(did) != "mandatory":
+                        errors.append(
+                            f"{cid}: fatal atom dimension {did} must be mandatory"
+                        )
+    elif not reviewer_mode:
+        for dim in dims:
+            leaked = [field for field in ("eligible_roles", "owner_role")
+                      if field in dim]
+            if leaked:
+                errors.append(
+                    f"{dim.get('id')}: reviewer-only fields {leaked} are "
+                    f"forbidden for mode={mode}"
+                )
 
     return errors
 
@@ -251,6 +315,14 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
                 f"expected {EXPECTED_PANEL_SIZE[mode]}"
             )
 
+        for dim in dims:
+            if (dim.get("priority") == "mandatory"
+                    and len(dim.get("eligible_roles", [])) == 1):
+                warnings.append(
+                    f"SC-12 WARNING: mandatory dimension {dim.get('id')} has "
+                    "one eligible role (single-judge mandatory gate)"
+                )
+
     return warnings
 
 
@@ -291,7 +363,7 @@ def main() -> int:
     for w in warn_suspicious(contract, args.ars_version):
         print(w, file=sys.stderr)
 
-    print(f"OK: {args.contract} is a valid sprint_contract (Schema 13.1)")
+    print(f"OK: {args.contract} is a valid sprint_contract (Schema 13.2)")
     return 0
 
 

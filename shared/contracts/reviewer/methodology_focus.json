@@ -1,21 +1,25 @@
 {
-  "contract_id": "reviewer/reviewer_methodology_focus/v1",
+  "contract_id": "reviewer/reviewer_methodology_focus/v2",
   "mode": "reviewer_methodology_focus",
   "stage": "reviewer_methodology_focus_review",
-  "baseline_version": "v3.6.2",
+  "baseline_version": "v3.20.0",
   "panel_size": 2,
   "acceptance_dimensions": [
     {
       "id": "D1",
       "name": "methodology_rigor",
       "description": "Study design, data handling, statistical reporting, and reproducibility affordances meet the field's peer-review bar.",
-      "priority": "mandatory"
+      "priority": "mandatory",
+      "eligible_roles": ["methodology"],
+      "owner_role": "methodology"
     },
     {
       "id": "D2",
       "name": "writing_and_structure",
       "description": "Manuscript organisation, clarity of exposition, and adherence to venue conventions for method-focused papers.",
-      "priority": "normal"
+      "priority": "normal",
+      "eligible_roles": ["eic"],
+      "owner_role": "eic"
     }
   ],
   "measurement_procedure": {
@@ -25,7 +29,8 @@
         "dimension_id",
         "what_to_look_for",
         "what_triggers_block",
-        "what_triggers_warn"
+        "what_triggers_warn",
+        "what_triggers_fatal"
       ]
     },
     "paraphrase_minimum_dimensions": "all"
@@ -33,23 +38,37 @@
   "failure_conditions": [
     {
       "condition_id": "F1",
-      "severity": 90,
+      "severity": 95,
       "cross_reviewer_quantifier": "any",
-      "expression": "D1 scores 'block'",
-      "action": "editorial_decision=reject_or_major_revision"
+      "expression": "D1 has a fatal block",
+      "action": "editorial_decision=reject"
     },
     {
       "condition_id": "F2",
+      "severity": 90,
+      "cross_reviewer_quantifier": "any",
+      "expression": "D1 scores 'block'",
+      "action": "editorial_decision=major_revision"
+    },
+    {
+      "condition_id": "F3",
       "severity": 70,
       "cross_reviewer_quantifier": "any",
       "expression": "D1 scores 'warn'",
       "action": "editorial_decision=major_revision"
     },
     {
+      "condition_id": "F4",
+      "severity": 40,
+      "cross_reviewer_quantifier": "any",
+      "expression": "D2 scores 'warn' or worse",
+      "action": "editorial_decision=minor_revision"
+    },
+    {
       "condition_id": "F0",
       "severity": 10,
       "cross_reviewer_quantifier": "all",
-      "expression": "D1 scores 'pass'",
+      "expression": "every dimension scores 'pass'",
       "action": "editorial_decision=accept"
     }
   ]

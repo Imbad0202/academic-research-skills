@@ -165,11 +165,6 @@ jobs:
           PYTHONPATH: .
         run: python3 -m unittest scripts.test_check_spec_consistency -v
 
-      - name: Run check_sprint_contract unit tests
-        env:
-          PYTHONPATH: .
-        run: python3 -m unittest scripts.test_check_sprint_contract -v
-
       - name: Validate sprint contract templates
         shell: bash
         run: |
@@ -472,6 +467,15 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_reviewer_finding_contract.py
 
+      - name: Run #574 Schema 13.2 role-scoped contract lints
+        # Mutation companions and the executable checker suites run through
+        # scripts/_ci_pytest_manifest.toml in the same commit.
+        env:
+          PYTHONPATH: .
+        run: |
+          python3 scripts/check_role_scoped_contract.py
+          python3 scripts/check_decision_contract.py
+
       - name: Run v3.10 #134 write-scope three-way name cross-check lint
         # THE FAIL-OPEN GUARD for the Slice 1 write-scope hook. Asserts the 23 Bucket A
         # agent names match across the classification roster, the scope manifest keys,
@@ -672,4 +676,3 @@ jobs:
         env:
           PYTHONPATH: .
         run: python3 -m scripts.check_268_nested_commitment_ledger
-

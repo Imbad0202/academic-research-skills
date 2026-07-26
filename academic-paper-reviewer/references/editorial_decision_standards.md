@@ -4,6 +4,22 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 
 ---
 
+## 0. Decision Authority by Mode
+
+| Mode | Decision engine | Working scale | Output |
+|------|-----------------|---------------|--------|
+| `full` (sprint contract) | Mechanical synthesizer over reviewer contract v2; the matrix below never overrides it | `block/warn/pass` + `block_class` | Accept / Minor Revision / Major Revision / Reject |
+| `methodology-focus` (sprint contract) | Same mechanical engine, scoped to methods + presentation; no venue-fit dimension | same | four-value enum |
+| `full` / `methodology-focus` without a contract | Synthesis Protocol + the qualitative criteria and recommendation matrix in this file | reviewer recommendations | four-value enum |
+| `re-review` | `re_review_mode_protocol.md` until #576 Spec B replaces its contract | — | four-value enum |
+| `quick` | EIC assessment only; advisory, not an editorial decision | — | signal |
+| `guided` | Issue-list dialogue; no editorial decision letter | — | — |
+| `calibration` | `quality_rubrics.md` 0–100 Decision Mapping, measurement-only | 0–100 | four-value labels against the gold set |
+
+Under a sprint contract, the mechanical synthesizer governs. This file's recommendation matrix is the no-contract path and cannot soften, harden, or override a fired contract action. Numeric decision thresholds live only in `quality_rubrics.md` § Decision Mapping; this file uses qualitative criteria and reviewer-recommendation counts.
+
+---
+
 ## 1. Decision Categories
 
 ### Decision Symmetry and Register Independence (#574 B1)
@@ -19,8 +35,8 @@ These principles govern every category below:
 **Definition**: The paper can be published without further review.
 
 **Criteria**:
-- Average score across all universal dimensions >= 4.0
-- No dimension scores below 3.0
+- Every applicable core criterion is positively verified
+- No unresolved decision-bearing weakness remains
 - At least 3/4 reviewers recommend Accept or Minor Revision
 - No unresolved major academic issues
 
@@ -40,8 +56,8 @@ These principles govern every category below:
 **Definition**: The paper is fundamentally acceptable and can be published after limited modifications; typically does not need to be sent for review again after revision.
 
 **Criteria**:
-- Average score across all universal dimensions >= 3.5
-- No dimension scores below 2.5
+- The paper is fundamentally acceptable and remaining issues are limited
+- No issue requires restructuring core arguments or methods
 - At least 3/4 reviewers recommend Accept or Minor Revision
 - Issues can be resolved within 2-4 weeks
 - Modifications do not involve restructuring core arguments or methods
@@ -66,8 +82,8 @@ These principles govern every category below:
 **Definition**: The paper has potential but has significant issues, requiring substantial revision followed by re-review.
 
 **Criteria**:
-- Universal dimension average score between 2.5-3.4
-- Some dimensions may score below 2.5 (but not fatal)
+- One or more material weaknesses require substantial revision
+- The weaknesses are repairable rather than fatal
 - At least 2/4 reviewers recommend Major Revision or better
 - Issues are serious but fixable (not fundamental design flaws)
 - Revision requires 6-8 weeks of work
@@ -94,8 +110,8 @@ These principles govern every category below:
 **Definition**: The paper is not suitable for publication in this journal, even with revision.
 
 **Criteria (meeting any one may trigger Reject consideration)**:
-- Universal dimension average score < 2.5
-- Any core dimension (methodology, evidence) = 1
+- A core criterion has a fundamental unfixable failure
+- The paper cannot become suitable for this venue through revision
 - At least 3/4 reviewers recommend Reject
 - Fundamental unfixable issues exist
 
@@ -171,10 +187,10 @@ Finding severity is transported from the reviewer cards (the Schema 6 enum, `sha
 
 | Situation | Decision impact |
 |-----------|-----------------|
-| Methodology has fatal flaw (R1 score = 1) | Even if other dimensions are excellent, lean toward Reject |
-| Major literature review omission (R2 score = 2) | Major Revision, require supplementation |
-| Cross-disciplinary perspective overlooked (R3 score = 2) | Minor or Major Revision, depends on other dimensions |
-| Poor writing quality (score = 2) | Does not affect the academic decision, but require language revision |
+| Methodology owner identifies a fatal design flaw | Even if other dimensions are excellent, Reject is available |
+| Domain owner identifies a repairable major literature omission | Major Revision, require supplementation |
+| Perspective owner identifies a cross-disciplinary relevance failure | Minor or Major Revision, based on its decision impact |
+| EIC identifies a writing-and-structure weakness | Does not by itself invalidate the academic core; require language or structural revision |
 
 ---
 
