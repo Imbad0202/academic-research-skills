@@ -905,6 +905,25 @@ def test_da_commonmark_visible_issue_header_fails_phase(header):
         phase.check_da_anchors(report)
 
 
+def test_da_balanced_link_destination_header_fails_phase():
+    header = (
+        r"| [\#](<https://x.test/a(b)>) | Issue | "
+        r"[Evidence Anchor](<https://x.test/a(b)>) |"
+    )
+    text = da_text().replace(
+        "#### MAJOR",
+        "#### ADDITIONAL CRITICAL FINDINGS\n"
+        f"{header}\n"
+        "|---|-------|-----------------|\n"
+        '| C9 | impossible df | text: "n=41" p. 4 |\n\n'
+        "#### MAJOR",
+        1,
+    )
+    report = panel.parse_report("da.md", text, FULL)
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table"):
+        phase.check_da_anchors(report)
+
+
 @pytest.mark.parametrize(
     "row,fragment",
     [

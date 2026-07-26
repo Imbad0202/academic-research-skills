@@ -114,6 +114,11 @@ _DA_SEVERITY_DECL_RE = re.compile(
     r"\*\*Severity(?:\*\*)?\s*:",
     re.IGNORECASE,
 )
+_DA_ISSUE_ID_RE = re.compile(r"^[CM][1-9]\d*$", re.IGNORECASE)
+_DA_TYPED_ANCHOR_RE = re.compile(
+    r"^(?:text|table|figure|equation|dataset|absence)\s*:",
+    re.IGNORECASE,
+)
 
 
 def strip_fences(text: str) -> list[str]:
@@ -360,11 +365,14 @@ def parse_da_tables(
             continue
         if in_canonical_da_band:
             continue
-        cells = {
-            _rendered_header_cell(cell)
-            for cell in _possible_markdown_cells(candidate)
-        }
-        if "#" in cells or "evidence anchor" in cells:
+        raw_cells = _possible_markdown_cells(candidate)
+        cells = {_rendered_header_cell(cell) for cell in raw_cells}
+        issue_payload = any(
+            _DA_ISSUE_ID_RE.fullmatch(cell)
+            or _DA_TYPED_ANCHOR_RE.search(cell)
+            for cell in cells
+        )
+        if "#" in cells or "evidence anchor" in cells or issue_payload:
             raise ReportError(
                 f"[DA-TABLE-PARSE: {path}: unexpected issue-table band outside "
                 "the canonical CRITICAL and MAJOR bands]"

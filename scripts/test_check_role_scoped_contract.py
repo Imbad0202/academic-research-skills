@@ -258,13 +258,30 @@ def test_da_header_commonmark_reduction_mutations_fail(tmp_path):
         assert lint.check(root)
 
 
+def test_da_issue_payload_sentinel_mutations_fail(tmp_path):
+    mutations = (
+        (
+            r'_DA_ISSUE_ID_RE = re.compile(r"^[CM][1-9]\d*$", re.IGNORECASE)',
+            r'_DA_ISSUE_ID_RE = re.compile(r"^never$", re.IGNORECASE)',
+        ),
+        (
+            r'r"^(?:text|table|figure|equation|dataset|absence)\s*:",',
+            r'r"^never-match:",',
+        ),
+    )
+    for index, (old, new) in enumerate(mutations):
+        root = mirror(tmp_path / str(index))
+        mutate(root, lint.PANEL_CHECKER, old, new)
+        assert lint.check(root)
+
+
 def test_da_extra_band_table_witness_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
         root,
         lint.PANEL_CHECKER,
-        'if "#" in cells or "evidence anchor" in cells:',
-        'if "#" in cells and "evidence anchor" in cells:',
+        'if "#" in cells or "evidence anchor" in cells or issue_payload:',
+        'if "#" in cells and "evidence anchor" in cells and issue_payload:',
     )
     assert lint.check(root)
 
