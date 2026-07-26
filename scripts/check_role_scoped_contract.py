@@ -41,6 +41,8 @@ AGENTS = {
 PROTOCOL = "academic-paper-reviewer/references/sprint_contract_protocol.md"
 SYNTH = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
 PANEL_CHECKER = "scripts/check_panel_synthesis.py"
+PHASE_CHECKER = "scripts/check_phase_conformance.py"
+TEMPLATE = "academic-paper-reviewer/templates/peer_review_report_template.md"
 SPRINT = "## v3.6.2 Sprint Contract Protocol"
 PHASE1 = "### Phase 1 — Paper-content-blind pre-commitment"
 PHASE2 = "### Phase 2 — Paper-visible review"
@@ -63,6 +65,12 @@ SCORING_FINDING_WITNESS = (
     "each finding with a Severity has its own `### W<n>: <title>` subsection, "
     "exactly one `**Severity**:` line, and its own `**Evidence Anchor**:` line "
     "when Critical or Major. Findings never share an anchor"
+)
+SCORING_FIELD_VARIANT_WITNESS = (
+    "Finding fields may be unindented or Markdown-list-indented, and may be "
+    "separate lines or pipe-delimited on one line. A typed anchor value may "
+    "be bare or backtick-wrapped; these presentation variants do not weaken "
+    "the one-finding/one-Severity/one-anchor gate"
 )
 DA_FINDING_WITNESS = (
     "emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` "
@@ -87,6 +95,7 @@ PATTERNS = (
 # are insufficient: an editor could preserve ``fatal_priority`` while widening
 # or otherwise changing the grammar it executes.
 EXECUTABLE_PATTERN_WITNESSES = (
+    r'''_SCORE = r"'(?P<score>block|warn|pass)'"''',
     r'r"^any (?:(?P<p1>[a-z]+) dimension|dimension with priority="',
     r'r"(?P<p2>[a-z]+)|(?P<p3>[a-z]+)-priority dimension) scores "',
     r'r"^two or more (?:(?P<p1>[a-z]+) dimensions|dimensions with priority="',
@@ -98,6 +107,11 @@ EXECUTABLE_PATTERN_WITNESSES = (
     r'r"^any dimension scores " + _SCORE + r" or worse$"',
     r'r"^(?P<dim>D\d+) scores " + _SCORE + r" or worse$"',
     r'r"^every dimension scores " + _SCORE + r"$"',
+)
+PHASE_FINDING_REGEX_WITNESSES = (
+    r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity\*\*:\s*"',
+    r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"',
+    r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
 )
 
 
@@ -150,6 +164,8 @@ def check(root: Path) -> list[str]:
         )
         if norm_ws(finding_witness) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 per-finding grammar witness missing")
+        if role != "da" and norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in phase2_norm:
+            errors.append(f"{rel}: Phase 2 finding-field variant witness missing")
 
     da = _read(root, "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md")
     if "Score the paper — your job is to challenge, not score." in da:
@@ -160,6 +176,7 @@ def check(root: Path) -> list[str]:
     protocol = heading_section(_read(root, PROTOCOL), "## 9. Recognised expression vocabulary")
     synth = heading_section(_read(root, SYNTH), SPRINT.replace("Protocol", "Synthesizer Protocol"))
     checker = _read(root, PANEL_CHECKER)
+    phase_checker = _read(root, PHASE_CHECKER)
     if protocol is None or synth is None:
         errors.append("protocol/synthesizer expression section missing")
     else:
@@ -181,6 +198,13 @@ def check(root: Path) -> list[str]:
             errors.append(
                 f"{PANEL_CHECKER}: executable regex witness missing: {witness}"
             )
+    for witness in PHASE_FINDING_REGEX_WITNESSES:
+        if witness not in phase_checker:
+            errors.append(
+                f"{PHASE_CHECKER}: finding regex witness missing: {witness}"
+            )
+    if norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in norm_ws(_read(root, TEMPLATE)):
+        errors.append(f"{TEMPLATE}: finding-field variant witness missing")
     return errors
 
 

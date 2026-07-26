@@ -81,6 +81,18 @@ def test_threshold_duplicated_on_other_live_surface_fails(tmp_path):
     assert lint.check(root)
 
 
+def test_equivalent_threshold_wording_on_live_surface_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.STANDARDS,
+        "## 0. Decision Authority by Mode",
+        "Minor Revision begins at 65 points.\n\n"
+        "## 0. Decision Authority by Mode",
+    )
+    assert lint.check(root)
+
+
 def test_retired_one_to_five_threshold_in_standards_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(

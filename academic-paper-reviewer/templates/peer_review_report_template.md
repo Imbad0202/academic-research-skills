@@ -102,6 +102,8 @@ List every weakness you actually found — no minimum, no maximum (#574 A1). Do 
 **Severity**: [Critical / Major / Minor] — the Schema 6 enum (§ Severity Levels below); set by decision impact alone (#574 A3/B1)
 **Confidence**: [1-5] — [competence basis, one phrase: e.g. "core expertise: psychometrics" / "adjacent field: applying general standards"] (#574 A3)
 
+Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. A typed anchor value may be bare or backtick-wrapped; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
+
 ### W2..Wn
 [Repeat the W1 structure for each additional weakness — as many entries as the evidence supports, including zero.]
 

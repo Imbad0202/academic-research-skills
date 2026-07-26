@@ -1,7 +1,6 @@
 """Schema 13.2 validator tests."""
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 
@@ -178,15 +177,6 @@ def test_writer_evaluator_byte_unchanged_against_hardcoded_baseline():
     }
     for rel, digest in expected.items():
         assert hashlib.sha256((REPO / rel).read_bytes()).hexdigest() == digest
-
-
-def test_cli_valid_and_invalid(tmp_path):
-    assert checker.main.__name__ == "main"
-    bad = copy.deepcopy(full())
-    bad["acceptance_dimensions"][0].pop("owner_role")
-    path = tmp_path / "bad.json"
-    path.write_text(json.dumps(bad), encoding="utf-8")
-    assert checker.validate(bad)
 
 
 SCHEMA_MUTATIONS = (
@@ -395,3 +385,60 @@ def test_cli_executes_real_process(tmp_path, case, expected):
         path.write_text(json.dumps(full()), encoding="utf-8")
     result = run_script(SCRIPT, str(path))
     assert result.returncode == expected, result.stderr
+
+
+@pytest.mark.parametrize(
+    "path,required_field",
+    (
+        (WRITER_PATH, "pre_commitment_artifacts"),
+        (EVALUATOR_PATH, "disagreement_handling"),
+    ),
+)
+def test_generator_mode_specific_artifact_is_required(path, required_field):
+    contract = load(path)
+    contract.pop(required_field)
+    assert checker.validate(contract)
+
+
+@pytest.mark.parametrize(
+    "path,bad_action",
+    (
+        (WRITER_PATH, "editorial_decision=accept"),
+        (EVALUATOR_PATH, "writer_decision=accept"),
+    ),
+)
+def test_generator_mode_action_enum_is_pinned(path, bad_action):
+    contract = load(path)
+    contract["failure_conditions"][0]["action"] = bad_action
+    assert checker.validate(contract)
+
+
+@pytest.mark.parametrize(
+    "path,source",
+    (
+        (
+            WRITER_PATH,
+            ("pre_commitment_artifacts", "acceptance_criteria_paraphrase"),
+        ),
+        (EVALUATOR_PATH, ("disagreement_handling",)),
+    ),
+)
+def test_generator_sc9_reads_mode_specific_source(path, source):
+    contract = load(path)
+    target = contract
+    for key in source:
+        target = target[key]
+    target["minimum_dimensions" if len(source) == 2 else "paraphrase_minimum_dimensions"] = 99
+    assert any(
+        warning.startswith("SC-9 WARNING")
+        for warning in checker.warn_suspicious(contract, None)
+    )
+
+
+@pytest.mark.parametrize("path", (WRITER_PATH, EVALUATOR_PATH))
+@pytest.mark.parametrize("warning", ("SC-5", "SC-11"))
+def test_generator_modes_do_not_receive_reviewer_only_warnings(path, warning):
+    assert not any(
+        item.startswith(f"{warning} WARNING")
+        for item in checker.warn_suspicious(load(path), None)
+    )

@@ -351,6 +351,31 @@ def test_da_critical_section_drift_fails_closed(mutation):
         cps.parse_da_critical_table(mutation(da_report.text), da_report.path)
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda text: text.replace("#### MAJOR", "#### Major", 1),
+        lambda text: text.replace("#### MAJOR", "", 1),
+        lambda text: text.replace(
+            "#### MAJOR",
+            "#### MAJOR\n"
+            "| # | Issue | Evidence Anchor |\n"
+            "|---|-------|-----------------|\n\n"
+            "#### MAJOR",
+            1,
+        ),
+    ],
+)
+def test_da_major_section_drift_fails_in_synthesis_path(mutation):
+    panel_reports = reports()
+    da_report = next(report for report in panel_reports if report.role == "da")
+    da_report.text = mutation(da_report.text)
+    text, expressions = synthesis_for(panel_reports)
+    synthesis = cps.parse_synthesis("s.md", text, FULL)
+    with pytest.raises(cps.ReportError, match="DA-MAJOR-PARSE"):
+        cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+
+
 def test_marker_forbidden_under_nonaccept():
     panel_reports = reports({"methodology": {"D1": "warn"}}, da_ids=("C1",))
     text, expressions = synthesis_for(

@@ -332,12 +332,13 @@ def test_nonmandatory_block_class_fails_phase_checker(tmp_path):
 @pytest.mark.parametrize(
     "body",
     [
-        "### W1\n**Severity**: Critical\n**Problem**: no anchor",
-        "### W1\n**Severity**: Major\n**Evidence Anchor**: text: "
+        "### W1: no anchor\n**Severity**: Critical\n**Problem**: no anchor",
+        "### W1: long quote\n**Severity**: Major\n**Evidence Anchor**: text: "
         "\"one two three four five six seven eight nine ten eleven twelve "
         "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty "
         "twentyone twentytwo twentythree twentyfour twentyfive twentysix\"",
-        "### W1\n**Severity**: Critical\n**Evidence Anchor**: absence:",
+        "### W1: empty absence\n**Severity**: Critical\n"
+        "**Evidence Anchor**: absence:",
     ],
 )
 def test_critical_major_anchor_failures(body):
@@ -349,9 +350,9 @@ def test_critical_major_anchor_failures(body):
 @pytest.mark.parametrize(
     "body",
     [
-        '### W1\n**Severity**: Critical\n'
+        '### W1: quoted defect\n**Severity**: Critical\n'
         '**Evidence Anchor**: text: "short exact quote" p. 2',
-        "### W1\n**Severity**: Major\n"
+        "### W1: missing surfaces\n**Severity**: Major\n"
         "**Evidence Anchor**: absence: checked Methods, appendix, and supplement",
     ],
 )
@@ -395,6 +396,59 @@ first
 second"""
     report, _ = parse_report("eic", body=body)
     with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_indented_bullet_fields_still_enforce_anchor_gate():
+    body = """### W1: indented finding
+  - **Severity**: Critical
+  - **Confidence**: 5 — core expertise"""
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="ANCHOR-MISSING"):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_backticked_template_anchor_is_normalised_and_accepted():
+    body = (
+        "### W1: template-shaped finding\n"
+        "**Severity**: Critical\n"
+        "**Evidence Anchor**: `text: §5 \"short exact quote\"`"
+    )
+    report, _ = parse_report("eic", body=body)
+    phase.check_scoring_seat_anchors(report)
+
+
+def test_combined_template_fields_are_parsed():
+    body = (
+        "### W1: combined fields\n"
+        "  - **Severity**: Major | **Evidence Anchor**: "
+        "`absence: checked Methods and appendix` | "
+        "**Confidence**: 4 — core expertise"
+    )
+    report, _ = parse_report("eic", body=body)
+    phase.check_scoring_seat_anchors(report)
+
+
+def test_h4_finding_under_generic_h3_fails():
+    body = (
+        "### Commentary\n"
+        "#### W1: hidden finding\n"
+        "**Severity**: Critical\n"
+        '**Evidence Anchor**: text: "quote" p. 1'
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(phase.ConformanceError, match="own ### W<n>"):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_severity_outside_review_body_fails():
+    report, text = parse_report("eic")
+    report.text = text + (
+        "\n## Appendix\n### W1: misplaced\n"
+        "**Severity**: Critical\n"
+        '**Evidence Anchor**: text: "quote" p. 1'
+    )
+    with pytest.raises(phase.ConformanceError, match="outside"):
         phase.check_scoring_seat_anchors(report)
 
 

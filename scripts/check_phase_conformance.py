@@ -43,11 +43,14 @@ _FIELD_PATTERNS = {
 _DISSENT_DIM_RE = re.compile(r"^dimension_id: (?P<dim>D\d+)\s*$")
 _DISSENT_RATIONALE_RE = re.compile(r"^rationale: (?P<text>\S.*)\s*$")
 _SEVERITY_RE = re.compile(
-    r"^(?:[-*]\s*)?\*\*Severity\*\*:\s*(?P<severity>Critical|Major|Minor)\b"
+    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity\*\*:\s*"
+    r"(?P<severity>Critical|Major|Minor)\b"
 )
 _ANCHOR_RE = re.compile(
-    r"^(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*(?P<value>\S.*)$"
+    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"
+    r"(?P<value>[^|]+)"
 )
+_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")
 
 
 class ConformanceError(Exception):
@@ -293,6 +296,10 @@ def check_trigger_binding(
 
 
 def _validate_anchor(anchor: str, context: str) -> None:
+    anchor = anchor.strip()
+    if anchor.startswith("[") and anchor.endswith("]"):
+        anchor = anchor[1:-1].strip()
+    anchor = anchor.strip("`").strip()
     match = re.match(
         r"^(?P<type>text|table|figure|equation|dataset|absence):\s*(?P<tail>\S.*)$",
         anchor,
@@ -320,39 +327,68 @@ def _validate_anchor(anchor: str, context: str) -> None:
 
 def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
     lines = panel.strip_fences(report.text)
-    sections, _ = panel.split_sections(lines)
-    if "Review Body" not in sections:
+    sections, dupes = panel.split_sections(lines)
+    if "Review Body" in dupes or "Review Body" not in sections:
         raise ConformanceError(
             f"[REVIEW-BODY-MISSING: {report.path}]"
         )
-    review_lines = sections["Review Body"]
-    blocks, _ = panel.split_subsections(review_lines)
-    current_finding = None
-    for line in review_lines:
-        if match := panel._H3_RE.fullmatch(line):
-            current_finding = match.group(1)
-        elif _SEVERITY_RE.match(line) and current_finding is None:
+    current_h2 = None
+    for line in lines:
+        if match := panel._H2_RE.fullmatch(line):
+            current_h2 = match.group(1)
+        elif "**Severity**" in line and current_h2 != "Review Body":
             raise ConformanceError(
-                f"[FINDING-GRAMMAR: {report.path}: every finding with "
-                "Severity must have its own ### finding heading]"
+                f"[FINDING-GRAMMAR: {report.path}: Severity outside "
+                "## Review Body]"
             )
+    review_lines = sections["Review Body"]
+    blocks, subsection_dupes = panel.split_subsections(review_lines)
+    if subsection_dupes:
+        raise ConformanceError(
+            f"[FINDING-GRAMMAR: {report.path}: duplicate finding heading]"
+        )
+    preamble = []
+    for line in review_lines:
+        if panel._H3_RE.fullmatch(line):
+            break
+        preamble.append(line)
+    if any("**Severity**" in line for line in preamble):
+        raise ConformanceError(
+            f"[FINDING-GRAMMAR: {report.path}: every finding with "
+            "Severity must have its own ### finding heading]"
+        )
     for title, block in blocks.items():
+        severity_tokens = [line for line in block if "**Severity**" in line]
         severities = [
             match.group("severity") for line in block
-            if (match := _SEVERITY_RE.match(line))
+            for match in _SEVERITY_RE.finditer(line)
         ]
-        if not severities:
+        is_finding = _FINDING_H3_RE.fullmatch(title) is not None
+        if severity_tokens and not is_finding:
+            raise ConformanceError(
+                f"[FINDING-GRAMMAR: {report.path}: every finding with "
+                "Severity must have its own ### W<n>: <title> heading]"
+            )
+        if is_finding and any(panel._H4_RE.fullmatch(line) for line in block):
+            raise ConformanceError(
+                f"[FINDING-GRAMMAR: {report.path}: {title} may not nest "
+                "a Severity finding under H4]"
+            )
+        if not is_finding:
             continue
-        if len(severities) != 1:
+        if len(severities) != 1 or len(severity_tokens) != 1:
             raise ConformanceError(
                 f"[FINDING-GRAMMAR: {report.path}: {title} must contain "
-                "exactly one Severity line]"
+                "exactly one parseable Severity line]"
             )
         if severities[0] not in {"Critical", "Major"}:
             continue
-        anchors = [match.group("value") for line in block
-                   if (match := _ANCHOR_RE.match(line))]
-        if len(anchors) != 1:
+        anchor_tokens = [line for line in block if "**Evidence Anchor**" in line]
+        anchors = [
+            match.group("value") for line in block
+            for match in _ANCHOR_RE.finditer(line)
+        ]
+        if len(anchors) != 1 or len(anchor_tokens) != 1:
             raise ConformanceError(
                 f"[ANCHOR-MISSING: {report.path}: {title} "
                 f"{severities[0]} finding needs exactly one Evidence Anchor]"
@@ -361,13 +397,7 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
 
 
 def check_da_anchors(report: panel.ReviewerReport) -> None:
-    lines = panel.strip_fences(report.text)
-    sections, _ = panel.split_sections(lines)
-    if "Review Body" not in sections:
-        raise ConformanceError(
-            f"[REVIEW-BODY-MISSING: {report.path}]"
-        )
-    rows = panel.parse_da_critical_table(report.text, report.path)
+    rows, major_anchors = panel.parse_da_tables(report.text, report.path)
     expected = [f"C{index}" for index in range(1, len(rows) + 1)]
     if list(rows) != expected:
         raise ConformanceError(
@@ -381,41 +411,12 @@ def check_da_anchors(report: panel.ReviewerReport) -> None:
             )
         _validate_anchor(anchor, f"{report.path}:{finding_id}")
 
-    # MAJOR uses the same table grammar except that IDs are not the DA terminal
-    # contract. Parse its Evidence Anchor cells locally while retaining the
-    # shared CRITICAL parser as the single DA-ID authority.
-    major_starts = [
-        i for i, line in enumerate(lines)
-        if line.strip() == "#### MAJOR"
-    ]
-    if len(major_starts) != 1:
-        raise ConformanceError(
-            f"[DA-MAJOR-PARSE: {report.path}: expected exactly one "
-            f"#### MAJOR section, found {len(major_starts)}]"
-        )
-    start = major_starts[0]
-    table_lines = []
-    for line in lines[start + 1:]:
-        if re.match(r"^#{2,4} ", line):
-            break
-        table_lines.append(line)
-    header_index = next((i for i, line in enumerate(table_lines)
-                         if "Evidence Anchor" in panel._markdown_cells(line)), None)
-    if header_index is None:
-        raise ConformanceError(
-            f"[DA-MAJOR-PARSE: {report.path}: missing Evidence Anchor column]"
-        )
-    header = panel._markdown_cells(table_lines[header_index])
-    anchor_col = header.index("Evidence Anchor")
-    for line in table_lines[header_index + 2:]:
-        cells = panel._markdown_cells(line)
-        if not cells:
-            continue
-        if anchor_col >= len(cells) or not cells[anchor_col]:
+    for anchor in major_anchors:
+        if not anchor:
             raise ConformanceError(
                 f"[ANCHOR-MISSING: {report.path}: DA MAJOR row]"
             )
-        _validate_anchor(cells[anchor_col], f"{report.path}:DA MAJOR")
+        _validate_anchor(anchor, f"{report.path}:DA MAJOR")
 
 
 def _parse_args(argv):

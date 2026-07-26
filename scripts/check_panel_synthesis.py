@@ -173,52 +173,79 @@ def _markdown_cells(line: str) -> list[str]:
     return [cell.strip() for cell in stripped[1:-1].split("|")]
 
 
-def parse_da_critical_table(text: str, path: str = "<report>") -> dict[str, str]:
-    """Parse the DA ``#### CRITICAL`` table.
-
-    Returned mapping is ``C<n> -> Evidence Anchor cell``. The table is required
-    even when empty. Dense IDs and anchor semantics are checked by the
-    phase-conformance checker; this shared parser owns row recognition for both
-    checkers.
-    """
-    lines = strip_fences(text)
+def _parse_da_table_block(
+    review_lines: list[str], heading: str, path: str
+) -> tuple[list[str], int, int]:
+    """Return table data lines plus ``#`` and anchor column positions."""
+    parse_tag = f"DA-{heading}-PARSE"
     starts = [
-        i for i, line in enumerate(lines)
+        i for i, line in enumerate(review_lines)
         if _H4_RE.fullmatch(line)
-        and _H4_RE.fullmatch(line).group(1) == "CRITICAL"
+        and _H4_RE.fullmatch(line).group(1) == heading
     ]
     if len(starts) != 1:
         raise ReportError(
-            f"[DA-CRITICAL-PARSE: {path}: expected exactly one "
-            f"#### CRITICAL section, found {len(starts)}]"
+            f"[{parse_tag}: {path}: expected exactly one "
+            f"#### {heading} section, found {len(starts)}]"
         )
-    start = starts[0]
     block: list[str] = []
-    for line in lines[start + 1:]:
+    for line in review_lines[starts[0] + 1:]:
         if _H2_RE.fullmatch(line) or _H3_RE.fullmatch(line) or _H4_RE.fullmatch(line):
             break
         block.append(line)
-    header_index = next((i for i, line in enumerate(block)
-                         if "#" in _markdown_cells(line)
-                         and "Evidence Anchor" in _markdown_cells(line)), None)
+    header_index = next(
+        (
+            i for i, line in enumerate(block)
+            if "#" in _markdown_cells(line)
+            and "Evidence Anchor" in _markdown_cells(line)
+        ),
+        None,
+    )
     if header_index is None:
         raise ReportError(
-            f"[DA-CRITICAL-PARSE: {path}: missing table header with # and "
+            f"[{parse_tag}: {path}: missing table header with # and "
             "Evidence Anchor columns]"
         )
     header = _markdown_cells(block[header_index])
-    id_col = header.index("#")
-    anchor_col = header.index("Evidence Anchor")
+    return block[header_index + 2:], header.index("#"), header.index(
+        "Evidence Anchor"
+    )
+
+
+def parse_da_tables(
+    text: str, path: str = "<report>"
+) -> tuple[dict[str, str], list[str]]:
+    """Parse both mandatory DA tables from the report's ``Review Body``.
+
+    Returns ``(critical_id_to_anchor, major_anchors)``. Both exact H4 sections
+    and their exact ``#`` / ``Evidence Anchor`` columns are required even when
+    their tables are empty. This is the single structural parser used by both
+    the phase-conformance and synthesis checkers.
+    """
+    lines = strip_fences(text)
+    sections, dupes = split_sections(lines)
+    if "Review Body" in dupes or "Review Body" not in sections:
+        raise ReportError(
+            f"[DA-TABLE-PARSE: {path}: expected exactly one ## Review Body]"
+        )
+    review_lines = sections["Review Body"]
+    critical_lines, critical_id_col, critical_anchor_col = _parse_da_table_block(
+        review_lines, "CRITICAL", path
+    )
+    major_lines, major_id_col, major_anchor_col = _parse_da_table_block(
+        review_lines, "MAJOR", path
+    )
+
     rows: dict[str, str] = {}
-    for line in block[header_index + 2:]:
+    for line in critical_lines:
         cells = _markdown_cells(line)
         if not cells:
             continue
-        if max(id_col, anchor_col) >= len(cells):
+        if max(critical_id_col, critical_anchor_col) >= len(cells):
             raise ReportError(
                 f"[DA-CRITICAL-PARSE: {path}: malformed CRITICAL row]"
             )
-        finding_id = cells[id_col]
+        finding_id = cells[critical_id_col]
         if not re.fullmatch(r"C[1-9]\d*", finding_id):
             raise ReportError(
                 f"[DA-CRITICAL-PARSE: {path}: invalid CRITICAL ID "
@@ -228,8 +255,28 @@ def parse_da_critical_table(text: str, path: str = "<report>") -> dict[str, str]
             raise ReportError(
                 f"[DA-CRITICAL-PARSE: {path}: duplicate CRITICAL ID {finding_id}]"
             )
-        rows[finding_id] = cells[anchor_col]
-    return rows
+        rows[finding_id] = cells[critical_anchor_col]
+
+    major_anchors: list[str] = []
+    for line in major_lines:
+        cells = _markdown_cells(line)
+        if not cells:
+            continue
+        if max(major_id_col, major_anchor_col) >= len(cells):
+            raise ReportError(
+                f"[DA-MAJOR-PARSE: {path}: malformed MAJOR row]"
+            )
+        if not cells[major_id_col]:
+            raise ReportError(
+                f"[DA-MAJOR-PARSE: {path}: empty MAJOR # cell]"
+            )
+        major_anchors.append(cells[major_anchor_col])
+    return rows, major_anchors
+
+
+def parse_da_critical_table(text: str, path: str = "<report>") -> dict[str, str]:
+    """Compatibility wrapper over the shared two-table DA parser."""
+    return parse_da_tables(text, path)[0]
 
 
 # --- Contract and report parsing ----------------------------------------------
@@ -695,10 +742,7 @@ def check_da_terminal_gate(
     reports: list[ReviewerReport], synthesis: Synthesis
 ) -> list[str]:
     da = next((report for report in reports if report.role == "da"), None)
-    da_ids = (
-        set(parse_da_critical_table(da.text, da.path))
-        if da is not None else set()
-    )
+    da_ids = set(parse_da_tables(da.text, da.path)[0]) if da is not None else set()
     adjudicated_ids = set(synthesis.adjudications)
     diagnostics: list[str] = []
     if da_ids != adjudicated_ids:

@@ -8,7 +8,8 @@ from scripts import check_role_scoped_contract as lint
 
 REPO = Path(__file__).resolve().parents[1]
 MIRROR_FILES = tuple(lint.CONTRACTS) + tuple(lint.AGENTS) + (
-    lint.PROTOCOL, lint.SYNTH, lint.PANEL_CHECKER,
+    lint.PROTOCOL, lint.SYNTH, lint.PANEL_CHECKER, lint.PHASE_CHECKER,
+    lint.TEMPLATE,
 )
 
 
@@ -100,6 +101,39 @@ def test_executable_regex_mutation_fails_even_when_identifier_remains(tmp_path):
         lint.PANEL_CHECKER,
         r"^any (?P<p1>[a-z]+) dimension has a fatal block$",
         r"^any (?P<p1>[a-z]+) dimension has any fatal block$",
+    )
+    assert lint.check(root)
+
+
+def test_shared_score_regex_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PANEL_CHECKER,
+        r'''_SCORE = r"'(?P<score>block|warn|pass)'"''',
+        r'''_SCORE = r"'(?P<score>block|warn|pass|fail)'"''',
+    )
+    assert lint.check(root)
+
+
+def test_phase_finding_regex_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.PHASE_CHECKER,
+        r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
+        r'_FINDING_H3_RE = re.compile(r"^.*$")',
+    )
+    assert lint.check(root)
+
+
+def test_template_field_variant_witness_mutation_fails(tmp_path):
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        lint.TEMPLATE,
+        "may be bare or backtick-wrapped",
+        "must always be bare",
     )
     assert lint.check(root)
 

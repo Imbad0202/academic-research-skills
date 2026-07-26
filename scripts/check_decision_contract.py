@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -39,6 +40,36 @@ LIVE_ROOTS = (
 )
 LIVE_FILES = (
     SCHEMA, HANDOFF, PANEL, "scripts/check_sprint_contract.py",
+)
+THRESHOLD_DRIFT_PATTERNS = (
+    (
+        "decision-linked boundary",
+        re.compile(
+            r"(?i)(?:accept|minor revision|major revision|reject|decision)"
+            r".{0,80}(?:(?:>=|≥|>|at least|begins? at|from)\s*)"
+            r"(?:80|65|50)\b"
+        ),
+    ),
+    (
+        "boundary-linked decision",
+        re.compile(
+            r"(?i)\b(?:80|65|50)\s*points?.{0,80}"
+            r"(?:accept|minor revision|major revision|reject|decision)"
+        ),
+    ),
+    (
+        "numeric decision range",
+        re.compile(r"\b(?:65|50)\s*[-–—]\s*(?:79|64)\b"),
+    ),
+    (
+        "below-50 decision boundary",
+        re.compile(
+            r"(?i)(?:(?:accept|minor revision|major revision|reject|decision)"
+            r".{0,80}(?:<|below|under|less than)\s*50\b|"
+            r"(?:<|below|under|less than)\s*50\b.{0,80}"
+            r"(?:accept|minor revision|major revision|reject|decision))"
+        ),
+    ),
 )
 
 
@@ -128,6 +159,11 @@ def check(root: Path) -> list[str]:
                 errors.append(
                     f"{rel}: decision threshold {threshold} must reside only "
                     f"in {QUALITY}"
+                )
+        for label, pattern in THRESHOLD_DRIFT_PATTERNS:
+            if pattern.search(text):
+                errors.append(
+                    f"{rel}: {label} must reside only in {QUALITY}"
                 )
     standards = _read(root, STANDARDS)
     for retired in ("4.0", "3.5", "2.5-3.4", "< 2.5", "score = 1", "score = 2"):
