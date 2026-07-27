@@ -29,7 +29,7 @@
   "phase1_retries": [
     {
       "role": "methodology",
-      "diagnostic": "[PHASE1-GRAMMAR: expected exactly one canonical what_triggers_fatal line for mandatory dimension D3, found 0]",
+      "diagnostic": "[PHASE1-GRAMMAR: expected exactly one canonical what_triggers_fatal: line for dimension D3, found 0]",
       "diagnostic_form": "normalized",
       "rejected_response_preserved": false,
       "checker_output_preserved": true,
@@ -62,7 +62,8 @@
     "provenance_invalid_panels": 2,
     "conformance_aborts": 1,
     "not_launched_panels": 4,
-    "observed_panel_abort_rate": 0.5
+    "observed_provenance_invalid_rate": 1.0,
+    "observed_conformance_abort_rate": 0.5
   },
   "gate_verdict": "NOT_COMPUTABLE",
   "raw_bundle": "../raw/blocked/2026-07-27-ms00_clean-post-r2/",

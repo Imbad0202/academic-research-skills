@@ -118,8 +118,13 @@ manuscript) so adjudication is anchored, not vibes.
    under their historical status and MUST NOT be backfilled with this contract
    label. A governed record with any retry MUST enumerate every event in its
    stage-specific retry list (for example, `phase1_retries`) and declare
-   `rejected_response_preserved` plus `checker_output_preserved`; a preserved
-   checker output also names its record-relative location.
+   `rejected_response_preserved` plus `checker_output_preserved`. Whenever
+   either boolean is `true`, the same event MUST name the corresponding
+   record-relative `rejected_response_location` or `checker_output_location`,
+   and that path MUST resolve. If a record also carries a normalized diagnostic,
+   `diagnostic_form: "normalized"` means only the leading absolute artifact
+   path and its separator were removed; every remaining character is verbatim
+   checker output. The named checker-output artifact remains authoritative.
 
    **Blocked-run separation:** if a fail-loud checker stops the panel before all
    five cards and synthesis exist, or any checker-rejected response followed by
@@ -139,12 +144,12 @@ manuscript) so adjudication is anchored, not vibes.
    blocked-run rule above — complete panel requirement, exclusion from means,
    no imputation, and no replacement draw that conceals an abort — applies to
    every attempt regardless of date.
-   The exception is a closed artifact set: only the normal scored records
-   already committed as `runs/2026-07-24-*.json` and
-   `runs/2026-07-25-*.json`, together with the accepted final panels they
-   reference, remain governed by the earlier collection contract. No other
-   pre-adoption abort, raw root, or unregistered attempt may be promoted into
-   the scored namespace.
+   The exception is a closed artifact set of exactly 18 normal scored records:
+   the 6 already committed as `runs/2026-07-24-*.json` and the 12 already
+   committed as `runs/2026-07-25-*.json`, together with the accepted final
+   panels they reference, remain governed by the earlier collection contract.
+   No other pre-adoption abort, raw root, or unregistered attempt may be
+   promoted into the scored namespace.
 
    That earlier contract required the five accepted final reviewer reports plus
    the Editorial Decision Letter. It permitted a multi-dissent restart but did
