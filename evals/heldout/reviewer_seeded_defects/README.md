@@ -111,9 +111,17 @@ manuscript) so adjudication is anchored, not vibes.
    rejected response or checker output to preserve; disclose the no-response
    event in `notes`, but it is not a retry-evidence violation.
 
-   Every normal or blocked record governed by this contract MUST also carry
+   Every normal or blocked record governed by this contract MUST carry
    `"evidence_contract": "reviewer-e4/2026-07-27"` (or a named later contract
-   that retains at least the same retry-evidence requirement). The closed
+   that retains at least the same retry-evidence requirement), plus these
+   closed machine fields: `measurement_status` is `completed` or `blocked`;
+   `provenance_status` is `valid` or
+   `invalid_incomplete_retry_evidence`; `panel_completion_status` is
+   `completed` or `aborted`; and `score_eligible` is Boolean. A normal scored
+   record uses `completed` / `valid` / `completed` / `true`; every blocked
+   record uses `measurement_status: blocked` and `score_eligible: false` while
+   the other two fields state its independent provenance and completion facts.
+   The closed
    grandfathered records and every artifact under `runs/superseded/` are frozen
    under their historical status and MUST NOT be backfilled with this contract
    label. A governed record with any retry MUST enumerate every event in its
