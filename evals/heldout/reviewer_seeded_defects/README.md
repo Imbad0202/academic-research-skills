@@ -116,7 +116,10 @@ manuscript) so adjudication is anchored, not vibes.
    that retains at least the same retry-evidence requirement). The closed
    grandfathered records and every artifact under `runs/superseded/` are frozen
    under their historical status and MUST NOT be backfilled with this contract
-   label.
+   label. A governed record with any retry MUST enumerate every event in its
+   stage-specific retry list (for example, `phase1_retries`) and declare
+   `rejected_response_preserved` plus `checker_output_preserved`; a preserved
+   checker output also names its record-relative location.
 
    **Blocked-run separation:** if a fail-loud checker stops the panel before all
    five cards and synthesis exist, or any checker-rejected response followed by
@@ -157,25 +160,30 @@ manuscript) so adjudication is anchored, not vibes.
    `reviewer-e4/2026-07-27` or a named later contract that preserves this
    fail-closed minimum.
 
-   **Contract-sensitivity disclosure:** the 2026-07-24 MS02 baseline r1 and
-   2026-07-25 MS02 baseline r1 would not be score-eligible if dispatched under
-   `reviewer-e4/2026-07-27`; each remains eligible only under its governing
-   earlier contract. Any new or amended citation on or after 2026-07-27 of the
-   registered 2026-07-25 gate verdicts MUST carry that non-attestation.
+   **Contract-sensitivity disclosure:** the 2026-07-24 MS01 baseline r1,
+   2026-07-24 MS02 baseline r1, and 2026-07-25 MS02 baseline r1 would not be
+   score-eligible if dispatched under `reviewer-e4/2026-07-27`; each remains
+   eligible only under its governing earlier contract. The 2026-07-24 MS01
+   synthesis retry preserved its checker-rejected model response under
+   `runs/raw/voided/`, but not the exact checker output, so it fails the strict
+   current artifact pair. Any new or amended citation on or after 2026-07-27 of
+   the registered 2026-07-25 gate verdicts MUST carry that non-attestation.
    Pre-adoption historical text is not retroactively rewritten, but quoting or
    reusing it in a current decision triggers the disclosure. Moving an
    Unreleased pre-adoption claim into a numbered release counts as current
    reuse, so the release notes must carry the disclosure before tagging.
 
-   As diagnostics only, omitting the affected 2026-07-24 panel changes that
+   As diagnostics only, omitting both affected 2026-07-24 panels changes that
    row's severity agreement from 0.625 to
-   `(0.722 + 0.667 + 0.500) / 3 = 0.630`; omitting the affected 2026-07-25
-   panel changes its baseline severity agreement from 0.663 to
+   `(0.667 + 0.500) / 2 = 0.584`; omitting the affected 2026-07-25 panel
+   changes its baseline severity agreement from 0.663 to
    `(0.650 + 0.611 + 0.722) / 3 = 0.661`, still above the post-change 0.536,
-   so the registered severity direction remains a regression. In each
-   counterfactual, MS02 baseline recall remains 1.00 on the single retained
-   replicate and clean controls are unaffected, but the two-replicate
-   requirement is broken; neither sensitivity is a recomputed formal gate.
+   so the registered severity direction remains a regression. In the 2026-07-24
+   counterfactual, MS01 recall remains 0.90 and MS02 recall remains 1.00 on one
+   retained replicate each; in the 2026-07-25 counterfactual, MS02 recall
+   remains 1.00 on its single retained replicate. Clean controls are
+   unaffected, but the two-replicate requirement is broken; neither
+   sensitivity is a recomputed formal gate.
    The disclosed no-response transport re-dispatches in the 2026-07-25 post
    records produced no checker-rejected response, so they do not create a
    symmetric missing-artifact exposure.
@@ -190,9 +198,9 @@ product outcome).
 
 The 2026-07-24 and 2026-07-25 table rows are the closed grandfathered set
 described above. In particular, the 2026-07-24 row's PANEL-SHRUNK re-dispatch
-and the 2026-07-25 MS02 r1 multi-dissent retry were accepted under that earlier
-contract; neither row claims those recovery events would be eligible under
-`reviewer-e4/2026-07-27`.
+and synthesis void-and-retry, plus the 2026-07-25 MS02 r1 multi-dissent retry,
+were accepted under that earlier contract; neither row claims those recovery
+events would be eligible under `reviewer-e4/2026-07-27`.
 
 | Date | Commit | Model | Runs | MS01 recall (strict) | MS02 recall (strict) | Clean-control false findings | Severity agreement | Notes |
 |------|--------|-------|------|----------------------|----------------------|------------------------------|--------------------|-------|

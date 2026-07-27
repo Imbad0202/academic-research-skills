@@ -1,5 +1,6 @@
 {
-  "measurement_status": "invalid_incomplete_provenance",
+  "measurement_status": "blocked",
+  "provenance_status": "invalid_incomplete_retry_evidence",
   "panel_completion_status": "completed",
   "score_eligible": false,
   "model_id": "claude-opus-5",
@@ -10,6 +11,16 @@
   "fixture": "ms00_clean",
   "replicate": 1,
   "dispatch": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS=31999, no session persistence): field analyst (paper-visible), then per seat a physically separate paper-blind Phase 1 call (contract + title/field/word_count only, manuscript reads forbidden) and paper-visible Phase 2 call, then synthesizer over five conforming Phase-2 cards. The v2 sprint-contract and phase-conformance checkers ran in-flow; one paper-blind methodology Phase 1 structural retry was used after the first response omitted D3's mandatory fatal trigger. No Phase 2 retry was used. Contamination fence: neutral manuscript filename in a fresh root outside the repository, no eval or defect vocabulary in model prompts, reviewer calls received only their delivered phase subsection and bounded inputs, and synthesis received only the contract, metadata, field analysis, and five Phase-2 cards.",
+  "phase1_retries": [
+    {
+      "role": "methodology",
+      "diagnostic": "[PHASE1-GRAMMAR: expected exactly one canonical what_triggers_fatal line for mandatory dimension D3, found 0]",
+      "diagnostic_form": "normalized",
+      "rejected_response_preserved": false,
+      "checker_output_preserved": true,
+      "checker_output_location": "../raw/blocked/2026-07-27-ms00_clean-post-r1/dispatch.log"
+    }
+  ],
   "per_defect": {},
   "severity_scores": {},
   "clean_control_false_findings": [

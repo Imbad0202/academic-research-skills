@@ -30,14 +30,18 @@
     {
       "role": "methodology",
       "diagnostic": "[PHASE1-GRAMMAR: expected exactly one canonical what_triggers_fatal line for mandatory dimension D3, found 0]",
+      "diagnostic_form": "normalized",
       "rejected_response_preserved": false,
-      "checker_output_preserved": true
+      "checker_output_preserved": true,
+      "checker_output_location": "../raw/blocked/2026-07-27-ms00_clean-post-r2/dispatch.log"
     },
     {
       "role": "perspective",
       "diagnostic": "[PHASE1-GRAMMAR: what_triggers_fatal is forbidden on non-mandatory dimension D4]",
+      "diagnostic_form": "normalized",
       "rejected_response_preserved": false,
-      "checker_output_preserved": true
+      "checker_output_preserved": true,
+      "checker_output_location": "../raw/blocked/2026-07-27-ms00_clean-post-r2/dispatch.log"
     }
   ],
   "not_run": [
@@ -62,5 +66,5 @@
   },
   "gate_verdict": "NOT_COMPUTABLE",
   "raw_bundle": "../raw/blocked/2026-07-27-ms00_clean-post-r2/",
-  "notes": "INCOMPLETE RETRY PROVENANCE: the first malformed methodology and perspective Phase 1 responses were overwritten before this bundle was assembled. Their exact checker diagnostics survive in this record and the dispatch log, but the rejected model responses do not; this panel would remain invalid for scoring even without its later conformance abort. Protocol permits one paper-blind Phase 1 structural retry and a Phase 2 retry only for multi-dissent. The malformed empty dissent is not multi-dissent, so the panel was aborted immediately: no Phase 2 redraw, no replacement panel, and no continuation to DA, synthesis, or defective fixtures. Both launched clean panels have incomplete retry provenance (2/2); r2 additionally makes the observed clean-cohort conformance-abort rate 1/2 (0.50) against the Spec-A diagnostic expectation of approximately zero. Because the required 2 replicates x 3 fixtures did not complete, strict-recall, clean-control, severity-agreement, DA-critical-versus-Accept, and release gate verdicts are all not computable. This record is stored under `runs/blocked/` so scored-run consumers cannot mistake it for a valid run."
+  "notes": "INCOMPLETE RETRY PROVENANCE: the first malformed methodology and perspective Phase 1 responses were overwritten before this bundle was assembled. Normalized diagnostics survive in this record, and the dispatch log preserves the exact checker output, but the rejected model responses do not; this panel would remain invalid for scoring even without its later conformance abort. Protocol permits one paper-blind Phase 1 structural retry and a Phase 2 retry only for multi-dissent. The malformed empty dissent is not multi-dissent, so the panel was aborted immediately: no Phase 2 redraw, no replacement panel, and no continuation to DA, synthesis, or defective fixtures. Both launched clean panels have incomplete retry provenance (2/2); r2 additionally makes the observed clean-cohort conformance-abort rate 1/2 (0.50) against the Spec-A diagnostic expectation of approximately zero. Because the required 2 replicates x 3 fixtures did not complete, strict-recall, clean-control, severity-agreement, DA-critical-versus-Accept, and release gate verdicts are all not computable. This record is stored under `runs/blocked/` so scored-run consumers cannot mistake it for a valid run."
 }
