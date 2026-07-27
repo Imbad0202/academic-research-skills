@@ -382,7 +382,7 @@ Scoring: pairwise-consistency (the paired runs' delta is the metric), which is r
 | `scripts/ars_apply_revision_patch.py` | Apply report gains `patch_digest` (sha256 of the exact patch bytes applied) with `REPORT_FORMAT_VERSION` bumped 1.1 → 1.2, following the repo's 1.0→1.1 `output_draft_hash` precedent (constant + code comment) — the §11 content-binding for positional pairing; additive, existing consumers unaffected; lands with PR-B1 |
 | `academic-paper/references/revision_patch_protocol.md` | Its consumer-side per-report `output_draft_hash`-vs-revised-manuscript check sentence is likewise REPLACED by a pointer to the §11 ordered-chain rule (the fourth surface carrying the old single-report rule), AND its report-format field list gains the `patch_digest` row under format 1.2 |
 | `academic-paper-reviewer/templates/editorial_decision_template.md` + `agents/editorial_synthesizer_agent.md` | The R<n>-follows-must_fix-order ordinal correspondence becomes an explicit stated contract (§5.1's derivation basis) — a documentation pin of what the single-emission producer already does on the R side; the Suggested table (a P2/P3 mix per its own Priority column) is deliberately NOT pinned |
-| `evals/heldout/` | P-1..P-5 paired controls (§14) |
+| `evals/heldout/` | P-1..P-6 paired controls (§14) |
 | `.github/workflows/spec-consistency.yml` + pytest manifest | Checker + tests wired |
 
 ## 17. Implementation plan
