@@ -130,10 +130,12 @@ manuscript) so adjudication is anchored, not vibes.
    label. A governed record with any retry MUST enumerate every event in its
    stage-specific retry list (for example, `phase1_retries`) and declare
    `rejected_response_preserved` plus `checker_output_preserved`. Whenever
-   either boolean is `true`, the same event MUST name the corresponding
-   record-relative `rejected_response_location` or `checker_output_location`,
-   and that path MUST resolve. Every stored diagnostic MUST carry
-   `diagnostic_form: "verbatim"` or `diagnostic_form: "normalized"`.
+   `rejected_response_preserved` is `true`, the same event MUST name a
+   record-relative `rejected_response_location`, and that path MUST resolve.
+   Every stored diagnostic, including a terminal abort diagnostic outside a
+   retry list, MUST carry `diagnostic_form: "verbatim"` or
+   `diagnostic_form: "normalized"` and name a record-relative
+   `checker_output_location`; that path MUST resolve.
    `verbatim` is byte-for-byte checker output; `normalized` means only the
    leading absolute artifact path and its separator were removed, with every
    remaining character verbatim. The named checker-output artifact remains
