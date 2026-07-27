@@ -86,7 +86,7 @@ For each Priority 1 (`must_fix`) roadmap item — and each Priority 2 (`should_f
 
 **Prohibitions (mirror v3.6.2 Phase 1):** no speculation about what the revision did, no verdicts, no reading of any withheld input. The operationalization must be derivable from Round-1 artifacts alone; a record whose operationalization references revision content fails lint. Ends with `[CONTRACT-ACKNOWLEDGED]`.
 
-**`new_standard` boundary (SD-2):** Phase 1 may NOT add acceptance requirements beyond the inherited criterion. If operationalizing reveals that the Round-1 criterion is materially incomplete (e.g., it never named a check the concern obviously requires), the verifier records a `new_standard` entry: `{item_id, standard_text, why_not_in_round1, classification: advisory}`. Advisory by default — it cannot change the item verdict or the decision. The sole escalation path is §6.4 (integrity/ethics/safety/legal-compliance/fatal-validity, human checkpoint mandatory).
+**`new_standard` boundary (SD-2):** Phase 1 may NOT add acceptance requirements beyond the inherited criterion. If operationalizing reveals that the Round-1 criterion is materially incomplete (e.g., it never named a check the concern obviously requires), the verifier records a `NewStandardRecord` (§5.1). Advisory by default — it cannot change the item verdict or the decision. The sole escalation path is §6.4 (integrity/ethics/safety/legal-compliance/fatal-validity, human checkpoint mandatory), entered by `classification: escalation_requested` and substantiated only at Phase 2A (§5.1).
 
 **Retry:** one Phase 1 retry on lint failure (fresh call, no failure details beyond the lint tag — same discipline as v3.6.2). Second failure → `[RE-REVIEW-ABORT: phase1_lint_failed]`, fail closed.
 
@@ -101,11 +101,11 @@ Per item, the verifier commits a verdict record (schema, §5.2):
 - `change_summary` — what actually changed relative to the original manuscript (from diff/apply report + comparison), one sentence.
 - `residual_gap` — REQUIRED for `PARTIALLY_ADDRESSED`: the concrete missing part, with a `residual_magnitude` ∈ `{must_fix, should_fix, consider}` re-grading of what remains (feeds the §6 decision derivation).
 
-New issues discovered while reading the revised manuscript are recorded as new-issue records with attribution (§8) — also before the letter is read, because attribution must not be colored by the author's framing of what they changed.
+New issues discovered while reading the revised manuscript are recorded as new-issue records with attribution (§8) — also before the letter is read, because attribution must not be colored by the author's framing of what they changed. The new-issue SET — each record's id, attribution, and severity — **freezes at `[EVIDENCE-COMMITTED]`**: Phase 2B may not add, remove, or reclassify new issues (§5.3 carries the frozen copy; §13 witnesses byte-level id/attribution/severity equality). Anything noticed only after the letter is read goes to the decision-inert `post_letter_observations[]` list (§5.3), seeding the next round.
 
 **Prohibitions:** no reference to the Response Letter (it is absent); no verdict revision after emission (2A output is committed — the orchestrator persists it before dispatching 2B). Ends with `[EVIDENCE-COMMITTED]`.
 
-**No retry** once the revised manuscript has been seen (same taint logic as the v3.6.2 no-Phase-2-retry rule); a 2A lint failure → single fresh-call retry from Phase 2A with the SAME `<phase1_output>` (the criteria are already committed and clean); second failure → `[RE-REVIEW-ABORT: phase2a_lint_failed]`.
+**No retry.** The v3.6.2 no-Phase-2-retry discipline (`sprint_contract_protocol.md` §5) applies unchanged once the revised manuscript has been seen: a lint-guided regeneration after evidence exposure is exactly the channel the no-retry rule closes. A 2A lint failure → `[RE-REVIEW-ABORT: phase2a_lint_failed]`, fail closed. Phase 2B lint failure likewise aborts without retry (`phase2b_lint_failed`).
 
 ### 3.4 Phase 2B — claim matching (letter revealed)
 
@@ -124,14 +124,16 @@ Phase 2B produces the final traceability matrix (Schema 11 + machine-readable si
 |---------|-----------|----------------------|
 | `author_pointer_located_evidence` | upgrade | Manuscript-side typed anchor satisfying the Phase-1 operationalization; the letter told the verifier WHERE to look, the manuscript is what satisfies |
 | `valid_rebuttal` | upgrade to `FULLY_ADDRESSED` (marker `addressed_by_rebuttal: true`) | The rebuttal's evidence (citations, derivations, data in the manuscript or letter) rebuts the original finding on the merits; record the counter-evidence anchor |
-| `acknowledgment_only_commitment` | resolves the commitment axis only (Kong A1) | Letter-side, per the existing narrow exception |
 | `scope_correction` | either direction | The letter reveals the 2A reading misidentified the item's target (wrong section/claim); re-verification against the correct target, manuscript-side anchor |
+| `cross_model_adjudication` | either direction | A §9 resolution concluded `primary_revised`, or a §7 dissent adjudication approved a replacement criterion whose application changes the verdict; references the §5.3 adjudication/resolution record id |
+
+Commitment-axis outcomes (Kong A1 — including the `acknowledgment_only` evidence class) are recorded ONLY in the commitment fields (`fulfillment_status` etc.) and NEVER produce an AdjustmentRecord: the verdict axis is untouched, so the §5.3 biconditional is not triggered — the two axes stay orthogonal (§15).
 
 A `to_verdict` upgrade with basis `valid_rebuttal` on an item whose Round-1 severity is `critical` additionally requires the §9 cross-model adjudication when active, else a decision-letter disclosure line. An assertion in the letter with no locatable manuscript evidence changes nothing. Ends with `[MATRIX-COMMITTED]`.
 
 ### 3.5 Abort taxonomy
 
-`[RE-REVIEW-ABORT: <reason>]` with closed reasons: `phase1_lint_failed`, `phase2a_lint_failed`, `phase2b_lint_failed`, `manifest_incomplete`, `manifest_hash_mismatch`, `criteria_drift` (§7), `synthesis_mismatch` (§13). Every abort is fail-closed: no decision is emitted, the pipeline surfaces the abort to the user at the Stage 3' checkpoint.
+`[RE-REVIEW-ABORT: <reason>]` with closed reasons: `phase1_lint_failed`, `phase2a_lint_failed`, `phase2b_lint_failed`, `manifest_incomplete`, `manifest_hash_mismatch`, `criteria_drift` (§7), `synthesis_mismatch` (§13). This bracketed form is the single canonical machine-consumed marker grammar — §13's recomputation failure emits `[RE-REVIEW-ABORT: synthesis_mismatch]`, not a separate token. Every abort is fail-closed: no decision is emitted, the pipeline surfaces the abort to the user at the Stage 3' checkpoint. Distinct from aborts, `decision_state: user_review_required` (§6 G2) is a DEFERRED outcome — the matrix is delivered, the decision is not.
 
 ---
 
@@ -156,27 +158,39 @@ All new artifacts live under `shared/contracts/re_review/` (schemas) and are run
 
 Top-level: `{contract_version, round_id, input_manifest_hash, items: [PrecommitmentRecord], new_standards: [NewStandardRecord]}`.
 
-`PrecommitmentRecord`: `{item_id (Schema 7 id, e.g. REV-001), priority, inherited_criterion {roadmap_text, letter_text?}, operationalization {fully_addressed, partially_addressed, made_worse_discriminator}, expected_change_surface, equivalence_policy: "allowed", source_dimension?, source_reviewer?}`. Priority 2 lighter form: `operationalization.fully_addressed` only.
+`PrecommitmentRecord`: `{item_id (Schema 7 id, e.g. REV-001), priority, inherited_criterion {roadmap_text, letter_text?}, operationalization {fully_addressed, partially_addressed, made_worse_discriminator}, expected_change_surface, equivalence_policy: "allowed", source_type, source_reviewer}`. `source_type` and `source_reviewer` are VERBATIM copies of the Schema 7 item's required `type` and `reviewer` fields (`handoff_schemas.md` RoadmapItem) — no new Schema 7 fields exist or are added; §10 defines the deterministic seat map over `source_type`. Priority 2 lighter form: `operationalization.fully_addressed` only. Priority 3 (`consider`) items get NO pre-commitment record (§5.2 `not_precommitted`).
 
-`NewStandardRecord`: `{item_id | "global", standard_text, why_not_in_round1, classification: "advisory" | "escalation_requested"}` — `escalation_requested` valid only with an `escalation_class` from the §6.4 closed set.
+`NewStandardRecord`: `{item_id | "global", standard_text, why_not_in_round1, classification: "advisory" | "escalation_requested"}`. An `escalation_requested` entry is only a REQUEST — the substantiating `EscalationExceptionRecord` (§5.2) is created at Phase 2A (its original-manuscript anchor cannot exist earlier: Phase 1 withholds both manuscripts) and points back via `new_standard_ref`; a request never substantiated at 2A lapses to advisory. 2A may also emit an exception with no Phase-1 request (discovered only on reading the manuscripts).
 
 ### 5.2 `verdict_record.schema.json` (Phase 2A)
 
-Top-level: `{round_id, precommitment_hash, items: [VerdictRecord], new_issues: [NewIssueRecord], dissents: [DissentRecord]}`.
+Top-level: `{round_id, precommitment_hash, items: [VerdictRecord], new_issues: [NewIssueRecord], dissents: [DissentRecord], escalation_exceptions: [EscalationExceptionRecord]}`.
 
-`VerdictRecord`: `{item_id, verdict, evidence_anchor[] | cannot_verify_reason, change_summary, residual_gap? {text, residual_magnitude}, verified_by (§10), applied_criterion: "precommitted" | "dissented:<dissent_id>"}`.
+`VerdictRecord`: `{item_id, verdict, evidence_anchor[] | cannot_verify_reason, change_summary, residual_gap? {text, residual_magnitude}, verified_by (§10), applied_criterion: "precommitted" | "dissented:<dissent_id>" | "not_precommitted"}`. `not_precommitted` is valid ONLY for `priority: consider` items (which have no Phase-1 record, §3.2); a P1/P2 item carrying it fails the checker.
+
+`EscalationExceptionRecord` (§6.4): `{exception_id, new_standard_ref?, escalation_class (§6.4 closed set), reason_code, evidence_anchor (original-manuscript-side), why_round1_missed_it, mechanical_decision_impact: "Minor Revision" | "Major Revision", approval_state: "pending"}` — emitted at 2A with `pending`; approval happens only in §5.3 `escalation_approvals`.
 
 `NewIssueRecord` and `DissentRecord`: §8 / §7.
 
 ### 5.3 `traceability.schema.json` (Phase 2B — machine-readable Schema 11 sidecar)
 
-Top-level: `{round_id, verdict_record_hash, rows: [MatrixRow], adjustments: [AdjustmentRecord], decision_inputs: DecisionInputs}`.
+Top-level: `{round_id, verdict_record_hash, rows: [MatrixRow], adjustments: [AdjustmentRecord], new_issues: [NewIssueRecord], post_letter_observations: [], dissent_adjudications: [DissentAdjudication], cross_model_resolutions: [CrossModelResolution], escalation_approvals: [EscalationApproval], decision_inputs: DecisionInputs, decision_state, abort_reason?}`.
 
-`MatrixRow`: the Schema 11 required fields (`concern_id`, `priority`, `original_comment`, `authors_claim`, `revision_location`, `verified`, `status`, `quality_assessment`) plus `final_verdict`, `phase2a_verdict`, `adjustment_id?`, `addressed_by_rebuttal?`, `cross_model_status?` / `cross_model_verdict?` (#539 fields, unchanged semantics). Invariant: `final_verdict != phase2a_verdict ⟺ adjustment_id` present. Schema 11 prose (`handoff_schemas.md` § Schema 11) remains the human surface; the sidecar is what the checker recomputes from — no index-walking (rows carry ids, mirroring the #268-desync-free convention).
+`MatrixRow`: the Schema 11 required fields (`concern_id`, `priority`, `original_comment`, `authors_claim`, `revision_location`, `verified`, `status`, `quality_assessment`) plus `final_verdict`, `phase2a_verdict`, `adjustment_id?`, `addressed_by_rebuttal?`, `cross_model_status?` / `cross_model_verdict?` (#539 fields, unchanged semantics). EVERY Schema 7 roadmap item, all priorities, has exactly one row (Schema 11's completeness rule, `handoff_schemas.md` § Validation). Invariant: `final_verdict != phase2a_verdict ⟺ adjustment_id` present. `status` maps 1:1 from `final_verdict`; for `CANNOT_VERIFY` this requires the Schema 11 `status` enum extension in §16 (`verified` already carries the value; `status` gains it). Schema 11 prose remains the human surface; the sidecar is what the checker recomputes from — no index-walking (rows carry ids, mirroring the #268-desync-free convention).
 
-`AdjustmentRecord`: `{adjustment_id, item_id, from_verdict, to_verdict, basis (closed set §3.4), evidence_anchor, rationale}`.
+`AdjustmentRecord`: `{adjustment_id, item_id, from_verdict, to_verdict, basis (closed set §3.4), evidence_anchor, rationale}`. Referential integrity (§13): `from_verdict` equals the item's `phase2a_verdict`, `to_verdict` equals its `final_verdict`, ids unique and resolvable.
 
-`DecisionInputs`: the mechanically-derived aggregates the §6 table consumes (counts per verdict class per priority, regression list with severities, dissent proportions, cross-model resolution states) — emitted so the checker recomputes the decision from the same numbers the synthesizer used.
+`new_issues`: the FROZEN 2A set, copied verbatim (id, attribution, severity, anchors byte-identical to §5.2 — §13 witness). `post_letter_observations[]`: free-form advisory entries noticed only after letter reveal; decision-inert; next-round seed.
+
+`DissentAdjudication`: `{dissent_id, adjudicator: "cross_model" | "user", outcome: "replacement_approved" | "original_upheld", rationale}` (§7).
+
+`CrossModelResolution`: `{item_id, state: "primary_upheld" | "primary_revised", rationale}` — REQUIRED for every P1 row whose `cross_model_status = diverges`; no record exists (or is needed) for `agree` / `unavailable` / `not_configured` rows (§9).
+
+`EscalationApproval`: `{exception_id, approval_state: "approved" | "rejected", approved_by: "user"}` — recorded from the Stage 3' checkpoint outcome (§6.4).
+
+`DecisionInputs`: the mechanically-derived aggregates §6 consumes — counts per final-verdict class per priority; `p2_addressed_rate {numerator, denominator}` (§6 definition); regression list with severities; frozen non-regression new-issue ids; dissent-bound state + adjudication summary; per-P1-item cross-model resolution summary; approved escalation floors; `reject_recommended: bool` — emitted so the checker recomputes the decision from the same numbers the synthesizer used.
+
+`decision_state`: `"Accept" | "Minor Revision" | "Major Revision" | "user_review_required" | "aborted"` — the emitted outcome §13 compares against; `abort_reason` (from the §3.5 closed set) REQUIRED iff `aborted`.
 
 ### 5.4 Schema 13 disposition
 
@@ -184,33 +198,49 @@ Top-level: `{round_id, verdict_record_hash, rows: [MatrixRow], adjustments: [Adj
 
 ---
 
-## 6. Verdict → decision truth table
+## 6. Verdict → decision derivation
 
-Inputs: per-item final verdicts (P1 = `must_fix`, P2 = `should_fix`, P3 = `consider`), `residual_magnitude` re-grades, new-issue records with attribution + severity, dissent aggregates, cross-model resolution states, manifest status. Output: exactly one of `Accept | Minor Revision | Major Revision | Reject`, or a fail-closed abort. Evaluate rules in order; FIRST match wins.
+Inputs: per-item final verdicts (P1 = `must_fix`, P2 = `should_fix`, P3 = `consider`), `residual_magnitude` re-grades, the frozen new-issue records (attribution + severity), dissent-bound state + adjudication records, cross-model resolution records, approved escalation floors, manifest status. Output domain: `decision_state ∈ {Accept, Minor Revision, Major Revision, user_review_required}` or a fail-closed abort (§3.5) — **`Reject` is NOT a Stage 3' decision** (the state machine gives Stage 3' exactly two exits: Accept/Minor → 4.5, Major → 4'; `pipeline_state_machine.md` § State Transition Rules); severity-flagged cases set `reject_recommended` instead (below). Declared decision order for floor arithmetic: `Accept < Minor Revision < Major Revision`.
+
+**`p2_addressed_rate` definition (mechanizing the previously-prose 80% rule):** numerator = |P2 items with `final_verdict ∈ {FULLY_ADDRESSED, PARTIALLY_ADDRESSED}`| (manuscript-side, computable from Phase 2A verdicts alone); denominator = |P2 items|; zero P2 items → rate is vacuously 100%. This deliberately REPLACES the ambiguous "should have a response" reading of `re_review_mode_protocol.md` § Verification Logic: a letter-side numerator (counting author explanations) would let a persuasive letter buy the rate without manuscript change — the exact channel §1 exists to close. A `NOT_ADDRESSED` item's author explanation is still recorded in the matrix; it does not count toward the rate.
+
+Derivation runs in three ordered steps; within each step, FIRST match wins.
+
+**Step 1 — gates (abort / defer):**
 
 | # | Condition | Outcome |
 |---|-----------|---------|
-| T0 | Input manifest incomplete or hash-mismatched (§11) | `[RE-REVIEW-ABORT: manifest_incomplete \| manifest_hash_mismatch]` — no decision |
-| T1 | Any P1 row where `final_verdict != phase2a_verdict` without an `adjustment_id`, or any dissent bound tripped (§7) | `[RE-REVIEW-ABORT: criteria_drift]` |
-| T2 | Unresolved §9 cross-model gate on any P1 item (state not in `{primary_upheld, primary_revised}`) | `user_review_required` — decision deferred to the user checkpoint; the matrix is delivered without a decision line |
-| T3 | Approved §6.4 escalation exception active | The exception record's `mechanical_decision_impact` applies as a FLOOR over T4-T9's result (never below it), then continue |
-| T4 | Any P1 `MADE_WORSE` with driving-finding severity `critical`, OR any `regression`-attributed new issue with severity `critical` (fatal-validity class) | **Reject** (Stage 3' Reject → the existing user restructure/abandon checkpoint) |
-| T5 | ≥ 50% of P1 items in `{NOT_ADDRESSED, MADE_WORSE}` | **Reject** |
-| T6 | Any P1 in `{NOT_ADDRESSED, MADE_WORSE}`, OR any P1 `CANNOT_VERIFY`, OR any `regression`-attributed new issue with severity `major` | **Major Revision** |
-| T7 | Any P1 `PARTIALLY_ADDRESSED` with `residual_magnitude: must_fix` | **Major Revision** |
-| T8 | Any P1 `PARTIALLY_ADDRESSED` with `residual_magnitude: should_fix \| consider`, OR P2 response rate < 80% (existing threshold, unchanged), OR any `regression`-attributed new issue with severity `minor` | **Minor Revision** |
-| T9 | All P1 `FULLY_ADDRESSED` (including `addressed_by_rebuttal`), P2 response rate ≥ 80%, no decision-affecting regressions | **Accept** |
+| G0 | Input manifest incomplete or hash-mismatched (§11) | `[RE-REVIEW-ABORT: manifest_incomplete \| manifest_hash_mismatch]` |
+| G1 | Any P1 row where `final_verdict != phase2a_verdict` without an `adjustment_id`, OR a §7 dissent bound tripped with no covering `dissent_adjudications` record | `[RE-REVIEW-ABORT: criteria_drift]` |
+| G2 | Any P1 row with `cross_model_status = diverges` and no `cross_model_resolutions` record (§9) | `decision_state: user_review_required` — matrix delivered, decision deferred to the user checkpoint |
+
+Rows with `cross_model_status ∈ {agree, unavailable, not_configured}` need no resolution record and never trigger G2 (§9 disclosure rules apply instead).
+
+**Step 2 — base decision (first match; total by construction):**
+
+| # | Condition | Base |
+|---|-----------|------|
+| B1 | Any P1 `MADE_WORSE` with driving-finding severity `critical`, OR any `regression`-attributed new issue with severity `critical` (fatal-validity class) | **Major Revision** + `reject_recommended: true` |
+| B2 | ≥ 50% of P1 items in `{NOT_ADDRESSED, MADE_WORSE}` | **Major Revision** + `reject_recommended: true` |
+| B3 | Any P1 in `{NOT_ADDRESSED, MADE_WORSE, CANNOT_VERIFY}`, OR any `regression`-attributed new issue with severity `major` | **Major Revision** |
+| B4 | Any P1 `PARTIALLY_ADDRESSED` with `residual_magnitude: must_fix` | **Major Revision** |
+| B5 | Any P1 `PARTIALLY_ADDRESSED` with `residual_magnitude: should_fix \| consider`, OR `p2_addressed_rate < 80%`, OR any `regression`-attributed new issue with severity `minor` | **Minor Revision** |
+| B6 | Residual (provably: all P1 `FULLY_ADDRESSED` incl. `addressed_by_rebuttal`; `p2_addressed_rate ≥ 80%`; no regression-attributed new issues) | **Accept** |
+
+**Step 3 — floors:** `decision_state = max(base, every approved EscalationApproval's mechanical_decision_impact)` under the declared order. Pending or rejected approvals contribute nothing.
+
+`reject_recommended: true` (B1/B2, or a `research_integrity`-class approved exception) rides in `DecisionInputs` and the report: it tells the user at the Stage 3' checkpoint that severity warrants considering abandonment — abandonment is the standing any-stage user exception (`pipeline_orchestrator_agent.md` § Exception Handling), not a state-machine transition, so §15's no-new-transitions holds.
 
 Notes:
 
-- `CANNOT_VERIFY` on a P1 caps the decision at Major (T6): acceptance requires positive verification, and fail-closed beats benefit-of-the-doubt. On P2/P3 it is recorded, not decision-driving.
-- `previously_missed` and `indeterminate` new issues NEVER appear in T4-T8 (goalpost guard, §8) — they are reported and routed, but only `regression` attribution can move the decision.
-- The existing P2 80% / P3 no-effect semantics are preserved (this spec makes them mechanical, it does not change the thresholds — the "thresholds unchanged" non-goal survives in this narrowed form; the acceptance review's objection was to leaving the table incomplete, which T0-T9 closes).
-- Every valid input state maps to exactly one row: T9 is the residual (checker-enforced totality, §13).
+- `CANNOT_VERIFY` on a P1 caps the decision at Major (B3): acceptance requires positive verification, and fail-closed beats benefit-of-the-doubt. On P2 it counts against `p2_addressed_rate`; on P3 it is recorded, not decision-driving.
+- `previously_missed` and `indeterminate` new issues NEVER appear in Step 2 (goalpost guard, §8) — only `regression` attribution can move the decision.
+- P3 items never affect any step (existing semantics, unchanged).
+- Totality: B1-B5's negations jointly force B6's parenthetical, and Schema 6's closed severity set (`critical`/`major`/`minor`) is covered by B1/B3/B5 — checker-enforced (§13).
 
 ### 6.4 Escalation exception (the ONLY path around the goalpost guard and `new_standard` advisory default)
 
-Closed class set: `{research_integrity, ethics, safety, legal_compliance, fatal_validity}`. An exception record requires ALL of: `escalation_class`, `reason_code`, original-text evidence anchor (into the ORIGINAL manuscript — proving it existed in Round 1 — or into revision-introduced content, which makes it a `regression` instead and T4-T6 already handle it), `why_round1_missed_it`, `mechanical_decision_impact` (one of the four decisions, as a floor), and a **mandatory human checkpoint**: the user must explicitly approve the exception at the Stage 3' checkpoint before it takes effect; unapproved exceptions revert to advisory. Stage 4.5's integrity gate independently sees the exception record (it travels in the passport).
+Closed class set: `{research_integrity, ethics, safety, legal_compliance, fatal_validity}`. The `EscalationExceptionRecord` (§5.2, emitted at Phase 2A with `approval_state: pending`) requires ALL of: `escalation_class`, `reason_code`, original-text evidence anchor (into the ORIGINAL manuscript — proving it existed in Round 1; revision-introduced content is a `regression` instead, already handled by B1/B3/B5), `why_round1_missed_it`, and `mechanical_decision_impact ∈ {Minor Revision, Major Revision}` (a Step-3 floor; Reject is not a Stage 3' decision — a `research_integrity`-class exception additionally sets `reject_recommended`). **Mandatory human checkpoint:** the user must explicitly approve at the Stage 3' checkpoint; the outcome is recorded as an `EscalationApproval` (§5.3) and the derivation re-runs with it — `pending`/`rejected` contribute no floor (advisory only). Stage 4.5's integrity gate independently sees the exception record (it travels in the passport).
 
 ---
 
@@ -220,7 +250,7 @@ A dissent is the Phase 2A discovery that a pre-committed operationalization cann
 
 `DissentRecord`: `{dissent_id, item_id, criterion_hash (of the Phase-1 record), reason_code ∈ {criterion_ambiguous, criterion_infeasible_as_written, evidence_surface_moved, criterion_error}, original_operationalization, replacement_operationalization, evidence, decision_impact_note}`. The item's verdict record then carries `applied_criterion: "dissented:<dissent_id>"`.
 
-**Bounds (SD-5):** dissent on a P1 item, or dissents on > ⌈N/3⌉ of all items (N = total roadmap items), triggers independent adjudication BEFORE the verdicts stand: when cross-model is active, the §9 judge blind-applies the ORIGINAL Phase-1 criterion first, then separately adjudicates the replacement; when not active, `[RE-REVIEW-ABORT: criteria_drift]` is avoided only by surfacing the dissent(s) at a user checkpoint (the user approves or rejects the replacement). Exceeding the bound without adjudication = T1 abort. This keeps dissent from becoming a quiet goalpost-reset channel while leaving a legitimate path for genuinely broken criteria.
+**Bounds (SD-5):** dissent on a P1 item, or dissents on > ⌈N/3⌉ of all items (N = total roadmap items), triggers independent adjudication BEFORE the verdicts stand: when cross-model is active, the §9 judge blind-applies the ORIGINAL Phase-1 criterion first, then separately adjudicates the replacement; when not active, the dissent(s) surface at a user checkpoint (the user approves or rejects the replacement). Every adjudication outcome is recorded as a `DissentAdjudication` (§5.3) — `replacement_approved` lets the dissented criterion stand; `original_upheld` re-applies the original criterion, and any resulting verdict change rides an adjustment record with basis `cross_model_adjudication`. A tripped bound with no covering adjudication record = G1 abort. This keeps dissent from becoming a quiet goalpost-reset channel while leaving a legitimate path for genuinely broken criteria.
 
 Unlike the v3.6.2 one-dimension-per-reviewer cap (built for 5-7 fixed dimensions), the bound is proportional because roadmap item counts vary widely.
 
@@ -233,7 +263,7 @@ Every issue found during Phase 2A that is not traceable to a roadmap item gets a
 `attribution` (closed):
 
 - `regression` — introduced by the revision. Evidence: the anchored content is in the revised manuscript but not the original (diff/apply-report-supported). MAY affect the decision (T4/T6/T8).
-- `previously_missed` — present in the original manuscript; Round 1 missed it. Evidence: anchored in BOTH versions. Reported, CANNOT escalate the decision (only §6.4 overrides). Routed forward: if the round's decision is Major Revision, it enters the new Stage 3' → 4' Roadmap as an `advisory`-priority item; otherwise it enters the Stage 4.5 handoff as an exception-log entry for the final integrity check. Both destinations exist in the current state machine — no new transition is created (the `Stage 4' → 3'` prohibition, `pipeline_state_machine.md` § Prohibited Transitions, is untouched).
+- `previously_missed` — present in the original manuscript; Round 1 missed it. Evidence: anchored in BOTH versions. Reported, CANNOT escalate the decision (only §6.4 overrides). Routed forward: when `decision_state` is Major Revision, it enters the new Stage 3' → 4' Roadmap as a `priority: consider` item whose `description` carries the `[PREVIOUSLY-MISSED: NEW-<n>]` prefix (Schema 7's closed priority enum is untouched — `consider` already has no decision effect, matching the non-escalation rule; the prefix preserves provenance); when `decision_state` is Accept or Minor Revision, it enters the Stage 4.5 handoff as an exception-log entry for the final integrity check. `decision_state: user_review_required` defers routing along with the decision. Both destinations exist in the current state machine — no new transition is created (the `Stage 4' → 3'` prohibition, `pipeline_state_machine.md` § Prohibited Transitions, is untouched).
 - `indeterminate` — provenance cannot be established (original manuscript unavailable, non-comparable formats, manifest gaps). Treated as `previously_missed` for decision purposes (cannot escalate) and flagged `[ATTRIBUTION-INDETERMINATE]` in the report — never silently promoted to `regression` (SD-9).
 
 The guard is enforceable exactly because Phase 1 fixed the item baseline: "not traceable to a pre-committed item" is now a mechanical check (no matching `item_id`), not a judgment call.
@@ -245,7 +275,7 @@ The guard is enforceable exactly because Phase 1 fixed the item baseline: "not t
 The existing #539 per-item pass (transport, verdict set, data-fencing, name-stripping — `re_review_mode_protocol.md` § Judge Independence) is reused with three changes:
 
 1. **Input**: the judge receives the Phase-1 pre-committed criterion for the item (data-fenced) and judges "does the revision meet the committed criterion" — not "is the primary's verdict agreeable". The Judge Record gains a `precommitment_hash` line.
-2. **Resolution gate (SD-6):** a `diverges` cell on a P1 item must resolve to `primary_upheld` (primary re-examined, verdict stands, one-line rationale) or `primary_revised` (verdict changes via an adjustment record with basis `scope_correction` or a §7 adjudication) before the decision derivation runs; anything unresolved → T2 `user_review_required`. `agree` / `unavailable` / `not_configured` resolve implicitly (unavailable/not_configured keep the existing single-family disclosure).
+2. **Resolution gate (SD-6):** a `diverges` cell on a P1 item must resolve before the decision derivation runs, and the resolution is RECORDED as a `CrossModelResolution` (§5.3): `primary_upheld` (primary re-examined, verdict stands, one-line rationale) or `primary_revised` (verdict changes via an adjustment record with basis `cross_model_adjudication`). A `diverges` row with no record → G2 `user_review_required`. `agree` / `unavailable` / `not_configured` rows need no record and resolve implicitly (unavailable/not_configured keep the existing single-family disclosure).
 3. **Dissent adjudication order:** when the primary dissented from a criterion (§7), the judge FIRST blind-applies the original criterion (without seeing the dissent), THEN separately adjudicates the replacement — two calls, so the replacement cannot anchor the original's application.
 
 Consent boundary unchanged: cross-model runs only when configured + consented; nothing here makes it default-on. Single-family runs satisfy the gate trivially (every state is `not_configured`) but carry the disclosure — the gate adds protection when the machinery exists, it does not manufacture a dependency.
@@ -256,8 +286,8 @@ Consent boundary unchanged: cross-model runs only when configured + consented; n
 
 Items are verified by competence, not by a single EIC persona (`eic_agent.md` scopes EIC as bird's-eye editorial, not deep methods verification):
 
-- Each pre-commitment record carries `source_dimension` / `source_reviewer` (transported from Schema 7 — present since #574 A3; absent on legacy roadmaps).
-- Phase 2A dispatch: items whose `source_dimension` maps to a Round-1 specialist seat (methodology, domain, perspective — from the frozen cards) are verified under that seat's persona; the `verified_by` field records the seat. Editorial/writing items and legacy items (no source fields) default to EIC. The DA seat is not a verification persona (its Round-1 role is adversarial challenge, not fix verification); DA-sourced items route to the dimension-matching specialist, else EIC.
+- Each pre-commitment record carries `source_type` / `source_reviewer` — verbatim copies of the Schema 7 item's REQUIRED `type` and `reviewer` fields (§5.1); no Schema 7 change is needed and none is scheduled.
+- Phase 2A dispatch routes on the deterministic `source_type` → seat map over Schema 7's closed `type` enum: `methodology` → methodology seat; `theory`, `evidence` → domain seat; `writing`, `structure`, `ethics` → EIC. Seat personas come from the frozen Round-1 cards; the `verified_by` field records the seat. `source_reviewer` is provenance only (reviewer labels are not seats). The DA seat is never a verification persona (its Round-1 role is adversarial challenge, not fix verification) — the map contains no DA target.
 - EIC (or the synthesizer) integrates: builds the matrix, runs Phase 2B, derives the decision. It never overrides a specialist verdict except through the §3.4 / §7 recorded channels.
 - Seat-agnostic by construction (#574 D1 compat): criteria attach to ITEMS; any future seat activation inherits its items' pre-commitments unchanged. D1 is not a dependency.
 - Degradation: cards unavailable → the existing `[YARDSTICK-REGENERATED]` fallback governs configuration; routing then defaults to EIC-verifies-all with a `[ROUTING-DEGRADED: no round-1 cards]` line in the Judge Record.
@@ -292,8 +322,8 @@ Stdlib-only, same architecture class as `check_panel_synthesis.py` (#510: recomp
 1. Schema-validate the three phase artifacts + manifest (self-contained validators, no jsonschema dependency — repo convention).
 2. Hash-chain: `input_manifest_hash` → `precommitment_hash` → `verdict_record_hash` verbatim binding; every pre-commitment `inherited_criterion.roadmap_text` matches the manifest's roadmap content.
 3. Consumer-side `output_draft_hash` witness (§11).
-4. Recompute invariants: every P1 roadmap item has exactly one pre-commitment record, one verdict record, one matrix row; `final_verdict != phase2a_verdict ⟺ adjustment` with closed-set basis; dissent bounds (§7); attribution evidence rules (§8); totality + first-match of T0-T9 — recompute the decision from `DecisionInputs` AND from the raw records, both must equal the emitted decision. Mismatch → `[SYNTHESIS-MISMATCH]`, exit 1 (voids the synthesis, parity with #510).
-5. Goalpost witness: no `previously_missed` / `indeterminate` issue appears in the recomputed decision path.
+4. Recompute invariants: EVERY roadmap item, all priorities, has exactly one matrix row; every P1/P2 item has exactly one pre-commitment record and one verdict record; every P3 verdict record carries `applied_criterion: not_precommitted` (and only P3 may); `final_verdict != phase2a_verdict ⟺ adjustment` with closed-set basis and referential integrity (`from_verdict` = `phase2a_verdict`, `to_verdict` = `final_verdict`, unique resolvable ids); tripped dissent bounds have covering adjudication records (§7); every P1 `diverges` row has a `CrossModelResolution` (§9); escalation floors applied iff `approval_state: approved` (§6.4); attribution evidence rules (§8); Step 1→2→3 of §6 recomputed from `DecisionInputs` AND independently from the raw records — both must equal the emitted `decision_state` (+ `abort_reason` when aborted). Mismatch → `[RE-REVIEW-ABORT: synthesis_mismatch]`, exit 1 (voids the synthesis, parity with #510).
+5. Goalpost witness: no `previously_missed` / `indeterminate` issue appears in the recomputed decision path; the §5.3 `new_issues` set is byte-identical (ids, attributions, severities, anchors) to the frozen §5.2 set — any 2B-side add/drop/reclassification fails.
 
 Wired into `spec-consistency.yml` + the pytest manifest with a mutation-test suite (each invariant has a fixture that violates exactly it — Spec A §13 witness convention).
 
@@ -328,12 +358,13 @@ Scoring: pairwise-consistency (the paired runs' delta is the metric), which is r
 |---------|--------|
 | `shared/contracts/re_review/{precommitment,verdict_record,traceability,input_manifest}.schema.json` | NEW (§5) |
 | `scripts/check_re_review_synthesis.py` + `scripts/test_check_re_review_synthesis.py` | NEW (§13) |
-| `academic-paper-reviewer/references/re_review_mode_protocol.md` | Three-gate orchestration section replaces the read-letter-first Traceability Rule steps; verdict vocabulary + T-table; goalpost/dissent/adjustment sections; legacy flag |
+| `academic-paper-reviewer/references/re_review_mode_protocol.md` | Three-gate orchestration section replaces the read-letter-first Traceability Rule steps; verdict vocabulary + §6 derivation; goalpost/dissent/adjustment sections; legacy flag |
 | `academic-paper-reviewer/references/sprint_contract_protocol.md` | §7 table: `reviewer_re_review` row → dedicated contract family pointer |
 | `academic-paper-reviewer/SKILL.md` | Reserved-modes note updated; re-review mode row gains contract dispatch |
 | `shared/sprint_contract.schema.json` + `scripts/check_sprint_contract.py` tests | Enum removal + rejection regression test (§5.4) |
 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` | Stage 3' dispatch: manifest emission + three-call orchestration + abort surfacing |
-| `shared/handoff_schemas.md` | Schema 11 sidecar note (points at `traceability.schema.json`) |
+| `shared/handoff_schemas.md` | Schema 11 sidecar note (points at `traceability.schema.json`) + Schema 11 `status` enum gains `CANNOT_VERIFY` (§5.3 mapping; `verified` already carries it) |
+| `shared/contracts/README.md` | Reserved-modes sentence updated (`reviewer_re_review` leaves the Schema 13 enum for the dedicated family; `reviewer_calibration`/`reviewer_guided` stay) |
 | `evals/heldout/` | P-1..P-5 paired controls (§14) |
 | `.github/workflows/spec-consistency.yml` + pytest manifest | Checker + tests wired |
 
@@ -353,7 +384,7 @@ Scoring: pairwise-consistency (the paired runs' delta is the metric), which is r
 - [ ] All required artifacts hash-bound + freshness-checked; missing provenance → `indeterminate`/fail-closed (§11)
 - [ ] Equivalent fixes and justified disagreement accepted on outcome-criterion merit (§3.4/SD-10)
 - [ ] Dedicated schemas/checker validate item-level precommitment, dissent, traceability, decision (§5/§13)
-- [ ] Exhaustive T0-T9 decision table; every valid input → exactly one outcome; invalid/incomplete → fail-closed (§6)
+- [ ] Exhaustive G0-G2/B1-B6/floor derivation; every valid input → exactly one `decision_state`; invalid/incomplete → fail-closed (§6)
 - [ ] Verifier routing follows item competence (§10)
 - [ ] Cross-model divergence resolves (`primary_upheld | primary_revised | user_review_required`) before Accept (§9)
 - [ ] Previously-missed routing destination is real and state-machine-legal (§8)
@@ -361,7 +392,7 @@ Scoring: pairwise-consistency (the paired runs' delta is the metric), which is r
 
 ## 19. Non-goals
 
-- No change to the P2 80% / P3 no-effect thresholds (made mechanical, not changed); the verdict VOCABULARY gains only `CANNOT_VERIFY` at the item level (already present in Schema 11 `verified`).
+- The P2 80% threshold value and the P3 no-effect rule are unchanged; what changes is that the 80% rule's operands are now DEFINED (§6 `p2_addressed_rate`, manuscript-side by deliberate choice) and Schema 11's `status` enum gains `CANNOT_VERIFY` (§16; the `verified` field already carried it).
 - No cross-model default-on.
 - `reviewer_guided` / `reviewer_calibration` contracts remain future work.
 - Round-1→Round-2 score-delta table (E2) stays in #574's backlog.
