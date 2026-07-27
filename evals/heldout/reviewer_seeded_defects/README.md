@@ -121,6 +121,9 @@ manuscript) so adjudication is anchored, not vibes.
    record uses `completed` / `valid` / `completed` / `true`; every blocked
    record uses `measurement_status: blocked` and `score_eligible: false` while
    the other two fields state its independent provenance and completion facts.
+   `provenance_status` is scoped only to retry-evidence completeness under the
+   named evidence contract: `valid` does not attest contamination isolation,
+   dispatch blindness, panel completeness, or any other provenance axis.
    The closed
    grandfathered records and every artifact under `runs/superseded/` are frozen
    under their historical status and MUST NOT be backfilled with this contract
@@ -129,10 +132,12 @@ manuscript) so adjudication is anchored, not vibes.
    `rejected_response_preserved` plus `checker_output_preserved`. Whenever
    either boolean is `true`, the same event MUST name the corresponding
    record-relative `rejected_response_location` or `checker_output_location`,
-   and that path MUST resolve. If a record also carries a normalized diagnostic,
-   `diagnostic_form: "normalized"` means only the leading absolute artifact
-   path and its separator were removed; every remaining character is verbatim
-   checker output. The named checker-output artifact remains authoritative.
+   and that path MUST resolve. Every stored diagnostic MUST carry
+   `diagnostic_form: "verbatim"` or `diagnostic_form: "normalized"`.
+   `verbatim` is byte-for-byte checker output; `normalized` means only the
+   leading absolute artifact path and its separator were removed, with every
+   remaining character verbatim. The named checker-output artifact remains
+   authoritative.
 
    **Blocked-run separation:** if a fail-loud checker stops the panel before all
    five cards and synthesis exist, or any checker-rejected response followed by

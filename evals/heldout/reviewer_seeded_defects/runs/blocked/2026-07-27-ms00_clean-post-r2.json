@@ -14,6 +14,7 @@
   "failure_stage": "perspective.phase2.conformance",
   "checker_exit_code": 3,
   "diagnostic": "[DISSENT-GRAMMAR: dissent section must name dimension_id]",
+  "diagnostic_form": "verbatim",
   "failure_evidence": "The perspective Phase 2 response emitted `## Scoring Plan Dissent`, then said the placeholder was not permitted and should be removed, but left the heading in the output without a canonical `dimension_id:` line. This is malformed v1-style/empty dissent grammar and must fail loudly.",
   "completed_stages": [
     "field_analysis",
