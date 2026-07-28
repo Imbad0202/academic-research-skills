@@ -358,3 +358,27 @@ def test_retired_one_to_five_threshold_in_standards_fails(tmp_path):
         "Average score >= 4.0",
     )
     assert lint.check(root)
+
+
+def test_re_review_reintroduced_score_rule_still_fails(tmp_path):
+    """#576 exemption is literal-scoped, not file-scoped: masking the
+    sanctioned §6 item-proportion literals must NOT exempt the re-review
+    protocol from the 0-100 score-scale residency rule."""
+    root = mirror(tmp_path)
+    mutate(
+        root, lint.RE_REVIEW_PROTOCOL,
+        "### Legacy Mode",
+        "Accept requires a composite score of 80 or higher.\n\n### Legacy Mode",
+    )
+    errors = lint.check(root)
+    assert any(lint.RE_REVIEW_PROTOCOL in e for e in errors), errors
+
+
+def test_re_review_sanctioned_literals_alone_pass(tmp_path):
+    """The shipped protocol (sanctioned literals present, nothing else)
+    passes — pinned separately so the masking list cannot silently shrink."""
+    root = mirror(tmp_path)
+    text = (root / lint.RE_REVIEW_PROTOCOL).read_text(encoding="utf-8")
+    for literal in lint.RE_REVIEW_SANCTIONED_LITERALS:
+        assert literal in text, f"sanctioned literal missing from protocol: {literal!r}"
+    assert lint.check(root) == []

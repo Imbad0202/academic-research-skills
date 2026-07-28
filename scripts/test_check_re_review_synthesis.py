@@ -2787,3 +2787,32 @@ def test_routing_fixture_major_via_4prime_records_reach_and_are_ingested(tmp_pat
         "(Major-via-4' path) the Stage 3' traceability sidecar with its frozen "
         "`previously_missed`/`indeterminate` new-issue records"
     )
+
+
+_RE_REVIEW_PROTOCOL = REPO_ROOT / "academic-paper-reviewer/references/re_review_mode_protocol.md"
+
+
+def test_rev_pm_closed_mapping_all_fields_pinned():
+    """#576 §8: the previously_missed forward-seed mapping is CLOSED — every
+    required RoadmapItem field plus all four transported optional fields must
+    have a stated derivation on the operative protocol surface, so a Stage 3'
+    synthesizer can build a legal REV-PM item from the living docs alone."""
+    text = _RE_REVIEW_PROTOCOL.read_text(encoding="utf-8")
+    start = text.index("- `previously_missed`")
+    block = text[start:text.index("- `indeterminate`", start)]
+    for needle in (
+        "`id` = `REV-PM-<n>`",
+        "`description` = `[PREVIOUSLY-MISSED: NEW-<n>] `",
+        "`reviewer` = the record's `found_by`",
+        "`type` = `Minor`",
+        "`priority` = `consider`",
+        "`target_section` = derived from `location_anchor`",
+        '`suggested_action` = "assess; address or record as a limitation"',
+        "`consensus_level` = `SINGLE-VERIFIER`",
+        "`verification_criteria` = \"the issue described at `location_anchor` is resolved",
+        "`severity` = the record's Schema 6 severity",
+        "`evidence_anchor` = derived from `location_anchor`",
+        "`confidence` = the record's `confidence`",
+        "`competence_basis` = the record's `competence_basis`",
+    ):
+        assert needle in block, f"REV-PM closed mapping missing field derivation: {needle!r}"

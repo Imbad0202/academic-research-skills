@@ -132,6 +132,17 @@ LINE_BUDGET_394_GATE = 25
 # Measured at landing: 47 lines. Budget 55 (~8 lines headroom).
 LINE_BUDGET_390_SEQUENCING = 55
 
+# #576 Spec B PR-B2 ships the `## Stage 3' Re-Review Contract Dispatch
+# (#576 Spec B)` H2 block — the orchestrator-side three-gate dispatch
+# contract (manifest emission, gate sequencing, post-2B passes, mandatory
+# checker invocation, deferral loop, abort surfacing, producer obligations,
+# legacy boundary). Like the other extension subsections it has its own
+# scope and budget, subtracted from the v3.6.7 Phase 6.6 measurement.
+# Measured at first-write: 20 lines (heading + intro + 7 numbered steps +
+# producer-obligations + legacy paragraphs). Spec:
+#   docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md §16.
+LINE_BUDGET_576_STAGE3P_DISPATCH = 30
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -492,6 +503,63 @@ def _measure_394_gate_block_lines(text: str) -> int:
     return len(text[m.start():end].splitlines())
 
 
+def _measure_576_stage3p_dispatch_block_lines(text: str) -> int:
+    """Return the number of lines in the #576 Spec B Stage 3' re-review
+    contract-dispatch subsection (`## Stage 3' Re-Review Contract Dispatch
+    (#576 Spec B)` H2 block).
+
+    PR-B2 adds the orchestrator-side three-gate dispatch contract. Like
+    the v3.7.x / v3.9.0 / v3.10 / #394 / #390 blocks, it has its own
+    scope and MUST be subtracted from the v3.6.7 Phase 6.6 +60 budget.
+    Spec: docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md §16.
+
+    Returns 0 if the H2 heading is absent. The block has no internal
+    headings; the block-end anchor matches the next H1/H2.
+    """
+    import re as _re
+    anchor = _re.compile(
+        r"(?m)^[ \t]*##[ \t]+Stage 3' Re-Review Contract Dispatch[^\n]*$"
+    )
+    m = anchor.search(text)
+    if m is None:
+        return 0
+    next_h = _re.compile(r"(?m)^[ \t]*#{1,2}[ \t]+")
+    head_eol = text.find("\n", m.end())
+    search_start = (head_eol + 1) if head_eol >= 0 else len(text)
+    nm = next_h.search(text, search_start)
+    end = nm.start() if nm else len(text)
+    return len(text[m.start():end].splitlines())
+
+
+class Dispatch576LineBudgetTest(unittest.TestCase):
+    """#576 Spec B Stage 3' contract-dispatch block within
+    `LINE_BUDGET_576_STAGE3P_DISPATCH` line budget.
+
+    Dedicated budget test for the `## Stage 3' Re-Review Contract
+    Dispatch (#576 Spec B)` subsection, decoupled from the v3.6.7
+    Phase 6.6 budget and the other extension-subsection budgets. If a
+    future #576 cascade legitimately requires more lines, raise
+    `LINE_BUDGET_576_STAGE3P_DISPATCH` explicitly with rationale.
+    """
+
+    def test_576_dispatch_block_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_576_stage3p_dispatch_block_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "#576 Stage 3' contract-dispatch subsection missing from "
+            "pipeline_orchestrator_agent.md (expected H2 heading "
+            "'## Stage 3' Re-Review Contract Dispatch (#576 Spec B)')",
+        )
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_576_STAGE3P_DISPATCH,
+            f"#576 Stage 3' contract-dispatch block is {block_lines} lines, "
+            f"over its {LINE_BUDGET_576_STAGE3P_DISPATCH}-line budget",
+        )
+
+
 class Phase66LineBudgetTest(unittest.TestCase):
     """Test 4 — Prompt size within v3.6.7 Phase 6.6 +60 line budget,
     measured EXCLUDING any v3.7.1+ subsections.
@@ -520,14 +588,17 @@ class Phase66LineBudgetTest(unittest.TestCase):
         v3_10_lines = _measure_v3_10_extension_block_lines(text)
         gate_394_lines = _measure_394_gate_block_lines(text)
         seq_390_lines = _measure_390_sequencing_block_lines(text)
+        dispatch_576_lines = _measure_576_stage3p_dispatch_block_lines(text)
         # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
         # finalizer extension, v3.8 §3.6 audit-gate, v3.9.0 triangulation
         # extension, v3.10 terminal-policy extension, the #394 slice-4
-        # submission-package gate, AND the #390 Slice B revision-patch
-        # sequencing subsections (each has its own dedicated budget test).
+        # submission-package gate, the #390 Slice B revision-patch
+        # sequencing, AND the #576 Spec B Stage 3' contract-dispatch
+        # subsections (each has its own dedicated budget test).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines
+            - dispatch_576_lines
         )
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(

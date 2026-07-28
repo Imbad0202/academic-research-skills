@@ -27,6 +27,19 @@ ACTIONS = (
 VALUES = ("Accept", "Minor Revision", "Major Revision", "Reject")
 QUALITY = "academic-paper-reviewer/references/quality_rubrics.md"
 RE_REVIEW_PROTOCOL = "academic-paper-reviewer/references/re_review_mode_protocol.md"
+# #576 Spec B: the re-review protocol's §6 decision derivation carries
+# ITEM-PROPORTION quantifiers that share numerals (50/80) with the retired
+# 0-100 rubric scale but are a different decision system — verdict counts
+# over roadmap items, normatively defined in the #576 spec and recomputed by
+# scripts/check_re_review_synthesis.py. EXACTLY these literals are sanctioned;
+# they are masked out before the score-scale scans run, so any OTHER
+# decision-linked numeric threshold (e.g. a reintroduced "Accept: score >= 80")
+# in that file still fails the residency rule.
+RE_REVIEW_SANCTIONED_LITERALS = (
+    "≥ 50% of P1 items",
+    "`p2_addressed_rate < 80%`",
+    "`p2_addressed_rate ≥ 80%`",
+)
 STANDARDS = "academic-paper-reviewer/references/editorial_decision_standards.md"
 SKILL = "academic-paper-reviewer/SKILL.md"
 HANDOFF = "shared/handoff_schemas.md"
@@ -406,18 +419,14 @@ def check(root: Path) -> list[str]:
         rel = str(path.relative_to(root))
         if rel == QUALITY:
             continue
-        if rel == RE_REVIEW_PROTOCOL:
-            # #576 Spec B: this file's §6 decision derivation carries
-            # ITEM-PROPORTION quantifiers (>= 50% of P1 items, the 80%
-            # p2_addressed_rate) that share numerals with the retired 0-100
-            # rubric scale but are a different decision system — verdict
-            # counts over roadmap items, normatively defined in the #576 spec
-            # and recomputed by scripts/check_re_review_synthesis.py (an
-            # executable pin stronger than prose residency). The score-scale
-            # residency rule below would false-fire on them; the file stays
-            # covered by the retired-hybrid-token scan above.
-            continue
         text = path.read_text(encoding="utf-8")
+        if rel == RE_REVIEW_PROTOCOL:
+            # Mask ONLY the sanctioned #576 §6 item-proportion literals
+            # (see RE_REVIEW_SANCTIONED_LITERALS above); every scan below
+            # still runs on the residue, so a reintroduced 0-100 score rule
+            # in this file fails exactly like anywhere else.
+            for literal in RE_REVIEW_SANCTIONED_LITERALS:
+                text = text.replace(literal, "<§6-item-proportion>")
         for threshold in thresholds:
             if threshold in text:
                 errors.append(
