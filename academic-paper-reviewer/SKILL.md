@@ -213,7 +213,7 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 | Mode | Trigger | Agents | Output |
 |------|---------|--------|--------|
 | `full` | Default / "full review" | All 7 agents | 5 review reports + Editorial Decision + Revision Roadmap |
-| **`re-review`** | **Pipeline Stage 3' / "verification review"** | **eic + editorial_synthesizer (field_analyst NOT re-run — `re_review_mode_protocol.md` § Yardstick Continuity)** | **Revision response checklist + residual issues + new Decision** |
+| **`re-review`** | **Pipeline Stage 3' / "verification review"** | **eic + editorial_synthesizer (field_analyst NOT re-run — `re_review_mode_protocol.md` § Yardstick Continuity). Dispatched under the #576 three-gate contract (`shared/contracts/re_review/` + `scripts/check_re_review_synthesis.py`) — legacy single-pass only behind `ARS_RE_REVIEW_LEGACY=1`** | **Revision response checklist + residual issues + new Decision (or deferral/abort per contract)** |
 | `quick` | "quick review" | field_analyst + eic | EIC quick assessment + key issues list (15-minute version) |
 | `methodology-focus` | "check methodology" | field_analyst + eic + methodology_reviewer | In-depth methodology review report (panel 2 under v3.6.2 sprint contract: EIC + methodology) |
 | `guided` | "guide me" | All + Socratic dialogue | Socratic issue-by-issue guided review |
@@ -237,10 +237,10 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 ## Re-Review Mode (Verification Review)
 
-Dedicated mode for Pipeline Stage 3' — verifies whether revisions address first-round review comments. Uses R&R Traceability Matrix (Schema 11) with Author's Claim + Verified? columns.
+Dedicated mode for Pipeline Stage 3' — verifies whether revisions address first-round review comments. Uses R&R Traceability Matrix (Schema 11 + machine-readable sidecar) with Author's Claim + Verified? columns. Runs under the #576 three-gate evidence-before-persuasion contract: Phase 1 criteria commitment (revision-blind) → Phase 2A evidence verdict (persuasion-blind) → Phase 2B claim matching (letter revealed), checker-verified before any outcome surfaces.
 
-**Input**: Original Revision Roadmap + Revised manuscript + Response to Reviewers (optional) + Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record) + Round-1 Reviewer Configuration Cards (yardstick continuity, § Yardstick Continuity in the protocol; absent → visible regeneration fallback) + apply report(s) (#390, when the revision used patch apply)
-**Output**: Verification Review Report with traceability matrix + new issues + Decision
+**Input**: Original Revision Roadmap + Original (pre-revision) draft (Phase 2A comparison base — regression attribution and MADE_WORSE discriminators; absent → visible degradations, every new issue `indeterminate`) + Revised manuscript + Response to Reviewers (optional; withheld until Phase 2B) + Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record) + Round-1 Reviewer Configuration Cards (yardstick continuity, § Yardstick Continuity in the protocol; absent → visible regeneration fallback) + apply report(s) + revision patch/diff files (#390, when the revision used patch apply — verified by the §11 ordered-chain rule)
+**Output**: Verification Review Report with traceability matrix + new issues + Decision (or `user_review_required` deferral / fail-closed abort)
 
 > See `references/re_review_mode_protocol.md` for full verification logic, output format template, and Socratic guidance details.
 
@@ -419,7 +419,7 @@ Follows the paper's language. Academic terms remain in English. User can overrid
 - **Executable conformance + panel checkers.** Before synthesis, `scripts/check_phase_conformance.py` verifies role binding, plan grammar, manuscript blindness, trigger binding, dissent cap, and evidence anchors. After synthesis, `scripts/check_panel_synthesis.py` recomputes role-scoped two-stage arithmetic, verifies `dimension_verdicts`, and enforces the DA-CRITICAL terminal gate.
 - **Synthesizer three-step mechanical protocol.** Build per-dimension eligible-seat matrix → apply each condition's quantifier per dimension, then its dimension quantifier → resolve precedence by severity. Majority with one assessed eligible seat means that seat decides. Forbidden operations are explicit in `agents/editorial_synthesizer_agent.md`.
 - **methodology_focus reduced panel.** `reviewer_methodology_focus` mode runs a 2-reviewer panel (EIC + methodology only) instead of the default 5.
-- **Templates:** `shared/contracts/reviewer/full.json` (panel 5) and `shared/contracts/reviewer/methodology_focus.json` (panel 2). Reserved modes (`reviewer_re_review`, `reviewer_calibration`, `reviewer_guided`) keep pre-v3.6.2 behaviour until follow-up patch templates land.
+- **Templates:** `shared/contracts/reviewer/full.json` (panel 5) and `shared/contracts/reviewer/methodology_focus.json` (panel 2). Reserved modes (`reviewer_calibration`, `reviewer_guided`) keep pre-v3.6.2 behaviour until follow-up patch templates land; `reviewer_re_review` left the Schema 13 enum with #576 Spec B and is governed by the dedicated contract family `shared/contracts/re_review/`.
 
 ---
 

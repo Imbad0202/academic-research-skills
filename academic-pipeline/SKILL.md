@@ -281,9 +281,10 @@ After user confirmation:
    - Stage 2  --> 2.5: Pass complete paper to integrity_verification_agent
    - Stage 2.5 --> 3: Pass verified paper to reviewer
    - Stage 3  --> 4: Pass Revision Roadmap to academic-paper revision mode
-   - Stage 4  --> 3': Pass revised draft, Response to Reviewers, the Editorial Decision Letter (its Review Panel Provenance block feeds the #539 Judge Record), the Round-1 Revision Roadmap being verified, the round's apply report(s) (#390), and the Round-1 Reviewer Configuration Cards (yardstick continuity — field_analyst is NOT re-run at Stage 3'; `re_review_mode_protocol.md` § Yardstick Continuity) to reviewer. This is the re-review-mode transfer, the default Stage 3'; a user-requested fresh full review at 3' instead (mid-entry quick→full path: no Roadmap or Round-1 cards exist) transfers the revised draft + available context only and runs full mode, field_analyst included
-   - Stage 3' --> 4': Pass new Revision Roadmap + R&R Traceability Matrix (Schema 11) to academic-paper revision mode
-   - Stage 4/4' --> 4.5: Pass revision-completed paper to integrity_verification_agent (final verification)
+   - Stage 4  --> 3': Pass revised draft, the original (pre-revision) draft (#576 §3.1 Phase 2A comparison base — without it every new issue degrades to `indeterminate`), Response to Reviewers, the Editorial Decision Letter (its Review Panel Provenance block feeds the #539 Judge Record), the Round-1 Revision Roadmap being verified, the round's apply report(s) (#390), and the Round-1 Reviewer Configuration Cards (yardstick continuity — field_analyst is NOT re-run at Stage 3'; `re_review_mode_protocol.md` § Yardstick Continuity) to reviewer. This is the re-review-mode transfer, the default Stage 3' — dispatched under the #576 three-gate contract (`pipeline_orchestrator_agent.md` § Stage 3' Re-Review Contract Dispatch; legacy single-pass only behind `ARS_RE_REVIEW_LEGACY=1`); a user-requested fresh full review at 3' instead (mid-entry quick→full path: no Roadmap or Round-1 cards exist) transfers the revised draft + available context only and runs full mode, field_analyst included
+   - Stage 3' --> 4': Pass new Revision Roadmap + R&R Traceability Matrix (Schema 11) to academic-paper revision mode; the traceability sidecar (frozen `previously_missed`/`indeterminate` records, #576 §8) rides through 4' toward Stage 4.5
+   - Stage 3' --> 4.5 (Accept/Minor direct path): Pass verified revised draft + the traceability sidecar's frozen records to integrity_verification_agent as gate input
+   - Stage 4/4' --> 4.5: Pass revision-completed paper to integrity_verification_agent (final verification); on the Major-via-4' path the Stage 3' traceability sidecar travels along as gate input
    - Stage 4.5 --> 5: Pass verified final draft to format-convert mode
    - Stage 5  --> 6: Pass final deliverables list + pipeline state history to Process Summary (user may decline Stage 6 at the Stage 5 completion checkpoint)
 3. Begin next stage
@@ -351,6 +352,8 @@ Stage 2.5 (pre-review) and Stage 4.5 (post-revision) verification. 5-phase proto
 ## Two-Stage Review Protocol
 
 Stage 3 (full review, 5 reviewers) → Revision Coaching → Stage 4 → Stage 3' (re-review) → optional Residual Coaching → Stage 4'.
+
+Stage 3' runs under the #576 three-gate evidence-before-persuasion contract by default: the orchestrator emits a hash-bound input manifest, dispatches Phase 1 (criteria commitment, revision-blind) → Phase 2A (evidence verdict, persuasion-blind) → Phase 2B (claim matching, letter revealed), and invokes `scripts/check_re_review_synthesis.py` as a MANDATORY step before any decision surfaces — outcomes are Accept / Minor / Major, a `user_review_required` deferral, or a fail-closed abort (never Reject). The sidecar's frozen `previously_missed`/`indeterminate` new-issue records forward to Stage 4.5 on both routes. Legacy single-pass re-review requires the explicit `ARS_RE_REVIEW_LEGACY=1` flag and is marked `[LEGACY-NO-CONTRACT]`. Authority: `pipeline_orchestrator_agent.md` § Stage 3' Re-Review Contract Dispatch + `academic-paper-reviewer/references/re_review_mode_protocol.md`.
 
 > See `references/two_stage_review_protocol.md` for detailed stage flows and coaching dialogue limits.
 

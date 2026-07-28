@@ -42,6 +42,41 @@ def test_shipped_registry_passes():
     assert run(DEFAULT_REGISTRY) == []
 
 
+RE_REVIEW_MARKER_FAMILY = {
+    # #576 Spec B §16: every degradation mechanism the re-review contract
+    # introduces must be registered. Named here (in addition to the D5
+    # inventory lock) so a family row deletion fails a #576-specific witness.
+    "re_review_made_worse_unevaluable",
+    "re_review_escalation_unsubstantiatable",
+    "re_review_change_basis_absent",
+    "re_review_attribution_indeterminate",
+    "re_review_criteria_layer_absent_no_letter",
+    "re_review_criteria_layer_absent_ordinal_mismatch",
+    "re_review_round1_findings_absent",
+    "re_review_commitment_evidence_absent",
+    "re_review_patch_binding_absent",
+    "re_review_routing_degraded_unmapped_labels",
+    "re_review_routing_degraded_cards_unparsable",
+    "re_review_routing_degraded_no_cards",
+    "re_review_legacy_no_contract",
+    "re_review_apply_chain_witness_not_run",
+}
+
+
+def test_576_re_review_marker_family_registered():
+    shipped_ids = {m["mechanism"] for m in _shipped()["mechanisms"]}
+    missing = RE_REVIEW_MARKER_FAMILY - shipped_ids
+    assert not missing, f"#576 marker family rows missing from registry: {sorted(missing)}"
+
+
+def test_576_family_rows_never_terminal():
+    """#576 degradations are visible markers, never blocks — the one abort
+    (apply-chain 'fail') is documented inside its row, not a row of its own."""
+    for row in _shipped()["mechanisms"]:
+        if row["mechanism"] in RE_REVIEW_MARKER_FAMILY:
+            assert row["terminal_policy_effect"].startswith("none"), row["mechanism"]
+
+
 # ---------- D1 shape / fail-closed ----------
 
 

@@ -371,7 +371,7 @@ Check whether prerequisite materials for entering the specified stage are availa
 | Stage 2.5 | Paper Draft | -- |
 | Stage 3 | **Verified Paper Draft + Integrity Report (Pre)** | -- |
 | Stage 4 | Review Reports + Revision Roadmap | Paper Draft |
-| Stage 3' | Revised Draft + Round-1 Revision Roadmap (re-review mode — the default Stage 3'; not required when the user explicitly requests a fresh full review instead, e.g. the mid-entry quick→full path) | Response to Reviewers; Editorial Decision Letter (#539 Judge Record input); apply report(s) (#390); Round-1 Reviewer Configuration Cards (re-review mode only — a fresh full review regenerates configuration via field_analyst by definition, no missing-material warning) |
+| Stage 3' | Revised Draft + Round-1 Revision Roadmap (re-review mode — the default Stage 3'; not required when the user explicitly requests a fresh full review instead, e.g. the mid-entry quick→full path) | Original (pre-revision) Draft (#576 §11 presence policy — the Phase 2A comparison base; absent → every new issue `indeterminate`, MADE_WORSE partly unevaluable, visible markers); Response to Reviewers; Editorial Decision Letter (#539 Judge Record input); apply report(s) (#390); Round-1 Reviewer Configuration Cards (re-review mode only — a fresh full review regenerates configuration via field_analyst by definition, no missing-material warning) |
 | Stage 4' | Re-Review Report (Decision: Major) | Revised Draft |
 | Stage 4.5 | Revised Draft or Re-Revised Draft | -- |
 | Stage 5 | **Integrity Report (Final) — verdict: PASS** | -- |

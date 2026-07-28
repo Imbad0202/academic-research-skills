@@ -1,6 +1,6 @@
 {
   "$comment": "Degradation registry (#511 Part A). Machine-readable INDEX of every graceful-degradation mechanism in ARS: what fails, what degraded state is emitted, where the degradation is visible, who consumes it, and how the terminal-policy layer treats it. The registry INDEXES — it never re-authors: each row's `authority` points at the per-mechanism source of truth (a content anchor that must appear verbatim in the cited file), so semantics live in exactly one place and this file cannot drift into a second authority. Rows use each mechanism's NATIVE semantics (unresolvable / not_checked / PASS WITH NOTES / omit-field / warn-and-continue); there is deliberately NO universal score-cap column — ARS's gate model is tri-state outcomes + advisory suffixes + opt-in terminal policies, not a shared scalar score (#511 'Explicitly rejected: score capping'). Numeric/severity caps appear only where a scale already exists (see compliance_non_sr_warn_cap). Adding a row: fill every required field, cite the authority file with a short verbatim anchor (never a line number — anchors survive drift, line numbers do not), list the tests/lints/schemas that pin the behavior under `pinned_by` (path, or path::test_function), then run scripts/check_degradation_registry.py.",
-  "registry_version": "1.0.0",
+  "registry_version": "1.1.0",
   "mechanisms": [
     {
       "mechanism": "citation_resolver_outage",
@@ -138,6 +138,244 @@
       ],
       "pinned_by": [
         "scripts/test_check_compliance_report.py"
+      ]
+    },
+    {
+      "mechanism": "re_review_made_worse_unevaluable",
+      "failure_class": "Stage 3' re-review with the original (pre-revision) manuscript absent from the input manifest: the MADE_WORSE discriminators (per-item and the protocol-level generic P2 one) compare against the original text (#576 §11)",
+      "degraded_state": "MADE_WORSE is assignable only where the diff/apply report supplies the pre-revision span; elsewhere it is unevaluable and the verdict follows the remaining criteria — never guessed",
+      "diagnostic_marker": "[MADE-WORSE-UNEVALUABLE: no original manuscript]",
+      "downstream_consumer": "Stage 3' decision derivation (B1/B3/B5 MADE_WORSE operands) and the Stage 3' checkpoint reader",
+      "terminal_policy_effect": "none — visible degradation marker, never a block; the manifest's required set stays revised_manuscript + revision_roadmap only",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[MADE-WORSE-UNEVALUABLE: no original manuscript]"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_re_review_synthesis.py::test_absent_original_is_first_link_not_run_witness"
+      ]
+    },
+    {
+      "mechanism": "re_review_escalation_unsubstantiatable",
+      "failure_class": "Stage 3' escalation exception requires an original-manuscript evidence anchor (proving the problem existed in Round 1), but the original manuscript is absent (#576 §11)",
+      "degraded_state": "The exception cannot be substantiated; the underlying new_standard stays advisory — the goalpost-guard override path is closed rather than weakened",
+      "diagnostic_marker": "[ESCALATION-UNSUBSTANTIATABLE: no original manuscript]",
+      "downstream_consumer": "Stage 3' decision derivation Step 3 (no floor contribution) and the Stage 3' checkpoint reader",
+      "terminal_policy_effect": "none — the escalation path fails toward advisory, never toward a fabricated floor",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[ESCALATION-UNSUBSTANTIATABLE: no original manuscript]"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "re_review_change_basis_absent",
+      "failure_class": "Stage 3' Phase 2A change_summary with BOTH of its sources absent: no original manuscript AND no apply report (#576 §11)",
+      "degraded_state": "change_summary is written from the revised manuscript alone; the required field stays total on the degraded path (schema does not hard-fail)",
+      "diagnostic_marker": "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]",
+      "downstream_consumer": "Stage 3' verdict records (Phase 2A) and the Stage 3' checkpoint reader",
+      "terminal_policy_effect": "none — visible marker on the affected records, never a block",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "re_review_attribution_indeterminate",
+      "failure_class": "Stage 3' new-issue provenance cannot be established (original manuscript unavailable, non-comparable formats, manifest gaps) (#576 §8/SD-9)",
+      "degraded_state": "Attribution 'indeterminate' — treated as previously_missed for decision purposes (cannot escalate the decision), never silently promoted to regression",
+      "diagnostic_marker": "[ATTRIBUTION-INDETERMINATE]",
+      "downstream_consumer": "Stage 3' decision derivation (goalpost guard — indeterminate never appears in Step 2) and integrity_verification_agent at Stage 4.5 (consumes indeterminate records as gate input)",
+      "terminal_policy_effect": "none — fail-closed on attribution, decision-inert by design; on the no-original path EVERY new issue is indeterminate",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "flagged `[ATTRIBUTION-INDETERMINATE]` — never silently promoted to `regression`"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_re_review_synthesis.py"
+      ]
+    },
+    {
+      "mechanism": "re_review_criteria_layer_absent_no_letter",
+      "failure_class": "Stage 3' with the Editorial Decision Letter absent from the input manifest: the criterion inheritance chain loses its level-2 (letter Acceptance-criteria) layer (#576 §11)",
+      "degraded_state": "The §4 chain runs without level 2 — inherited_criterion.letter_text legitimately absent on every item; verification proceeds on the Schema 7 verification_criteria + remaining layers",
+      "diagnostic_marker": "[CRITERIA-LAYER-ABSENT: no decision letter]",
+      "downstream_consumer": "Phase 1 pre-commitment records and check_re_review_synthesis.py letter-binding invariants",
+      "terminal_policy_effect": "none — the letter is not hard-required; the run-level marker plus the existing 'unknown (provenance block absent)' Judge Record rule make the absence visible",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[CRITERIA-LAYER-ABSENT: no decision letter]"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_re_review_synthesis.py::test_letter_fields_absent_when_layer_degraded_passes"
+      ]
+    },
+    {
+      "mechanism": "re_review_criteria_layer_absent_ordinal_mismatch",
+      "failure_class": "Stage 3' with the letter PRESENT but its Required Item Details block ids not exactly the contiguous sequence R1..Rn against the roadmap's must_fix order — a gap, duplicate, or extra id makes the #576 §5.1 ordinal derivation unsound",
+      "degraded_state": "The WHOLE letter criterion layer degrades to absent (every item legally omits letter_text/letter_item_ref); the checker RECOMPUTES the contiguity state from the hash-bound letter + roadmap — no carrier field exists",
+      "diagnostic_marker": "[CRITERIA-LAYER-ABSENT: letter/roadmap ordinal mismatch]",
+      "downstream_consumer": "Phase 1 pre-commitment records and check_re_review_synthesis.py letter-binding invariants",
+      "terminal_policy_effect": "none — a malformed letter degrades the layer visibly rather than producing a possibly-wrong join or an abort",
+      "authority": [
+        {
+          "file": "scripts/check_re_review_synthesis.py",
+          "anchor": "[CRITERIA-LAYER-ABSENT: letter/roadmap ordinal mismatch]"
+        },
+        {
+          "file": "academic-paper-reviewer/templates/editorial_decision_template.md",
+          "anchor": "a violated sequence degrades the whole letter criterion layer"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_re_review_synthesis.py::test_letter_ordinal_gap_degrades_whole_letter_layer"
+      ]
+    },
+    {
+      "mechanism": "re_review_round1_findings_absent",
+      "failure_class": "Stage 3' with the Round-1 review findings (Schema 6 reports) absent from the input manifest: the criterion chain's level-3 driving-finding layer has no report-side source (#576 §11)",
+      "degraded_state": "Level 3 degrades to the Schema 7 TRANSPORTED fields alone (severity/anchor/confidence ride on the roadmap items themselves, #574 A2/A3) — partial coverage survives",
+      "diagnostic_marker": "[ROUND1-FINDINGS-ABSENT]",
+      "downstream_consumer": "Phase 1 pre-commitment operationalization and the driving_severity operands of the decision derivation",
+      "terminal_policy_effect": "none — transported fields keep the derivation sound; a null driving_severity on a legacy item is treated as NOT critical, never fabricated",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[ROUND1-FINDINGS-ABSENT]"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "re_review_commitment_evidence_absent",
+      "failure_class": "Stage 3' with the Response to Reviewers absent: acknowledgment_only commitments (whose evidence IS the letter) cannot be independently confirmed (#576 §11)",
+      "degraded_state": "Phase 2B runs claim-matching-empty (authors_claim = \"—\"); acknowledgment_only commitments keep their author-declared fulfillment_status UNCHANGED (the closed Schema 11 enum gains no value) but each affected commitment carries the report-level advisory flag; the existing COMMITMENT_GAP rule applies unchanged",
+      "diagnostic_marker": "[COMMITMENT-EVIDENCE-ABSENT: acknowledgment_only — no response letter]",
+      "downstream_consumer": "Commitment Ledger Verification output (re-review report) and the revision-loop reader",
+      "terminal_policy_effect": "none — advisory flag; the P1 authors_claim requirement is satisfied by the letter-absent \"—\" fill (its flag-as-CANNOT_VERIFY consequence is legacy-mode-scoped, #576)",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[COMMITMENT-EVIDENCE-ABSENT: acknowledgment_only — no response letter]"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "re_review_patch_binding_absent",
+      "failure_class": "An apply report predating format 1.2 carries no patch_digest, so the #576 §11 content-binding between the report and its paired revision_patches[] entry cannot run (cross-version chains are normal — early rounds from a pre-upgrade emitter)",
+      "degraded_state": "Content-binding recorded as NOT-RUN for that report; its hash-chain links are still checked, no digest is fabricated, no abort fires",
+      "diagnostic_marker": "[PATCH-BINDING-ABSENT: report format < 1.2]",
+      "downstream_consumer": "check_re_review_synthesis.py apply-chain witness notes and the Judge Record Apply-report chain line reader",
+      "terminal_policy_effect": "none — a missing binding is a visible per-report note; only a CHECKED link that BROKE aborts (manifest_hash_mismatch)",
+      "authority": [
+        {
+          "file": "scripts/check_re_review_synthesis.py",
+          "anchor": "[PATCH-BINDING-ABSENT: report format < 1.2]"
+        },
+        {
+          "file": "academic-paper/references/revision_patch_protocol.md",
+          "anchor": "`patch_digest` (report format 1.2: full 64-hex sha256 over the exact patch-file bytes applied"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_re_review_synthesis.py::test_pre_12_report_gets_patch_binding_absent_marker_not_abort"
+      ]
+    },
+    {
+      "mechanism": "re_review_routing_degraded_unmapped_labels",
+      "failure_class": "Stage 3' verifier routing: a routed P1/P2 item's first non-DA label found no card seat, or a non-empty source_reviewer parsed to zero recognized tokens (parse failure) — partial card parsing, even when other cards parsed fine (#576 §10)",
+      "degraded_state": "The affected items route to EIC; the run-level Routing line is the parameterized degradation form whose payload names every label group and unparsed item — a decision-driving item silently defaulting to EIC cannot hide behind a healthy-looking run",
+      "diagnostic_marker": "[ROUTING-DEGRADED: unmapped labels — <payload>] (payload grammar: seat-missing `<label> (<item ids>)` groups in label order, then `unparsed <item_id> \"<raw>\"` groups)",
+      "downstream_consumer": "Judge Record Routing line + Schema 6 judge_record.routing_status (oneOf pattern form — the payload is accountability content, never collapsed to a bare enum)",
+      "terminal_policy_effect": "none — routing degradation is visible, never a block; card_mapped is reportable ONLY when every routed item's first non-DA label found its seat",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[ROUTING-DEGRADED: unmapped labels — <payload>]"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_re_review_synthesis.py::test_source_reviewer_labels_must_recompute"
+      ]
+    },
+    {
+      "mechanism": "re_review_routing_degraded_cards_unparsable",
+      "failure_class": "Stage 3' verifier routing: Round-1 cards are present but no non-EIC label parsed anywhere — total card-parse failure (#576 §10)",
+      "degraded_state": "Routing defaults to EIC-verifies-all; yardstick continuity may still hold (a run can reuse cards for the yardstick AND fail to parse them for routing — the Routing line is orthogonal to Reviewer configuration by design)",
+      "diagnostic_marker": "[ROUTING-DEGRADED: cards unparsable]",
+      "downstream_consumer": "Judge Record Routing line + Schema 6 judge_record.routing_status (constant form)",
+      "terminal_policy_effect": "none — visible total-failure form, never a block",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[ROUTING-DEGRADED: cards unparsable]"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "re_review_routing_degraded_no_cards",
+      "failure_class": "Stage 3' verifier routing with no Round-1 Reviewer Configuration Cards available at all (#576 §10)",
+      "degraded_state": "The existing [YARDSTICK-REGENERATED] fallback governs configuration; routing defaults to EIC-verifies-all",
+      "diagnostic_marker": "[ROUTING-DEGRADED: no round-1 cards]",
+      "downstream_consumer": "Judge Record Routing line + Schema 6 judge_record.routing_status (constant form)",
+      "terminal_policy_effect": "none — visible; composes with the yardstick-regeneration advisory rather than replacing it",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[ROUTING-DEGRADED: no round-1 cards]"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "re_review_legacy_no_contract",
+      "failure_class": "Stage 3' (or standalone) re-review explicitly run under ARS_RE_REVIEW_LEGACY=1 — the pre-contract single-pass orchestration shape (#576 §12/SD-8)",
+      "degraded_state": "One-call legacy run, old template; NO traceability sidecar is produced; no byte-equivalence claim is made for LLM prose (the flag preserves ORCHESTRATION shape only). Absent the flag, a run that cannot satisfy the contract prerequisites ABORTS with the specific G0-class reason — never a silent legacy fallback",
+      "diagnostic_marker": "[LEGACY-NO-CONTRACT] at the top of the Verification Review Report",
+      "downstream_consumer": "Stage 3' checkpoint reader; integrity_verification_agent at Stage 4.5 (sidecar absence is a visible degradation to note, not a block)",
+      "terminal_policy_effect": "none — legacy is explicit opt-in; the fail-closed boundary is on the FLAGLESS path (G0-class abort), not on the flagged one",
+      "authority": [
+        {
+          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
+          "anchor": "[LEGACY-NO-CONTRACT]"
+        },
+        {
+          "file": "academic-pipeline/agents/pipeline_orchestrator_agent.md",
+          "anchor": "NEVER a silent legacy fallback"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "re_review_apply_chain_witness_not_run",
+      "failure_class": "Stage 3' apply-chain witness with a link that cannot be CHECKED (as opposed to a checked link that broke): apply_reports empty (legitimate outside-toolchain revision) or original_manuscript absent (first link unverifiable) (#576 §11)",
+      "degraded_state": "Closed composite states not_run_no_reports (zero reports — never a silent vacuous pass) and first_link_not_run (inner + last links still checked), under the declared total precedence; only 'fail' (positive breakage evidence) aborts",
+      "diagnostic_marker": "apply_chain_witness == 'not_run_no_reports' | 'first_link_not_run' in DecisionInputs and on the Judge Record Apply-report chain line",
+      "downstream_consumer": "check_re_review_synthesis.py (witness compared on every emission kind) + Schema 6 judge_record.apply_chain_witness",
+      "terminal_policy_effect": "none for the not-run states — absence markers outrank nothing; 'fail' outranks both (fail > not_run_no_reports > first_link_not_run > pass) and is the G0 manifest_hash_mismatch abort, which is fail-closed by design",
+      "authority": [
+        {
+          "file": "scripts/check_re_review_synthesis.py",
+          "anchor": "fail > not_run_no_reports > first_link_not_run > pass"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_re_review_synthesis.py::test_no_reports_is_not_run_no_reports_witness",
+        "scripts/test_check_re_review_synthesis.py::test_absent_original_is_first_link_not_run_witness",
+        "scripts/test_check_re_review_synthesis.py::test_recorded_witness_must_match_recomputed"
       ]
     }
   ]

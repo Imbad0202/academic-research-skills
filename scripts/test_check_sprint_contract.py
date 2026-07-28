@@ -32,6 +32,20 @@ def test_shipped_templates_validate(path):
     assert checker.check_structural_invariants(contract) == []
 
 
+def test_reviewer_re_review_mode_rejected():
+    """#576 Spec B §5.4: `reviewer_re_review` left the Schema 13 enum.
+
+    Re-review is governed by the dedicated contract family under
+    shared/contracts/re_review/ (+ scripts/check_re_review_synthesis.py),
+    not by a Schema 13 sprint contract — a contract claiming the mode
+    must fail validation.
+    """
+    contract = full()
+    contract["mode"] = "reviewer_re_review"
+    errors = checker.validate(contract)
+    assert any("reviewer_re_review" in e or "mode" in e for e in errors)
+
+
 def test_branch13_reviewer_without_role_scope_fails():
     contract = full()
     contract["acceptance_dimensions"][0].pop("eligible_roles")

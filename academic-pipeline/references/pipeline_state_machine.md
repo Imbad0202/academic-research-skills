@@ -166,7 +166,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 4 | Decision = Minor/Major, user confirms | Pass Revision Roadmap |
 | checkpoint | Stage 4.5 | Decision = Accept, user confirms | Skip revision, go directly to final verification |
 | Stage 4 | **checkpoint** | Stage 4 completed | Wait for user confirmation |
-| checkpoint | Stage 3' | User confirms | Pass Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity). Re-review-mode transfer (default); a user-requested fresh full review at 3' passes Revised Draft + available context only (no Roadmap/cards; full mode runs field_analyst) |
+| checkpoint | Stage 3' | User confirms | Pass Revised Draft + Original (pre-revision) Draft (#576 §3.1 Phase 2A comparison base) + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity). Re-review-mode transfer (default); a user-requested fresh full review at 3' passes Revised Draft + available context only (no Roadmap/cards; full mode runs field_analyst) |
 | Stage 3' | **checkpoint** | Decision produced | Wait for user confirmation |
 | checkpoint | Stage 4.5 | Decision = Accept/Minor, user confirms | Pass final draft to final verification |
 | checkpoint | Stage 4' | Decision = Major, user confirms | Pass new Revision Roadmap |
@@ -247,14 +247,15 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | Synthesis Report | Stage 1 | Stage 2 (Phase 3) | Recommended |
 | Paper Draft | Stage 2 | Stage 2.5 (input) | **Required** |
 | **Integrity Report (Pre)** | **Stage 2.5** | **Stage 3 (prerequisite)** | **Required** |
-| **Verified Paper Draft** | **Stage 2.5** | **Stage 3 (Phase 0)** | **Required** |
+| **Verified Paper Draft** | **Stage 2.5** | **Stage 3 (Phase 0) + Stage 3' (re-review mode — the original (pre-revision) manuscript, #576 §3.1 Phase 2A comparison base)** | **Required (Stage 3' consumption Recommended — §11 presence policy: absent → every new issue `indeterminate`, visible degradations, never a block)** |
 | Review Reports (x5) | Stage 3 | Stage 4 (input) | Required |
 | Editorial Decision | Stage 3 | Stage 4 (input) | Required |
 | Revision Roadmap | Stage 3 | Stage 4 (input) + Stage 3' (re-review mode — verification checklist basis; the fresh-full-review branch consumes none) | Required (Stage 3' consumption re-review-mode-only) |
 | Revised Draft | Stage 4 | Stage 3' (Phase 0) | Required |
 | Response to Reviewers | Stage 4 | Stage 3' (input) | Recommended |
 | Editorial Decision Letter (Schema 6) | Stage 3 | Stage 3' (input) | Recommended (#539 — its Review Panel Provenance block feeds the Judge Record; absent → "unknown (provenance block absent)") |
-| Apply report(s) (#390 sidecar) | Stage 4 | Stage 3' (input) + Stage 4.5 (input) | Recommended (patch-apply rounds only; `output_draft_hash` checked against the Revised Draft first) |
+| Apply report(s) (#390 sidecar) | Stage 4 | Stage 3' (input) + Stage 4.5 (input) | Recommended (patch-apply rounds only; verified by the #576 §11 ordered-chain rule — first report's `base_draft_hash` = original draft, each subsequent = predecessor's `output_draft_hash`, last = Revised Draft; see `re_review_mode_protocol.md` § Input Manifest) |
+| Traceability sidecar (`shared/contracts/re_review/traceability.schema.json`) | Stage 3' | Stage 4.5 (input — frozen `previously_missed`/`indeterminate` records, #576 §8; direct on Accept/Minor, through 4' on Major) | Recommended (contract-mode Stage 3' only; a `[LEGACY-NO-CONTRACT]` run produces none — visible degradation at 4.5, not a block) |
 | Reviewer Configuration Cards | Stage 3 (field_analyst) | Stage 3' (re-review mode — yardstick continuity; field_analyst NOT re-run) | Recommended (absent → visible regeneration fallback, `re_review_mode_protocol.md` § Yardstick Continuity; a fresh full review at 3' regenerates by definition) |
 | **Re-Review Report** | **Stage 3'** | **Stage 4' (input)** | **Required (if Major)** |
 | **Re-Revised Draft** | **Stage 4'** | **Stage 4.5 (input)** | **Required (if executed)** |

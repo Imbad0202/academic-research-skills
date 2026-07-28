@@ -26,6 +26,7 @@ ACTIONS = (
 )
 VALUES = ("Accept", "Minor Revision", "Major Revision", "Reject")
 QUALITY = "academic-paper-reviewer/references/quality_rubrics.md"
+RE_REVIEW_PROTOCOL = "academic-paper-reviewer/references/re_review_mode_protocol.md"
 STANDARDS = "academic-paper-reviewer/references/editorial_decision_standards.md"
 SKILL = "academic-paper-reviewer/SKILL.md"
 HANDOFF = "shared/handoff_schemas.md"
@@ -91,9 +92,11 @@ EXPECTED_AUTHORITY_ROWS = (
     ),
     (
         "`re-review`",
-        "`re_review_mode_protocol.md` until #576 Spec B replaces its contract",
-        "—",
-        "four-value enum",
+        "#576 three-gate contract: `re_review_mode_protocol.md` § Decision "
+        "Derivation, recomputed by `scripts/check_re_review_synthesis.py`",
+        "item verdicts (FULLY/PARTIALLY/NOT_ADDRESSED/MADE_WORSE/CANNOT_VERIFY)",
+        "Accept / Minor Revision / Major Revision / user_review_required "
+        "(Reject is not a Stage 3' decision)",
     ),
     ("`quick`", "EIC assessment only; advisory, not an editorial decision",
      "—", "signal"),
@@ -402,6 +405,17 @@ def check(root: Path) -> list[str]:
     for path in sorted(live_paths):
         rel = str(path.relative_to(root))
         if rel == QUALITY:
+            continue
+        if rel == RE_REVIEW_PROTOCOL:
+            # #576 Spec B: this file's §6 decision derivation carries
+            # ITEM-PROPORTION quantifiers (>= 50% of P1 items, the 80%
+            # p2_addressed_rate) that share numerals with the retired 0-100
+            # rubric scale but are a different decision system — verdict
+            # counts over roadmap items, normatively defined in the #576 spec
+            # and recomputed by scripts/check_re_review_synthesis.py (an
+            # executable pin stronger than prose residency). The score-scale
+            # residency rule below would false-fire on them; the file stays
+            # covered by the retired-hybrid-token scan above.
             continue
         text = path.read_text(encoding="utf-8")
         for threshold in thresholds:

@@ -332,6 +332,8 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ### Required Revisions (Must Fix)
 
+> **Ordinal contract (#576 §5.1):** the decision letter's `### Required Item Details` blocks are numbered `R<n>` in THIS table's order — the nth Required row here IS the Roadmap's nth `must_fix` item (same single emission), and the letter's blocks must be exactly the contiguous sequence `R1..Rn`. Pinned on the R side only (the Suggested table mixes P2/P3 by design and carries no ordinal contract). Each Required block's Acceptance criteria is a single-line `- **Acceptance criteria**: <text>` bullet — the #576 checker's parse grammar; the Roadmap itself is additionally emitted as Schema 7 machine-form JSON (`items[]` with `id`/`priority`/`verification_criteria`/`reviewer` + transported optional fields) for the Stage 3' contract consumers.
+
 | # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Priority | Estimated Effort |
 |---|--------------|--------------|----------|-----------------|------------|--------|----------|-----------------|
 | R1 | [Description] | [SC-n] | [transported: critical/major (+ fallback tag if any)] | [`<type>: <locator>`] | [n — basis] | [EIC/R1/R2/R3] | P1 | [Time] |

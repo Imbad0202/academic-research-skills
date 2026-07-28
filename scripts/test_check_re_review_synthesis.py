@@ -2717,3 +2717,73 @@ def test_paren_strip_precedes_dash_strip():
     # first would leave an unbalanced fragment (§10 order is normative)
     labels, failure = crs.normalize_reviewer_labels("Peer Reviewer 1 (Methodology — ML) — lead")
     assert labels == ["R1"] and failure is False
+
+
+# --- #576 §8 routing fixtures (PR-B2): frozen records reach AND are ingested at 4.5
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_INTEGRITY_AGENT = REPO_ROOT / "academic-pipeline/agents/integrity_verification_agent.md"
+_ORCHESTRATOR = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
+
+
+def _add_frozen_non_regression_records(scenario):
+    """Insert an identical previously_missed + indeterminate pair into BOTH the
+    2A set and the 2B frozen copy (whole-record byte equality), and mirror the
+    ids into decision_inputs — the §8 goalpost guard keeps them decision-inert."""
+    records = [
+        _new_issue(8, "previously_missed", "major"),
+        _new_issue(9, "indeterminate", "minor"),
+    ]
+    scenario["verdict_record"]["new_issues"].extend(json.loads(json.dumps(records)))
+    scenario["traceability"]["new_issues"].extend(json.loads(json.dumps(records)))
+    di = scenario["traceability"]["decision_inputs"]
+    di["non_regression_new_issue_ids"] = sorted(
+        set(di["non_regression_new_issue_ids"]) | {"NEW-8", "NEW-9"}
+    )
+    return scenario
+
+
+def _assert_4_5_ingestion_pinned(path_marker: str):
+    """The INGESTION half of the §8 fixture: the Stage 4.5 gate's input list
+    consumes BOTH attributions (not just arrival), and the orchestrator's
+    handoff row for this path carries the sidecar's frozen records."""
+    integrity = _INTEGRITY_AGENT.read_text(encoding="utf-8")
+    assert (
+        "the Stage 3' traceability sidecar's frozen `previously_missed` AND "
+        "`indeterminate` new-issue records" in integrity
+    ), "integrity_verification_agent must consume BOTH attributions (#576 §8)"
+    assert "consuming only `previously_missed` would ignore the whole set" in integrity
+    assert "disposition appears in the report" in integrity, (
+        "ingestion means per-record assessment, not just arrival"
+    )
+    orch = _ORCHESTRATOR.read_text(encoding="utf-8")
+    assert path_marker in orch, f"orchestrator handoff row missing: {path_marker!r}"
+
+
+def test_routing_fixture_accept_direct_records_reach_and_are_ingested(tmp_path, capsys):
+    # Accept-direct path (Stage 3' -> 4.5, no Stage 4' between): the frozen
+    # records survive a checker-validated emission at decision Accept...
+    s = _add_frozen_non_regression_records(scenario_accept())
+    code, out, _err = run_checker(tmp_path, s, capsys)
+    assert code == crs.EXIT_PASS, out
+    assert "'Accept'" in out
+    # ...and the 4.5 gate INGESTS them on this path (prose contract pinned).
+    _assert_4_5_ingestion_pinned(
+        "| Stage 3' -> 4.5 | (Accept/Minor direct path — no Stage 4' between)"
+    )
+    orch = _ORCHESTRATOR.read_text(encoding="utf-8")
+    assert "the frozen records are gate INPUT, not just cargo" in orch
+
+
+def test_routing_fixture_major_via_4prime_records_reach_and_are_ingested(tmp_path, capsys):
+    # Major-via-4' path: same frozen records on a Major Revision emission...
+    s = _add_frozen_non_regression_records(scenario_g2d(accepted=True))
+    code, out, _err = run_checker(tmp_path, s, capsys)
+    assert code == crs.EXIT_PASS, out
+    assert "'Major Revision'" in out
+    # ...ride through 4' with the roadmap on the extended Stage 4/4' -> 4.5 row.
+    _assert_4_5_ingestion_pinned(
+        "(Major-via-4' path) the Stage 3' traceability sidecar with its frozen "
+        "`previously_missed`/`indeterminate` new-issue records"
+    )

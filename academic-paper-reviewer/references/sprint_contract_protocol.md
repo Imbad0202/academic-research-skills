@@ -99,7 +99,7 @@ On any Phase 2 lint failure other than multi-dissent: emit `[PROTOCOL-VIOLATION]
 |-------------------------------|------------|-------------------|
 | `reviewer_full`               | 5          | EIC + methodology + domain + perspective + DA |
 | `reviewer_methodology_focus`  | 2          | EIC + methodology (only) |
-| `reviewer_re_review`          | —          | not shipped in v3.6.2; continues pre-v3.6.2 behaviour |
+| `reviewer_re_review`          | —          | NOT a Schema 13 mode (#576 Spec B — removed from the enum): governed by the dedicated contract family `shared/contracts/re_review/` + `scripts/check_re_review_synthesis.py`; see `re_review_mode_protocol.md` § Three-Gate Orchestration |
 | `reviewer_calibration`        | —          | not shipped in v3.6.2 |
 | `reviewer_guided`             | —          | not shipped in v3.6.2 |
 

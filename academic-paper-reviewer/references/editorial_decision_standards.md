@@ -11,7 +11,7 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 | `full` (sprint contract) | Mechanical synthesizer over reviewer contract v2; the matrix below never overrides it | `block/warn/pass` + `block_class` | Accept / Minor Revision / Major Revision / Reject |
 | `methodology-focus` (sprint contract) | Same mechanical engine, scoped to methods + presentation; no venue-fit dimension | same | four-value enum |
 | `full` / `methodology-focus` without a contract | Synthesis Protocol + the qualitative criteria and recommendation matrix in this file | reviewer recommendations | four-value enum |
-| `re-review` | `re_review_mode_protocol.md` until #576 Spec B replaces its contract | — | four-value enum |
+| `re-review` | #576 three-gate contract: `re_review_mode_protocol.md` § Decision Derivation, recomputed by `scripts/check_re_review_synthesis.py` | item verdicts (FULLY/PARTIALLY/NOT_ADDRESSED/MADE_WORSE/CANNOT_VERIFY) | Accept / Minor Revision / Major Revision / user_review_required (Reject is not a Stage 3' decision) |
 | `quick` | EIC assessment only; advisory, not an editorial decision | — | signal |
 | `guided` | Issue-list dialogue; no editorial decision letter | — | — |
 | `calibration` | `quality_rubrics.md` 0–100 Decision Mapping, measurement-only | 0–100 | four-value labels against the gold set |

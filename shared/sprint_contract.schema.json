@@ -22,7 +22,6 @@
       "enum": [
         "reviewer_full",
         "reviewer_methodology_focus",
-        "reviewer_re_review",
         "reviewer_calibration",
         "reviewer_guided",
         "writer_full",
