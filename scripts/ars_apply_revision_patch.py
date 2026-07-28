@@ -55,6 +55,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -82,7 +83,13 @@ DOC_BODY_START = "DOC-BODY-START"
 # 1.1: adds `output_draft_hash` (12-hex, same format as `base_draft_hash`),
 # binding the report to the exact revised-draft bytes it describes.
 # Additive; consumers reading 1.0 fields are unaffected.
-REPORT_FORMAT_VERSION = "1.1"
+# 1.2: adds `patch_digest` (full 64-hex sha256 over the exact patch-file
+# bytes applied), the #576 Spec B §11 content-binding for positional
+# manifest pairing — it must equal the paired `revision_patches[i]`
+# entry's `sha256`, so a substituted same-base patch cannot pass as the
+# diff that produced the draft. Additive; consumers reading 1.0/1.1
+# fields are unaffected.
+REPORT_FORMAT_VERSION = "1.2"
 # #424 Slice B ship decision (spec §3.3 required it; recorded in the spec's
 # amendment log). Strict `>` comparator per the spec's "above a threshold":
 # 1.0 disables the trigger because touched/total never exceeds 1.0.
@@ -547,9 +554,10 @@ def run(
     base_raw = base_path.read_bytes()
     base_text = base_raw.decode("utf-8")
 
+    patch_raw = patch_path.read_bytes()
     try:
-        patch = json.loads(patch_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        patch = json.loads(patch_raw.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ApplyRejection(
             [{"op_index": None, "kind": "patch_json_invalid", "message": str(exc)}]
         ) from exc
@@ -593,6 +601,9 @@ def run(
         "output_path": str(output_path),
         "base_draft_hash": patch["base_draft_hash"],
         "output_draft_hash": base_draft_hash(output_bytes),
+        # Full 64-hex (not the 12-hex draft-hash form): it pairs with the
+        # §11 manifest's `revision_patches[i].sha256`, which is full-width.
+        "patch_digest": hashlib.sha256(patch_raw).hexdigest(),
         "revision_round": patch["revision_round"],
         "ops_applied": phase2["ops_applied"],
         "fresh_block_ids": phase2["fresh_block_ids"],

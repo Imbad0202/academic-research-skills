@@ -13,6 +13,7 @@ Run standalone:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import tempfile
@@ -923,11 +924,20 @@ class TestReportOutputHash(ApplyHarness):
         persisted = json.loads(self.report_path.read_text(encoding="utf-8"))
         self.assertEqual(persisted["output_draft_hash"], report["output_draft_hash"])
 
-    def test_report_format_version_bumped_for_output_hash(self):
+    def test_report_format_version_bumped_for_patch_digest(self):
         anchored = self.anchored_fixture()
         self._write(anchored, self._single_replace_patch(anchored))
         report = self._run()
-        self.assertEqual(report["report_format_version"], "1.1")
+        self.assertEqual(report["report_format_version"], "1.2")
+
+    def test_report_carries_patch_digest_of_exact_patch_bytes(self):
+        anchored = self.anchored_fixture()
+        self._write(anchored, self._single_replace_patch(anchored))
+        report = self._run()
+        self.assertEqual(
+            report["patch_digest"],
+            hashlib.sha256(self.patch_path.read_bytes()).hexdigest(),
+        )
 
 
 class TestCliExitCodes(ApplyHarness):
