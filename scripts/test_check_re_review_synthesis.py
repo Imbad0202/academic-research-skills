@@ -2411,6 +2411,75 @@ def test_p2_dissent_must_take_the_user_path(tmp_path, capsys):
     assert_mismatch(tmp_path, s, capsys, "always take the G2(a) user path")
 
 
+def test_user_adjudication_on_active_p1_dissent_stays_legal(tmp_path, capsys):
+    # adjudicated AGAINST the one-way §7 reading (codex round-4 #1a): the §6
+    # deferral loop records a user-adjudicated DissentAdjudication DIRECTLY,
+    # and the §9 pass can be per-row unavailable — the user path must remain
+    # a legal fallback on an active-setup P1 dissent
+    s = scenario_g2d(accepted=False)
+    s["traceability"]["dissent_adjudications"][0]["adjudicator"] = "user"
+    code, out, _err = run_checker(tmp_path, s, capsys)
+    assert code == crs.EXIT_PASS, out
+
+
+def test_system_intent_requires_evaluated_p1_row(tmp_path, capsys):
+    # general round-4 P1: a system intent forged onto a not_configured row
+    s = scenario_accept()
+    s["traceability"]["resolution_intents"].append(
+        {"intent_id": "INT-1", "item_id": "REV-001", "answered_by": "system"}
+    )
+    assert_mismatch(tmp_path, s, capsys, "system intents exist only for evaluated P1 diverges rows")
+
+
+def test_divergence_reapplication_requires_evaluated_p1_row(tmp_path, capsys):
+    # general round-4 P1: the intent→reapplication→resolution chain cannot
+    # exist for a row the judge never evaluated (not_configured / P2)
+    s = scenario_accept()
+    s["traceability"]["resolution_intents"].append(
+        {"intent_id": "INT-1", "item_id": "REV-001", "answered_by": "user", "guidance_note": "forged"}
+    )
+    s["traceability"]["reapplications"].append({
+        "reapplication_id": "RAP-1",
+        "item_id": "REV-001",
+        "answer_refs": ["intent:INT-1"],
+        "pre_reapplication_verdict": "FULLY_ADDRESSED",
+        "reapplied_verdict": "FULLY_ADDRESSED",
+        "evidence_anchor": [_anchor()],
+        "rationale": "forged divergence re-verification",
+        "criterion_ref": "phase1:REV-001",
+    })
+    s["traceability"]["cross_model_resolutions"].append({
+        "resolution_id": "RES-1",
+        "item_id": "REV-001",
+        "intent_id": "INT-1",
+        "reapplication_id": "RAP-1",
+        "state": "primary_upheld",
+        "resolved_by": "system",
+        "rationale": "forged resolution",
+    })
+    assert_mismatch(tmp_path, s, capsys, "divergence-only re-application exists only for an evaluated P1 row")
+
+
+def test_below_bound_adjudication_rejected(tmp_path, capsys):
+    # codex round-4 #1: dissents below the §7 bound stand unadjudicated by design
+    s = scenario_complex()
+    s["traceability"]["dissent_adjudications"] = [
+        {"dissent_id": "DIS-1", "adjudicator": "user", "outcome": "replacement_approved",
+         "rationale": "Adjudicated despite no bound tripping."}
+    ]
+    assert_mismatch(tmp_path, s, capsys, "unadjudicated by design")
+
+
+def test_acceptance_must_reference_current_reapplication(tmp_path, capsys):
+    # codex round-4 #2: a stale acceptance of a superseded attempt cannot
+    # override the successful current retry
+    s = scenario_g2d_retry()
+    s["traceability"]["g2d_acceptances"] = [
+        {"acceptance_id": "ACC-1", "item_id": "REV-001", "reapplication_id": "RAP-1", "accepted_by": "user"}
+    ]
+    assert_mismatch(tmp_path, s, capsys, "SUPERSEDED reapplication")
+
+
 # --- §6 derivation unit table --------------------------------------------------
 
 

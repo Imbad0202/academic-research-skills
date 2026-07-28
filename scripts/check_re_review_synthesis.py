@@ -1242,6 +1242,13 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             fails.add(f"dissent {rec['dissent_id']}: item {rec['item_id']} has no pre-commitment record")
         elif rec["criterion_hash"] != canonical_hash(pre):
             fails.add(f"dissent {rec['dissent_id']}: criterion_hash does not recompute from the Phase-1 record (§7)")
+    # §7 bounds (SD-5): dissent on a P1 item, or dissents on > ceil(N/3) of
+    # all items, trips independent adjudication of EVERY dissent record.
+    total_items = len(roadmap_items)
+    bound_tripped = any(
+        roadmap_by_id.get(dissent["item_id"], {}).get("priority") == "must_fix"
+        for dissent in dissent_by_id.values()
+    ) or (len(dissent_by_id) > math.ceil(total_items / 3))
     for item_id, rec in verdict_by_item.items():
         item = roadmap_by_id.get(item_id)
         if item is None:
@@ -1359,6 +1366,16 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         if rec["intent_id"] in intents_by_id:
             fails.add(f"duplicate intent_id {rec['intent_id']}")
         intents_by_id[rec["intent_id"]] = rec
+        if rec["answered_by"] == "system":
+            # §5.3: system intents are emitted for every P1 diverges row —
+            # the row must be an EVALUATED P1 row (cross_model_verdict
+            # present implies an active configuration).
+            intent_row = row_by_item.get(rec["item_id"])
+            if intent_row is None or intent_row["priority"] != "MUST_FIX" or "cross_model_verdict" not in intent_row:
+                fails.add(
+                    f"resolution intent {rec['intent_id']}: system intents exist only for evaluated P1 diverges "
+                    "rows under ACTIVE cross-model (§5.3)"
+                )
     adjudications_by_dissent = {}
     for rec in traceability["dissent_adjudications"]:
         if rec["dissent_id"] in adjudications_by_dissent:
@@ -1368,15 +1385,26 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             fails.add(f"dissent adjudication {rec['dissent_id']}: no such dissent record")
         if rec["adjudicator"] == "cross_model" and not cross_model_active:
             fails.add(f"dissent adjudication {rec['dissent_id']}: cross_model adjudicator on an inactive configuration (§11)")
+        if not bound_tripped:
+            fails.add(
+                f"dissent adjudication {rec['dissent_id']}: no §7 bound tripped — dissents below the bound stand "
+                "unadjudicated by design (§7)"
+            )
+        dissent = dissent_by_id.get(rec["dissent_id"])
+        dissent_item = roadmap_by_id.get(dissent["item_id"]) if dissent else None
         if rec["adjudicator"] == "cross_model":
-            dissent = dissent_by_id.get(rec["dissent_id"])
-            dissent_item = roadmap_by_id.get(dissent["item_id"]) if dissent else None
             if dissent_item is None or dissent_item["priority"] != "must_fix":
                 fails.add(
                     f"dissent adjudication {rec['dissent_id']}: the judge's adjudication scope EQUALS the §9 pass's "
                     "P1 coverage — dissents on non-P1 items always take the G2(a) user path, even on an active "
                     "setup (§7)"
                 )
+        # A `user` adjudication on an active-setup P1 dissent stays LEGAL:
+        # the §6 deferral loop records "a user-adjudicated DissentAdjudication
+        # ... DIRECTLY" without an activity qualifier, and the §9 pass can be
+        # per-row unavailable — rejecting the user path would make a
+        # judge-transport failure unrecoverable (adjudicated against the
+        # stricter one-way reading; see PR #605 round-4/5 record).
     reapp_by_id = {}
     for rec in traceability["reapplications"]:
         if rec["reapplication_id"] in reapp_by_id:
@@ -1416,8 +1444,11 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
     for rec in traceability["reapplications"]:
         item_id = rec["item_id"]
         has_adjudication_ref = False
+        has_intent_ref = False
         for ref in rec["answer_refs"]:
             kind, ref_id = ref.split(":", 1)
+            if kind == "intent":
+                has_intent_ref = True
             if kind == "adjudication":
                 has_adjudication_ref = True
                 adjudication = adjudications_by_dissent.get(ref_id)
@@ -1457,6 +1488,21 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             adj for adj in traceability["adjustments"]
             if adj.get("source_ref") == f"reapplication:{rec['reapplication_id']}"
         ]
+        # §6 trigger binding: a reapplication whose answer_refs carry ONLY
+        # intent refs is a DIVERGENCE re-verification — it exists only for
+        # an EVALUATED P1 row (one carrying cross_model_verdict, which
+        # itself implies an active configuration): "diverges rows exist
+        # only under ACTIVE cross-model (a not_configured run has none)".
+        # A G2(d) retry is unaffected — its refs are CUMULATIVE and always
+        # include the mandating adjudication.
+        if has_intent_ref and not has_adjudication_ref:
+            row = row_by_item.get(item_id)
+            if row is None or row["priority"] != "MUST_FIX" or "cross_model_verdict" not in row:
+                fails.add(
+                    f"reapplication {rec['reapplication_id']}: a divergence-only re-application exists only for an "
+                    "evaluated P1 row under ACTIVE cross-model (§6/§5.3) — no committed verdict moves without its "
+                    "triggering divergence"
+                )
         # §5.3 letter-tag condition: a letter-tagged anchor on a
         # reapplication (and hence on its mechanically-copied
         # cross_model_adjudication adjustment) is valid EXACTLY when the
@@ -1577,6 +1623,11 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             fails.add(f"acceptance {rec['acceptance_id']}: reapplication_id does not resolve on the same item")
         elif reapp["reapplied_verdict"] != "CANNOT_VERIFY":
             fails.add(f"acceptance {rec['acceptance_id']}: the accepted reapplication must be CANNOT_VERIFY (§6 G2(d))")
+        if rec["reapplication_id"] in superseded_reapps:
+            fails.add(
+                f"acceptance {rec['acceptance_id']}: references a SUPERSEDED reapplication — an acceptance binds "
+                "to the CURRENT failed attempt, never a stale one (§6 G2(d))"
+            )
         row = row_by_item.get(rec["item_id"])
         if row is not None and row["final_verdict"] != "CANNOT_VERIFY":
             fails.add(f"acceptance {rec['acceptance_id']}: the accepted item's final_verdict must be CANNOT_VERIFY (§6 G2(d))")
@@ -1880,13 +1931,7 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         for row in traceability["rows"]
     )
     pending = []
-    total_items = len(roadmap_items)
-    # §7 bounds (SD-5): dissent on a P1 item, or dissents on > ceil(N/3) of
-    # all items, trips independent adjudication of EVERY dissent record.
-    bound_tripped = any(
-        roadmap_by_id.get(dissent["item_id"], {}).get("priority") == "must_fix"
-        for dissent in dissent_by_id.values()
-    ) or (len(dissent_by_id) > math.ceil(total_items / 3))
+    # bound_tripped computed once, next to dissent_by_id (§7 SD-5).
     if bound_tripped:
         for dissent_id in dissent_by_id:
             if dissent_id not in adjudications_by_dissent:
