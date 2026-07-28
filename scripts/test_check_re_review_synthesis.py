@@ -2357,6 +2357,60 @@ def test_reapplication_letter_tag_requires_booked_rebuttal_in_chain(tmp_path, ca
     assert_mismatch(tmp_path, s, capsys, "letter-tagged anchors are valid exactly when")
 
 
+def test_superseded_record_with_derived_adjustment_still_checked(tmp_path, capsys):
+    # codex round-3: a verdict-changing successful reapplication carrying its
+    # derived adjustment must NOT bypass the failed-only supersession guard
+    s = scenario_g2d_retry()
+    t = s["traceability"]
+    rap1 = t["reapplications"][0]
+    rap1["reapplied_verdict"] = "NOT_ADDRESSED"
+    rap1.pop("cannot_verify_reason")
+    rap1_anchors = [_anchor('text: §6 "procedure"')]
+    rap1["evidence_anchor"] = copy.deepcopy(rap1_anchors)
+    adj0 = {
+        "adjustment_id": "ADJ-2",
+        "item_id": "REV-001",
+        "from_verdict": "FULLY_ADDRESSED",
+        "to_verdict": "NOT_ADDRESSED",
+        "basis": "cross_model_adjudication",
+        "evidence_anchor": copy.deepcopy(rap1_anchors),
+        "rationale": rap1["rationale"],
+        "source_ref": "reapplication:RAP-1",
+    }
+    adj1 = t["adjustments"][0]
+    adj1["from_verdict"] = "NOT_ADDRESSED"
+    adj1["supersedes_adjustment_id"] = "ADJ-2"
+    t["adjustments"].insert(0, adj0)
+    t["reapplications"][1]["pre_reapplication_verdict"] = "NOT_ADDRESSED"
+    assert_mismatch(tmp_path, s, capsys, "only FAILED (CANNOT_VERIFY) attempts are superseded")
+
+
+def test_p2_dissent_must_take_the_user_path(tmp_path, capsys):
+    # general round-3 P2: §7 — the judge's adjudication scope equals the §9
+    # pass's P1 coverage; a judge-cleared P2 dissent cannot clear G2(a)
+    s = scenario_complex()
+    pre_rev002 = next(rec for rec in s["precommitment"]["items"] if rec["item_id"] == "REV-002")
+    s["verdict_record"]["dissents"].append({
+        "dissent_id": "DIS-2",
+        "item_id": "REV-002",
+        "criterion_hash": "0" * 64,  # recomputed at emit
+        "reason_code": "criterion_ambiguous",
+        "original_operationalization": pre_rev002["operationalization"]["fully_addressed"],
+        "replacement_operationalization": "Results carries a robustness table with at least one alternative specification.",
+        "evidence": 'text: §4 "specifications"',
+        "decision_impact_note": "Narrows the robustness surface.",
+    })
+    rev002 = next(rec for rec in s["verdict_record"]["items"] if rec["item_id"] == "REV-002")
+    rev002["applied_criterion"] = "dissented:DIS-2"
+    s["traceability"]["dissent_adjudications"] = [
+        {"dissent_id": "DIS-1", "adjudicator": "cross_model", "outcome": "replacement_approved",
+         "rationale": "Replacement approved by the judge."},
+        {"dissent_id": "DIS-2", "adjudicator": "cross_model", "outcome": "replacement_approved",
+         "rationale": "Replacement approved by the judge."},
+    ]
+    assert_mismatch(tmp_path, s, capsys, "always take the G2(a) user path")
+
+
 # --- §6 derivation unit table --------------------------------------------------
 
 

@@ -1368,6 +1368,15 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             fails.add(f"dissent adjudication {rec['dissent_id']}: no such dissent record")
         if rec["adjudicator"] == "cross_model" and not cross_model_active:
             fails.add(f"dissent adjudication {rec['dissent_id']}: cross_model adjudicator on an inactive configuration (§11)")
+        if rec["adjudicator"] == "cross_model":
+            dissent = dissent_by_id.get(rec["dissent_id"])
+            dissent_item = roadmap_by_id.get(dissent["item_id"]) if dissent else None
+            if dissent_item is None or dissent_item["priority"] != "must_fix":
+                fails.add(
+                    f"dissent adjudication {rec['dissent_id']}: the judge's adjudication scope EQUALS the §9 pass's "
+                    "P1 coverage — dissents on non-P1 items always take the G2(a) user path, even on an active "
+                    "setup (§7)"
+                )
     reapp_by_id = {}
     for rec in traceability["reapplications"]:
         if rec["reapplication_id"] in reapp_by_id:
@@ -1610,19 +1619,14 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             adj for adj in traceability["adjustments"]
             if adj.get("source_ref") == f"reapplication:{rec['reapplication_id']}"
         ]
-        if len(derived) == 1:
-            expected_pre = derived[0]["from_verdict"]
-        elif rec["reapplication_id"] in acceptance_adj_by_reapp:
-            expected_pre = acceptance_adj_by_reapp[rec["reapplication_id"]]["from_verdict"]
-        elif rec["reapplication_id"] in superseded_reapps:
-            # A superseded record's pre-value is the dispatch-time tail of a
-            # PAST loop iteration; the final emission's tail may have moved
-            # since (a successful retry appends an adjustment), so the
-            # current-tail fallback does not apply. It is still verified:
-            # supersession is defined for FAILED attempts only (§6 — "a
-            # retry names the failed attempt it supersedes"), and a failed
-            # attempt appends nothing, so its dispatch tail equals its
-            # direct retry's recorded pre-value.
+        if rec["reapplication_id"] in superseded_reapps:
+            # UNCONDITIONAL for every superseded record — a derived
+            # adjustment must not bypass this branch. Supersession is
+            # defined for FAILED attempts only (§6 — "a retry names the
+            # failed attempt it supersedes"), and a failed attempt appends
+            # nothing, so its dispatch tail equals its direct retry's
+            # recorded pre-value. The current-tail fallback never applies
+            # to a historical record (the tail may have moved since).
             successor = reapp_by_id[superseded_reapps[rec["reapplication_id"]]]
             if rec["reapplied_verdict"] != "CANNOT_VERIFY":
                 fails.add(
@@ -1636,6 +1640,10 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                     f"({rec['pre_reapplication_verdict']!r} != {successor['pre_reapplication_verdict']!r}, §6/§13)"
                 )
             continue
+        if len(derived) == 1:
+            expected_pre = derived[0]["from_verdict"]
+        elif rec["reapplication_id"] in acceptance_adj_by_reapp:
+            expected_pre = acceptance_adj_by_reapp[rec["reapplication_id"]]["from_verdict"]
         else:
             expected_pre = _chain_tail_verdict(rec["item_id"])
         if expected_pre is not None and rec["pre_reapplication_verdict"] != expected_pre:
