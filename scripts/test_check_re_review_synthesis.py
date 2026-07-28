@@ -2318,6 +2318,45 @@ def test_letter_without_required_item_details_notes_empty_layer(tmp_path, capsys
     assert "no Required Item Details blocks parsed" in err
 
 
+def test_superseded_attempt_must_be_failed(tmp_path, capsys):
+    # codex round-2 #1: supersession is defined for FAILED attempts only (§6)
+    s = scenario_g2d_retry()
+    rap1 = s["traceability"]["reapplications"][0]
+    rap1["reapplied_verdict"] = "FULLY_ADDRESSED"
+    rap1.pop("cannot_verify_reason")
+    rap1["evidence_anchor"] = [_anchor('text: §6 "procedure"')]
+    assert_mismatch(tmp_path, s, capsys, "only FAILED (CANNOT_VERIFY) attempts are superseded")
+
+
+def test_superseded_pre_value_binds_to_direct_retry(tmp_path, capsys):
+    # codex round-2 #1: a failed attempt appends nothing, so its dispatch
+    # tail equals its direct retry's recorded pre-value
+    s = scenario_g2d_retry()
+    s["traceability"]["reapplications"][0]["pre_reapplication_verdict"] = "NOT_ADDRESSED"
+    assert_mismatch(tmp_path, s, capsys, "dispatch tail equals its direct retry's")
+
+
+def test_aborted_emission_cannot_fake_manifest_root_cause(tmp_path, capsys):
+    # codex round-2 #2: the checker reached recomputation, so the §11
+    # manifest layer validated — a claimed G0/checker abort is a false root cause
+    s = scenario_accept()
+    s["traceability"]["decision_state"] = "aborted"
+    s["traceability"]["abort_reason"] = "manifest_incomplete"
+    s["traceability"]["decision_inputs"].pop("reject_recommended")
+    assert_mismatch(tmp_path, s, capsys, "cannot be the true root cause")
+
+
+def test_reapplication_letter_tag_requires_booked_rebuttal_in_chain(tmp_path, capsys):
+    # general round-2 P2-1: a NOT_ADDRESSED -> FULLY upgrade cannot ride
+    # letter-side anchors when the re-examined chain never booked a
+    # valid_rebuttal record (§5.3 letter-tag condition, §3.4 closing rule)
+    s = scenario_complex()
+    letter_anchors = [_anchor('text: letter §3 "assertion"', "letter")]
+    s["traceability"]["reapplications"][0]["evidence_anchor"] = copy.deepcopy(letter_anchors)
+    s["traceability"]["adjustments"][1]["evidence_anchor"] = copy.deepcopy(letter_anchors)
+    assert_mismatch(tmp_path, s, capsys, "letter-tagged anchors are valid exactly when")
+
+
 # --- §6 derivation unit table --------------------------------------------------
 
 

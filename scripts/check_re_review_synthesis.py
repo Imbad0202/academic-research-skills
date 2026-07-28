@@ -1448,6 +1448,29 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             adj for adj in traceability["adjustments"]
             if adj.get("source_ref") == f"reapplication:{rec['reapplication_id']}"
         ]
+        # §5.3 letter-tag condition: a letter-tagged anchor on a
+        # reapplication (and hence on its mechanically-copied
+        # cross_model_adjudication adjustment) is valid EXACTLY when the
+        # re-examined chain projection carried a booked valid_rebuttal
+        # record — the §3.4 machine witness that an assertion in the letter
+        # with no locatable manuscript evidence changes nothing. The 2B'
+        # input set withholds the Response Letter itself, so a booked
+        # rebuttal anchor is the only legal letter-side source.
+        if rec["reapplied_verdict"] != "CANNOT_VERIFY" and any(
+            anchor["anchor_artifact"] == "letter" for anchor in rec["evidence_anchor"]
+        ):
+            letter_tag_allowed = False
+            for chain_adj in chains.get(item_id, []):
+                if len(derived) == 1 and chain_adj["adjustment_id"] == derived[0]["adjustment_id"]:
+                    break
+                if chain_adj["basis"] == "valid_rebuttal":
+                    letter_tag_allowed = True
+                    break
+            if not letter_tag_allowed:
+                fails.add(
+                    f"reapplication {rec['reapplication_id']}: letter-tagged anchors are valid exactly when the "
+                    "re-examined chain carries a booked valid_rebuttal record (§5.3/§3.4)"
+                )
         changing = rec["reapplied_verdict"] != "CANNOT_VERIFY" and rec["reapplied_verdict"] != rec["pre_reapplication_verdict"]
         if rec["reapplied_verdict"] == "CANNOT_VERIFY":
             if derived:
@@ -1594,9 +1617,24 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         elif rec["reapplication_id"] in superseded_reapps:
             # A superseded record's pre-value is the dispatch-time tail of a
             # PAST loop iteration; the final emission's tail may have moved
-            # since (a successful retry appends an adjustment). The failed
-            # record is preserved, not re-litigated (§6) — only CURRENT
-            # records take the tail fallback.
+            # since (a successful retry appends an adjustment), so the
+            # current-tail fallback does not apply. It is still verified:
+            # supersession is defined for FAILED attempts only (§6 — "a
+            # retry names the failed attempt it supersedes"), and a failed
+            # attempt appends nothing, so its dispatch tail equals its
+            # direct retry's recorded pre-value.
+            successor = reapp_by_id[superseded_reapps[rec["reapplication_id"]]]
+            if rec["reapplied_verdict"] != "CANNOT_VERIFY":
+                fails.add(
+                    f"reapplication {rec['reapplication_id']}: only FAILED (CANNOT_VERIFY) attempts are superseded "
+                    "by a retry (§6)"
+                )
+            if rec["pre_reapplication_verdict"] != successor["pre_reapplication_verdict"]:
+                fails.add(
+                    f"reapplication {rec['reapplication_id']}: a failed attempt appends nothing, so its dispatch "
+                    f"tail equals its direct retry's pre_reapplication_verdict "
+                    f"({rec['pre_reapplication_verdict']!r} != {successor['pre_reapplication_verdict']!r}, §6/§13)"
+                )
             continue
         else:
             expected_pre = _chain_tail_verdict(rec["item_id"])
@@ -1890,6 +1928,12 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         recomputed["expect"] = ("aborted", reason)
         if "reject_recommended" in di:
             fails.add("decision_inputs.reject_recommended must be ABSENT on a gated emission (§5.3 presence biconditional)")
+        if reason in ("manifest_incomplete", "manifest_hash_mismatch", "synthesis_mismatch"):
+            fails.add(
+                f"aborted emission claims {reason!r} as root cause, but the checker reached recomputation — the "
+                "§11 manifest layer validated against these same hash-bound inputs, so the claimed abort cannot be "
+                "the true root cause (§13: an aborted emission carries its TRUE root-cause abort_reason)"
+            )
         if g1 and reason != "criteria_drift":
             fails.add("Step 1 recomputes G1 (silent verdict change) — the aborted emission's true root cause is criteria_drift (§13)")
         if reason == "criteria_drift" and not g1:
