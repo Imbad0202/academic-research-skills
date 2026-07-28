@@ -960,6 +960,86 @@ def scenario_g2d(accepted: bool):
     }
 
 
+def scenario_g2d_retry():
+    """G2(d) guided re-examination retry that SUCCEEDS: RAP-1 (CANNOT_VERIFY,
+    dispatch_failed) superseded by RAP-2 with CUMULATIVE answer_refs, whose
+    derived adjustment moves the row FULLY -> PARTIALLY (§6 deferral loop)."""
+    s = scenario_g2d(accepted=False)
+    t = s["traceability"]
+    t["revision"] = 2
+    t["supersedes_hash"] = "ef" * 32
+    t["resolution_intents"] = [
+        {
+            "intent_id": "INT-1",
+            "item_id": "REV-001",
+            "answered_by": "user",
+            "guidance_note": "re-examine against the data appendix",
+        }
+    ]
+    rap2_anchors = [_anchor('text: §6 "procedure vs release table"')]
+    residual = {"text": "Release matching still undocumented for one dataset.", "residual_magnitude": "should_fix"}
+    rationale = "Re-application under the original criterion finds partial satisfaction."
+    t["reapplications"].append(
+        {
+            "reapplication_id": "RAP-2",
+            "item_id": "REV-001",
+            "answer_refs": ["adjudication:DIS-1", "intent:INT-1"],
+            "supersedes_reapplication_id": "RAP-1",
+            "pre_reapplication_verdict": "FULLY_ADDRESSED",
+            "reapplied_verdict": "PARTIALLY_ADDRESSED",
+            "evidence_anchor": copy.deepcopy(rap2_anchors),
+            "residual_gap": dict(residual),
+            "rationale": rationale,
+            "criterion_ref": "phase1:REV-001",
+        }
+    )
+    t["adjustments"] = [
+        {
+            "adjustment_id": "ADJ-1",
+            "item_id": "REV-001",
+            "from_verdict": "FULLY_ADDRESSED",
+            "to_verdict": "PARTIALLY_ADDRESSED",
+            "basis": "cross_model_adjudication",
+            "evidence_anchor": copy.deepcopy(rap2_anchors),
+            "residual_gap": dict(residual),
+            "rationale": rationale,
+            "source_ref": "reapplication:RAP-2",
+        }
+    ]
+    t["cross_model_resolutions"] = [
+        {
+            "resolution_id": "RES-1",
+            "item_id": "REV-001",
+            "intent_id": "INT-1",
+            "reapplication_id": "RAP-2",
+            "state": "primary_revised",
+            "resolved_by": "system",
+            "rationale": "Derived mechanically from the retry re-application.",
+        }
+    ]
+    row = t["rows"][0]
+    row["final_verdict"] = "PARTIALLY_ADDRESSED"
+    row["status"] = "PARTIALLY_ADDRESSED"
+    row["verified"] = "PARTIAL"
+    row["adjustment_id"] = "ADJ-1"
+    di = t["decision_inputs"]
+    di["per_item"] = [
+        {
+            "item_id": "REV-001",
+            "final_verdict": "PARTIALLY_ADDRESSED",
+            "driving_severity": "critical",
+            "residual_magnitude": "should_fix",
+        }
+    ]
+    di["verdict_counts"] = _counts(
+        must_fix={"PARTIALLY_ADDRESSED": 1}, should_fix={"FULLY_ADDRESSED": 1}
+    )
+    di["residual_magnitude_counts"] = _magnitudes(must_fix={"should_fix": 1})
+    di["reject_recommended"] = False
+    t["decision_state"] = "Minor Revision"
+    return s
+
+
 # --- emit + run ----------------------------------------------------------------
 
 
@@ -982,7 +1062,11 @@ def emit(tmp_path: Path, scenario: dict, *, resync: bool = True):
     report_shas = []
     for i, payload in enumerate(scenario["reports"]):
         payload = dict(payload)
-        if tuple(int(p) for p in payload["report_format_version"].split(".")) >= (1, 2):
+        try:
+            format_12_plus = tuple(int(p) for p in payload["report_format_version"].split(".")) >= (1, 2)
+        except ValueError:
+            format_12_plus = False
+        if format_12_plus:
             payload.setdefault("patch_digest", PATCH_SHA)
         path = tmp_path / f"apply-report-{i}.json"
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -1107,7 +1191,9 @@ def test_golden_g2d_accepted_passes(tmp_path, capsys):
 
 
 def test_golden_artifacts_validate_against_shipped_schemas(tmp_path, capsys):
-    for i, scenario in enumerate((scenario_accept(), scenario_complex(), scenario_g2d(True), scenario_g2d(False))):
+    for i, scenario in enumerate(
+        (scenario_accept(), scenario_complex(), scenario_g2d(True), scenario_g2d(False), scenario_g2d_retry())
+    ):
         subdir = tmp_path / f"s{i}"
         subdir.mkdir()
         argv, manifest = emit(subdir, scenario)
@@ -1997,6 +2083,239 @@ def test_goalpost_previously_missed_cannot_enter_decision(tmp_path, capsys):
     di["regressions"].append({"new_issue_id": "NEW-2", "severity": "major"})
     di["non_regression_new_issue_ids"] = ["NEW-3"]
     assert_mismatch(tmp_path, s, capsys, "regression-attributed frozen new issues")
+
+
+# --- round-1 review closures (three-track exact-head findings) -----------------
+
+
+def test_golden_g2d_retry_passes(tmp_path, capsys):
+    # general P1-2 / codex #8 regression pin: a spec-legal successful retry
+    # (superseded CANNOT_VERIFY attempt preserved) must PASS
+    code, out, _err = run_checker(tmp_path, scenario_g2d_retry(), capsys)
+    assert code == crs.EXIT_PASS, out
+    assert "'Minor Revision'" in out
+
+
+def test_two_current_reapplications_for_one_answer(tmp_path, capsys):
+    s = scenario_g2d_retry()
+    del s["traceability"]["reapplications"][1]["supersedes_reapplication_id"]
+    assert_mismatch(tmp_path, s, capsys, "exactly one CURRENT reapplication's answer_refs")
+
+
+def test_valid_rebuttal_upgrades_to_fully_only(tmp_path, capsys):
+    # general P1-1 / codex #2: a letter-anchored sideways move must fail
+    s = scenario_complex()
+    adj = s["traceability"]["adjustments"][0]
+    adj["to_verdict"] = "PARTIALLY_ADDRESSED"
+    adj["residual_gap"] = {"text": "residual", "residual_magnitude": "should_fix"}
+    assert_exit2(tmp_path, s, capsys, "phase2b_lint_failed", "upgrade to FULLY_ADDRESSED")
+
+
+def test_valid_rebuttal_from_fully_is_not_an_upgrade(tmp_path, capsys):
+    s = scenario_complex()
+    s["traceability"]["adjustments"][0]["from_verdict"] = "FULLY_ADDRESSED"
+    assert_exit2(tmp_path, s, capsys, "phase2b_lint_failed", "upgrade to FULLY_ADDRESSED")
+
+
+def test_author_pointer_must_upgrade_to_partially_or_fully(tmp_path, capsys):
+    s = scenario_accept()
+    s["traceability"]["adjustments"].append({
+        "adjustment_id": "ADJ-9",
+        "item_id": "REV-002",
+        "from_verdict": "PARTIALLY_ADDRESSED",
+        "to_verdict": "NOT_ADDRESSED",
+        "basis": "author_pointer_located_evidence",
+        "evidence_anchor": [_anchor()],
+        "rationale": "not an upgrade",
+    })
+    assert_exit2(tmp_path, s, capsys, "phase2b_lint_failed", "upgrades to PARTIALLY/FULLY_ADDRESSED")
+
+
+def test_author_pointer_downgrade_rejected(tmp_path, capsys):
+    s = scenario_accept()
+    s["traceability"]["adjustments"].append({
+        "adjustment_id": "ADJ-9",
+        "item_id": "REV-002",
+        "from_verdict": "FULLY_ADDRESSED",
+        "to_verdict": "PARTIALLY_ADDRESSED",
+        "basis": "author_pointer_located_evidence",
+        "evidence_anchor": [_anchor()],
+        "residual_gap": {"text": "residual", "residual_magnitude": "consider"},
+        "rationale": "a downgrade",
+    })
+    assert_exit2(tmp_path, s, capsys, "phase2b_lint_failed", "upgrades to PARTIALLY/FULLY_ADDRESSED")
+
+
+def test_malformed_report_version_is_manifest_incomplete(tmp_path, capsys):
+    # codex #1: a non-numeric version must not ride the pre-1.2 absence policy
+    s = scenario_accept()
+    s["reports"][0]["report_format_version"] = "not-a-version"
+    assert_exit2(tmp_path, s, capsys, "manifest_incomplete", "not a numeric dotted version")
+
+
+def test_report_draft_hashes_must_be_12_hex(tmp_path, capsys):
+    s = scenario_accept()
+    s["reports"][0]["base_draft_hash"] = "XYZ"
+    assert_exit2(tmp_path, s, capsys, "manifest_incomplete", "12-hex")
+
+
+def test_orphan_g2d_acceptance_cannot_clear_deferral(tmp_path, capsys):
+    # codex #3: acceptance with no backing adjustment must fail even when
+    # phase2a_verdict == final_verdict == CANNOT_VERIFY
+    s = scenario_g2d(accepted=True)
+    vrec = s["verdict_record"]["items"][0]
+    vrec["verdict"] = "CANNOT_VERIFY"
+    vrec["cannot_verify_reason"] = "evidence surface inaccessible"
+    vrec.pop("evidence_anchor")
+    row = s["traceability"]["rows"][0]
+    row["phase2a_verdict"] = "CANNOT_VERIFY"
+    row.pop("adjustment_id")
+    s["traceability"]["adjustments"] = []
+    s["traceability"]["reapplications"][0]["pre_reapplication_verdict"] = "CANNOT_VERIFY"
+    assert_mismatch(tmp_path, s, capsys, "backs exactly ONE user_accepted_fail_closed")
+
+
+def test_resolution_reapplication_must_answer_its_intent(tmp_path, capsys):
+    # codex #4: cross-wired CrossModelResolution must fail
+    s = scenario_complex()
+    s["traceability"]["resolution_intents"].append(
+        {"intent_id": "INT-2", "item_id": "REV-002", "answered_by": "user", "guidance_note": "recheck"}
+    )
+    s["traceability"]["reapplications"].append({
+        "reapplication_id": "RAP-2",
+        "item_id": "REV-002",
+        "answer_refs": ["intent:INT-2"],
+        "pre_reapplication_verdict": "FULLY_ADDRESSED",
+        "reapplied_verdict": "FULLY_ADDRESSED",
+        "evidence_anchor": [_anchor('table: Table 4 [robustness]')],
+        "rationale": "re-examination upholds the located evidence",
+        "criterion_ref": "phase1:REV-002",
+    })
+    s["traceability"]["cross_model_resolutions"].append({
+        "resolution_id": "RES-2",
+        "item_id": "REV-002",
+        "intent_id": "INT-1",  # cross-wired: RAP-2 answered INT-2, not INT-1
+        "reapplication_id": "RAP-2",
+        "state": "primary_upheld",
+        "resolved_by": "system",
+        "rationale": "cross-wired resolution",
+    })
+    assert_mismatch(tmp_path, s, capsys, "did not answer")
+
+
+def test_challenged_drafted_body_is_never_booked(tmp_path, capsys):
+    # codex #6: a booked adjustment content-equal to a CHALLENGED proposal
+    s = scenario_complex()
+    s["traceability"]["rebuttal_adjudications"].append({
+        "rebuttal_adjudication_id": "RADJ-2",
+        "item_id": "REV-001",
+        "verdict": "challenged",
+        "rationale": "The counter-evidence does not rebut the finding.",
+    })
+    s["traceability"]["pending_rebuttal_upgrades"].append({
+        "proposal_id": "PRB-2",
+        "item_id": "REV-001",
+        "drafted_adjustment": copy.deepcopy(s["traceability"]["pending_rebuttal_upgrades"][0]["drafted_adjustment"]),
+        "disposition": "challenged:RADJ-2",
+    })
+    assert_mismatch(tmp_path, s, capsys, "NEVER booked")
+
+
+def test_duplicate_drafted_body_rejected(tmp_path, capsys):
+    s = scenario_complex()
+    s["traceability"]["pending_rebuttal_upgrades"].append({
+        "proposal_id": "PRB-3",
+        "item_id": "REV-001",
+        "drafted_adjustment": copy.deepcopy(s["traceability"]["pending_rebuttal_upgrades"][0]["drafted_adjustment"]),
+        "disposition": "booked:ADJ-1",
+    })
+    assert_mismatch(tmp_path, s, capsys, "duplicate PendingRebuttalUpgrade drafted body")
+
+
+def test_escalation_exception_unsubstantiatable_without_original(tmp_path, capsys):
+    # codex #7: §11 degradation (iii) — no original manuscript, no exception
+    s = scenario_accept()
+    s["manifest_overrides"]["original_manuscript"] = {"present": False}
+    s["verdict_record"]["escalation_exceptions"] = [
+        {
+            "exception_id": "ESC-1",
+            "escalation_class": "research_integrity",
+            "reason_code": "fabricated-consent",
+            "evidence_anchor": 'text: §2 "consent"',
+            "why_round1_missed_it": "Round 1 focused elsewhere.",
+            "mechanical_decision_impact": "Major Revision",
+            "approval_state": "pending",
+        }
+    ]
+    di = s["traceability"]["decision_inputs"]
+    di["escalations"] = [
+        {
+            "exception_id": "ESC-1",
+            "effective_approval_state": "pending",
+            "escalation_class": "research_integrity",
+            "mechanical_decision_impact": "Major Revision",
+        }
+    ]
+    di["apply_chain_witness"] = "first_link_not_run"
+    di.pop("reject_recommended")
+    s["traceability"]["decision_state"] = "user_review_required"
+    assert_mismatch(tmp_path, s, capsys, "ESCALATION-UNSUBSTANTIATABLE")
+
+
+def test_source_reviewer_is_verbatim_roadmap_copy(tmp_path, capsys):
+    # codex #9
+    s = scenario_accept()
+    s["precommitment"]["items"][0]["source_reviewer"] = "R2"
+    s["precommitment"]["items"][0]["source_reviewer_labels"] = ["R2"]
+    assert_mismatch(tmp_path, s, capsys, "VERBATIM copy of the Schema 7 reviewer field")
+
+
+def test_half_transported_item_cannot_carry_null_severity(tmp_path, capsys):
+    # general P2-1 / codex #5
+    s = scenario_accept()
+    item = s["roadmap"]["items"][0]
+    del item["severity"]
+    item["confidence"] = 4
+    s["traceability"]["decision_inputs"]["per_item"][0]["driving_severity"] = None
+    assert_mismatch(tmp_path, s, capsys, "non-legacy finding-driven P1 item cannot carry driving_severity null")
+
+
+def test_aborted_emission_with_lint_reason_is_exempt(tmp_path, capsys):
+    # general P2-2: abort precedence over deferral — a lint-failure abort is
+    # accepted as recorded (the checker cannot re-derive a fenced call's lint)
+    s = scenario_accept()
+    s["traceability"]["decision_state"] = "aborted"
+    s["traceability"]["abort_reason"] = "phase2b_lint_failed"
+    s["traceability"]["decision_inputs"].pop("reject_recommended")
+    code, out, _err = run_checker(tmp_path, s, capsys)
+    assert code == crs.EXIT_PASS, out
+    assert "'aborted'" in out
+
+
+def test_aborted_criteria_drift_claim_must_recompute(tmp_path, capsys):
+    s = scenario_accept()
+    s["traceability"]["decision_state"] = "aborted"
+    s["traceability"]["abort_reason"] = "criteria_drift"
+    s["traceability"]["decision_inputs"].pop("reject_recommended")
+    assert_mismatch(tmp_path, s, capsys, "no silent verdict change recomputes")
+
+
+def test_path_ref_must_be_relative(tmp_path, capsys):
+    # codex #10
+    s = scenario_accept()
+    s["manifest_overrides"]["round1_findings"] = _entry("path:../secrets.md", SYNTH_SHA)
+    assert_exit2(tmp_path, s, capsys, "manifest_incomplete", "RELATIVE")
+
+
+def test_letter_without_required_item_details_notes_empty_layer(tmp_path, capsys):
+    s = scenario_accept()
+    s["letter"] = "# Editorial Decision\n\n## Closing\n"
+    crit = s["precommitment"]["items"][0]["inherited_criterion"]
+    del crit["letter_text"]
+    del crit["letter_item_ref"]
+    code, out, err = run_checker(tmp_path, s, capsys)
+    assert code == crs.EXIT_PASS, out
+    assert "no Required Item Details blocks parsed" in err
 
 
 # --- §6 derivation unit table --------------------------------------------------

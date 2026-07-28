@@ -400,6 +400,48 @@
         },
         {
           "if": {
+            "required": ["basis"],
+            "properties": { "basis": { "const": "valid_rebuttal" } }
+          },
+          "then": {
+            "properties": {
+              "to_verdict": { "const": "FULLY_ADDRESSED" },
+              "from_verdict": {
+                "enum": ["PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+              }
+            },
+            "description": "§3.4 Direction column: valid_rebuttal is 'upgrade to FULLY_ADDRESSED' — the only basis allowing letter-side anchors must land on the fully-addressed verdict, or the persuasion channel §1 closes reopens."
+          }
+        },
+        {
+          "if": {
+            "required": ["basis"],
+            "properties": { "basis": { "const": "author_pointer_located_evidence" } }
+          },
+          "then": {
+            "oneOf": [
+              {
+                "properties": {
+                  "to_verdict": { "const": "FULLY_ADDRESSED" },
+                  "from_verdict": {
+                    "enum": ["PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "to_verdict": { "const": "PARTIALLY_ADDRESSED" },
+                  "from_verdict": {
+                    "enum": ["NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+                  }
+                }
+              }
+            ],
+            "description": "§3.4 Direction column: author_pointer_located_evidence is an UPGRADE — located evidence satisfies the Phase-1 operationalization (fully or partially), so the target is PARTIALLY/FULLY and strictly better than the source (MADE_WORSE/CANNOT_VERIFY rank lowest)."
+          }
+        },
+        {
+          "if": {
             "required": ["to_verdict"],
             "properties": { "to_verdict": { "const": "PARTIALLY_ADDRESSED" } }
           },
@@ -560,8 +602,14 @@
           "required": ["item_id", "from_verdict", "to_verdict", "basis", "evidence_anchor", "rationale"],
           "properties": {
             "item_id": { "$ref": "#/$defs/item_id" },
-            "from_verdict": { "$ref": "#/$defs/verdict" },
-            "to_verdict": { "$ref": "#/$defs/verdict" },
+            "from_verdict": {
+              "enum": ["PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"],
+              "description": "§3.4 Direction: a rebuttal upgrade starts below FULLY_ADDRESSED."
+            },
+            "to_verdict": {
+              "const": "FULLY_ADDRESSED",
+              "description": "§3.4 Direction: valid_rebuttal upgrades to FULLY_ADDRESSED only."
+            },
             "basis": { "const": "valid_rebuttal" },
             "evidence_anchor": {
               "type": "array",

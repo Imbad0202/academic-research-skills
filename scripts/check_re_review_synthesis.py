@@ -122,6 +122,8 @@ VERIFIED_MAP = {
 ESCALATION_CLASSES = ("research_integrity", "ethics", "safety", "legal_compliance", "fatal_validity")
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_HASH12_RE = re.compile(r"^[0-9a-f]{12}$")
+_REPORT_VERSION_RE = re.compile(r"^[0-9]+(\.[0-9]+)*$")
 _ITEM_ID_RE = re.compile(r"^REV-[A-Za-z0-9-]+$")
 _CONCERN_ID_RE = re.compile(r"^[RSN][1-9][0-9]*$")
 _LETTER_REF_RE = re.compile(r"^R([1-9][0-9]*)$")
@@ -494,6 +496,20 @@ def _validate_adjustment_body(v: _V, rec, path, *, drafted: bool):
         _validate_residual_gap(v, rec["residual_gap"], f"{path}.residual_gap")
     elif "residual_gap" in rec:
         v.fail(path, "residual_gap is required iff to_verdict = PARTIALLY_ADDRESSED")
+    # §3.4 Direction column. valid_rebuttal — the only basis allowing
+    # letter-side anchors — is "upgrade to FULLY_ADDRESSED"; anything else
+    # would let a persuasive letter move a verdict sideways/downward, the
+    # exact channel §1 exists to close. author_pointer_located_evidence is
+    # an UPGRADE: located evidence satisfies the Phase-1 operationalization
+    # (fully or partially), so the target is PARTIALLY/FULLY and strictly
+    # better than the source (MADE_WORSE/CANNOT_VERIFY rank lowest).
+    if rec["basis"] == "valid_rebuttal":
+        if rec["to_verdict"] != "FULLY_ADDRESSED" or rec["from_verdict"] == "FULLY_ADDRESSED":
+            v.fail(path, "valid_rebuttal adjustments upgrade to FULLY_ADDRESSED (§3.4 Direction)")
+    elif rec["basis"] == "author_pointer_located_evidence":
+        rank = {"MADE_WORSE": 0, "CANNOT_VERIFY": 0, "NOT_ADDRESSED": 1, "PARTIALLY_ADDRESSED": 2, "FULLY_ADDRESSED": 3}
+        if rec["to_verdict"] not in ("PARTIALLY_ADDRESSED", "FULLY_ADDRESSED") or rank[rec["to_verdict"]] <= rank[rec["from_verdict"]]:
+            v.fail(path, "author_pointer_located_evidence adjustments are upgrades to PARTIALLY/FULLY_ADDRESSED (§3.4 Direction)")
     if drafted:
         return
     source_ref = rec.get("source_ref")
@@ -785,8 +801,19 @@ def validate_manifest(manifest: dict):
         fail("artifacts must carry exactly the nine §11 keys")
 
     def check_entry_fields(entry, key, path):
-        if not _is_str(entry.get("path_or_passport_ref")) or not _ARTIFACT_REF_RE.match(entry["path_or_passport_ref"]):
+        ref = entry.get("path_or_passport_ref")
+        if not _is_str(ref) or not _ARTIFACT_REF_RE.match(ref):
             fail(f"{path}: path_or_passport_ref must be passport:<ref> | path:<relative path>")
+        if ref.startswith("path:"):
+            rel = ref[len("path:"):]
+            segments = re.split(r"[/\\]", rel)
+            if (
+                rel.startswith(("/", "\\"))
+                or re.match(r"^[A-Za-z]:", rel)
+                or any(segment == ".." for segment in segments)
+                or not rel
+            ):
+                fail(f"{path}: path: refs carry a RELATIVE path — no absolute, drive-letter, or traversal segments (§11)")
         sha = entry.get("sha256")
         if not isinstance(sha, str) or not _SHA256_RE.match(sha):
             fail(f"{path}: sha256 must be 64-hex")
@@ -869,10 +896,24 @@ def compute_apply_chain_witness(manifest: dict, report_payloads):
         return "not_run_no_reports", notes
     patches = artifacts["revision_patches"]["items"]
     for i, report in enumerate(report_payloads):
+        if not isinstance(report, dict):
+            raise ManifestError("manifest_incomplete", f"apply report [{i}]: must be a JSON object")
         for field in ("report_format_version", "base_draft_hash", "output_draft_hash"):
             if not _is_str(report.get(field)):
                 raise ManifestError("manifest_incomplete", f"apply report [{i}]: missing {field}")
-        version = tuple(int(part) for part in report["report_format_version"].split(".") if part.isdigit())
+        if not _REPORT_VERSION_RE.match(report["report_format_version"]):
+            raise ManifestError(
+                "manifest_incomplete",
+                f"apply report [{i}]: report_format_version {report['report_format_version']!r} is not a numeric "
+                "dotted version — the pre-1.2 absence policy applies only to a VALID explicit version below 1.2 (§11)",
+            )
+        for field in ("base_draft_hash", "output_draft_hash"):
+            if not _HASH12_RE.match(report[field]):
+                raise ManifestError(
+                    "manifest_incomplete",
+                    f"apply report [{i}]: {field} must be the 12-hex base_draft_hash format (§11)",
+                )
+        version = tuple(int(part) for part in report["report_format_version"].split("."))
         if version >= (1, 2):
             digest = report.get("patch_digest")
             if not isinstance(digest, str) or not _SHA256_RE.match(digest):
@@ -1132,6 +1173,11 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
     letter_sound = letter_blocks is not None and letter_ordinals_sound(letter_blocks, len(must_fix_order))
     if letter_present and letter_blocks is not None and not letter_sound:
         warnings.append("[CRITERIA-LAYER-ABSENT: letter/roadmap ordinal mismatch]")
+    if letter_present and letter_sound and not letter_blocks:
+        warnings.append(
+            "NOTE: editorial decision letter present but no Required Item Details blocks parsed — the level-2 "
+            "criteria layer is empty (template drift or a genuinely block-less letter)"
+        )
     block_by_rid = {}
     if letter_sound and letter_blocks:
         block_by_rid = {rid: text for rid, text in letter_blocks}
@@ -1143,6 +1189,11 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             fails.add(f"precommitment {item_id}: priority {rec['priority']} != roadmap {item['priority']}")
         if rec["inherited_criterion"]["roadmap_text"] != item["verification_criteria"]:
             fails.add(f"precommitment {item_id}: inherited_criterion.roadmap_text does not match the roadmap verbatim (§4)")
+        if rec["source_reviewer"] != item["reviewer"]:
+            fails.add(
+                f"precommitment {item_id}: source_reviewer is a VERBATIM copy of the Schema 7 reviewer field "
+                f"({rec['source_reviewer']!r} != {item['reviewer']!r}, §5.1)"
+            )
         labels, _parse_failure = normalize_reviewer_labels(rec["source_reviewer"])
         if rec["source_reviewer_labels"] != labels:
             fails.add(
@@ -1208,6 +1259,12 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                     fails.add(f"verdict {item_id}: applied_criterion {applied!r} does not resolve to a dissent on this item")
 
     ns_by_id = {rec["new_standard_id"]: rec for rec in precommitment["new_standards"]}
+    if not manifest["artifacts"]["original_manuscript"]["present"] and verdict_record["escalation_exceptions"]:
+        fails.add(
+            "escalation exceptions cannot be substantiated with the original manuscript absent — the required "
+            "original-text anchor cannot be produced, so the new_standard stays advisory "
+            "([ESCALATION-UNSUBSTANTIATABLE], §11 degradation (iii))"
+        )
     exceptions_by_id = {}
     for rec in verdict_record["escalation_exceptions"]:
         if rec["exception_id"] in exceptions_by_id:
@@ -1460,6 +1517,12 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         if reapp is None or reapp["item_id"] != rec["item_id"]:
             fails.add(f"resolution {rec['resolution_id']}: reapplication_id does not resolve on the same item")
             continue
+        if f"intent:{rec['intent_id']}" not in reapp["answer_refs"]:
+            fails.add(
+                f"resolution {rec['resolution_id']}: reapplication {rec['reapplication_id']} did not answer "
+                f"intent {rec['intent_id']} — the resolution derives FROM the mandated re-application, never from "
+                "an unrelated same-item record (§6 loop step 2)"
+            )
         if rec["resolved_by"] == "system":
             if reapp["reapplied_verdict"] == "CANNOT_VERIFY":
                 fails.add(f"resolution {rec['resolution_id']}: a CANNOT_VERIFY reapplication derives no system resolution (§5.3)")
@@ -1485,6 +1548,17 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         row = row_by_item.get(rec["item_id"])
         if row is not None and row["final_verdict"] != "CANNOT_VERIFY":
             fails.add(f"acceptance {rec['acceptance_id']}: the accepted item's final_verdict must be CANNOT_VERIFY (§6 G2(d))")
+        backing = [
+            adj for adj in traceability["adjustments"]
+            if adj["basis"] == "user_accepted_fail_closed"
+            and adj.get("source_ref") == f"acceptance:{rec['acceptance_id']}"
+        ]
+        if len(backing) != 1:
+            fails.add(
+                f"acceptance {rec['acceptance_id']}: a G2(d) acceptance backs exactly ONE user_accepted_fail_closed "
+                f"adjustment (found {len(backing)}) — the one legal CANNOT_VERIFY append; an orphan acceptance cannot "
+                "clear the deferral (§6 G2(d)/§3.4)"
+            )
     acceptance_adj_by_reapp = {}
     for adj in traceability["adjustments"]:
         if adj["basis"] == "user_accepted_fail_closed":
@@ -1517,6 +1591,13 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             expected_pre = derived[0]["from_verdict"]
         elif rec["reapplication_id"] in acceptance_adj_by_reapp:
             expected_pre = acceptance_adj_by_reapp[rec["reapplication_id"]]["from_verdict"]
+        elif rec["reapplication_id"] in superseded_reapps:
+            # A superseded record's pre-value is the dispatch-time tail of a
+            # PAST loop iteration; the final emission's tail may have moved
+            # since (a successful retry appends an adjustment). The failed
+            # record is preserved, not re-litigated (§6) — only CURRENT
+            # records take the tail fallback.
+            continue
         else:
             expected_pre = _chain_tail_verdict(rec["item_id"])
         if expected_pre is not None and rec["pre_reapplication_verdict"] != expected_pre:
@@ -1559,6 +1640,8 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
 
     proposals_by_id = {}
     booked_by_adjustment = {}
+    seen_drafted_bodies = {}
+    challenged_bodies = []
     for rec in traceability["pending_rebuttal_upgrades"]:
         if rec["proposal_id"] in proposals_by_id:
             fails.add(f"duplicate proposal_id {rec['proposal_id']}")
@@ -1566,6 +1649,15 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         kind, ref_id = rec["disposition"].split(":", 1)
         if rec["drafted_adjustment"]["item_id"] != rec["item_id"]:
             fails.add(f"proposal {rec['proposal_id']}: drafted_adjustment.item_id must equal the proposal's item_id (§5.3)")
+        body_key = (rec["item_id"], canonical_hash(rec["drafted_adjustment"]))
+        if body_key in seen_drafted_bodies:
+            fails.add(
+                f"proposal {rec['proposal_id']}: duplicate PendingRebuttalUpgrade drafted body on item {rec['item_id']} "
+                f"(same canonical body as {seen_drafted_bodies[body_key]}) — one proposal per drafted upgrade (§5.3)"
+            )
+        seen_drafted_bodies[body_key] = rec["proposal_id"]
+        if kind == "challenged":
+            challenged_bodies.append((rec["proposal_id"], rec["item_id"], rec["drafted_adjustment"]))
         if kind == "challenged":
             radj = radj_by_id.get(ref_id)
             if radj is None or radj["item_id"] != rec["item_id"]:
@@ -1611,6 +1703,17 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                 f"adjustment {adj['adjustment_id']}: every critical valid_rebuttal adjustment traces to exactly one "
                 "booked* PendingRebuttalUpgrade (§5.3)"
             )
+        if adj["basis"] == "valid_rebuttal":
+            booked_view = {
+                key: value for key, value in adj.items()
+                if key not in ("adjustment_id", "supersedes_adjustment_id", "critical_rebuttal_check")
+            }
+            for proposal_id, item_id, drafted in challenged_bodies:
+                if adj["item_id"] == item_id and booked_view == drafted:
+                    fails.add(
+                        f"adjustment {adj['adjustment_id']}: content-equals CHALLENGED proposal {proposal_id}'s "
+                        "drafted body — a challenged upgrade is NEVER booked (§3.4)"
+                    )
 
     # --- escalation approvals ---
     approvals_by_exception = {}
@@ -1648,6 +1751,20 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             continue
         item = roadmap_by_id[item_id]
         severity = item.get("severity")
+        # §5.3: a null driving_severity is legal ONLY for source_kind items
+        # and legacy roadmaps. A P1 item carrying OTHER transported markers
+        # (#574 A2/A3) but no severity is a half-transported finding-driven
+        # item, not a legacy one — B1's critical join would be silently
+        # suppressed, so it fails here.
+        if (
+            severity is None
+            and item.get("source_kind") is None
+            and any(item.get(field) is not None for field in ("evidence_anchor", "confidence", "competence_basis"))
+        ):
+            fails.add(
+                f"roadmap item {item_id}: transported fields present but severity absent — a non-legacy "
+                "finding-driven P1 item cannot carry driving_severity null (§5.3)"
+            )
         entry = {
             "item_id": item_id,
             "final_verdict": row["final_verdict"],
@@ -1762,10 +1879,24 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
     # --- emission-kind-scoped equality set (§13) ---
     recomputed = {"pending": pending, "g1": g1}
     emitted_state = traceability["decision_state"]
-    if g1:
+    if emitted_state == "aborted":
+        # §13: an aborted emission carries its true root-cause abort_reason
+        # and is EXEMPT from the deferral biconditional and Steps 2-3 (abort
+        # precedence over deferral). The only checker-recomputable reason is
+        # criteria_drift; the phase-lint reasons are fenced-call facts the
+        # checker cannot re-derive and are accepted as recorded (the
+        # manifest-class reasons would already have exited 2 above).
+        reason = traceability.get("abort_reason")
+        recomputed["expect"] = ("aborted", reason)
+        if "reject_recommended" in di:
+            fails.add("decision_inputs.reject_recommended must be ABSENT on a gated emission (§5.3 presence biconditional)")
+        if g1 and reason != "criteria_drift":
+            fails.add("Step 1 recomputes G1 (silent verdict change) — the aborted emission's true root cause is criteria_drift (§13)")
+        if reason == "criteria_drift" and not g1:
+            fails.add("the emission claims [RE-REVIEW-ABORT: criteria_drift] but no silent verdict change recomputes (§13)")
+    elif g1:
         recomputed["expect"] = ("aborted", "criteria_drift")
-        if emitted_state != "aborted" or traceability.get("abort_reason") != "criteria_drift":
-            fails.add("Step 1 recomputes G1 (silent verdict change) — the emission must be [RE-REVIEW-ABORT: criteria_drift]")
+        fails.add("Step 1 recomputes G1 (silent verdict change) — the emission must be [RE-REVIEW-ABORT: criteria_drift]")
     elif pending:
         recomputed["expect"] = ("user_review_required", None)
         if emitted_state != "user_review_required":
@@ -1776,9 +1907,9 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         if "reject_recommended" in di:
             fails.add("decision_inputs.reject_recommended must be ABSENT on a gated emission (§5.3 presence biconditional)")
     else:
-        if emitted_state in ("aborted", "user_review_required"):
+        if emitted_state == "user_review_required":
             fails.add(
-                f"Step 1 recomputes no gate, but the emission carries decision_state {emitted_state!r} "
+                "Step 1 recomputes no gate, but the emission carries decision_state 'user_review_required' "
                 "(the G2 biconditional runs both directions)"
             )
         else:

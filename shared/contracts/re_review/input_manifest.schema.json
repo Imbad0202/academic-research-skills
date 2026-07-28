@@ -58,8 +58,8 @@
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "artifact_ref": {
       "type": "string",
-      "pattern": "^(passport:.+|path:.+)$",
-      "description": "TAGGED union with closed grammar passport:<artifact_ref> | path:<relative path> — the prefix IS the passport-tracked discriminator; no untagged strings."
+      "pattern": "^(passport:.+|path:(?![/\\\\])(?![A-Za-z]:)(?!\\.\\.(?:[/\\\\]|$))(?!.*[/\\\\]\\.\\.(?:[/\\\\]|$)).+)$",
+      "description": "TAGGED union with closed grammar passport:<artifact_ref> | path:<relative path> — the prefix IS the passport-tracked discriminator; no untagged strings. The path form is RELATIVE only: no leading separator, no drive letter, no '..' traversal segments (checker-mirrored)."
     },
     "freshness_value": {
       "anyOf": [
