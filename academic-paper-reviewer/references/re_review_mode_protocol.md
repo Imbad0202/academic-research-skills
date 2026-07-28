@@ -196,7 +196,7 @@ The dispatching layer emits `input_manifest.schema.json` BEFORE Phase 1; its has
 - An apply report without `patch_digest` (format < 1.2) → content-binding NOT-RUN, `[PATCH-BINDING-ABSENT: report format < 1.2]`.
 - `revision_patches[]` / `apply_reports[]` co-presence (the by-position pairing): the two arrays discriminate at the ARRAY level and travel together — `apply_reports` present with `revision_patches` absent or length-mismatched → `manifest_incomplete`, G0. `{present: false}` IS the canonical zero-reports encoding (⟺ the witness's `not_run_no_reports`). Each report's `patch_digest` must equal its paired `revision_patches[i]` entry's sha256 (content-bound, not order-trusted).
 
-**Apply-chain witness:** the ordered-chain rule (Input item 7 above) yields the closed composite `apply_chain_witness ∈ {pass, fail, first_link_not_run, not_run_no_reports}` (precedence `fail > not_run_no_reports > first_link_not_run > pass`), carried in `DecisionInputs` and on the Judge Record's `Apply-report chain` line.
+**Apply-chain witness:** the ordered-chain rule (Input item 8 above) yields the closed composite `apply_chain_witness ∈ {pass, fail, first_link_not_run, not_run_no_reports}` (precedence `fail > not_run_no_reports > first_link_not_run > pass`), carried in `DecisionInputs` and on the Judge Record's `Apply-report chain` line.
 
 ### Criterion Inheritance
 
