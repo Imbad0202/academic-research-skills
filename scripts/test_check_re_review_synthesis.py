@@ -2460,6 +2460,70 @@ def test_divergence_reapplication_requires_evaluated_p1_row(tmp_path, capsys):
     assert_mismatch(tmp_path, s, capsys, "divergence-only re-application exists only for an evaluated P1 row")
 
 
+def test_forged_divergence_on_agree_row_rejected(tmp_path, capsys):
+    # codex round-5 P1: an originally-agree row (judge verdict == committed
+    # verdict) cannot manufacture its own divergence by forging a
+    # downgrading intent→reapplication→adjustment→resolution chain — §6
+    # identifies diverges BEFORE the system intent is emitted
+    s = scenario_complex()
+    vrec = next(rec for rec in s["verdict_record"]["items"] if rec["item_id"] == "REV-002")
+    vrec["verdict"] = "FULLY_ADDRESSED"
+    vrec["evidence_anchor"] = ['table: Table 4 [robustness]']
+    row = s["traceability"]["rows"][1]
+    row["phase2a_verdict"] = "FULLY_ADDRESSED"
+    row["final_verdict"] = "NOT_ADDRESSED"
+    row["status"] = "NOT_ADDRESSED"
+    row["verified"] = "NO"
+    row["cross_model_status"] = "diverges"  # manufactured after the change
+    adj2 = s["traceability"]["adjustments"][1]
+    adj2["from_verdict"] = "FULLY_ADDRESSED"
+    adj2["to_verdict"] = "NOT_ADDRESSED"
+    rap = s["traceability"]["reapplications"][0]
+    rap["pre_reapplication_verdict"] = "FULLY_ADDRESSED"
+    rap["reapplied_verdict"] = "NOT_ADDRESSED"
+    di = s["traceability"]["decision_inputs"]
+    di["per_item"][1]["final_verdict"] = "NOT_ADDRESSED"
+    di["verdict_counts"]["must_fix"] = {v: 0 for v in crs.VERDICTS}
+    di["verdict_counts"]["must_fix"].update({"FULLY_ADDRESSED": 1, "NOT_ADDRESSED": 1})
+    di["reject_recommended"] = True
+    s["traceability"]["decision_state"] = "Major Revision"
+    assert_mismatch(tmp_path, s, capsys, "no divergence existed at dispatch")
+
+
+def test_divergence_chain_carries_original_system_intent(tmp_path, capsys):
+    # codex round-5 P1 (companion rule): a user-only intent chain on an
+    # evaluated diverging row lacks the §6 mandating system intent
+    s = scenario_complex()
+    s["traceability"]["resolution_intents"] = [
+        {"intent_id": "INT-2", "item_id": "REV-002", "answered_by": "user", "guidance_note": "recheck"}
+    ]
+    s["traceability"]["reapplications"][0]["answer_refs"] = ["intent:INT-2"]
+    s["traceability"]["cross_model_resolutions"][0]["intent_id"] = "INT-2"
+    assert_mismatch(tmp_path, s, capsys, "ORIGINAL mandating system intent")
+
+
+def test_ghost_dissent_must_be_applied(tmp_path, capsys):
+    # general round-5 P1: a DissentRecord never referenced by its item's
+    # verdict record (applied_criterion stays precommitted) is a ghost — it
+    # cannot trip the §7 bound or authorize a re-application second chance
+    s = scenario_accept()
+    s["verdict_record"]["dissents"].append({
+        "dissent_id": "DIS-1",
+        "item_id": "REV-001",
+        "criterion_hash": "0" * 64,  # recomputed at emit
+        "reason_code": "criterion_ambiguous",
+        "original_operationalization": "Methods carries a power analysis naming effect size, alpha, and power.",
+        "replacement_operationalization": "Methods carries a power analysis naming effect size.",
+        "evidence": 'text: §3.2 "power analysis"',
+        "decision_impact_note": "Narrows the committed pattern.",
+    })
+    s["traceability"]["dissent_adjudications"] = [
+        {"dissent_id": "DIS-1", "adjudicator": "user", "outcome": "replacement_approved",
+         "rationale": "Approved at the checkpoint."}
+    ]
+    assert_mismatch(tmp_path, s, capsys, "is a ghost")
+
+
 def test_below_bound_adjudication_rejected(tmp_path, capsys):
     # codex round-4 #1: dissents below the §7 bound stand unadjudicated by design
     s = scenario_complex()

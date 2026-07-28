@@ -1242,6 +1242,18 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             fails.add(f"dissent {rec['dissent_id']}: item {rec['item_id']} has no pre-commitment record")
         elif rec["criterion_hash"] != canonical_hash(pre):
             fails.add(f"dissent {rec['dissent_id']}: criterion_hash does not recompute from the Phase-1 record (§7)")
+        # Reverse witness (§7): a dissent swaps the criterion BEFORE the
+        # verdict — "The item's verdict record then carries
+        # applied_criterion: dissented:<dissent_id>". A ghost dissent that
+        # was never applied cannot exist, trip the §7 bound, or authorize
+        # an original_upheld re-application of a criterion that was in
+        # fact applied at 2A.
+        applied = verdict_by_item.get(rec["item_id"], {}).get("applied_criterion")
+        if applied != f"dissented:{rec['dissent_id']}":
+            fails.add(
+                f"dissent {rec['dissent_id']}: the item's verdict record must carry "
+                f"applied_criterion dissented:{rec['dissent_id']} — a dissent that was never applied is a ghost (§7)"
+            )
     # §7 bounds (SD-5): dissent on a P1 item, or dissents on > ceil(N/3) of
     # all items, trips independent adjudication of EVERY dissent record.
     total_items = len(roadmap_items)
@@ -1502,6 +1514,27 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                     f"reapplication {rec['reapplication_id']}: a divergence-only re-application exists only for an "
                     "evaluated P1 row under ACTIVE cross-model (§6/§5.3) — no committed verdict moves without its "
                     "triggering divergence"
+                )
+            elif row["cross_model_verdict"] == rec["pre_reapplication_verdict"]:
+                # §6 dispatch order is normative: diverges is identified
+                # FIRST (judge verdict vs the row's verdict), THEN the
+                # system intent is emitted and the 2B' call dispatched. A
+                # judge verdict equal to the dispatch-time pre-value means
+                # no divergence existed to resolve — the chain manufactures
+                # its own diverges status after the fact.
+                fails.add(
+                    f"reapplication {rec['reapplication_id']}: no divergence existed at dispatch — the judge's "
+                    "verdict equals the dispatch-time pre_reapplication_verdict (§6)"
+                )
+            if not any(
+                intents_by_id.get(ref.split(":", 1)[1], {}).get("answered_by") == "system"
+                for ref in rec["answer_refs"]
+                if ref.startswith("intent:")
+            ):
+                fails.add(
+                    f"reapplication {rec['reapplication_id']}: a divergence re-application chain carries the "
+                    "ORIGINAL mandating system intent (§6 — divergence resolution is MECHANICAL by default; user "
+                    "intents exist only on the retry paths, cumulatively alongside it)"
                 )
         # §5.3 letter-tag condition: a letter-tagged anchor on a
         # reapplication (and hence on its mechanically-copied
