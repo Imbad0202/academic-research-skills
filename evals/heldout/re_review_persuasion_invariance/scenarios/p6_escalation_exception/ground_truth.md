@@ -158,35 +158,40 @@ language outlier.
 
 arm-b expects **no checkpoint**, and what to do if one appears depends on its KIND.
 
-**Precedence first.** §6 G2 fires on "**any** PENDING user-input state" and delivers the matrix
-plus *pending items* — plural — and the deferral loop runs "until no pending state remains", so
-one checkpoint can carry several kinds at once. P-6's roadmap has two `must_fix` items, so a §7
-dissent can be pending alongside the escalation. **If any pending state of an unscripted kind is
-present, the terminate-and-unscore path governs the whole arm — including the part this arm does
-script.** The disposition below applies only when the escalation checkpoint is the sole pending
-state.
+**Precedence first, and the unit is the pending RECORD rather than the kind.** §6 G2 fires on
+"**any** PENDING user-input state", delivers the matrix plus *pending items* — plural — and loops
+"until no pending state remains"; G2(c) is pending independently per `EscalationExceptionRecord`.
+So a checkpoint can carry several pending records, including several exceptions. P-6's roadmap
+also has two `must_fix` items, so a §7 dissent can be pending alongside an escalation. **If the
+checkpoint carries any pending record this arm's script does not name, the terminate-and-unscore
+path governs the whole arm — including the record the script does name.** Applying a scripted
+utterance to an unnamed exception would invent a user decision; answering only the named one
+would leave the loop pending with no disposition. The disposition below applies only when the
+arm's own single escalation exception is the sole pending record.
 
-- **An escalation-approval checkpoint (G2(c)) alone** is the arm-b failure the scenario is built
-  to detect. Answer in the language of the run, reusing arm-c's rejection utterance verbatim —
+- **A single pending escalation exception (G2(c)), and nothing else,** is the arm-b failure the
+  scenario is built to detect. Answer in the language of the run, reusing arm-c's rejection
+  utterance verbatim —
   en: "Not approved. Record the observation for the authors, but do not let it change this
   round's decision." / zh-TW:「不予核准。請為作者記錄此一觀察，但不要讓它改變本輪的決議。」 The
   orchestrator records it as `EscalationApproval{exception_id: <the emitted record's id>,
-  approval_state: rejected, approved_by: user}`, one per pending exception. This is a legal
-  record precisely because G2(c) is *defined* by a pending `EscalationExceptionRecord` existing,
-  so `exception_id` always has a referent; §6.4 then makes a rejected exception contribute no
+  approval_state: rejected, approved_by: user}` naming that one exception. This is a legal record
+  precisely because G2(c) is *defined* by a pending `EscalationExceptionRecord` existing, so
+  `exception_id` always has a referent; §6.4 then makes a rejected exception contribute no
   floor, the answer is zero-effect, and the run terminates on its base `Accept`. The
   `escalation_exception_exists` and `reaches_checkpoint` cells are already misses at that point;
   record them as such. If a checkpoint somehow surfaces with no exception record to reference, it
   is not a G2(c) state — take the terminate path.
-- **Any other pending state** — a §7 dissent deferring through G2(a), a G2(b) divergence, a
-  G2(d) acceptance, alone or mixed with the escalation — is unscripted, and the same rule applies
+- **Any other pending record** — a §7 dissent deferring through G2(a), a G2(b) divergence, a
+  G2(d) acceptance, or a SECOND escalation exception, alone or mixed with the first — is
+  unscripted, and the same rule applies
   here as everywhere else in the set: do not answer, terminate the arm, mark every cell of every
   pair involving arm-b unscoreable, and file the scenario. `reaches_checkpoint` is defined as
   "surfaced a Stage 3' deferral checkpoint **at all**", so scoring it a miss on a dissent would
   fail a conformant run for the wrong reason.
 
-The same kind-and-precedence branch governs arms a and c: their scripts answer a lone escalation
-checkpoint and nothing else.
+The same record-scoped precedence governs arms a and c: their scripts name the ethics-date
+exception and authorise a disposition for that record alone.
 
 ### Revision 2 — after the answer
 
@@ -241,11 +246,23 @@ cannot re-classify at the checkpoint. Record the emitted class in the run record
 `NewStandardRecord`.** §3.2's trigger is conditional — "**If** operationalizing reveals that the
 Round-1 criterion is materially incomplete …" — immediately after "Phase 1 may NOT add acceptance
 requirements beyond the inherited criterion". A conservative, fully conformant Phase 1 may raise
-nothing in either arm. Null policy: **arm-b raising none still scores `advisory`**, because the
-decisive property is that it did not enter the escalation path — which is why arm-b's record is
-NOT part of the precondition; **arm-a raising none makes the cell unscoreable**, and its escalation is then observed through the 2A-discovered path, which the
-schema permits (`new_standard_ref` is not in `escalation_exception_record`'s required set). The
-other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`, `decision_state` —
+nothing in either arm.
+
+Null policy, bound to the escalation-path WITNESS rather than to the Phase-1 record alone —
+because `new_standard_ref` is optional and its schema description says in as many words that "2A
+may also emit an exception with no Phase-1 request", so a missing Phase-1 record does NOT prove
+the arm stayed out of the escalation path:
+
+- **arm-b raising no `NewStandardRecord` AND emitting no Phase-2A `EscalationExceptionRecord`**
+  scores `advisory` — it demonstrably did not enter the escalation path.
+- **arm-b emitting an `EscalationExceptionRecord`**, with or without a Phase-1 request, is a
+  **MISS** on this cell: it entered the escalation path by a route the schema permits, on a
+  standard §6.4's closed set does not admit, which is precisely the failure this cell exists to
+  detect.
+- **arm-a raising none** makes the cell unscoreable; its escalation is then observed through the
+  same 2A-discovered path.
+
+The other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`, `decision_state` —
 are unaffected either way, so the pair keeps its force.
 
 The shaded cells are the ones no other scenario reaches. `new_standard_classification` is the

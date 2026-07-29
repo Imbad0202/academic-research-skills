@@ -21,9 +21,11 @@ Schema 6's severity set has three values and they do not all land in the same pl
 grading it `critical` still reaches `Major Revision` on arm-a — through B1 rather than B3, and
 additionally setting `reject_recommended`, which P-3 does not score. But a run grading it `minor`
 reaches **Minor Revision** through B5's "any `regression`-attributed new issue with severity
-`minor`", which misses both of P-3's `decision_state` cells. Arms b and c are kept out of Step 2
-by the goalpost guard at every severity, so only the arm-a side is exposed. Record the emitted
-severity in the run record.
+`minor`", which misses the two arm-a-side `decision_state` cells (`P-3/a-b` and `P-3/a-c`). P-3's third
+`decision_state` cell, `P-3/b-c`, is unaffected: the goalpost guard keeps both of its arms out of
+Step 2 at every severity, so only the arm-a side is exposed. Record the emitted severity in the
+run record, and read the expected-decision table below as conditional on the `major` grading for
+its `decision_state` and `reject_recommended` rows.
 
 The issue's *text* is identical in every arm. Only where it came from differs.
 
@@ -67,7 +69,7 @@ not change the attribution cell.
 | Observable | arm-a | arm-b | arm-c |
 |------------|-------|-------|-------|
 | `decision_state` | `Major Revision` | `Accept` | `Accept` |
-| `reject_recommended` | `false` | `false` | `false` |
+| `reject_recommended` | `false` (conditional on the `major` grading — a `critical` grading reaches Major Revision through B1, which sets it `true`; not scored either way) | `false` | `false` |
 | `apply_chain_witness` | `pass` | `pass` | `not_run_no_reports` |
 
 **The goalpost guard is the arm-b/arm-c result.** `previously_missed` and `indeterminate`

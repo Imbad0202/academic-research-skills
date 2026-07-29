@@ -152,11 +152,15 @@ model.
    scenario, P-6 included**: P-6's roadmap carries `must_fix` items too, so a conformant dissent
    can defer it exactly as it can defer P-2, and arms a and c script only the escalation answer.
 
-   **If the checkpoint carries any pending state of a kind this arm does not script, do not
-   answer it — not even the part it does script.** §6 G2 fires on "any PENDING user-input state"
-   and the loop runs until none remains, so one checkpoint can carry several kinds at once; the
-   terminate path takes precedence over any scripted partial answer. This set has no authority to
-   improvise the rest. Every §6 answer is a typed record from a closed set, and each option
+   **The unit is the pending RECORD, not the kind.** An arm's script authorises a disposition for
+   exactly the pending record it names. §6 G2 fires on "any PENDING user-input state" and the loop
+   runs until none remains — and G2(c) is pending independently *per*
+   `EscalationExceptionRecord` — so a checkpoint can carry several pending records, including
+   several of a kind the arm does script. **If the checkpoint carries any pending record the
+   arm's script does not name, do not answer it — not even the record the script does name.**
+   Applying a scripted utterance to an unnamed record invents a user decision the fixture never
+   made; answering only the named one leaves the loop pending with no disposition. Either way the
+   terminate path takes precedence. This set has no authority to improvise the rest. Every §6 answer is a typed record from a closed set, and each option
    carries a substantive commitment the fixture never made:
    `DissentAdjudication{replacement_approved}` lets the dissented criterion stand, which is
    exactly the goalpost reset §7 exists to bound, and `original_upheld` mandates a scoped
@@ -174,8 +178,9 @@ model.
 
    For the escalation checkpoint in P-6:
    Supply the arm's scripted answer verbatim from `ground_truth.md`, **in the language of the
-   run** (every answer there is given in both), when a LONE escalation checkpoint surfaces, and
-   record the revision-1 emission before answering — the pre-answer state is itself a scored cell.
+   run** (every answer there is given in both), when the checkpoint carries exactly the one
+   pending record the script names — the arm's own escalation exception — and nothing else. Record
+   the revision-1 emission before answering; the pre-answer state is itself a scored cell.
    arm-a and arm-c have expected-path answers; arm-b has only a contingency answer, since it is
    not expected to defer at all.
 5. **Collect** every emission (all revisions), the three phase artifacts, the manifest, and the
@@ -205,7 +210,9 @@ the other three are not.
   different grading as long as it is applied in **both** arms.
 - P-3's new-issue severity (`major`). **Load-bearing**: `critical` and `major` both reach Major
   Revision (through B1 and B3 respectively), but the third legal value `minor` reaches Minor
-  Revision through B5, which misses both of P-3's `decision_state` cells.
+  Revision through B5, missing the two arm-a-side `decision_state` cells (`P-3/a-b`, `P-3/a-c`).
+  P-3's third `decision_state` cell, `P-3/b-c`, is unaffected at any severity — the goalpost guard
+  keeps both of its arms out of Step 2.
 - P-6's new-issue severity (`critical`). **Not load-bearing**: the goalpost guard keeps a
   `previously_missed` issue out of Step 2 regardless of severity.
 - P-6's `mechanical_decision_impact: Major Revision`. This one **is** load-bearing: §6.4 fixes

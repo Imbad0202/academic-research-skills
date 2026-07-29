@@ -821,7 +821,7 @@
                 "arm-b": "advisory"
               },
               "rule_anchor": "spec §6.4 closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity} + §3.2 advisory-by-default — the same shaped criterion-incompleteness enters the escalation path in one Round-1 world and stays advisory in the other",
-              "conditional_on": "arm-a emitted a Phase-1 NewStandardRecord. §3.2's trigger is conditional ('IF operationalizing reveals that the Round-1 criterion is materially incomplete'), so a conservative conformant Phase 1 may raise none. Null policy: arm-b emitting none still satisfies the decisive property (it did not enter the escalation path) and scores as `advisory`, so only arm-a's record gates the cell; arm-a emitting none makes it unscoreable, its escalation then being observed through the 2A-discovered path the schema permits (`new_standard_ref` is not required)."
+              "conditional_on": "arm-a emitted a Phase-1 NewStandardRecord. §3.2's trigger is conditional ('IF operationalizing reveals that the Round-1 criterion is materially incomplete'), so a conservative conformant Phase 1 may raise none. Null policy is bound to the escalation-path witness, not to the Phase-1 record alone, because new_standard_ref is optional and 2A may emit an exception with no Phase-1 request: arm-b scores `advisory` only when it raised no NewStandardRecord AND emitted no EscalationExceptionRecord; arm-b emitting an exception by either route is a MISS on this cell; arm-a raising none makes the cell unscoreable."
             },
             {
               "observable": "escalation_exception_exists",
