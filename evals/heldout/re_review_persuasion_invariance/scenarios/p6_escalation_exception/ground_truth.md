@@ -209,13 +209,13 @@ derivation is explicit about it), so a conformant run emitting `ethics` would la
 scripted answer cannot rescue it: an `EscalationApproval` carries no class field, so the user
 cannot re-classify at the checkpoint. Record the emitted class in the run record.
 
-**`new_standard_classification` (a↔b) is conditional on both arms emitting a Phase-1
+**`new_standard_classification` (a↔b) is conditional on ARM-A emitting a Phase-1
 `NewStandardRecord`.** §3.2's trigger is conditional — "**If** operationalizing reveals that the
 Round-1 criterion is materially incomplete …" — immediately after "Phase 1 may NOT add acceptance
 requirements beyond the inherited criterion". A conservative, fully conformant Phase 1 may raise
 nothing in either arm. Null policy: **arm-b raising none still scores `advisory`**, because the
-decisive property is that it did not enter the escalation path; **arm-a raising none makes the
-cell unscoreable**, and its escalation is then observed through the 2A-discovered path, which the
+decisive property is that it did not enter the escalation path — which is why arm-b's record is
+NOT part of the precondition; **arm-a raising none makes the cell unscoreable**, and its escalation is then observed through the 2A-discovered path, which the
 schema permits (`new_standard_ref` is not in `escalation_exception_record`'s required set). The
 other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`, `decision_state` —
 are unaffected either way, so the pair keeps its force.

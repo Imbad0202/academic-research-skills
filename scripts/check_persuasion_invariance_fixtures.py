@@ -31,9 +31,12 @@ Invariants:
      equal `claim_set` on every arm. This pins the DECLARED arrays, which is the maintainer's
      construct-validity commitment for P-1; no claim id is bound to letter prose, and the
      lint does not pretend to check the text.
-  8. Hash placeholders: a file carrying an apply report declares ALL THREE hash keys, exactly
-     once each, and each carries ITS OWN placeholder token — key-bound, so a swapped pair, a
-     dropped key, a duplicated key, and a literal hex all fail.
+  8. Hash placeholders: an apply report is detected independently of the hash keys (any of
+     `report_format_version` / `hunks_applied` / `hunks_rejected` / a hash key), and a file
+     carrying one declares `report_format_version` and ALL THREE hash keys exactly once each,
+     each bound to ITS OWN placeholder token — so a swapped pair, a dropped key, a duplicated
+     key and a literal hex all fail. The number of report-bearing files is pinned, so deleting
+     a whole report block fails too.
   9. Pointer arms: a declared `material_pointer` has a pointer file in every language naming
      the pointed-to arm's file for that language; the target exists and is NOT itself a
      pointer; no undeclared pointer file exists.
@@ -91,6 +94,9 @@ EXPECTED_PAIRS = {
     "P-6": {"P-6/a-c", "P-6/a-b", "P-6/b-c"},
 }
 EXPECTED_CELL_COUNTS = {"P-1": 6, "P-2": 4, "P-3": 11, "P-4": 6, "P-5": 7, "P-6": 9}
+# Files (packets + non-pointer arm materials, both languages) that carry an apply report.
+# Pinned so deleting a whole report block fails instead of quietly passing the per-key checks.
+EXPECTED_APPLY_REPORT_FILES = 22
 
 REQUIRED_TOP = {
     "set_version",
@@ -129,6 +135,12 @@ PLACEHOLDERS = tuple(HASH_KEY_TOKENS[k] for k in
                      ("base_draft_hash", "output_draft_hash", "patch_digest"))
 POINTER_RE = re.compile(r"^ARM-MATERIAL-POINTER:\s*(\S+)\s*$")
 SECTION_RE = re.compile(r"^##\s+([A-Z])\.\s", re.MULTILINE)
+# An apply report is detected independently of the hash keys, so removing all three cannot
+# make the file look report-free.
+APPLY_REPORT_MARKER_RE = re.compile(
+    r'"(report_format_version|hunks_applied|hunks_rejected|base_draft_hash'
+    r'|output_draft_hash|patch_digest)"\s*:'
+)
 PAIR_ROW_RE = re.compile(
     r"^\|\s*\**([a-z])↔([a-z])\**\s*\|\s*([^|]+)\|\s*[^|]*\|\s*([^|]*)\|", re.MULTILINE
 )
@@ -235,7 +247,7 @@ def check_inventory(data: dict, errors: list[str]) -> None:
 
 
 def check_scenario(scenario: dict, relations: set[str], observables: set[str],
-                   errors: list[str]) -> None:
+                   errors: list[str], report_bearing: list[Path]) -> None:
     sid = scenario.get("id", "<unknown>")
     missing = REQUIRED_SCENARIO - set(scenario)
     if missing:
@@ -297,7 +309,8 @@ def check_scenario(scenario: dict, relations: set[str], observables: set[str],
 
     check_pairs(scenario, arm_ids, relations, observables, errors)
     check_claim_sets(scenario, errors)
-    check_placeholders(sid, packet_paths, material_paths, pointer_arms, errors)
+    check_placeholders(sid, packet_paths, material_paths, pointer_arms, errors,
+                       report_bearing)
     check_pointers(sid, scenario, material_paths, pointer_arms, errors)
     check_heldout_boundary(sid, scenario, packet_paths, material_paths, errors)
     check_section_split(sid, scenario, packet_paths, material_paths, pointer_arms, errors)
@@ -344,8 +357,13 @@ def check_cell(label: str, cell: dict, arms: set[str], relations: set[str],
         errors.append(f"5. {label} relation {cell['relation']!r} is not in relation_enum")
     if not str(cell["rule_anchor"]).strip():
         errors.append(f"5. {label} rule_anchor is empty")
-    if "conditional_on" in cell and not str(cell["conditional_on"]).strip():
-        errors.append(f"5. {label} conditional_on is present but empty")
+    if "conditional_on" in cell and (
+        not isinstance(cell["conditional_on"], str) or not cell["conditional_on"].strip()
+    ):
+        errors.append(
+            f"5. {label} conditional_on must be a non-empty string, got "
+            f"{type(cell['conditional_on']).__name__}"
+        )
     if "on_mismatch" in cell and cell["on_mismatch"] not in ON_MISMATCH_VALUES:
         errors.append(
             f"5. {label} on_mismatch {cell['on_mismatch']!r} is not in {sorted(ON_MISMATCH_VALUES)}"
@@ -393,7 +411,8 @@ def check_claim_sets(scenario: dict, errors: list[str]) -> None:
 
 def check_placeholders(sid: str, packet_paths: dict[str, Path],
                        material_paths: dict[tuple[str, str], Path],
-                       pointer_arms: set[str], errors: list[str]) -> None:
+                       pointer_arms: set[str], errors: list[str],
+                       report_bearing: list[Path]) -> None:
     candidates: list[Path] = list(packet_paths.values())
     candidates += [p for (aid, _), p in material_paths.items() if aid not in pointer_arms]
     for path in sorted(candidates):
@@ -403,8 +422,18 @@ def check_placeholders(sid: str, packet_paths: dict[str, Path],
             key: re.findall(rf'"{key}"\s*:\s*"([^"]*)"', text)
             for key in HASH_KEY_TOKENS
         }
-        if not any(found.values()):
-            continue  # no apply report in this file (legitimate: e.g. a no-reports arm)
+        if not APPLY_REPORT_MARKER_RE.search(text):
+            # No apply report in this file. Legitimate for a no-reports arm (P-3 arm-c) or a
+            # packet that supplies no §G; the set-level count below is what stops a report
+            # from being deleted wholesale.
+            continue
+        report_bearing.append(path)
+        versions = re.findall(r'"report_format_version"\s*:', text)
+        if len(versions) != 1:
+            errors.append(
+                f"8. {sid} {rel} carries an apply report with {len(versions)} "
+                f'"report_format_version" key(s), expected exactly 1'
+            )
         for key, token in HASH_KEY_TOKENS.items():
             values = found[key]
             if len(values) != 1:
@@ -570,10 +599,17 @@ def main() -> int:
         return 1
 
     check_inventory(data, errors)
+    report_bearing: list[Path] = []
     relations = set(data.get("relation_enum") or {})
     observables = set(data.get("observable_enum") or {})
     for scenario in data.get("scenarios", []):
-        check_scenario(scenario, relations, observables, errors)
+        check_scenario(scenario, relations, observables, errors, report_bearing)
+
+    if len(report_bearing) != EXPECTED_APPLY_REPORT_FILES:
+        errors.append(
+            f"8. {len(report_bearing)} material/packet file(s) carry an apply report, expected "
+            f"{EXPECTED_APPLY_REPORT_FILES} — a wholesale deletion cannot shrink the set silently"
+        )
 
     if errors:
         for err in errors:

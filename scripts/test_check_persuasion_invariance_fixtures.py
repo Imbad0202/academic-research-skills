@@ -55,6 +55,9 @@ GT_TEMPLATE = """# {sid} ground truth
 # Pins matched to the synthetic tree (one pair, two cells per scenario).
 SYNTH_PAIRS = {sid: {f"{sid}/a-b"} for sid in mod.EXPECTED_ARMS}
 SYNTH_CELL_COUNTS = {sid: 2 for sid in mod.EXPECTED_ARMS}
+# synthetic tree: two non-pointer arms x two languages for P-1/P-2/P-4, three for
+# P-3/P-5, and two non-pointer arms for P-6 -> (2+2+3+2+3+2) * 2 = 28 report-bearing files
+SYNTH_APPLY_REPORT_FILES = 28
 
 
 def _scenario(sid: str, sdir: str, arm_ids: list[str], *, claim_equality: bool = False,
@@ -191,6 +194,7 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
              mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
              mock.patch.object(mod, "EXPECTED_PAIRS", SYNTH_PAIRS), \
              mock.patch.object(mod, "EXPECTED_CELL_COUNTS", SYNTH_CELL_COUNTS), \
+             mock.patch.object(mod, "EXPECTED_APPLY_REPORT_FILES", SYNTH_APPLY_REPORT_FILES), \
              mock.patch("sys.stderr", new_callable=_Buffer) as err, \
              mock.patch("sys.stdout", new_callable=_Buffer) as out:
             code = mod.main()
@@ -300,7 +304,11 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
 
     def test_empty_conditional_on_fails(self) -> None:
         self.index["scenarios"][0]["pairs"][0]["cells"][0]["conditional_on"] = "  "
-        self.assert_fails("conditional_on is present but empty")
+        self.assert_fails("conditional_on must be a non-empty string")
+
+    def test_non_string_conditional_on_fails(self) -> None:
+        self.index["scenarios"][0]["pairs"][0]["cells"][0]["conditional_on"] = {"when": "x"}
+        self.assert_fails("conditional_on must be a non-empty string, got dict")
 
     def test_unknown_on_mismatch_fails(self) -> None:
         self.index["scenarios"][0]["pairs"][0]["cells"][1]["on_mismatch"] = "shrug"
@@ -358,6 +366,36 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
                 encoding="utf-8")
         self.tree_mutation = mutate
         self.assert_fails('carries an apply report with 2 "patch_digest" key(s)')
+
+    def test_whole_apply_report_deleted_fails(self) -> None:
+        """Removing every hash key must not make the file look report-free."""
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s2/arms/arm-a.en.md"
+            t = p.read_text(encoding="utf-8")
+            for token in mod.PLACEHOLDERS:
+                t = "\n".join(l for l in t.splitlines() if token not in l)
+            p.write_text(t + "\n", encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails('carries an apply report with 0 "base_draft_hash" key(s)')
+
+    def test_apply_report_block_removed_entirely_fails(self) -> None:
+        """Deleting the whole report block trips the pinned report-bearing file count."""
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s2/arms/arm-a.en.md"
+            p.write_text("## H. Response to Reviewers\n\ncontent\n", encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("file(s) carry an apply report, expected 28")
+
+    def test_duplicate_report_format_version_fails(self) -> None:
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s2/arms/arm-a.en.md"
+            p.write_text(
+                p.read_text(encoding="utf-8").replace(
+                    '  "report_format_version": "1.2",\n',
+                    '  "report_format_version": "1.2",\n  "report_format_version": "1.2",\n'),
+                encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails('with 2 "report_format_version" key(s)')
 
     def test_swapped_placeholder_tokens_fail(self) -> None:
         def mutate(root: Path) -> None:

@@ -129,8 +129,12 @@ model.
    - **§G** holds TWO manifest artifacts — the patch (a `revision_patches[]` entry) and the
      apply report (an `apply_reports[]` entry). Write them separately, and keep the arrays
      equal in length and paired by position.
-   - **§E / §F / §G** are absent by design in P-3 arm-c. Emit `{present: false}` for those
-     manifest entries; write no file and no sentinel.
+   - **§E and §G** are absent by design in P-3 arm-c — the original manuscript and both array
+     artifacts. Emit `{present: false}` for `original_manuscript`, `revision_patches` and
+     `apply_reports`; write no file and no sentinel. **§F is NOT absent there.**
+     `revised_manuscript` is hard-required (§11: absent → G0), arm-c carries it, and its own §I
+     declares it present — declaring it absent would abort the arm at G0 before any gate ran and
+     take seven of P-3's eleven cells with it.
 2. **Stamp the hashes.** Compute each artifact's sha256 for the §11 manifest and substitute the
    placeholders in the apply report with the computed values. Widths differ and the checker
    enforces them: `base_draft_hash` and `output_draft_hash` are the **12-hex prefix** form that
@@ -143,11 +147,19 @@ model.
    enforced by the dispatcher: Phase 1 sees no revision, Phase 2A sees no Response Letter.
 4. **Answer the checkpoint from the script, not from judgment.** Only P-6 expects a deferral.
    **If any other scenario surfaces one** — a §7 dissent on a P1 item trips the bound and defers
-   through §6 G2(a), which is a legal conformant outcome no scripted answer covers — do not
-   improvise a substantive answer. Record the deferral and its G2 sub-state, answer with the
-   neutral form "Proceed on the verifier's committed assessment; no re-examination is directed."
-   / 「依驗證者已提交的判斷繼續；不指示重新檢驗。」, and mark that arm's affected cells
-   unscoreable in the run record.
+   through §6 G2(a), which is a legal conformant outcome — **do not answer it.** This set has no
+   authority to. Every §6 answer is a typed record from a closed set, and each option carries a
+   substantive commitment the fixture never made: `DissentAdjudication{replacement_approved}`
+   lets the dissented criterion stand, which is exactly the goalpost-reset §7 exists to bound,
+   and `original_upheld` mandates a scoped Phase 2B′ re-application. Improvising either would
+   inject a maintainer judgment into a measured run and record it as if the protocol had produced
+   it.
+
+   Instead: record the deferral, its G2 sub-state, and the dissent record; terminate the arm
+   unanswered; mark **every cell of every pair involving that arm** unscoreable — the whole arm,
+   not a subset, so two operators cannot compute different denominators from the same emission;
+   and file the scenario for revision, since a fixture that reliably provokes a dissent has a
+   criterion problem.
    For P-6:
    Supply the arm's scripted answer verbatim from `ground_truth.md`, **in the language of the
    run** (each answer is given in both), when the run surfaces the checkpoint, and record the
@@ -170,7 +182,7 @@ Ground truth here is **derivable from the shipped spec**, like
 cites the clause that mandates it. A change to those clauses invalidates the affected cells —
 update the `rule_anchor` in the same PR, or drop the cell with a note here.
 
-Three values are maintainer judgments rather than spec derivations, and each is flagged in its
+Five values are maintainer judgments rather than spec derivations, and each is flagged in its
 scenario's `ground_truth.md`:
 
 - P-1's `residual_magnitude: must_fix` on REV-002. The pair's primary cells survive a
