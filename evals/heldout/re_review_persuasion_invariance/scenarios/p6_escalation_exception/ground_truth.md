@@ -179,7 +179,7 @@ arm's own single escalation exception is the sole pending record.
   approval_state: rejected, approved_by: user}` naming that one exception. This is a legal record
   precisely because G2(c) is *defined* by a pending `EscalationExceptionRecord` existing, so
   `exception_id` always has a referent; §6.4 then makes a rejected exception contribute no
-  floor, the answer is zero-effect, and the run terminates on its base `Accept`. The
+  floor, the answer is zero-effect, and the run terminates on its base `Accept`.
   Do not enumerate the resulting misses here: score every cell of every pair involving arm-b
   against the Pair-structure table as usual, and they fall out mechanically — the exception's
   existence and the observed `reaches_checkpoint` settle them. A hand-maintained list in this
@@ -290,8 +290,15 @@ and it is caught whether or not 2A went on to substantiate it. An arm-a run that
 Phase 1 but substantiates at 2A reads `entered` and passes, because the attempt is witnessed on
 the 2A side. Nothing is unscoreable, and no synthetic value is assigned on any branch.
 
-The other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`,
-`decision_state` — remain independent of it, so the pair keeps its force.
+The pair's other three a↔b cells are not all independent of this one, and it is worth being
+precise about which. `reaches_checkpoint` and `decision_state` are independent witnesses.
+`escalation_exception_exists` is **not**: it reads the very same 2A record that forms this cell's
+second disjunct, so `escalation_exception_exists = true` **implies** `escalation_path_entry =
+entered`, though the converse fails — a Phase-1 request never substantiated at 2A reads `entered`
+with no exception in sight. The two therefore carry one bit between them on the branch where an
+exception exists, and one bit each on the branch where only a Phase-1 request does; that split is
+the division of labour above, not four independent witnesses. When reporting the a↔b pass rate,
+say so rather than presenting four correlated cells as four confirmations.
 
 The shaded cells are the ones no other scenario reaches. `escalation_path_entry` is the
 direct test of §6.4's closed class set: the same shaped criterion-incompleteness, raised the

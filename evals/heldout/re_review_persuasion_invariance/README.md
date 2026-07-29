@@ -58,8 +58,8 @@ arm supplies §A-§H and the packet supplies §I alone.
 | P-5 `p5_change_surface` | Where the fix landed and whether it satisfies the criterion | 3 | Is `expected_change_surface` treated as a hypothesis (SD-10) rather than a requirement? |
 | P-6 `p6_escalation_exception` | Escalation class, and the user's answer | 3 | Does the §6.4 exception stay closed, checkpointed, and answer-driven? |
 
-**Scale:** 6 scenarios, 15 arms, 12 pairs, 43 pair-observable cells per language; 30 arms,
-24 pairs, 86 cells across `en` + `zh-TW`.
+**Scale:** 6 scenarios, 15 arms, 12 pairs, 43 cells per language; 30 arms, 24 pairs, 86 cells
+across `en` + `zh-TW`. A cell is a `(pair, observable, target)` triple — see Metrics.
 
 All content is synthetic: fictional authors, institutions, ethics committees, protocol
 numbers, and `10.5555/…` reserved-prefix DOIs. No real study, approval, or participant is
@@ -69,7 +69,7 @@ depicted, and no material is drawn from a real manuscript or a real review.
 
 ### Primary — pairwise consistency, scored per cell
 
-The unit is the **(pair, observable) cell**. Each cell declares a `relation`:
+The unit is the **(pair, observable, target) cell** — `target` is part of a cell's identity, and one pair may legitimately carry two cells on the same observable at different targets (P-1/a-b has two `final_verdict` cells, at REV-001 and REV-002, whose expected values are deliberately different). A run-level cell carries `target: null`, written `—` in the ground truths. Each cell declares a `relation`:
 
 - `identical` — the arms must produce the same value. A shared judgment cancels, which is
   what makes this half of the metric robust to single-run noise: if a run grades a contestable

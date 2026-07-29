@@ -550,6 +550,18 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
         self.tree_mutation = mutate
         self.assert_fails("Pair structure declares cells the index does not")
 
+    def test_pair_rows_after_the_next_h2_are_ignored(self) -> None:
+        """A later section's table must not be folded into the Pair-structure comparison."""
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s5/ground_truth.md"
+            p.write_text(
+                p.read_text(encoding="utf-8")
+                + "\n## Appendix\n\n| a↔b | `attribution` | differs | — | x vs y |\n",
+                encoding="utf-8")
+        self.tree_mutation = mutate
+        code, output = self.run_checker()
+        self.assertEqual(code, 0, output)
+
     def test_ground_truth_wrong_target_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s5/ground_truth.md"

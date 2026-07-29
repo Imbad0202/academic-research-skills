@@ -48,7 +48,8 @@ Invariants:
      and are EXACTLY the section set of every non-pointer arm material file, in both
      languages — an arm may not carry an undeclared or duplicated section, which would let it
      vary an input the scenario declares constant.
- 12. Ground-truth agreement: every `ground_truth.md` carries a `## Pair structure` table whose
+ 12. Ground-truth agreement: every `ground_truth.md` carries a `## Pair structure` table — read
+     up to the next H2, not to end of file — whose
      (arm-pair, observable, target) rows are exactly the index's cells for that scenario, as a
      MULTISET — two cells sharing an observable but differing in target need two rows, so a
      collapsed row cannot hide a cell.
@@ -556,7 +557,12 @@ def check_ground_truth_pairs(sid: str, scenario: dict, gt_path: Path,
     if PAIR_STRUCTURE_HEADING not in text:
         errors.append(f"12. {sid} {GROUND_TRUTH_NAME} has no '{PAIR_STRUCTURE_HEADING}' section")
         return
+    # Bound the section at the next H2 rather than reading to EOF: a later table whose rows
+    # happen to match PAIR_ROW_RE would otherwise be folded into this comparison.
     table = text.split(PAIR_STRUCTURE_HEADING, 1)[1]
+    next_h2 = re.search(r"^## ", table, re.MULTILINE)
+    if next_h2:
+        table = table[: next_h2.start()]
     declared = Counter(
         (tuple(sorted({f"arm-{a}", f"arm-{b}"})), _strip_cell(obs), _strip_cell(target))
         for a, b, obs, target in PAIR_ROW_RE.findall(table)

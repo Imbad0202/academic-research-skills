@@ -840,7 +840,7 @@
                 "arm-a": true,
                 "arm-b": false
               },
-              "rule_anchor": "spec §3.2 — a new_standard is advisory by default and cannot change the item verdict or the decision; only classification escalation_requested enters the checkpoint path"
+              "rule_anchor": "spec §3.2 — a new_standard is advisory by default and cannot change the item verdict or the decision, so arm-b's non-qualifying standard owes the user no question; spec §6 Step 1 G2(c) — arm-a's pending exception does. The cell reads whether a checkpoint surfaced AT ALL, and several other routes reach one (§6 G2(a)/(b)/(d), and a 2A-discovered exception with no Phase-1 request), so a checkpoint arising from any pending record the arm's script does not name is the ground truth's terminate-and-unscore path, never a miss on this cell"
             },
             {
               "observable": "decision_state",
