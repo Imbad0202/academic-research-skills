@@ -277,8 +277,10 @@ both witnesses support.
 
 **It measures the ATTEMPT, not its success.** A Phase-1 request that is never substantiated at 2A
 "lapses to advisory" (`precommitment.schema.json`; §11(iii) says the same of the no-original
-degradation) — and it still reads `entered` here, because §3.2's boundary is crossed at the moment
-of requesting a standard outside §6.4's closed class set. Whether the escalation then took effect
+degradation) — and it still reads `entered` here, because §3.2's boundary, advisory-by-default, is
+crossed at the moment of requesting escalation at all, whichever class the standard names. That
+holds for arm-a's qualifying request exactly as it does for a non-qualifying one. Whether the
+escalation then took effect
 is carried separately by `escalation_exception_exists`, `reaches_checkpoint` and
 `decision_state`; that division of labour is why this cell can afford to be total.
 
@@ -320,7 +322,8 @@ that cell sees it.
 ## Rule anchors
 
 - §3.1 — Phase 1 is revision-blind (the reason the arms differ in Round-1 artifacts)
-- §3.2 — `new_standard` boundary; advisory by default; `classification: escalation_requested` is the only escalation entry AVAILABLE TO PHASE 1, substantiated at Phase 2A — §3.2 and `verdict_record.schema.json` both add that 2A may emit an exception with no Phase-1 request, which is why `escalation_path_entry` reads both witnesses
+- §3.2 — `new_standard` boundary; advisory by default; `classification: escalation_requested` is the only escalation entry AVAILABLE TO PHASE 1, substantiated at Phase 2A
+- §5.1 — a request never substantiated at 2A lapses to advisory, and 2A may emit an exception with no Phase-1 request at all (`verdict_record.schema.json`'s `new_standard_ref` cites this clause, not §3.2); both facts are why `escalation_path_entry` reads two witnesses rather than the Phase-1 classification alone
 - §6.4 — closed class set; every required `EscalationExceptionRecord` field; original-text anchor requirement; mandatory human checkpoint; `rejected` contributes no floor; approved `research_integrity` additionally sets `reject_recommended`
 - §5.3 — `reject_recommended` presence biconditional (ABSENT on a gated emission)
 - §6 Step 1 G2(c) — a pending exception is a deferral state, not an abort
