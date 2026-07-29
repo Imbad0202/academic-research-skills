@@ -145,22 +145,31 @@ model.
    (`ARS_RE_REVIEW_LEGACY` unset), with the §11 manifest emitted before Phase 1 and
    `check_re_review_synthesis.py` run as its MANDATORY step. The withholding matrix must be
    enforced by the dispatcher: Phase 1 sees no revision, Phase 2A sees no Response Letter.
-4. **Answer the checkpoint from the script, not from judgment.** Only P-6 expects a deferral.
-   **If any other scenario surfaces one** — a §7 dissent on a P1 item trips the bound and defers
-   through §6 G2(a), which is a legal conformant outcome — **do not answer it.** This set has no
-   authority to. Every §6 answer is a typed record from a closed set, and each option carries a
-   substantive commitment the fixture never made: `DissentAdjudication{replacement_approved}`
-   lets the dissented criterion stand, which is exactly the goalpost-reset §7 exists to bound,
-   and `original_upheld` mandates a scoped Phase 2B′ re-application. Improvising either would
-   inject a maintainer judgment into a measured run and record it as if the protocol had produced
-   it.
+4. **Answer the checkpoint from the script, not from judgment — and branch on the checkpoint's
+   KIND, not on which scenario it appeared in.** Only P-6 scripts an answer, and only for the
+   §6.4 escalation-approval checkpoint (G2(c)). Every other §6 pending state — a §7 dissent
+   deferring through G2(a), a G2(b) divergence, a G2(d) acceptance — is unscripted **in every
+   scenario, P-6 included**: P-6's roadmap carries `must_fix` items too, so a conformant dissent
+   can defer it exactly as it can defer P-2, and arms a and c script only the escalation answer.
 
-   Instead: record the deferral, its G2 sub-state, and the dissent record; terminate the arm
-   unanswered; mark **every cell of every pair involving that arm** unscoreable — the whole arm,
-   not a subset, so two operators cannot compute different denominators from the same emission;
-   and file the scenario for revision, since a fixture that reliably provokes a dissent has a
-   criterion problem.
-   For P-6:
+   **If the surfaced checkpoint is not the kind this arm scripts, do not answer it.** This set
+   has no authority to. Every §6 answer is a typed record from a closed set, and each option
+   carries a substantive commitment the fixture never made:
+   `DissentAdjudication{replacement_approved}` lets the dissented criterion stand, which is
+   exactly the goalpost reset §7 exists to bound, and `original_upheld` mandates a scoped
+   Phase 2B′ re-application. A free-text "not approved" is not a member of either closed set at
+   all. Improvising any of them injects a maintainer judgment into a measured run and records it
+   as if the protocol had produced it.
+
+   Instead: record the deferral, its G2 sub-state, and the record that caused it; terminate the
+   arm unanswered; mark **every cell of every pair involving that arm** unscoreable — the whole
+   arm, not a subset, so two operators cannot compute different denominators from the same
+   emission; and file the scenario for revision, since a fixture that reliably provokes an
+   unscripted deferral has a criterion problem. Write the arm's record with
+   `measurement_status: blocked` and `score_eligible: false` under the inherited E4 evidence
+   contract, preserving the emissions alongside it.
+
+   For the escalation checkpoint in P-6:
    Supply the arm's scripted answer verbatim from `ground_truth.md`, **in the language of the
    run** (each answer is given in both), when the run surfaces the checkpoint, and record the
    revision-1 emission before answering — the pre-answer state is itself a scored cell.
@@ -182,15 +191,16 @@ Ground truth here is **derivable from the shipped spec**, like
 cites the clause that mandates it. A change to those clauses invalidates the affected cells —
 update the `rule_anchor` in the same PR, or drop the cell with a note here.
 
-Five values are maintainer judgments rather than spec derivations, and each is flagged in its
-scenario's `ground_truth.md`:
+**Six values** are maintainer judgments rather than spec derivations, and each is flagged as such
+in its scenario's `ground_truth.md`. **Two of the six are load-bearing for a scored cell** —
+P-6's `mechanical_decision_impact` and P-4's stated-argument reading; the other four are not.
 
 - P-1's `residual_magnitude: must_fix` on REV-002. The pair's primary cells survive a
   different grading as long as it is applied in **both** arms.
-- The severity assigned to P-3's new issue (`major`) and P-6's (`critical`). Both are stated
-  with their reasoning; **neither is load-bearing for any declared cell** — P-3's
-  `decision_state` reaches Major Revision through B1 or B3 either way, and P-6's is blocked from
-  Step 2 by the goalpost guard regardless of severity.
+- P-3's new-issue severity (`major`). **Not load-bearing**: `decision_state` reaches Major
+  Revision through B1 or B3 either way.
+- P-6's new-issue severity (`critical`). **Not load-bearing**: the goalpost guard keeps a
+  `previously_missed` issue out of Step 2 regardless of severity.
 - P-6's `mechanical_decision_impact: Major Revision`. This one **is** load-bearing: §6.4 fixes
   only the enum, §6 Step 3 is `max(base, floor)`, and P-6's base is `Accept`, so a conformant
   run emitting `Minor Revision` misses two `differs` cells for a reason unrelated to the
@@ -200,9 +210,10 @@ scenario's `ground_truth.md`:
   `reject_recommended`, so the affected cell is marked `conditional_on` and goes unscoreable
   rather than counting as a miss when a run classifies it `ethics`.
 - P-4's reading that Table 3 and §3.3 are *data* rather than the criterion's stated argument.
-  The criterion is worded to make that unambiguous (it asks for an argument stated in the
-  estimation section), but if a run returns `FULLY_ADDRESSED` at 2A in **both** arms, that is a
-  fixture construct failure and files against this set, not against the model.
+  **Load-bearing**: the criterion is worded to make it unambiguous (it asks for an argument
+  stated in the estimation section), but a run reading it the other way returns
+  `FULLY_ADDRESSED` at 2A in **both** arms and loses all four `differs` cells. If that happens it
+  is a fixture construct failure and files against this set, not against the model.
 
 Apart from these, no cell depends on a threshold the spec leaves open.
 

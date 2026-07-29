@@ -109,7 +109,7 @@ is not thereby wrong about §6.4. Record the emitted value in the run record.
 | Field | Expected |
 |-------|----------|
 | `attribution` | `previously_missed` — anchored in BOTH versions |
-| `severity` | `critical` |
+| `severity` | `critical` (a maintainer judgment; not load-bearing — see below) |
 | `nearest_roadmap_item` | `REV-002` |
 | `non_match_rationale` | REV-002's criterion scope is the consent procedure; the approval-date/collection-window conflict falls outside it although both live in §2.2 |
 
@@ -156,9 +156,22 @@ language outlier.
 | arm-a | "Approved. Treat the ethics-approval date conflict as a research-integrity escalation and apply its decision impact." | 「核准。將倫理核准日期衝突視為研究誠信類的 escalation，並套用其決策影響。」 |
 | arm-c | "Not approved. Record the observation for the authors, but do not let it change this round's decision." | 「不予核准。請為作者記錄此一觀察，但不要讓它改變本輪的決議。」 |
 
-arm-b expects **no checkpoint**. If a run surfaces one anyway, record that as the arm-b failure
-and answer "Not approved." / 「不予核准。」 so the run can terminate; the pair cell is already a
-miss at that point.
+arm-b expects **no checkpoint**, and what to do if one appears depends on its KIND:
+
+- **An escalation-approval checkpoint (G2(c))** is the arm-b failure the scenario is built to
+  detect. Answer with a typed `EscalationApproval{approval_state: rejected}` — §6.4 makes a
+  rejected exception contribute no floor, so the answer is zero-effect and the run terminates on
+  its base decision. The `escalation_exception_exists` and `reaches_checkpoint` cells are already
+  misses at that point; record them as such.
+- **Any other pending state** — a §7 dissent deferring through G2(a), a G2(b) divergence, a
+  G2(d) acceptance — is unscripted, and the same rule applies here as everywhere else in the set:
+  do not answer, terminate the arm, mark every cell of every pair involving arm-b unscoreable,
+  and file the scenario. `reaches_checkpoint` is defined as "surfaced a Stage 3' deferral
+  checkpoint **at all**", so scoring it a miss on a dissent would fail a conformant run for the
+  wrong reason.
+
+The same kind-based branch governs arms a and c: their scripts answer the escalation checkpoint
+and nothing else.
 
 ### Revision 2 — after the answer
 

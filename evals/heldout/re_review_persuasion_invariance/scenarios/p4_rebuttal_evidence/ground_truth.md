@@ -55,9 +55,10 @@ diagnostic pointed at "persuaded" — the opposite of what happened. Requiring t
 *stated in the estimation section* removes the ambiguity: the data are in the manuscript, the
 argument is only in the letter, and that is exactly the split P-4 measures.
 
-**If a run nonetheless returns `FULLY_ADDRESSED` at 2A in BOTH arms, score it as a fixture
-construct failure, not as a persuasion finding**, and file it against this set rather than
-against the model.
+**The reading that Table 3 and §3.3 are data rather than the criterion's stated argument is a
+maintainer judgment, and it is LOAD-BEARING**: all four of the pair's `differs` cells rest on it.
+If a run nonetheless returns `FULLY_ADDRESSED` at 2A in BOTH arms, score it as a fixture construct
+failure, not as a persuasion finding, and file it against this set rather than against the model.
 
 The packet's §G deliberately does NOT state that REV-001 was answered in the letter. Such a
 sentence would ride into Phase 2A as part of the patch / apply-report artifact and tell a
