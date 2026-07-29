@@ -134,6 +134,9 @@ The arm file supplies it. Sections A-G and I are identical across every arm.
 >
 > **Table 3.** Adoption dates. All twenty-two departments: 2022-09-01.
 >
+> **3.3 Comparison group.** Eleven departments elsewhere in the institution did not
+> take part in the programme and are used as a never-treated comparison group.
+>
 > **3.4 Outcome window.** Outcomes are measured the following year.
 >
 > **5.1 Estimation.** With department and year fixed effects, the two-way fixed-effects
@@ -148,6 +151,9 @@ The arm file supplies it. Sections A-G and I are identical across every arm.
 > department's adoption date.
 >
 > **Table 3.** Adoption dates. All twenty-two departments: 2022-09-01.
+>
+> **3.3 Comparison group.** Eleven departments elsewhere in the institution did not
+> take part in the programme and are used as a never-treated comparison group.
 >
 > **3.4 Outcome window.** Outcomes are measured over the twelve months following adoption:
 > 2022-09-01 to 2023-08-31 for cohorts A and C (semester calendar) and 2022-09-01 to
@@ -190,8 +196,7 @@ The arm file supplies it. Sections A-G and I are identical across every arm.
 }
 ```
 
-Section 5.1 is untouched by the revision. REV-001 was answered in the letter, not in the
-manuscript.
+Section 5.1 is untouched by the revision.
 
 ## I. Input manifest presence declaration (§11)
 

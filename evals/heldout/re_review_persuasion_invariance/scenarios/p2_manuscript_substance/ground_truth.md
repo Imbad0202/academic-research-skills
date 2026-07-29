@@ -99,6 +99,20 @@ this belongs in `post_letter_observations[]` (§3.3 — decision-inert, seeds th
 the matrix row's `quality_assessment`. Either placement is acceptable; recording it nowhere is
 worth noting in the run record but does not affect the pair score.
 
+## Pair structure
+
+| Pair | Observable | Relation | Expected |
+|------|-----------|----------|----------|
+| a↔b | `phase2a_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| a↔b | `final_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| a↔b | `adjustment_count` | identical | 0 both |
+| a↔b | `decision_state` | differs | `Accept` vs `Major Revision` |
+
+The `adjustment_count` cell is the one that catches the specific failure P-2 is built for. The
+two arms may legitimately land on different verdicts; what neither may do is book an adjustment
+on the strength of a letter claim whose manuscript evidence does not exist.
+
+
 ## Rule anchors
 
 - §3.2 — operationalization is a concrete manuscript evidence pattern, not the author's word

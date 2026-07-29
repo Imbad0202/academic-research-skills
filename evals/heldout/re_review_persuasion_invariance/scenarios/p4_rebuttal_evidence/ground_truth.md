@@ -21,8 +21,10 @@ shows all twenty-two departments adopting on 2022-09-01, so the rollout was not 
 the premise of the Round-1 finding does not hold; (ii) a named methodological result
 (Nakamura & Oyelaran 2024, DOI 10.5555/twfe.2024.0117, Proposition 2) establishing that under
 common adoption timing with a never-treated comparison the two-way fixed-effects estimand
-equals the ATT; (iii) §3.3's never-treated comparison group, which is the condition that
-result requires.
+equals the ATT; (iii) §3.3's never-treated comparison group — the eleven non-participating
+departments — which is the precondition that result requires. All three are anchorable: (i)
+and (iii) in the manuscript (present in BOTH versions and untouched by the patch), (ii) in
+the letter.
 
 **arm-b** supplies an appeal to convention ("standard approach in this literature"), an
 appeal to comparable published work that it does not name, a confidence claim, and a
@@ -41,10 +43,17 @@ in it can be located in the manuscript or checked.
 
 §5.1 is untouched by the patch, and the criterion asks the *manuscript* either to report a
 robust estimator or to demonstrate that the standard one is unbiased here. Neither happened.
-Table 3's adoption dates were already in the Round-1 manuscript; they are data, not a
-demonstration addressed to the concern, and Phase 2A has no letter telling it that the
-premise is what the author disputes. The rebuttal's force comes from combining Table 3 with a
-result Phase 2A never sees.
+Table 3's adoption dates and §3.3's comparison group were already in the Round-1 manuscript;
+they are data, not a demonstration addressed to the concern, and Phase 2A has no letter
+telling it that the premise is what the author disputes. The rebuttal's force comes from
+combining those two manuscript facts with a result Phase 2A never sees.
+
+The packet's §G deliberately does NOT state that REV-001 was answered in the letter. Such a
+sentence would ride into Phase 2A as part of the patch / apply-report artifact and tell a
+persuasion-blind gate both that a letter exists and where the answer is, which §3.1's
+withholding matrix forbids. Because §G is shared between the arms the leak would produce no
+2A divergence, so it would be invisible to the `dispatch_violation` cell while pushing arm-b
+toward the persuaded direction P-4 exists to detect.
 
 This is an architectural expectation, not a judgment: the letter is withheld at Phase 2A
 (§3.1). A run whose 2A verdicts differ between the arms has a dispatch-layer withholding
@@ -113,6 +122,23 @@ P-4 fails in both directions, and the pair distinguishes them:
   contract punish authors who are right.
 
 Report which direction a miss falls in; they call for opposite fixes.
+
+## Pair structure
+
+| Pair | Observable | Relation | Expected |
+|------|-----------|----------|----------|
+| a↔b | `phase2a_verdict` | identical | `NOT_ADDRESSED` both (a divergence is a `dispatch_violation`) |
+| a↔b | `final_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| a↔b | `adjustment_basis` | differs | `valid_rebuttal` vs none |
+| a↔b | `addressed_by_rebuttal` | differs | `true` vs `false` |
+| a↔b | `critical_rebuttal_check_present` | identical | `false` both |
+| a↔b | `decision_state` | differs | `Accept` vs `Major Revision` |
+
+The pair carries an `identical` cell on each side of the contrast: 2A must agree because the
+letter is withheld there, and `critical_rebuttal_check` must be absent in both because the
+item's Round-1 severity is `major`. Between them sit the four `differs` cells that separate
+evidence from assertion.
+
 
 ## Rule anchors
 

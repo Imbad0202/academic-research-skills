@@ -2,7 +2,9 @@
 
 Runs the checker against a synthetic fixture tree (never the real one, so the tests stay
 hermetic) and asserts each invariant actually fires. The synthetic tree mirrors the real
-inventory pinned in the checker's EXPECTED_ARMS, with trivial content.
+scenario/arm inventory pinned in the checker's EXPECTED_ARMS with trivial content; the
+pair-id and cell-count pins are patched to the synthetic tree's shape so that invariant 2's
+pair/cell half is exercised against a known baseline rather than against the real set.
 
 Run standalone:
     python -m unittest scripts/test_check_persuasion_invariance_fixtures.py -v
@@ -27,17 +29,37 @@ APPLY_REPORT = (
     "}\n"
     "```\n"
 )
-ANSWER_A = "Approved. Apply the escalation floor."
-ANSWER_C = "Not approved. Record it only."
+ANSWER_A = {"en": "Approved. Apply the escalation floor.", "zh-TW": "核准。套用 escalation 樓地板。"}
+ANSWER_C = {"en": "Not approved. Record it only.", "zh-TW": "不予核准。僅作記錄。"}
 
 PACKET = "# Packet\n\n## A. Roadmap\n\ncontent\n\n## B. Letter\n\ncontent\n"
 ARM = "## H. Response to Reviewers\n\ncontent\n\n" + APPLY_REPORT
 POINTER = "ARM-MATERIAL-POINTER: arm-a.{lang}.md\n\nUse arm-a's material.\n"
 
+GT_TEMPLATE = """# {sid} ground truth
+
+**HELD OUT.**
+
+## Pair structure
+
+| Pair | Observable | Relation | Expected |
+|------|-----------|----------|----------|
+| a↔b | `decision_state` | differs | `Accept` vs `Major Revision` |
+| a↔b | `phase2a_verdict` | identical | `NOT_ADDRESSED` both |
+
+## Rule anchors
+
+- spec §6
+"""
+
+# Pins matched to the synthetic tree (one pair, two cells per scenario).
+SYNTH_PAIRS = {sid: {f"{sid}/a-b"} for sid in mod.EXPECTED_ARMS}
+SYNTH_CELL_COUNTS = {sid: 2 for sid in mod.EXPECTED_ARMS}
+
 
 def _scenario(sid: str, sdir: str, arm_ids: list[str], *, claim_equality: bool = False,
               pointer_arm: str | None = None,
-              answers: dict[str, str] | None = None) -> dict:
+              answers: dict[str, dict] | None = None) -> dict:
     answers = answers or {}
     arms = []
     for aid in arm_ids:
@@ -92,7 +114,7 @@ def make_index() -> dict:
     return {
         "set_version": "0.1.0",
         "issue": 576,
-        "spec_authority": "docs/design/spec.md",
+        "spec_authority": mod.SPEC_AUTHORITY,
         "spec_section": "14",
         "harness": {"joins": "evals/heldout/reviewer_seeded_defects"},
         "languages": ["en", "zh-TW"],
@@ -120,11 +142,13 @@ def make_index() -> dict:
 
 
 def make_tree(root: Path, index: dict) -> None:
-    (root / "heldout_set.json").write_text(json.dumps(index, indent=2), encoding="utf-8")
+    (root / "heldout_set.json").write_text(json.dumps(index, indent=2, ensure_ascii=False),
+                                           encoding="utf-8")
     for scenario in index["scenarios"]:
         sdir = root / scenario["dir"]
         (sdir / "arms").mkdir(parents=True, exist_ok=True)
-        (sdir / "ground_truth.md").write_text("# held out\n", encoding="utf-8")
+        (sdir / "ground_truth.md").write_text(
+            GT_TEMPLATE.format(sid=scenario["id"]), encoding="utf-8")
         for lang in ("en", "zh-TW"):
             (sdir / f"packet.{lang}.md").write_text(PACKET, encoding="utf-8")
         for arm in scenario["arms"]:
@@ -134,20 +158,39 @@ def make_tree(root: Path, index: dict) -> None:
                 (sdir / arm["material"][lang]).write_text(body, encoding="utf-8")
 
 
+class _Buffer:
+    """Minimal writable sink that keeps what was written."""
+
+    def __init__(self) -> None:
+        self.value = ""
+
+    def write(self, text: str) -> int:
+        self.value += text
+        return len(text)
+
+    def flush(self) -> None:
+        return None
+
+
 class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name) / "set"
         self.root.mkdir()
         self.index = make_index()
+        self.tree_mutation = None
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
 
     def run_checker(self) -> tuple[int, str]:
         make_tree(self.root, self.index)
+        if self.tree_mutation is not None:
+            self.tree_mutation(self.root)
         with mock.patch.object(mod, "ROOT", self.root), \
              mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
+             mock.patch.object(mod, "EXPECTED_PAIRS", SYNTH_PAIRS), \
+             mock.patch.object(mod, "EXPECTED_CELL_COUNTS", SYNTH_CELL_COUNTS), \
              mock.patch("sys.stderr", new_callable=_Buffer) as err, \
              mock.patch("sys.stdout", new_callable=_Buffer) as out:
             code = mod.main()
@@ -168,6 +211,10 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def test_missing_top_level_key_fails(self) -> None:
         del self.index["spec_authority"]
         self.assert_fails("1. index missing top-level keys")
+
+    def test_wrong_spec_authority_fails(self) -> None:
+        self.index["spec_authority"] = "docs/design/some-other-spec.md"
+        self.assert_fails("1. index spec_authority is")
 
     def test_wrong_issue_fails(self) -> None:
         self.index["issue"] = 574
@@ -197,37 +244,34 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
                              if removed["arm_id"] not in p["arms"]]
         self.assert_fails("2. P-3 arm-id set is")
 
+    def test_deleted_pair_fails(self) -> None:
+        self.index["scenarios"][1]["pairs"] = []
+        self.assert_fails("2. P-2 pair-id set is")
+
+    def test_renamed_pair_fails(self) -> None:
+        self.index["scenarios"][1]["pairs"][0]["pair_id"] = "P-2/x-y"
+        self.assert_fails("2. P-2 pair-id set is")
+
+    def test_deleted_cell_fails(self) -> None:
+        self.index["scenarios"][3]["pairs"][0]["cells"].pop()
+        self.assert_fails("2. P-4 declares 1 cells, expected 2")
+
     # --- invariant 3: paths ---------------------------------------------
     def test_missing_packet_file_fails(self) -> None:
-        make_tree(self.root, self.index)
-        (self.root / "scenarios/s2/packet.en.md").unlink()
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("3. P-2 packet file does not exist", err.value)
+        self.tree_mutation = lambda root: (root / "scenarios/s2/packet.en.md").unlink()
+        self.assert_fails("3. P-2 packet file does not exist")
 
     def test_missing_ground_truth_fails(self) -> None:
-        make_tree(self.root, self.index)
-        (self.root / "scenarios/s4/ground_truth.md").unlink()
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("3. P-4 missing ground_truth.md", err.value)
+        self.tree_mutation = lambda root: (root / "scenarios/s4/ground_truth.md").unlink()
+        self.assert_fails("3. P-4 missing ground_truth.md")
 
     # --- invariant 4: referential integrity -----------------------------
     def test_pair_naming_undeclared_arm_fails(self) -> None:
-        self.index["scenarios"][0]["pairs"][0]["arms"] = ["arm-a", "arm-z"]
-        self.index["scenarios"][0]["pairs"][0]["cells"][0]["expected"] = {
-            "arm-a": "Accept", "arm-z": "Major Revision"}
-        self.index["scenarios"][0]["pairs"][0]["cells"][1]["expected"] = {
-            "arm-a": "NOT_ADDRESSED", "arm-z": "NOT_ADDRESSED"}
-        self.assert_fails("4. P-1/P-1/a-b names undeclared arm ids")
+        pair = self.index["scenarios"][0]["pairs"][0]
+        pair["arms"] = ["arm-a", "arm-z"]
+        pair["cells"][0]["expected"] = {"arm-a": "Accept", "arm-z": "Major Revision"}
+        pair["cells"][1]["expected"] = {"arm-a": "NOT_ADDRESSED", "arm-z": "NOT_ADDRESSED"}
+        self.assert_fails("names undeclared arm ids")
 
     def test_pair_with_one_arm_fails(self) -> None:
         self.index["scenarios"][1]["pairs"][0]["arms"] = ["arm-a"]
@@ -236,10 +280,6 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def test_self_paired_arm_fails(self) -> None:
         self.index["scenarios"][1]["pairs"][0]["arms"] = ["arm-a", "arm-a"]
         self.assert_fails("pairs an arm with itself")
-
-    def test_pair_without_cells_fails(self) -> None:
-        self.index["scenarios"][1]["pairs"][0]["cells"] = []
-        self.assert_fails("carries no cells")
 
     # --- invariant 5: cell shape ----------------------------------------
     def test_unknown_observable_fails(self) -> None:
@@ -253,6 +293,10 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def test_empty_rule_anchor_fails(self) -> None:
         self.index["scenarios"][0]["pairs"][0]["cells"][0]["rule_anchor"] = "   "
         self.assert_fails("rule_anchor is empty")
+
+    def test_missing_target_key_fails(self) -> None:
+        del self.index["scenarios"][0]["pairs"][0]["cells"][0]["target"]
+        self.assert_fails("missing cell keys: ['target']")
 
     def test_unknown_on_mismatch_fails(self) -> None:
         self.index["scenarios"][0]["pairs"][0]["cells"][1]["on_mismatch"] = "shrug"
@@ -282,125 +326,155 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
 
     # --- invariant 8: hash placeholders ---------------------------------
     def test_literal_hash_in_apply_report_fails(self) -> None:
-        make_tree(self.root, self.index)
-        path = self.root / "scenarios/s2/arms/arm-a.en.md"
-        path.write_text(
-            path.read_text(encoding="utf-8").replace("<<BASE_DRAFT_HASH>>", "a17c4e0b9d33"),
-            encoding="utf-8",
-        )
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("base_draft_hash is 'a17c4e0b9d33'", err.value)
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s2/arms/arm-a.en.md"
+            p.write_text(p.read_text(encoding="utf-8").replace(
+                "<<BASE_DRAFT_HASH>>", "a17c4e0b9d33"), encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("base_draft_hash is 'a17c4e0b9d33'")
+
+    def test_swapped_placeholder_tokens_fail(self) -> None:
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s2/arms/arm-a.en.md"
+            t = (p.read_text(encoding="utf-8")
+                 .replace("<<BASE_DRAFT_HASH>>", "<<TMP>>")
+                 .replace("<<OUTPUT_DRAFT_HASH>>", "<<BASE_DRAFT_HASH>>")
+                 .replace("<<TMP>>", "<<OUTPUT_DRAFT_HASH>>"))
+            p.write_text(t, encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("the token is key-bound")
 
     # --- invariant 9: pointer arms --------------------------------------
     def test_pointer_arm_without_pointer_file_fails(self) -> None:
-        make_tree(self.root, self.index)
-        (self.root / "scenarios/s6/arms/arm-c.en.md").write_text(ARM, encoding="utf-8")
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("is not a pointer file", err.value)
+        self.tree_mutation = lambda root: (
+            root / "scenarios/s6/arms/arm-c.en.md").write_text(ARM, encoding="utf-8")
+        self.assert_fails("is not a pointer file")
 
     def test_undeclared_pointer_file_fails(self) -> None:
-        make_tree(self.root, self.index)
-        (self.root / "scenarios/s3/arms/arm-c.en.md").write_text(
-            POINTER.format(lang="en"), encoding="utf-8")
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("is a pointer file but the index declares no material_pointer", err.value)
+        self.tree_mutation = lambda root: (
+            root / "scenarios/s3/arms/arm-c.en.md").write_text(
+                POINTER.format(lang="en"), encoding="utf-8")
+        self.assert_fails("is a pointer file but the index declares no material_pointer")
 
     def test_pointer_to_missing_file_fails(self) -> None:
-        make_tree(self.root, self.index)
-        (self.root / "scenarios/s6/arms/arm-c.en.md").write_text(
-            "ARM-MATERIAL-POINTER: arm-q.en.md\n", encoding="utf-8")
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("points at a missing file", err.value)
+        self.tree_mutation = lambda root: (
+            root / "scenarios/s6/arms/arm-c.en.md").write_text(
+                "ARM-MATERIAL-POINTER: arm-q.en.md\n", encoding="utf-8")
+        self.assert_fails("points at a missing file")
+
+    def test_self_referential_pointer_fails(self) -> None:
+        self.index["scenarios"][5]["arms"][2]["material_pointer"] = "arm-c"
+
+        def mutate(root: Path) -> None:
+            for lang in ("en", "zh-TW"):
+                (root / f"scenarios/s6/arms/arm-c.{lang}.md").write_text(
+                    f"ARM-MATERIAL-POINTER: arm-c.{lang}.md\n", encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("material_pointer points at itself")
+
+    def test_pointer_chain_fails(self) -> None:
+        def mutate(root: Path) -> None:
+            for lang in ("en", "zh-TW"):
+                (root / f"scenarios/s6/arms/arm-a.{lang}.md").write_text(
+                    f"ARM-MATERIAL-POINTER: arm-b.{lang}.md\n", encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("which is itself a pointer")
 
     # --- invariant 10: held-out boundary --------------------------------
     def test_material_referencing_ground_truth_fails(self) -> None:
-        make_tree(self.root, self.index)
-        path = self.root / "scenarios/s5/packet.en.md"
-        path.write_text(path.read_text(encoding="utf-8") + "\nSee ground_truth.md.\n",
-                        encoding="utf-8")
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("references ground_truth.md", err.value)
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s5/packet.en.md"
+            p.write_text(p.read_text(encoding="utf-8") + "\nSee ground_truth.md.\n",
+                         encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("references ground_truth.md")
 
     def test_scripted_answer_leaking_into_material_fails(self) -> None:
-        make_tree(self.root, self.index)
-        path = self.root / "scenarios/s6/arms/arm-a.en.md"
-        path.write_text(path.read_text(encoding="utf-8") + f"\n{ANSWER_A}\n", encoding="utf-8")
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("scripted checkpoint answer verbatim", err.value)
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s6/arms/arm-a.en.md"
+            p.write_text(p.read_text(encoding="utf-8") + f"\n{ANSWER_A['en']}\n",
+                         encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("scripted checkpoint answer (en)")
+
+    def test_zh_scripted_answer_leaking_into_zh_material_fails(self) -> None:
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s6/arms/arm-a.zh-TW.md"
+            p.write_text(p.read_text(encoding="utf-8") + f"\n{ANSWER_A['zh-TW']}\n",
+                         encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("scripted checkpoint answer (zh-TW)")
+
+    def test_scripted_answer_as_bare_string_fails(self) -> None:
+        self.index["scenarios"][5]["arms"][0]["scripted_checkpoint_answer"] = "Approved."
+        self.assert_fails("scripted_checkpoint_answer must be an object")
+
+    def test_scripted_answer_missing_language_fails(self) -> None:
+        self.index["scenarios"][5]["arms"][0]["scripted_checkpoint_answer"] = {"en": "Approved."}
+        self.assert_fails("scripted_checkpoint_answer must be an object")
 
     # --- invariant 11: section split ------------------------------------
     def test_arm_supplied_section_leaking_into_packet_fails(self) -> None:
-        make_tree(self.root, self.index)
-        path = self.root / "scenarios/s1/packet.en.md"
-        path.write_text(path.read_text(encoding="utf-8") + "\n## H. Response to Reviewers\n\nx\n",
-                        encoding="utf-8")
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("contains arm-supplied section(s) ['H']", err.value)
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s1/packet.en.md"
+            p.write_text(p.read_text(encoding="utf-8")
+                         + "\n## H. Response to Reviewers\n\nx\n", encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("contains arm-supplied section(s) ['H']")
 
     def test_arm_missing_its_supplied_section_fails(self) -> None:
-        make_tree(self.root, self.index)
-        (self.root / "scenarios/s1/arms/arm-b.zh-TW.md").write_text(
-            "## Z. Something else\n\nx\n", encoding="utf-8")
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer):
-            code = mod.main()
-        self.assertEqual(code, 1)
-        self.assertIn("missing arm-supplied section(s) ['H']", err.value)
+        self.tree_mutation = lambda root: (
+            root / "scenarios/s1/arms/arm-b.zh-TW.md").write_text(
+                "## Z. Something else\n\nx\n", encoding="utf-8")
+        self.assert_fails("section set is ['Z'], expected exactly ['H']")
+
+    def test_arm_with_extra_undeclared_section_fails(self) -> None:
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s1/arms/arm-a.en.md"
+            p.write_text(p.read_text(encoding="utf-8")
+                         + "\n## F. Revised manuscript\n\nsmuggled\n", encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("section set is ['F', 'H'], expected exactly ['H']")
+
+    def test_arm_with_duplicate_section_fails(self) -> None:
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s1/arms/arm-a.en.md"
+            p.write_text(p.read_text(encoding="utf-8")
+                         + "\n## H. Response to Reviewers\n\nagain\n", encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("<duplicate>")
 
     def test_empty_arm_supplied_sections_fails(self) -> None:
         self.index["scenarios"][3]["arm_supplied_sections"] = []
         self.assert_fails("11. P-4 declares no arm_supplied_sections")
 
+    # --- invariant 12: ground-truth agreement ---------------------------
+    def test_ground_truth_without_pair_structure_fails(self) -> None:
+        self.tree_mutation = lambda root: (
+            root / "scenarios/s3/ground_truth.md").write_text(
+                "# P-3\n\nno table here\n", encoding="utf-8")
+        self.assert_fails("has no '## Pair structure' section")
 
-class _Buffer:
-    """Minimal writable sink that keeps what was written."""
+    def test_ground_truth_missing_a_cell_fails(self) -> None:
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s5/ground_truth.md"
+            p.write_text(
+                p.read_text(encoding="utf-8").replace(
+                    "| a↔b | `phase2a_verdict` | identical | `NOT_ADDRESSED` both |\n", ""),
+                encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("index declares cells ground_truth.md Pair structure does not")
 
-    def __init__(self) -> None:
-        self.value = ""
-
-    def write(self, text: str) -> int:
-        self.value += text
-        return len(text)
-
-    def flush(self) -> None:
-        return None
+    def test_ground_truth_extra_cell_fails(self) -> None:
+        def mutate(root: Path) -> None:
+            p = root / "scenarios/s5/ground_truth.md"
+            p.write_text(
+                p.read_text(encoding="utf-8").replace(
+                    "## Rule anchors",
+                    "| a↔b | `attribution` | differs | x vs y |\n\n## Rule anchors"),
+                encoding="utf-8")
+        self.tree_mutation = mutate
+        self.assert_fails("Pair structure declares cells the index does not")
 
 
 if __name__ == "__main__":

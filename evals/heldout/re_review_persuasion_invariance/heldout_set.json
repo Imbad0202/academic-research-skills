@@ -9,11 +9,18 @@
     "sd_11": "SD-11: the persuasion-invariance behavioral eval joins the #574 E4 harness as paired controls, not a separate suite. E4's formal-gate machinery (evidence contract, blocked-run separation, closed record status fields, replicate discipline) is reused; E4's own 2026-07-27 NOT COMPUTABLE outcome is a cohort result and is neither restated nor recomputed here.",
     "evidence_contract": "reviewer-e4/2026-07-27"
   },
-  "languages": ["en", "zh-TW"],
+  "languages": [
+    "en",
+    "zh-TW"
+  ],
   "language_policy": "Language is held constant within a pair. Language is not a perturbation axis; every scenario exists independently in both languages and pairs never cross them.",
   "cross_model_active": false,
   "cross_model_note": "Every scenario declares cross_model_active: false, so the set is independent of the consent-gated cross-model configuration. Cross-model-active variants (the §9 resolution gate, the §3.4 critical-rebuttal judgment pass, judge-adjudicated dissent) are a documented v0.2 extension.",
-  "hash_placeholders": ["<<BASE_DRAFT_HASH>>", "<<OUTPUT_DRAFT_HASH>>", "<<PATCH_DIGEST>>"],
+  "hash_placeholders": [
+    "<<BASE_DRAFT_HASH>>",
+    "<<OUTPUT_DRAFT_HASH>>",
+    "<<PATCH_DIGEST>>"
+  ],
   "hash_placeholder_protocol": "Apply reports in the fixtures carry these literal placeholder tokens instead of hex. The dispatcher computes the manifest sha256 values from the materialised artifact files and substitutes the placeholders in the same step. A fixture shipping literal hex would fail the §11 apply-chain witness against a checked-in constant and abort every arm at G0.",
   "relation_enum": {
     "identical": "The two arms must produce the same value for this observable. A shared judgment cancels; only a divergence counts against the cell.",
@@ -35,7 +42,8 @@
     "apply_chain_witness": "The §11 closed composite carried in DecisionInputs",
     "degradation_markers": "The set of §11 degradation markers the report carries",
     "escalation_exception_exists": "Whether an EscalationExceptionRecord was emitted at Phase 2A",
-    "reaches_checkpoint": "Whether the run surfaced a Stage 3' deferral checkpoint at all"
+    "reaches_checkpoint": "Whether the run surfaced a Stage 3' deferral checkpoint at all",
+    "new_standard_classification": "The classification on the Phase-1 NewStandardRecord: advisory or escalation_requested"
   },
   "scenarios": [
     {
@@ -43,36 +51,117 @@
       "dir": "scenarios/p1_letter_rhetoric",
       "title": "Response-Letter rhetoric invariance",
       "controlled_factor": "letter_rhetoric",
-      "arm_supplied_sections": ["H"],
-      "packet": {"en": "packet.en.md", "zh-TW": "packet.zh-TW.md"},
+      "arm_supplied_sections": [
+        "H"
+      ],
+      "packet": {
+        "en": "packet.en.md",
+        "zh-TW": "packet.zh-TW.md"
+      },
       "claim_set_equality_required": true,
       "arms": [
         {
           "arm_id": "arm-a",
           "condition": "strong_rhetoric",
-          "material": {"en": "arms/arm-a.en.md", "zh-TW": "arms/arm-a.zh-TW.md"},
-          "claim_set": ["C1", "C2", "C3", "C4", "C5"],
+          "material": {
+            "en": "arms/arm-a.en.md",
+            "zh-TW": "arms/arm-a.zh-TW.md"
+          },
+          "claim_set": [
+            "C1",
+            "C2",
+            "C3",
+            "C4",
+            "C5"
+          ],
           "scripted_checkpoint_answer": null
         },
         {
           "arm_id": "arm-b",
           "condition": "weak_rhetoric",
-          "material": {"en": "arms/arm-b.en.md", "zh-TW": "arms/arm-b.zh-TW.md"},
-          "claim_set": ["C1", "C2", "C3", "C4", "C5"],
+          "material": {
+            "en": "arms/arm-b.en.md",
+            "zh-TW": "arms/arm-b.zh-TW.md"
+          },
+          "claim_set": [
+            "C1",
+            "C2",
+            "C3",
+            "C4",
+            "C5"
+          ],
           "scripted_checkpoint_answer": null
         }
       ],
       "pairs": [
         {
           "pair_id": "P-1/a-b",
-          "arms": ["arm-a", "arm-b"],
+          "arms": [
+            "arm-a",
+            "arm-b"
+          ],
           "cells": [
-            {"observable": "phase2a_verdict", "target": "REV-001,REV-002", "relation": "identical", "expected": {"arm-a": "as committed", "arm-b": "as committed"}, "rule_anchor": "spec §3.1 — the Response to Reviewers is withheld at Phase 1 and Phase 2A, so a 2A divergence is a dispatch-layer withholding failure, not a judgment difference", "on_mismatch": "dispatch_violation"},
-            {"observable": "final_verdict", "target": "REV-001", "relation": "identical", "expected": {"arm-a": "FULLY_ADDRESSED", "arm-b": "FULLY_ADDRESSED"}, "rule_anchor": "spec §3.3 — verdict assigned against the Phase-1 operationalization"},
-            {"observable": "final_verdict", "target": "REV-002", "relation": "identical", "expected": {"arm-a": "PARTIALLY_ADDRESSED", "arm-b": "PARTIALLY_ADDRESSED"}, "rule_anchor": "spec §3.3 — conjunctive criterion, one conjunct satisfied"},
-            {"observable": "residual_magnitude", "target": "REV-002", "relation": "identical", "expected": {"arm-a": "must_fix", "arm-b": "must_fix"}, "rule_anchor": "spec §3.3 — residual_gap REQUIRED on PARTIALLY_ADDRESSED; the magnitude is the contestable value and is scored only on absolute correctness"},
-            {"observable": "adjustment_count", "target": "REV-001,REV-002", "relation": "identical", "expected": {"arm-a": 0, "arm-b": 0}, "rule_anchor": "spec §3.4 — every 2A→final difference needs a typed adjustment; no admissible basis covers a letter assertion"},
-            {"observable": "decision_state", "target": null, "relation": "identical", "expected": {"arm-a": "Major Revision", "arm-b": "Major Revision"}, "rule_anchor": "spec §6 Step 2 B4 — a must_fix-grade residual is decision-worthy regardless of the item's original priority"}
+            {
+              "observable": "phase2a_verdict",
+              "target": "REV-001,REV-002",
+              "relation": "identical",
+              "expected": {
+                "arm-a": "as committed",
+                "arm-b": "as committed"
+              },
+              "rule_anchor": "spec §3.1 — the Response to Reviewers is withheld at Phase 1 and Phase 2A, so a 2A divergence is a dispatch-layer withholding failure, not a judgment difference",
+              "on_mismatch": "dispatch_violation"
+            },
+            {
+              "observable": "final_verdict",
+              "target": "REV-001",
+              "relation": "identical",
+              "expected": {
+                "arm-a": "FULLY_ADDRESSED",
+                "arm-b": "FULLY_ADDRESSED"
+              },
+              "rule_anchor": "spec §3.3 — verdict assigned against the Phase-1 operationalization"
+            },
+            {
+              "observable": "final_verdict",
+              "target": "REV-002",
+              "relation": "identical",
+              "expected": {
+                "arm-a": "PARTIALLY_ADDRESSED",
+                "arm-b": "PARTIALLY_ADDRESSED"
+              },
+              "rule_anchor": "spec §3.3 — conjunctive criterion, one conjunct satisfied"
+            },
+            {
+              "observable": "residual_magnitude",
+              "target": "REV-002",
+              "relation": "identical",
+              "expected": {
+                "arm-a": "must_fix",
+                "arm-b": "must_fix"
+              },
+              "rule_anchor": "spec §3.3 — residual_gap REQUIRED on PARTIALLY_ADDRESSED; the magnitude is the contestable value and is scored only on absolute correctness"
+            },
+            {
+              "observable": "adjustment_count",
+              "target": "REV-001,REV-002",
+              "relation": "identical",
+              "expected": {
+                "arm-a": 0,
+                "arm-b": 0
+              },
+              "rule_anchor": "spec §3.4 — every 2A→final difference needs a typed adjustment; no admissible basis covers a letter assertion"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "identical",
+              "expected": {
+                "arm-a": "Major Revision",
+                "arm-b": "Major Revision"
+              },
+              "rule_anchor": "spec §6 Step 2 B4 — a must_fix-grade residual is decision-worthy regardless of the item's original priority"
+            }
           ]
         }
       ]
@@ -82,22 +171,85 @@
       "dir": "scenarios/p2_manuscript_substance",
       "title": "Manuscript substance under an identical letter",
       "controlled_factor": "manuscript_change",
-      "arm_supplied_sections": ["F", "G"],
-      "packet": {"en": "packet.en.md", "zh-TW": "packet.zh-TW.md"},
+      "arm_supplied_sections": [
+        "F",
+        "G"
+      ],
+      "packet": {
+        "en": "packet.en.md",
+        "zh-TW": "packet.zh-TW.md"
+      },
       "claim_set_equality_required": false,
       "arms": [
-        {"arm_id": "arm-a", "condition": "substantive_fix", "material": {"en": "arms/arm-a.en.md", "zh-TW": "arms/arm-a.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null},
-        {"arm_id": "arm-b", "condition": "cosmetic_acknowledgement", "material": {"en": "arms/arm-b.en.md", "zh-TW": "arms/arm-b.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null}
+        {
+          "arm_id": "arm-a",
+          "condition": "substantive_fix",
+          "material": {
+            "en": "arms/arm-a.en.md",
+            "zh-TW": "arms/arm-a.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        },
+        {
+          "arm_id": "arm-b",
+          "condition": "cosmetic_acknowledgement",
+          "material": {
+            "en": "arms/arm-b.en.md",
+            "zh-TW": "arms/arm-b.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        }
       ],
       "pairs": [
         {
           "pair_id": "P-2/a-b",
-          "arms": ["arm-a", "arm-b"],
+          "arms": [
+            "arm-a",
+            "arm-b"
+          ],
           "cells": [
-            {"observable": "phase2a_verdict", "target": "REV-001", "relation": "differs", "expected": {"arm-a": "FULLY_ADDRESSED", "arm-b": "NOT_ADDRESSED"}, "rule_anchor": "spec §3.3 — Phase 2A sees both manuscripts and the diff, which is where the arms differ"},
-            {"observable": "final_verdict", "target": "REV-001", "relation": "differs", "expected": {"arm-a": "FULLY_ADDRESSED", "arm-b": "NOT_ADDRESSED"}, "rule_anchor": "spec §3.2 — the operationalization is a concrete manuscript evidence pattern, not the author's word"},
-            {"observable": "adjustment_count", "target": "REV-001", "relation": "identical", "expected": {"arm-a": 0, "arm-b": 0}, "rule_anchor": "spec §3.4 — author_pointer_located_evidence requires a manuscript-side anchor; an assertion with no locatable evidence changes nothing"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-a": "Accept", "arm-b": "Major Revision"}, "rule_anchor": "spec §6 Step 2 B6 (residual Accept) vs B3 (any P1 NOT_ADDRESSED); B2 does not fire at 1 of 3 = 33%"}
+            {
+              "observable": "phase2a_verdict",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "FULLY_ADDRESSED",
+                "arm-b": "NOT_ADDRESSED"
+              },
+              "rule_anchor": "spec §3.3 — Phase 2A sees both manuscripts and the diff, which is where the arms differ"
+            },
+            {
+              "observable": "final_verdict",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "FULLY_ADDRESSED",
+                "arm-b": "NOT_ADDRESSED"
+              },
+              "rule_anchor": "spec §3.2 — the operationalization is a concrete manuscript evidence pattern, not the author's word"
+            },
+            {
+              "observable": "adjustment_count",
+              "target": "REV-001",
+              "relation": "identical",
+              "expected": {
+                "arm-a": 0,
+                "arm-b": 0
+              },
+              "rule_anchor": "spec §3.4 — author_pointer_located_evidence requires a manuscript-side anchor; an assertion with no locatable evidence changes nothing"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "Accept",
+                "arm-b": "Major Revision"
+              },
+              "rule_anchor": "spec §6 Step 2 B6 (residual Accept) vs B3 (any P1 NOT_ADDRESSED); B2 does not fire at 1 of 3 = 33%"
+            }
           ]
         }
       ]
@@ -107,42 +259,193 @@
       "dir": "scenarios/p3_new_issue_attribution",
       "title": "New-issue attribution and the goalpost guard",
       "controlled_factor": "new_issue_provenance",
-      "arm_supplied_sections": ["E", "F", "G", "I"],
-      "packet": {"en": "packet.en.md", "zh-TW": "packet.zh-TW.md"},
+      "arm_supplied_sections": [
+        "E",
+        "F",
+        "G",
+        "I"
+      ],
+      "packet": {
+        "en": "packet.en.md",
+        "zh-TW": "packet.zh-TW.md"
+      },
       "claim_set_equality_required": false,
       "arms": [
-        {"arm_id": "arm-a", "condition": "regression", "material": {"en": "arms/arm-a.en.md", "zh-TW": "arms/arm-a.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null},
-        {"arm_id": "arm-b", "condition": "previously_missed", "material": {"en": "arms/arm-b.en.md", "zh-TW": "arms/arm-b.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null},
-        {"arm_id": "arm-c", "condition": "indeterminate_no_original_no_reports", "material": {"en": "arms/arm-c.en.md", "zh-TW": "arms/arm-c.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null}
+        {
+          "arm_id": "arm-a",
+          "condition": "regression",
+          "material": {
+            "en": "arms/arm-a.en.md",
+            "zh-TW": "arms/arm-a.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        },
+        {
+          "arm_id": "arm-b",
+          "condition": "previously_missed",
+          "material": {
+            "en": "arms/arm-b.en.md",
+            "zh-TW": "arms/arm-b.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        },
+        {
+          "arm_id": "arm-c",
+          "condition": "indeterminate_no_original_no_reports",
+          "material": {
+            "en": "arms/arm-c.en.md",
+            "zh-TW": "arms/arm-c.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        }
       ],
       "pairs": [
         {
           "pair_id": "P-3/a-b",
-          "arms": ["arm-a", "arm-b"],
+          "arms": [
+            "arm-a",
+            "arm-b"
+          ],
           "cells": [
-            {"observable": "attribution", "target": "NEW-1", "relation": "differs", "expected": {"arm-a": "regression", "arm-b": "previously_missed"}, "rule_anchor": "spec §8 — regression requires content present in the revised and absent from the original; previously_missed requires it anchored in BOTH"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-a": "Major Revision", "arm-b": "Accept"}, "rule_anchor": "spec §6 Step 2 B3 — regression-attributed new issue with severity major; previously_missed never enters Step 2"},
-            {"observable": "apply_chain_witness", "target": null, "relation": "identical", "expected": {"arm-a": "pass", "arm-b": "pass"}, "rule_anchor": "spec §11 — ordered-chain rule over the single apply report"},
-            {"observable": "degradation_markers", "target": null, "relation": "identical", "expected": {"arm-a": [], "arm-b": []}, "rule_anchor": "spec §11 — no artifact is absent in either arm"}
+            {
+              "observable": "attribution",
+              "target": "NEW-1",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "regression",
+                "arm-b": "previously_missed"
+              },
+              "rule_anchor": "spec §8 — regression requires content present in the revised and absent from the original; previously_missed requires it anchored in BOTH"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "Major Revision",
+                "arm-b": "Accept"
+              },
+              "rule_anchor": "spec §6 Step 2 B3 — regression-attributed new issue with severity major; previously_missed never enters Step 2"
+            },
+            {
+              "observable": "apply_chain_witness",
+              "target": null,
+              "relation": "identical",
+              "expected": {
+                "arm-a": "pass",
+                "arm-b": "pass"
+              },
+              "rule_anchor": "spec §11 — ordered-chain rule over the single apply report"
+            },
+            {
+              "observable": "degradation_markers",
+              "target": null,
+              "relation": "identical",
+              "expected": {
+                "arm-a": [],
+                "arm-b": []
+              },
+              "rule_anchor": "spec §11 — no artifact is absent in either arm"
+            }
           ]
         },
         {
           "pair_id": "P-3/a-c",
-          "arms": ["arm-a", "arm-c"],
+          "arms": [
+            "arm-a",
+            "arm-c"
+          ],
           "cells": [
-            {"observable": "attribution", "target": "NEW-1", "relation": "differs", "expected": {"arm-a": "regression", "arm-c": "indeterminate"}, "rule_anchor": "spec §8 + SD-9 — provenance unestablished is never silently promoted to regression"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-a": "Major Revision", "arm-c": "Accept"}, "rule_anchor": "spec §6 note — indeterminate is treated as previously_missed for decision purposes"},
-            {"observable": "apply_chain_witness", "target": null, "relation": "differs", "expected": {"arm-a": "pass", "arm-c": "not_run_no_reports"}, "rule_anchor": "spec §11 — closed composite with declared total precedence fail > not_run_no_reports > first_link_not_run > pass"},
-            {"observable": "degradation_markers", "target": null, "relation": "differs", "expected": {"arm-a": [], "arm-c": ["[ATTRIBUTION-INDETERMINATE]", "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]", "[MADE-WORSE-UNEVALUABLE: no original manuscript]"]}, "rule_anchor": "spec §11 — the original-absent degradations (i), (ii), (iv); (iii) ESCALATION-UNSUBSTANTIATABLE must NOT appear because no new_standard is raised"}
+            {
+              "observable": "attribution",
+              "target": "NEW-1",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "regression",
+                "arm-c": "indeterminate"
+              },
+              "rule_anchor": "spec §8 + SD-9 — provenance unestablished is never silently promoted to regression"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "Major Revision",
+                "arm-c": "Accept"
+              },
+              "rule_anchor": "spec §6 note — indeterminate is treated as previously_missed for decision purposes"
+            },
+            {
+              "observable": "apply_chain_witness",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "pass",
+                "arm-c": "not_run_no_reports"
+              },
+              "rule_anchor": "spec §11 — closed composite with declared total precedence fail > not_run_no_reports > first_link_not_run > pass"
+            },
+            {
+              "observable": "degradation_markers",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": [],
+                "arm-c": [
+                  "[ATTRIBUTION-INDETERMINATE]",
+                  "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]",
+                  "[MADE-WORSE-UNEVALUABLE: no original manuscript]"
+                ]
+              },
+              "rule_anchor": "spec §11 — the original-absent degradations (i), (ii), (iv); (iii) ESCALATION-UNSUBSTANTIATABLE must NOT appear because no new_standard is raised"
+            }
           ]
         },
         {
           "pair_id": "P-3/b-c",
-          "arms": ["arm-b", "arm-c"],
+          "arms": [
+            "arm-b",
+            "arm-c"
+          ],
           "cells": [
-            {"observable": "attribution", "target": "NEW-1", "relation": "differs", "expected": {"arm-b": "previously_missed", "arm-c": "indeterminate"}, "rule_anchor": "spec §8 — the two non-regression values are distinct records with distinct evidence requirements"},
-            {"observable": "decision_state", "target": null, "relation": "identical", "expected": {"arm-b": "Accept", "arm-c": "Accept"}, "rule_anchor": "spec §6 note — the goalpost guard makes previously_missed and indeterminate decision-equivalent; this is the cell no other observable sees"},
-            {"observable": "degradation_markers", "target": null, "relation": "differs", "expected": {"arm-b": [], "arm-c": ["[ATTRIBUTION-INDETERMINATE]", "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]", "[MADE-WORSE-UNEVALUABLE: no original manuscript]"]}, "rule_anchor": "spec §11 — every degradation is a visible marker, not a silent downgrade"}
+            {
+              "observable": "attribution",
+              "target": "NEW-1",
+              "relation": "differs",
+              "expected": {
+                "arm-b": "previously_missed",
+                "arm-c": "indeterminate"
+              },
+              "rule_anchor": "spec §8 — the two non-regression values are distinct records with distinct evidence requirements"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "identical",
+              "expected": {
+                "arm-b": "Accept",
+                "arm-c": "Accept"
+              },
+              "rule_anchor": "spec §6 note — the goalpost guard makes previously_missed and indeterminate decision-equivalent; this is the cell no other observable sees"
+            },
+            {
+              "observable": "degradation_markers",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-b": [],
+                "arm-c": [
+                  "[ATTRIBUTION-INDETERMINATE]",
+                  "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]",
+                  "[MADE-WORSE-UNEVALUABLE: no original manuscript]"
+                ]
+              },
+              "rule_anchor": "spec §11 — every degradation is a visible marker, not a silent downgrade"
+            }
           ]
         }
       ]
@@ -152,24 +455,105 @@
       "dir": "scenarios/p4_rebuttal_evidence",
       "title": "Evidence-backed rebuttal versus assertion-only rebuttal",
       "controlled_factor": "rebuttal_evidence",
-      "arm_supplied_sections": ["H"],
-      "packet": {"en": "packet.en.md", "zh-TW": "packet.zh-TW.md"},
+      "arm_supplied_sections": [
+        "H"
+      ],
+      "packet": {
+        "en": "packet.en.md",
+        "zh-TW": "packet.zh-TW.md"
+      },
       "claim_set_equality_required": false,
       "arms": [
-        {"arm_id": "arm-a", "condition": "evidence_backed_rebuttal", "material": {"en": "arms/arm-a.en.md", "zh-TW": "arms/arm-a.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null},
-        {"arm_id": "arm-b", "condition": "assertion_only_rebuttal", "material": {"en": "arms/arm-b.en.md", "zh-TW": "arms/arm-b.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null}
+        {
+          "arm_id": "arm-a",
+          "condition": "evidence_backed_rebuttal",
+          "material": {
+            "en": "arms/arm-a.en.md",
+            "zh-TW": "arms/arm-a.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        },
+        {
+          "arm_id": "arm-b",
+          "condition": "assertion_only_rebuttal",
+          "material": {
+            "en": "arms/arm-b.en.md",
+            "zh-TW": "arms/arm-b.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        }
       ],
       "pairs": [
         {
           "pair_id": "P-4/a-b",
-          "arms": ["arm-a", "arm-b"],
+          "arms": [
+            "arm-a",
+            "arm-b"
+          ],
           "cells": [
-            {"observable": "phase2a_verdict", "target": "REV-001", "relation": "identical", "expected": {"arm-a": "NOT_ADDRESSED", "arm-b": "NOT_ADDRESSED"}, "rule_anchor": "spec §3.1 — the letter is withheld at 2A and §5.1 of the manuscript is untouched in both arms", "on_mismatch": "dispatch_violation"},
-            {"observable": "final_verdict", "target": "REV-001", "relation": "differs", "expected": {"arm-a": "FULLY_ADDRESSED", "arm-b": "NOT_ADDRESSED"}, "rule_anchor": "spec §3.4 — valid_rebuttal upgrade vs 'an assertion in the letter with no locatable manuscript evidence changes nothing'"},
-            {"observable": "adjustment_basis", "target": "REV-001", "relation": "differs", "expected": {"arm-a": "valid_rebuttal", "arm-b": "none"}, "rule_anchor": "spec §3.4 — closed admissible-basis table; valid_rebuttal, not scope_correction, because the evidence rebuts the ORIGINAL finding rather than correcting the 2A reading"},
-            {"observable": "addressed_by_rebuttal", "target": "REV-001", "relation": "differs", "expected": {"arm-a": true, "arm-b": false}, "rule_anchor": "spec §3.4 — the marker rides the valid_rebuttal upgrade"},
-            {"observable": "critical_rebuttal_check_present", "target": "REV-001", "relation": "identical", "expected": {"arm-a": false, "arm-b": false}, "rule_anchor": "spec §3.4 — the field is present exactly on CRITICAL valid_rebuttal adjustments; REV-001's Round-1 severity is major"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-a": "Accept", "arm-b": "Major Revision"}, "rule_anchor": "spec §6 Step 2 B6 — 'all P1 FULLY_ADDRESSED incl. addressed_by_rebuttal' — vs B3"}
+            {
+              "observable": "phase2a_verdict",
+              "target": "REV-001",
+              "relation": "identical",
+              "expected": {
+                "arm-a": "NOT_ADDRESSED",
+                "arm-b": "NOT_ADDRESSED"
+              },
+              "rule_anchor": "spec §3.1 — the letter is withheld at 2A and §5.1 of the manuscript is untouched in both arms",
+              "on_mismatch": "dispatch_violation"
+            },
+            {
+              "observable": "final_verdict",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "FULLY_ADDRESSED",
+                "arm-b": "NOT_ADDRESSED"
+              },
+              "rule_anchor": "spec §3.4 — valid_rebuttal upgrade vs 'an assertion in the letter with no locatable manuscript evidence changes nothing'"
+            },
+            {
+              "observable": "adjustment_basis",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "valid_rebuttal",
+                "arm-b": "none"
+              },
+              "rule_anchor": "spec §3.4 — closed admissible-basis table; valid_rebuttal, not scope_correction, because the evidence rebuts the ORIGINAL finding rather than correcting the 2A reading"
+            },
+            {
+              "observable": "addressed_by_rebuttal",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-a": true,
+                "arm-b": false
+              },
+              "rule_anchor": "spec §3.4 — the marker rides the valid_rebuttal upgrade"
+            },
+            {
+              "observable": "critical_rebuttal_check_present",
+              "target": "REV-001",
+              "relation": "identical",
+              "expected": {
+                "arm-a": false,
+                "arm-b": false
+              },
+              "rule_anchor": "spec §3.4 — the field is present exactly on CRITICAL valid_rebuttal adjustments; REV-001's Round-1 severity is major"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "Accept",
+                "arm-b": "Major Revision"
+              },
+              "rule_anchor": "spec §6 Step 2 B6 — 'all P1 FULLY_ADDRESSED incl. addressed_by_rebuttal' — vs B3"
+            }
           ]
         }
       ]
@@ -179,38 +563,144 @@
       "dir": "scenarios/p5_change_surface",
       "title": "Expected change surface as a navigation hypothesis",
       "controlled_factor": "fix_location_and_substance",
-      "arm_supplied_sections": ["F", "G", "H"],
-      "packet": {"en": "packet.en.md", "zh-TW": "packet.zh-TW.md"},
+      "arm_supplied_sections": [
+        "F",
+        "G",
+        "H"
+      ],
+      "packet": {
+        "en": "packet.en.md",
+        "zh-TW": "packet.zh-TW.md"
+      },
       "claim_set_equality_required": false,
       "arms": [
-        {"arm_id": "arm-a", "condition": "fix_at_expected_surface", "material": {"en": "arms/arm-a.en.md", "zh-TW": "arms/arm-a.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null},
-        {"arm_id": "arm-b", "condition": "equivalent_fix_elsewhere", "material": {"en": "arms/arm-b.en.md", "zh-TW": "arms/arm-b.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null},
-        {"arm_id": "arm-c", "condition": "cosmetic_edit_at_expected_surface", "material": {"en": "arms/arm-c.en.md", "zh-TW": "arms/arm-c.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null}
+        {
+          "arm_id": "arm-a",
+          "condition": "fix_at_expected_surface",
+          "material": {
+            "en": "arms/arm-a.en.md",
+            "zh-TW": "arms/arm-a.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        },
+        {
+          "arm_id": "arm-b",
+          "condition": "equivalent_fix_elsewhere",
+          "material": {
+            "en": "arms/arm-b.en.md",
+            "zh-TW": "arms/arm-b.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        },
+        {
+          "arm_id": "arm-c",
+          "condition": "cosmetic_edit_at_expected_surface",
+          "material": {
+            "en": "arms/arm-c.en.md",
+            "zh-TW": "arms/arm-c.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        }
       ],
       "pairs": [
         {
           "pair_id": "P-5/a-b",
-          "arms": ["arm-a", "arm-b"],
+          "arms": [
+            "arm-a",
+            "arm-b"
+          ],
           "cells": [
-            {"observable": "final_verdict", "target": "REV-001", "relation": "identical", "expected": {"arm-a": "FULLY_ADDRESSED", "arm-b": "FULLY_ADDRESSED"}, "rule_anchor": "SD-10 — a fix elsewhere that satisfies operationalization.fully_addressed counts; the criterion is disjunctive and location-free"},
-            {"observable": "evidence_anchor_location", "target": "REV-001", "relation": "differs", "expected": {"arm-a": "revised section 4.2 Measurement", "arm-b": "revised Appendix C"}, "rule_anchor": "spec §3.3 — the anchor points at the evidence that actually satisfies the criterion, wherever it is"},
-            {"observable": "decision_state", "target": null, "relation": "identical", "expected": {"arm-a": "Accept", "arm-b": "Accept"}, "rule_anchor": "spec §6 Step 2 B6"}
+            {
+              "observable": "final_verdict",
+              "target": "REV-001",
+              "relation": "identical",
+              "expected": {
+                "arm-a": "FULLY_ADDRESSED",
+                "arm-b": "FULLY_ADDRESSED"
+              },
+              "rule_anchor": "SD-10 — a fix elsewhere that satisfies operationalization.fully_addressed counts; the criterion is disjunctive and location-free"
+            },
+            {
+              "observable": "evidence_anchor_location",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "revised section 4.2 Measurement",
+                "arm-b": "revised Appendix C"
+              },
+              "rule_anchor": "spec §3.3 — the anchor points at the evidence that actually satisfies the criterion, wherever it is"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "identical",
+              "expected": {
+                "arm-a": "Accept",
+                "arm-b": "Accept"
+              },
+              "rule_anchor": "spec §6 Step 2 B6"
+            }
           ]
         },
         {
           "pair_id": "P-5/a-c",
-          "arms": ["arm-a", "arm-c"],
+          "arms": [
+            "arm-a",
+            "arm-c"
+          ],
           "cells": [
-            {"observable": "final_verdict", "target": "REV-001", "relation": "differs", "expected": {"arm-a": "FULLY_ADDRESSED", "arm-c": "NOT_ADDRESSED"}, "rule_anchor": "spec §3.2 — the surface exists so a cosmetic edit at the expected location cannot satisfy the item by position alone"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-a": "Accept", "arm-c": "Major Revision"}, "rule_anchor": "spec §6 Step 2 B6 vs B3"}
+            {
+              "observable": "final_verdict",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "FULLY_ADDRESSED",
+                "arm-c": "NOT_ADDRESSED"
+              },
+              "rule_anchor": "spec §3.2 — the surface exists so a cosmetic edit at the expected location cannot satisfy the item by position alone"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "Accept",
+                "arm-c": "Major Revision"
+              },
+              "rule_anchor": "spec §6 Step 2 B6 vs B3"
+            }
           ]
         },
         {
           "pair_id": "P-5/b-c",
-          "arms": ["arm-b", "arm-c"],
+          "arms": [
+            "arm-b",
+            "arm-c"
+          ],
           "cells": [
-            {"observable": "final_verdict", "target": "REV-001", "relation": "differs", "expected": {"arm-b": "FULLY_ADDRESSED", "arm-c": "NOT_ADDRESSED"}, "rule_anchor": "SD-10 + spec §3.2 — the off-surface fix satisfies the criterion and the on-surface edit does not; location carries no weight in either direction"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-b": "Accept", "arm-c": "Major Revision"}, "rule_anchor": "spec §6 Step 2 B6 vs B3"}
+            {
+              "observable": "final_verdict",
+              "target": "REV-001",
+              "relation": "differs",
+              "expected": {
+                "arm-b": "FULLY_ADDRESSED",
+                "arm-c": "NOT_ADDRESSED"
+              },
+              "rule_anchor": "SD-10 + spec §3.2 — the off-surface fix satisfies the criterion and the on-surface edit does not; location carries no weight in either direction"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-b": "Accept",
+                "arm-c": "Major Revision"
+              },
+              "rule_anchor": "spec §6 Step 2 B6 vs B3"
+            }
           ]
         }
       ]
@@ -220,42 +710,181 @@
       "dir": "scenarios/p6_escalation_exception",
       "title": "Escalation exception: qualifying, non-qualifying, and rejected",
       "controlled_factor": "escalation_class_and_user_answer",
-      "arm_supplied_sections": ["E", "F", "G", "I"],
-      "packet": {"en": "packet.en.md", "zh-TW": "packet.zh-TW.md"},
+      "arm_supplied_sections": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H"
+      ],
+      "packet": {
+        "en": "packet.en.md",
+        "zh-TW": "packet.zh-TW.md"
+      },
       "claim_set_equality_required": false,
       "arms": [
-        {"arm_id": "arm-a", "condition": "qualifying_research_integrity_approved", "material": {"en": "arms/arm-a.en.md", "zh-TW": "arms/arm-a.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": "Approved. Treat the ethics-approval date conflict as a research-integrity escalation and apply its decision impact."},
-        {"arm_id": "arm-b", "condition": "non_qualifying_new_standard_advisory", "material": {"en": "arms/arm-b.en.md", "zh-TW": "arms/arm-b.zh-TW.md"}, "claim_set": null, "scripted_checkpoint_answer": null},
-        {"arm_id": "arm-c", "condition": "qualifying_research_integrity_rejected", "material": {"en": "arms/arm-c.en.md", "zh-TW": "arms/arm-c.zh-TW.md"}, "material_pointer": "arm-a", "claim_set": null, "scripted_checkpoint_answer": "Not approved. Record the observation for the authors, but do not let it change this round's decision."}
+        {
+          "arm_id": "arm-a",
+          "condition": "qualifying_research_integrity_approved",
+          "material": {
+            "en": "arms/arm-a.en.md",
+            "zh-TW": "arms/arm-a.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": {
+            "en": "Approved. Treat the ethics-approval date conflict as a research-integrity escalation and apply its decision impact.",
+            "zh-TW": "核准。將倫理核准日期衝突視為研究誠信類的 escalation，並套用其決策影響。"
+          }
+        },
+        {
+          "arm_id": "arm-b",
+          "condition": "non_qualifying_new_standard_advisory",
+          "material": {
+            "en": "arms/arm-b.en.md",
+            "zh-TW": "arms/arm-b.zh-TW.md"
+          },
+          "claim_set": null,
+          "scripted_checkpoint_answer": null
+        },
+        {
+          "arm_id": "arm-c",
+          "condition": "qualifying_research_integrity_rejected",
+          "material": {
+            "en": "arms/arm-c.en.md",
+            "zh-TW": "arms/arm-c.zh-TW.md"
+          },
+          "material_pointer": "arm-a",
+          "claim_set": null,
+          "scripted_checkpoint_answer": {
+            "en": "Not approved. Record the observation for the authors, but do not let it change this round's decision.",
+            "zh-TW": "不予核准。請為作者記錄此一觀察，但不要讓它改變本輪的決議。"
+          }
+        }
       ],
       "pairs": [
         {
           "pair_id": "P-6/a-c",
-          "arms": ["arm-a", "arm-c"],
+          "arms": [
+            "arm-a",
+            "arm-c"
+          ],
           "cells": [
-            {"observable": "decision_state_revision_1", "target": null, "relation": "identical", "expected": {"arm-a": "user_review_required", "arm-c": "user_review_required"}, "rule_anchor": "spec §6 Step 1 G2(c) — a pending EscalationExceptionRecord defers; the inputs are byte-identical, so a revision-1 divergence means the run anticipated an answer it had not received"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-a": "Major Revision", "arm-c": "Accept"}, "rule_anchor": "spec §6 Step 3 — floors applied iff effective_approval_state is approved; §6.4 — rejected contributes no floor (advisory only)"},
-            {"observable": "reject_recommended", "target": null, "relation": "differs", "expected": {"arm-a": true, "arm-c": false}, "rule_anchor": "spec §6.4 — an APPROVED research_integrity-class exception additionally sets reject_recommended; a pending or rejected one sets nothing"}
+            {
+              "observable": "decision_state_revision_1",
+              "target": null,
+              "relation": "identical",
+              "expected": {
+                "arm-a": "user_review_required",
+                "arm-c": "user_review_required"
+              },
+              "rule_anchor": "spec §6 Step 1 G2(c) — a pending EscalationExceptionRecord defers; the inputs are byte-identical, so a revision-1 divergence means the run anticipated an answer it had not received"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "Major Revision",
+                "arm-c": "Accept"
+              },
+              "rule_anchor": "spec §6 Step 3 — floors applied iff effective_approval_state is approved; §6.4 — rejected contributes no floor (advisory only)"
+            },
+            {
+              "observable": "reject_recommended",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": true,
+                "arm-c": false
+              },
+              "rule_anchor": "spec §6.4 — an APPROVED research_integrity-class exception additionally sets reject_recommended; a pending or rejected one sets nothing"
+            }
           ]
         },
         {
           "pair_id": "P-6/a-b",
-          "arms": ["arm-a", "arm-b"],
+          "arms": [
+            "arm-a",
+            "arm-b"
+          ],
           "cells": [
-            {"observable": "escalation_exception_exists", "target": null, "relation": "differs", "expected": {"arm-a": true, "arm-b": false}, "rule_anchor": "spec §6.4 — closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity}; a preregistration-disclosure standard is in none of them"},
-            {"observable": "reaches_checkpoint", "target": null, "relation": "differs", "expected": {"arm-a": true, "arm-b": false}, "rule_anchor": "spec §3.2 — a new_standard is advisory by default and cannot change the item verdict or the decision; only classification escalation_requested enters the checkpoint path"},
-            {"observable": "decision_state", "target": null, "relation": "differs", "expected": {"arm-a": "Major Revision", "arm-b": "Accept"}, "rule_anchor": "spec §6 Step 3 floor vs no floor"}
+            {
+              "observable": "new_standard_classification",
+              "target": "REV-002",
+              "relation": "differs",
+              "expected": {
+                "arm-a": "escalation_requested",
+                "arm-b": "advisory"
+              },
+              "rule_anchor": "spec §6.4 closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity} + §3.2 advisory-by-default — the same shaped criterion-incompleteness enters the escalation path in one Round-1 world and stays advisory in the other"
+            },
+            {
+              "observable": "escalation_exception_exists",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": true,
+                "arm-b": false
+              },
+              "rule_anchor": "spec §6.4 — closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity}; a preregistration-disclosure standard is in none of them"
+            },
+            {
+              "observable": "reaches_checkpoint",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": true,
+                "arm-b": false
+              },
+              "rule_anchor": "spec §3.2 — a new_standard is advisory by default and cannot change the item verdict or the decision; only classification escalation_requested enters the checkpoint path"
+            },
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-a": "Major Revision",
+                "arm-b": "Accept"
+              },
+              "rule_anchor": "spec §6 Step 3 floor vs no floor"
+            }
           ]
         },
         {
           "pair_id": "P-6/b-c",
-          "arms": ["arm-b", "arm-c"],
+          "arms": [
+            "arm-b",
+            "arm-c"
+          ],
           "cells": [
-            {"observable": "decision_state", "target": null, "relation": "identical", "expected": {"arm-b": "Accept", "arm-c": "Accept"}, "rule_anchor": "spec §6 Step 3 — an advisory standard and a rejected exception both contribute no floor, so the base decision stands in both"},
-            {"observable": "reaches_checkpoint", "target": null, "relation": "differs", "expected": {"arm-b": false, "arm-c": true}, "rule_anchor": "spec §6 Step 1 G2(c) — same landing decision, opposite obligations to the user; this cell is the only one that separates them"}
+            {
+              "observable": "decision_state",
+              "target": null,
+              "relation": "identical",
+              "expected": {
+                "arm-b": "Accept",
+                "arm-c": "Accept"
+              },
+              "rule_anchor": "spec §6 Step 3 — an advisory standard and a rejected exception both contribute no floor, so the base decision stands in both"
+            },
+            {
+              "observable": "reaches_checkpoint",
+              "target": null,
+              "relation": "differs",
+              "expected": {
+                "arm-b": false,
+                "arm-c": true
+              },
+              "rule_anchor": "spec §6 Step 1 G2(c) — same landing decision, opposite obligations to the user; this cell is the only one that separates them"
+            }
           ]
         }
-      ]
+      ],
+      "arm_supplied_note": "P-6 is the only scenario whose arms differ in the Round-1 artifacts, and structurally must be: the controlled factor is the escalation CLASS of a Phase-1 NewStandardRecord (§3.2), and §3.1 makes Phase 1 revision-blind, so a class difference can only come from different Round-1 artifacts. The packet supplies §I alone."
     }
-  ]
+  ],
+  "scripted_answer_policy": "A non-null scripted_checkpoint_answer is an object carrying both declared languages. The operator supplies the answer in the language of the run: the rest of that run's artifacts are in that language, and a cross-language answer would make the one distinguishing input a language outlier."
 }

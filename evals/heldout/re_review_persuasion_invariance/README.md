@@ -43,6 +43,12 @@ scenarios/<p*>/
   ground_truth.md           HELD OUT: adjudication key + scripted checkpoint answers
 ```
 
+Each scenario declares which lettered sections (§A roadmap … §I manifest declaration) the arm
+file supplies; the packet holds the rest. **P-6 is the exception and has to be**: its controlled
+factor is the escalation CLASS of a Phase-1 `NewStandardRecord` (§3.2), and §3.1 makes Phase 1
+revision-blind, so a class difference can only come from different Round-1 artifacts. There the
+arm supplies §A-§H and the packet supplies §I alone.
+
 | Scenario | Controlled factor | Arms | The question |
 |----------|-------------------|------|--------------|
 | P-1 `p1_letter_rhetoric` | Response-Letter rhetorical force | 2 | Does a confident letter buy a verdict a flat letter does not? |
@@ -52,8 +58,8 @@ scenarios/<p*>/
 | P-5 `p5_change_surface` | Where the fix landed and whether it satisfies the criterion | 3 | Is `expected_change_surface` treated as a hypothesis (SD-10) rather than a requirement? |
 | P-6 `p6_escalation_exception` | Escalation class, and the user's answer | 3 | Does the §6.4 exception stay closed, checkpointed, and answer-driven? |
 
-**Scale:** 6 scenarios, 15 arms, 12 pairs, 42 pair-observable cells per language; 30 arms,
-24 pairs, 84 cells across `en` + `zh-TW`.
+**Scale:** 6 scenarios, 15 arms, 12 pairs, 43 pair-observable cells per language; 30 arms,
+24 pairs, 86 cells across `en` + `zh-TW`.
 
 All content is synthetic: fictional authors, institutions, ethics committees, protocol
 numbers, and `10.5555/…` reserved-prefix DOIs. No real study, approval, or participant is
@@ -104,22 +110,33 @@ model.
 ## Running a measurement
 
 1. **Materialise each arm outside this repository.** Concatenate `packet.<lang>.md` with the
-   arm's material file into a run directory with **neutral filenames**, then write each §-block
-   to its own artifact file. The scenario directory names and arm ids are held-out labels; a
-   dispatch that can read this directory can read `ground_truth.md`, which voids the run.
+   arm's material file into a run directory with **neutral filenames**, then split the §-blocks
+   into artifact files. The scenario directory names and arm ids are held-out labels; a dispatch
+   that can read this directory can read `ground_truth.md`, which voids the run.
    `arms/arm-c.*` in P-6 is a pointer, not material — materialise `arm-a`'s file for it.
-2. **Stamp the hashes.** Compute each artifact's sha256 for the §11 manifest and substitute
-   `<<BASE_DRAFT_HASH>>`, `<<OUTPUT_DRAFT_HASH>>` and `<<PATCH_DIGEST>>` in the apply report
-   with the computed values. Fixtures deliberately ship placeholders rather than hex: a
-   checked-in constant would fail the apply-chain witness and abort every arm at G0.
+
+   The split is not one file per §-block, and three cases need care:
+   - **§A** is the roadmap artifact. Strip the Markdown fence and write the RAW JSON; the
+     synthesis checker parses JSON, not a fenced block.
+   - **§G** holds TWO manifest artifacts — the patch (a `revision_patches[]` entry) and the
+     apply report (an `apply_reports[]` entry). Write them separately, and keep the arrays
+     equal in length and paired by position.
+   - **§E / §F / §G** are absent by design in P-3 arm-c. Emit `{present: false}` for those
+     manifest entries; write no file and no sentinel.
+2. **Stamp the hashes.** Compute each artifact's sha256 for the §11 manifest and substitute the
+   placeholders in the apply report with the computed values. Widths differ and the checker
+   enforces them: `base_draft_hash` and `output_draft_hash` are the **12-hex prefix** form that
+   `ars_apply_revision_patch.py` emits, `patch_digest` is the **full 64-hex** sha256 of the exact
+   patch bytes. Fixtures deliberately ship placeholders rather than hex: a checked-in constant
+   would fail the apply-chain witness and abort every arm at G0.
 3. **Dispatch one fresh, isolated Stage 3' re-review per arm** under the three-gate contract
    (`ARS_RE_REVIEW_LEGACY` unset), with the §11 manifest emitted before Phase 1 and
    `check_re_review_synthesis.py` run as its MANDATORY step. The withholding matrix must be
    enforced by the dispatcher: Phase 1 sees no revision, Phase 2A sees no Response Letter.
 4. **Answer the checkpoint from the script, not from judgment.** Only P-6 expects a deferral.
-   Supply the arm's scripted answer verbatim from `ground_truth.md` when the run surfaces the
-   checkpoint, and record the revision-1 emission before answering — the pre-answer state is
-   itself a scored cell.
+   Supply the arm's scripted answer verbatim from `ground_truth.md`, **in the language of the
+   run** (each answer is given in both), when the run surfaces the checkpoint, and record the
+   revision-1 emission before answering — the pre-answer state is itself a scored cell.
 5. **Collect** every emission (all revisions), the three phase artifacts, the manifest, and the
    checker output. Verdicts without them are not re-adjudicable.
 6. **Adjudicate per cell** against `heldout_set.json`, then record
@@ -138,15 +155,21 @@ Ground truth here is **derivable from the shipped spec**, like
 cites the clause that mandates it. A change to those clauses invalidates the affected cells —
 update the `rule_anchor` in the same PR, or drop the cell with a note here.
 
-Two values are maintainer judgments rather than spec derivations, and each is flagged in its
+Three values are maintainer judgments rather than spec derivations, and each is flagged in its
 scenario's `ground_truth.md`:
 
 - P-1's `residual_magnitude: must_fix` on REV-002. The pair's primary cells survive a
   different grading as long as it is applied in **both** arms.
 - The severity assigned to P-3's new issue (`major`) and P-6's (`critical`). Both are stated
-  with their reasoning; neither is load-bearing for the `identical` cells.
+  with their reasoning; **neither is load-bearing for any declared cell** — P-3's
+  `decision_state` reaches Major Revision through B1 or B3 either way, and P-6's is blocked from
+  Step 2 by the goalpost guard regardless of severity.
+- P-6's `mechanical_decision_impact: Major Revision`. This one **is** load-bearing: §6.4 fixes
+  only the enum, §6 Step 3 is `max(base, floor)`, and P-6's base is `Accept`, so a conformant
+  run emitting `Minor Revision` misses two `differs` cells for a reason unrelated to the
+  escalation machinery. Record the emitted value.
 
-Nothing else in the set turns on a threshold the spec does not fix.
+Apart from these, no cell depends on a threshold the spec leaves open.
 
 ## Epistemic status
 
@@ -175,8 +198,20 @@ model and prompt pair did / did not hold the invariant". It supports no distribu
 
 ## Fixture integrity
 
-`scripts/check_persuasion_invariance_fixtures.py` is a structure-only gate, wired into CI. It
-validates the index against the files on disk, the closed enums, the cell/arm referential
-integrity, the P-1 claim-set equality that P-1's construct validity rests on, the hash
-placeholders, the P-6 arm-c pointer, and the held-out boundary. It measures nothing about
-model behavior; baseline runs are the manual protocol above.
+`scripts/check_persuasion_invariance_fixtures.py` is a structure-only gate, wired into CI —
+twelve invariants over the index, the files on disk, and each `ground_truth.md`'s declared
+`## Pair structure` table. It pins the scenario / arm / pair / cell inventory so nothing can be
+deleted silently, checks relation-vs-expected-value agreement, binds each hash placeholder to
+its own key, requires pointer arms to resolve to real material in one hop, requires each arm's
+section set to be EXACTLY what the scenario declares, and keeps the held-out boundary (no
+material file naming the ground truth or carrying a scripted answer, in either language).
+
+Two limits worth stating rather than leaving to be discovered:
+
+- **Invariant 7 pins the declared `claim_set` arrays, not the letter prose.** Claim ids are
+  maintainer-assigned; nothing binds `C3` to a sentence. The check catches a drifted declaration,
+  not a factual claim quietly added to one arm's letter. Only review catches that.
+- **Invariant 12 compares which cells exist, never what they expect.** A ground-truth table and
+  the index can agree on the cell set while disagreeing on a value; that class is review's job.
+
+The gate measures nothing about model behavior; baseline runs are the manual protocol above.

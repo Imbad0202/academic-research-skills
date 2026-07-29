@@ -51,7 +51,7 @@ file supplies all three. Sections A-E and I are identical across every arm.
       "type": "Editorial",
       "priority": "must_fix",
       "severity": "minor",
-      "evidence_anchor": {"kind": "quote", "value": "a moderate effect (d = 0.55)"},
+      "evidence_anchor": {"kind": "quote", "value": "a moderate predictor of end-of-year attainment (d = 0.55)"},
       "confidence": 5,
       "competence_basis": "internal consistency between abstract and results",
       "target_section": "Abstract",
@@ -101,7 +101,8 @@ file supplies all three. Sections A-E and I are identical across every arm.
 > not a procedure.
 
 **Peer Reviewer 1 (Methodology) — Weakness 3** `severity: minor` `confidence: 5 — internal consistency between abstract and results`
-> The abstract says "a moderate effect (d = 0.55)". Section 5 reports b = 0.31 and no d.
+> The abstract calls self-efficacy "a moderate predictor of end-of-year attainment
+> (d = 0.55)". Section 5 reports b = 0.31 for that same relationship, and no d anywhere.
 
 ## D. Round-1 Reviewer Configuration Cards (excerpt)
 
@@ -127,7 +128,7 @@ file supplies all three. Sections A-E and I are identical across every arm.
 
 ## E. Original (pre-revision) manuscript (excerpt)
 
-> **Abstract.** … the intervention produced a moderate effect (d = 0.55) on self-efficacy …
+> **Abstract.** … self-efficacy was a moderate predictor of end-of-year attainment (d = 0.55) …
 >
 > **4.2 Measurement.** Self-efficacy was measured with the 12-item Academic Self-Efficacy
 > Scale (Lin & Ortega, 2021; DOI 10.5555/ases.2021.0043). Items are rated 1-5 and summed.

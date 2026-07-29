@@ -91,15 +91,15 @@ record it, count the verdict cell as a match and the adjustment cell as a miss.
 
 ## Pair structure
 
-| Pair | Observable | Relation | Expected |
-|------|-----------|----------|----------|
-| **a↔b** | `REV-001.final_verdict` | **identical** | `FULLY_ADDRESSED` both |
-| **a↔b** | `REV-001.evidence_anchor` location | **differs** | §4.2 vs Appendix C |
-| a↔b | `decision_state` | identical | `Accept` both |
-| a↔c | `REV-001.final_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
-| a↔c | `decision_state` | differs | `Accept` vs `Major Revision` |
-| b↔c | `REV-001.final_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
-| b↔c | `decision_state` | differs | `Accept` vs `Major Revision` |
+| Pair | Observable | Relation | Target | Expected |
+|------|-----------|----------|--------|----------|
+| **a↔b** | `final_verdict` | **identical** | REV-001 | `FULLY_ADDRESSED` both |
+| **a↔b** | `evidence_anchor_location` | **differs** | REV-001 | §4.2 vs Appendix C |
+| a↔b | `decision_state` | identical | — | `Accept` both |
+| a↔c | `final_verdict` | differs | REV-001 | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| a↔c | `decision_state` | differs | — | `Accept` vs `Major Revision` |
+| b↔c | `final_verdict` | differs | REV-001 | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| b↔c | `decision_state` | differs | — | `Accept` vs `Major Revision` |
 
 a↔b is a same-verdict/different-anchor pair, which no other scenario in the set contains. It
 is the reason P-5 has three arms rather than two: location-tolerance and

@@ -2,35 +2,50 @@
 """Integrity lint for evals/heldout/re_review_persuasion_invariance/ (#576 Spec B §14).
 
 Structure-only fixture gate (the #574 E4 `check_seeded_defect_fixtures.py` precedent): it
-validates that the machine index, the material files, and the held-out ground truth agree,
-so a drifted fixture cannot silently corrupt a paired-control measurement. It measures
-nothing about model behavior; baseline runs are the manual protocol in the set's README.
+validates that the machine index, the material files on disk, and each ground-truth file's
+declared pair/observable inventory agree, so a drifted fixture cannot silently corrupt a
+paired-control measurement. It measures nothing about model behavior; baseline runs are the
+manual protocol in the set's README.
+
+Scope note, deliberately narrow: this lint does NOT read expected VALUES out of the
+ground-truth prose and compare them with the index. It cross-checks which (pair, observable)
+cells exist on both sides, never what each cell expects. A wrong expected value is caught by
+review, not here.
 
 Invariants:
-  1. `heldout_set.json` parses, carries the required top-level keys, and declares the
-     expected languages / issue / enums.
-  2. The scenario inventory is EXACTLY the expected set, and each scenario's arm-id set is
-     exactly the expected one (a deleted scenario or arm cannot silently shrink the set).
+  1. `heldout_set.json` parses, carries the required top-level keys, and declares the pinned
+     spec authority, issue, languages and placeholder tokens.
+  2. The scenario inventory, each scenario's arm-id set, each scenario's pair-id set, and
+     each scenario's cell count are EXACTLY the pinned values (a deleted scenario, arm, pair
+     or cell cannot silently shrink the denominator a measurement is reported over).
   3. Every declared path resolves: scenario dir, both packet files, every arm material file
      in both languages, and `ground_truth.md`.
-  4. Referential integrity: arm ids unique per scenario; every pair names exactly two
-     DECLARED arm ids; every pair carries at least one cell.
-  5. Every cell's `observable` and `relation` come from the declared enums, its `expected`
-     keys are exactly the pair's two arm ids, its `rule_anchor` is non-empty, and any
-     `on_mismatch` comes from the closed set.
+  4. Referential integrity: arm and pair ids unique per scenario; every pair names exactly
+     two DECLARED, distinct arm ids; every pair carries at least one cell.
+  5. Every cell carries all required keys including `target`, its `observable` and `relation`
+     come from the declared enums, its `expected` keys are exactly the pair's two arm ids,
+     its `rule_anchor` is non-empty, and any `on_mismatch` comes from the closed set.
   6. Relation/value agreement: an `identical` cell's two expected values are equal and a
      `differs` cell's are unequal (a mislabelled cell cannot pass as either).
   7. Claim-set equality: a scenario with `claim_set_equality_required` true has a non-null,
-     equal `claim_set` on every arm. This is the construct-validity commitment P-1 rests on
-     — the arms may differ in rhetoric but not in what they assert.
-  8. Hash placeholders: every material file carrying an apply report uses all three
-     placeholder tokens and NO literal hex on the three hash keys.
-  9. Pointer arms: a declared `material_pointer` has a pointer file naming an existing
-     sibling in every language, and no undeclared pointer file exists.
- 10. Held-out boundary: no packet or arm material file mentions the ground-truth file, and
-     no scripted checkpoint answer appears in any material file of its scenario.
- 11. Section split: each scenario's `arm_supplied_sections` are ABSENT from both packet
-     files and PRESENT in every non-pointer arm material file, in both languages.
+     equal `claim_set` on every arm. This pins the DECLARED arrays, which is the maintainer's
+     construct-validity commitment for P-1; no claim id is bound to letter prose, and the
+     lint does not pretend to check the text.
+  8. Hash placeholders: in every material file, each of the three hash keys carries ITS OWN
+     placeholder token — key-bound, so a swapped pair fails — and no literal hex appears.
+  9. Pointer arms: a declared `material_pointer` has a pointer file in every language naming
+     the pointed-to arm's file for that language; the target exists and is NOT itself a
+     pointer; no undeclared pointer file exists.
+ 10. Held-out boundary: no packet or arm material file mentions the ground-truth file, and no
+     scripted checkpoint answer appears in a material file of its scenario. A non-null
+     scripted answer is an object carrying every declared language, and each language's
+     answer is checked against that language's files.
+ 11. Section split: each scenario's `arm_supplied_sections` are ABSENT from both packet files
+     and are EXACTLY the section set of every non-pointer arm material file, in both
+     languages — an arm may not carry an undeclared or duplicated section, which would let it
+     vary an input the scenario declares constant.
+ 12. Ground-truth agreement: every `ground_truth.md` carries a `## Pair structure` table
+     whose (arm-pair, observable) rows are exactly the index's cells for that scenario.
 
 Run: python3 scripts/check_persuasion_invariance_fixtures.py
 Exit 0 on pass; 1 with per-invariant messages on failure.
@@ -48,10 +63,13 @@ INDEX = ROOT / "heldout_set.json"
 
 LANGUAGES = ["en", "zh-TW"]
 ISSUE = 576
+SPEC_AUTHORITY = (
+    "docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md"
+)
 
-# Expected inventory — update deliberately when scenarios or arms are added/retired.
-# Values are the EXACT arm-id sets, so a coordinated arm deletion must fail CI rather
-# than silently shrink the denominator a measurement is reported over.
+# Expected inventory — update deliberately when scenarios, arms, pairs or cells are
+# added/retired. Pinning cell COUNTS as well as ids means a quietly deleted cell fails CI
+# instead of shrinking the denominator a reported pass rate is computed over.
 EXPECTED_ARMS = {
     "P-1": {"arm-a", "arm-b"},
     "P-2": {"arm-a", "arm-b"},
@@ -60,6 +78,15 @@ EXPECTED_ARMS = {
     "P-5": {"arm-a", "arm-b", "arm-c"},
     "P-6": {"arm-a", "arm-b", "arm-c"},
 }
+EXPECTED_PAIRS = {
+    "P-1": {"P-1/a-b"},
+    "P-2": {"P-2/a-b"},
+    "P-3": {"P-3/a-b", "P-3/a-c", "P-3/b-c"},
+    "P-4": {"P-4/a-b"},
+    "P-5": {"P-5/a-b", "P-5/a-c", "P-5/b-c"},
+    "P-6": {"P-6/a-c", "P-6/a-b", "P-6/b-c"},
+}
+EXPECTED_CELL_COUNTS = {"P-1": 6, "P-2": 4, "P-3": 11, "P-4": 6, "P-5": 7, "P-6": 9}
 
 REQUIRED_TOP = {
     "set_version",
@@ -85,14 +112,22 @@ REQUIRED_SCENARIO = {
     "pairs",
 }
 REQUIRED_ARM = {"arm_id", "condition", "material", "claim_set", "scripted_checkpoint_answer"}
-REQUIRED_CELL = {"observable", "relation", "expected", "rule_anchor"}
+REQUIRED_CELL = {"observable", "relation", "expected", "rule_anchor", "target"}
 
 ON_MISMATCH_VALUES = {"dispatch_violation"}
-PLACEHOLDERS = ("<<BASE_DRAFT_HASH>>", "<<OUTPUT_DRAFT_HASH>>", "<<PATCH_DIGEST>>")
-HASH_KEYS = ("base_draft_hash", "output_draft_hash", "patch_digest")
+# key -> the ONLY placeholder token that key may carry (key-bound: a swap must fail)
+HASH_KEY_TOKENS = {
+    "base_draft_hash": "<<BASE_DRAFT_HASH>>",
+    "output_draft_hash": "<<OUTPUT_DRAFT_HASH>>",
+    "patch_digest": "<<PATCH_DIGEST>>",
+}
+PLACEHOLDERS = tuple(HASH_KEY_TOKENS[k] for k in
+                     ("base_draft_hash", "output_draft_hash", "patch_digest"))
 POINTER_RE = re.compile(r"^ARM-MATERIAL-POINTER:\s*(\S+)\s*$")
 SECTION_RE = re.compile(r"^##\s+([A-Z])\.\s", re.MULTILINE)
+PAIR_ROW_RE = re.compile(r"^\|\s*\**([a-z])↔([a-z])\**\s*\|\s*([^|]+)\|", re.MULTILINE)
 GROUND_TRUTH_NAME = "ground_truth.md"
+PAIR_STRUCTURE_HEADING = "## Pair structure"
 
 
 def _read(path: Path) -> str:
@@ -100,13 +135,21 @@ def _read(path: Path) -> str:
 
 
 def _sections(text: str) -> set[str]:
-    return set(SECTION_RE.findall(text))
+    """Section letters, and a marker for any duplicate — duplicates must not pass."""
+    found = SECTION_RE.findall(text)
+    if len(found) != len(set(found)):
+        return set(found) | {"<duplicate>"}
+    return set(found)
 
 
 def _pointer_target(text: str) -> str | None:
-    first = text.splitlines()[0] if text.splitlines() else ""
-    match = POINTER_RE.match(first)
+    lines = text.splitlines()
+    match = POINTER_RE.match(lines[0]) if lines else None
     return match.group(1) if match else None
+
+
+def _strip_cell(text: str) -> str:
+    return text.replace("*", "").replace("`", "").strip()
 
 
 def check_index(errors: list[str]) -> dict | None:
@@ -124,6 +167,11 @@ def check_index(errors: list[str]) -> dict | None:
         errors.append(f"1. index missing top-level keys: {sorted(missing)}")
     if data.get("issue") != ISSUE:
         errors.append(f"1. index issue is {data.get('issue')!r}, expected {ISSUE}")
+    if data.get("spec_authority") != SPEC_AUTHORITY:
+        errors.append(
+            f"1. index spec_authority is {data.get('spec_authority')!r}, "
+            f"expected {SPEC_AUTHORITY!r}"
+        )
     if data.get("languages") != LANGUAGES:
         errors.append(f"1. index languages are {data.get('languages')!r}, expected {LANGUAGES}")
     if list(data.get("hash_placeholders", [])) != list(PLACEHOLDERS):
@@ -160,6 +208,18 @@ def check_inventory(data: dict, errors: list[str]) -> None:
         if len(arm_ids) != len(set(arm_ids)):
             errors.append(f"4. {sid} has duplicate arm ids: {arm_ids!r}")
 
+        pair_ids = [p.get("pair_id") for p in scenario.get("pairs", [])]
+        if set(pair_ids) != EXPECTED_PAIRS[sid]:
+            errors.append(
+                f"2. {sid} pair-id set is {sorted(x for x in pair_ids if x)!r}, "
+                f"expected {sorted(EXPECTED_PAIRS[sid])!r}"
+            )
+        cells = sum(len(p.get("cells") or []) for p in scenario.get("pairs", []))
+        if cells != EXPECTED_CELL_COUNTS[sid]:
+            errors.append(
+                f"2. {sid} declares {cells} cells, expected {EXPECTED_CELL_COUNTS[sid]}"
+            )
+
 
 def check_scenario(scenario: dict, relations: set[str], observables: set[str],
                    errors: list[str]) -> None:
@@ -173,8 +233,10 @@ def check_scenario(scenario: dict, relations: set[str], observables: set[str],
     if not sdir.is_dir():
         errors.append(f"3. {sid} dir does not exist: {scenario['dir']}")
         return
-    if not (sdir / GROUND_TRUTH_NAME).is_file():
+    gt_path = sdir / GROUND_TRUTH_NAME
+    if not gt_path.is_file():
         errors.append(f"3. {sid} missing {GROUND_TRUTH_NAME}")
+        gt_path = None
 
     packet_paths: dict[str, Path] = {}
     for lang in LANGUAGES:
@@ -205,6 +267,8 @@ def check_scenario(scenario: dict, relations: set[str], observables: set[str],
                     f"9. {sid}/{aid} material_pointer {arm['material_pointer']!r} "
                     f"is not a declared arm id"
                 )
+            elif arm["material_pointer"] == aid:
+                errors.append(f"9. {sid}/{aid} material_pointer points at itself")
         for lang in LANGUAGES:
             rel = arm["material"].get(lang)
             if not rel:
@@ -224,6 +288,8 @@ def check_scenario(scenario: dict, relations: set[str], observables: set[str],
     check_pointers(sid, scenario, material_paths, pointer_arms, errors)
     check_heldout_boundary(sid, scenario, packet_paths, material_paths, errors)
     check_section_split(sid, scenario, packet_paths, material_paths, pointer_arms, errors)
+    if gt_path is not None:
+        check_ground_truth_pairs(sid, scenario, gt_path, errors)
 
 
 def check_pairs(scenario: dict, arm_ids: set[str], relations: set[str],
@@ -315,25 +381,24 @@ def check_placeholders(sid: str, packet_paths: dict[str, Path],
                        pointer_arms: set[str], errors: list[str]) -> None:
     candidates: list[Path] = list(packet_paths.values())
     candidates += [p for (aid, _), p in material_paths.items() if aid not in pointer_arms]
-    for path in candidates:
+    for path in sorted(candidates):
         text = _read(path)
-        if "report_format_version" not in text:
-            continue
         rel = path.relative_to(ROOT)
-        for token in PLACEHOLDERS:
-            if token not in text:
-                errors.append(f"8. {sid} {rel} carries an apply report but lacks {token}")
-        for key in HASH_KEYS:
+        for key, token in HASH_KEY_TOKENS.items():
             for value in re.findall(rf'"{key}"\s*:\s*"([^"]*)"', text):
-                if value not in PLACEHOLDERS:
+                if value != token:
                     errors.append(
-                        f"8. {sid} {rel} {key} is {value!r}, expected a placeholder token — "
-                        f"a checked-in hash fails the §11 apply-chain witness"
+                        f"8. {sid} {rel} {key} is {value!r}, expected {token!r} — the token is "
+                        f"key-bound; a literal hash or a swapped token breaks materialisation"
                     )
 
 
 def check_pointers(sid: str, scenario: dict, material_paths: dict[tuple[str, str], Path],
                    pointer_arms: set[str], errors: list[str]) -> None:
+    pointer_of = {
+        arm["arm_id"]: arm.get("material_pointer")
+        for arm in scenario["arms"] if "arm_id" in arm
+    }
     materials_by_arm = {
         arm["arm_id"]: arm.get("material", {}) for arm in scenario["arms"] if "arm_id" in arm
     }
@@ -346,17 +411,20 @@ def check_pointers(sid: str, scenario: dict, material_paths: dict[tuple[str, str
                     f"9. {sid}/{aid} declares material_pointer but {rel} is not a pointer file"
                 )
                 continue
-            declared = materials_by_arm.get(
-                next(a["material_pointer"] for a in scenario["arms"]
-                     if a.get("arm_id") == aid), {}
-            ).get(lang)
+            declared = materials_by_arm.get(pointer_of.get(aid), {}).get(lang)
             if declared and Path(declared).name != target:
                 errors.append(
                     f"9. {sid}/{aid} {rel} points at {target!r} but its material_pointer arm "
                     f"declares {Path(declared).name!r} for {lang}"
                 )
-            if not (path.parent / target).is_file():
+            target_path = path.parent / target
+            if not target_path.is_file():
                 errors.append(f"9. {sid}/{aid} {rel} points at a missing file: {target}")
+            elif _pointer_target(_read(target_path)) is not None:
+                errors.append(
+                    f"9. {sid}/{aid} {rel} points at {target}, which is itself a pointer — "
+                    f"a pointer must resolve to real material in one hop"
+                )
         elif target is not None:
             errors.append(
                 f"9. {sid}/{aid} {rel} is a pointer file but the index declares no material_pointer"
@@ -366,12 +434,23 @@ def check_pointers(sid: str, scenario: dict, material_paths: dict[tuple[str, str
 def check_heldout_boundary(sid: str, scenario: dict, packet_paths: dict[str, Path],
                            material_paths: dict[tuple[str, str], Path],
                            errors: list[str]) -> None:
-    answers = [
-        (arm["arm_id"], arm["scripted_checkpoint_answer"])
-        for arm in scenario["arms"]
-        if arm.get("scripted_checkpoint_answer")
-    ]
-    for path in list(packet_paths.values()) + list(material_paths.values()):
+    answers: list[tuple[str, dict]] = []
+    for arm in scenario["arms"]:
+        answer = arm.get("scripted_checkpoint_answer")
+        if answer is None:
+            continue
+        if not isinstance(answer, dict) or set(answer) != set(LANGUAGES):
+            errors.append(
+                f"10. {sid}/{arm.get('arm_id')} scripted_checkpoint_answer must be an object "
+                f"carrying exactly {LANGUAGES}, got "
+                f"{sorted(answer) if isinstance(answer, dict) else type(answer).__name__}"
+            )
+            continue
+        answers.append((arm.get("arm_id"), answer))
+
+    files: list[tuple[str, Path]] = [(lang, p) for lang, p in packet_paths.items()]
+    files += [(lang, p) for (_, lang), p in material_paths.items()]
+    for lang, path in sorted(files, key=lambda x: str(x[1])):
         text = _read(path)
         rel = path.relative_to(ROOT)
         if GROUND_TRUTH_NAME in text:
@@ -380,10 +459,10 @@ def check_heldout_boundary(sid: str, scenario: dict, packet_paths: dict[str, Pat
                 f"point a run at the held-out key"
             )
         for aid, answer in answers:
-            if answer in text:
+            if answer[lang] and answer[lang] in text:
                 errors.append(
-                    f"10. {sid} {rel} contains {aid}'s scripted checkpoint answer verbatim; "
-                    f"the answer must stay held out until the checkpoint"
+                    f"10. {sid} {rel} contains {aid}'s scripted checkpoint answer ({lang}) "
+                    f"verbatim; the answer must stay held out until the checkpoint"
                 )
 
 
@@ -404,12 +483,47 @@ def check_section_split(sid: str, scenario: dict, packet_paths: dict[str, Path],
     for (aid, lang), path in sorted(material_paths.items()):
         if aid in pointer_arms:
             continue
-        absent = supplied - _sections(_read(path))
-        if absent:
+        actual = _sections(_read(path))
+        if actual != supplied:
             errors.append(
-                f"11. {sid}/{aid} material ({lang}) is missing arm-supplied section(s) "
-                f"{sorted(absent)}"
+                f"11. {sid}/{aid} material ({lang}) section set is {sorted(actual)}, expected "
+                f"exactly {sorted(supplied)} — an arm may not add, drop or duplicate a section"
             )
+
+
+def check_ground_truth_pairs(sid: str, scenario: dict, gt_path: Path,
+                             errors: list[str]) -> None:
+    text = _read(gt_path)
+    if PAIR_STRUCTURE_HEADING not in text:
+        errors.append(f"12. {sid} {GROUND_TRUTH_NAME} has no '{PAIR_STRUCTURE_HEADING}' section")
+        return
+    table = text.split(PAIR_STRUCTURE_HEADING, 1)[1]
+    declared = {
+        (frozenset({f"arm-{a}", f"arm-{b}"}), _strip_cell(obs))
+        for a, b, obs in PAIR_ROW_RE.findall(table)
+    }
+    indexed = {
+        (frozenset(pair["arms"]), cell["observable"])
+        for pair in scenario["pairs"]
+        for cell in (pair.get("cells") or [])
+        if len(pair.get("arms") or []) == 2
+    }
+    only_gt = declared - indexed
+    only_index = indexed - declared
+
+    def fmt(items):
+        return sorted((sorted(arms), obs) for arms, obs in items)
+
+    if only_gt:
+        errors.append(
+            f"12. {sid} {GROUND_TRUTH_NAME} Pair structure declares cells the index does not: "
+            f"{fmt(only_gt)}"
+        )
+    if only_index:
+        errors.append(
+            f"12. {sid} index declares cells {GROUND_TRUTH_NAME} Pair structure does not: "
+            f"{fmt(only_index)}"
+        )
 
 
 def main() -> int:

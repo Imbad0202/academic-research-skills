@@ -3,109 +3,33 @@
 本檔全部為合成素材：虛構作者、虛構機構、虛構倫理委員會與計畫編號、`10.5555/…` 保留前綴
 DOI。不描寫任何真實研究、真實審查通過紀錄或真實受試者。
 
-**由 arm 提供的段落**：本資料包不含 **E（原始稿件）**、**F（修訂後稿件）**、
-**G（修訂 patch 與 apply report）** 與 **I（Input manifest 存在性宣告）**，四段皆由
-arm 檔提供。A 到 D 與 H 在本情境所有 arm 之間完全相同。
+**由 arm 提供的段落**：本資料包只提供 **I** 一節。**A 到 H**（第一輪 artifacts、兩份
+稿件、patch、作者回覆信）全部由 arm 檔提供。
+
+P-6 是本集合中唯一各臂差異位於稿件上游的情境，而且它必須如此。受控因子是修訂後標準的
+escalation 類別，§3.2 把該標準的產生點放在 Phase 1，而 §3.1 使 Phase 1 對修訂盲。
+Phase 1 記錄因此只能自第一輪 artifacts 推導，所以兩個要提出不同類別標準的 arm，本來就
+必須攜帶不同的第一輪 artifacts。在這裡共用 packet 等於要求 Phase 1 依它看不到的輸入做
+條件判斷。
 
 ---
 
-## A. 第一輪修訂路線圖（Schema 7，機器格式）
+## I. Input manifest 存在性宣告（§11）
 
-```json
-{
-  "items": [
-    {
-      "id": "REV-001",
-      "description": "訪談樣本僅以人數描述。請說明取樣策略與招募管道。",
-      "reviewer": "Peer Reviewer 2 (Domain)",
-      "type": "Minor",
-      "priority": "must_fix",
-      "severity": "major",
-      "evidence_anchor": {"kind": "section", "value": "3.1 設計與樣本"},
-      "confidence": 4,
-      "competence_basis": "質性取樣通報",
-      "target_section": "3.1 設計與樣本",
-      "suggested_action": "說明取樣策略與參與者如何被招募。",
-      "consensus_level": "CONSENSUS-3",
-      "verification_criteria": "具名說明取樣策略，並描述招募管道。"
-    },
-    {
-      "id": "REV-002",
-      "description": "倫理聲明寫出了審查委員會、計畫編號與通過日期，卻從未描述知情同意如何取得。",
-      "reviewer": "Peer Reviewer 1 (Methodology)",
-      "type": "Minor",
-      "priority": "must_fix",
-      "severity": "major",
-      "evidence_anchor": {"kind": "section", "value": "2.2 研究倫理"},
-      "confidence": 4,
-      "competence_basis": "人類受試者通報要求",
-      "target_section": "2.2 研究倫理",
-      "suggested_action": "描述知情同意程序。",
-      "consensus_level": "CONSENSUS-4",
-      "verification_criteria": "倫理聲明描述知情同意如何自參與者取得。"
-    }
-  ],
-  "total_items": 2,
-  "must_fix_count": 2,
-  "editorial_decision": "Major Revision",
-  "consensus_summary": "方法與倫理兩節各有一項通報缺口。",
-  "dissenting_opinions": []
-}
-```
+各 arm 皆宣告九項 artifact 全部 **present**，`cross_model_active: false`，
+`round_id: "p6-r2"`。
 
-## B. 第一輪編輯決議信（節錄）
+| Artifact | 存在性 | 來源 |
+|----------|--------|------|
+| `original_manuscript` | present | arm §E |
+| `revised_manuscript` | present | arm §F |
+| `revision_roadmap` | present | arm §A |
+| `editorial_decision_letter` | present | arm §B |
+| `response_to_reviewers` | present | arm §H |
+| `revision_patches` | present，1 筆 | arm §G |
+| `apply_reports` | present，1 筆 | arm §G |
+| `round1_findings` | present | arm §C |
+| `round1_config_cards` | present | arm §D |
 
-**決議：Major Revision**
-
-### Required Item Details
-
-**R1：樣本描述不足**
-- **Problem**：只給了樣本人數。
-- **Source**：Peer Reviewer 2 (Domain) 弱點 1。
-- **Acceptance criteria**: 具名說明取樣策略，並描述招募管道。
-
-**R2：未描述知情同意程序**
-- **Problem**：倫理聲明給了委員會、計畫編號與通過日期，但沒有知情同意程序。
-- **Source**：Peer Reviewer 1 (Methodology) 弱點 2。
-- **Acceptance criteria**: 倫理聲明描述知情同意如何自參與者取得。
-
-## C. 第一輪審查發現（節錄）
-
-**Peer Reviewer 2 (Domain) — 弱點 1** `severity: major` `confidence: 4 — 質性取樣通報`
-> 第 3.1 節說訪談了 26 位職員，卻沒說他們是怎麼被選出來的，也沒說是怎麼聯繫上的。
-
-**Peer Reviewer 1 (Methodology) — 弱點 2** `severity: major` `confidence: 4 — 人類受試者通報要求`
-> 第 2.2 節給了委員會、計畫編號與通過日期，但從未說明同意如何取得，而那正是讀者判斷程序
-> 所需要的部分。
-
-## D. 第一輪審查人設定卡（節錄）
-
-| 欄位 | 值 |
-|------|-----|
-| Role | EIC |
-| Focus | 編輯整合 |
-
-| 欄位 | 值 |
-|------|-----|
-| Role | Peer Reviewer 1 (Methodology) |
-| Focus | 研究設計與人類受試者程序 |
-
-| 欄位 | 值 |
-|------|-----|
-| Role | Peer Reviewer 2 (Domain) |
-| Focus | 高等教育人力研究 |
-
-| 欄位 | 值 |
-|------|-----|
-| Role | Peer Reviewer 3 (Cross-disciplinary/Practical) |
-| Focus | 機構相關性 |
-
-## H. 作者回覆信
-
-感謝兩項意見，我們均已處理。
-
-**R1（REV-001）。** 第 3.1 節現已具名說明取樣策略（跨四個職務族群與三個校區的最大變異
-立意取樣），並描述招募管道（由各校區教職員發展辦公室發出邀請，另發兩次提醒）。
-
-**R2（REV-002）。** 第 2.2 節現已描述知情同意程序：參與者於訪談前至少七天收到書面說明，
-並於訪談開始時簽署書面同意，兩份文件皆載明退出權利。
+**雜湊蓋章。** 同其他情境，manifest 的 `sha256` 與 §G 內的 `<<…>>` 佔位符由派工層在
+派工當下計算並替換。

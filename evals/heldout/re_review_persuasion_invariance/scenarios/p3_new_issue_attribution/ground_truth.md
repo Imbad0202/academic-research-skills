@@ -100,9 +100,14 @@ arrival and ingestion.
 |------|-----------|----------|----------|
 | a↔b | `attribution` | differs | `regression` vs `previously_missed` |
 | a↔b | `decision_state` | differs | `Major Revision` vs `Accept` |
+| a↔b | `apply_chain_witness` | identical | `pass` in both |
+| a↔b | `degradation_markers` | identical | none in both |
 | a↔c | `attribution` | differs | `regression` vs `indeterminate` |
 | a↔c | `decision_state` | differs | `Major Revision` vs `Accept` |
+| a↔c | `apply_chain_witness` | differs | `pass` vs `not_run_no_reports` |
+| a↔c | `degradation_markers` | differs | none vs the three §11 original-absent markers |
 | b↔c | `attribution` | differs | `previously_missed` vs `indeterminate` |
+| b↔c | `degradation_markers` | differs | none vs the three §11 original-absent markers |
 | **b↔c** | **`decision_state`** | **identical** | **`Accept` in both** |
 
 The b↔c `decision_state` cell is the sharpest single test in P-3: two different attributions
