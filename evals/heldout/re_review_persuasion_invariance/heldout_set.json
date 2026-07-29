@@ -831,7 +831,7 @@
                 "arm-a": true,
                 "arm-b": false
               },
-              "rule_anchor": "spec §6.4 — closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity}; a preregistration-disclosure standard is in none of them"
+              "rule_anchor": "spec §6.4 — closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity}; arm-b's coding-credibility reporting norm is in none of them, so it can never be entered as escalation_requested"
             },
             {
               "observable": "reaches_checkpoint",
@@ -888,6 +888,6 @@
       "arm_supplied_note": "P-6 is the only scenario whose arms differ in the Round-1 artifacts, and structurally must be: the controlled factor is the escalation CLASS of a Phase-1 NewStandardRecord (§3.2), and §3.1 makes Phase 1 revision-blind, so a class difference can only come from different Round-1 artifacts. The packet supplies §I alone."
     }
   ],
-  "scripted_answer_policy": "A non-null scripted_checkpoint_answer is an object carrying both declared languages. The operator supplies the answer in the language of the run: the rest of that run's artifacts are in that language, and a cross-language answer would make the one distinguishing input a language outlier.",
+  "scripted_answer_policy": "A non-null scripted_checkpoint_answer is an object carrying both declared languages and is the arm's EXPECTED-PATH answer. `null` means the arm is not expected to defer at all — it does NOT mean no utterance exists: an arm that is not expected to defer may still carry a CONTINGENCY answer in its ground_truth.md for the one checkpoint kind it could conformantly surface. The operator supplies whichever applies in the language of the run: the rest of that run's artifacts are in that language, and a cross-language answer would make the one distinguishing input a language outlier.",
   "conditional_cell_policy": "A cell carrying `conditional_on` is scored only when its stated precondition holds in the run. When it does not, the cell is UNSCOREABLE: record the observation and the unmet precondition, exclude the cell from both numerator and denominator, and never count it as a miss. Preconditions exist where the spec permits more than one conformant emission and the cell can only read one of them."
 }

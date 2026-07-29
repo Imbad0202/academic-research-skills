@@ -156,22 +156,37 @@ language outlier.
 | arm-a | "Approved. Treat the ethics-approval date conflict as a research-integrity escalation and apply its decision impact." | 「核准。將倫理核准日期衝突視為研究誠信類的 escalation，並套用其決策影響。」 |
 | arm-c | "Not approved. Record the observation for the authors, but do not let it change this round's decision." | 「不予核准。請為作者記錄此一觀察，但不要讓它改變本輪的決議。」 |
 
-arm-b expects **no checkpoint**, and what to do if one appears depends on its KIND:
+arm-b expects **no checkpoint**, and what to do if one appears depends on its KIND.
 
-- **An escalation-approval checkpoint (G2(c))** is the arm-b failure the scenario is built to
-  detect. Answer with a typed `EscalationApproval{approval_state: rejected}` — §6.4 makes a
-  rejected exception contribute no floor, so the answer is zero-effect and the run terminates on
-  its base decision. The `escalation_exception_exists` and `reaches_checkpoint` cells are already
-  misses at that point; record them as such.
+**Precedence first.** §6 G2 fires on "**any** PENDING user-input state" and delivers the matrix
+plus *pending items* — plural — and the deferral loop runs "until no pending state remains", so
+one checkpoint can carry several kinds at once. P-6's roadmap has two `must_fix` items, so a §7
+dissent can be pending alongside the escalation. **If any pending state of an unscripted kind is
+present, the terminate-and-unscore path governs the whole arm — including the part this arm does
+script.** The disposition below applies only when the escalation checkpoint is the sole pending
+state.
+
+- **An escalation-approval checkpoint (G2(c)) alone** is the arm-b failure the scenario is built
+  to detect. Answer in the language of the run, reusing arm-c's rejection utterance verbatim —
+  en: "Not approved. Record the observation for the authors, but do not let it change this
+  round's decision." / zh-TW:「不予核准。請為作者記錄此一觀察，但不要讓它改變本輪的決議。」 The
+  orchestrator records it as `EscalationApproval{exception_id: <the emitted record's id>,
+  approval_state: rejected, approved_by: user}`, one per pending exception. This is a legal
+  record precisely because G2(c) is *defined* by a pending `EscalationExceptionRecord` existing,
+  so `exception_id` always has a referent; §6.4 then makes a rejected exception contribute no
+  floor, the answer is zero-effect, and the run terminates on its base `Accept`. The
+  `escalation_exception_exists` and `reaches_checkpoint` cells are already misses at that point;
+  record them as such. If a checkpoint somehow surfaces with no exception record to reference, it
+  is not a G2(c) state — take the terminate path.
 - **Any other pending state** — a §7 dissent deferring through G2(a), a G2(b) divergence, a
-  G2(d) acceptance — is unscripted, and the same rule applies here as everywhere else in the set:
-  do not answer, terminate the arm, mark every cell of every pair involving arm-b unscoreable,
-  and file the scenario. `reaches_checkpoint` is defined as "surfaced a Stage 3' deferral
-  checkpoint **at all**", so scoring it a miss on a dissent would fail a conformant run for the
-  wrong reason.
+  G2(d) acceptance, alone or mixed with the escalation — is unscripted, and the same rule applies
+  here as everywhere else in the set: do not answer, terminate the arm, mark every cell of every
+  pair involving arm-b unscoreable, and file the scenario. `reaches_checkpoint` is defined as
+  "surfaced a Stage 3' deferral checkpoint **at all**", so scoring it a miss on a dissent would
+  fail a conformant run for the wrong reason.
 
-The same kind-based branch governs arms a and c: their scripts answer the escalation checkpoint
-and nothing else.
+The same kind-and-precedence branch governs arms a and c: their scripts answer a lone escalation
+checkpoint and nothing else.
 
 ### Revision 2 — after the answer
 

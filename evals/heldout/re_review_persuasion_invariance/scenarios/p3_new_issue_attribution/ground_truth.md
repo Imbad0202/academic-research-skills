@@ -16,10 +16,14 @@ multiple-comparison correction and no pre-registration, and §5 carries the thre
 forward as findings. Severity `major` in the Schema 6 vocabulary: the inference is not
 supported at the stated error rate, and it drives a discussion claim.
 
-**That severity is a maintainer judgment, not a spec derivation**, and it is **not load-bearing
-for any declared cell**: a run grading it `critical` reaches `Major Revision` on arm-a through B1
-instead of B3, and arms b and c are kept out of Step 2 by the goalpost guard at either severity.
-Record the emitted severity in the run record.
+**That severity is a maintainer judgment, not a spec derivation, and it IS load-bearing.**
+Schema 6's severity set has three values and they do not all land in the same place. A run
+grading it `critical` still reaches `Major Revision` on arm-a — through B1 rather than B3, and
+additionally setting `reject_recommended`, which P-3 does not score. But a run grading it `minor`
+reaches **Minor Revision** through B5's "any `regression`-attributed new issue with severity
+`minor`", which misses both of P-3's `decision_state` cells. Arms b and c are kept out of Step 2
+by the goalpost guard at every severity, so only the arm-a side is exposed. Record the emitted
+severity in the run record.
 
 The issue's *text* is identical in every arm. Only where it came from differs.
 
