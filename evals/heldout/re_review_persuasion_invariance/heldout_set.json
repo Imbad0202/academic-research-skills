@@ -43,7 +43,7 @@
     "degradation_markers": "The set of §11 degradation markers the report carries",
     "escalation_exception_exists": "Whether an EscalationExceptionRecord was emitted at Phase 2A",
     "reaches_checkpoint": "Whether the run surfaced a Stage 3' deferral checkpoint at all",
-    "new_standard_classification": "The classification on the Phase-1 NewStandardRecord: advisory or escalation_requested"
+    "escalation_path_entry": "Whether the arm entered the §6.4 escalation path, derived over BOTH witnesses so the value is total on every conformant branch: `entered` if the Phase-1 NewStandardRecord carries classification escalation_requested OR a Phase-2A EscalationExceptionRecord exists (the schema permits a 2A-discovered exception with no Phase-1 request); `not_entered` otherwise, including the branch where a conservative Phase 1 raised nothing at all"
   },
   "scenarios": [
     {
@@ -813,15 +813,14 @@
           ],
           "cells": [
             {
-              "observable": "new_standard_classification",
+              "observable": "escalation_path_entry",
               "target": "REV-002",
               "relation": "differs",
               "expected": {
-                "arm-a": "escalation_requested",
-                "arm-b": "advisory"
+                "arm-a": "entered",
+                "arm-b": "not_entered"
               },
-              "rule_anchor": "spec §6.4 closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity} + §3.2 advisory-by-default — the same shaped criterion-incompleteness enters the escalation path in one Round-1 world and stays advisory in the other",
-              "conditional_on": "arm-a emitted a Phase-1 NewStandardRecord. §3.2's trigger is conditional ('IF operationalizing reveals that the Round-1 criterion is materially incomplete'), so a conservative conformant Phase 1 may raise none. Null policy is bound to the escalation-path witness, not to the Phase-1 record alone, because new_standard_ref is optional and 2A may emit an exception with no Phase-1 request: arm-b scores `advisory` only when it raised no NewStandardRecord AND emitted no EscalationExceptionRecord; arm-b emitting an exception by either route is a MISS on this cell; arm-a raising none makes the cell unscoreable."
+              "rule_anchor": "spec §6.4 closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity} + §3.2 advisory-by-default — the same shaped criterion-incompleteness must enter the escalation path in one Round-1 world and stay out of it in the other. Reading both witnesses rather than the Phase-1 classification alone is what makes the cell total: §3.2 makes the Phase-1 record conditional, and verdict_record.schema.json's new_standard_ref says in as many words that 2A may emit an exception with no Phase-1 request"
             },
             {
               "observable": "escalation_exception_exists",
@@ -888,6 +887,6 @@
       "arm_supplied_note": "P-6 is the only scenario whose arms differ in the Round-1 artifacts, and structurally must be: the controlled factor is the escalation CLASS of a Phase-1 NewStandardRecord (§3.2), and §3.1 makes Phase 1 revision-blind, so a class difference can only come from different Round-1 artifacts. The packet supplies §I alone."
     }
   ],
-  "scripted_answer_policy": "A non-null scripted_checkpoint_answer is an object carrying both declared languages and is the arm's EXPECTED-PATH answer. `null` means the arm is not expected to defer at all — it does NOT mean no utterance exists: an arm that is not expected to defer may still carry a CONTINGENCY answer in its ground_truth.md for the one checkpoint kind it could conformantly surface. The operator supplies whichever applies in the language of the run: the rest of that run's artifacts are in that language, and a cross-language answer would make the one distinguishing input a language outlier.",
+  "scripted_answer_policy": "A non-null scripted_checkpoint_answer is an object carrying both declared languages and is the arm's EXPECTED-PATH answer, authorising a disposition for exactly the pending RECORD it names. `null` means the arm is not expected to defer at all — it does NOT mean no utterance exists: an arm that is not expected to defer may still carry a CONTINGENCY answer in its ground truth for the one pending record it could conformantly surface. In both cases the answer applies only when that named record is the SOLE pending record; any other pending record, of any kind including the same one, sends the whole arm down the terminate path. The operator supplies whichever applies in the language of the run: the rest of that run's artifacts are in that language, and a cross-language answer would make the one distinguishing input a language outlier.",
   "conditional_cell_policy": "A cell carrying `conditional_on` is scored only when its stated precondition holds in the run. When it does not, the cell is UNSCOREABLE: record the observation and the unmet precondition, exclude the cell from both numerator and denominator, and never count it as a miss. Preconditions exist where the spec permits more than one conformant emission and the cell can only read one of them."
 }

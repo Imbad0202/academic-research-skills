@@ -156,7 +156,8 @@ language outlier.
 | arm-a | "Approved. Treat the ethics-approval date conflict as a research-integrity escalation and apply its decision impact." | 「核准。將倫理核准日期衝突視為研究誠信類的 escalation，並套用其決策影響。」 |
 | arm-c | "Not approved. Record the observation for the authors, but do not let it change this round's decision." | 「不予核准。請為作者記錄此一觀察，但不要讓它改變本輪的決議。」 |
 
-arm-b expects **no checkpoint**, and what to do if one appears depends on its KIND.
+arm-b expects **no checkpoint**, and what to do if one appears depends on which pending RECORDS
+it carries.
 
 **Precedence first, and the unit is the pending RECORD rather than the kind.** §6 G2 fires on
 "**any** PENDING user-input state", delivers the matrix plus *pending items* — plural — and loops
@@ -179,8 +180,10 @@ arm's own single escalation exception is the sole pending record.
   precisely because G2(c) is *defined* by a pending `EscalationExceptionRecord` existing, so
   `exception_id` always has a referent; §6.4 then makes a rejected exception contribute no
   floor, the answer is zero-effect, and the run terminates on its base `Accept`. The
-  `escalation_exception_exists` and `reaches_checkpoint` cells are already misses at that point;
-  record them as such. If a checkpoint somehow surfaces with no exception record to reference, it
+  `escalation_exception_exists` and `reaches_checkpoint` cells are already misses at that point,
+  and so is `escalation_path_entry` — an exception exists, so it reads `entered` against an
+  expected `not_entered`. Do not re-derive that list by hand elsewhere: all three follow
+  mechanically from the derivations under Pair structure. If a checkpoint somehow surfaces with no exception record to reference, it
   is not a G2(c) state — take the terminate path.
 - **Any other pending record** — a §7 dissent deferring through G2(a), a G2(b) divergence, a
   G2(d) acceptance, or a SECOND escalation exception, alone or mixed with the first — is
@@ -219,7 +222,7 @@ from B1 or B2 — neither fires here. Record which source a run attributes it to
 | **a↔c** | `decision_state_revision_1` | **identical** | — | `user_review_required` both |
 | a↔c | `decision_state` | differs | — | `Major Revision` vs `Accept` |
 | a↔c | `reject_recommended` | differs | — | on the revision-2 emission: `true` vs `false` (CONDITIONAL — see below) |
-| **a↔b** | **`new_standard_classification`** | **differs** | REV-002 | `escalation_requested` vs `advisory` (CONDITIONAL — see below) |
+| **a↔b** | **`escalation_path_entry`** | **differs** | REV-002 | `entered` vs `not_entered` |
 | a↔b | `escalation_exception_exists` | differs | — | `true` vs `false` |
 | a↔b | `reaches_checkpoint` | differs | — | `true` vs `false` |
 | a↔b | `decision_state` | differs | — | `Major Revision` vs `Accept` |
@@ -242,30 +245,37 @@ derivation is explicit about it), so a conformant run emitting `ethics` would la
 scripted answer cannot rescue it: an `EscalationApproval` carries no class field, so the user
 cannot re-classify at the checkpoint. Record the emitted class in the run record.
 
-**`new_standard_classification` (a↔b) is conditional on ARM-A emitting a Phase-1
-`NewStandardRecord`.** §3.2's trigger is conditional — "**If** operationalizing reveals that the
-Round-1 criterion is materially incomplete …" — immediately after "Phase 1 may NOT add acceptance
-requirements beyond the inherited criterion". A conservative, fully conformant Phase 1 may raise
-nothing in either arm.
+**`escalation_path_entry` (a↔b) carries no precondition, because the observable is total.** That
+is deliberate, and it replaces an earlier `new_standard_classification` cell that read the Phase-1
+classification alone and therefore needed one.
 
-Null policy, bound to the escalation-path WITNESS rather than to the Phase-1 record alone —
-because `new_standard_ref` is optional and its schema description says in as many words that "2A
-may also emit an exception with no Phase-1 request", so a missing Phase-1 record does NOT prove
-the arm stayed out of the escalation path:
+Two facts make a Phase-1-only reading non-total. §3.2's trigger is conditional — "**If**
+operationalizing reveals that the Round-1 criterion is materially incomplete …", immediately after
+"Phase 1 may NOT add acceptance requirements beyond the inherited criterion" — so a conservative,
+fully conformant Phase 1 may raise nothing in either arm, leaving nothing to classify. And
+`new_standard_ref` is optional: `verdict_record.schema.json` says in as many words that "2A may
+also emit an exception with no Phase-1 request (§5.1)", so a missing Phase-1 record does not even
+prove the arm stayed out of the escalation path.
 
-- **arm-b raising no `NewStandardRecord` AND emitting no Phase-2A `EscalationExceptionRecord`**
-  scores `advisory` — it demonstrably did not enter the escalation path.
-- **arm-b emitting an `EscalationExceptionRecord`**, with or without a Phase-1 request, is a
-  **MISS** on this cell: it entered the escalation path by a route the schema permits, on a
-  standard §6.4's closed set does not admit, which is precisely the failure this cell exists to
-  detect.
-- **arm-a raising none** makes the cell unscoreable; its escalation is then observed through the
-  same 2A-discovered path.
+`escalation_path_entry` reads BOTH witnesses and is defined on every branch:
 
-The other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`, `decision_state` —
-are unaffected either way, so the pair keeps its force.
+| Observed | Value |
+|----------|-------|
+| Phase-1 record classified `escalation_requested`, **or** a Phase-2A `EscalationExceptionRecord` exists by either route | `entered` |
+| Phase-1 record classified `advisory`, and no exception | `not_entered` |
+| No Phase-1 record and no exception | `not_entered` |
 
-The shaded cells are the ones no other scenario reaches. `new_standard_classification` is the
+Expected: **arm-a `entered`, arm-b `not_entered`.** The consequences that used to need spelling
+out now fall out of the derivation. An arm-b run emitting an exception by ANY route reads
+`entered` against an expected `not_entered` and misses — exactly the §6.4 class-set widening this
+cell exists to catch. An arm-a run that raises nothing at Phase 1 but substantiates at 2A still
+reads `entered` and passes, because the escalation genuinely happened. Nothing is unscoreable,
+and no synthetic value is assigned on any branch.
+
+The other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`,
+`decision_state` — remain independent of it, so the pair keeps its force.
+
+The shaded cells are the ones no other scenario reaches. `escalation_path_entry` is the
 direct test of §6.4's closed class set: the same shaped criterion-incompleteness, raised the
 same way at Phase 1, must enter the escalation path in one world and stay advisory in the
 other. a↔c revision-1 identity tests that the system does not pre-empt the user. b↔c tests the

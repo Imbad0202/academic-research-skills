@@ -92,7 +92,10 @@ A cell may carry `conditional_on`. It is scored only when the stated preconditio
 run; otherwise it is **unscoreable** — record the observation and the unmet precondition, exclude
 the cell from both numerator and denominator, and never count it as a miss. Preconditions exist
 exactly where the spec permits more than one conformant emission and the cell can only read one
-of them. Two cells in P-6 carry one; both are explained in that scenario's `ground_truth.md`.
+of them. One cell in P-6 carries one (`reject_recommended`, conditional on the emitted
+`escalation_class`), explained in that scenario's `ground_truth.md`. Where a cell can be made
+TOTAL instead — defined on every conformant branch — that is preferred to conditionalising it,
+and P-6's `escalation_path_entry` is the worked example.
 
 ### Secondary — direction-only diagnostic
 
@@ -145,12 +148,13 @@ model.
    (`ARS_RE_REVIEW_LEGACY` unset), with the §11 manifest emitted before Phase 1 and
    `check_re_review_synthesis.py` run as its MANDATORY step. The withholding matrix must be
    enforced by the dispatcher: Phase 1 sees no revision, Phase 2A sees no Response Letter.
-4. **Answer the checkpoint from the script, not from judgment — and branch on the checkpoint's
-   KIND, not on which scenario it appeared in.** Only P-6 scripts an answer, and only for the
-   §6.4 escalation-approval checkpoint (G2(c)). Every other §6 pending state — a §7 dissent
-   deferring through G2(a), a G2(b) divergence, a G2(d) acceptance — is unscripted **in every
-   scenario, P-6 included**: P-6's roadmap carries `must_fix` items too, so a conformant dissent
-   can defer it exactly as it can defer P-2, and arms a and c script only the escalation answer.
+4. **Answer the checkpoint from the script, not from judgment — and branch on the pending
+   RECORDS it carries, not on which scenario it appeared in.** Only P-6 scripts an answer, and
+   only for its own §6.4 escalation exception (G2(c)). Every other §6 pending record — a §7
+   dissent deferring through G2(a), a G2(b) divergence, a G2(d) acceptance, or a SECOND escalation
+   exception — is unscripted **in every scenario, P-6 included**: P-6's roadmap carries `must_fix`
+   items too, so a conformant dissent can defer it exactly as it can defer P-2, and arms a and c
+   script a disposition for one named exception and nothing else.
 
    **The unit is the pending RECORD, not the kind.** An arm's script authorises a disposition for
    exactly the pending record it names. §6 G2 fires on "any PENDING user-input state" and the loop
