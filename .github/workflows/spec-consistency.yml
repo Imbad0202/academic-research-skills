@@ -443,6 +443,22 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_seeded_defect_fixtures.py
 
+      - name: Run #576 persuasion-invariance fixture integrity lint
+        # Structure-only gate for evals/heldout/re_review_persuasion_invariance/ (the
+        # Spec B §14 paired controls, joining the E4 harness per SD-11): index/disk
+        # agreement + pinned scenario+arm inventory + closed relation/observable enums
+        # + pair-cell referential integrity + relation-vs-expected-value agreement +
+        # the P-1 claim-set equality its construct validity rests on + apply-report
+        # hash placeholders + P-6 pointer arms + the held-out boundary (no material
+        # file names the ground truth or carries a scripted checkpoint answer) +
+        # the packet/arm section split. Fixture integrity, NOT a behavioral measurer
+        # (baseline runs are the manual protocol in the set's README). Companion
+        # test_check_persuasion_invariance_fixtures.py (mutation suite) runs via the
+        # unified manifest (#156). Issue #576 Spec B §14.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_persuasion_invariance_fixtures.py
+
       - name: Run #574 reviewer data-fence lint (A6 / PR #578 pin)
         # Pins the <paper_content> + <phase1_output> data-fence contract across
         # all five reviewer panel agents (both canonical paragraphs verbatim,

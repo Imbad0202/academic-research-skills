@@ -339,3 +339,7 @@ path = "scripts/test_check_reviewer_finding_contract.py"
 [[pytest]]
 id = "576-re-review-synthesis-checker"
 path = "scripts/test_check_re_review_synthesis.py"
+
+[[pytest]]
+id = "576-persuasion-invariance-fixtures"
+path = "scripts/test_check_persuasion_invariance_fixtures.py"
