@@ -14,6 +14,8 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -56,6 +58,60 @@ _ANCHOR_DECL_RE = re.compile(
     re.IGNORECASE,
 )
 _FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")
+_DISSENT_FIELD_NAMES = frozenset({"dimensionid", "rationale"})
+_MARKUP_SPAN_RE = re.compile(
+    r"<[^>]*>|\]\((?:[^()]|\([^()]*\))*\)|\]\[[^\]]*\]|\[[ xX]?\]"
+)
+# A block opener, including one behind list or blockquote markers: rendered
+# through CommonMark, `- <!--` opens raw HTML just as a bare `<!--` does, and
+# needs no closer to swallow the rest of the item. The indentation allowances
+# must not add up to four, which would make the whole line indented code: a
+# list marker takes one to four following spaces before its content, a block
+# quote at most one, and a block start may still be indented up to three
+# inside the quote it opens. Erring narrow costs a miss; erring wide aborts a
+# valid card. Only an ordered list beginning at 1 may interrupt an open
+# paragraph, so `2. <!--` under a paragraph line is text, not a list opening
+# a raw-HTML block, and the fields below it stay on the page.
+def _container_prefix(ordered: str) -> str:
+    """Matched against a tab-expanded line, so spaces are the only gap.
+
+    Every gap is one unambiguous run: letting a single space be claimed by
+    either of two adjacent optional groups gave two ways to match each marker
+    and doubled the work per nesting level, so a short nested quote stalled
+    the checker rather than returning a verdict.
+    """
+    return rf"(?:(?:[-*+]|{ordered}) {{1,4}}|> {{0,4}})*"
+
+
+# Lines that end the paragraph above them, so the NEXT line sits at a real
+# block start where any ordered marker may open a list. An ATX heading of any
+# level, a thematic break, and a lone `-` do that from either state, the last
+# because it reads as a setext underline under a paragraph and as an empty
+# list item without one. A bare `>` starts a container rather than closing a
+# paragraph and is left to #613 with the rest of the container family.
+_CLOSES_PARAGRAPH_RE = re.compile(
+    r"^ {0,3}(?:"
+    r"#{1,6}(?:[ \t].*)?$"
+    r"|(?:\*[ \t]*){3,}$|(?:_[ \t]*){3,}$|(?:-[ \t]*){3,}$"
+    r"|-[ \t]*$"
+    r")"
+)
+# A `=` run or two-or-more hyphens underlines a paragraph, so it closes one
+# only when there is a paragraph to underline; with none, it is ordinary
+# paragraph text and OPENS one.
+_SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-{2,})[ \t]*$")
+# An empty list item has a blank first line, so it cannot interrupt an open
+# paragraph. It only holds the state down where none is open. Reading every
+# lone marker as a closer looked symmetrical and aborted valid cards.
+_EMPTY_LIST_ITEM_RE = re.compile(r"^ {0,3}(?:[*+]|\d{1,9}[.)])[ \t]*$")
+_ANY_ORDERED_MARKER = r"\d{1,9}[.)]"
+_PARAGRAPH_INTERRUPTING_MARKER = r"1[.)]"
+_COMMENT_OPENER_RE = re.compile(
+    rf"^ {{0,3}}{_container_prefix(_ANY_ORDERED_MARKER)}<!--"
+)
+_PARAGRAPH_OPENER_RE = re.compile(
+    rf"^ {{0,3}}{_container_prefix(_PARAGRAPH_INTERRUPTING_MARKER)}<!--"
+)
 
 
 class ConformanceError(Exception):
@@ -68,8 +124,232 @@ class PhaseOnePlan:
     warnings: list[str]
 
 
+@dataclass
+class DissentSpan:
+    """The dissent section as written: every line, plus the commented ones.
+
+    `strip_fences` leaves HTML comments in place, so a canonical field inside
+    `<!-- ... -->` otherwise parses as a real dissent and collects the
+    trigger-binding exemption while the visible card claims nothing.
+    """
+
+    lines: list[str]
+    hidden_by_comment: list[str]
+
+
+@dataclass
+class DissentParse:
+    dimensions: set[str]
+    diagnostics: list[str]
+
+
 def _normalise(text: str) -> str:
     return " ".join(text.casefold().split())
+
+
+def _is_dissent_field_shaped(line: str) -> bool:
+    """True when a line spells a dissent field, canonically or decorated.
+
+    Decoration-agnostic by construction: a line is field-shaped when the
+    letters preceding its first colon spell exactly a field name, whatever
+    non-letters surround them. Enumerating Markdown wrappers instead would
+    leave the next unenumerated wrapper (task item, table cell, link label)
+    reading as prose. Folded first so a fullwidth re-spelling cannot pass.
+
+    Markup spans carrying letters of their own (HTML tags, reference targets,
+    task-list markers, and link destinations up to one nesting level deep) are
+    dropped BEFORE the colon is located, not after: an absolute link target
+    carries its own `https:` and would otherwise win the partition.
+
+    Decoration beyond those — a deeper nested destination, a quoted HTML
+    attribute containing `>`, exotic custom syntax — is deliberately out of
+    scope, because absorbing it costs one advisory-flagged record while a
+    broader rule costs false aborts, which is the failure this tolerance
+    exists to remove. `test_a_nested_paren_link_destination_is_a_declared_
+    limit` pins that boundary so it cannot move by accident.
+
+    `str.isalpha` keeps every script's letters, so CJK prose that happens to
+    name a field stays prose rather than collapsing onto the field name and
+    aborting a panel it should tolerate.
+    """
+    stripped = _MARKUP_SPAN_RE.sub(
+        "", unicodedata.normalize("NFKC", line).casefold()
+    )
+    head, separator, _ = stripped.partition(":")
+    label = "".join(char for char in head if char.isalpha())
+    return bool(separator) and label in _DISSENT_FIELD_NAMES
+
+
+def _lines_with_fence_state(text: str):
+    """Yield every line with whether it sits inside a fenced block.
+
+    Mirrors the fence bookkeeping of `panel.strip_fences`, which drops those
+    lines rather than reporting them. The dissent scan needs both facts: the
+    content, so a fenced field cannot hide, and the state, so a fenced heading
+    is not mistaken for a section boundary.
+    """
+    fence_char, fence_len = None, 0
+    for line in panel._COMMONMARK_LINE_END_RE.split(text):
+        if fence_char is not None:
+            if match := panel._FENCE_CLOSE_RE.fullmatch(line):
+                token = match.group("fence")
+                if token[0] == fence_char and len(token) >= fence_len:
+                    fence_char, fence_len = None, 0
+                    continue
+            yield line, True
+            continue
+        if match := panel._FENCE_OPEN_RE.fullmatch(line):
+            token, info = match.group("fence"), match.group("info")
+            if token[0] != "`" or "`" not in info:
+                fence_char, fence_len = token[0], len(token)
+                continue
+        yield line, False
+
+
+def _opens_comment(line: str, *, paragraph_open: bool) -> bool:
+    """Whether the line starts an HTML comment at a block position.
+
+    Tabs are measured to the next four-column stop rather than counted as one
+    character, the way CommonMark reads them wherever indentation defines
+    block structure. Counting characters put `> \\t<!--` (column four, a live
+    comment) and `  - \\t<!--` (column eight, indented code) on the wrong
+    sides of the boundary in opposite directions.
+
+    With a paragraph open, an ordered marker other than 1 cannot start a list,
+    so it cannot open a comment either.
+    """
+    pattern = _PARAGRAPH_OPENER_RE if paragraph_open else _COMMENT_OPENER_RE
+    return bool(pattern.match(line.expandtabs(4)))
+
+
+def _comment_state_after(
+    line: str, *, commented: bool, paragraph_open: bool = False
+) -> bool:
+    """Whether the line ends inside an HTML comment.
+
+    Resolved by delimiter ORDER, not by presence: `<!-- a --> <!--` closes
+    and reopens on one line, and reading that as closed credited a comment
+    carrying canonical fields as a real dissent. Only a block opener starts
+    one, list and blockquote markers included, so a marker discussed mid-line
+    is still not a comment; once a line has opened one, its later delimiters
+    are that same block's raw HTML.
+
+    The closer may reuse the opener's own last two dashes, which is how
+    CommonMark closes `<!-->` and `<!--->`. Ordering the scan without that
+    overlap would read them as unterminated and abort a card that presence-
+    testing for a closer had passed.
+    """
+    index = 0
+    if not commented:
+        if not _opens_comment(line, paragraph_open=paragraph_open):
+            return False
+        # Located in the ORIGINAL line: the prefix carries no `<!--`, so the
+        # first occurrence is the opener wherever tab expansion moved it.
+        commented, index = True, line.find("<!--") + 2
+    while True:
+        token = "-->" if commented else "<!--"
+        position = line.find(token, index)
+        if position < 0:
+            return commented
+        commented, index = not commented, position + len(token)
+
+
+def _raw_dissent_span(text: str) -> DissentSpan:
+    """Dissent-section lines as written, before any sanitizer runs.
+
+    Comment delimiters are opened up rather than dropped, so a field inside an
+    HTML comment is scanned instead of vanishing with the comment. A
+    field-shaped H2 immediately inside the span rides along, because a field
+    spelled as its own `## dimension_id: D1` heading leaves the section body
+    empty and would otherwise be invisible; a field-shaped heading anywhere
+    else is an ordinary extra section, which the report grammar permits.
+
+    Only an unfenced heading delimits the span, so a heading written inside a
+    fenced block cannot end it early and hide the fields that follow — not
+    even one repeating a title that exists structurally elsewhere. A COMMENTED
+    heading still delimits, agreeing with `split_sections` rather than second-
+    guessing it: disagreeing cost four false aborts across review rounds and
+    bought only a miss that credits the seat nothing, while agreeing keeps a
+    comment opened above the heading from laundering the fields below it.
+    """
+    span, hidden_by_comment, inside, commented = [], [], False, False
+    paragraph_open = False
+    for line, fenced in _lines_with_fence_state(text):
+        entered_commented = commented
+        opens_comment = not fenced and _opens_comment(
+            line, paragraph_open=paragraph_open
+        )
+        if not fenced:
+            # A block opener only, list and blockquote markers included:
+            # four columns STARTING a block makes indented code, and a fence
+            # makes every marker inert. Not read as an opener: a marker
+            # mid-line, one in an inline-code span, or one indented as a lazy
+            # paragraph continuation. The first and last of those DO form a
+            # comment, so that miss is not free: it grants a trigger-binding
+            # exemption for a dissent the page does not show. Refused anyway,
+            # because closing it means reading a bare `<!--` inside
+            # unrestricted `rationale:` text as an opener, aborting a valid
+            # card on an unretryable phase; the deterministic closure belongs
+            # in the output grammar (#613), not here. Both are pinned as
+            # tests, and #613 also carries the wider hiding channel this
+            # visibility model does not cover at all: raw HTML that is not a
+            # comment, such as a `<script>` or `<template>` block.
+            commented = _comment_state_after(
+                line, commented=commented, paragraph_open=paragraph_open
+            )
+        if not fenced and (match := panel._H2_RE.fullmatch(line)):
+            title = match.group(1)
+            if inside and _is_dissent_field_shaped(title):
+                span.append(title)
+            else:
+                inside = title == "Scoring Plan Dissent"
+            paragraph_open = False
+            continue
+        # CommonMark counts only spaces and tabs as blank, so a line holding
+        # an ideographic space is a paragraph. Calling it blank put the next
+        # line at a block start and aborted a valid zh-TW card.
+        expanded = line.expandtabs(4)
+        state_dependent = (
+            _SETEXT_UNDERLINE_RE if paragraph_open else _EMPTY_LIST_ITEM_RE
+        )
+        closes_paragraph = bool(
+            _CLOSES_PARAGRAPH_RE.match(expanded)
+            or state_dependent.match(expanded)
+        )
+        paragraph_open = (
+            not fenced
+            and bool(line.strip(" \t"))
+            and not closes_paragraph
+            # A recognized comment block is raw HTML, never a paragraph, so
+            # the line after one is at a block start again. Recording its own
+            # lines as an open paragraph read the next `2. <!--` with the
+            # restricted pattern and credited the fields it hides.
+            and not (entered_commented or opens_comment)
+        )
+        if inside:
+            # Opened up only where a comment actually is. Rewriting every line
+            # carrying the tokens would break a canonical `rationale:` that
+            # merely mentions them (its text is unrestricted) from matching
+            # the canonical parse, aborting an unretryable Phase 2 on a
+            # valid card.
+            if entered_commented or opens_comment:
+                span.append(line.replace("<!--", " ").replace("-->", " "))
+            else:
+                span.append(line)
+            if entered_commented:
+                hidden_by_comment.append(line)
+    return DissentSpan(span, hidden_by_comment)
+
+
+def _empty_dissent_section_diagnostic(raw_span: list[str]) -> str:
+    """Counted on the raw span: fenced prose is archived content too."""
+    non_blank = sum(1 for line in raw_span if line.strip())
+    return (
+        "[DISSENT-EMPTY-SECTION: ## Scoring Plan Dissent spells no dissent "
+        "field; read as no dissent, with full Phase 1 trigger binding "
+        f"enforced on every dimension; {non_blank} non-blank line(s) present "
+        "— read the archived response if any narrate a deviation]"
+    )
 
 
 def _one_field(
@@ -259,7 +539,7 @@ def check_manuscript_leakage(
         )
 
 
-def parse_dissent_dimensions(text: str) -> set[str]:
+def parse_dissent_dimensions(text: str) -> DissentParse:
     lines = panel.strip_fences(text)
     sections, dupes = panel.split_sections(lines)
     if "Scoring Plan Dissent" in dupes:
@@ -267,7 +547,58 @@ def parse_dissent_dimensions(text: str) -> set[str]:
             "[DISSENT-GRAMMAR: duplicate ## Scoring Plan Dissent]"
         )
     if "Scoring Plan Dissent" not in sections:
-        return set()
+        return DissentParse(set(), [])
+    body = sections["Scoring Plan Dissent"]
+    span = _raw_dissent_span(text)
+    raw_span = span.lines
+    # A commented-out field is not a claim the seat made, so it is struck from
+    # the canonical parse and left to fail below as an unparsed occurrence.
+    outstanding = Counter(span.hidden_by_comment)
+    visible = []
+    for line in body:
+        if outstanding.get(line):
+            outstanding[line] -= 1
+            continue
+        visible.append(line)
+    parsed = Counter(
+        line for line in visible
+        if _DISSENT_DIM_RE.fullmatch(line)
+        or _DISSENT_RATIONALE_RE.fullmatch(line)
+    )
+    dims = [match.group("dim") for line in visible
+            if (match := _DISSENT_DIM_RE.fullmatch(line))]
+    rationales = [
+        match.group("text") for line in visible
+        if (match := _DISSENT_RATIONALE_RE.fullmatch(line))
+    ]
+    # Scanned on the RAW span, not the sanitized body: a field the sanitizers
+    # delete (fence, comment) or relocate (its own H2) would otherwise reach
+    # the tolerance branch as an empty section. A field line the canonical
+    # parse never saw is a dissent this seat cannot be credited with, so it
+    # fails whether or not it is canonically spelled. Counted rather than
+    # matched by value, so a hidden copy of a canonical field is still one
+    # unparsed occurrence and cannot ride in on its twin's identity.
+    hidden = Counter(
+        candidate for candidate in raw_span
+        if _is_dissent_field_shaped(candidate)
+    )
+    if any(count > parsed[value] for value, count in hidden.items()) or any(
+        _is_dissent_field_shaped(candidate) and candidate not in parsed
+        for candidate in visible
+    ):
+        raise ConformanceError(
+            "[DISSENT-GRAMMAR: dissent fields must be canonical unbulleted "
+            "dimension_id: and rationale: lines]"
+        )
+    if not dims and not rationales:
+        # A section that spells no dissent field carries the same information
+        # as an absent section, so it is read as no dissent instead of
+        # aborting an unretryable Phase 2. The occurrence stays auditable in
+        # the run record, and full Phase 1 trigger binding still applies to
+        # every dimension.
+        return DissentParse(
+            set(), [_empty_dissent_section_diagnostic(raw_span)]
+        )
     h2_positions = {
         match.group(1): index
         for index, line in enumerate(lines)
@@ -280,24 +611,17 @@ def parse_dissent_dimensions(text: str) -> set[str]:
             "[DISSENT-GRAMMAR: ## Scoring Plan Dissent must precede "
             "## Dimension Scores]"
         )
-    dims = [match.group("dim") for line in sections["Scoring Plan Dissent"]
-            if (match := _DISSENT_DIM_RE.fullmatch(line))]
     if not dims:
         raise ConformanceError(
             "[DISSENT-GRAMMAR: dissent section must name dimension_id]"
         )
     if len(dims) != len(set(dims)):
         raise ConformanceError("[DISSENT-GRAMMAR: duplicate dimension_id]")
-    rationales = [
-        match.group("text")
-        for line in sections["Scoring Plan Dissent"]
-        if (match := _DISSENT_RATIONALE_RE.fullmatch(line))
-    ]
     if len(rationales) != len(dims):
         raise ConformanceError(
             "[DISSENT-GRAMMAR: each dissent requires one rationale: line]"
         )
-    return set(dims)
+    return DissentParse(set(dims), [])
 
 
 def check_trigger_binding(
@@ -527,10 +851,12 @@ def main(argv=None) -> int:
             phase1_text, manuscript_text, metadata, contract
         )
         dissent = parse_dissent_dimensions(phase2_text)
+        for diagnostic in dissent.diagnostics:
+            print(diagnostic)
         dimensions = {
             dim["id"]: dim for dim in contract["acceptance_dimensions"]
         }
-        check_trigger_binding(report, plan, dimensions, dissent)
+        check_trigger_binding(report, plan, dimensions, dissent.dimensions)
         if report.role == "da":
             check_da_anchors(report)
         else:
