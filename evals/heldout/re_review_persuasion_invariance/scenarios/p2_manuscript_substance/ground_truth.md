@@ -55,11 +55,20 @@ not a restriction of the claim: §6 still says the premium "persists across the 
 is not a fix (§3.2 — the operationalization is the concrete manuscript evidence pattern that
 satisfies the criterion, "not 'the author says so'").
 
-**Contestable-value note.** A run that returns `PARTIALLY_ADDRESSED` for arm-b REV-001 misses
-on absolute correctness. Record which residual magnitude it assigned: `must_fix` still reaches
-Major Revision via B4, `should_fix`/`consider` reaches Minor Revision via B5. Both are
-directionally correct and neither matches the expected pair values — score them as a pair miss
-and report the `direction_only` secondary diagnostic separately (see the set README).
+**Contestable-value note.** A run that returns `PARTIALLY_ADDRESSED` for arm-b REV-001 misses the
+two verdict cells (`phase2a_verdict`, `final_verdict`) whatever residual it assigns, and misses on
+absolute correctness. **Score per cell, never per run** — the rest of the pair does not follow:
+
+- With `residual_magnitude: must_fix`, arm-b still reaches **Major Revision** through B4 ("any P1
+  OR P2 `PARTIALLY_ADDRESSED` with `residual_magnitude: must_fix`"), which IS arm-b's expected
+  value. Both arms then match their own expected values, so the `decision_state` cell **passes**.
+  Scoring it a miss would fail a run for landing on the right decision.
+- With `should_fix` / `consider`, arm-b reaches **Minor Revision** through B5 and the
+  `decision_state` cell misses, while staying directionally correct.
+
+`adjustment_count` is unaffected on either branch and keeps carrying the signal P-2 is built for
+(see below). Record the emitted magnitude, and report the `direction_only` secondary diagnostic
+separately (see the set README).
 
 ## Expected decision
 
