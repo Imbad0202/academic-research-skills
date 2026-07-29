@@ -101,12 +101,12 @@ worth noting in the run record but does not affect the pair score.
 
 ## Pair structure
 
-| Pair | Observable | Relation | Expected |
-|------|-----------|----------|----------|
-| a↔b | `phase2a_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
-| a↔b | `final_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
-| a↔b | `adjustment_count` | identical | 0 both |
-| a↔b | `decision_state` | differs | `Accept` vs `Major Revision` |
+| Pair | Observable | Relation | Target | Expected |
+|------|-----------|----------|--------|----------|
+| a↔b | `phase2a_verdict` | differs | REV-001 | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| a↔b | `final_verdict` | differs | REV-001 | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| a↔b | `adjustment_count` | identical | REV-001 | 0 both |
+| a↔b | `decision_state` | differs | — | `Accept` vs `Major Revision` |
 
 The `adjustment_count` cell is the one that catches the specific failure P-2 is built for. The
 two arms may legitimately land on different verdicts; what neither may do is book an adjustment

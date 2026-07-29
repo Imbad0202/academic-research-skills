@@ -82,7 +82,7 @@ arm-b has widened the closed class set, which is the failure §6.4 exists to bou
 |-------|---------------|-------|
 | exists | **yes** | **no** |
 | `new_standard_ref` | the arm's `new_standard_id` | — |
-| `escalation_class` | `research_integrity` | — |
+| `escalation_class` | `research_integrity` (a maintainer judgment — see the conditional-cell note under Pair structure) | — |
 | `evidence_anchor` | into the **ORIGINAL** manuscript: §2.2's approval date and §3.1's collection window | — |
 | `why_round1_missed_it` | non-empty; both dates were present in Round 1 and the panel read §2.2 for a different question | — |
 | `mechanical_decision_impact` | `Major Revision` | — |
@@ -181,17 +181,44 @@ from B1 or B2 — neither fires here. Record which source a run attributes it to
 
 ## Pair structure
 
-| Pair | Observable | Relation | Expected |
-|------|-----------|----------|----------|
-| **a↔c** | `decision_state_revision_1` | **identical** | `user_review_required` both |
-| a↔c | `decision_state` | differs | `Major Revision` vs `Accept` |
-| a↔c | `reject_recommended` | differs | on the revision-2 emission: `true` vs `false` |
-| **a↔b** | **`new_standard_classification`** | **differs** | `escalation_requested` vs `advisory` |
-| a↔b | `escalation_exception_exists` | differs | `true` vs `false` |
-| a↔b | `reaches_checkpoint` | differs | `true` vs `false` |
-| a↔b | `decision_state` | differs | `Major Revision` vs `Accept` |
-| b↔c | `decision_state` | **identical** | `Accept` both |
-| **b↔c** | **`reaches_checkpoint`** | **differs** | **`false` vs `true`** |
+| Pair | Observable | Relation | Target | Expected |
+|------|-----------|----------|--------|----------|
+| **a↔c** | `decision_state_revision_1` | **identical** | — | `user_review_required` both |
+| a↔c | `decision_state` | differs | — | `Major Revision` vs `Accept` |
+| a↔c | `reject_recommended` | differs | — | on the revision-2 emission: `true` vs `false` (CONDITIONAL — see below) |
+| **a↔b** | **`new_standard_classification`** | **differs** | REV-002 | `escalation_requested` vs `advisory` (CONDITIONAL — see below) |
+| a↔b | `escalation_exception_exists` | differs | — | `true` vs `false` |
+| a↔b | `reaches_checkpoint` | differs | — | `true` vs `false` |
+| a↔b | `decision_state` | differs | — | `Major Revision` vs `Accept` |
+| b↔c | `decision_state` | **identical** | — | `Accept` both |
+| **b↔c** | **`reaches_checkpoint`** | **differs** | — | **`false` vs `true`** |
+
+### Two conditional cells
+
+Two of these cells are marked CONDITIONAL because the spec permits more than one conformant
+emission and the cell can only read one of them. A conditional cell whose precondition is unmet
+is **unscoreable** — record it, exclude it from numerator and denominator, never count it a miss.
+
+**`reject_recommended` (a↔c) is conditional on `escalation_class: research_integrity`.**
+§6.4's closed set also contains `ethics`, and nothing in the spec, the protocol, or either
+schema discriminates between them. An ethics approval dated after the collection window began is
+at least as naturally an `ethics` finding as a `research_integrity` one — it is a human-subjects
+governance failure. Only `research_integrity` sets the flag (§6 Step 3; the shipped checker's
+derivation is explicit about it), so a conformant run emitting `ethics` would land on the same
+`Major Revision` through the same approved floor while showing `false` vs `false` here. The
+scripted answer cannot rescue it: an `EscalationApproval` carries no class field, so the user
+cannot re-classify at the checkpoint. Record the emitted class in the run record.
+
+**`new_standard_classification` (a↔b) is conditional on both arms emitting a Phase-1
+`NewStandardRecord`.** §3.2's trigger is conditional — "**If** operationalizing reveals that the
+Round-1 criterion is materially incomplete …" — immediately after "Phase 1 may NOT add acceptance
+requirements beyond the inherited criterion". A conservative, fully conformant Phase 1 may raise
+nothing in either arm. Null policy: **arm-b raising none still scores `advisory`**, because the
+decisive property is that it did not enter the escalation path; **arm-a raising none makes the
+cell unscoreable**, and its escalation is then observed through the 2A-discovered path, which the
+schema permits (`new_standard_ref` is not in `escalation_exception_record`'s required set). The
+other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`, `decision_state` —
+are unaffected either way, so the pair keeps its force.
 
 The shaded cells are the ones no other scenario reaches. `new_standard_classification` is the
 direct test of §6.4's closed class set: the same shaped criterion-incompleteness, raised the

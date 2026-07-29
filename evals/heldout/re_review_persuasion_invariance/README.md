@@ -86,6 +86,14 @@ the design cannot support.
 
 Report: cell pass rate overall, per scenario, and per language.
 
+### Conditional cells are unscoreable, never a miss
+
+A cell may carry `conditional_on`. It is scored only when the stated precondition holds in the
+run; otherwise it is **unscoreable** — record the observation and the unmet precondition, exclude
+the cell from both numerator and denominator, and never count it as a miss. Preconditions exist
+exactly where the spec permits more than one conformant emission and the cell can only read one
+of them. Two cells in P-6 carry one; both are explained in that scenario's `ground_truth.md`.
+
 ### Secondary — direction-only diagnostic
 
 For `differs` cells on `decision_state`, also report whether the observed pair is ordered
@@ -134,6 +142,13 @@ model.
    `check_re_review_synthesis.py` run as its MANDATORY step. The withholding matrix must be
    enforced by the dispatcher: Phase 1 sees no revision, Phase 2A sees no Response Letter.
 4. **Answer the checkpoint from the script, not from judgment.** Only P-6 expects a deferral.
+   **If any other scenario surfaces one** — a §7 dissent on a P1 item trips the bound and defers
+   through §6 G2(a), which is a legal conformant outcome no scripted answer covers — do not
+   improvise a substantive answer. Record the deferral and its G2 sub-state, answer with the
+   neutral form "Proceed on the verifier's committed assessment; no re-examination is directed."
+   / 「依驗證者已提交的判斷繼續；不指示重新檢驗。」, and mark that arm's affected cells
+   unscoreable in the run record.
+   For P-6:
    Supply the arm's scripted answer verbatim from `ground_truth.md`, **in the language of the
    run** (each answer is given in both), when the run surfaces the checkpoint, and record the
    revision-1 emission before answering — the pre-answer state is itself a scored cell.
@@ -168,6 +183,14 @@ scenario's `ground_truth.md`:
   only the enum, §6 Step 3 is `max(base, floor)`, and P-6's base is `Accept`, so a conformant
   run emitting `Minor Revision` misses two `differs` cells for a reason unrelated to the
   escalation machinery. Record the emitted value.
+- P-6's `escalation_class: research_integrity`. §6.4's closed set also contains `ethics` and
+  nothing discriminates between them for this fixture's finding. Only `research_integrity` sets
+  `reject_recommended`, so the affected cell is marked `conditional_on` and goes unscoreable
+  rather than counting as a miss when a run classifies it `ethics`.
+- P-4's reading that Table 3 and §3.3 are *data* rather than the criterion's stated argument.
+  The criterion is worded to make that unambiguous (it asks for an argument stated in the
+  estimation section), but if a run returns `FULLY_ADDRESSED` at 2A in **both** arms, that is a
+  fixture construct failure and files against this set, not against the model.
 
 Apart from these, no cell depends on a threshold the spec leaves open.
 
@@ -202,16 +225,20 @@ model and prompt pair did / did not hold the invariant". It supports no distribu
 twelve invariants over the index, the files on disk, and each `ground_truth.md`'s declared
 `## Pair structure` table. It pins the scenario / arm / pair / cell inventory so nothing can be
 deleted silently, checks relation-vs-expected-value agreement, binds each hash placeholder to
-its own key, requires pointer arms to resolve to real material in one hop, requires each arm's
-section set to be EXACTLY what the scenario declares, and keeps the held-out boundary (no
-material file naming the ground truth or carrying a scripted answer, in either language).
+its own key (and requires all three keys present exactly once wherever an apply report
+appears), requires pointer arms to resolve to real material in one hop, requires each arm's
+section set to be EXACTLY what the scenario declares, and keeps the held-out boundary — no
+material file may name the ground truth, and every language's scripted answer is checked
+against every material file, so a cross-language paste is caught too.
 
 Two limits worth stating rather than leaving to be discovered:
 
 - **Invariant 7 pins the declared `claim_set` arrays, not the letter prose.** Claim ids are
   maintainer-assigned; nothing binds `C3` to a sentence. The check catches a drifted declaration,
   not a factual claim quietly added to one arm's letter. Only review catches that.
-- **Invariant 12 compares which cells exist, never what they expect.** A ground-truth table and
-  the index can agree on the cell set while disagreeing on a value; that class is review's job.
+- **Invariant 12 compares which cells exist, never what they expect.** It matches
+  `(arm-pair, observable, target)` as a multiset, so a collapsed or mis-targeted row fails — but
+  a ground-truth table and the index can still agree on the cell set while disagreeing on a
+  value, and that class is review's job.
 
 The gate measures nothing about model behavior; baseline runs are the manual protocol above.

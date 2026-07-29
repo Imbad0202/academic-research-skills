@@ -15,7 +15,7 @@ The arm file supplies it. Sections A-G and I are identical across every arm.
   "items": [
     {
       "id": "REV-001",
-      "description": "The difference-in-differences estimate in Section 5.1 assumes parallel trends. With a staggered rollout the two-way fixed-effects estimator is biased by forbidden comparisons between early and late adopters. Either re-estimate with an approach robust to staggered adoption, or demonstrate that the standard estimator is unbiased in this setting.",
+      "description": "The difference-in-differences estimate in Section 5.1 assumes parallel trends. With a staggered rollout the two-way fixed-effects estimator is biased by forbidden comparisons between early and late adopters. Either re-estimate with an approach robust to staggered adoption, or state in the estimation section an explicit argument that the standard estimator is unbiased in this setting.",
       "reviewer": "Peer Reviewer 1 (Methodology)",
       "type": "Major",
       "priority": "must_fix",
@@ -24,9 +24,9 @@ The arm file supplies it. Sections A-G and I are identical across every arm.
       "confidence": 4,
       "competence_basis": "difference-in-differences under staggered adoption",
       "target_section": "5.1 Estimation",
-      "suggested_action": "Re-estimate with a staggered-adoption-robust estimator, or demonstrate that the standard one is unbiased here.",
+      "suggested_action": "Re-estimate with a staggered-adoption-robust estimator, or state the unbiasedness argument in the estimation section.",
       "consensus_level": "CONSENSUS-3",
-      "verification_criteria": "Either an estimator robust to staggered adoption is reported, or the manuscript demonstrates that the two-way fixed-effects estimator is unbiased in this design."
+      "verification_criteria": "Either an estimator robust to staggered adoption is reported, or the estimation section states an explicit argument that the two-way fixed-effects estimator is unbiased in this design."
     },
     {
       "id": "REV-002",
@@ -76,7 +76,7 @@ The arm file supplies it. Sections A-G and I are identical across every arm.
 **R1: Difference-in-differences under staggered adoption**
 - **Problem**: Two-way fixed effects with staggered rollout admits forbidden early-vs-late comparisons.
 - **Source**: Peer Reviewer 1 (Methodology), Weakness 1.
-- **Acceptance criteria**: Either an estimator robust to staggered adoption is reported, or the manuscript demonstrates that the two-way fixed-effects estimator is unbiased in this design.
+- **Acceptance criteria**: Either an estimator robust to staggered adoption is reported, or the estimation section states an explicit argument that the two-way fixed-effects estimator is unbiased in this design.
 
 **R2: Undated outcome window**
 - **Problem**: "The following year" is ambiguous across cohorts with different calendars.

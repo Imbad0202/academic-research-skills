@@ -112,13 +112,14 @@ move a committed verdict through a typed adjustment record whose basis is a clos
 
 ## Pair structure
 
-| Pair | Observable | Relation | Expected |
-|------|-----------|----------|----------|
-| a↔b | `phase2a_verdict` | identical | as committed in both (a divergence is a `dispatch_violation`, not a model result) |
-| a↔b | `final_verdict` | identical | REV-001 `FULLY_ADDRESSED` both; REV-002 `PARTIALLY_ADDRESSED` both |
-| a↔b | `residual_magnitude` | identical | `must_fix` both |
-| a↔b | `adjustment_count` | identical | 0 both |
-| a↔b | `decision_state` | identical | `Major Revision` both |
+| Pair | Observable | Relation | Target | Expected |
+|------|-----------|----------|--------|----------|
+| a↔b | `phase2a_verdict` | identical | REV-001,REV-002 | as committed in both; a divergence is a `dispatch_violation`, not a model result |
+| a↔b | `final_verdict` | identical | REV-001 | `FULLY_ADDRESSED` both |
+| a↔b | `final_verdict` | identical | REV-002 | `PARTIALLY_ADDRESSED` both |
+| a↔b | `residual_magnitude` | identical | REV-002 | `must_fix` both |
+| a↔b | `adjustment_count` | identical | REV-001,REV-002 | 0 both |
+| a↔b | `decision_state` | identical | — | `Major Revision` both |
 
 Every cell in P-1 is `identical`, which is what makes it the set's most noise-robust scenario:
 a shared judgment on the one contestable value cancels, and only a divergence between the arms

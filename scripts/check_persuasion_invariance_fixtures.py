@@ -8,9 +8,9 @@ paired-control measurement. It measures nothing about model behavior; baseline r
 manual protocol in the set's README.
 
 Scope note, deliberately narrow: this lint does NOT read expected VALUES out of the
-ground-truth prose and compare them with the index. It cross-checks which (pair, observable)
-cells exist on both sides, never what each cell expects. A wrong expected value is caught by
-review, not here.
+ground-truth prose and compare them with the index. It cross-checks which (pair, observable,
+target) cells exist on both sides, never what each cell expects. A wrong expected value is
+caught by review, not here.
 
 Invariants:
   1. `heldout_set.json` parses, carries the required top-level keys, and declares the pinned
@@ -31,21 +31,24 @@ Invariants:
      equal `claim_set` on every arm. This pins the DECLARED arrays, which is the maintainer's
      construct-validity commitment for P-1; no claim id is bound to letter prose, and the
      lint does not pretend to check the text.
-  8. Hash placeholders: in every material file, each of the three hash keys carries ITS OWN
-     placeholder token — key-bound, so a swapped pair fails — and no literal hex appears.
+  8. Hash placeholders: a file carrying an apply report declares ALL THREE hash keys, exactly
+     once each, and each carries ITS OWN placeholder token — key-bound, so a swapped pair, a
+     dropped key, a duplicated key, and a literal hex all fail.
   9. Pointer arms: a declared `material_pointer` has a pointer file in every language naming
      the pointed-to arm's file for that language; the target exists and is NOT itself a
      pointer; no undeclared pointer file exists.
  10. Held-out boundary: no packet or arm material file mentions the ground-truth file, and no
      scripted checkpoint answer appears in a material file of its scenario. A non-null
-     scripted answer is an object carrying every declared language, and each language's
-     answer is checked against that language's files.
+     scripted answer is an object carrying every declared language, and EVERY language's
+     answer is checked against EVERY file (a cross-language paste is still contamination).
  11. Section split: each scenario's `arm_supplied_sections` are ABSENT from both packet files
      and are EXACTLY the section set of every non-pointer arm material file, in both
      languages — an arm may not carry an undeclared or duplicated section, which would let it
      vary an input the scenario declares constant.
- 12. Ground-truth agreement: every `ground_truth.md` carries a `## Pair structure` table
-     whose (arm-pair, observable) rows are exactly the index's cells for that scenario.
+ 12. Ground-truth agreement: every `ground_truth.md` carries a `## Pair structure` table whose
+     (arm-pair, observable, target) rows are exactly the index's cells for that scenario, as a
+     MULTISET — two cells sharing an observable but differing in target need two rows, so a
+     collapsed row cannot hide a cell.
 
 Run: python3 scripts/check_persuasion_invariance_fixtures.py
 Exit 0 on pass; 1 with per-invariant messages on failure.
@@ -55,6 +58,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -125,7 +129,9 @@ PLACEHOLDERS = tuple(HASH_KEY_TOKENS[k] for k in
                      ("base_draft_hash", "output_draft_hash", "patch_digest"))
 POINTER_RE = re.compile(r"^ARM-MATERIAL-POINTER:\s*(\S+)\s*$")
 SECTION_RE = re.compile(r"^##\s+([A-Z])\.\s", re.MULTILINE)
-PAIR_ROW_RE = re.compile(r"^\|\s*\**([a-z])↔([a-z])\**\s*\|\s*([^|]+)\|", re.MULTILINE)
+PAIR_ROW_RE = re.compile(
+    r"^\|\s*\**([a-z])↔([a-z])\**\s*\|\s*([^|]+)\|\s*[^|]*\|\s*([^|]*)\|", re.MULTILINE
+)
 GROUND_TRUTH_NAME = "ground_truth.md"
 PAIR_STRUCTURE_HEADING = "## Pair structure"
 
@@ -150,6 +156,13 @@ def _pointer_target(text: str) -> str | None:
 
 def _strip_cell(text: str) -> str:
     return text.replace("*", "").replace("`", "").strip()
+
+
+def _target_key(target) -> str:
+    """Normalise a cell target for comparison; None and the em-dash both mean 'run-level'."""
+    if target is None:
+        return "—"
+    return _strip_cell(str(target))
 
 
 def check_index(errors: list[str]) -> dict | None:
@@ -331,6 +344,8 @@ def check_cell(label: str, cell: dict, arms: set[str], relations: set[str],
         errors.append(f"5. {label} relation {cell['relation']!r} is not in relation_enum")
     if not str(cell["rule_anchor"]).strip():
         errors.append(f"5. {label} rule_anchor is empty")
+    if "conditional_on" in cell and not str(cell["conditional_on"]).strip():
+        errors.append(f"5. {label} conditional_on is present but empty")
     if "on_mismatch" in cell and cell["on_mismatch"] not in ON_MISMATCH_VALUES:
         errors.append(
             f"5. {label} on_mismatch {cell['on_mismatch']!r} is not in {sorted(ON_MISMATCH_VALUES)}"
@@ -384,13 +399,26 @@ def check_placeholders(sid: str, packet_paths: dict[str, Path],
     for path in sorted(candidates):
         text = _read(path)
         rel = path.relative_to(ROOT)
+        found = {
+            key: re.findall(rf'"{key}"\s*:\s*"([^"]*)"', text)
+            for key in HASH_KEY_TOKENS
+        }
+        if not any(found.values()):
+            continue  # no apply report in this file (legitimate: e.g. a no-reports arm)
         for key, token in HASH_KEY_TOKENS.items():
-            for value in re.findall(rf'"{key}"\s*:\s*"([^"]*)"', text):
-                if value != token:
-                    errors.append(
-                        f"8. {sid} {rel} {key} is {value!r}, expected {token!r} — the token is "
-                        f"key-bound; a literal hash or a swapped token breaks materialisation"
-                    )
+            values = found[key]
+            if len(values) != 1:
+                errors.append(
+                    f"8. {sid} {rel} carries an apply report with {len(values)} "
+                    f'"{key}" key(s), expected exactly 1 — every apply report declares all '
+                    f"three hash keys"
+                )
+                continue
+            if values[0] != token:
+                errors.append(
+                    f"8. {sid} {rel} {key} is {values[0]!r}, expected {token!r} — the token is "
+                    f"key-bound; a literal hash or a swapped token breaks materialisation"
+                )
 
 
 def check_pointers(sid: str, scenario: dict, material_paths: dict[tuple[str, str], Path],
@@ -448,9 +476,8 @@ def check_heldout_boundary(sid: str, scenario: dict, packet_paths: dict[str, Pat
             continue
         answers.append((arm.get("arm_id"), answer))
 
-    files: list[tuple[str, Path]] = [(lang, p) for lang, p in packet_paths.items()]
-    files += [(lang, p) for (_, lang), p in material_paths.items()]
-    for lang, path in sorted(files, key=lambda x: str(x[1])):
+    files = sorted(set(packet_paths.values()) | set(material_paths.values()))
+    for path in files:
         text = _read(path)
         rel = path.relative_to(ROOT)
         if GROUND_TRUTH_NAME in text:
@@ -458,12 +485,15 @@ def check_heldout_boundary(sid: str, scenario: dict, packet_paths: dict[str, Pat
                 f"10. {sid} {rel} references {GROUND_TRUTH_NAME}; material files must not "
                 f"point a run at the held-out key"
             )
+        # every language's answer is checked against every file: a cross-language paste is
+        # still contamination, and pairing the scan to the file's own language would miss it
         for aid, answer in answers:
-            if answer[lang] and answer[lang] in text:
-                errors.append(
-                    f"10. {sid} {rel} contains {aid}'s scripted checkpoint answer ({lang}) "
-                    f"verbatim; the answer must stay held out until the checkpoint"
-                )
+            for lang in LANGUAGES:
+                if answer[lang] and answer[lang] in text:
+                    errors.append(
+                        f"10. {sid} {rel} contains {aid}'s scripted checkpoint answer ({lang}) "
+                        f"verbatim; the answer must stay held out until the checkpoint"
+                    )
 
 
 def check_section_split(sid: str, scenario: dict, packet_paths: dict[str, Path],
@@ -498,21 +528,22 @@ def check_ground_truth_pairs(sid: str, scenario: dict, gt_path: Path,
         errors.append(f"12. {sid} {GROUND_TRUTH_NAME} has no '{PAIR_STRUCTURE_HEADING}' section")
         return
     table = text.split(PAIR_STRUCTURE_HEADING, 1)[1]
-    declared = {
-        (frozenset({f"arm-{a}", f"arm-{b}"}), _strip_cell(obs))
-        for a, b, obs in PAIR_ROW_RE.findall(table)
-    }
-    indexed = {
-        (frozenset(pair["arms"]), cell["observable"])
+    declared = Counter(
+        (tuple(sorted({f"arm-{a}", f"arm-{b}"})), _strip_cell(obs), _strip_cell(target))
+        for a, b, obs, target in PAIR_ROW_RE.findall(table)
+    )
+    indexed = Counter(
+        (tuple(sorted(pair["arms"])), cell["observable"], _target_key(cell.get("target")))
         for pair in scenario["pairs"]
         for cell in (pair.get("cells") or [])
-        if len(pair.get("arms") or []) == 2
-    }
+        if len(pair.get("arms") or []) == 2 and "observable" in cell
+    )
     only_gt = declared - indexed
     only_index = indexed - declared
 
-    def fmt(items):
-        return sorted((sorted(arms), obs) for arms, obs in items)
+    def fmt(counter):
+        return sorted(f"{list(arms)} {obs} [{target}] x{n}"
+                      for (arms, obs, target), n in counter.items())
 
     if only_gt:
         errors.append(

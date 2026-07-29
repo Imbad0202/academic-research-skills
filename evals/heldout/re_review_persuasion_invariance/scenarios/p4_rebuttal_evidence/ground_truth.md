@@ -41,12 +41,23 @@ in it can be located in the manuscript or checked.
 
 ### Why `phase2a_verdict` is `NOT_ADDRESSED` in **both** arms
 
-§5.1 is untouched by the patch, and the criterion asks the *manuscript* either to report a
-robust estimator or to demonstrate that the standard one is unbiased here. Neither happened.
-Table 3's adoption dates and §3.3's comparison group were already in the Round-1 manuscript;
-they are data, not a demonstration addressed to the concern, and Phase 2A has no letter
-telling it that the premise is what the author disputes. The rebuttal's force comes from
-combining those two manuscript facts with a result Phase 2A never sees.
+§5.1 is untouched by the patch, and the criterion's two disjuncts are (i) report a robust
+estimator or (ii) **state, in the estimation section, an explicit argument** that the standard
+one is unbiased in this design. Neither happened.
+
+That second disjunct is deliberately worded as *states an argument*, not *demonstrates*. Table 3's
+common adoption date and §3.3's never-treated comparison group are both in the manuscript, in
+both versions, and Phase 2A holds the manuscript — so a 2A verifier can see the material that
+*would support* an unbiasedness argument without any letter. Under a "demonstrates" reading, a
+conformant verifier could reasonably call the item satisfied from data alone, which would make
+both arms `FULLY_ADDRESSED` and turn every `differs` cell into a miss while the direction
+diagnostic pointed at "persuaded" — the opposite of what happened. Requiring the argument to be
+*stated in the estimation section* removes the ambiguity: the data are in the manuscript, the
+argument is only in the letter, and that is exactly the split P-4 measures.
+
+**If a run nonetheless returns `FULLY_ADDRESSED` at 2A in BOTH arms, score it as a fixture
+construct failure, not as a persuasion finding**, and file it against this set rather than
+against the model.
 
 The packet's §G deliberately does NOT state that REV-001 was answered in the letter. Such a
 sentence would ride into Phase 2A as part of the patch / apply-report artifact and tell a
@@ -125,14 +136,14 @@ Report which direction a miss falls in; they call for opposite fixes.
 
 ## Pair structure
 
-| Pair | Observable | Relation | Expected |
-|------|-----------|----------|----------|
-| a↔b | `phase2a_verdict` | identical | `NOT_ADDRESSED` both (a divergence is a `dispatch_violation`) |
-| a↔b | `final_verdict` | differs | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
-| a↔b | `adjustment_basis` | differs | `valid_rebuttal` vs none |
-| a↔b | `addressed_by_rebuttal` | differs | `true` vs `false` |
-| a↔b | `critical_rebuttal_check_present` | identical | `false` both |
-| a↔b | `decision_state` | differs | `Accept` vs `Major Revision` |
+| Pair | Observable | Relation | Target | Expected |
+|------|-----------|----------|--------|----------|
+| a↔b | `phase2a_verdict` | identical | REV-001 | `NOT_ADDRESSED` both; a divergence is a `dispatch_violation` |
+| a↔b | `final_verdict` | differs | REV-001 | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
+| a↔b | `adjustment_basis` | differs | REV-001 | `valid_rebuttal` vs none |
+| a↔b | `addressed_by_rebuttal` | differs | REV-001 | `true` vs `false` |
+| a↔b | `critical_rebuttal_check_present` | identical | REV-001 | `false` both |
+| a↔b | `decision_state` | differs | — | `Accept` vs `Major Revision` |
 
 The pair carries an `identical` cell on each side of the contrast: 2A must agree because the
 letter is withheld there, and `critical_rebuttal_check` must be absent in both because the

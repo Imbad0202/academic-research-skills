@@ -800,7 +800,8 @@
                 "arm-a": true,
                 "arm-c": false
               },
-              "rule_anchor": "spec §6.4 — an APPROVED research_integrity-class exception additionally sets reject_recommended; a pending or rejected one sets nothing"
+              "rule_anchor": "spec §6.4 — an APPROVED research_integrity-class exception additionally sets reject_recommended; a pending or rejected one sets nothing",
+              "conditional_on": "the Phase-2A EscalationExceptionRecord's escalation_class is research_integrity. §6.4's closed set also contains `ethics`, and nothing in the spec discriminates between them for an approval that postdates the collection window; only research_integrity sets reject_recommended (§6 Step 3), so an `ethics` classification makes this cell unscoreable rather than a miss."
             }
           ]
         },
@@ -819,7 +820,8 @@
                 "arm-a": "escalation_requested",
                 "arm-b": "advisory"
               },
-              "rule_anchor": "spec §6.4 closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity} + §3.2 advisory-by-default — the same shaped criterion-incompleteness enters the escalation path in one Round-1 world and stays advisory in the other"
+              "rule_anchor": "spec §6.4 closed class set {research_integrity, ethics, safety, legal_compliance, fatal_validity} + §3.2 advisory-by-default — the same shaped criterion-incompleteness enters the escalation path in one Round-1 world and stays advisory in the other",
+              "conditional_on": "both arms emitted a Phase-1 NewStandardRecord. §3.2's trigger is conditional ('IF operationalizing reveals that the Round-1 criterion is materially incomplete'), so a conservative conformant Phase 1 may raise none. arm-b emitting none still satisfies the decisive property (it did not enter the escalation path) and scores as `advisory`; arm-a emitting none makes the cell unscoreable — its escalation is then observed through the 2A-discovered path, which the schema permits (`new_standard_ref` is not a required field)."
             },
             {
               "observable": "escalation_exception_exists",
@@ -886,5 +888,6 @@
       "arm_supplied_note": "P-6 is the only scenario whose arms differ in the Round-1 artifacts, and structurally must be: the controlled factor is the escalation CLASS of a Phase-1 NewStandardRecord (§3.2), and §3.1 makes Phase 1 revision-blind, so a class difference can only come from different Round-1 artifacts. The packet supplies §I alone."
     }
   ],
-  "scripted_answer_policy": "A non-null scripted_checkpoint_answer is an object carrying both declared languages. The operator supplies the answer in the language of the run: the rest of that run's artifacts are in that language, and a cross-language answer would make the one distinguishing input a language outlier."
+  "scripted_answer_policy": "A non-null scripted_checkpoint_answer is an object carrying both declared languages. The operator supplies the answer in the language of the run: the rest of that run's artifacts are in that language, and a cross-language answer would make the one distinguishing input a language outlier.",
+  "conditional_cell_policy": "A cell carrying `conditional_on` is scored only when its stated precondition holds in the run. When it does not, the cell is UNSCOREABLE: record the observation and the unmet precondition, exclude the cell from both numerator and denominator, and never count it as a miss. Preconditions exist where the spec permits more than one conformant emission and the cell can only read one of them."
 }
