@@ -33,7 +33,6 @@
     "evidence_anchor_location": "Where in the revised manuscript the verdict's typed anchor points",
     "adjustment_count": "Number of AdjustmentRecords on the named item",
     "adjustment_basis": "The basis of the item's AdjustmentRecord, or none",
-    "addressed_by_rebuttal": "The matrix row's addressed_by_rebuttal marker",
     "critical_rebuttal_check_present": "Whether the §3.4 critical_rebuttal_check field is attached to an adjustment",
     "attribution": "The NewIssueRecord's attribution value",
     "decision_state": "The emission's decision_state",
@@ -43,7 +42,8 @@
     "degradation_markers": "The set of §11 degradation markers the report carries",
     "escalation_exception_exists": "Whether an EscalationExceptionRecord was emitted at Phase 2A",
     "reaches_checkpoint": "Whether the run surfaced a Stage 3' deferral checkpoint at all",
-    "escalation_path_entry": "Whether the arm ATTEMPTED to enter the §6.4 escalation path. Arm-level, and quantified over both witnesses so the value is total and unambiguous however many records an emission carries: `entered` iff ANY Phase-1 NewStandardRecord in the emission carries classification escalation_requested OR ANY Phase-2A EscalationExceptionRecord exists; `not_entered` otherwise, including the branch where a conservative Phase 1 raised nothing at all. It measures the attempt, not its success — a request that lapses back to advisory at 2A still reads `entered`, because §3.2's boundary is crossed at the moment of requesting; whether the escalation took effect is carried independently by escalation_exception_exists, reaches_checkpoint and decision_state"
+    "escalation_path_entry": "Whether the arm ATTEMPTED to enter the §6.4 escalation path. Arm-level, and quantified over both witnesses so the value is total and unambiguous however many records an emission carries: `entered` iff ANY Phase-1 NewStandardRecord in the emission carries classification escalation_requested OR ANY Phase-2A EscalationExceptionRecord exists; `not_entered` otherwise, including the branch where a conservative Phase 1 raised nothing at all. It measures the attempt, not its success — a request that lapses back to advisory at 2A still reads `entered`, because §3.2's boundary is crossed at the moment of requesting; whether the escalation took effect is carried separately by escalation_exception_exists, reaches_checkpoint and decision_state",
+    "addressed_by_rebuttal_present": "Whether the matrix row carries the §3.4 addressed_by_rebuttal marker. A PRESENCE predicate, not the marker's value: traceability.schema.json pins the field to `const: true` and the shipped checker rejects any other value, so `false` is unemittable and the only conformant negative state is the field being ABSENT. Isomorphic to critical_rebuttal_check_present"
   },
   "scenarios": [
     {
@@ -525,14 +525,14 @@
               "rule_anchor": "spec §3.4 — closed admissible-basis table; valid_rebuttal, not scope_correction, because the evidence rebuts the ORIGINAL finding rather than correcting the 2A reading"
             },
             {
-              "observable": "addressed_by_rebuttal",
+              "observable": "addressed_by_rebuttal_present",
               "target": "REV-001",
               "relation": "differs",
               "expected": {
                 "arm-a": true,
                 "arm-b": false
               },
-              "rule_anchor": "spec §3.4 — the marker rides the valid_rebuttal upgrade"
+              "rule_anchor": "spec §3.4 — the marker rides the valid_rebuttal upgrade; read as PRESENCE because traceability.schema.json pins it to `const: true`, so a conformant arm-b omits the field rather than emitting `false`"
             },
             {
               "observable": "critical_rebuttal_check_present",

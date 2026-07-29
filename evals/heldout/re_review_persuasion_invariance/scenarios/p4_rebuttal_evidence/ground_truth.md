@@ -78,7 +78,7 @@ failure — score it `dispatch_violation` and disclose it, as in P-1.
 | exists | **yes, exactly one on REV-001** | **no** |
 | `basis` | `valid_rebuttal` | — |
 | `from_verdict` → `to_verdict` | `NOT_ADDRESSED` → `FULLY_ADDRESSED` | — |
-| row's `addressed_by_rebuttal` | `true` | absent / `false` |
+| row's `addressed_by_rebuttal` | present, `true` | **ABSENT** — `traceability.schema.json` pins the field to `const: true`, so a conformant arm-b omits it rather than emitting `false`, and the cell reads presence |
 | `evidence_anchor[]` | at least one anchor; `letter`-tagged anchors are admissible here | — |
 | `critical_rebuttal_check` | **absent** | **absent** |
 
@@ -142,7 +142,7 @@ Report which direction a miss falls in; they call for opposite fixes.
 | a↔b | `phase2a_verdict` | identical | REV-001 | `NOT_ADDRESSED` both; a divergence is a `dispatch_violation` |
 | a↔b | `final_verdict` | differs | REV-001 | `FULLY_ADDRESSED` vs `NOT_ADDRESSED` |
 | a↔b | `adjustment_basis` | differs | REV-001 | `valid_rebuttal` vs none |
-| a↔b | `addressed_by_rebuttal` | differs | REV-001 | `true` vs `false` |
+| a↔b | `addressed_by_rebuttal_present` | differs | REV-001 | present vs absent |
 | a↔b | `critical_rebuttal_check_present` | identical | REV-001 | `false` both |
 | a↔b | `decision_state` | differs | — | `Accept` vs `Major Revision` |
 

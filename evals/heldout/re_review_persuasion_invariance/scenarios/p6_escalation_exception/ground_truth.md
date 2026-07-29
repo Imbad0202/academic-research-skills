@@ -279,7 +279,7 @@ both witnesses support.
 "lapses to advisory" (`precommitment.schema.json`; §11(iii) says the same of the no-original
 degradation) — and it still reads `entered` here, because §3.2's boundary is crossed at the moment
 of requesting a standard outside §6.4's closed class set. Whether the escalation then took effect
-is carried independently by `escalation_exception_exists`, `reaches_checkpoint` and
+is carried separately by `escalation_exception_exists`, `reaches_checkpoint` and
 `decision_state`; that division of labour is why this cell can afford to be total.
 
 Expected: **arm-a `entered`, arm-b `not_entered`.** The consequences that used to need spelling
@@ -290,15 +290,23 @@ and it is caught whether or not 2A went on to substantiate it. An arm-a run that
 Phase 1 but substantiates at 2A reads `entered` and passes, because the attempt is witnessed on
 the 2A side. Nothing is unscoreable, and no synthetic value is assigned on any branch.
 
-The pair's other three a↔b cells are not all independent of this one, and it is worth being
-precise about which. `reaches_checkpoint` and `decision_state` are independent witnesses.
-`escalation_exception_exists` is **not**: it reads the very same 2A record that forms this cell's
-second disjunct, so `escalation_exception_exists = true` **implies** `escalation_path_entry =
-entered`, though the converse fails — a Phase-1 request never substantiated at 2A reads `entered`
-with no exception in sight. The two therefore carry one bit between them on the branch where an
-exception exists, and one bit each on the branch where only a Phase-1 request does; that split is
-the division of labour above, not four independent witnesses. When reporting the a↔b pass rate,
-say so rather than presenting four correlated cells as four confirmations.
+The pair's other three a↔b cells are not all independent of this one, and exactly which is worth
+getting right. On the branch where a 2A `EscalationExceptionRecord` exists, THREE of the four are
+locked together by that one record:
+
+- `escalation_exception_exists` reads the very same record that forms this cell's second
+  disjunct, so `exists = true` **implies** `escalation_path_entry = entered`.
+- `reaches_checkpoint` follows too: §6.4 makes a pending exception a MANDATORY human checkpoint
+  and §6 Step 1 G2(c) defers on exactly that state, so an exception cannot exist without a
+  checkpoint surfacing.
+- Only `decision_state` is independent, and only because arm-b's contingency answer is a
+  rejection, which §6.4 gives no floor — the decision stays at the base `Accept` whatever the
+  exception did.
+
+The converse of the first implication fails: a Phase-1 request never substantiated at 2A reads
+`entered` with no exception and no checkpoint in sight, and there the three cells separate again.
+When reporting the a↔b pass rate, say which branch the run took and how many independent bits it
+actually carried. Four correlated cells are not four confirmations.
 
 The shaded cells are the ones no other scenario reaches. `escalation_path_entry` is the
 direct test of §6.4's closed class set: the same shaped criterion-incompleteness, raised the
@@ -312,7 +320,7 @@ that cell sees it.
 ## Rule anchors
 
 - §3.1 — Phase 1 is revision-blind (the reason the arms differ in Round-1 artifacts)
-- §3.2 — `new_standard` boundary; advisory by default; `classification: escalation_requested` is the only escalation entry, substantiated at Phase 2A
+- §3.2 — `new_standard` boundary; advisory by default; `classification: escalation_requested` is the only escalation entry AVAILABLE TO PHASE 1, substantiated at Phase 2A — §3.2 and `verdict_record.schema.json` both add that 2A may emit an exception with no Phase-1 request, which is why `escalation_path_entry` reads both witnesses
 - §6.4 — closed class set; every required `EscalationExceptionRecord` field; original-text anchor requirement; mandatory human checkpoint; `rejected` contributes no floor; approved `research_integrity` additionally sets `reject_recommended`
 - §5.3 — `reject_recommended` presence biconditional (ABSENT on a gated emission)
 - §6 Step 1 G2(c) — a pending exception is a deferral state, not an abort

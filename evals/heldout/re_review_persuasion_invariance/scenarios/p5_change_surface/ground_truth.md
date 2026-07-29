@@ -86,8 +86,11 @@ None expected in any arm. Each arm's Phase 2A already reaches its final verdict 
 manuscripts alone; the letters add no verdict-moving evidence. In particular arm-b's Phase 2A
 should locate Appendix C **without** the letter — the appendix is in the revised manuscript
 and the patch adds it. A run that only finds Appendix C after reading the letter and books an
-`author_pointer_located_evidence` adjustment has reached the right verdict by the wrong route:
-record it, count the verdict cell as a match and the adjustment cell as a miss.
+`author_pointer_located_evidence` adjustment has reached the right verdict by the wrong route.
+**P-5 declares no adjustment cell**, so this is not a pair-metric miss and must not be scored as
+one — inventing a cell here would put P-5's denominator at 8 against a pinned 7. Record it in the
+run record under the secondary absolute-correctness metric, where an arm's full expected
+observable set is what is compared.
 
 ## Pair structure
 
