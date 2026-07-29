@@ -43,7 +43,7 @@
     "degradation_markers": "The set of §11 degradation markers the report carries",
     "escalation_exception_exists": "Whether an EscalationExceptionRecord was emitted at Phase 2A",
     "reaches_checkpoint": "Whether the run surfaced a Stage 3' deferral checkpoint at all",
-    "escalation_path_entry": "Whether the arm entered the §6.4 escalation path, derived over BOTH witnesses so the value is total on every conformant branch: `entered` if the Phase-1 NewStandardRecord carries classification escalation_requested OR a Phase-2A EscalationExceptionRecord exists (the schema permits a 2A-discovered exception with no Phase-1 request); `not_entered` otherwise, including the branch where a conservative Phase 1 raised nothing at all"
+    "escalation_path_entry": "Whether the arm ATTEMPTED to enter the §6.4 escalation path. Arm-level, and quantified over both witnesses so the value is total and unambiguous however many records an emission carries: `entered` iff ANY Phase-1 NewStandardRecord in the emission carries classification escalation_requested OR ANY Phase-2A EscalationExceptionRecord exists; `not_entered` otherwise, including the branch where a conservative Phase 1 raised nothing at all. It measures the attempt, not its success — a request that lapses back to advisory at 2A still reads `entered`, because §3.2's boundary is crossed at the moment of requesting; whether the escalation took effect is carried independently by escalation_exception_exists, reaches_checkpoint and decision_state"
   },
   "scenarios": [
     {
@@ -814,7 +814,7 @@
           "cells": [
             {
               "observable": "escalation_path_entry",
-              "target": "REV-002",
+              "target": null,
               "relation": "differs",
               "expected": {
                 "arm-a": "entered",

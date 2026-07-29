@@ -180,10 +180,10 @@ arm's own single escalation exception is the sole pending record.
   precisely because G2(c) is *defined* by a pending `EscalationExceptionRecord` existing, so
   `exception_id` always has a referent; §6.4 then makes a rejected exception contribute no
   floor, the answer is zero-effect, and the run terminates on its base `Accept`. The
-  `escalation_exception_exists` and `reaches_checkpoint` cells are already misses at that point,
-  and so is `escalation_path_entry` — an exception exists, so it reads `entered` against an
-  expected `not_entered`. Do not re-derive that list by hand elsewhere: all three follow
-  mechanically from the derivations under Pair structure. If a checkpoint somehow surfaces with no exception record to reference, it
+  Do not enumerate the resulting misses here: score every cell of every pair involving arm-b
+  against the Pair-structure table as usual, and they fall out mechanically — the exception's
+  existence and the observed `reaches_checkpoint` settle them. A hand-maintained list in this
+  spot has now gone stale twice. If a checkpoint somehow surfaces with no exception record to reference, it
   is not a G2(c) state — take the terminate path.
 - **Any other pending record** — a §7 dissent deferring through G2(a), a G2(b) divergence, a
   G2(d) acceptance, or a SECOND escalation exception, alone or mixed with the first — is
@@ -222,18 +222,22 @@ from B1 or B2 — neither fires here. Record which source a run attributes it to
 | **a↔c** | `decision_state_revision_1` | **identical** | — | `user_review_required` both |
 | a↔c | `decision_state` | differs | — | `Major Revision` vs `Accept` |
 | a↔c | `reject_recommended` | differs | — | on the revision-2 emission: `true` vs `false` (CONDITIONAL — see below) |
-| **a↔b** | **`escalation_path_entry`** | **differs** | REV-002 | `entered` vs `not_entered` |
+| **a↔b** | **`escalation_path_entry`** | **differs** | — | `entered` vs `not_entered` |
 | a↔b | `escalation_exception_exists` | differs | — | `true` vs `false` |
 | a↔b | `reaches_checkpoint` | differs | — | `true` vs `false` |
 | a↔b | `decision_state` | differs | — | `Major Revision` vs `Accept` |
 | b↔c | `decision_state` | **identical** | — | `Accept` both |
 | **b↔c** | **`reaches_checkpoint`** | **differs** | — | **`false` vs `true`** |
 
-### Two conditional cells
+### One conditional cell, and one deliberately total one
 
-Two of these cells are marked CONDITIONAL because the spec permits more than one conformant
-emission and the cell can only read one of them. A conditional cell whose precondition is unmet
-is **unscoreable** — record it, exclude it from numerator and denominator, never count it a miss.
+Exactly ONE of these cells is marked CONDITIONAL — `reject_recommended`. A cell is conditional
+when the spec permits more than one conformant emission and the cell can only read one of them;
+a conditional cell whose precondition is unmet is **unscoreable** — record it, exclude it from
+numerator and denominator, never count it a miss. The second cell documented below,
+`escalation_path_entry`, is the opposite case and is written up here precisely because it is
+NOT conditional: it was made total instead, which is always the better move where it is
+available.
 
 **`reject_recommended` (a↔c) is conditional on `escalation_class: research_integrity`.**
 §6.4's closed set also contains `ethics`, and nothing in the spec, the protocol, or either
@@ -257,20 +261,34 @@ fully conformant Phase 1 may raise nothing in either arm, leaving nothing to cla
 also emit an exception with no Phase-1 request (§5.1)", so a missing Phase-1 record does not even
 prove the arm stayed out of the escalation path.
 
-`escalation_path_entry` reads BOTH witnesses and is defined on every branch:
+`escalation_path_entry` reads BOTH witnesses, **quantified over the whole emission** rather than
+over a single record, and is therefore total and unambiguous:
 
-| Observed | Value |
-|----------|-------|
-| Phase-1 record classified `escalation_requested`, **or** a Phase-2A `EscalationExceptionRecord` exists by either route | `entered` |
-| Phase-1 record classified `advisory`, and no exception | `not_entered` |
-| No Phase-1 record and no exception | `not_entered` |
+> `entered` **iff** ANY Phase-1 `NewStandardRecord` in the emission carries
+> `classification: escalation_requested`, **or** ANY Phase-2A `EscalationExceptionRecord` exists.
+> `not_entered` otherwise.
+
+The quantifier is load-bearing and the cell is **arm-level, not item-scoped** (`target: —`). §5.1
+permits several new standards for one item, and `item_id` may be the literal `global`, so a
+per-record reading would let one emission match two rules at once. The exception witness cannot be
+item-scoped at all: `escalation_exception_record` carries no item field, and its only route to one
+is the OPTIONAL `new_standard_ref`. Reading the arm rather than the item is the only formulation
+both witnesses support.
+
+**It measures the ATTEMPT, not its success.** A Phase-1 request that is never substantiated at 2A
+"lapses to advisory" (`precommitment.schema.json`; §11(iii) says the same of the no-original
+degradation) — and it still reads `entered` here, because §3.2's boundary is crossed at the moment
+of requesting a standard outside §6.4's closed class set. Whether the escalation then took effect
+is carried independently by `escalation_exception_exists`, `reaches_checkpoint` and
+`decision_state`; that division of labour is why this cell can afford to be total.
 
 Expected: **arm-a `entered`, arm-b `not_entered`.** The consequences that used to need spelling
-out now fall out of the derivation. An arm-b run emitting an exception by ANY route reads
-`entered` against an expected `not_entered` and misses — exactly the §6.4 class-set widening this
-cell exists to catch. An arm-a run that raises nothing at Phase 1 but substantiates at 2A still
-reads `entered` and passes, because the escalation genuinely happened. Nothing is unscoreable,
-and no synthetic value is assigned on any branch.
+out now fall out of the derivation. An arm-b run that requests escalation for its
+coding-credibility standard, or emits an exception by any route, reads `entered` against an
+expected `not_entered` and misses — exactly the §6.4 class-set widening this cell exists to catch,
+and it is caught whether or not 2A went on to substantiate it. An arm-a run that raises nothing at
+Phase 1 but substantiates at 2A reads `entered` and passes, because the attempt is witnessed on
+the 2A side. Nothing is unscoreable, and no synthetic value is assigned on any branch.
 
 The other three a↔b cells — `escalation_exception_exists`, `reaches_checkpoint`,
 `decision_state` — remain independent of it, so the pair keeps its force.
