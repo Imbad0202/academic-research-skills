@@ -31,8 +31,30 @@ STREAM="$RUN_DIR/events.jsonl"
 trap 'rm -rf "$RUN_DIR"' EXIT
 
 emit_result() {
+  # thread_id is the only per-call identifier Codex exposes (`thread.started`).
+  # Emitting it makes a bakeoff record auditable after the fact; absent stream
+  # (transport failed before any event) yields "", which is the honest value.
+  thread_id=""
+  events='[]'
+  if [ -s "$STREAM" ]; then
+    thread_id="$(
+      jq -sr '[.[] | select(type == "object" and .type == "thread.started")
+                   | .thread_id | select(type == "string")]
+              | if length == 0 then "" else .[0] end' "$STREAM" 2>/dev/null || echo ""
+    )"
+    # ARS_CODEX_EMIT_EVENTS=1 attaches the raw Codex event stream to the result.
+    # Without it the events die with $RUN_DIR, and the grounding decision below
+    # cannot be re-derived by anyone else: retaining only this function's own
+    # output would let an auditor check the harness, never the guard. Off by
+    # default because the events carry the full model message.
+    if [ "${ARS_CODEX_EMIT_EVENTS:-0}" = "1" ]; then
+      events="$(jq -sc '[.[] | select(type == "object")]' "$STREAM" 2>/dev/null || echo '[]')"
+    fi
+  fi
   jq -cn --arg verdict "$1" --argjson sources "$2" --argjson searched "$3" \
-    '{verdict: $verdict, sources: $sources, searched: $searched}'
+    --arg thread_id "$thread_id" --argjson events "$events" \
+    '{verdict: $verdict, sources: $sources, searched: $searched,
+      thread_id: $thread_id, events: $events}'
 }
 
 # OPENAI_API_KEY is deliberately unset: codex authenticates from auth.json.
@@ -82,12 +104,15 @@ verdict=NOT_SEARCHED
 sources='[]'
 if [ "$searched" = true ]; then
   # Same strict contract as the OpenAI route: one whole-word token, once.
-  mapfile -t verdict_hits < <(
+  # Line-oriented rather than `mapfile`: macOS ships Bash 3.2, where mapfile
+  # does not exist and `set -u` would then abort before any fail-closed JSON.
+  verdict_hits="$(
     printf '%s' "$message" |
       grep -oE '\b(VERIFIED|MISMATCH|NOT_FOUND|NOT_SEARCHED)\b' || true
-  )
-  if [ "${#verdict_hits[@]}" -eq 1 ]; then
-    verdict="${verdict_hits[0]}"
+  )"
+  verdict_hit_count="$(printf '%s' "$verdict_hits" | grep -c . || true)"
+  if [ "$verdict_hit_count" -eq 1 ]; then
+    verdict="$(printf '%s' "$verdict_hits" | head -1)"
     source_lines="$(
       printf '%s' "$message" |
         grep -oE 'https?://[^[:space:]]+' |

@@ -17,6 +17,7 @@ import os
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -36,11 +37,50 @@ Respond with exactly one verdict:
 Reference: {ref}"""
 
 
+def _utc_now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def run_environment():
+    """Provenance a reader needs to judge whether this run is what it claims.
+
+    auth_mode comes from the `auth_mode` field Codex writes to auth.json, not
+    from the file merely existing: file presence cannot tell a ChatGPT
+    subscription apart from a stored API-key login.
+    """
+    env = {"run_started_at": _utc_now()}
+    try:
+        env["adapter_sha256"] = hashlib.sha256(
+            open(ADAPTER, "rb").read()).hexdigest()
+    except OSError:
+        env["adapter_sha256"] = None
+    try:
+        env["codex_version"] = subprocess.run(
+            ["codex", "--version"], capture_output=True, text=True,
+            timeout=30).stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        env["codex_version"] = None
+    try:
+        env["git_head"] = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True,
+            text=True, timeout=30).stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        env["git_head"] = None
+    try:
+        auth = json.load(open(os.path.expanduser("~/.codex/auth.json")))
+        env["auth_mode"] = auth.get("auth_mode")
+        env["auth_api_key_present"] = auth.get("OPENAI_API_KEY") is not None
+    except (OSError, ValueError):
+        env["auth_mode"] = None
+        env["auth_api_key_present"] = None
+    return env
+
+
 def one_call(ref, model, rep, timeout):
     prompt = PROMPT_TMPL.format(ref=ref["reference_text"])
     env = dict(os.environ, ARS_CROSS_MODEL=model)
     env.pop("OPENAI_API_KEY", None)
-    t0 = time.time()
+    t0, started_at = time.time(), _utc_now()
     try:
         p = subprocess.run(["bash", ADAPTER, prompt], cwd=REPO, env=env,
                            capture_output=True, text=True, timeout=timeout)
@@ -52,15 +92,29 @@ def one_call(ref, model, rep, timeout):
         rec = {
             "ref_id": ref["ref_id"], "leg": ref["leg"], "label": ref["label"],
             "model": model, "repeat": rep, "latency_s": dt, "exit": p.returncode,
+            "started_at": started_at, "finished_at": _utc_now(),
+            "thread_id": out.get("thread_id"),
             "verdict": out.get("verdict"), "sources": out.get("sources", []),
             "searched": out.get("searched"),
-            "stdout_raw": p.stdout.strip()[:400] if not out else None,
+            # The Codex events the adapter saw, when ARS_CODEX_EMIT_EVENTS=1.
+            # These are what let an auditor recompute the grounding decision
+            # instead of taking the adapter's word for it.
+            "events": out.get("events") or None,
+            # Kept unconditionally and unabridged: a record whose raw adapter
+            # output is discarded on success cannot be audited after the fact.
+            # Events are stripped here only to avoid storing them twice.
+            "stdout_raw": json.dumps({k: v for k, v in out.items()
+                                      if k != "events"}, sort_keys=True)
+                          if out else p.stdout.strip(),
             "stderr_tail": p.stderr.strip()[-200:] or None,
         }
     except subprocess.TimeoutExpired:
         rec = {"ref_id": ref["ref_id"], "leg": ref["leg"], "label": ref["label"],
                "model": model, "repeat": rep, "latency_s": round(time.time() - t0, 1),
-               "exit": "TIMEOUT", "verdict": None, "sources": [], "searched": None,
+               "exit": "TIMEOUT",
+               "started_at": started_at, "finished_at": _utc_now(),
+               "thread_id": None,
+               "verdict": None, "sources": [], "searched": None,
                "stdout_raw": None, "stderr_tail": "timeout"}
     rec["candidate_guard_misfire"] = bool(rec.get("searched") is True and
                                           rec.get("verdict") == "NOT_SEARCHED")
@@ -95,7 +149,8 @@ def main():
     done = []
     with open(a.out, "w") as fh:
         fh.write(json.dumps({"_meta": {"fixture_sha256": sha, "models": models,
-                                       "repeats": a.repeats, "n_calls": len(jobs)}}) + "\n")
+                                       "repeats": a.repeats, "n_calls": len(jobs),
+                                       **run_environment()}}) + "\n")
         with ThreadPoolExecutor(max_workers=a.concurrency) as ex:
             futs = {ex.submit(one_call, r, m, i, a.timeout): (r, m, i) for r, m, i in jobs}
             for n, f in enumerate(as_completed(futs), 1):

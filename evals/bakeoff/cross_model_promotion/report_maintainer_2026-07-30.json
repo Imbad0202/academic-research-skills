@@ -1,0 +1,165 @@
+{
+  "fixture_sha256": "cb7ac8dfc0db9513be716b0b2ab37f0d977ad424ee8c5c62758c57db8271c7be",
+  "n_calls": 180,
+  "models": {
+    "gpt-5.5": {
+      "m1_grounded_pct": 100.0,
+      "grounded_calls": 90,
+      "total_calls": 90,
+      "m2_recall_pct": 100.0,
+      "fabrications_caught": 10,
+      "fabrications": 10,
+      "m2_missed": [],
+      "m3_false_disagreement_pct": 0.0,
+      "false_disagreements": [],
+      "reals": 20,
+      "m4_candidate_misfires": 0,
+      "m4_misfire_refs": [],
+      "m5_p95_latency_s": 123.2,
+      "per_leg": {
+        "easy": {
+          "VERIFIED": 10
+        },
+        "hard_preprint": {
+          "VERIFIED": 4
+        },
+        "hard_doi_less": {
+          "VERIFIED": 3
+        },
+        "hard_non_english": {
+          "VERIFIED": 3
+        },
+        "fabricated": {
+          "NOT_FOUND": 8,
+          "MISMATCH": 2
+        }
+      },
+      "verdicts": {
+        "easy-01": "VERIFIED",
+        "easy-02": "VERIFIED",
+        "easy-03": "VERIFIED",
+        "easy-04": "VERIFIED",
+        "easy-05": "VERIFIED",
+        "easy-06": "VERIFIED",
+        "easy-07": "VERIFIED",
+        "easy-08": "VERIFIED",
+        "easy-09": "VERIFIED",
+        "easy-10": "VERIFIED",
+        "hard-preprint-01": "VERIFIED",
+        "hard-preprint-02": "VERIFIED",
+        "hard-preprint-03": "VERIFIED",
+        "hard-preprint-04": "VERIFIED",
+        "hard-doiless-01": "VERIFIED",
+        "hard-doiless-02": "VERIFIED",
+        "hard-doiless-03": "VERIFIED",
+        "hard-nonenglish-01": "VERIFIED",
+        "hard-nonenglish-02": "VERIFIED",
+        "hard-nonenglish-03": "VERIFIED",
+        "fab-01": "NOT_FOUND",
+        "fab-02": "NOT_FOUND",
+        "fab-03": "NOT_FOUND",
+        "fab-04": "NOT_FOUND",
+        "fab-05": "NOT_FOUND",
+        "fab-06": "NOT_FOUND",
+        "fab-07": "MISMATCH",
+        "fab-08": "NOT_FOUND",
+        "fab-09": "NOT_FOUND",
+        "fab-10": "MISMATCH"
+      }
+    },
+    "gpt-5.6-sol": {
+      "m1_grounded_pct": 100.0,
+      "grounded_calls": 90,
+      "total_calls": 90,
+      "m2_recall_pct": 100.0,
+      "fabrications_caught": 10,
+      "fabrications": 10,
+      "m2_missed": [],
+      "m3_false_disagreement_pct": 0.0,
+      "false_disagreements": [],
+      "reals": 20,
+      "m4_candidate_misfires": 0,
+      "m4_misfire_refs": [],
+      "m5_p95_latency_s": 74.1,
+      "per_leg": {
+        "easy": {
+          "VERIFIED": 10
+        },
+        "hard_preprint": {
+          "VERIFIED": 4
+        },
+        "hard_doi_less": {
+          "VERIFIED": 3
+        },
+        "hard_non_english": {
+          "VERIFIED": 3
+        },
+        "fabricated": {
+          "NOT_FOUND": 9,
+          "MISMATCH": 1
+        }
+      },
+      "verdicts": {
+        "easy-01": "VERIFIED",
+        "easy-02": "VERIFIED",
+        "easy-03": "VERIFIED",
+        "easy-04": "VERIFIED",
+        "easy-05": "VERIFIED",
+        "easy-06": "VERIFIED",
+        "easy-07": "VERIFIED",
+        "easy-08": "VERIFIED",
+        "easy-09": "VERIFIED",
+        "easy-10": "VERIFIED",
+        "hard-preprint-01": "VERIFIED",
+        "hard-preprint-02": "VERIFIED",
+        "hard-preprint-03": "VERIFIED",
+        "hard-preprint-04": "VERIFIED",
+        "hard-doiless-01": "VERIFIED",
+        "hard-doiless-02": "VERIFIED",
+        "hard-doiless-03": "VERIFIED",
+        "hard-nonenglish-01": "VERIFIED",
+        "hard-nonenglish-02": "VERIFIED",
+        "hard-nonenglish-03": "VERIFIED",
+        "fab-01": "NOT_FOUND",
+        "fab-02": "NOT_FOUND",
+        "fab-03": "NOT_FOUND",
+        "fab-04": "NOT_FOUND",
+        "fab-05": "NOT_FOUND",
+        "fab-06": "NOT_FOUND",
+        "fab-07": "MISMATCH",
+        "fab-08": "NOT_FOUND",
+        "fab-09": "NOT_FOUND",
+        "fab-10": "NOT_FOUND"
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "1 grounded-search completion >= baseline-5pp",
+      "pass": true,
+      "detail": "100.0% vs baseline 100.0%"
+    },
+    {
+      "name": "2 citation-mismatch recall >= baseline-5pp AND >= 80% absolute",
+      "pass": true,
+      "detail": "100.0% vs baseline 100.0% (absolute floor 80%)"
+    },
+    {
+      "name": "3 false-disagreement rate <= baseline+5pp",
+      "pass": true,
+      "detail": "0.0% vs baseline 0.0%"
+    },
+    {
+      "name": "4 jq-guard shape stability == zero misfires (HARD)",
+      "pass": true,
+      "detail": "0 candidate misfire(s)"
+    },
+    {
+      "name": "5 p95 latency <= 2x baseline",
+      "pass": true,
+      "detail": "74.1s vs 2x baseline 246.4s"
+    }
+  ],
+  "all_pass": true,
+  "outcome": "ALL FIVE PASS -> eligible for provisional->validated"
+}
