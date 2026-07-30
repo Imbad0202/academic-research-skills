@@ -15,7 +15,7 @@
       "reals": 20,
       "m4_candidate_misfires": 0,
       "m4_misfire_refs": [],
-      "m5_p95_latency_s": 123.2,
+      "m5_p95_latency_s": 150.1,
       "per_leg": {
         "easy": {
           "VERIFIED": 10
@@ -30,8 +30,8 @@
           "VERIFIED": 3
         },
         "fabricated": {
-          "NOT_FOUND": 8,
-          "MISMATCH": 2
+          "NOT_FOUND": 9,
+          "MISMATCH": 1
         }
       },
       "verdicts": {
@@ -61,7 +61,7 @@
         "fab-04": "NOT_FOUND",
         "fab-05": "NOT_FOUND",
         "fab-06": "NOT_FOUND",
-        "fab-07": "MISMATCH",
+        "fab-07": "NOT_FOUND",
         "fab-08": "NOT_FOUND",
         "fab-09": "NOT_FOUND",
         "fab-10": "MISMATCH"
@@ -80,7 +80,7 @@
       "reals": 20,
       "m4_candidate_misfires": 0,
       "m4_misfire_refs": [],
-      "m5_p95_latency_s": 74.1,
+      "m5_p95_latency_s": 77.8,
       "per_leg": {
         "easy": {
           "VERIFIED": 10
@@ -157,7 +157,7 @@
     {
       "name": "5 p95 latency <= 2x baseline",
       "pass": true,
-      "detail": "74.1s vs 2x baseline 246.4s"
+      "detail": "77.8s vs 2x baseline 300.2s"
     }
   ],
   "all_pass": true,
