@@ -18,8 +18,15 @@ FULL = json.loads(FULL_PATH.read_text(encoding="utf-8"))
 
 def phase1_text(role: str, overrides=None) -> str:
     overrides = overrides or {}
-    lines = ["## Contract Paraphrase", "", "All dimensions understood.", "",
-             "## Scoring Plan", ""]
+    # One paragraph per contract dimension: §4 reads
+    # `paraphrase_minimum_dimensions` ("all" in the full contract), and
+    # the real dispatch outputs carry exactly this shape, so a fixture
+    # with fewer paragraphs would stop being a valid Phase 1 at all.
+    lines = ["## Contract Paraphrase", ""]
+    for dim in FULL["acceptance_dimensions"]:
+        lines += [f"{dim['id']} concerns {dim['name']} as the contract "
+                  "defines it.", ""]
+    lines += ["## Scoring Plan", ""]
     for dim in FULL["acceptance_dimensions"]:
         if role not in dim["eligible_roles"]:
             continue
@@ -2416,3 +2423,254 @@ def test_full_cli_pass(tmp_path):
     assert phase.main(
         write_cli_files(tmp_path, "methodology") + ["--role", "methodology"]
     ) == 0
+
+
+def phase1_only_args(tmp_path: Path, role: str) -> list[str]:
+    """CLI arguments for the gate that runs before Phase 2 exists."""
+    args = write_cli_files(tmp_path, role)
+    del args[args.index("--phase2"):args.index("--phase2") + 2]
+    return args + ["--phase1-only", "--role", role]
+
+
+def test_phase1_only_cli_passes_before_phase2_exists(tmp_path, capsys):
+    """The dispatch harness needs a verdict on Phase 1 alone.
+
+    A retry decision is taken while Phase 2 has not been requested yet, so
+    requiring `--phase2` forced the harness to invent one or to reimplement
+    the gate, and a reimplemented gate is not the checker's own output.
+    """
+    assert phase.main(phase1_only_args(tmp_path, "methodology")) == \
+        phase.EXIT_PASS
+    assert "PHASE1-CONFORMANCE: PASS" in capsys.readouterr().out
+
+
+def test_phase1_only_cli_rejects_a_malformed_plan(tmp_path, capsys):
+    args = phase1_only_args(tmp_path, "methodology")
+    phase1_path = Path(args[args.index("--phase1") + 1])
+    phase1_path.write_text(
+        phase1_text("methodology").replace(
+            "what_triggers_fatal: fatal evidence pattern for D3", "", 1
+        ),
+        encoding="utf-8",
+    )
+    assert phase.main(args) == phase.EXIT_CONFORMANCE
+    assert "[PHASE1-GRAMMAR:" in capsys.readouterr().out
+
+
+def test_phase1_only_cli_still_checks_manuscript_blindness(tmp_path, capsys):
+    args = phase1_only_args(tmp_path, "methodology")
+    phase1_path = Path(args[args.index("--phase1") + 1])
+    manuscript = Path(args[args.index("--manuscript") + 1])
+    leak = " ".join(f"leaked{index}" for index in range(14))
+    manuscript.write_text(leak, encoding="utf-8")
+    phase1_path.write_text(
+        phase1_text("methodology") + "\n" + leak + "\n", encoding="utf-8"
+    )
+    assert phase.main(args) == phase.EXIT_CONFORMANCE
+    assert "LEAK" in capsys.readouterr().out
+
+
+def test_phase1_only_and_phase2_are_mutually_exclusive(tmp_path):
+    args = write_cli_files(tmp_path, "methodology")
+    with pytest.raises(SystemExit):
+        phase.main(args + ["--role", "methodology", "--phase1-only"])
+
+
+def test_one_of_phase1_only_or_phase2_is_required(tmp_path):
+    args = write_cli_files(tmp_path, "methodology")
+    del args[args.index("--phase2"):args.index("--phase2") + 2]
+    with pytest.raises(SystemExit):
+        phase.main(args + ["--role", "methodology"])
+
+
+def test_multi_dissent_emits_its_machine_token_on_the_violation_line(
+    tmp_path, capsys
+):
+    """Pinned as an interface, not prose.
+
+    The dispatch harness routes §5's one permitted Phase 2 retry on this exact
+    token, matched inside this exact line prefix. A reword must fail here
+    rather than silently turn a permitted retry into an aborted fleet.
+    """
+    args = write_cli_files(tmp_path, "methodology")
+    Path(args[args.index("--phase2") + 1]).write_text(
+        phase2_with_dissent_section([
+            "dimension_id: D1",
+            "rationale: the plan understated the risk here",
+            "dimension_id: D3",
+            "rationale: the plan understated a second risk here",
+        ]),
+        encoding="utf-8",
+    )
+    assert phase.main(args + ["--role", "methodology"]) == \
+        phase.EXIT_CONFORMANCE
+    violations = [
+        line for line in capsys.readouterr().out.splitlines()
+        if line.lstrip().startswith("[PROTOCOL-VIOLATION:")
+    ]
+    assert len(violations) == 1, violations
+    assert "multi_dissent=true" in violations[0]
+
+
+def test_phase1_requires_the_paraphrase_section():
+    """§4 names three requirements; a valid plan alone must not pass."""
+    text = re.sub(r"## Contract Paraphrase.*?(?=## Scoring Plan)", "",
+                  phase1_text("methodology"), flags=re.S)
+    with pytest.raises(phase.ConformanceError,
+                       match="Contract Paraphrase"):
+        phase.parse_phase1("p1.md", text, FULL, "methodology")
+
+
+def test_phase1_requires_the_terminal_acknowledgement():
+    text = phase1_text("methodology").replace(
+        "[CONTRACT-ACKNOWLEDGED]", "").rstrip() + "\n"
+    with pytest.raises(phase.ConformanceError,
+                       match="CONTRACT-ACKNOWLEDGED"):
+        phase.parse_phase1("p1.md", text, FULL, "methodology")
+
+
+def test_phase1_requires_the_paraphrase_paragraph_floor():
+    """A bare heading over one line is not the paraphrase the contract's
+    `paraphrase_minimum_dimensions` names; the count is the
+    machine-checkable lower bound (real dispatch outputs carry exactly
+    one paragraph per dimension).
+    """
+    text = re.sub(
+        r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+        "## Contract Paraphrase\n\nAll dimensions understood.\n\n",
+        phase1_text("methodology"), flags=re.S)
+    with pytest.raises(phase.ConformanceError, match="fewer than"):
+        phase.parse_phase1("p1.md", text, FULL, "methodology")
+
+
+def test_phase1_requires_the_exact_h2_sequence():
+    """§4: exactly `## Contract Paraphrase` then `## Scoring Plan`, in
+    that order and nothing else at H2 -- presence alone let a reordered
+    or extra-sectioned precommitment pass. All four real dispatch
+    outputs carry exactly this sequence.
+    """
+    good = phase1_text("methodology")
+    reordered = good.replace("## Contract Paraphrase", "## ZZZ", 1)
+    reordered = reordered.replace("## Scoring Plan",
+                                  "## Contract Paraphrase", 1)
+    reordered = reordered.replace("## ZZZ", "## Scoring Plan", 1)
+    with pytest.raises(phase.ConformanceError, match="H2 sections"):
+        phase.parse_phase1("p1.md", reordered, FULL, "methodology")
+    extra = good.replace("## Scoring Plan",
+                         "## Reviewer Notes\n\nan extra section\n\n"
+                         "## Scoring Plan", 1)
+    with pytest.raises(phase.ConformanceError, match="H2 sections"):
+        phase.parse_phase1("p1.md", extra, FULL, "methodology")
+
+
+def test_phase1_heading_only_paraphrase_fails_the_paragraph_floor():
+    """codex r41: six bare `### Dn` headings separated by blank lines
+    counted as six paragraphs, so a precommitment with no paraphrase
+    prose at all satisfied the floor. A heading is a heading, not a
+    paragraph, and it separates paragraphs rather than joining them.
+    """
+    headings = "\n\n".join(
+        f"### {dim['id']}" for dim in FULL["acceptance_dimensions"])
+    text = re.sub(
+        r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+        f"## Contract Paraphrase\n\n{headings}\n\n",
+        phase1_text("methodology"), flags=re.S)
+    with pytest.raises(phase.ConformanceError, match="fewer than"):
+        phase.parse_phase1("p1.md", text, FULL, "methodology")
+
+
+def test_phase1_headings_do_not_join_two_prose_paragraphs():
+    """A heading between two prose lines separates them; treating it as
+    transparent would count `prose / ### H / prose` as one paragraph
+    and undercount, while counting it as prose overcounts.
+    """
+    dims = FULL["acceptance_dimensions"]
+    body = "\n\n".join(
+        f"### {dim['id']}\n{dim['id']} concerns {dim['name']} as the "
+        "contract defines it." for dim in dims)
+    text = re.sub(
+        r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+        f"## Contract Paraphrase\n\n{body}\n\n",
+        phase1_text("methodology"), flags=re.S)
+    parsed = phase.parse_phase1("p1.md", text, FULL, "methodology")
+    assert parsed is not None
+
+
+def test_phase1_zero_content_blocks_do_not_satisfy_the_floor():
+    """codex r42: six `---` thematic breaks (or six single-line HTML
+    comments) counted as six paragraphs. Zero-content lines separate;
+    they never count.
+    """
+    for filler in ("---", "- - -", "***", "<!-- noted -->"):
+        blocks = "\n\n".join([filler] * len(FULL["acceptance_dimensions"]))
+        text = re.sub(
+            r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+            f"## Contract Paraphrase\n\n{blocks}\n\n",
+            phase1_text("methodology"), flags=re.S)
+        with pytest.raises(phase.ConformanceError, match="fewer than"):
+            phase.parse_phase1("p1.md", text, FULL, "methodology")
+
+
+def test_phase1_a_bulleted_paraphrase_still_counts_as_content():
+    """The zero-content list is CLOSED: a bulleted six-point paraphrase
+    is real content, and refusing it would abort a panel over
+    formatting -- the false-abort channel #609 exists to remove. A
+    dash-led bullet must not be confused with a `---` thematic break.
+    """
+    dims = FULL["acceptance_dimensions"]
+    bullets = "\n\n".join(
+        f"- {dim['id']} concerns {dim['name']} as the contract defines "
+        "it." for dim in dims)
+    text = re.sub(
+        r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+        f"## Contract Paraphrase\n\n{bullets}\n\n",
+        phase1_text("methodology"), flags=re.S)
+    parsed = phase.parse_phase1("p1.md", text, FULL, "methodology")
+    assert parsed is not None
+
+
+def test_phase1_multiline_html_comments_do_not_satisfy_the_floor():
+    """codex r43: only same-line comments matched the separator, so six
+    multi-line `<!-- ... -->` blocks counted as six paragraphs -- an
+    entirely hidden §4 with no rendered paraphrase at all.
+    """
+    block = "<!--\nhidden not-a-paraphrase\n-->"
+    blocks = "\n\n".join([block] * len(FULL["acceptance_dimensions"]))
+    text = re.sub(
+        r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+        f"## Contract Paraphrase\n\n{blocks}\n\n",
+        phase1_text("methodology"), flags=re.S)
+    with pytest.raises(phase.ConformanceError, match="fewer than"):
+        phase.parse_phase1("p1.md", text, FULL, "methodology")
+
+
+def test_phase1_prose_mentioning_a_comment_opener_still_counts():
+    """The comment-state entry is conservative: a paragraph that merely
+    mentions `<!--` mid-line (or contains a closed comment) must not be
+    swallowed as hidden.
+    """
+    dims = FULL["acceptance_dimensions"]
+    body = "\n\n".join(
+        f"{dim['id']} concerns {dim['name']}; authors sometimes hide "
+        "text with <!-- markers --> in drafts." for dim in dims)
+    text = re.sub(
+        r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+        f"## Contract Paraphrase\n\n{body}\n\n",
+        phase1_text("methodology"), flags=re.S)
+    parsed = phase.parse_phase1("p1.md", text, FULL, "methodology")
+    assert parsed is not None
+
+
+def test_phase1_lone_list_markers_do_not_satisfy_the_floor():
+    """codex r46: six lone `-` (or `*`, `+`) list markers are empty
+    Markdown constructs, each counted as a paragraph. A bare marker
+    joins the closed separator list; a marker WITH text still counts.
+    """
+    for marker in ("-", "*", "+"):
+        blocks = "\n\n".join([marker] * len(FULL["acceptance_dimensions"]))
+        text = re.sub(
+            r"## Contract Paraphrase.*?(?=## Scoring Plan)",
+            f"## Contract Paraphrase\n\n{blocks}\n\n",
+            phase1_text("methodology"), flags=re.S)
+        with pytest.raises(phase.ConformanceError, match="fewer than"):
+            phase.parse_phase1("p1.md", text, FULL, "methodology")

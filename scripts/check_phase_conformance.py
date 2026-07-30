@@ -380,7 +380,108 @@ def parse_phase1(
         raise ConformanceError(
             f"[PHASE1-GRAMMAR: {path}: exactly one ## Scoring Plan required]"
         )
+    # §4 names three requirements, not one: the paraphrase section and the
+    # terminal acknowledgement are as mandatory as the plan, and a plan
+    # alone passing would let the dispatcher retry -- or accept -- a
+    # protocol-invalid Phase 1.
+    if "Contract Paraphrase" in dupes or "Contract Paraphrase" \
+            not in sections:
+        raise ConformanceError(
+            f"[PHASE1-GRAMMAR: {path}: exactly one ## Contract Paraphrase "
+            "required]"
+        )
+    # BOTH tails must be the marker. The raw tail catches output after
+    # the acknowledgement (a trailing fenced block would vanish from the
+    # structural view before the tail is computed); the fence-aware tail
+    # catches an acknowledgement that exists only as fenced code.
+    # Located by nonblankness but compared UNSTRIPPED (bar the line
+    # ending): an indented `    [CONTRACT-ACKNOWLEDGED]` renders as a
+    # code block, and stripping before comparison let it pass the exact
+    # terminal-line requirement.
+    raw_tail = next(
+        (line for line in reversed(text.splitlines())
+         if line.strip()), "")
+    fenced_tail = next(
+        (line for line in reversed(lines) if line.strip()), "")
+    if raw_tail.rstrip() != "[CONTRACT-ACKNOWLEDGED]" or \
+            fenced_tail.rstrip() != "[CONTRACT-ACKNOWLEDGED]":
+        raise ConformanceError(
+            f"[PHASE1-GRAMMAR: {path}: final nonblank line must be "
+            "[CONTRACT-ACKNOWLEDGED]]"
+        )
+    # And in §4's exact order, with nothing else at H2: presence alone
+    # would let a reordered or extra-sectioned precommitment pass. All
+    # four real dispatch outputs carry exactly this sequence.
+    h2_titles = [line[3:].strip() for line in lines
+                 if line.startswith("## ")]
+    if h2_titles != ["Contract Paraphrase", "Scoring Plan"]:
+        raise ConformanceError(
+            f"[PHASE1-GRAMMAR: {path}: H2 sections must be exactly "
+            "## Contract Paraphrase then ## Scoring Plan, found "
+            f"{h2_titles!r}]"
+        )
     dimensions = {d["id"]: d for d in contract["acceptance_dimensions"]}
+    # §4's paragraph floor: a bare heading over an empty or one-line body
+    # is not the paraphrase the contract's `paraphrase_minimum_dimensions`
+    # names ("all" = one paragraph per dimension). The count is the
+    # machine-checkable lower bound; whether each paragraph is TIED to a
+    # distinct dimension stays with the seat's own §4 preflight.
+    # A CLOSED list of zero-content lines that separate and never count:
+    # ATX headings, thematic breaks, single-line HTML comments -- six
+    # bare `### Dn` headings (or six `---` rules) used to count as six
+    # paragraphs, satisfying the floor with no paraphrase prose at all.
+    # Deliberately NOT a full CommonMark block classifier: a list item
+    # still counts, because a bulleted six-point paraphrase is real
+    # content and refusing it would abort a panel over formatting (the
+    # false-abort channel #609 exists to remove). Blocks are still
+    # blank-line separated -- a TIGHT six-item list is one block and
+    # does not meet a six-paragraph floor, same as before this list.
+    # TERMINATION BOUND: zero-content variants beyond this list
+    # (container-prefixed comments like `- <!-- -->`, malformed comments
+    # like `<!-->`, entity/whitespace tricks) are out of scope by
+    # declared design -- the variant space is unbounded, the observed
+    # base rate in committed panels is zero, and §4's substantive
+    # judgment sits with the seat's preflight, not this floor.
+    separator = re.compile(
+        r"#{1,6}(\s|$)"          # ATX heading
+        r"|([-*_])(\s*\2){2,}$"  # thematic break
+        r"|<!--.*-->$"           # single-line HTML comment
+        r"|[-*+]$"               # lone list marker, no item text
+    )
+    paragraphs, in_paragraph, in_comment = 0, False, False
+    for line in sections["Contract Paraphrase"]:
+        stripped = line.strip()
+        if in_comment:
+            # Hidden until the closing `-->`, closer line included: six
+            # multi-line comment blocks are as unrendered as six
+            # single-line ones.
+            if "-->" in stripped:
+                in_comment = False
+            in_paragraph = False
+            continue
+        if stripped.startswith("<!--") and "-->" not in stripped:
+            # Conservative entry -- a line-LEADING opener with no closer
+            # on the same line. Prose that merely mentions `<!--`
+            # mid-line stays countable content.
+            in_comment = True
+            in_paragraph = False
+            continue
+        if stripped and not separator.match(stripped):
+            if not in_paragraph:
+                paragraphs += 1
+                in_paragraph = True
+        else:
+            in_paragraph = False
+    minimum = contract.get("measurement_procedure", {}).get(
+        "paraphrase_minimum_dimensions")
+    required = len(dimensions) if minimum == "all" else (
+        minimum if isinstance(minimum, int) else 0)
+    if paragraphs < required:
+        raise ConformanceError(
+            f"[PHASE1-GRAMMAR: {path}: Contract Paraphrase has "
+            f"{paragraphs} paragraph(s), fewer than the {required} "
+            "required]"
+        )
     eligible = {
         did for did, dim in dimensions.items()
         if role in dim["eligible_roles"]
@@ -812,7 +913,12 @@ def _parse_args(argv):
     parser.add_argument("--contract", required=True, type=Path)
     parser.add_argument("--role", required=True)
     parser.add_argument("--phase1", required=True, type=Path)
-    parser.add_argument("--phase2", required=True, type=Path)
+    # The retry decision is taken while Phase 2 has not been requested yet, so
+    # the gate has to be answerable on Phase 1 alone. Mirrors the
+    # --synthesis / --layer1-only split in check_panel_synthesis.py.
+    stage = parser.add_mutually_exclusive_group(required=True)
+    stage.add_argument("--phase2", type=Path)
+    stage.add_argument("--phase1-only", action="store_true")
     parser.add_argument("--manuscript", required=True, type=Path)
     parser.add_argument("--metadata", required=True, type=Path)
     return parser.parse_args(argv)
@@ -828,7 +934,9 @@ def main(argv=None) -> int:
                 f"{contract['mode']}]"
             )
         phase1_text = panel._read_text(args.phase1)
-        phase2_text = panel._read_text(args.phase2)
+        phase2_text = (
+            None if args.phase1_only else panel._read_text(args.phase2)
+        )
         manuscript_text = panel._read_text(args.manuscript)
         try:
             metadata = json.loads(panel._read_text(args.metadata))
@@ -836,9 +944,21 @@ def main(argv=None) -> int:
             raise panel.ContractError(
                 f"[METADATA-INVALID: {args.metadata}: {exc}]"
             ) from exc
+        if args.phase1_only:
+            # Blindness FIRST, before structural parsing: a response both
+            # malformed and leaking would otherwise report only the grammar
+            # failure, and the dispatcher would grant the retry a proven
+            # leak must never receive. It is the half a retry must not be
+            # granted in spite of.
+            check_manuscript_leakage(
+                phase1_text, manuscript_text, metadata, contract
+            )
         plan = parse_phase1(str(args.phase1), phase1_text, contract, args.role)
         for warning in plan.warnings:
             print(warning)
+        if args.phase1_only:
+            print("PHASE1-CONFORMANCE: PASS")
+            return EXIT_PASS
         report = panel.parse_report(
             str(args.phase2), phase2_text, contract
         )

@@ -42,6 +42,8 @@ For each reviewer in `range(panel_size)`:
 
 Structural checks (orchestrator, not validator). On failure retry Phase 1 once with the specific lint gap hinted in the system prompt; second failure aborts that reviewer.
 
+Run these as `scripts/check_phase_conformance.py --contract <C> --role <dispatch-role> --phase1 <P1> --phase1-only --manuscript <paper> --metadata <metadata.json>`, the Phase-1 counterpart of §8.1's `--layer1-only`: the retry decision is taken while Phase 2 has not been requested yet, so the gate has to be answerable on Phase 1 alone. Exit codes carry the same §11 meanings — exit 3 is the reviewer-conformance failure that the one permitted retry addresses, and every exit-2 class aborts the round without a retry.
+
 - Required sections in order: `## Contract Paraphrase`, `## Scoring Plan`, terminal `[CONTRACT-ACKNOWLEDGED]`.
 - Paraphrase paragraph count ≥ `measurement_procedure.paraphrase_minimum_dimensions` (for `"all"`, one paragraph per dimension; for integer `k`, at least `k` paragraphs each matching a distinct dimension).
 - `## Scoring Plan` has one `### <Dn>: <name>` subsection per dimension whose `eligible_roles` includes this dispatch role, and none for ineligible dimensions.

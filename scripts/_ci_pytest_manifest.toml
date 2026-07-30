@@ -343,3 +343,7 @@ path = "scripts/test_check_re_review_synthesis.py"
 [[pytest]]
 id = "576-persuasion-invariance-fixtures"
 path = "scripts/test_check_persuasion_invariance_fixtures.py"
+
+[[pytest]]
+id = "608-e4-dispatch-harness"
+path = "scripts/test_dispatch_e4_panel.py"

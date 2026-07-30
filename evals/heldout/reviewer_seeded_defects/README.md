@@ -100,7 +100,9 @@ manuscript) so adjudication is anchored, not vibes.
    with `{model_id, suite_commit, date, condition, per_defect: {SD-xx: verdict},
    severity_scores, clean_control_false_findings: [...concepts...], notes}`, AND
    commit the run's complete raw panel output (all reviewer reports + the
-   Editorial Decision Letter) under `runs/raw/<same-stem>.review.md` — verdicts
+   Editorial Decision Letter) under `runs/raw/<same-stem>.review.md` for a
+   hand-dispatched run, or as the bundle directory `runs/raw/<same-stem>/`
+   for a harness-dispatched run (see § Dispatch harness) — verdicts
    without the underlying reports are not re-adjudicable (DETECTED/PARTIAL
    reclassification, severity recomputation, and clean-control zero-false-finding
    verification all need the full text). The summary table below is derived from
@@ -124,6 +126,12 @@ manuscript) so adjudication is anchored, not vibes.
    `provenance_status` is scoped only to retry-evidence completeness under the
    named evidence contract: `valid` does not attest contamination isolation,
    dispatch blindness, panel completeness, or any other provenance axis.
+   The `invalid_incomplete_retry_evidence` downgrade is also the emitter's
+   terminal fallback when ANY named location still fails to resolve at
+   emission time (a terminal abort artifact is rewritten once from its own
+   diagnostic before this fallback fires), so a downgraded record means
+   "some named evidence location could not be made to resolve", not
+   necessarily that a retry occurred.
    The closed
    grandfathered records and every artifact under `runs/superseded/` are frozen
    under their historical status and MUST NOT be backfilled with this contract
@@ -136,10 +144,12 @@ manuscript) so adjudication is anchored, not vibes.
    retry list, MUST carry `diagnostic_form: "verbatim"` or
    `diagnostic_form: "normalized"` and name a record-relative
    `checker_output_location`; that path MUST resolve.
-   `verbatim` is byte-for-byte checker output; `normalized` means only the
-   leading absolute artifact path and its separator were removed, with every
-   remaining character verbatim. The named checker-output artifact remains
-   authoritative.
+   `verbatim` is byte-for-byte checker output; `normalized` means absolute
+   run-root prefixes were removed — the leading artifact path for checker
+   output, and any registered run root wherever it appears for
+   harness-assembled diagnostics (an OSError spells its path mid-sentence)
+   — with every remaining character verbatim. The named checker-output
+   artifact remains authoritative.
 
    **Blocked-run separation:** if a fail-loud checker stops the panel before all
    five cards and synthesis exist, or any checker-rejected response followed by
@@ -229,6 +239,153 @@ events would be eligible under `reviewer-e4/2026-07-27`.
 | 2026-07-25 | ad81b2e (#581 behavior batch A1/A2/A3/B1) | claude-opus-5 (same dispatch) | 2 per fixture (6) | **1.00** (10/10 both replicates; critical band 1.00 — SD-01 GRIM detected with the full achievability arithmetic in BOTH replicates, by R1 and the DA independently) | **1.00** (9/9 both replicates; critical band 1.00) | **2 / 1** (mean 1.5 vs baseline 3.0; the baseline's logical-foreclosure / inoculation / recruitment-channel-as-fact fabrications do not recur — the dedup-vs-anonymity invented incompatibility is the one concept surviving in both post replicates (r1 adds one DA mis-absence claim); r1 is the ONLY run of all twelve whose clean-control decision avoided reject_or_major_revision: major_revision, no F1 fired) | **0.536** (per-run 0.600 / 0.600 / 0.500 / 0.444) — a REGRESSION on the frozen highest-tagged-seat ladder | **Gate verdicts vs the 2026-07-25 baseline row**: strict recall PASS (improved, overall and critical band); clean-control false findings PASS (decreased); severity agreement FAIL as frozen-measured. Diagnostic decomposition (recorded, not a gate substitute): DA-only agreement is flat-to-up (0.621 → 0.644; post MS02-r2's 0.75 is the best of all twelve runs), letter-fallback cells drop 4 → 0, and per-finding tag coverage goes 0 → 100% on the non-DA formal registers (A3's transport goal achieved) — the frozen max rule now aggregates four newly-tagged seats whose tag distributions skew critical (one Domain seat tagged 7/7 critical), i.e. the metric can now SEE cross-seat band inflation the baseline could not express. Open residual: seat-level severity-band anchoring (#574 B1 follow-up). Records in `runs/2026-07-25-*-post-r*.json` + `runs/raw/` |
 | 2026-07-27 | 19bc872 (Spec A implementation, including terminal DA-contract correction) | claude-opus-5 (effort xhigh, thinking enabled; same isolated per-seat two-phase dispatch) | **BLOCKED:** 2 clean panels launched; r1 reached synthesis but has incomplete retry provenance; r2 has incomplete Phase 1 retry evidence and conformance-aborted; **0 score-eligible runs**; MS01/MS02 not launched | **NOT COMPUTABLE** | **NOT COMPUTABLE** | r1 unscored observation: **1**, panel decision `major_revision`; replicate mean **NOT COMPUTABLE** | **NOT COMPUTABLE** | Formal Spec-A E4 attempt produced no score-eligible run. r1's first malformed methodology Phase 1 response was overwritten by its permitted structural retry, so the completed final panel cannot prove paper blindness or retry eligibility and is namespaced under `runs/blocked/`. r2's first malformed Methodology and Perspective Phase 1 responses were also overwritten; their exact checker diagnostics survive, but the rejected responses do not, so r2 is independently provenance-invalid. Its Perspective Phase 2 then emitted an empty `## Scoring Plan Dissent` section and failed `[DISSENT-GRAMMAR: dissent section must name dimension_id]`; Phase 2 retry is permitted only for multi-dissent, so DA and synthesis were not run. Observed clean-cohort provenance-invalid rate **2/2 = 1.00** and conformance-abort rate **1/2 = 0.50**, the latter versus the Spec-A diagnostic expectation of approximately zero. Required 2 × 3 fleet and all acceptance gates are **BLOCKED / NOT COMPUTABLE**, not pass or fail. No replacement draw, missing-value imputation, or reconstruction of missing retry output was used. |
 | pending (corrective iteration) | — | — | — | — | — | — | — | A future full 2 × 3 measurement must start as a new cohort after the conformance-abort cause is corrected; compare with the newest same-model baseline and re-run both conditions after model upgrades |
+
+## Dispatch harness (#608)
+
+`scripts/dispatch_e4_panel.py` launches one panel and makes the evidence
+contract structural instead of aspirational. Hand dispatch lost retry
+provenance on both panels of the 2026-07-27 fleet because a retry wrote over
+the response it was retrying, and that is not a discipline problem: the
+preservation step sat at the exact moment the operator was trying to get the
+run to proceed.
+
+```
+python3 scripts/dispatch_e4_panel.py --fixture ms01_quant --condition post \
+    --replicate 1 --date 2026-08-01 --work-dir /tmp/e4-ms01-post-r1
+```
+
+**Operational precondition:** the calls run `claude -p --bare`, which skips
+CLAUDE.md auto-discovery, hooks, plugins and auto-memory so that no context
+outside the allowlist reaches a prompt. `--bare` authenticates strictly through
+`ANTHROPIC_API_KEY` (or `apiKeyHelper` via `--settings`); OAuth and keychain are
+never read, so export the key before launching a fleet. Before a fleet, run
+ONE single-panel smoke test: the `--tools ""` shutoff and the
+`--bare` + `--effort xhigh` + `MAX_THINKING_TOKENS` interaction have not been
+exercised with a live call, and either failing would fail fleet-wide —
+recoverably (blocked records, no evidence loss), but at the cost of the run.
+
+What it changes, and why each is a property rather than a step:
+
+- **A response is written to a path that cannot be overwritten, before any
+  checker is allowed to judge it.** Attempts are numbered in the filename
+  (`methodology.phase1.a1.md`, `…a2.md`) and the write uses `O_EXCL`, so
+  preservation precedes the decision to retry instead of depending on it.
+- **Each checker invocation's own bytes are stored** next to the response it
+  judged (`…a1.gate.log`). Checkers run from inside the bundle with relative
+  paths, so no absolute prefix has to be stripped and every stored diagnostic
+  is `verbatim`.
+- **Paper-blind and paper-visible calls get separate whitelisted sandboxes.**
+  The blind sandbox does not contain the manuscript at all, so blindness is a
+  filesystem fact rather than the seat's restraint; hand dispatch put every
+  artifact in one directory. `evals/` is outside both, so no call can reach
+  the manifests. The CLI's own built-in tools are shut off per call with the
+  whitelist spelling (`--tools ""` — the seats' task is pure text and needs
+  none), so the fence does not rest on headless permission defaults — the
+  checkout is public, and an enabled WebSearch could otherwise retrieve a
+  manuscript's held-out siblings with no tool-use audit trail in a text
+  response. Under an emptied whitelist a tool added by a later CLI is closed
+  by default, the property a deny list can never have; a `--disallowedTools`
+  deny list rides behind it as depth only.
+- **The contamination fence is a path allowlist, not a word denylist.** The
+  harness may read only the contract, the seven agent files, and the three
+  manuscripts; a manifest is not readable, and a future held-out artifact is
+  not readable by default either — the property a denylist can never have. A
+  word denylist was written first and measured to be worse than the failure it
+  guarded: `manifest` and `seeded` are ordinary review vocabulary ("Where it
+  manifests"; "how far the themes were seeded by the questions") and **5 of
+  the 18 committed real panels of this set contain one**, so gating assembled
+  prompts on them would abort roughly a quarter of panels after all five cards
+  existed, with no replacement draw permitted. Ground-truth tokens appearing in
+  model output are now recorded as an advisory `leak_canary_hits` field for the
+  maintainer, never as a panel-killing gate: output cannot carry ground truth
+  the model was never given, and a true hit is not repaired by aborting.
+- **The seat set is derived from the contract**, ordered by the frozen dispatch
+  order, with `panel_size` asserted — so a mode or `panel_size` change cannot
+  leave the harness dispatching yesterday's panel while both sides of the
+  synthesis check agree with each other and disagree with the contract.
+- **Only a reviewer-conformance exit is retried.** §11 routes every exit-2
+  class (contract, metadata, IO, role binding) to abort-no-retry, and retrying
+  one would also file a `phase1_retries` event for something the evidence
+  contract does not classify as a retry at all. Retry eligibility for the one
+  permitted Phase 2 recovery is read from the checker's own
+  `[PROTOCOL-VIOLATION: multi_dissent=true]` line, pinned by the checker's
+  tests so a reword fails CI instead of silently killing a fleet.
+- **The four closed status fields are derived**, and `provenance_status` is
+  derived by checking that each named location still resolves rather than by
+  trusting the write path.
+- **The work directory mirrors this tree**, so promoting a run is a copy:
+  `runs/<stem>.json` beside `runs/raw/<stem>/`, or the blocked namespace for
+  an aborted panel, with every `*_location` already record-relative. Nothing
+  has to be rewritten at commit time — that rewrite is what previously turned
+  a verbatim diagnostic into a paraphrase.
+- **A completed panel carries `adjudication.status: "pending"`.** The harness
+  cannot adjudicate `per_defect` — that needs the held-out manifest, which must
+  never enter a session — so the maintainer fills the verdicts before the
+  record is committed.
+- **The delivered prompts are dispatched whole where the protocol does not
+  narrow them.** §2 names a subsection only for the five seats; the field
+  analyst and the synthesizer get their full agent files. Sending the
+  synthesizer just its sprint-contract block produced panels with no Editorial
+  Decision Letter and no Revision Roadmap while the arithmetic checker still
+  passed, which no gate would have caught.
+- **A synthesis-layer failure is voided and re-run once** with the checker
+  diagnostics appended as delimited data, per §8.1; exit 2 and exit 3 abort
+  with no re-run. Aborting on any nonzero blocked valid panels on ordinary
+  stochastic formatting.
+- **A no-response transport event is durable but is not a retry.** A timeout or
+  a missing binary writes its exact bytes and blocks the run, without filing a
+  retry event — which is what the contract says a re-dispatch that produced no
+  response is.
+- **`--date` and `--fixture` are validated before they name anything.** They
+  become path components, and one separator relocated the evidence bundle,
+  filed a blocked run under the scored namespace, or lost the record entirely.
+- **Prompt material may not be reached through a link.** An allowlist over
+  names would otherwise authorize whatever a name points at, so one symlink in
+  `manuscripts/` could make a manifest readable while the fence still reported
+  itself intact.
+- **A committed record carries no absolute local path.** Blocked records are
+  committed to a public repo, so the `diagnostic` field is stripped rather than
+  left to a hand pass at commit time.
+- **A work directory inside this repository is refused outright**, with no
+  record written, because writing one there is the thing being refused. The
+  same applies to an unnameable run: a malformed `--date` or an unknown
+  `--fixture` is refused before anything is written, because the record's own
+  name is built from them. An
+  internal preservation fault produces a blocked record rather than a
+  traceback: losing the record is the one failure mode this mechanism cannot
+  afford.
+
+Records and bundles land in the work directory, never straight into the repo;
+committing them stays a deliberate step.
+
+**Comparability:** the harness changes the dispatched condition relative to
+the 2026-07-24/25 hand-dispatched rows — `--bare` removes the operator's
+user-level context, each seat receives only its own configuration card,
+instructions and data travel as separate system and user halves, blind and
+visible calls get separate sandboxes, and the contract is stamped and
+validated before call one. Harness-dispatched runs therefore form a new
+cohort: never compare them against the hand-dispatched rows above, and
+re-measure BOTH conditions under the harness per this protocol's
+re-run-don't-reuse rule before reading any gate. One provenance bound is
+declared rather than detected: `suite_commit_reproducible` compares the
+checkout state before and after the panel, so an edit made DURING a gate
+and reverted before the end probe is not caught — prompt material is
+snapshotted at dispatch and is immune, but the checkers load from the
+repository at each gate, so do not modify the checkout while a panel
+runs.
+
+**Emission-failure recovery.** The record install is staged-then-atomic
+and rolls the raw bundle back on failure, so a transient filesystem
+fault after the panel completes leaves one of two recoverable states,
+neither of them silent. (1) Any staged-write or install failure: the
+staged temp file is removed, the bundle is rolled back into the work
+directory, no record exists, and the identity is NOT consumed — the
+evidence is intact on disk, but re-emitting it needs a fresh dispatch
+(a fresh work directory re-runs the panel; there is no
+resume-from-bundle CLI in this version, a declared bound). (2) Rollback
+failure on top of (1): the bundle stays under `runs/raw/<stem>` with no
+record beside it; the console names the fault, and the bundle is the
+complete account of the attempt for manual reconstruction.
 
 ## Integrity checking
 
