@@ -26,6 +26,7 @@ Spec: `shared/cross_model_verification.md` § Promotion Bakeoff (#518).
 | Auth mode | `chatgpt` (read from `auth.json`'s `auth_mode` field; `OPENAI_API_KEY` absent) |
 | Repository HEAD | `14cf89ff08a878d77adf1b89d7adb6d3770758c2` |
 | Event retention | `ARS_CODEX_EMIT_EVENTS=1` (2801 Codex events retained across 180 calls) |
+| Event redaction | `command_execution` output and command strings cleared before publication, see § An unplanned finding |
 | Reasoning effort | adapter default (`xhigh`), both arms |
 | Composition | 30 references × 2 models × 3 repeats = 180 calls |
 | Raw record | `evals/bakeoff/cross_model_promotion/full_run_maintainer_2026-07-30.jsonl` |
@@ -138,6 +139,50 @@ Codex-side record, which the CLI does not currently expose.
 
 This limit applied equally to the 2026-07-16 run, which had strictly less. The
 section exists so the difference is not overstated in either direction.
+
+---
+
+## An unplanned finding: the verifier read the local filesystem
+
+Retaining the event stream surfaced something the summary fields could not.
+Across 47 of the 180 calls the verifier issued shell commands and read files from
+the operator's machine, for example:
+
+```
+/bin/zsh -lc "sed -n '1,240p' ~/.codex/skills/.../academic-paper/SKILL.md"
+```
+
+The file contents came back in the event stream as `command_execution` items with
+a populated `aggregated_output`. 192 such items are present.
+
+**Why it is possible.** The adapter runs `codex exec -s read-only` in an isolated
+temporary `-C` directory. `read-only` prevents writes; it does not prevent command
+execution, and it does not confine reads to the working directory. The model
+decided on its own to inspect the surrounding machine while verifying a citation.
+
+**What it means for this run.** Every call still shows a completed `web_search`
+item, so the grounding contract held on all 180. But a bakeoff intended to measure
+web-grounded citation verification recorded a verifier that was also reading local
+files, which is not the behaviour under test. Read the results with that in mind:
+the thresholds pass, and the measurement is less clean than a citation-only
+transport would give.
+
+**What it means for the transport.** This is the concrete form of a concern raised
+in review as a hypothetical. It is no longer hypothetical: on this machine, on
+this run, untrusted input (reference text and fetched pages) reached an agent that
+executed shell commands and read local files, with web search available as an
+egress path. A citation verifier should not have that capability. The finding
+belongs to the transport under discussion in #567, not to this bakeoff.
+
+**Redaction.** Because those reads captured local paths and unrelated file
+contents, `evals/bakeoff/cross_model_promotion/redact_run.py` clears every
+`command_execution` item's `aggregated_output` and `command` string before the
+record is published. The items themselves are kept, with ids, status, and exit
+codes, so the record still shows that commands ran and how many; deleting them
+would hide the finding. Everything `audit_run.py` depends on is untouched:
+`thread.started`, all 1802 `web_search` items including their queries, all
+`agent_message` items, `turn.*`, and `error` items. The auditor passes all 16
+checks against the redacted record, which is the copy committed here.
 
 ---
 
