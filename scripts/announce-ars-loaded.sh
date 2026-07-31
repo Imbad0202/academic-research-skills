@@ -89,7 +89,7 @@ Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy m
   /ars-3w                sonnet  WHY / HOW / WHAT three-way paper scan (lighter than lit-review)
   /ars-format-convert    sonnet  Convert paper between LaTeX / DOCX / PDF / Markdown
   /ars-citation-check    sonnet  Citation error report
-  /ars-disclosure        sonnet  Venue-specific AI-usage disclosure statement
+  /ars-disclosure        sonnet  AI-usage disclosure block(s) + placement/action instructions
   /ars-mark-read         sonnet  Record human-read signal for one or more citation keys
   /ars-unmark-read       sonnet  Rescind a prior human-read mark for one or more citation keys
   /ars-cache-invalidate  sonnet  Drop cached verification rows for one or more citation keys

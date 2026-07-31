@@ -35,15 +35,20 @@ formatting workflow:
 2. Follow its selector dispatch. For the venue track, also load
    `references/venue_disclosure_policies.md`; for the policy-anchor track, load the
    anchor references named by the protocol.
-3. Execute the protocol's applicability decision, category confirmation,
-   venue-required fact ledger, rendering, and placement steps exactly.
+3. Branch by the selected track. On the **venue track**, execute the protocol's
+   category/use-record confirmation, venue-specific prohibited-use
+   discriminators, applicability decision, venue-required fact ledger,
+   rendering, and placement steps in its stated order. On the **policy-anchor
+   track**, run the shared category confirmation and then follow
+   `policy_anchor_disclosure_protocol.md`'s own decision, input, rendering, and
+   placement contract; do not run venue Phase 2a/2b.
 4. If the protocol says to halt for an unknown selector, unknown predicate,
    missing required fact, incompatible confirmed fact, or prohibited use, halt.
    Do not substitute a generic statement.
-5. Return only the disclosure bundle, its placement instructions, and the audit
-   ledger/status required by the protocol. Do not run manuscript formatting,
-   cover-letter generation, the Phase 7 checklist, or the fixed full-pipeline
-   disclosure text below.
+5. Return only the selected track's disclosure bundle (if any), placement or
+   action instructions, and audit ledger/status required by the protocol. Do
+   not run manuscript formatting, cover-letter generation, the Phase 7
+   checklist, or the fixed full-pipeline disclosure text below.
 
 This branch does not change normal `full` or `format-convert` behavior. In
 particular, the generic full-pipeline statement is not a fallback for standalone

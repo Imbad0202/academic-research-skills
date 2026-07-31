@@ -276,7 +276,7 @@ See `references/mode_selection_guide.md` for details.
 | `citation-check` | "Check citations" | 6 only | Citation error report |
 | `plan` | "guide my paper" / "help me plan my paper" | 1->10->3->4 | Chapter Plan + INSIGHT Collection |
 | `revision-coach` | "parse reviews" / "revision roadmap" / "I got reviewer comments" / "should we push back" / "conference rebuttal" / "grant panel response" | 12 only | Revision Roadmap + optional Tracking Template + Response Letter Skeleton (covers pushback/disagreement posture + journal / conference / grant-panel / transfer-after-review scopes) |
-| **`disclosure`** (v3.2) | **"AI disclosure for Nature" / "generate AI usage statement"** | **9 only** | **Venue-specific AI-usage disclosure block(s) + placement instructions** |
+| **`disclosure`** (v3.2) | **"AI disclosure for Nature" / "generate AI usage statement"** | **9 only** | **Venue-specific outcome: zero or more AI-usage disclosure blocks + placement/action instructions** |
 | **`rebuttal-audit`** | **"audit my response" / "check my rebuttal" / "did I miss any reviewer comment"** (requires BOTH reviewer comments AND an existing rebuttal draft) | **12 only (parse-only)** | **Rebuttal QA report: per-comment coverage + gaps + risk flags. No new response generated; advisory only. Does NOT emit Schema 11 / Material Passport / verified status.** |
 
 **Disclosure dispatch contract:** when mode=`disclosure`, agent 9 takes its standalone branch and MUST load `references/disclosure_mode_protocol.md` before producing text. It does not run normal Phase 7 formatting or substitute the generic full-pipeline AI statement; the protocol selects the venue database or policy-anchor path and owns all halt/render decisions.

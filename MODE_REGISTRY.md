@@ -34,7 +34,7 @@ Last updated: v3.19.0 (2026-07-22)
 | `lit-review` | Fidelity | Annotated bibliography in paper format | Medium | "literature review paper", "write a lit review" |
 | `format-convert` | Fidelity | Formatted document (LaTeX/DOCX-via-Pandoc/PDF/MD) | Low | "convert to LaTeX", "convert citations to [format]" |
 | `citation-check` | Fidelity | Citation error report | Low | "check citations", "verify references" |
-| `disclosure` | Fidelity | Venue-specific AI-usage disclosure statement | Low | "AI disclosure for [venue]", "generate AI usage statement" |
+| `disclosure` | Fidelity | Venue-specific AI-usage disclosure block(s) + placement/action instructions | Low | "AI disclosure for [venue]", "generate AI usage statement" |
 | `rebuttal-audit` | Fidelity | Advisory QA of an existing rebuttal draft (per-comment coverage + gaps + risk flags); no generation; no Schema 11 emission | Low | "audit my response", "check my rebuttal", "did I miss any reviewer comment" |
 
 ## academic-paper-reviewer (6 modes)
