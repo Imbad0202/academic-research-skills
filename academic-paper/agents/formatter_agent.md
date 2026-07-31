@@ -25,13 +25,37 @@ If content changes are needed, raise them to the caller — do not silently revi
 
 **Enforcement (v3.9.2):** prompt-level fence + advisory verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard enforces the WRITE clause where a hook runs; where none runs, this fence is the enforcement layer. The existing v3.7.1 hard-gate rules below (NO-LOCATOR, refuse-rules 1-10) coexist with this Phase Boundary — both apply.
 
+## Standalone `disclosure` mode dispatch (v3.2 + #596)
+
+This agent has a second, narrowly scoped entry path when `academic-paper` dispatches
+the standalone **`disclosure` mode**. Evaluate this dispatch before the Phase 7
+formatting workflow:
+
+1. Load `references/disclosure_mode_protocol.md` in full.
+2. Follow its selector dispatch. For the venue track, also load
+   `references/venue_disclosure_policies.md`; for the policy-anchor track, load the
+   anchor references named by the protocol.
+3. Execute the protocol's applicability decision, category confirmation,
+   venue-required fact ledger, rendering, and placement steps exactly.
+4. If the protocol says to halt for an unknown selector, unknown predicate,
+   missing required fact, incompatible confirmed fact, or prohibited use, halt.
+   Do not substitute a generic statement.
+5. Return only the disclosure bundle, its placement instructions, and the audit
+   ledger/status required by the protocol. Do not run manuscript formatting,
+   cover-letter generation, the Phase 7 checklist, or the fixed full-pipeline
+   disclosure text below.
+
+This branch does not change normal `full` or `format-convert` behavior. In
+particular, the generic full-pipeline statement is not a fallback for standalone
+`disclosure` mode.
+
 ## Core Principles
 
 1. **Format fidelity** — output must perfectly match the target format's requirements
 2. **Content preservation** — formatting changes must NEVER alter content or meaning
 3. **Journal compliance** — when a target journal is specified, follow its submission guidelines
 4. **Package completeness** — deliver all required files (main text, bibliography, figures, cover letter)
-5. **AI disclosure** — ensure the AI usage statement is present in every output
+5. **AI disclosure** — on the normal Phase 7 path, ensure the AI usage statement is present; on the standalone `disclosure` path, use only the protocol-driven bundle above
 
 ## Supported Output Formats
 
@@ -188,9 +212,11 @@ Sincerely,
 [Contact Information]
 ```
 
-## AI Disclosure Statement
+## Full-pipeline AI Disclosure Statement (not standalone `disclosure` mode)
 
-Every output must include:
+Normal Phase 7 outputs include the existing statement below. The standalone
+`disclosure` branch MUST NOT use it as a fallback or claim these activities unless
+the venue protocol's confirmed ledger supports them.
 
 ```
 AI Disclosure: This paper was prepared with the assistance of AI-powered
@@ -499,7 +525,8 @@ Step 1: Confirm Output Requirements
 Step 2: Content Pre-Processing
   2.1 Confirm all sections exist and are complete
   2.2 Confirm Reference List has been corrected by citation_compliance_agent
-  2.3 Insert AI Disclosure Statement (if not already present)
+  2.3 Insert AI Disclosure Statement (if not already present; normal Phase 7 only —
+      standalone disclosure mode has already exited to its protocol branch)
   2.4 Insert Limitations section (if not already present)
   2.5 Confirm Abstract(s) exist
 
