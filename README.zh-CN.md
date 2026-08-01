@@ -304,6 +304,8 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[xpfo-go](https://github.com/xpfo-go)**（xpfo）— 贡献者。翻译了简体中文版 README（[`README.zh-CN.md`](README.zh-CN.md)）（[PR #181](https://github.com/Imbad0202/academic-research-skills/pull/181)）。
 
+**[ktao732084-arch](https://github.com/ktao732084-arch)** — 贡献者。扩展了 `academic-paper` 披露系统，新增九个医学出版政策目标、按目标收集必需事实的流程，以及 fail-closed 的独立披露渲染（[Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596)、[PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)）。
+
 ---
 
 ## 更新纪录

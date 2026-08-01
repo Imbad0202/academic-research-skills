@@ -334,6 +334,8 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[Yaobin29](https://github.com/Yaobin29)** — 기여자. [PR #433](https://github.com/Imbad0202/academic-research-skills/pull/433)에서 리뷰어 응답 도구를 제안했습니다. `deep-research three-way-scan` 모드와 `academic-paper rebuttal-audit` 모드(해당 PR의 `audit` 개념을 발전시킨 기능)가 v3.12.1에서 정식으로 통합되었습니다.
 
+**[ktao732084-arch](https://github.com/ktao732084-arch)** — 기여자. `academic-paper`의 disclosure 시스템에 9개의 의학 출판 정책 대상, 대상별 필수 사실 입력 수집, fail-closed 독립형 렌더링을 추가해 확장했습니다([Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596), [PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)).
+
 ---
 
 ## 변경 이력
