@@ -321,7 +321,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[eltociear](https://github.com/eltociear)**（Ikko Eltociear Ashimine）— 貢献者。日本語版 README（[`README.ja-JP.md`](README.ja-JP.md)）を翻訳（[PR #161](https://github.com/Imbad0202/academic-research-skills/pull/161)）。
 
-**[ktao732084-arch](https://github.com/ktao732084-arch)** — 貢献者。`academic-paper` の disclosure システムを、9 つの医学出版ポリシー対象、対象別の必須事実インテーク、fail-closed のスタンドアロンレンダリングで拡張しました（[Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596)、[PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)）。
+**[ktao732084-arch](https://github.com/ktao732084-arch)** — 貢献者。`academic-paper` の disclosure システムを、9 つの医学出版ポリシー対象、対象別の必須事実インテーク、fail-closed のスタンドアロンレンダリングで拡張しました（[Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596)、[PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)）。さらに、EQUATOR の臨床報告リファレンスを拡張し、CARE、STARD、TRIPOD+AI の要約ガイダンスと fail-closed な研究デザイン・ルーティングを追加しました（[Issue #594](https://github.com/Imbad0202/academic-research-skills/issues/594)、[PR #601](https://github.com/Imbad0202/academic-research-skills/pull/601)）。
 
 ---
 

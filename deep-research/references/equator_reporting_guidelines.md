@@ -11,11 +11,13 @@ Quick reference for EQUATOR Network (Enhancing the QUAlity and Transparency Of h
 |----------|------------|---------|
 | Systematic review / Meta-analysis | **PRISMA** | Literature review integrating multiple studies |
 | Randomized controlled trial (RCT) | **CONSORT** | Intervention experiments with random assignment |
+| Non-randomized intervention study (NRSI) | Scope-specific guideline | Do not default to STROBE; TREND applies specifically to nonrandomized evaluations of behavioral and public-health interventions |
 | Observational study (cohort, case-control, cross-sectional) | **STROBE** | Non-interventional quantitative observational research |
-| Qualitative research | **COREQ** | Interviews, focus groups, observation |
+| Qualitative research | **COREQ** or **SRQR** | COREQ for interviews/focus groups; SRQR for broader qualitative designs, including observation |
 | Quality improvement study | **SQUIRE** | Systematic quality improvement project reports |
-| Diagnostic accuracy study | **STARD 2015** | Diagnostic tool evaluation |
-| Prediction model study (prognostic or diagnostic) | **TRIPOD+AI** | Prediction model development and validation, regression or machine learning |
+| Diagnostic accuracy study | **STARD 2015**; add **STARD-AI** for an AI-based index test | Accuracy of an index test against a reference standard; resolve prediction-model studies first via §10 |
+| Prediction model study (prognostic or diagnostic) | **TRIPOD+AI** | Prediction model development, evaluation or updating, using regression or machine learning |
+| Clinical practice guideline | RIGHT or AGREE Reporting Checklist | Reporting a health-care practice guideline; AGREE II is an appraisal instrument, not the reporting checklist |
 | Case report | **CARE** | Single or small number of in-depth case reports |
 | Economic evaluation | CHEERS | Cost-effectiveness analysis |
 | Mixed methods research | GRAMMS | Mixed qualitative-quantitative designs |
@@ -242,10 +244,11 @@ SQUIRE is especially valuable as a reference for the following HE quality assura
 **Full Name**: CAse REport guidelines
 **Version**: CARE 2013 checklist (13 topics, 30 checkable items)
 **Applicable to**: Reports of the diagnosis and management of one patient; adaptable to a small uncontrolled series
-**Source statement**: Gagnier JJ, Kienle G, Altman DG, Moher D, Sox H, Riley D; CARE Group. The CARE guidelines: consensus-based clinical case report guideline development. *J Clin Epidemiol*. 2014;67(1):46-51. doi:10.1016/j.jclinepi.2013.08.003
+**Adapted artifact**: Gagnier JJ, Kienle G, Altman DG, Moher D, Sox H, Riley D; CARE Group. The CARE guidelines: consensus-based clinical case reporting guideline development. *J Med Case Rep*. 2013;7:223. https://doi.org/10.1186/1752-1947-7-223
+**Artifact license**: [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) as stated on the Journal of Medical Case Reports version above
 **Official checklist**: https://www.care-statement.org/checklist
 
-> The wording below is an ARS paraphrase written for orientation, not the official checklist text. CARE is distributed under a non-commercial licence and the item wording is not reproduced here. Download the official checklist before submission and report against that.
+> **Modification note:** ARS condensed, regrouped and paraphrased the checklist embedded in the licensed Journal of Medical Case Reports artifact. This is an orientation aid, not an official CARE checklist or translation. Download the official checklist before submission and report against that.
 
 ### Core Reporting Items
 
@@ -263,11 +266,11 @@ SQUIRE is especially valuable as a reference for the following HE quality assura
 | 10a-10d | **Follow-up and outcomes** | Outcomes as assessed by the clinician and by the patient; follow-up test results; adherence and tolerability, and how these were judged; anything harmful or unforeseen that occurred along the way |
 | 11a-11d | **Discussion** | Strengths and limitations of how the case was managed; the relevant literature; the scientific reasoning behind the conclusions, including alternative explanations; the primary take-away lesson |
 | 12 | **Patient perspective** | The patient's own account of the care they received, in their own voice where possible |
-| 13 | **Informed consent** | Confirmation that the patient (or next of kin) gave informed consent, available on request |
+| 13 | **Informed consent** | Confirmation that the patient, or a legally authorised representative where applicable, gave informed consent for publication, available on request |
 
 ### Clinical Research Application Notes
 
-- Items 12 and 13 are the two least recoverable after the fact. Informed consent for publication has to be obtained from the patient, and the patient perspective has to be collected while contact is still possible — flag both at the design stage, not at submission.
+- Items 12 and 13 are the two least recoverable after the fact. Informed consent for publication has to be obtained from the patient or, where applicable, a legally authorised representative, and the patient perspective has to be collected while contact is still possible — flag both at the design stage, not at submission.
 - The timeline (item 7) asks for a structured chronology as a figure or table; a chronology scattered through the narrative does not satisfy it.
 - De-identification (item 5a) is a reporting requirement and an ethics requirement at once. Dates, rare-disease combinations and institution names can re-identify a patient even without a name.
 - For a small uncontrolled series, CARE can be adapted per patient, but a series with a comparison group is not a case report — re-run the routing sequence in §10.
@@ -279,10 +282,12 @@ SQUIRE is especially valuable as a reference for the following HE quality assura
 **Full Name**: Standards for Reporting Diagnostic accuracy studies
 **Version**: STARD 2015 (30 items; participant flow diagram required)
 **Applicable to**: Studies estimating how well one or more index tests classify participants against a reference standard
-**Source statement**: Bossuyt PM, Reitsma JB, Bruns DE, et al. STARD 2015: an updated list of essential items for reporting diagnostic accuracy studies. *BMJ*. 2015;351:h5527. doi:10.1136/bmj.h5527
-**Official checklist**: https://www.equator-network.org/reporting-guidelines/stard/
+**AI extension**: [STARD-AI](https://www.equator-network.org/reporting-guidelines/the-stard-ai-reporting-guideline-for-diagnostic-accuracy-studies-using-artificial-intelligence/) adds 18 new or modified items for AI-based index tests; use it with, not instead of, the baseline STARD 2015 checklist
+**Adapted artifact**: Bossuyt PM, Reitsma JB, Bruns DE, et al. STARD 2015: an updated list of essential items for reporting diagnostic accuracy studies. EQUATOR-hosted simultaneous-publication version. https://www.equator-network.org/wp-content/uploads/2015/03/STARD-2015-paper.pdf
+**Artifact license**: [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), stated on the first page of that exact artifact
+**Official checklist**: https://www.equator-network.org/wp-content/uploads/2015/03/STARD-2015-checklist.pdf
 
-> The wording below is an ARS paraphrase written for orientation, not the official checklist text. Report against the official STARD 2015 checklist.
+> **Modification note:** ARS condensed, regrouped and paraphrased the licensed STARD 2015 artifact. This is an orientation aid, not an official STARD checklist or translation. Report against the official checklist.
 
 ### Core Reporting Items
 
@@ -300,7 +305,7 @@ SQUIRE is especially valuable as a reference for the following HE quality assura
 | 10a, 10b | **Test procedures** | The index test and the reference standard each described in enough detail to be replicated |
 | 11 | **Reference standard rationale** | Why this reference standard was chosen, where alternatives exist |
 | 12a, 12b | **Positivity thresholds** | Definition of and rationale for cut-offs or result categories, for the index test and for the reference standard, marking which were pre-specified and which exploratory |
-| 13a, 13b | **Blinding** | Whether index-test readers had the clinical information and reference-standard results, and whether reference-standard assessors had the index-test results |
+| 13a, 13b | **Blinding** | Whether index-test readers had clinical information and reference-standard results, and whether reference-standard assessors had clinical information and index-test results |
 | 14 | **Accuracy analysis** | Methods used to estimate or compare accuracy measures |
 | 15 | **Indeterminate results** | Say what was done with readings that came back neither positive nor negative, on either test |
 | 16 | **Missing data** | How missing index-test or reference-standard data were handled |
@@ -325,7 +330,8 @@ SQUIRE is especially valuable as a reference for the following HE quality assura
 - Item 12a is where post-hoc threshold selection hides. A cut-off chosen from the study's own ROC curve is exploratory and must be labelled as such; presenting it as pre-specified inflates the reported accuracy.
 - Items 15 and 22 have no counterpart in STROBE and are easy to overlook when adapting an observational-study habit: indeterminate results silently dropped from the denominator, and an unreported delay between index test and reference standard during which the condition could change.
 - The flow diagram (item 19) is required here, unlike STROBE's flow-diagram item, which only asks authors to consider one.
-- QUADAS-2 is the companion appraisal tool when diagnostic accuracy studies are being synthesised rather than reported.
+- For an AI-based index test, apply STARD-AI together with STARD 2015. A multivariable diagnostic prediction model remains a TRIPOD+AI study instead; settle that distinction at Q3 before reaching the index-test branch at Q5.
+- QUADAS-3 is the current companion appraisal tool when diagnostic accuracy studies are being synthesised rather than reported; it updates QUADAS-2. Appraisal-tool findings do not replace STARD reporting requirements.
 
 ---
 
@@ -333,51 +339,61 @@ SQUIRE is especially valuable as a reference for the following HE quality assura
 
 **Full Name**: Transparent Reporting of a multivariable prediction model for Individual Prognosis Or Diagnosis, updated for artificial intelligence
 **Version**: TRIPOD+AI 2024 (27 items; updates TRIPOD 2015 and covers regression and machine learning models alike)
-**Applicable to**: Development, evaluation (validation) or updating of a multivariable model that outputs an individual-level diagnostic or prognostic prediction
-**Source statement**: Collins GS, Moons KGM, Dhiman P, et al. TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods. *BMJ*. 2024;385:e078378. doi:10.1136/bmj-2023-078378
-**Official checklist**: https://www.tripod-statement.org/
+**Applicable to**: Development, evaluation (validation) or updating of a multivariable diagnostic or prognostic prediction model, including score, probability, risk-group and classification outputs
+**Adapted artifact**: Collins GS, Moons KGM, Dhiman P, et al. TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods. *BMJ*. 2024;385:e078378. https://doi.org/10.1136/bmj-2023-078378
+**Artifact license**: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) for the BMJ statement artifact
+**Official checklist**: [TRIPOD+AI statement, Table 2](https://www.bmj.com/content/385/bmj-2023-078378#T2) (the fillable checklist is Supplementary Table 2 on that article)
 
-> The wording below is an ARS paraphrase written for orientation, not the official checklist text. Report against the official TRIPOD+AI checklist; a separate TRIPOD+AI for Abstracts list covers item 2.
+> **Modification note:** ARS condensed, regrouped and paraphrased the licensed statement checklist, while retaining the official development/evaluation applicability markers. This is an orientation aid, not an official TRIPOD+AI checklist or translation. Report against the official checklist; a separate TRIPOD+AI for Abstracts list covers item 2.
+
+In the `Applies to` column, **D** means model development and **E** means model evaluation; `D;E` applies to both.
 
 ### Core Reporting Items
 
-| # | Item | Description |
-|---|------|------|
-| 1 | **Title** | Identify the study as developing or evaluating a multivariable prediction model, and name the target population and the predicted outcome |
-| 2 | **Abstract** | Follow the TRIPOD+AI for Abstracts item list |
-| 3a-3c | **Background** | Healthcare context (diagnostic or prognostic) and rationale, including existing models; the target population, the intended purpose within the care pathway and the intended users; whatever is already documented about disparities in health outcomes across sociodemographic groups |
-| 4 | **Objectives** | Whether the study develops a model, evaluates one, or both |
-| 5a, 5b | **Data** | Sources of data given separately for development and evaluation, why they were used and how representative they are; the dates of participant accrual and, if applicable, end of follow-up |
-| 6a-6c | **Participants** | Study setting and the number and location of centres; eligibility criteria; any treatments received and how they were handled |
-| 7 | **Data preparation** | Pre-processing and quality checking, including whether it was applied similarly across sociodemographic groups |
-| 8a-8c | **Outcome** | Definition, time horizon, how and when assessed and why chosen, and whether assessment was consistent across groups; assessor qualifications where interpretation is subjective; any blinding of outcome assessment |
-| 9a-9c | **Predictors** | How the initial predictor set was chosen and any pre-selection before model building; definition and measurement of every predictor, including blinding; assessor qualifications where predictor measurement is subjective |
-| 10 | **Sample size** | How the study size was arrived at, separately for development and evaluation, and why it is adequate for the question |
-| 11 | **Missing data** | How missing data were handled and why any data were omitted |
-| 12a-12g | **Analytical methods** | How the data were used and partitioned; how predictors were handled (functional form, rescaling, transformation); model type and rationale, every build step including hyperparameter tuning and the internal validation method; heterogeneity across clusters; **all performance measures and plots used — discrimination, calibration and clinical utility**; any model updating such as recalibration; how predictions were computed at evaluation |
-| 13 | **Class imbalance** | If class-imbalance methods were used, why and how, plus any subsequent recalibration of the model or its predictions |
-| 14 | **Fairness** | Approaches used to address model fairness, and their rationale |
-| 15 | **Model output** | What the model outputs (probability, classification), with rationale for any classification and how thresholds were identified |
-| 16 | **Training versus evaluation** | Differences between development and evaluation data in setting, eligibility, outcome and predictors |
-| 17 | **Ethical approval** | The approving board or ethics committee, and the consent arrangements or waiver |
-| 18a-18f | **Open science** | Funding source and funder role; conflicts of interest; where the protocol can be accessed; registration details; availability of the data; availability of the analytical code |
-| 19 | **Patient and public involvement** | Involvement during design, conduct, reporting, interpretation or dissemination — or an explicit statement that there was none |
-| 20a-20c | **Participants (results)** | Flow of participants including numbers with and without the outcome and a follow-up summary; characteristics overall and per data source, including key dates, predictors, sample size, event counts and missing data, reported across key demographic groups; for evaluation, comparison against the development data |
-| 21 | **Model development** | Number of participants and outcome events in each analysis (development, tuning, evaluation) |
-| 22 | **Model specification** | The full model — formula, code, object or API — so that predictions can be reproduced and independently evaluated, with any access or reuse restrictions stated |
-| 23a, 23b | **Model performance** | Performance estimates with confidence intervals, including for key subgroups; heterogeneity of performance across clusters if examined |
-| 24 | **Model updating** | Results of any updating, including the updated model and its performance |
-| 25 | **Interpretation** | Overall interpretation against the objectives and previous studies, including fairness |
-| 26 | **Limitations** | Non-representative sampling, sample size, overfitting, missing data, and their effect on bias, statistical uncertainty and generalisability |
-| 27a-27c | **Usability in current care** | How poor-quality or unavailable input data should be handled in deployment; what interaction and level of expertise users need; next steps for applicability and generalisability |
+| # | Applies to | Item | Description |
+|---|------------|------|-------------|
+| 1 | D;E | **Title** | Identify the study as developing or evaluating a multivariable prediction model, and name the target population and predicted outcome |
+| 2 | D;E | **Abstract** | Follow the TRIPOD+AI for Abstracts item list |
+| 3a-3c | D;E | **Background** | Healthcare context and rationale, including existing models; target population, intended purpose, care-pathway position and users; known health inequalities across sociodemographic groups |
+| 4 | D;E | **Objectives** | Whether the study develops a model, evaluates one, or both |
+| 5a, 5b | D;E | **Data** | Sources given separately for development and evaluation, their rationale and representativeness; accrual dates and, where applicable, end of follow-up |
+| 6a-6c | D;E | **Participants** | Setting and centres; eligibility criteria; treatments received and how they were handled |
+| 7 | D;E | **Data preparation** | Pre-processing and quality checking, including whether these were similar across sociodemographic groups |
+| 8a-8c | D;E | **Outcome** | Definition, time horizon, assessment and rationale, including consistency across groups; assessor qualifications and demographics where interpretation is subjective; any blinding |
+| 9a | D | **Initial predictors** | How the initial predictor set was chosen and any pre-selection before model building |
+| 9b, 9c | D;E | **Predictor measurement** | Definition and measurement of every predictor, including blinding; assessor qualifications and demographics where interpretation is subjective |
+| 10 | D;E | **Sample size** | How the study size was arrived at, separately for development and evaluation, and why it is adequate |
+| 11 | D;E | **Missing data** | How missing data were handled and why any data were omitted |
+| 12a-12c | D | **Development methods** | How data were used or partitioned; predictor handling; model type and rationale; all building, tuning and internal-validation steps |
+| 12d, 12e | D;E | **Performance methods** | Handling of heterogeneity across clusters; all measures and plots chosen to evaluate discrimination, calibration and clinical utility, with rationale |
+| 12f, 12g | E | **Evaluation and updating methods** | Any updating after evaluation, including for sociodemographic groups or settings; how evaluated predictions were calculated |
+| 13 | D;E | **Class imbalance** | If class-imbalance methods were used, why and how, plus any subsequent recalibration |
+| 14 | D;E | **Fairness** | Approaches used to address model fairness and their rationale |
+| 15 | D | **Model output** | What the model outputs (for example a score, probability, risk group or classification), why that output was chosen, and how any thresholds were identified |
+| 16 | D;E | **Development versus evaluation** | Differences between development and evaluation data in setting, eligibility, outcome and predictors |
+| 17 | D;E | **Ethical approval** | The approving board or ethics committee, and the consent arrangements or waiver |
+| 18a, 18b | D;E | **Funding and conflicts** | Funding source and funder role; conflicts of interest and financial disclosures |
+| 18c, 18d | D;E | **Protocol and registration** | Where the protocol can be accessed, or state that no protocol was prepared; registration details, or state that the study was not registered |
+| 18e, 18f | D;E | **Data and code sharing** | Availability of study data and analytical code |
+| 19 | D;E | **Patient and public involvement** | Involvement during design, conduct, reporting, interpretation or dissemination — or an explicit statement that there was none |
+| 20a, 20b | D;E | **Participants (results)** | Participant flow and follow-up; characteristics overall and by data source, including dates, predictors, sample size, events and missingness, with differences across key demographic groups |
+| 20c | E | **Evaluation sample comparison** | Compare important predictors and outcomes in the evaluation data with the development data |
+| 21 | D;E | **Analysis numbers** | Number of participants and outcome events in each development, tuning or evaluation analysis |
+| 22 | D | **Model specification** | The full model — formula, code, object or API — so predictions can be reproduced and independently evaluated, with access or reuse restrictions stated |
+| 23a, 23b | D;E | **Model performance** | Performance estimates with confidence intervals, including key subgroups and appropriate plots; heterogeneity across clusters if examined |
+| 24 | E | **Model updating** | Results of any updating, including the updated model and its subsequent performance |
+| 25 | D;E | **Interpretation** | Overall interpretation against the objectives and previous studies, including fairness |
+| 26 | D;E | **Limitations** | Non-representative sampling, sample size, overfitting, missing data, and their effect on bias, statistical uncertainty and generalisability |
+| 27a, 27b | D | **Use in current care** | Handling poor-quality or unavailable inputs, required user interaction and the expertise users need |
+| 27c | D;E | **Next steps** | Future research needed for applicability and generalisability |
 
 ### Clinical Research Application Notes
 
-- Item 12e is where reporting most often stops short: discrimination (a C-statistic or AUC) is given, calibration is not. A model with good discrimination and poor calibration produces systematically wrong individual risks, so treat calibration as a required result rather than an optional plot.
+- Item 12e specifies, in the methods, which performance measures and plots will be used and why. Item 23a is the corresponding results obligation: report the measures and plots actually used, with estimates and confidence intervals where applicable. When calibration is part of the stated performance assessment, an AUC alone does not discharge that obligation.
 - TRIPOD+AI applies to a nomogram built with ordinary logistic regression exactly as it applies to a gradient-boosted or deep-learning model. "Not an AI study" is not an exemption.
 - Item 22 makes the model itself a reportable artefact. A paper that reports performance but never publishes the coefficients, code or an accessible API cannot be validated by anyone else.
-- Items 3c, 7, 8a, 14 and 20b together form the equity thread new in the +AI update; they are answered as a set, not as isolated sentences.
-- PROBAST (and PROBAST+AI) is the companion appraisal tool when prediction-model studies are being appraised or synthesised rather than reported.
+- Equity and fairness recur across items 3c, 5a, 7, 8a, 8b, 9c, 12f, 14, 20b, 23a, 25 and 26. Treat that cross-cutting thread as a connected account, not as a single fairness sentence.
+- PROBAST+AI is the current companion appraisal tool when prediction-model studies are being appraised or synthesised rather than reported; it replaces PROBAST-2019. Appraisal does not replace TRIPOD+AI reporting.
 
 ---
 
@@ -385,41 +401,46 @@ SQUIRE is especially valuable as a reference for the following HE quality assura
 
 The mapping table in §1 assumes the study design is already known. For clinician-authors that assumption is frequently where the error is: the design label in the manuscript is chosen after the analysis, from habit or from the journal's section headings, rather than from what was actually done. Selecting a checklist from a mislabelled design is worse than selecting none, because it produces a confident completeness verdict against the wrong standard.
 
-Work through the questions in order and stop at the first one that determines the answer.
+Current scope/version anchors for the branches added here: [RIGHT](https://www.equator-network.org/reporting-guidelines/right-statement/), [TREND](https://www.equator-network.org/reporting-guidelines/improving-the-reporting-quality-of-nonrandomized-evaluations-of-behavioral-and-public-health-interventions-the-trend-statement/), [STARD-AI](https://www.equator-network.org/reporting-guidelines/the-stard-ai-reporting-guideline-for-diagnostic-accuracy-studies-using-artificial-intelligence/), [QUADAS-3](https://doi.org/10.7326/ANNALS-25-02104) and [PROBAST+AI](https://www.bmj.com/content/388/bmj-2024-082505).
 
-**Q0 — Is this original research?**
-If the work synthesises other studies, route to the PRISMA family (PRISMA 2020, PRISMA-ScR for scoping reviews, PRISMA-NMA for network meta-analysis) and stop. Editorials, narrative reviews, clinical guidelines and educational materials have no primary EQUATOR guideline; offer advisory guidance only. Otherwise continue.
+Work through the questions in order. Stop when the report's primary purpose and design establish a reporting guideline. Tools for risk-of-bias or quality appraisal are labelled separately and never repair or replace the reporting route.
 
-**Q1 — Was the intervention assigned by the investigators?**
-Assigned as part of the study protocol → Q1a. Chosen by the treating clinician on clinical grounds, even when the resulting groups are compared afterwards → this is observational; go to Q2.
+**Q0 — Is the deliverable a synthesis or a clinical practice guideline?**
+A systematic review or meta-analysis → the **PRISMA** family (PRISMA 2020, PRISMA-ScR for scoping reviews, PRISMA-NMA for network meta-analysis). A clinical practice guideline → **RIGHT** or the **AGREE Reporting Checklist**, selecting any applicable extension; **AGREE II** is an appraisal instrument, not the reporting guideline. Editorials, narrative reviews and educational materials have no single default EQUATOR guideline; search for a deliverable-specific guideline rather than forcing one of the study routes below. Otherwise continue.
 
-**Q1a — Was the assignment randomised?**
-Randomised, with results reported → **CONSORT**, plus the extension matching the design (cluster, non-inferiority/equivalence, pilot and feasibility, social and psychological interventions). Randomised but the manuscript is a protocol with no results → **SPIRIT**. Not randomised (alternate allocation, allocation by admission order, by ward, by clinician preference) → this is a non-randomised intervention study: report with **STROBE**, and expect appraisal with ROBINS-I (TREND is an alternative in behavioural-intervention journals).
+**Q1 — Is one of these standalone research families the primary deliverable?**
+Qualitative research → **COREQ** for interviews or focus groups, or **SRQR** where its broader qualitative scope fits. Quality-improvement research → **SQUIRE**. Economic evaluation → **CHEERS**. In vivo research involving live animals → **ARRIVE**. Other preclinical research without live animals does not automatically fall under ARRIVE; search EQUATOR and the target venue for an applicable guideline rather than forcing this route. Mixed-methods research → **GRAMMS**, plus the reporting guideline for each substantive component where applicable. If none applies, continue.
 
 **Q2 — Is the unit of reporting one patient, or a handful, followed through diagnosis and management, with no comparison group and no statistical inference?**
 One patient → **CARE** (§7). A small uncontrolled series → CARE adapted per patient, stated explicitly as a case series. Anything with a comparison group is not a case report → Q3.
 
-**Q3 — Is the primary estimate the classification performance of a test against a reference standard (sensitivity, specificity, predictive values, AUC)?**
-Yes → **STARD 2015** (§8); companion QUADAS-2 when such studies are being synthesised. No → Q4.
+**Q3 — Is the deliverable a multivariable prediction model study?**
+Development, evaluation or updating of a diagnostic or prognostic model that outputs an individual score, probability, risk group or classification → **TRIPOD+AI** (§9), whether the method is regression, a nomogram or machine learning. **PROBAST+AI** is the separate current appraisal tool. Otherwise continue to Q4.
 
-**Q4 — Is the deliverable a multivariable model that outputs an individual-level risk or diagnostic probability?**
-Yes, whether by regression, nomogram or machine learning → **TRIPOD+AI** (§9); companion PROBAST or PROBAST+AI. No → Q5.
+**Q4 — Is the primary study question an estimate of an intervention's effects or harms?**
+Yes → Q4a, regardless of whether allocation was controlled by investigators, clinicians, policy, availability or participant choice. No — the study is not evaluating an intervention effect → Q5.
 
-**Q5 — Is this an analytic observational study estimating an exposure-outcome association?**
-Yes → **STROBE** (§4), then Q5a for the design branch. A purely descriptive survey or prevalence estimate → STROBE, cross-sectional branch.
+**Q4a — Was assignment randomised?**
+Randomised, with results reported → **CONSORT**, plus the extension matching the design. Randomised but the manuscript is a protocol with no results → **SPIRIT**. Not randomised (for example alternate allocation, admission order, ward or clinician preference, routine-care policy, availability or participant choice) → this is a **non-randomised intervention study (NRSI)**. An NRSI may use an observational design, but do not default to STROBE merely because allocation was not random: STROBE can describe an applicable underlying observational design but does not cover intervention-specific reporting. **TREND** is a reporting option only for nonrandomized evaluations of behavioral and public-health interventions. For other NRSI, select a design- and domain-specific reporting guideline from EQUATOR or the target venue; if none is established, leave the route unresolved and ask rather than treating STROBE as a complete intervention-reporting answer. **ROBINS-I** is an appraisal tool for NRSI and is not a reporting guideline.
 
-**Q5a — What determined who entered the study?**
-Enrolment by exposure status, followed forward in time → **cohort**. Enrolment by outcome status, with exposure ascertained backwards → **case-control**. Exposure and outcome measured at the same time point → **cross-sectional**. The branch decides the wording of STROBE items 6, 12, 14 and 15, so it cannot be left open. If the description does not establish the sampling direction, ask.
+**Q5 — Is the primary estimate the accuracy of an index test against a reference standard?**
+Yes → **STARD 2015** (§8); for an AI-based index test, use STARD 2015 together with the **STARD-AI** extension (or an integrated checklist containing both the baseline and the 18 new or modified AI items). **QUADAS-3** is the separate current appraisal tool when such studies are assessed or synthesised. No → Q6.
 
-**Overlays (added to the primary guideline, never replacing it):** routinely collected health data (electronic records, claims, registries) → RECORD extension of STROBE; a qualitative strand alongside → COREQ; an economic outcome → CHEERS; animal experiments → ARRIVE.
+**Q6 — Is this a non-interventional cohort, case-control or cross-sectional study?**
+This includes reports of exposure-outcome associations, incidence or natural history, and cross-sectional prevalence. Yes → **STROBE** (§4), then Q6a. No → search EQUATOR for the actual study type; do not force a nearest-looking guideline.
+
+**Q6a — What determined who entered the study?**
+A defined population selected independently of outcome status, with outcome occurrence or risk ascertained over time → **cohort**, whether exposures are compared or incidence alone is described, and whether the data were collected prospectively or reconstructed retrospectively from existing records. Entry or sampling determined by outcome/case status, with prior exposure compared between cases and controls → **case-control**. Exposure and outcome assessed for a sampled population at a defined time or interval, without longitudinal ascertainment of new outcome occurrence → **cross-sectional**. The branch decides the wording of STROBE items 6, 12, 14 and 15, so it cannot be left open. If the description does not establish the sampling basis and time structure, ask.
+
+**Extensions and secondary components:** routinely collected health data in a STROBE-routed study may add RECORD; a substantive qualitative or economic component may additionally require COREQ/SRQR or CHEERS. These additions do not turn a standalone qualitative, economic, quality-improvement or animal study into an overlay on an unrelated guideline.
 
 ### Output
 
-The sequence returns a primary guideline plus companion tools. Record which question settled the routing and which sentence in the scholar's description was decisive, so the scholar can see the reasoning and correct it if the description was inaccurate.
+The sequence returns a primary reporting guideline and separately labelled companion appraisal tools, if any. Record which question settled the routing and which sentence in the scholar's description was decisive, so the scholar can see the reasoning and correct it if the description was inaccurate.
 
 ### Ambiguity rule
 
-**If the description does not settle the current question, ask the scholar. Never infer a study design from keywords.** A guideline chosen from vocabulary rather than from what was done yields a completeness verdict that is confidently wrong, and the scholar has no way to see that the wrong standard was applied. Asking one question costs a turn; guessing costs the validity of the whole check. This rule outranks any preference for producing an answer in a single pass.
+**If the description does not settle the current question, ask the scholar. Never infer a study design from keywords.** A guideline chosen from vocabulary rather than from what was done yields a completeness verdict that is confidently wrong. Routing remains undetermined until the scholar supplies the design fact that distinguishes the branches.
 
 ### Phrasings that do not settle the question
 
@@ -428,9 +449,9 @@ The following are typical of clinical manuscript descriptions and are compatible
 - *"randomly divided into two groups"* (隨機分為兩組) — may describe genuine randomisation or alternation, admission-order or clinician-preference allocation. Ask how the allocation sequence was generated and whether it was concealed before accepting CONSORT.
 - *"retrospective analysis of cases treated in our department"* (回顧性分析我科病例) — compatible with a retrospective cohort, an uncontrolled case series and a cross-sectional study. Ask whether there is a comparison group and whether participants were followed over time.
 - *"observation of clinical efficacy"*, *"comparison of group A and group B"* (臨床療效觀察) — usually a non-randomised intervention study rather than a trial. Ask who decided which patients received which treatment.
-- *"diagnostic value of X for Y"*, *"area under the ROC curve"* — points towards STARD, but only if there is a reference standard the index test is measured against. Without one this is an association study and STROBE applies.
+- *"diagnostic value of X for Y"*, *"area under the ROC curve"* — does not distinguish a prediction-model study from an index-test accuracy study. Ask whether the deliverable is a multivariable model and whether an index test is compared with a reference standard; Q3 must be resolved before Q5.
 - *"a prediction model was established"*, *"nomogram"* (預測模型、列線圖) — TRIPOD+AI, even when the analysis is ordinary logistic regression.
-- *"analysis of risk factors"* (危險因素分析) — cohort or case-control; the sampling direction in Q5a decides, not the phrase.
+- *"analysis of risk factors"* (危險因素分析) — cohort or case-control; the sampling direction in Q6a decides, not the phrase.
 
 ---
 
@@ -448,33 +469,7 @@ The following are typical of clinical manuscript descriptions and are compatible
 
 ### Research Design Quick Selection
 
-```
-What is your research type?
-│
-├── Integrating existing research → PRISMA
-│   ├── Systematic review → PRISMA 2020
-│   ├── Scoping review → PRISMA-ScR
-│   └── Meta-analysis → PRISMA + MOOSE
-│
-├── Intervention experiment → CONSORT
-│   ├── Individual randomization → CONSORT 2010
-│   ├── Class/school randomization → CONSORT-Cluster
-│   └── Social/psychological intervention → CONSORT-SPI
-│
-├── Observational survey → STROBE
-│   ├── Cross-sectional survey → STROBE-CS
-│   ├── Follow-up study → STROBE-Cohort
-│   └── Retrospective comparison → STROBE-CC
-│
-├── Qualitative research → COREQ
-│   ├── Interviews → COREQ
-│   ├── Focus groups → COREQ
-│   └── Ethnography → SRQR (alternative)
-│
-└── Quality improvement → SQUIRE
-    ├── PDSA cycle → SQUIRE 2.0
-    └── QA/accreditation improvement → SQUIRE 2.0
-```
+Use the canonical sequence in §10. Higher-education topic labels do not change its decisions: an intervention is not CONSORT-routed until random assignment is established, and “retrospective comparison” does not establish cohort versus case-control sampling. The ranking above describes frequency of use in higher-education research; it is not a second routing system.
 
 ---
 

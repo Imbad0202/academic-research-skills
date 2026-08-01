@@ -306,7 +306,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[xpfo-go](https://github.com/xpfo-go)**（xpfo）— 貢獻者。翻譯了簡體中文版 README（[`README.zh-CN.md`](README.zh-CN.md)）（[PR #181](https://github.com/Imbad0202/academic-research-skills/pull/181)）。
 
-**[ktao732084-arch](https://github.com/ktao732084-arch)** — 貢獻者。擴充了 `academic-paper` 揭露系統，新增九個醫學出版政策目標、依目標收集必要事實的流程，以及 fail-closed 的獨立揭露渲染（[Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596)、[PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)）。
+**[ktao732084-arch](https://github.com/ktao732084-arch)** — 貢獻者。擴充了 `academic-paper` 揭露系統，新增九個醫學出版政策目標、依目標收集必要事實的流程，以及 fail-closed 的獨立揭露渲染（[Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596)、[PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)）；並擴充 EQUATOR 臨床報告參考，加入 CARE、STARD 與 TRIPOD+AI 的精簡指引，以及 fail-closed 的研究設計路由流程（[Issue #594](https://github.com/Imbad0202/academic-research-skills/issues/594)、[PR #601](https://github.com/Imbad0202/academic-research-skills/pull/601)）。
 
 ---
 
