@@ -211,7 +211,7 @@ User Input →
 - No paper drafted yet — disclosure is a finishing step (→ full mode first)
 - The venue is not in the policy database (confirm the venue's current policy manually)
 
-**Expected Output**: Venue-specific outcome: zero or more AI-usage disclosure blocks + placement/action instructions
+**Expected Output**: Default venue path — `REQUIRED` / `ACTION_ONLY` / `NOT_REQUIRED` / `UNKNOWN` applicability plus typed halt status; policy-anchor path — anchor-specific render
 **Expected Duration**: Short
 **Agents Used**: formatter agent's standalone disclosure branch, which loads the disclosure protocol before the venue policy database or policy-anchor lookup; it does not run normal Phase 7 formatting
 

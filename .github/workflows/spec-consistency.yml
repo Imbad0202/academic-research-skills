@@ -663,6 +663,9 @@ jobs:
       - name: Validate v3.6.7 Step 8 pattern-eval fixture manifests (Phase 6.8)
         run: python3 scripts/check_pattern_eval_manifest.py
 
+      - name: "Check venue disclosure policy database structure (#596)"
+        run: python3 scripts/check_venue_disclosure_policies.py
+
       - name: "Check policy anchor table structural lint (#108)"
         run: python3 scripts/check_policy_anchor_table.py
 

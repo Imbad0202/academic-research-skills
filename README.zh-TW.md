@@ -569,7 +569,7 @@ v3.5.1 新增 Socratic Mentor 的選用式誠實探測（設定 `ARS_SOCRATIC_RE
 
 - **7 類 AI 研究失敗模式檢查清單** — 在 Stage 2.5/4.5 阻斷管線：偵測實作錯誤、幻覺實驗結果、取巧特徵依賴、錯誤包裝為發現、方法偽造、框架鎖定。擴充現有 5 類引用幻覺分類。
 - **Reviewer 校準模式**（academic-paper-reviewer v1.8）— opt-in 的 FNR/FPR/balanced accuracy 測量，使用者提供 gold set。5 次集成、跨模型預設開啟、session 內強制附加信心揭露。
-- **揭露模式**（academic-paper v2.9）— 針對特定期刊/會議的 AI 使用聲明生成器。v1 涵蓋 ICLR、NeurIPS、Nature、Science、ACL、EMNLP。（後續擴充：v2 資料庫（#596）新增 9 個醫學出版政策目標 — ICMJE、NEJM、The Lancet、JAMA、BMJ、PLOS、Frontiers，以及資料庫首批兩個中文政策目標：出版社層級的 Chinese Nursing Journals Publishing House（`中华护理杂志社`）條目與期刊層級的 International Eye Science（`国际眼科杂志`）條目。）
+- **揭露模式**（academic-paper v2.9）— 預設期刊路徑回傳 `REQUIRED`、`ACTION_ONLY`、`NOT_REQUIRED` 或 `UNKNOWN` 適用性結果，並在無法渲染時顯式回傳類型化停止狀態；政策錨點路徑使用獨立的錨點渲染契約。v1 涵蓋 ICLR、NeurIPS、Nature、Science、ACL、EMNLP。（後續擴充：v2 資料庫（#596）新增 9 個醫學出版政策目標 — ICMJE、NEJM、The Lancet、JAMA、BMJ、PLOS、Frontiers，以及資料庫首批兩個中文政策目標：出版社層級的 Chinese Nursing Journals Publishing House（`中华护理杂志社`）條目與期刊層級的 International Eye Science（`国际眼科杂志`）條目。）
 - **提前停止機制**（academic-pipeline v3.1）— 收斂檢查 + pipeline 開始時的 token 預算透明化。
 - **忠實度-原創性模式光譜** — 按 Lu 2026 Fig 1c 分類所有 3 個 skill 的模式。
 - 新版本：academic-paper v2.9、academic-paper-reviewer v1.8、academic-pipeline v3.1

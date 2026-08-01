@@ -42,9 +42,12 @@ formatting workflow:
    track**, run the shared category confirmation and then follow
    `policy_anchor_disclosure_protocol.md`'s own decision, input, rendering, and
    placement contract; do not run venue Phase 2a/2b.
-4. If the protocol says to halt for an unknown selector, unknown predicate,
-   missing required fact, incompatible confirmed fact, or prohibited use, halt.
-   Do not substitute a generic statement.
+4. On the venue track, if the protocol returns `execution_status=HALTED` for
+   any typed reason, halt. On the anchor track, halt when its protocol returns
+   a pending/reject result. This includes uncurated/policy-scope/contract gaps,
+   shared intake pending or unclassified use, unknown/missing facts,
+   incompatible facts, prohibited use, and Nature venue-image containment. Do
+   not substitute a generic statement.
 5. Return only the selected track's disclosure bundle (if any), placement or
    action instructions, and audit ledger/status required by the protocol. Do
    not run manuscript formatting, cover-letter generation, the Phase 7

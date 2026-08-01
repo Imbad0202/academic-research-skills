@@ -593,7 +593,7 @@ Lu ら（2026、*Nature* 651:914-919）からの洞察を統合 — ブライン
 
 - **7 モード AI Research Failure Mode Checklist** — 疑われる実装バグ、ハルシネーション結果、shortcut reliance、bug-as-insight、方法論の捏造、フレームロックに対して Stage 2.5/4.5 でパイプラインをブロック。既存の 5 タイプ引用ハルシネーション分類を拡張。
 - **Reviewer Calibration Mode**（academic-paper-reviewer v1.8）— ユーザー提供ゴールドセットに対するオプトイン FNR/FPR/balanced-accuracy 測定。5× アンサンブル、クロスモデル default-on、session-scoped confidence disclosure。
-- **Disclosure Mode**（academic-paper v2.9）— venue 固有 AI 使用ステートメントジェネレーター。v1 は ICLR、NeurIPS、Nature、Science、ACL、EMNLP をカバー。（その後拡張：v2 データベース（#596）は 9 つの医学出版ポリシー対象 — ICMJE、NEJM、The Lancet、JAMA、BMJ、PLOS、Frontiers、およびデータベース初の中国語ポリシー対象 2 件（出版社横断の Chinese Nursing Journals Publishing House（`中华护理杂志社`）と単一誌の International Eye Science（`国际眼科杂志`））— を追加。）
+- **Disclosure Mode**（academic-paper v2.9）— 既定の venue パスは `REQUIRED`、`ACTION_ONLY`、`NOT_REQUIRED`、`UNKNOWN` の適用結果と、必要な場合は型付き停止状態を返す。policy-anchor パスは独立した anchor 固有のレンダリング契約を使う。v1 は ICLR、NeurIPS、Nature、Science、ACL、EMNLP をカバー。（その後拡張：v2 データベース（#596）は 9 つの医学出版ポリシー対象 — ICMJE、NEJM、The Lancet、JAMA、BMJ、PLOS、Frontiers、およびデータベース初の中国語ポリシー対象 2 件（出版社横断の Chinese Nursing Journals Publishing House（`中华护理杂志社`）と単一誌の International Eye Science（`国际眼科杂志`））— を追加。）
 - **Early-Stopping Criterion**（academic-pipeline v3.1）— パイプライン開始時の収束チェック + 予算透明性。
 - **Fidelity-Originality Mode Spectrum** — Lu 2026 Fig 1c に従い 3 スキルにわたるすべてのモードを分類。
 - 新バージョン: academic-paper v2.9、academic-paper-reviewer v1.8、academic-pipeline v3.1

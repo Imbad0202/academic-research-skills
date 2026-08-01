@@ -12,7 +12,7 @@ This protocol document is the runtime instruction set the LLM follows when the u
 
 ## 0. Why this protocol exists
 
-ARS's v3.2 `disclosure` mode renders venue-targeted AI disclosure text (15 policy targets as of the v2 database: ICLR, NeurIPS, Nature, Science, ACL, EMNLP, plus the #596 medical-publishing set — see `venue_disclosure_policies.md`). The 4-anchor `--policy-anchor=<a>` track parallels v3.2's venue track when the author targets a **policy anchor** (PRISMA-trAIce, ICMJE, Nature Portfolio, IEEE) rather than a specific journal venue. The two tracks coexist; v3.2 venue path remains the default for journal submissions.
+ARS's v3.2 `disclosure` mode renders a venue-targeted applicability/status bundle (`REQUIRED`, `ACTION_ONLY`, `NOT_REQUIRED`, or `UNKNOWN`, plus typed fail-closed halt status; 15 policy targets as of the v2 database: ICLR, NeurIPS, Nature, Science, ACL, EMNLP, plus the #596 medical-publishing set — see `venue_disclosure_policies.md`). The 4-anchor `--policy-anchor=<a>` track instead uses the anchor-specific output contract below when the author targets a **policy anchor** (PRISMA-trAIce, ICMJE, Nature Portfolio, IEEE) rather than a specific journal venue. The two tracks coexist; v3.2 venue path remains the default for journal submissions.
 
 ---
 
@@ -31,6 +31,14 @@ ARS's v3.2 `disclosure` mode renders venue-targeted AI disclosure text (15 polic
 ## 2. Whole-disclosure decision — §3 G10 7-row precedence table
 
 Rows are evaluated in priority order from top to bottom; the renderer emits the output of the **first** row whose precondition matches. Subsequent rows do not fire. This table is the §4.3 **G3 / G10 invariant** in load-bearing form.
+
+Before evaluating this table, apply the shared Phase-2 intake-integrity gate in
+`disclosure_mode_protocol.md`: a `USED` `OTHER / UNCLASSIFIED` category halts
+until the author maps it to an executable category. Row 4 cannot render from an
+unclassified-use record; emit an honest "AI-disclosure intake incomplete —
+unclassified use requires author mapping" annotation instead. The same
+intake-pending annotation applies when the shared external-use inventory is not
+author-confirmed.
 
 | # | Precondition (first match wins) | Whole-disclosure output |
 |---|---|---|
