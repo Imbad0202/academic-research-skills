@@ -349,6 +349,14 @@ id = "608-e4-dispatch-harness"
 path = "scripts/test_dispatch_e4_panel.py"
 
 [[pytest]]
+id = "616-e4-promotion-integrity"
+path = "scripts/test_check_e4_promotion.py"
+
+[[pytest]]
+id = "616-e4-resume-record"
+path = "scripts/test_resume_e4_record.py"
+
+[[pytest]]
 id = "611-reviewer-sprint-prompt-sync"
 path = "scripts/test_check_reviewer_sprint_prompt_sync.py"
 

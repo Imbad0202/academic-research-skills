@@ -43,12 +43,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_panel_synthesis as panel  # noqa: E402
+import _e4_evidence as e4_evidence  # noqa: E402
 from _skill_lint import heading_section  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 SET_ROOT = REPO / "evals" / "heldout" / "reviewer_seeded_defects"
 CONTRACT = REPO / "shared" / "contracts" / "reviewer" / "full.json"
 EVIDENCE_CONTRACT = "reviewer-e4/2026-07-27"
+RECOVERY_STATE_SCHEMA = "reviewer-e4-recovery/1"
+RECOVERY_STATE_FILE = "recovery-state.json"
 
 # The frozen 2026-07-24 dispatch ORDER. The seat SET is derived from the
 # contract, so a mode or panel_size change cannot leave the harness dispatching
@@ -827,6 +830,98 @@ class PanelResult:
         }
 
 
+def recovery_state_payload(result: PanelResult, bundle: Bundle, *,
+                           model_id: str, suite_commit: str, date: str,
+                           dispatch_note: str,
+                           working_tree_dirty: bool = False) -> dict:
+    """The event ledger needed to re-emit a record after install failure.
+
+    The ledger deliberately contains no closed status field. Recovery rebuilds
+    those fields through ``build_record`` after rechecking the named artifacts
+    and this byte manifest. The file lives only in the evidence bundle and is
+    never copied into either model sandbox or prompt.
+    """
+    abort = None
+    if result.abort is not None:
+        abort = {
+            "stage": result.abort.stage,
+            "exit_code": result.abort.exit_code,
+            "diagnostic": result.abort.diagnostic,
+            "log_name": result.abort.log_name,
+            "form": result.abort.form,
+        }
+    return {
+        "schema": RECOVERY_STATE_SCHEMA,
+        "evidence_contract": EVIDENCE_CONTRACT,
+        "context": {
+            "model_id": model_id,
+            "suite_commit": suite_commit,
+            "date": date,
+            "dispatch_note": dispatch_note,
+            "working_tree_dirty": working_tree_dirty,
+        },
+        "result": {
+            "fixture": result.fixture,
+            "condition": result.condition,
+            "replicate": result.replicate,
+            "completed_stages": list(result.completed_stages),
+            "canary": list(result.canary),
+            "retries": [
+                {
+                    "role": event.role,
+                    "stage": event.stage,
+                    "diagnostic": event.diagnostic,
+                    "rejected_response_location":
+                        event.rejected_response_location,
+                    "checker_output_location": event.checker_output_location,
+                    "form": event.form,
+                }
+                for event in result.retries
+            ],
+            "abort": abort,
+        },
+        "bundle_manifest": e4_evidence.tree_manifest(
+            bundle.root, exclude={RECOVERY_STATE_FILE}),
+    }
+
+
+def ensure_recovery_state(result: PanelResult, bundle: Bundle, *,
+                          model_id: str, suite_commit: str, date: str,
+                          dispatch_note: str,
+                          working_tree_dirty: bool = False) -> dict:
+    """Install the recovery ledger write-once, or verify an exact retry."""
+    payload = recovery_state_payload(
+        result, bundle, model_id=model_id, suite_commit=suite_commit,
+        date=date, dispatch_note=dispatch_note,
+        working_tree_dirty=working_tree_dirty,
+    )
+    serialized = json.dumps(payload, indent=1, ensure_ascii=False) + "\n"
+    path = bundle.root / RECOVERY_STATE_FILE
+    if path.is_symlink():
+        raise PreconditionFailure(
+            f"existing {RECOVERY_STATE_FILE} is a symlink; refusing "
+            "redirected recovery evidence")
+    if path.exists():
+        try:
+            e4_evidence.assert_plain_file(path, bundle.root)
+        except e4_evidence.EvidencePathError as failure:
+            raise PreconditionFailure(
+                f"existing {RECOVERY_STATE_FILE} is not a plain file") \
+                from failure
+        try:
+            existing = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as failure:
+            raise PreconditionFailure(
+                f"existing {RECOVERY_STATE_FILE} is unreadable") from failure
+        if existing != serialized:
+            raise PreconditionFailure(
+                f"existing {RECOVERY_STATE_FILE} disagrees with the current "
+                "event ledger or preserved bundle")
+        return payload
+    bundle.write(RECOVERY_STATE_FILE, serialized)
+    return payload
+
+
 AGENT_DIR = REPO / "academic-paper-reviewer" / "agents"
 AGENT_FILES = {
     "field_analyst": "field_analyst_agent.md",
@@ -1192,6 +1287,7 @@ def dispatch_panel(*, fixture: str, condition: str, replicate: int,
                 "[DELIVERABLE-MISSING: field_analysis omits or duplicates "
                 f"{', '.join(missing_cards)}]",
                 "field_analysis.deliverable.log")
+        bundle.journal("COMPLETE field_analysis")
         result.completed_stages.append("field_analysis")
 
         # §6 independent cycles: a failure in one seat must not pause the
@@ -1203,6 +1299,7 @@ def dispatch_panel(*, fixture: str, condition: str, replicate: int,
             try:
                 phase1_name, phase1_text = _run_phase1(
                     transport, bundle, sandboxes, prompts, role, result)
+                bundle.journal(f"COMPLETE {role}.phase1")
                 result.completed_stages.append(f"{role}.phase1")
                 # Cards exist for seats 1-4 only. Six superseded-namespace
                 # analyses spontaneously emit a Card #5 (none of the 18
@@ -1214,6 +1311,7 @@ def dispatch_panel(*, fixture: str, condition: str, replicate: int,
                     transport, bundle, sandboxes, prompts, role, result,
                     phase1_name, phase1_text, manuscript,
                     card_for(analysis, number) if number <= 4 else None)
+                bundle.journal(f"COMPLETE {role}.phase2")
                 result.completed_stages.append(f"{role}.phase2")
                 cards[role] = (card_name, card_text)
             except PanelAborted as failure:
@@ -1248,6 +1346,7 @@ def dispatch_panel(*, fixture: str, condition: str, replicate: int,
 
         _run_synthesis(transport, bundle, sandboxes, prompts, result, seats,
                        cards, analysis, manuscript)
+        bundle.journal("COMPLETE synthesis")
         result.completed_stages.append("synthesis")
     except PanelAborted as abort:
         # Best-effort writes throughout the handlers: an exception raised
@@ -1798,6 +1897,19 @@ def emit(result: PanelResult, bundle: Bundle, out_dir: Path, *,
     paraphrase.
     """
     stem = stem_for(result, date)
+    if result.abort is not None and not bundle.resolves(
+            result.abort.log_name):
+        # Recovery must see the same evidence normal emission sees. Give a
+        # missing terminal artifact the contract's one byte-equal repair
+        # BEFORE the bundle manifest is frozen; if even this write fails, the
+        # recovery path will correctly refuse the insufficient bundle.
+        _try_write(bundle, result.abort.log_name,
+                   result.abort.diagnostic + "\n")
+    ensure_recovery_state(
+        result, bundle, model_id=model_id, suite_commit=suite_commit,
+        date=date, dispatch_note=dispatch_note,
+        working_tree_dirty=working_tree_dirty,
+    )
     aborted = result.abort is not None or (
         result.provenance_status(bundle) != "valid")
     runs = out_dir / "runs"
@@ -1817,7 +1929,7 @@ def emit(result: PanelResult, bundle: Bundle, out_dir: Path, *,
     # the identical fixture/condition/replicate identity.
     for existing in (runs / f"{stem}.json",
                      runs / "blocked" / f"{stem}.json"):
-        if existing.exists():
+        if os.path.lexists(existing):
             raise PreconditionFailure(
                 f"{stem} is already recorded at {existing.name}; refusing "
                 "to overwrite the account of that attempt"
@@ -1825,7 +1937,7 @@ def emit(result: PanelResult, bundle: Bundle, out_dir: Path, *,
     raw_dir.parent.mkdir(parents=True, exist_ok=True)
     moved_from = None
     if bundle.root.resolve() != raw_dir.resolve():
-        if raw_dir.exists():
+        if os.path.lexists(raw_dir):
             raise PreconditionFailure(
                 f"{raw_dir.name} already holds a bundle; refusing to "
                 "relocate onto preserved evidence"
@@ -1865,15 +1977,6 @@ def emit(result: PanelResult, bundle: Bundle, out_dir: Path, *,
             date=date, dispatch_note=dispatch_note, location_prefix=prefix,
             working_tree_dirty=working_tree_dirty,
         )
-        if result.abort is not None and not bundle.resolves(
-                result.abort.log_name):
-            # The contract's MUST: a terminal abort's named artifact has
-            # to resolve. A lost or failed best-effort write gets ONE
-            # rewrite here -- the bytes ARE the diagnostic, so the
-            # record-artifact equality holds by construction. Only when
-            # this too fails does the downgrade below take over.
-            _try_write(bundle, result.abort.log_name,
-                       result.abort.diagnostic + "\n")
         # The predicate the contract states, enforced at runtime and not
         # only in tests: a prefix or layout mistake must downgrade the
         # attestation.
@@ -1894,6 +1997,10 @@ def emit(result: PanelResult, bundle: Bundle, out_dir: Path, *,
                 record_dir = runs / "blocked"
                 new_raw = runs / "raw" / "blocked" / stem
                 new_raw.parent.mkdir(parents=True, exist_ok=True)
+                if os.path.lexists(new_raw):
+                    raise PreconditionFailure(
+                        f"{new_raw.name} already holds a bundle; refusing "
+                        "to relocate onto preserved evidence")
                 bundle.root.rename(new_raw)
                 bundle = Bundle(new_raw)
                 record_dir.mkdir(parents=True, exist_ok=True)
@@ -1931,7 +2038,7 @@ def emit(result: PanelResult, bundle: Bundle, out_dir: Path, *,
             # has not yet installed is excluded by O_EXCL above.
             for existing in (runs / f"{stem}.json",
                              runs / "blocked" / f"{stem}.json"):
-                if existing.exists():
+                if os.path.lexists(existing):
                     raise PreconditionFailure(
                         f"{stem} is already recorded at "
                         f"{existing.name}; refusing to overwrite the "

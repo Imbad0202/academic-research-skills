@@ -318,6 +318,12 @@ What it changes, and why each is a property rather than a step:
   an aborted panel, with every `*_location` already record-relative. Nothing
   has to be rewritten at commit time — that rewrite is what previously turned
   a verbatim diagnostic into a paraphrase.
+- **Every emission freezes a recovery event ledger before installing the
+  record.** `recovery-state.json` stays inside the raw bundle, never enters a
+  model sandbox or prompt, and contains no closed status field. It records the
+  invocation context, the dispatch/retry/abort event ledger, and a path/type/
+  SHA-256 manifest of the preserved bundle. Normal emission and recovery both
+  feed that ledger back through the same status derivation and record builder.
 - **A completed panel carries `adjudication.status: "pending"`.** The harness
   cannot adjudicate `per_defect` — that needs the held-out manifest, which must
   never enter a session — so the maintainer fills the verdicts before the
@@ -380,12 +386,46 @@ fault after the panel completes leaves one of two recoverable states,
 neither of them silent. (1) Any staged-write or install failure: the
 staged temp file is removed, the bundle is rolled back into the work
 directory, no record exists, and the identity is NOT consumed — the
-evidence is intact on disk, but re-emitting it needs a fresh dispatch
-(a fresh work directory re-runs the panel; there is no
-resume-from-bundle CLI in this version, a declared bound). (2) Rollback
-failure on top of (1): the bundle stays under `runs/raw/<stem>` with no
-record beside it; the console names the fault, and the bundle is the
-complete account of the attempt for manual reconstruction.
+evidence is intact at `<work-dir>/bundle`. (2) Rollback failure on top
+of (1): the bundle stays under its canonical `runs/raw/<stem>` or
+`runs/raw/blocked/<stem>` path with no record beside it; the console
+names the fault. In either state, re-emit without a model call:
+
+```bash
+python3 scripts/resume_e4_record.py \
+  --work-dir /tmp/e4-run \
+  --bundle /tmp/e4-run/bundle
+```
+
+For state (2), pass that canonical raw-bundle path to `--bundle` instead.
+The command accepts no fixture, condition, replicate, status, diagnostic, or
+provenance override: it reads them from `recovery-state.json`, verifies the
+bundle manifest, the append-only completion/retry/abort journal witnesses, and
+the already-preserved checker PASS markers, then calls the original atomic
+emission path. It refuses missing, inserted, changed, symlinked, ambiguous,
+already-recorded, non-canonical, or internally inconsistent evidence. It is
+record re-emission after a completed dispatch/abort only — never continuation
+of an interrupted panel, transport retry, checker re-run, or manual
+reconstruction. Bundles created before `recovery-state.json` shipped are not
+recoverable by this command and fail closed.
+
+**Promotion-time copy check.** After copying the one record and its raw bundle
+from a work directory into this set, verify the copy before staging it:
+
+```bash
+python3 scripts/check_e4_promotion.py \
+  --source-root /tmp/e4-run \
+  --destination-root evals/heldout/reviewer_seeded_defects \
+  --stem 2026-08-01-ms00_clean-post-r1
+```
+
+The checker requires the canonical scored/blocked layout, exactly one record
+namespace, a complete and identical relative path/type set, SHA-256 identity
+for the record and every raw file, and safe record-relative resolution of
+`raw_bundle` plus every `*_location`. It rejects missing, extra, changed,
+redirected, symlinked, or unresolved promoted artifacts. It validates only the
+copy boundary; it never reinterprets model output, checker verdicts,
+adjudication, or closed status fields.
 
 ## Integrity checking
 
