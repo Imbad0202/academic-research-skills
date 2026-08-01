@@ -334,7 +334,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 **[Yaobin29](https://github.com/Yaobin29)** — 기여자. [PR #433](https://github.com/Imbad0202/academic-research-skills/pull/433)에서 리뷰어 응답 도구를 제안했습니다. `deep-research three-way-scan` 모드와 `academic-paper rebuttal-audit` 모드(해당 PR의 `audit` 개념을 발전시킨 기능)가 v3.12.1에서 정식으로 통합되었습니다.
 
-**[ktao732084-arch](https://github.com/ktao732084-arch)** — 기여자. `academic-paper`의 disclosure 시스템에 9개의 의학 출판 정책 대상, 대상별 필수 사실 입력 수집, fail-closed 독립형 렌더링을 추가해 확장했습니다([Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596), [PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)). 또한 EQUATOR 임상 보고 참고자료에 CARE, STARD, TRIPOD+AI 요약 지침과 fail-closed 연구 설계 라우팅을 추가했습니다([Issue #594](https://github.com/Imbad0202/academic-research-skills/issues/594), [PR #601](https://github.com/Imbad0202/academic-research-skills/pull/601)).
+**[ktao732084-arch](https://github.com/ktao732084-arch)** — 기여자. `academic-paper`의 disclosure 시스템에 9개의 의학 출판 정책 대상, 대상별 필수 사실 입력 수집, fail-closed 독립형 렌더링을 추가해 확장했습니다([Issue #596](https://github.com/Imbad0202/academic-research-skills/issues/596), [PR #599](https://github.com/Imbad0202/academic-research-skills/pull/599)). 또한 EQUATOR 임상 보고 참고자료에 CARE, STARD, TRIPOD+AI 요약 지침과 fail-closed 연구 설계 라우팅을 추가했습니다([Issue #594](https://github.com/Imbad0202/academic-research-skills/issues/594), [PR #601](https://github.com/Imbad0202/academic-research-skills/pull/601)). 아울러 독립형 중국어 문헌 리졸버, API 프로토콜, 합성 전송 fixture 테스트 스위트를 설계하고 기여했습니다([Issue #595](https://github.com/Imbad0202/academic-research-skills/issues/595), [PR #600](https://github.com/Imbad0202/academic-research-skills/pull/600)).
 
 ---
 

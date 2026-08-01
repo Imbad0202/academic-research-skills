@@ -15,22 +15,23 @@ hand-verified live examples (re-verified 2026-07-27) these shapes are modelled
 on. Nothing in this directory contains a real record, a real person's name, or
 any credential.
 
-Identifiers are **structurally unmintable**, not merely "currently unused" — the
-sibling README records a first-draft "plausible" ID that turned out to resolve to
-a real paper (cross-model review P1):
+Identifiers use conspicuously synthetic suffixes for this hermetic fixture set.
+They are not claims about the live DOI namespace — the sibling README records a
+first-draft "plausible" ID that turned out to resolve to a real paper
+(cross-model review P1):
 
-- DOI prefix `10.5555` is the reserved DOI example/test prefix (its real RA
-  answer is Crossref, verified 2026-07-27); no DOI under it resolves, so the
-  suffix namespaces `10.5555/ars.cn.istic.*` and `10.5555/ars.cn.cnki.*` can
-  never collide with a real record. They distinguish the two RA branches under
-  test.
+- DOI prefix `10.5555` is registered with Crossref and resolvable records do
+  exist under it. The deliberately conspicuous suffix namespaces
+  `10.5555/ars.cn.istic.*` and `10.5555/ars.cn.cnki.*` distinguish synthetic
+  routing branches only; tests never contact the live DOI service or infer that
+  the prefix is structurally unmintable.
 - The `RA` values in `ra_istic.json` / `ra_cnki.json` are therefore **synthetic
   routing answers**: `10.5555` is not really registered with ISTIC or CNKI. The
   real prefix→RA triage table (`10.3760` → ISTIC, `10.13209` → CNKI, `10.1360`
   → Crossref) is documented and dated in the protocol doc; these fixtures only
   need to exercise the client's three routing branches.
 - `ra_unknown_prefix.json` mirrors the endpoint's real unknown-prefix shape
-  (verified 2026-07-27: `/ra/10.99999` → `[{"DOI": "10.99999", "status": "DOI
+  (verified 2026-07-27: `/doiRA/10.99999` → `[{"DOI": "10.99999", "status": "DOI
   does not exist"}]` — a `status` field in place of `RA`), keyed to `10.99999`,
   a prefix the DOI Foundation reports as nonexistent.
 - PMIDs `999999901` / `999999902` are far beyond PubMed's assignment range.
@@ -46,7 +47,7 @@ a real paper (cross-model review P1):
 
 | file | shape exercised |
 |---|---|
-| `ra_istic.json` / `ra_cnki.json` / `ra_crossref.json` | `doi.org/ra/<prefix>` — the three routing branches |
+| `ra_istic.json` / `ra_cnki.json` / `ra_crossref.json` | `doi.org/doiRA/<prefix>` — the three routing branches |
 | `ra_unknown_prefix.json` | the endpoint's real unknown-prefix answer: a `status` field, no `RA` key (must yield "no agency", not a degradation) |
 | `istic_csl_hit.json` | ISTIC content negotiation: CSL-JSON with the Chinese title |
 | `istic_csl_other_title.json` | same DOI resolving to a different title (chimeric-citation shape) |
@@ -57,6 +58,8 @@ a real paper (cross-model review P1):
 | `esearch_coverage_hit.json` / `esearch_coverage_zero.json` | journal-coverage confirmation (≥1 PubMed record vs none) |
 | `esearch_coordinate_hit.json` / `_zero.json` / `_ambiguous.json` | the `[ta]+[vi]+[pg]` coordinate query: unique hit, fabricated page, multi-record |
 | `esummary_hit.json` | esummary projection, including the **English bracketed shadow title** PubMed stores for Chinese-language articles |
+| `esummary_no_doi.json` | a unique PubMed coordinate candidate with no DOI; it must remain unverified |
+| `esummary_unknown_ra.json` | a candidate whose DOI uses the synthetic unknown prefix, so RA absence cannot be confused with a mismatched echo |
 | `esummary_year_mismatch.json` | a record at the cited coordinates whose year disagrees |
 | `esummary_issn_mismatch.json` | a record at the cited coordinates whose journal ISSN disagrees with the bridged ISSN |
 | `error_5xx.html` | 5xx body, attached as the `HTTPError` payload for transport realism (the client reads only the code/reason) |
