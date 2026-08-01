@@ -367,3 +367,7 @@ path = "scripts/test_check_reviewer_role_label.py"
 [[pytest]]
 id = "611-calibration-tiers"
 path = "scripts/test_check_calibration_tiers.py"
+
+[[pytest]]
+id = "619-disclosure-closeout"
+path = "scripts/test_check_619_disclosure_closeout.py"
