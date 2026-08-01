@@ -35,8 +35,8 @@ Detected that you have a complete paper — you can proceed directly to Stage 3 
 Before starting, let me confirm a few things:
 1. What's the paper structure? (IMRaD / other)
 2. What review mode would you like?
-   - full: Complete 4-person review (EIC + 3 Peer Reviewers)
-   - quick: EIC quick assessment (15-minute version)
+   - full: Complete 4-person review (Journal-Fit Reviewer + 3 Peer Reviewers)
+   - quick: Journal-Fit Reviewer quick assessment (15-minute version)
    - guided: Socratic guided review (interactive dialogue)
 3. Which journal (or what tier) are you targeting?
 4. Will you need revision and format conversion after the review?
@@ -53,7 +53,7 @@ Got it. Pipeline configuration:
 
   Stage 1 RESEARCH    [--] Skipped (you already have a research foundation)
   Stage 2 WRITE       [--] Skipped (you already have a complete paper)
-  Stage 3 REVIEW:     quick -- EIC quick assessment first, checking the big picture
+  Stage 3 REVIEW:     quick -- Journal-Fit Reviewer quick assessment first, checking the big picture
   Stage 4 REVISE:     TBD -- based on Stage 3 results
   Stage 5 FINALIZE:   TBD -- when needed
 
@@ -83,12 +83,12 @@ Paper domain: Educational Data Mining / Higher Education
 Method type: Machine Learning (Supervised Classification)
 Target journal: Computers & Education (SSCI Q1, IF: 12.0)
 
-EIC Persona:
+Journal-Fit Reviewer Persona:
   Computers & Education Associate Editor
   Specialization: Learning Analytics, Educational AI
 ```
 
-**EIC Quick Assessment:**
+**Journal-Fit Reviewer Quick Assessment:**
 
 ```
 Overall: Promising but needs work (Minor-to-Major Revision range)
@@ -119,7 +119,7 @@ Quick Verdict: Major Revision
 ```
 
 **Stage 3 Deliverables:**
-- EIC Quick Assessment Report
+- Journal-Fit Reviewer Quick Assessment Report
 - 3 key issues list (priority sorted)
 
 ---
@@ -243,7 +243,8 @@ freeze in re_review_mode_protocol.md § Yardstick Continuity governs re-review m
 
 **Reviewer Configuration:**
 ```
-EIC:        Computers & Education Associate Editor
+Journal-Fit Reviewer (serialized source ID EIC):
+            Computers & Education Associate Editor
             Educational AI, Learning Analytics
 Reviewer 1: Machine Learning expert
             Predictive modeling, Model evaluation
@@ -256,7 +257,7 @@ Reviewer 3: Research Ethics / Data Science ethicist
 **4 Review Reports Compiled:**
 
 ```
-EIC: Minor Revision
+Journal-Fit Reviewer: Minor Revision
   - C1 response adequate, Ethics section well-structured
   - Recommend updating Abstract to reflect new ethics + interpretability contributions
   - Recommend adding a Practical Implications section for university administrators

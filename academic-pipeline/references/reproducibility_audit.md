@@ -7,7 +7,7 @@ v2.0 design ensures consistent quality assurance with each execution:
 | Guarantee Item | Mechanism |
 |---------------|-----------|
 | Integrity check every time | Stage 2.5 + Stage 4.5 are **mandatory** stages, cannot be skipped |
-| Consistent review angles | EIC + R1/R2/R3 + Devil's Advocate — five fixed perspectives |
+| Consistent review angles | Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate — five fixed perspectives |
 | Consistent verification methods | integrity_verification_agent uses standardized search templates |
 | Consistent quality thresholds | Integrity check PASS/FAIL criteria are explicit (zero SERIOUS + zero MEDIUM + zero MAJOR_DISTORTION + zero UNVERIFIABLE) |
 | Traceable workflow | Every stage's deliverables are recorded, enabling retrospective audit |

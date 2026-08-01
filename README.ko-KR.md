@@ -81,7 +81,7 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 - **Deep Research** — 소크라테스식 가이드 모드, PRISMA 체계적 문헌고찰, 의도 감지, 대화 건강도 모니터링, 선택적 교차 모델 DA, Semantic Scholar API 검증을 갖춘 13개 에이전트 연구팀.
 - **Academic Paper** — Style Calibration, Writing Quality Check, LaTeX 하드닝, 시각화, 수정 코칭, 인용 변환, anti-leakage 프로토콜, VLM 그림 검증을 갖춘 12개 에이전트 논문 작성.
-- **Academic Paper Reviewer** — 0–100 품질 루브릭(EIC + 동적 리뷰어 3명 + Devil's Advocate), 양보 임계값 프로토콜, 공격 강도 보존, 선택적 교차 모델 DA 비평 / 캘리브레이션, R&R 추적 매트릭스, 읽기 전용 제약을 갖춘 7개 에이전트 다관점 동료 심사.
+- **Academic Paper Reviewer** — 0–100 품질 루브릭(Journal-Fit Reviewer + 동적 리뷰어 3명 + Devil's Advocate), 양보 임계값 프로토콜, 공격 강도 보존, 선택적 교차 모델 DA 비평 / 캘리브레이션, R&R 추적 매트릭스, 읽기 전용 제약을 갖춘 7개 에이전트 다관점 동료 심사.
 - **Academic Pipeline** — 적응형 체크포인트, 주장 검증, Material Passport, 선택적 `repro_lock`, 선택적 교차 모델 무결성 검증, 대화 중 강화, 점수 궤적 추적을 갖춘 10단계 파이프라인 오케스트레이터.
 - **Data Access Level Metadata** (v3.3.2+) — 모든 스킬이 `data_access_level`(`raw` / `redacted` / `verified_only`)을 선언하며, `scripts/check_data_access_level.py`로 강제됩니다. Anthropic의 automated-w2s-researcher (2026)에서 패턴을 차용했습니다. 자세한 내용은 [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md)를 참조하세요.
 - **Task Type Annotation** (v3.3.2+) — 모든 스킬이 `task_type`(`open-ended` 또는 `outcome-gradable`)을 선언합니다. 현재 모든 ARS 스킬은 `open-ended`입니다.
@@ -103,7 +103,7 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 | [Final Paper (ZH)](examples/showcase/full_paper_zh_apa7.pdf) | 중국어 버전, APA 7.0 |
 | [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: 날조된 참고문헌 15건 + 통계 오류 3건 적발 |
 | [Integrity Report — Final](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5: 회귀 없음 확인 |
-| [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | EIC + 리뷰어 3명 + Devil's Advocate |
+| [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 리뷰어 3명 + Devil's Advocate |
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | 수정 후 검증 |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | 후속 심사 |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | 항목별 저자 응답 |
@@ -188,7 +188,7 @@ You: "status"
 #### Academic Paper Reviewer (6개 모드)
 
 ```
-"Review this paper"                                   → full 모드 (EIC + R1/R2/R3 + Devil's Advocate)
+"Review this paper"                                   → full 모드 (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)
 "Quick assessment of this paper"                      → quick 모드
 "Guide me to improve this paper"                      → guided 모드
 "Check the methodology"                               → methodology-focus 모드
@@ -249,7 +249,7 @@ You: "status"
 
 ### Academic Paper Reviewer (v1.10.0)
 
-**0-100 품질 루브릭**을 갖춘 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. **결정 매핑:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. 1차 심사팀 대 좁은 re-review 팀 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
+**0-100 품질 루브릭**을 갖춘 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. **결정 매핑:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
 ### Academic Pipeline (v3.19.0)
 

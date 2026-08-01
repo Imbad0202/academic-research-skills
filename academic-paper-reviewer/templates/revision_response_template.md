@@ -45,10 +45,10 @@ This template helps authors systematically respond to all review comments. The f
 
 ---
 
-## Response to Editor (EIC)
+## Response to Journal-Fit Reviewer
 
-### Editor Comment 1
-> [Direct quote of the EIC's comment]
+### Journal-Fit Reviewer Comment 1
+> [Direct quote of the Journal-Fit Reviewer's comment]
 
 **Author Response**: [Response]
 
@@ -56,7 +56,7 @@ This template helps authors systematically respond to all review comments. The f
 
 ---
 
-### Editor Comment 2
+### Journal-Fit Reviewer Comment 2
 > [Direct quote]
 
 **Author Response**: [Response]
@@ -65,7 +65,7 @@ This template helps authors systematically respond to all review comments. The f
 
 ---
 
-[Repeat the above format for each EIC comment]
+[Repeat the above format for each Journal-Fit Reviewer comment]
 
 ---
 

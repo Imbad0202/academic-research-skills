@@ -8,7 +8,7 @@ Provides calibrated scoring rubrics for the 7 review dimensions used by all revi
 
 These rubrics define *what* to measure, not *how accurate* the measurement is. A single LLM reviewer's absolute rubric score has calibration error that depends on domain, paper type, and model version.
 
-For users who want to know this reviewer's empirical FNR / FPR / balanced accuracy before relying on these rubric scores, run the opt-in **calibration mode** (see `calibration_mode_protocol.md`). Calibration mode compares this reviewer's decisions against a user-supplied gold set and produces a Calibration Report that attaches as a confidence disclosure to subsequent reviews in the same session.
+For users who want to know this reviewer's empirical FNR / FPR / balanced accuracy before relying on these rubric scores, run the opt-in **calibration mode** full tier (see `calibration_mode_protocol.md`). Full calibration compares decisions against 5-20 user-labelled papers with repeated runs and attaches a measured-profile disclosure. The explicitly selected 3-paper directional tier is cheaper but yields only raw direction/boundary counts; its disclosure must say that it is directional evidence, not an error-rate estimate.
 
 Without calibration, treat rubric scores as *ordinally* meaningful (papers scored 85 are better than papers scored 65) but *not cardinally* interpretable (a 85 does not guarantee venue acceptance).
 

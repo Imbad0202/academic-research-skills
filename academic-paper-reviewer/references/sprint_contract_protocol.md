@@ -4,6 +4,10 @@
 > Schema: `shared/sprint_contract.schema.json` (Schema 13.2).
 > Templates: `shared/contracts/reviewer/*.json`.
 > Design spec: `docs/design/2026-04-23-ars-v3.6.2-sprint-contract-design.md`.
+> Canonical inline prompt source: `references/reviewer_sprint_prompt_source.md`.
+> Its rendered fragments remain in the five reviewer agents and synthesizer because
+> the dispatcher sends those prompt sections verbatim; `scripts/check_reviewer_sprint_prompt_sync.py`
+> enforces byte-exact mirrors plus an explicit content-hash re-pin.
 >
 > **v3.6.6 cross-reference**: this reviewer protocol is byte-equivalent across v3.6.2 → v3.6.6 (zero-touch promise per §3.6 of `docs/design/2026-04-27-ars-v3.6.6-generator-evaluator-contract-design.md`). The v3.6.6 release adds a parallel generator-evaluator protocol inside `academic-paper` for the in-pair writer / evaluator pair (see `academic-paper/SKILL.md` § "v3.6.6 Generator-Evaluator Contract Protocol" and design doc §5).
 
@@ -99,8 +103,8 @@ On any Phase 2 lint failure other than multi-dissent: emit `[PROTOCOL-VIOLATION]
 
 | mode                          | panel_size | invoked reviewers |
 |-------------------------------|------------|-------------------|
-| `reviewer_full`               | 5          | EIC + methodology + domain + perspective + DA |
-| `reviewer_methodology_focus`  | 2          | EIC + methodology (only) |
+| `reviewer_full`               | 5          | Journal-Fit Reviewer (`eic`) + methodology + domain + perspective + DA |
+| `reviewer_methodology_focus`  | 2          | Journal-Fit Reviewer (`eic`) + methodology (only) |
 | `reviewer_re_review`          | —          | NOT a Schema 13 mode (#576 Spec B — removed from the enum): governed by the dedicated contract family `shared/contracts/re_review/` + `scripts/check_re_review_synthesis.py`; see `re_review_mode_protocol.md` § Three-Gate Orchestration |
 | `reviewer_calibration`        | —          | not shipped in v3.6.2 |
 | `reviewer_guided`             | —          | not shipped in v3.6.2 |

@@ -223,7 +223,8 @@ Research paradigm: Pragmatism (mixed methods)
 Method type: Quantitative (secondary data analysis) + Qualitative (interviews)
 
 Reviewer Configuration:
-  EIC:        Journal of Education Policy Editor, specializing in economics of education
+  Journal-Fit Reviewer (serialized source ID EIC):
+              Journal of Education Policy Editor, specializing in economics of education
   Reviewer 1: Quantitative methods expert, specializing in education statistics and large database analysis
   Reviewer 2: Higher education management scholar, specializing in university governance and enrollment policy
   Reviewer 3: Demographer, specializing in declining birthrate and labor market, interdisciplinary perspective
@@ -338,7 +339,7 @@ Entering Stage 3' (RE-REVIEW) -- Loop 1/2
 
 Loading academic-paper-reviewer SKILL.md (re-review mode)...
 Passing Revised Draft + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 Revision Roadmap + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity)...
-EIC verifying each roadmap item (Round-1 reviewer configuration reused — field_analyst not re-run)...
+Journal-Fit Reviewer verifying each roadmap item (Round-1 reviewer configuration reused — field_analyst not re-run)...
 ```
 
 **Editorial Decision: Minor Revision**

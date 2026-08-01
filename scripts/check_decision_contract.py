@@ -111,7 +111,7 @@ EXPECTED_AUTHORITY_ROWS = (
         "Accept / Minor Revision / Major Revision / user_review_required "
         "(Reject is not a Stage 3' decision)",
     ),
-    ("`quick`", "EIC assessment only; advisory, not an editorial decision",
+    ("`quick`", "Journal-Fit Reviewer assessment only; advisory, not an editorial decision",
      "—", "signal"),
     ("`guided`", "Issue-list dialogue; no editorial decision letter",
      "—", "—"),

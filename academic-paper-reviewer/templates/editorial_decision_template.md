@@ -51,7 +51,7 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 
 | Reviewer | Role | Recommendation | Confidence |
 |----------|------|---------------|------------|
-| EIC | [Journal editor identity] | [Accept/Minor/Major/Reject] | [1-5] |
+| Journal-Fit Reviewer | [Senior-editor or associate-editor identity] | [Accept/Minor/Major/Reject] | [1-5] |
 | Reviewer 1 | [Methodology expert identity] | [Accept/Minor/Major/Reject] | [1-5] |
 | Reviewer 2 | [Domain expert identity] | [Accept/Minor/Major/Reject] | [1-5] |
 | Reviewer 3 | [Cross-disciplinary expert identity] | [Accept/Minor/Major/Reject] | [1-5] |

@@ -43,10 +43,10 @@ Last updated: v3.19.0 (2026-07-22)
 |------|----------|--------|-----------|----------|
 | `full` | Balanced | 5 review reports + Editorial Decision + Revision Roadmap | High | "review paper", "peer review", "manuscript review" |
 | `re-review` | Fidelity | Revision verification checklist + residual issues | Medium | "check revisions", "verification review" |
-| `quick` | Fidelity | EIC quick assessment + key issues list | Low | "quick review", "quick look" |
+| `quick` | Fidelity | Journal-Fit Reviewer quick assessment + key issues list | Low | "quick review", "quick look" |
 | `methodology-focus` | Fidelity | In-depth methodology review | Medium | "check methodology", "focus on methods" |
 | `guided` | Originality | Socratic issue-by-issue dialogue | Very High | "guide me to improve", "walk me through issues" |
-| `calibration` | Fidelity | Calibration Report (FNR/FPR/AUC) + confidence disclosure | Medium | "calibrate reviewer", "measure reviewer accuracy" |
+| `calibration` | Fidelity | Explicit 3-paper directional readout or default full Calibration Report + tier-scoped disclosure | Medium | "calibrate reviewer", "measure reviewer accuracy" |
 
 ## academic-pipeline (1 orchestrator + 1 resume mode)
 

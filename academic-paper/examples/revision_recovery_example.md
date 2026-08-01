@@ -27,7 +27,8 @@ Research paradigm: Post-positivism (mixed methods)
 Method type: Quantitative (quasi-experiment) + Qualitative (semi-structured interviews)
 
 Reviewer Configuration:
-  EIC:         Journal of Higher Education editor, specializing in student success and retention
+  Journal-Fit Reviewer (serialized source ID EIC):
+               Journal of Higher Education editor, specializing in student success and retention
   Reviewer 1:  Quantitative methodologist, specializing in quasi-experimental design and causal inference
   Reviewer 2:  Higher education technologist, specializing in AI applications in student services
   Reviewer 3:  Sociologist of education, specializing in equity and access in higher education
@@ -380,7 +381,7 @@ Entering Stage 3' (RE-REVIEW) -- Loop 1/2
 
 Loading academic-paper-reviewer SKILL.md (re-review mode)...
 Passing Revised Draft + Response to Reviewers + original Revision Roadmap + Editorial Decision Letter (#539) + apply report(s) (#390) + Round-1 Reviewer Configuration Cards (yardstick continuity)...
-EIC verifying each roadmap item (Round-1 reviewer configuration reused — field_analyst not re-run)...
+Journal-Fit Reviewer verifying each roadmap item (Round-1 reviewer configuration reused — field_analyst not re-run)...
 ```
 
 ### Revision Response Verification
@@ -419,7 +420,7 @@ Per the quality rubrics: 65-79 = Minor Revision, >= 80 = Accept. Score of 78.0 i
 ### Editorial Synthesizer Assessment
 
 ```
-EIC verification (Round-1 configuration reused): revision quality is strong.
+Journal-Fit Reviewer verification (Round-1 configuration reused): revision quality is strong.
 Every Round-1 concern — including R1's and the DA's — is checked against the
 revised manuscript per the Traceability Rule; the panel is not re-convened
 at re-review.

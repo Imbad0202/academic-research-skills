@@ -347,3 +347,15 @@ path = "scripts/test_check_persuasion_invariance_fixtures.py"
 [[pytest]]
 id = "608-e4-dispatch-harness"
 path = "scripts/test_dispatch_e4_panel.py"
+
+[[pytest]]
+id = "611-reviewer-sprint-prompt-sync"
+path = "scripts/test_check_reviewer_sprint_prompt_sync.py"
+
+[[pytest]]
+id = "611-reviewer-role-label"
+path = "scripts/test_check_reviewer_role_label.py"
+
+[[pytest]]
+id = "611-calibration-tiers"
+path = "scripts/test_check_calibration_tiers.py"

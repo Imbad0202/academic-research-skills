@@ -736,7 +736,7 @@ def check(root: Path) -> list[str]:
     _require(errors, skill_norm, SKILL_REL, "**Overlap suppression**",
              "overlap-suppression anti-pattern row (P0-3)")
     _require(errors, skill_norm, SKILL_REL,
-             "EIC opens with genuine strengths when they exist",
+             "Journal-Fit Reviewer opens with genuine strengths when they exist",
              "conditional guided-mode summary (A1/B1)")
     # DA-CRITICAL: visible adjudication on both SKILL surfaces, no
     # unconditional veto (round-7 P1).

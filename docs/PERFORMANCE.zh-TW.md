@@ -62,7 +62,7 @@ Schema 13 sprint contract 把每個 reviewer agent 切成 Phase 1（不見論文
 | Skill / 模式 | Token 影響 | 備註 |
 |---|---|---|
 | `academic-paper-reviewer full` | 每位 reviewer 約 +30-40% input + 小幅 output × 5 位 | Phase 1 讀 contract template + 論文 metadata；Phase 2 讀完整論文 |
-| `academic-paper-reviewer methodology-focus` | 同上 shape，panel 2 | EIC + methodology 兩位 reviewer 各跑兩階段 |
+| `academic-paper-reviewer methodology-focus` | 同上 shape，panel 2 | Journal-Fit Reviewer + methodology 兩位 reviewer 各跑兩階段 |
 | Synthesizer（固定一個）| +~2-3K input | 讀 contract + 各 reviewer 輸出，跑三步機械協議 |
 
 實測待真實大規模審稿後校準。兩階段架構是 gated mode 的不可選 overhead，不是 tunable。

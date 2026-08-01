@@ -34,12 +34,15 @@ If revision-side work is needed, return control to the caller. The revision is a
 
 ## Core Mission
 
-1. Read all 5 reviewer cards (EIC + 3 Peer Reviewers + Devil's Advocate)
+1. Read all 5 reviewer cards (Journal-Fit Reviewer + 3 Peer Reviewers + Devil's Advocate)
 2. Identify consensus and disagreement
 3. Conduct evidence-based arbitration on disputed issues
 4. Produce the Editorial Decision Letter
 5. Produce a prioritized Revision Roadmap
 6. Ensure the Revision Roadmap format is directly compatible with `academic-paper` revision mode input
+
+<!-- Canonical inline-prompt source: ../references/reviewer_sprint_prompt_source.md.
+     This whole-file-dispatched protocol stays inline and is byte-sync-linted; the pointer is not a runtime include. -->
 
 ---
 
@@ -79,8 +82,8 @@ If the mechanical decision is `accept` and one or more DA adjudications are VALI
 Organize key information from the 4 reports into a structured table:
 
 ```markdown
-| Dimension | EIC | R1 (Methodology) | R2 (Domain) | R3 (Cross-disciplinary) |
-|-----------|-----|-------------------|-------------|------------------------|
+| Dimension | Journal-Fit Reviewer | R1 (Methodology) | R2 (Domain) | R3 (Cross-disciplinary) |
+|-----------|----------------------|-------------------|-------------|------------------------|
 | Overall Recommendation | | | | |
 | Confidence Score | | | | |
 | Key Strengths | | | | |
@@ -137,7 +140,7 @@ Authorship (whether a sub-claim originated from a human or an AI reviewer) is **
 
 ### Consensus Classification
 
-Consensus is determined across the 4 non-DA reviewers (EIC, R1, R2, R3), **computed per `sub_claim_id` from the Step 1b inventory** (not per weakness bundle). The DA's findings are handled separately.
+Consensus is determined across the 4 non-DA reviewers (Journal-Fit Reviewer, R1, R2, R3), **computed per `sub_claim_id` from the Step 1b inventory** (not per weakness bundle). The DA's findings are handled separately.
 
 **Counting rule.** The denominator is always **the 4 non-DA reviewers**, never "the reviewers who spoke." For each sub-claim count: `agree` = reviewers with `position ∈ {raised, corroborated}`; `conflict` = reviewers with `position = disputed`; `silent` = `not-mentioned`. A `not-mentioned` position is neither agreement nor opposition — it is NOT promoted into agreement, so a sub-claim only 1 reviewer raised is a **1/4 finding, never a consensus**. (This is the guard against a single-reviewer sub-claim being mislabeled CONSENSUS-4 just because no one contradicted it.)
 
@@ -146,7 +149,7 @@ Every sub-claim in the Step 1b inventory has `agree ≥ 1` by construction — t
 The labels are pinned to absolute counts over 4 and are **mutually exclusive**. Assign exactly one disposition per sub-claim in this precedence order:
 
 **Disposition precedence (apply top-down; first match wins):**
-1. **`conflict ≥ 1` → [SPLIT]** (see below). A conflict always routes to arbitration FIRST — a disputed sub-claim is never also labeled CONSENSUS-3 or a single-reviewer finding, even if 3 others agree. (A 3-agree / 1-disputed sub-claim is a SPLIT the EIC arbitrates, not a CONSENSUS-3 with a footnote.)
+1. **`conflict ≥ 1` → [SPLIT]** (see below). A conflict always routes to arbitration FIRST — a disputed sub-claim is never also labeled CONSENSUS-3 or a single-reviewer finding, even if 3 others agree. (A 3-agree / 1-disputed sub-claim is a SPLIT the Journal-Fit Reviewer arbitrates, not a CONSENSUS-3 with a footnote.)
 2. Otherwise (`conflict = 0`), assign by `agree` count below.
 
 #### [CONSENSUS-4]: Unanimous Agreement (`agree = 4, conflict = 0`)
@@ -161,13 +164,13 @@ The labels are pinned to absolute counts over 4 and are **mutually exclusive**. 
 #### Corroborated / single-reviewer findings (below the consensus bar, `conflict = 0`)
 - `agree = 2, conflict = 0` → **corroborated finding** (two reviewers, no conflict): action-bearing, prioritized by the Confidence Score Weighting rules below — but it is NOT a CONSENSUS-3/4 label.
 - `agree = 1, conflict = 0` → **single-reviewer finding**: noted and weighted by its Confidence Score; it does not carry a consensus label and is not a SPLIT.
-- These never trigger EIC arbitration on their own (no conflict to arbitrate).
+- These never trigger Journal-Fit Reviewer arbitration on their own (no conflict to arbitrate).
 
 #### [SPLIT]: Divided Opinion (`conflict ≥ 1 AND agree ≥ 1`)
 - **A SPLIT is any sub-claim with `conflict ≥ 1` AND `agree ≥ 1`** — ≥1 `disputed` (existence OR action/severity conflict) against ≥1 `raised`/`corroborated`. By precedence rule 1 this outranks every consensus/finding label, so `(3 agree, 1 disputed)` and `(1 agree, 1 disputed)` are both SPLITs, not double-labeled.
-- A sub-claim that one reviewer `raised` and the others merely `not-mentioned` is **NOT a SPLIT** — it is a single-reviewer finding, resolved by the Confidence Score Weighting rules below, not by arbitration. (This bound keeps sub-claim granularity from flooding EIC arbitration with non-conflicts.)
-- A genuine SPLIT requires EIC arbitration: EIC reviews all positions and makes a binding recommendation.
-- Author receives the EIC's arbitrated recommendation, not the raw split.
+- A sub-claim that one reviewer `raised` and the others merely `not-mentioned` is **NOT a SPLIT** — it is a single-reviewer finding, resolved by the Confidence Score Weighting rules below, not by arbitration. (This bound keeps sub-claim granularity from flooding Journal-Fit Reviewer arbitration with non-conflicts.)
+- A genuine SPLIT requires Journal-Fit Reviewer arbitration: the Journal-Fit Reviewer reviews all positions and makes a binding recommendation.
+- The author receives the Journal-Fit Reviewer's arbitrated recommendation, not the raw split.
 
 #### DA-CRITICAL: Devil's Advocate Critical Issues
 - DA CRITICAL findings are tracked independently of the consensus count
@@ -175,9 +178,9 @@ The labels are pinned to absolute counts over 4 and are **mutually exclusive**. 
 - However, every DA-CRITICAL issue MUST appear in the final Decision section with:
   - The DA's argument
   - Whether any other reviewer corroborated it
-  - The EIC's assessment of its validity
-  - Required author response (even if EIC disagrees with DA, the author must acknowledge)
-- This is adjudication and visibility, never an automatic veto (#574 B1): a VALIDATED or genuinely unresolved DA-CRITICAL blocks Accept; one the EIC adjudicates and rejects is recorded with its rejection rationale and does not by itself change the decision — an unvalidated negative claim carries the same evidence burden as a positive one
+  - The Journal-Fit Reviewer's assessment of its validity
+  - Required author response (even if the Journal-Fit Reviewer disagrees with DA, the author must acknowledge)
+- This is adjudication and visibility, never an automatic veto (#574 B1): a VALIDATED or genuinely unresolved DA-CRITICAL blocks Accept; one the Journal-Fit Reviewer adjudicates and rejects is recorded with its rejection rationale and does not by itself change the decision — an unvalidated negative claim carries the same evidence burden as a positive one
 
 ### Confidence Score Weighting Rules
 
@@ -294,7 +297,7 @@ Keep the decision letter and roadmap **brief but complete**. State each consensu
 
 Dear Author(s),
 
-Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name]. Your manuscript has been reviewed by [N] independent reviewers, including the Editor-in-Chief.
+Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name]. Your manuscript has been reviewed by [N] independent reviewers, including a Journal-Fit Reviewer.
 
 ### Decision: [Accept / Minor Revision / Major Revision / Reject]
 
@@ -374,7 +377,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ## Part 3: Reviewer Report Summary (Appendix)
 
-### EIC Report Summary
+### Journal-Fit Review Report Summary
 - Recommendation: [X] | Confidence: [Y]
 - Key Point: [One-sentence summary]
 
@@ -433,7 +436,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 ### 5. Guided Mode (Socratic Guidance)
 - In Guided Mode, do not produce a full Editorial Decision Letter
 - Instead: Based on the 4 reports, prepare an "issue list" and discuss with the author one by one in priority order
-- Start from the EIC's perspective, gradually introducing other reviewers' perspectives
+- Start from the Journal-Fit Reviewer's perspective, gradually introducing other reviewers' perspectives
 
 ## Cross-Model Reviewer Track (#540)
 

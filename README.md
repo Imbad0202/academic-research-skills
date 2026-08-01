@@ -85,7 +85,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 - **Deep Research** — 13-agent research team with Socratic guided mode, PRISMA systematic review, intent detection, dialogue health monitoring, optional cross-model DA, Semantic Scholar API verification.
 - **Academic Paper** — 12-agent paper writing with Style Calibration, Writing Quality Check, LaTeX hardening, visualization, revision coaching, citation conversion, anti-leakage protocol, and VLM figure verification.
-- **Academic Paper Reviewer** — 7-agent multi-perspective peer review with 0–100 quality rubrics (EIC + 3 dynamic reviewers + Devil's Advocate), concession threshold protocol, attack intensity preservation, optional cross-model DA critique / calibration, R&R traceability matrix, read-only constraint.
+- **Academic Paper Reviewer** — 7-agent multi-perspective peer review with 0–100 quality rubrics (Journal-Fit Reviewer + 3 dynamic reviewers + Devil's Advocate), concession threshold protocol, attack intensity preservation, optional cross-model DA critique / calibration, R&R traceability matrix, read-only constraint.
 - **Academic Pipeline** — 10-stage pipeline orchestrator with adaptive checkpoints, claim verification, Material Passport, optional `repro_lock`, optional cross-model integrity verification, mid-conversation reinforcement, and score trajectory tracking.
 - **Data Access Level Metadata** (v3.3.2+) — every skill declares `data_access_level` (`raw` / `redacted` / `verified_only`); enforced by `scripts/check_data_access_level.py`. Pattern adapted from Anthropic's automated-w2s-researcher (2026). See [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md).
 - **Task Type Annotation** (v3.3.2+) — every skill declares `task_type` (`open-ended` or `outcome-gradable`). All current ARS skills are `open-ended`.
@@ -109,7 +109,7 @@ See the complete artifacts from a real 10-stage pipeline run — peer review rep
 | [Final Paper (ZH)](examples/showcase/full_paper_zh_apa7.pdf) | Chinese version, APA 7.0 |
 | [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: caught 15 fabricated refs + 3 statistical errors |
 | [Integrity Report — Final](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5: zero regressions confirmed |
-| [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | EIC + 3 Reviewers + Devil's Advocate |
+| [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 Reviewers + Devil's Advocate |
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | Verification after revisions |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | Follow-up review |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | Point-by-point author response |
@@ -194,7 +194,7 @@ You: "status"
 #### Academic Paper Reviewer (6 modes)
 
 ```
-"Review this paper"                                   → full mode (EIC + R1/R2/R3 + Devil's Advocate)
+"Review this paper"                                   → full mode (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)
 "Quick assessment of this paper"                      → quick mode
 "Guide me to improve this paper"                      → guided mode
 "Check the methodology"                               → methodology-focus mode
@@ -255,7 +255,7 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 
 ### Academic Paper Reviewer (v1.10.0)
 
-7-agent multi-perspective review with **0-100 quality rubrics**. Modes: full, re-review, quick, methodology-focus, guided, calibration. **Decision mapping:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. First-round review team vs. narrow re-review team boundary: see ARCHITECTURE.md §3 Stage 3 / Stage 3'.
+7-agent multi-perspective review with **0-100 quality rubrics**. Modes: full, re-review, quick, methodology-focus, guided, calibration. **Decision mapping:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. First-round review panel vs. contract-governed re-review dispatch boundary: see ARCHITECTURE.md §3 Stage 3 / Stage 3'.
 
 ### Academic Pipeline (v3.19.0)
 

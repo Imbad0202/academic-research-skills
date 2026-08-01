@@ -80,7 +80,7 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 - **Deep Research** — 13 エージェントの研究チーム。ソクラテス式ガイドモード、PRISMA システマティックレビュー、意図検出、対話健全性モニタリング、オプションのクロスモデル DA、Semantic Scholar API 検証付き。
 - **Academic Paper** — 12 エージェントの論文執筆。Style Calibration、Writing Quality Check、LaTeX ハードニング、可視化、改訂コーチング、引用変換、アンチリーケージプロトコル、VLM 図表検証付き。
-- **Academic Paper Reviewer** — 0-100 品質ルーブリックを持つ 7 エージェントの多視点ピアレビュー（EIC + 3 動的レビュアー + Devil's Advocate）、譲歩閾値プロトコル、攻撃強度保持、オプションのクロスモデル DA 批評/キャリブレーション、R&R トレーサビリティマトリクス、read-only 制約。
+- **Academic Paper Reviewer** — 0-100 品質ルーブリックを持つ 7 エージェントの多視点ピアレビュー（Journal-Fit Reviewer + 3 動的レビュアー + Devil's Advocate）、譲歩閾値プロトコル、攻撃強度保持、オプションのクロスモデル DA 批評/キャリブレーション、R&R トレーサビリティマトリクス、read-only 制約。
 - **Academic Pipeline** — 10 ステージのパイプラインオーケストレーター。適応的チェックポイント、主張検証、Material Passport、オプションの `repro_lock`、オプションのクロスモデル整合性検証、会話中強化、スコア軌跡追跡付き。
 - **Data Access Level Metadata**（v3.3.2+）— 各スキルが `data_access_level`（`raw` / `redacted` / `verified_only`）を宣言。`scripts/check_data_access_level.py` で強制。Anthropic の automated-w2s-researcher（2026）から適応されたパターン。[`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md) を参照。
 - **Task Type Annotation**（v3.3.2+）— 各スキルが `task_type`（`open-ended` または `outcome-gradable`）を宣言。現在の ARS スキルはすべて `open-ended`。
@@ -102,7 +102,7 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 | [Final Paper (ZH)](examples/showcase/full_paper_zh_apa7.pdf) | 中国語版、APA 7.0 |
 | [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: 捏造参照 15 件 + 統計エラー 3 件を捕捉 |
 | [Integrity Report — Final](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5: ゼロリグレッションを確認 |
-| [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | EIC + 3 Reviewers + Devil's Advocate |
+| [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 Reviewers + Devil's Advocate |
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | 改訂後の検証 |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | フォローアップレビュー |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | ポイントごとの著者回答 |
@@ -181,7 +181,7 @@ You: "status"
 #### Academic Paper Reviewer（6 モード）
 
 ```
-"Review this paper"                                   → full モード（EIC + R1/R2/R3 + Devil's Advocate）
+"Review this paper"                                   → full モード（Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate）
 "Quick assessment of this paper"                      → quick モード
 "Guide me to improve this paper"                      → guided モード
 "Check the methodology"                               → methodology-focus モード
@@ -242,7 +242,7 @@ You: "status"
 
 ### Academic Paper Reviewer（v1.10.0）
 
-**0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューチーム vs. 限定的な再レビューチームの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
+**0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
 ### Academic Pipeline（v3.19.0）
 

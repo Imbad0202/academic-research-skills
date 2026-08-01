@@ -82,7 +82,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 - **Deep Research** — 13 個 Agent 的研究團隊，支援蘇格拉底引導、PRISMA 系統性回顧、意圖偵測、對話健康度監控、可選跨模型 DA、Semantic Scholar API 驗證。
 - **Academic Paper** — 12 個 Agent 的論文撰寫團隊，含風格校準、寫作品質檢查、LaTeX 輸出強化、視覺化、修訂教練、引用格式轉換、反洩漏協議、VLM 圖表驗證。
-- **Academic Paper Reviewer** — 7 個 Agent 的多視角同儕審查，0-100 品質量表（主編 + 3 位動態審查者 + 魔鬼代言人），含讓步門檻協議、攻擊強度保持、可選跨模型 DA critique / calibration、R&R 追溯矩陣、唯讀約束。
+- **Academic Paper Reviewer** — 7 個 Agent 的多視角同儕審查，0-100 品質量表（Journal-Fit Reviewer + 3 位動態審查者 + 魔鬼代言人），含讓步門檻協議、攻擊強度保持、可選跨模型 DA critique / calibration、R&R 追溯矩陣、唯讀約束。
 - **Academic Pipeline** — 10 階段全流程調度器，含自適應 checkpoint、宣稱驗證、素材護照、可選 `repro_lock`、可選跨模型誠信驗證、中途強化機制、分數軌跡追蹤。
 - **資料存取層級標註**（v3.3.2+）— 每個 skill 宣告 `data_access_level`（`raw` / `redacted` / `verified_only`），由 `scripts/check_data_access_level.py` 強制執行。設計靈感來自 Anthropic 的 automated-w2s-researcher（2026）。詳見 [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md)。
 - **任務類型標註**（v3.3.2+）— 每個 skill 宣告 `task_type`（`open-ended` 或 `outcome-gradable`）。目前 ARS 所有 skills 皆為 `open-ended`。
@@ -104,7 +104,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 | [完稿論文（中文）](examples/showcase/full_paper_zh_apa7.pdf) | 中文版，APA 7.0 |
 | [誠信報告 — 審稿前](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5：抓出 15 個虛構引用 + 3 個統計錯誤 |
 | [誠信報告 — 最終](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5：確認零回歸 |
-| [同儕審查第一輪](examples/showcase/stage3_review_report.pdf) | 主編 + 3 審查者 + 魔鬼代言人 |
+| [同儕審查第一輪](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 審查者 + 魔鬼代言人 |
 | [複審](examples/showcase/stage3prime_rereview_report.pdf) | 修訂後驗證審查 |
 | [同儕審查第二輪](examples/showcase/stage3_review_report_r2.pdf) | 追蹤審查 |
 | [回覆審查意見](examples/showcase/response_to_reviewers_r2.pdf) | 逐點回覆 |
@@ -183,7 +183,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 #### Academic Paper Reviewer（論文審查，6 種模式）
 
 ```
-"審查這篇論文"                                → full mode（主編 + R1/R2/R3 + 魔鬼代言人）
+"審查這篇論文"                                → full mode（Journal-Fit Reviewer + R1/R2/R3 + 魔鬼代言人）
 "快速評估這篇論文"                            → quick mode（快速評估）
 "引導我改進這篇論文"                          → guided mode（引導改進）
 "檢查研究方法"                                → methodology-focus mode（方法論聚焦）
@@ -244,7 +244,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 ### Academic Paper Reviewer (v1.10.0)
 
-7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查團隊 vs. 精簡再審團隊的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
+7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查面板 vs. 契約治理再審派送的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
 ### Academic Pipeline (v3.19.0)
 

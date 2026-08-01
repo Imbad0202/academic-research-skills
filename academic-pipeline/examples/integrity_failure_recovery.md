@@ -350,7 +350,7 @@ Corrections summary:
 The paper is now cleared for peer review.
 
 Next: Stage 3 (REVIEW) — Full 5-reviewer review
-  (EIC + R1 Methodology + R2 Domain + R3 Perspective + Devil's Advocate)
+  (Journal-Fit Reviewer + R1 Methodology + R2 Domain + R3 Perspective + Devil's Advocate)
 
 Continue?
 

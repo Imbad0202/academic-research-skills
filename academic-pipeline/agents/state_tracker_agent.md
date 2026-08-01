@@ -117,7 +117,7 @@ Every material artifact produced by the pipeline carries a version label. These 
       "skill": "academic-paper-reviewer",
       "status": "completed",
       "mode": "full",
-      "outputs": ["5 Review Reports (EIC + R1 + R2 + R3 + Devil's Advocate)", "Editorial Decision: Major Revision", "Revision Roadmap (5 items)"],
+      "outputs": ["5 Review Reports (Journal-Fit Reviewer + R1 + R2 + R3 + Devil's Advocate)", "Editorial Decision: Major Revision", "Revision Roadmap (5 items)"],
       "decision": "major_revision",
       "started_at": "conversation turn #32",
       "completed_at": "conversation turn #36",

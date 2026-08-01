@@ -1,6 +1,6 @@
 # Peer Review Report Template
 
-This template is used by all reviewer agents (EIC, Reviewers 1-3). Each reviewer uses the same structure but fills in review content from their respective perspectives.
+This template is used by the Journal-Fit Reviewer and Reviewers 1-3. Each reviewer uses the same structure but fills in review content from their respective perspectives.
 
 ---
 
@@ -29,7 +29,7 @@ This template is used by all reviewer agents (EIC, Reviewers 1-3). Each reviewer
 ## Reviewer Information
 
 ### Reviewer Role *
-[EIC / Peer Reviewer 1 (Methodology) / Peer Reviewer 2 (Domain) / Peer Reviewer 3 (Perspective)]
+[Journal-Fit Reviewer / Peer Reviewer 1 (Methodology) / Peer Reviewer 2 (Domain) / Peer Reviewer 3 (Perspective)]
 
 ### Reviewer Identity *
 [Identity description configured by field_analyst_agent]

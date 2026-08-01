@@ -43,10 +43,10 @@ ARS modes fall on a spectrum between these poles. This table is the reference fo
 | academic-paper | `rebuttal-audit` | Fidelity | Heavy | Per-comment coverage checklist against an existing rebuttal draft, advisory QA |
 | academic-paper-reviewer | `full` | Balanced | Medium | Review rubric loaded, but reviewer perspectives are dynamic |
 | academic-paper-reviewer | `re-review` | Fidelity | Heavy | R&R traceability matrix, checklist-driven |
-| academic-paper-reviewer | `quick` | Fidelity | Heavy | Fixed EIC quick-assessment format |
+| academic-paper-reviewer | `quick` | Fidelity | Heavy | Fixed Journal-Fit Reviewer quick-assessment format |
 | academic-paper-reviewer | `methodology-focus` | Fidelity | Heavy | Focused on statistical/methods rubric |
 | academic-paper-reviewer | `guided` | Originality | Light | Socratic dialogue, adaptive to what the user needs |
-| academic-paper-reviewer | `calibration` (v3.2) | Fidelity | Heavy | Fixed 5x ensembling protocol, no creative adaptation |
+| academic-paper-reviewer | `calibration` (v3.2 + #611) | Fidelity | Heavy | Explicit 3×1 directional tier or default 5× ensemble (3× override), fixed reporting boundaries |
 
 ---
 

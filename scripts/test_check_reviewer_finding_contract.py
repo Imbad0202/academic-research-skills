@@ -863,7 +863,7 @@ def test_m63_skill_unconditional_veto_restored(tmp_path):
                   "Editorial Decision — a validated or genuinely unresolved one blocks "
                   "silent Accept finalization; under a sprint contract the mechanical "
                   "Accept remains unchanged and `[DA-CRITICAL-VS-ACCEPT: <n> "
-                  "validated/unresolved]` escalates to the user. One the EIC adjudicates "
+                  "validated/unresolved]` escalates to the user. One the Journal-Fit Reviewer adjudicates "
                   "and rejects is recorded with its "
                   "rejection rationale and does not veto by itself (#574 B1: an "
                   "unvalidated negative claim carries the same evidence burden as a "

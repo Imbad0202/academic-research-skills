@@ -587,7 +587,7 @@ Stage 2.5: integrity_verification_agent (Mode 1: pre-review)
 Stage 4.5: integrity_verification_agent (Mode 2: final-check)
 
 Stage 3: academic-paper-reviewer
-  - full mode: Complete 5-person review (EIC + R1/R2/R3 + Devil's Advocate)
+  - full mode: Complete 5-person review (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)
 
 Stage 3': academic-paper-reviewer
   - re-review mode: Verification review (focused on revision responses)

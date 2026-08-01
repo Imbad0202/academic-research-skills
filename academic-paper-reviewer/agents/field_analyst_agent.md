@@ -75,6 +75,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 ### Reviewer Configuration Card #[N]
 
 **Role**: [EIC / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]
+**Display role**: [Journal-Fit Reviewer / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]
 **Identity Description**: [Specific description, e.g., "Senior Associate Editor of *Quality in Higher Education*, specializing in comparative studies of higher education quality assurance frameworks, formerly led the European ESG revision consultation"]
 **Review Focus**:
   1. [Focus 1 — Specific description, e.g., "Check whether ESG 2015 is consistent with the QA framework cited in the paper"]
@@ -86,9 +87,9 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 
 ### Configuration Principles
 
-1. **EIC Configuration**:
+1. **Journal-Fit Reviewer Configuration** (internal role `EIC`):
    - Select the international journal that best matches the paper (reference `references/top_journals_by_field.md`)
-   - EIC's perspective is "does this paper fit my journal, would my readers be interested"
+   - The Journal-Fit Reviewer's perspective is "does this paper fit the configured journal, would its readers be interested"
    - Focus on big picture: originality, significance, fit
 
 2. **Reviewer 1 (Methodology) Configuration**:
@@ -115,7 +116,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 
 | Reviewer | Identity | Review Focus |
 |----------|----------|-------------|
-| EIC | *Quality in Higher Education* Editor, ESG framework expert | Journal fit, QA field contribution |
+| Journal-Fit Reviewer | *Quality in Higher Education* Editor, ESG framework expert | Journal fit, QA field contribution |
 | R1 | Mixed methods research design expert, educational measurement background | AI effectiveness measurement, causal inference validity |
 | R2 | Higher education policy scholar, comparative education background | QA framework citation accuracy, policy context |
 | R3 | AI ethics researcher, information science background | Algorithm bias, data privacy, feasibility of technical claims |
@@ -124,7 +125,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 
 | Reviewer | Identity | Review Focus |
 |----------|----------|-------------|
-| EIC | *Studies in Higher Education* Associate Editor, university governance expert | International reader interest, comparative value |
+| Journal-Fit Reviewer | *Studies in Higher Education* Associate Editor, university governance expert | International reader interest, comparative value |
 | R1 | Educational economist, panel data analysis specialist | Statistical treatment of birth rate data, causal identification |
 | R2 | Taiwan higher education policy researcher, private university exit mechanism expert | Policy context accuracy, literature completeness |
 | R3 | Organizational management / strategic management scholar | Theoretical foundation of strategy frameworks, connection to business management theory |
@@ -162,7 +163,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 
 ## Reviewer Configuration Cards
 
-[Card #1: EIC]
+[Card #1: Journal-Fit Reviewer (serialized source ID: EIC)]
 [Card #2: Peer Reviewer 1 — Methodology]
 [Card #3: Peer Reviewer 2 — Domain]
 [Card #4: Peer Reviewer 3 — Cross-disciplinary/Practical]

@@ -24,7 +24,7 @@ Complete artifacts from a real 10-stage academic pipeline run, demonstrating the
 
 | File | Description |
 |------|-------------|
-| [stage3_review_report.pdf](stage3_review_report.pdf) | Round 1: EIC + 3 Reviewers + Devil's Advocate (5 independent reviews) |
+| [stage3_review_report.pdf](stage3_review_report.pdf) | Round 1: Journal-Fit Reviewer + 3 Reviewers + Devil's Advocate (5 independent reviews) |
 | [stage3prime_rereview_report.pdf](stage3prime_rereview_report.pdf) | Re-review after Round 1 revisions |
 | [stage3_review_report_r2.pdf](stage3_review_report_r2.pdf) | Round 2: Follow-up review |
 | [response_to_reviewers_r2.pdf](response_to_reviewers_r2.pdf) | Author's point-by-point response to reviewers |
@@ -36,13 +36,15 @@ Complete artifacts from a real 10-stage academic pipeline run, demonstrating the
 | [paper_creation_process_en.pdf](paper_creation_process_en.pdf) | Pipeline process documentation (English) |
 | [paper_creation_process_zh.pdf](paper_creation_process_zh.pdf) | Pipeline process documentation (Chinese) |
 
+These PDFs predate the public role rename. Any `EIC` text inside them is the legacy serialized source ID now displayed as **Journal-Fit Reviewer**; the archived binaries are intentionally unchanged.
+
 ## Pipeline Stages Covered
 
 ```
 Stage 1: Deep Research (13-agent research pipeline)
 Stage 2: Paper Writing (12-agent writing pipeline)
 Stage 2.5: Integrity Verification ← MANDATORY, caught 22 issues
-Stage 3: Peer Review Round 1 (EIC + R1/R2/R3 + Devil's Advocate)
+Stage 3: Peer Review Round 1 (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)
 Stage 3': Author Revision + Re-review
 Stage 3-R2: Peer Review Round 2
 Stage 4: Final Revision

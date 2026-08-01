@@ -49,6 +49,7 @@ This example demonstrates the complete Phase 0-2 workflow of `academic-paper-rev
 ### Reviewer Configuration Card #1
 
 **Role**: EIC
+**Display role**: Journal-Fit Reviewer
 **Identity Description**: *Higher Education* (Springer) Associate Editor, specializing in university governance and organizational change research, previously edited a special issue on East Asian higher education, with cross-national comparative research experience on declining birth rates.
 **Review Focus**:
   1. Paper's appeal to international readers — How Taiwan's case generates cross-national comparative value
@@ -100,7 +101,7 @@ This example demonstrates the complete Phase 0-2 workflow of `academic-paper-rev
 
 ## Phase 1: Parallel Multi-Perspective Review
 
-### EIC Review Report
+### Journal-Fit Review Report
 
 #### Reviewer Identity
 *Higher Education* (Springer) Associate Editor, university governance and organizational change research expert.
@@ -124,7 +125,7 @@ This paper examines a highly timely topic in East Asian higher education policy 
 
 #### Weaknesses
 1. **W1: Unclear theoretical contribution**: The three strategy types (differentiation, transformation, exit) are common classifications in strategic management literature. The paper needs to more clearly explain what unique implications these three strategies have in the higher education context, rather than just applying business classifications to universities. Suggest adding a "Theoretical Contribution" discussion paragraph.
-   - **Severity**: Major | **Evidence Anchor**: `text: §5 "three strategy types: differentiation, transformation, exit"` | **Confidence**: 4 — journal-fit and originality assessment within EIC's core remit
+   - **Severity**: Major | **Evidence Anchor**: `text: §5 "three strategy types: differentiation, transformation, exit"` | **Confidence**: 4 — journal-fit and originality assessment within the Journal-Fit Reviewer's core remit
 2. **W2: Insufficient international generalizability**: The paper focuses almost entirely on the Taiwan context, but lacks comparison with Japan, Korea, or other countries facing similar issues. Even without empirical comparison, the discussion should address cross-national implications.
    - **Severity**: Major | **Evidence Anchor**: `absence: §6 Discussion — expected cross-national implications discussion; checked §6 Discussion, §7 Conclusion` | **Confidence**: 4 — journal-fit assessment for an internationally-read venue
 3. **W3: Title and abstract too descriptive**: The title could better highlight the theoretical angle (such as strategy theory contribution) rather than just describing the research topic.
@@ -321,7 +322,7 @@ The author uses Porter's competitive strategy and RBV to analyze university stra
 
 | Reviewer | Role | Recommendation | Confidence |
 |----------|------|---------------|------------|
-| EIC | *Higher Education* Associate Editor | Major Revision | 4/5 |
+| Journal-Fit Reviewer | *Higher Education* Associate Editor | Major Revision | 4/5 |
 | Reviewer 1 | Qualitative methodology expert | Minor Revision | 5/5 |
 | Reviewer 2 | Taiwan higher education policy researcher | Major Revision | 5/5 |
 | Reviewer 3 | Strategic management scholar | Major Revision | 4/5 |

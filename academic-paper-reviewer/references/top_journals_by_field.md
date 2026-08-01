@@ -1,6 +1,6 @@
 # Top Journals by Field — Key Academic Discipline Journal Directory
 
-This document is used by `field_analyst_agent` and `eic_agent` as a reference for calibrating EIC identity and assessing journal fit.
+This document is used by `field_analyst_agent` and `eic_agent` as a reference for calibrating the Journal-Fit Reviewer identity and assessing journal fit.
 
 ---
 
@@ -151,7 +151,7 @@ This document is used by `field_analyst_agent` and `eic_agent` as a reference fo
 
 ## Usage Guide
 
-### Logic for Selecting Journals for EIC
+### Logic for Selecting Journals for the Journal-Fit Reviewer
 
 1. **Match the discipline first**: Find the corresponding journal list from the paper's primary discipline
 2. **Then match quality**: Select an appropriate tier of journal based on the paper's quality

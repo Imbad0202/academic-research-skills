@@ -4,6 +4,8 @@ This example shows the editorial synthesizer's Step 1 → Step 2 → Step 5 flow
 
 It is a focused illustration of one weakness bundle, not a full Phase 0–2 walkthrough (see `hei_paper_review_example.md` for that).
 
+In the machine-shaped excerpts below, the stable serialized reviewer ID `EIC` maps to the public display role **Journal-Fit Reviewer**.
+
 ---
 
 ## The input: what the 4 reviewers said about one weakness area
@@ -53,7 +55,7 @@ Two atomic sub-claims fall out of the one "statistics" bundle. `not-mentioned` i
 
 Note the threshold discipline: even though every reviewer who *spoke* agreed, neither sub-claim is promoted to CONSENSUS-4 — the denominator is the full panel of 4, not the 2 who spoke, so 2/4 is a corroborated finding, not unanimity. This is exactly the mislabel the absolute-count rule prevents.
 
-Neither sub-claim triggers EIC arbitration — there is no `disputed` position anywhere, so finer granularity did **not** manufacture arbitration load. (Had R2 instead written "the grouping is clearly by site, this is a non-issue," SC-1 would carry a `disputed` position against R1's `raised`, and *then* it would be a genuine SPLIT requiring EIC arbitration.)
+Neither sub-claim triggers Journal-Fit Reviewer arbitration — there is no `disputed` position anywhere, so finer granularity did **not** manufacture arbitration load. (Had R2 instead written "the grouping is clearly by site, this is a non-issue," SC-1 would carry a `disputed` position against R1's `raised`, and *then* it would be a genuine SPLIT requiring Journal-Fit Reviewer arbitration.)
 
 ### Step 5 — Revision Roadmap (sub-claim-keyed)
 

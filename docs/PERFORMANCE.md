@@ -62,7 +62,7 @@ The Schema 13 sprint contract gate splits each reviewer agent's run into Phase 1
 | Skill / Mode | Effect on tokens | Notes |
 |---|---|---|
 | `academic-paper-reviewer full` | ~+30-40% input + small output bump per reviewer × 5 reviewers | Each reviewer reads the contract template + paper metadata in Phase 1, then full paper in Phase 2 |
-| `academic-paper-reviewer methodology-focus` | Same shape, panel 2 | Two reviewers (EIC + methodology) each run two phases |
+| `academic-paper-reviewer methodology-focus` | Same shape, panel 2 | Two reviewers (Journal-Fit Reviewer + methodology) each run two phases |
 | Synthesizer (always one) | +~2-3K input | Reads contract + reviewer outputs to run three-step mechanical protocol |
 
 Empirical measurement pending real review runs at scale. The two-phase shape is non-optional for the gated modes; treat as fixed overhead, not a tunable.

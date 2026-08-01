@@ -48,6 +48,7 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 ### Reviewer Configuration Card #1
 
 **Role**: EIC
+**Display role**: Journal-Fit Reviewer
 **Identity Description**: *Education and Information Technologies* (Springer) Associate Editor, specializing in educational data science and Learning Analytics, has overseen the review of multiple ML-in-education application papers over the past 5 years.
 **Review Focus**:
   1. Novelty of ML application in higher education management — Such research is already abundant at the student level (student attrition prediction); is there sufficient new contribution at the institutional level
@@ -99,7 +100,7 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 
 ## Phase 1: Parallel Multi-Perspective Review (Summary Version)
 
-### EIC Review Report (Summary)
+### Journal-Fit Review Report (Summary)
 
 **Recommendation**: Major Revision | **Confidence**: 4/5
 
@@ -112,7 +113,7 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 
 **Key Weaknesses**:
 1. Imbalance between technical and educational insight — Discussion almost exclusively discusses model performance, lacking dialogue with educational theory
-   - **Severity**: Major | **Evidence Anchor**: `absence: §6 Discussion — expected dialogue with educational/organizational theory on feature importance; checked §6 Discussion, §7 Conclusion` | **Confidence**: 4 — journal-fit and cross-disciplinary balance within EIC's core remit
+   - **Severity**: Major | **Evidence Anchor**: `absence: §6 Discussion — expected dialogue with educational/organizational theory on feature importance; checked §6 Discussion, §7 Conclusion` | **Confidence**: 4 — journal-fit and cross-disciplinary balance within the Journal-Fit Reviewer's core remit
 2. Model stability with 12 positive cases is concerning
    - **Severity**: Major | **Evidence Anchor**: `text: abstract "12 institutions that had ceased operations or been designated for special guidance after 2018"` | **Confidence**: 3 — adjacent expertise: general model-stability concern, technical depth deferred to R1
 3. Lacks external model validation (e.g., using data from other countries/regions)
