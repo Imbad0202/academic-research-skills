@@ -1,5 +1,6 @@
 {
   "fixture_id": "ms02_qual",
+  "fixture_version": "0.2",
   "manuscript": "manuscripts/ms02_qual_defective.md",
   "defect_count": 9,
   "defects": [
@@ -60,6 +61,7 @@
     {
       "defect_id": "SD-07",
       "class": "statistical",
+      "statistical_kind": "reporting_only",
       "expected_severity": "major",
       "section": "Findings",
       "anchor_quote": "we found a statistically significant difference (p<.05) in perceived quality culture",

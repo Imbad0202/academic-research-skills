@@ -1,11 +1,13 @@
 {
   "fixture_id": "ms01_quant",
+  "fixture_version": "0.2",
   "manuscript": "manuscripts/ms01_quant_defective.md",
-  "defect_count": 10,
+  "defect_count": 11,
   "defects": [
     {
       "defect_id": "SD-01",
       "class": "statistical",
+      "statistical_kind": "grim",
       "expected_severity": "critical",
       "section": "4 Results / 4.1 Descriptive Statistics",
       "anchor_quote": "The mean perceived-control score across the 87 survey respondents who answered the item was 3.847",
@@ -15,6 +17,7 @@
     {
       "defect_id": "SD-02",
       "class": "statistical",
+      "statistical_kind": "n_from_df",
       "expected_severity": "critical",
       "section": "4 Results / 4.3 Group Comparisons",
       "anchor_quote": "greater perceived control than students in the low-engagement group, t(156) = 3.02, p = .003",
@@ -24,11 +27,33 @@
     {
       "defect_id": "SD-03",
       "class": "statistical",
+      "statistical_kind": "p_from_test_statistic",
       "expected_severity": "major",
       "section": "4 Results / 4.3 Group Comparisons",
       "anchor_quote": "the difference was small, t(140) = 1.31, p = .008",
       "description": "Reported p-value is inconsistent with the test statistic: t(140)=1.31 gives a two-tailed p of approximately .19 (one-tailed approximately .10), not p=.008; the reported p is far too small and would flip the non-significant result to significant.",
       "expected_detector": "statistics"
+    },
+    {
+      "defect_id": "SD-11",
+      "class": "statistical",
+      "statistical_kind": "grimmer",
+      "expected_severity": "major",
+      "section": "4 Results / 4.1 Descriptive Statistics",
+      "anchor_quote": "the reported secondary-item values were N=10; M=3.00; sample SD=0.10; integer scale=1-5",
+      "description": "GRIMMER-inconsistent sample SD: N=10 integer responses with M=3.00 have sum 30. Either all responses are 3 and sample SD=0, or zero-sum integer deviations require at least +1 and -1, giving a minimum nonzero sample SD of sqrt(2/9)=0.471. A sample SD rounding to 0.10 is impossible.",
+      "expected_detector": "statistics",
+      "recompute_oracle": {
+        "type": "integer_scale_mean_sd",
+        "n": 10,
+        "scale_min": 1,
+        "scale_max": 5,
+        "reported_mean": "3.00",
+        "reported_sd": "0.10",
+        "sd_convention": "sample",
+        "rounding": "half_up",
+        "expected_consistent": false
+      }
     },
     {
       "defect_id": "SD-04",

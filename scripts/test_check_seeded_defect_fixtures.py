@@ -1,4 +1,4 @@
-"""Mutation tests for check_seeded_defect_fixtures.py (#574 E4 v0.1).
+"""Mutation tests for check_seeded_defect_fixtures.py (#574/#610 v0.2).
 
 Runs the checker against a synthetic fixture tree (never the real one, so the
 tests stay hermetic) and asserts each invariant actually fires.
@@ -32,12 +32,14 @@ def make_tree(root: Path) -> None:
     )
     manifest = {
         "fixture_id": "ms01_quant",
+        "fixture_version": "0.2",
         "manuscript": "manuscripts/ms01_quant_defective.md",
         "defect_count": 1,
         "defects": [
             {
                 "defect_id": "SD-01",
                 "class": "statistical",
+                "statistical_kind": "grim",
                 "expected_severity": "critical",
                 "section": "Results",
                 "anchor_quote": ANCHOR,
@@ -56,6 +58,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.root = self.tmp / "reviewer_seeded_defects"
         make_tree(self.root)
+        self.expected_kinds = {"ms01_quant": {"SD-01": "grim"}}
         patches = [
             mock.patch.object(mod, "ROOT", self.root),
             mock.patch.object(mod, "MANIFESTS", self.root / "manifests"),
@@ -65,6 +68,9 @@ class SeededDefectCheckerTest(unittest.TestCase):
             mock.patch.object(mod, "EXPECTED_FIXTURES", {"ms01_quant"}),
             mock.patch.object(
                 mod, "EXPECTED_DEFECT_IDS", {"ms01_quant": {"SD-01"}}
+            ),
+            mock.patch.object(
+                mod, "EXPECTED_STATISTICAL_KINDS", self.expected_kinds
             ),
         ]
         for p in patches:
@@ -154,6 +160,11 @@ class SeededDefectCheckerTest(unittest.TestCase):
 
         self.assertEqual(self.mutate(drop), 1)
 
+    def test_fixture_version_drift_fails(self):
+        self.assertEqual(
+            self.mutate(lambda d: d.update(fixture_version="0.1")), 1
+        )
+
     def test_missing_defect_field_fails(self):
         def drop(d):
             del d["defects"][0]["description"]
@@ -167,6 +178,152 @@ class SeededDefectCheckerTest(unittest.TestCase):
             ),
             1,
         )
+
+    def test_missing_statistical_kind_fails(self):
+        def drop(d):
+            del d["defects"][0]["statistical_kind"]
+
+        self.assertEqual(self.mutate(drop), 1)
+
+    def test_unknown_statistical_kind_fails(self):
+        self.assertEqual(
+            self.mutate(
+                lambda d: d["defects"][0].update(
+                    {"statistical_kind": "calculator_vibes"}
+                )
+            ),
+            1,
+        )
+
+    def test_non_statistical_row_cannot_carry_kind(self):
+        self.assertEqual(
+            self.mutate(lambda d: d["defects"][0].update({"class": "methods"})),
+            1,
+        )
+
+    def test_statistical_projection_change_fails(self):
+        self.assertEqual(
+            self.mutate(
+                lambda d: d["defects"][0].update(
+                    {"statistical_kind": "reporting_only"}
+                )
+            ),
+            1,
+        )
+
+    @staticmethod
+    def grimmer_oracle(
+        *, reported_mean: str = "3.00", reported_sd: str = "0.10",
+        convention: str = "sample",
+        expected_consistent: bool = False,
+    ) -> dict:
+        return {
+            "type": "integer_scale_mean_sd",
+            "n": 10,
+            "scale_min": 1,
+            "scale_max": 5,
+            "reported_mean": reported_mean,
+            "reported_sd": reported_sd,
+            "sd_convention": convention,
+            "rounding": "half_up",
+            "expected_consistent": expected_consistent,
+        }
+
+    def make_grimmer(
+        self, data: dict, *, reported_mean: str = "3.00",
+        reported_sd: str = "0.10",
+        expected_consistent: bool = False,
+    ) -> None:
+        oracle = self.grimmer_oracle(
+            reported_mean=reported_mean,
+            reported_sd=reported_sd,
+            expected_consistent=expected_consistent,
+        )
+        anchor = mod.canonical_recompute_oracle_anchor(oracle)
+        manuscript = self.root / "manuscripts" / "ms01_quant_defective.md"
+        manuscript.write_text(f"# Synthetic\n\n{anchor}\n", encoding="utf-8")
+        data["defects"][0].update(
+            {
+                "statistical_kind": "grimmer",
+                "anchor_quote": anchor,
+                "recompute_oracle": oracle,
+            }
+        )
+        self.expected_kinds["ms01_quant"]["SD-01"] = "grimmer"
+
+    def test_grimmer_oracle_proves_planted_inconsistency(self):
+        self.assertFalse(
+            mod.integer_scale_mean_sd_consistent(self.grimmer_oracle())
+        )
+
+    def test_grimmer_oracle_accepts_reachable_zero_sd(self):
+        oracle = self.grimmer_oracle(
+            reported_sd="0.00", expected_consistent=True
+        )
+        self.assertTrue(mod.integer_scale_mean_sd_consistent(oracle))
+
+    def test_grimmer_fixture_with_inconsistent_sd_passes(self):
+        self.assertEqual(self.mutate(self.make_grimmer), 0)
+
+    def test_grimmer_fixture_changed_to_reachable_sd_fails(self):
+        self.assertEqual(
+            self.mutate(lambda d: self.make_grimmer(d, reported_sd="0.00")),
+            1,
+        )
+
+    def test_grimmer_cannot_self_certify_reachable_sd(self):
+        self.assertEqual(
+            self.mutate(
+                lambda d: self.make_grimmer(
+                    d, reported_sd="0.00", expected_consistent=True
+                )
+            ),
+            1,
+        )
+
+    def test_grimmer_oracle_values_must_match_anchor(self):
+        def drift(data: dict) -> None:
+            self.make_grimmer(data)
+            data["defects"][0]["recompute_oracle"]["n"] = 9
+
+        self.assertEqual(self.mutate(drift), 1)
+
+    def test_grimmer_anchor_prefixes_cannot_impersonate_oracle_values(self):
+        def drift(data: dict) -> None:
+            self.make_grimmer(data)
+            anchor = (
+                "the reported secondary-item values were N=1000; M=3.000; "
+                "population SD=0.100; integer scale=1-5"
+            )
+            data["defects"][0]["anchor_quote"] = anchor
+            manuscript = self.root / "manuscripts" / "ms01_quant_defective.md"
+            manuscript.write_text(f"# Synthetic\n\n{anchor}\n", encoding="utf-8")
+
+        self.assertEqual(self.mutate(drift), 1)
+
+    def test_grimmer_prerequisite_mean_must_be_reachable(self):
+        self.assertEqual(
+            self.mutate(
+                lambda d: self.make_grimmer(d, reported_mean="3.01")
+            ),
+            1,
+        )
+
+    def test_sample_and_population_sd_are_not_interchangeable(self):
+        base = {
+            "type": "integer_scale_mean_sd",
+            "n": 2,
+            "scale_min": 1,
+            "scale_max": 5,
+            "reported_mean": "3.00",
+            "reported_sd": "1.00",
+            "sd_convention": "population",
+            "rounding": "half_up",
+            "expected_consistent": True,
+        }
+        self.assertTrue(mod.integer_scale_mean_sd_consistent(base))
+        sample = dict(base, sd_convention="sample", expected_consistent=False)
+        self.assertFalse(mod.integer_scale_mean_sd_consistent(sample))
 
     def test_anchor_too_long_fails(self):
         long_anchor = " ".join(f"w{i}" for i in range(26))
