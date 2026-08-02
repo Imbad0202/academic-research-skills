@@ -28,6 +28,21 @@ Object plumbing rides pypdf (already a repo dependency; `verify_submission_packa
 precedent), which handles classic xref tables, xref streams, /Prev incremental-update
 chains, and object streams — this is deliberately NOT a "grep the first /Count" check.
 
+Content classification (advisory extension, optional `pdf-inspector` dependency): the
+three-count agreement above only vouches for page-tree STRUCTURE — a scanned or
+image-only page can carry perfectly consistent, agreeing page counts while yielding
+empty or garbage extracted text, so a PASS verdict says nothing about whether a quote
+or page anchor minted from that text is trustworthy. `_classify_content()` runs
+`pdf_inspector.classify_pdf_bytes()` (Rust-backed, ~10-50ms, no OCR) to report
+`pdf_type` / `confidence` / `pages_needing_ocr` in a `content_classification` sidecar
+field, independent of and parallel to the structural checks. This is deliberately
+ADVISORY ONLY: it degrades to `available: false` when `pdf-inspector` is not installed
+(same graceful-degradation shape as the pypdf-absent path) or on any classification
+error, and it never touches `result["verdict"]` — only the three-count agreement,
+parser-repair warnings, and trailing-data checks decide PASS/FAIL/UNAVAILABLE. A
+scanned/image-only finding is surfaced as a warning string for the orchestration layer
+to act on (e.g. route to OCR before trusting a quote anchor), not as a gate.
+
 CLI: `python scripts/pdf_read_preflight.py FILE [--output SIDECAR.json]`. Exit 0 whenever
 a verdict was produced (the verdict is data, not an error; orchestration consumes the
 JSON without exit-code branching); exit 2 on usage errors only.
@@ -56,7 +71,12 @@ try:
 except ImportError:  # degrade to UNAVAILABLE, mirroring verify_submission_package.py
     pypdf = None
 
-TOOL_VERSION = "pdf_read_preflight/1.0.0"
+try:
+    import pdf_inspector
+except ImportError:  # optional advisory dependency; never fatal, mirrors pypdf's guard
+    pdf_inspector = None
+
+TOOL_VERSION = "pdf_read_preflight/1.1.0"
 SCHEMA = "pdf_read_preflight/1"
 
 # Hard ceiling on page-tree nodes visited by the enumeration walk. Real documents sit
@@ -117,6 +137,52 @@ def _walk_page_tree(node, visited, budget):
     return count
 
 
+def _classify_content(data: bytes, warnings: list) -> dict:
+    """Best-effort text/scanned classification via `pdf_inspector` — advisory only.
+
+    Runs independently of the pypdf-based structural checks below and NEVER affects
+    `result["verdict"]`: appending to `warnings` here does not feed the PASS/FAIL/
+    UNAVAILABLE decision (that logic only inspects `collector.messages` and
+    `trailing_ok`). Unlike pypdf, `pdf_inspector` is a fully OPTIONAL advisory extra —
+    its plain absence degrades silently to `available: false` (no warning; this is
+    the common, expected state for anyone who hasn't opted in, and warning on every
+    single PASS would be noise). An error it raises AFTER being installed is a real
+    anomaly and IS warned about, same as any other advisory-signal failure.
+    """
+    classification = {
+        "available": False,
+        "pdf_type": None,
+        "confidence": None,
+        "pages_needing_ocr": None,
+    }
+    if pdf_inspector is None:
+        return classification
+
+    try:
+        classified = pdf_inspector.classify_pdf_bytes(data)
+    except Exception as exc:  # an advisory signal must never crash the preflight
+        warnings.append(f"content-classification-error: {exc}")
+        return classification
+
+    pages_needing_ocr = list(classified.pages_needing_ocr)
+    classification.update(
+        available=True,
+        pdf_type=classified.pdf_type,
+        confidence=classified.confidence,
+        pages_needing_ocr=pages_needing_ocr,
+    )
+    if classified.pdf_type != "text_based" or pages_needing_ocr:
+        warnings.append(
+            f"content-classification: pdf_type={classified.pdf_type} "
+            f"(confidence={classified.confidence:.2f}), "
+            f"pages_needing_ocr={pages_needing_ocr} — a page or quote anchor minted "
+            "from this document's locally-extracted text may be unreliable "
+            "regardless of the structural verdict above (advisory only, does not "
+            "affect verdict)"
+        )
+    return classification
+
+
 def run_preflight(path) -> dict:
     """Run the read-integrity preflight on one PDF; always returns a sidecar dict."""
     path = Path(path)
@@ -128,6 +194,7 @@ def run_preflight(path) -> dict:
         "declared_page_count": None,
         "enumerated_page_count": None,
         "reader_page_count": None,
+        "content_classification": None,
         "warnings": [],
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "tool": TOOL_VERSION,
@@ -140,6 +207,10 @@ def run_preflight(path) -> dict:
         warnings.append(f"unreadable: {exc}")
         return result
     result["sha256"] = sha256_hex(data)
+    # Independent of the structural checks below — even a file pypdf later refuses
+    # (encrypted, malformed tree) is still worth classifying for content type, and a
+    # classification failure must never block the structural verdict.
+    result["content_classification"] = _classify_content(data, warnings)
 
     # Structural check independent of the parser: a PDF truncated partway through an
     # incremental update keeps an OLDER valid %%EOF, and pypdf silently reads that

@@ -66,6 +66,40 @@ def _flat_pdf(page_count=2, declared=None):
     return _build_pdf(objects)
 
 
+def _flat_text_pdf(page_count=2):
+    """Like `_flat_pdf` but each page carries a real `Tj` text-showing content stream,
+    so a real (non-stubbed) `pdf_inspector` classifies it `text_based` with no pages
+    needing OCR — i.e. genuinely zero warnings on BOTH the structural and content
+    dimensions. `_flat_pdf` itself stays content-free deliberately: it is reused
+    verbatim by ~30 structural-only tests below (xref/trailer/coverage edge cases)
+    that must not be perturbed by an unrelated content-classification signal."""
+    font_idx = 3 + page_count * 2
+    kids = []
+    parts = []
+    for i in range(page_count):
+        page_num = 3 + i * 2
+        content_num = page_num + 1
+        kids.append(b"%d 0 R" % page_num)
+        stream = b"BT /F1 24 Tf 72 720 Td (Hello World Test Document Page %d) Tj ET" % (
+            i + 1
+        )
+        parts.append(
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 %d 0 R >> >> /Contents %d 0 R >>"
+            % (font_idx, content_num)
+        )
+        parts.append(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream))
+    objects = (
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [%s] /Count %d >>" % (b" ".join(kids), page_count),
+        ]
+        + parts
+        + [b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    )
+    return _build_pdf(objects)
+
+
 def _nested_pdf():
     """Root Pages(2) -> [inner Pages(3) -> [page(4), page(5)], page(6)]; 3 leaves."""
     objects = [
@@ -148,7 +182,10 @@ class PreflightVerdictTest(unittest.TestCase):
         return preflight.run_preflight(_write(self.tmp, name, data))
 
     def test_flat_valid_pdf_passes_with_agreeing_counts(self):
-        r = self.run_on(_flat_pdf(2))
+        # Real text content (not `_flat_pdf`'s bare content-free pages) so that a real
+        # `pdf_inspector`, if installed, also classifies this text_based with zero
+        # pages needing OCR — the "fully clean, zero warnings on every axis" case.
+        r = self.run_on(_flat_text_pdf(2))
         self.assertEqual(r["verdict"], "PASS", r)
         self.assertEqual(
             (r["declared_page_count"], r["enumerated_page_count"], r["reader_page_count"]),
@@ -375,6 +412,107 @@ class PreflightVerdictTest(unittest.TestCase):
         self.assertEqual(r["verdict"], "UNAVAILABLE", r)
         self.assertTrue(any(w == "pypdf: synthetic repair warning" for w in r["warnings"]), r["warnings"])
         self.assertTrue(any(w.startswith("parse-error:") for w in r["warnings"]), r["warnings"])
+
+
+class _FakeClassification:
+    def __init__(self, pdf_type, confidence, pages_needing_ocr):
+        self.pdf_type = pdf_type
+        self.confidence = confidence
+        self.pages_needing_ocr = pages_needing_ocr
+
+
+class _FakePdfInspector:
+    """Stub matching the real pdf_inspector module surface used by the preflight
+    (`classify_pdf_bytes(data) -> object with .pdf_type/.confidence/.pages_needing_ocr`,
+    verified against the installed package: pdf_type in {"text_based", "scanned", ...},
+    confidence a float, pages_needing_ocr a list of 0-indexed page numbers)."""
+
+    def __init__(self, result=None, raises=None):
+        self._result = result
+        self._raises = raises
+
+    def classify_pdf_bytes(self, data):
+        if self._raises is not None:
+            raise self._raises
+        return self._result
+
+
+class ContentClassificationTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = self._tmp.name
+        self.addCleanup(self._tmp.cleanup)
+        self._real_pdf_inspector = preflight.pdf_inspector
+        self.addCleanup(setattr, preflight, "pdf_inspector", self._real_pdf_inspector)
+
+    def run_on(self, data, name="doc.pdf"):
+        return preflight.run_preflight(_write(self.tmp, name, data))
+
+    def test_unavailable_when_pdf_inspector_missing_is_silent(self):
+        # Plain absence of the optional advisory extra is the common case and must
+        # NOT add a warning — only an installed-but-erroring pdf_inspector, or an
+        # actionable finding (scanned/OCR-needed), is worth surfacing.
+        preflight.pdf_inspector = None
+        r = self.run_on(_flat_pdf(2))
+        self.assertEqual(r["verdict"], "PASS", r)  # advisory absence never blocks PASS
+        self.assertEqual(
+            r["content_classification"],
+            {
+                "available": False,
+                "pdf_type": None,
+                "confidence": None,
+                "pages_needing_ocr": None,
+            },
+        )
+        self.assertEqual(r["warnings"], [])
+
+    def test_text_based_with_no_ocr_pages_adds_no_advisory_warning(self):
+        preflight.pdf_inspector = _FakePdfInspector(
+            _FakeClassification("text_based", 0.97, [])
+        )
+        r = self.run_on(_flat_pdf(2))
+        self.assertEqual(r["verdict"], "PASS", r)
+        self.assertEqual(r["content_classification"]["available"], True)
+        self.assertEqual(r["content_classification"]["pdf_type"], "text_based")
+        self.assertEqual(r["content_classification"]["pages_needing_ocr"], [])
+        self.assertFalse(
+            any("content-classification:" in w for w in r["warnings"]), r["warnings"]
+        )
+
+    def test_scanned_pdf_adds_advisory_warning_but_verdict_still_pass(self):
+        preflight.pdf_inspector = _FakePdfInspector(
+            _FakeClassification("scanned", 0.95, [0])
+        )
+        r = self.run_on(_flat_pdf(1))
+        # The structural three-count check still agrees, so the verdict must stay
+        # PASS — content classification informs the caller without gating anything.
+        self.assertEqual(r["verdict"], "PASS", r)
+        self.assertEqual(r["content_classification"]["pdf_type"], "scanned")
+        self.assertEqual(r["content_classification"]["pages_needing_ocr"], [0])
+        self.assertTrue(
+            any("content-classification: pdf_type=scanned" in w for w in r["warnings"]),
+            r["warnings"],
+        )
+
+    def test_classification_error_is_advisory_not_fatal(self):
+        preflight.pdf_inspector = _FakePdfInspector(raises=RuntimeError("native panic"))
+        r = self.run_on(_flat_pdf(1))
+        self.assertEqual(r["verdict"], "PASS", r)
+        self.assertEqual(r["content_classification"]["available"], False)
+        self.assertTrue(
+            any("content-classification-error: native panic" in w for w in r["warnings"]),
+            r["warnings"],
+        )
+
+    def test_classification_runs_even_when_structural_verdict_is_unavailable(self):
+        # An encrypted file forecloses the structural checks entirely, but content
+        # classification is an independent signal and should still be attempted.
+        preflight.pdf_inspector = _FakePdfInspector(
+            _FakeClassification("text_based", 0.8, [])
+        )
+        r = self.run_on(_encrypted_pdf())
+        self.assertEqual(r["verdict"], "UNAVAILABLE", r)
+        self.assertEqual(r["content_classification"]["available"], True)
 
 
 class SidecarShapeTest(unittest.TestCase):
