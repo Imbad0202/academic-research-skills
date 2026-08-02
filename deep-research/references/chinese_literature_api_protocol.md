@@ -149,7 +149,7 @@ Pacing is per-instance and uses `time.monotonic` (NTP/manual clock adjustments c
 | truncated body (`IncompleteRead`, inherits `HTTPException` not `OSError`) | raise |
 | 200 with an unparseable body | raise — a proxy/CDN HTML error page served with 200 must never be recorded as an empty result (#331) |
 | 200 CSL request that returns non-JSON | raise typed `Unavailable` — it may be a proxy/CDN error page and cannot drive a verdict |
-| parseable CSL object with no usable title, or no usable cited title to compare | typed `UNVERIFIABLE` → `unresolvable` + a P2 checklist row |
+| parseable CSL object with no usable title, no usable cited title, or a cross-script / romanized title difference | typed `UNVERIFIABLE` → `unresolvable` + a P2 checklist row; a translation difference is not chimeric-citation evidence |
 | any of the above | `ChineseLiteratureUnavailable` is raised without retaining untrusted transport text as an exception cause; the caller MUST map it to `unreachable` and MUST NOT read it as evidence about existence |
 
 `resolve()` has no `unreachable` return value by design: degradation raises, so a network outage can never be silently rendered as a lookup result.
@@ -171,7 +171,7 @@ Two conclusions drive `normalize_cn_title` / `_cn_titles_match`:
 1. **Normalization must be Chinese-aware and conservative**: explicitly fold only fullwidth ASCII forms, collapse whitespace, remove whitespace only where it touches a Han character, and remove only conventional inert outer title wrappers (`《》`, `「」`, `『』`, `【】`, curly quotation pairs) plus terminal `。`/`.` (fullwidth `．` is folded to `.` first). Whitespace between non-CJK tokens and letter case are retained: deleting or case-folding them can collapse scientific names such as `PD L1` versus `PDL 1`, or `P53` versus `p53`. Whole-string NFKC/casefold is forbidden because it can also collapse `2²` with `22` and `Straße` with `Strasse`; deleting broad punctuation/symbol categories likewise collapses scientific titles such as `ER+` versus `ER-`, `CD4+` versus `CD4−`, and `4.5%` versus `45%`. Question/exclamation marks are retained because they can distinguish otherwise identical titles.
 2. **The shared fuzzy ratio is excluded from the rule entirely**, in both directions. It is not *sufficient*: an unrelated paper already scores 0.510 on Han-character overlap alone, and a Crossref bibliographic query for this exact Chinese title returned a completely different paper as its top hit. And — the non-obvious half, caught by a live smoke run rather than by reasoning — it is not safe as an extra *necessary* condition either: the fullwidth spelling of the identical title scores **0.577, below the 0.70 floor**, so ANDing the ratio in would veto a match that exact normalization had correctly established and file a real paper at **P0, next to the word "fabricated"**. Read the table again: 0.510 for an unrelated paper against 0.577 for an identical one. On CJK titles the threshold separates almost nothing, so it earns no place in the decision.
 
-The operative rule is therefore: **exact equality after Chinese-aware normalization**. The comparison occurs only after a DOI-keyed lookup, so the `generic_title` veto used by identifier-free title searches does not apply — a real DOI may legitimately be titled “Editorial”. Nothing else.
+The operative positive rule is therefore: **exact equality after Chinese-aware normalization**. The comparison occurs only after a DOI-keyed lookup, so the `generic_title` veto used by identifier-free title searches does not apply — a real DOI may legitimately be titled “Editorial”. A negative is narrower: only two non-empty titles that both contain CJK ideographs are comparable strongly enough for a normalized difference to become `MISMATCH`. If either side is Latin-only, romanized, or otherwise cross-script, the difference is `UNVERIFIABLE`; this client has no translation oracle and cannot turn an English shadow title into chimeric-citation evidence.
 
 Simplified/Traditional folding is deliberately **not** performed: it is lossy for proper nouns, and a wrong fold would manufacture a false match. The variant pair is surfaced to the human instead.
 
@@ -188,12 +188,13 @@ Stage 1  DOI present?
            │           ├─ HTTP / bare-IP / non-allowlisted redirect
            │           │                         ───► raise Unavailable; no verdict
            │           ├─ 200 + Chinese title matches ────► MATCH → matched (id)
-           │           ├─ 200 + title differs ────────────► MISMATCH → unmatched (id)
+           │           ├─ 200 + two Chinese titles differ ► MISMATCH → unmatched (id)
            │           ├─ 404 ──► NOT_FOUND → handle probe
            │           │        ├─ absent ─────────────► unmatched (id) DOI_REFUTED
            │           │        └─ exists ─────────────► unmatched (title) P2
            │           ├─ 200 non-JSON / malformed ───► raise Unavailable
-           │           └─ 200 JSON but either title missing
+           │           └─ 200 JSON but either title missing, or titles differ
+           │                    across scripts / romanization
            │                    ──► UNVERIFIABLE → unmatched (title) P2
            └─ CNKI ──► handle existence ONLY
                        ├─ responseCode 100 ────────────► unmatched (id)  DOI_REFUTED
@@ -237,9 +238,9 @@ The design is **deliberately asymmetric — negatives strong, positives conserva
 | outcome | `status` | `queried_by` | reduces to | why |
 |---|---|---|---|---|
 | ISTIC DOI returns allowlisted-HTTPS CSL, Chinese title matches | `matched` | `id` | `true` | identifier + title, double evidence |
-| ISTIC DOI returns allowlisted-HTTPS CSL, title differs | `unmatched` | `id` | `false` | chimeric-citation evidence |
+| ISTIC DOI returns allowlisted-HTTPS CSL, and two non-empty CJK titles differ | `unmatched` | `id` | `false` | comparable-title chimeric-citation evidence |
 | DOI refuted (ISTIC CSL 404 + Handle 100, or CNKI Handle 100) | `unmatched` | `id` | `false` | no wildcard catch-all — a fabricated identifier is cleanly refuted |
-| DOI exists, title unverifiable (CNKI RA; ISTIC record/citation lacks a comparable title; or CSL 404 plus Handle existence) | `unmatched` | `title` | `unresolvable` | ⭐ deliberate demotion (below) |
+| DOI exists, title unverifiable (CNKI RA; ISTIC record/citation lacks a comparable title; titles differ across scripts / romanization; or CSL 404 plus Handle existence) | `unmatched` | `title` | `unresolvable` | ⭐ deliberate demotion (below) |
 | DOI agency unknown | `skipped` | `None` | excluded | supplied DOI is retained for P2 human check; no coordinate fallback |
 | DOI agency outside ISTIC/CNKI | `skipped` | `None` | excluded | route to the appropriate DOI resolver; no coordinate fallback |
 | PubMed candidate DOI returns an exact Chinese ISTIC title over an allowlisted HTTPS path | `matched` | `title` | `true` | coordinates nominate; DOI + Chinese title bind |

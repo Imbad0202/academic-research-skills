@@ -435,6 +435,61 @@ def test_istic_doi_resolving_to_a_different_title_is_id_keyed_unmatched():
     assert item["human_result"] is None
 
 
+def test_istic_english_shadow_title_is_unverifiable_never_false():
+    """An English translation cannot refute the cited Chinese original.
+
+    PubMed and some DOI metadata surfaces expose English shadow titles for
+    Chinese articles. Without a translation oracle, a cross-script difference
+    is not a machine-verifiable chimeric citation.
+    """
+    transport = FakeTransport([
+        (_is_ra, _ok(_body("ra_istic.json"))),
+        (_is_doi_resolve, _ok(
+            b'{"title":"Deterministic Evaluation of a Synthetic Citation Gate"}'
+        )),
+    ])
+    with patch("chinese_literature_client._safe_urlopen", transport):
+        result = _client().resolve(_istic_entry())
+
+    assert result["status"] == "unmatched"
+    assert result["queried_by"] == "title"
+    assert result["reason_code"] == "DOI_EXISTS_TITLE_UNVERIFIABLE"
+    assert result["evidence"]["resolved_title"].startswith("Deterministic")
+    assert result["checklist_item"]["verdict_contribution"] == "unresolvable"
+    assert len(transport.requests) == 2
+
+
+def test_two_different_latin_titles_are_unverifiable_not_mismatch():
+    """Matching script alone cannot make romanized titles comparable."""
+    from chinese_literature_client import DoiTitleState
+
+    transport = FakeTransport([
+        (_is_doi_resolve, _ok(b'{"title":"Romanized title alpha"}')),
+    ])
+    with patch("chinese_literature_client._safe_urlopen", transport):
+        outcome = _client().doi_lookup_with_title_check(
+            ISTIC_DOI, "Romanized title beta",
+        )
+
+    assert outcome.state is DoiTitleState.UNVERIFIABLE
+    assert outcome.record["title"] == "Romanized title alpha"
+
+
+def test_lone_surrogate_doi_is_typed_unavailable_after_ra_lookup():
+    """A schema-valid JSON string still may not be UTF-8 encodable."""
+    from chinese_literature_client import ChineseLiteratureUnavailable
+
+    entry = _istic_entry(doi="10.5555/" + chr(0xD800))
+    transport = FakeTransport([
+        (_is_ra, _ok(_body("ra_istic.json"))),
+    ])
+    with patch("chinese_literature_client._safe_urlopen", transport):
+        with pytest.raises(ChineseLiteratureUnavailable, match="invalid Unicode"):
+            _client().resolve(entry)
+
+    assert len(transport.requests) == 1
+
+
 def test_fabricated_doi_is_refuted_by_404_plus_handle_100():
     """The fabrication canary: these prefixes carry no wildcard catch-all, so a
     404 + responseCode 100 is positive evidence the identifier does not exist."""
@@ -604,6 +659,22 @@ def test_parseable_csl_with_malformed_root_is_typed_unavailable():
             _client().doi_lookup_with_title_check(ISTIC_DOI, CN_TITLE)
 
 
+@pytest.mark.parametrize("endpoint", ["ra", "csl"])
+def test_deeply_nested_json_is_typed_unavailable(endpoint):
+    """A small but adversarial upstream body must not leak RecursionError."""
+    from chinese_literature_client import ChineseLiteratureUnavailable
+
+    body = b"[" * 2000 + b"]" * 2000
+    predicate = _is_ra if endpoint == "ra" else _is_doi_resolve
+    transport = FakeTransport([(predicate, _ok(body))])
+    with patch("chinese_literature_client._safe_urlopen", transport):
+        with pytest.raises(ChineseLiteratureUnavailable):
+            if endpoint == "ra":
+                _client().ra_for(ISTIC_DOI)
+            else:
+                _client().doi_lookup_with_title_check(ISTIC_DOI, CN_TITLE)
+
+
 @pytest.mark.parametrize(
     "body",
     [
@@ -695,6 +766,17 @@ def test_missing_coordinate_tuple_is_p3_without_a_pubmed_request():
     assert result["checklist_item"]["verdict_contribution"] == "unresolvable"
 
 
+def test_lone_surrogate_eutils_parameter_is_typed_before_transport():
+    from chinese_literature_client import ChineseLiteratureUnavailable
+
+    with patch(
+        "chinese_literature_client._safe_urlopen",
+        side_effect=AssertionError("no request for unencodable EUtils term"),
+    ):
+        with pytest.raises(ChineseLiteratureUnavailable, match="invalid Unicode"):
+            _coordinate_client().journal_is_indexed("Journal " + chr(0xD800))
+
+
 def test_volume_page_zero_hit_never_falls_back_to_author_year():
     """A valid author/year candidate must not wash a cited wrong page into a
     match after the stronger volume/page query returned zero."""
@@ -730,6 +812,25 @@ def test_pubmed_candidate_page_conflict_cannot_be_promoted():
     assert result["reason_code"] == "PUBMED_COORDINATE_CANDIDATE_UNVERIFIED"
     assert result["status"] == "unmatched"
     assert "first page" in result["checklist_item"]["human_action"]
+    assert len(transport.requests) == 3  # no DOI/RA lookup after conflict
+
+
+def test_pubmed_candidate_volume_conflict_cannot_be_promoted():
+    """A unique hit with a different volume stops before DOI/title binding."""
+    esearch_bodies = [
+        _body("esearch_coverage_hit.json"),
+        _body("esearch_coordinate_hit.json"),
+    ]
+    transport = FakeTransport([
+        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+        (_is_esummary, _ok(_body("esummary_hit.json"))),
+    ])
+    with patch("chinese_literature_client._safe_urlopen", transport):
+        result = _coordinate_client().resolve(_coordinate_entry(volume="99"))
+
+    assert result["reason_code"] == "PUBMED_COORDINATE_CANDIDATE_UNVERIFIED"
+    assert result["status"] == "unmatched"
+    assert "volume" in result["checklist_item"]["human_action"]
     assert len(transport.requests) == 3  # no DOI/RA lookup after conflict
 
 

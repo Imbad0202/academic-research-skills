@@ -228,6 +228,21 @@ def _redact_url(url: str) -> str:
     return urllib.parse.urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
 
 
+def _quote_url_component(value: str, *, safe: str = "") -> str:
+    """Percent-encode one URL component inside the typed failure boundary.
+
+    JSON Schema strings can contain lone UTF-16 surrogates even though UTF-8
+    cannot encode them. Treat that malformed scalar as unavailable input
+    rather than leaking a raw ``UnicodeEncodeError`` from ``urllib.parse``.
+    """
+    try:
+        return urllib.parse.quote(value, safe=safe)
+    except (TypeError, UnicodeError, ValueError):
+        raise ChineseLiteratureUnavailable(
+            "URL component contains invalid Unicode"
+        ) from None
+
+
 def _require_api_url(url: str) -> None:
     """Multi-host variant of the siblings' `_require_api_url`: this client
     legitimately talks to three hosts, so the guard is an allowlist rather
@@ -901,7 +916,12 @@ class ChineseLiteratureClient:
             return 404, None
         try:
             return status, json.loads(body)
-        except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as exc:
+        except (
+            json.JSONDecodeError,
+            ValueError,
+            UnicodeDecodeError,
+            RecursionError,
+        ) as exc:
             raise ChineseLiteratureUnavailable(
                 f"unparseable JSON body from {_redact_url(url)}: {exc}"
             ) from exc
@@ -920,7 +940,7 @@ class ChineseLiteratureClient:
         if not prefix.startswith("10.") or len(prefix) <= 3:
             return None
         status, rows = self._fetch_json(
-            _DOI_RA_BASE + urllib.parse.quote(prefix, safe=""),
+            _DOI_RA_BASE + _quote_url_component(prefix),
             accept="application/json",
             throttle_attr="_last_doi_at",
             interval=_DOI_MIN_INTERVAL,
@@ -983,7 +1003,7 @@ class ChineseLiteratureClient:
         # prefix/suffix slash must survive; crossref's API demands the fully
         # encoded form because the DOI sits in a different position there.
         status, body = self._fetch(
-            _DOI_RESOLVE_BASE + urllib.parse.quote(doi, safe="/"),
+            _DOI_RESOLVE_BASE + _quote_url_component(doi, safe="/"),
             accept=_CSL_ACCEPT,
             throttle_attr="_last_doi_at",
             interval=_DOI_MIN_INTERVAL,
@@ -993,7 +1013,12 @@ class ChineseLiteratureClient:
             return DoiTitleLookupOutcome(DoiTitleState.NOT_FOUND)
         try:
             csl = json.loads(body)
-        except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as exc:
+        except (
+            json.JSONDecodeError,
+            ValueError,
+            UnicodeDecodeError,
+            RecursionError,
+        ) as exc:
             # A 200 non-JSON body can be a proxy/CDN error page. It is an
             # upstream degradation, never ordinary evidence for a human-check
             # verdict.
@@ -1024,6 +1049,15 @@ class ChineseLiteratureClient:
             return DoiTitleLookupOutcome(DoiTitleState.UNVERIFIABLE, record)
         if _cn_titles_match(record["title"], expected_title):
             return DoiTitleLookupOutcome(DoiTitleState.MATCH, record)
+
+        # A different script is not evidence of a different work. Chinese
+        # indexing services can expose an English translation/shadow title for
+        # the same article, and this client has no translation oracle. Only two
+        # non-empty Chinese titles are comparable strongly enough for a
+        # mismatch to contribute `false`; every cross-language or romanized
+        # pair remains human-verifiable evidence.
+        if not has_cjk(record["title"]) or not has_cjk(expected_title):
+            return DoiTitleLookupOutcome(DoiTitleState.UNVERIFIABLE, record)
         return DoiTitleLookupOutcome(DoiTitleState.MISMATCH, record)
 
     # ---------- stage 2a: Handle existence (CNKI etc.) ----------
@@ -1043,7 +1077,7 @@ class ChineseLiteratureClient:
         """
         # Percent-encode (safe="/") — see doi_lookup_with_title_check.
         status, payload = self._fetch_json(
-            _HANDLE_API_BASE + urllib.parse.quote(doi, safe="/"),
+            _HANDLE_API_BASE + _quote_url_component(doi, safe="/"),
             accept="application/json",
             throttle_attr="_last_doi_at",
             interval=_DOI_MIN_INTERVAL,
@@ -1146,7 +1180,13 @@ class ChineseLiteratureClient:
         query["email"] = self._ncbi_email
         if self._ncbi_api_key:
             query["api_key"] = self._ncbi_api_key
-        return _EUTILS_BASE + endpoint + "?" + urllib.parse.urlencode(query)
+        try:
+            encoded_query = urllib.parse.urlencode(query)
+        except (TypeError, UnicodeError, ValueError):
+            raise ChineseLiteratureUnavailable(
+                "E-utilities parameters contain invalid Unicode"
+            ) from None
+        return _EUTILS_BASE + endpoint + "?" + encoded_query
 
     def _esearch(self, term: str, retmax: int = 5) -> list[str]:
         url = self._eutils_url(
@@ -1525,8 +1565,8 @@ class ChineseLiteratureClient:
                 entry=entry,
                 attempts=attempts,
                 human_action=(
-                    "This DOI exists, but the cited and resolved Chinese titles "
-                    "could not both be machine-compared. Open the link and "
+                    "This DOI exists, but the cited and resolved titles were "
+                    "not both comparable Chinese originals. Open the link and "
                     "confirm the title manually. Pending human check — this is "
                     "not a finding about the citation's validity."
                 ),
@@ -1813,7 +1853,7 @@ class ChineseLiteratureClient:
                 ),
                 verification_urls=[
                     "https://pubmed.ncbi.nlm.nih.gov/?term="
-                    + urllib.parse.quote(verification_term)
+                    + _quote_url_component(verification_term)
                 ],
             ),
         }
