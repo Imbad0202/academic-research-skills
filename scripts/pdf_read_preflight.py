@@ -158,23 +158,32 @@ def _classify_content(data: bytes, warnings: list) -> dict:
     if pdf_inspector is None:
         return classification
 
+    # The whole classify-then-read-attributes sequence is one try block: a
+    # successful call returning an object with a missing/renamed attribute (a
+    # future/beta pdf_inspector build, a mocked/stubbed object in a caller's own
+    # test) must degrade exactly like a raised exception from the call itself —
+    # not crash run_preflight() (codex-style review finding: an earlier revision
+    # only wrapped the call, leaving attribute access on `classified` unguarded).
     try:
         classified = pdf_inspector.classify_pdf_bytes(data)
+        pages_needing_ocr = list(classified.pages_needing_ocr)
+        pdf_type = classified.pdf_type
+        confidence = classified.confidence
     except Exception as exc:  # an advisory signal must never crash the preflight
         warnings.append(f"content-classification-error: {exc}")
         return classification
 
-    pages_needing_ocr = list(classified.pages_needing_ocr)
     classification.update(
         available=True,
-        pdf_type=classified.pdf_type,
-        confidence=classified.confidence,
+        pdf_type=pdf_type,
+        confidence=confidence,
         pages_needing_ocr=pages_needing_ocr,
     )
-    if classified.pdf_type != "text_based" or pages_needing_ocr:
+    if pdf_type != "text_based" or pages_needing_ocr:
+        confidence_str = f"{confidence:.2f}" if isinstance(confidence, (int, float)) else str(confidence)
         warnings.append(
-            f"content-classification: pdf_type={classified.pdf_type} "
-            f"(confidence={classified.confidence:.2f}), "
+            f"content-classification: pdf_type={pdf_type} "
+            f"(confidence={confidence_str}), "
             f"pages_needing_ocr={pages_needing_ocr} — a page or quote anchor minted "
             "from this document's locally-extracted text may be unreliable "
             "regardless of the structural verdict above (advisory only, does not "

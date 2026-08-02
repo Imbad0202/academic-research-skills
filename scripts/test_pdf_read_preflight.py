@@ -504,6 +504,23 @@ class ContentClassificationTest(unittest.TestCase):
             r["warnings"],
         )
 
+    def test_malformed_classification_result_is_advisory_not_fatal(self):
+        # Independent review finding: a call that SUCCEEDS but returns an object
+        # missing/renaming an expected attribute (a future pdf_inspector build, or
+        # any object without .pages_needing_ocr) must degrade like a raised
+        # exception, not crash run_preflight() with an uncaught AttributeError.
+        class _NoAttrs:
+            pass
+
+        preflight.pdf_inspector = _FakePdfInspector(_NoAttrs())
+        r = self.run_on(_flat_pdf(1))
+        self.assertEqual(r["verdict"], "PASS", r)
+        self.assertEqual(r["content_classification"]["available"], False)
+        self.assertTrue(
+            any(w.startswith("content-classification-error:") for w in r["warnings"]),
+            r["warnings"],
+        )
+
     def test_classification_runs_even_when_structural_verdict_is_unavailable(self):
         # An encrypted file forecloses the structural checks entirely, but content
         # classification is an independent signal and should still be attempted.
