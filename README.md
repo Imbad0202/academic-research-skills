@@ -42,7 +42,7 @@ v3.3 was inspired by [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Son
 
 The architecture doc supersedes the sprawling pipeline description that used to live here. Everything about *what runs in which stage* now lives in one place.
 
-## Quick install
+## Quick Install
 
 **Prerequisites**
 
