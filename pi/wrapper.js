@@ -1,0 +1,110 @@
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const commandPattern = /^\/(ars-[a-z0-9-]+)(?:\s+([\s\S]*))?$/;
+const orchestrationPattern = /subagent|workflow|parallel[-_ ]agent|multi[-_ ]agent/i;
+const webPattern = /websearch|web[-_ ]search|brave[-_ ]search|webfetch|web[-_ ]fetch|page[-_ ]retrieval/i;
+
+function uniqueMatches(items, pattern) {
+  return [...new Set(items.filter((item) => pattern.test(item.search)).map((item) => item.label))];
+}
+
+async function probe(pi, command, args) {
+  try {
+    const result = await pi.exec(command, args, { timeout: 3000 });
+    if (result.code !== 0) return "missing";
+    return (result.stdout || result.stderr).trim().split("\n")[0] || "available";
+  } catch {
+    return "missing";
+  }
+}
+
+const compatibility = `
+## Academic Research Skills compatibility for Pi
+
+Apply this section only while using an Academic Research Skills (ARS) skill or an \`/ars-*\` prompt.
+
+- The original Claude Code ARS files are the source of truth. Do not replace their research, writing, review, integrity, or checkpoint rules.
+- Resolve repository-relative ARS paths such as \`shared/\`, \`scripts/\`, \`commands/\`, \`deep-research/\`, \`academic-paper/\`, \`academic-paper-reviewer/\`, and \`academic-pipeline/\` from \`${repoRoot}\`.
+- Treat Claude Code tool names as capability names. Use the equivalent tools available in the current Pi session.
+- When ARS requests multiple agents, first inspect the available Pi tools and installed skills for a subagent, workflow, or parallel-agent capability; if none is obvious, search the configured Pi skill locations. Use a matching capability when available. Otherwise run the roles sequentially in the current agent and disclose that degraded execution mode. Do not require a specific orchestration add-on.
+- When ARS requests \`WebSearch\`, \`WebFetch\`, or \`/websearch\`, first inspect the available tools and installed skills for web search or page retrieval; if none is obvious, search the configured Pi skill locations. Prefer an installed web-search skill when available. Otherwise use a permitted HTTP or bibliographic-API capability. If none exists, report the limitation and do not claim that a source was verified.
+- Ask questions through normal conversation or any available user-question tool. Ignore Claude-only command \`model\` metadata and inherit the current Pi model.
+`;
+
+export default function (pi) {
+  pi.on("input", (event) => {
+    const match = event.text.match(commandPattern);
+    if (!match) return { action: "continue" };
+
+    const commandPath = resolve(repoRoot, "commands", `${match[1]}.md`);
+    if (!existsSync(commandPath)) return { action: "continue" };
+
+    const raw = readFileSync(commandPath, "utf8");
+    const body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
+    const args = match[2]?.trim() ?? "";
+    const hasArgumentPlaceholder = body.includes("$ARGUMENTS") || body.includes("$@");
+    const expanded = body
+      .replaceAll("$ARGUMENTS", () => args)
+      .replaceAll("$@", () => args)
+      .replace(
+        /\b(python3?|bash|sh) scripts\/([^\s`]+)/g,
+        (_match, command, script) => `${command} "${repoRoot}/scripts/${script}"`,
+      );
+    const commandText = args && !hasArgumentPlaceholder
+      ? `${expanded}\n\nUser request / arguments:\n${args}`
+      : expanded;
+    const skillName = body.match(/^Trigger the `([^`]+)` (?:skill|orchestrator)/m)?.[1];
+    const text = skillName ? `/skill:${skillName} ${commandText}` : commandText;
+
+    return { action: "transform", text };
+  });
+
+  pi.registerCommand("ars-pi-doctor", {
+    description: "Check optional Pi capabilities and local ARS runtime dependencies",
+    handler: async () => {
+      const activeTools = new Set(pi.getActiveTools());
+      const tools = pi.getAllTools().map((tool) => ({
+        label: `${activeTools.has(tool.name) ? "active tool" : "installed tool"}: ${tool.name}`,
+        search: `${tool.name} ${tool.description}`,
+      }));
+      const commands = pi.getCommands()
+        .filter((command) => !command.name.startsWith("ars-") && !command.name.startsWith("skill:academic-"))
+        .map((command) => ({
+          label: `${command.source}: /${command.name}`,
+          search: `${command.name} ${command.description ?? ""}`,
+        }));
+      const candidates = [...tools, ...commands];
+      const orchestration = uniqueMatches(candidates, orchestrationPattern);
+      const web = uniqueMatches(candidates, webPattern);
+      const python = await probe(pi, "python3", ["--version"]);
+      const pyyaml = await probe(pi, "python3", ["-c", "import yaml; print(f'PyYAML {yaml.__version__}')"]);
+      const pandoc = await probe(pi, "pandoc", ["--version"]);
+      const tectonic = await probe(pi, "tectonic", ["--version"]);
+      const sandbox = pi.getCommands().some((command) => command.name === "sandbox")
+        ? `detected; allow read access to ${repoRoot} when running outside the checkout`
+        : "not detected";
+      const format = (matches) => matches.length > 0 ? matches.join(", ") : "none; sequential/degraded mode";
+      const report = [
+        "ARS Pi doctor",
+        `Repository: ${repoRoot}`,
+        `Orchestration: ${format(orchestration)}`,
+        `Web retrieval: ${format(web)}`,
+        `Python: ${python}`,
+        `PyYAML: ${pyyaml}`,
+        `Pandoc: ${pandoc}`,
+        `Tectonic: ${tectonic}`,
+        `Sandbox: ${sandbox}`,
+        "Claude hooks: unavailable in Pi; write-scope enforcement remains prompt-level",
+      ].join("\n");
+
+      pi.sendMessage({ customType: "ars-pi-doctor", content: report, display: true });
+    },
+  });
+
+  pi.on("before_agent_start", (event) => ({
+    systemPrompt: `${event.systemPrompt}\n${compatibility}`,
+  }));
+}

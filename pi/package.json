@@ -1,0 +1,25 @@
+{
+  "name": "academic-research-skills-pi-wrapper",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Thin Pi wrapper for the upstream Claude Code Academic Research Skills",
+  "keywords": [
+    "pi-package",
+    "academic-research"
+  ],
+  "license": "CC-BY-NC-4.0",
+  "pi": {
+    "extensions": [
+      "./wrapper.js"
+    ],
+    "skills": [
+      "../deep-research",
+      "../academic-paper",
+      "../academic-paper-reviewer",
+      "../academic-pipeline"
+    ],
+    "prompts": [
+      "../commands"
+    ]
+  }
+}
