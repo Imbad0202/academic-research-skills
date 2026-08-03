@@ -4,6 +4,8 @@ import { dirname, resolve } from "node:path";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const commandPattern = /^\/(ars-[a-z0-9-]+)(?:\s+([\s\S]*))?$/;
+const skillPattern = /^\/skill:(deep-research|academic-paper|academic-paper-reviewer|academic-pipeline)(?:\s|$)/;
+const stateEntryType = "ars-pi-state";
 const orchestrationPattern = /subagent|workflow|parallel[-_ ]agent|multi[-_ ]agent/i;
 const webPattern = /websearch|web[-_ ]search|brave[-_ ]search|webfetch|web[-_ ]fetch|page[-_ ]retrieval/i;
 
@@ -35,13 +37,32 @@ Apply this section only while using an Academic Research Skills (ARS) skill or a
 `;
 
 export default function (pi) {
+  let arsActive = false;
+
+  const setArsActive = (active) => {
+    if (arsActive === active) return;
+    arsActive = active;
+    pi.appendEntry(stateEntryType, { active });
+  };
+
+  pi.on("session_start", (_event, ctx) => {
+    const state = ctx.sessionManager.getBranch()
+      .filter((entry) => entry.type === "custom" && entry.customType === stateEntryType)
+      .pop();
+    arsActive = state?.data?.active === true;
+  });
+
   pi.on("input", (event) => {
     const match = event.text.match(commandPattern);
-    if (!match) return { action: "continue" };
+    if (!match) {
+      if (skillPattern.test(event.text)) setArsActive(true);
+      return { action: "continue" };
+    }
 
     const commandPath = resolve(repoRoot, "commands", `${match[1]}.md`);
     if (!existsSync(commandPath)) return { action: "continue" };
 
+    setArsActive(true);
     const raw = readFileSync(commandPath, "utf8");
     const body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
     const args = match[2]?.trim() ?? "";
@@ -60,6 +81,14 @@ export default function (pi) {
     const text = skillName ? `/skill:${skillName} ${commandText}` : commandText;
 
     return { action: "transform", text };
+  });
+
+  pi.registerCommand("ars-pi-stop", {
+    description: "Stop adding ARS compatibility instructions in this session",
+    handler: async (_args, ctx) => {
+      setArsActive(false);
+      ctx.ui.notify("ARS compatibility instructions disabled for this session", "info");
+    },
   });
 
   pi.registerCommand("ars-pi-doctor", {
@@ -104,7 +133,8 @@ export default function (pi) {
     },
   });
 
-  pi.on("before_agent_start", (event) => ({
-    systemPrompt: `${event.systemPrompt}\n${compatibility}`,
-  }));
+  pi.on("before_agent_start", (event) => {
+    if (!arsActive) return;
+    return { systemPrompt: `${event.systemPrompt}\n${compatibility}` };
+  });
 }

@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "run_id": "ars-pi-e2e-gpt-5.6-sol-20260803T051847Z",
+  "source_root": "<redacted-temporary-run-root>",
+  "repository_head": "682b158ea02b6bdcc1f70b1ba577f237645bf7f5",
+  "runtime": {
+    "pi_version": "0.83.0",
+    "provider": "openai-codex",
+    "model": "gpt-5.6-sol",
+    "thinking": "high",
+    "pipeline_version": "3.19.0"
+  },
+  "execution_disclosure": "sequential same recovered Pi/model context; no independent or cross-model roles claimed",
+  "terminal_state": {
+    "pipeline_state": "completed",
+    "stage6_status": "completed",
+    "checkpoint_confirmed": true,
+    "terminal_acknowledgement_received": true,
+    "completed_at": "2026-08-03T18:19:42Z",
+    "round_trips": "36/36"
+  },
+  "privacy": {
+    "scenario": "synthetic test scenario; generated scholar declarations are not maintainer biography",
+    "removed": [
+      "maintainer-identifying fields (none found)",
+      "Pi session/event/request identifiers",
+      "exact human attestation wording",
+      "machine-local paths except generic redaction tokens",
+      "document binaries and redundant translated/build outputs"
+    ],
+    "credentials_found": false
+  },
+  "files": [
+    {
+      "curated_path": "README.md",
+      "source_path": "curator-authored privacy-minimized evidence guide",
+      "sha256": "2aa65ddd8e0d2f5105c0efa319b1a2acad3ad3a1c7f4f9aa652e57438b182837",
+      "bytes": 7764,
+      "transformation": "curator-authored"
+    },
+    {
+      "curated_path": "model-portability.md",
+      "source_path": "curator-authored comparison of retained run evidence with academic-pipeline/examples/full_pipeline_example.md",
+      "sha256": "2a4316b250cc7fe4cd57ed4d42a0185bddf1e10d4dfd2fc4af0ddbce7cecf8a6",
+      "bytes": 7151,
+      "transformation": "curator-authored from linked observed evidence; baseline explicitly treated as illustrative"
+    },
+    {
+      "curated_path": "run-log.md",
+      "source_path": "curator-authored projection from persisted terminal state and retained run artifacts",
+      "sha256": "5d6e43ed109a26412048ca192f7622435d0186274d760796cb35e77fdcfa3bad",
+      "bytes": 7470,
+      "transformation": "privacy-minimized chronological projection; not a verbatim transport transcript"
+    },
+    {
+      "curated_path": "runtime/ars-pi-doctor.txt",
+      "source_path": "doctor-rpc.jsonl custom message",
+      "sha256": "47731cf8e217769f22844cc8a6ba8174c0d01279997e3d71fff46eceae30871e",
+      "bytes": 511,
+      "transformation": "capability report extracted; machine-specific repository path replaced"
+    },
+    {
+      "curated_path": "runtime/package-load-validation.json",
+      "source_path": "fresh post-run root/nested Pi RPC registry and system-prompt activation probes",
+      "sha256": "53bc14125b948ddd8ca11643ec1d95ef7f932a643e71435d51f25ba1b3245325",
+      "bytes": 1968,
+      "transformation": "generated validation result; no model response used as evidence"
+    },
+    {
+      "curated_path": "stage-01/revised-research-report.md",
+      "source_path": "pipeline-workspace/stage-01-research/19-phase6-revised-research-report.md",
+      "sha256": "cee08d1b349854631a5634302852e58c16e0c51f480042fd467d1daa76e3abab",
+      "bytes": 38561,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-02.5/focused-reverification-report.md",
+      "source_path": "pipeline-workspace/stage-02.5-integrity-pre-review/04-focused-reverification-report.md",
+      "sha256": "614081675275d7b21b395c191b88545e779c130a626e91c941888b83b9c93a19",
+      "bytes": 6410,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-02/course-paper-draft.md",
+      "source_path": "pipeline-workspace/stage-02-write/11-complete-stage2-course-paper-draft.md",
+      "sha256": "953badfa35dab3ae6bcd183918b5d319b8575e22df944a3f0fa2ac54429f6507",
+      "bytes": 34191,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-03/editorial-decision-and-revision-roadmap.md",
+      "source_path": "pipeline-workspace/stage-03-review/editorial/editorial-decision-and-revision-roadmap.md",
+      "sha256": "972dafc30787c2407508f02f8c01eb4deab45e289087d930bb158a7e37f1ffa6",
+      "bytes": 11612,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-03p/verification-review-report.md",
+      "source_path": "pipeline-workspace/stage-03p-rereview/08-verification-review-report.md",
+      "sha256": "926d7702847ff45d00a0157d71bede3119b291e80623988679f3518ad1087e46",
+      "bytes": 7338,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-04.5/final-integrity-verification-report.md",
+      "source_path": "pipeline-workspace/stage-04.5-final-integrity/13-final-integrity-verification-report.md",
+      "sha256": "d68db78036962dbcb6588a888343e5b611647203835ff263b7ef22e81be0bc9f",
+      "bytes": 12623,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-04/response-to-reviewers.md",
+      "source_path": "pipeline-workspace/stage-04-revision/07-response-to-reviewers.md",
+      "sha256": "c53ed200fe21b5ccc43a17ad3339995112ea53efd10adc5b03c4fe49a4feafd3",
+      "bytes": 5579,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-04p/validation-report.md",
+      "source_path": "pipeline-workspace/stage-04p-rerevision/06-stage4p-validation-report.md",
+      "sha256": "02584274c834b082b132f48d57033efa054257f5d8f57848c377b1a265cfd803",
+      "bytes": 4200,
+      "transformation": "one machine-local temporary virtualenv path replaced with <temporary-virtualenv>; otherwise unchanged"
+    },
+    {
+      "curated_path": "stage-05/cite-time-gate-pass.json",
+      "source_path": "pipeline-workspace/stage-05-finalize/phase7-format/06-cite-time-hard-gate-pass.json",
+      "sha256": "90c75b0cc4748461bfae6b235c28d2e75fe700b44b87203d5ad1aca5c093735f",
+      "bytes": 1240,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-05/cite-time-gate-refusal-report.md",
+      "source_path": "pipeline-workspace/stage-05-finalize/01-cite-time-provenance-gate-report.md",
+      "sha256": "4a92cb245675846e68ae105f8ce1478e8db6c13048e81f74781443d2b8ddedc2",
+      "bytes": 3052,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-05/cite-time-gate-refusal.json",
+      "source_path": "pipeline-workspace/stage-05-finalize/phase7-format/03-cite-time-hard-gate.json",
+      "sha256": "6385ad669ab385b721de3e48c262f791f2e56e168893be761973c70406cf6f86",
+      "bytes": 1078,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-05/full-checkpoint.md",
+      "source_path": "pipeline-workspace/stage-05-finalize/05-stage5-output-package-and-full-checkpoint.md",
+      "sha256": "78d05d2c7bca23e3928931892ca1e86ac4bb637ed67bb93943410dffa2fd0e02",
+      "bytes": 3631,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-05/package/format-validation.md",
+      "source_path": "pipeline-workspace/stage-05-finalize/package/format_validation.md",
+      "sha256": "1400fa0809c62fea37eaac92c8302e97314c5904c36a0e67588ba25c8108cd14",
+      "bytes": 2877,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-05/package/paper.md",
+      "source_path": "pipeline-workspace/stage-05-finalize/package/paper.md",
+      "sha256": "64ac9f2d5794f1f920136259869fe6a8f4c248f74a5d052f8d349818796ad219",
+      "bytes": 36585,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-06/process-record-en.md",
+      "source_path": "pipeline-workspace/stage-06-process-summary/paper_creation_process_en.md",
+      "sha256": "d378ec4100d64c2041083352af09a4d1b5f0acfb778ec047590d310a861f7ea3",
+      "bytes": 17935,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "stage-06/terminal-checkpoint.md",
+      "source_path": "pipeline-workspace/stage-06-process-summary/03-stage6-artifact-index-and-terminal-checkpoint.md",
+      "sha256": "11f6dd94e360f3119a10b9298ed585243fe3a93908a994772b621843523e3d87",
+      "bytes": 3023,
+      "transformation": "byte-for-byte copy"
+    },
+    {
+      "curated_path": "state/pipeline-state.json",
+      "source_path": "pipeline-workspace/state/pipeline-state.json",
+      "sha256": "4422a6db8075023e02612945e06e6072c1ebcd2ec6913ec9ccadfb7216a76933",
+      "bytes": 22844,
+      "transformation": "byte-for-byte copy"
+    }
+  ],
+  "excluded": [
+    {
+      "pattern": "provider RPC streams and full Pi session JSONL",
+      "reason": "multi-gigabyte transport detail, internal identifiers, and machine-local noise; not needed for stage or terminal proof"
+    },
+    {
+      "pattern": "exact human attestation event and human-read ledger",
+      "reason": "privacy minimization; retained refusal/PASS records preserve aggregate 21-source and 79-marker gate state"
+    },
+    {
+      "pattern": "DOCX, PDF, LaTeX, translated process copy, and build-validation outputs",
+      "reason": "redundant binary/rendered evidence; retained Markdown and format/checkpoint records preserve outcomes and hashes"
+    },
+    {
+      "pattern": "Material Passport and submission-verifier snapshot/report",
+      "reason": "verbose duplicate state and synthetic scenario declarations; retained terminal state, final paper, checkpoint, and integrity reports are sufficient"
+    },
+    {
+      "pattern": "downloaded source bodies, raw retrieval payloads, and intermediate caches",
+      "reason": "bulky inputs are not required to establish wrapper execution, degraded disclosure, stage progression, or terminal state"
+    }
+  ],
+  "integrity_notes": [
+    "Files marked byte-for-byte have matching source and curated SHA-256 values from the retained local audit workspace.",
+    "The Stage 4p validation report has one explicitly recorded machine-path redaction.",
+    "inventory.json does not hash itself; SHA256SUMS covers inventory.json and every other curated file except SHA256SUMS."
+  ]
+}

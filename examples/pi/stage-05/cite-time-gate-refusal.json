@@ -1,0 +1,25 @@
+{
+  "source_path": "stage-04.5-final-integrity/14-final-verified-course-paper.md",
+  "source_sha256": "513004b245efe8a557e92144faa8c06eb6bd95e16095d35a624d3d7d4870e40f",
+  "working_path": "stage-05-finalize/phase7-format/01-provenance-finalized-working-draft.md",
+  "working_sha256": "5cdbf1584ef261dd95dcb5f5365847161a04e643178b04fa5387448d09d2575d",
+  "reference_adjudication_path": "stage-04.5-final-integrity/01-reference-adjudication.tsv",
+  "evidence_adaptation": "Stage 4.5 VERIFIED adjudication used for source_acquired/source_verified_against_original because passport literature_corpus[] is absent",
+  "human_read_log_present": false,
+  "human_read_inferred_from_report_inspection": false,
+  "citation_occurrences": 79,
+  "unique_sources": 21,
+  "anchor_kinds": {
+    "section": 79
+  },
+  "no_locator": 0,
+  "resolution": {
+    "LOW_WARN_UNACKNOWLEDGED": 79,
+    "OK": 0
+  },
+  "hard_gate": "REFUSE",
+  "hard_gate_reason": "unacknowledged LOW-WARN source-read state",
+  "literal_refusal_hits": {},
+  "high_block_occurrences": 0,
+  "converted_outputs_emitted": false
+}

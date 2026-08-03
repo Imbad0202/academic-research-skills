@@ -1,0 +1,12 @@
+ARS Pi doctor
+Repository: <repository-root>
+Orchestration: none; sequential/degraded mode
+Web retrieval: skill: /skill:websearch
+Python: Python 3.14.4
+PyYAML: PyYAML 6.0.3
+Pandoc: pandoc 3.10
+Tectonic: Tectonic 0.17.0
+Sandbox: not detected
+Claude hooks: unavailable in Pi; write-scope enforcement remains prompt-level
+
+Curation note: captured before the pipeline run with /ars-pi-doctor. Only the machine-specific repository path was replaced with <repository-root>; capability and version lines are unchanged.

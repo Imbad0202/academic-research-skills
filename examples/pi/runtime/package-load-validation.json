@@ -1,0 +1,77 @@
+{
+  "pi_version": "0.83.0",
+  "post_run_wrapper_validation": true,
+  "root_invocation": "pi --mode rpc --no-extensions --no-skills --no-prompt-templates --no-context-files -e . --offline",
+  "nested_invocation": "pi --mode rpc --no-extensions --no-skills --no-prompt-templates --no-context-files -e ./pi --offline",
+  "root_package": {
+    "success": true,
+    "prompt_templates": [
+      "ars-3w",
+      "ars-abstract",
+      "ars-cache-invalidate",
+      "ars-citation-check",
+      "ars-disclosure",
+      "ars-format-convert",
+      "ars-full",
+      "ars-lit-review",
+      "ars-mark-read",
+      "ars-outline",
+      "ars-plan",
+      "ars-rebuttal-audit",
+      "ars-reviewer",
+      "ars-revision",
+      "ars-revision-coach",
+      "ars-unmark-read"
+    ],
+    "skills": [
+      "skill:academic-paper",
+      "skill:academic-paper-reviewer",
+      "skill:academic-pipeline",
+      "skill:deep-research"
+    ],
+    "wrapper_commands": [
+      "ars-pi-doctor",
+      "ars-pi-stop"
+    ],
+    "stderr_empty": true
+  },
+  "nested_package": {
+    "success": true,
+    "prompt_templates": [
+      "ars-3w",
+      "ars-abstract",
+      "ars-cache-invalidate",
+      "ars-citation-check",
+      "ars-disclosure",
+      "ars-format-convert",
+      "ars-full",
+      "ars-lit-review",
+      "ars-mark-read",
+      "ars-outline",
+      "ars-plan",
+      "ars-rebuttal-audit",
+      "ars-reviewer",
+      "ars-revision",
+      "ars-revision-coach",
+      "ars-unmark-read"
+    ],
+    "skills": [
+      "skill:academic-paper",
+      "skill:academic-paper-reviewer",
+      "skill:academic-pipeline",
+      "skill:deep-research"
+    ],
+    "wrapper_commands": [
+      "ars-pi-doctor",
+      "ars-pi-stop"
+    ],
+    "stderr_empty": true
+  },
+  "system_prompt_scope": {
+    "ordinary_prompt_ars_text_active": false,
+    "ars_command_ars_text_active": true,
+    "direct_skill_ars_text_active": true,
+    "resume_persistence_and_stop_harness": "PASS"
+  },
+  "result": "PASS"
+}

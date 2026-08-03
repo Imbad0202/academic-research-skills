@@ -1,8 +1,17 @@
 # Pi wrapper
 
-Thin, community-maintained compatibility wrapper for running the original Claude Code Academic Research Skills (ARS) in [Pi](https://github.com/badlogic/pi-mono).
+Thin, community-maintained compatibility wrapper for running the original Claude Code Academic Research Skills (ARS) in [Pi](https://pi.dev/).
 
 The wrapper does not copy or modify ARS skill, agent, reference, schema, script, or command content. Pi loads the four original `SKILL.md` trees and exposes the original `commands/ars-*.md` files as prompt templates. A small input adapter reads the selected original command at invocation time and preserves trailing user arguments.
+
+## Load-bearing runtime differences from Claude Code
+
+These differences affect how ARS evidence should be interpreted:
+
+1. **The wrapper does not provide agent isolation or orchestration.** If the Pi setup has no matching subagent, workflow, or parallel-agent capability, ARS specialist roles run sequentially in the current context. That is degraded execution and must be disclosed; it is not independent multi-agent review.
+2. **Claude hooks do not run in Pi.** In particular, ARS write-scope enforcement remains prompt-level unless the user's Pi environment supplies a separate enforcement mechanism. Do not represent the Claude `PreToolUse` hook boundary as active.
+
+Run `/ars-pi-doctor` to inspect the current environment. The curated [degraded-mode end-to-end evidence](../examples/pi/README.md) shows both boundaries in a completed run.
 
 ## Requirements
 
@@ -85,9 +94,19 @@ pi remove .
 
 `/ars-pi-doctor` runs without an LLM call. It reports discovered orchestration and web-retrieval capabilities plus Python, PyYAML, Pandoc, tectonic, sandbox, and Claude-hook status. Missing optional dependencies remain the user's choice; the wrapper does not install them.
 
+## System-prompt scope
+
+Installing the package does not add ARS text to ordinary Pi prompts. The compatibility note activates only after an `/ars-*` command or one of the four direct `/skill:*` entries above is invoked. That state survives resuming the same session and resets in a new session. `/ars-pi-doctor` does not activate it.
+
+To continue using the same session for unrelated work without the ARS compatibility note, run:
+
+```text
+/ars-pi-stop
+```
+
 ## What the wrapper translates
 
-The wrapper reads `/ars-*` invocations from the original Claude command files, strips their frontmatter, appends trailing arguments when the command has no argument placeholder, converts executable `python scripts/...` paths to checkout-absolute paths, and expands the original target `SKILL.md` through Pi's native `/skill:*` mechanism. It also adds a short compatibility note to Pi's system prompt:
+The wrapper reads `/ars-*` invocations from the original Claude command files, strips their frontmatter, appends trailing arguments when the command has no argument placeholder, converts executable `python scripts/...` paths to checkout-absolute paths, and expands the original target `SKILL.md` through Pi's native `/skill:*` mechanism. While ARS is active in the session, it also adds a short compatibility note to Pi's system prompt:
 
 - repository-root ARS paths resolve against this checkout
 - Claude tool names mean “use the equivalent available Pi capability”
@@ -98,7 +117,7 @@ The wrapper reads `/ars-*` invocations from the original Claude command files, s
 The `pi/package.json` manifest performs the remaining mapping directly:
 
 | Claude distribution resource | Pi resource |
-|---|---|
+| --- | --- |
 | four original skill directories | four Pi skills |
 | `commands/ars-*.md` | `/ars-*` Pi prompt templates with argument-preserving native skill expansion and absolute utility-script paths |
 | Claude tool/runtime assumptions | short capability-based compatibility note |
