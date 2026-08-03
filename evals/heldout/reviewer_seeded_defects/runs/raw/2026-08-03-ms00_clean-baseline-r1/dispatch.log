@@ -1,0 +1,39 @@
+START field_analysis.md
+DONE field_analysis.md chars=18997
+COMPLETE field_analysis
+START eic.phase1.a1.md
+DONE eic.phase1.a1.md chars=5974
+COMPLETE eic.phase1
+START eic.phase2.a1.md
+DONE eic.phase2.a1.md chars=13747
+COMPLETE eic.phase2
+START methodology.phase1.a1.md
+DONE methodology.phase1.a1.md chars=7369
+COMPLETE methodology.phase1
+START methodology.phase2.a1.md
+DONE methodology.phase2.a1.md chars=17004
+COMPLETE methodology.phase2
+START domain.phase1.a1.md
+DONE domain.phase1.a1.md chars=6332
+COMPLETE domain.phase1
+START domain.phase2.a1.md
+DONE domain.phase2.a1.md chars=15750
+COMPLETE domain.phase2
+START perspective.phase1.a1.md
+DONE perspective.phase1.a1.md chars=5468
+COMPLETE perspective.phase1
+START perspective.phase2.a1.md
+DONE perspective.phase2.a1.md chars=11753
+COMPLETE perspective.phase2
+START da.phase1.a1.md
+DONE da.phase1.a1.md chars=6153
+COMPLETE da.phase1
+START da.phase2.a1.md
+DONE da.phase2.a1.md chars=11336
+COMPLETE da.phase2
+START synthesis.a1.md
+DONE synthesis.a1.md chars=49304
+RETRY synthesis diagnostic=[SYNTHESIS-PARSE: synthesis.a1.md: expected exactly one fired_conditions line, found 0]
+START synthesis.a2.md
+DONE synthesis.a2.md chars=43455
+COMPLETE synthesis

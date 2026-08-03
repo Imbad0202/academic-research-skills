@@ -1,0 +1,184 @@
+{
+ "schema": "reviewer-e4-recovery/1",
+ "evidence_contract": "reviewer-e4/2026-07-27",
+ "context": {
+  "model_id": "claude-opus-5",
+  "suite_commit": "b97628f7f896430b39c2439927d561537093b22d",
+  "date": "2026-08-03",
+  "dispatch_note": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS set, no session persistence), paper-blind and paper-visible calls given separate whitelisted sandboxes, every attempt preserved write-once before any checker ran",
+  "working_tree_dirty": false
+ },
+ "result": {
+  "fixture": "ms00_clean",
+  "condition": "baseline",
+  "replicate": 1,
+  "completed_stages": [
+   "field_analysis",
+   "eic.phase1",
+   "eic.phase2",
+   "methodology.phase1",
+   "methodology.phase2",
+   "domain.phase1",
+   "domain.phase2",
+   "perspective.phase1",
+   "perspective.phase2",
+   "da.phase1",
+   "da.phase2",
+   "synthesis"
+  ],
+  "canary": [],
+  "retries": [
+   {
+    "role": "synthesis",
+    "stage": "synthesis",
+    "diagnostic": "[SYNTHESIS-PARSE: synthesis.a1.md: expected exactly one fired_conditions line, found 0]",
+    "rejected_response_location": "synthesis.a1.md",
+    "checker_output_location": "synthesis.a1.gate.log",
+    "form": null
+   }
+  ],
+  "abort": null
+ },
+ "bundle_manifest": [
+  {
+   "path": "contract.json",
+   "type": "file",
+   "sha256": "43216332af99f072434422ac124095ab9b06c71678e42f333cd39e1b92194825"
+  },
+  {
+   "path": "da.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "da.phase1.a1.md",
+   "type": "file",
+   "sha256": "a259df8e7826480226c07ce2373f79c5393f59f5beb505c84fa81b37fa3f6bc4"
+  },
+  {
+   "path": "da.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "da.phase2.a1.md",
+   "type": "file",
+   "sha256": "1be35bad65b7702d8bceb297f3636f92bbd881e31a12ab33dda14eb41512f3ea"
+  },
+  {
+   "path": "dispatch.log",
+   "type": "file",
+   "sha256": "fce40056a0d6a709bea757505967d9c65fe18ce394daebc7ded80c0fe13a08b5"
+  },
+  {
+   "path": "domain.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "domain.phase1.a1.md",
+   "type": "file",
+   "sha256": "f3d09d3be37077c108261a78bea94abd6709343484edd44226cb46106ca9bd2d"
+  },
+  {
+   "path": "domain.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "domain.phase2.a1.md",
+   "type": "file",
+   "sha256": "3c2d851e8a393232f22109716f32af2debc6bcde396187ca406c78c92aaa3219"
+  },
+  {
+   "path": "eic.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "eic.phase1.a1.md",
+   "type": "file",
+   "sha256": "fb9a59f93de2606aebd30a83fbb3f287f399188b472843bbff6e183f9522c7e3"
+  },
+  {
+   "path": "eic.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "852fa4abcbb9e11bb2dcf45cf495f2c6b90b6c868e48cebf3363d68644112394"
+  },
+  {
+   "path": "eic.phase2.a1.md",
+   "type": "file",
+   "sha256": "aebabed028807ccb30a4aeb16dcf83e485be6d517edf1050f4f4428631f6741f"
+  },
+  {
+   "path": "field_analysis.md",
+   "type": "file",
+   "sha256": "ec84d59bad86f04042ad1da9b31f90489548b62b3287bb8d53ae2791be74eb1e"
+  },
+  {
+   "path": "metadata.json",
+   "type": "file",
+   "sha256": "449bba6ec4f19faada687854b7909b5b3acaf7ee9a2315b273eef3e5d66a8b96"
+  },
+  {
+   "path": "methodology.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "methodology.phase1.a1.md",
+   "type": "file",
+   "sha256": "1c3cec2f964ee01c0e4d88aa0f14d75dea84334922b64a395439ae321d3deeae"
+  },
+  {
+   "path": "methodology.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "methodology.phase2.a1.md",
+   "type": "file",
+   "sha256": "56f3dc4bfa988bfdb2632c0015c2e25a4517b7062708c6b9ec4c3a56d567ff7b"
+  },
+  {
+   "path": "perspective.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "perspective.phase1.a1.md",
+   "type": "file",
+   "sha256": "5682715a5542b214b97336e517e889496119ffcc27f3a27833b67410d881ab35"
+  },
+  {
+   "path": "perspective.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "852fa4abcbb9e11bb2dcf45cf495f2c6b90b6c868e48cebf3363d68644112394"
+  },
+  {
+   "path": "perspective.phase2.a1.md",
+   "type": "file",
+   "sha256": "4e12a913e78e1c0e690bac59962f04c80e8b0669f89f4c25012cfffadebd8aea"
+  },
+  {
+   "path": "synthesis.a1.gate.log",
+   "type": "file",
+   "sha256": "4beca2d7da413b9c43424ee35cd049a07d765de812395213228f80645fc24650"
+  },
+  {
+   "path": "synthesis.a1.md",
+   "type": "file",
+   "sha256": "fb408360f6683e35c56870994c917ac010c8179dcfa7cefe442a1daf6331faf4"
+  },
+  {
+   "path": "synthesis.a2.gate.log",
+   "type": "file",
+   "sha256": "70b9104a0365f0ec66bebd244f8fa274f64afe52ef6fd26e8ae36607f977559b"
+  },
+  {
+   "path": "synthesis.a2.md",
+   "type": "file",
+   "sha256": "7725391a7075b86d33724579e847246c0ea337397c2d55cb7ec4625c1cdb9738"
+  }
+ ]
+}

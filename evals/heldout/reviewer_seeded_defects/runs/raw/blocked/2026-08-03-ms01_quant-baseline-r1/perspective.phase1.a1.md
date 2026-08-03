@@ -1,0 +1,24 @@
+## Contract Paraphrase
+
+**D1 — methodology_rigor (mandatory, methodology role).** This dimension asks whether the study's design, data handling, statistical reporting, and the affordances it offers for reproduction would survive scrutiny from a competent methodologist in the manuscript's home field. Read from a cross-disciplinary vantage point, the concern I would attach to it is that methods described in field-local shorthand can be rigorous yet unverifiable to an adjacent-field reader; but the dimension itself is owned by the methodology reviewer, and I do not score it.
+
+**D2 — domain_accuracy (mandatory, domain role).** This dimension covers whether the manuscript's factual claims match the current state of domain evidence, whether prior work is characterised faithfully rather than strawmanned or over-credited, and whether domain-specific terms and reported results are used correctly. From my angle the adjacent question is whether borrowed constructs retain their original technical meaning when imported, but the authoritative judgment on domain correctness belongs to the domain reviewer and is outside my scoring remit.
+
+**D3 — argumentative_coherence (mandatory, da/methodology roles).** Here the question is whether the central thesis holds together on its own terms: whether the evidence marshalled actually supports the claims made of it, whether inferential steps follow, and whether any fallacy is load-bearing rather than incidental. I note that incoherence and inaccessibility often co-occur, since vague framing can hide a broken inference, but this dimension is assigned to the devil's-advocate and methodology roles, not to me.
+
+**D4 — cross_disciplinary_relevance (high priority, perspective role — mine).** This is the dimension I own. It asks whether the manuscript's framing, its definitions of key constructs, and its stated implications are genuinely usable by a reader trained in an adjacent but different field, and whether any claim that reaches across disciplinary boundaries is actually substantiated rather than asserted. Two distinct failure modes live here: accessibility failure, where the work may be sound but is sealed off by unglossed jargon, unstated assumptions, or implications pitched only at insiders; and overreach failure, where the manuscript claims relevance, generalisability, or applicability to other fields, populations, settings, or literatures without evidence licensing that reach. My job is to judge both without smuggling in methodology, domain-fact, or venue-fit verdicts that other panellists own.
+
+**D5 — writing_and_structure (normal priority, eic role).** This dimension concerns organisation, clarity of exposition, the quality and self-sufficiency of figures and tables, and conformity to the venue's presentational conventions. It borders on my own dimension because unclear prose impedes outside readers, but the distinction is that D5 is about craft quality in general while my dimension is specifically about whether a non-specialist reader can extract and trust the contribution. Scored by the editor-in-chief role.
+
+**D6 — venue_fit_and_contribution (mandatory, eic role).** This dimension asks whether the manuscript belongs in the configured venue and whether it offers an original and significant advance for that readership. It is adjacent to my dimension because a work addressed to multiple audiences may fit none of them well, but the determination of venue fit and contribution significance rests with the editor-in-chief role, and I will not issue a score on it.
+
+## Scoring Plan
+
+### D4: cross_disciplinary_relevance
+
+dimension_id: D4
+what_to_look_for: Whether key constructs, measures, and outcome variables are defined in plain terms rather than field-local shorthand; whether the setting and population are described concretely enough for an outsider to judge transfer; whether an adjacent-field reader could restate the contribution and its boundary conditions from the text alone; and whether every claim of relevance, generalisability, or applicability beyond the immediate study context is tied to specific evidence and accompanied by explicit scope limits.
+what_triggers_block: Central interdisciplinary or generalisation claims are asserted without supporting evidence or scope conditions, or core constructs are left so undefined or inconsistently used that an adjacent-field reader cannot determine what was measured or what the findings would mean elsewhere.
+what_triggers_warn: The work is intelligible and its main claims are appropriately bounded, but localised problems persist — unglossed jargon at first use, implications pitched only at insiders, figures or tables that cannot be read without specialist priors, or one secondary transfer claim stated more confidently than its evidence supports.
+
+[CONTRACT-ACKNOWLEDGED]

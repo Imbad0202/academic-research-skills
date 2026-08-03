@@ -1,0 +1,164 @@
+{
+ "schema": "reviewer-e4-recovery/1",
+ "evidence_contract": "reviewer-e4/2026-07-27",
+ "context": {
+  "model_id": "claude-opus-5",
+  "suite_commit": "b97628f7f896430b39c2439927d561537093b22d",
+  "date": "2026-08-03",
+  "dispatch_note": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS set, no session persistence), paper-blind and paper-visible calls given separate whitelisted sandboxes, every attempt preserved write-once before any checker ran",
+  "working_tree_dirty": false
+ },
+ "result": {
+  "fixture": "ms01_quant",
+  "condition": "baseline",
+  "replicate": 1,
+  "completed_stages": [
+   "field_analysis",
+   "eic.phase1",
+   "eic.phase2",
+   "methodology.phase1",
+   "methodology.phase2",
+   "domain.phase1",
+   "perspective.phase1",
+   "perspective.phase2",
+   "da.phase1",
+   "da.phase2"
+  ],
+  "canary": [],
+  "retries": [],
+  "abort": {
+   "stage": "domain.phase2",
+   "exit_code": 3,
+   "diagnostic": "[PANEL-SHRUNK: usable=4, panel_size=5] [FINDING-GRAMMAR: domain.phase2.a1.md: W1: \"Retention\" names a construct the study did not measure, and the inference is scaled to that construct must contain exactly one parseable Severity declaration]",
+   "log_name": "panel-shrunk.log",
+   "form": null
+  }
+ },
+ "bundle_manifest": [
+  {
+   "path": "contract.json",
+   "type": "file",
+   "sha256": "31a18dcc435444f69b121c5740a83801bc6b233b6444cb470eb7e11384696111"
+  },
+  {
+   "path": "da.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "da.phase1.a1.md",
+   "type": "file",
+   "sha256": "fcc9571b5feb63595fb4ad0e55cc413f4fd60d65633131dd64f8d72a02a70751"
+  },
+  {
+   "path": "da.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "da.phase2.a1.md",
+   "type": "file",
+   "sha256": "5269a06a5f7d7303d642bbed82f4bf894a65ba79d6f1644f4cde3b2e130150a6"
+  },
+  {
+   "path": "dispatch.log",
+   "type": "file",
+   "sha256": "16e7050e7969543dad20856de968eebb5f94615d320ed2a37981ed0ec4ca1103"
+  },
+  {
+   "path": "domain.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "domain.phase1.a1.md",
+   "type": "file",
+   "sha256": "57af8c15e870053b74584eec96f44e38116a46ee10467ccbf4c44959696b8da9"
+  },
+  {
+   "path": "domain.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "ef16723a2a79f9e557b9eaef1125fe50dadb3a98b96ee6ae1e4105abb249e85d"
+  },
+  {
+   "path": "domain.phase2.a1.md",
+   "type": "file",
+   "sha256": "093d7601aa680fa17aecc7a7ba166fe7020c3d5fe2b49e88925331869ce593b2"
+  },
+  {
+   "path": "eic.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "eic.phase1.a1.md",
+   "type": "file",
+   "sha256": "28372a7aa59d2c9b1227086a0d6b1c55144f59a673f1528da9f61d66ee87b3a9"
+  },
+  {
+   "path": "eic.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "eic.phase2.a1.md",
+   "type": "file",
+   "sha256": "09a98777d1baacebaa50fa689c44fb2fd343b3ac3bc404ca5127ce91e86d4850"
+  },
+  {
+   "path": "field_analysis.md",
+   "type": "file",
+   "sha256": "8b743aeb0ebe6b219a5981c500dd76d171c2438a100dc9b02619cdc5015b3a9d"
+  },
+  {
+   "path": "metadata.json",
+   "type": "file",
+   "sha256": "c965998dfbbd2bbbceceffaf85cc9081bb1c3ce893f0b8be6ea87bf502d76d62"
+  },
+  {
+   "path": "methodology.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "methodology.phase1.a1.md",
+   "type": "file",
+   "sha256": "ae606b1392bab2ec9a0352dfa568ff6ba9c0f0b03b490d11f714d3a45c6aab74"
+  },
+  {
+   "path": "methodology.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "methodology.phase2.a1.md",
+   "type": "file",
+   "sha256": "c7866b10d85562272941e6ad9045692359d71e231c0652d447d9999920fadce9"
+  },
+  {
+   "path": "panel-shrunk.log",
+   "type": "file",
+   "sha256": "94d935ad94889d8490990cfba6f3a0816370f62aa7a113c353ca44cfd4a36ea0"
+  },
+  {
+   "path": "perspective.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "perspective.phase1.a1.md",
+   "type": "file",
+   "sha256": "1d8cc7552a59cb7affb941f939e237031d2f255c58df732a38593709d8ce1b32"
+  },
+  {
+   "path": "perspective.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "852fa4abcbb9e11bb2dcf45cf495f2c6b90b6c868e48cebf3363d68644112394"
+  },
+  {
+   "path": "perspective.phase2.a1.md",
+   "type": "file",
+   "sha256": "7da10d2f302e76818753d71c884c892ece06814c82e94f6685f2e276222cc0ee"
+  }
+ ]
+}
