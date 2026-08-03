@@ -1,4 +1,5 @@
 ---
+name: ars-unmark-read
 description: ARS /ars-unmark-read — rescind a prior human-read mark for one or more citation keys
 model: sonnet
 ---

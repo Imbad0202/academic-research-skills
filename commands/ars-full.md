@@ -1,4 +1,5 @@
 ---
+name: ars-full
 description: ARS full pipeline — research → write → review → revise → finalize
 ---
 

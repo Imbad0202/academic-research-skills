@@ -1,4 +1,5 @@
 ---
+name: ars-lit-review
 description: ARS academic-paper `lit-review` mode — annotated bibliography in paper format
 model: sonnet
 ---

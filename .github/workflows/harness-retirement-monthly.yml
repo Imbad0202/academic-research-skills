@@ -28,11 +28,22 @@ jobs:
   open-audit-issue:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Compute month label
         id: month
         run: |
           M=$(date -u +%Y-%m)
           echo "label=$M" >> "$GITHUB_OUTPUT"
+
+      - name: Render audit tracking issue
+        env:
+          MONTH: ${{ steps.month.outputs.label }}
+        run: >-
+          python3 scripts/render_harness_retirement_issue.py
+          --month "$MONTH"
+          --output issue-body.md
 
       - name: Open audit tracking issue
         env:
@@ -41,39 +52,6 @@ jobs:
           MONTH: ${{ steps.month.outputs.label }}
         run: |
           set -euo pipefail
-          {
-            echo "## Harness retirement audit — ${MONTH}"
-            echo ""
-            echo "Run \`/harness-retirement\` locally against ARS agents and paste the report below."
-            echo ""
-            echo "### Scope"
-            echo ""
-            echo "All 22 Bucket A agents under v3.9.2 prompt hard fence:"
-            echo ""
-            echo "- deep-research (×9): research_question / research_architect / bibliography / source_verification / synthesis / editor_in_chief / ethics_review / risk_of_bias / meta_analysis"
-            echo "- academic-paper (×7): literature_strategist / structure_architect / draft_writer / citation_compliance / abstract_bilingual / peer_reviewer / formatter"
-            echo "- academic-paper-reviewer (×6): eic / methodology / domain / perspective / devils_advocate_reviewer / editorial_synthesizer"
-            echo ""
-            echo "### Six debt categories"
-            echo ""
-            echo "- [ ] **Sonnet 3.x workarounds** — explicit JSON-mode coercion, redundant role priming"
-            echo "- [ ] **Pre-tool-use scaffolds** — manual schema validation that current models do natively"
-            echo "- [ ] **Verbose chain-of-thought prompts** — opus 4.7 handles structured reasoning without templates"
-            echo "- [ ] **Defensive few-shot examples** — examples added for model limitations now fixed"
-            echo "- [ ] **Format guards** — duplicated 'return ONLY JSON' across agents"
-            echo "- [ ] **Deprecated tool references** — tool names / signatures from older Claude Code versions"
-            echo ""
-            echo "### Output checklist"
-            echo ""
-            echo "- [ ] Audit report posted as comment"
-            echo "- [ ] P0 retirements scheduled (open separate issues with \`harness-retirement\` label)"
-            echo "- [ ] P1 retirements logged in CHANGELOG [Unreleased]"
-            echo "- [ ] P2+ added to backlog"
-            echo ""
-            echo "---"
-            echo "_Auto-opened by harness-retirement-monthly.yml. Close once audit complete._"
-          } > issue-body.md
-
           gh issue create \
             --title "harness-retirement audit ${MONTH}" \
             --label "harness-retirement" \

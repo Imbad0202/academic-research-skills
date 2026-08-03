@@ -1,4 +1,5 @@
 ---
+name: ars-3w
 description: ARS deep-research `three-way-scan` mode — WHY / HOW / WHAT paper comparison
 model: sonnet
 ---

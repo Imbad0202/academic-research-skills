@@ -1,4 +1,5 @@
 ---
+name: ars-disclosure
 description: ARS academic-paper `disclosure` mode — venue applicability/status bundle or policy-anchor render
 model: sonnet
 ---

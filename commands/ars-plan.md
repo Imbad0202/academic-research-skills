@@ -1,4 +1,5 @@
 ---
+name: ars-plan
 description: ARS academic-paper `plan` mode — Socratic chapter-by-chapter planning
 model: sonnet
 ---

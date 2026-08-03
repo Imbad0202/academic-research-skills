@@ -1,4 +1,5 @@
 ---
+name: ars-outline
 description: ARS academic-paper `outline-only` mode — detailed outline + evidence map
 model: sonnet
 ---

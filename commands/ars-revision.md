@@ -1,4 +1,5 @@
 ---
+name: ars-revision
 description: ARS academic-paper `revision` mode — revised draft + R&R responses
 model: sonnet
 ---

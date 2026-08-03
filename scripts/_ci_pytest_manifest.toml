@@ -379,3 +379,11 @@ path = "scripts/test_venue_disclosure_contract.py"
 [[pytest]]
 id = "595-chinese-literature-client"
 path = "scripts/test_chinese_literature_client.py"
+
+[[pytest]]
+id = "617-harness-retirement-generator"
+path = "scripts/test_render_harness_retirement_issue.py"
+
+[[pytest]]
+id = "633-command-frontmatter-name"
+path = "scripts/test_check_command_frontmatter_name.py"

@@ -1,4 +1,5 @@
 ---
+name: ars-rebuttal-audit
 description: ARS academic-paper `rebuttal-audit` mode — QA an existing rebuttal draft against reviewer comments
 model: sonnet
 ---

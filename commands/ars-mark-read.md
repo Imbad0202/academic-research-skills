@@ -1,4 +1,5 @@
 ---
+name: ars-mark-read
 description: ARS /ars-mark-read — record human-read signal for one or more citation keys
 model: sonnet
 ---

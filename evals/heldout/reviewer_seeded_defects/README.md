@@ -1,4 +1,4 @@
-# Reviewer Seeded-Defect Set (#574 E4, v0.1)
+# Reviewer Seeded-Defect Set (#574 E4 / #610, v0.2 prospective)
 
 Held-out acceptance instrument for reviewer-prompt changes: synthetic manuscripts with
 planted, ground-truthed quality defects plus a clean control, so that any change to the
@@ -8,10 +8,16 @@ baseline instead of shipped on intuition. Same discipline as
 `evals/heldout/revision_claim_drift/` (#569/#570): measure the CURRENT model first,
 then change the prompt, then measure again.
 
+**Version boundary:** v0.2 is the prospective #610 measurement foundation. It
+adds one GRIMMER case and a checked statistical-procedure projection before a
+new baseline is collected. Every committed 2026-07-24/25/27 run below remains a
+v0.1 artifact tied to its historical `suite_commit`; no historical denominator,
+verdict, or table value is retroactively recomputed.
+
 ## Epistemic status
 
 This is a **directional smoke tier, not a calibration set** (the #574 rescope's scaled
-form of the E5 decision). n = 2 defective manuscripts (19 seeded defects) + 1 clean
+form of the E5 decision). n = 2 defective manuscripts (20 seeded defects) + 1 clean
 control, labels adjudicated by the maintainer, not a blinded expert panel. It supports
 "recall did not regress / clean-paper false findings did not increase" statements about
 a specific model + prompt pair; it makes NO distributional FNR/FPR claim. Scope per
@@ -21,7 +27,7 @@ repo convention: state what was measured, nothing more.
 
 | Fixture | File | Ground truth |
 |---------|------|--------------|
-| MS01 — quantitative (educational technology, cross-sectional survey + LMS logs) | `manuscripts/ms01_quant_defective.md` | `manifests/ms01_quant.defects.json` (10 defects) |
+| MS01 — quantitative (educational technology, cross-sectional survey + LMS logs) | `manuscripts/ms01_quant_defective.md` | `manifests/ms01_quant.defects.json` (11 defects; v0.2 adds prospective GRIMMER SD-11) |
 | MS02 — qualitative/mixed (higher-education policy, interviews + small survey) | `manuscripts/ms02_qual_defective.md` | `manifests/ms02_qual.defects.json` (9 defects) |
 | MS00 — clean control (educational technology survey, deliberately sound at its scale) | `manuscripts/ms00_clean_control.md` | none — zero planted defects; findings against it are scored per protocol step 5 (only factually-false assertions count as false findings) |
 
@@ -30,6 +36,21 @@ reserved-prefix DOIs. Defect classes: `statistical`, `inference`,
 `citation_claim_mismatch`, `methods`, `ethics`, `internal_consistency`, `overclaim`,
 `qual_rigor`. Each manifest row carries a verbatim `anchor_quote` (unique in its
 manuscript) so adjudication is anchored, not vibes.
+
+### #610 statistical projection (v0.2)
+
+Every `statistical` row carries a closed `statistical_kind`. The #610
+recomputation denominator is exactly MS01 SD-01 `grim`, SD-02 `n_from_df`,
+SD-03 `p_from_test_statistic`, and SD-11 `grimmer`. MS02 SD-07 is
+`reporting_only`: it tests whether an unsupported significance claim is noticed,
+not whether arithmetic is recomputed, so it appears only in class-wide
+statistical recall. The checker pins this mapping and independently exhausts the
+small integer-scale state space behind SD-11; a coordinated relabel, deletion,
+or reachable replacement SD fails CI.
+
+The architecture decision, arithmetic-receipt shape, undecidable boundaries,
+and cohort order are frozen in
+`docs/design/2026-08-02-610-statistical-recompute-baseline-spec.md`.
 
 ## Measurement protocol
 
@@ -224,6 +245,37 @@ mean clean-control false-finding count does not increase; mean severity-agreemen
 score does not regress. "Stricter" alone is not an improvement (#574 rescope,
 product outcome).
 
+**#610 v0.2 extension:** retain all three gates and separately adjudicate each
+of the four MS01 recompute cases as `VERIFIED`, `CLAIM_ONLY`, `MISCOMPUTED`, or
+`MISSED`. Receipt-backed strict recompute recall is `VERIFIED / 4`: ordinary
+`per_defect: DETECTED` credit does not enter this numerator unless the raw output
+also supplies the reported inputs, assumptions, derivation, derived value/range,
+comparison rule, and correct arithmetic. Baseline prose may satisfy those
+logical fields without the not-yet-shipped `AR<n>` wrapper; post output must use
+the formal receipt grammar. Record the closed verdict, procedure id, raw evidence
+location, field presence, supported-assumption verdict, procedure-application
+verdict, arithmetic correctness, and comparison correctness under
+`recompute_adjudication`. `MISCOMPUTED` covers an arithmetic error, unsupported
+assumption/procedure, or wrong comparison/tolerance; a numerically correct line
+with an invalid test identity is not `VERIFIED`.
+
+Also report each procedure separately; class-wide statistical recall including
+MS02's reporting-only row; numeric clean-control false findings (especially a
+mis-recomputed statistic) separate from narrative false findings; and
+conformance-abort rate. The #610 delta cannot pass if receipt-backed recall
+regresses or numeric false findings increase, and every computable seeded case
+must be `VERIFIED` in each score-eligible post MS01 replicate (receipt coverage
+and arithmetic correctness both 1.00). A conspicuous-value claim without its
+arithmetic cannot pass. A procedure-specific row is one seeded case, a
+directional witness, not a calibrated per-procedure rate.
+
+No v0.2 baseline exists yet. After this measurement-only version is merged, an
+explicitly authorized run freezes its clean merge SHA and uses the #608 harness
+for two baseline replicates of MS00/MS01/MS02. Only then may the receipt/prompt
+behavior change land, followed by the same-model, same-harness 2 x 3 post fleet.
+The `condition` CLI argument is a record label, not a prompt selector: baseline
+and post must come from their respective clean checkouts.
+
 ## Baseline
 
 The 2026-07-24 and 2026-07-25 table rows are the closed grandfathered set
@@ -239,6 +291,7 @@ events would be eligible under `reviewer-e4/2026-07-27`.
 | 2026-07-25 | ad81b2e (#581 behavior batch A1/A2/A3/B1) | claude-opus-5 (same dispatch) | 2 per fixture (6) | **1.00** (10/10 both replicates; critical band 1.00 — SD-01 GRIM detected with the full achievability arithmetic in BOTH replicates, by R1 and the DA independently) | **1.00** (9/9 both replicates; critical band 1.00) | **2 / 1** (mean 1.5 vs baseline 3.0; the baseline's logical-foreclosure / inoculation / recruitment-channel-as-fact fabrications do not recur — the dedup-vs-anonymity invented incompatibility is the one concept surviving in both post replicates (r1 adds one DA mis-absence claim); r1 is the ONLY run of all twelve whose clean-control decision avoided reject_or_major_revision: major_revision, no F1 fired) | **0.536** (per-run 0.600 / 0.600 / 0.500 / 0.444) — a REGRESSION on the frozen highest-tagged-seat ladder | **Gate verdicts vs the 2026-07-25 baseline row**: strict recall PASS (improved, overall and critical band); clean-control false findings PASS (decreased); severity agreement FAIL as frozen-measured. Diagnostic decomposition (recorded, not a gate substitute): DA-only agreement is flat-to-up (0.621 → 0.644; post MS02-r2's 0.75 is the best of all twelve runs), letter-fallback cells drop 4 → 0, and per-finding tag coverage goes 0 → 100% on the non-DA formal registers (A3's transport goal achieved) — the frozen max rule now aggregates four newly-tagged seats whose tag distributions skew critical (one Domain seat tagged 7/7 critical), i.e. the metric can now SEE cross-seat band inflation the baseline could not express. Open residual: seat-level severity-band anchoring (#574 B1 follow-up). Records in `runs/2026-07-25-*-post-r*.json` + `runs/raw/` |
 | 2026-07-27 | 19bc872 (Spec A implementation, including terminal DA-contract correction) | claude-opus-5 (effort xhigh, thinking enabled; same isolated per-seat two-phase dispatch) | **BLOCKED:** 2 clean panels launched; r1 reached synthesis but has incomplete retry provenance; r2 has incomplete Phase 1 retry evidence and conformance-aborted; **0 score-eligible runs**; MS01/MS02 not launched | **NOT COMPUTABLE** | **NOT COMPUTABLE** | r1 unscored observation: **1**, panel decision `major_revision`; replicate mean **NOT COMPUTABLE** | **NOT COMPUTABLE** | Formal Spec-A E4 attempt produced no score-eligible run. r1's first malformed methodology Phase 1 response was overwritten by its permitted structural retry, so the completed final panel cannot prove paper blindness or retry eligibility and is namespaced under `runs/blocked/`. r2's first malformed Methodology and Perspective Phase 1 responses were also overwritten; their exact checker diagnostics survive, but the rejected responses do not, so r2 is independently provenance-invalid. Its Perspective Phase 2 then emitted an empty `## Scoring Plan Dissent` section and failed `[DISSENT-GRAMMAR: dissent section must name dimension_id]`; Phase 2 retry is permitted only for multi-dissent, so DA and synthesis were not run. Observed clean-cohort provenance-invalid rate **2/2 = 1.00** and conformance-abort rate **1/2 = 0.50**, the latter versus the Spec-A diagnostic expectation of approximately zero. Required 2 × 3 fleet and all acceptance gates are **BLOCKED / NOT COMPUTABLE**, not pass or fail. No replacement draw, missing-value imputation, or reconstruction of missing retry output was used. |
 | pending (corrective iteration) | — | — | — | — | — | — | — | A future full 2 × 3 measurement must start as a new cohort after the conformance-abort cause is corrected; compare with the newest same-model baseline and re-run both conditions after model upgrades |
+| pending (#610 v0.2 baseline) | merge SHA not yet frozen | exact model not yet authorized | 0 launched | NOT COMPUTABLE | NOT COMPUTABLE | NOT COMPUTABLE | NOT COMPUTABLE | Measurement-only fixture/protocol work does not spend model calls. The first score-eligible v0.2 row must be a fresh #608-harness baseline collected before any #610 reviewer-prompt change. |
 
 ## Dispatch harness (#608)
 
@@ -431,6 +484,7 @@ adjudication, or closed status fields.
 
 `scripts/check_seeded_defect_fixtures.py` validates structure only (manifest schema,
 closed enums, defect-count agreement, every `anchor_quote` present verbatim exactly
-once in its manuscript, clean control free of manifest references). It is a fixture
+once in its manuscript, clean control free of manifest references, the exact v0.2
+statistical-kind projection, and the prospective GRIMMER oracle). It is a fixture
 integrity gate, NOT a behavioral measurer — `run_evals` has no native task for this
 set; the behavioral measurement is the manual protocol above.
