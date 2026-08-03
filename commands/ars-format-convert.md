@@ -1,4 +1,5 @@
 ---
+name: ars-format-convert
 description: ARS academic-paper `format-convert` mode — convert to LaTeX / DOCX / PDF / Markdown
 model: sonnet
 ---

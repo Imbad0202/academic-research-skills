@@ -19,6 +19,7 @@ on:
     paths:
       - 'commands/**'
       - 'scripts/announce-ars-loaded.sh'
+      - 'scripts/check_command_frontmatter_name.py'
       - '.command-invariants.toml'
       - '.claude-plugin/plugin.json'
       - 'CHANGELOG.md'
@@ -46,3 +47,5 @@ jobs:
         run: |
           python tools/release-discipline/scripts/check_command_invariants.py \
             --manifest .command-invariants.toml
+      - name: Validate command frontmatter name (bare-alias exposure, #633)
+        run: python scripts/check_command_frontmatter_name.py

@@ -207,6 +207,8 @@ Claude 會在 `<install-root>/<skill-name>/SKILL.md` 尋找 skills。這個 repo
 
 四個 skill（`deep-research`、`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`）會從 plugin 的 `skills/` 目錄自動載入。
 
+**斜線命令的兩種形式（#633）。** Plugin 安裝下命令會帶命名空間：`/academic-research-skills:ars-<mode>`，這是正式形式。每個命令同時宣告了明確的 frontmatter `name`，所以在 Claude Code v2.1.216 以上，只要沒有其他命令撞名，短形式 `/ars-<mode>` 也可以直接用；session 開場宣告列的就是短形式。在 v2.1.216 之前的版本，frontmatter `name` 會取代整個命令名，命令只會以短形式 `/ars-<mode>` 出現（仍可正常呼叫，但命名空間形式失去自動完成）。
+
 **強烈建議開啟 auto-update。** 進 `/plugin` UI 找到 `academic-research-skills`，把 auto-update 開起來。ARS 大約 1–2 週發新版，開了之後會自動同步。手動更新已安裝的 plugin：`/plugin update academic-research-skills`。（`/plugin marketplace update academic-research-skills` 只重新拉 marketplace 來源，不會更新已裝 plugin。）
 
 **內建更新提醒。** Plugin 也會自己提醒你：session 啟動時比對已安裝版本與 `main` 上的最新版本（每天最多查一次網路、3 秒上限、任何失敗都靜默），落後時在開場訊息前加一行提醒，指向 `/plugin update academic-research-skills`。設 `ARS_UPDATE_CHECK=0` 可完全關閉。隱私：檢查只對本 repo 公開的 `.claude-plugin/plugin.json` 發一次 HTTPS GET，不傳送任何使用者資料。

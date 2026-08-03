@@ -1,4 +1,5 @@
 ---
+name: ars-cache-invalidate
 description: ARS /ars-cache-invalidate — drop cached verification entries for a citation key
 model: sonnet
 ---

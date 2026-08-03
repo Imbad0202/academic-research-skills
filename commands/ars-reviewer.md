@@ -1,4 +1,5 @@
 ---
+name: ars-reviewer
 description: ARS academic-paper-reviewer `full` mode — simulated peer-review panel
 ---
 

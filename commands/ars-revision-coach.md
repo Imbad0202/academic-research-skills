@@ -1,4 +1,5 @@
 ---
+name: ars-revision-coach
 description: ARS academic-paper `revision-coach` mode — Revision Roadmap + Response Letter Skeleton
 ---
 

@@ -1,4 +1,5 @@
 ---
+name: ars-citation-check
 description: ARS academic-paper `citation-check` mode — citation error report
 model: sonnet
 ---
