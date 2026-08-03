@@ -86,7 +86,57 @@ class MutationTest(unittest.TestCase):
             )
             result = self.run_lint(root)
             self.assertEqual(result.returncode, 1)
-            self.assertIn("duplicate `name:`", result.stdout)
+            self.assertIn("name-like keys", result.stdout)
+
+    def test_yaml_equivalent_quoted_duplicate_fails(self) -> None:
+        # codex P2 (PR #635): a YAML loader resolves `"name":` to the same
+        # key, so a later quoted duplicate would override the canonical value.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_command(
+                root,
+                "ars-full",
+                '---\nname: ars-full\n"name": ars-other\n---\nBody.\n',
+            )
+            result = self.run_lint(root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("name-like keys", result.stdout)
+
+    def test_yaml_equivalent_spaced_colon_duplicate_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_command(
+                root,
+                "ars-full",
+                "---\nname: ars-full\nname : ars-other\n---\nBody.\n",
+            )
+            result = self.run_lint(root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("name-like keys", result.stdout)
+
+    def test_non_canonical_sole_spelling_fails(self) -> None:
+        # A single quoted key is semantically valid YAML but not the
+        # canonical spelling; the lint accepts exactly `name: <stem>`.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_command(
+                root, "ars-full", '---\n"name": ars-full\n---\nBody.\n'
+            )
+            result = self.run_lint(root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("non-canonical name key spelling", result.stdout)
+
+    def test_quoted_value_fails(self) -> None:
+        # `name: "ars-full"` resolves to ars-full in YAML but is not the
+        # canonical byte form; fail closed rather than interpret quoting.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            make_command(
+                root, "ars-full", '---\nname: "ars-full"\n---\nBody.\n'
+            )
+            result = self.run_lint(root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("!= filename stem", result.stdout)
 
     def test_missing_frontmatter_fails(self) -> None:
         with TemporaryDirectory() as tmp:

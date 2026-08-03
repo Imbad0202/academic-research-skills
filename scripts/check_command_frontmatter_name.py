@@ -20,10 +20,22 @@ Pure stdlib; deterministic; read-only. Run from repo root:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 COMMANDS_GLOB = "commands/*.md"
+
+# Any frontmatter line whose KEY a YAML loader could resolve to `name`:
+# optional indentation, optional single/double quoting, optional whitespace
+# before the colon. A bare `name:` line scan would miss `"name": other` or
+# `name : other` re-spellings, letting a later YAML-equivalent duplicate
+# override the value while CI stays green (codex P2, PR #635). Instead of
+# parsing YAML (this workflow is dependency-free), the lint requires the ONE
+# canonical spelling below and rejects every other name-like variant, so no
+# semantic override can ride in through a re-spelled key.
+NAME_LIKE = re.compile(r"""^\s*(?:name|"name"|'name')\s*:""")
+CANONICAL = re.compile(r"^name: (?P<value>.*)$")
 
 
 def check_file(path: Path) -> list[str]:
@@ -38,23 +50,27 @@ def check_file(path: Path) -> list[str]:
     except StopIteration:
         return [f"{rel}: unterminated frontmatter block (no closing '---')"]
 
-    # Collect every top-level `name:` assignment inside the block. A plain
-    # line scan is sufficient here because the invariant is byte-equality
-    # against an ASCII stem: any exotic re-spelling fails the comparison.
-    names = [
-        line[len("name:"):].strip()
-        for line in lines[1:end]
-        if line.startswith("name:")
-    ]
-    if not names:
+    name_like = [line for line in lines[1:end] if NAME_LIKE.match(line)]
+    if not name_like:
         return [f"{rel}: frontmatter has no `name:` key (required since #633)"]
-    if len(names) > 1:
-        return [f"{rel}: duplicate `name:` keys in frontmatter ({len(names)} found)"]
+    if len(name_like) > 1:
+        return [
+            f"{rel}: {len(name_like)} name-like keys in frontmatter — a "
+            f"YAML-equivalent duplicate could override the canonical value"
+        ]
+
+    match = CANONICAL.match(name_like[0])
+    if match is None:
+        return [
+            f"{rel}: non-canonical name key spelling {name_like[0]!r} — "
+            f"only the exact form `name: <stem>` is accepted"
+        ]
 
     expected = path.stem
-    if names[0] != expected:
+    value = match.group("value")
+    if value != expected:
         return [
-            f"{rel}: frontmatter `name: {names[0]}` != filename stem "
+            f"{rel}: frontmatter `name: {value}` != filename stem "
             f"`{expected}` (bare-alias exposure would advertise the wrong "
             f"command)"
         ]
