@@ -327,11 +327,15 @@ def test_malformed_fence_closer_keeps_reviewer_report_hidden():
         cps.parse_report("eic.md", text, FULL)
 
 
-def test_malformed_fence_closer_keeps_synthesis_hidden():
+def test_malformed_fence_closer_synthesis_parses_as_fenced_content():
+    """The fence never closes (`~~~not-a-close` is content, not a closer),
+    so the whole synthesis stays fenced — and fenced audit lines are
+    candidates since #637. Fence-STATE correctness stays pinned by the
+    parse_report twins above, whose grammars remain fence-blind."""
     synthesis, _ = synthesis_for(reports())
     text = "~~~text\n~~~not-a-close\n" + synthesis + "\n~~~\n"
-    with pytest.raises(cps.SynthesisError, match="fired_conditions"):
-        cps.parse_synthesis("s.md", text, FULL)
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.decision == "editorial_decision=accept"
 
 
 @pytest.mark.parametrize("separator", ("\x85", "\u2028", "\u2029"))
@@ -347,11 +351,104 @@ def test_unicode_separator_cannot_close_commonmark_fence(separator):
 
 
 @pytest.mark.parametrize("separator", ("\x85", "\u2028", "\u2029"))
-def test_unicode_separator_keeps_synthesis_fenced(separator):
+def test_unicode_separator_synthesis_parses_as_fenced_content(separator):
+    """A Unicode separator is not a CommonMark line end: it can neither
+    close the fence nor split the line, so the glued `~~~<sep>note` stays
+    one content line. The rest of the synthesis is ordinary fenced content \u2014
+    a candidate since #637 \u2014 and parses."""
     synthesis, _ = synthesis_for(reports())
-    text = "~~~text\n~~~" + separator + synthesis + "\n~~~\n"
+    text = "~~~text\n~~~" + separator + "note\n" + synthesis + "\n~~~\n"
+    parsed = cps.parse_synthesis("fenced-synthesis.md", text, FULL)
+    assert parsed.decision == "editorial_decision=accept"
+
+
+def test_fenced_audit_block_parses_as_observed_in_637_cohort():
+    """Every synthesis first attempt of the 2026-08-03 baseline cohort (6/6)
+    emitted the four audit lines inside a plain code fence."""
+    synthesis, _ = synthesis_for(reports())
+    parsed = cps.parse_synthesis(
+        "s.md", "```\n" + synthesis + "\n```\n", FULL
+    )
+    assert parsed.fired == ["F0"]
+    assert parsed.decision == "editorial_decision=accept"
+
+
+def test_inline_code_wrapped_audit_lines_parse():
+    """ms01_quant baseline r2's a2 retry wrapped each audit line whole in an
+    inline code span, defeating the line-anchored grammar (#637)."""
+    synthesis, _ = synthesis_for(reports())
+    text = "\n".join(f"`{line}`" for line in synthesis.split("\n"))
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.decision == "editorial_decision=accept"
+
+
+def test_identical_duplicate_audit_lines_collapse():
+    """A byte-identical re-statement (plain line plus its fenced copy) is
+    one candidate, not a duplicate abort."""
+    synthesis, _ = synthesis_for(reports())
+    fired_line = next(line for line in synthesis.split("\n")
+                      if line.startswith("fired_conditions:"))
+    text = synthesis + "\n```\n" + fired_line + "\n```\n"
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.fired == ["F0"]
+
+
+def test_conflicting_fenced_audit_line_still_aborts():
+    """A fenced decoy that disagrees with the operative line stays a loud
+    abort \u2014 tolerance collapses identical values only."""
+    synthesis, _ = synthesis_for(reports())
+    text = synthesis + "\n```\nfired_conditions: [F1]\n```\n"
+    with pytest.raises(cps.SynthesisError, match="found 2"):
+        cps.parse_synthesis("s.md", text, FULL)
+
+
+def test_prose_quoted_checker_diagnostic_is_not_a_candidate():
+    """The a2 remediation notes of the #637 cohort quote the checker error
+    inside longer prose lines; anchored grammars must not see those."""
+    synthesis, _ = synthesis_for(reports())
+    note = (
+        "**Checker remediation:** the prior emission failed "
+        "`[SYNTHESIS-PARSE: expected exactly one fired_conditions line, "
+        "found 0]` and the canonical block is re-emitted plainly above."
+    )
+    parsed = cps.parse_synthesis(
+        "s.md", synthesis + "\n" + note + "\n", FULL
+    )
+    assert parsed.fired == ["F0"]
+
+
+def test_blockquoted_audit_line_documents_an_accepted_miss():
+    """Documents an ACCEPTED miss: a blockquoted audit line renders as
+    quotation and is deliberately not a candidate. Change deliberately."""
+    synthesis, _ = synthesis_for(reports())
+    text = synthesis.replace("fired_conditions:", "> fired_conditions:", 1)
     with pytest.raises(cps.SynthesisError, match="fired_conditions"):
-        cps.parse_synthesis("hidden-synthesis.md", text, FULL)
+        cps.parse_synthesis("s.md", text, FULL)
+
+
+def test_inline_span_inside_fence_documents_an_accepted_miss():
+    """Documents an ACCEPTED miss: backticks inside a fence are literal
+    rendered content, so a wrapped line there is not unwrapped. Change
+    deliberately."""
+    synthesis, _ = synthesis_for(reports())
+    fenced = "\n".join(f"`{line}`" for line in synthesis.split("\n"))
+    with pytest.raises(cps.SynthesisError, match="fired_conditions"):
+        cps.parse_synthesis("s.md", "```\n" + fenced + "\n```\n", FULL)
+
+
+def test_fenced_rationale_and_marker_document_an_accepted_miss():
+    """Documents an ACCEPTED miss: rationales and the DA marker keep the
+    plain-line source \u2014 their fenced occurrences read as quotation. Change
+    deliberately."""
+    synthesis, _ = synthesis_for(reports())
+    text = (
+        synthesis
+        + "\n```\nC9 rejection rationale: quoted example\n"
+        "[DA-CRITICAL-VS-ACCEPT: 2 validated/unresolved]\n```\n"
+    )
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert "C9" not in parsed.rejection_rationales
+    assert parsed.marker_count is None
 
 
 @pytest.mark.parametrize("score", ("warn", "block"))

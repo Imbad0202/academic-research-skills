@@ -1592,12 +1592,66 @@ second"""
 
 
 def test_same_line_duplicate_severity_declarations_fail():
+    """Unchanged by #637: a mid-line second declaration is a declaration
+    (`_SEVERITY_DECL_RE`) whose value cannot parse (`_SEVERITY_RE` anchors
+    to line start), so the declared-but-unparseable guard still aborts.
+    Only line-anchored cross-line supersession takes last-wins."""
     body = (
         "### W1: hidden critical\n"
         "**Severity**: Minor and **Severity**: Critical"
     )
     report, _ = parse_report("eic", body=body)
     with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_cross_line_severity_supersession_takes_last(capsys):
+    """#637 ms01_quant baseline r1: the domain seat declared Major, then
+    self-corrected to Critical with explicit supersession prose. The card
+    passes with the last value operative and the trail in the gate log."""
+    body = (
+        "### W1: construct mismatch\n"
+        "**Severity**: Major\n"
+        "Correction: recording this as Critical; the Severity line below "
+        "supersedes the line above.\n"
+        "**Severity**: Critical\n"
+        '**Evidence Anchor**: text: "quote" p. 1'
+    )
+    report, _ = parse_report("eic", body=body)
+    phase.check_scoring_seat_anchors(report)
+    assert (
+        "[SEVERITY-SUPERSEDED: p2.md: W1: construct mismatch: "
+        "Major -> Critical]"
+    ) in capsys.readouterr().out
+
+
+def test_unparseable_severity_declaration_still_fails():
+    body = (
+        "### W1: bad value\n"
+        "**Severity**: High"
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(
+        phase.ConformanceError, match="exactly one parseable Severity"
+    ):
+        phase.check_scoring_seat_anchors(report)
+
+
+def test_revisited_severity_value_still_fails():
+    """A chain that revisits a value (Minor -> Major -> Minor) is not a
+    supersession — repeated identical values keep the anti-bundling abort."""
+    body = (
+        "### W1: bundled pair\n"
+        "**Severity**: Minor\n"
+        "first\n"
+        "**Severity**: Major\n"
+        "second\n"
+        "**Severity**: Minor"
+    )
+    report, _ = parse_report("eic", body=body)
+    with pytest.raises(
+        phase.ConformanceError, match="exactly one parseable Severity"
+    ):
         phase.check_scoring_seat_anchors(report)
 
 
