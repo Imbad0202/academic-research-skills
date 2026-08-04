@@ -182,7 +182,13 @@ def audit_candidate_lines(text: str) -> list[str]:
     This walker therefore keeps fenced content (dropping only the
     fence-marker lines themselves, with the same open/close state machine as
     ``strip_fences``) and additionally yields the unwrapped body of any
-    non-fenced line that is entirely one inline code span.
+    non-fenced line that is entirely one inline code span. Candidates are
+    normalized to what a CommonMark renderer would DISPLAY, since rendered
+    visibility is the acceptance criterion: an inline span whose body has
+    both a leading and a trailing space renders with one space stripped
+    from each side, and lines inside an indented fence render dedented by
+    up to the opener's indent — both normalizations are applied here so
+    the start-anchored grammars see the displayed text.
 
     Declared boundaries (ACCEPTED misses — change deliberately, with
     tests): blockquoted or emphasis-wrapped audit lines never match the
@@ -191,18 +197,30 @@ def audit_candidate_lines(text: str) -> list[str]:
     the rejection-rationale and DA-consistency-marker grammars keep the
     plain-line source in ``parse_synthesis`` because both are quotable
     diagnostics whose fenced or wrapped occurrences read as quotation.
+    One asymmetry of that boundary is accepted deliberately: a fenced
+    marker in a state where the marker is forbidden stays invisible to
+    ``check_da_terminal_gate`` and no longer aborts upstream (pre-#637 the
+    whole fenced block aborted at ``fired_conditions``); the editorial
+    decision itself is independently recomputed from the reviewer cards by
+    the layer-2 check, so the slip is an accounting cosmetic, not a
+    decision channel.
     """
     out: list[str] = []
     fence_char: str | None = None
     fence_len = 0
+    fence_indent = 0
     for line in _COMMONMARK_LINE_END_RE.split(text):
         if fence_char is not None:
             match = _FENCE_CLOSE_RE.fullmatch(line)
             if (match and match.group("fence")[0] == fence_char
                     and len(match.group("fence")) >= fence_len):
-                fence_char, fence_len = None, 0
+                fence_char, fence_len, fence_indent = None, 0, 0
             else:
-                out.append(line)
+                dedent = 0
+                while (dedent < fence_indent and dedent < len(line)
+                       and line[dedent] == " "):
+                    dedent += 1
+                out.append(line[dedent:])
             continue
         match = _FENCE_OPEN_RE.fullmatch(line)
         if match:
@@ -210,10 +228,15 @@ def audit_candidate_lines(text: str) -> list[str]:
             info = match.group("info")
             if token[0] != "`" or "`" not in info:
                 fence_char, fence_len = token[0], len(token)
+                fence_indent = match.start("fence")
                 continue
         out.append(line)
         if span := _INLINE_CODE_LINE_RE.fullmatch(line):
-            out.append(span.group("body"))
+            body = span.group("body")
+            if (len(body) >= 2 and body[0] == " " and body[-1] == " "
+                    and body.strip(" ")):
+                body = body[1:-1]
+            out.append(body)
     return out
 
 
@@ -1015,10 +1038,13 @@ def _one_body(
 ) -> str:
     """Exactly one DISTINCT body for an audit-line grammar.
 
-    Byte-identical re-statements of an audit line (a plain line plus its
-    fenced copy, say) collapse to one candidate; two candidates that parse
-    to different bodies remain a loud abort, so a decoy that disagrees with
-    the operative line can never be silently absorbed (#637).
+    Re-statements of an audit line that parse to the SAME stripped body (a
+    plain line plus its fenced copy, or a padded inline-span variant of it)
+    collapse to one value; the collapse is value-level, not byte-level, by
+    design — the candidate list already mixes raw lines with their
+    rendering-normalized forms. Two candidates that parse to different
+    bodies remain a loud abort, so a decoy that disagrees with the
+    operative line can never be silently absorbed (#637).
     """
     bodies = [match.group("body").strip() for line in lines
               if (match := pattern.fullmatch(line))]

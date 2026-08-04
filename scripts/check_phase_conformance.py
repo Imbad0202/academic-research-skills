@@ -855,22 +855,37 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
             continue
         # A finding needs at least one parseable Severity declaration, and
         # every declaration must parse. When a card declares more than one
-        # with DISTINCT values, the LAST in reading order is operative — the
-        # current model generation self-corrects mid-card with explicit
-        # supersession prose ("See the Severity line below, which supersedes
-        # the line above", #637 ms01_quant r1), and Phase 2 permits no retry
-        # for this class, so a strict exactly-one rule turns a visible,
-        # reader-unambiguous correction into a whole-panel abort. Repeated
-        # IDENTICAL values are not a supersession (nothing changed) and keep
-        # the loud abort: that shape signals several findings bundled under
-        # one W heading, and the one-finding-per-heading accounting feeds
-        # the severity ladder. The advisory line below keeps the full
-        # declaration trail in the gate log for adjudication.
+        # ACROSS lines and the chain strictly ESCALATES (Minor < Major <
+        # Critical), the LAST in reading order is operative — the current
+        # model generation self-corrects mid-card with explicit supersession
+        # prose ("See the Severity line below, which supersedes the line
+        # above", #637 ms01_quant r1: Major -> Critical), and Phase 2 permits
+        # no retry for this class, so a strict exactly-one rule turns a
+        # visible, reader-unambiguous correction into a whole-panel abort.
+        # Every other multi-declaration shape keeps the loud abort:
+        # de-escalation could waive the Critical/Major Evidence-Anchor
+        # requirement by appending one weaker line; a non-monotone or
+        # repeated-value chain signals several findings bundled under one W
+        # heading (the one-finding-per-heading accounting feeds the severity
+        # ladder); and two parseable declarations on ONE line are not a
+        # reading-order correction at all. The advisory line below keeps the
+        # full declaration trail in the gate log for adjudication.
+        parseable_per_line = [
+            sum(1 for _ in _SEVERITY_RE.finditer(line)) for line in block
+        ]
         if (not severities or len(severities) != severity_declarations
-                or len(set(severities)) != len(severities)):
+                or any(count > 1 for count in parseable_per_line)):
             raise ConformanceError(
                 f"[FINDING-GRAMMAR: {report.path}: {title} must contain "
                 "exactly one parseable Severity declaration]"
+            )
+        severity_rank = {"Minor": 0, "Major": 1, "Critical": 2}
+        if any(severity_rank[later] <= severity_rank[earlier]
+               for earlier, later in zip(severities, severities[1:])):
+            raise ConformanceError(
+                f"[FINDING-GRAMMAR: {report.path}: {title}: multiple "
+                "Severity declarations must form a strictly escalating "
+                "self-correction chain]"
             )
         if len(severities) > 1:
             print(

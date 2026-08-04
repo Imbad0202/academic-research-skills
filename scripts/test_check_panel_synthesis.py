@@ -449,6 +449,127 @@ def test_fenced_rationale_and_marker_document_an_accepted_miss():
     parsed = cps.parse_synthesis("s.md", text, FULL)
     assert "C9" not in parsed.rejection_rationales
     assert parsed.marker_count is None
+    # The forbidden-marker asymmetry is part of the same accepted boundary:
+    # with no active DA-critical adjudications a stated marker is forbidden,
+    # and this fenced one stays invisible rather than aborting — the
+    # decision channel is pinned independently by the layer-2 recompute.
+    assert not any(
+        "marker forbidden" in diag
+        for diag in cps.check_da_terminal_gate(reports(), parsed)
+    )
+
+
+def test_padded_inline_code_wrapped_audit_lines_parse():
+    """CommonMark renders `` ` body ` `` with one padding space stripped
+    from each side, so a padded span displays the audit line verbatim and
+    must be a candidate in its DISPLAYED form."""
+    synthesis, _ = synthesis_for(reports())
+    text = "\n".join(f"` {line} `" for line in synthesis.split("\n"))
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.decision == "editorial_decision=accept"
+
+
+def test_padded_span_conflicting_value_still_aborts():
+    """Rendering normalization must not weaken the distinct-value guard: a
+    padded-span decoy that disagrees with the operative line still aborts."""
+    synthesis, _ = synthesis_for(reports())
+    text = synthesis + "\n` fired_conditions: [F1] `\n"
+    with pytest.raises(cps.SynthesisError, match="found 2"):
+        cps.parse_synthesis("s.md", text, FULL)
+
+
+def test_all_space_span_body_is_not_stripped():
+    """CommonMark strips padding only when the body is not all spaces; an
+    all-space span stays as-is and is simply a non-candidate."""
+    synthesis, _ = synthesis_for(reports())
+    parsed = cps.parse_synthesis(
+        "s.md", synthesis + "\n`   `\n", FULL
+    )
+    assert parsed.decision == "editorial_decision=accept"
+
+
+def test_indented_fence_content_parses_dedented():
+    """A fence opened with up to 3 leading spaces renders its content
+    dedented by the opener's indent, so indented fenced audit lines are
+    candidates in their displayed (dedented) form."""
+    synthesis, _ = synthesis_for(reports())
+    indented = "\n".join("  " + line for line in synthesis.split("\n"))
+    text = "  ```\n" + indented + "\n  ```\n"
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.decision == "editorial_decision=accept"
+
+
+def test_crlf_fenced_audit_block_parses():
+    """CRLF line endings are CommonMark line ends; the fenced audit block
+    parses identically under them."""
+    synthesis, _ = synthesis_for(reports())
+    text = ("```\n" + synthesis + "\n```\n").replace("\n", "\r\n")
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.decision == "editorial_decision=accept"
+
+
+def test_malformed_closer_fence_state_pins_wrapped_decoy_hidden():
+    """Pins fence STATE through the candidate walker: `~~~not-a-close` does
+    not close the fence, so a wrapped decoy after it is fenced — backticks
+    render literally, the decoy is never unwrapped, and the plain synthesis
+    before the fence parses. A mutation that accepts the malformed closer
+    unwraps the decoy and flips this to a found-2 abort."""
+    synthesis, _ = synthesis_for(reports())
+    text = (
+        synthesis
+        + "\n~~~text\n~~~not-a-close\n`fired_conditions: [F1]`\n~~~\n"
+    )
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.fired == ["F0"]
+
+
+def test_short_closer_fence_state_pins_wrapped_decoy_hidden():
+    """A prospective closer shorter than the opener does not close the
+    fence (CommonMark length rule), so the wrapped decoy after it stays
+    fenced and hidden."""
+    synthesis, _ = synthesis_for(reports())
+    text = (
+        synthesis
+        + "\n````\n```\n`fired_conditions: [F1]`\n````\n"
+    )
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.fired == ["F0"]
+
+
+def test_mismatched_closer_fence_state_pins_wrapped_decoy_hidden():
+    """A backtick closer cannot close a tilde fence; the wrapped decoy
+    after it stays fenced and hidden."""
+    synthesis, _ = synthesis_for(reports())
+    text = (
+        synthesis
+        + "\n~~~\n```\n`fired_conditions: [F1]`\n~~~\n"
+    )
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.fired == ["F0"]
+
+
+@pytest.mark.parametrize("separator", ("\x85", "\u2028", "\u2029"))
+def test_unicode_separator_fence_state_pins_wrapped_decoy_hidden(separator):
+    """A Unicode separator is not a CommonMark line end: `~~~<sep>note`
+    stays one content line and cannot close the fence, so the wrapped
+    decoy after it stays fenced and hidden. A mutation that splits on the
+    separator closes the fence and flips this to a found-2 abort."""
+    synthesis, _ = synthesis_for(reports())
+    text = (
+        synthesis
+        + "\n~~~text\n~~~" + separator + "note\n"
+        "`fired_conditions: [F1]`\n~~~\n"
+    )
+    parsed = cps.parse_synthesis("s.md", text, FULL)
+    assert parsed.fired == ["F0"]
+
+
+def test_unterminated_fence_content_stays_candidate():
+    """An unterminated fence retains (not grows) its content, and fenced
+    audit lines remain candidates to end-of-input."""
+    synthesis, _ = synthesis_for(reports())
+    parsed = cps.parse_synthesis("s.md", "```\n" + synthesis, FULL)
+    assert parsed.decision == "editorial_decision=accept"
 
 
 @pytest.mark.parametrize("score", ("warn", "block"))
