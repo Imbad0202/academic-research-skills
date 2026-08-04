@@ -70,11 +70,19 @@ export default function (pi) {
     pi.appendEntry(stateEntryType, { active });
   };
 
-  pi.on("session_start", (_event, ctx) => {
+  const restoreArsState = (ctx) => {
     const state = ctx.sessionManager.getBranch()
       .filter((entry) => entry.type === "custom" && entry.customType === stateEntryType)
       .pop();
     arsActive = state?.data?.active === true;
+  };
+
+  pi.on("session_start", (_event, ctx) => {
+    restoreArsState(ctx);
+  });
+
+  pi.on("session_tree", (_event, ctx) => {
+    restoreArsState(ctx);
   });
 
   pi.on("input", (event) => {
@@ -92,13 +100,13 @@ export default function (pi) {
     const body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
     const args = match[2]?.trim() ?? "";
     const hasArgumentPlaceholder = body.includes("$ARGUMENTS") || body.includes("$@");
-    const expanded = body
+    const executableBody = body.replace(
+      /\b(python3?|bash|sh) scripts\/([^\s`]+)/g,
+      (_match, command, script) => `${command} "${repoRoot}/scripts/${script}"`,
+    );
+    const expanded = executableBody
       .replaceAll("$ARGUMENTS", () => args)
-      .replaceAll("$@", () => args)
-      .replace(
-        /\b(python3?|bash|sh) scripts\/([^\s`]+)/g,
-        (_match, command, script) => `${command} "${repoRoot}/scripts/${script}"`,
-      );
+      .replaceAll("$@", () => args);
     const commandText = args && !hasArgumentPlaceholder
       ? `${expanded}\n\nUser request / arguments:\n${args}`
       : expanded;

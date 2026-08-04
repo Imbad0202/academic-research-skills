@@ -104,7 +104,7 @@ pi remove .
 
 Installing the package does not add ARS text to ordinary Pi prompts. While ARS mode is inactive, the wrapper removes only this package's four ARS skill entries from the per-turn system prompt, preventing automatic model invocation without modifying the original `SKILL.md` files.
 
-An `/ars-*` command or one of the four direct `/skill:*` entries above activates ARS mode before the same agent run, so that request receives both the original skill and the compatibility note. `/ars-pi-start` explicitly enables ARS mode and automatic skill selection for subsequent natural-language prompts. The state survives resuming the same session and resets in a new session. `/ars-pi-doctor` does not activate it.
+An `/ars-*` command or one of the four direct `/skill:*` entries above activates ARS mode before the same agent run, so that request receives both the original skill and the compatibility note. `/ars-pi-start` explicitly enables ARS mode and automatic skill selection for subsequent natural-language prompts. The state survives resuming the same session, follows the selected branch during `/tree` navigation, and resets in a new session. `/ars-pi-doctor` does not activate it.
 
 To hide the ARS skills again and continue unrelated work without the compatibility note, run:
 
@@ -118,7 +118,7 @@ To hide the ARS skills again and continue unrelated work without the compatibili
 node --test pi/wrapper.test.mjs
 ```
 
-The test covers inactive skill hiding, same-request `/ars-*` and direct `/skill:*` activation, and manual start/stop toggling.
+The test covers inactive skill hiding, same-request `/ars-*` and direct `/skill:*` activation, manual start/stop toggling, `/tree` state restoration, and argument-safe script-path rewriting.
 
 ## What the wrapper translates
 

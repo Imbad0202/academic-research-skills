@@ -28,6 +28,10 @@ function createHarness() {
   const commands = new Map();
   const entries = [];
   const notifications = [];
+  let branch = [];
+  const sessionContext = {
+    sessionManager: { getBranch: () => branch },
+  };
   const pi = {
     on(name, handler) {
       handlers.set(name, handler);
@@ -35,21 +39,25 @@ function createHarness() {
     registerCommand(name, command) {
       commands.set(name, command);
     },
-    appendEntry(type, data) {
-      entries.push({ type, data });
+    appendEntry(customType, data) {
+      const entry = { type: "custom", customType, data };
+      entries.push(entry);
+      branch.push(entry);
     },
   };
 
   wrapper(pi);
-  handlers.get("session_start")({}, {
-    sessionManager: { getBranch: () => [] },
-  });
+  handlers.get("session_start")({}, sessionContext);
 
   return {
     handlers,
     commands,
     entries,
     notifications,
+    sessionContext,
+    setBranch(nextBranch) {
+      branch = nextBranch;
+    },
     commandContext: {
       ui: { notify: (message, level) => notifications.push({ message, level }) },
     },
@@ -86,6 +94,33 @@ test("direct ARS /skill:* activates compatibility", () => {
   const systemPrompt = runBeforeAgentStart(harness);
 
   assert.match(systemPrompt, new RegExp(compatibilityMarker));
+});
+
+test("command arguments are not rewritten as script paths", () => {
+  const harness = createHarness();
+  const result = harness.handlers.get("input")({
+    text: "/ars-cache-invalidate python scripts/user-provided.py",
+  });
+
+  assert.match(result.text, /python scripts\/user-provided\.py/);
+  assert.doesNotMatch(result.text, new RegExp(`${repoRoot}/scripts/user-provided\\.py`));
+  assert.match(result.text, new RegExp(`${repoRoot}/scripts/ars_cache_invalidate\\.py`));
+});
+
+test("/tree navigation recomputes activation from the selected branch", () => {
+  const harness = createHarness();
+  harness.handlers.get("input")({ text: "/ars-plan topic" });
+  assert.match(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
+
+  harness.setBranch([]);
+  const sessionTree = harness.handlers.get("session_tree");
+  assert.ok(sessionTree);
+  sessionTree({}, harness.sessionContext);
+  assert.doesNotMatch(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
+
+  harness.setBranch([{ type: "custom", customType: "ars-pi-state", data: { active: true } }]);
+  sessionTree({}, harness.sessionContext);
+  assert.match(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
 });
 
 test("/ars-pi-start and /ars-pi-stop toggle automatic invocation", async () => {

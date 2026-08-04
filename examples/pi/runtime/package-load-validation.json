@@ -78,7 +78,9 @@
     "manual_start_enables_automatic_selection": true,
     "stop_hides_ars_text_and_skills": true,
     "resume_persistence_harness": "PASS",
-    "node_regression_tests": "4/4 PASS",
+    "tree_navigation_state_recovery": true,
+    "argument_safe_script_path_rewrite": true,
+    "node_regression_tests": "6/6 PASS",
     "real_pi_rpc_prompt_scope_probes": "5/5 PASS"
   },
   "result": "PASS"
