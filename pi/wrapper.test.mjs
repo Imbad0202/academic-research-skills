@@ -81,9 +81,28 @@ test("ordinary prompts hide only package ARS skills", () => {
   const harness = createHarness();
   const systemPrompt = runBeforeAgentStart(harness);
 
-  for (const location of arsSkillLocations) assert.doesNotMatch(systemPrompt, new RegExp(location));
-  assert.match(systemPrompt, new RegExp(externalSkillLocation));
-  assert.doesNotMatch(systemPrompt, new RegExp(compatibilityMarker));
+  for (const location of arsSkillLocations) assert.equal(systemPrompt.includes(location), false);
+  assert.equal(systemPrompt.includes(externalSkillLocation), true);
+  assert.equal(systemPrompt.includes(compatibilityMarker), false);
+});
+
+test("skill hiding does not cross into an adjacent skill block", () => {
+  const systemPrompt = [
+    "Base prompt",
+    "",
+    "<available_skills>",
+    `  <skill>
+    <name>${arsSkillNames[0]}</name>
+    <description>ARS skill</description>
+    <location>${arsSkillLocations[0]}</location></skill>`,
+    skillBlock("deep-research", "Unrelated skill", externalSkillLocation),
+    "</available_skills>",
+  ].join("\n");
+
+  const result = runBeforeAgentStart(createHarness(), systemPrompt);
+
+  assert.equal(result.includes(arsSkillLocations[0]), false);
+  assert.equal(result.includes(externalSkillLocation), true);
 });
 
 test("ordinary prompts hide ARS skills loaded through an XML-escaped symlink path", (t) => {
@@ -113,8 +132,8 @@ test("/ars-* activates compatibility for the same agent run", () => {
   const systemPrompt = runBeforeAgentStart(harness);
 
   assert.equal(result.action, "transform");
-  for (const location of arsSkillLocations) assert.match(systemPrompt, new RegExp(location));
-  assert.match(systemPrompt, new RegExp(compatibilityMarker));
+  for (const location of arsSkillLocations) assert.equal(systemPrompt.includes(location), true);
+  assert.equal(systemPrompt.includes(compatibilityMarker), true);
 });
 
 test("direct ARS /skill:* activates compatibility", () => {
@@ -122,7 +141,7 @@ test("direct ARS /skill:* activates compatibility", () => {
   harness.handlers.get("input")({ text: "/skill:academic-pipeline topic" });
   const systemPrompt = runBeforeAgentStart(harness);
 
-  assert.match(systemPrompt, new RegExp(compatibilityMarker));
+  assert.equal(systemPrompt.includes(compatibilityMarker), true);
 });
 
 test("command arguments are not rewritten as script paths", () => {
@@ -132,8 +151,8 @@ test("command arguments are not rewritten as script paths", () => {
   });
 
   assert.match(result.text, /python scripts\/user-provided\.py/);
-  assert.doesNotMatch(result.text, new RegExp(`${repoRoot}/scripts/user-provided\\.py`));
-  assert.match(result.text, new RegExp(`${repoRoot}/scripts/ars_cache_invalidate\\.py`));
+  assert.equal(result.text.includes(`${repoRoot}/scripts/user-provided.py`), false);
+  assert.equal(result.text.includes(`${repoRoot}/scripts/ars_cache_invalidate.py`), true);
 });
 
 test("argument placeholders are substituted in one pass", () => {
@@ -149,17 +168,17 @@ test("argument placeholders are substituted in one pass", () => {
 test("/tree navigation recomputes activation from the selected branch", () => {
   const harness = createHarness();
   harness.handlers.get("input")({ text: "/ars-plan topic" });
-  assert.match(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
+  assert.equal(runBeforeAgentStart(harness).includes(compatibilityMarker), true);
 
   harness.setBranch([]);
   const sessionTree = harness.handlers.get("session_tree");
   assert.ok(sessionTree);
   sessionTree({}, harness.sessionContext);
-  assert.doesNotMatch(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
+  assert.equal(runBeforeAgentStart(harness).includes(compatibilityMarker), false);
 
   harness.setBranch([{ type: "custom", customType: "ars-pi-state", data: { active: true } }]);
   sessionTree({}, harness.sessionContext);
-  assert.match(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
+  assert.equal(runBeforeAgentStart(harness).includes(compatibilityMarker), true);
 });
 
 test("/ars-pi-start and /ars-pi-stop toggle automatic invocation", async () => {
@@ -169,14 +188,14 @@ test("/ars-pi-start and /ars-pi-stop toggle automatic invocation", async () => {
 
   assert.ok(start);
   await start.handler("", harness.commandContext);
-  assert.match(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
+  assert.equal(runBeforeAgentStart(harness).includes(compatibilityMarker), true);
   for (const location of arsSkillLocations) {
-    assert.match(runBeforeAgentStart(harness), new RegExp(location));
+    assert.equal(runBeforeAgentStart(harness).includes(location), true);
   }
 
   await stop.handler("", harness.commandContext);
-  assert.doesNotMatch(runBeforeAgentStart(harness), new RegExp(compatibilityMarker));
+  assert.equal(runBeforeAgentStart(harness).includes(compatibilityMarker), false);
   for (const location of arsSkillLocations) {
-    assert.doesNotMatch(runBeforeAgentStart(harness), new RegExp(location));
+    assert.equal(runBeforeAgentStart(harness).includes(location), false);
   }
 });

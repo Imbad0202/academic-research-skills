@@ -43,7 +43,7 @@ const skillLocations = new Set(
 // Upstream SKILL.md files stay unmodified, so hide their exact Pi listings while ARS is inactive.
 function hideArsSkills(systemPrompt) {
   return systemPrompt.replace(
-    /(?:\r?\n)?[ \t]*<skill>\r?\n[\s\S]*?\r?\n[ \t]*<\/skill>/g,
+    /(?:\r?\n)?[ \t]*<skill>(?:(?!<skill>)[\s\S])*?<\/skill>/g,
     (block) => {
       const location = block.match(/<location>([^<]+)<\/location>/)?.[1];
       const canonicalLocation = location ? canonicalPath(decodeXml(location)) : undefined;

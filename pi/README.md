@@ -120,7 +120,7 @@ To hide the ARS skills again and continue unrelated work without the compatibili
 node --test pi/wrapper.test.mjs
 ```
 
-The test covers idle-prompt skill hiding through canonical and symlink-spelled load paths, XML-escaped locations, preservation of missing unrelated skills, same-request `/ars-*` and direct `/skill:*` activation while idle, manual start/stop toggling, `/tree` state restoration, argument-safe script-path rewriting, and single-pass argument-placeholder substitution.
+The test covers idle-prompt skill hiding through canonical and symlink-spelled load paths, XML-escaped locations, preservation of missing and adjacent unrelated skills across alternate block formatting, same-request `/ars-*` and direct `/skill:*` activation while idle, manual start/stop toggling, `/tree` state restoration, argument-safe script-path rewriting, and single-pass argument-placeholder substitution.
 
 ## What the wrapper translates
 
