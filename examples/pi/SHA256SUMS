@@ -1,9 +1,9 @@
-8d45487ba811c3598ae8828f979cb2389f0e349670f9e8897ac2cb0ab75b3ccb  ./inventory.json
+d28b1e82b82dc4ec9a0e16dfc01acbccc95b81f81643a38d9a0241f6cc1671cf  ./inventory.json
 2a4316b250cc7fe4cd57ed4d42a0185bddf1e10d4dfd2fc4af0ddbce7cecf8a6  ./model-portability.md
-c6e6620f33f719a6ce933dfb7909809cbdff3c613eb1ac35b1f0c69aaf334bae  ./README.md
+0890eef08a6d13108003c465ad3adf89b90400ffd0a43c2ec65c7d1e8617822c  ./README.md
 5d6e43ed109a26412048ca192f7622435d0186274d760796cb35e77fdcfa3bad  ./run-log.md
 47731cf8e217769f22844cc8a6ba8174c0d01279997e3d71fff46eceae30871e  ./runtime/ars-pi-doctor.txt
-c34f8659a92609e7623a51c8da2a20e837441e3fff24e83b1080f21735133486  ./runtime/package-load-validation.json
+b77709169f8d76d649975d00a5e67252fbfd93dfec62ed40883af69d7c640367  ./runtime/package-load-validation.json
 cee08d1b349854631a5634302852e58c16e0c51f480042fd467d1daa76e3abab  ./stage-01/revised-research-report.md
 614081675275d7b21b395c191b88545e779c130a626e91c941888b83b9c93a19  ./stage-02.5/focused-reverification-report.md
 953badfa35dab3ae6bcd183918b5d319b8575e22df944a3f0fa2ac54429f6507  ./stage-02/course-paper-draft.md

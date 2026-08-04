@@ -34,8 +34,8 @@
     {
       "curated_path": "README.md",
       "source_path": "curator-authored privacy-minimized evidence guide",
-      "sha256": "c6e6620f33f719a6ce933dfb7909809cbdff3c613eb1ac35b1f0c69aaf334bae",
-      "bytes": 7960,
+      "sha256": "0890eef08a6d13108003c465ad3adf89b90400ffd0a43c2ec65c7d1e8617822c",
+      "bytes": 8290,
       "transformation": "curator-authored"
     },
     {
@@ -62,8 +62,8 @@
     {
       "curated_path": "runtime/package-load-validation.json",
       "source_path": "fresh post-run root/nested Pi RPC registry and system-prompt activation probes",
-      "sha256": "c34f8659a92609e7623a51c8da2a20e837441e3fff24e83b1080f21735133486",
-      "bytes": 2390,
+      "sha256": "b77709169f8d76d649975d00a5e67252fbfd93dfec62ed40883af69d7c640367",
+      "bytes": 2836,
       "transformation": "generated validation result; no model response used as evidence"
     },
     {

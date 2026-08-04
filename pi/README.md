@@ -102,9 +102,11 @@ pi remove .
 
 ## System-prompt scope
 
-Installing the package does not add ARS text to ordinary Pi prompts. While ARS mode is inactive, the wrapper removes only this package's four ARS skill entries from the per-turn system prompt, preventing automatic model invocation without modifying the original `SKILL.md` files.
+For prompts submitted while Pi is idle, installing the package does not add ARS text to ordinary Pi prompts. While ARS mode is inactive, the wrapper removes only this package's four ARS skill entries from the newly started run's system prompt, preventing automatic model invocation without modifying the original `SKILL.md` files.
 
-An `/ars-*` command or one of the four direct `/skill:*` entries above activates ARS mode before the same agent run, so that request receives both the original skill and the compatibility note. `/ars-pi-start` explicitly enables ARS mode and automatic skill selection for subsequent natural-language prompts. The state survives resuming the same session, follows the selected branch during `/tree` navigation, and resets in a new session. `/ars-pi-doctor` does not activate it.
+When Pi is idle, an `/ars-*` command or one of the four direct `/skill:*` entries above activates ARS mode before the new agent run starts, so that request receives both the original skill and the compatibility note. `/ars-pi-start` explicitly enables ARS mode and automatic skill selection for subsequent natural-language prompts. The state survives resuming the same session, follows the selected branch during `/tree` navigation, and resets in a new session. `/ars-pi-doctor` does not activate it.
+
+Pi 0.83.0 does not rebuild the system prompt when a prompt is queued into an agent run that is already streaming. A mid-stream `/ars-*` or direct `/skill:*` prompt can therefore execute under that run's existing system prompt without the wrapper-injected compatibility note; similarly, `/ars-pi-stop` changes the persisted mode immediately but cannot remove ARS text from the in-flight run. The RPC `steer` and `follow_up` methods also bypass Pi's `input` event, so a direct ARS `/skill:*` sent through either method does not activate the wrapper. To receive the scoped system-prompt guarantee, wait for Pi to become idle and submit the request through the normal interactive or RPC `prompt` path.
 
 To hide the ARS skills again and continue unrelated work without the compatibility note, run:
 
@@ -118,7 +120,7 @@ To hide the ARS skills again and continue unrelated work without the compatibili
 node --test pi/wrapper.test.mjs
 ```
 
-The test covers inactive skill hiding, same-request `/ars-*` and direct `/skill:*` activation, manual start/stop toggling, `/tree` state restoration, and argument-safe script-path rewriting.
+The test covers idle-prompt skill hiding, same-request `/ars-*` and direct `/skill:*` activation while idle, manual start/stop toggling, `/tree` state restoration, and argument-safe script-path rewriting.
 
 ## What the wrapper translates
 

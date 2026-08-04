@@ -18,14 +18,14 @@ This is evidence from one synthetic test scenario, not a general conformance cer
 
 The run crossed a disclosed transport recovery and automatic context compaction. Continuity was established from persisted artifacts, state, and hashes; it was not represented as a new academic run.
 
-After the run, the wrapper's system-prompt injection was scoped to ARS-active sessions and inactive prompts were hardened to hide this package's ARS skill entries. The compatibility text used after `/ars-full` is unchanged; the final wrapper received fresh activation, automatic-invocation, and package-load regression tests, but these small post-run changes did not receive another full pipeline execution. See [`model-portability.md`](model-portability.md).
+After the run, the wrapper's system-prompt injection was scoped to ARS-active sessions and inactive prompts were hardened to hide this package's ARS skill entries. That guarantee and its probes cover prompts submitted while Pi is idle. Pi 0.83.0 does not rebuild the system prompt for prompts queued into an in-flight run, and its direct RPC `steer` and `follow_up` methods bypass the wrapper's `input` handler; those residuals are documented rather than represented as covered. The compatibility text used after `/ars-full` is unchanged; the final wrapper received fresh idle-path activation, automatic-invocation, and package-load regression tests, but these small post-run changes did not receive another full pipeline execution. See [`model-portability.md`](model-portability.md).
 
 ## Load-bearing Pi boundaries
 
 1. **No wrapper-provided agent isolation.** [`runtime/ars-pi-doctor.txt`](runtime/ars-pi-doctor.txt) reported `Orchestration: none; sequential/degraded mode`. Specialist roles therefore ran sequentially in one recovered Pi/model context. No independent reviewer, writer, verifier, observer, formatter, or cross-model judgment is claimed. The external RPC driver delivered synthetic test-operator checkpoint responses only; it was not available to the inner Pi session as an orchestration tool or skill.
 2. **No Claude hook enforcement.** The same doctor record reported that Claude hooks are unavailable in Pi. ARS write-scope enforcement was prompt-level in this run; no deterministic Claude `PreToolUse` hook boundary is claimed.
 
-The installed `/skill:websearch` capability was visible to Pi. Source verification remained bounded as disclosed in the provenance and process records. [`runtime/package-load-validation.json`](runtime/package-load-validation.json) records fresh offline root/nested package loads that found all three wrapper commands, all 16 `/ars-*` prompt templates, and all four ARS skills, plus six passing unit tests and five real Pi prompt-scope probes.
+The installed `/skill:websearch` capability was visible to Pi. Source verification remained bounded as disclosed in the provenance and process records. [`runtime/package-load-validation.json`](runtime/package-load-validation.json) records fresh offline root/nested package loads that found all three wrapper commands, all 16 `/ars-*` prompt templates, and all four ARS skills, plus six passing unit tests and five real Pi idle-prompt-scope probes.
 
 ## Evidence chain
 

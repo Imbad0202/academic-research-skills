@@ -70,18 +70,24 @@
     "stderr_empty": true
   },
   "system_prompt_scope": {
-    "ordinary_prompt_ars_text_active": false,
-    "ordinary_prompt_package_ars_skills_visible": false,
+    "claim_scope": "prompts submitted while Pi is idle",
+    "ordinary_idle_prompt_ars_text_active": false,
+    "ordinary_idle_prompt_package_ars_skills_visible": false,
     "unrelated_colliding_skill_preserved": true,
-    "ars_command_ars_text_active": true,
-    "direct_skill_ars_text_active": true,
-    "manual_start_enables_automatic_selection": true,
-    "stop_hides_ars_text_and_skills": true,
+    "idle_ars_command_ars_text_active": true,
+    "idle_direct_skill_ars_text_active": true,
+    "idle_manual_start_enables_automatic_selection": true,
+    "idle_stop_hides_ars_text_and_skills_on_next_run": true,
     "resume_persistence_harness": "PASS",
     "tree_navigation_state_recovery": true,
     "argument_safe_script_path_rewrite": true,
     "node_regression_tests": "6/6 PASS",
-    "real_pi_rpc_prompt_scope_probes": "5/5 PASS"
+    "real_pi_rpc_idle_prompt_scope_probes": "5/5 PASS",
+    "documented_residuals": {
+      "mid_stream_prompt": "queued ARS requests retain the in-flight run's existing system prompt",
+      "mid_stream_stop": "state changes immediately, but the in-flight system prompt remains unchanged",
+      "rpc_steer_follow_up": "these methods bypass the input event and do not activate the wrapper"
+    }
   },
   "result": "PASS"
 }
