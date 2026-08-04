@@ -381,7 +381,13 @@ What it changes, and why each is a property rather than a step:
 - **A completed panel carries `adjudication.status: "pending"`.** The harness
   cannot adjudicate `per_defect` — that needs the held-out manifest, which must
   never enter a session — so the maintainer fills the verdicts before the
-  record is committed.
+  record is committed when the record enters the scored run history. An
+  attempt-documentation cohort recorded under the corrective-iteration rule —
+  one whose run-history row is marked not adjudicated / NOT COMPUTABLE and
+  whose panels are never reused as baseline replicates (the 2026-08-03
+  attempt) — commits with the pending status and its explanatory note intact:
+  filling verdicts for runs that can never be scored would blur the boundary
+  between dispatch facts and maintainer adjudication.
 - **The delivered prompts are dispatched whole where the protocol does not
   narrow them.** §2 names a subsection only for the five seats; the field
   analyst and the synthesizer get their full agent files. Sending the
