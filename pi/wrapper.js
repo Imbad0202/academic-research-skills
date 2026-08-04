@@ -118,9 +118,7 @@ export default function (pi) {
       /\b(python3?|bash|sh) scripts\/([^\s`]+)/g,
       (_match, command, script) => `${command} "${repoRoot}/scripts/${script}"`,
     );
-    const expanded = executableBody
-      .replaceAll("$ARGUMENTS", () => args)
-      .replaceAll("$@", () => args);
+    const expanded = executableBody.replace(/\$ARGUMENTS|\$@/g, () => args);
     const commandText = args && !hasArgumentPlaceholder
       ? `${expanded}\n\nUser request / arguments:\n${args}`
       : expanded;

@@ -136,6 +136,16 @@ test("command arguments are not rewritten as script paths", () => {
   assert.match(result.text, new RegExp(`${repoRoot}/scripts/ars_cache_invalidate\\.py`));
 });
 
+test("argument placeholders are substituted in one pass", () => {
+  const harness = createHarness();
+  const result = harness.handlers.get("input")({
+    text: "/ars-cache-invalidate alpha$@omega",
+  });
+
+  assert.match(result.text, /alpha\$@omega/);
+  assert.doesNotMatch(result.text, /alphaalpha\$@omegaomega/);
+});
+
 test("/tree navigation recomputes activation from the selected branch", () => {
   const harness = createHarness();
   harness.handlers.get("input")({ text: "/ars-plan topic" });
