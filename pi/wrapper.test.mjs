@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import wrapper from "./wrapper.js";
 
@@ -9,6 +11,12 @@ const compatibilityMarker = "## Academic Research Skills compatibility for Pi";
 const arsSkillNames = ["deep-research", "academic-paper", "academic-paper-reviewer", "academic-pipeline"];
 const arsSkillLocations = arsSkillNames.map((name) => resolve(repoRoot, name, "SKILL.md"));
 const externalSkillLocation = "/example/external/deep-research/SKILL.md";
+const escapeXml = (text) => text
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&apos;");
 const skillBlock = (name, description, location) => `  <skill>
     <name>${name}</name>
     <description>${description}</description>
@@ -64,9 +72,9 @@ function createHarness() {
   };
 }
 
-function runBeforeAgentStart(harness) {
-  const result = harness.handlers.get("before_agent_start")({ systemPrompt: baseSystemPrompt });
-  return result?.systemPrompt ?? baseSystemPrompt;
+function runBeforeAgentStart(harness, systemPrompt = baseSystemPrompt) {
+  const result = harness.handlers.get("before_agent_start")({ systemPrompt });
+  return result?.systemPrompt ?? systemPrompt;
 }
 
 test("ordinary prompts hide only package ARS skills", () => {
@@ -76,6 +84,27 @@ test("ordinary prompts hide only package ARS skills", () => {
   for (const location of arsSkillLocations) assert.doesNotMatch(systemPrompt, new RegExp(location));
   assert.match(systemPrompt, new RegExp(externalSkillLocation));
   assert.doesNotMatch(systemPrompt, new RegExp(compatibilityMarker));
+});
+
+test("ordinary prompts hide ARS skills loaded through an XML-escaped symlink path", (t) => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "ars-pi-&-"));
+  t.after(() => rmSync(tempRoot, { recursive: true, force: true }));
+  const linkedRoot = join(tempRoot, "linked-checkout");
+  symlinkSync(repoRoot, linkedRoot, process.platform === "win32" ? "junction" : "dir");
+  const linkedLocations = arsSkillNames.map((name) => resolve(linkedRoot, name, "SKILL.md"));
+  const systemPrompt = [
+    "Base prompt",
+    "",
+    "<available_skills>",
+    ...arsSkillNames.map((name, index) => skillBlock(name, "ARS skill", escapeXml(linkedLocations[index]))),
+    skillBlock("deep-research", "Unrelated missing skill", "/missing/deep-research/SKILL.md"),
+    "</available_skills>",
+  ].join("\n");
+
+  const result = runBeforeAgentStart(createHarness(), systemPrompt);
+
+  for (const location of linkedLocations) assert.equal(result.includes(escapeXml(location)), false);
+  assert.equal(result.includes("/missing/deep-research/SKILL.md"), true);
 });
 
 test("/ars-* activates compatibility for the same agent run", () => {

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -14,17 +14,30 @@ function uniqueMatches(items, pattern) {
   return [...new Set(items.filter((item) => pattern.test(item.search)).map((item) => item.label))];
 }
 
-function escapeXml(text) {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
+const xmlEntities = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+};
+
+function decodeXml(text) {
+  return text.replace(/&(amp|lt|gt|quot|apos);/g, (_match, entity) => xmlEntities[entity]);
+}
+
+function canonicalPath(path) {
+  try {
+    return realpathSync(path);
+  } catch {
+    return undefined;
+  }
 }
 
 const skillLocations = new Set(
-  skillNames.map((name) => escapeXml(resolve(repoRoot, name, "SKILL.md"))),
+  skillNames
+    .map((name) => canonicalPath(resolve(repoRoot, name, "SKILL.md")))
+    .filter((location) => location !== undefined),
 );
 
 // Upstream SKILL.md files stay unmodified, so hide their exact Pi listings while ARS is inactive.
@@ -33,7 +46,8 @@ function hideArsSkills(systemPrompt) {
     /(?:\r?\n)?[ \t]*<skill>\r?\n[\s\S]*?\r?\n[ \t]*<\/skill>/g,
     (block) => {
       const location = block.match(/<location>([^<]+)<\/location>/)?.[1];
-      return location && skillLocations.has(location) ? "" : block;
+      const canonicalLocation = location ? canonicalPath(decodeXml(location)) : undefined;
+      return canonicalLocation && skillLocations.has(canonicalLocation) ? "" : block;
     },
   );
 }

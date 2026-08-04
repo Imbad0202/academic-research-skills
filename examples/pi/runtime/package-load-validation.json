@@ -74,6 +74,8 @@
     "ordinary_idle_prompt_ars_text_active": false,
     "ordinary_idle_prompt_package_ars_skills_visible": false,
     "unrelated_colliding_skill_preserved": true,
+    "symlink_spelled_xml_escaped_skill_hiding_harness": "PASS",
+    "missing_skill_location_preserved": true,
     "idle_ars_command_ars_text_active": true,
     "idle_direct_skill_ars_text_active": true,
     "idle_manual_start_enables_automatic_selection": true,
@@ -81,7 +83,7 @@
     "resume_persistence_harness": "PASS",
     "tree_navigation_state_recovery": true,
     "argument_safe_script_path_rewrite": true,
-    "node_regression_tests": "6/6 PASS",
+    "node_regression_tests": "7/7 PASS",
     "real_pi_rpc_idle_prompt_scope_probes": "5/5 PASS",
     "documented_residuals": {
       "mid_stream_prompt": "queued ARS requests retain the in-flight run's existing system prompt",
