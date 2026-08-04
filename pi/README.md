@@ -51,6 +51,12 @@ The original skills are also directly available:
 /skill:academic-pipeline
 ```
 
+For automatic ARS skill selection from subsequent natural-language prompts, explicitly enable ARS mode first:
+
+```text
+/ars-pi-start
+```
+
 ## Install from GitHub
 
 When this branch exists on GitHub, Pi can install the repository directly because the root `package.json` points to this wrapper and the original ARS resources:
@@ -96,13 +102,23 @@ pi remove .
 
 ## System-prompt scope
 
-Installing the package does not add ARS text to ordinary Pi prompts. The compatibility note activates only after an `/ars-*` command or one of the four direct `/skill:*` entries above is invoked. That state survives resuming the same session and resets in a new session. `/ars-pi-doctor` does not activate it.
+Installing the package does not add ARS text to ordinary Pi prompts. While ARS mode is inactive, the wrapper removes only this package's four ARS skill entries from the per-turn system prompt, preventing automatic model invocation without modifying the original `SKILL.md` files.
 
-To continue using the same session for unrelated work without the ARS compatibility note, run:
+An `/ars-*` command or one of the four direct `/skill:*` entries above activates ARS mode before the same agent run, so that request receives both the original skill and the compatibility note. `/ars-pi-start` explicitly enables ARS mode and automatic skill selection for subsequent natural-language prompts. The state survives resuming the same session and resets in a new session. `/ars-pi-doctor` does not activate it.
+
+To hide the ARS skills again and continue unrelated work without the compatibility note, run:
 
 ```text
 /ars-pi-stop
 ```
+
+## Wrapper regression test
+
+```bash
+node --test pi/wrapper.test.mjs
+```
+
+The test covers inactive skill hiding, same-request `/ars-*` and direct `/skill:*` activation, and manual start/stop toggling.
 
 ## What the wrapper translates
 

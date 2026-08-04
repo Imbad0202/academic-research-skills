@@ -4,13 +4,38 @@ import { dirname, resolve } from "node:path";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const commandPattern = /^\/(ars-[a-z0-9-]+)(?:\s+([\s\S]*))?$/;
-const skillPattern = /^\/skill:(deep-research|academic-paper|academic-paper-reviewer|academic-pipeline)(?:\s|$)/;
+const skillNames = ["deep-research", "academic-paper", "academic-paper-reviewer", "academic-pipeline"];
+const skillPattern = new RegExp(`^/skill:(${skillNames.join("|")})(?:\\s|$)`);
 const stateEntryType = "ars-pi-state";
 const orchestrationPattern = /subagent|workflow|parallel[-_ ]agent|multi[-_ ]agent/i;
 const webPattern = /websearch|web[-_ ]search|brave[-_ ]search|webfetch|web[-_ ]fetch|page[-_ ]retrieval/i;
 
 function uniqueMatches(items, pattern) {
   return [...new Set(items.filter((item) => pattern.test(item.search)).map((item) => item.label))];
+}
+
+function escapeXml(text) {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+const skillLocations = new Set(
+  skillNames.map((name) => escapeXml(resolve(repoRoot, name, "SKILL.md"))),
+);
+
+// Upstream SKILL.md files stay unmodified, so hide their exact Pi listings while ARS is inactive.
+function hideArsSkills(systemPrompt) {
+  return systemPrompt.replace(
+    /(?:\r?\n)?[ \t]*<skill>\r?\n[\s\S]*?\r?\n[ \t]*<\/skill>/g,
+    (block) => {
+      const location = block.match(/<location>([^<]+)<\/location>/)?.[1];
+      return location && skillLocations.has(location) ? "" : block;
+    },
+  );
 }
 
 async function probe(pi, command, args) {
@@ -83,8 +108,16 @@ export default function (pi) {
     return { action: "transform", text };
   });
 
+  pi.registerCommand("ars-pi-start", {
+    description: "Enable ARS compatibility and automatic skill selection in this session",
+    handler: async (_args, ctx) => {
+      setArsActive(true);
+      ctx.ui.notify("ARS compatibility instructions enabled for this session", "info");
+    },
+  });
+
   pi.registerCommand("ars-pi-stop", {
-    description: "Stop adding ARS compatibility instructions in this session",
+    description: "Disable ARS compatibility and automatic skill selection in this session",
     handler: async (_args, ctx) => {
       setArsActive(false);
       ctx.ui.notify("ARS compatibility instructions disabled for this session", "info");
@@ -134,7 +167,7 @@ export default function (pi) {
   });
 
   pi.on("before_agent_start", (event) => {
-    if (!arsActive) return;
+    if (!arsActive) return { systemPrompt: hideArsSkills(event.systemPrompt) };
     return { systemPrompt: `${event.systemPrompt}\n${compatibility}` };
   });
 }

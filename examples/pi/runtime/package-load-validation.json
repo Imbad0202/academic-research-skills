@@ -31,6 +31,7 @@
     ],
     "wrapper_commands": [
       "ars-pi-doctor",
+      "ars-pi-start",
       "ars-pi-stop"
     ],
     "stderr_empty": true
@@ -63,15 +64,22 @@
     ],
     "wrapper_commands": [
       "ars-pi-doctor",
+      "ars-pi-start",
       "ars-pi-stop"
     ],
     "stderr_empty": true
   },
   "system_prompt_scope": {
     "ordinary_prompt_ars_text_active": false,
+    "ordinary_prompt_package_ars_skills_visible": false,
+    "unrelated_colliding_skill_preserved": true,
     "ars_command_ars_text_active": true,
     "direct_skill_ars_text_active": true,
-    "resume_persistence_and_stop_harness": "PASS"
+    "manual_start_enables_automatic_selection": true,
+    "stop_hides_ars_text_and_skills": true,
+    "resume_persistence_harness": "PASS",
+    "node_regression_tests": "4/4 PASS",
+    "real_pi_rpc_prompt_scope_probes": "5/5 PASS"
   },
   "result": "PASS"
 }
