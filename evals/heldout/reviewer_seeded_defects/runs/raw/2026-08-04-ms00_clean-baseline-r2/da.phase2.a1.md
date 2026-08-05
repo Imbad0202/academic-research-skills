@@ -1,0 +1,62 @@
+contract_role: da
+
+## Dimension Scores
+
+### D1: methodology_rigor
+
+score: not_assessed
+
+### D2: domain_accuracy
+
+score: not_assessed
+
+### D3: argumentative_coherence
+
+score: warn
+trigger: "Localised overreach or internal inconsistency that does not reach the core thesis"
+
+The narrow central claim — that in this sample perceived usefulness and self-reported use are positively and moderately correlated — is traceable to a reported result and is not retracted by anything I found, so the block condition is not met. What the paper does carry is a cluster of repairable inference defects sitting one layer out from that claim: a comparative "consistent with prior work" assertion that no possible result could have disconfirmed, a two-pathway causal accounting that silently excludes the common-cause structure the paper's own literature review endorses, an unaddressed shared-method rival explanation for the coefficient, construct and population escalation in the Abstract's closing sentence, and a Discussion claim that inverts the direction in which measurement error bounds the estimate. Each is fixable by rewriting and by adding rival explanations, with the central argument left standing.
+
+### D4: cross_disciplinary_relevance
+
+score: not_assessed
+
+### D5: writing_and_structure
+
+score: not_assessed
+
+### D6: venue_fit_and_contribution
+
+score: not_assessed
+
+## Review Body
+
+This manuscript is built to be difficult to attack. It pre-hedges almost every sentence a reviewer would ordinarily challenge: it disclaims causality, names its single-site limit, concedes that self-report diverges from behavioural logs, and reports a confidence interval, an ordinal robustness check, and a power figure. My task is therefore not to find missing caveats but to ask whether the caveats are load-bearing — whether they are integrated into the paper's inferences, or parked beside them while the inferences proceed as if they were not there. At three seams the hedging is decorative, and at one point the over-hedging is itself an unlicensed inference.
+
+Begin with the comparative claim, because it is the paper's declared contribution. The Abstract, Discussion, and Conclusion each report that the result is "consistent with prior technology-acceptance research," and §2 states the aim as "an incremental data point, comparable with prior work." Apply the disconfirmation test: what observed coefficient would have been reported as *inconsistent*? §2 has already told the reader that "effect sizes vary across samples and instruments" and that Song (2018) found association strengths varying by institution, "underscoring that any single-site estimate is best read as one point in a distribution." Under that premise, r = .25, r = .42, and r = .65 would all have been consistent. The consistency claim therefore carries no information content, and the contribution it underwrites rests on a comparison the paper never performs: no prior effect-size range or interval is ever reported, and the dependent variable here is a single ad-hoc frequency item whose commensurability with the instruments used by the cited comparators is never established. This is not a demand for a meta-analysis; it is a demand that a claim of comparability specify what it is comparable to.
+
+The causal accounting has a related structural gap. §5 states that "the reverse pathway, in which more frequent use raises perceived usefulness, is equally consistent with the data." A two-pathway inventory cannot represent a common cause, yet §2 has already asserted one: Ibarra and Poll (2021) are cited precisely for "the role of context — course design, instructor expectations, and assessment structure — in shaping both perception and use." That is a confounding structure, endorsed by the paper, and then dropped from the paper's own list of what the correlation is compatible with. The word "equally" makes the omission an affirmative misstatement rather than a silence. Compounding this, both variables were elicited from the same respondents, in the same instrument, on the same occasion: a single evaluative disposition toward the platform would generate r = .42 in the absence of any relation whatever between believing the LMS useful and opening it. The paper cites Vasquez (2020) to concede that the dependent variable indexes perceived rather than actual engagement, which sharpens this problem rather than dissolving it — and then never applies the concession to the interpretation of the coefficient itself.
+
+Two further defects concern the calibration of language to evidence, in opposite directions. Upward: the Abstract's final sentence reports "modest, design-bounded evidence that perceived usefulness tracks with LMS engagement among undergraduates," escalating both the construct (from self-reported perceived frequency to "engagement") and the population (from one mid-sized university to undergraduates as such), in a sentence that also asserts its own boundedness. The same construct substitution recurs in §4 and §5, so this is systematic drift rather than a slip; the properly scoped Conclusion shows the authors can state the claim correctly when they attend to it. Downward: §5 reasons that because the association is "moderate, not strong," perceived usefulness is "at best one of several factors bearing on engagement." "At best" asserts a ceiling, but an ordinal single-item dependent variable of unknown reliability attenuates the observed coefficient — the paper reports α = .88 for the six-item predictor and can report nothing at all for the outcome. Under its own measurement, .42 is better read as a floor than a ceiling. Unwarranted modesty is a coherence failure of the same kind as unwarranted confidence: both assert a bound the design does not deliver.
+
+On sampling, §3.1 records that recruitment ran "through the institution's course-announcement channel," and §6 treats voluntary response purely as a generalisability matter ("students who engage more with institutional channels may be overrepresented"). If that channel is delivered inside or adjacent to the LMS, the sampling frame is conditioned on the very behaviour being measured, which restricts the range of the outcome and bears on the point estimate, not merely on transfer to other institutions. The paper never resolves which channel it was, so the reader cannot tell whether the acknowledged bias is external only. The asymmetry matters most for the practical implication: onboarding advice is aimed at students who do not currently see the platform as useful, i.e. those whom voluntary response through an institutional channel most reliably excludes.
+
+Four smaller points. First, §4 claims the Spearman check shows "indicating that the association did not depend on the parametric assumption" (text: §4 "indicating that the association did not depend on the parametric assumption"; confidence 4 — statistical-inference reading): rank agreement of two point estimates does not validate the Fisher-z interval [.30, .52] that the Abstract and Conclusion actually carry, and a bootstrap interval would settle the matter. Second, §4 writes that "The proportion of variance shared by the two measures was accordingly modest" (text: §4 "The proportion of variance shared by the two measures was accordingly modest"; confidence 5 — arithmetic on the reported coefficient) while declining to state the number, ≈18%, letting a qualitative adjective do work a figure would do more honestly. Third, the descriptive claim is bounded to a population whose size is never given (absence: §3.1 sampling description — expected denominator or response rate for the eligible undergraduate population; checked §3.1, §4, §6; confidence 5 — reading of reported sample accounting), so the reader cannot locate 214 respondents relative to "all enrolled undergraduates." Fourth, §4 attributes residual variance to specific unmeasured causes, "including course requirements and assessment schedules" (text: §4 "including course requirements and assessment schedules"; confidence 4 — inference-to-unmeasured-variables reading), when single-item measurement error is an equally available account and the study measured neither.
+
+What survives challenge should be said plainly, because it constrains my score. The headline statistic is reported with coefficient, interval, p value, and n; the ordinal robustness check is the right one to run; the power arithmetic checks out (at n = 214, r = .19 gives approximately .80 power at α = .05 two-tailed); the ethics and exclusion accounting are explicit; and the Conclusion states the claim within its design. No single defect above forces retraction of that narrow claim, which is why I record a warn rather than a block. The cumulative effect, though, is that the paper's careful surface conceals an inferential layer that has not been thought through as carefully as the prose implies.
+
+#### CRITICAL
+
+| # | Issue | Evidence Anchor | Confidence |
+|---|---|---|---|
+
+#### MAJOR
+
+| # | Issue | Evidence Anchor | Confidence |
+|---|---|---|---|
+| M1 | The paper's sole comparative claim and its declared contribution are unfalsifiable as constructed: given its own statement that prior effect sizes vary across samples, instruments, and institutions, no observed coefficient could have been reported as inconsistent, and no prior effect-size range or benchmark is ever given against which .42 is judged comparable. | text: §2 "though effect sizes vary across samples and instruments"; §5 "consistent with prior technology-acceptance research" | 4 — disconfirmation testing of comparative claims |
+| M2 | The Discussion's causal inventory is binary and asserts symmetry ("equally consistent"), excluding the common-cause structure the paper itself endorses in §2, where cited work is invoked for context shaping both perception and use; the omission contradicts the paper's own literature review rather than merely omitting a caveat. | text: §5 "the reverse pathway, in which more frequent use raises perceived usefulness, is equally consistent with the data" | 4 — causal-structure analysis of stated alternatives |
+| M3 | The Abstract's closing sentence escalates both construct (self-reported perceived frequency to "LMS engagement") and population (one mid-sized university to "undergraduates"), contradicting the restrictions the paper states in §2 and §6; the same construct substitution recurs in §4 and §5, making the drift systematic rather than a single wording slip. | text: Abstract "The findings offer modest, design-bounded evidence that perceived usefulness tracks with LMS engagement among undergraduates." | 5 — direct comparison of measured versus interpreted constructs |
+| M4 | Predictor and outcome were elicited from the same respondents in one instrument on one occasion, so a shared evaluative disposition is a live rival account of the coefficient; the paper concedes the outcome indexes perceived rather than actual engagement, then never applies that concession to the interpretation of r. | absence: §5 Discussion rival-explanation inventory — expected common-method variance from same-instrument same-occasion self-report as a candidate source of r = .42; checked §2 cautions paragraph, §3.2 Measures, §4 Results, §5 Discussion, §6 Limitations | 4 — survey-inference rival-explanation audit |
+| M5 | Recruitment through an institutional course-announcement channel may condition the sampling frame on the outcome behaviour, restricting its range and bearing on the estimate itself; §6 quarantines voluntary-response bias to generalisability only, and the channel's identity is left unresolved, so the reader cannot assess whether the bias is external alone. | text: §3.1 "The survey was distributed through the institution's course-announcement channel over a three-week window." | 3 — selection-mechanism reading, contingent on unstated channel identity |
+| M6 | The Discussion infers a ceiling on the predictor's role from the coefficient's moderate size, but an ordinal single-item outcome of unreported reliability attenuates the estimate, making .42 a floor rather than a bound; the paper reports internal consistency for the predictor only and so cannot license the "at best" direction. | text: §5 "The association is also moderate, not strong, which means perceived usefulness is at best one of several factors bearing on engagement." | 4 — measurement-error direction analysis |

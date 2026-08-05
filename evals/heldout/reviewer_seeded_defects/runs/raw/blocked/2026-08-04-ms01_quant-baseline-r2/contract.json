@@ -1,0 +1,131 @@
+{
+  "contract_id": "reviewer/reviewer_full/v2",
+  "mode": "reviewer_full",
+  "stage": "reviewer_full_review",
+  "baseline_version": "v3.20.0",
+  "panel_size": 5,
+  "acceptance_dimensions": [
+    {
+      "id": "D1",
+      "name": "methodology_rigor",
+      "description": "Study design, data handling, statistical reporting, and reproducibility affordances meet the field's peer-review bar.",
+      "priority": "mandatory",
+      "eligible_roles": [
+        "methodology"
+      ],
+      "owner_role": "methodology"
+    },
+    {
+      "id": "D2",
+      "name": "domain_accuracy",
+      "description": "Claims align with current domain evidence; prior work is correctly represented; no factual errors in domain-specific terminology or results.",
+      "priority": "mandatory",
+      "eligible_roles": [
+        "domain"
+      ],
+      "owner_role": "domain"
+    },
+    {
+      "id": "D3",
+      "name": "argumentative_coherence",
+      "description": "Core thesis is internally consistent; evidence supports claims; no fallacies that undermine the central argument.",
+      "priority": "mandatory",
+      "eligible_roles": [
+        "da",
+        "methodology"
+      ],
+      "owner_role": "da"
+    },
+    {
+      "id": "D4",
+      "name": "cross_disciplinary_relevance",
+      "description": "Framing, definitions, and implications are accessible to adjacent-field readers; interdisciplinary claims are substantiated.",
+      "priority": "high",
+      "eligible_roles": [
+        "perspective"
+      ],
+      "owner_role": "perspective"
+    },
+    {
+      "id": "D5",
+      "name": "writing_and_structure",
+      "description": "Manuscript organisation, clarity of exposition, figure/table quality, and adherence to venue conventions.",
+      "priority": "normal",
+      "eligible_roles": [
+        "eic"
+      ],
+      "owner_role": "eic"
+    },
+    {
+      "id": "D6",
+      "name": "venue_fit_and_contribution",
+      "description": "The manuscript fits the configured venue and makes an original, significant contribution appropriate to its readership.",
+      "priority": "mandatory",
+      "eligible_roles": [
+        "eic"
+      ],
+      "owner_role": "eic"
+    }
+  ],
+  "measurement_procedure": {
+    "reviewer_must_output_before_paper": [
+      "contract_paraphrase",
+      "scoring_plan"
+    ],
+    "scoring_plan_schema": {
+      "required": [
+        "dimension_id",
+        "what_to_look_for",
+        "what_triggers_block",
+        "what_triggers_warn",
+        "what_triggers_fatal"
+      ]
+    },
+    "paraphrase_minimum_dimensions": "all"
+  },
+  "failure_conditions": [
+    {
+      "condition_id": "F1",
+      "severity": 95,
+      "cross_reviewer_quantifier": "any",
+      "expression": "any mandatory dimension has a fatal block",
+      "action": "editorial_decision=reject"
+    },
+    {
+      "condition_id": "F2",
+      "severity": 90,
+      "cross_reviewer_quantifier": "any",
+      "expression": "any mandatory dimension scores 'block'",
+      "action": "editorial_decision=major_revision"
+    },
+    {
+      "condition_id": "F3",
+      "severity": 70,
+      "cross_reviewer_quantifier": "majority",
+      "expression": "two or more mandatory dimensions score 'warn' or worse",
+      "action": "editorial_decision=major_revision"
+    },
+    {
+      "condition_id": "F4",
+      "severity": 60,
+      "cross_reviewer_quantifier": "any",
+      "expression": "any high-priority dimension scores 'block'",
+      "action": "editorial_decision=major_revision"
+    },
+    {
+      "condition_id": "F5",
+      "severity": 40,
+      "cross_reviewer_quantifier": "any",
+      "expression": "any dimension scores 'warn' or worse",
+      "action": "editorial_decision=minor_revision"
+    },
+    {
+      "condition_id": "F0",
+      "severity": 10,
+      "cross_reviewer_quantifier": "all",
+      "expression": "every dimension scores 'pass'",
+      "action": "editorial_decision=accept"
+    }
+  ],
+  "generated_at": "2026-08-04T05:24:27Z"
+}

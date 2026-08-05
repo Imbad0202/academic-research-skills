@@ -1,0 +1,35 @@
+START field_analysis.md
+DONE field_analysis.md chars=17016
+COMPLETE field_analysis
+START eic.phase1.a1.md
+DONE eic.phase1.a1.md chars=6987
+COMPLETE eic.phase1
+START eic.phase2.a1.md
+DONE eic.phase2.a1.md chars=19144
+COMPLETE eic.phase2
+START methodology.phase1.a1.md
+DONE methodology.phase1.a1.md chars=8152
+COMPLETE methodology.phase1
+START methodology.phase2.a1.md
+DONE methodology.phase2.a1.md chars=21175
+COMPLETE methodology.phase2
+START domain.phase1.a1.md
+DONE domain.phase1.a1.md chars=4991
+COMPLETE domain.phase1
+START domain.phase2.a1.md
+DONE domain.phase2.a1.md chars=17883
+SEAT-FAILED domain.phase2 exit=3
+START perspective.phase1.a1.md
+DONE perspective.phase1.a1.md chars=4634
+COMPLETE perspective.phase1
+START perspective.phase2.a1.md
+DONE perspective.phase2.a1.md chars=22674
+COMPLETE perspective.phase2
+START da.phase1.a1.md
+DONE da.phase1.a1.md chars=6896
+COMPLETE da.phase1
+START da.phase2.a1.md
+DONE da.phase2.a1.md chars=14947
+COMPLETE da.phase2
+PANEL-SHRUNK usable=4 panel_size=5
+ABORT domain.phase2 exit=3

@@ -1,0 +1,164 @@
+{
+ "schema": "reviewer-e4-recovery/1",
+ "evidence_contract": "reviewer-e4/2026-07-27",
+ "context": {
+  "model_id": "claude-opus-5",
+  "suite_commit": "112a869f5205943728791d84602fe43fd3e1438b",
+  "date": "2026-08-04",
+  "dispatch_note": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS set, no session persistence), paper-blind and paper-visible calls given separate whitelisted sandboxes, every attempt preserved write-once before any checker ran",
+  "working_tree_dirty": false
+ },
+ "result": {
+  "fixture": "ms01_quant",
+  "condition": "baseline",
+  "replicate": 2,
+  "completed_stages": [
+   "field_analysis",
+   "eic.phase1",
+   "eic.phase2",
+   "methodology.phase1",
+   "methodology.phase2",
+   "domain.phase1",
+   "perspective.phase1",
+   "perspective.phase2",
+   "da.phase1",
+   "da.phase2"
+  ],
+  "canary": [],
+  "retries": [],
+  "abort": {
+   "stage": "domain.phase2",
+   "exit_code": 3,
+   "diagnostic": "[PANEL-SHRUNK: usable=4, panel_size=5] [ANCHOR-INVALID: domain.phase2.a1.md:W4: No engagement with retention or persistence theory despite retention being the dependent variable: absence anchor needs <where> — expected <item>; checked <surfaces>]",
+   "log_name": "panel-shrunk.log",
+   "form": null
+  }
+ },
+ "bundle_manifest": [
+  {
+   "path": "contract.json",
+   "type": "file",
+   "sha256": "801134c0b3d6891a9fbf02edc276cd043d086508be1705d9de8821c000b97de1"
+  },
+  {
+   "path": "da.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "da.phase1.a1.md",
+   "type": "file",
+   "sha256": "4fde180ad840a450c932518a2ce3174df20f4e6f97f3f1f64fd33df8bf48cfda"
+  },
+  {
+   "path": "da.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "da.phase2.a1.md",
+   "type": "file",
+   "sha256": "34d11da404fadce4ca865ca3a360c19699237fa3105ab3e898a545a9538e8c3a"
+  },
+  {
+   "path": "dispatch.log",
+   "type": "file",
+   "sha256": "4981494d37b9881c7d8843e4d50f6fb1a3674743ead9a9f32aaa3523a6ddc1ed"
+  },
+  {
+   "path": "domain.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "domain.phase1.a1.md",
+   "type": "file",
+   "sha256": "3a5aeab0852ac3758325a8b2f2afc41ccafc46834d0b463e05c9387d61c01124"
+  },
+  {
+   "path": "domain.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "f3e7961918a404a6ad91642898df980e98f36793a45aa5a505c94ea8e406a191"
+  },
+  {
+   "path": "domain.phase2.a1.md",
+   "type": "file",
+   "sha256": "d600af2f461a76afb9db0c794e26c7ad619aac02ed0b4d50570b75aa04f72b67"
+  },
+  {
+   "path": "eic.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "eic.phase1.a1.md",
+   "type": "file",
+   "sha256": "a2693daeeed49b5f6efa03e36f69f738f8919cce51a565ee1df15ceef16dd53a"
+  },
+  {
+   "path": "eic.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "eic.phase2.a1.md",
+   "type": "file",
+   "sha256": "0c78c73b49f30be25e830297aeeb045c9d57a4e2c3e71518f35fcec48ff298c0"
+  },
+  {
+   "path": "field_analysis.md",
+   "type": "file",
+   "sha256": "2683cc91fb7022480aeeea189266c0b245d09f5b51342b9f4577fbe8994bc7e2"
+  },
+  {
+   "path": "metadata.json",
+   "type": "file",
+   "sha256": "c965998dfbbd2bbbceceffaf85cc9081bb1c3ce893f0b8be6ea87bf502d76d62"
+  },
+  {
+   "path": "methodology.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "methodology.phase1.a1.md",
+   "type": "file",
+   "sha256": "adf80767a457a801e65f9954126f03102bed492f63ee53d49877b43e31ad23ea"
+  },
+  {
+   "path": "methodology.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "methodology.phase2.a1.md",
+   "type": "file",
+   "sha256": "7cda39aa33ee9f87add91653cb57c4dceb53209c8196239963b3855bb68bf6b4"
+  },
+  {
+   "path": "panel-shrunk.log",
+   "type": "file",
+   "sha256": "b00e3ab84e2b4a3c7d99b2a72b408556d2ff71751207ef2247d0764bffa5948f"
+  },
+  {
+   "path": "perspective.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "perspective.phase1.a1.md",
+   "type": "file",
+   "sha256": "8fc5875224590ac8c0e0b931e72ed92580ce75399b6937200fddff21eae2d65c"
+  },
+  {
+   "path": "perspective.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "852fa4abcbb9e11bb2dcf45cf495f2c6b90b6c868e48cebf3363d68644112394"
+  },
+  {
+   "path": "perspective.phase2.a1.md",
+   "type": "file",
+   "sha256": "c322625e435cfd071e18bd41fe5dc361a9652d580a7914c8a60df2e876eb3e1a"
+  }
+ ]
+}

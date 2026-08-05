@@ -1,0 +1,39 @@
+START field_analysis.md
+DONE field_analysis.md chars=19905
+COMPLETE field_analysis
+START eic.phase1.a1.md
+DONE eic.phase1.a1.md chars=5738
+COMPLETE eic.phase1
+START eic.phase2.a1.md
+DONE eic.phase2.a1.md chars=16090
+COMPLETE eic.phase2
+START methodology.phase1.a1.md
+DONE methodology.phase1.a1.md chars=7801
+COMPLETE methodology.phase1
+START methodology.phase2.a1.md
+DONE methodology.phase2.a1.md chars=22115
+COMPLETE methodology.phase2
+START domain.phase1.a1.md
+DONE domain.phase1.a1.md chars=5476
+COMPLETE domain.phase1
+START domain.phase2.a1.md
+DONE domain.phase2.a1.md chars=18864
+COMPLETE domain.phase2
+START perspective.phase1.a1.md
+DONE perspective.phase1.a1.md chars=5179
+COMPLETE perspective.phase1
+START perspective.phase2.a1.md
+DONE perspective.phase2.a1.md chars=21419
+COMPLETE perspective.phase2
+START da.phase1.a1.md
+DONE da.phase1.a1.md chars=6519
+COMPLETE da.phase1
+START da.phase2.a1.md
+DONE da.phase2.a1.md chars=11085
+COMPLETE da.phase2
+START synthesis.a1.md
+DONE synthesis.a1.md chars=77491
+RETRY synthesis diagnostic=[DELIVERABLE-MISSING: synthesis omits or duplicates Part 1: Editorial Decision Letter, Part 2: Revision Roadmap]
+START synthesis.a2.md
+DONE synthesis.a2.md chars=48766
+COMPLETE synthesis

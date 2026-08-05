@@ -1,0 +1,207 @@
+{
+ "schema": "reviewer-e4-recovery/1",
+ "evidence_contract": "reviewer-e4/2026-07-27",
+ "context": {
+  "model_id": "claude-opus-5",
+  "suite_commit": "112a869f5205943728791d84602fe43fd3e1438b",
+  "date": "2026-08-04",
+  "dispatch_note": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS set, no session persistence), paper-blind and paper-visible calls given separate whitelisted sandboxes, every attempt preserved write-once before any checker ran",
+  "working_tree_dirty": false
+ },
+ "result": {
+  "fixture": "ms01_quant",
+  "condition": "baseline",
+  "replicate": 1,
+  "completed_stages": [
+   "field_analysis",
+   "eic.phase1",
+   "eic.phase2",
+   "methodology.phase1",
+   "methodology.phase2",
+   "domain.phase1",
+   "domain.phase2",
+   "perspective.phase1",
+   "perspective.phase2",
+   "da.phase1",
+   "da.phase2",
+   "synthesis"
+  ],
+  "canary": [],
+  "retries": [
+   {
+    "role": "eic",
+    "stage": "phase1",
+    "diagnostic": "[PHASE1-GRAMMAR: eic.phase1.a1.md: what_triggers_fatal is forbidden on non-mandatory dimension D5]",
+    "rejected_response_location": "eic.phase1.a1.md",
+    "checker_output_location": "eic.phase1.a1.gate.log",
+    "form": null
+   },
+   {
+    "role": "synthesis",
+    "stage": "synthesis",
+    "diagnostic": "[DELIVERABLE-MISSING: synthesis omits or duplicates Part 2: Revision Roadmap]",
+    "rejected_response_location": "synthesis.a1.md",
+    "checker_output_location": "synthesis.a1.deliverable.log",
+    "form": null
+   }
+  ],
+  "abort": null
+ },
+ "bundle_manifest": [
+  {
+   "path": "contract.json",
+   "type": "file",
+   "sha256": "89d27dce44b7a1011f8f543fcd3263f3673f8d62fcc5749558e4880362894c45"
+  },
+  {
+   "path": "da.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "da.phase1.a1.md",
+   "type": "file",
+   "sha256": "94040aa3aba90859ab38b7fcd973007ab7216134abcbb6289a15165b3e510926"
+  },
+  {
+   "path": "da.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "da.phase2.a1.md",
+   "type": "file",
+   "sha256": "336df8a468a8a7334fca7143a62cb1b087da55202749c62f67b67ef8821f0990"
+  },
+  {
+   "path": "dispatch.log",
+   "type": "file",
+   "sha256": "de6eef28cc60167206cc5f2da23b7e4c854656ba04ad600f025a88c7de84eb34"
+  },
+  {
+   "path": "domain.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "domain.phase1.a1.md",
+   "type": "file",
+   "sha256": "492d32f5039147e2d8434e0af765ea7beb81e7574a3d011f1dfa374e96308dc2"
+  },
+  {
+   "path": "domain.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "domain.phase2.a1.md",
+   "type": "file",
+   "sha256": "6826a3411512c38af270ec319f3c5c37c3b3082c4ba4c1f00640d6e285cf45d8"
+  },
+  {
+   "path": "eic.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "73dbf312d034a5b9b3546f025c2d616a6aaca6d8cf45611bf4ac49900715ef60"
+  },
+  {
+   "path": "eic.phase1.a1.md",
+   "type": "file",
+   "sha256": "0f1194cb86f8571f362bde7a338a75f89219c97b4250c730db7dbabb5fef64d1"
+  },
+  {
+   "path": "eic.phase1.a2.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "eic.phase1.a2.md",
+   "type": "file",
+   "sha256": "972daae1d7b598feeb7e33f42703eaeca2e1322eba28406b2c14e1afce1fd995"
+  },
+  {
+   "path": "eic.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "eic.phase2.a1.md",
+   "type": "file",
+   "sha256": "dd5a5328df1c3fd80235cab7720c8997b4bac82095d922f401dda2ef3895ff96"
+  },
+  {
+   "path": "field_analysis.md",
+   "type": "file",
+   "sha256": "16c3ea29ecb0be65b72ad9a5f213c2a6f6df37843fa21f1798d3fabd664abee9"
+  },
+  {
+   "path": "metadata.json",
+   "type": "file",
+   "sha256": "c965998dfbbd2bbbceceffaf85cc9081bb1c3ce893f0b8be6ea87bf502d76d62"
+  },
+  {
+   "path": "methodology.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "methodology.phase1.a1.md",
+   "type": "file",
+   "sha256": "28dbd436575fd68b1466febf72053770af0de05d924628ca1a178712cca9085a"
+  },
+  {
+   "path": "methodology.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "methodology.phase2.a1.md",
+   "type": "file",
+   "sha256": "900d9bcebc3fba20faaf5c26be260586ce7c03bc1e6730ea14dacc4e15f9cb85"
+  },
+  {
+   "path": "perspective.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "perspective.phase1.a1.md",
+   "type": "file",
+   "sha256": "f4a945e06164a3b7b66ed816ab5b9a1464531182d5f22cf3e03c8dc39d6cba04"
+  },
+  {
+   "path": "perspective.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "852fa4abcbb9e11bb2dcf45cf495f2c6b90b6c868e48cebf3363d68644112394"
+  },
+  {
+   "path": "perspective.phase2.a1.md",
+   "type": "file",
+   "sha256": "9173206d945ed06472884c704cc87ca8c635a07fa7a8c7b267657aaf94602751"
+  },
+  {
+   "path": "synthesis.a1.deliverable.log",
+   "type": "file",
+   "sha256": "2558aed8c97caa64ed043b6a7b33f691a50ea8828d689e4ebaadea3f98f694cd"
+  },
+  {
+   "path": "synthesis.a1.gate.log",
+   "type": "file",
+   "sha256": "70b9104a0365f0ec66bebd244f8fa274f64afe52ef6fd26e8ae36607f977559b"
+  },
+  {
+   "path": "synthesis.a1.md",
+   "type": "file",
+   "sha256": "64b079d22e838a113159493ea0e14a76ae454ce0d7e40837eaebb7b1435a3bfa"
+  },
+  {
+   "path": "synthesis.a2.gate.log",
+   "type": "file",
+   "sha256": "70b9104a0365f0ec66bebd244f8fa274f64afe52ef6fd26e8ae36607f977559b"
+  },
+  {
+   "path": "synthesis.a2.md",
+   "type": "file",
+   "sha256": "bf1b44cbfdb9026b6637d7a7337f7cb2f769d9ec4c6c70740f5b30265d924278"
+  }
+ ]
+}

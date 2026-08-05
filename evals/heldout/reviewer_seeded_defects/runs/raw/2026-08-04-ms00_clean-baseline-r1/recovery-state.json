@@ -1,0 +1,184 @@
+{
+ "schema": "reviewer-e4-recovery/1",
+ "evidence_contract": "reviewer-e4/2026-07-27",
+ "context": {
+  "model_id": "claude-opus-5",
+  "suite_commit": "112a869f5205943728791d84602fe43fd3e1438b",
+  "date": "2026-08-04",
+  "dispatch_note": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS set, no session persistence), paper-blind and paper-visible calls given separate whitelisted sandboxes, every attempt preserved write-once before any checker ran",
+  "working_tree_dirty": false
+ },
+ "result": {
+  "fixture": "ms00_clean",
+  "condition": "baseline",
+  "replicate": 1,
+  "completed_stages": [
+   "field_analysis",
+   "eic.phase1",
+   "eic.phase2",
+   "methodology.phase1",
+   "methodology.phase2",
+   "domain.phase1",
+   "domain.phase2",
+   "perspective.phase1",
+   "perspective.phase2",
+   "da.phase1",
+   "da.phase2",
+   "synthesis"
+  ],
+  "canary": [],
+  "retries": [
+   {
+    "role": "eic",
+    "stage": "phase1",
+    "diagnostic": "[PHASE1-GRAMMAR: eic.phase1.a1.md: what_triggers_fatal is forbidden on non-mandatory dimension D5]",
+    "rejected_response_location": "eic.phase1.a1.md",
+    "checker_output_location": "eic.phase1.a1.gate.log",
+    "form": null
+   }
+  ],
+  "abort": null
+ },
+ "bundle_manifest": [
+  {
+   "path": "contract.json",
+   "type": "file",
+   "sha256": "d29ebaf97e1262e3d88cfc48b93fbe2229f9f252c90e8f0213a6e2d2469d6945"
+  },
+  {
+   "path": "da.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "da.phase1.a1.md",
+   "type": "file",
+   "sha256": "d2c0998512fbc1a15443c33e33b13a6ec9545e9f8bc29aa8581e5aa41879f0ff"
+  },
+  {
+   "path": "da.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "da.phase2.a1.md",
+   "type": "file",
+   "sha256": "66a432958ee6523adb06a27dab432f528c859d4cd715d10ef565253f37a645c4"
+  },
+  {
+   "path": "dispatch.log",
+   "type": "file",
+   "sha256": "1247c5abd17dbdc33801828a440599a6b181d74467ffa8dc63c5b405b947b6e0"
+  },
+  {
+   "path": "domain.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "domain.phase1.a1.md",
+   "type": "file",
+   "sha256": "12d1156fcd77a187202b28e45172d9d0c356f639c084e69036b0fd7609b80f27"
+  },
+  {
+   "path": "domain.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "852fa4abcbb9e11bb2dcf45cf495f2c6b90b6c868e48cebf3363d68644112394"
+  },
+  {
+   "path": "domain.phase2.a1.md",
+   "type": "file",
+   "sha256": "31e2264a6bb249e78c162cba1f54d2ae6468407e029d355e09d87b79bd32cdb9"
+  },
+  {
+   "path": "eic.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "73dbf312d034a5b9b3546f025c2d616a6aaca6d8cf45611bf4ac49900715ef60"
+  },
+  {
+   "path": "eic.phase1.a1.md",
+   "type": "file",
+   "sha256": "785715158cb807680b5990d3b09e6293f6bb3395815c86a5bb88674901df90da"
+  },
+  {
+   "path": "eic.phase1.a2.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "eic.phase1.a2.md",
+   "type": "file",
+   "sha256": "97167c11e751f07c5659378d68f771132ee6d4d4ee39c6fc8786eaf8eb756220"
+  },
+  {
+   "path": "eic.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "eic.phase2.a1.md",
+   "type": "file",
+   "sha256": "1f682fad69a83489f180b8915b755404633871c5f394746d7ebace65095f6fe4"
+  },
+  {
+   "path": "field_analysis.md",
+   "type": "file",
+   "sha256": "ae3b893e15a8568acbe02235f037f431bd96f9fe8cebd8977934da505474c43b"
+  },
+  {
+   "path": "metadata.json",
+   "type": "file",
+   "sha256": "449bba6ec4f19faada687854b7909b5b3acaf7ee9a2315b273eef3e5d66a8b96"
+  },
+  {
+   "path": "methodology.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "methodology.phase1.a1.md",
+   "type": "file",
+   "sha256": "9b57104002fa5862f3909a6e922d60895fec45f349e5c015c60e5e5d83a25e4c"
+  },
+  {
+   "path": "methodology.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "47bab2bdfa2d81f9cb693384531a4c72c5a26da00fbb36590b92c97fbc730075"
+  },
+  {
+   "path": "methodology.phase2.a1.md",
+   "type": "file",
+   "sha256": "91a75c453f23e7c53ce2d7c07b34895f99c1f6bbc37ef0f21e5492944e3167f0"
+  },
+  {
+   "path": "perspective.phase1.a1.gate.log",
+   "type": "file",
+   "sha256": "494d8eb8bf3df8d444f7398a9421c6930aadbc4e54de1b88af8f3d3ed0e3b4ce"
+  },
+  {
+   "path": "perspective.phase1.a1.md",
+   "type": "file",
+   "sha256": "9cc17d4397d1b177c14a887ec217a2969e3c4a593eec288b821bfe89aa966375"
+  },
+  {
+   "path": "perspective.phase2.a1.gate.log",
+   "type": "file",
+   "sha256": "852fa4abcbb9e11bb2dcf45cf495f2c6b90b6c868e48cebf3363d68644112394"
+  },
+  {
+   "path": "perspective.phase2.a1.md",
+   "type": "file",
+   "sha256": "84962e8d68a4c889ba36a84a5179c4922258f311ec0413b47c3057202c96186d"
+  },
+  {
+   "path": "synthesis.a1.gate.log",
+   "type": "file",
+   "sha256": "70b9104a0365f0ec66bebd244f8fa274f64afe52ef6fd26e8ae36607f977559b"
+  },
+  {
+   "path": "synthesis.a1.md",
+   "type": "file",
+   "sha256": "7e0eebb42b8a608d1ed73daab01e61b6e0f962b036a8b32fd1cd54aa90f798b5"
+  }
+ ]
+}

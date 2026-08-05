@@ -1,0 +1,25 @@
+## Contract Paraphrase
+
+**D1 — methodology_rigor.** This dimension asks whether the study's design, data handling, statistical reporting, and reproducibility affordances would survive scrutiny from a hostile methodologist in this field. Read adversarially, the question is not "did the authors describe a method?" but "could a skeptic reconstruct what was done, and would the reported inference survive if the skeptic re-ran it?" Vague sampling, undisclosed instrument provenance, missing analytic detail, or claims that outrun the data-collection apparatus are the pressure points. Because the dimension is mandatory, a genuine design defect is not a stylistic quibble — it is potentially disqualifying.
+
+**D2 — domain_accuracy.** Here the adversarial test is whether every domain-specific claim, term, and citation would hold up if an expert in higher education policy and quality assurance checked it line by line. Misrepresented prior work, stale evidence presented as current, conflated technical constructs, or terminology used in a sense the field does not recognise all count against the manuscript. The hostile reading assumes the authors may have imported concepts loosely; the dimension exists to catch that.
+
+**D3 — argumentative_coherence.** This is the dimension I own as devil's advocate. The question is whether the central thesis holds together on its own terms: do the premises actually entail the conclusion, does the evidence presented support the specific strength and scope of the claims made, and are there fallacies, circularities, equivocations, or unacknowledged alternative explanations that would collapse the argument if pressed? I am not asking whether the topic is interesting or the prose is smooth; I am asking whether a determined opponent could dismantle the paper's core reasoning using only material the paper itself supplies. Internal contradictions between sections, conclusions that quietly exceed what the stated findings license, and load-bearing inferential leaps left unargued are the failure modes. Because this dimension is mandatory, incoherence at the level of the central argument is not a revisable blemish but a threat to the paper's viability.
+
+**D4 — cross_disciplinary_relevance.** The adversarial framing here is the adjacent-field reader who is intelligent but not a specialist: can they follow the framing and definitions, and are any claims that reach beyond the home discipline actually substantiated rather than asserted? Borrowing authority from a neighbouring field without engaging its literature is the characteristic weakness this dimension catches.
+
+**D5 — writing_and_structure.** This concerns whether the manuscript's organisation, exposition, figures, tables, and conformity to venue conventions serve the reader or obstruct them. Read adversarially, poor structure is often a symptom rather than a cosmetic issue: sections that do not connect, or exhibits that do not carry the weight assigned to them, frequently mark places where the underlying work is thin.
+
+**D6 — venue_fit_and_contribution.** The hostile question is whether this manuscript belongs in the configured venue at all, and whether it adds something the readership does not already have. Restating consensus, reporting a narrow local exercise as a general finding, or offering a contribution whose originality depends on the reader not knowing the existing literature are the failure modes. As a mandatory dimension, a genuine absence of contribution is decisive rather than negotiable.
+
+## Scoring Plan
+
+### D3: argumentative_coherence
+
+dimension_id: D3
+what_to_look_for: Whether the stated thesis is one identifiable claim held consistently across abstract, body, and conclusion; whether each load-bearing inference from evidence to claim is explicitly argued rather than assumed; whether claim strength and scope match what the presented evidence can license; whether rival explanations for the reported patterns are acknowledged and addressed; and whether key constructs keep a single stable meaning throughout.
+what_triggers_block: The central argument depends on an inference the paper never supports — for example a conclusion whose scope or causal strength plainly exceeds the evidence offered, a circular or question-begging premise doing load-bearing work, an equivocation on a core construct that the conclusion needs, or a direct contradiction between sections such that at least one major claim must be abandoned.
+what_triggers_warn: The core thesis survives but is weakened by localised reasoning gaps — an unaddressed rival explanation, an under-argued transition between a finding and its stated implication, hedged and unhedged versions of the same claim appearing in different places, or a secondary claim asserted without support while the main line remains intact.
+what_triggers_fatal: There is no recoverable central argument at all — the thesis is undeterminable or mutually inconsistent across the manuscript, or the paper's conclusions are contradicted by its own reported material, such that no revision short of a different paper could repair the reasoning.
+
+[CONTRACT-ACKNOWLEDGED]

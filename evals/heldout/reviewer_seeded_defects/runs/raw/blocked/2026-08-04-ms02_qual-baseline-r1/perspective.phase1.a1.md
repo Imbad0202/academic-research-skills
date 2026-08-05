@@ -1,0 +1,24 @@
+## Contract Paraphrase
+
+**D1 — methodology_rigor.** This dimension asks whether the study's design, data collection and handling, statistical or qualitative analytic reporting, and reproducibility supports would survive scrutiny by trained peers in the field. From my vantage point as the cross-disciplinary reader, methodological rigour matters because an outside-field reader cannot audit the internals unless the procedures are stated plainly enough to be transported: sampling frames, instrument provenance, coding schemes, and analytic decisions must be legible without insider tacit knowledge. It is owned by the methodology reviewer, and I will not score it, but I note that opacity in method is often the mechanism by which a paper becomes unusable outside its home discipline.
+
+**D2 — domain_accuracy.** Here the question is whether the manuscript's claims match the current state of evidence in its own field, whether prior literature is represented faithfully rather than caricatured or cherry-picked, and whether field-specific terminology and reported results are factually correct. Read across disciplinary lines, accuracy is also a translation issue: a term of art borrowed from a neighbouring field, or a canonical citation used loosely, can be locally correct and yet systematically mislead an adjacent-field reader. Ownership sits with the domain reviewer; I do not score it.
+
+**D3 — argumentative_coherence.** This dimension concerns internal consistency of the central thesis, whether the evidence presented actually bears the inferential weight assigned to it, and whether any fallacy or unwarranted leap undermines the core argument. For cross-disciplinary reception, coherence is what allows a reader from another field to follow the chain of reasoning even when they cannot independently verify each empirical link. Ownership is with the devil's-advocate reviewer, with methodology also eligible; I do not score it.
+
+**D4 — cross_disciplinary_relevance.** This is my assigned dimension. It asks whether the framing, the operative definitions, and the stated implications are genuinely accessible and usable to readers in adjacent fields, and whether any claim the manuscript makes about relevance beyond its own subfield is actually substantiated rather than merely asserted. Concretely, I read for whether constructs are defined rather than assumed, whether jargon is glossed at first use, whether the transferability of findings across institutional, national, or disciplinary contexts is argued with evidence and appropriate boundary conditions, and whether interdisciplinary or policy implications are proportionate to what the study actually shows. Overclaimed generalisability and unexplained insider vocabulary are the two characteristic failure modes I expect to weigh most heavily.
+
+**D5 — writing_and_structure.** This dimension covers organisation of the manuscript, clarity of exposition, the quality and self-sufficiency of figures and tables, and conformity to the conventions of the target venue. From a cross-field reading position, structure is a large part of accessibility: signposting, an informative abstract, and captions that stand alone are precisely what let a non-specialist enter the argument. The editor-in-chief role owns this dimension and I will not score it.
+
+**D6 — venue_fit_and_contribution.** The question is whether the manuscript belongs in the configured venue and whether it advances an original and sufficiently significant contribution for that readership. Cross-disciplinary considerations bear on this indirectly: a paper claiming broad interdisciplinary reach implicitly claims a broader readership, and that claim must be consistent with the venue's actual scope and with the substance of the contribution. This dimension is owned by the editor-in-chief; I do not score it.
+
+## Scoring Plan
+
+### D4: cross_disciplinary_relevance
+
+dimension_id: D4
+what_to_look_for: Whether key constructs and field-specific terms are explicitly defined at first use, whether stated implications for adjacent fields or other institutional and national contexts are supported by the paper's own evidence with named boundary conditions, and whether the framing gives an adjacent-field reader enough context to judge what the contribution is and where it does and does not travel.
+what_triggers_block: Central interdisciplinary or cross-context generalisation claims are asserted with no supporting evidence or scope conditions, or core constructs are used throughout in an undefined insider sense such that an adjacent-field reader cannot determine what was actually studied.
+what_triggers_warn: Definitions and framing are broadly followable but a non-trivial number of terms of art go unglossed, or some implications for other contexts are stated more strongly than the evidence and its boundary conditions warrant.
+
+[CONTRACT-ACKNOWLEDGED]
