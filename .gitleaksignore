@@ -1,6 +1,8 @@
 # One-off gitleaks false positive: model-generated venue-fit prose in a frozen
-# E4 evidence bundle ("(SoLAR, open access, Q1-equivalent in field)") trips the
-# generic-api-key entropy heuristic. Raw bundles are byte-frozen promotion
-# evidence (check_e4_promotion.py) and cannot be edited; per .gitleaks.toml
-# maintenance note, a one-off is ignored by fingerprint, never by rule edit.
+# E4 evidence bundle (a journal-tier descriptor in field_analysis.md line 34)
+# trips the generic-api-key entropy heuristic. Raw bundles are byte-frozen
+# promotion evidence (check_e4_promotion.py) and cannot be edited; per the
+# .gitleaks.toml maintenance note, a one-off is ignored by fingerprint,
+# never by rule edit. (The offending prose is deliberately not quoted here —
+# quoting it makes this file itself match the rule.)
 e3b8511770965bb6a688bd54d1e6907ddf7fb660:evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/field_analysis.md:generic-api-key:34
