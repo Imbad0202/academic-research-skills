@@ -335,7 +335,48 @@ def _display_fold(line: str) -> str:
 
 
 _ESCAPED_PIPE_RE = re.compile(r"\\\|")
-_INLINE_CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
+
+
+def _blank_code_spans(line: str) -> str:
+    """Blank CommonMark inline code spans, matching runs of EQUAL length.
+
+    A regex accepting unequal delimiter runs (#610 round-4 P1) blanked
+    from a single-backtick opener to a double-backtick closer — a stretch
+    the renderer does NOT treat as code, re-opening the later-cell attack
+    — and conversely swallowed legitimate prose. This scanner pairs an
+    opening run only with the next run of exactly its length, as the
+    renderer does; an unmatched run stays literal.
+    """
+    out: list[str] = []
+    index, length = 0, len(line)
+    while index < length:
+        if line[index] != "`":
+            out.append(line[index])
+            index += 1
+            continue
+        run_end = index
+        while run_end < length and line[run_end] == "`":
+            run_end += 1
+        run = run_end - index
+        scan, close = run_end, -1
+        while scan < length:
+            if line[scan] != "`":
+                scan += 1
+                continue
+            candidate_end = scan
+            while candidate_end < length and line[candidate_end] == "`":
+                candidate_end += 1
+            if candidate_end - scan == run:
+                close = scan
+                break
+            scan = candidate_end
+        if close >= 0:
+            out.append(" " * (close + run - index))
+            index = close + run
+        else:
+            out.append(line[index:run_end])
+            index = run_end
+    return "".join(out)
 
 
 def _cell_split_form(line: str) -> str:
@@ -349,7 +390,7 @@ def _cell_split_form(line: str) -> str:
     the whole-line candidate is always tested unmodified.
     """
     blanked = _MARKUP_SPAN_RE.sub(" ", line)
-    blanked = _INLINE_CODE_SPAN_RE.sub(" ", blanked)
+    blanked = _blank_code_spans(blanked)
     return _ESCAPED_PIPE_RE.sub(" ", blanked)
 
 
@@ -413,23 +454,31 @@ def _is_backref_shaped(line: str) -> bool:
     return bool(separator) and label == _RECEIPT_BACKREF_SHAPE_NAME
 
 
-def _inline_comment_state_after(line: str, open_: bool) -> bool:
-    """Comment state after the line, ignoring block-position gating.
+def _strip_inline_comment_spans(line: str, open_: bool) -> tuple[str, bool]:
+    """The line's rendered remainder outside inline comment spans + state.
 
     The block visibility model deliberately refuses to read a mid-paragraph
     `prose <!--` as an opener (see `_raw_dissent_span`), but CommonMark
     treats it as raw inline HTML whose comment hides everything until
-    `-->`. The Review Body backref walk tracks that span with this plain
-    ordered token scan so a back-reference inside it aborts instead of
-    being credited (#610 round-3 P1); prose is unaffected because the span
-    state is only consulted for backref-shaped lines.
+    `-->`. The Review Body backref walk therefore strips those spans and
+    parses only what the renderer shows (#610 rounds 3-4): content after
+    the opener on the SAME line is stripped too, and content after a
+    closing `-->` on the same line is kept and parsed — so a hidden
+    back-reference is never credited and a rendered one is never dropped.
+    Callers pass a code-span-blanked line, matching the renderer's
+    precedence of code spans over raw HTML.
     """
+    parts: list[str] = []
     index, state = 0, open_
     while True:
         token = "-->" if state else "<!--"
         position = line.find(token, index)
         if position < 0:
-            return state
+            if not state:
+                parts.append(line[index:])
+            return "".join(parts), state
+        if not state:
+            parts.append(line[index:position])
         state, index = not state, position + len(token)
 
 
@@ -576,6 +625,11 @@ def _lines_with_hidden_state(text: str):
             and bool(line.strip(" \t"))
             and not closes_paragraph
             and not (entered_commented or opens_comment)
+            # An indented-code line is literal, never a paragraph: letting
+            # it open one made the NEXT code line read as a live paragraph
+            # continuation and earn credit the renderer does not show
+            # (#610 round-4).
+            and not code_indented
         )
         yield line, fenced, entered_commented or opens_comment, code_indented
 
@@ -1324,28 +1378,42 @@ def _review_body_receipt_backrefs(
             continue
         if not inside:
             continue
-        if not fenced and not hidden:
+        parse_line = line
+        if not fenced and not hidden and not code_indented:
             # A paragraph-inline comment span cannot cross a paragraph
-            # boundary: a blank line or an interrupting heading ends the
-            # paragraph and with it the raw-HTML span, so the state resets
-            # there instead of leaking a false abort into later prose.
-            if not line.strip(" \t") or panel._H3_RE.fullmatch(line):
+            # boundary: a blank line or an interrupting ATX heading (any
+            # level) ends the paragraph and with it the raw-HTML span, so
+            # the state resets there instead of leaking a false abort into
+            # later prose. Code spans are blanked first, matching the
+            # renderer's precedence: a literal `<!--` inside inline code
+            # opens nothing (#610 round-4).
+            if (
+                not line.strip(" \t")
+                or _ATX_HEADING_RE.match(line)
+            ):
                 inline_commented = False
             else:
-                entered_inline = inline_commented
-                inline_commented = _inline_comment_state_after(
-                    line, inline_commented
+                code_blanked = _blank_code_spans(line)
+                visible, inline_commented = _strip_inline_comment_spans(
+                    code_blanked, inline_commented
                 )
-                if entered_inline:
-                    if _backref_declared_count(line):
-                        raise ConformanceError(
-                            f"[RECEIPT-LINKAGE: {report.path}: an "
-                            "Arithmetic Receipt back-reference declaration "
-                            "sits inside a paragraph-inline HTML comment "
-                            "span and does not render; it is "
-                            "non-conforming]"
-                        )
-                    continue
+                if visible != code_blanked:
+                    if not visible.strip(" \t"):
+                        # The whole line is hidden by the span: a hidden
+                        # declaration aborts, hidden prose is skipped.
+                        if _backref_declared_count(code_blanked):
+                            raise ConformanceError(
+                                f"[RECEIPT-LINKAGE: {report.path}: an "
+                                "Arithmetic Receipt back-reference "
+                                "declaration sits inside a paragraph-"
+                                "inline HTML comment span and does not "
+                                "render; it is non-conforming]"
+                            )
+                        continue
+                    # Only the rendered remainder is parsed: content after
+                    # a closing `-->` stays live, content behind an opener
+                    # is gone.
+                    parse_line = visible
         if fenced or hidden or code_indented:
             # Never credited: a machine declaration the page does not show
             # as a field line — fenced, commented, or rendered as indented
@@ -1371,8 +1439,13 @@ def _review_body_receipt_backrefs(
                 else f"(non-finding: {title})"
             )
             continue
-        matches = list(_RECEIPT_BACKREF_RE.finditer(line))
-        if _backref_declared_count(line) != len(matches):
+        # Canonical parsing and the declaration count run on the SAME
+        # display form (#610 round-4 P1): parsing the raw line while
+        # counting on a blanked one let a code-span declaration be
+        # credited over the rendered field beside it.
+        display = _cell_split_form(parse_line)
+        matches = list(_RECEIPT_BACKREF_RE.finditer(display))
+        if _backref_declared_count(display) != len(matches):
             raise ConformanceError(
                 f"[RECEIPT-LINKAGE: {report.path}: back-reference "
                 f"declaration(s) on {line.strip()!r} do not all parse "
@@ -1385,6 +1458,10 @@ def _review_body_receipt_backrefs(
 
 
 _INDENTED_H2_RE = re.compile(r"^ {1,3}##\s+\S")
+# Any ATX heading interrupts a paragraph (CommonMark), so any level ends a
+# paragraph-inline comment span — resetting only on H3 false-aborted a
+# rendered backref after an interrupting H4 (#610 round-4).
+_ATX_HEADING_RE = re.compile(r"^ {0,3}#{1,6}(?:[ \t]|$)")
 
 
 def _receipt_section_view(

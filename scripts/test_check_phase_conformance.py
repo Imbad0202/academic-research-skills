@@ -3729,6 +3729,114 @@ def test_field_name_leading_prose_abort_is_a_declared_boundary():
         check_receipts(lines)
 
 
+# --- #610 round-4 pins: display-form parity, spans, code semantics ---------
+
+
+def test_code_span_backref_cannot_outrank_the_rendered_one():
+    # Round-4 P1 (security track): canonical parsing and the declaration
+    # count run on the same display form, so a code-span declaration can
+    # never be credited over the rendered field beside it.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1",
+        "`| **Arithmetic Receipt**: AR1 |` **Arithmetic Receipt**: AR7",
+    )
+    with pytest.raises(phase.ConformanceError, match="exactly one"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_inert_code_span_beside_a_canonical_backref_is_harmless():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1",
+        "`inert` **Arithmetic Receipt**: AR1",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_backref_after_a_closing_comment_on_the_same_line_is_live():
+    # Round-4 (security track): the span ends at `-->`; the rendered
+    # remainder of the line is parsed, not dropped.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "open <!-- note\nclosed --> **Arithmetic Receipt**: AR1\n",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_spurious_backref_after_a_closing_comment_still_aborts():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "**Arithmetic Receipt**: AR1\n"
+        "open <!-- x\nclosed --> **Arithmetic Receipt**: AR2\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="exactly one"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_backref_behind_an_opener_on_its_own_line_is_not_credited():
+    # Round-4 P1 (codex track): content after `<!--` on the opener line is
+    # inside the span and must not be credited even when a pipe hands the
+    # canonical regex a match position.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "prose <!-- | **Arithmetic Receipt**: AR1\n-->\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="exactly one"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_unequal_code_ticks_do_not_hide_a_later_cell_field():
+    # Round-4 P1 (codex track): a 1-backtick opener with a 2-backtick
+    # closer is NOT a code span to the renderer; the pipe still makes a
+    # cell and the forbidden field in it still aborts.
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"),
+        "| `note | **tail_convention:** two-tailed`` |",
+    )
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
+def test_equal_code_ticks_with_pipes_stay_tolerated():
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"),
+        "raw `|status: pending` token cited here.",
+    )
+    check_receipts(lines)
+
+
+def test_second_line_of_an_indented_code_block_is_still_code():
+    # Round-4 P2 (codex track): an indented-code line never opens a
+    # paragraph, so the next code line is not a paragraph continuation.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "\n    note\n    **Arithmetic Receipt**: AR1\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="indented-code"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_literal_comment_marker_in_a_code_span_opens_nothing():
+    # Round-4 P2 (codex track): code spans outrank raw HTML, so a quoted
+    # `<!--` cannot open an inline span and abort the next backref.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "prose `<!--` literal\n**Arithmetic Receipt**: AR1\n",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_any_atx_heading_ends_an_inline_comment_span():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "prose <!-- open\n#### Detail\n**Arithmetic Receipt**: AR1\n",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
 def test_grimmer_grim_inconsistent_mean_is_not_computable():
     check_receipts(
         receipt_section(grimmer_receipt(
