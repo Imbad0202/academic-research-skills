@@ -322,6 +322,37 @@ def _is_dissent_field_shaped(line: str) -> bool:
     return bool(separator) and label in _DISSENT_FIELD_NAMES
 
 
+def _display_fold(line: str) -> str:
+    """Unescape HTML entities FIRST, then NFKC-fold and casefold.
+
+    Order matters (#610 round-3 P1): a fullwidth-colon entity `&#xFF1A;`
+    decodes to a fullwidth colon that only the SUBSEQUENT NFKC fold maps to
+    `:`, so folding before unescaping left the decoded colon unfolded and
+    the declaration unseen. A doubly-encoded or fullwidth-ampersand entity
+    stays literal, which matches what the renderer shows.
+    """
+    return unicodedata.normalize("NFKC", html.unescape(line)).casefold()
+
+
+_ESCAPED_PIPE_RE = re.compile(r"\\\|")
+_INLINE_CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
+
+
+def _cell_split_form(line: str) -> str:
+    """The line with pipe-bearing non-cell constructs blanked for splitting.
+
+    A naive `split("|")` read the pipe inside a Markdown link destination,
+    an escaped `\\|`, or an inline code span as a GFM cell boundary and
+    minted a phantom field-shaped cell out of legitimate prose — a false
+    abort on an unretryable phase (#610 round-3). Those spans are literal
+    or non-tabular to the renderer, so they are blanked before the split;
+    the whole-line candidate is always tested unmodified.
+    """
+    blanked = _MARKUP_SPAN_RE.sub(" ", line)
+    blanked = _INLINE_CODE_SPAN_RE.sub(" ", blanked)
+    return _ESCAPED_PIPE_RE.sub(" ", blanked)
+
+
 def _is_receipt_field_shaped(line: str) -> bool:
     """True when a line spells a receipt machine field, however decorated.
 
@@ -335,9 +366,7 @@ def _is_receipt_field_shaped(line: str) -> bool:
     refuses aborts loudly instead of silently passing a forbidden-field
     guard or starving a required-field count.
     """
-    stripped = _MARKUP_SPAN_RE.sub(
-        "", html.unescape(unicodedata.normalize("NFKC", line)).casefold()
-    )
+    stripped = _MARKUP_SPAN_RE.sub("", _display_fold(line))
     head, separator, _ = stripped.partition(":")
     label = "".join(char for char in head if char.isalpha())
     return bool(separator) and label in _RECEIPT_FIELD_SHAPE_NAMES
@@ -355,7 +384,7 @@ def _receipt_shape_candidates(line: str) -> list[str]:
     """
     if "|" not in line:
         return [line]
-    return [line, *line.split("|")]
+    return [line, *_cell_split_form(line).split("|")]
 
 
 def _tail_value_shown(derived_fold: str, label_re: re.Pattern[str]) -> bool:
@@ -378,12 +407,30 @@ def _tail_value_shown(derived_fold: str, label_re: re.Pattern[str]) -> bool:
 def _is_backref_shaped(line: str) -> bool:
     """True when a line spells the `**Arithmetic Receipt**:` field, however
     decorated — the same head shape test as the receipt fields."""
-    stripped = _MARKUP_SPAN_RE.sub(
-        "", html.unescape(unicodedata.normalize("NFKC", line)).casefold()
-    )
+    stripped = _MARKUP_SPAN_RE.sub("", _display_fold(line))
     head, separator, _ = stripped.partition(":")
     label = "".join(char for char in head if char.isalpha())
     return bool(separator) and label == _RECEIPT_BACKREF_SHAPE_NAME
+
+
+def _inline_comment_state_after(line: str, open_: bool) -> bool:
+    """Comment state after the line, ignoring block-position gating.
+
+    The block visibility model deliberately refuses to read a mid-paragraph
+    `prose <!--` as an opener (see `_raw_dissent_span`), but CommonMark
+    treats it as raw inline HTML whose comment hides everything until
+    `-->`. The Review Body backref walk tracks that span with this plain
+    ordered token scan so a back-reference inside it aborts instead of
+    being credited (#610 round-3 P1); prose is unaffected because the span
+    state is only consulted for backref-shaped lines.
+    """
+    index, state = 0, open_
+    while True:
+        token = "-->" if state else "<!--"
+        position = line.find(token, index)
+        if position < 0:
+            return state
+        state, index = not state, position + len(token)
 
 
 def _backref_declared_count(line: str) -> int:
@@ -398,7 +445,10 @@ def _backref_declared_count(line: str) -> int:
     """
     if "|" not in line:
         return 1 if _is_backref_shaped(line) else 0
-    return sum(1 for cell in line.split("|") if _is_backref_shaped(cell))
+    return sum(
+        1 for cell in _cell_split_form(line).split("|")
+        if _is_backref_shaped(cell)
+    )
 
 
 def _lines_with_fence_state(text: str):
@@ -489,9 +539,12 @@ def _lines_with_hidden_state(text: str):
     for line, so the receipt gate and the dissent gate share one visibility
     model (#610 round-2, both tracks): `hidden` is True when the line sits
     inside — or itself opens — an HTML comment at a block position, i.e.
-    when a CommonMark renderer would not display it. Fence state is layered
-    first, exactly as in `_raw_dissent_span`: a comment marker inside a
-    fence is literal text and advances no comment state.
+    when a CommonMark renderer would not display it. `code_indented` is
+    True when the line starts an indented code block (four columns at a
+    block position, no paragraph open), i.e. when the renderer shows it as
+    literal text rather than a field line (#610 round-3). Fence state is
+    layered first, exactly as in `_raw_dissent_span`: a comment marker
+    inside a fence is literal text and advances no comment state.
     """
     commented = False
     paragraph_open = False
@@ -505,6 +558,12 @@ def _lines_with_hidden_state(text: str):
                 line, commented=commented, paragraph_open=paragraph_open
             )
         expanded = line.expandtabs(4)
+        code_indented = (
+            not fenced
+            and not paragraph_open
+            and bool(line.strip(" \t"))
+            and expanded.startswith("    ")
+        )
         state_dependent = (
             _SETEXT_UNDERLINE_RE if paragraph_open else _EMPTY_LIST_ITEM_RE
         )
@@ -518,7 +577,7 @@ def _lines_with_hidden_state(text: str):
             and not closes_paragraph
             and not (entered_commented or opens_comment)
         )
-        yield line, fenced, entered_commented or opens_comment
+        yield line, fenced, entered_commented or opens_comment, code_indented
 
 
 def _raw_dissent_span(text: str) -> DissentSpan:
@@ -1254,22 +1313,54 @@ def _review_body_receipt_backrefs(
     backrefs: dict[str, list[str]] = {}
     current = "(preamble)"
     inside = False
-    for line, fenced, hidden in _lines_with_hidden_state(report.text):
+    inline_commented = False
+    for line, fenced, hidden, code_indented in _lines_with_hidden_state(
+        report.text
+    ):
         if not fenced and (match := panel._H2_RE.fullmatch(line)):
             inside = match.group(1) == "Review Body"
             current = "(preamble)"
+            inline_commented = False
             continue
         if not inside:
             continue
-        if fenced or hidden:
-            # Never credited, and a machine declaration the page does not
-            # show is a loud failure, not a silent drop (#610 round-2 P1).
+        if not fenced and not hidden:
+            # A paragraph-inline comment span cannot cross a paragraph
+            # boundary: a blank line or an interrupting heading ends the
+            # paragraph and with it the raw-HTML span, so the state resets
+            # there instead of leaking a false abort into later prose.
+            if not line.strip(" \t") or panel._H3_RE.fullmatch(line):
+                inline_commented = False
+            else:
+                entered_inline = inline_commented
+                inline_commented = _inline_comment_state_after(
+                    line, inline_commented
+                )
+                if entered_inline:
+                    if _backref_declared_count(line):
+                        raise ConformanceError(
+                            f"[RECEIPT-LINKAGE: {report.path}: an "
+                            "Arithmetic Receipt back-reference declaration "
+                            "sits inside a paragraph-inline HTML comment "
+                            "span and does not render; it is "
+                            "non-conforming]"
+                        )
+                    continue
+        if fenced or hidden or code_indented:
+            # Never credited: a machine declaration the page does not show
+            # as a field line — fenced, commented, or rendered as indented
+            # code — is a loud failure, not a silent drop or a silent
+            # credit (#610 rounds 2-3).
             if _backref_declared_count(line):
+                kind = (
+                    "fenced" if fenced
+                    else "commented-out" if hidden
+                    else "indented-code"
+                )
                 raise ConformanceError(
-                    f"[RECEIPT-LINKAGE: {report.path}: a "
-                    f"{'fenced' if fenced else 'commented-out'} Arithmetic "
-                    "Receipt back-reference declaration is hidden from the "
-                    "rendered card and is non-conforming]"
+                    f"[RECEIPT-LINKAGE: {report.path}: a {kind} Arithmetic "
+                    "Receipt back-reference declaration does not render as "
+                    "a field line and is non-conforming]"
                 )
             continue
         if match := panel._H3_RE.fullmatch(line):
@@ -1319,10 +1410,10 @@ def _receipt_section_view(
     receipt section opens is reported for the terminal-section rule.
     """
     h2_titles: list[str] = []
-    section: list[tuple[str, bool]] = []
+    section: list[tuple[str, bool, bool]] = []
     inside = False
     indented_h2_after = False
-    for line, fenced, hidden in _lines_with_hidden_state(text):
+    for line, fenced, hidden, _ in _lines_with_hidden_state(text):
         if not fenced and (match := panel._H2_RE.fullmatch(line)):
             h2_titles.append(match.group(1))
             inside = match.group(1) == _RECEIPT_SECTION
@@ -1330,7 +1421,7 @@ def _receipt_section_view(
         if inside:
             if not fenced and not hidden and _INDENTED_H2_RE.match(line):
                 indented_h2_after = True
-            section.append((line, hidden))
+            section.append((line, hidden, fenced))
     return section, h2_titles, indented_h2_after
 
 
@@ -1361,7 +1452,19 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
             "be the final section of the card]"
         )
     in_subsection = False
-    for line, hidden in view:
+    for line, hidden, fenced in view:
+        if not fenced and ("<!--" in line or "-->" in line):
+            # Comment-free zone (#610 round-3 P1): the receipt section is
+            # machine lines, so a paragraph-inline `prose <!--` opener —
+            # which the block-position visibility model deliberately does
+            # not read — could otherwise launder the receipts below it out
+            # of the rendered card. Banning the markup outright is
+            # deterministic and costs no legitimate content; fenced lines
+            # render the markup literally and stay exempt.
+            raise ConformanceError(
+                f"[RECEIPT-GRAMMAR: {report.path}: HTML comment markup "
+                f"{line.strip()!r} is not allowed in the receipt section]"
+            )
         if panel._H3_RE.fullmatch(line):
             if hidden:
                 raise ConformanceError(
@@ -1400,14 +1503,17 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
             _is_receipt_field_shaped(candidate)
             for candidate in _receipt_shape_candidates(line)
         ):
+            # One neutral message for both visibility states: an opener
+            # line like `<!-- c --> key: value` is hidden to the model but
+            # partially renders, so claiming "commented-out" would misread
+            # the page to the seat (#610 round-3 P3).
             raise ConformanceError(
                 f"[RECEIPT-GRAMMAR: {report.path}: receipt machine line "
-                f"{line.strip()!r} is "
-                f"{'commented-out' if hidden else 'decorated or non-canonical'}"
-                "; write plain unbulleted key: value text (tolerated: one "
+                f"{line.strip()!r} is decorated or non-canonical; write "
+                "plain unbulleted key: value text (tolerated: one "
                 "leading list marker, balanced bold around the key)]"
             )
-    body = [line for line, _ in view]
+    body = [line for line, _, _ in view]
     attestations = [
         line for line in body if _RECEIPT_ATTESTATION_RE.fullmatch(line)
     ]
@@ -1536,8 +1642,8 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                         f"[RECEIPT-TAILS: {report.path}: {receipt_id} "
                         "unstated tail requires derived_value_or_range to "
                         "show BOTH labeled VALUES — each of the two-tailed "
-                        "and one-tailed labels followed by its derived "
-                        "number within its own segment]"
+                        "and one-tailed labels sharing its own ;-segment "
+                        "with its derived number, either order]"
                     )
         finding_ref = _one_receipt_field(
             sublines, "finding_ref", report.path, receipt_id,

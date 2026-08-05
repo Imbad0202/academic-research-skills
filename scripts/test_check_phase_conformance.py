@@ -3454,10 +3454,97 @@ def test_visible_receipts_with_hidden_duplicate_field_abort():
         check_receipts(lines)
 
 
-def test_commented_prose_in_receipt_section_stays_tolerated():
+def test_comment_markup_in_receipt_section_aborts():
+    # Round-3 adjudication supersedes the round-2 commented-prose
+    # tolerance: the receipt section is a comment-free zone, because a
+    # paragraph-inline `prose <!--` opener the block visibility model
+    # cannot read would otherwise launder the receipts below it.
     lines = receipt_section(grim_receipt()) + [
         "<!--", "internal note, no machine fields", "-->",
     ]
+    with pytest.raises(phase.ConformanceError, match="HTML comment markup"):
+        check_receipts(lines)
+
+
+def test_inline_comment_opener_in_receipt_section_aborts():
+    lines = [
+        "visible explanation <!--",
+        *receipt_section(grim_receipt()),
+        "-->",
+    ]
+    with pytest.raises(phase.ConformanceError, match="HTML comment markup"):
+        check_receipts(lines)
+
+
+def test_fenced_comment_markup_in_receipts_is_literal_text():
+    lines = receipt_section(grim_receipt()) + [
+        "```", "<!-- rendered literally inside the fence -->", "```",
+    ]
+    check_receipts(lines)
+
+
+def test_inline_comment_span_hidden_backref_aborts():
+    # Round-3 P1 (codex track): `prose <!--` inside a paragraph hides the
+    # following lines until `-->` without the block model seeing it.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "prose lead-in <!--\n**Arithmetic Receipt**: AR1\n-->\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="paragraph-inline"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_inline_comment_span_dies_at_a_blank_line():
+    # A blank line ends the paragraph and with it the raw-HTML span, so a
+    # backref in the NEXT paragraph is live and the card conforms.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "prose mentioning <!-- an unclosed marker\n\n"
+        "**Arithmetic Receipt**: AR1\n",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+@pytest.mark.parametrize("entity_line", [
+    "tail_convention&#xFF1A; two-tailed",
+    "status&#65306; mismatch",
+])
+def test_fullwidth_colon_entity_field_spelling_aborts(entity_line):
+    # Round-3 P1 (codex track): unescape must run BEFORE the NFKC fold so
+    # a fullwidth-colon entity decodes and then folds to `:`.
+    lines = receipt_section(grim_receipt())
+    lines.insert(lines.index("finding_ref: W1"), entity_line)
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
+def test_fullwidth_colon_entity_backref_aborts():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1",
+        "**Arithmetic Receipt**: AR1\n**Arithmetic Receipt**&#xFF1A; AR2",
+    )
+    with pytest.raises(phase.ConformanceError, match="RECEIPT-LINKAGE"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_pipe_inside_link_destination_is_not_a_cell(  # codex round-3 P2
+):
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"),
+        "Quoted source: [record](https://example.org/a|status:pending)",
+    )
+    check_receipts(lines)
+
+
+def test_escaped_pipe_and_code_span_pipes_are_not_cells():
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"),
+        "See the raw marker \\| and the cited `a|status:pending` token.",
+    )
     check_receipts(lines)
 
 
@@ -3468,6 +3555,29 @@ def test_comment_hidden_backref_aborts():
     )
     with pytest.raises(phase.ConformanceError, match="commented-out"):
         check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_indented_code_backref_is_not_credited():
+    # Round-3 (security track): a 4-column-indented back-reference renders
+    # as literal indented code, not a field line, and must not earn the
+    # linkage credit its fenced twin is denied.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "\n    **Arithmetic Receipt**: AR1\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="indented-code"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_four_space_paragraph_continuation_backref_still_counts():
+    # A 4-space-indented line CONTINUING an open paragraph is prose to
+    # CommonMark, not code; the backref on it renders with its bold applied
+    # and stays a live declaration.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "prose lead-in line\n    **Arithmetic Receipt**: AR1\n",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
 
 
 @pytest.mark.parametrize("bad", [

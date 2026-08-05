@@ -122,7 +122,8 @@ judged at adjudication, where a false attestation over recomputable
 statistics surfaces as `MISSED` verdicts. Checker-enforced
 highlights: closed `procedure_id` / `status` / `not_computable_reason` /
 `tail_convention` enums; an unstated-tail p receipt claiming a verdict must
-display BOTH labeled tail values, each followed by its derived number; a
+display BOTH labeled tail values, each label sharing its own `;`-segment
+with its derived number (either order); a
 GRIM/GRIMMER verdict requires
 `rounding_interval:` + `nearest_achievable:`; an `n_from_df` verdict must name
 its `df_identity:`; every `mismatch` links to a distinct `W<n>` weakness that
@@ -131,10 +132,13 @@ value exactly `AR<n>`, no trailing text). The receipt section is read
 fence-transparently in display form: a fenced receipt line is still read
 (an indented fence dedented as CommonMark renders it), the two tolerated
 decorations are a single leading list marker and balanced bold around the
-key, and any other decorated, commented-out, table-cell, entity-encoded, or
-otherwise re-spelled machine line — and any machine line outside every
-`### AR<n>` subsection other than the attestation — aborts loudly instead
-of being silently dropped or read as canonical. Failures
+key, and any other decorated, table-cell, entity-encoded, or otherwise
+re-spelled machine line — and any machine line outside every `### AR<n>`
+subsection other than the attestation — aborts loudly instead of being
+silently dropped or read as canonical. The section is a comment-free zone:
+any unfenced HTML comment markup aborts, and in the Review Body a
+back-reference hidden by a block, paragraph-inline, or indented-code
+rendering context aborts rather than earning linkage credit. Failures
 surface as `[RECEIPT-MISSING]` / `[RECEIPT-GRAMMAR]` / `[RECEIPT-TAILS]` /
 `[RECEIPT-LINKAGE]` / `[RECEIPT-SECTION-FORBIDDEN]` at exit 3 — the seat is
 unusable per §5, with no Phase 2 retry; the abort-rate cost of this new
