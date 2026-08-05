@@ -139,7 +139,7 @@ After `## Review Body`, emit exactly one `## Arithmetic Receipts` H2 section as 
 
 - Open one `### AR<n>` subsection per attempted recomputation — one receipt represents one arithmetic claim (a p mismatch and a df/N mismatch never share a receipt). IDs are contiguous `AR1..ARn` in order of appearance.
 - Apply the four bounded procedures from `references/statistical_reporting_standards.md` § Bounded Arithmetic Recompute Procedures wherever the manuscript reports a value they cover: `p_from_test_statistic`, `grim`, `grimmer`, `n_from_df`. Never invent a procedure and never extend one past its documented boundary — outside the boundary the honest status is `not_computable`.
-- If the manuscript reports no statistic that any bounded procedure covers, the section instead contains exactly one `no_recomputable_statistics: <one-line basis naming what you checked>` line and no `### AR<n>` subsection. This attestation is mandatory: silence about recomputation is non-conforming.
+- If the manuscript reports no statistic that any bounded procedure covers, the section instead contains exactly one `no_recomputable_statistics: <one-line basis naming what you checked>` line and no `### AR<n>` subsection. This attestation is mandatory: silence about recomputation is non-conforming. The checker verifies only that the declaration exists — whether it is TRUE is judged at adjudication against the manuscript, and a false attestation over recomputable statistics surfaces there as `MISSED` verdicts.
 - Every receipt carries these eight canonical lines, each exactly once:
   - `procedure_id: <p_from_test_statistic|grim|grimmer|n_from_df>`
   - `evidence_anchor: <type>: <locator>` — the same six-type anchor grammar as findings; it identifies the reported values used.
