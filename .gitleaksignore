@@ -1,8 +1,6 @@
-# One-off gitleaks false positive: model-generated venue-fit prose in a frozen
-# E4 evidence bundle (a journal-tier descriptor in field_analysis.md line 34)
-# trips the generic-api-key entropy heuristic. Raw bundles are byte-frozen
-# promotion evidence (check_e4_promotion.py) and cannot be edited; per the
-# .gitleaks.toml maintenance note, a one-off is ignored by fingerprint,
-# never by rule edit. (The offending prose is deliberately not quoted here —
-# quoting it makes this file itself match the rule.)
-e3b8511770965bb6a688bd54d1e6907ddf7fb660:evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/field_analysis.md:generic-api-key:34
+# Historical one-off: commit 08ddaca's version of THIS file quoted the flagged
+# E4-bundle prose verbatim in its comment, so that commit matches
+# generic-api-key in branch-history scans. The current class-level suppression
+# lives in .gitleaks.toml (frozen E4 raw-bundle .md prose); this fingerprint
+# only covers the already-pushed historical comment.
+08ddaca66e2d4b45e3e24a1e22669635141ea8c9:.gitleaksignore:generic-api-key:2
