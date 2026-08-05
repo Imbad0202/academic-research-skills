@@ -90,7 +90,7 @@
      "reported_inputs": true,
      "assumptions": true,
      "derivation": true,
-     "derived_value": true,
+     "derived_value_or_range": true,
      "comparison_rule": true
     },
     "assumptions_supported": true,
@@ -106,7 +106,7 @@
      "reported_inputs": true,
      "assumptions": true,
      "derivation": true,
-     "derived_value": true,
+     "derived_value_or_range": true,
      "comparison_rule": true
     },
     "assumptions_supported": true,
@@ -122,7 +122,7 @@
      "reported_inputs": true,
      "assumptions": true,
      "derivation": true,
-     "derived_value": true,
+     "derived_value_or_range": true,
      "comparison_rule": true
     },
     "assumptions_supported": true,
@@ -138,7 +138,7 @@
      "reported_inputs": true,
      "assumptions": true,
      "derivation": true,
-     "derived_value": true,
+     "derived_value_or_range": true,
      "comparison_rule": true
     },
     "assumptions_supported": true,
