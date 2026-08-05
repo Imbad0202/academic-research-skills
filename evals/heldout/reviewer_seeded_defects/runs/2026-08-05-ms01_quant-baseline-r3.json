@@ -72,20 +72,20 @@
   "severity_source": "highest explicit per-finding severity tag among detecting seats (frozen 2026-07-24 ladder; no letter-fallback rung needed for any seeded defect this run)",
   "recompute_adjudication": {
    "SD-01": {
-    "verdict": "VERIFIED",
+    "verdict": "MISCOMPUTED",
     "procedure_id": "grim",
     "evidence_location": "raw/2026-08-05-ms01_quant-baseline-r3/methodology.phase2.a1.md",
     "receipt_fields_present": {
      "reported_inputs": true,
-     "assumptions": true,
+     "assumptions": false,
      "derivation": true,
      "derived_value_or_range": true,
      "comparison_rule": true
     },
-    "assumptions_supported": true,
-    "procedure_application_correct": true,
+    "assumptions_supported": false,
+    "procedure_application_correct": false,
     "arithmetic_correct": true,
-    "comparison_correct": true
+    "comparison_correct": false
    },
    "SD-02": {
     "verdict": "VERIFIED",
@@ -104,20 +104,20 @@
     "comparison_correct": true
    },
    "SD-03": {
-    "verdict": "VERIFIED",
+    "verdict": "MISCOMPUTED",
     "procedure_id": "p_from_test_statistic",
     "evidence_location": "raw/2026-08-05-ms01_quant-baseline-r3/methodology.phase2.a1.md",
     "receipt_fields_present": {
      "reported_inputs": true,
-     "assumptions": true,
+     "assumptions": false,
      "derivation": true,
      "derived_value_or_range": true,
      "comparison_rule": true
     },
-    "assumptions_supported": true,
-    "procedure_application_correct": true,
+    "assumptions_supported": false,
+    "procedure_application_correct": false,
     "arithmetic_correct": true,
-    "comparison_correct": true
+    "comparison_correct": false
    },
    "SD-11": {
     "verdict": "VERIFIED",

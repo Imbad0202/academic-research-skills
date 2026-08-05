@@ -115,20 +115,20 @@
     "comparison_correct": true
    },
    "SD-03": {
-    "verdict": "VERIFIED",
+    "verdict": "MISCOMPUTED",
     "procedure_id": "p_from_test_statistic",
     "evidence_location": "raw/2026-08-04-ms01_quant-baseline-r1/methodology.phase2.a1.md",
     "receipt_fields_present": {
      "reported_inputs": true,
-     "assumptions": true,
+     "assumptions": false,
      "derivation": true,
      "derived_value_or_range": true,
      "comparison_rule": true
     },
-    "assumptions_supported": true,
-    "procedure_application_correct": true,
+    "assumptions_supported": false,
+    "procedure_application_correct": false,
     "arithmetic_correct": true,
-    "comparison_correct": true
+    "comparison_correct": false
    },
    "SD-11": {
     "verdict": "VERIFIED",
