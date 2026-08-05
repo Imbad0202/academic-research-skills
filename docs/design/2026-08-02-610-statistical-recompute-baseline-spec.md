@@ -263,7 +263,12 @@ projection in `recompute_adjudication`:
 
 Each row also records `procedure_id`, the raw `evidence_location`, logical
 receipt-field presence, `assumptions_supported`, `procedure_application_correct`,
-`arithmetic_correct`, and `comparison_correct`. Existing `per_defect` may
+`arithmetic_correct`, and `comparison_correct`. Precedence when both triggers
+hold: a receipt that omits a logical field AND rests on an unsupported
+assumption or incorrect comparison is `MISCOMPUTED`, not `CLAIM_ONLY` — a
+complete-looking attempt is classified by its procedural defect, not by the
+gap that defect leaves behind (adjudicated first on the 2026-08-04/05 baseline
+cohort's SD-01/SD-03 cells). Existing `per_defect` may
 still call a claim-only case DETECTED under the historical content-level rule;
 that does not promote it to `VERIFIED`. For baseline, prose can supply the
 logical fields without `AR<n>` labels. For post, the formal receipt grammar and
