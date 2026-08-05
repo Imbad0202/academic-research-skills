@@ -64,6 +64,8 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 **Claude Science를 사용하시나요?** 네 개의 스킬을 바로 가져올 수 있습니다: **Skills → Import from GitHub**에서 `https://github.com/Imbad0202/academic-research-skills`를 붙여넣고 **Preview** → **Import 4 skills**(이 저장소 v3.14.0+ 필요 — 가져오기 도구는 marketplace manifest에 명시된 스킬 경로를 읽습니다). 가져오기는 특정 시점의 스냅샷입니다: ARS 업데이트 후에는 다시 가져오세요. 가져온 스킬은 ARS 방법론(연구/작성/리뷰 프로토콜)을 담습니다. Claude Code 전용 메커니즘 — slash commands, hooks, 서브에이전트 오케스트레이션 — 은 이전되지 않습니다. 자세한 내용은 [docs/SETUP.md](docs/SETUP.md) Method 5를 참조하세요.
 
+**Pi를 사용하시나요?** `pi install git:github.com/Imbad0202/academic-research-skills`로 저장소 내 커뮤니티 유지보수 wrapper를 설치할 수 있습니다. 원본 ARS 콘텐츠를 기준으로 유지하며 Pi 전용 오케스트레이션 및 hook 제한을 문서화합니다. 자세한 내용은 [`pi/README.md`](pi/README.md)를 참조하세요.
+
 **Codex CLI를 사용하시나요?** 대신 자매 배포판을 설치하세요: [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) — 동일한 워크플로 콘텐츠를, `ars-*` 별칭을 갖는 단일 `$academic-research-suite` 스킬로 Codex 네이티브 패키징한 것입니다.
 
 ## 성능 & 비용

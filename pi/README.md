@@ -16,7 +16,7 @@ Run `/ars-pi-doctor` to inspect the current environment. The curated [degraded-m
 ## Requirements
 
 - Pi with package support (`pi install` / `pi -e`)
-- This complete repository checkout; `pi/` is only a wrapper around its parent files
+- The complete repository package, loaded from GitHub or from a local checkout; `pi/` is only a wrapper around its parent files and cannot be copied by itself
 - Optional capabilities depend on the user's Pi setup:
   - a subagent, workflow, or parallel-agent skill/tool for true multi-agent execution
   - a web-search or page-retrieval skill/tool for literature search and verification
@@ -26,9 +26,17 @@ There are no required Pi orchestration or web-search dependencies. When a capabi
 
 ## Try without installing
 
-From the repository root:
+Load the package temporarily from GitHub for the current Pi run:
 
 ```bash
+pi -e git:github.com/Imbad0202/academic-research-skills
+```
+
+To try a local checkout instead, clone the repository first:
+
+```bash
+git clone https://github.com/Imbad0202/academic-research-skills.git
+cd academic-research-skills
 pi -e ./pi
 ```
 
@@ -59,16 +67,22 @@ For automatic ARS skill selection from subsequent natural-language prompts, expl
 
 ## Install from GitHub
 
-When this branch exists on GitHub, Pi can install the repository directly because the root `package.json` points to this wrapper and the original ARS resources:
+Pi can install the canonical repository directly because the root `package.json` points to this wrapper and the original ARS resources:
 
 ```bash
-pi install git:github.com/OWNER/academic-research-skills
+pi install git:github.com/Imbad0202/academic-research-skills
 ```
 
-Pin a branch, tag, or commit when needed:
+Pin a branch, tag, or commit that contains the Pi wrapper when needed:
 
 ```bash
-pi install git:github.com/OWNER/academic-research-skills@REF
+pi install git:github.com/Imbad0202/academic-research-skills@REF
+```
+
+Update installed Git packages with `pi update --extensions`. Remove this package with:
+
+```bash
+pi remove git:github.com/Imbad0202/academic-research-skills
 ```
 
 ## Install from this checkout
@@ -79,7 +93,7 @@ Keep the checkout at a stable path, then run from the repository root:
 pi install .
 ```
 
-The nested manifest remains usable for wrapper-only local installation:
+The nested manifest also supports local installation from the wrapper directory:
 
 ```bash
 pi install ./pi
