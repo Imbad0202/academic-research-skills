@@ -314,6 +314,9 @@ The following patterns during review should raise red flags, requiring further i
 | Inconsistent table numbers | Text narrative contradicts table values | HIGH |
 | Statistical software not stated | Not reporting SPSS / R / Stata / Mplus and version | LOW |
 | Causal language | Non-experimental designs (correlational/survey) using causal inference language | MEDIUM |
+| Unreachable mean (GRIM) | A reported mean of discrete-scale data cannot be produced by any integer sum at the reported *N* and precision | HIGH |
+| Unreachable SD (GRIMMER) | A reported SD of discrete-scale data is not attainable by any response distribution consistent with the reported mean and *N* | HIGH |
+| *p* incompatible with statistic and df | The reported *p* matches neither tail reading of the reported test statistic at the reported df | HIGH |
 
 ---
 
@@ -393,3 +396,109 @@ Step 5: Scan red flag list (Section 4)
 Step 6: Verify APA formatting (Section 3)
 Step 7: Produce completeness score (Section 6)
 ```
+
+---
+
+## 8. Bounded Arithmetic Recompute Procedures (#610)
+
+> **Epistemic status — read this before anything below.** This layer does
+> not replace the human reviewer, and it does not make the reviewer's
+> arithmetic trustworthy. What the engineering can force is narrow and
+> should be named honestly: the receipt grammar (methodology seat, sprint
+> Phase 2) forces every recomputation attempt to be *declared, structured,
+> and auditable* — required fields present, closed enums respected, each
+> mismatch linked to exactly one weakness. It cannot force the arithmetic
+> inside a receipt to be correct; model arithmetic is not deterministic, and
+> a fully conforming receipt built on wrong arithmetic is still wrong.
+> Correctness is decided by human adjudication against the four-verdict
+> scale (`VERIFIED` / `CLAIM_ONLY` / `MISCOMPUTED` / `MISSED`) defined in
+> `docs/design/2026-08-02-610-statistical-recompute-baseline-spec.md` §7.1.
+> Everything in this section is a bounded aid to that human judgment, never
+> a substitute for it.
+
+Four bounded procedures cover the recomputable slice of the red flags in
+Section 4. Normative worked cases and undecidable boundaries live in the
+#610 spec §5; this section is the reviewer-facing operating summary. Outside
+a procedure's boundary the honest status is `not_computable` with its closed
+reason — never an extended or improvised calculation.
+
+### 8.1 `p_from_test_statistic`
+
+Recompute a reported *p* from a named test family, statistic, and df.
+Prerequisites: test family, statistic value, required df, reported *p*, and
+the tail rule where it matters. *F* and chi-square are upper-tail by family;
+*t*/*z* results must never silently become two-tailed. **When the paper
+states no tail, the receipt must show BOTH labeled values (two-tailed and
+one-tailed)** — a single-tail comparison alone supports no verdict. If the
+tail choice flips the verdict, the status is `not_computable`
+(`tail_ambiguous`). Adjusted, bootstrap, permutation, or exact *p* values
+without their procedure are `not_computable` (`nonstandard_p_procedure`).
+
+### 8.2 `grim`
+
+Test whether a reported mean of discrete-scale data is reachable. Apply only
+to an unweighted mean with known discrete granularity, known item-specific
+analytic *N*, and a stated precision/rounding rule. **The completed
+procedure requires the rounding interval implied by the reported precision
+AND the nearest attainable values straddling the reported mean** — an
+integer-product observation without the rounding-interval reachability check
+is not a completed GRIM procedure. Continuous, weighted, imputed,
+transformed, composite, or item-averaged values with unknown granularity are
+`not_computable`.
+
+### 8.3 `grimmer`
+
+Inherits every GRIM prerequisite and additionally requires the SD convention
+(sample vs population), reported precision, and finite discrete support. A
+mismatch needs a completed reachability proof over the bounded response
+space; intuition that an SD "looks too small" is not a procedure. If the
+mean itself is GRIM-inconsistent, the status is `not_computable`
+(`mean_grim_inconsistent`).
+
+### 8.4 `n_from_df`
+
+Invert a reported df to a required sample size under a NAMED test-specific
+identity (`df=N-1` one-sample/paired *t*; `df=N1+N2-2` equal-variance
+independent *t*; the identity is not universal and the receipt must name
+it). Welch–Satterthwaite, Kenward–Roger, corrected repeated-measures,
+multiple-imputation, and mixed/clustered/robust/survey-weighted analyses are
+`not_computable` unless their required inputs are present. Chi-square df
+usually encode table dimensions and cannot be inverted to *N*.
+
+### 8.5 Red-flag classification (arithmetic rows)
+
+Every arithmetic-flavored red-flag row in Section 4 is classified below so
+that no row is silently claimed "solved" by the four procedures (#610 spec
+§8). Classes: **covered** (a bounded procedure recomputes it — emit a
+receipt when attempted), **reporting-only** (noticing and citing suffices;
+there is nothing to recompute), **direct-threshold** (a read-off comparison
+against a stated numeric threshold; report as a finding, no receipt), and
+**not_computable** (arithmetic in nature, but no bounded procedure exists
+yet — must NOT be presented as verified).
+
+| Red-flag row (Section 4) | Classification | Handling |
+|---|---|---|
+| df inconsistent with *N* (4.7) | covered | `n_from_df` receipt |
+| Unreachable mean — GRIM (4.7) | covered | `grim` receipt |
+| Unreachable SD — GRIMMER (4.7) | covered | `grimmer` receipt |
+| *p* incompatible with statistic and df (4.7) | covered | `p_from_test_statistic` receipt |
+| Inconsistent effect sizes (4.3) | not_computable | No bounded effect-size consistency procedure exists yet (a future separate addition per the #610 spec); flag the inconsistency as a finding, never as a verified recomputation |
+| Many *p* near .05 (4.1) | reporting-only | Distributional suspicion; cite the values, no recompute |
+| Sample too small, *N* < 10 × predictors (4.4) | direct-threshold | Read-off comparison; finding only |
+| SEM small sample, *N* < 200 (4.4) | direct-threshold | Read-off comparison; finding only |
+| HLM Level-2 units < 30 (4.4) | direct-threshold | Read-off comparison; finding only |
+| Excessive VIF > 10 (4.6) | direct-threshold | Read-off comparison; finding only |
+| *p* = .000 (4.7) | reporting-only | Format defect; no recompute |
+| Inconsistent table numbers (4.7) | reporting-only | Internal-consistency contradiction; cite both surfaces, no bounded recompute |
+
+### 8.6 Receipt grammar pointer
+
+Under a sprint contract, every attempted recomputation is recorded as an
+`AR<n>` Arithmetic Receipt in the methodology Phase 2 card — grammar,
+conditional fields, and mismatch-to-weakness linkage are normative in the
+agent's Phase 2 section (canonical source:
+`references/reviewer_sprint_prompt_source.md`, `methodology-receipt`
+fragment) and machine-checked by `scripts/check_phase_conformance.py`.
+Method references: Brown & Heathers (2017) GRIM,
+<https://doi.org/10.1177/1948550616673876>; Anaya (2016) GRIMMER,
+<https://doi.org/10.7287/peerj.preprints.2400v1>.

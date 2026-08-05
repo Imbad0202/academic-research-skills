@@ -58,6 +58,7 @@ ROLE_CONFIG = {
         "PARAPHRASE_LENS": "methodology rigor",
         "REVIEW_BODY_LENS": "methodology rigor",
         "phase2": "scoring-phase2",
+        "phase2_insert": "methodology-receipt",
     },
     "academic-paper-reviewer/agents/domain_reviewer_agent.md": {
         "ROLE": "domain",
@@ -78,7 +79,23 @@ ROLE_CONFIG = {
     },
 }
 
-FRAGMENT_NAMES = ("phase1", "scoring-phase2", "da-phase2", "synth")
+FRAGMENT_NAMES = (
+    "phase1",
+    "scoring-phase2",
+    "methodology-receipt",
+    "da-phase2",
+    "synth",
+)
+# The #610 methodology receipt block is spliced into the shared scoring
+# fragment immediately before this terminal-preflight line, so the shared
+# scoring text exists once and the composed methodology mirror cannot drift
+# from it independently. The anchor is a full canonical line: rewording the
+# preflight opener is an intentional protocol edit and must fail here until
+# the splice anchor is updated in the same commit.
+RECEIPT_SPLICE_ANCHOR = (
+    "Terminal Phase 2 structural preflight (mandatory). Silently inspect "
+    "the exact text you are about to send against your supplied Phase 1:\n"
+)
 MARKER_RE = re.compile(
     r"^<!-- reviewer-sprint-canonical:(?P<name>[a-z0-9-]+):BEGIN -->\n"
     r"(?P<body>.*?)"
@@ -91,7 +108,7 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # Re-pin only after reviewing an intentional canonical protocol edit and its
 # corresponding inline mirrors. This is the second v3.17-style content lock;
 # exact canonical→mirror equality is the first.
-CANONICAL_CONTENT_SHA256 = "b2390bdb66749624ad79141024a00ef5699b7afee6ba467e3baa9129daa74f09"
+CANONICAL_CONTENT_SHA256 = "c5ee7768e4bad130abfa8e6bc387c10b5450defb25e764a9fd9106e244866270"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:
@@ -148,6 +165,13 @@ def _expected_slot_table(errors: list[str]) -> tuple[str, ...]:
         if phase2_label is None:
             errors.append(f"{rel}: unknown Phase 2 slot template {config.get('phase2')!r}")
             phase2_label = "INVALID"
+        if config.get("phase2_insert") == "methodology-receipt":
+            phase2_label += " + receipts"
+        elif "phase2_insert" in config:
+            errors.append(
+                f"{rel}: unknown Phase 2 insert fragment "
+                f"{config.get('phase2_insert')!r}"
+            )
         review_lens = config.get("REVIEW_BODY_LENS")
         review_cell = f"`{review_lens}`" if review_lens is not None else "—"
         rows.append(
@@ -170,6 +194,28 @@ def _check_slot_table(canonical_text: str, errors: list[str]) -> None:
             "canonical bounded role-slot table drift: table must exactly mirror "
             "the rendered role configuration"
         )
+
+
+def _splice(base: str, insert: str, label: str, errors: list[str]) -> str:
+    """Compose a Phase 2 template from the shared scoring fragment (#610).
+
+    The insert lands immediately before the terminal-preflight anchor line so
+    the receipt grammar precedes the preflight in the delivered prompt. The
+    anchor must occur exactly once: zero means the preflight opener was
+    reworded without updating this checker; more than once means the fragment
+    grew a second preflight and the splice point is ambiguous.
+    """
+    count = base.count(RECEIPT_SPLICE_ANCHOR)
+    if count != 1:
+        errors.append(
+            f"{label}: receipt splice anchor must occur exactly once in the "
+            f"base Phase 2 fragment, found {count}"
+        )
+        return base
+    if not insert.endswith("\n"):
+        errors.append(f"{label}: receipt insert fragment must end with a newline")
+        return base
+    return base.replace(RECEIPT_SPLICE_ANCHOR, insert + RECEIPT_SPLICE_ANCHOR, 1)
 
 
 def _render(template: str, values: dict[str, str], label: str, errors: list[str]) -> str:
@@ -257,7 +303,13 @@ def check(root: Path) -> list[str]:
         elif phase1 != expected1:
             errors.append(f"{rel}: Phase 1 mirror drift (byte-exact compare failed)")
         phase2_name = config["phase2"]
-        expected2 = _render(fragments.get(phase2_name, ""), config, rel, errors)
+        template2 = fragments.get(phase2_name, "")
+        insert_name = config.get("phase2_insert")
+        if insert_name:
+            template2 = _splice(
+                template2, fragments.get(insert_name, ""), rel, errors
+            )
+        expected2 = _render(template2, config, rel, errors)
         if runtime_phase2 != expected2:
             errors.append(
                 f"{rel}: dispatcher-visible Phase 2 runtime extraction drift"

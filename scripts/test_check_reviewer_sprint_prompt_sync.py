@@ -208,6 +208,86 @@ def test_bounded_role_slots_are_part_of_the_content_lock(tree: Path) -> None:
     assert "bounded role-slot table drift" in result.stderr
 
 
+def test_receipt_fragment_canonical_only_edit_fails_lock_and_mirror(
+    tree: Path,
+) -> None:
+    _mutate(
+        tree,
+        CANONICAL,
+        "one receipt represents one arithmetic claim",
+        "one receipt may represent several arithmetic claims",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "canonical content lock" in result.stderr
+    assert "Phase 2 mirror drift" in result.stderr
+
+
+def test_methodology_mirror_receipt_edit_fails_phase2_sync(tree: Path) -> None:
+    _mutate(
+        tree,
+        REVIEWERS[1],
+        "never so a calculation can be trusted unaudited",
+        "so a calculation can be trusted",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "Phase 2 mirror drift" in result.stderr
+
+
+def test_reworded_splice_anchor_is_rejected(tree: Path) -> None:
+    _mutate(
+        tree,
+        CANONICAL,
+        "Terminal Phase 2 structural preflight (mandatory). Silently inspect "
+        "the exact text you are about to send against your supplied Phase 1:",
+        "Terminal Phase 2 preflight (mandatory). Silently inspect "
+        "the exact text you are about to send against your supplied Phase 1:",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "receipt splice anchor must occur exactly once" in result.stderr
+
+
+def test_receipt_block_on_non_methodology_seat_fails_sync(tree: Path) -> None:
+    _mutate(
+        tree,
+        REVIEWERS[2],
+        "Terminal Phase 2 structural preflight (mandatory). Silently inspect "
+        "the exact text you are about to send against your supplied Phase 1:",
+        "**Arithmetic Recompute Receipts (#610)** — methodology seat only.\n\n"
+        "Terminal Phase 2 structural preflight (mandatory). Silently inspect "
+        "the exact text you are about to send against your supplied Phase 1:",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "Phase 2 mirror drift" in result.stderr
+
+
+def test_receipt_slot_table_label_is_locked(tree: Path) -> None:
+    _mutate(
+        tree,
+        CANONICAL,
+        "| `methodology rigor` | scoring + receipts |",
+        "| `methodology rigor` | scoring |",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "bounded role-slot table drift" in result.stderr
+    assert "canonical content lock" in result.stderr
+
+
+def test_canonical_digest_covers_phase2_insert(tree: Path) -> None:
+    canonical_text = (tree / CANONICAL).read_text(encoding="utf-8")
+    errors: list[str] = []
+    fragments = _parse_fragments(canonical_text, errors)
+    assert errors == []
+    baseline = canonical_digest(canonical_text, fragments, ROLE_CONFIG)
+    mutated_config = deepcopy(ROLE_CONFIG)
+    del mutated_config[REVIEWERS[1]]["phase2_insert"]
+    assert canonical_digest(canonical_text, fragments, mutated_config) != baseline
+
+
 def test_source_backlink_is_required(tree: Path) -> None:
     _mutate(
         tree,

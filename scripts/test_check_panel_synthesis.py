@@ -132,6 +132,17 @@ def report_text(role: str, overrides=None, da_ids=()) -> str:
                 lines.append("score: pass")
         lines.append("")
     lines += ["## Review Body", "", "No scored findings.", ""]
+    if role == "methodology":
+        # #610: a methodology card without its Arithmetic Receipts section
+        # stopped being phase-conformant; the synthesis parser itself
+        # tolerates the extra H2 either way.
+        lines += [
+            "## Arithmetic Receipts",
+            "",
+            "no_recomputable_statistics: the fixture manuscript reports no "
+            "statistic covered by a bounded procedure",
+            "",
+        ]
     if role == "da":
         lines += [
             "#### CRITICAL",

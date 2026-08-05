@@ -93,6 +93,37 @@ Do not send until every check holds.
 
 On any Phase 2 lint failure other than multi-dissent: emit `[PROTOCOL-VIOLATION]` and mark reviewer unusable. Do not synthesise a substitute score for the synthesizer.
 
+### 5.1 Methodology arithmetic-receipt gate (#610)
+
+> **Epistemic status first**: this gate does not replace the human reviewer.
+> `check_phase_conformance.py` verifies receipt AUDITABILITY only — required
+> fields present, closed enums respected, mismatch↔weakness linkage intact.
+> It never attests the arithmetic is correct; correctness is judged by human
+> adjudication (`VERIFIED`/`CLAIM_ONLY`/`MISCOMPUTED`/`MISSED`, #610 spec
+> §7.1), and a conforming receipt with wrong arithmetic is still wrong.
+
+The methodology seat's Phase 2 card additionally carries exactly one
+`## Arithmetic Receipts` H2 section after `## Review Body` (no other seat may
+emit it). The section holds either dense `### AR1..ARn` receipt subsections —
+one per attempted recomputation, canonical `key: value` machine lines per the
+delivered Phase 2 grammar (canonical source: the `methodology-receipt`
+fragment of the reviewer sprint prompt source cited in this file's header,
+spliced by its sync checker) — or, when the
+manuscript reports no statistic covered by a bounded procedure, exactly one
+`no_recomputable_statistics: <basis>` attestation line. Checker-enforced
+highlights: closed `procedure_id` / `status` / `not_computable_reason` /
+`tail_convention` enums; an unstated-tail p receipt claiming a verdict must
+display BOTH labeled tail values; a GRIM/GRIMMER verdict requires
+`rounding_interval:` + `nearest_achievable:`; an `n_from_df` verdict must name
+its `df_identity:`; every `mismatch` links to a distinct `W<n>` weakness that
+carries the matching `**Arithmetic Receipt**: AR<n>` back-reference. Failures
+surface as `[RECEIPT-MISSING]` / `[RECEIPT-GRAMMAR]` / `[RECEIPT-TAILS]` /
+`[RECEIPT-LINKAGE]` / `[RECEIPT-SECTION-FORBIDDEN]` at exit 3 — the seat is
+unusable per §5, with no Phase 2 retry; the abort-rate cost of this new
+mandatory grammar is a tracked #610 §7.1 reporting metric, not a silent
+tradeoff. Procedure boundaries and the red-flag classification live in
+`references/statistical_reporting_standards.md` §8.
+
 ## 6. Multi-reviewer orchestration
 
 - **Independent cycles.** Each of the `panel_size` reviewers runs its own Phase 1 + Phase 2. Failures in one do not pause the others.
@@ -192,6 +223,8 @@ Audit-log tags the orchestrator may emit:
 | `[REVIEWER-SELF-INCONSISTENT: reviewer=..., ...]` | checker Layer 1 (exit 3) | mark reviewer unusable |
 | `[PANEL-CARDINALITY: ...]` | checker cardinality/role guard (exit 2) | abort editorial round |
 | `[REPORT-PARSE: <path>: ...]` | checker report-grammar failure (exit 3) | mark reviewer unusable |
+| `[RECEIPT-MISSING/-GRAMMAR/-TAILS/-LINKAGE: <path>: ...]` | #610 methodology arithmetic-receipt gate failure (exit 3, §5.1) | mark reviewer unusable |
+| `[RECEIPT-SECTION-FORBIDDEN: <path>: ...]` | a non-methodology seat emitted `## Arithmetic Receipts` (exit 3, §5.1) | mark reviewer unusable |
 | `[SYNTHESIS-PARSE: <path>: ...]` | checker synthesis-grammar failure (exit 1) | void synthesis, retry once |
 | `[CONTRACT-INVALID/-INELIGIBLE: ...]` | checker contract validation failure (exit 2) | abort editorial round |
 | `[IO-ERROR: <path>: ...]` | checker file read/encoding failure (exit 2) | abort editorial round |

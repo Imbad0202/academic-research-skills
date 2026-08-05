@@ -58,6 +58,94 @@ _ANCHOR_DECL_RE = re.compile(
     re.IGNORECASE,
 )
 _FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")
+# --- #610 methodology arithmetic-receipt grammar -------------------------
+# Receipt machine lines are lowercase snake_case on purpose: they can never
+# collide with the finding grammar's bold `**Severity**:` / `**Evidence
+# Anchor**:` declarations, so the receipt section cannot trip the
+# outside-Review-Body severity gate and a finding cannot satisfy a receipt
+# field. Decoration tolerance is bounded to the two shapes the finding
+# grammar already accepts (one leading list marker, bold around the key);
+# fenced receipt lines are dropped by `strip_fences` upstream and fail the
+# required-field counts loudly rather than being half-read.
+_RECEIPT_SECTION = "Arithmetic Receipts"
+_RECEIPT_H3_RE = re.compile(r"^AR[1-9]\d*$")
+_RECEIPT_PROCEDURES = frozenset(
+    {"p_from_test_statistic", "grim", "grimmer", "n_from_df"}
+)
+_RECEIPT_STATUSES = frozenset(
+    {"consistent", "mismatch", "not_computable", "not_applicable"}
+)
+_NOT_COMPUTABLE_REASONS = frozenset({
+    "missing_reported_value",
+    "test_family_ambiguous",
+    "tail_ambiguous",
+    "nonstandard_p_procedure",
+    "inequality_unresolvable",
+    "rounding_rule_ambiguous",
+    "rounding_boundary_ambiguous",
+    "scale_granularity_unknown",
+    "scale_support_unknown",
+    "analytic_n_ambiguous",
+    "aggregation_or_weighting_unknown",
+    "sd_convention_unknown",
+    "mean_grim_inconsistent",
+    "df_identity_ambiguous",
+    "model_correction_or_pooling",
+    "reachability_not_completed",
+})
+_TAIL_CONVENTIONS = frozenset(
+    {"two-tailed", "one-tailed", "upper-tail", "unstated"}
+)
+
+
+def _receipt_field_re(key: str) -> re.Pattern[str]:
+    return re.compile(
+        rf"^(?:[-*] )?(?:\*\*)?{key}(?:\*\*)?: (?P<value>\S.*?)\s*$"
+    )
+
+
+_RECEIPT_FIELD_RES = {
+    key: _receipt_field_re(key)
+    for key in (
+        "procedure_id",
+        "evidence_anchor",
+        "reported_inputs",
+        "assumptions",
+        "derivation",
+        "derived_value_or_range",
+        "comparison_rule",
+        "status",
+        "not_computable_reason",
+        "finding_ref",
+        "tail_convention",
+        "rounding_interval",
+        "nearest_achievable",
+        "df_identity",
+    )
+}
+_RECEIPT_ATTESTATION_RE = _receipt_field_re("no_recomputable_statistics")
+_FINDING_REF_VALUE_RE = re.compile(r"^W[1-9]\d*$")
+_RECEIPT_BACKREF_RE = re.compile(
+    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Arithmetic Receipt\*\*:\s*"
+    r"(?P<value>AR[1-9]\d*)\b"
+)
+# Conditional-field matrix, spec §4/§5 (2026-08-02 #610 spec): which
+# procedure-specific lines each procedure may carry. `tail_convention` is
+# required on every p_from_test_statistic receipt (what the paper states is
+# always statable — `unstated` exists for exactly that case); the completed-
+# procedure fields (`rounding_interval`, `nearest_achievable`, `df_identity`)
+# are required only under a verdict status, because `not_computable` may
+# legitimately stop before the field can exist, and remain permitted there
+# for a partial attempt that stopped late.
+_RECEIPT_VERDICT_STATUSES = frozenset({"consistent", "mismatch"})
+_PROCEDURE_FIELDS = {
+    "p_from_test_statistic": ("tail_convention",),
+    "grim": ("rounding_interval", "nearest_achievable"),
+    "grimmer": ("rounding_interval", "nearest_achievable"),
+    "n_from_df": ("df_identity",),
+}
+_ALWAYS_REQUIRED_PROCEDURE_FIELDS = frozenset({"tail_convention"})
+# --- end #610 receipt grammar --------------------------------------------
 _DISSENT_FIELD_NAMES = frozenset({"dimensionid", "rationale"})
 _MARKUP_SPAN_RE = re.compile(
     r"<[^>]*>|\]\((?:[^()]|\([^()]*\))*\)|\]\[[^\]]*\]|\[[ xX]?\]"
@@ -944,6 +1032,277 @@ def check_da_anchors(report: panel.ReviewerReport) -> None:
         _validate_anchor(anchor, f"{report.path}:DA MAJOR")
 
 
+def _one_receipt_field(
+    lines: list[str], key: str, path: str, receipt_id: str, *, required: bool
+) -> str | None:
+    hits = [
+        match.group("value")
+        for line in lines
+        if (match := _RECEIPT_FIELD_RES[key].fullmatch(line))
+    ]
+    expected = "exactly one" if required else "at most one"
+    if (required and len(hits) != 1) or (not required and len(hits) > 1):
+        raise ConformanceError(
+            f"[RECEIPT-GRAMMAR: {path}: {receipt_id} expected {expected} "
+            f"canonical {key}: line, found {len(hits)}]"
+        )
+    return hits[0] if hits else None
+
+
+def _review_body_receipt_backrefs(
+    report: panel.ReviewerReport,
+) -> tuple[set[str], dict[str, list[str]]]:
+    """W-finding ids and per-block `**Arithmetic Receipt**:` back-references.
+
+    Back-references are collected across the WHOLE Review Body — preamble and
+    non-W subsections included — so a back-reference stranded outside its
+    weakness block is a linkage failure, not invisible.
+    """
+    lines = panel.strip_fences(report.text)
+    sections, _ = panel.split_sections(lines)
+    review_lines = sections.get("Review Body", [])
+    blocks, _ = panel.split_subsections(review_lines)
+    finding_ids = {
+        title.split(":", 1)[0]
+        for title in blocks
+        if _FINDING_H3_RE.fullmatch(title)
+    }
+    backrefs: dict[str, list[str]] = {}
+    current = "(preamble)"
+    for line in review_lines:
+        if match := panel._H3_RE.fullmatch(line):
+            title = match.group(1)
+            current = (
+                title.split(":", 1)[0]
+                if _FINDING_H3_RE.fullmatch(title)
+                else f"(non-finding: {title})"
+            )
+            continue
+        for match in _RECEIPT_BACKREF_RE.finditer(line):
+            backrefs.setdefault(current, []).append(match.group("value"))
+    return finding_ids, backrefs
+
+
+def check_methodology_receipts(report: panel.ReviewerReport) -> None:
+    """#610 arithmetic-receipt gate, methodology seat only.
+
+    Auditability, not truth: this gate proves the receipt fields exist, use
+    the closed enums, and link mismatches to weaknesses bidirectionally. It
+    never attests that the arithmetic is correct — that judgment stays with
+    human adjudication (`VERIFIED` / `MISCOMPUTED`), per the spec's invariant
+    6 and the receipt block's leading epistemic-status note.
+    """
+    lines = panel.strip_fences(report.text)
+    sections, dupes = panel.split_sections(lines)
+    if _RECEIPT_SECTION in dupes:
+        raise ConformanceError(
+            f"[RECEIPT-GRAMMAR: {report.path}: duplicate "
+            f"## {_RECEIPT_SECTION}]"
+        )
+    if _RECEIPT_SECTION not in sections:
+        raise ConformanceError(
+            f"[RECEIPT-MISSING: {report.path}: methodology card requires "
+            f"exactly one ## {_RECEIPT_SECTION} section]"
+        )
+    h2_positions = {
+        match.group(1): index
+        for index, line in enumerate(lines)
+        if (match := panel._H2_RE.fullmatch(line))
+    }
+    if h2_positions[_RECEIPT_SECTION] < h2_positions.get(
+        "Review Body", len(lines)
+    ):
+        raise ConformanceError(
+            f"[RECEIPT-GRAMMAR: {report.path}: ## {_RECEIPT_SECTION} must "
+            "follow ## Review Body]"
+        )
+    body = sections[_RECEIPT_SECTION]
+    attestations = [
+        line for line in body if _RECEIPT_ATTESTATION_RE.fullmatch(line)
+    ]
+    subsections, sub_dupes = panel.split_subsections(body)
+    if sub_dupes:
+        raise ConformanceError(
+            f"[RECEIPT-GRAMMAR: {report.path}: duplicate receipt heading(s) "
+            f"{sorted(sub_dupes)}]"
+        )
+    for title in subsections:
+        if not _RECEIPT_H3_RE.fullmatch(title):
+            raise ConformanceError(
+                f"[RECEIPT-GRAMMAR: {report.path}: invalid receipt "
+                f"subsection '### {title}'; expected ### AR<n>]"
+            )
+    if not subsections:
+        if len(attestations) != 1:
+            raise ConformanceError(
+                f"[RECEIPT-GRAMMAR: {report.path}: a receipt section with "
+                "no ### AR<n> subsection requires exactly one "
+                f"no_recomputable_statistics: line, found {len(attestations)}]"
+            )
+        return
+    if attestations:
+        raise ConformanceError(
+            f"[RECEIPT-GRAMMAR: {report.path}: no_recomputable_statistics: "
+            "is forbidden when ### AR<n> receipts exist]"
+        )
+    expected_ids = [f"AR{index}" for index in range(1, len(subsections) + 1)]
+    if list(subsections) != expected_ids:
+        raise ConformanceError(
+            f"[RECEIPT-GRAMMAR: {report.path}: receipt IDs must be dense "
+            f"AR1..ARn in order; got={list(subsections)}]"
+        )
+    finding_ids, backrefs = _review_body_receipt_backrefs(report)
+    mismatch_refs: dict[str, str] = {}
+    for receipt_id, sublines in subsections.items():
+        procedure = _one_receipt_field(
+            sublines, "procedure_id", report.path, receipt_id, required=True
+        )
+        if procedure not in _RECEIPT_PROCEDURES:
+            raise ConformanceError(
+                f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} "
+                f"procedure_id '{procedure}' is not a bounded procedure]"
+            )
+        anchor = _one_receipt_field(
+            sublines, "evidence_anchor", report.path, receipt_id,
+            required=True,
+        )
+        _validate_anchor(anchor, f"{report.path}:{receipt_id}")
+        for key in (
+            "reported_inputs", "assumptions", "derivation",
+            "comparison_rule",
+        ):
+            _one_receipt_field(
+                sublines, key, report.path, receipt_id, required=True
+            )
+        derived = _one_receipt_field(
+            sublines, "derived_value_or_range", report.path, receipt_id,
+            required=True,
+        )
+        status = _one_receipt_field(
+            sublines, "status", report.path, receipt_id, required=True
+        )
+        if status not in _RECEIPT_STATUSES:
+            raise ConformanceError(
+                f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} status "
+                f"'{status}' is not in the closed status enum]"
+            )
+        reason = _one_receipt_field(
+            sublines, "not_computable_reason", report.path, receipt_id,
+            required=(status == "not_computable"),
+        )
+        if status != "not_computable" and reason is not None:
+            raise ConformanceError(
+                f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} "
+                "not_computable_reason is forbidden unless status is "
+                "not_computable]"
+            )
+        if reason is not None and reason not in _NOT_COMPUTABLE_REASONS:
+            raise ConformanceError(
+                f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} "
+                f"not_computable_reason '{reason}' is not in the closed v1 "
+                "enum]"
+            )
+        tail = None
+        for key, procedures in (
+            ("tail_convention", ("p_from_test_statistic",)),
+            ("rounding_interval", ("grim", "grimmer")),
+            ("nearest_achievable", ("grim", "grimmer")),
+            ("df_identity", ("n_from_df",)),
+        ):
+            if procedure in procedures:
+                required = (
+                    key in _ALWAYS_REQUIRED_PROCEDURE_FIELDS
+                    or status in _RECEIPT_VERDICT_STATUSES
+                )
+                value = _one_receipt_field(
+                    sublines, key, report.path, receipt_id, required=required
+                )
+                if key == "tail_convention":
+                    tail = value
+            else:
+                if _one_receipt_field(
+                    sublines, key, report.path, receipt_id, required=False
+                ) is not None:
+                    raise ConformanceError(
+                        f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} "
+                        f"{key} is forbidden for procedure {procedure}]"
+                    )
+        if procedure == "p_from_test_statistic":
+            if tail is not None and tail not in _TAIL_CONVENTIONS:
+                raise ConformanceError(
+                    f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} "
+                    f"tail_convention '{tail}' is not in the closed enum]"
+                )
+            if tail == "unstated" and status in _RECEIPT_VERDICT_STATUSES:
+                derived_fold = derived.casefold()
+                if (
+                    "two-tailed" not in derived_fold
+                    or "one-tailed" not in derived_fold
+                ):
+                    raise ConformanceError(
+                        f"[RECEIPT-TAILS: {report.path}: {receipt_id} "
+                        "unstated tail requires derived_value_or_range to "
+                        "show BOTH labeled values (two-tailed and "
+                        "one-tailed)]"
+                    )
+        finding_ref = _one_receipt_field(
+            sublines, "finding_ref", report.path, receipt_id,
+            required=(status == "mismatch"),
+        )
+        if status != "mismatch":
+            if finding_ref is not None:
+                raise ConformanceError(
+                    f"[RECEIPT-LINKAGE: {report.path}: {receipt_id} "
+                    "finding_ref is forbidden unless status is mismatch]"
+                )
+            continue
+        if not _FINDING_REF_VALUE_RE.fullmatch(finding_ref):
+            raise ConformanceError(
+                f"[RECEIPT-LINKAGE: {report.path}: {receipt_id} finding_ref "
+                f"'{finding_ref}' must name one W<n> weakness]"
+            )
+        if finding_ref not in finding_ids:
+            raise ConformanceError(
+                f"[RECEIPT-LINKAGE: {report.path}: {receipt_id} finding_ref "
+                f"{finding_ref} has no matching ### {finding_ref} weakness "
+                "in ## Review Body]"
+            )
+        if finding_ref in mismatch_refs:
+            raise ConformanceError(
+                f"[RECEIPT-LINKAGE: {report.path}: {finding_ref} is claimed "
+                f"by both {mismatch_refs[finding_ref]} and {receipt_id}; "
+                "no two receipts share a finding_ref]"
+            )
+        mismatch_refs[finding_ref] = receipt_id
+    for finding_id, receipt_id in mismatch_refs.items():
+        if backrefs.get(finding_id) != [receipt_id]:
+            raise ConformanceError(
+                f"[RECEIPT-LINKAGE: {report.path}: weakness {finding_id} "
+                "must carry exactly one **Arithmetic Receipt**: "
+                f"{receipt_id} back-reference, found "
+                f"{backrefs.get(finding_id, [])}]"
+            )
+    for location, values in backrefs.items():
+        for value in values:
+            if mismatch_refs.get(location) != value:
+                raise ConformanceError(
+                    f"[RECEIPT-LINKAGE: {report.path}: back-reference "
+                    f"{value} in {location} does not correspond to a "
+                    "mismatch receipt naming that weakness]"
+                )
+
+
+def check_receipt_section_forbidden(report: panel.ReviewerReport) -> None:
+    lines = panel.strip_fences(report.text)
+    sections, dupes = panel.split_sections(lines)
+    if _RECEIPT_SECTION in sections or _RECEIPT_SECTION in dupes:
+        raise ConformanceError(
+            f"[RECEIPT-SECTION-FORBIDDEN: {report.path}: role "
+            f"{report.role} may not emit ## {_RECEIPT_SECTION}; the #610 "
+            "receipt gate is methodology-only]"
+        )
+
+
 def _parse_args(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--contract", required=True, type=Path)
@@ -1017,6 +1376,10 @@ def main(argv=None) -> int:
             check_da_anchors(report)
         else:
             check_scoring_seat_anchors(report)
+        if report.role == "methodology":
+            check_methodology_receipts(report)
+        else:
+            check_receipt_section_forbidden(report)
     except panel.ContractError as exc:
         print(exc)
         return EXIT_CONTRACT

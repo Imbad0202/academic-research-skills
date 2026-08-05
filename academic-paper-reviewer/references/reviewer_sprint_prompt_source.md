@@ -21,7 +21,7 @@ orchestration instructions, not a reviewer system prompt.
 | Agent file | `ROLE` | `PARAPHRASE_LENS` | `REVIEW_BODY_LENS` | Phase 2 template |
 |---|---|---|---|---|
 | `eic_agent.md` | `eic` | `editorial oversight` | `editorial oversight` | scoring |
-| `methodology_reviewer_agent.md` | `methodology` | `methodology rigor` | `methodology rigor` | scoring |
+| `methodology_reviewer_agent.md` | `methodology` | `methodology rigor` | `methodology rigor` | scoring + receipts |
 | `domain_reviewer_agent.md` | `domain` | `domain accuracy` | `domain accuracy` | scoring |
 | `perspective_reviewer_agent.md` | `perspective` | `cross-disciplinary relevance` | `cross-disciplinary perspective` | scoring |
 | `devils_advocate_reviewer_agent.md` | `da` | `adversarial challenge` | — | DA-specific |
@@ -30,6 +30,14 @@ orchestration instructions, not a reviewer system prompt.
 
 The marker bodies are literal prompt bytes. Do not wrap them in code fences,
 re-indent them, or introduce an unbounded template slot.
+
+The methodology seat's Phase 2 section is COMPOSED, not free-standing: the
+checker splices the `methodology-receipt` fragment into `scoring-phase2`
+immediately before the terminal-preflight paragraph and compares the result
+byte-for-byte against the agent file (#610). The shared scoring text therefore
+exists exactly once; a scoring-phase2 edit propagates to the methodology
+mirror through the same splice, and an edit that touches only one side fails
+the sync lint.
 
 <!-- reviewer-sprint-canonical:phase1:BEGIN -->
 
@@ -120,6 +128,37 @@ Do not send until every check holds.
 ---
 
 <!-- reviewer-sprint-canonical:scoring-phase2:END -->
+
+<!-- reviewer-sprint-canonical:methodology-receipt:BEGIN -->
+
+**Arithmetic Recompute Receipts (#610)** — methodology seat only; no other seat emits this section.
+
+*Epistemic status — read this before applying the grammar: this receipt layer does not replace the human reviewer, and receipt conformance is not arithmetic truth. The machine gate (`scripts/check_phase_conformance.py`) verifies auditability only — required fields present, closed enums respected, mismatch-to-finding linkage intact. Whether the arithmetic itself is correct is decided by human adjudication; a fully conforming receipt built on wrong arithmetic is still wrong (`MISCOMPUTED`). Model arithmetic is not deterministic — the receipt exists so a human can audit every calculation step, never so a calculation can be trusted unaudited.*
+
+After `## Review Body`, emit exactly one `## Arithmetic Receipts` H2 section as the final section of your card. Write every receipt line as plain unbulleted `key: value` text — never inside a code fence, never inline-code-wrapped, never as a table row; decorated machine lines vanish from the parser and abort the panel.
+
+- Open one `### AR<n>` subsection per attempted recomputation — one receipt represents one arithmetic claim (a p mismatch and a df/N mismatch never share a receipt). IDs are contiguous `AR1..ARn` in order of appearance.
+- Apply the four bounded procedures from `references/statistical_reporting_standards.md` § Bounded Arithmetic Recompute Procedures wherever the manuscript reports a value they cover: `p_from_test_statistic`, `grim`, `grimmer`, `n_from_df`. Never invent a procedure and never extend one past its documented boundary — outside the boundary the honest status is `not_computable`.
+- If the manuscript reports no statistic that any bounded procedure covers, the section instead contains exactly one `no_recomputable_statistics: <one-line basis naming what you checked>` line and no `### AR<n>` subsection. This attestation is mandatory: silence about recomputation is non-conforming.
+- Every receipt carries these eight canonical lines, each exactly once:
+  - `procedure_id: <p_from_test_statistic|grim|grimmer|n_from_df>`
+  - `evidence_anchor: <type>: <locator>` — the same six-type anchor grammar as findings; it identifies the reported values used.
+  - `reported_inputs: <every manuscript value used — test family, statistic, df, N, M, SD, scale, precision, as applicable>` (single line)
+  - `assumptions: <only assumptions the paper licenses — no silent equal-variance, two-tailed, integer-scale, or sample-SD default>` (single line)
+  - `derivation: <the auditable arithmetic or reachability argument>` (single line)
+  - `derived_value_or_range: <derived value, rounding interval, feasible set, or theoretical bound>`
+  - `comparison_rule: <the rounding, inequality, tolerance, or upper-bound rule used>`
+  - `status: <consistent|mismatch|not_computable|not_applicable>`
+- `status: not_computable` additionally requires exactly one `not_computable_reason: <reason>` line from the closed v1 enum: `missing_reported_value`, `test_family_ambiguous`, `tail_ambiguous`, `nonstandard_p_procedure`, `inequality_unresolvable`, `rounding_rule_ambiguous`, `rounding_boundary_ambiguous`, `scale_granularity_unknown`, `scale_support_unknown`, `analytic_n_ambiguous`, `aggregation_or_weighting_unknown`, `sd_convention_unknown`, `mean_grim_inconsistent`, `df_identity_ambiguous`, `model_correction_or_pooling`, `reachability_not_completed`. Every other status forbids that line.
+- Procedure-specific mandatory lines:
+  - `p_from_test_statistic`: exactly one `tail_convention: <two-tailed|one-tailed|upper-tail|unstated>` line naming what the PAPER states (F and chi-square are upper-tail by family). When the paper states no tail (`unstated`) and status is `consistent` or `mismatch`, `derived_value_or_range` MUST show BOTH labeled values — the literal labels `two-tailed` and `one-tailed`, each with its derived p — because a single-tail comparison alone cannot support the verdict. If the tail choice flips the verdict, the status is `not_computable` with `tail_ambiguous`.
+  - `grim` / `grimmer` with status `consistent` or `mismatch`: exactly one `rounding_interval: <the interval a value must fall in to round to the reported value at its stated precision>` line and exactly one `nearest_achievable: <the adjacent attainable values straddling the reported one, as exact fractions or decimals>` line. An integer-product observation without the rounding-interval reachability check is not a completed GRIM procedure.
+  - `n_from_df` with status `consistent` or `mismatch`: exactly one `df_identity: <the test-specific identity used, e.g. df=N-1 or df=N1+N2-2>` line — the identity is not universal and must be named.
+- Linkage: `status: mismatch` requires exactly one `finding_ref: W<n>` line naming the `### W<n>` weakness that reports this mismatch, and that weakness carries exactly one `**Arithmetic Receipt**: AR<n>` field line pointing back. No two receipts share a `finding_ref`; no other status carries one. `consistent`, `not_computable`, and `not_applicable` receipts never create an arithmetic-mismatch finding; a missing report element may still support a separate `absence:`-anchored finding, but it never licenses an invented numeric result.
+
+Receipt preflight (additional, before the terminal preflight below): exactly one `## Arithmetic Receipts` section exists after `## Review Body`; it carries either dense `AR1..ARn` subsections or the single `no_recomputable_statistics:` attestation, never both and never neither; every receipt has its eight canonical lines plus the conditional lines its procedure and status require; every `mismatch` links to a distinct `W<n>` weakness that links back.
+
+<!-- reviewer-sprint-canonical:methodology-receipt:END -->
 
 <!-- reviewer-sprint-canonical:da-phase2:BEGIN -->
 
