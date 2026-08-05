@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import check_reviewer_sprint_prompt_sync as sync
 from check_reviewer_sprint_prompt_sync import (
     ROLE_CONFIG,
     _parse_fragments,
@@ -275,6 +276,20 @@ def test_receipt_slot_table_label_is_locked(tree: Path) -> None:
     assert result.returncode == 1
     assert "bounded role-slot table drift" in result.stderr
     assert "canonical content lock" in result.stderr
+
+
+def test_canonical_digest_covers_splice_anchor(
+    tree: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    canonical_text = (tree / CANONICAL).read_text(encoding="utf-8")
+    errors: list[str] = []
+    fragments = _parse_fragments(canonical_text, errors)
+    assert errors == []
+    baseline = canonical_digest(canonical_text, fragments, ROLE_CONFIG)
+    monkeypatch.setattr(
+        sync, "RECEIPT_SPLICE_ANCHOR", "A reworded preflight anchor:\n"
+    )
+    assert canonical_digest(canonical_text, fragments, ROLE_CONFIG) != baseline
 
 
 def test_canonical_digest_covers_phase2_insert(tree: Path) -> None:

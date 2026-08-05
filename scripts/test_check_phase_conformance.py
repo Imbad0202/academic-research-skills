@@ -2976,7 +2976,9 @@ def test_receipt_section_before_review_body_fails():
         1,
     )
     report = panel.parse_report("p2.md", text, FULL)
-    with pytest.raises(phase.ConformanceError, match="must follow"):
+    with pytest.raises(
+        phase.ConformanceError, match="must be the final section"
+    ):
         phase.check_methodology_receipts(report)
 
 
@@ -3218,10 +3220,220 @@ def test_stale_backref_without_mismatch_receipt_fails():
         )
 
 
-def test_fully_fenced_receipt_section_aborts_loudly():
+def test_fenced_receipt_content_is_read_not_dropped():
+    # #610 round-1 fix 3, false-abort direction (#637 family): a model that
+    # fences its receipt block still wrote the receipts, so the section is
+    # read fence-transparently and a well-formed fenced block passes.
     lines = ["```", *receipt_section(grim_receipt()), "```"]
+    check_receipts(lines)
+
+
+def test_fenced_receipts_beside_unfenced_attestation_abort():
+    # #610 round-1 fix 3, hiding direction: a fenced AR block cannot vanish
+    # and launder the section into an attestation-only card.
+    lines = [
+        "no_recomputable_statistics: nothing recomputable here",
+        "",
+        "```",
+        *receipt_section(grim_receipt()),
+        "```",
+    ]
+    with pytest.raises(phase.ConformanceError, match="forbidden when"):
+        check_receipts(lines)
+
+
+def test_fenced_malformed_receipt_still_fails_its_field_counts():
+    lines = ["```", *receipt_section(grim_receipt(status=None)), "```"]
     with pytest.raises(phase.ConformanceError, match="exactly one"):
         check_receipts(lines)
+
+
+def test_fenced_h2_inside_receipt_section_does_not_delimit():
+    lines = receipt_section(grim_receipt()) + [
+        "```",
+        "## Not A Real Section",
+        "```",
+    ]
+    check_receipts(lines)
+
+
+def test_receipt_section_must_be_the_final_h2():
+    # #610 round-1 fix 6: the prompt says "final section"; the checker
+    # enforces exactly that, not merely "after Review Body".
+    text = phase2_text(
+        "methodology",
+        body=W1_BACKREF_BODY,
+        receipts=receipt_section(grim_receipt()),
+    ) + "\n\n## Trailing Notes\n\nnothing\n"
+    report = panel.parse_report("p2.md", text, FULL)
+    with pytest.raises(
+        phase.ConformanceError, match="must be the final section"
+    ):
+        phase.check_methodology_receipts(report)
+
+
+@pytest.mark.parametrize("derived", [
+    "two-tailed; one-tailed p ≈ .096",
+    "two-tailed p ≈ .192; one-tailed",
+    "two-tailed and one-tailed; both p ≈ .192",
+])
+def test_unstated_tail_label_without_value_in_segment_fails(derived):
+    # #610 round-1 fix 1: a bare label is not a shown value — each label
+    # needs a digit inside its own `;`-delimited segment.
+    with pytest.raises(phase.ConformanceError, match="RECEIPT-TAILS"):
+        check_receipts(
+            receipt_section(p_receipt(derived_value_or_range=derived))
+        )
+
+
+@pytest.mark.parametrize("derived", [
+    "two–tailed p ≈ .192; one–tailed p ≈ .096",
+    "two‐tailed p = 0.192; one tailed p = 0.096",
+    "TWO-TAILED p ≈ .192; One-Tailed p ≈ .096",
+])
+def test_unstated_tail_hyphen_and_case_variants_pass(derived):
+    check_receipts(
+        receipt_section(p_receipt(derived_value_or_range=derived))
+    )
+
+
+def test_attestation_pass_prints_declaration_only_advisory(capsys):
+    # #610 round-1 fix 2: the attestation is declaration-only; the pass is
+    # annotated so the run record cannot read it as machine-verified
+    # applicability.
+    check_receipts(receipts=None, body="prose review body without findings")
+    out = capsys.readouterr().out
+    assert "[RECEIPT-ATTESTATION: declaration-only" in out
+
+
+def test_receipt_pass_prints_no_attestation_advisory(capsys):
+    check_receipts(receipt_section(grim_receipt()))
+    assert "[RECEIPT-ATTESTATION" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("decorated", [
+    "**status:** mismatch",
+    "| status: mismatch |",
+    "1. status: mismatch",
+    "> status: mismatch",
+    "  status: mismatch",
+    "`status`: mismatch",
+    "sTaTus: mismatch",
+    "ｓｔａｔｕｓ: mismatch",
+])
+def test_decorated_status_line_aborts_loudly(decorated):
+    # #610 round-1 fix 4: an unenumerated decoration of a machine field is a
+    # loud declaration, never a silently starved required-field count.
+    lines = receipt_section(grim_receipt(status=None))
+    lines.insert(lines.index("finding_ref: W1"), decorated)
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
+def test_decorated_forbidden_field_cannot_pass_silently():
+    # A decorated spelling of a field the procedure forbids used to sail
+    # through the forbidden-field guard unseen; it now aborts.
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"), "**tail_convention:** two-tailed"
+    )
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
+def test_prose_naming_a_field_mid_sentence_stays_tolerated():
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"),
+        "The reported status: a value the paper never reconciles.",
+    )
+    check_receipts(lines)
+
+
+@pytest.mark.parametrize("backref", [
+    "**Arithmetic Receipt**: AR1, AR2",
+    "**Arithmetic Receipt**: AR1 which shows the mismatch",
+    "**Arithmetic Receipt:** AR1",
+    "**Arithmetic Receipt**: see AR1",
+])
+def test_non_exact_backref_value_aborts(backref):
+    # #610 round-1 fix 5: the back-reference value is exactly AR<n> to end
+    # of line or next pipe; list values and trailing prose abort.
+    body = W1_BACKREF_BODY.replace("**Arithmetic Receipt**: AR1", backref)
+    with pytest.raises(phase.ConformanceError, match="RECEIPT-LINKAGE"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_fenced_backref_declaration_aborts():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "```\n**Arithmetic Receipt**: AR1\n```\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="RECEIPT-LINKAGE"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_prose_mentioning_the_receipts_section_stays_tolerated():
+    body = W1_BACKREF_BODY + (
+        "\nSee the Arithmetic Receipts section: AR1 documents the "
+        "reachability check.\n"
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def grimmer_receipt(**overrides) -> list[str]:
+    # Spec §5.3 prospective MS01 v0.2 worked case: N=10, M=3.00, SD=0.10.
+    fields = {
+        "procedure_id": "grimmer",
+        "evidence_anchor": "table: Table 3, SD=0.10 with N=10, M=3.00",
+        "reported_inputs": "single 1-5 integer item, N=10, M=3.00, SD=0.10, "
+                           "sample SD, two-decimal precision",
+        "assumptions": "sample SD as stated in §3.4; integer responses on "
+                       "the published 1-5 scale",
+        "derivation": "sum fixed at 30; all-3s give SD 0; any deviation "
+                      "pair gives squared-deviation sum >= 2, so minimum "
+                      "nonzero sample SD is sqrt(2/9)",
+        "derived_value_or_range": "attainable sample SDs: 0 or >= 0.4714...",
+        "comparison_rule": "an attainable SD must round to 0.10 at two "
+                           "decimals",
+        "rounding_interval": "[0.095, 0.105)",
+        "nearest_achievable": "0 and sqrt(2/9) = 0.4714... straddle the "
+                              "reported 0.10",
+        "status": "mismatch",
+        "finding_ref": "W1",
+    }
+    fields.update(overrides)
+    return [f"{key}: {value}" for key, value in fields.items()
+            if value is not None]
+
+
+def test_valid_grimmer_mismatch_receipt_passes():
+    check_receipts(receipt_section(grimmer_receipt()))
+
+
+@pytest.mark.parametrize("key", [
+    "rounding_interval", "nearest_achievable", "derivation",
+])
+def test_grimmer_verdict_missing_field_fails(key):
+    with pytest.raises(phase.ConformanceError, match=key):
+        check_receipts(receipt_section(grimmer_receipt(**{key: None})))
+
+
+def test_grimmer_grim_inconsistent_mean_is_not_computable():
+    check_receipts(
+        receipt_section(grimmer_receipt(
+            status="not_computable",
+            not_computable_reason="mean_grim_inconsistent",
+            rounding_interval=None,
+            nearest_achievable=None,
+            finding_ref=None,
+        )),
+        body="prose",
+    )
 
 
 @pytest.mark.parametrize("role", ["eic", "domain", "perspective", "da"])

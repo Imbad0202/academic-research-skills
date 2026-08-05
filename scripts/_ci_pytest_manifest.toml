@@ -361,6 +361,10 @@ id = "611-reviewer-sprint-prompt-sync"
 path = "scripts/test_check_reviewer_sprint_prompt_sync.py"
 
 [[pytest]]
+id = "610-receipt-enum-sync"
+path = "scripts/test_check_receipt_enum_sync.py"
+
+[[pytest]]
 id = "611-reviewer-role-label"
 path = "scripts/test_check_reviewer_role_label.py"
 

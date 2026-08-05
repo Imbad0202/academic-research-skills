@@ -103,20 +103,34 @@ On any Phase 2 lint failure other than multi-dissent: emit `[PROTOCOL-VIOLATION]
 > §7.1), and a conforming receipt with wrong arithmetic is still wrong.
 
 The methodology seat's Phase 2 card additionally carries exactly one
-`## Arithmetic Receipts` H2 section after `## Review Body` (no other seat may
-emit it). The section holds either dense `### AR1..ARn` receipt subsections —
+`## Arithmetic Receipts` H2 section as the final section of the card, after
+`## Review Body` (no other seat may emit it; the heading is matched exactly
+and case-sensitively, consistent with every other section grammar). The
+section holds either dense `### AR1..ARn` receipt subsections —
 one per attempted recomputation, canonical `key: value` machine lines per the
 delivered Phase 2 grammar (canonical source: the `methodology-receipt`
 fragment of the reviewer sprint prompt source cited in this file's header,
 spliced by its sync checker) — or, when the
 manuscript reports no statistic covered by a bounded procedure, exactly one
-`no_recomputable_statistics: <basis>` attestation line. Checker-enforced
+`no_recomputable_statistics: <basis>` attestation line. The attestation is a
+mandatory declaration with adjudicated honesty, never machine-checked
+triggering: the checker verifies only that the declaration exists and
+annotates the passing card with the advisory
+`[RECEIPT-ATTESTATION: declaration-only — applicability not machine-verified;
+adjudication judges the attestation]`; whether the declaration is TRUE is
+judged at adjudication, where a false attestation over recomputable
+statistics surfaces as `MISSED` verdicts. Checker-enforced
 highlights: closed `procedure_id` / `status` / `not_computable_reason` /
 `tail_convention` enums; an unstated-tail p receipt claiming a verdict must
-display BOTH labeled tail values; a GRIM/GRIMMER verdict requires
+display BOTH labeled tail values, each followed by its derived number; a
+GRIM/GRIMMER verdict requires
 `rounding_interval:` + `nearest_achievable:`; an `n_from_df` verdict must name
 its `df_identity:`; every `mismatch` links to a distinct `W<n>` weakness that
-carries the matching `**Arithmetic Receipt**: AR<n>` back-reference. Failures
+carries the matching `**Arithmetic Receipt**: AR<n>` back-reference (the
+value exactly `AR<n>`, no trailing text). The receipt section is read
+fence-transparently: a fenced receipt line is still read, and any other
+decorated machine line aborts loudly instead of being silently dropped or
+read as canonical. Failures
 surface as `[RECEIPT-MISSING]` / `[RECEIPT-GRAMMAR]` / `[RECEIPT-TAILS]` /
 `[RECEIPT-LINKAGE]` / `[RECEIPT-SECTION-FORBIDDEN]` at exit 3 — the seat is
 unusable per §5, with no Phase 2 retry; the abort-rate cost of this new
@@ -225,6 +239,7 @@ Audit-log tags the orchestrator may emit:
 | `[REPORT-PARSE: <path>: ...]` | checker report-grammar failure (exit 3) | mark reviewer unusable |
 | `[RECEIPT-MISSING/-GRAMMAR/-TAILS/-LINKAGE: <path>: ...]` | #610 methodology arithmetic-receipt gate failure (exit 3, §5.1) | mark reviewer unusable |
 | `[RECEIPT-SECTION-FORBIDDEN: <path>: ...]` | a non-methodology seat emitted `## Arithmetic Receipts` (exit 3, §5.1) | mark reviewer unusable |
+| `[RECEIPT-ATTESTATION: declaration-only — ...]` | #610 attestation-path advisory on a PASSING methodology card (§5.1) | none — advisory; adjudication judges the attestation |
 | `[SYNTHESIS-PARSE: <path>: ...]` | checker synthesis-grammar failure (exit 1) | void synthesis, retry once |
 | `[CONTRACT-INVALID/-INELIGIBLE: ...]` | checker contract validation failure (exit 2) | abort editorial round |
 | `[IO-ERROR: <path>: ...]` | checker file read/encoding failure (exit 2) | abort editorial round |

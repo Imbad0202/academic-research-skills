@@ -501,6 +501,16 @@ jobs:
           python3 scripts/check_reviewer_role_label.py
           python3 scripts/check_calibration_tiers.py
 
+      - name: Run #610 receipt closed-enum defrift lint
+        # Pins the four receipt enums (procedure_id / status /
+        # not_computable_reason / tail_convention) to set equality across the
+        # methodology-receipt prompt fragment, the conformance checker's
+        # frozensets, and the #610 spec §4. Mutation companion
+        # test_check_receipt_enum_sync.py runs via the unified manifest.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_receipt_enum_sync.py
+
       - name: Run v3.10 #134 write-scope three-way name cross-check lint
         # THE FAIL-OPEN GUARD for the Slice 1 write-scope hook. Asserts the 23 Bucket A
         # agent names match across the classification roster, the scope manifest keys,

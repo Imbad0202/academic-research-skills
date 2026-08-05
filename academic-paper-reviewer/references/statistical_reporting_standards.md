@@ -407,7 +407,13 @@ Step 7: Produce completeness score (Section 6)
 > should be named honestly: the receipt grammar (methodology seat, sprint
 > Phase 2) forces every recomputation attempt to be *declared, structured,
 > and auditable* — required fields present, closed enums respected, each
-> mismatch linked to exactly one weakness. It cannot force the arithmetic
+> mismatch linked to exactly one weakness. Triggering likewise rests on a
+> mandatory declaration with adjudicated honesty, never machine-checked
+> triggering: when nothing is recomputable the seat must say so
+> (`no_recomputable_statistics:`), and the checker verifies only that the
+> declaration exists — never that it is true; a false attestation over
+> recomputable statistics surfaces at adjudication as `MISSED` verdicts.
+> It cannot force the arithmetic
 > inside a receipt to be correct; model arithmetic is not deterministic, and
 > a fully conforming receipt built on wrong arithmetic is still wrong.
 > Correctness is decided by human adjudication against the four-verdict
@@ -469,7 +475,12 @@ usually encode table dimensions and cannot be inverted to *N*.
 
 Every arithmetic-flavored red-flag row in Section 4 is classified below so
 that no row is silently claimed "solved" by the four procedures (#610 spec
-§8). Classes: **covered** (a bounded procedure recomputes it — emit a
+§8). Inclusion criterion: a Section 4 row appears here exactly when its red
+flag concerns reported numeric values or quantities derivable from them —
+whether by recomputation or by direct comparison against a stated numeric
+threshold; rows about narrative, design, or process conduct (causal
+language, HARKing, selective reporting, software not stated) stay outside
+this classification. Classes: **covered** (a bounded procedure recomputes it — emit a
 receipt when attempted), **reporting-only** (noticing and citing suffices;
 there is nothing to recompute), **direct-threshold** (a read-off comparison
 against a stated numeric threshold; report as a finding, no receipt), and

@@ -108,7 +108,7 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # Re-pin only after reviewing an intentional canonical protocol edit and its
 # corresponding inline mirrors. This is the second v3.17-style content lock;
 # exact canonical→mirror equality is the first.
-CANONICAL_CONTENT_SHA256 = "444e319665f027ad5b55d7831752300bce73b4d1437781cd200846f0acdb2666"
+CANONICAL_CONTENT_SHA256 = "1fc9db85620be5bb896d28089f589fa6e0df6d70335edf31f451ebc445c9091b"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:
@@ -134,10 +134,18 @@ def canonical_digest(
     fragments: dict[str, str],
     role_config: dict[str, dict[str, str]],
 ) -> str:
-    """Hash every operative source byte, including bounded slot configuration."""
+    """Hash every operative source byte, including bounded slot configuration.
+
+    The receipt splice anchor is part of the payload (#610 round-1 fix 7):
+    the anchor decides WHERE the receipt fragment lands in the composed
+    methodology prompt, so rewording it is a content change and must fail
+    the lock until re-pinned in the same commit.
+    """
     slot_section = heading_section(canonical_text, SLOT_HEADING) or ""
     payload = (
-        b"bounded-slots\0"
+        b"receipt-splice-anchor\0"
+        + RECEIPT_SPLICE_ANCHOR.encode("utf-8")
+        + b"\0bounded-slots\0"
         + slot_section.encode("utf-8")
         + b"\0role-config\0"
         + json.dumps(
