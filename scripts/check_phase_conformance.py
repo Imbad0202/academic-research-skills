@@ -454,31 +454,36 @@ def _is_backref_shaped(line: str) -> bool:
     return bool(separator) and label == _RECEIPT_BACKREF_SHAPE_NAME
 
 
-def _strip_inline_comment_spans(line: str, open_: bool) -> tuple[str, bool]:
-    """The line's rendered remainder outside inline comment spans + state.
+def _strip_inline_comment_spans(
+    line: str, open_: bool
+) -> tuple[str, str, bool]:
+    """(rendered remainder, hidden text, state) for inline comment spans.
 
     The block visibility model deliberately refuses to read a mid-paragraph
     `prose <!--` as an opener (see `_raw_dissent_span`), but CommonMark
     treats it as raw inline HTML whose comment hides everything until
     `-->`. The Review Body backref walk therefore strips those spans and
-    parses only what the renderer shows (#610 rounds 3-4): content after
+    parses only what the renderer shows (#610 rounds 3-5): content after
     the opener on the SAME line is stripped too, and content after a
     closing `-->` on the same line is kept and parsed — so a hidden
     back-reference is never credited and a rendered one is never dropped.
-    Callers pass a code-span-blanked line, matching the renderer's
-    precedence of code spans over raw HTML.
+    The hidden text is returned as well, because a declaration inside the
+    span must abort even when the line also carries visible content —
+    silently dropping it re-opened the hidden-declaration channel one
+    partial-visibility case at a time (#610 round-5). Callers pass a
+    code-span-blanked line, matching the renderer's precedence of code
+    spans over raw HTML.
     """
-    parts: list[str] = []
+    visible_parts: list[str] = []
+    hidden_parts: list[str] = []
     index, state = 0, open_
     while True:
         token = "-->" if state else "<!--"
         position = line.find(token, index)
         if position < 0:
-            if not state:
-                parts.append(line[index:])
-            return "".join(parts), state
-        if not state:
-            parts.append(line[index:position])
+            (hidden_parts if state else visible_parts).append(line[index:])
+            return "".join(visible_parts), "".join(hidden_parts), state
+        (hidden_parts if state else visible_parts).append(line[index:position])
         state, index = not state, position + len(token)
 
 
@@ -1394,21 +1399,25 @@ def _review_body_receipt_backrefs(
                 inline_commented = False
             else:
                 code_blanked = _blank_code_spans(line)
-                visible, inline_commented = _strip_inline_comment_spans(
-                    code_blanked, inline_commented
+                visible, hidden_text, inline_commented = (
+                    _strip_inline_comment_spans(
+                        code_blanked, inline_commented
+                    )
                 )
                 if visible != code_blanked:
+                    # A declaration inside the hidden span aborts whether
+                    # or not the line also shows visible content (#610
+                    # round-5): hidden prose is skippable, a hidden
+                    # machine declaration never is.
+                    if _backref_declared_count(hidden_text):
+                        raise ConformanceError(
+                            f"[RECEIPT-LINKAGE: {report.path}: an "
+                            "Arithmetic Receipt back-reference "
+                            "declaration sits inside a paragraph-"
+                            "inline HTML comment span and does not "
+                            "render; it is non-conforming]"
+                        )
                     if not visible.strip(" \t"):
-                        # The whole line is hidden by the span: a hidden
-                        # declaration aborts, hidden prose is skipped.
-                        if _backref_declared_count(code_blanked):
-                            raise ConformanceError(
-                                f"[RECEIPT-LINKAGE: {report.path}: an "
-                                "Arithmetic Receipt back-reference "
-                                "declaration sits inside a paragraph-"
-                                "inline HTML comment span and does not "
-                                "render; it is non-conforming]"
-                            )
                         continue
                     # Only the rendered remainder is parsed: content after
                     # a closing `-->` stays live, content behind an opener

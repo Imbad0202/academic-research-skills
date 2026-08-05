@@ -3773,14 +3773,15 @@ def test_spurious_backref_after_a_closing_comment_still_aborts():
 
 
 def test_backref_behind_an_opener_on_its_own_line_is_not_credited():
-    # Round-4 P1 (codex track): content after `<!--` on the opener line is
-    # inside the span and must not be credited even when a pipe hands the
-    # canonical regex a match position.
+    # Round-4 P1 (codex track), tightened in round 5: content after `<!--`
+    # on the opener line is inside the span; since round 5 the hidden
+    # declaration itself aborts at the hiding site rather than surfacing
+    # later as a missing linkage.
     body = W1_BACKREF_BODY.replace(
         "**Arithmetic Receipt**: AR1\n",
         "prose <!-- | **Arithmetic Receipt**: AR1\n-->\n",
     )
-    with pytest.raises(phase.ConformanceError, match="exactly one"):
+    with pytest.raises(phase.ConformanceError, match="paragraph-inline"):
         check_receipts(receipt_section(grim_receipt()), body=body)
 
 
@@ -3825,6 +3826,26 @@ def test_literal_comment_marker_in_a_code_span_opens_nothing():
     body = W1_BACKREF_BODY.replace(
         "**Arithmetic Receipt**: AR1\n",
         "prose `<!--` literal\n**Arithmetic Receipt**: AR1\n",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_hidden_declaration_beside_a_visible_one_still_aborts():
+    # Round-5 P2 (codex track): a declaration inside the hidden span
+    # aborts even when the same line also carries a visible, credited one.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "**Arithmetic Receipt**: AR1 <!-- | **Arithmetic Receipt**: AR2\n"
+        "-->\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="paragraph-inline"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_hidden_prose_beside_a_visible_declaration_is_harmless():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "**Arithmetic Receipt**: AR1 <!-- reviewer note\n-->\n",
     )
     check_receipts(receipt_section(grim_receipt()), body=body)
 
