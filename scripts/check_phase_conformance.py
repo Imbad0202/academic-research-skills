@@ -456,8 +456,8 @@ def _is_backref_shaped(line: str) -> bool:
 
 def _strip_inline_comment_spans(
     line: str, open_: bool
-) -> tuple[str, str, bool]:
-    """(rendered remainder, hidden text, state) for inline comment spans.
+) -> tuple[str, list[str], bool]:
+    """(rendered remainder, hidden segments, state) for inline spans.
 
     The block visibility model deliberately refuses to read a mid-paragraph
     `prose <!--` as an opener (see `_raw_dissent_span`), but CommonMark
@@ -467,23 +467,32 @@ def _strip_inline_comment_spans(
     the opener on the SAME line is stripped too, and content after a
     closing `-->` on the same line is kept and parsed — so a hidden
     back-reference is never credited and a rendered one is never dropped.
-    The hidden text is returned as well, because a declaration inside the
-    span must abort even when the line also carries visible content —
+    The hidden segments are returned as well, because a declaration inside
+    a span must abort even when the line also carries visible content —
     silently dropping it re-opened the hidden-declaration channel one
-    partial-visibility case at a time (#610 round-5). Callers pass a
+    partial-visibility case at a time (#610 round-5). They stay one entry
+    PER SPAN, never joined (#610 round-6): joining let a prose span prefix
+    shield a declaration in the next span, and conversely synthesized a
+    phantom declaration out of harmless fragments. Callers pass a
     code-span-blanked line, matching the renderer's precedence of code
     spans over raw HTML.
     """
     visible_parts: list[str] = []
-    hidden_parts: list[str] = []
+    hidden_segments: list[str] = []
     index, state = 0, open_
     while True:
         token = "-->" if state else "<!--"
         position = line.find(token, index)
         if position < 0:
-            (hidden_parts if state else visible_parts).append(line[index:])
-            return "".join(visible_parts), "".join(hidden_parts), state
-        (hidden_parts if state else visible_parts).append(line[index:position])
+            if state:
+                hidden_segments.append(line[index:])
+            else:
+                visible_parts.append(line[index:])
+            return "".join(visible_parts), hidden_segments, state
+        if state:
+            hidden_segments.append(line[index:position])
+        else:
+            visible_parts.append(line[index:position])
         state, index = not state, position + len(token)
 
 
@@ -1399,17 +1408,21 @@ def _review_body_receipt_backrefs(
                 inline_commented = False
             else:
                 code_blanked = _blank_code_spans(line)
-                visible, hidden_text, inline_commented = (
+                visible, hidden_segments, inline_commented = (
                     _strip_inline_comment_spans(
                         code_blanked, inline_commented
                     )
                 )
                 if visible != code_blanked:
-                    # A declaration inside the hidden span aborts whether
-                    # or not the line also shows visible content (#610
-                    # round-5): hidden prose is skippable, a hidden
-                    # machine declaration never is.
-                    if _backref_declared_count(hidden_text):
+                    # A declaration inside a hidden span aborts whether or
+                    # not the line also shows visible content (#610 round
+                    # 5): hidden prose is skippable, a hidden machine
+                    # declaration never is. Each span is checked on its
+                    # own (#610 round-6).
+                    if any(
+                        _backref_declared_count(segment)
+                        for segment in hidden_segments
+                    ):
                         raise ConformanceError(
                             f"[RECEIPT-LINKAGE: {report.path}: an "
                             "Arithmetic Receipt back-reference "

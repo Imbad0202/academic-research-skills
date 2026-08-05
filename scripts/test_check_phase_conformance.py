@@ -3842,6 +3842,27 @@ def test_hidden_declaration_beside_a_visible_one_still_aborts():
         check_receipts(receipt_section(grim_receipt()), body=body)
 
 
+def test_prose_span_cannot_shield_a_declaration_in_the_next_span():
+    # Round-6 P2 (codex track): hidden spans are checked one by one, so a
+    # harmless first span cannot prefix-shield a declaration in the next.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "**Arithmetic Receipt**: AR1 <!-- reviewer note --> "
+        "<!-- **Arithmetic Receipt**: AR2 -->\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="paragraph-inline"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_fragments_across_spans_cannot_synthesize_a_declaration():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "**Arithmetic Receipt**: AR1 <!-- Arithmetic --> "
+        "<!-- Receipt: typo -->\n",
+    )
+    check_receipts(receipt_section(grim_receipt()), body=body)
+
+
 def test_hidden_prose_beside_a_visible_declaration_is_harmless():
     body = W1_BACKREF_BODY.replace(
         "**Arithmetic Receipt**: AR1\n",
