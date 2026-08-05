@@ -4,3 +4,6 @@
 # lives in .gitleaks.toml (frozen E4 raw-bundle .md prose); this fingerprint
 # only covers the already-pushed historical comment.
 08ddaca66e2d4b45e3e24a1e22669635141ea8c9:.gitleaksignore:generic-api-key:2
+# Removal note: after PR #643 squash-merges, the 08ddaca commit exists only in
+# the closed PR's branch history, this fingerprint can never match on main,
+# and the entire file can be deleted in a later cleanup.

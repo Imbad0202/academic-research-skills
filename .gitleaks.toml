@@ -15,8 +15,9 @@
 # journal-tier descriptor in a promoted field_analysis.md). The bundles are
 # byte-frozen promotion evidence (check_e4_promotion.py) that cannot be
 # edited, and squash-merge makes per-commit fingerprints unpinnable on main,
-# so the prose (.md) files are a path entry; machine logs and JSON records in
-# the same bundles stay scanned.
+# so the prose (.md) files are a rule-targeted allowlist entry below; machine
+# logs and JSON records in the same bundles stay scanned, and every rule other
+# than the misfiring generic-api-key stays live on the prose files too.
 #
 # Maintenance note: a new citation-tuple file under the allowlisted evals
 # path needs no action here. A NEW false-positive class elsewhere should be
@@ -26,11 +27,11 @@
 [extend]
 useDefault = true
 
-[allowlist]
+# Class 1: whole-file exemption (these files are key-shaped data by design).
+[[allowlists]]
 description = "Bibliographic citation keys misread as generic-api-key (literature identifiers, not credentials)"
 paths = [
   '''evals/gold/citation_extraction/tuples/.*\.json''',
-  '''evals/heldout/reviewer_seeded_defects/runs/raw/.*\.md''',
   '''scripts/fixtures/check_evals_gold_set/.*''',
   '''scripts/adapters/examples/.*''',
   '''scripts/adapters/tests/test_zotero\.py''',
@@ -39,3 +40,11 @@ paths = [
   '''docs/design/2026-04-23-ars-v3\.6\.4-literature-corpus-adapters-plan\.md''',
   '''scripts/test_version_records_schema\.py''',
 ]
+
+# Class 2 (rule-targeted): only the misfiring rule is exempted over the frozen
+# E4 evidence prose; private-key / AWS / GitHub-PAT / Slack / JWT detection
+# stays live over the same files.
+[[allowlists]]
+description = "Frozen E4 evidence-bundle model prose misread as generic-api-key (venue descriptors, not credentials)"
+targetRules = ["generic-api-key"]
+paths = ['''evals/heldout/reviewer_seeded_defects/runs/raw/.*\.md''']
