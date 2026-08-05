@@ -128,9 +128,13 @@ GRIM/GRIMMER verdict requires
 its `df_identity:`; every `mismatch` links to a distinct `W<n>` weakness that
 carries the matching `**Arithmetic Receipt**: AR<n>` back-reference (the
 value exactly `AR<n>`, no trailing text). The receipt section is read
-fence-transparently: a fenced receipt line is still read, and any other
-decorated machine line aborts loudly instead of being silently dropped or
-read as canonical. Failures
+fence-transparently in display form: a fenced receipt line is still read
+(an indented fence dedented as CommonMark renders it), the two tolerated
+decorations are a single leading list marker and balanced bold around the
+key, and any other decorated, commented-out, table-cell, entity-encoded, or
+otherwise re-spelled machine line — and any machine line outside every
+`### AR<n>` subsection other than the attestation — aborts loudly instead
+of being silently dropped or read as canonical. Failures
 surface as `[RECEIPT-MISSING]` / `[RECEIPT-GRAMMAR]` / `[RECEIPT-TAILS]` /
 `[RECEIPT-LINKAGE]` / `[RECEIPT-SECTION-FORBIDDEN]` at exit 3 — the seat is
 unusable per §5, with no Phase 2 retry; the abort-rate cost of this new

@@ -125,6 +125,50 @@ def test_fragment_missing_enum_spelling_fails(tree: Path) -> None:
     assert "expected exactly one" in result.stderr
 
 
+def test_pre_section4_decoy_cannot_mask_spec_drift(tree: Path) -> None:
+    # #610 round-2: a complete historical example placed BEFORE §4 must not
+    # satisfy the parse while the real §4 drifts.
+    decoy = (
+        "\nHistorical example (non-normative): the closed v1 enum: was\n\n"
+        "- `missing_reported_value`\n"
+        "- `test_family_ambiguous`\n"
+        "- `tail_ambiguous`\n"
+        "- `nonstandard_p_procedure`\n"
+        "- `inequality_unresolvable`\n"
+        "- `rounding_rule_ambiguous`\n"
+        "- `rounding_boundary_ambiguous`\n"
+        "- `scale_granularity_unknown`\n"
+        "- `scale_support_unknown`\n"
+        "- `analytic_n_ambiguous`\n"
+        "- `aggregation_or_weighting_unknown`\n"
+        "- `sd_convention_unknown`\n"
+        "- `mean_grim_inconsistent`\n"
+        "- `df_identity_ambiguous`\n"
+        "- `model_correction_or_pooling`\n"
+        "- `reachability_not_completed`\n\n"
+    )
+    _mutate(tree, SPEC, "- `tail_ambiguous`\n- `nonstandard", "- `nonstandard")
+    _mutate(
+        tree, SPEC,
+        "## 4. Prospective arithmetic receipt contract",
+        decoy + "## 4. Prospective arithmetic receipt contract",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "not_computable_reason: spec §4 enum drifted" in result.stderr
+
+
+def test_second_enum_sentence_inside_section4_fails(tree: Path) -> None:
+    _mutate(
+        tree, SPEC,
+        "Required invariants:",
+        "A second closed v1 enum mention inside §4.\n\nRequired invariants:",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "expected exactly one 'closed v1 enum' sentence" in result.stderr
+
+
 def test_missing_spec_file_is_invocation_error(tree: Path) -> None:
     (tree / SPEC).unlink()
     result = _run(tree)

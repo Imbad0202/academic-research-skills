@@ -77,6 +77,32 @@ def _fragment_enums(fragment: str, errors: list[str]) -> dict[str, set[str]]:
     return enums
 
 
+def _spec_section4_lines(
+    spec_lines: list[str], errors: list[str]
+) -> list[str]:
+    """The lines of spec §4 only, so a worked example or historical block
+    elsewhere in the document can never satisfy — or mask drift in — the
+    normative enum definitions (#610 round-2)."""
+    starts = [
+        index for index, line in enumerate(spec_lines)
+        if line.startswith("## 4. ")
+    ]
+    if len(starts) != 1:
+        errors.append(
+            f"spec: expected exactly one '## 4. ' heading, found "
+            f"{len(starts)}"
+        )
+        return []
+    end = next(
+        (
+            index for index in range(starts[0] + 1, len(spec_lines))
+            if spec_lines[index].startswith("## ")
+        ),
+        len(spec_lines),
+    )
+    return spec_lines[starts[0]:end]
+
+
 def _spec_table_cell_enum(
     spec_lines: list[str], field: str, errors: list[str]
 ) -> set[str] | None:
@@ -95,16 +121,18 @@ def _spec_table_cell_enum(
 
 
 def _spec_reason_enum(spec_lines: list[str], errors: list[str]) -> set[str]:
-    try:
-        start = next(
-            index for index, line in enumerate(spec_lines)
-            if "closed v1 enum" in line
+    starts = [
+        index for index, line in enumerate(spec_lines)
+        if "closed v1 enum" in line
+    ]
+    if len(starts) != 1:
+        errors.append(
+            "spec §4: expected exactly one 'closed v1 enum' sentence in "
+            f"§4, found {len(starts)}"
         )
-    except StopIteration:
-        errors.append("spec §4: the 'closed v1 enum' sentence was not found")
         return set()
     names: set[str] = set()
-    for line in spec_lines[start + 1:]:
+    for line in spec_lines[starts[0] + 1:]:
         if match := re.fullmatch(r"- `([a-z0-9_]+)`", line.strip()):
             names.add(match.group(1))
         elif line.strip() and names:
@@ -124,7 +152,9 @@ def check(root: Path) -> list[str]:
         print("ERROR: methodology-receipt fragment missing from "
               f"{CANONICAL_REL}", file=sys.stderr)
         raise SystemExit(2)
-    spec_lines = _read(root, SPEC_REL).splitlines()
+    spec_lines = _spec_section4_lines(
+        _read(root, SPEC_REL).splitlines(), errors
+    )
 
     fragment_enums = _fragment_enums(fragment, errors)
     spec_enums = {

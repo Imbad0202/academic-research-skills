@@ -3423,6 +3423,202 @@ def test_grimmer_verdict_missing_field_fails(key):
         check_receipts(receipt_section(grimmer_receipt(**{key: None})))
 
 
+# --- #610 round-2 pins: comment visibility, preamble, cells, tails ---------
+
+
+def test_comment_hidden_receipt_block_aborts():
+    # Round-2 P1 (both tracks): a receipt the rendered card does not show
+    # cannot satisfy an auditability gate.
+    lines = ["<!--", *receipt_section(grim_receipt()), "-->"]
+    with pytest.raises(phase.ConformanceError, match="HTML comment"):
+        check_receipts(lines)
+
+
+def test_comment_hidden_attestation_aborts():
+    lines = ["<!--", "no_recomputable_statistics: nothing", "-->"]
+    with pytest.raises(phase.ConformanceError, match="HTML comment"):
+        check_receipts(lines, body="prose")
+
+
+def test_unclosed_comment_cannot_swallow_the_receipts():
+    lines = ["<!--", *receipt_section(grim_receipt())]
+    with pytest.raises(phase.ConformanceError, match="HTML comment"):
+        check_receipts(lines)
+
+
+def test_visible_receipts_with_hidden_duplicate_field_abort():
+    lines = receipt_section(grim_receipt()) + [
+        "<!--", "status: consistent", "-->",
+    ]
+    with pytest.raises(phase.ConformanceError, match="HTML comment"):
+        check_receipts(lines)
+
+
+def test_commented_prose_in_receipt_section_stays_tolerated():
+    lines = receipt_section(grim_receipt()) + [
+        "<!--", "internal note, no machine fields", "-->",
+    ]
+    check_receipts(lines)
+
+
+def test_comment_hidden_backref_aborts():
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1\n",
+        "<!--\n**Arithmetic Receipt**: AR1\n-->\n",
+    )
+    with pytest.raises(phase.ConformanceError, match="commented-out"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+@pytest.mark.parametrize("bad", [
+    "procedure_id: cohen_d_check",
+    "finding_ref: W9",
+    "not_computable_reason: bogus_reason",
+    "status: not_applicable",
+])
+def test_machine_line_in_section_preamble_aborts(bad):
+    # Round-2 P1 (security track): the preamble is not a parking lot — a
+    # canonical machine line the enum/linkage gates never inspect aborts.
+    lines = [bad, "", *receipt_section(grim_receipt())]
+    with pytest.raises(
+        phase.ConformanceError, match="outside every ### AR<n>"
+    ):
+        check_receipts(lines)
+
+
+def test_attestation_card_with_stray_machine_line_aborts():
+    lines = [
+        "no_recomputable_statistics: nothing recomputable",
+        "status: consistent",
+    ]
+    with pytest.raises(
+        phase.ConformanceError, match="outside every ### AR<n>"
+    ):
+        check_receipts(lines, body="prose")
+
+
+def test_forbidden_field_in_a_later_table_cell_aborts():
+    # Round-2 P1 (codex track): the head-of-line shape test alone let a
+    # decorated forbidden field hide in a later GFM cell.
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"),
+        "| note | **tail_convention:** two-tailed |",
+    )
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
+def test_entity_colon_field_spelling_aborts():
+    lines = receipt_section(grim_receipt())
+    lines.insert(
+        lines.index("finding_ref: W1"), "tail_convention&#58; two-tailed"
+    )
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
+def test_cjk_prose_in_a_table_cell_stays_tolerated():
+    lines = receipt_section(grim_receipt())
+    lines.insert(lines.index("finding_ref: W1"), "| 註記 | 狀態說明:如上 |")
+    check_receipts(lines)
+
+
+@pytest.mark.parametrize("half_bold", ["**status: mismatch", "status**: mismatch"])
+def test_half_bold_field_is_not_canonical(half_bold):
+    lines = receipt_section(grim_receipt(status=None))
+    lines.insert(lines.index("finding_ref: W1"), half_bold)
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
+def test_canonical_plus_malformed_backref_on_one_line_aborts():
+    # Round-2 P1 (codex track): a canonical match must not launder a second
+    # malformed declaration on the same line.
+    body = W1_BACKREF_BODY.replace(
+        "**Arithmetic Receipt**: AR1",
+        "**Arithmetic Receipt**: AR1 | **Arithmetic Receipt:** see AR2",
+    )
+    with pytest.raises(phase.ConformanceError, match="RECEIPT-LINKAGE"):
+        check_receipts(receipt_section(grim_receipt()), body=body)
+
+
+def test_indented_trailing_h2_still_violates_terminal_rule():
+    # Round-2 (security track): a 1-3-space-indented `##` renders as a
+    # heading even though the section grammar ignores it.
+    text = phase2_text(
+        "methodology",
+        body=W1_BACKREF_BODY,
+        receipts=receipt_section(grim_receipt()),
+    ) + "\n\n   ## Trailing Section\n\ntext\n"
+    report = panel.parse_report("p2.md", text, FULL)
+    with pytest.raises(
+        phase.ConformanceError, match="must be the final section"
+    ):
+        phase.check_methodology_receipts(report)
+
+
+def test_three_space_indented_fence_is_read_dedented():
+    # Round-2 (codex track): CommonMark strips the opener's indent from the
+    # displayed content of an indented fence; the gate reads display form.
+    lines = ["   ```"] + [
+        "   " + line for line in receipt_section(grim_receipt())
+    ] + ["   ```"]
+    check_receipts(lines)
+
+
+def test_indented_fence_hiding_direction_still_aborts():
+    lines = [
+        "no_recomputable_statistics: nothing",
+        "",
+        "   ```",
+        *("   " + line for line in receipt_section(grim_receipt())),
+        "   ```",
+    ]
+    with pytest.raises(phase.ConformanceError, match="forbidden when"):
+        check_receipts(lines)
+
+
+def test_tail_value_before_label_in_segment_passes():
+    check_receipts(receipt_section(p_receipt(
+        derived_value_or_range="p = .192 (two-tailed); p = .096 (one-tailed)",
+    )))
+
+
+def test_embedded_word_tail_labels_do_not_satisfy_the_rule():
+    with pytest.raises(phase.ConformanceError, match="RECEIPT-TAILS"):
+        check_receipts(receipt_section(p_receipt(
+            derived_value_or_range="notwo-tailed note 2; someone-tailed 1",
+        )))
+
+
+def test_fused_tail_label_with_value_still_counts():
+    # A `twotailed` typo carries its value; rejecting it would be a false
+    # abort on an unretryable phase (declared boundary).
+    check_receipts(receipt_section(p_receipt(
+        derived_value_or_range="twotailed p=.192; onetailed p=.096",
+    )))
+
+
+def test_field_name_leading_prose_abort_is_a_declared_boundary():
+    # Security-track P2, adjudicated as documented cost: a prose line whose
+    # head spells a field name is indistinguishable from a decorated
+    # machine line, and the fragment now warns the seat not to write one.
+    lines = receipt_section(grim_receipt()) + [
+        "Assumptions: none beyond what the paper licenses.",
+    ]
+    with pytest.raises(
+        phase.ConformanceError, match="decorated or non-canonical"
+    ):
+        check_receipts(lines)
+
+
 def test_grimmer_grim_inconsistent_mean_is_not_computable():
     check_receipts(
         receipt_section(grimmer_receipt(
