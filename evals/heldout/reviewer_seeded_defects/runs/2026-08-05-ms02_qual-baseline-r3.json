@@ -54,6 +54,6 @@
    "SD-09": 0.5,
    "mean": 0.667
   },
-  "severity_source": "highest explicit per-finding severity tag among detecting seats (frozen 2026-07-24 ladder; no letter-fallback rung needed this run)"
+  "severity_source": "highest explicit per-finding severity tag among detecting seats (frozen 2026-07-24 ladder; no letter-fallback rung needed for any seeded defect this run)"
  }
 }
