@@ -343,3 +343,20 @@ def test_extraction_fragment_edit_requires_repin(tree: Path) -> None:
     result = _run(tree)
     assert result.returncode == 1
     assert "canonical content lock" in result.stderr
+
+
+def test_stray_extraction_section_on_another_agent_is_rejected(
+    tree: Path,
+) -> None:
+    # security round 1, P3-2: a Phase 2E section on a seat that declares no
+    # extraction fragment is dead prompt text inviting drift.
+    path = tree / REVIEWERS[0]
+    path.write_text(
+        path.read_text(encoding="utf-8")
+        + "\n### Phase 2E — Numeric extraction (script-adapter dispatch)\n"
+        + "\nrogue extraction body\n",
+        encoding="utf-8",
+    )
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "declares no extraction fragment" in result.stderr

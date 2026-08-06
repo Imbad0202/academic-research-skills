@@ -1863,7 +1863,9 @@ def check_injected_receipts(
     uses — so a decorated or re-spelled injected line fails identity loudly
     rather than being silently re-read.
     """
-    injected_lines = injected_text.split("\n")
+    injected_lines = [
+        line.rstrip("\r") for line in injected_text.split("\n")
+    ]
     heading = f"## {recompute.RECEIPT_SECTION}"
     if not injected_lines or injected_lines[0] != heading:
         raise panel.ContractError(
@@ -1872,10 +1874,15 @@ def check_injected_receipts(
         )
     expected = [line for line in injected_lines[1:] if line.strip()]
     view, _, _ = _receipt_section_view(report.text)
+    # Only the PLAIN spelling is the permitted addition (codex round 1,
+    # P2-4): the receipt grammar tolerates a decorated finding_ref, but
+    # under injection "add exactly one finding_ref: line" means the
+    # undecorated canonical form — a bolded or bulleted spelling stays in
+    # the comparison and fails identity loudly.
+    plain_finding_ref = re.compile(r"^finding_ref: W[1-9]\d*$")
     actual = [
         line for line, _, _ in view
-        if line.strip()
-        and not _RECEIPT_FIELD_RES["finding_ref"].fullmatch(line)
+        if line.strip() and not plain_finding_ref.fullmatch(line)
     ]
     if actual != expected:
         divergence = next(
@@ -2015,6 +2022,11 @@ def main(argv=None) -> int:
                 check_injected_receipts(
                     report, panel._read_text(args.injected_receipts)
                 )
+                # A distinct witness line (security round 1, P2-5): the
+                # evidence contract names this gate as contract content, so
+                # a Phase 2 gated WITHOUT it must be distinguishable in the
+                # preserved gate log.
+                print("RECEIPT-IDENTITY: PASS")
         else:
             if args.injected_receipts is not None:
                 raise panel.ContractError(

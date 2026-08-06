@@ -1075,7 +1075,13 @@ class PromptBuilder:
         return Call(
             f"{role}.extraction",
             system,
+            # Iron Rule #7 at this boundary too (security round 1, P1-1):
+            # the extraction call deliberately carries no contract and no
+            # Phase 1 output, which also means the system section and this
+            # sentence are the ONLY competing authority against a
+            # manuscript-planted transcription directive.
             "Reply in English.\n\n"
+            f"{DATA_BOUNDARY}\n"
             + _delimited("paper_content", manuscript),
             paper_visible=True,
         )
@@ -1651,11 +1657,29 @@ def _run_calculator(bundle: Bundle, extraction_name: str) -> str:
     calculator's stderr preserved; nothing is retried and nothing is
     fabricated in place of receipts.
     """
-    process = subprocess.run(
-        [sys.executable, str(REPO / "scripts" / "recompute_receipts.py"),
-         "--extraction", extraction_name, "--output", RECEIPTS_ARTIFACT],
-        cwd=bundle.root, capture_output=True, text=True,
-    )
+    try:
+        process = subprocess.run(
+            [sys.executable,
+             str(REPO / "scripts" / "recompute_receipts.py"),
+             "--extraction", extraction_name,
+             "--output", RECEIPTS_ARTIFACT],
+            cwd=bundle.root, capture_output=True, text=True,
+            # The calculator's own budgets make runaway computation a
+            # refusal, not a hang; the timeout is the backstop so a defect
+            # in that layer cannot stall the fleet (security round 1,
+            # P1-2). Same infra classification as a refusal.
+            timeout=300,
+        )
+    except subprocess.TimeoutExpired as expired:
+        log = _try_write(
+            bundle, "methodology.recompute.log",
+            f"[RECOMPUTE-CALCULATOR: timeout] {expired}\n",
+        ) or Bundle.JOURNAL
+        raise PanelAborted(
+            "methodology.recompute", EXIT_PRECONDITION,
+            "[RECOMPUTE-CALCULATOR: timeout] the deterministic calculator "
+            "exceeded its wall-clock bound on a gate-passed extraction; "
+            "harness defect, not a reviewer conformance failure", log)
     log = _try_write(
         bundle, "methodology.recompute.log",
         process.stdout + process.stderr,

@@ -209,7 +209,51 @@ first-fleet behavior is a finding, not a footnote.
 New reporting rows: per-RR extraction fidelity (adjudicated against the
 manifest), and the calculator's `not_computable` reason distribution.
 
-## 7. Non-goals and boundaries
+## 7. Review hardening (2026-08-06 dual-track round 1)
+
+Closed pre-merge from the security (opus) and codex (gpt-5.6-sol xhigh)
+tracks:
+
+- **Extraction-call injection boundary** (security P1-1): the extraction
+  user message carries the harness `DATA_BOUNDARY` sentence and the
+  `methodology-extraction` fragment carries the full
+  paper-content-is-untrusted paragraph — the transcription call is exactly
+  where step 5 moves the leverage, so it gets the same fence as every other
+  paper-visible call.
+- **Bounded numeric domain, budgets, and a subprocess backstop** (security
+  P1-2 / P2-1): numeric tokens are capped at 18 characters and 6 decimal
+  places in the shared parser; p-procedure magnitudes are capped at the
+  empirically verified convergence domain (1e7) with iteration ceilings
+  raised to cover it; GRIM's candidate-sum window and GRIMMER's retained
+  element count carry explicit budgets that refuse with
+  `reachability_not_completed`; the calculator subprocess has a 300 s
+  timeout classified as the same infra fault.
+- **Endpoint-accurate tails** (codex P1-1): the incomplete-beta callers pass
+  the analytic complement, so a near-zero t/F statistic no longer collapses
+  to p = 1.
+- **Rule-true interval display** (codex P1-2): `rounding_interval:` renders
+  the truncation / half-up / ties-to-even interval it actually used.
+- **Nonnegative SD domain** (codex P1-3): a nonpositive reporting interval
+  is unreachable outright; a negative reported SD is a mismatch, never
+  consistent.
+- **n = 1 population SD** (codex P2-1) and **family-consistent df shapes**
+  (codex P2-2) at the shared validation layer.
+- **CommonMark-stateful extraction fences** (codex P2-3), **plain-only
+  `finding_ref:` under injection** (codex P2-4), **LF-pinned receipt bytes
+  and a per-host determinism scope statement** (codex P2-5).
+- **Machine-markup ban in pass-through values** (security P2-2/P2-3/P2-4):
+  `**`, HTML comment markup, closing-tag shapes, and carriage returns are
+  refused at the source, so injected receipts can never collide with the
+  finding grammar, the comment ban, or the dispatcher's delimiter fences.
+- **Contract witnesses** (security P2-5): the identity gate prints a
+  distinct `RECEIPT-IDENTITY: PASS` line that the resume validator requires
+  whenever the calculator stage is in the ledger, and resume re-derives the
+  receipts from the gate-passed extraction byte-for-byte — a tampered
+  receipts artifact cannot resume even past a rewritten bundle manifest.
+- Write-once receipts artifact (security P3-1) and a stray-Phase-2E mirror
+  guard (security P3-2).
+
+## 8. Non-goals and boundaries
 
 - No new bounded procedure; the §8 note on effect-size consistency stands.
 - No SciPy/NumPy dependency; accuracy is pinned by tests against the parent

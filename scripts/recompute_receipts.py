@@ -11,8 +11,15 @@ identity gate.
 
 Determinism contract:
 
-- Same extraction bytes -> same receipts bytes. No clock, no randomness, no
-  environment reads, no filesystem access beyond the two CLI paths.
+- Same extraction bytes -> same receipts bytes ON THE SAME HOST. No clock,
+  no randomness, no environment reads, no filesystem access beyond the two
+  CLI paths. The scope is per-platform by design: tail probabilities go
+  through libm (`lgamma`/`erfc`), whose last-ulp behavior varies across
+  platforms, so a value at a 3-significant-digit formatting breakpoint may
+  render differently on a different OS. Every #610 cohort is dispatched and
+  gated on one host, which is the domain the determinism contract serves;
+  exact-rational procedures (GRIM/GRIMMER/n_from_df) are
+  platform-independent outright.
 - GRIM / GRIMMER / n_from_df run on exact rational arithmetic
   (``fractions.Fraction``); reported-SD reachability is decided on SD^2 so
   no square root ever enters a verdict.
@@ -90,6 +97,32 @@ _EPS = 1e-9
 # honest status is `reachability_not_completed`. The seeded MS01 case
 # (N=10, 5-point scale) uses well under 1e3 states.
 _STATE_BUDGET = 200_000
+# The state budget bounds COUNT, not size: each memoized state retains a
+# frozenset of attainable sums of squares, so total retained elements is the
+# real memory bound (security round 1, P1-2). Exceeding it is the same
+# honest refusal, never an approximation.
+_ELEMENT_BUDGET = 2_000_000
+# GRIM's candidate-sum window is ~2n/10^places wide; a zero-decimal mean
+# over a huge N would otherwise iterate without bound. Same honest refusal.
+_SUM_WINDOW_BUDGET = 500_000
+# Numeric-domain bounds shared by the gate and the calculator (they run the
+# same parser, so no accept/refuse divergence is possible). The char cap
+# keeps every token far inside float range; the p-procedure magnitude cap
+# is the domain over which the tail special functions are empirically
+# verified to converge under the iteration ceilings below (a manuscript t,
+# F, chi-square, or df beyond 1e7 is not a plausible transcription).
+_MAX_NUMERIC_CHARS = 18
+_MAX_P_MAGNITUDE = 10_000_000
+_MAX_DECIMAL_PLACES = 6
+# Free-text values ride verbatim into receipts and then into the Phase 2
+# card under the identity gate, so tokens that other gates read as machine
+# markup are refused at the source (security round 1, P2-2/P2-3/P2-4):
+# bold spans (the finding grammar's declaration markers), HTML comment
+# markup (banned in the receipt section), and closing-tag shapes (the
+# dispatcher's delimiter fences). Carriage returns are refused line-level —
+# the card-side reader splits on CR, this parser does not, and the identity
+# gate must never straddle two line models.
+_FORBIDDEN_VALUE_TOKENS = ("**", "<!--", "-->", "</")
 
 _DECIMAL_RE = re.compile(r"^-?(?:\d+\.\d+|\.\d+|\d+)$")
 _INT_RE = re.compile(r"^-?\d+$")
@@ -97,7 +130,8 @@ _DF_PAIR_RE = re.compile(r"^(\d+)\s*,\s*(\d+)$")
 _H2_RE = re.compile(r"^## (\S.*?)\s*$")
 _H3_RE = re.compile(r"^### (\S.*?)\s*$")
 _RR_TITLE_RE = re.compile(r"^RR[1-9]\d*$")
-_FENCE_RE = re.compile(r"^[ ]{0,3}(?:`{3,}|~{3,})")
+_FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})(.*)$")
+_FENCE_CLOSE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})[ \t]*$")
 # Mirrors the gate's canonical field shape: optional single list marker,
 # balanced-or-absent bold around the key, one space after the colon.
 _FIELD_RE = re.compile(
@@ -154,6 +188,11 @@ def parse_extraction(text: str) -> Extraction:
     for line in lines:
         if not line.strip():
             continue
+        if "\r" in line:
+            raise ExtractionError(
+                "carriage return inside a machine line; the card-side "
+                "reader and this parser would disagree about line breaks"
+            )
         if match := _H3_RE.fullmatch(line):
             title = match.group(1)
             if not _RR_TITLE_RE.fullmatch(title):
@@ -172,6 +211,13 @@ def parse_extraction(text: str) -> Extraction:
             raise ExtractionError(f"not a machine line: {line!r}")
         key = match.group("bkey") or match.group("key")
         value = match.group("value")
+        for token in _FORBIDDEN_VALUE_TOKENS:
+            if token in value:
+                raise ExtractionError(
+                    f"forbidden token {token!r} inside a field value; "
+                    "machine-markup shapes never belong in transcribed "
+                    "content"
+                )
         if key == ATTESTATION_KEY:
             if current is not None or attestation is not None:
                 raise ExtractionError(
@@ -202,16 +248,33 @@ def parse_extraction(text: str) -> Extraction:
 def _section_lines(text: str) -> list[str]:
     """The extraction section's content lines, fence-transparently.
 
-    A fence delimiter line is dropped and its interior kept: the gate reads
-    fenced machine lines as content (#637/#638 display-form discipline) and
-    the calculator must agree with the gate about what was said.
+    CommonMark-stateful (codex round 1, P2-3): an opening fence remembers
+    its run and only a matching closer ends it, a backtick fence's info
+    string may not contain a backtick (so ```` ```bad`tick ```` is a
+    paragraph line, not a silently-dropped delimiter), and only an
+    UNFENCED H2 delimits — the #637/#638 display-form discipline. Interior
+    lines are kept as content, so a fenced machine line is still read and
+    the calculator agrees with the gate about what was said.
     """
     collected: list[str] = []
     inside = False
     found = False
+    fence: str | None = None
     for raw in text.split("\n"):
         line = raw.rstrip("\r")
-        if _FENCE_RE.match(line):
+        if fence is not None:
+            close = _FENCE_CLOSE_RE.match(line)
+            if close and close.group(1)[0] == fence[0] \
+                    and len(close.group(1)) >= len(fence):
+                fence = None
+                continue
+            if inside:
+                collected.append(line)
+            continue
+        opener = _FENCE_OPEN_RE.match(line)
+        if opener and not (opener.group(1)[0] == "`"
+                           and "`" in opener.group(2)):
+            fence = opener.group(1)
             continue
         if match := _H2_RE.fullmatch(line):
             inside = match.group(1) == EXTRACTION_SECTION
@@ -297,6 +360,90 @@ def _validate_request(request: Request) -> None:
                 f"{request.rr_id}: df must be an integer, 'int,int', "
                 f"'none', or 'unavailable', got {df_value!r}"
             )
+        # Family-consistent df shape (codex round 1, P2-2): a t with an F
+        # df pair is a transcription slip, and refusing it HERE makes it a
+        # retryable gate diagnostic instead of a misleading not_computable
+        # receipt downstream.
+        family = request.fields["test_family"]
+        shape_rules = {
+            "t": (lambda v: _INT_RE.fullmatch(v),
+                  "a single integer df"),
+            "chi_square": (lambda v: _INT_RE.fullmatch(v),
+                           "a single integer df"),
+            "z": (lambda v: v == "none", "df 'none'"),
+            "F": (lambda v: _DF_PAIR_RE.fullmatch(v), "df as 'df1,df2'"),
+        }
+        if family in shape_rules and df_value != "unavailable":
+            accepts, description = shape_rules[family]
+            if not accepts(df_value):
+                raise ExtractionError(
+                    f"{request.rr_id}: a {family} statistic carries "
+                    f"{description} (or 'unavailable'), got {df_value!r}"
+                )
+    _validate_numeric_domain(request, procedure)
+
+
+def _validate_numeric_domain(request: Request, procedure: str) -> None:
+    """Shared gate/calculator domain bounds (security round 1, P1-2/P2-1).
+
+    Everything accepted here is verified computable: the char cap keeps
+    every token far inside float range, the p-magnitude cap is the
+    empirically-verified convergence domain of the tail functions, and the
+    decimal-places cap bounds every rounding-interval denominator. GRIM /
+    GRIMMER magnitudes are deliberately NOT capped here — their compute
+    layer refuses over-budget searches with the honest
+    `reachability_not_completed` instead.
+    """
+    numeric_keys = (
+        "statistic_value", "df", "reported_p_value", "n", "reported_mean",
+        "scale_min", "scale_max", "reported_sd", "df_reported", "stated_n",
+    )
+    for key in numeric_keys:
+        value = request.fields.get(key)
+        if value is None or value in ("unavailable", "none"):
+            continue
+        for token in re.split(r"[,\s]+", value):
+            if len(token) > _MAX_NUMERIC_CHARS:
+                raise ExtractionError(
+                    f"{request.rr_id}: {key} token {token!r} exceeds "
+                    f"{_MAX_NUMERIC_CHARS} characters; not a plausible "
+                    "manuscript value"
+                )
+    decimal_keys = {
+        "p_from_test_statistic": ("reported_p_value",),
+        "grim": ("reported_mean",),
+        "grimmer": ("reported_mean", "reported_sd"),
+        "n_from_df": (),
+    }[procedure]
+    for key in decimal_keys:
+        _, places = _parse_decimal(request.fields[key])
+        if places > _MAX_DECIMAL_PLACES:
+            raise ExtractionError(
+                f"{request.rr_id}: {key} reports more than "
+                f"{_MAX_DECIMAL_PLACES} decimal places; not a plausible "
+                "manuscript precision"
+            )
+    if procedure == "p_from_test_statistic":
+        statistic = request.fields["statistic_value"]
+        if statistic != "unavailable" and abs(
+                Fraction(statistic)) > _MAX_P_MAGNITUDE:
+            raise ExtractionError(
+                f"{request.rr_id}: statistic_value exceeds the verified "
+                f"convergence domain (|value| <= {_MAX_P_MAGNITUDE})"
+            )
+        df_value = request.fields["df"]
+        if df_value not in ("none", "unavailable"):
+            pair = _DF_PAIR_RE.fullmatch(df_value)
+            components = (
+                (int(pair.group(1)), int(pair.group(2))) if pair
+                else (int(df_value),)
+            )
+            if any(component > _MAX_P_MAGNITUDE
+                   for component in components):
+                raise ExtractionError(
+                    f"{request.rr_id}: df exceeds the verified "
+                    f"convergence domain (df <= {_MAX_P_MAGNITUDE})"
+                )
 
 
 # --- exact rational helpers ----------------------------------------------
@@ -362,22 +509,67 @@ def _fmt_p(value: float) -> str:
     return f"{value:.3g}"
 
 
+def _interval_text(reported: Fraction, places: int, rules: list[str],
+                   quantity: str) -> str:
+    """The reporting interval under the operative rounding rule(s), stated
+    with its true endpoint behavior (codex round 1, P1-2): a receipt must
+    never print a half-up-shaped interval for a truncation or ties-to-even
+    verdict — the interval line is part of what adjudication audits.
+    """
+    step = Fraction(1, 10 ** places)
+    half = step / 2
+    decimals = places + 1
+    if rules == ["truncation"]:
+        # Toward zero: [v, v+step) for v >= 0, (v-step, v] below.
+        if reported >= 0:
+            return (f"{_fmt_fraction(reported, decimals)} <= {quantity} < "
+                    f"{_fmt_fraction(reported + step, decimals)} "
+                    "(truncation)")
+        return (f"{_fmt_fraction(reported - step, decimals)} < {quantity} "
+                f"<= {_fmt_fraction(reported, decimals)} (truncation)")
+    low_text = _fmt_fraction(reported - half, decimals)
+    high_text = _fmt_fraction(reported + half, decimals)
+    if rules == ["half-up"]:
+        # Ties away from zero: the tie endpoint on the zero side is
+        # included, the other excluded.
+        if reported >= 0:
+            return (f"{low_text} <= {quantity} < {high_text} "
+                    "(half-up, ties away from zero)")
+        return (f"{low_text} < {quantity} <= {high_text} "
+                "(half-up, ties away from zero)")
+    if rules == ["half-even"]:
+        return (f"{low_text} <= {quantity} <= {high_text} (endpoint ties "
+                "resolve to the even last digit)")
+    return (f"{low_text} <= {quantity} <= {high_text} (interval interior; "
+            "endpoint ties depend on the unstated rule, and a verdict is "
+            "issued only where half-up and ties-to-even agree)")
+
+
 # --- stdlib distribution tails -------------------------------------------
 
-def _reg_inc_beta(a: float, b: float, x: float) -> float:
-    """Regularized incomplete beta I_x(a, b), continued-fraction form."""
+def _reg_inc_beta(a: float, b: float, x: float,
+                  one_minus_x: float | None = None) -> float:
+    """Regularized incomplete beta I_x(a, b), continued-fraction form.
+
+    Callers that know the complement analytically pass it explicitly: near
+    x = 1 the float subtraction 1.0 - x loses every significant digit and a
+    near-zero t/F statistic would collapse to exactly 1.0 (codex round 1,
+    P1-1) — a wrong verdict, not just a display error.
+    """
+    if one_minus_x is None:
+        one_minus_x = 1.0 - x
     if x <= 0.0:
         return 0.0
-    if x >= 1.0:
+    if one_minus_x <= 0.0:
         return 1.0
     ln_front = (
         math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
-        + a * math.log(x) + b * math.log1p(-x)
+        + a * math.log(x) + b * math.log(one_minus_x)
     )
     front = math.exp(ln_front)
     if x < (a + 1.0) / (a + b + 2.0):
         return front * _betacf(a, b, x) / a
-    return 1.0 - front * _betacf(b, a, 1.0 - x) / b
+    return 1.0 - front * _betacf(b, a, one_minus_x) / b
 
 
 def _betacf(a: float, b: float, x: float) -> float:
@@ -390,7 +582,7 @@ def _betacf(a: float, b: float, x: float) -> float:
         d = tiny
     d = 1.0 / d
     h = d
-    for m in range(1, 400):
+    for m in range(1, 20000):
         m2 = 2 * m
         numerator = m * (b - m) * x / ((qam + m2) * (a + m2))
         d = 1.0 + numerator * d
@@ -427,7 +619,7 @@ def _reg_gamma_q(a: float, x: float) -> float:
         term = 1.0 / a
         total = term
         current = a
-        for _ in range(1000):
+        for _ in range(20000):
             current += 1.0
             term *= x / current
             total += term
@@ -443,7 +635,7 @@ def _reg_gamma_q(a: float, x: float) -> float:
     c = 1.0 / tiny
     d = 1.0 / b0
     h = d
-    for i in range(1, 1000):
+    for i in range(1, 20000):
         an = -i * (i - a)
         b0 += 2.0
         d = an * d + b0
@@ -464,8 +656,9 @@ def _reg_gamma_q(a: float, x: float) -> float:
 
 
 def t_tail_two(t: float, df: int) -> float:
-    x = df / (df + t * t)
-    return _reg_inc_beta(df / 2.0, 0.5, x)
+    denominator = df + t * t
+    return _reg_inc_beta(df / 2.0, 0.5, df / denominator,
+                         one_minus_x=(t * t) / denominator)
 
 
 def t_tail_upper(t: float, df: int) -> float:
@@ -482,8 +675,9 @@ def z_tail_upper(z: float) -> float:
 
 
 def f_tail_upper(f_value: float, df1: int, df2: int) -> float:
-    x = df2 / (df2 + df1 * f_value)
-    return _reg_inc_beta(df2 / 2.0, df1 / 2.0, x)
+    denominator = df2 + df1 * f_value
+    return _reg_inc_beta(df2 / 2.0, df1 / 2.0, df2 / denominator,
+                         one_minus_x=(df1 * f_value) / denominator)
 
 
 def chi2_tail_upper(chi2: float, df: int) -> float:
@@ -699,6 +893,8 @@ def _reachable_sums(n: int, lo: int, hi: int, reported: Fraction,
     step = Fraction(1, 10 ** places)
     window_low = max(n * lo, math.floor((reported - step) * n) - 1)
     window_high = min(n * hi, math.ceil((reported + step) * n) + 1)
+    if window_high - window_low > _SUM_WINDOW_BUDGET:
+        raise _BudgetExceeded
     return [
         total for total in range(window_low, window_high + 1)
         if _rounds_to(Fraction(total, n), reported, places, rule)
@@ -726,16 +922,17 @@ def _grim_receipt(request: Request) -> Receipt:
     reported, places = _parse_decimal(request["reported_mean"])
     mean_text = request["reported_mean"]
     rules = _grim_rules(request)
-    reachable = {rule: _reachable_sums(n, lo, hi, reported, places, rule)
-                 for rule in rules}
+    try:
+        reachable = {rule: _reachable_sums(n, lo, hi, reported, places, rule)
+                     for rule in rules}
+    except _BudgetExceeded:
+        return _not_computable(
+            base, "reachability_not_completed",
+            "the candidate-sum search exceeds this calculator's documented "
+            "window budget",
+        )
     verdicts = {rule: bool(sums) for rule, sums in reachable.items()}
-    half = Fraction(1, 2 * 10 ** places)
-    interval = (
-        f"{_fmt_fraction(reported - half, places + 1)} <= mean < "
-        f"{_fmt_fraction(reported + half, places + 1)}"
-        + (" (ties per stated rule)" if len(rules) == 1
-           else " (half-up; ties-to-even agrees)")
-    )
+    interval = _interval_text(reported, places, rules, "mean")
     neighbor_places = max(places + 1, 4)
     neighbors = "; ".join(
         f"{total}/{n} = {_fmt_fraction(value, neighbor_places)}"
@@ -792,8 +989,10 @@ def _attainable_sumsq(n: int, lo: int, hi: int, total: int) -> frozenset:
     budget is exceeded rather than approximating."""
     values = list(range(lo, hi + 1))
     cache: dict[tuple[int, int, int], frozenset] = {}
+    retained = 0
 
     def rec(index: int, count: int, remaining: int) -> frozenset:
+        nonlocal retained
         if count == 0:
             return frozenset({0}) if remaining == 0 else frozenset()
         if index == len(values) - 1:
@@ -804,7 +1003,7 @@ def _attainable_sumsq(n: int, lo: int, hi: int, total: int) -> frozenset:
         key = (index, count, remaining)
         if key in cache:
             return cache[key]
-        if len(cache) > _STATE_BUDGET:
+        if len(cache) > _STATE_BUDGET or retained > _ELEMENT_BUDGET:
             raise _BudgetExceeded
         value = values[index]
         rest_lo, rest_hi = values[index + 1], values[-1]
@@ -818,6 +1017,7 @@ def _attainable_sumsq(n: int, lo: int, hi: int, total: int) -> frozenset:
                 results.add(chosen * value * value + sub)
         frozen = frozenset(results)
         cache[key] = frozen
+        retained += len(frozen)
         return frozen
 
     return rec(0, n, total)
@@ -836,6 +1036,12 @@ def _sd_reachable(variances: set[Fraction], reported: Fraction, places: int,
         half = step / 2
         low, high = reported - half, reported + half
         low_closed = None  # endpoint membership decided by the tie rule
+    if high <= 0:
+        # A nonpositive reporting interval is unreachable outright: an SD
+        # is nonnegative by definition, and clamping only the lower
+        # endpoint before squaring silently inverted the interval for a
+        # negative reported SD (codex round 1, P1-3).
+        return False
     low = max(low, Fraction(0))
     low_sq, high_sq = low * low, high * high
     for variance in variances:
@@ -858,14 +1064,25 @@ def _grimmer_receipt(request: Request) -> Receipt:
     if isinstance(ints, Receipt):
         return ints
     n, lo, hi = ints
+    convention = request["sd_convention"]
     if n < 2:
-        return _not_computable(base, "analytic_n_ambiguous",
-                               "an SD needs at least two responses")
+        # A population SD is defined (zero) for one response; a sample SD
+        # is not (codex round 1, P2-1). Only the genuinely undefined or
+        # convention-dependent cases stop here.
+        if convention == "sample":
+            return _not_computable(
+                base, "analytic_n_ambiguous",
+                "a sample SD is undefined for a single response")
+        if convention == "unstated":
+            return _not_computable(
+                base, "sd_convention_unknown",
+                "with one response a population SD is defined (zero) but "
+                "a sample SD is not; the verdict depends on the unstated "
+                "convention")
     mean_reported, mean_places = _parse_decimal(request["reported_mean"])
     sd_reported, sd_places = _parse_decimal(request["reported_sd"])
     sd_text = request["reported_sd"]
     rules = _grim_rules(request)
-    convention = request["sd_convention"]
     conventions = (
         ["sample", "population"] if convention == "unstated"
         else [convention]
@@ -889,6 +1106,9 @@ def _grimmer_receipt(request: Request) -> Receipt:
                         variances["sample"].add(centered / (n - 1))
                     if "population" in variances:
                         variances["population"].add(centered / n)
+                    # n == 1 reaches here only as population-stated, where
+                    # centered is identically zero; the sample division
+                    # above is guarded by the n < 2 gate.
             variance_sets[rule] = variances
             per_rule[rule] = {
                 conv: (
@@ -912,12 +1132,8 @@ def _grimmer_receipt(request: Request) -> Receipt:
         f"[{lo},{hi}] is enumerated exhaustively and the implied SD is "
         "compared exactly on its square"
     )
-    step = Fraction(1, 10 ** sd_places)
-    half = step / 2
-    base.rounding_interval = (
-        f"{_fmt_fraction(max(sd_reported - half, Fraction(0)), sd_places + 1)}"
-        f" <= SD < {_fmt_fraction(sd_reported + half, sd_places + 1)}"
-    )
+    base.rounding_interval = _interval_text(
+        sd_reported, sd_places, rules, "SD")
     base.comparison_rule = (
         f"the reported SD {sd_text} at {sd_places} decimals is reachable "
         "only if some attainable SD lands in its rounding interval; "
@@ -1141,7 +1357,14 @@ def main(argv=None) -> int:
         print(f"extraction rejected: {exc}", file=sys.stderr)
         return 2
     try:
-        args.output.write_text(receipts, encoding="utf-8")
+        # Exclusive create: the receipts file is bundle evidence and joins
+        # the harness's write-once discipline (security round 1, P3-1).
+        # newline="\n" pins the artifact bytes: default newline translation
+        # would emit CRLF on Windows and the identity gate compares bytes
+        # (codex round 1, P2-5).
+        with args.output.open("x", encoding="utf-8",
+                              newline="\n") as stream:
+            stream.write(receipts)
     except OSError as exc:
         print(f"cannot write receipts: {exc}", file=sys.stderr)
         return 2

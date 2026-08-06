@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _e4_evidence as evidence  # noqa: E402
 import dispatch_e4_panel as harness  # noqa: E402
+import recompute_receipts as recompute  # noqa: E402
 
 
 class RecoveryError(RuntimeError):
@@ -360,9 +361,48 @@ def _result_from_state(state: dict, bundle_root: Path) \
         if stage == "methodology.recompute":
             # #610 step 5: the calculator stage's evidence is its receipts
             # artifact plus its log — it is not a model call and has no
-            # response/gate pair.
+            # response/gate pair. Because the calculator is deterministic,
+            # the receipts are additionally RE-DERIVED here from the
+            # gate-passed extraction and compared byte-for-byte (security
+            # round 1, P2-5): a tampered receipts artifact cannot resume.
             _plain_file(bundle_root, harness.RECEIPTS_ARTIFACT, stage)
             _plain_file(bundle_root, "methodology.recompute.log", stage)
+            extraction_text = None
+            for candidate in sorted(
+                    bundle_root.glob("methodology.extraction.a*.md")):
+                gate = candidate.with_name(
+                    candidate.name.removesuffix(".md") + ".gate.log")
+                try:
+                    evidence.assert_plain_file(candidate, bundle_root)
+                    evidence.assert_plain_file(gate, bundle_root)
+                    gate_lines = gate.read_text(
+                        encoding="utf-8").splitlines()
+                except (evidence.EvidencePathError, OSError,
+                        UnicodeDecodeError):
+                    continue
+                terminal = next(
+                    (line for line in reversed(gate_lines)
+                     if line.strip()), "")
+                if terminal == "EXTRACTION-CONFORMANCE: PASS":
+                    extraction_text = candidate.read_text(encoding="utf-8")
+            if extraction_text is None:
+                raise RecoveryError(
+                    "methodology.recompute lacks a gate-passed extraction "
+                    "artifact to re-derive the receipts from")
+            try:
+                expected_receipts = recompute.compute_receipts(
+                    recompute.parse_extraction(extraction_text))
+            except (recompute.ExtractionError, ArithmeticError) as failure:
+                raise RecoveryError(
+                    "the preserved extraction no longer computes: "
+                    f"{failure}") from failure
+            actual_receipts = _read_plain_text(
+                bundle_root, harness.RECEIPTS_ARTIFACT, stage)
+            if actual_receipts != expected_receipts:
+                raise RecoveryError(
+                    "the receipts artifact disagrees with the "
+                    "deterministic re-derivation from the preserved "
+                    "extraction")
             continue
         if stage == "synthesis":
             pattern = "synthesis.a*.md"
@@ -374,6 +414,16 @@ def _result_from_state(state: dict, bundle_root: Path) \
                 "phase1": "PHASE1-CONFORMANCE: PASS",
                 "extraction": "EXTRACTION-CONFORMANCE: PASS",
             }.get(phase, "PHASE-CONFORMANCE: PASS")
+        # #610 step 5 (security round 1, P2-5): the evidence contract names
+        # the injected-receipt identity gate as contract content, so a
+        # methodology Phase 2 in a panel that ran the calculator must show
+        # the gate's distinct witness line, not just the generic pass.
+        required_markers = (
+            ("RECEIPT-IDENTITY: PASS",)
+            if stage == "methodology.phase2"
+            and "methodology.recompute" in completed
+            else ()
+        )
         candidates = sorted(bundle_root.glob(pattern))
         witnessed = False
         for candidate in candidates:
@@ -392,7 +442,8 @@ def _result_from_state(state: dict, bundle_root: Path) \
                     from failure
             terminal = next(
                 (line for line in reversed(gate_lines) if line.strip()), "")
-            if terminal == pass_marker:
+            if terminal == pass_marker and all(
+                    marker in gate_lines for marker in required_markers):
                 witnessed = True
                 break
         if not witnessed:

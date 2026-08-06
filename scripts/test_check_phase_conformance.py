@@ -4161,3 +4161,25 @@ def test_injected_file_without_heading_is_a_contract_error(tmp_path, capsys):
         "### AR1\nprocedure_id: grim\n",
     )) == phase.EXIT_CONTRACT
     assert "[INJECTED-RECEIPTS-INVALID:" in capsys.readouterr().out
+
+
+def test_injected_identity_pass_emits_its_witness_marker(tmp_path, capsys):
+    injected = injected_receipts_text()
+    assert phase.main(injected_cli(
+        tmp_path, faithful_card_lines(injected), injected
+    )) == phase.EXIT_PASS
+    assert "RECEIPT-IDENTITY: PASS" in capsys.readouterr().out
+
+
+def test_injected_identity_rejects_a_decorated_finding_ref(tmp_path, capsys):
+    # codex round 1, P2-4: the receipt GRAMMAR tolerates a decorated
+    # finding_ref, but under injection only the plain spelling is the
+    # permitted addition.
+    injected = injected_receipts_text()
+    lines = [
+        "- **finding_ref**: W1" if line == "finding_ref: W1" else line
+        for line in faithful_card_lines(injected)
+    ]
+    assert phase.main(injected_cli(tmp_path, lines, injected)) == \
+        phase.EXIT_CONFORMANCE
+    assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out

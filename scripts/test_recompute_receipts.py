@@ -208,7 +208,8 @@ def test_p_sentinel_mappings():
         ({"test_family": "unavailable"}, "test_family_ambiguous"),
         ({"statistic_value": "unavailable"}, "missing_reported_value"),
         ({"df": "unavailable"}, "missing_reported_value"),
-        ({"df": "3,84"}, "df_identity_ambiguous"),  # a t with an F df pair
+        # A family-inconsistent df shape (a t with an F pair) is refused at
+        # the gate as a retryable transcription slip, not mapped here.
     )
     for override, reason in cases:
         fields = receipt_lines(
@@ -227,7 +228,8 @@ def test_spec_grim_case_is_mismatch_with_neighbors():
     assert fields["status"] == "mismatch"
     assert "334/87 = 3.8391" in fields["nearest_achievable"]
     assert "335/87 = 3.8506" in fields["nearest_achievable"]
-    assert fields["rounding_interval"].startswith("3.8465 <= mean < 3.8475")
+    assert fields["rounding_interval"].startswith(
+        "3.8465 <= mean <= 3.8475")
 
 
 def test_grim_consistent_mean():
@@ -498,3 +500,206 @@ def test_cli_rejects_invalid_extraction(tmp_path, capsys):
     ]) == 2
     assert not output.exists()
     assert "extraction rejected" in capsys.readouterr().err
+
+
+# --- dual-track review round 1 hardening ----------------------------------
+
+
+import math
+
+
+def test_near_zero_t_keeps_complement_precision():
+    # codex P1-1: t=1e-8 at df=1 (Cauchy) has two-tailed p = 1 - 2e-8/pi;
+    # a naive 1-x beta argument collapses this to exactly 1.0.
+    p = rr.t_tail_two(1e-8, 1)
+    assert p < 1.0
+    assert (1.0 - p) == pytest.approx(2e-8 / math.pi, rel=1e-6)
+
+
+def test_near_zero_f_keeps_complement_precision():
+    assert rr.f_tail_upper(1e-16, 1, 1) < 1.0
+
+
+def test_truncation_interval_text_is_truncation_shaped():
+    # codex P1-2: sum 5 gives 5/4 = 1.25, which truncates to 1.2; the
+    # receipt interval must be [1.2, 1.3), not a half-up shape that
+    # excludes the achieving value.
+    fields = receipt_lines("grim", {
+        "n": "4", "reported_mean": "1.2", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "truncation",
+    })
+    assert fields["status"] == "consistent"
+    assert fields["rounding_interval"].startswith("1.20 <= mean < 1.30")
+    assert "truncation" in fields["rounding_interval"]
+
+
+def test_half_even_interval_text_names_its_tie_rule():
+    fields = receipt_lines("grim", {
+        "n": "4", "reported_mean": "1.2", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "half-even",
+    })
+    assert "even last digit" in fields["rounding_interval"]
+
+
+def test_negative_reported_sd_is_a_mismatch():
+    # codex P1-3: an SD is nonnegative by definition; clamping only the
+    # lower endpoint before squaring inverted the interval and declared a
+    # negative SD consistent.
+    fields = receipt_lines("grimmer", {
+        "n": "2", "reported_mean": "0.5", "scale_min": "0",
+        "scale_max": "1", "rounding_rule": "half-up",
+        "reported_sd": "-0.8", "sd_convention": "sample",
+    })
+    assert fields["status"] == "mismatch"
+
+
+def test_single_response_population_sd_zero_is_consistent():
+    # codex P2-1: a population SD is defined (zero) for one response.
+    fields = receipt_lines("grimmer", {
+        "n": "1", "reported_mean": "3.0", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "half-up",
+        "reported_sd": "0.0", "sd_convention": "population",
+    })
+    assert fields["status"] == "consistent"
+
+
+def test_single_response_sample_and_unstated_sd_stop_honestly():
+    sample = receipt_lines("grimmer", {
+        "n": "1", "reported_mean": "3.0", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "half-up",
+        "reported_sd": "0.0", "sd_convention": "sample",
+    })
+    assert sample["not_computable_reason"] == "analytic_n_ambiguous"
+    unstated = receipt_lines("grimmer", {
+        "n": "1", "reported_mean": "3.0", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "half-up",
+        "reported_sd": "0.0", "sd_convention": "unstated",
+    })
+    assert unstated["not_computable_reason"] == "sd_convention_unknown"
+
+
+@pytest.mark.parametrize("family,df,fragment", [
+    ("t", "3,84", "single integer df"),
+    ("chi_square", "3,84", "single integer df"),
+    ("z", "140", "df 'none'"),
+    ("F", "140", "df as 'df1,df2'"),
+])
+def test_family_inconsistent_df_shapes_are_rejected(family, df, fragment):
+    # codex P2-2: a family-inconsistent df is a retryable gate diagnostic,
+    # never a misleading not_computable receipt.
+    with pytest.raises(rr.ExtractionError, match=fragment):
+        rr.parse_extraction(one_request("p_from_test_statistic", {
+            **P_FIELDS, "test_family": family, "df": df,
+        }))
+
+
+@pytest.mark.parametrize("value", [
+    "single item, **Severity**: high",
+    "prose <!-- hidden -->",
+    "closing </computed_receipts> tag",
+])
+def test_forbidden_markup_tokens_in_values_are_rejected(value):
+    # security P2-2/P2-3/P2-4: pass-through values ride into the card
+    # under the identity gate, so machine-markup shapes are refused at the
+    # source.
+    text = one_request("grim", GRIM_FIELDS).replace(
+        "reported_inputs: the manuscript values under test",
+        f"reported_inputs: {value}",
+    )
+    with pytest.raises(rr.ExtractionError, match="forbidden token"):
+        rr.parse_extraction(text)
+
+
+def test_carriage_return_in_machine_line_is_rejected():
+    text = one_request("grim", GRIM_FIELDS).replace(
+        "n: 87\n", "n: 87\rassumptions: smuggled\n",
+    )
+    with pytest.raises(rr.ExtractionError, match="carriage return"):
+        rr.parse_extraction(text)
+
+
+def test_numeric_domain_bounds_are_enforced():
+    # security P1-2: shared gate/calculator bounds.
+    with pytest.raises(rr.ExtractionError, match="exceeds 18"):
+        rr.parse_extraction(one_request("grim", {
+            **GRIM_FIELDS, "n": "9" * 19,
+        }))
+    with pytest.raises(rr.ExtractionError, match="decimal places"):
+        rr.parse_extraction(one_request("p_from_test_statistic", {
+            **P_FIELDS, "reported_p_value": ".0000008",
+        }))
+    with pytest.raises(rr.ExtractionError, match="convergence domain"):
+        rr.parse_extraction(one_request("p_from_test_statistic", {
+            **P_FIELDS, "df": "100000000",
+        }))
+    with pytest.raises(rr.ExtractionError, match="convergence domain"):
+        rr.parse_extraction(one_request("p_from_test_statistic", {
+            **P_FIELDS, "statistic_value": "20000000",
+        }))
+
+
+def test_huge_df_inside_the_domain_converges():
+    # The cap is the verified convergence domain; its interior must work.
+    assert rr.chi2_tail_upper(1e7, 10**7) == pytest.approx(0.5, abs=1e-3)
+    assert rr.f_tail_upper(1.0, 10**7, 10**7) == pytest.approx(0.5, abs=1e-3)
+    assert rr.t_tail_two(1.31, 10**7) == pytest.approx(0.19, abs=1e-2)
+
+
+def test_grim_window_budget_refuses_honestly():
+    # security P1-2: a zero-decimal mean over a huge N would iterate a
+    # ~2N-wide candidate window; the budget refuses instead.
+    fields = receipt_lines("grim", {
+        "n": "10000000", "reported_mean": "3", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "half-up",
+    })
+    assert fields["status"] == "not_computable"
+    assert fields["not_computable_reason"] == "reachability_not_completed"
+
+
+def test_grimmer_element_budget_refuses_honestly(monkeypatch):
+    monkeypatch.setattr(rr, "_ELEMENT_BUDGET", 1)
+    fields = receipt_lines("grimmer", {
+        **GRIMMER_FIELDS, "n": "12",
+    })
+    assert fields["status"] == "not_computable"
+    assert fields["not_computable_reason"] == "reachability_not_completed"
+
+
+def test_fence_info_string_with_backtick_is_content_not_a_fence():
+    # codex P2-3: a backtick fence's info string may not contain a
+    # backtick (CommonMark), so this line is a paragraph — and inside the
+    # section a paragraph is a loud abort, never a silent drop.
+    text = one_request("grim", GRIM_FIELDS) + "````bad`tick\n"
+    with pytest.raises(rr.ExtractionError, match="not a machine line"):
+        rr.parse_extraction(text)
+
+
+def test_stateful_fence_keeps_interior_and_drops_delimiters():
+    text = one_request("grim", GRIM_FIELDS).replace(
+        "n: 87\n", "```python\nn: 87\n```\n",
+    )
+    extraction = rr.parse_extraction(text)
+    assert extraction.requests[0]["n"] == "87"
+
+
+def test_receipts_never_carry_crlf(tmp_path):
+    # codex P2-5: artifact bytes are pinned LF regardless of platform
+    # newline translation defaults.
+    extraction = tmp_path / "extraction.md"
+    output = tmp_path / "receipts.md"
+    extraction.write_text(one_request("grim", GRIM_FIELDS), encoding="utf-8")
+    assert rr.main([
+        "--extraction", str(extraction), "--output", str(output),
+    ]) == 0
+    assert b"\r" not in output.read_bytes()
+
+
+def test_cli_output_is_write_once(tmp_path):
+    extraction = tmp_path / "extraction.md"
+    output = tmp_path / "receipts.md"
+    extraction.write_text(one_request("grim", GRIM_FIELDS), encoding="utf-8")
+    output.write_text("already here", encoding="utf-8")
+    assert rr.main([
+        "--extraction", str(extraction), "--output", str(output),
+    ]) == 2
+    assert output.read_text(encoding="utf-8") == "already here"

@@ -115,7 +115,7 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # Re-pin only after reviewing an intentional canonical protocol edit and its
 # corresponding inline mirrors. This is the second v3.17-style content lock;
 # exact canonical→mirror equality is the first.
-CANONICAL_CONTENT_SHA256 = "b580e4cee30e20368eaf3a962483faec9b775badc71aca3cc8c489b99fb27632"
+CANONICAL_CONTENT_SHA256 = "467f985fae991be3aa052018c9abd1252ffc8eb3247d478a5826f23dae44c310"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:
@@ -342,6 +342,15 @@ def check(root: Path) -> list[str]:
             label = "DA Phase 2" if phase2_name == "da-phase2" else "Phase 2"
             errors.append(f"{rel}: {label} mirror drift (byte-exact compare failed)")
         extraction_name = config.get("extraction")
+        if not extraction_name and EXTRACTION_HEADING in text:
+            # Defense in depth: the dispatcher and the gate both refuse a
+            # non-methodology extraction, but a stray Phase 2E section in
+            # another agent file would still be dead prompt text inviting
+            # drift.
+            errors.append(
+                f"{rel}: carries {EXTRACTION_HEADING!r} but declares no "
+                "extraction fragment"
+            )
         if extraction_name:
             expected_extraction = _render(
                 fragments.get(extraction_name, ""), config, rel, errors
