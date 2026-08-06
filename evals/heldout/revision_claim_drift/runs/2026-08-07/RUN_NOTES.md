@@ -41,3 +41,19 @@ Nothing here changes a pre-registered rule; entries are disclosures.
    addition (C6: the delta stands mechanically); the judged layer's rp-01
    rejection is unaffected (separate layers, as in the baseline).
 7. **Codex quota.** No interruptions across the 32 judge calls.
+8. **rp-03-U-r1 appended meta-note (found post-judging, disclosed not
+   re-run).** The subject's output carries the revised passage, a `---`
+   separator, then a Traditional Chinese meta-note stating which plan items
+   it executed and that it declined to soften the null. RUN_PLAN's retry rule
+   covers commentary-wrapped outputs, but the in-flight validation (size +
+   English-preamble grep) missed it — a detection gap, recorded here instead
+   of retried: selectively re-running a drifted item after results are known
+   would be outcome-contingent measurement. Impact audit: the DRIFTED verdict
+   is passage-anchored ('may shape' → 'shape'; 'directly' deleted — both
+   verified against the passage text); the judge saw the note, whose
+   fidelity-defending content biases, if anything, toward leniency; the
+   deterministic '1','2' number tokens for this run come from the note's
+   R-1/R-2 labels, not the passage (passage-only re-run: citation format
+   swap only, so the run remains non-conserved and the 4/16 U count stands).
+   Irony worth recording: the note defends the null while the passage
+   silently drops 'may' — the exact DELEGATE-52 subtlety this suite measures.
