@@ -535,9 +535,11 @@ set; the behavioral measurement is the manual protocol above.
 ## Measurement contract (#654)
 
 New scored rows opt into the `heldout-measurement/1.0` envelope
-(`evals/heldout/MEASUREMENT_CONTRACT.md`, `suite_class: seeded_manifest_adjudicated`).
-The E4 machinery in this README — the `reviewer-e4/*` evidence contract, blocked-run
-separation, closed record status fields, replicate discipline, raw-output
-preservation — remains the normative layer and is unchanged; the envelope adds the
-standardized judge/adjudication disclosure around it. Existing rows are never
-retrofitted.
+(`evals/heldout/MEASUREMENT_CONTRACT.md`, `suite_class: seeded_manifest_adjudicated`
+per `evals/heldout/suite_registry.json`). The E4 machinery in this README — the
+`reviewer-e4/*` evidence contract, blocked-run separation, closed record status
+fields, replicate discipline, raw-output preservation — remains the normative layer
+and is unchanged. The adoption surface is the **cohort roll-up row**: a
+`measurement-<date>.json` summary in envelope form whose `raw_outputs.paths`
+reference the per-run records under `runs/`; per-run record shapes emitted by
+`dispatch_e4_panel.py` do not change. Existing rows are never retrofitted.

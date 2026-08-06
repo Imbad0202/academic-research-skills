@@ -2,21 +2,25 @@
 
 Discipline mirrors the repo's other checker test suites: one valid fixture
 must pass with zero errors, and every single-field mutation that violates a
-contract invariant must fail with an error naming the invariant. Warnings are
-asserted separately (they never gate).
+contract invariant must fail. Checker-layer invariants assert their I-number;
+schema-layer violations assert non-empty errors. Warnings never gate and are
+asserted separately.
 
 Run: pytest scripts/test_check_heldout_measurement_report.py
 """
 from __future__ import annotations
 
 import copy
-import json
 
 import pytest
 
-from check_heldout_measurement_report import validate_report
+from check_heldout_measurement_report import (
+    contract_version,
+    is_contract_report,
+    validate_report,
+)
 
-CONTRACT_MARKER = "heldout-measurement/1.0"
+CONTRACT_MARKER = contract_version()
 
 
 def make_valid_report() -> dict:
@@ -36,11 +40,7 @@ def make_valid_report() -> dict:
                 "sampling": "provider default",
             },
         },
-        "judge_plan": {
-            "minimum_for_scored": 2,
-            "actual": 2,
-            "exception": "none",
-        },
+        "judge_plan": {"exception": "none"},
         "judges": [
             {
                 "judge_id": "j1",
@@ -118,6 +118,21 @@ def make_valid_report() -> dict:
     }
 
 
+def make_valid_mechanical_report() -> dict:
+    report = make_valid_report()
+    report["suite"] = "pipeline_behavior_robustness"
+    report["suite_class"] = "mechanical_match"
+    report["judges"] = []
+    report["judge_plan"] = {"exception": "mechanical_suite"}
+    report["adjudication"] = {"applies": False}
+    report["aggregate"]["agreement"] = {
+        "rate": None,
+        "divergent_items": [],
+        "note": "mechanical match; no judges",
+    }
+    return report
+
+
 def errors_of(report: dict) -> list[str]:
     errors, _warnings = validate_report(report)
     return errors
@@ -135,9 +150,8 @@ def test_valid_report_passes():
     assert errors_of(make_valid_report()) == []
 
 
-def test_valid_report_json_roundtrip_passes():
-    report = json.loads(json.dumps(make_valid_report()))
-    assert errors_of(report) == []
+def test_valid_mechanical_report_passes():
+    assert errors_of(make_valid_mechanical_report()) == []
 
 
 # ------------------------------------------------------------- opt-in marker
@@ -150,10 +164,14 @@ def test_wrong_contract_marker_fails():
 
 
 def test_is_contract_report_detection():
-    from check_heldout_measurement_report import is_contract_report
-
     assert is_contract_report(make_valid_report())
+    assert is_contract_report({"measurement_contract": "heldout-measurement/9.9"})
     assert not is_contract_report({"measurement_date": "2026-07-22"})
+
+
+def test_contract_version_single_sourced_from_schema():
+    assert CONTRACT_MARKER.startswith("heldout-measurement/")
+    assert make_valid_report()["measurement_contract"] == CONTRACT_MARKER
 
 
 # ------------------------------------------------------------- schema layer
@@ -165,12 +183,14 @@ def test_is_contract_report_detection():
         "suite",
         "suite_class",
         "measurement_date",
+        "decision_relevant",
         "subject",
         "judge_plan",
         "judges",
         "aggregate",
         "replicates",
         "adjudication",
+        "attempts",
         "raw_outputs",
         "verdict",
         "caveats",
@@ -218,62 +238,120 @@ def test_empty_caveats_fails():
     assert errors_of(report)
 
 
-# --------------------------------------------------- multi-judge invariants
-
-
-def test_judge_count_mismatch_fails():
+def test_declared_judge_plan_minimum_rejected():
+    """The derived-minimum design: author-declared minimums are not a field."""
     report = make_valid_report()
-    report["judge_plan"]["actual"] = 3
-    assert any("I1" in e for e in errors_of(report))
+    report["judge_plan"]["minimum_for_scored"] = 1
+    assert errors_of(report)
+
+
+def test_schema_invalid_short_circuits_invariants():
+    report = make_valid_report()
+    del report["judges"]
+    errors = errors_of(report)
+    assert errors
+    assert all(e.startswith("schema ") for e in errors)
+
+
+# ------------------------------------------- suite-class branches (schema)
+
+
+def test_zero_judges_non_mechanical_fails():
+    report = make_valid_report()
+    report["judges"] = []
+    report["judge_plan"]["exception"] = "mechanical_suite"
+    assert errors_of(report)
+
+
+def test_llm_judged_adjudication_applies_false_fails():
+    report = make_valid_report()
+    report["adjudication"] = {"applies": False}
+    assert errors_of(report)
+
+
+def test_mechanical_exception_on_llm_judged_fails():
+    report = make_valid_report()
+    report["judge_plan"]["exception"] = "mechanical_suite"
+    assert errors_of(report)
+
+
+def test_applies_false_with_rubric_fails():
+    report = make_valid_mechanical_report()
+    report["adjudication"] = {"applies": False, "rubric_ref": "sneaky.md"}
+    assert errors_of(report)
+
+
+# --------------------------------------------------- multi-judge invariants
 
 
 def test_single_judge_without_exception_fails():
     report = make_valid_report()
     report["judges"] = [report["judges"][0]]
-    report["judge_plan"]["actual"] = 1
+    report["aggregate"]["agreement"] = {
+        "rate": None,
+        "divergent_items": [],
+        "note": "single judge",
+    }
     assert any("I2" in e for e in errors_of(report))
 
 
 def test_single_judge_with_legacy_exception_passes():
     report = make_valid_report()
     report["judges"] = [report["judges"][0]]
-    report["judge_plan"]["actual"] = 1
     report["judge_plan"]["exception"] = "legacy_comparability"
-    assert errors_of(report) == []
-
-
-def test_zero_judges_fails_even_with_exception():
-    report = make_valid_report()
-    report["judges"] = []
-    report["judge_plan"]["actual"] = 0
-    report["judge_plan"]["exception"] = "mechanical_suite"
-    assert errors_of(report)
-
-
-def test_mechanical_suite_zero_judges_allowed():
-    report = make_valid_report()
-    report["suite_class"] = "mechanical_match"
-    report["judges"] = []
-    report["judge_plan"] = {
-        "minimum_for_scored": 0,
-        "actual": 0,
-        "exception": "mechanical_suite",
-    }
-    report["adjudication"] = {"applies": False}
     report["aggregate"]["agreement"] = {
         "rate": None,
         "divergent_items": [],
-        "note": "mechanical match; no judges",
+        "note": "legacy-comparability row keeps the original judge",
     }
     assert errors_of(report) == []
 
 
-# ---------------------------------------------------- aggregation invariants
+def test_single_family_judges_fail():
+    report = make_valid_report()
+    report["judges"][1]["model_family"] = "openai"
+    assert any("I2" in e for e in errors_of(report))
+
+
+def test_non_decision_relevant_single_judge_passes():
+    report = make_valid_report()
+    report["decision_relevant"] = False
+    report["judges"] = [report["judges"][0]]
+    report["aggregate"]["agreement"] = {
+        "rate": None,
+        "divergent_items": [],
+        "note": "seed run, single judge",
+    }
+    assert errors_of(report) == []
+
+
+# ------------------------------------------------- agreement-rate invariant
+
+
+def test_wrong_agreement_rate_fails():
+    report = make_valid_report()
+    report["aggregate"]["agreement"]["rate"] = 0.9
+    assert any("I1" in e for e in errors_of(report))
+
+
+def test_null_rate_with_comparable_items_fails():
+    report = make_valid_report()
+    report["aggregate"]["agreement"]["rate"] = None
+    assert any("I1" in e for e in errors_of(report))
+
+
+def test_nonnull_rate_without_comparable_items_fails():
+    report = make_valid_mechanical_report()
+    report["aggregate"]["agreement"]["rate"] = 1.0
+    assert any("I1" in e for e in errors_of(report))
+
+
+# ---------------------------------------------------- divergence invariants
 
 
 def test_divergent_item_unknown_id_fails():
     report = make_valid_report()
-    report["aggregate"]["agreement"]["divergent_items"] = ["rp-99"]
+    report["aggregate"]["agreement"]["divergent_items"] = ["rp-02", "rp-99"]
     assert any("I3" in e for e in errors_of(report))
 
 
@@ -286,7 +364,9 @@ def test_missing_divergent_items_field_fails():
 def test_actual_cross_judge_divergence_not_listed_fails():
     report = make_valid_report()
     report["aggregate"]["agreement"]["divergent_items"] = []
-    assert any("I8" in e for e in errors_of(report))
+    report["aggregate"]["agreement"]["rate"] = 0.5
+    errors = errors_of(report)
+    assert any("I8" in e for e in errors)
 
 
 # -------------------------------------------------- adjudication invariants
@@ -295,13 +375,13 @@ def test_actual_cross_judge_divergence_not_listed_fails():
 def test_raw_published_false_fails():
     report = make_valid_report()
     report["adjudication"]["raw_published"] = False
-    assert any("I4" in e for e in errors_of(report))
+    assert errors_of(report)
 
 
 def test_rubric_not_precommitted_fails():
     report = make_valid_report()
     report["adjudication"]["rubric_precommitted"] = False
-    assert any("I4" in e for e in errors_of(report))
+    assert errors_of(report)
 
 
 def test_bad_rubric_hash_fails():
@@ -322,16 +402,25 @@ def test_override_missing_criterion_fails():
     assert errors_of(report)
 
 
-def test_llm_judged_adjudication_applies_false_fails():
-    report = make_valid_report()
-    report["adjudication"] = {"applies": False}
-    assert any("I5" in e for e in errors_of(report))
-
-
 def test_bad_blinded_to_value_fails():
     report = make_valid_report()
     report["adjudication"]["blinded_to"] = ["vibes"]
     assert errors_of(report)
+
+
+# ------------------------------------------------- suite-registry invariant
+
+
+def test_unregistered_suite_fails():
+    report = make_valid_report()
+    report["suite"] = "not_a_registered_suite"
+    assert any("I5" in e for e in errors_of(report))
+
+
+def test_suite_class_registry_mismatch_fails():
+    report = make_valid_report()
+    report["suite"] = "pipeline_behavior_robustness"
+    assert any("I5" in e for e in errors_of(report))
 
 
 # ---------------------------------------------------- replicate invariants
@@ -365,7 +454,7 @@ def test_non_decision_relevant_single_replicate_passes():
 def test_raw_not_retained_fails():
     report = make_valid_report()
     report["raw_outputs"]["retained"] = False
-    assert any("I7" in e for e in errors_of(report))
+    assert errors_of(report)
 
 
 def test_raw_retained_empty_paths_fails():
@@ -374,15 +463,33 @@ def test_raw_retained_empty_paths_fails():
     assert any("I7" in e for e in errors_of(report))
 
 
+# ---------------------------------------------------------- strict loading
+
+
+def test_duplicate_keys_rejected():
+    from check_heldout_measurement_report import _loads_strict
+
+    with pytest.raises(ValueError):
+        _loads_strict('{"raw_published": false, "raw_published": true}')
+
+
+def test_nan_rejected():
+    from check_heldout_measurement_report import _loads_strict
+
+    with pytest.raises(ValueError):
+        _loads_strict('{"rate": NaN}')
+
+
 # ------------------------------------------------------------- warnings
 
 
 def test_judge_item_set_mismatch_warns_not_fails():
     report = make_valid_report()
     report["judges"][1]["per_item"] = [{"item_id": "rp-01", "claim_drift": False}]
-    # rp-02 now judged by j1 only; j1's flag has no counterpart, so rp-02 is
-    # no longer cross-judge divergent — keep the listed set consistent.
+    # rp-02 is now judged by j1 only: no comparable disagreement remains, so
+    # the divergent list empties and the rate covers the single comparable item.
     report["aggregate"]["agreement"]["divergent_items"] = []
+    report["aggregate"]["agreement"]["rate"] = 1.0
     assert errors_of(report) == []
     assert any("W1" in w for w in warnings_of(report))
 
@@ -391,7 +498,7 @@ def test_valid_report_has_no_warnings():
     assert warnings_of(make_valid_report()) == []
 
 
-# ------------------------------------------------------------- deep-copy guard
+# ------------------------------------------------------------- purity guard
 
 
 def test_validate_does_not_mutate_input():

@@ -1,0 +1,8 @@
+{
+  "_comment": "Authoritative suite -> suite_class mapping for the #654 held-out measurement contract. A contract report's `suite` must be a key here and its `suite_class` must match (checker invariant I5). Add new suites here first; the contract doc table and suite README notes are informative mirrors of this file.",
+  "revision_claim_drift": "llm_judged",
+  "rq_framing_offlist": "llm_judged",
+  "pipeline_behavior_robustness": "mechanical_match",
+  "reviewer_seeded_defects": "seeded_manifest_adjudicated",
+  "re_review_persuasion_invariance": "paired_controls"
+}

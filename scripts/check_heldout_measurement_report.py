@@ -3,25 +3,26 @@
 
 Two layers:
   1. JSON Schema (evals/heldout/measurement_report.schema.json) — shape,
-     enums, required disclosure fields.
-  2. Cross-field invariants I1-I8 (below) — the contract rules a schema
-     cannot express.
+     enums, const attestations (rubric_precommitted / raw_published /
+     raw_outputs.retained), and the suite-class branches B1-B3.
+  2. Cross-field invariants I1-I8 (below) — rules a schema cannot express.
+     Invariants run only on schema-valid reports (schema errors short-circuit).
 
 Invariants:
-  I1  judge_plan.actual == len(judges)
-  I2  actual < minimum_for_scored requires a non-"none" exception; and a
-      non-mechanical suite_class requires at least one judge regardless of
-      any exception.
+  I1  aggregate.agreement.rate equals 1 - |divergent| / |items judged by >=2
+      judges| (tolerance 0.005); null iff no item is judged by >=2 judges.
+  I2  derived judge minimum: a decision-relevant, non-mechanical run with
+      judge_plan.exception == "none" requires >= 2 judges drawn from >= 2
+      distinct model families. The minimum is derived, never author-declared.
   I3  every aggregate.agreement.divergent_items id exists in some judge's
       per_item rows.
-  I4  when adjudication applies: raw_published is true, rubric_precommitted
-      is true, and every override's item_id exists in the judged item set.
-  I5  llm_judged and seeded_manifest_adjudicated suites require
-      adjudication.applies == true.
+  I4  every adjudication override's item_id exists in the judged item set.
+  I5  suite is a key of evals/heldout/suite_registry.json and suite_class
+      matches the registry.
   I6  decision_relevant runs require replicates.per_item >= 2 unless a
       written replicates.exception is present.
-  I7  raw_outputs.retained must be true, with at least one path.
-  I8  an item actually judged differently by >=2 judges must be listed in
+  I7  raw_outputs.paths is non-empty.
+  I8  an item actually judged differently by >= 2 judges must be listed in
       aggregate.agreement.divergent_items (divergence is never averaged away).
 
 Warnings (never gate):
@@ -31,15 +32,17 @@ Warnings (never gate):
 Usage:
   python scripts/check_heldout_measurement_report.py report.json [...]
   python scripts/check_heldout_measurement_report.py --all
-      # scans evals/heldout/*/measurement-*.json and validates only files
-      # carrying the opt-in "measurement_contract" marker; legacy rows are
-      # ignored by design (retrofit scope: future runs and re-runs only).
+      # walks evals/heldout/**/*.json and validates every file carrying the
+      # opt-in "measurement_contract" marker, wherever the suite files it;
+      # legacy rows without the marker are ignored by design (retrofit
+      # scope: future runs and re-runs only).
 
 Exit 0 on pass (warnings may print to stderr), 1 on any error.
 """
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import sys
 from pathlib import Path
@@ -47,10 +50,56 @@ from pathlib import Path
 import jsonschema
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = REPO_ROOT / "evals" / "heldout" / "measurement_report.schema.json"
+HELDOUT_ROOT = REPO_ROOT / "evals" / "heldout"
+SCHEMA_PATH = HELDOUT_ROOT / "measurement_report.schema.json"
+REGISTRY_PATH = HELDOUT_ROOT / "suite_registry.json"
 CONTRACT_PREFIX = "heldout-measurement/"
-NON_MECHANICAL_CLASSES = {"llm_judged", "seeded_manifest_adjudicated", "paired_controls"}
-ADJUDICATION_REQUIRED_CLASSES = {"llm_judged", "seeded_manifest_adjudicated"}
+RATE_TOLERANCE = 0.005
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    seen: dict[str, object] = {}
+    for key, value in pairs:
+        if key in seen:
+            raise ValueError(f"duplicate key {key!r}")
+        seen[key] = value
+    return seen
+
+
+def _loads_strict(text: str) -> dict:
+    """JSON load rejecting duplicate keys and NaN/Infinity.
+
+    Duplicate keys are last-value-wins in plain json.loads, which would let a
+    file carry `"raw_published": false, ... "raw_published": true` — passing
+    the const attestation while reading as false to a human. Same fail-closed
+    stance as cross_model_handoff / check_degradation_registry /
+    check_evals_gold_set.
+    """
+    return json.loads(
+        text,
+        object_pairs_hook=_reject_duplicate_keys,
+        parse_constant=lambda name: (_ for _ in ()).throw(
+            ValueError(f"non-finite JSON constant {name!r}")
+        ),
+    )
+
+
+@functools.cache
+def _validator() -> jsonschema.Draft202012Validator:
+    schema = _loads_strict(SCHEMA_PATH.read_text(encoding="utf-8"))
+    jsonschema.Draft202012Validator.check_schema(schema)
+    return jsonschema.Draft202012Validator(schema)
+
+
+def contract_version() -> str:
+    """The exact contract marker — single-sourced from the schema const."""
+    return _validator().schema["properties"]["measurement_contract"]["const"]
+
+
+@functools.cache
+def _suite_registry() -> dict:
+    registry = _loads_strict(REGISTRY_PATH.read_text(encoding="utf-8"))
+    return {k: v for k, v in registry.items() if not k.startswith("_")}
 
 
 def is_contract_report(obj: dict) -> bool:
@@ -59,156 +108,128 @@ def is_contract_report(obj: dict) -> bool:
     return isinstance(marker, str) and marker.startswith(CONTRACT_PREFIX)
 
 
-def _schema_errors(report: dict) -> list[str]:
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-    validator = jsonschema.Draft202012Validator(schema)
-    return [
-        f"schema {list(e.absolute_path)}: {e.message}"
-        for e in validator.iter_errors(report)
-    ]
-
-
-def _judged_item_ids(judges: list[dict]) -> set[str]:
-    ids: set[str] = set()
+def _index_judges(judges: list[dict]) -> dict[str, list[dict]]:
+    """item_id -> list of per-item payloads (minus item_id), one per judge."""
+    by_item: dict[str, list[dict]] = {}
     for judge in judges:
-        for row in judge.get("per_item", []):
-            item_id = row.get("item_id")
-            if isinstance(item_id, str):
-                ids.add(item_id)
-    return ids
-
-
-def _cross_judge_divergent_items(judges: list[dict]) -> set[str]:
-    """Item ids whose per-item payloads (minus item_id) differ across judges.
-
-    Only items judged by >= 2 judges are comparable. Payload equality is the
-    mechanical divergence rule; suites must keep verdict fields comparable
-    across judges (MEASUREMENT_CONTRACT.md § Aggregation).
-    """
-    seen: dict[str, list[dict]] = {}
-    for judge in judges:
-        for row in judge.get("per_item", []):
-            item_id = row.get("item_id")
-            if not isinstance(item_id, str):
-                continue
+        for row in judge["per_item"]:
             payload = {k: v for k, v in row.items() if k != "item_id"}
-            seen.setdefault(item_id, []).append(payload)
-    divergent = set()
-    for item_id, payloads in seen.items():
-        if len(payloads) >= 2 and any(p != payloads[0] for p in payloads[1:]):
-            divergent.add(item_id)
-    return divergent
+            by_item.setdefault(row["item_id"], []).append(payload)
+    return by_item
 
 
 def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
+    """Cross-field invariants. Assumes the report is schema-valid."""
     errors: list[str] = []
     warnings: list[str] = []
 
-    suite_class = report.get("suite_class")
-    judges = report.get("judges", [])
-    plan = report.get("judge_plan", {})
-    if not isinstance(judges, list):
-        judges = []
+    suite = report["suite"]
+    suite_class = report["suite_class"]
+    judges = report["judges"]
+    exception = report["judge_plan"]["exception"]
+    agreement = report["aggregate"]["agreement"]
 
-    # I1 — declared judge count matches reality.
-    actual = plan.get("actual")
-    if isinstance(actual, int) and actual != len(judges):
-        errors.append(
-            f"I1: judge_plan.actual={actual} but {len(judges)} judge(s) present"
-        )
+    by_item = _index_judges(judges)
+    judged_ids = set(by_item)
+    comparable = {i for i, payloads in by_item.items() if len(payloads) >= 2}
+    divergent = {
+        i
+        for i in comparable
+        if any(p != by_item[i][0] for p in by_item[i][1:])
+    }
 
-    # I2 — under-minimum needs a labeled exception; non-mechanical needs >=1 judge.
-    minimum = plan.get("minimum_for_scored")
-    exception = plan.get("exception")
+    # I1 — agreement rate is recomputed, not trusted.
+    rate = agreement["rate"]
+    if comparable:
+        expected = 1 - len(divergent) / len(comparable)
+        if rate is None:
+            errors.append(
+                f"I1: agreement.rate is null but {len(comparable)} item(s) are "
+                f"judged by >=2 judges (expected ~{expected:.3f})"
+            )
+        elif abs(rate - expected) > RATE_TOLERANCE:
+            errors.append(
+                f"I1: agreement.rate={rate} but recomputation gives "
+                f"{expected:.3f} (1 - {len(divergent)}/{len(comparable)})"
+            )
+    elif rate is not None:
+        errors.append("I1: agreement.rate must be null when no item is judged by >=2 judges")
+
+    # I2 — derived judge minimum + family diversity.
     if (
-        isinstance(actual, int)
-        and isinstance(minimum, int)
-        and actual < minimum
+        report["decision_relevant"]
+        and suite_class != "mechanical_match"
         and exception == "none"
     ):
-        errors.append(
-            f"I2: judge_plan.actual={actual} < minimum_for_scored={minimum} "
-            "with exception='none' — label the exception or add judges"
-        )
-    if suite_class in NON_MECHANICAL_CLASSES and len(judges) == 0:
-        errors.append(
-            f"I2: suite_class={suite_class!r} requires at least one judge; "
-            "no exception permits zero judges outside mechanical_match"
-        )
-
-    judged_ids = _judged_item_ids(judges)
-
-    # I3 — divergent_items must reference judged items.
-    agreement = report.get("aggregate", {}).get("agreement", {})
-    listed_divergent = agreement.get("divergent_items", [])
-    if isinstance(listed_divergent, list):
-        for item_id in listed_divergent:
-            if item_id not in judged_ids:
-                errors.append(
-                    f"I3: divergent item {item_id!r} not present in any judge's per_item rows"
-                )
-
-    # I4 — adjudication honesty.
-    adjudication = report.get("adjudication", {})
-    if isinstance(adjudication, dict) and adjudication.get("applies") is True:
-        if adjudication.get("raw_published") is not True:
+        families = {j["model_family"] for j in judges}
+        if len(judges) < 2:
             errors.append(
-                "I4: adjudication.raw_published must be true — raw pre-adjudication "
-                "numbers always publish alongside adjudicated ones"
+                f"I2: decision-relevant {suite_class} run with {len(judges)} judge(s) "
+                "and exception='none' — the derived minimum is 2 judges; label the "
+                "exception or add judges"
             )
-        if adjudication.get("rubric_precommitted") is not True:
+        elif len(families) < 2:
             errors.append(
-                "I4: adjudication.rubric_precommitted must be true — the rubric is "
-                "committed and hashed before any judge output exists"
+                f"I2: judges span a single model family {sorted(families)!r} — "
+                "decision-relevant runs require >=2 distinct families "
+                "(or a labeled exception)"
             )
-        for override in adjudication.get("overrides", []):
-            item_id = override.get("item_id") if isinstance(override, dict) else None
-            if isinstance(item_id, str) and item_id not in judged_ids:
-                errors.append(
-                    f"I4: override targets unknown item {item_id!r} (not in any judge's rows)"
-                )
 
-    # I5 — judged suite classes cannot opt out of adjudication.
-    if suite_class in ADJUDICATION_REQUIRED_CLASSES and (
-        not isinstance(adjudication, dict) or adjudication.get("applies") is not True
-    ):
+    # I3 — listed divergent items must be judged items.
+    for item_id in agreement["divergent_items"]:
+        if item_id not in judged_ids:
+            errors.append(
+                f"I3: divergent item {item_id!r} not present in any judge's per_item rows"
+            )
+
+    # I4 — overrides must target judged items.
+    adjudication = report["adjudication"]
+    for override in adjudication.get("overrides", []):
+        if override["item_id"] not in judged_ids:
+            errors.append(
+                f"I4: override targets unknown item {override['item_id']!r} "
+                "(not in any judge's rows)"
+            )
+
+    # I5 — suite registry binding.
+    registry = _suite_registry()
+    if suite not in registry:
         errors.append(
-            f"I5: suite_class={suite_class!r} requires adjudication.applies=true"
+            f"I5: suite {suite!r} is not in evals/heldout/suite_registry.json — "
+            "register it (with its class) before publishing contract rows"
+        )
+    elif registry[suite] != suite_class:
+        errors.append(
+            f"I5: suite {suite!r} is registered as {registry[suite]!r} "
+            f"but the report declares suite_class={suite_class!r}"
         )
 
     # I6 — decision-relevant runs replicate.
-    replicates = report.get("replicates", {})
-    if report.get("decision_relevant") is True and isinstance(replicates, dict):
-        per_item = replicates.get("per_item")
-        rep_exception = replicates.get("exception")
-        if isinstance(per_item, int) and per_item < 2 and not rep_exception:
-            errors.append(
-                f"I6: decision_relevant run with replicates.per_item={per_item} — "
-                "require >=2 or a written replicates.exception"
-            )
+    replicates = report["replicates"]
+    if (
+        report["decision_relevant"]
+        and replicates["per_item"] < 2
+        and not replicates.get("exception")
+    ):
+        errors.append(
+            f"I6: decision_relevant run with replicates.per_item={replicates['per_item']} — "
+            "require >=2 or a written replicates.exception"
+        )
 
-    # I7 — raw outputs retained.
-    raw = report.get("raw_outputs", {})
-    if isinstance(raw, dict):
-        if raw.get("retained") is not True:
-            errors.append("I7: raw_outputs.retained must be true for contract reports")
-        elif not raw.get("paths"):
-            errors.append("I7: raw_outputs.retained=true but paths is empty")
+    # I7 — retained raw outputs need paths (retained itself is a schema const).
+    if not report["raw_outputs"]["paths"]:
+        errors.append("I7: raw_outputs.paths is empty")
 
     # I8 — actual cross-judge divergence must be listed.
-    actual_divergent = _cross_judge_divergent_items(judges)
-    if isinstance(listed_divergent, list):
-        unlisted = actual_divergent - set(listed_divergent)
-        if unlisted:
-            errors.append(
-                "I8: cross-judge divergence on "
-                f"{sorted(unlisted)} not listed in aggregate.agreement.divergent_items"
-            )
+    unlisted = divergent - set(agreement["divergent_items"])
+    if unlisted:
+        errors.append(
+            "I8: cross-judge divergence on "
+            f"{sorted(unlisted)} not listed in aggregate.agreement.divergent_items"
+        )
 
     # W1 — judges cover different item sets.
-    per_judge_sets = [
-        {row.get("item_id") for row in judge.get("per_item", [])} for judge in judges
-    ]
+    per_judge_sets = [{row["item_id"] for row in j["per_item"]} for j in judges]
     if per_judge_sets and any(s != per_judge_sets[0] for s in per_judge_sets[1:]):
         warnings.append(
             "W1: judges cover different item sets (partial judge failure?) — "
@@ -219,18 +240,34 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
 
 
 def validate_report(report: dict) -> tuple[list[str], list[str]]:
-    """Full validation: (errors, warnings). Does not mutate the input."""
-    errors = _schema_errors(report)
-    inv_errors, warnings = _invariant_findings(report)
-    return errors + inv_errors, warnings
+    """Full validation: (errors, warnings). Does not mutate the input.
+
+    Schema errors short-circuit: invariants only run on schema-valid reports,
+    so a schema-invalid file reports its schema errors alone.
+    """
+    validator = _validator()
+    schema_errors = [
+        f"schema {list(e.absolute_path)}: {e.message}"
+        for e in validator.iter_errors(report)
+    ]
+    if schema_errors:
+        return schema_errors, []
+    return _invariant_findings(report)
 
 
-def _validate_file(path: Path) -> int:
+def _load(path: Path) -> dict | None:
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        obj = _loads_strict(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
         print(f"ERROR: {path}: failed to load: {exc}")
-        return 1
+        return None
+    if not isinstance(obj, dict):
+        print(f"ERROR: {path}: top-level JSON value is not an object")
+        return None
+    return obj
+
+
+def _validate_obj(path: Path, report: dict) -> int:
     errors, warnings = validate_report(report)
     for w in warnings:
         print(f"{path}: {w}", file=sys.stderr)
@@ -248,33 +285,56 @@ def main() -> int:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="scan evals/heldout/*/measurement-*.json; validate opt-in files only",
+        help="walk evals/heldout/**/*.json; validate opt-in files only",
     )
     args = parser.parse_args()
 
     if args.all:
-        candidates = sorted((REPO_ROOT / "evals" / "heldout").glob("*/measurement-*.json"))
-        opted_in: list[Path] = []
-        for path in candidates:
+        rc = 0
+        opted_in = 0
+        scanned = 0
+        for path in sorted(HELDOUT_ROOT.rglob("*.json")):
+            if path == SCHEMA_PATH or path == REGISTRY_PATH:
+                continue
+            scanned += 1
             try:
-                obj = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError) as exc:
-                print(f"ERROR: {path}: failed to load: {exc}")
-                return 1
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            try:
+                obj = _loads_strict(text)
+            except ValueError:
+                # Legacy / non-report JSON (fixtures, run records) may be
+                # arbitrary and is skipped — but a contract-MARKED file that
+                # fails strict parsing (duplicate keys, NaN) must fail loudly,
+                # not vanish from validation.
+                try:
+                    lenient = json.loads(text)
+                except ValueError:
+                    continue
+                if isinstance(lenient, dict) and is_contract_report(lenient):
+                    print(f"ERROR: {path}: contract-marked file fails strict JSON parse")
+                    rc = 1
+                    opted_in += 1
+                continue
             if isinstance(obj, dict) and is_contract_report(obj):
-                opted_in.append(path)
-        if not opted_in:
+                opted_in += 1
+                rc = max(rc, _validate_obj(path, obj))
+        if opted_in == 0:
             print(
-                f"OK: no contract-marked reports among {len(candidates)} "
-                "measurement file(s); legacy rows are out of scope by design"
+                f"OK: no contract-marked reports among {scanned} JSON file(s) "
+                "under evals/heldout/; legacy rows are out of scope by design"
             )
-            return 0
-        return max(_validate_file(p) for p in opted_in)
+        return rc
 
     if not args.reports:
         print("ERROR: pass report path(s) or --all", file=sys.stderr)
         return 2
-    return max(_validate_file(p) for p in args.reports)
+    rc = 0
+    for path in args.reports:
+        obj = _load(path)
+        rc = max(rc, 1 if obj is None else _validate_obj(path, obj))
+    return rc
 
 
 if __name__ == "__main__":
