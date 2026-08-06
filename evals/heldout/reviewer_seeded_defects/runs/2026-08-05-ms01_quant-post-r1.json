@@ -45,7 +45,7 @@
    "SD-10": "DETECTED"
   },
   "severity_scores": {
-   "SD-01": 1,
+   "SD-01": 0.5,
    "SD-02": 1,
    "SD-03": 1,
    "SD-11": 1,
@@ -56,7 +56,7 @@
    "SD-08": 0.5,
    "SD-09": 0,
    "SD-10": 0.5,
-   "mean": 0.727
+   "mean": 0.682
   },
   "severity_source": "highest explicit per-finding severity tag among detecting seats (frozen 2026-07-24 ladder; no letter-fallback rung needed for any seeded defect this run)",
   "recompute_adjudication": {
