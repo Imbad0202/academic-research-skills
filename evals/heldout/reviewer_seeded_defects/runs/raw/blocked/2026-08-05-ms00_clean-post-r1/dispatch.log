@@ -1,0 +1,35 @@
+START field_analysis.md
+DONE field_analysis.md chars=16169
+COMPLETE field_analysis
+START eic.phase1.a1.md
+DONE eic.phase1.a1.md chars=7008
+COMPLETE eic.phase1
+START eic.phase2.a1.md
+DONE eic.phase2.a1.md chars=14811
+COMPLETE eic.phase2
+START methodology.phase1.a1.md
+DONE methodology.phase1.a1.md chars=7174
+COMPLETE methodology.phase1
+START methodology.phase2.a1.md
+DONE methodology.phase2.a1.md chars=26810
+COMPLETE methodology.phase2
+START domain.phase1.a1.md
+DONE domain.phase1.a1.md chars=4954
+COMPLETE domain.phase1
+START domain.phase2.a1.md
+DONE domain.phase2.a1.md chars=14940
+COMPLETE domain.phase2
+START perspective.phase1.a1.md
+DONE perspective.phase1.a1.md chars=5563
+COMPLETE perspective.phase1
+START perspective.phase2.a1.md
+DONE perspective.phase2.a1.md chars=12787
+COMPLETE perspective.phase2
+START da.phase1.a1.md
+DONE da.phase1.a1.md chars=6119
+COMPLETE da.phase1
+START da.phase2.a1.md
+DONE da.phase2.a1.md chars=10521
+COMPLETE da.phase2
+START synthesis.a1.md
+ABORT transport synthesis [TRANSPORT: exit 1] with a partial response preserved

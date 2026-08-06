@@ -1,0 +1,59 @@
+{
+ "measurement_status": "completed",
+ "provenance_status": "valid",
+ "panel_completion_status": "completed",
+ "score_eligible": true,
+ "model_id": "claude-opus-5",
+ "suite_commit": "305884b252b9d8f27025fc833a975da7b96afcf8",
+ "suite_commit_reproducible": true,
+ "date": "2026-08-06",
+ "evidence_contract": "reviewer-e4/2026-07-27",
+ "condition": "post",
+ "fixture": "ms02_qual",
+ "replicate": 1,
+ "dispatch": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS set, no session persistence), paper-blind and paper-visible calls given separate whitelisted sandboxes, every attempt preserved write-once before any checker ran",
+ "completed_stages": [
+  "field_analysis",
+  "eic.phase1",
+  "eic.phase2",
+  "methodology.phase1",
+  "methodology.phase2",
+  "domain.phase1",
+  "domain.phase2",
+  "perspective.phase1",
+  "perspective.phase2",
+  "da.phase1",
+  "da.phase2",
+  "synthesis"
+ ],
+ "raw_bundle": "raw/2026-08-06-ms02_qual-post-r1/",
+ "adjudication": {
+  "status": "adjudicated",
+  "adjudicated_at": "2026-08-06",
+  "adjudicated_by": "maintainer, against the held-out manifest outside any session",
+  "per_defect": {
+   "SD-01": "DETECTED",
+   "SD-02": "DETECTED",
+   "SD-03": "DETECTED",
+   "SD-04": "DETECTED",
+   "SD-05": "DETECTED",
+   "SD-06": "DETECTED",
+   "SD-07": "DETECTED",
+   "SD-08": "DETECTED",
+   "SD-09": "DETECTED"
+  },
+  "severity_scores": {
+   "SD-01": 0.5,
+   "SD-02": 1,
+   "SD-03": 0.5,
+   "SD-04": 1,
+   "SD-05": 0.5,
+   "SD-06": 0.5,
+   "SD-07": 1,
+   "SD-08": 0,
+   "SD-09": 0,
+   "mean": 0.556
+  },
+  "severity_source": "highest explicit per-finding severity tag among detecting seats (frozen 2026-07-24 ladder; no letter-fallback rung needed for any seeded defect this run)"
+ }
+}

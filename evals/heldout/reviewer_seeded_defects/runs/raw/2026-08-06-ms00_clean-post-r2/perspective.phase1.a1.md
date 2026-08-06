@@ -1,0 +1,24 @@
+## Contract Paraphrase
+
+**D1 — methodology_rigor (mandatory, methodology role):** This dimension asks whether the study's design and its handling of data would survive scrutiny from a competent methodologist in the paper's own field: whether the sampling frame, instrument, analysis, and statistical reporting are described well enough that a reader could judge their soundness and, in principle, repeat the work. From my cross-disciplinary vantage point, the relevant consequence is that methodological choices are often field-idiomatic, so a design that is routine to insiders may be opaque to adjacent-field readers unless its rationale is spelled out; but the substantive judgement of rigour belongs to the methodology reviewer, not to me.
+
+**D2 — domain_accuracy (mandatory, domain role):** This dimension checks that the manuscript's substantive claims are consistent with the current evidence base of its own discipline, that prior work is characterised faithfully rather than caricatured, and that domain-specific terms, constructs, and reported results are used correctly. What matters for my role is only the adjacent observation that terminology borrowed across field boundaries frequently drifts in meaning; the verdict on whether the domain content is accurate is reserved for the domain reviewer.
+
+**D3 — argumentative_coherence (mandatory, da/methodology roles):** This dimension concerns the internal logic of the paper: whether the central thesis holds together, whether the evidence actually licenses the conclusions drawn from it, and whether any reasoning defects are serious enough to undermine the core argument rather than merely blemish it. I note the adjacency that incoherence and inaccessibility are distinct failures — an argument can be perfectly valid yet unreadable outside its home field, or fluent yet fallacious — and the coherence call itself sits with the discourse-analysis reviewer.
+
+**D4 — cross_disciplinary_relevance (high priority, perspective role — mine):** This is the dimension I own. It asks whether the paper's framing, its definitions of key constructs, and its stated implications are intelligible and usable to readers in adjacent fields, and whether any claim the paper makes about relevance beyond its own subfield is actually substantiated rather than asserted. Two failure modes matter symmetrically: a paper can be so hermetically written that neighbouring disciplines cannot extract its contribution, or it can over-claim reach into domains whose literatures and evidentiary standards it has not engaged. I will look at how constructs are operationalised and defined at first use, whether jargon and acronyms are unpacked, whether the boundary conditions of the findings are stated so that outsiders know what does and does not transfer, and whether interdisciplinary implications carry proportionate support.
+
+**D5 — writing_and_structure (normal priority, eic role):** This dimension covers organisation, expositional clarity, quality and legibility of figures and tables, and conformity to the venue's conventions. It overlaps with my own dimension at the edges — poor structure impedes outside readers — but the two are separable: prose quality is a craft judgement owned by the editor-in-chief role, whereas my concern is conceptual accessibility and the warrant for cross-field claims.
+
+**D6 — venue_fit_and_contribution (mandatory, eic role):** This dimension asks whether the manuscript belongs in the configured venue and whether it offers an original and significant enough contribution for that readership. It is adjacent to mine because a paper's breadth of relevance bears on which readership it serves, but the fit-and-significance determination is the editor-in-chief's to make, and I will not pre-empt it.
+
+## Scoring Plan
+
+### D4: cross_disciplinary_relevance
+
+dimension_id: D4
+what_to_look_for: Whether key constructs are defined and operationalised at first use rather than assumed, whether jargon/acronyms/instruments are glossed for adjacent-field readers, whether the scope and boundary conditions of the findings are stated explicitly, and whether every implication reaching beyond the home subfield is backed by engagement with that other field's literature and evidentiary standards rather than by assertion.
+what_triggers_block: The paper makes load-bearing claims of relevance or applicability to fields outside its own with no supporting engagement or evidence, or its central constructs are left so undefined and jargon-bound that an adjacent-field reader cannot determine what was actually measured or what the conclusion means.
+what_triggers_warn: Core content is recoverable by an adjacent-field reader, but accessibility is degraded by undefined terms, unglossed acronyms or instruments, unstated scope conditions, or implications framed more broadly than the presented support warrants in ways fixable by revision.
+
+[CONTRACT-ACKNOWLEDGED]

@@ -1,0 +1,37 @@
+{
+ "measurement_status": "completed",
+ "provenance_status": "valid",
+ "panel_completion_status": "completed",
+ "score_eligible": true,
+ "model_id": "claude-opus-5",
+ "suite_commit": "305884b252b9d8f27025fc833a975da7b96afcf8",
+ "suite_commit_reproducible": true,
+ "date": "2026-08-05",
+ "evidence_contract": "reviewer-e4/2026-07-27",
+ "condition": "post",
+ "fixture": "ms00_clean",
+ "replicate": 99,
+ "dispatch": "isolated per-seat two-phase calls via headless `claude -p` (claude-opus-5, --effort xhigh, MAX_THINKING_TOKENS set, no session persistence), paper-blind and paper-visible calls given separate whitelisted sandboxes, every attempt preserved write-once before any checker ran",
+ "completed_stages": [
+  "field_analysis",
+  "eic.phase1",
+  "eic.phase2",
+  "methodology.phase1",
+  "methodology.phase2",
+  "domain.phase1",
+  "domain.phase2",
+  "perspective.phase1",
+  "perspective.phase2",
+  "da.phase1",
+  "da.phase2",
+  "synthesis"
+ ],
+ "raw_bundle": "raw/2026-08-05-ms00_clean-post-r99/",
+ "adjudication": {
+  "status": "adjudicated",
+  "adjudicated_at": "2026-08-06",
+  "adjudicated_by": "maintainer, against the held-out manifest outside any session",
+  "clean_control_false_findings": [],
+  "clean_control_numeric_false_findings": []
+ }
+}
