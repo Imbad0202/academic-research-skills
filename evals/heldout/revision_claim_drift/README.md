@@ -91,3 +91,14 @@ authorized change); its value is as a standing regression tripwire.
   flips are expected on borderline items). n=8 single-generator English-only is
   a seed, not a verdict on the population. Model- and time-specific — re-run,
   never reuse the numbers.
+
+## Measurement contract (#654)
+
+New scored rows in this suite opt into the `heldout-measurement/1.0` envelope
+(`evals/heldout/MEASUREMENT_CONTRACT.md`, `suite_class: llm_judged`): >= 2 judges
+from different model families for decision-relevant runs, precommitted + hashed
+adjudication rubric, raw-alongside-adjudicated publication, >= 2 replicates per
+item. The 2026-07-22 baseline row predates the contract and is never retrofitted;
+a #652 re-measurement keeps the original judge as its legacy-comparability row
+(`judge_plan.exception: "legacy_comparability"`) with any new judges reported
+separately.

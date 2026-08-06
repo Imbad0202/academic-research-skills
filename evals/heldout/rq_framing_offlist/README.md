@@ -134,3 +134,10 @@ before measurement (no hits), so the set remains held out of the in-prompt
 examples. Full write-up:
 `audits/rq-advisory-505-exemption-sharpening-2026-07-11.md`. The model/time-drift
 caveat above applies unchanged — re-run, don't reuse.
+
+## Measurement contract (#654)
+
+New scored rows opt into the `heldout-measurement/1.0` envelope
+(`evals/heldout/MEASUREMENT_CONTRACT.md`, `suite_class: llm_judged`). This suite's
+own replicate protocol remains the `replicates.rule_ref` anchor. The 2026-07-11
+rows predate the contract and are never retrofitted.

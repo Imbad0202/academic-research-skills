@@ -63,3 +63,12 @@ Expansion protocol: new bases must anchor to a documented rule (`rule_anchor`); 
 perturbation axes extend the axis enum here first. Cross-model authoring of additional
 surface variants (the `rq_framing_offlist` construction discipline) is the intended v0.2
 step before this set is used as an acceptance test for routing-layer changes.
+
+## Measurement contract (#654)
+
+New scored rows opt into the `heldout-measurement/1.0` envelope
+(`evals/heldout/MEASUREMENT_CONTRACT.md`, `suite_class: mechanical_match`):
+zero judges is legal here (`judge_plan.exception: "mechanical_suite"`,
+`adjudication.applies: false`) because pass/fail is a mechanical match against the
+documented full expectation; the envelope still standardizes subject freezing,
+replicates, attempts, and raw-output retention.

@@ -283,3 +283,11 @@ Two limits worth stating rather than leaving to be discovered:
   value, and that class is review's job.
 
 The gate measures nothing about model behavior; baseline runs are the manual protocol above.
+
+## Measurement contract (#654)
+
+New scored rows opt into the `heldout-measurement/1.0` envelope
+(`evals/heldout/MEASUREMENT_CONTRACT.md`, `suite_class: paired_controls`). Per
+SD-11 this suite reuses the E4 machinery documented in
+`evals/heldout/reviewer_seeded_defects/README.md`; the envelope layers judge and
+adjudication disclosure on top without touching that machinery.

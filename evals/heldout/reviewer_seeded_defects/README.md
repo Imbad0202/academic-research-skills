@@ -531,3 +531,13 @@ once in its manuscript, clean control free of manifest references, the exact v0.
 statistical-kind projection, and the prospective GRIMMER oracle). It is a fixture
 integrity gate, NOT a behavioral measurer — `run_evals` has no native task for this
 set; the behavioral measurement is the manual protocol above.
+
+## Measurement contract (#654)
+
+New scored rows opt into the `heldout-measurement/1.0` envelope
+(`evals/heldout/MEASUREMENT_CONTRACT.md`, `suite_class: seeded_manifest_adjudicated`).
+The E4 machinery in this README — the `reviewer-e4/*` evidence contract, blocked-run
+separation, closed record status fields, replicate discipline, raw-output
+preservation — remains the normative layer and is unchanged; the envelope adds the
+standardized judge/adjudication disclosure around it. Existing rows are never
+retrofitted.

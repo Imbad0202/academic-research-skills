@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/measurement_report.schema.json",
+  "title": "ARS held-out measurement report envelope (#654, heldout-measurement/1.0)",
+  "description": "Opt-in envelope for scored held-out measurement rows. The envelope standardizes multi-judge disclosure, aggregation, adjudication, replicates, and raw-output retention; suite-specific payloads live untouched in `results` and inside each judge's `per_item` rows. Legacy measurement files without the `measurement_contract` marker are NOT governed by this schema and are never retrofitted. Normative text: evals/heldout/MEASUREMENT_CONTRACT.md; cross-field invariants I1-I8 are enforced by scripts/check_heldout_measurement_report.py.",
+  "type": "object",
+  "required": [
+    "measurement_contract",
+    "suite",
+    "suite_class",
+    "measurement_date",
+    "decision_relevant",
+    "subject",
+    "judge_plan",
+    "judges",
+    "aggregate",
+    "replicates",
+    "adjudication",
+    "attempts",
+    "raw_outputs",
+    "verdict",
+    "caveats"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "measurement_contract": {
+      "const": "heldout-measurement/1.0",
+      "description": "Opt-in marker + contract version. Absence of this field means a legacy row outside the contract."
+    },
+    "suite": { "type": "string", "minLength": 1 },
+    "suite_class": {
+      "enum": [
+        "llm_judged",
+        "mechanical_match",
+        "seeded_manifest_adjudicated",
+        "paired_controls"
+      ],
+      "description": "Which contract clauses apply. See MEASUREMENT_CONTRACT.md § Suite classes."
+    },
+    "measurement_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "decision_relevant": {
+      "type": "boolean",
+      "description": "True when the row is cited for a mechanism/advisory decision. Gates the >=2 replicate rule (I6)."
+    },
+    "subject": {
+      "type": "object",
+      "required": ["model_id", "config"],
+      "additionalProperties": false,
+      "properties": {
+        "model_id": { "type": "string", "minLength": 1 },
+        "config": {
+          "type": "object",
+          "required": ["suite_commit"],
+          "additionalProperties": true,
+          "properties": {
+            "suite_commit": { "type": "string", "minLength": 7 },
+            "prompts_ref": { "type": "string" },
+            "settings": { "type": "string" },
+            "sampling": { "type": "string" }
+          }
+        }
+      }
+    },
+    "judge_plan": {
+      "type": "object",
+      "required": ["minimum_for_scored", "actual", "exception"],
+      "additionalProperties": false,
+      "properties": {
+        "minimum_for_scored": { "type": "integer", "minimum": 0 },
+        "actual": { "type": "integer", "minimum": 0 },
+        "exception": {
+          "enum": ["none", "legacy_comparability", "mechanical_suite"],
+          "description": "Why fewer judges than minimum_for_scored is acceptable. 'legacy_comparability' = the #652 pattern (original judge kept for comparability; new judges report separately)."
+        }
+      }
+    },
+    "judges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "judge_id",
+          "model_id",
+          "model_family",
+          "prompt_ref",
+          "evidence_provided",
+          "judging_budget",
+          "per_item"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "judge_id": { "type": "string", "minLength": 1 },
+          "model_id": { "type": "string", "minLength": 1 },
+          "model_family": { "type": "string", "minLength": 1 },
+          "prompt_ref": { "type": "string", "minLength": 1 },
+          "evidence_provided": { "type": "string", "minLength": 1 },
+          "judging_budget": { "type": "string", "minLength": 1 },
+          "per_item": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["item_id"],
+              "additionalProperties": true,
+              "properties": { "item_id": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "required": ["headline", "agreement"],
+      "additionalProperties": false,
+      "properties": {
+        "headline": {
+          "type": "object",
+          "required": ["metric_name", "value", "construction_rule"],
+          "additionalProperties": false,
+          "properties": {
+            "metric_name": { "type": "string", "minLength": 1 },
+            "value": { "type": ["string", "number"] },
+            "construction_rule": {
+              "type": "string",
+              "minLength": 1,
+              "description": "How the headline number is built from per-judge rows + adjudication. Agreement rate is a diagnostic and is never the headline."
+            }
+          }
+        },
+        "agreement": {
+          "type": "object",
+          "required": ["rate", "divergent_items", "note"],
+          "additionalProperties": false,
+          "properties": {
+            "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+            "divergent_items": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Item ids where judges disagree. Divergent items surface individually — never averaged away (I8)."
+            },
+            "note": { "type": "string" }
+          }
+        }
+      }
+    },
+    "replicates": {
+      "type": "object",
+      "required": ["per_item", "rule_ref"],
+      "additionalProperties": false,
+      "properties": {
+        "per_item": { "type": "integer", "minimum": 1 },
+        "rule_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Anchor to the suite's own replicate rule. The contract records each suite's rule; it does not force uniformity."
+        },
+        "spread": { "type": ["object", "null"] },
+        "exception": { "type": ["string", "null"] }
+      }
+    },
+    "adjudication": {
+      "type": "object",
+      "required": ["applies"],
+      "properties": { "applies": { "type": "boolean" } },
+      "if": { "properties": { "applies": { "const": true } }, "required": ["applies"] },
+      "then": {
+        "required": [
+          "applies",
+          "rubric_ref",
+          "rubric_sha256",
+          "rubric_precommitted",
+          "blinded_to",
+          "overrides",
+          "raw_published"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "applies": { "const": true },
+          "rubric_ref": { "type": "string", "minLength": 1 },
+          "rubric_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "rubric_precommitted": {
+            "type": "boolean",
+            "description": "Rubric committed + hashed before any judge output existed (I4)."
+          },
+          "blinded_to": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "condition",
+                "mechanism_state",
+                "subject_model",
+                "judge_identity",
+                "expected_label",
+                "raw_aggregate"
+              ]
+            },
+            "description": "Which dimensions the adjudicator was blinded to. Enumerated, not vibes."
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["item_id", "judge_id", "raw", "adjudicated", "criterion_ref"],
+              "additionalProperties": false,
+              "properties": {
+                "item_id": { "type": "string", "minLength": 1 },
+                "judge_id": { "type": "string", "minLength": 1 },
+                "raw": { "type": "string", "minLength": 1 },
+                "adjudicated": { "type": "string", "minLength": 1 },
+                "criterion_ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The precommitted-rubric criterion this override applied."
+                },
+                "note": { "type": "string" }
+              }
+            }
+          },
+          "raw_published": {
+            "type": "boolean",
+            "description": "Raw pre-adjudication numbers always publish alongside adjudicated ones (I4)."
+          }
+        }
+      },
+      "else": {
+        "additionalProperties": false,
+        "properties": { "applies": { "const": false } }
+      }
+    },
+    "attempts": {
+      "type": "object",
+      "required": ["atomicity", "partial_published", "blocked_runs"],
+      "additionalProperties": false,
+      "properties": {
+        "atomicity": { "type": "string", "minLength": 1 },
+        "partial_published": { "type": "boolean" },
+        "blocked_runs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "raw_outputs": {
+      "type": "object",
+      "required": ["retained", "paths"],
+      "additionalProperties": false,
+      "properties": {
+        "retained": { "type": "boolean" },
+        "paths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "results": {
+      "type": "object",
+      "description": "Suite-specific payload. The contract does not constrain it."
+    },
+    "verdict": { "type": "string", "minLength": 1 },
+    "caveats": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+  }
+}
