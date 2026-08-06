@@ -108,9 +108,12 @@ separately.
 Two-arm concurrent design (the issue's preferred attribution shape): the same 8
 items, same session window, same frozen subject configuration
 (`claude-fable-5`, headless CLI, neutral cwd), 2 replicates per item per arm —
-Arm U gets the baseline-shaped natural task, Arm G additionally carries the
-shipped `draft_writer_agent` revision-mode ladder block (verbatim in
-`runs/2026-08-07/RUN_PLAN.md`). First row under the #654 envelope described
+Arm U gets the baseline-shaped natural task, Arm G additionally carries a
+guard block condensed from the shipped `draft_writer_agent` revision-mode
+ladder section — rules 1-3 near-verbatim plus the ladder scale, with shipped
+rule 4's `protected_hedges`-roster mechanism replaced by a token-conservation
+line (block quoted in `runs/2026-08-07/RUN_PLAN.md`; the row measures this
+prompt, not the shipped pipeline path). First row under the #654 envelope described
 above (`judge_plan.exception: legacy_comparability`; judge codex `gpt-5.6-sol`
 xhigh, blind to arms/controls via a seed-652 shuffle). Pre-registration,
 blinding, and adjudication detail: `runs/2026-08-07/RUN_PLAN.md` +
@@ -121,12 +124,12 @@ correct the JSON first.
 
 | Layer | Unguarded (U) | Guarded (G) |
 |-------|---------------|-------------|
-| Claim-strength / hedge drift (judged), item-replicates | **7/16 = 0.438** | **1/16 = 0.062** |
+| Claim-strength / hedge drift (judged), item-replicates | **7/16 = 0.4375** | **1/16 = 0.0625** |
 | Claim-strength / hedge drift (judged), item-level | 4/8 (rp-02, rp-03, rp-05, rp-06) | 1/8 (rp-03) |
 | Numeric/citation drift (deterministic), unauthorized runs | 4/16 | 0/16 |
 | Controls clean (rp-07's authorized 0.17→0.21 isolated in all 4 runs, both arms) | 2/2 | 2/2 |
 
-**Verdict: GUARD EFFECT PRESENT IN-WINDOW, DRIFT NOT ELIMINATED.** The guarded
+**Verdict: GUARD-TEXT EFFECT PRESENT IN-WINDOW, DRIFT NOT ELIMINATED.** The guarded
 arm's residual case (rp-03-G-r2) restated a null ("no evidence of the expected
 operational advantage") as an affirmative "showed no relation" — an
 absence-of-evidence → evidence-of-absence move the guard text did not stop.

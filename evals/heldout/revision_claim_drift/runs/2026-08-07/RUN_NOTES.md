@@ -4,15 +4,16 @@ Deviations from and clarifications to RUN_PLAN.md, recorded as they occurred.
 Nothing here changes a pre-registered rule; entries are disclosures.
 
 1. **Subject isolation vehicle.** RUN_PLAN promised a neutral non-repo cwd.
-   The CLI's `--bare` flag (which would also drop the user-global `CLAUDE.md`
-   and hooks) breaks CLI authentication ("Not logged in") and was rejected;
-   the plain CLI from the neutral cwd was used instead. A pre-fleet probe
-   confirmed the resulting subject context: model resolves to
-   `claude-fable-5`; no mention of a claim-strength ladder, revision
-   claim-drift, token conservation, or any ARS mechanism; the only
-   ARS-adjacent content is the user-global `CLAUDE.md`'s repo-name list
-   (public-repo safety rules), which carries no guard content.
-2. **Retries (per plan, attempt-atomic).** Subject `rp-08-U-r2` attempt 1
+   The CLI's `--bare` flag breaks CLI authentication and was rejected; the
+   plain CLI from the neutral cwd was used instead. Ambient global
+   instructions were therefore active; a pre-fleet probe confirmed the model
+   resolves to `claude-fable-5` and that the subject context carries no
+   mention of a claim-strength ladder, revision claim-drift, token
+   conservation, or any ARS mechanism. The same ambient instructions later
+   caused one adjudication's language-style deviation (item 3).
+   *(Trimmed 2026-08-07: ambient-context description reduced to
+   reproducibility-relevant facts.)*
+2. **Retries (per plan, attempt-atomic) — superseded by item 9.** Subject `rp-08-U-r2` attempt 1
    returned empty output with empty stderr; retried once, attempt 2 clean
    (975 bytes). Empty attempt preserved at `subjects/failed/`. Adjudicator
    `run-32` attempt 1 likewise returned empty; retried once, attempt 2 clean
@@ -57,3 +58,28 @@ Nothing here changes a pre-registered rule; entries are disclosures.
    swap only, so the run remains non-conserved and the 4/16 U count stands).
    Irony worth recording: the note defends the null while the passage
    silently drops 'may' — the exact DELEGATE-52 subtlety this suite measures.
+9. **Correction of item 2 (dispatch-supervision error, found in cross-model
+   review).** The two "empty first outputs" were in-flight reads of
+   still-running calls, not failures: moving the apparently-empty redirect
+   target aside let the original call finish writing into the moved file via
+   its retained file descriptor. Consequently
+   `subjects/failed/rp-08-U-r2.attempt1.md` is the original call's complete
+   output (byte-identical to the scored file) and
+   `adjudication/run-32.attempt1.empty` (filename now misleading; kept
+   as-committed) is a complete second adjudication agreeing on
+   `claim_drift: true` (attempt1: both flags CONFIRMED C1; scored: C1 + C3).
+   No retry-after-failure occurred; each pair is two samples of the same call
+   spec with agreeing outcomes, and the supervisor-dispatched sample is the
+   scored one. Results impact: none (rp-08 byte-identical; run-32 verdicts
+   agree). The report's `attempts.atomicity` carries this correction.
+10. **run-26 criterion citations corrected in aggregate.** Two confirmed
+   flags in `adjudication/run-26.json` cite C5, which the rubric scopes to
+   controls; rp-06 is not a control. The DRIFTED classification rests on the
+   record's independent confirmed C1 finding, so counts are unchanged. Raw
+   record preserved unedited. A rubric v2 should add a criterion for
+   non-control forbidden citation moves.
+11. **Same-window attribution is an operator attestation.** No per-call
+   timestamps, dispatch-order log, or model receipts were retained; the
+   interleaved one-window claim rests on the supervising session's own
+   record. A future run should retain a write-once execution manifest
+   (per-call timestamp, prompt/output hashes).

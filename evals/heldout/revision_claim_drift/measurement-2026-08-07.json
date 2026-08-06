@@ -256,7 +256,7 @@
  "aggregate": {
   "headline": {
    "metric_name": "claim_strength_hedge_drift_rate_by_arm",
-   "value": "unguarded (U) 7/16 = 0.438; guarded (G) 1/16 = 0.062",
+   "value": "unguarded (U) 7/16 = 0.4375; guarded (G) 1/16 = 0.0625",
    "construction_rule": "per arm over 16 item-replicates: judge flags -> blinded adjudication under the precommitted rubric (C1-C5, C7: adjudication only resolves judge-raised flags, never adds) -> item-replicate DRIFTED iff >=1 confirmed C1/C2 finding (C8) -> drifted/16. Single judge + adjudication, so no tie rule is reachable. Item-level counts (item drifted in >=1 replicate) reported in results for legacy comparability with the baseline's 2/8."
   },
   "agreement": {
@@ -351,7 +351,7 @@
   "raw_published": true
  },
  "attempts": {
-  "atomicity": "one retry per failed subject/judge/adjudicator call; a retry fully replaces the failed attempt and failed attempts are preserved on disk. Two retries occurred, both second attempts clean (RUN_NOTES.md item 2).",
+  "atomicity": "pre-registered: one retry per failed call, retries replacing failed attempts. Post-hoc audit (RUN_NOTES.md items 2+9) found the two 'empty first outputs' (subject rp-08-U-r2, adjudicator run-32) were in-flight reads of still-running calls, not failures: the moved-aside files received the original calls' complete outputs, so each pair is two samples of the same call spec with agreeing outcomes (rp-08 byte-identical; run-32 both CONFIRMED claim_drift, differing rationale/criterion). The supervisor-dispatched second sample is the scored one in both cases; no true call failure occurred.",
   "partial_published": false,
   "blocked_runs": []
  },
@@ -368,10 +368,10 @@
   ]
  },
  "results": {
-  "design": "two_arm_concurrent (issue #652 preferred design): same items, same session window, same frozen subject configuration; the U-vs-G delta is attributable to the guard text",
+  "design": "two_arm_concurrent (issue #652 preferred design): same items, same session window, same frozen subject configuration; the U-vs-G delta is attributable to the pre-registered guard-block PROMPT (a composite condensed from the shipped #569 ladder rules - see caveats), with arm interleaving operator-attested, not receipt-verified (RUN_NOTES.md item 11)",
   "claim_strength_hedge_drift": {
-   "U_item_replicates": "7/16 = 0.438 (rp-02 r1+r2, rp-03 r1+r2, rp-05 r1, rp-06 r1+r2)",
-   "G_item_replicates": "1/16 = 0.062 (rp-03 r2)",
+   "U_item_replicates": "7/16 = 0.4375 (rp-02 r1+r2, rp-03 r1+r2, rp-05 r1, rp-06 r1+r2)",
+   "G_item_replicates": "1/16 = 0.0625 (rp-03 r2)",
    "U_item_level": "4/8 (rp-02, rp-03, rp-05, rp-06)",
    "G_item_level": "1/8 (rp-03)",
    "raw_judge_flagged_runs": "10/32 runs with >=1 of the three verdict booleans true (9 U, 1 G) -> adjudicated 8/32 drifted (7 U, 1 G); rp-01 U r1+r2 flags rejected on C3/C4 (mirroring the baseline's rp-01 rejection); rp-05-U-r1 (run-30) enters via its confirmed unauthorized_change flag classified C1 - see adjudication.overrides, no flag was added (rubric C7)"
@@ -384,14 +384,16 @@
   "controls": "rp-07 and rp-08 clean in both arms and both replicates (judged layer: 0 flags on all 8 control runs)",
   "temporal_comparison_vs_2026_07_22": "descriptive only, no causal claim: baseline (unguarded, 1 replicate, same judge config) 2/8 items; today's unguarded arm 4/8 items (7/16 item-replicates), with the judge's raw flag rate also higher (9/16 U runs flagged vs baseline raw 4/8). Same drift concentration (hedge-drop rp-02 / null-reframe rp-03) plus two items that held at baseline (rp-05 downward move predicts->associated-with; rp-06 systematic modal deletion)."
  },
- "verdict": "GUARD EFFECT PRESENT IN-WINDOW, DRIFT NOT ELIMINATED: under the two-arm concurrent design the shipped #569 ladder text substantially reduces claim-strength/hedge drift and eliminated unauthorized numeric/citation deltas on these items (rates in aggregate.headline and results). The residual guarded case (rp-03-G-r2) restated a null ('no evidence of the expected operational advantage') as an affirmative 'showed no relation to how quickly teams delivered' - an absence-of-evidence -> evidence-of-absence move the guard text did not stop. The unguarded arm ran hotter than the 2026-07-22 baseline row (temporal comparison, descriptive only).",
+ "verdict": "GUARD-TEXT EFFECT PRESENT IN-WINDOW, DRIFT NOT ELIMINATED: under the two-arm concurrent design the pre-registered guard-block prompt (condensed from the shipped #569 revision-mode ladder rules; RUN_PLAN.md) substantially reduced claim-strength/hedge drift and eliminated unauthorized numeric/citation deltas on these items (rates in aggregate.headline and results). Attribution is to that prompt text under this design - not to the shipped pipeline path or the downstream #570 checker. The residual guarded case (rp-03-G-r2) restated a null ('no evidence of the expected operational advantage') as an affirmative 'showed no relation to how quickly teams delivered' - an absence-of-evidence -> evidence-of-absence move the guard text did not stop. The unguarded arm ran hotter than the 2026-07-22 baseline row (temporal comparison, descriptive only).",
  "caveats": [
   "n=8 items, 2 replicates, single generator (codex), English-only, synthetic. Model- and time-specific - re-run, do not reuse these numbers.",
   "Single legacy-comparability judge (judge_plan.exception); the drift rate is conditional on judge recall and is a lower bound (rubric C7: adjudication never adds flags the judge missed).",
   "The adjudicator (claude-fable-5, blinded fresh contexts) shares the subject's model family; the cross-model codex pass is the independence anchor, as in the baseline. An unblinded maintainer-delegate QA pass re-read the load-bearing verdicts against the raw outputs before publication (RUN_NOTES.md item 5).",
   "The baseline retained no raw prompts; Arm U reconstructs the README-documented task shape, not the baseline's exact bytes. Both arms share the template, so the U-vs-G delta is unaffected; the temporal comparison carries this caveat.",
-  "Arm G's guard block is the shipped draft_writer_agent revision-mode ladder section faithfully condensed for a passage-revision task (patch-op grammar adapted; RUN_PLAN.md records the verbatim block). It measures the guard TEXT's effect on a revising subject, not the full pipeline (Phase E6 advisory and orchestrator step 3a are detection layers downstream of the subject and are not exercised here beyond the deterministic checker itself).",
+  "Arm G's guard block is a composite condensed from the shipped draft_writer_agent revision-mode ladder section: rules 1-3 near-verbatim + the ladder scale, with shipped rule 4's protected_hedges-roster mechanism (not instantiable in this eval - no roster exists for synthetic passages) replaced by a numeric/citation conservation line. The row therefore measures this PROMPT's effect on a revising subject, not the shipped pipeline path; in particular the deterministic-layer difference (4/16 -> 0/16) is attributable to the conservation line in the prompt, not to the shipped #570 checker, which is a downstream detection layer. Verbatim block text: RUN_PLAN.md.",
   "Subject-context isolation as declared in subject.config.settings; `--bare` isolation was rejected because it breaks CLI auth (RUN_NOTES.md item 1).",
-  "Subject rp-03-U-r1 appended a meta-note after the revised passage (a commentary-wrapped output the pre-registered retry rule should have caught at dispatch; the in-flight validation missed it). Disclosed rather than selectively re-run after seeing results: the DRIFTED verdict is anchored on the passage text itself ('may shape' -> 'shape', 'directly' deleted), and the judge saw the note, whose fidelity-defending content could only bias toward leniency. Deterministic tokens re-attributed passage-only (RUN_NOTES.md item 8)."
+  "Subject rp-03-U-r1 appended a meta-note after the revised passage (a commentary-wrapped output the pre-registered retry rule should have caught at dispatch; the in-flight validation missed it). Disclosed rather than selectively re-run after seeing results: the DRIFTED verdict is anchored on the passage text itself ('may shape' -> 'shape', 'directly' deleted), and the judge saw the note, whose fidelity-defending content could only bias toward leniency. Deterministic tokens re-attributed passage-only (RUN_NOTES.md item 8).",
+  "Adjudication run-26 cites C5 on two confirmed flags although rp-06 is not a control item (C5 is control-scoped); the DRIFTED classification rests on the record's independent confirmed C1 finding. Raw record preserved; corrected in aggregate (RUN_NOTES.md item 10).",
+  "Same-window interleaved dispatch is an operator attestation - no per-call timestamps or execution receipts were retained. A future run should keep a write-once execution manifest (RUN_NOTES.md item 11)."
  ]
 }
