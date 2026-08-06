@@ -208,6 +208,9 @@ stay with the human reviewer, deliberately:
   (token-delimited) in `attempts.blocked_runs`; which judge failed is prose.
 - **Registry governance.** A suite key can land in the same PR as its first
   report; PR review is the control for that ordering.
+- **Exception sincerity.** `replicates.exception` must be a written sentence
+  (schema minLength), but a schema cannot test sincerity — 20 characters of
+  filler satisfy the letter. The reviewer reads the sentence.
 - **Identifier folding.** Ids and identity fields are compared NFKC-folded
   with format characters stripped (anti-spoof); two intentionally distinct
   compatibility-character spellings will collide and be rejected. Use ASCII

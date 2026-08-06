@@ -942,3 +942,12 @@ def test_scan_unreadable_json_fails(monkeypatch, tmp_path):
     dangling = tmp_path / "s" / "measurement-x.json"
     dangling.symlink_to(tmp_path / "s" / "does-not-exist.json")
     assert _scan_with_root(monkeypatch, tmp_path) == 1
+
+
+def test_scan_external_file_symlink_is_walk_error(monkeypatch, tmp_path, capsys):
+    """A .json FILE symlink resolving outside scan root and repo is loud."""
+    scan_root = tmp_path / "root"
+    (scan_root / "s").mkdir(parents=True)
+    (scan_root / "s" / "external.json").symlink_to("/dev/null")
+    assert _scan_with_root(monkeypatch, scan_root) == 1
+    assert "resolves outside" in capsys.readouterr().out

@@ -615,6 +615,19 @@ def _walk_json_files(root: Path) -> tuple[list[Path], list[str]]:
             if is_dir:
                 _walk(p)
             elif p.suffix.lower() == ".json":
+                try:
+                    file_real = p.resolve()
+                except OSError:
+                    file_real = p
+                if not (
+                    file_real.is_relative_to(root_real)
+                    or file_real.is_relative_to(repo_real)
+                ):
+                    walk_errors.append(
+                        f"{p}: file symlink resolves outside the repository — "
+                        "not scanned (repo-published rows cannot live there)"
+                    )
+                    continue
                 found.append(p)
 
     _walk(root)
