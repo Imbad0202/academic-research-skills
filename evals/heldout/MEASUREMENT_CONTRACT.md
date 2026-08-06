@@ -1,9 +1,13 @@
 # Held-Out Measurement Contract (#654, `heldout-measurement/1.0`)
 
 Issue: #654. Machine artifacts: `measurement_report.schema.json` + `suite_registry.json`
-(this directory). Enforcement: `scripts/check_heldout_measurement_report.py`
-(schema branches B1-B3 + invariants I1-I8, mutation-tested by
-`scripts/test_check_heldout_measurement_report.py`; CI runs `--all`).
+(this directory). Enforcement: `scripts/check_heldout_measurement_report.py` —
+schema branches B1-B4, cross-field invariants I1-I12, reference-resolution
+checks R1-R3 (the rubric file must exist and match its hash, raw-output paths
+must exist, the suite commit must be a real object in this repository), and
+location binding L1 (a row filed under `evals/heldout/<dir>/` must declare
+`suite == <dir>`); mutation-tested by
+`scripts/test_check_heldout_measurement_report.py`; CI runs `--all`.
 
 ## Premise
 
@@ -35,14 +39,18 @@ governs **future runs and re-runs only**. Legacy rows (e.g.
 2026-07-11 rows, the E4 cohorts) are never retrofitted, rewritten, or re-validated.
 
 Discovery is by marker, not by filename: the checker's `--all` mode walks
-`evals/heldout/**/*.json` and validates every file carrying the marker, wherever a
-suite files its rows (a contract-marked file that fails strict JSON parsing —
-duplicate keys, non-finite numbers — fails loudly rather than vanishing from
-validation). Unmarked files are skipped by design.
+`evals/heldout/` (case-insensitive `.json`, following directory symlinks with a
+cycle guard) and validates every file carrying the `measurement_contract` key,
+wherever a suite files its rows. Files that never mention the key are not parsed
+at all; a file that mentions it but fails strict JSON parsing (duplicate keys,
+non-finite numbers, undecodable bytes) fails loudly, and a near-miss marker value
+(homoglyph, stray whitespace, case games) fails loudly rather than skipping
+validation. Unmarked files are skipped by design.
 
 The #652 interaction is the canonical exception pattern: a re-measurement that must
 stay comparable to a legacy baseline keeps the **original judge configuration as its
-legacy-comparability row** (`judge_plan.exception: "legacy_comparability"`), and any
+legacy-comparability row** (`judge_plan.exception: "legacy_comparability"`, which
+must name the legacy row in `judge_plan.legacy_baseline_ref` — branch B4), and any
 additional judges report separately — never merged into the comparability row.
 
 ## Suite classes and the registry
@@ -84,18 +92,27 @@ disclosure around the E4 machinery, it does not replace or reshape it.
 
 - **The judge minimum is derived, never author-declared**: a decision-relevant,
   non-mechanical run with `judge_plan.exception: "none"` requires **>= 2 judge
-  configurations from >= 2 distinct model families** (I2). Fewer judges requires a
-  labeled exception; `"none"` is not a label.
+  configurations from >= 2 distinct model families** (I2; families compared
+  case-/NFKC-folded). Fewer judges requires a labeled exception; `"none"` is not a
+  label. Identity hygiene backs the count (I9): duplicate `judge_id`s, one
+  `model_id` under two family labels, or two judges sharing the same
+  `(model_id, prompt_ref)` configuration are all rejected — listing one judge
+  twice does not add independence.
 - **Per-judge disclosure is mandatory** (schema-required): exact `model_id`,
   `model_family`, `prompt_ref`, `evidence_provided`, `judging_budget`, and the full
-  `per_item` rows. Suites keep their verdict fields, but the fields must be
-  **comparable across judges** — mechanical divergence detection (I8) compares
-  per-item payloads for equality.
+  `per_item` rows — each row carries at least one verdict field beside `item_id`,
+  and judged suites may not publish empty `per_item` arrays (B1). Verdict fields
+  must be **comparable across judges**: per-item key-sets must match (I9), payload
+  comparison is type-aware (JSON `true` and `1` are different verdicts), and item
+  ids are folded (NFKC + format-character strip) before indexing so a zero-width
+  re-spelling cannot split an item into two (I9, the #524 fold-before-compare
+  lesson).
 - **Judge failure**: a judge that fails an item after the declared retry policy
-  (`attempts.atomicity`) leaves that item out of its `per_item` rows; the gap is a
-  W1 warning and must be reflected in `attempts.blocked_runs` / run notes.
-  Replacement judges are new `judges[]` entries, disclosed like any other — never a
-  silent swap. Partial/blocked attempts publish (`attempts.partial_published`).
+  (`attempts.atomicity`) leaves that item out of its `per_item` rows. On a
+  decision-relevant run every such gap must be named in `attempts.blocked_runs`
+  and `partial_published` must be true (I11) — on non-decision runs the gap is a
+  W1 warning. Replacement judges are new `judges[]` entries, disclosed like any
+  other — never a silent swap.
 
 ## Aggregation
 
@@ -105,10 +122,11 @@ disclosure around the E4 machinery, it does not replace or reshape it.
   metric declares its `construction_rule` — how per-judge rows and adjudication
   produce the number, including tie handling when judges split evenly (state the
   rule; the default is "ties escalate to adjudication", not majority-of-two).
-- **Divergent items surface individually** (`aggregate.agreement.divergent_items`);
-  an item two judges scored differently must appear there (I8) — divergence is never
-  averaged away. Each divergent item's resolution shows up either in an adjudication
-  override or in the run notes.
+- **Divergent items surface individually** (`aggregate.agreement.divergent_items`),
+  and the declared list must **equal** the recomputed divergent set: real divergence
+  must be listed (I8) and non-divergent items may not be declared divergent (I3).
+  Every divergent item needs a recorded resolution — an adjudication override in
+  adjudication-required classes, a non-empty `agreement.note` otherwise (I10).
 
 ## Replicates and spread
 
@@ -123,15 +141,21 @@ disclosure around the E4 machinery, it does not replace or reshape it.
 
 - The rubric is committed in-repo and **hashed before any judge output exists**
   (`rubric_sha256`; `rubric_precommitted` is a schema-level `const: true`
-  attestation). Amendments after first use are new rubric versions with new hashes,
-  logged in the run notes — never silent edits.
+  attestation). At validation time the reference must resolve: the rubric file
+  exists in the repository and its recomputed sha256 matches (R1); raw-output
+  paths exist (R2); the subject's `suite_commit` is a real commit here (R3).
+  Amendments after first use are new rubric versions with new hashes, logged in
+  the run notes — never silent edits. What stays human-audited: that the hashed
+  rubric's *commit date* precedes the judge outputs, and that each override's
+  `raw` transcription is faithful — the checker binds identities, the maintainer
+  attests history.
 - `blinded_to` enumerates exactly which dimensions the adjudicator was blinded to:
   `condition`, `mechanism_state`, `subject_model`, `judge_identity`,
   `expected_label`, `raw_aggregate`. An empty list is legal and honest; an
   undeclared blinding claim is not.
 - Every override records the **criterion it applied** (`criterion_ref` into the
   precommitted rubric) — adjudication against a standard, not taste — and targets a
-  judged item (I4).
+  judge that exists and an item that judge actually scored (I4).
 - **Raw pre-adjudication numbers always publish alongside adjudicated ones**
   (`raw_published: const true`; the revision_claim_drift baseline already practiced
   this — the contract makes it structural).

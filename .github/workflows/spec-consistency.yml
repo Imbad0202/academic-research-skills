@@ -384,12 +384,15 @@ jobs:
         run: python3 scripts/check_pipeline_boundary_semantics.py
 
       - name: Run held-out measurement contract validation (#654)
-        # Validates every evals/heldout/*/measurement-*.json that opts into
-        # the heldout-measurement/1.0 envelope (schema + invariants I1-I8).
-        # Legacy rows without the marker are skipped by design (retrofit
-        # scope: future runs and re-runs only). The mutation tests
-        # `test_check_heldout_measurement_report.py` run via the unified
-        # manifest (#156).
+        # Marker-based discovery: walks evals/heldout/ recursively and
+        # validates every JSON file carrying the measurement_contract key
+        # (schema branches B1-B4 + invariants I1-I12 + reference resolution
+        # R1-R3 + location binding L1). Filename conventions do not gate
+        # discovery; near-miss markers and strict-parse failures on marked
+        # files fail loudly. Legacy rows without the marker are skipped by
+        # design (retrofit scope: future runs and re-runs only). The mutation
+        # tests `test_check_heldout_measurement_report.py` run via the
+        # unified manifest (#156).
         run: python3 scripts/check_heldout_measurement_report.py --all
 
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "ars://evals/heldout/measurement_report.schema.json",
   "title": "ARS held-out measurement report envelope (#654, heldout-measurement/1.0)",
-  "description": "Opt-in envelope for scored held-out measurement rows. The envelope standardizes multi-judge disclosure, aggregation, adjudication, replicates, and raw-output retention; suite-specific payloads live untouched in `results` and inside each judge's `per_item` rows. Legacy measurement files without the `measurement_contract` marker are NOT governed by this schema and are never retrofitted. Normative text: evals/heldout/MEASUREMENT_CONTRACT.md. Cross-field invariants I1-I8 (agreement-rate consistency, derived judge minimums + family diversity, divergence/override id binding, suite-registry binding, replicate floor, raw-output paths, divergence enumeration) are enforced by scripts/check_heldout_measurement_report.py — [doc-only] here, executable there.",
+  "description": "Opt-in envelope for scored held-out measurement rows. The envelope standardizes multi-judge disclosure, aggregation, adjudication, replicates, and raw-output retention; suite-specific payloads live untouched in `results` and inside each judge's `per_item` rows. Legacy measurement files without the `measurement_contract` marker are NOT governed by this schema and are never retrofitted. Normative text: evals/heldout/MEASUREMENT_CONTRACT.md. Cross-field invariants I1-I12, reference-resolution checks R1-R3, and the location binding L1 are enforced by scripts/check_heldout_measurement_report.py — [doc-only] here, executable there.",
   "type": "object",
   "required": [
     "measurement_contract",
@@ -41,38 +41,69 @@
       ],
       "description": "Which contract clauses apply. Asserted here, verified against suite_registry.json by the checker. See MEASUREMENT_CONTRACT.md § Suite classes."
     },
-    "measurement_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "measurement_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
     "decision_relevant": {
       "type": "boolean",
       "description": "True when the row is cited for a mechanism/advisory decision. Gates the derived >=2-judge minimum (checker I2) and the >=2 replicate rule (checker I6)."
     },
     "subject": {
       "type": "object",
-      "required": ["model_id", "config"],
+      "required": [
+        "model_id",
+        "config"
+      ],
       "additionalProperties": false,
       "properties": {
-        "model_id": { "type": "string", "minLength": 1 },
+        "model_id": {
+          "type": "string",
+          "minLength": 1
+        },
         "config": {
           "type": "object",
-          "required": ["suite_commit"],
+          "required": [
+            "suite_commit"
+          ],
           "additionalProperties": true,
           "properties": {
-            "suite_commit": { "type": "string", "minLength": 7 },
-            "prompts_ref": { "type": "string" },
-            "settings": { "type": "string" },
-            "sampling": { "type": "string" }
+            "suite_commit": {
+              "type": "string",
+              "minLength": 7
+            },
+            "prompts_ref": {
+              "type": "string"
+            },
+            "settings": {
+              "type": "string"
+            },
+            "sampling": {
+              "type": "string"
+            }
           }
         }
       }
     },
     "judge_plan": {
       "type": "object",
-      "required": ["exception"],
+      "required": [
+        "exception"
+      ],
       "additionalProperties": false,
       "properties": {
         "exception": {
-          "enum": ["none", "legacy_comparability", "mechanical_suite"],
+          "enum": [
+            "none",
+            "legacy_comparability",
+            "mechanical_suite"
+          ],
           "description": "Why fewer judges than the contract's derived minimum is acceptable. The minimum itself is never author-declared: the checker derives it from (decision_relevant, suite_class) — 2 judges from >=2 model families for decision-relevant non-mechanical runs (I2). 'legacy_comparability' = the #652 pattern (original judge kept for comparability; new judges report separately); 'mechanical_suite' is legal only on mechanical_match (branch B3)."
+        },
+        "legacy_baseline_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required when exception == 'legacy_comparability': the legacy measurement row this run stays comparable to."
         }
       }
     },
@@ -91,19 +122,45 @@
         ],
         "additionalProperties": false,
         "properties": {
-          "judge_id": { "type": "string", "minLength": 1 },
-          "model_id": { "type": "string", "minLength": 1 },
-          "model_family": { "type": "string", "minLength": 1 },
-          "prompt_ref": { "type": "string", "minLength": 1 },
-          "evidence_provided": { "type": "string", "minLength": 1 },
-          "judging_budget": { "type": "string", "minLength": 1 },
+          "judge_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_family": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_provided": {
+            "type": "string",
+            "minLength": 1
+          },
+          "judging_budget": {
+            "type": "string",
+            "minLength": 1
+          },
           "per_item": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["item_id"],
+              "required": [
+                "item_id"
+              ],
               "additionalProperties": true,
-              "properties": { "item_id": { "type": "string", "minLength": 1 } }
+              "properties": {
+                "item_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "minProperties": 2
             }
           }
         }
@@ -111,16 +168,36 @@
     },
     "aggregate": {
       "type": "object",
-      "required": ["headline", "agreement"],
+      "required": [
+        "headline",
+        "agreement"
+      ],
       "additionalProperties": false,
       "properties": {
         "headline": {
           "type": "object",
-          "required": ["metric_name", "value", "construction_rule"],
+          "required": [
+            "metric_name",
+            "value",
+            "construction_rule"
+          ],
           "additionalProperties": false,
           "properties": {
-            "metric_name": { "type": "string", "minLength": 1 },
-            "value": { "type": ["string", "number"] },
+            "metric_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "minLength": 1
+                }
+              ]
+            },
             "construction_rule": {
               "type": "string",
               "minLength": 1,
@@ -130,48 +207,92 @@
         },
         "agreement": {
           "type": "object",
-          "required": ["rate", "divergent_items", "note"],
+          "required": [
+            "rate",
+            "divergent_items",
+            "note"
+          ],
           "additionalProperties": false,
           "properties": {
             "rate": {
-              "type": ["number", "null"],
+              "type": [
+                "number",
+                "null"
+              ],
               "minimum": 0,
               "maximum": 1,
               "description": "Recomputed by the checker (I1): 1 - |divergent| / |items judged by >=2 judges|; null iff no item is judged by >=2 judges."
             },
             "divergent_items": {
               "type": "array",
-              "items": { "type": "string" },
-              "description": "Item ids where judges disagree. Divergent items surface individually — never averaged away (checker I8)."
+              "items": {
+                "type": "string"
+              },
+              "description": "Item ids where judges disagree. Divergent items surface individually — never averaged away (checker I8).",
+              "uniqueItems": true
             },
-            "note": { "type": "string" }
+            "note": {
+              "type": "string"
+            }
           }
         }
       }
     },
     "replicates": {
       "type": "object",
-      "required": ["per_item", "rule_ref"],
+      "required": [
+        "per_item",
+        "rule_ref"
+      ],
       "additionalProperties": false,
       "properties": {
-        "per_item": { "type": "integer", "minimum": 1 },
+        "per_item": {
+          "type": "integer",
+          "minimum": 1
+        },
         "rule_ref": {
           "type": "string",
           "minLength": 1,
           "description": "Anchor to the suite's own replicate rule. The contract records each suite's rule; it does not force uniformity."
         },
-        "spread": { "type": ["object", "null"] },
-        "exception": { "type": ["string", "null"] }
+        "spread": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "exception": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 20
+            }
+          ],
+          "description": "Why a below-minimum replicate count is acceptable. A written sentence, not a dash — minLength 20."
+        }
       }
     },
     "adjudication": {
       "type": "object",
-      "required": ["applies"],
+      "required": [
+        "applies"
+      ],
       "additionalProperties": false,
       "properties": {
-        "applies": { "type": "boolean" },
-        "rubric_ref": { "type": "string", "minLength": 1 },
-        "rubric_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "applies": {
+          "type": "boolean"
+        },
+        "rubric_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rubric_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
         "rubric_precommitted": {
           "const": true,
           "description": "Attestation: the rubric was committed + hashed before any judge output existed. const true — the contract offers no other value."
@@ -194,19 +315,39 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["item_id", "judge_id", "raw", "adjudicated", "criterion_ref"],
+            "required": [
+              "item_id",
+              "judge_id",
+              "raw",
+              "adjudicated",
+              "criterion_ref"
+            ],
             "additionalProperties": false,
             "properties": {
-              "item_id": { "type": "string", "minLength": 1 },
-              "judge_id": { "type": "string", "minLength": 1 },
-              "raw": { "type": "string", "minLength": 1 },
-              "adjudicated": { "type": "string", "minLength": 1 },
+              "item_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "judge_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "adjudicated": {
+                "type": "string",
+                "minLength": 1
+              },
               "criterion_ref": {
                 "type": "string",
                 "minLength": 1,
                 "description": "The precommitted-rubric criterion this override applied."
               },
-              "note": { "type": "string" }
+              "note": {
+                "type": "string"
+              }
             }
           }
         },
@@ -218,7 +359,16 @@
       "allOf": [
         {
           "description": "applies:true carries the full adjudication record.",
-          "if": { "properties": { "applies": { "const": true } }, "required": ["applies"] },
+          "if": {
+            "properties": {
+              "applies": {
+                "const": true
+              }
+            },
+            "required": [
+              "applies"
+            ]
+          },
           "then": {
             "required": [
               "rubric_ref",
@@ -232,39 +382,83 @@
         },
         {
           "description": "applies:false records nothing else — an unapplied adjudication may not carry a rubric.",
-          "if": { "properties": { "applies": { "const": false } }, "required": ["applies"] },
-          "then": { "maxProperties": 1 }
+          "if": {
+            "properties": {
+              "applies": {
+                "const": false
+              }
+            },
+            "required": [
+              "applies"
+            ]
+          },
+          "then": {
+            "maxProperties": 1
+          }
         }
       ]
     },
     "attempts": {
       "type": "object",
-      "required": ["atomicity", "partial_published", "blocked_runs"],
+      "required": [
+        "atomicity",
+        "partial_published",
+        "blocked_runs"
+      ],
       "additionalProperties": false,
       "properties": {
-        "atomicity": { "type": "string", "minLength": 1 },
-        "partial_published": { "type": "boolean" },
-        "blocked_runs": { "type": "array", "items": { "type": "string" } }
+        "atomicity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "partial_published": {
+          "type": "boolean"
+        },
+        "blocked_runs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "raw_outputs": {
       "type": "object",
-      "required": ["retained", "paths"],
+      "required": [
+        "retained",
+        "paths"
+      ],
       "additionalProperties": false,
       "properties": {
         "retained": {
           "const": true,
           "description": "Attestation: raw subject and judge outputs are retained. const true; paths must be non-empty (checker I7)."
         },
-        "paths": { "type": "array", "items": { "type": "string" } }
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       }
     },
     "results": {
       "type": "object",
       "description": "Suite-specific payload. The contract does not constrain it."
     },
-    "verdict": { "type": "string", "minLength": 1 },
-    "caveats": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+    "verdict": {
+      "type": "string",
+      "minLength": 1
+    },
+    "caveats": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
   },
   "allOf": [
     {
@@ -272,26 +466,58 @@
       "if": {
         "properties": {
           "suite_class": {
-            "enum": ["llm_judged", "seeded_manifest_adjudicated", "paired_controls"]
+            "enum": [
+              "llm_judged",
+              "seeded_manifest_adjudicated",
+              "paired_controls"
+            ]
           }
         },
-        "required": ["suite_class"]
+        "required": [
+          "suite_class"
+        ]
       },
-      "then": { "properties": { "judges": { "minItems": 1 } } }
+      "then": {
+        "properties": {
+          "judges": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "per_item": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        }
+      }
     },
     {
       "description": "B2: llm_judged and seeded_manifest_adjudicated suites cannot opt out of adjudication.",
       "if": {
         "properties": {
-          "suite_class": { "enum": ["llm_judged", "seeded_manifest_adjudicated"] }
+          "suite_class": {
+            "enum": [
+              "llm_judged",
+              "seeded_manifest_adjudicated"
+            ]
+          }
         },
-        "required": ["suite_class"]
+        "required": [
+          "suite_class"
+        ]
       },
       "then": {
         "properties": {
           "adjudication": {
-            "properties": { "applies": { "const": true } },
-            "required": ["applies"]
+            "properties": {
+              "applies": {
+                "const": true
+              }
+            },
+            "required": [
+              "applies"
+            ]
           }
         }
       }
@@ -301,17 +527,57 @@
       "if": {
         "properties": {
           "suite_class": {
-            "enum": ["llm_judged", "seeded_manifest_adjudicated", "paired_controls"]
+            "enum": [
+              "llm_judged",
+              "seeded_manifest_adjudicated",
+              "paired_controls"
+            ]
           }
         },
-        "required": ["suite_class"]
+        "required": [
+          "suite_class"
+        ]
       },
       "then": {
         "properties": {
           "judge_plan": {
             "properties": {
-              "exception": { "enum": ["none", "legacy_comparability"] }
+              "exception": {
+                "enum": [
+                  "none",
+                  "legacy_comparability"
+                ]
+              }
             }
+          }
+        }
+      }
+    },
+    {
+      "description": "B4: the legacy_comparability exception must name the legacy row it is comparable to.",
+      "if": {
+        "properties": {
+          "judge_plan": {
+            "properties": {
+              "exception": {
+                "const": "legacy_comparability"
+              }
+            },
+            "required": [
+              "exception"
+            ]
+          }
+        },
+        "required": [
+          "judge_plan"
+        ]
+      },
+      "then": {
+        "properties": {
+          "judge_plan": {
+            "required": [
+              "legacy_baseline_ref"
+            ]
           }
         }
       }
