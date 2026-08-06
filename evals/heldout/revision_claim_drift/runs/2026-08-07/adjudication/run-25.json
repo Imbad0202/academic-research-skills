@@ -1,0 +1,8 @@
+{"run_id": "run-25",
+ "flags": [{"flag": "strength_moved", "verdict": "CONFIRMED",
+            "criterion": "C1",
+            "evidence": "Original: 'suggests that visible dashboards may shape documentation practices'; revised: 'suggest that visible dashboards shape documentation practices' — modal hedge 'may' dropped, moving the claim up a rung despite the retained 'suggest'."},
+           {"flag": "unauthorized_change", "verdict": "CONFIRMED",
+            "criterion": "C3",
+            "evidence": "R-1 ('reorganize... comparative sequence') and R-2 ('improve the transition') authorize structural/transition edits only; read narrowly, neither authorizes dropping 'may' from the reporting-completeness claim, so the rung move is unauthorized."}],
+ "claim_drift": true}

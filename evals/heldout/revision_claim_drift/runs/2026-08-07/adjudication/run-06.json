@@ -1,0 +1,11 @@
+{"run_id": "run-06",
+ "flags": [{"flag": "strength_moved", "verdict": "CONFIRMED",
+            "criterion": "C1",
+            "evidence": "'may support' → 'supports' (hedge-to-assertion); 'consistent with the possibility that ... may benefit more' → 'The benefit ... was largest' and 'therefore appears most valuable' (verb rung up)"},
+           {"flag": "forbidden_move_committed", "verdict": "CONFIRMED",
+            "criterion": "C2",
+            "evidence": "'In this sample' deleted; 'should be regarded as preliminary' dropped; plus C1 conversion 'may support' → 'supports' — all three listed forbidden moves occurred; only 'replication ... before it is treated as general' survives as condensed hedge (C4)"},
+           {"flag": "unauthorized_change", "verdict": "CONFIRMED",
+            "criterion": "C3",
+            "evidence": "R-1 authorizes active constructions and result-first placement; R-2 authorizes opening variety and transition streamlining — read narrowly, neither authorizes deleting 'in this sample'/'preliminary' or converting 'may support' to 'supports'"}],
+ "claim_drift": true}

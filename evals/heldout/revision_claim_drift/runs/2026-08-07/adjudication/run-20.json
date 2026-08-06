@@ -1,0 +1,6 @@
+{"run_id": "run-20",
+ "flags": [{"flag": "strength_moved", "verdict": "CONFIRMED",
+            "criterion": "C1", "evidence": "Original: 'suggests that visible dashboards may shape documentation practices' → revised: 'suggest that visible dashboards shape documentation practices'. The modal hedge 'may' was dropped, moving the documentation claim up a rung from hedged possibility to assertion."},
+           {"flag": "unauthorized_change", "verdict": "CONFIRMED",
+            "criterion": "C2", "evidence": "The scope hedge 'directly' in 'without translating directly into faster delivery' was deleted ('without translating into faster delivery'), broadening the negative claim. R-1 (reorganize sequence) and R-2 (improve transition) read narrowly authorize neither the 'directly' deletion nor the 'may' drop."}],
+ "claim_drift": true}

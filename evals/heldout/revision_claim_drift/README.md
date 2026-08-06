@@ -102,3 +102,33 @@ item. The 2026-07-22 baseline row predates the contract and is never retrofitted
 a #652 re-measurement keeps the original judge as its legacy-comparability row
 (`judge_plan.exception: "legacy_comparability"`) with any new judges reported
 separately.
+
+## 2026-08-07 post-guard re-measurement (#652; see `measurement-2026-08-07.json`)
+
+Two-arm concurrent design (the issue's preferred attribution shape): the same 8
+items, same session window, same frozen subject configuration
+(`claude-fable-5`, headless CLI, neutral cwd), 2 replicates per item per arm —
+Arm U gets the baseline-shaped natural task, Arm G additionally carries the
+shipped `draft_writer_agent` revision-mode ladder block (verbatim in
+`runs/2026-08-07/RUN_PLAN.md`). First row under the #654 envelope: rubric
+pre-committed and hashed before any judge output existed
+(`adjudication_rubric.md` v1.0), legacy-comparability judge
+(codex `gpt-5.6-sol` xhigh, blind to arms/controls via seed-652 anonymization),
+blinded fresh-context adjudication, raw outputs under `runs/2026-08-07/`.
+
+| Layer | Unguarded (U) | Guarded (G) |
+|-------|---------------|-------------|
+| Claim-strength / hedge drift (judged, item-replicates) | **7/16 = 0.438** | **1/16 = 0.062** |
+| Item-level (drifted in >= 1 replicate) | 4/8 (rp-02, rp-03, rp-05, rp-06) | 1/8 (rp-03) |
+| Deterministic unauthorized numeric/citation deltas | 4/16 runs | 0/16 |
+| Controls (rp-07/rp-08) | clean | clean (rp-07 shows exactly the authorized 0.17→0.21) |
+
+**Verdict: GUARD EFFECT PRESENT IN-WINDOW, DRIFT NOT ELIMINATED.** The guarded
+arm's residual case (rp-03-G-r2) restated a null ("no evidence of the expected
+operational advantage") as an affirmative "showed no relation" — an
+absence-of-evidence → evidence-of-absence move the guard text did not stop.
+The unguarded arm ran hotter than the 2026-07-22 baseline (4/8 items vs 2/8;
+raw judge flags 9 vs 4) — a descriptive temporal comparison only (the baseline
+retained no raw prompts and had 1 replicate; no causal claim on the temporal
+axis). Judged rate is a lower bound conditional on judge recall (rubric C7:
+adjudication never adds flags). Model- and time-specific — re-run, never reuse.

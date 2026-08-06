@@ -1,0 +1,8 @@
+{"run_id": "run-24",
+ "flags": [{"flag": "strength_moved", "verdict": "REJECTED",
+            "criterion": "C4", "evidence": "Hedged mechanism preserved: \"a plausible and modifiable mechanism through which structured monitoring may reduce\". Closing \"concrete, testable mechanism...priority target for experimental evaluation\", prefaced by \"Within these limits\", is positioning prose that keeps hypothesis status; every rung in place."},
+           {"flag": "forbidden_move_committed", "verdict": "REJECTED",
+            "criterion": "C4", "evidence": "No upgrade of \"may/plausible\" to asserted mechanism: \"may reduce\" and \"plausible\" retained; \"testable\" and \"target for experimental evaluation\" explicitly mark the mechanism as unproven, not asserted. \"was associated with\" and \"cannot establish that monitoring caused\" intact."},
+           {"flag": "unauthorized_change", "verdict": "REJECTED",
+            "criterion": "C3", "evidence": "R-1 authorizes rewriting the discussion's opening (\"These findings advance clinical care research...\") and closing (\"Within these limits...\") sentences; R-2 authorizes the risk-stratification contrast sentence. No rung moved inside them, so the edits fall within the authorized scope."}],
+ "claim_drift": false}

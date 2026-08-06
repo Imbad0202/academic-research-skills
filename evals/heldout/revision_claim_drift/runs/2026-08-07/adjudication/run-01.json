@@ -1,0 +1,6 @@
+{"run_id": "run-01",
+ "flags": [{"flag": "strength_moved", "verdict": "CONFIRMED",
+            "criterion": "C1", "evidence": "\"can increase selective exposure\"→\"narrows\"; \"can increase willingness\"→\"broaden\"; \"may shape\"→\"shapes\"; \"can improve\"→\"improves\"; \"has also been associated with\"→\"supports\"; \"may signal\"→\"signals\" — modal-hedge drops and verb rung changes on all six background claims."},
+           {"flag": "unauthorized_change", "verdict": "CONFIRMED",
+            "criterion": "C2", "evidence": "Hedges \"can,\" \"may,\" and \"has also been associated with\" deleted without authorization: R-1 authorizes condensing the synthesis, not removing hedge force; R-2 authorizes strengthening the final link, not the six citation propositions. Condensation preserving hedge force was available but not used."}],
+ "claim_drift": true}

@@ -1,0 +1,8 @@
+{"run_id": "run-22",
+ "flags": [{"flag": "strength_moved", "verdict": "CONFIRMED",
+            "criterion": "C1", "evidence": "'may support' became 'indicates that structured reflection supports' (modal-hedge drop to assertion); 'consistent with the possibility that students...may benefit more' became 'students with lower prior achievement gained more' and 'guided explanation is most valuable' (hedge-to-assertion)."},
+           {"flag": "forbidden_move_committed", "verdict": "CONFIRMED",
+            "criterion": "C2", "evidence": "Scope hedge 'in this sample' deleted; status hedge 'The moderation analysis should be regarded as preliminary' dropped entirely; plus 'may support' converted to 'supports'. Three listed forbidden moves; only the replication qualifier survives as 'replication across a broader range of classrooms is needed before generalizing this conclusion'."},
+           {"flag": "unauthorized_change", "verdict": "CONFIRMED",
+            "criterion": "C3", "evidence": "R-1 ('active constructions', 'principal result at the start') and R-2 ('reduce repetitive sentence openings', 'streamline the transition') authorize positioning and phrasing only; read narrowly, neither authorizes deleting 'in this sample', dropping 'preliminary', or moving 'may support' to 'supports'."}],
+ "claim_drift": true}

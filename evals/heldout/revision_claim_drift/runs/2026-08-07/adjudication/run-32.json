@@ -1,0 +1,6 @@
+{"run_id": "run-32",
+ "flags": [{"flag": "strength_moved", "verdict": "CONFIRMED",
+            "criterion": "C1", "evidence": "Original: 'did not support the hypothesis' and 'providing no evidence of the expected operational advantage' (evidential null). Revision asserts: 'transparency showed no relation to how quickly teams delivered' — a hedge-to-assertion move from absence-of-evidence to affirmative absence-of-relation."},
+           {"flag": "unauthorized_change", "verdict": "CONFIRMED",
+            "criterion": "C3", "evidence": "R-2 authorizes improving 'the transition between the delivery-speed result and the reporting-completeness interpretation' — touching that block. Read narrowly, it does not authorize moving the claim's rung inside it to 'showed no relation to how quickly teams delivered'."}],
+ "claim_drift": true}

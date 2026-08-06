@@ -1,0 +1,389 @@
+{
+ "measurement_contract": "heldout-measurement/1.0",
+ "suite": "revision_claim_drift",
+ "suite_class": "llm_judged",
+ "measurement_date": "2026-08-07",
+ "decision_relevant": true,
+ "subject": {
+  "model_id": "claude-fable-5",
+  "config": {
+   "suite_commit": "d8e3fdc1b6c4d8517a11ffc0862a6a4ecf4846b5",
+   "prompts_ref": "runs/2026-08-07/RUN_PLAN.md (templates) + runs/2026-08-07/subject_prompts/ (verbatim)",
+   "settings": "headless `claude -p --model claude-fable-5` (Claude Code CLI 2.1.223), neutral non-repo cwd (no repo CLAUDE.md; user-global CLAUDE.md present and probed free of any guard/ladder content), fresh context per run, no tools",
+   "sampling": "CLI defaults; one independent call per item-replicate; arms interleaved in one session window (two_arm_concurrent)"
+  }
+ },
+ "judge_plan": {
+  "exception": "legacy_comparability",
+  "legacy_baseline_ref": "evals/heldout/revision_claim_drift/measurement-2026-07-22.json"
+ },
+ "judges": [
+  {
+   "judge_id": "codex-gpt-5.6-sol-xhigh",
+   "model_id": "gpt-5.6-sol",
+   "model_family": "openai-gpt",
+   "prompt_ref": "runs/2026-08-07/judge_prompt_template.md",
+   "evidence_provided": "original passage, reviewer comment, revision plan, revised passage, ground-truth protected_epistemic + forbidden_moves; blind to arm labels, control status, replicate structure, other runs (anonymized run ids, seed-652 shuffle)",
+   "judging_budget": "one codex exec call per run (32 calls), model_reasoning_effort=xhigh, one retry permitted (attempt-atomic); 0 retries needed",
+   "per_item": [
+    {
+     "item_id": "run-01",
+     "strength_moved": true,
+     "forbidden_move_committed": false,
+     "unauthorized_change": true,
+     "rationale": "All six citations remain attached to distinct propositions, so no forbidden move occurred. However, every background claim was strengthened: “can increase” became “narrows” and “broaden”; “may shape” became “shapes”; “can improve” became “improves”; “has…been associated with” became “supports”; and “may signal” became “signals.” R-1 authorized condensation, not removal of these hedges. The final sentence also newly claims that replies and tone “appear to work through” specific pathways; R-2 authorized a stronger conceptual link, but not a new mechanistic interpretation of the associations."
+    },
+    {
+     "item_id": "run-02",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The protected phrasing held exactly: “These differences were associated with restoration status,” preserving the noncausal strength. The modal hedge also held in “canopy effects may differ modestly.” All reported values, decimal places, confidence-interval bounds, p-values, and citations were retained unchanged. Recasting nitrate as “lower in restored plots than in unrestored plots” and oxygen as occurring “more often” faithfully expresses the same numerical descriptive contrasts. Splitting the model estimates into separate sentences and relocating details parenthetically are authorized by R-1 and R-2 and do not change substantive content."
+    },
+    {
+     "item_id": "run-03",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The only change is the authorized replacement of the indirect-effect coefficient from “b = 0.17” to “b = 0.21.” All other numbers, citations, and epistemic phrasings—including “was associated with,” “predicted,” “are consistent with,” “suggesting,” “aligns with,” and “may influence”—remain unchanged."
+    },
+    {
+     "item_id": "run-04",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All six background propositions retain their original epistemic strength and citation attachment: “can increase” remains with Rahmani and Okeke & Vidal; “may shape” remains with Sato; “can improve…without improving” remains with Dlamini & Kroll; “has been associated” remains with Petrescu; and “may signal” remains with Al-Masri & Ko. No citation was dropped, merged, misattributed, or attached to the current findings. The added mapping preserves “was associated with” for cross-cutting replies and “predicted” for hostile tone. Condensation, thematic organization, and the explicit results link are authorized by R-1 and R-2."
+    },
+    {
+     "item_id": "run-05",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All six propositions retain their original strength and distinct citation: “can increase” (Rahmani; Okeke & Vidal), “may shape” (Sato), “can improve…without improving” (Dlamini & Kroll), “has been associated with” (Petrescu), and “may signal” (Al-Masri & Ko). No citation was dropped, merged, misattributed, or attached to the current findings. The final mapping preserves the study’s observational language—“were associated with” and “predicted”—while the added interpretations (“pair exposure to difference with a normative signal” and “a breach of interaction norms”) implement R-2’s authorized conceptual link without strengthening the reported effects."
+    },
+    {
+     "item_id": "run-06",
+     "strength_moved": true,
+     "forbidden_move_committed": true,
+     "unauthorized_change": true,
+     "rationale": "The revision deletes the protected scope hedge “in this sample,” changes “may support” to the stronger assertion “supports,” and drops the required “preliminary” status of the moderation analysis. It also strengthens “consistent with the possibility that students with less developed prior knowledge may benefit more” to “The benefit ... was largest” and “therefore appears most valuable.” The replication qualifier remains in paraphrased form: “warrants replication ... before it is treated as general.” These strength changes were not authorized by R-1 or R-2 and include three explicitly forbidden moves."
+    },
+    {
+     "item_id": "run-07",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The only change is the authorized indirect-effect coefficient, from “b = 0.17” to “b = 0.21.” All other numbers, citations, and epistemic phrasings held, including “was associated with,” “predicted,” “are consistent with,” “suggesting partial rather than complete mediation,” “aligns with,” and “may influence.”"
+    },
+    {
+     "item_id": "run-08",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All three protected limitations retained their original strength: “shared response tendencies may have inflated their association”; “does not establish temporal ordering and cannot rule out the possibility that exhaustion disrupts routines”; and “may limit generalization to people with different work arrangements or service access.” The reverse-causation possibility remains explicit, no limitation became a strength, and none was deleted. Integrating the contextual-variability sentence into the narrowed-sample clause is authorized condensation and does not substantively alter the claim."
+    },
+    {
+     "item_id": "run-09",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All three protected limitations held at the same strength. The common-method caveat remains: “self-reported, so shared response tendencies may have inflated their association.” The temporal caveat remains: “does not establish temporal ordering and cannot rule out that exhaustion disrupts routines,” preserving reverse causation. The sampling caveat remains: the “volunteer sample drawn from metropolitan counseling networks may limit generalization” to the same populations specified originally. No limitation became a strength or was deleted. Reordering the Ferreira (2018) contextual-variability rationale into the final sentence and tightening “cannot rule out the possibility that” to “cannot rule out that” are authorized condensation without substantive change."
+    },
+    {
+     "item_id": "run-10",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All protected epistemic phrasings retained their original strength: “in this sample” still scopes the main result; “may support” remains the modal hedge; the moderation analysis is still explicitly regarded as “preliminary”; and “replication in a broader range of classrooms is needed before drawing a general conclusion” is preserved. The numerical results, citations, and substantive interpretations are unchanged. Reordering the principal result, using “whereas,” and streamlining the final transition implement the approved clarity and confidence revisions without strengthening or weakening any scientific claim."
+    },
+    {
+     "item_id": "run-11",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The protected phrasing held: “differences were associated with restoration status” became “Both contrasts were associated with restoration status,” preserving its noncausal strength. All reported values, decimal places, CI bounds, p-values, sample details, and citations were retained unchanged. “The restoration-by-canopy interaction was positive (0.092...)” only makes explicit the sign already conveyed by 0.092; it does not alter the claim. The remaining changes restructure the descriptive contrasts and model estimates and move statistics into parentheses, as authorized."
+    },
+    {
+     "item_id": "run-12",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The only change was the authorized replacement of “showed a close agreement with” by “closely agreed with.” This preserves the calibration claim’s strength and scope. All findings, calibration values, hedges, numbers, citations, and limitations remained unchanged."
+    },
+    {
+     "item_id": "run-13",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The sole change was the authorized replacement of “showed a close agreement with” by “closely agreed with.” This preserves the calibration claim’s strength and leaves all findings, hedges, numbers, citations, and limitations unchanged."
+    },
+    {
+     "item_id": "run-14",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The only change was the authorized indirect-effect coefficient, from “b = 0.17” to “b = 0.21.” All other numbers, confidence intervals, p-values, citations, and substantive wording remained unchanged. Epistemic phrasings held exactly, including “was associated with,” “predicted,” “are consistent with,” “suggesting partial rather than complete mediation,” “aligns with,” and “may influence.”"
+    },
+    {
+     "item_id": "run-15",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All protected epistemic phrasings retained their strength: “In this sample” still scopes the main effect; “may support” remains a modal hedge; the authors still characterize the moderation results as “preliminary”; and “replication in a broader range of classrooms is needed before drawing a general conclusion” remains intact. The reordered results, active construction, and streamlined transition follow R-1 and R-2 without changing numerical results, citations, limitations, or substantive claims."
+    },
+    {
+     "item_id": "run-16",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The protected strengths held: “was associated with” remains associational; the mechanism remains hedged as “may identify” and “a plausible pathway”; and the design caveat remains explicit as “cannot establish that monitoring caused the reduction.” No causal verb replaces the association. The added “clinically meaningful target” and “concrete, testable pathway” strengthen significance and future-research positioning without asserting demonstrated causality. The sentence beginning “Unlike prior risk-stratification approaches” is the concise distinction authorized by R-2, while the revised opening and closing implement R-1."
+    },
+    {
+     "item_id": "run-17",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The only change was the authorized replacement of “showed a close agreement with” by “closely agreed with.” This preserves the calibration claim’s strength and scope. All findings, hedges, numbers, and citations—including “similar,” “is consistent with,” “suggests,” “may constrain,” “support,” and “could be useful”—remained unchanged."
+    },
+    {
+     "item_id": "run-18",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The primary null remains explicit as “did not support the hypothesis,” with all primary statistics unchanged. The protected “no evidence of the expected operational advantage” strength is preserved in the equivalent formulation “Neither specification provided evidence of the expected operational advantage.” “Both delivery outcomes told the same story” accurately synthesizes the two reported null estimates without recasting either as positive or near-significant. The reporting-completeness result, citations, interpretation, and model limitation remain substantively unchanged; the edits implement the authorized comparative reorganization and transition improvement."
+    },
+    {
+     "item_id": "run-19",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All three protected limitations retain their original strength. “Both constructs were self-reported” preserves the common-method concern, including “may have inflated their association.” “Does not establish temporal ordering” is unchanged in substance, and “leaving open the possibility that exhaustion disrupts routines rather than the reverse” retains reverse causation. Recruitment remains through “a narrow set of metropolitan counseling networks” and still “may limit generalization.” The contextual-variability citation is also retained. The changes merely combine and tighten the limitations as authorized by R-1 and R-2."
+    },
+    {
+     "item_id": "run-20",
+     "strength_moved": true,
+     "forbidden_move_committed": false,
+     "unauthorized_change": true,
+     "rationale": "The protected null claims held: “did not support the primary hypothesis,” “no evidence of the operational advantage,” and all primary-null statistics remain. However, “suggests that visible dashboards may shape documentation practices without translating directly into faster delivery” became “suggest that visible dashboards shape documentation practices without translating into faster delivery.” Dropping “may” strengthens the documentation claim, while dropping “directly” broadens the negative delivery claim. R-1 and R-2 authorize reorganization and transition improvement, not these epistemic or scope changes. No forbidden move occurred because the null result, statistics, and explicit “no evidence” framing were preserved."
+    },
+    {
+     "item_id": "run-21",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The protected association remains “monitoring was associated with a lower rate,” the mechanism remains hedged as “may identify” and “a plausible mechanism,” and the design caveat remains explicit: “cannot establish that monitoring caused the reduction.” “Clinically meaningful candidate pathway” and “priority target for randomized evaluation” strengthen positioning without asserting causation. The risk-stratification comparison is the concise positioning sentence authorized by R-2; the revised opening and closing are authorized by R-1."
+    },
+    {
+     "item_id": "run-22",
+     "strength_moved": true,
+     "forbidden_move_committed": true,
+     "unauthorized_change": true,
+     "rationale": "The scope hedge “in this sample” was deleted; “may support” became “indicates that structured reflection supports”; and “The moderation analysis should be regarded as preliminary” was dropped. The moderation interpretation also strengthened from “consistent with the possibility that students…may benefit more” to “students with lower prior achievement gained more” and “guided explanation is most valuable.” The replication qualifier was substantially retained as “replication…is needed before generalizing this conclusion,” but the other changes alter claim strength without authorization and commit three listed forbidden moves."
+    },
+    {
+     "item_id": "run-23",
+     "strength_moved": true,
+     "forbidden_move_committed": true,
+     "unauthorized_change": true,
+     "rationale": "The core association and caveat held: “was associated with,” “may detect,” “plausible mechanistic pathway,” and “cannot establish that monitoring caused the reduction” preserve their original strength. However, the closing upgrades the hedged pathway by saying the findings “specify early symptom detection as a concrete, testable mechanism.” Calling it a “mechanism” specified by the findings is stronger than the approved “may identify”/“plausible pathway” formulation; “testable” does not restore the missing possibility hedge. This commits the forbidden hedge-to-asserted-mechanism move and is not authorized by R-1’s positioning rewrite or R-2’s comparison with risk stratification."
+    },
+    {
+     "item_id": "run-24",
+     "strength_moved": true,
+     "forbidden_move_committed": true,
+     "unauthorized_change": true,
+     "rationale": "The associational wording (“was associated with”) and causal caveat (“cannot establish that monitoring caused the reduction”) held. The revised opening also retains hedging in “plausible…mechanism” and “may reduce.” However, the closing upgrades the mechanism by positioning monitoring as “a concrete, testable mechanism for improving care continuity,” without the original “may identify”/“plausible pathway” qualification. This is an asserted-mechanism formulation and therefore a forbidden strength move. R-1 authorized stronger positioning and R-2 authorized comparison with risk stratification, but neither authorized increasing the mechanism claim’s epistemic strength, making the change unauthorized."
+    },
+    {
+     "item_id": "run-25",
+     "strength_moved": true,
+     "forbidden_move_committed": false,
+     "unauthorized_change": true,
+     "rationale": "The primary null held: “did not support the hypothesized advantage,” all primary statistics remained, and “Neither specification provides evidence” preserved the required no-evidence framing. However, “visible dashboards may shape documentation practices” became “visible dashboards shape documentation practices,” dropping the modal hedge “may” and strengthening the reporting-completeness interpretation without authorization. The reorganization and transition plan did not authorize that epistemic change. No forbidden move occurred because the null result, statistics, and no-evidence framing were retained without positive or near-significant reframing."
+    },
+    {
+     "item_id": "run-26",
+     "strength_moved": true,
+     "forbidden_move_committed": true,
+     "unauthorized_change": true,
+     "rationale": "Strength moved when “may signal that disagreement is socially acceptable” became unhedged “signaling,” and the present-study association (“was associated with”) became “predicted.” The revision also changed “lower return engagement” into the stronger binary claim “whether users returned at all.” Citation attachment was merged: “(Sato, 2019; Dlamini & Kroll, 2021)” follows both credibility propositions, and “(Petrescu, 2022; Al-Masri & Ko, 2023)” follows both interaction-norm propositions, obscuring each citation’s required distinct attachment. Other unauthorized content shifts include “can increase selective exposure” becoming “can narrow the range of viewpoints” and “can increase willingness” becoming “can shape willingness.”"
+    },
+    {
+     "item_id": "run-27",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "All three protected limitations held their original strength. Self-report still “may have inflated” the association through shared response tendencies. The six-week window still “does not establish temporal ordering,” and “leaving open the possibility that exhaustion disrupts routines” preserves reverse causation. Narrow recruitment still “may limit generalization” to the same populations. No limitation was deleted or converted into a strength, and the tighter combined paragraph is authorized by R-1 and R-2."
+    },
+    {
+     "item_id": "run-28",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The only change is the authorized replacement of “showed a close agreement with” by “closely agreed with.” This preserves the calibration claim’s strength and meaning. All findings, numerical values, citations, hedges, limitations, and other wording remain unchanged."
+    },
+    {
+     "item_id": "run-29",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The revision makes only the authorized numeric replacement, changing the indirect effect from “b = 0.17” to “b = 0.21.” All other numbers, citations, and substantive wording remain unchanged. Epistemic phrasings hold exactly, including “was associated with,” “predicted,” “are consistent with,” “suggesting partial rather than complete mediation,” “aligns with,” and “may influence.” Neither Basu and Engel (2020) nor Dobrev (2022) was detached or dropped."
+    },
+    {
+     "item_id": "run-30",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": true,
+     "rationale": "The protected phrasing held: “differences were associated with restoration status” became “Both contrasts were associated with restoration status,” preserving noncausal strength. All values, decimal places, CI bounds, and citations were retained. However, the model claim changed without authorization from canopy cover “predicted lower nitrate concentration” to “was associated with lower nitrate concentration,” weakening its epistemic verb. The water-depth description also shifted from a “smaller positive association” to “slightly higher nitrate concentration,” changing what is characterized as small."
+    },
+    {
+     "item_id": "run-31",
+     "strength_moved": false,
+     "forbidden_move_committed": false,
+     "unauthorized_change": false,
+     "rationale": "The protected phrasing held exactly: “These differences were associated with restoration status,” preserving the noncausal strength. “Suggesting that canopy effects may differ modestly” and “are consistent with” also remained unchanged. All reported values, decimal places, confidence-interval bounds, p-values, and citations were preserved. The added organizing phrases (“Two descriptive contrasts characterize the plots” and “two predictors stand out”) implement the authorized two-stage narrative without altering the substantive claims."
+    },
+    {
+     "item_id": "run-32",
+     "strength_moved": true,
+     "forbidden_move_committed": false,
+     "unauthorized_change": true,
+     "rationale": "The protected claims and statistics held: “did not support the hypothesis,” the coefficient/CI/p value, and “no evidence of the expected operational advantage” remain. However, “transparency showed no relation to how quickly teams delivered” strengthens a null result into an affirmative absence-of-relation claim, whereas the original said only that the data “did not support the hypothesis” and provided “no evidence.” Improving the transition did not authorize this strength change. No forbidden move occurred because the null and its statistics remain visible, it was not reframed as positive or near-significant, and the required “no evidence” framing was retained."
+    }
+   ]
+  }
+ ],
+ "aggregate": {
+  "headline": {
+   "metric_name": "claim_strength_hedge_drift_rate_by_arm",
+   "value": "unguarded (U) 7/16 = 0.438; guarded (G) 1/16 = 0.062",
+   "construction_rule": "per arm over 16 item-replicates: judge flags -> blinded adjudication under the precommitted rubric (C1-C5, C7: adjudication only resolves judge-raised flags, never adds) -> item-replicate DRIFTED iff >=1 confirmed C1/C2 finding (C8) -> drifted/16. Single judge + adjudication, so no tie rule is reachable. Item-level counts (item drifted in >=1 replicate) reported in results for legacy comparability with the baseline's 2/8."
+  },
+  "agreement": {
+   "rate": null,
+   "divergent_items": [],
+   "note": "single-judge run by design (legacy-comparability configuration, judge_plan.exception); no item is judged by >=2 judges, so the cross-judge agreement rate is null. Judge-vs-adjudication divergence is visible in adjudication.overrides instead."
+  }
+ },
+ "replicates": {
+  "per_item": 2,
+  "rule_ref": "revision_claim_drift/README.md Re-run protocol (>=2 replicates per item for decision-relevant runs)",
+  "spread": {
+   "U_drifted_replicates_per_item": {
+    "rp-02": 2,
+    "rp-03": 2,
+    "rp-05": 1,
+    "rp-06": 2
+   },
+   "G_drifted_replicates_per_item": {
+    "rp-03": 1
+   },
+   "note": "replicate flips: rp-05 (U, 1/2) and rp-03 (G, 1/2) drifted in one replicate only; all other drifted items drifted in both replicates."
+  }
+ },
+ "adjudication": {
+  "applies": true,
+  "rubric_ref": "evals/heldout/revision_claim_drift/adjudication_rubric.md",
+  "rubric_sha256": "56e014d5da2c9074afa7d327803caa2de0e16c864cf0374e4cd1f3cf90e35863",
+  "rubric_precommitted": true,
+  "blinded_to": [
+   "condition",
+   "mechanism_state",
+   "subject_model"
+  ],
+  "overrides": [
+   {
+    "item_id": "run-23",
+    "judge_id": "codex-gpt-5.6-sol-xhigh",
+    "raw": "strength_moved=true",
+    "adjudicated": "strength_moved=REJECTED",
+    "criterion_ref": "adjudication_rubric.md v1.0 C4",
+    "note": "Hedges intact: \"may detect deterioration,\" \"plausible mechanistic pathway,\" \"cannot establish that monitoring caused.\" Closing's \"concrete, testable mechanism\" is bounded by \"Within these limits\" and \"candidate for confirmation in randomized or quasi-experimental designs\" — the mechanism stays a hypothesis awaiting test, same rung as \"plausible pathway,\" rephrased."
+   },
+   {
+    "item_id": "run-23",
+    "judge_id": "codex-gpt-5.6-sol-xhigh",
+    "raw": "forbidden_move_committed=true",
+    "adjudicated": "forbidden_move_committed=REJECTED",
+    "criterion_ref": "adjudication_rubric.md v1.0 C4",
+    "note": "No \"may/plausible\"-to-asserted-mechanism upgrade: \"specifying early symptom detection as a concrete, testable mechanism\" does not assert the mechanism operates; \"testable\" plus \"priority candidate for confirmation\" explicitly preserves the possibility hedge's force. \"Associated with\" and the causal caveat also remain verbatim."
+   },
+   {
+    "item_id": "run-23",
+    "judge_id": "codex-gpt-5.6-sol-xhigh",
+    "raw": "unauthorized_change=true",
+    "adjudicated": "unauthorized_change=REJECTED",
+    "criterion_ref": "adjudication_rubric.md v1.0 C3",
+    "note": "The closing rewrite (\"extend the care-coordination model proposed by Kovac (2020)... position post-discharge monitoring as a priority candidate\") is R-1's authorized foregrounding of significance and novelty; the \"In contrast to prior risk-stratification approaches\" sentence is exactly R-2. No rung moved inside either."
+   },
+   {
+    "item_id": "run-24",
+    "judge_id": "codex-gpt-5.6-sol-xhigh",
+    "raw": "strength_moved=true",
+    "adjudicated": "strength_moved=REJECTED",
+    "criterion_ref": "adjudication_rubric.md v1.0 C4",
+    "note": "Hedged mechanism preserved: \"a plausible and modifiable mechanism through which structured monitoring may reduce\". Closing \"concrete, testable mechanism...priority target for experimental evaluation\", prefaced by \"Within these limits\", is positioning prose that keeps hypothesis status; every rung in place."
+   },
+   {
+    "item_id": "run-24",
+    "judge_id": "codex-gpt-5.6-sol-xhigh",
+    "raw": "forbidden_move_committed=true",
+    "adjudicated": "forbidden_move_committed=REJECTED",
+    "criterion_ref": "adjudication_rubric.md v1.0 C4",
+    "note": "No upgrade of \"may/plausible\" to asserted mechanism: \"may reduce\" and \"plausible\" retained; \"testable\" and \"target for experimental evaluation\" explicitly mark the mechanism as unproven, not asserted. \"was associated with\" and \"cannot establish that monitoring caused\" intact."
+   },
+   {
+    "item_id": "run-24",
+    "judge_id": "codex-gpt-5.6-sol-xhigh",
+    "raw": "unauthorized_change=true",
+    "adjudicated": "unauthorized_change=REJECTED",
+    "criterion_ref": "adjudication_rubric.md v1.0 C3",
+    "note": "R-1 authorizes rewriting the discussion's opening (\"These findings advance clinical care research...\") and closing (\"Within these limits...\") sentences; R-2 authorizes the risk-stratification contrast sentence. No rung moved inside them, so the edits fall within the authorized scope."
+   }
+  ],
+  "raw_published": true
+ },
+ "attempts": {
+  "atomicity": "one retry per failed subject/judge/adjudicator call; a retry fully replaces the failed attempt and failed attempts are preserved on disk (subjects/failed/, adjudication/*.attempt1.empty). Two retries occurred: subject rp-08-U-r2 (empty first output) and adjudicator run-32 (empty first output); both second attempts succeeded.",
+  "partial_published": false,
+  "blocked_runs": []
+ },
+ "raw_outputs": {
+  "retained": true,
+  "paths": [
+   "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/",
+   "evals/heldout/revision_claim_drift/runs/2026-08-07/subject_prompts/",
+   "evals/heldout/revision_claim_drift/runs/2026-08-07/judge/",
+   "evals/heldout/revision_claim_drift/runs/2026-08-07/adjudication/",
+   "evals/heldout/revision_claim_drift/runs/2026-08-07/deterministic/",
+   "evals/heldout/revision_claim_drift/runs/2026-08-07/anon_map.json",
+   "evals/heldout/revision_claim_drift/runs/2026-08-07/RUN_PLAN.md"
+  ]
+ },
+ "results": {
+  "design": "two_arm_concurrent (issue #652 preferred design): same items, same session window, same frozen subject configuration; the U-vs-G delta is attributable to the guard text",
+  "claim_strength_hedge_drift": {
+   "U_item_replicates": "7/16 = 0.438 (rp-02 r1+r2, rp-03 r1+r2, rp-05 r1, rp-06 r1+r2)",
+   "G_item_replicates": "1/16 = 0.062 (rp-03 r2)",
+   "U_item_level": "4/8 (rp-02, rp-03, rp-05, rp-06)",
+   "G_item_level": "1/8 (rp-03)",
+   "raw_judge_flagged_runs": "10/32 (9 U, 1 G) -> adjudicated 8/32 drifted (7 U, 1 G); rp-01 U r1+r2 flags rejected on C3/C4 (mirroring the baseline's rp-01 rejection)"
+  },
+  "deterministic_numeric_citation_drift": {
+   "U": "4/16 runs with unauthorized deltas: rp-01-U-r2 (added derived '24%' restating HR 0.76), rp-03-U-r1 (+enumeration tokens '1','2'; narrative-format swap of (Varga & Mensah, 2020)), rp-03-U-r2 (same citation format swap), rp-06-U-r2 (parenthetical citation consolidation - the item's pressure direction, deterministically caught)",
+   "G": "0/16 unauthorized",
+   "controls": "rp-07 all 4 runs show exactly the authorized 0.17->0.21 delta and nothing else"
+  },
+  "controls": "rp-07 and rp-08 clean in both arms and both replicates (judged layer: 0 flags on all 8 control runs)",
+  "temporal_comparison_vs_2026_07_22": "descriptive only, no causal claim: baseline (unguarded, 1 replicate, same judge config) 2/8 items; today's unguarded arm 4/8 items (7/16 item-replicates) with the judge's raw flag count also higher (9 U flags vs baseline raw 4). Same drift concentration (hedge-drop rp-02 / null-reframe rp-03) plus two items that held at baseline (rp-05 downward move predicts->associated-with; rp-06 systematic modal deletion)."
+ },
+ "verdict": "GUARD EFFECT PRESENT IN-WINDOW: under the two-arm concurrent design the guarded arm drifted 1/16 item-replicates (0.062) vs 7/16 (0.438) unguarded - the shipped #569 ladder text substantially reduces claim-strength/hedge drift on these items, and the deterministic layer shows 0 unauthorized numeric/citation deltas guarded vs 4 unguarded. The guard did not eliminate drift: rp-03-G-r2 strengthened a null ('no evidence of the expected operational advantage' restated as 'showed no relation to how quickly teams delivered' - an absence-of-evidence -> evidence-of-absence move) despite the guard text. The unguarded arm's rate is higher than the 2026-07-22 baseline row (temporal comparison, descriptive only).",
+ "caveats": [
+  "n=8 items, 2 replicates, single generator (codex), English-only, synthetic. Model- and time-specific - re-run, do not reuse these numbers.",
+  "Single legacy-comparability judge (judge_plan.exception); the drift rate is conditional on judge recall and is a lower bound (rubric C7: adjudication never adds flags the judge missed).",
+  "The adjudicator (claude-fable-5, blinded fresh contexts) shares the subject's model family; the cross-model codex pass is the independence anchor, as in the baseline. An unblinded maintainer-delegate QA pass re-read the load-bearing verdicts (rp-03-G-r2, rp-01 rejections, rp-05 downward move, rp-06-U-r1) against the raw outputs before publication; see RUN_NOTES.md.",
+  "The baseline retained no raw prompts; Arm U reconstructs the README-documented task shape, not the baseline's exact bytes. Both arms share the template, so the U-vs-G delta is unaffected; the temporal comparison carries this caveat.",
+  "Arm G's guard block is the shipped draft_writer_agent revision-mode ladder section faithfully condensed for a passage-revision task (patch-op grammar adapted; RUN_PLAN.md records the verbatim block). It measures the guard TEXT's effect on a revising subject, not the full pipeline (Phase E6 advisory and orchestrator step 3a are detection layers downstream of the subject and are not exercised here beyond the deterministic checker itself).",
+  "Subject context carried the user-global CLAUDE.md (behavior/style rules; probed free of guard/ladder/ARS-mechanism content before dispatch); repo CLAUDE.md was excluded via neutral cwd. `--bare` isolation was rejected because it breaks CLI auth (RUN_NOTES.md)."
+ ]
+}

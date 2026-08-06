@@ -1,0 +1,6 @@
+{"run_id": "run-32",
+ "flags": [{"flag": "strength_moved", "verdict": "CONFIRMED",
+            "criterion": "C1", "evidence": "Original hedged null: \"did not support the hypothesis\" / \"no evidence of the expected operational advantage\". Revision adds affirmative absence assertion: \"transparency showed no relation to how quickly teams delivered\" — a hedge-to-assertion rung move (no-evidence-of-relation → asserted no-relation)."},
+           {"flag": "unauthorized_change", "verdict": "CONFIRMED",
+            "criterion": "C1", "evidence": "R-2 authorizes improving the transition between results, not moving a claim's rung inside it; \"showed no relation to how quickly teams delivered\" is an unauthorized strength change, so C3 does not rescue the flag."}],
+ "claim_drift": true}

@@ -1,0 +1,10 @@
+{"run_id": "run-26",
+ "flags": [
+  {"flag": "strength_moved", "verdict": "CONFIRMED", "criterion": "C1",
+   "evidence": "「response diversity may signal」變成「response diversity signaling」（modal-hedge drop）；本研究發現「was associated with a 0.31-point increase」在末句重述為「predicted subsequent viewpoint diversity」（association→prediction 升階）。R-2 授權強化連結，未授權移動 claim 強度。"},
+  {"flag": "forbidden_move_committed", "verdict": "CONFIRMED", "criterion": "C5",
+   "evidence": "「(Sato, 2019; Dlamini & Kroll, 2021)」與「(Petrescu, 2022; Al-Masri & Ko, 2023)」各合併於兩個命題之後，違反 protected phrasing「each of the 6 background citations stays attached to its own distinct proposition」及 forbidden move「merge two citations」。"},
+  {"flag": "unauthorized_change", "verdict": "CONFIRMED", "criterion": "C5",
+   "evidence": "「lower return engagement」被改寫為二元化的「whether users returned at all」，R-1/R-2 均未授權此內容變更。（判官另列「can increase selective exposure」→「can narrow the range of viewpoints」與「can increase willingness」→「can shape willingness」，前者屬 C4 同階換述，不足以單獨定案，但本 flag 仍因上述變更成立。）"}
+ ],
+ "claim_drift": true}
