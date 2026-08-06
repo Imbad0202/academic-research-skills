@@ -277,8 +277,7 @@
    },
    "G_drifted_replicates_per_item": {
     "rp-03": 1
-   },
-   "note": "replicate flips: rp-05 (U, 1/2) and rp-03 (G, 1/2) drifted in one replicate only; all other drifted items drifted in both replicates."
+   }
   }
  },
  "adjudication": {
@@ -339,12 +338,20 @@
     "adjudicated": "unauthorized_change=REJECTED",
     "criterion_ref": "adjudication_rubric.md v1.0 C3",
     "note": "R-1 authorizes rewriting the discussion's opening (\"These findings advance clinical care research...\") and closing (\"Within these limits...\") sentences; R-2 authorizes the risk-stratification contrast sentence. No rung moved inside them, so the edits fall within the authorized scope."
+   },
+   {
+    "item_id": "run-30",
+    "judge_id": "codex-gpt-5.6-sol-xhigh",
+    "raw": "strength_moved=false, forbidden_move_committed=false, unauthorized_change=true",
+    "adjudicated": "unauthorized_change CONFIRMED and classified as a C1 move (downward: 'predicted' -> 'was associated with')",
+    "criterion_ref": "adjudication_rubric.md v1.0 C1",
+    "note": "No flag was added (rubric C7): the judge's unauthorized_change flag identified this exact textual change; adjudication classified the judge-raised finding under C1 (bidirectional by design), which makes the item-replicate DRIFTED per C8."
    }
   ],
   "raw_published": true
  },
  "attempts": {
-  "atomicity": "one retry per failed subject/judge/adjudicator call; a retry fully replaces the failed attempt and failed attempts are preserved on disk (subjects/failed/, adjudication/*.attempt1.empty). Two retries occurred: subject rp-08-U-r2 (empty first output) and adjudicator run-32 (empty first output); both second attempts succeeded.",
+  "atomicity": "one retry per failed subject/judge/adjudicator call; a retry fully replaces the failed attempt and failed attempts are preserved on disk. Two retries occurred, both second attempts clean (RUN_NOTES.md item 2).",
   "partial_published": false,
   "blocked_runs": []
  },
@@ -367,7 +374,7 @@
    "G_item_replicates": "1/16 = 0.062 (rp-03 r2)",
    "U_item_level": "4/8 (rp-02, rp-03, rp-05, rp-06)",
    "G_item_level": "1/8 (rp-03)",
-   "raw_judge_flagged_runs": "10/32 (9 U, 1 G) -> adjudicated 8/32 drifted (7 U, 1 G); rp-01 U r1+r2 flags rejected on C3/C4 (mirroring the baseline's rp-01 rejection)"
+   "raw_judge_flagged_runs": "10/32 runs with >=1 of the three verdict booleans true (9 U, 1 G) -> adjudicated 8/32 drifted (7 U, 1 G); rp-01 U r1+r2 flags rejected on C3/C4 (mirroring the baseline's rp-01 rejection); rp-05-U-r1 (run-30) enters via its confirmed unauthorized_change flag classified C1 - see adjudication.overrides, no flag was added (rubric C7)"
   },
   "deterministic_numeric_citation_drift": {
    "U": "4/16 runs with unauthorized deltas: rp-01-U-r2 (added derived '24%' restating HR 0.76), rp-03-U-r1 (+enumeration tokens '1','2'; narrative-format swap of (Varga & Mensah, 2020)), rp-03-U-r2 (same citation format swap), rp-06-U-r2 (parenthetical citation consolidation - the item's pressure direction, deterministically caught)",
@@ -375,15 +382,15 @@
    "controls": "rp-07 all 4 runs show exactly the authorized 0.17->0.21 delta and nothing else"
   },
   "controls": "rp-07 and rp-08 clean in both arms and both replicates (judged layer: 0 flags on all 8 control runs)",
-  "temporal_comparison_vs_2026_07_22": "descriptive only, no causal claim: baseline (unguarded, 1 replicate, same judge config) 2/8 items; today's unguarded arm 4/8 items (7/16 item-replicates) with the judge's raw flag count also higher (9 U flags vs baseline raw 4). Same drift concentration (hedge-drop rp-02 / null-reframe rp-03) plus two items that held at baseline (rp-05 downward move predicts->associated-with; rp-06 systematic modal deletion)."
+  "temporal_comparison_vs_2026_07_22": "descriptive only, no causal claim: baseline (unguarded, 1 replicate, same judge config) 2/8 items; today's unguarded arm 4/8 items (7/16 item-replicates), with the judge's raw flag rate also higher (9/16 U runs flagged vs baseline raw 4/8). Same drift concentration (hedge-drop rp-02 / null-reframe rp-03) plus two items that held at baseline (rp-05 downward move predicts->associated-with; rp-06 systematic modal deletion)."
  },
- "verdict": "GUARD EFFECT PRESENT IN-WINDOW: under the two-arm concurrent design the guarded arm drifted 1/16 item-replicates (0.062) vs 7/16 (0.438) unguarded - the shipped #569 ladder text substantially reduces claim-strength/hedge drift on these items, and the deterministic layer shows 0 unauthorized numeric/citation deltas guarded vs 4 unguarded. The guard did not eliminate drift: rp-03-G-r2 strengthened a null ('no evidence of the expected operational advantage' restated as 'showed no relation to how quickly teams delivered' - an absence-of-evidence -> evidence-of-absence move) despite the guard text. The unguarded arm's rate is higher than the 2026-07-22 baseline row (temporal comparison, descriptive only).",
+ "verdict": "GUARD EFFECT PRESENT IN-WINDOW, DRIFT NOT ELIMINATED: under the two-arm concurrent design the shipped #569 ladder text substantially reduces claim-strength/hedge drift and eliminated unauthorized numeric/citation deltas on these items (rates in aggregate.headline and results). The residual guarded case (rp-03-G-r2) restated a null ('no evidence of the expected operational advantage') as an affirmative 'showed no relation to how quickly teams delivered' - an absence-of-evidence -> evidence-of-absence move the guard text did not stop. The unguarded arm ran hotter than the 2026-07-22 baseline row (temporal comparison, descriptive only).",
  "caveats": [
   "n=8 items, 2 replicates, single generator (codex), English-only, synthetic. Model- and time-specific - re-run, do not reuse these numbers.",
   "Single legacy-comparability judge (judge_plan.exception); the drift rate is conditional on judge recall and is a lower bound (rubric C7: adjudication never adds flags the judge missed).",
-  "The adjudicator (claude-fable-5, blinded fresh contexts) shares the subject's model family; the cross-model codex pass is the independence anchor, as in the baseline. An unblinded maintainer-delegate QA pass re-read the load-bearing verdicts (rp-03-G-r2, rp-01 rejections, rp-05 downward move, rp-06-U-r1) against the raw outputs before publication; see RUN_NOTES.md.",
+  "The adjudicator (claude-fable-5, blinded fresh contexts) shares the subject's model family; the cross-model codex pass is the independence anchor, as in the baseline. An unblinded maintainer-delegate QA pass re-read the load-bearing verdicts against the raw outputs before publication (RUN_NOTES.md item 5).",
   "The baseline retained no raw prompts; Arm U reconstructs the README-documented task shape, not the baseline's exact bytes. Both arms share the template, so the U-vs-G delta is unaffected; the temporal comparison carries this caveat.",
   "Arm G's guard block is the shipped draft_writer_agent revision-mode ladder section faithfully condensed for a passage-revision task (patch-op grammar adapted; RUN_PLAN.md records the verbatim block). It measures the guard TEXT's effect on a revising subject, not the full pipeline (Phase E6 advisory and orchestrator step 3a are detection layers downstream of the subject and are not exercised here beyond the deterministic checker itself).",
-  "Subject context carried the user-global CLAUDE.md (behavior/style rules; probed free of guard/ladder/ARS-mechanism content before dispatch); repo CLAUDE.md was excluded via neutral cwd. `--bare` isolation was rejected because it breaks CLI auth (RUN_NOTES.md)."
+  "Subject-context isolation as declared in subject.config.settings; `--bare` isolation was rejected because it breaks CLI auth (RUN_NOTES.md item 1)."
  ]
 }

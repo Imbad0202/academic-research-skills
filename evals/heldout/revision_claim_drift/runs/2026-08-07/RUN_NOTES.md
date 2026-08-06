@@ -40,5 +40,4 @@ Nothing here changes a pre-registered rule; entries are disclosures.
    restatement of HR 0.76). Deterministically a non-conserved numeric
    addition (C6: the delta stands mechanically); the judged layer's rp-01
    rejection is unaffected (separate layers, as in the baseline).
-7. **Codex quota.** All 32 judge calls completed without hitting session
-   limits; no synthesis-only reruns needed.
+7. **Codex quota.** No interruptions across the 32 judge calls.
