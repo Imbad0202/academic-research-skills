@@ -777,6 +777,65 @@ def test_location_outside_heldout_unchecked():
     assert location_errors(Path("/tmp/draft.json"), report) == []
 
 
+def test_location_heldout_root_depth1_fails():
+    report = make_valid_report()
+    path = HELDOUT_ROOT / "measurement-2026-08-10.json"
+    assert any("L1" in e for e in location_errors(path, report))
+
+
+def test_marker_status_null_value_is_near_miss():
+    assert marker_status({"measurement_contract": None}) == "near_miss"
+
+
+def test_fullwidth_model_alias_rejected():
+    """NFKC-folded identity: a full-width respelling is the same judge."""
+    report = make_valid_report()
+    j2 = report["judges"][1]
+    j2["model_id"] = "ｇｐｔ-5.6-sol"
+    j2["model_family"] = "openai-mirror"
+    assert any("I9" in e for e in errors_of(report))
+
+
+def test_blocked_run_embedded_id_does_not_cover():
+    """rp-02 embedded in rp-020 is not naming the gap (token boundaries)."""
+    report = make_valid_report()
+    report["judges"][1]["per_item"] = [{"item_id": "rp-01", "claim_drift": False}]
+    report["aggregate"]["agreement"]["divergent_items"] = []
+    report["aggregate"]["agreement"]["rate"] = 1.0
+    report["adjudication"]["overrides"] = []
+    report["attempts"]["blocked_runs"] = ["j9 rp-020 unrelated failure"]
+    assert any("I11" in e for e in errors_of(report))
+
+
+def test_raw_output_path_outside_suite_fails_with_refs():
+    report = make_resolvable_report()
+    report["raw_outputs"]["paths"] = ["README.md"]
+    errors, _ = validate_report(report, resolve_refs=True)
+    assert any("R2" in e for e in errors)
+
+
+def test_bogus_legacy_baseline_ref_fails_with_refs():
+    report = make_resolvable_report()
+    report["judges"] = [report["judges"][0]]
+    report["judge_plan"] = {
+        "exception": "legacy_comparability",
+        "legacy_baseline_ref": "does/not/exist.json",
+    }
+    report["aggregate"]["agreement"] = {
+        "rate": None,
+        "divergent_items": [],
+        "note": "legacy row",
+    }
+    errors, _ = validate_report(report, resolve_refs=True)
+    assert any("R1" in e for e in errors)
+
+
+def test_commitish_suite_commit_rejected_by_schema():
+    report = make_valid_report()
+    report["subject"]["config"]["suite_commit"] = "HEAD~000"
+    assert errors_of(report)
+
+
 # ------------------------------------------------------------- purity guard
 
 
@@ -825,14 +884,49 @@ def test_scan_near_miss_marker_fails(monkeypatch, tmp_path, capsys):
 
 
 def test_scan_follows_directory_symlinks(monkeypatch, tmp_path, capsys):
-    real = tmp_path / "real_dir"
-    real.mkdir()
-    (real / "m.json").write_text('{"measurement_contract": "heldout-measurement/1.0"}')
     scan_root = tmp_path / "root"
     scan_root.mkdir()
+    real = scan_root / "real_dir"
+    real.mkdir()
+    (real / "m.json").write_text('{"measurement_contract": "heldout-measurement/1.0"}')
     (scan_root / "linked").symlink_to(real, target_is_directory=True)
     # marked but schema-invalid: must be DISCOVERED through the symlink and fail
     assert _scan_with_root(monkeypatch, scan_root) == 1
+
+
+def test_scan_external_symlink_is_walk_error(monkeypatch, tmp_path, capsys):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "m.json").write_text('{"measurement_contract": "heldout-measurement/1.0"}')
+    scan_root = tmp_path / "root"
+    scan_root.mkdir()
+    (scan_root / "linked").symlink_to(outside, target_is_directory=True)
+    # the external target is not scanned, and the walk says so loudly
+    assert _scan_with_root(monkeypatch, scan_root) == 1
+    assert "resolves outside" in capsys.readouterr().out
+
+
+def test_scan_escaped_marker_key_detected(monkeypatch, tmp_path, capsys):
+    """A backslash-u-escaped spelling of the marker key cannot hide a report."""
+    (tmp_path / "s").mkdir()
+    (tmp_path / "s" / "m.json").write_text(
+        '{"\\u006deasurement_contract": "heldout-measurement/1.0"}'
+    )
+    assert _scan_with_root(monkeypatch, tmp_path) == 1
+
+
+def test_scan_null_marker_value_fails(monkeypatch, tmp_path, capsys):
+    (tmp_path / "s").mkdir()
+    (tmp_path / "s" / "m.json").write_text('{"measurement_contract": null}')
+    assert _scan_with_root(monkeypatch, tmp_path) == 1
+    assert "near-miss" in capsys.readouterr().out
+
+
+def test_scan_non_utf8_json_fails(monkeypatch, tmp_path, capsys):
+    (tmp_path / "s").mkdir()
+    (tmp_path / "s" / "m.json").write_bytes(b'{"x": "\xff\xfe"}')
+    assert _scan_with_root(monkeypatch, tmp_path) == 1
+    assert "UTF-8" in capsys.readouterr().out
 
 
 def test_scan_uppercase_extension_discovered(monkeypatch, tmp_path):

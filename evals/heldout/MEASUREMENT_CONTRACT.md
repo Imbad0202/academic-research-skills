@@ -94,10 +94,12 @@ disclosure around the E4 machinery, it does not replace or reshape it.
   non-mechanical run with `judge_plan.exception: "none"` requires **>= 2 judge
   configurations from >= 2 distinct model families** (I2; families compared
   case-/NFKC-folded). Fewer judges requires a labeled exception; `"none"` is not a
-  label. Identity hygiene backs the count (I9): duplicate `judge_id`s, one
-  `model_id` under two family labels, or two judges sharing the same
-  `(model_id, prompt_ref)` configuration are all rejected — listing one judge
-  twice does not add independence.
+  label. Identity hygiene backs the count (I9, all fields fold-compared):
+  duplicate `judge_id`s, one `model_id` under two family labels, or two judges
+  sharing the same `(model_id, prompt_ref)` configuration are all rejected.
+  These are the mechanically detectable forms — an *aliased* model id
+  (`gpt-x` vs `gpt-x-run2`) is not machine-decidable and stays a review item
+  (§ Known residue).
 - **Per-judge disclosure is mandatory** (schema-required): exact `model_id`,
   `model_family`, `prompt_ref`, `evidence_provided`, `judging_budget`, and the full
   `per_item` rows — each row carries at least one verdict field beside `item_id`,
@@ -174,3 +176,39 @@ disclosure around the E4 machinery, it does not replace or reshape it.
   `shared/benchmark_report_pattern.md`.
 - Not retroactive: README/CHANGELOG claims built on legacy rows keep citing those
   rows as-is; only new rows gain the envelope's stronger disclosure.
+
+## Known residue (human-audited by design)
+
+The checker binds identities and recomputes what is recomputable; the following
+stay with the human reviewer, deliberately:
+
+- **Verdict semantics.** The envelope forces per-item rows to carry verdict
+  fields and key-sets to match, but cannot know that a field IS a verdict: a
+  constant field on every row yields a formally correct `agreement.rate` that
+  carries no information, and `aggregate.headline.value` is never derived from
+  the rows (`construction_rule` is the auditable statement). Constant-verdict
+  runs are legitimate (clean-control panels agree everywhere), so no invariant
+  can close this without false-firing — the reviewer audits that per-item
+  fields are real suite verdicts.
+- **`decision_relevant: false` is a self-declaration** — and the widest waiver
+  in the contract (sheds I2 and I6, demotes I11 to W1). Whether a row is
+  actually cited for a decision is a review question; a row cited in
+  README/CHANGELOG with `decision_relevant: false` is a red flag reviewers
+  look for.
+- **Aliased judge identities.** I9 rejects every mechanically detectable form
+  of judge duplication; a renamed `model_id` under an invented family label is
+  not detectable from the report alone.
+- **Pre-registration history.** R1 proves the committed rubric matches its
+  hash; that the rubric's commit *predates* the judge outputs is attested in
+  the run notes and checkable from git history at review time, not by the gate.
+- **Override transcription.** `overrides[].raw` is bound to a real judge and a
+  scored item (I4), but its faithfulness to that judge's actual output is a
+  logic read.
+- **Blocked-run attribution.** I11 requires the missing *item* to be named
+  (token-delimited) in `attempts.blocked_runs`; which judge failed is prose.
+- **Registry governance.** A suite key can land in the same PR as its first
+  report; PR review is the control for that ordering.
+- **Identifier folding.** Ids and identity fields are compared NFKC-folded
+  with format characters stripped (anti-spoof); two intentionally distinct
+  compatibility-character spellings will collide and be rejected. Use ASCII
+  ids (all current suites do).

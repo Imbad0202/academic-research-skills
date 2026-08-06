@@ -70,7 +70,8 @@
           "properties": {
             "suite_commit": {
               "type": "string",
-              "minLength": 7
+              "pattern": "^[0-9a-f]{40}$",
+              "description": "Full 40-hex commit SHA of the suite state measured. Revision expressions and branch names are rejected; R3 verifies the object exists in this repository."
             },
             "prompts_ref": {
               "type": "string"

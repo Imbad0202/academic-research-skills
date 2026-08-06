@@ -69,6 +69,7 @@ import functools
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import unicodedata
@@ -164,15 +165,26 @@ def _fold(value: str) -> str:
 
 
 def marker_status(obj: dict) -> str:
-    """'contract' | 'near_miss' | 'absent' for a parsed JSON object."""
-    marker = obj.get(MARKER_KEY)
-    if not isinstance(marker, str):
+    """'contract' | 'near_miss' | 'absent' for a parsed JSON object.
+
+    Any presence of the marker KEY with a non-conforming value (null, number,
+    empty or unrelated string, homoglyph spelling) is a near-miss — a file
+    that mentions the contract never silently skips validation.
+    """
+    if MARKER_KEY not in obj:
         return "absent"
-    if marker.startswith(CONTRACT_PREFIX):
+    marker = obj[MARKER_KEY]
+    if isinstance(marker, str) and marker.startswith(CONTRACT_PREFIX):
         return "contract"
-    if _fold(marker).startswith(_fold(CONTRACT_PREFIX)):
-        return "near_miss"
-    return "near_miss" if marker else "absent"
+    return "near_miss"
+
+
+def _names_item(folded_entry: str, folded_item: str) -> bool:
+    """True when folded_entry names folded_item as a delimited token — an id
+    embedded in a longer id (rp-02 in rp-020) or a concatenated blob does not
+    count as naming the gap."""
+    pattern = rf"(?<![0-9a-z_-]){re.escape(folded_item)}(?![0-9a-z_-])"
+    return re.search(pattern, folded_entry) is not None
 
 
 def _typed(value: object) -> object:
@@ -207,14 +219,16 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
     adjudication = report["adjudication"]
 
     # ---- I9: identity hygiene (judges) -------------------------------------
-    judge_ids = [j["judge_id"] for j in judges]
+    judge_ids = [_fold(j["judge_id"]) for j in judges]
     if len(judge_ids) != len(set(judge_ids)):
-        errors.append(f"I9: duplicate judge_id among {sorted(judge_ids)!r}")
+        errors.append(f"I9: duplicate judge_id among {sorted(judge_ids)!r} (fold-compared)")
     model_to_families: dict[str, set[str]] = {}
     config_pairs: dict[tuple[str, str], list[str]] = {}
     for j in judges:
-        model_to_families.setdefault(j["model_id"], set()).add(_fold(j["model_family"]))
-        config_pairs.setdefault((j["model_id"], j["prompt_ref"]), []).append(j["judge_id"])
+        model_to_families.setdefault(_fold(j["model_id"]), set()).add(_fold(j["model_family"]))
+        config_pairs.setdefault(
+            (_fold(j["model_id"]), _fold(j["prompt_ref"])), []
+        ).append(j["judge_id"])
     for model_id, families in model_to_families.items():
         if len(families) > 1:
             errors.append(
@@ -395,7 +409,9 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
             if report["decision_relevant"]:
                 blocked = report["attempts"]["blocked_runs"]
                 uncovered = {
-                    g for g in gaps if not any(g in _fold(b) for b in blocked)
+                    g
+                    for g in gaps
+                    if not any(_names_item(_fold(b), g) for b in blocked)
                 }
                 if uncovered:
                     errors.append(
@@ -454,19 +470,42 @@ def _resolution_findings(report: dict) -> list[str]:
                         f"actual {digest[:12]}…)"
                     )
 
+    suite_dir = (HELDOUT_ROOT / report["suite"]).resolve()
     for ref in report["raw_outputs"]["paths"]:
         target = _repo_path(ref, "R2")
-        if target is not None and not target.exists():
+        if target is None:
+            continue
+        if not target.is_relative_to(suite_dir):
+            errors.append(
+                f"R2: raw_outputs path {ref!r} is not under "
+                f"evals/heldout/{report['suite']}/ — raw outputs live in their "
+                "suite's directory"
+            )
+        elif not target.exists():
             errors.append(f"R2: raw_outputs path {ref!r} does not exist")
 
+    baseline_ref = report["judge_plan"].get("legacy_baseline_ref")
+    if baseline_ref is not None:
+        baseline = _repo_path(baseline_ref, "R1")
+        if baseline is not None and not baseline.is_file():
+            errors.append(
+                f"R1: legacy_baseline_ref {baseline_ref!r} does not exist in the "
+                "repository — the comparability claim must name a real legacy row"
+            )
+
     commit = report["subject"]["config"]["suite_commit"]
-    probe = subprocess.run(
-        ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-    if probe.returncode != 0:
+    try:
+        probe = subprocess.run(
+            ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        missing = probe.returncode != 0
+    except (OSError, ValueError) as exc:
+        errors.append(f"R3: could not verify suite_commit ({exc})")
+        missing = False
+    if missing:
         errors.append(
             f"R3: subject.config.suite_commit {commit!r} is not a commit in this "
             "repository"
@@ -476,14 +515,22 @@ def _resolution_findings(report: dict) -> list[str]:
 
 
 def location_errors(path: Path, report: dict) -> list[str]:
-    """L1: a report filed under evals/heldout/<dir>/ must declare suite == <dir>."""
+    """L1: a report filed under evals/heldout/<dir>/ must declare suite == <dir>.
+
+    Uses the path AS FILED (absolute but unresolved), so a row reached through
+    a symlinked suite directory is judged by where it is filed, not where the
+    bytes physically live. Paths outside evals/heldout/ (drafts) are unchecked.
+    """
     try:
-        rel = path.resolve().relative_to(HELDOUT_ROOT)
+        rel = path.absolute().relative_to(HELDOUT_ROOT.absolute())
     except ValueError:
         return []
     parts = rel.parts
     if len(parts) < 2:
-        return []
+        return [
+            "L1: a contract row must live inside a suite directory "
+            "(evals/heldout/<suite>/...), not at the evals/heldout/ root"
+        ]
     if parts[0] != report.get("suite"):
         return [
             f"L1: report filed under evals/heldout/{parts[0]}/ declares "
@@ -528,20 +575,36 @@ def _validate_obj(path: Path, report: dict) -> int:
     return 0
 
 
-def _walk_json_files(root: Path) -> list[Path]:
+def _walk_json_files(root: Path) -> tuple[list[Path], list[str]]:
     """All *.json files under root (case-insensitive extension), following
-    directory symlinks with a resolved-path cycle guard."""
+    directory symlinks with a resolved-path cycle guard.
+
+    Symlinked directories are followed only when their resolved target stays
+    inside the repository — an external target cannot hold repo-published
+    rows (git stores the link, not the content) and following it would let
+    the walk traverse arbitrary trees. Unreadable directories are surfaced
+    as walk errors, never silently skipped."""
     found: list[Path] = []
+    walk_errors: list[str] = []
     visited: set[Path] = set()
+    repo_real = REPO_ROOT.resolve()
+    root_real = root.resolve()
 
     def _walk(directory: Path) -> None:
         real = directory.resolve()
         if real in visited:
             return
+        if not (real.is_relative_to(root_real) or real.is_relative_to(repo_real)):
+            walk_errors.append(
+                f"{directory}: symlinked directory resolves outside the "
+                "repository — not scanned (repo-published rows cannot live there)"
+            )
+            return
         visited.add(real)
         try:
             entries = sorted(os.scandir(directory), key=lambda e: e.name)
-        except OSError:
+        except OSError as exc:
+            walk_errors.append(f"{directory}: unreadable directory: {exc}")
             return
         for entry in entries:
             p = directory / entry.name
@@ -555,14 +618,18 @@ def _walk_json_files(root: Path) -> list[Path]:
                 found.append(p)
 
     _walk(root)
-    return found
+    return found, walk_errors
 
 
 def _scan_all() -> int:
     rc = 0
     opted_in = 0
     scanned = 0
-    for path in _walk_json_files(HELDOUT_ROOT):
+    files, walk_errors = _walk_json_files(HELDOUT_ROOT)
+    for err in walk_errors:
+        print(f"ERROR: {err}")
+        rc = 1
+    for path in files:
         if path.resolve() in (SCHEMA_PATH.resolve(), REGISTRY_PATH.resolve()):
             continue
         scanned += 1
@@ -572,37 +639,53 @@ def _scan_all() -> int:
             print(f"ERROR: {path}: unreadable JSON file under evals/heldout/: {exc}")
             rc = 1
             continue
-        text = raw.decode("utf-8", errors="replace")
-        # Marker-first: files that never mention the marker key are legacy /
-        # suite-specific JSON and are not parsed at all.
-        if f'"{MARKER_KEY}"' not in text:
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            print(f"ERROR: {path}: not valid UTF-8 ({exc}) — JSON must be UTF-8")
+            rc = 1
             continue
+        # Detection is on the PARSED document, so a \u-escaped spelling of
+        # the marker key cannot hide a report from the scan.
+        try:
+            lenient = json.loads(text)
+        except (ValueError, RecursionError) as exc:
+            if MARKER_KEY in text.replace("\\u005f", "_"):
+                print(
+                    f"ERROR: {path}: mentions {MARKER_KEY!r} but does not parse "
+                    f"as JSON ({exc})"
+                )
+                rc = 1
+            continue
+        if not isinstance(lenient, dict):
+            continue
+        status = marker_status(lenient)
+        if status == "absent":
+            continue
+        # Marked (or near-miss-marked) files must survive the strict parse.
         try:
             obj = _loads_strict(text)
         except (ValueError, RecursionError) as exc:
             print(
-                f"ERROR: {path}: mentions {MARKER_KEY!r} but fails strict JSON "
+                f"ERROR: {path}: carries {MARKER_KEY!r} but fails strict JSON "
                 f"parse ({exc}) — a contract-marked file may not carry duplicate "
-                "keys, non-finite numbers, or undecodable bytes"
+                "keys or non-finite numbers"
             )
             rc = 1
             opted_in += 1
             continue
-        if not isinstance(obj, dict):
-            continue
-        status = marker_status(obj)
         if status == "near_miss":
             print(
-                f"ERROR: {path}: {MARKER_KEY} value {obj.get(MARKER_KEY)!r} is not "
-                f"the exact contract marker (expected prefix {CONTRACT_PREFIX!r}) — "
-                "near-miss markers fail loudly rather than skipping validation"
+                f"ERROR: {path}: {MARKER_KEY} value {lenient.get(MARKER_KEY)!r} is "
+                f"not the exact contract marker (expected prefix {CONTRACT_PREFIX!r}) "
+                "— near-miss markers fail loudly rather than skipping validation"
             )
             rc = 1
             opted_in += 1
-        elif status == "contract":
+        else:
             opted_in += 1
             rc = max(rc, _validate_obj(path, obj))
-    if opted_in == 0:
+    if opted_in == 0 and rc == 0:
         print(
             f"OK: no contract-marked reports among {scanned} JSON file(s) "
             "under evals/heldout/; legacy rows are out of scope by design"
