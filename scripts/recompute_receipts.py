@@ -105,6 +105,10 @@ _ELEMENT_BUDGET = 2_000_000
 # GRIM's candidate-sum window is ~2n/10^places wide; a zero-decimal mean
 # over a huge N would otherwise iterate without bound. Same honest refusal.
 _SUM_WINDOW_BUDGET = 500_000
+# Total enumeration-loop iterations across one GRIMMER reachability call:
+# the state and element budgets bound what is RETAINED, this bounds what is
+# VISITED (an infeasible prefix retains nothing while it spins).
+_WORK_BUDGET = 5_000_000
 # Numeric-domain bounds shared by the gate and the calculator (they run the
 # same parser, so no accept/refuse divergence is possible). The char cap
 # keeps every token far inside float range; the p-procedure magnitude cap
@@ -113,7 +117,14 @@ _SUM_WINDOW_BUDGET = 500_000
 # F, chi-square, or df beyond 1e7 is not a plausible transcription).
 _MAX_NUMERIC_CHARS = 18
 _MAX_P_MAGNITUDE = 10_000_000
-_MAX_DECIMAL_PLACES = 6
+# 10 places comfortably exceeds any journal's printed precision while
+# keeping every equality comparison's half-interval (5e-11) resolvable by
+# the exact-rational procedures; p comparisons finer than the float guard
+# degrade to `rounding_boundary_ambiguous` via _EPS rather than deciding.
+# The extraction fragment tells the seat that a value the grammar cannot
+# carry is OUT OF DOMAIN — no RR — so this cap can never trap a faithful
+# transcription in an unsatisfiable retry (codex round 2).
+_MAX_DECIMAL_PLACES = 10
 # Free-text values ride verbatim into receipts and then into the Phase 2
 # card under the identity gate, so tokens that other gates read as machine
 # markup are refused at the source (security round 1, P2-2/P2-3/P2-4):
@@ -506,6 +517,12 @@ def _fmt_fraction(value: Fraction, places: int) -> str:
 
 
 def _fmt_p(value: float) -> str:
+    # Near 1, three significant digits would print a literal "1" beside a
+    # verdict that depends on the value being below 1 — an internally
+    # contradictory receipt (codex round 2). Show enough digits to keep
+    # the displayed value on the same side of 1 as the compared one.
+    if 0.999 < value < 1.0:
+        return f"{value:.12g}"
     return f"{value:.3g}"
 
 
@@ -520,8 +537,13 @@ def _interval_text(reported: Fraction, places: int, rules: list[str],
     half = step / 2
     decimals = places + 1
     if rules == ["truncation"]:
-        # Toward zero: [v, v+step) for v >= 0, (v-step, v] below.
-        if reported >= 0:
+        # Toward zero: [v, v+step) for v > 0, (v-step, v] for v < 0, and
+        # BOTH sides for v == 0 — truncation maps (-step, step) to zero
+        # (codex round 2).
+        if reported == 0:
+            return (f"{_fmt_fraction(-step, decimals)} < {quantity} < "
+                    f"{_fmt_fraction(step, decimals)} (truncation)")
+        if reported > 0:
             return (f"{_fmt_fraction(reported, decimals)} <= {quantity} < "
                     f"{_fmt_fraction(reported + step, decimals)} "
                     "(truncation)")
@@ -538,8 +560,17 @@ def _interval_text(reported: Fraction, places: int, rules: list[str],
         return (f"{low_text} < {quantity} <= {high_text} "
                 "(half-up, ties away from zero)")
     if rules == ["half-even"]:
-        return (f"{low_text} <= {quantity} <= {high_text} (endpoint ties "
-                "resolve to the even last digit)")
+        # Endpoint membership is the target's parity: an even last digit
+        # claims both tie endpoints, an odd one claims neither (codex
+        # round 2 — the closed-interval display was wrong for odd
+        # targets).
+        target_even = (reported * 10 ** places).numerator % 2 == 0
+        if target_even:
+            return (f"{low_text} <= {quantity} <= {high_text} "
+                    "(ties-to-even; both endpoint ties round to this even "
+                    "value)")
+        return (f"{low_text} < {quantity} < {high_text} (ties-to-even; "
+                "the endpoint ties round to the even neighbors)")
     return (f"{low_text} <= {quantity} <= {high_text} (interval interior; "
             "endpoint ties depend on the unstated rule, and a verdict is "
             "issued only where half-up and ties-to-even agree)")
@@ -990,9 +1021,10 @@ def _attainable_sumsq(n: int, lo: int, hi: int, total: int) -> frozenset:
     values = list(range(lo, hi + 1))
     cache: dict[tuple[int, int, int], frozenset] = {}
     retained = 0
+    work = 0
 
     def rec(index: int, count: int, remaining: int) -> frozenset:
-        nonlocal retained
+        nonlocal retained, work
         if count == 0:
             return frozenset({0}) if remaining == 0 else frozenset()
         if index == len(values) - 1:
@@ -1009,6 +1041,13 @@ def _attainable_sumsq(n: int, lo: int, hi: int, total: int) -> frozenset:
         rest_lo, rest_hi = values[index + 1], values[-1]
         results = set()
         for chosen in range(count + 1):
+            # The work counter bounds ITERATIONS, not just states: a long
+            # infeasible prefix creates no cache entry, so a state-count
+            # budget alone could spin unbounded before ever firing
+            # (security round 2, NEW-2).
+            work += 1
+            if work > _WORK_BUDGET:
+                raise _BudgetExceeded
             left = count - chosen
             leftover = remaining - chosen * value
             if not left * rest_lo <= leftover <= left * rest_hi:

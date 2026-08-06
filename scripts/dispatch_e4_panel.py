@@ -1671,9 +1671,13 @@ def _run_calculator(bundle: Bundle, extraction_name: str) -> str:
             timeout=300,
         )
     except subprocess.TimeoutExpired as expired:
+        # No str(expired): that embeds the whole argv — sys.executable and
+        # absolute repo paths — into a log destined for public commit
+        # (security round 2, NEW-1; same rule as the transport summary).
         log = _try_write(
             bundle, "methodology.recompute.log",
-            f"[RECOMPUTE-CALCULATOR: timeout] {expired}\n",
+            "[RECOMPUTE-CALCULATOR: timeout] calculator exceeded "
+            f"{expired.timeout}s wall clock\n",
         ) or Bundle.JOURNAL
         raise PanelAborted(
             "methodology.recompute", EXIT_PRECONDITION,

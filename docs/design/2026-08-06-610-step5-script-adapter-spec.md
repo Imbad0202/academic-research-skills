@@ -253,6 +253,31 @@ tracks:
 - Write-once receipts artifact (security P3-1) and a stray-Phase-2E mirror
   guard (security P3-2).
 
+Round 2 (verification of the round-1 closures) added:
+
+- **Out-of-domain values never trap a faithful transcription** (codex r2
+  P1): the decimal-places cap rises to 10 — beyond any journal's printed
+  precision — and the extraction fragment states that a value the grammar
+  cannot carry is out of domain, meriting no RR rather than an
+  unsatisfiable copy-exactly retry; comparisons finer than the float guard
+  degrade to `rounding_boundary_ambiguous`.
+- **Displayed values sit on the correct side of 1** (codex r2 P2): near-1
+  probabilities render with enough digits that a `consistent` verdict is
+  never printed beside a literal `p = 1`.
+- **Half-even interval endpoints follow target parity, and truncation at
+  zero covers both signs** (codex r2, completing round-1 P1-2).
+- **The identity gate's blank-line tolerance is now the stated contract**
+  (codex r1 P2-4 residual): the fragment promises content-line identity
+  with blank spacing explicitly out of scope, matching what the gate
+  compares.
+- **An iteration budget bounds GRIMMER's visited work** (security r2
+  NEW-2), the calculator-timeout log carries no argv (security r2 NEW-1),
+  and the declared 1e7 convergence domain is swept at its corners in tests
+  (security r2 NEW-3).
+- The extraction fragment's untrusted-material paragraph opens with its own
+  sentence so the repo-wide paper-fence pin keeps exactly one pinned
+  paragraph per agent (CI data-fences mutation test).
+
 ## 8. Non-goals and boundaries
 
 - No new bounded procedure; the §8 note on effect-size consistency stands.

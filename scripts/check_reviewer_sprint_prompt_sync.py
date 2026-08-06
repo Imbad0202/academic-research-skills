@@ -115,7 +115,7 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # Re-pin only after reviewing an intentional canonical protocol edit and its
 # corresponding inline mirrors. This is the second v3.17-style content lock;
 # exact canonical→mirror equality is the first.
-CANONICAL_CONTENT_SHA256 = "467f985fae991be3aa052018c9abd1252ffc8eb3247d478a5826f23dae44c310"
+CANONICAL_CONTENT_SHA256 = "27ba132fe46bfe3fdfe5bda20de52bbef9c6605d7ecfce1261cc8a127fab9427"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:

@@ -538,7 +538,7 @@ def test_half_even_interval_text_names_its_tie_rule():
         "n": "4", "reported_mean": "1.2", "scale_min": "1",
         "scale_max": "5", "rounding_rule": "half-even",
     })
-    assert "even last digit" in fields["rounding_interval"]
+    assert "ties-to-even" in fields["rounding_interval"]
 
 
 def test_negative_reported_sd_is_a_mismatch():
@@ -626,7 +626,7 @@ def test_numeric_domain_bounds_are_enforced():
         }))
     with pytest.raises(rr.ExtractionError, match="decimal places"):
         rr.parse_extraction(one_request("p_from_test_statistic", {
-            **P_FIELDS, "reported_p_value": ".0000008",
+            **P_FIELDS, "reported_p_value": ".00000000008",
         }))
     with pytest.raises(rr.ExtractionError, match="convergence domain"):
         rr.parse_extraction(one_request("p_from_test_statistic", {
@@ -703,3 +703,76 @@ def test_cli_output_is_write_once(tmp_path):
         "--extraction", str(extraction), "--output", str(output),
     ]) == 2
     assert output.read_text(encoding="utf-8") == "already here"
+
+
+# --- dual-track review round 2 hardening ----------------------------------
+
+
+def test_ten_decimal_places_are_in_domain():
+    # codex round 2 NEW P1: `.0000008` is a legal printed p and must be
+    # transcribable; ultra-fine comparisons degrade to the boundary guard,
+    # never to an unsatisfiable gate rejection.
+    fields = receipt_lines("p_from_test_statistic", {
+        **P_FIELDS, "reported_p_value": ".0000008",
+    })
+    assert fields["status"] == "mismatch"  # .192/.096 vs 8e-7
+
+
+def test_near_one_p_displays_below_one():
+    # codex round 2 NEW P2: the displayed value must sit on the same side
+    # of 1 as the compared one.
+    fields = receipt_lines("p_from_test_statistic", {
+        "test_family": "t", "statistic_value": ".00000001", "df": "1",
+        "reported_p_comparator": "less_than", "reported_p_value": "1",
+        "tail_convention": "two-tailed",
+    })
+    assert fields["status"] == "consistent"
+    assert "p = 1 (" not in fields["derived_value_or_range"]
+    assert "0.99999999" in fields["derived_value_or_range"]
+
+
+def test_half_even_interval_endpoints_follow_target_parity():
+    # codex round 2: an odd target owns neither tie endpoint; an even one
+    # owns both.
+    odd = receipt_lines("grim", {
+        "n": "4", "reported_mean": "1.3", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "half-even",
+    })
+    assert odd["rounding_interval"].startswith("1.25 < mean < 1.35")
+    even = receipt_lines("grim", {
+        "n": "4", "reported_mean": "1.2", "scale_min": "1",
+        "scale_max": "5", "rounding_rule": "half-even",
+    })
+    assert even["rounding_interval"].startswith("1.15 <= mean <= 1.25")
+
+
+def test_truncation_interval_at_zero_covers_both_sides():
+    fields = receipt_lines("grim", {
+        "n": "4", "reported_mean": "0", "scale_min": "-2",
+        "scale_max": "2", "rounding_rule": "truncation",
+    })
+    assert fields["rounding_interval"].startswith("-1.0 < mean < 1.0")
+
+
+def test_work_budget_bounds_infeasible_spinning(monkeypatch):
+    # security round 2 NEW-2: iterations are bounded, not just retained
+    # states.
+    monkeypatch.setattr(rr, "_WORK_BUDGET", 5)
+    fields = receipt_lines("grimmer", {**GRIMMER_FIELDS, "n": "30"})
+    assert fields["not_computable_reason"] == "reachability_not_completed"
+
+
+def test_tail_functions_terminate_at_domain_corners():
+    # security round 2 NEW-3: the declared 1e7 convergence domain, swept at
+    # its corners — termination and range, not reference values.
+    corners = [
+        rr.t_tail_two(1e7, 10**7), rr.t_tail_two(1e7, 1),
+        rr.t_tail_two(1e-7, 10**7),
+        rr.z_tail_two(1e7), rr.z_tail_two(1e-7),
+        rr.chi2_tail_upper(1e7, 10**7), rr.chi2_tail_upper(1e-7, 10**7),
+        rr.chi2_tail_upper(1e7, 1),
+        rr.f_tail_upper(1e7, 10**7, 10**7), rr.f_tail_upper(1e7, 1, 1),
+        rr.f_tail_upper(1e-7, 10**7, 10**7), rr.f_tail_upper(1e-7, 1, 1),
+    ]
+    for value in corners:
+        assert 0.0 <= value <= 1.0
