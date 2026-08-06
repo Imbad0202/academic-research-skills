@@ -269,7 +269,7 @@ def test_receipt_slot_table_label_is_locked(tree: Path) -> None:
     _mutate(
         tree,
         CANONICAL,
-        "| `methodology rigor` | scoring + receipts |",
+        "| `methodology rigor` | scoring + receipts + extraction |",
         "| `methodology rigor` | scoring |",
     )
     result = _run(tree)
@@ -320,3 +320,26 @@ def test_missing_required_file_is_invocation_error(tree: Path) -> None:
     result = _run(tree)
     assert result.returncode == 2
     assert "required file missing" in result.stderr
+
+
+METHODOLOGY = "academic-paper-reviewer/agents/methodology_reviewer_agent.md"
+
+
+def test_extraction_mirror_is_exactly_synced(tree: Path) -> None:
+    # #610 step 5: the free-standing Phase 2E extraction section is a third
+    # dispatcher-visible mirror; a one-word drift in the agent copy fails.
+    _mutate(tree, METHODOLOGY, "you TRANSCRIBE", "you PARAPHRASE")
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "extraction" in result.stderr
+
+
+def test_extraction_fragment_edit_requires_repin(tree: Path) -> None:
+    # Editing the canonical extraction fragment (with the agent mirror kept
+    # in sync) still fails until the content lock is re-pinned.
+    for rel in (CANONICAL, METHODOLOGY):
+        _mutate(tree, rel, "never calculate, never judge",
+                "never calculate, never decide")
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "canonical content lock" in result.stderr

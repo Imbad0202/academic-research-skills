@@ -77,6 +77,29 @@ Terminal Phase 1 structural preflight (mandatory). Silently inspect the exact te
 6. The final nonblank output line is exactly `[CONTRACT-ACKNOWLEDGED]`.
 Do not send until every check holds.
 
+### Phase 2E — Numeric extraction (script-adapter dispatch)
+
+**Numeric Extraction (#610 step 5, script-adapter dispatch)** — methodology seat only; no other seat has this call.
+
+In this call you TRANSCRIBE; you never calculate, never judge, and never review. Every arithmetic verdict is computed downstream by a deterministic calculator that sees only what you transcribe here — a value you misreport becomes a wrong verdict, and a value you silently convert is a fabricated input. Copy manuscript values exactly as printed, and mark anything the paper does not state with the explicit sentinel the grammar provides.
+
+Your entire response is exactly one `## Recompute Extraction` H2 section: no preamble, no other section, no prose anywhere. Write every machine line as plain unbulleted `key: value` text; the checker tolerates exactly two decorations — a single leading `-` or `*` list marker, and balanced bold around the key — and any other decoration or re-spelling aborts the panel.
+
+- Open one `### RR<n>` subsection per distinct arithmetic claim the manuscript's reported values support under the four bounded procedures of `references/statistical_reporting_standards.md` § Bounded Arithmetic Recompute Procedures (`p_from_test_statistic`, `grim`, `grimmer`, `n_from_df`). One claim per RR — a p check and a df/N check never share one. IDs are contiguous `RR1..RRn`; never transcribe the same claim twice.
+- If the manuscript reports no statistic any bounded procedure covers, the section instead contains exactly one `no_recomputable_statistics: <one-line basis naming what you checked>` line and no `### RR<n>` subsection. The declaration is mandatory; whether it is TRUE is judged at adjudication.
+- Every RR carries these four lines, each exactly once:
+  - `procedure_id: <p_from_test_statistic|grim|grimmer|n_from_df>`
+  - `evidence_anchor: <type>: <locator>` — the same six-type anchor grammar as findings; it identifies where the transcribed values are reported.
+  - `reported_inputs: <every manuscript value used, verbatim>` (single line)
+  - `assumptions: <only assumptions the paper licenses — no silent equal-variance, two-tailed, integer-scale, or sample-SD default>` (single line)
+- `p_from_test_statistic` additionally requires, each exactly once: `test_family: <t|z|F|chi_square|unavailable>`; `statistic_value: <decimal|unavailable>`; `df: <integer | df1,df2 for F | none for z | unavailable>`; `reported_p_comparator: <equals|less_than|less_than_or_equal|greater_than|greater_than_or_equal>`; `reported_p_value: <decimal>`; `tail_convention: <two-tailed|one-tailed|upper-tail|unstated>`, naming what the PAPER states.
+- `grim` additionally requires: `n: <integer|unavailable>`; `reported_mean: <decimal, exactly as printed — trailing zeros carry precision>`; `scale_min: <integer|unavailable>`; `scale_max: <integer|unavailable>`; `rounding_rule: <half-up|half-even|truncation|unstated>`.
+- `grimmer` additionally requires every `grim` line plus: `reported_sd: <decimal, exactly as printed>`; `sd_convention: <sample|population|unstated>`.
+- `n_from_df` additionally requires: `df_reported: <integer>`; `df_identity_candidate: <df=N-1|df=N1+N2-2|other_or_corrected|unavailable>`; `stated_n: <integer|unavailable>`; `stated_n_relation: <equals|at_most|at_least|unavailable>`.
+- `unavailable` is an honest answer, not a failure: the calculator maps it to the correct `not_computable` reason. Never fill a gap with a plausible value, a computed conversion, or a default.
+
+Extraction preflight (mandatory). Silently inspect the exact text you are about to send: exactly one `## Recompute Extraction` section and nothing else; either dense `RR1..RRn` subsections or the single attestation line, never both and never neither; every RR carries its four common lines plus exactly the typed lines its procedure requires; every transcribed value appears in the manuscript exactly as you copied it.
+
 ### Phase 2 — Paper-visible review
 
 You will receive:
@@ -117,6 +140,8 @@ You MUST:
 **Arithmetic Recompute Receipts (#610)** — methodology seat only; no other seat emits this section.
 
 *Epistemic status — read this before applying the grammar: this receipt layer does not replace the human reviewer, and receipt conformance is not arithmetic truth. The machine gate (`scripts/check_phase_conformance.py`) verifies auditability only — required fields present, closed enums respected, mismatch-to-finding linkage intact. Whether the arithmetic itself is correct is decided by human adjudication; a fully conforming receipt built on wrong arithmetic is still wrong (`MISCOMPUTED`). Model arithmetic is not deterministic — the receipt exists so a human can audit every calculation step, never so a calculation can be trusted unaudited.*
+
+**Script-adapter dispatch (#610 step 5).** If — and only if — your Phase 2 message carries a `<computed_receipts>` block, the receipts were already computed deterministically from your own extraction call: reproduce that block's `## Arithmetic Receipts` section VERBATIM as the final section of your card — every line byte-for-byte, plain and undecorated — adding exactly one `finding_ref: W<n>` line inside each `status: mismatch` receipt (naming the `### W<n>` weakness that reports the mismatch, which carries the usual `**Arithmetic Receipt**: AR<n>` back-reference), and adding, removing, or altering NOTHING else. A conformance gate compares your section against the injected bytes; any other edit — a reworded derivation, a corrected-looking value, a dropped or added receipt — aborts the panel. If you believe a computed receipt is wrong, say so in `## Review Body` prose: its inputs came from your extraction, and adjudication judges both. When no `<computed_receipts>` block is present, this paragraph does not apply and you compute receipts yourself under the rules below.
 
 After `## Review Body`, emit exactly one `## Arithmetic Receipts` H2 section as the final section of your card. Write every receipt line as plain unbulleted `key: value` text, inside its `### AR<n>` subsection. The checker reads fenced receipt lines as if the fence were absent and tolerates exactly two decorations — a single leading `-` or `*` list marker, and balanced bold around the key (`**key**:`); any other decoration or re-spelling of a machine line (inline code, a table cell, half-bold, indentation, case or width variants, an HTML-entity colon, an HTML comment) is detected and aborts the panel — never silently dropped, never read as canonical. A machine line outside every `### AR<n>` subsection (other than the attestation) also aborts. Never use HTML comment markup (`<!--` / `-->`) anywhere in this section — any unfenced occurrence aborts the panel. Do not begin a prose line in this section with a field name followed by a colon; it reads as a malformed machine line and aborts the panel.
 

@@ -365,6 +365,10 @@ id = "610-receipt-enum-sync"
 path = "scripts/test_check_receipt_enum_sync.py"
 
 [[pytest]]
+id = "610-step5-recompute-calculator"
+path = "scripts/test_recompute_receipts.py"
+
+[[pytest]]
 id = "611-reviewer-role-label"
 path = "scripts/test_check_reviewer_role_label.py"
 

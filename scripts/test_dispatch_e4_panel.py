@@ -68,6 +68,18 @@ def synthesis_response() -> str:
             + SYNTHESIS_DELIVERABLES)
 
 
+# #610 step 5: the methodology seat's extraction call. The attestation basis
+# matches the card fixture's receipt line byte-for-byte, so the calculator's
+# pass-through output and the card's receipt section satisfy the injected-
+# receipt identity gate without touching the synthesis fixtures.
+EXTRACTION_TEXT = (
+    "## Recompute Extraction\n"
+    "\n"
+    "no_recomputable_statistics: the fixture manuscript reports no "
+    "statistic covered by a bounded procedure\n"
+)
+
+
 def scripted(overrides: dict[str, list[str]] | None = None
              ) -> harness.ScriptedTransport:
     """A panel that passes every real gate, with per-label overrides."""
@@ -75,6 +87,7 @@ def scripted(overrides: dict[str, list[str]] | None = None
     for role in SEATS:
         responses[f"{role}.phase1"] = [phase_fixtures.phase1_text(role)]
         responses[f"{role}.phase2"] = [synth_fixtures.report_text(role)]
+    responses["methodology.extraction"] = [EXTRACTION_TEXT]
     responses["synthesis"] = [synthesis_response()]
     for label, queue in (overrides or {}).items():
         responses[label] = queue
@@ -412,7 +425,10 @@ def test_every_seat_is_dispatched_in_the_frozen_order(tmp_path):
     assert labels[-1] == "synthesis"
     expected = ["field_analysis"] + [
         f"{role}.{phase}" for role in SEATS
-        for phase in ("phase1", "phase2")
+        # #610 step 5: the methodology seat alone carries the extraction
+        # call between its Phase 1 and Phase 2.
+        for phase in (("phase1", "extraction", "phase2")
+                      if role == "methodology" else ("phase1", "phase2"))
     ] + ["synthesis"]
     assert labels == expected
 
@@ -4099,3 +4115,121 @@ def test_a_missing_abort_artifact_is_rewritten_at_emission(tmp_path):
     assert named.exists()
     assert record["diagnostic"] in named.read_text(encoding="utf-8")
     assert record["provenance_status"] == "valid"
+
+
+# --- #610 step 5: extraction call + calculator + injected receipts --------
+
+
+from scripts import recompute_receipts as recompute  # noqa: E402
+
+
+def test_a_clean_panel_records_the_three_call_methodology_shape(tmp_path):
+    result, bundle, record = run(tmp_path, scripted())
+    assert record["score_eligible"] is True, record.get("diagnostic")
+    stages = record["completed_stages"]
+    assert "methodology.extraction" in stages
+    assert "methodology.recompute" in stages
+    assert stages.index("methodology.phase1") < \
+        stages.index("methodology.extraction") < \
+        stages.index("methodology.recompute") < \
+        stages.index("methodology.phase2")
+    assert bundle.resolves("methodology.extraction.a1.md")
+    assert bundle.resolves(harness.RECEIPTS_ARTIFACT)
+    assert bundle.resolves("methodology.recompute.log")
+    receipts = (bundle.root / harness.RECEIPTS_ARTIFACT).read_text(
+        encoding="utf-8")
+    assert receipts == recompute.compute_receipts(
+        recompute.parse_extraction(EXTRACTION_TEXT))
+    assert record["evidence_contract"] == "reviewer-e4/2026-08-06"
+
+
+def test_the_computed_receipts_ride_the_methodology_phase2_prompt(tmp_path):
+    transport = scripted()
+    run(tmp_path, transport)
+    prompts = {
+        call.label: call.prompt for call, _sandbox in transport.calls
+    }
+    assert "<computed_receipts>" in prompts["methodology.phase2"]
+    assert "no_recomputable_statistics: the fixture manuscript" in \
+        prompts["methodology.phase2"]
+    # The extraction call itself carries the manuscript and nothing of the
+    # contract: transcription is deliberately contract-blind.
+    assert "<paper_content>" in prompts["methodology.extraction"]
+    assert "acceptance_dimensions" not in prompts["methodology.extraction"]
+    # No other seat sees a receipts block.
+    assert "<computed_receipts>" not in prompts["domain.phase2"]
+
+
+def test_a_rejected_extraction_gets_one_structural_retry(tmp_path):
+    malformed = "Let me extract the statistics.\n\n" + EXTRACTION_TEXT
+    result, bundle, record = run(tmp_path, scripted({
+        "methodology.extraction": [malformed, EXTRACTION_TEXT],
+    }))
+    assert record["score_eligible"] is True, record.get("diagnostic")
+    events = record["extraction_retries"]
+    assert len(events) == 1
+    assert events[0]["role"] == "methodology"
+    assert events[0]["rejected_response_preserved"] is True
+    assert events[0]["checker_output_preserved"] is True
+    assert "[EXTRACTION-GRAMMAR:" in events[0]["diagnostic"]
+    assert bundle.resolves("methodology.extraction.a1.md")
+    assert bundle.resolves("methodology.extraction.a2.md")
+
+
+def test_a_twice_rejected_extraction_shrinks_the_panel(tmp_path):
+    malformed = "Not an extraction at all."
+    result, _bundle, record = run(tmp_path, scripted({
+        "methodology.extraction": [malformed, malformed],
+    }))
+    assert record["score_eligible"] is False
+    assert record["failure_stage"] == "methodology.extraction"
+    assert "[PANEL-SHRUNK:" in record["diagnostic"]
+    assert "[EXTRACTION-GRAMMAR:" in record["diagnostic"]
+
+
+def test_a_calculator_refusal_is_a_panel_fatal_infra_fault(tmp_path):
+    # By construction the gate and the calculator share one parser, so a
+    # calculator refusal of a gate-passed extraction cannot happen through
+    # the dispatch path; exercise the classification directly.
+    bundle = harness.Bundle(tmp_path / "bundle")
+    bundle.write("methodology.extraction.a1.md", "not an extraction\n")
+    with pytest.raises(harness.PanelAborted) as aborted:
+        harness._run_calculator(bundle, "methodology.extraction.a1.md")
+    assert aborted.value.stage == "methodology.recompute"
+    assert aborted.value.exit_code == harness.EXIT_PRECONDITION
+    assert "[RECOMPUTE-CALCULATOR:" in aborted.value.diagnostic
+    assert bundle.resolves("methodology.recompute.log")
+
+
+def test_a_tampered_receipt_section_is_a_conformance_abort(tmp_path):
+    tampered = synth_fixtures.report_text("methodology").replace(
+        "no_recomputable_statistics: the fixture manuscript reports no "
+        "statistic covered by a bounded procedure",
+        "no_recomputable_statistics: I checked and found nothing at all",
+    )
+    result, _bundle, record = run(tmp_path, scripted({
+        "methodology.phase2": [tampered],
+    }))
+    assert record["score_eligible"] is False
+    assert record["failure_stage"] == "methodology.phase2"
+    assert "[RECEIPT-IDENTITY:" in record["diagnostic"]
+
+
+def test_a_real_recompute_extraction_flows_receipts_into_the_card(tmp_path):
+    extraction = phase_fixtures.GRIM_EXTRACTION
+    injected = recompute.compute_receipts(
+        recompute.parse_extraction(extraction))
+    card = phase_fixtures.phase2_text(
+        "methodology",
+        body=phase_fixtures.W1_BACKREF_BODY,
+        receipts=phase_fixtures.faithful_card_lines(injected),
+    )
+    result, bundle, record = run(tmp_path, scripted({
+        "methodology.extraction": [extraction],
+        "methodology.phase2": [card],
+    }))
+    assert record["score_eligible"] is True, record.get("diagnostic")
+    receipts = (bundle.root / harness.RECEIPTS_ARTIFACT).read_text(
+        encoding="utf-8")
+    assert receipts == injected
+    assert "status: mismatch" in receipts

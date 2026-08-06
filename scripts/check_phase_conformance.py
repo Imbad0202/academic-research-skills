@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_panel_synthesis as panel  # noqa: E402
+import recompute_receipts as recompute  # noqa: E402
 
 EXIT_PASS = 0
 EXIT_CONTRACT = 2
@@ -1791,6 +1792,110 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                 )
 
 
+def check_recompute_extraction(path: str, text: str) -> None:
+    """#610 step-5 extraction gate, methodology seat only.
+
+    The isolated numeric input surface: the response must be exactly one
+    ``## Recompute Extraction`` section of machine lines. The grammar
+    authority is the calculator's own parser (`recompute_receipts`), so the
+    gate and the consumer can never disagree about what an extraction says;
+    this gate adds the response-level structure rules and the anchor-grammar
+    check the calculator deliberately does not own.
+    """
+    lines = panel.strip_fences(text)
+    sections, dupes = panel.split_sections(lines)
+    if recompute.EXTRACTION_SECTION in dupes:
+        raise ConformanceError(
+            f"[EXTRACTION-GRAMMAR: {path}: duplicate "
+            f"## {recompute.EXTRACTION_SECTION}]"
+        )
+    if recompute.EXTRACTION_SECTION not in sections:
+        raise ConformanceError(
+            f"[EXTRACTION-GRAMMAR: {path}: exactly one "
+            f"## {recompute.EXTRACTION_SECTION} section is required]"
+        )
+    extra = [
+        title for title in list(sections) + list(dupes)
+        if title != recompute.EXTRACTION_SECTION
+    ]
+    if extra:
+        raise ConformanceError(
+            f"[EXTRACTION-GRAMMAR: {path}: the response may carry no "
+            f"section other than ## {recompute.EXTRACTION_SECTION}; "
+            f"found {extra}]"
+        )
+    preamble = []
+    for line in lines:
+        if panel._H2_RE.fullmatch(line):
+            break
+        preamble.append(line)
+    if any(line.strip() for line in preamble):
+        raise ConformanceError(
+            f"[EXTRACTION-GRAMMAR: {path}: no content is allowed before "
+            f"## {recompute.EXTRACTION_SECTION}]"
+        )
+    try:
+        extraction = recompute.parse_extraction(text)
+    except recompute.ExtractionError as exc:
+        raise ConformanceError(
+            f"[EXTRACTION-GRAMMAR: {path}: {exc}]"
+        ) from exc
+    for request in extraction.requests:
+        _validate_anchor(
+            request["evidence_anchor"], f"{path}:{request.rr_id}"
+        )
+    if extraction.attestation is not None:
+        # Same declaration-only honesty boundary as the receipt attestation.
+        print(_RECEIPT_ATTESTATION_ADVISORY)
+
+
+def check_injected_receipts(
+    report: panel.ReviewerReport, injected_text: str
+) -> None:
+    """#610 step-5 identity gate: the card's receipt section must be the
+    dispatcher-injected receipts verbatim, plus only the canonical
+    ``finding_ref:`` lines the mismatch receipts require.
+
+    Runs AFTER `check_methodology_receipts`, so grammar, enum, linkage, and
+    per-subsection `finding_ref` placement are already proven; this gate
+    proves nothing else changed. The comparison ignores blank lines and
+    reads the card fence-transparently — the same view the receipt gate
+    uses — so a decorated or re-spelled injected line fails identity loudly
+    rather than being silently re-read.
+    """
+    injected_lines = injected_text.split("\n")
+    heading = f"## {recompute.RECEIPT_SECTION}"
+    if not injected_lines or injected_lines[0] != heading:
+        raise panel.ContractError(
+            f"[INJECTED-RECEIPTS-INVALID: the injected file must begin "
+            f"with {heading!r}]"
+        )
+    expected = [line for line in injected_lines[1:] if line.strip()]
+    view, _, _ = _receipt_section_view(report.text)
+    actual = [
+        line for line, _, _ in view
+        if line.strip()
+        and not _RECEIPT_FIELD_RES["finding_ref"].fullmatch(line)
+    ]
+    if actual != expected:
+        divergence = next(
+            (
+                f"card={card!r} vs injected={wanted!r}"
+                for card, wanted in zip(actual, expected)
+                if card != wanted
+            ),
+            f"card has {len(actual)} content lines, injected has "
+            f"{len(expected)}",
+        )
+        raise ConformanceError(
+            f"[RECEIPT-IDENTITY: {report.path}: the ## "
+            f"{recompute.RECEIPT_SECTION} section must reproduce the "
+            "dispatcher-computed receipts verbatim, adding only "
+            f"finding_ref: lines on mismatch receipts; first divergence: "
+            f"{divergence}]"
+        )
+
+
 def check_receipt_section_forbidden(report: panel.ReviewerReport) -> None:
     # Declared boundary: this guard sees what `split_sections` sees, so a
     # fenced or indented `## Arithmetic Receipts` on a non-methodology seat
@@ -1817,9 +1922,17 @@ def _parse_args(argv):
     stage = parser.add_mutually_exclusive_group(required=True)
     stage.add_argument("--phase2", type=Path)
     stage.add_argument("--phase1-only", action="store_true")
+    # #610 step 5: the methodology extraction call is its own gated stage,
+    # answerable between Phase 1 and Phase 2 like --phase1-only is before
+    # Phase 2.
+    stage.add_argument("--extraction", type=Path)
+    parser.add_argument("--injected-receipts", type=Path)
     parser.add_argument("--manuscript", required=True, type=Path)
     parser.add_argument("--metadata", required=True, type=Path)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.injected_receipts is not None and args.phase2 is None:
+        parser.error("--injected-receipts requires --phase2")
+    return args
 
 
 def main(argv=None) -> int:
@@ -1833,7 +1946,8 @@ def main(argv=None) -> int:
             )
         phase1_text = panel._read_text(args.phase1)
         phase2_text = (
-            None if args.phase1_only else panel._read_text(args.phase2)
+            panel._read_text(args.phase2) if args.phase2 is not None
+            else None
         )
         manuscript_text = panel._read_text(args.manuscript)
         try:
@@ -1856,6 +1970,22 @@ def main(argv=None) -> int:
             print(warning)
         if args.phase1_only:
             print("PHASE1-CONFORMANCE: PASS")
+            return EXIT_PASS
+        if args.extraction is not None:
+            # #610 step 5. The extraction call is methodology-only by
+            # design: no other seat has an extraction stage to gate.
+            if args.role != "methodology":
+                raise panel.ContractError(
+                    f"[ROLE-BINDING: --extraction is methodology-only, "
+                    f"dispatched as {args.role}]"
+                )
+            check_manuscript_leakage(
+                phase1_text, manuscript_text, metadata, contract
+            )
+            check_recompute_extraction(
+                str(args.extraction), panel._read_text(args.extraction)
+            )
+            print("EXTRACTION-CONFORMANCE: PASS")
             return EXIT_PASS
         report = panel.parse_report(
             str(args.phase2), phase2_text, contract
@@ -1881,7 +2011,16 @@ def main(argv=None) -> int:
             check_scoring_seat_anchors(report)
         if report.role == "methodology":
             check_methodology_receipts(report)
+            if args.injected_receipts is not None:
+                check_injected_receipts(
+                    report, panel._read_text(args.injected_receipts)
+                )
         else:
+            if args.injected_receipts is not None:
+                raise panel.ContractError(
+                    f"[ROLE-BINDING: --injected-receipts is "
+                    f"methodology-only, dispatched as {args.role}]"
+                )
             check_receipt_section_forbidden(report)
     except panel.ContractError as exc:
         print(exc)

@@ -146,6 +146,31 @@ mandatory grammar is a tracked #610 §7.1 reporting metric, not a silent
 tradeoff. Procedure boundaries and the red-flag classification live in
 `references/statistical_reporting_standards.md` §8.
 
+### 5.2 Script-adapter dispatch (#610 step 5, optional orchestration)
+
+An orchestrator that can execute repository scripts MAY dispatch the
+methodology seat as three calls: Phase 1; a paper-visible **numeric
+extraction** call (system prompt: the seat's `### Phase 2E` section, rendered
+from the `methodology-extraction` fragment) whose entire response is one
+`## Recompute Extraction` section of typed machine lines — one `### RR<n>`
+per arithmetic claim, or the `no_recomputable_statistics:` attestation —
+gated by `check_phase_conformance.py --extraction` with ONE structural retry
+of the Phase 1 evidence class; then `scripts/recompute_receipts.py`, which
+deterministically computes the full `## Arithmetic Receipts` section from
+the extraction alone (never the manuscript); then Phase 2 with the computed
+receipts injected as a `<computed_receipts>` block. Under injection the seat
+must reproduce the receipts verbatim, adding only the `finding_ref:` linkage
+lines on `mismatch` receipts; the `--injected-receipts` identity gate
+(`[RECEIPT-IDENTITY]`, exit 3) fails the card on any other edit. A
+calculator refusal of a gate-passed extraction is an orchestrator infra
+fault (exit-2 class), never a seat conformance failure. Without a
+`<computed_receipts>` block — every orchestrator that cannot run scripts,
+including runtime-Bash-denied sessions — §5.1's self-compute behavior
+applies unchanged; the two modes share one receipt grammar and one
+adjudication scale, and extraction fidelity (whether the transcribed numbers
+are the manuscript's) stays a human-adjudicated question exactly like the
+attestation's truth.
+
 ## 6. Multi-reviewer orchestration
 
 - **Independent cycles.** Each of the `panel_size` reviewers runs its own Phase 1 + Phase 2. Failures in one do not pause the others.

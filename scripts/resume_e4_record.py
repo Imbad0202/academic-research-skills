@@ -131,7 +131,7 @@ def _result_from_state(state: dict, bundle_root: Path) \
     if fixture not in harness.MANUSCRIPTS:
         raise RecoveryError(f"unknown fixture in recovery state: {fixture!r}")
     condition = _string(saved["condition"], "result.condition")
-    if condition not in {"baseline", "post"}:
+    if condition not in {"baseline", "post", "script_adapter"}:
         raise RecoveryError(f"unknown condition in recovery state: {condition!r}")
     replicate = saved["replicate"]
     if isinstance(replicate, bool) or not isinstance(replicate, int) \
@@ -163,7 +163,8 @@ def _result_from_state(state: dict, bundle_root: Path) \
         }, f"result.retries[{index}]")
         role = _string(item["role"], f"result.retries[{index}].role")
         stage = _string(item["stage"], f"result.retries[{index}].stage")
-        if stage not in {"phase1", "phase2_multi_dissent", "synthesis"}:
+        if stage not in {"phase1", "extraction", "phase2_multi_dissent",
+                         "synthesis"}:
             raise RecoveryError(f"unknown retry stage {stage!r}")
         diagnostic = _string(
             item["diagnostic"], f"result.retries[{index}].diagnostic",
@@ -272,17 +273,24 @@ def _result_from_state(state: dict, bundle_root: Path) \
             if event.role not in seats:
                 raise RecoveryError(
                     f"retry role is not a contract seat: {event.role!r}")
-            phase = "phase1" if event.stage == "phase1" else "phase2"
+            if event.stage == "extraction" and event.role != "methodology":
+                raise RecoveryError(
+                    "extraction retry must be bound to the methodology seat")
+            phase = {
+                "phase1": "phase1",
+                "extraction": "extraction",
+            }.get(event.stage, "phase2")
             escaped = re.escape(event.role)
             response_pattern = (
                 rf"{escaped}\.{phase}\.a([1-9][0-9]*)\.md")
             checker_patterns = (
                 rf"{escaped}\.{phase}\.a([1-9][0-9]*)\.gate\.log",
             )
-            journal_prefix = (f"RETRY {event.role} phase1 diagnostic="
-                              if event.stage == "phase1" else
-                              f"RETRY {event.role} phase2 multi-dissent "
-                              "diagnostic=")
+            journal_prefix = {
+                "phase1": f"RETRY {event.role} phase1 diagnostic=",
+                "extraction": f"RETRY {event.role} extraction diagnostic=",
+            }.get(event.stage,
+                  f"RETRY {event.role} phase2 multi-dissent diagnostic=")
         response_match = re.fullmatch(
             response_pattern, event.rejected_response_location)
         checker_match = next((
@@ -330,7 +338,12 @@ def _result_from_state(state: dict, bundle_root: Path) \
                 "journal")
     canonical = ["field_analysis"]
     for role in seats:
-        canonical.extend((f"{role}.phase1", f"{role}.phase2"))
+        canonical.append(f"{role}.phase1")
+        if role == "methodology":
+            # #610 step 5: the methodology seat's three-call shape.
+            canonical.extend(
+                ("methodology.extraction", "methodology.recompute"))
+        canonical.append(f"{role}.phase2")
     canonical.append("synthesis")
     positions = [canonical.index(stage) if stage in canonical else -1
                  for stage in completed]
@@ -344,14 +357,23 @@ def _result_from_state(state: dict, bundle_root: Path) \
         if stage == "field_analysis":
             _plain_file(bundle_root, "field_analysis.md", stage)
             continue
+        if stage == "methodology.recompute":
+            # #610 step 5: the calculator stage's evidence is its receipts
+            # artifact plus its log — it is not a model call and has no
+            # response/gate pair.
+            _plain_file(bundle_root, harness.RECEIPTS_ARTIFACT, stage)
+            _plain_file(bundle_root, "methodology.recompute.log", stage)
+            continue
         if stage == "synthesis":
             pattern = "synthesis.a*.md"
             pass_marker = "PANEL-SYNTHESIS: PASS"
         else:
             role, phase = stage.split(".", 1)
             pattern = f"{role}.{phase}.a*.md"
-            pass_marker = ("PHASE1-CONFORMANCE: PASS" if phase == "phase1"
-                           else "PHASE-CONFORMANCE: PASS")
+            pass_marker = {
+                "phase1": "PHASE1-CONFORMANCE: PASS",
+                "extraction": "EXTRACTION-CONFORMANCE: PASS",
+            }.get(phase, "PHASE-CONFORMANCE: PASS")
         candidates = sorted(bundle_root.glob(pattern))
         witnessed = False
         for candidate in candidates:

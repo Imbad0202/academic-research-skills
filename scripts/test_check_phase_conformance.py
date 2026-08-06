@@ -3927,3 +3927,237 @@ def test_full_cli_rejects_missing_receipt_section(tmp_path, capsys):
     assert phase.main(args + ["--role", "methodology"]) == \
         phase.EXIT_CONFORMANCE
     assert "[RECEIPT-MISSING:" in capsys.readouterr().out
+
+
+# --- #610 step-5 extraction gate + injected-receipt identity gate ---------
+
+
+from scripts import recompute_receipts as recompute  # noqa: E402
+
+
+GRIM_EXTRACTION = (
+    "## Recompute Extraction\n"
+    "\n"
+    "### RR1\n"
+    "procedure_id: grim\n"
+    "evidence_anchor: table: Table 2, M=3.847 with N=87\n"
+    "reported_inputs: single 1-5 integer item, N=87, M=3.847\n"
+    "assumptions: unweighted single-item mean as stated in §3.2\n"
+    "n: 87\n"
+    "reported_mean: 3.847\n"
+    "scale_min: 1\n"
+    "scale_max: 5\n"
+    "rounding_rule: unstated\n"
+)
+ATTESTATION_EXTRACTION = (
+    "## Recompute Extraction\n"
+    "\n"
+    "no_recomputable_statistics: the manuscript reports no statistic a "
+    "bounded procedure covers\n"
+)
+
+
+def extraction_args(tmp_path: Path, extraction_text: str,
+                    role: str = "methodology") -> list[str]:
+    args = write_cli_files(tmp_path, role)
+    del args[args.index("--phase2"):args.index("--phase2") + 2]
+    extraction = tmp_path / "extraction.md"
+    extraction.write_text(extraction_text, encoding="utf-8")
+    return args + ["--extraction", str(extraction), "--role", role]
+
+
+def test_extraction_stage_passes_on_rr_grammar(tmp_path, capsys):
+    assert phase.main(extraction_args(tmp_path, GRIM_EXTRACTION)) == \
+        phase.EXIT_PASS
+    assert "EXTRACTION-CONFORMANCE: PASS" in capsys.readouterr().out
+
+
+def test_extraction_stage_passes_on_attestation_with_advisory(tmp_path,
+                                                              capsys):
+    assert phase.main(extraction_args(tmp_path, ATTESTATION_EXTRACTION)) == \
+        phase.EXIT_PASS
+    out = capsys.readouterr().out
+    assert "EXTRACTION-CONFORMANCE: PASS" in out
+    assert "[RECEIPT-ATTESTATION:" in out
+
+
+def test_extraction_stage_is_methodology_only(tmp_path, capsys):
+    assert phase.main(
+        extraction_args(tmp_path, GRIM_EXTRACTION, role="eic")
+    ) == phase.EXIT_CONTRACT
+    assert "[ROLE-BINDING:" in capsys.readouterr().out
+
+
+def test_extraction_preamble_prose_is_nonconforming(tmp_path, capsys):
+    assert phase.main(extraction_args(
+        tmp_path, "I will now extract the statistics.\n\n" + GRIM_EXTRACTION
+    )) == phase.EXIT_CONFORMANCE
+    assert "[EXTRACTION-GRAMMAR:" in capsys.readouterr().out
+
+
+def test_extraction_extra_section_is_nonconforming(tmp_path, capsys):
+    assert phase.main(extraction_args(
+        tmp_path, GRIM_EXTRACTION + "\n## Notes\n\nsome prose\n"
+    )) == phase.EXIT_CONFORMANCE
+    assert "[EXTRACTION-GRAMMAR:" in capsys.readouterr().out
+
+
+def test_extraction_missing_section_is_nonconforming(tmp_path, capsys):
+    assert phase.main(extraction_args(
+        tmp_path, "## Wrong Heading\n\nn: 87\n"
+    )) == phase.EXIT_CONFORMANCE
+    assert "[EXTRACTION-GRAMMAR:" in capsys.readouterr().out
+
+
+def test_extraction_unknown_field_is_nonconforming(tmp_path, capsys):
+    assert phase.main(extraction_args(
+        tmp_path, GRIM_EXTRACTION + "surprise_field: value\n"
+    )) == phase.EXIT_CONFORMANCE
+    assert "unknown field" in capsys.readouterr().out
+
+
+def test_extraction_prose_line_inside_section_is_nonconforming(tmp_path,
+                                                               capsys):
+    assert phase.main(extraction_args(
+        tmp_path, GRIM_EXTRACTION + "This mean looks impossible to me.\n"
+    )) == phase.EXIT_CONFORMANCE
+    assert "not a machine line" in capsys.readouterr().out
+
+
+def test_extraction_invalid_anchor_is_nonconforming(tmp_path, capsys):
+    bad = GRIM_EXTRACTION.replace(
+        "evidence_anchor: table: Table 2, M=3.847 with N=87",
+        "evidence_anchor: somewhere in the paper",
+    )
+    assert phase.main(extraction_args(tmp_path, bad)) == \
+        phase.EXIT_CONFORMANCE
+    assert "ANCHOR" in capsys.readouterr().out
+
+
+def test_extraction_and_phase2_stages_are_mutually_exclusive(tmp_path):
+    args = write_cli_files(tmp_path, "methodology")
+    extraction = tmp_path / "extraction.md"
+    extraction.write_text(GRIM_EXTRACTION, encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        phase._parse_args(
+            args + ["--extraction", str(extraction), "--role", "methodology"]
+        )
+    assert exc.value.code == 2
+
+
+def test_injected_receipts_flag_requires_phase2(tmp_path):
+    args = phase1_only_args(tmp_path, "methodology")
+    with pytest.raises(SystemExit) as exc:
+        phase._parse_args(args + ["--injected-receipts", "x.md"])
+    assert exc.value.code == 2
+
+
+def injected_receipts_text() -> str:
+    return recompute.compute_receipts(
+        recompute.parse_extraction(GRIM_EXTRACTION)
+    )
+
+
+def injected_cli(tmp_path: Path, card_receipt_lines: list[str],
+                 injected_text: str, body: str = W1_BACKREF_BODY,
+                 role: str = "methodology") -> list[str]:
+    args = write_cli_files(tmp_path, role)
+    (tmp_path / "p2.md").write_text(
+        phase2_text(role, body=body, receipts=card_receipt_lines),
+        encoding="utf-8",
+    )
+    injected = tmp_path / "injected.md"
+    injected.write_text(injected_text, encoding="utf-8")
+    return args + ["--role", role, "--injected-receipts", str(injected)]
+
+
+def faithful_card_lines(injected_text: str) -> list[str]:
+    # The seat's only permitted addition: the finding_ref linkage line on
+    # the (single, mismatch) receipt.
+    lines = [line for line in injected_text.splitlines()[1:] if line]
+    return lines + ["finding_ref: W1"]
+
+
+def test_injected_identity_passes_on_verbatim_copy(tmp_path):
+    injected = injected_receipts_text()
+    assert phase.main(injected_cli(
+        tmp_path, faithful_card_lines(injected), injected
+    )) == phase.EXIT_PASS
+
+
+def test_injected_identity_rejects_an_altered_line(tmp_path, capsys):
+    injected = injected_receipts_text()
+    lines = [
+        line.replace("status: mismatch", "status: consistent")
+        if line == "status: mismatch" else line
+        for line in faithful_card_lines(injected)
+        if line != "finding_ref: W1"
+    ]
+    assert phase.main(injected_cli(
+        tmp_path, lines, injected, body="clean methodology review prose"
+    )) == phase.EXIT_CONFORMANCE
+    assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out
+
+
+def test_injected_identity_rejects_a_paraphrased_line(tmp_path, capsys):
+    # A reworded derivation still satisfies the receipt GRAMMAR (the line
+    # exists and parses), so only the identity gate can catch it — the
+    # incremental value this gate exists for.
+    injected = injected_receipts_text()
+    lines = [
+        "derivation: I re-derived this my own way" if
+        line.startswith("derivation: ") else line
+        for line in faithful_card_lines(injected)
+    ]
+    assert phase.main(injected_cli(tmp_path, lines, injected)) == \
+        phase.EXIT_CONFORMANCE
+    assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out
+
+
+def test_injected_identity_rejects_an_extra_receipt(tmp_path, capsys):
+    injected = injected_receipts_text()
+    extra = [
+        "### AR2",
+        "procedure_id: n_from_df",
+        "evidence_anchor: table: Table 3, t(156) with N at most 142",
+        "reported_inputs: df=156, stated analytic N at most 142",
+        "assumptions: independent-groups t as stated",
+        "derivation: df=N1+N2-2 gives N = 158",
+        "derived_value_or_range: implied N = 158",
+        "comparison_rule: implied N must not exceed 142",
+        "status: consistent",
+        "df_identity: df=N1+N2-2",
+    ]
+    assert phase.main(injected_cli(
+        tmp_path, faithful_card_lines(injected) + extra, injected
+    )) == phase.EXIT_CONFORMANCE
+    assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out
+
+
+def test_injected_identity_survives_added_blank_lines(tmp_path):
+    injected = injected_receipts_text()
+    spaced = []
+    for line in faithful_card_lines(injected):
+        spaced += [line, ""]
+    assert phase.main(injected_cli(tmp_path, spaced, injected)) == \
+        phase.EXIT_PASS
+
+
+def test_injected_receipts_are_methodology_only(tmp_path, capsys):
+    injected = injected_receipts_text()
+    args = write_cli_files(tmp_path, "eic")
+    injected_path = tmp_path / "injected.md"
+    injected_path.write_text(injected, encoding="utf-8")
+    assert phase.main(
+        args + ["--role", "eic", "--injected-receipts", str(injected_path)]
+    ) == phase.EXIT_CONTRACT
+    assert "[ROLE-BINDING:" in capsys.readouterr().out
+
+
+def test_injected_file_without_heading_is_a_contract_error(tmp_path, capsys):
+    injected = injected_receipts_text()
+    assert phase.main(injected_cli(
+        tmp_path, faithful_card_lines(injected),
+        "### AR1\nprocedure_id: grim\n",
+    )) == phase.EXIT_CONTRACT
+    assert "[INJECTED-RECEIPTS-INVALID:" in capsys.readouterr().out

@@ -426,6 +426,40 @@ What it changes, and why each is a property rather than a step:
 Records and bundles land in the work directory, never straight into the repo;
 committing them stays a deliberate step.
 
+### #610 step 5: three-call methodology shape (`reviewer-e4/2026-08-06`)
+
+From the step-5 merge SHA onward the harness dispatches the methodology seat
+as three calls — Phase 1, a paper-visible **numeric extraction** call, and
+Phase 2 — under the successor contract `reviewer-e4/2026-08-06`, which
+preserves every `reviewer-e4/2026-07-27` obligation and adds:
+
+- **The extraction call is gated** (`--extraction` stage of
+  `scripts/check_phase_conformance.py`: exactly one `## Recompute Extraction`
+  section of typed machine lines, or the attestation) **and carries one
+  structural retry** of the Phase 1 evidence class, recorded under its own
+  `extraction_retries` list with the rejected response and gate log
+  preserved.
+- **Arithmetic is computed by the harness, not the model.**
+  `scripts/recompute_receipts.py` — deterministic, stdlib-only, tested
+  against the #610 spec's worked cases — turns the gated extraction into the
+  `## Arithmetic Receipts` section (`methodology.receipts.md` +
+  `methodology.recompute.log` in the bundle). A calculator refusal of a
+  gate-passed extraction is a harness infra fault: the panel blocks
+  (exit-2 class), it is never a conformance abort and never retried.
+- **The methodology Phase 2 receives the computed receipts** as a
+  `<computed_receipts>` block and must reproduce them verbatim, adding only
+  the `finding_ref:` linkage lines on mismatch receipts; the
+  `--injected-receipts` identity gate fails the seat on any other edit.
+  Extraction fidelity — whether the transcribed numbers are the manuscript's
+  — remains a maintainer-adjudicated question against the held-out manifest,
+  exactly like the attestation's truth.
+
+`condition` remains a record label: a `script_adapter` cohort must be
+dispatched from a frozen clean checkout at or after the step-5 merge SHA and
+compared against the newest same-model post row, because the measured
+condition (dispatch shape + prompt state) differs from both the baseline and
+the post rows. Fleet execution stays a separately authorized step.
+
 **Comparability:** the harness changes the dispatched condition relative to
 the 2026-07-24/25 hand-dispatched rows — `--bare` removes the operator's
 user-level context, each seat receives only its own configuration card,

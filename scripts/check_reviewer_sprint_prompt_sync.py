@@ -59,6 +59,7 @@ ROLE_CONFIG = {
         "REVIEW_BODY_LENS": "methodology rigor",
         "phase2": "scoring-phase2",
         "phase2_insert": "methodology-receipt",
+        "extraction": "methodology-extraction",
     },
     "academic-paper-reviewer/agents/domain_reviewer_agent.md": {
         "ROLE": "domain",
@@ -83,8 +84,14 @@ FRAGMENT_NAMES = (
     "phase1",
     "scoring-phase2",
     "methodology-receipt",
+    "methodology-extraction",
     "da-phase2",
     "synth",
+)
+# #610 step 5: the methodology seat's free-standing extraction section, a
+# third dispatcher-visible H3 mirrored byte-for-byte like Phase 1/Phase 2.
+EXTRACTION_HEADING = (
+    "### Phase 2E — Numeric extraction (script-adapter dispatch)"
 )
 # The #610 methodology receipt block is spliced into the shared scoring
 # fragment immediately before this terminal-preflight line, so the shared
@@ -108,7 +115,7 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # Re-pin only after reviewing an intentional canonical protocol edit and its
 # corresponding inline mirrors. This is the second v3.17-style content lock;
 # exact canonical→mirror equality is the first.
-CANONICAL_CONTENT_SHA256 = "196aad6d7c3671c69e9fc04b87ffc80f8234762e6fd88e7a1a22d7e7da86d792"
+CANONICAL_CONTENT_SHA256 = "b580e4cee30e20368eaf3a962483faec9b775badc71aca3cc8c489b99fb27632"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:
@@ -179,6 +186,13 @@ def _expected_slot_table(errors: list[str]) -> tuple[str, ...]:
             errors.append(
                 f"{rel}: unknown Phase 2 insert fragment "
                 f"{config.get('phase2_insert')!r}"
+            )
+        if config.get("extraction") == "methodology-extraction":
+            phase2_label += " + extraction"
+        elif "extraction" in config:
+            errors.append(
+                f"{rel}: unknown extraction fragment "
+                f"{config.get('extraction')!r}"
             )
         review_lens = config.get("REVIEW_BODY_LENS")
         review_cell = f"`{review_lens}`" if review_lens is not None else "—"
@@ -327,6 +341,25 @@ def check(root: Path) -> list[str]:
         elif phase2 != expected2:
             label = "DA Phase 2" if phase2_name == "da-phase2" else "Phase 2"
             errors.append(f"{rel}: {label} mirror drift (byte-exact compare failed)")
+        extraction_name = config.get("extraction")
+        if extraction_name:
+            expected_extraction = _render(
+                fragments.get(extraction_name, ""), config, rel, errors
+            )
+            runtime_extraction = heading_section(text, EXTRACTION_HEADING)
+            delivered_extraction = heading_section(sprint, EXTRACTION_HEADING)
+            if runtime_extraction != expected_extraction:
+                errors.append(
+                    f"{rel}: dispatcher-visible extraction runtime "
+                    "extraction drift"
+                )
+            if delivered_extraction is None:
+                errors.append(f"{rel}: missing delivered extraction section")
+            elif delivered_extraction != expected_extraction:
+                errors.append(
+                    f"{rel}: extraction mirror drift (byte-exact compare "
+                    "failed)"
+                )
 
     synth_text = read_or_exit2(root, SYNTH_REL)
     if SOURCE_CITATION not in synth_text:

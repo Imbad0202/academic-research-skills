@@ -238,3 +238,31 @@ def test_resume_refuses_a_bundle_at_an_undeclared_location(
     bundle.root.rename(elsewhere)
     with pytest.raises(recovery.RecoveryError, match="supported retained"):
         recovery.resume(elsewhere, work)
+
+
+def test_resume_accepts_an_extraction_retry_ledger(tmp_path, monkeypatch):
+    # #610 step 5: the extraction retry class round-trips through recovery
+    # like the phase1 class, with its own record list.
+    work = tmp_path / "work"
+    malformed = "Let me extract first.\n\n" + fixtures.EXTRACTION_TEXT
+    result, bundle = harness.dispatch_panel(
+        fixture="ms00_clean", condition="post", replicate=1,
+        work_dir=work,
+        transport=fixtures.scripted({
+            "methodology.extraction": [malformed,
+                                       fixtures.EXTRACTION_TEXT],
+        }),
+        manuscript=fixtures.MANUSCRIPT, metadata=fixtures.METADATA,
+        contract_json=fixtures.CONTRACT_JSON,
+    )
+    assert result.abort is None
+    _force_emission_failure(work, result, bundle, monkeypatch)
+    assert recovery.main([
+        "--bundle", str(bundle.root), "--work-dir", str(work),
+    ]) == harness.EXIT_OK
+    record = json.loads(
+        (work / "runs" / f"{STEM}.json").read_text(encoding="utf-8"))
+    assert record["score_eligible"] is True
+    events = record["extraction_retries"]
+    assert len(events) == 1
+    assert events[0]["rejected_response_preserved"] is True
