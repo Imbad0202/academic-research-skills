@@ -1,0 +1,16 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+The fictional CivicStream Panel followed 1,126 users for 14 weeks and captured 8,904 discussion-thread visits. Exposure to cross-cutting replies was associated with a 0.31-point increase in subsequent viewpoint diversity (95% CI [0.18, 0.44], p < .001), while hostile reply tone predicted lower return engagement (b = -0.22, SE = 0.06, p = .002). The findings suggest that conversational structure and tone may influence distinct forms of participation.
+
+Prior scholarship assigns different roles to several features of networked discussion. Algorithmic feed concentration can increase selective exposure (Rahmani, 2018), whereas visible identity cues can increase willingness to share contentious material (Okeke & Vidal, 2020). Correction timing may shape belief revision after misinformation exposure (Sato, 2019), while source familiarity can improve message recall without improving accuracy judgments (Dlamini & Kroll, 2021). Thread civility has also been associated with return participation (Petrescu, 2022), and response diversity may signal that disagreement is socially acceptable (Al-Masri & Ko, 2023). Taken together, these propositions are consistent with a layered account in which exposure, credibility, and interaction norms operate through related but nonidentical pathways.
+
+REVIEWER COMMENT:
+The literature synthesis is thorough but reads as a sequence of miniature summaries. Condense the paragraph and create a more integrated conceptual arc around exposure, credibility, and interaction norms. The current citation density obscures the connection to your findings.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Condense the literature synthesis into four or five sentences by combining adjacent themes and eliminating redundant transitions.
+R-2: Strengthen the final link between the three conceptual themes and the reported participation outcomes.
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

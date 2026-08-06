@@ -1,0 +1,42 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+The fictional CivicStream Panel followed 1,126 users for 14 weeks and captured 8,904 discussion-thread visits. Exposure to cross-cutting replies was associated with a 0.31-point increase in subsequent viewpoint diversity (95% CI [0.18, 0.44], p < .001), while hostile reply tone predicted lower return engagement (b = -0.22, SE = 0.06, p = .002). The findings suggest that conversational structure and tone may influence distinct forms of participation.
+
+Prior scholarship assigns different roles to several features of networked discussion. Algorithmic feed concentration can increase selective exposure (Rahmani, 2018), whereas visible identity cues can increase willingness to share contentious material (Okeke & Vidal, 2020). Correction timing may shape belief revision after misinformation exposure (Sato, 2019), while source familiarity can improve message recall without improving accuracy judgments (Dlamini & Kroll, 2021). Thread civility has also been associated with return participation (Petrescu, 2022), and response diversity may signal that disagreement is socially acceptable (Al-Masri & Ko, 2023). Taken together, these propositions are consistent with a layered account in which exposure, credibility, and interaction norms operate through related but nonidentical pathways.
+
+REVIEWER COMMENT:
+The literature synthesis is thorough but reads as a sequence of miniature summaries. Condense the paragraph and create a more integrated conceptual arc around exposure, credibility, and interaction norms. The current citation density obscures the connection to your findings.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Condense the literature synthesis into four or five sentences by combining adjacent themes and eliminating redundant transitions.
+R-2: Strengthen the final link between the three conceptual themes and the reported participation outcomes.
+
+REVISION DISCIPLINE (claim-strength ladder):
+
+Epistemic claims sit on an ordered strength scale:
+  is consistent with / may suggest
+    < is associated with / relates to / correlates with
+      < predicts
+        < contributes to
+          < affects / influences / leads to / shapes
+            < causes / determines / demonstrates that / proves
+
+1. No silent move. Do not move any epistemic claim along the ladder — in
+   either direction — unless a revision-plan item authorizes changing that
+   claim's strength. Positioning/emphasis prose is fine while the verb's rung
+   stays put. Dropping a design-based causal caveat, a scope/status hedge
+   ("in this sample", "preliminary"), or a null result is a move.
+2. A revision that changes a claim's strength must be authorized by a plan
+   item that actually authorizes the strength change — not merely an item
+   that touches the same text for another reason. A "clarify wording" item
+   does not authorize `associated with` → `causes`.
+3. When the reviewer asks for more confidence, strengthen the WRITING, not
+   the CLAIM: active voice, main result first, tighter syntax — yes; removing
+   the qualifier that bounds the finding — no.
+4. Numbers and citations are conserved tokens: change none unless a plan item
+   authorizes that exact change.
+
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

@@ -1,0 +1,23 @@
+{
+ "numbers_delta": {
+  "removed": {},
+  "added": {}
+ },
+ "citations_delta": {
+  "removed": {
+   "(Sato, 2019)": 1,
+   "(Dlamini & Kroll, 2021)": 1,
+   "(Petrescu, 2022)": 1,
+   "(Al-Masri & Ko, 2023)": 1
+  },
+  "added": {
+   "(Sato, 2019; Dlamini & Kroll, 2021)": 1,
+   "(Petrescu, 2022; Al-Masri & Ko, 2023)": 1
+  }
+ },
+ "protected_terms_delta": {
+  "removed": {},
+  "added": {}
+ },
+ "conserved": false
+}

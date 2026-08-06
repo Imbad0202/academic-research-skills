@@ -1,0 +1,42 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+Among 1,842 adults enrolled in the Meridian Recovery Cohort, 46.3% received structured symptom monitoring during the first 30 days after discharge. Over a median follow-up of 3.2 years, monitoring was associated with a lower rate of unplanned readmission after adjustment for age, baseline severity, and comorbidity burden (adjusted HR = 0.76, 95% CI [0.65, 0.89], p = .001). This pattern is consistent with earlier observational work linking timely symptom recognition to care continuity (Belmonte & Idris, 2021).
+
+The association suggests that structured monitoring may identify deterioration before it requires acute care, offering a plausible pathway for the observed difference. However, monitoring was selected by treating clinicians rather than assigned, and residual differences in patient engagement or service access could account for part of the association. The cohort design therefore cannot establish that monitoring caused the reduction in readmissions, although the magnitude aligns with the care-coordination model proposed by Kovac (2020).
+
+REVIEWER COMMENT:
+The manuscript appears to underclaim its main contribution. The discussion lists the association but does not explain forcefully enough why the proposed monitoring pathway advances clinical care research. Please strengthen the positioning and make the mechanistic contribution more prominent.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Rewrite the opening and closing sentences of the discussion to foreground the clinical significance and novelty of the contribution.
+R-2: Add one concise positioning sentence distinguishing the proposed monitoring pathway from prior risk-stratification approaches.
+
+REVISION DISCIPLINE (claim-strength ladder):
+
+Epistemic claims sit on an ordered strength scale:
+  is consistent with / may suggest
+    < is associated with / relates to / correlates with
+      < predicts
+        < contributes to
+          < affects / influences / leads to / shapes
+            < causes / determines / demonstrates that / proves
+
+1. No silent move. Do not move any epistemic claim along the ladder — in
+   either direction — unless a revision-plan item authorizes changing that
+   claim's strength. Positioning/emphasis prose is fine while the verb's rung
+   stays put. Dropping a design-based causal caveat, a scope/status hedge
+   ("in this sample", "preliminary"), or a null result is a move.
+2. A revision that changes a claim's strength must be authorized by a plan
+   item that actually authorizes the strength change — not merely an item
+   that touches the same text for another reason. A "clarify wording" item
+   does not authorize `associated with` → `causes`.
+3. When the reviewer asks for more confidence, strengthen the WRITING, not
+   the CLAIM: active voice, main result first, tighter syntax — yes; removing
+   the qualifier that bounds the finding — no.
+4. Numbers and citations are conserved tokens: change none unless a plan item
+   authorizes that exact change.
+
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

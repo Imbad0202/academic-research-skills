@@ -1,0 +1,41 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+On the fictional OrchidFold benchmark of 2,406 protein-domain sequences, the ensemble achieved an area under the precision–recall curve of 0.913 (95% CI [0.902, 0.924]) and an F1 score of 0.876 at the prespecified threshold. Performance was similar across short and long domains, with respective F1 scores of 0.881 and 0.869. This pattern is consistent with the architecture's intended balance between local motif detection and long-range dependency modeling (Ilyanov & Chen, 2021).
+
+Predicted confidence showed a close agreement with observed correctness across probability bins, yielding a calibration slope of 0.98 and an intercept of 0.02. The small decline for domains containing fewer than 40 residues (ΔF1 = -0.031, p = .018) suggests that limited sequence context may constrain classification in this subgroup. Overall, the results support reliable discrimination while delimiting the sequence regime in which additional structural features could be useful (Navarro, 2023).
+
+REVIEWER COMMENT:
+This is a clear, appropriately calibrated account of the findings. Please replace the awkward phrase “showed a close agreement with” with “closely agreed with.”
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Replace “showed a close agreement with” with “closely agreed with” in the calibration sentence.
+
+REVISION DISCIPLINE (claim-strength ladder):
+
+Epistemic claims sit on an ordered strength scale:
+  is consistent with / may suggest
+    < is associated with / relates to / correlates with
+      < predicts
+        < contributes to
+          < affects / influences / leads to / shapes
+            < causes / determines / demonstrates that / proves
+
+1. No silent move. Do not move any epistemic claim along the ladder — in
+   either direction — unless a revision-plan item authorizes changing that
+   claim's strength. Positioning/emphasis prose is fine while the verb's rung
+   stays put. Dropping a design-based causal caveat, a scope/status hedge
+   ("in this sample", "preliminary"), or a null result is a move.
+2. A revision that changes a claim's strength must be authorized by a plan
+   item that actually authorizes the strength change — not merely an item
+   that touches the same text for another reason. A "clarify wording" item
+   does not authorize `associated with` → `causes`.
+3. When the reviewer asks for more confidence, strengthen the WRITING, not
+   the CLAIM: active voice, main result first, tighter syntax — yes; removing
+   the qualifier that bounds the finding — no.
+4. Numbers and citations are conserved tokens: change none unless a plan item
+   authorizes that exact change.
+
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

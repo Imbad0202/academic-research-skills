@@ -1,0 +1,15 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+On the fictional OrchidFold benchmark of 2,406 protein-domain sequences, the ensemble achieved an area under the precision–recall curve of 0.913 (95% CI [0.902, 0.924]) and an F1 score of 0.876 at the prespecified threshold. Performance was similar across short and long domains, with respective F1 scores of 0.881 and 0.869. This pattern is consistent with the architecture's intended balance between local motif detection and long-range dependency modeling (Ilyanov & Chen, 2021).
+
+Predicted confidence showed a close agreement with observed correctness across probability bins, yielding a calibration slope of 0.98 and an intercept of 0.02. The small decline for domains containing fewer than 40 residues (ΔF1 = -0.031, p = .018) suggests that limited sequence context may constrain classification in this subgroup. Overall, the results support reliable discrimination while delimiting the sequence regime in which additional structural features could be useful (Navarro, 2023).
+
+REVIEWER COMMENT:
+This is a clear, appropriately calibrated account of the findings. Please replace the awkward phrase “showed a close agreement with” with “closely agreed with.”
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Replace “showed a close agreement with” with “closely agreed with” in the calibration sentence.
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

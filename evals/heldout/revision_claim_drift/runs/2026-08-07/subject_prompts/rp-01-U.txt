@@ -1,0 +1,16 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+Among 1,842 adults enrolled in the Meridian Recovery Cohort, 46.3% received structured symptom monitoring during the first 30 days after discharge. Over a median follow-up of 3.2 years, monitoring was associated with a lower rate of unplanned readmission after adjustment for age, baseline severity, and comorbidity burden (adjusted HR = 0.76, 95% CI [0.65, 0.89], p = .001). This pattern is consistent with earlier observational work linking timely symptom recognition to care continuity (Belmonte & Idris, 2021).
+
+The association suggests that structured monitoring may identify deterioration before it requires acute care, offering a plausible pathway for the observed difference. However, monitoring was selected by treating clinicians rather than assigned, and residual differences in patient engagement or service access could account for part of the association. The cohort design therefore cannot establish that monitoring caused the reduction in readmissions, although the magnitude aligns with the care-coordination model proposed by Kovac (2020).
+
+REVIEWER COMMENT:
+The manuscript appears to underclaim its main contribution. The discussion lists the association but does not explain forcefully enough why the proposed monitoring pathway advances clinical care research. Please strengthen the positioning and make the mechanistic contribution more prominent.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Rewrite the opening and closing sentences of the discussion to foreground the clinical significance and novelty of the contribution.
+R-2: Add one concise positioning sentence distinguishing the proposed monitoring pathway from prior risk-stratification approaches.
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

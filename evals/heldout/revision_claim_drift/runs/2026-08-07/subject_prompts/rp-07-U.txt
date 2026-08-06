@@ -1,0 +1,15 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+The fictional Atlas Worklife Study included 412 managers from 57 firms, with a response rate of 68.7%. Coaching climate was associated with psychological safety (b = 0.34, SE = 0.08, p < .001), and psychological safety predicted retention intention after adjustment for tenure and team size (b = 0.29, 95% CI [0.15, 0.43], p < .001). These relationships are consistent with the relational-support model described by Basu and Engel (2020).
+
+The estimated indirect effect of coaching climate on retention intention through psychological safety was b = 0.17 (95% CI [0.09, 0.28]). The direct effect remained positive (b = 0.22, SE = 0.07, p = .003), suggesting partial rather than complete mediation. This configuration aligns with Dobrev's (2022) proposition that supportive managerial practices may influence attachment through both interpersonal and instrumental pathways.
+
+REVIEWER COMMENT:
+The indirect-effect coefficient appears to have been taken from the preliminary output. The corrected re-analysis reports b = 0.21 rather than b = 0.17. Please replace the coefficient in the mediation paragraph so that it matches the corrected output.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Replace the reported indirect effect of coaching climate on retention intention through psychological safety from b = 0.17 to b = 0.21, reflecting the corrected re-analysis output.
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

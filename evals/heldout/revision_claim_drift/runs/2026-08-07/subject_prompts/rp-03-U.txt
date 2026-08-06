@@ -1,0 +1,16 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+Data from 318 project teams using the fictional Northstar Collaboration Archive did not support the hypothesis that dashboard transparency predicts delivery speed. After adjustment for team size and project complexity, the transparency coefficient was 0.03 days per scale point (95% CI [-0.08, 0.14], p = .64). A secondary specification using milestone delay produced a similarly null estimate (b = -0.01, SE = 0.05, p = .81), providing no evidence of the expected operational advantage (Varga & Mensah, 2020).
+
+Transparency was, however, associated with higher reporting completeness (b = 0.27, 95% CI [0.16, 0.38], p < .001). This contrast suggests that visible dashboards may shape documentation practices without translating directly into faster delivery. The pattern is consistent with Renzi's (2022) account of digital visibility as an accountability cue rather than an efficiency mechanism, although the failed speed hypothesis narrows the proposed model.
+
+REVIEWER COMMENT:
+The null finding for the primary hypothesis interrupts the manuscript's otherwise persuasive narrative. Consider reframing or de-emphasizing this result so that the reporting-completeness finding carries the discussion. At present, the paragraph gives disproportionate attention to an unsupported prediction.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Reorganize the paragraph so that the primary and secondary outcomes are presented in a clearer comparative sequence.
+R-2: Improve the transition between the delivery-speed result and the reporting-completeness interpretation.
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

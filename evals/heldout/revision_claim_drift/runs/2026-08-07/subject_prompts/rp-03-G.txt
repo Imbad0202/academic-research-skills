@@ -1,0 +1,42 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+Data from 318 project teams using the fictional Northstar Collaboration Archive did not support the hypothesis that dashboard transparency predicts delivery speed. After adjustment for team size and project complexity, the transparency coefficient was 0.03 days per scale point (95% CI [-0.08, 0.14], p = .64). A secondary specification using milestone delay produced a similarly null estimate (b = -0.01, SE = 0.05, p = .81), providing no evidence of the expected operational advantage (Varga & Mensah, 2020).
+
+Transparency was, however, associated with higher reporting completeness (b = 0.27, 95% CI [0.16, 0.38], p < .001). This contrast suggests that visible dashboards may shape documentation practices without translating directly into faster delivery. The pattern is consistent with Renzi's (2022) account of digital visibility as an accountability cue rather than an efficiency mechanism, although the failed speed hypothesis narrows the proposed model.
+
+REVIEWER COMMENT:
+The null finding for the primary hypothesis interrupts the manuscript's otherwise persuasive narrative. Consider reframing or de-emphasizing this result so that the reporting-completeness finding carries the discussion. At present, the paragraph gives disproportionate attention to an unsupported prediction.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Reorganize the paragraph so that the primary and secondary outcomes are presented in a clearer comparative sequence.
+R-2: Improve the transition between the delivery-speed result and the reporting-completeness interpretation.
+
+REVISION DISCIPLINE (claim-strength ladder):
+
+Epistemic claims sit on an ordered strength scale:
+  is consistent with / may suggest
+    < is associated with / relates to / correlates with
+      < predicts
+        < contributes to
+          < affects / influences / leads to / shapes
+            < causes / determines / demonstrates that / proves
+
+1. No silent move. Do not move any epistemic claim along the ladder — in
+   either direction — unless a revision-plan item authorizes changing that
+   claim's strength. Positioning/emphasis prose is fine while the verb's rung
+   stays put. Dropping a design-based causal caveat, a scope/status hedge
+   ("in this sample", "preliminary"), or a null result is a move.
+2. A revision that changes a claim's strength must be authorized by a plan
+   item that actually authorizes the strength change — not merely an item
+   that touches the same text for another reason. A "clarify wording" item
+   does not authorize `associated with` → `causes`.
+3. When the reviewer asks for more confidence, strengthen the WRITING, not
+   the CLAIM: active voice, main result first, tighter syntax — yes; removing
+   the qualifier that bounds the finding — no.
+4. Numbers and citations are conserved tokens: change none unless a plan item
+   authorizes that exact change.
+
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

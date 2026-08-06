@@ -1,0 +1,19 @@
+{
+ "numbers_delta": {
+  "removed": {
+   "0.17": 1
+  },
+  "added": {
+   "0.21": 1
+  }
+ },
+ "citations_delta": {
+  "removed": {},
+  "added": {}
+ },
+ "protected_terms_delta": {
+  "removed": {},
+  "added": {}
+ },
+ "conserved": false
+}

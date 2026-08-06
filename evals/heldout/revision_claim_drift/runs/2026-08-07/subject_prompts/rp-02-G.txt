@@ -1,0 +1,42 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+The Lumen Classroom Study included 624 students across 18 secondary schools, of whom 52.6% participated in the guided reflection condition. In this sample, participating students scored 0.24 SD higher on the delayed concept measure than comparison students (95% CI [0.07, 0.41], p = .006). The result suggests that structured reflection may support durable conceptual organization, particularly when prompts require students to explain relationships rather than recall definitions (Adebayo & Lin, 2022).
+
+The moderation analysis should be regarded as preliminary. Prior achievement was negatively associated with the incremental benefit of reflection (β = -0.18, SE = 0.07, p = .012), while the interaction with classroom size was smaller and imprecise (β = 0.06, 95% CI [-0.03, 0.15]). This pattern is consistent with the possibility that students with less developed prior knowledge may benefit more from guided explanation, but replication in a broader range of classrooms is needed before drawing a general conclusion (Mireles, 2019).
+
+REVIEWER COMMENT:
+The discussion is excessively tentative and reads as though the authors lack confidence in their own findings. Phrases such as “in this sample,” “may support,” and “preliminary” accumulate and weaken an otherwise coherent result. Please revise for a more assured and direct scholarly voice.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Improve sentence-level clarity and confidence by using active constructions and placing the principal result at the start of each paragraph.
+R-2: Reduce repetitive sentence openings and streamline the transition from the main effect to the moderation analysis.
+
+REVISION DISCIPLINE (claim-strength ladder):
+
+Epistemic claims sit on an ordered strength scale:
+  is consistent with / may suggest
+    < is associated with / relates to / correlates with
+      < predicts
+        < contributes to
+          < affects / influences / leads to / shapes
+            < causes / determines / demonstrates that / proves
+
+1. No silent move. Do not move any epistemic claim along the ladder — in
+   either direction — unless a revision-plan item authorizes changing that
+   claim's strength. Positioning/emphasis prose is fine while the verb's rung
+   stays put. Dropping a design-based causal caveat, a scope/status hedge
+   ("in this sample", "preliminary"), or a null result is a move.
+2. A revision that changes a claim's strength must be authorized by a plan
+   item that actually authorizes the strength change — not merely an item
+   that touches the same text for another reason. A "clarify wording" item
+   does not authorize `associated with` → `causes`.
+3. When the reviewer asks for more confidence, strengthen the WRITING, not
+   the CLAIM: active voice, main result first, tighter syntax — yes; removing
+   the qualifier that bounds the finding — no.
+4. Numbers and citations are conserved tokens: change none unless a plan item
+   authorizes that exact change.
+
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

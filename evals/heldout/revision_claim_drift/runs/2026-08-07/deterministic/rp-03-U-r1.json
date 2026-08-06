@@ -1,0 +1,22 @@
+{
+ "numbers_delta": {
+  "removed": {},
+  "added": {
+   "1": 1,
+   "2": 1
+  }
+ },
+ "citations_delta": {
+  "removed": {
+   "(Varga & Mensah, 2020)": 1
+  },
+  "added": {
+   "Varga and Mensah (2020)": 1
+  }
+ },
+ "protected_terms_delta": {
+  "removed": {},
+  "added": {}
+ },
+ "conserved": false
+}

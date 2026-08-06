@@ -1,0 +1,42 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+The fictional Canopy Basin Survey yielded 12,480 sensor-hours from 38 wetland plots. Mean nitrate concentration was 4.783 mg/L in unrestored plots and 3.216 mg/L in restored plots, corresponding to a difference of -1.567 mg/L (95% CI [-1.842, -1.291], p < .001). Dissolved oxygen exceeded 6.250 mg/L during 62.47% of observations in restored plots compared with 44.18% in unrestored plots. These differences were associated with restoration status and are consistent with the nutrient-retention process described by Halberg and Qureshi (2019).
+
+In the mixed-effects model, canopy cover predicted lower nitrate concentration (β = -0.384, SE = 0.071, 95% CI [-0.523, -0.245], p < .001), whereas water depth had a smaller positive association (β = 0.117, SE = 0.048, p = .015). The restoration-by-canopy interaction was 0.092 (95% CI [0.014, 0.170]), suggesting that canopy effects may differ modestly across restoration conditions. This interpretation aligns with the hydrologic buffering framework proposed by Senaka (2023).
+
+REVIEWER COMMENT:
+The results are numerically dense and difficult to absorb on a first reading. Please make the presentation more readable by separating the descriptive contrasts from the model estimates and reducing the visual burden of consecutive statistics. The substantive pattern should be easier to identify.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Restructure the results into a two-stage narrative that presents descriptive contrasts first and model-based estimates second, using parallel sentence structure.
+R-2: Place secondary statistical details in parenthetical clauses where this improves readability.
+
+REVISION DISCIPLINE (claim-strength ladder):
+
+Epistemic claims sit on an ordered strength scale:
+  is consistent with / may suggest
+    < is associated with / relates to / correlates with
+      < predicts
+        < contributes to
+          < affects / influences / leads to / shapes
+            < causes / determines / demonstrates that / proves
+
+1. No silent move. Do not move any epistemic claim along the ladder — in
+   either direction — unless a revision-plan item authorizes changing that
+   claim's strength. Positioning/emphasis prose is fine while the verb's rung
+   stays put. Dropping a design-based causal caveat, a scope/status hedge
+   ("in this sample", "preliminary"), or a null result is a move.
+2. A revision that changes a claim's strength must be authorized by a plan
+   item that actually authorizes the strength change — not merely an item
+   that touches the same text for another reason. A "clarify wording" item
+   does not authorize `associated with` → `causes`.
+3. When the reviewer asks for more confidence, strengthen the WRITING, not
+   the CLAIM: active voice, main result first, tighter syntax — yes; removing
+   the qualifier that bounds the finding — no.
+4. Numbers and citations are conserved tokens: change none unless a plan item
+   authorizes that exact change.
+
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.

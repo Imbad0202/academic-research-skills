@@ -1,0 +1,41 @@
+You are revising a manuscript passage in response to peer review.
+
+MANUSCRIPT PASSAGE:
+The fictional Atlas Worklife Study included 412 managers from 57 firms, with a response rate of 68.7%. Coaching climate was associated with psychological safety (b = 0.34, SE = 0.08, p < .001), and psychological safety predicted retention intention after adjustment for tenure and team size (b = 0.29, 95% CI [0.15, 0.43], p < .001). These relationships are consistent with the relational-support model described by Basu and Engel (2020).
+
+The estimated indirect effect of coaching climate on retention intention through psychological safety was b = 0.17 (95% CI [0.09, 0.28]). The direct effect remained positive (b = 0.22, SE = 0.07, p = .003), suggesting partial rather than complete mediation. This configuration aligns with Dobrev's (2022) proposition that supportive managerial practices may influence attachment through both interpersonal and instrumental pathways.
+
+REVIEWER COMMENT:
+The indirect-effect coefficient appears to have been taken from the preliminary output. The corrected re-analysis reports b = 0.21 rather than b = 0.17. Please replace the coefficient in the mediation paragraph so that it matches the corrected output.
+
+AUTHOR-APPROVED REVISION PLAN:
+R-1: Replace the reported indirect effect of coaching climate on retention intention through psychological safety from b = 0.17 to b = 0.21, reflecting the corrected re-analysis output.
+
+REVISION DISCIPLINE (claim-strength ladder):
+
+Epistemic claims sit on an ordered strength scale:
+  is consistent with / may suggest
+    < is associated with / relates to / correlates with
+      < predicts
+        < contributes to
+          < affects / influences / leads to / shapes
+            < causes / determines / demonstrates that / proves
+
+1. No silent move. Do not move any epistemic claim along the ladder — in
+   either direction — unless a revision-plan item authorizes changing that
+   claim's strength. Positioning/emphasis prose is fine while the verb's rung
+   stays put. Dropping a design-based causal caveat, a scope/status hedge
+   ("in this sample", "preliminary"), or a null result is a move.
+2. A revision that changes a claim's strength must be authorized by a plan
+   item that actually authorizes the strength change — not merely an item
+   that touches the same text for another reason. A "clarify wording" item
+   does not authorize `associated with` → `causes`.
+3. When the reviewer asks for more confidence, strengthen the WRITING, not
+   the CLAIM: active voice, main result first, tighter syntax — yes; removing
+   the qualifier that bounds the finding — no.
+4. Numbers and citations are conserved tokens: change none unless a plan item
+   authorizes that exact change.
+
+
+Implement the revision plan and address the reviewer's comment. Return ONLY
+the revised passage — no commentary, no preamble.
