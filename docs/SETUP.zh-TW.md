@@ -133,7 +133,7 @@ ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 sessi
 
 ## 以 CLAUDE.md 設定常設偏好
 
-ARS 刻意不提供使用者層級的設定檔。要讓內容偏好「設一次、每次都生效」，支援的做法是在你專案的 `CLAUDE.md` 放一個偏好區塊：Claude Code 在 session 開始時載入，該 session 派出的每個 ARS agent 都會繼承。這是明文的設計立場，不是缺功能：檢索相關偏好本質上是每個專案自己的納入排除判準，屬於 RQ Brief 的 `search_strategy`（Schema 2）；跨專案靜默繼承的全域設定，對系統性文獻回顧是方法學上的風險。決策紀錄：#634。
+ARS 刻意不提供使用者層級的設定檔。要讓內容偏好「設一次、每次都生效」，支援的做法是在你專案的 `CLAUDE.md` 放一個偏好區塊：Claude Code 在 session 開始時載入，該 session 派出的每個 ARS agent 都會繼承。這是明文的設計立場，不是缺功能：檢索相關偏好本質上是每個專案自己的納入排除判準，屬於 Annotated Bibliography 的 `search_strategy`（Schema 2）；跨專案靜默繼承的全域設定，對系統性文獻回顧是方法學上的風險。決策紀錄：#634。
 
 可直接複製的模板（依需要調整）：
 
@@ -150,12 +150,12 @@ ARS 刻意不提供使用者層級的設定檔。要讓內容偏好「設一次�
 
 兩個誠實的限制：
 
-- **期刊分級是模型自己的判斷。** 四個查驗索引（Semantic Scholar、OpenAlex、Crossref、arXiv）都不提供 quartile 或分級資料，所以期刊層級偏好靠模型知識執行、且應如實聲明；分級主張只能當參考，不是查驗過的 metadata。
+- **期刊分級是模型自己的判斷。** 四個查驗索引（Semantic Scholar、OpenAlex、Crossref、arXiv）都不提供 quartile 或分級資料，所以期刊層級偏好靠模型知識執行，且應如實聲明；分級主張只能當參考，不是查驗過的 metadata。
 - **刻意不提供輸出目錄設定。** 使用者提供的 Material Passport 路徑是唯一的發現錨點（v3.6.8 設計輪決議 R4-003）；常設輸出位置會製造第二個真值來源。每次執行時直接指定目的地。
 
-若某偏好會改變系統性回顧「可納入什麼」（排除 preprint、語言限制、日期範圍），請寫進該專案的 `search_strategy`，不要只靠環境偏好區塊：偏好區塊設定預設值，RQ Brief 才是可稽核的紀錄。
+若某偏好會改變系統性回顧「可納入什麼」（排除 preprint、語言限制、日期範圍），請寫進該專案的 `search_strategy`，不要只靠環境偏好區塊：偏好區塊設定預設值，Schema 2 的 `search_strategy` 才是可稽核的紀錄。
 
-重新評估條件（記錄於 #634）：只有在更多使用者獨立提出需求、或某個平台移植版缺少 `CLAUDE.md` 等價物時，才重新考慮 ARS 自有的偏好介面；屆時架構上一致的形狀是 Material Passport 層級的 `user_preferences` 輸入欄（如同 `literature_corpus[]`），不是全機器的設定檔。
+重新評估條件（記錄於 #634）：只有在更多使用者獨立提出需求，或某個平台移植版缺少 `CLAUDE.md` 等價物時，才重新考慮 ARS 自有的偏好介面；屆時架構上一致的形狀是 Material Passport 層級的 `user_preferences` 輸入欄（如同 `literature_corpus[]`），不是全機器的設定檔。
 
 ---
 

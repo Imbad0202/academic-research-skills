@@ -133,7 +133,7 @@ ARS exposes a few opt-in flags. All default to OFF; setting them changes behavio
 
 ## Standing preferences via CLAUDE.md
 
-ARS deliberately ships no user-level configuration file. The supported way to get "set once, applies every run" behavior for content preferences is a preferences block in your project's `CLAUDE.md`: Claude Code loads it at session start, and every ARS agent dispatched in that session inherits it as context. This is a stated design position, not a missing feature — search-related preferences are per-project inclusion/exclusion criteria that belong in the RQ Brief's `search_strategy` (Schema 2), and a machine-global config silently inherited across projects would be a methodological hazard for systematic-review work. Decision record: #634.
+ARS deliberately ships no user-level configuration file. The supported way to get "set once, applies every run" behavior for content preferences is a preferences block in your project's `CLAUDE.md`: Claude Code loads it at session start, and every ARS agent dispatched in that session inherits it as context. This is a stated design position, not a missing feature — search-related preferences are per-project inclusion/exclusion criteria that belong in the Annotated Bibliography's `search_strategy` (Schema 2), and a machine-global config silently inherited across projects would be a methodological hazard for systematic-review work. Decision record: #634.
 
 Copy-pasteable template (adjust to taste):
 
@@ -153,7 +153,7 @@ Two honest limitations:
 - **Journal tiers are model judgment.** None of the four lookup indexes (Semantic Scholar, OpenAlex, Crossref, arXiv) serves quartile or tier data, so a tier preference is applied from the model's own knowledge and should be stated as such — treat tier claims as advisory, never as verified metadata.
 - **There is intentionally no output-directory setting.** The user-supplied Material Passport path is the single discovery anchor (v3.6.8 design round, decision R4-003); a standing output-location preference would create a second source of truth. Name the destination per run.
 
-If a preference changes what a systematic review may include (preprint exclusion, language limits, date windows), record it in that project's `search_strategy` rather than relying on the ambient block — the ambient block sets defaults, the RQ Brief is the auditable record.
+If a preference changes what a systematic review may include (preprint exclusion, language limits, date windows), record it in that project's `search_strategy` rather than relying on the ambient block — the ambient block sets defaults, the Schema 2 `search_strategy` is the auditable record.
 
 Re-evaluation trigger (recorded in #634): an ARS-owned preferences surface gets revisited only if additional users independently request it, or a platform port lacks a `CLAUDE.md` equivalent. If ever built, the architecturally consistent shape is a Material Passport-level `user_preferences` input aggregate (like `literature_corpus[]`), not a machine-global config file.
 
