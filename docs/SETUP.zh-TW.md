@@ -116,7 +116,7 @@ v3.6.5 接上 `bibliography_agent`（deep-research, Phase 1）與 `literature_st
 
 ## 選用環境變數（v3.5.1+）
 
-ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 session。
+ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 session。這些 flag 是行為開關；「常設的內容偏好」（引用格式、檢索納入排除）見下方 [§「以 CLAUDE.md 設定常設偏好」](#以-claudemd-設定常設偏好)。
 
 | Flag | 起始版本 | 作用 | 參考 |
 |---|---|---|---|
@@ -128,6 +128,34 @@ ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 sessi
 | `ARS_CACHE_STALE_ADVISORY_DAYS` | v3.18.0 (#541) | cache 時效 advisory 的天數門檻：由 cache 供應且超過此天數的查驗結果，會在誠信檢查點以 `ADV-CACHE` advisory 列呈現（永不擋關）。預設 30；`0` 停用；格式錯誤或負值回落預設。 | `scripts/verification_cache.py` |
 | `ARS_CACHE_REVALIDATE=1` | v3.18.0 (#541) | 選擇性即時重驗（gate 層）：超過時效門檻的快取列改為逐列繞過、即時查驗並回寫。成本隨過期列數量增加。預設關閉＝僅 advisory。 | `scripts/verification_gate/__init__.py` + `integrity_verification_agent.md` § A0.5 |
 | `ARS_MODEL_TIERING` | v3.16.0 (#517) | Opt-in 模型分層：`economy`（frontier session——execution 型 agent 降一階，樓地板 Opus 級）或 `quality-boost`（低於 frontier 的 session——judgment 型 agent 在檢查點表面跳升到 frontier 級：Stage 2.5/4.5 關卡、opt-in 的 Stage 4→5 claim–ref audit、最終審查）。未設定 = 全部用 session model；未知值警告一次後視同未設定。 | `shared/model_tiering.md` |
+
+---
+
+## 以 CLAUDE.md 設定常設偏好
+
+ARS 刻意不提供使用者層級的設定檔。要讓內容偏好「設一次、每次都生效」，支援的做法是在你專案的 `CLAUDE.md` 放一個偏好區塊：Claude Code 在 session 開始時載入，該 session 派出的每個 ARS agent 都會繼承。這是明文的設計立場，不是缺功能：檢索相關偏好本質上是每個專案自己的納入排除判準，屬於 RQ Brief 的 `search_strategy`（Schema 2）；跨專案靜默繼承的全域設定，對系統性文獻回顧是方法學上的風險。決策紀錄：#634。
+
+可直接複製的模板（依需要調整）：
+
+```markdown
+## ARS standing preferences
+
+- Citation style: APA 7th unless a venue template says otherwise.
+- Literature search: exclude preprints unless I explicitly ask; prefer
+  peer-reviewed journal articles.
+- Journal tier: when ranking or shortlisting sources, prefer higher-tier
+  journals in the field, and say so when unsure of a journal's tier.
+- Open access: prefer OA versions when citing, and link the OA copy.
+```
+
+兩個誠實的限制：
+
+- **期刊分級是模型自己的判斷。** 四個查驗索引（Semantic Scholar、OpenAlex、Crossref、arXiv）都不提供 quartile 或分級資料，所以期刊層級偏好靠模型知識執行、且應如實聲明；分級主張只能當參考，不是查驗過的 metadata。
+- **刻意不提供輸出目錄設定。** 使用者提供的 Material Passport 路徑是唯一的發現錨點（v3.6.8 設計輪決議 R4-003）；常設輸出位置會製造第二個真值來源。每次執行時直接指定目的地。
+
+若某偏好會改變系統性回顧「可納入什麼」（排除 preprint、語言限制、日期範圍），請寫進該專案的 `search_strategy`，不要只靠環境偏好區塊：偏好區塊設定預設值，RQ Brief 才是可稽核的紀錄。
+
+重新評估條件（記錄於 #634）：只有在更多使用者獨立提出需求、或某個平台移植版缺少 `CLAUDE.md` 等價物時，才重新考慮 ARS 自有的偏好介面；屆時架構上一致的形狀是 Material Passport 層級的 `user_preferences` 輸入欄（如同 `literature_corpus[]`），不是全機器的設定檔。
 
 ---
 

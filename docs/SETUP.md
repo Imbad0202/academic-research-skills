@@ -116,7 +116,7 @@ v3.6.5 wires `bibliography_agent` (deep-research, Phase 1) and `literature_strat
 
 ## Optional environment flags (v3.5.1+)
 
-ARS exposes a few opt-in flags. All default to OFF; setting them changes behaviour for the current session only.
+ARS exposes a few opt-in flags. All default to OFF; setting them changes behaviour for the current session only. These flags are behavior toggles; for standing *content* preferences (citation style, search inclusion), see [§"Standing preferences via CLAUDE.md"](#standing-preferences-via-claudemd) below.
 
 | Flag | Since | What it does | Reference |
 |---|---|---|---|
@@ -128,6 +128,34 @@ ARS exposes a few opt-in flags. All default to OFF; setting them changes behavio
 | `ARS_CACHE_STALE_ADVISORY_DAYS` | v3.18.0 (#541) | Age threshold (days) for the cache-staleness advisory: cache-served verifications older than this surface as `ADV-CACHE` advisory rows at the integrity checkpoints (never gating). Default 30; `0` disables; malformed/negative values fall back to the default. | `scripts/verification_cache.py` |
 | `ARS_CACHE_REVALIDATE=1` | v3.18.0 (#541) | Opt-in live re-verification at the gate: cached rows past the staleness threshold are re-verified live (per-row bypass, then re-populated) instead of served. Cost scales with the stale-row count. Default off = advisory-only. | `scripts/verification_gate/__init__.py` + `integrity_verification_agent.md` § A0.5 |
 | `ARS_MODEL_TIERING` | v3.16.0 (#517) | Opt-in model tiering: `economy` (frontier session — execution-type agents step down one tier, floor Opus-class) or `quality-boost` (below-frontier session — judgment-type agents jump up to the frontier tier at the checkpoint surfaces: Stage 2.5/4.5 gates, the opt-in Stage 4→5 claim–ref audit, and final review). Unset = session model everywhere; unknown values warn once and behave as unset. | `shared/model_tiering.md` |
+
+---
+
+## Standing preferences via CLAUDE.md
+
+ARS deliberately ships no user-level configuration file. The supported way to get "set once, applies every run" behavior for content preferences is a preferences block in your project's `CLAUDE.md`: Claude Code loads it at session start, and every ARS agent dispatched in that session inherits it as context. This is a stated design position, not a missing feature — search-related preferences are per-project inclusion/exclusion criteria that belong in the RQ Brief's `search_strategy` (Schema 2), and a machine-global config silently inherited across projects would be a methodological hazard for systematic-review work. Decision record: #634.
+
+Copy-pasteable template (adjust to taste):
+
+```markdown
+## ARS standing preferences
+
+- Citation style: APA 7th unless a venue template says otherwise.
+- Literature search: exclude preprints unless I explicitly ask; prefer
+  peer-reviewed journal articles.
+- Journal tier: when ranking or shortlisting sources, prefer higher-tier
+  journals in the field, and say so when unsure of a journal's tier.
+- Open access: prefer OA versions when citing, and link the OA copy.
+```
+
+Two honest limitations:
+
+- **Journal tiers are model judgment.** None of the four lookup indexes (Semantic Scholar, OpenAlex, Crossref, arXiv) serves quartile or tier data, so a tier preference is applied from the model's own knowledge and should be stated as such — treat tier claims as advisory, never as verified metadata.
+- **There is intentionally no output-directory setting.** The user-supplied Material Passport path is the single discovery anchor (v3.6.8 design round, decision R4-003); a standing output-location preference would create a second source of truth. Name the destination per run.
+
+If a preference changes what a systematic review may include (preprint exclusion, language limits, date windows), record it in that project's `search_strategy` rather than relying on the ambient block — the ambient block sets defaults, the RQ Brief is the auditable record.
+
+Re-evaluation trigger (recorded in #634): an ARS-owned preferences surface gets revisited only if additional users independently request it, or a platform port lacks a `CLAUDE.md` equivalent. If ever built, the architecturally consistent shape is a Material Passport-level `user_preferences` input aggregate (like `literature_corpus[]`), not a machine-global config file.
 
 ---
 
