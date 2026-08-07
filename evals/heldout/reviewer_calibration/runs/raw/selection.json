@@ -1,0 +1,79 @@
+{
+  "seed": "ars-653-reviewer-calibration-iclr2026-v1",
+  "selection_rule": "per class, sort pool ids by sha256(seed US class US id); walk in that order; skip ids in the exclusion ledger; take the first N remaining",
+  "quotas": {
+    "accepted": 6,
+    "rejected": 6
+  },
+  "pools": {
+    "accepted": {
+      "count": 5351,
+      "ids_sha256": "7614bcd3cf566a1bb783810815c7e650341f6961c0f865bbcd24301ac436a342"
+    },
+    "rejected": {
+      "count": 8356,
+      "ids_sha256": "cfbba2a75f1f7fe2a6f2815752323064a06315cefe248b4b0c2c18005df108ad"
+    }
+  },
+  "candidates": {
+    "accepted": [
+      "CPxZClPMiy",
+      "CU5EHe1KUt",
+      "nCEs0tSwc2",
+      "ZumVIktGbt",
+      "ssWi0rC3mx",
+      "OKUGAxu6Ww",
+      "GDYaNzxt9T",
+      "TIDaHgj0Yj",
+      "xPEsxcO7F7",
+      "fHr1uqkdsb",
+      "3Genv8DQgf",
+      "TISRmGHpjQ",
+      "6jIc8m38gj",
+      "iiBjaiikJG",
+      "LvUMpZE44r",
+      "xiTrskqWph",
+      "refcXHU1Nh",
+      "zV5FeNiWDO"
+    ],
+    "rejected": [
+      "XrgZp1NFDT",
+      "UbWy2QVmke",
+      "KN2RD4fpnH",
+      "VVstc2W3RW",
+      "qRTJWXentH",
+      "If8O8CdCbi",
+      "AOUa1Ae9qg",
+      "SqQYMnfyLS",
+      "KqCU5rfcMm",
+      "2pnA8p0kU1",
+      "rZBWRkcqXZ",
+      "PxMtWs9bet",
+      "CVXpkc3bXc",
+      "e0zcvj4nLy",
+      "5N2CafbMbJ",
+      "Tc0b9KEZWB",
+      "ZsGQLxOpjt",
+      "nR984mi6zD"
+    ]
+  },
+  "selected": {
+    "accepted": [
+      "CPxZClPMiy",
+      "CU5EHe1KUt",
+      "nCEs0tSwc2",
+      "ZumVIktGbt",
+      "ssWi0rC3mx",
+      "OKUGAxu6Ww"
+    ],
+    "rejected": [
+      "XrgZp1NFDT",
+      "UbWy2QVmke",
+      "KN2RD4fpnH",
+      "VVstc2W3RW",
+      "qRTJWXentH",
+      "If8O8CdCbi"
+    ]
+  },
+  "exclusions_applied": []
+}

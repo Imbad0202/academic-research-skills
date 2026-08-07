@@ -663,3 +663,15 @@ path = "scripts/test_inquiry_branch_ledger.py"
 [[pytest]]
 id = "789-sealed-promotion-bakeoff"
 path = "scripts/test_check_promotion_bakeoff_preregistration.py"
+
+[[pytest]]
+id = "653-calibration-corpus-assembler"
+path = "scripts/test_assemble_calibration_corpus.py"
+
+[[pytest]]
+id = "653-calibration-dispatcher"
+path = "scripts/test_dispatch_calibration_panel.py"
+
+[[pytest]]
+id = "653-calibration-scorer"
+path = "scripts/test_score_calibration_run.py"

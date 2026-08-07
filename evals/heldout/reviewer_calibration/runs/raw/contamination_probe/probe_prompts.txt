@@ -1,0 +1,18 @@
+CPxZClPMiy	Aria: an Agent for Retrieval and Iterative Auto-Formalization via Dependency Graph
+CU5EHe1KUt	Diffusion Negative Preference Optimization Made Simple
+nCEs0tSwc2	Geometric-Mean Policy Optimization
+ZumVIktGbt	From Verifiable Dot to Reward Chain: Harnessing Verifiable Reference-based Rewards for Reinforcement Learning of Open-ended Generation
+ssWi0rC3mx	When Priors Backfire: On the Vulnerability of Unlearnable Examples to Pretraining
+OKUGAxu6Ww	FreeAdapt: Unleashing Diffusion Priors for Ultra-High-Definition Image Restoration
+GDYaNzxt9T	Scaling Behavior of Discrete Diffusion Language Models
+TIDaHgj0Yj	OSIRIS: Bridging Analog Circuit Design and Machine Learning with Scalable Dataset Generation
+xPEsxcO7F7	The Choice of Divergence: A Neglected Key to Mitigating Diversity Collapse in Reinforcement Learning with Verifiable Reward
+XrgZp1NFDT	Latent Space Uniformization in Generation
+UbWy2QVmke	GAA-PtrNet: Graph attention aggregation-based pointer network for one-shot DAG scheduling
+KN2RD4fpnH	Geometry of Nash Mirror Dynamics: Adaptive $\beta$-Control for Stable and Bias-Robust Self-Improving LLM Agents
+VVstc2W3RW	Prospective Learning: Memory-Efficient MLP Training via Brain-Inspired Direct Optimization
+qRTJWXentH	t-BEN: A Temporal Logic Guided Approach for Temporal Reasoning Benchmark Generation
+If8O8CdCbi	Keep the Beam on Track: Stabilizing Reward Trajectories in Guided Decoding
+AOUa1Ae9qg	Password-Activated Shutdown Protocols for Misaligned Frontier Agents
+SqQYMnfyLS	Latent Space Structuring for Conditional Tabular Data Generation on Imbalanced Datasets
+KqCU5rfcMm	Integrating Selective State-Space Models and Bayesian Graph Attention for Uncertainty-aware Time-Series Analysis
