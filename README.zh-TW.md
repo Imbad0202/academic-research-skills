@@ -316,7 +316,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.19.0（2026-07-22）— 修訂輪次的主張漂移防護、PDF 讀取完整性預檢、read-scope 誠實覆蓋標記
 
-> **新增**：三個 advisory-or-opt-in 的完整性層加一個 launcher 修復。**修訂輪次主張漂移防護（#569/#570）**：一條主張強度階梯（`is associated with < predicts < causes`，未經授權的 roadmap 項目不得靜默移動）接進修訂草擬與新的 advisory Phase E6，外加一支決定性的數值/引註 token 守恆檢查器——兩者合起來補上 #390 honest-claim 殘餘的認知面與 token 面（被改動的 block 內部原本沒有完整性檢查）。先在當前前沿模型量測 baseline（`evals/heldout/revision_claim_drift/`），機制形狀出處歸功 [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills)。**PDF 讀取完整性預檢（#512）**：三信號的頁數交叉檢查，讓被截斷／頁碼錯位的 PDF 讀取無法產生一個看似有效的 `page` 錨點。**read_scope 誠實覆蓋標記（#513）**：在人工讀取台帳上可選地宣告誠實覆蓋範圍（`full_text` / `sections` / `abstract_only` / `toc_only`），讓 finalizer 的引用晉升具備 read-scope 意識。**launcher watchdog 修復（#545）**：移除一個會讓每次正常 PreToolUse write-scope-guard 呼叫卡滿整個 wall-clock 上限的 pipe 停滯。套件 → v3.19.0；底層三個 skill 版本不變。
+> **新增**：三個 advisory-or-opt-in 的完整性層加一個 launcher 修復。**修訂輪次主張漂移防護（#569/#570）**：一條主張強度階梯（`is associated with < predicts < causes`，未經授權的 roadmap 項目不得靜默移動）接進修訂草擬與新的 advisory Phase E6，外加一支決定性的數值/引註 token 守恆檢查器；兩者為 #390 honest-claim 殘餘的認知面與 token 面各加上一道看守（被改動的 block 內部原本沒有完整性檢查；防護屬 advisory 看守，是否降低已量測到的漂移率由 #652 複測回答）。先在當前前沿模型量測 baseline（`evals/heldout/revision_claim_drift/`），機制形狀出處歸功 [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills)。**PDF 讀取完整性預檢（#512）**：三信號的頁數交叉檢查，讓被截斷／頁碼錯位的 PDF 讀取無法產生一個看似有效的 `page` 錨點。**read_scope 誠實覆蓋標記（#513）**：在人工讀取台帳上可選地宣告誠實覆蓋範圍（`full_text` / `sections` / `abstract_only` / `toc_only`），讓 finalizer 的引用晉升具備 read-scope 意識。**launcher watchdog 修復（#545）**：移除一個會讓每次正常 PreToolUse write-scope-guard 呼叫卡滿整個 wall-clock 上限的 pipe 停滯。套件 → v3.19.0；底層三個 skill 版本不變。
 
 ### v3.18.0（2026-07-18）— 自我改進 survey 整合
 
