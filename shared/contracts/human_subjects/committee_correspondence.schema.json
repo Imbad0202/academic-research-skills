@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/human_subjects/committee_correspondence.schema.json",
+  "title": "Committee Correspondence Concern Tracker",
+  "description": "A byte-bound, source-order-preserving tracker for comments returned by a real human-subjects committee or institutional review office. It is a drafting aid, never a determination or proof of resolution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tracker_id",
+    "generated_at",
+    "source_artifact",
+    "human_subjects_status",
+    "profile_context",
+    "concerns",
+    "working_views",
+    "response_skeleton"
+  ],
+  "properties": {
+    "schema_version": {"const": "committee-correspondence/1.0"},
+    "tracker_id": {"type": "string", "pattern": "^committee-[0-9a-f]{12}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "source_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "byte_length", "encoding", "segments"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^[^/\\\\].*$", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "byte_length": {"type": "integer", "minimum": 1},
+        "encoding": {"const": "utf-8"},
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/source_segment"}
+        }
+      }
+    },
+    "human_subjects_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submission_readiness", "authorization_status", "authorization_source_comment_id", "review_pathway", "boundary_footer"],
+      "properties": {
+        "submission_readiness": {"const": "unresolved"},
+        "authorization_status": {"enum": ["documented", "not_provided", "cannot_verify"]},
+        "authorization_source_comment_id": {"type": ["string", "null"], "pattern": "^SC-[0-9]{3}$"},
+        "review_pathway": {"const": "institutional determination required"},
+        "boundary_footer": {"const": "Human-subjects boundary: This output does not authorize recruitment, consent, access to identifiable data, intervention, or data collection."}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"authorization_status": {"const": "documented"}}, "required": ["authorization_status"]},
+          "then": {"properties": {"authorization_source_comment_id": {"type": "string", "pattern": "^SC-[0-9]{3}$"}}},
+          "else": {"properties": {"authorization_source_comment_id": {"type": "null"}}}
+        }
+      ]
+    },
+    "profile_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "selected_profile_ids", "artifact_resolution_state"],
+      "properties": {
+        "state": {"enum": ["not_selected", "selected"]},
+        "selected_profile_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+        },
+        "artifact_resolution_state": {"enum": ["artifact_agnostic", "profile_enriched", "unresolved"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "not_selected"}}, "required": ["state"]},
+          "then": {
+            "properties": {
+              "selected_profile_ids": {"maxItems": 0},
+              "artifact_resolution_state": {"const": "artifact_agnostic"}
+            }
+          },
+          "else": {"properties": {"selected_profile_ids": {"minItems": 1}}}
+        }
+      ]
+    },
+    "concerns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/concern"}
+    },
+    "working_views": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["view_id", "label", "concern_ids"],
+        "properties": {
+          "view_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "label": {"type": "string", "minLength": 1},
+          "concern_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^CC-[0-9]{3}$"}
+          }
+        }
+      }
+    },
+    "response_skeleton": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "status", "asserts_resolution"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^[^/\\\\].*$", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "status": {"const": "drafting_aid"},
+        "asserts_resolution": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "source_segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["segment_id", "source_order", "kind", "byte_start", "byte_end", "sha256"],
+      "properties": {
+        "segment_id": {"type": "string", "pattern": "^SC-[0-9]{3}$"},
+        "source_order": {"type": "integer", "minimum": 1},
+        "kind": {"enum": ["comment", "non_comment"]},
+        "byte_start": {"type": "integer", "minimum": 0},
+        "byte_end": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "authority_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provenance", "exact_text"],
+      "properties": {
+        "provenance": {"enum": ["committee_explicit", "author_confirmed", "unresolved"]},
+        "exact_text": {"type": ["string", "null"], "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"provenance": {"const": "unresolved"}}, "required": ["provenance"]},
+          "then": {"properties": {"exact_text": {"type": "null"}}},
+          "else": {"properties": {"exact_text": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "affected_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "provenance": {"enum": ["committee_explicit", "author_confirmed", "profile_resolved"]}
+      }
+    },
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name": {"type": ["string", "null"], "minLength": 1},
+        "provenance": {"enum": ["committee_explicit", "author_confirmed", "unresolved"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"provenance": {"const": "unresolved"}}, "required": ["provenance"]},
+          "then": {"properties": {"name": {"type": "null"}}},
+          "else": {"properties": {"name": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concern_id", "provenance"],
+      "properties": {
+        "concern_id": {"type": "string", "pattern": "^CC-[0-9]{3}$"},
+        "provenance": {"enum": ["committee_explicit", "author_confirmed"]}
+      }
+    },
+    "required_before": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["milestone", "provenance"],
+      "properties": {
+        "milestone": {"enum": ["resubmission", "enrolment", "data_access", "continuing_review", "other"]},
+        "provenance": {"enum": ["committee_explicit", "author_confirmed"]}
+      }
+    },
+    "source_locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["segment_id", "source_order", "byte_start", "byte_end", "sha256"],
+      "properties": {
+        "segment_id": {"type": "string", "pattern": "^SC-[0-9]{3}$"},
+        "source_order": {"type": "integer", "minimum": 1},
+        "byte_start": {"type": "integer", "minimum": 0},
+        "byte_end": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "concern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "concern_id",
+        "source_comment_id",
+        "source_order",
+        "source_locator",
+        "verbatim_text",
+        "authority_status",
+        "authority_basis",
+        "action_type",
+        "affected_artifacts",
+        "profile_requirement_ids",
+        "owner",
+        "dependencies",
+        "required_before",
+        "response_placeholder",
+        "evidence_placeholder",
+        "resolution_status"
+      ],
+      "properties": {
+        "concern_id": {"type": "string", "pattern": "^CC-[0-9]{3}$"},
+        "source_comment_id": {"type": "string", "pattern": "^SC-[0-9]{3}$"},
+        "source_order": {"type": "integer", "minimum": 1},
+        "source_locator": {"$ref": "#/$defs/source_locator"},
+        "verbatim_text": {"type": "string", "minLength": 1},
+        "authority_status": {"enum": ["explicitly_required", "conditional", "question", "suggestion", "unclear"]},
+        "authority_basis": {"$ref": "#/$defs/authority_basis"},
+        "action_type": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["design", "explanation", "revise_artifact", "add_artifact", "administrative", "legal_or_policy_check"]}
+        },
+        "affected_artifacts": {"type": "array", "items": {"$ref": "#/$defs/affected_artifact"}},
+        "profile_requirement_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+        },
+        "owner": {"$ref": "#/$defs/owner"},
+        "dependencies": {"type": "array", "items": {"$ref": "#/$defs/dependency"}},
+        "required_before": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/required_before"}]},
+        "response_placeholder": {"const": "[AUTHOR RESPONSE REQUIRED — drafting aid; do not claim resolved]"},
+        "evidence_placeholder": {"const": "[EVIDENCE OR ARTIFACT POINTER REQUIRED]"},
+        "resolution_status": {"const": "unresolved"}
+      }
+    }
+  }
+}

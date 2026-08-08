@@ -76,6 +76,28 @@ Schemas for Material Passport input ports.
   reason as above: corpus entries MUST NOT carry human-read state (v3.6.8 firm rule 3).
   Audit/test-time validation only — the CLI stays dependency-light at runtime.
 
+## Human-subjects correspondence contract (#668)
+
+`human_subjects/committee_correspondence.schema.json` defines the standalone
+`academic-paper revision-coach` committee-correspondence variant. It binds every
+confirmed source comment to one concern record while preserving the entire UTF-8
+letter byte-for-byte, including non-comment material. The contract carries
+multi-label actions, explicit authority/provenance, optional profile enrichment,
+fixed unresolved placeholders, the #665 administrative boundary, and no model
+priority or severity.
+
+Validate a bundle with:
+
+```bash
+python scripts/check_committee_correspondence.py \
+  committee_correspondence/<source-sha12>/concern_tracker.json
+```
+
+The checker recomputes file/segment hashes, contiguous byte coverage, exact
+comment-to-concern accounting, source order, full-permutation working views, and
+response-skeleton coverage. Spec:
+`docs/design/2026-08-08-668-committee-correspondence-spec.md`.
+
 ## Audit artifact contracts (v3.6.7 Step 6)
 
 The `audit/` directory carries the three wrapper-emitted artifact schemas that pair
@@ -96,3 +118,36 @@ orchestrator agent reads at every per-agent audit gate.
   spec §3.7 A1 / A2 / A5 / A6.
 
 Spec: `docs/design/2026-04-30-ars-v3.6.7-step-6-orchestrator-hooks-spec.md` §3.
+
+## Review target contracts (#683)
+
+The `review_target/` family keeps target selection author-owned and separates it
+from deterministic criterion resolution:
+
+- `review_target_declaration.schema.json` — the closed author-confirmed discipline,
+  exact venue/track/contribution-type (or explicit no-venue fallback), overlay,
+  selection, precedence, and as-of input;
+- `criteria_registry.schema.json` — the versioned four-part authority registry with
+  criterion provenance, applicability/exclusions, freshness, and blocking policy;
+- `review_target_context.schema.json` — the pointer-only resolved profile, three
+  independent outcome dimensions, parallel conflicts, fallback state, and stable
+  digests.
+
+`shared/review_criteria_registry.json` intentionally ships only a field-general
+baseline. It does not present remembered or synthetic journal rules as official
+venue guidance. Exact venue × track × contribution-type behavior is covered by
+synthetic fixtures.
+
+Resolve a declaration and optionally emit the Phase 0/1 Target Criteria Brief:
+
+```bash
+python scripts/resolve_review_target_context.py \
+  --context declaration.json \
+  --output review-target-context.json \
+  --brief target-criteria-brief.md
+```
+
+The resolver is standard-library-only and opens only the named context and registry
+inputs. It never reads manuscript content, infers a venue, averages interdisciplinary
+criteria, or applies adaptive numeric weights. Spec:
+`docs/design/2026-08-08-683-review-target-context-spec.md`.
