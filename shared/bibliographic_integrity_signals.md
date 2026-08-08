@@ -2,9 +2,9 @@
 
 `shared/contracts/passport/bibliographic_integrity_signal.schema.json` is the
 single schema authority for bibliographic-integrity observations carried in
-`literature_corpus[].bibliographic_integrity_signals[]`. Version 1.0 is
-additive: it changes neither the existing citation-finalizer policy nor the
-one-advisory-token reference-marker grammar.
+`literature_corpus[].bibliographic_integrity_signals[]`. Version 1.0 is the
+additive migration carrier. Version 1.1 is the #651 retraction-status policy
+cutover. Both preserve the one-advisory-token reference-marker grammar.
 
 ## Epistemic boundary
 
@@ -44,10 +44,30 @@ overflowing the marker grammar.
 `terminal_policy` records eligibility and the policy owner; it does not enact
 policy. Only the citation finalizer may evaluate an eligible signal. Version
 1.0 migrations set `eligible: false`, `policy_key: null`, and
-`current_effect: advisory_only`. Existing strict behavior continues to read
-the legacy carrier until a separately reviewed policy migration explicitly
-cuts it over. Adding a new signal type can therefore never silently promote a
-warning to `HIGH-BLOCK`.
+`current_effect: advisory_only`. A v1.1 retraction row is eligible only when
+its effective status is current, undisputed `retracted` and the deterministic
+declared-legitimate exception did not fire. The finalizer then evaluates the
+explicit `terminal_policies.retraction` choice. Adding a signal never silently
+promotes it to `HIGH-BLOCK`.
+
+## Retraction authority cutover (v1.1 / #651)
+
+The v1.1 `retraction_status` row is authoritative for retraction status. It
+records OpenAlex and Crossref observations separately, including disagreement,
+reinstatement, event dates, source-acquisition timing, load-bearing claim join,
+and a strictly mechanical author-declaration + notice-cited exception. Missing
+dates, reasons, or resolver results stay explicit and are never inferred.
+
+The legacy `retraction_check` boolean remains readable for one compatibility
+window as a process attestation only. New retraction-status producers do not
+write it, and neither the finalizer nor the ethics agent may use it as a status
+or terminality input. The ethics agent points to the canonical row; the
+finalizer owns advisory/strict evaluation.
+
+Retraction status uses the separate `retraction_status_cache_v1` namespace.
+Cached observations retain `checked_at` and typed unknown/degraded states. A
+row older than 30 days is stale and must be revalidated before strict
+promotion; stale never means clean.
 
 ## Pinned migration and deprecation path
 
@@ -61,10 +81,9 @@ warning to `HIGH-BLOCK`.
    deterministic legacy-to-v1 projection.
 3. **Display cutover:** the formatter renders the canonical array into the
    one provenance-summary section. It does not derive new marker tokens.
-4. **Policy cutover (future, separately reviewed):** only after all active
-   producers dual-write and equivalence fixtures pass may the finalizer read
-   canonical records for an existing policy. That change must version this
-   contract and its policy schema; it is not part of v1.0.
+4. **Policy cutover:** #651 cuts over only `retraction_status` through v1.1 and
+   `terminal_policies.retraction`. Other v1.0 signal types remain advisory and
+   keep their existing legacy-policy carriers.
 5. **Removal (future major version):** legacy fields may be removed only after
    one released compatibility window following policy cutover. Until then
    they are deprecated write targets, not invalid inputs.

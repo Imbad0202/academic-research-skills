@@ -295,8 +295,8 @@ def render_advisory_section(signals: list[dict[str, Any]]) -> str:
     lines = [
         "## Bibliographic Integrity Advisories",
         "",
-        "| signal_id | signal type | citation | label | status | finding | source | source version | source sha256 | checked at | recorded at | stale after | freshness | source pointer | claims |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| signal_id | signal type | citation | label | status | finding | source | source version | source sha256 | checked at | recorded at | stale after | freshness | source pointer | claims | context |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for signal in sorted(signals, key=lambda item: item["signal_id"]):
         status = signal["check_status"]
@@ -305,11 +305,26 @@ def render_advisory_section(signals: list[dict[str, Any]]) -> str:
             finding = "NOT CLEAN — UNRESOLVED"
         claims = ", ".join(signal["subject"]["affected_claims"]) or "—"
         provenance = signal["provenance"]
+        context = "—"
+        retraction = signal.get("retraction_context")
+        if isinstance(retraction, dict):
+            reasons = ", ".join(retraction.get("retraction_reasons", [])) or "not served"
+            legitimate = retraction.get("declared_legitimate_citation", {}).get(
+                "deterministic_exception", False
+            )
+            context = (
+                f"effective={retraction.get('effective_status', 'unknown')}; "
+                f"agreement={retraction.get('resolver_agreement', 'unknown')}; "
+                f"event={retraction.get('retraction_event_date') or 'not decidable'}; "
+                f"reasons={reasons}; load_bearing={retraction.get('load_bearing', 'not_decidable')}; "
+                f"timing={retraction.get('timing_vs_acquisition', 'not_decidable')}; "
+                f"legitimate_exception={str(bool(legitimate)).lower()}"
+            )
         lines.append(
             "| {signal_id} | {signal_type} | {citation} | {label} | {status} | {finding} | "
             "{source} | {source_version} | {source_sha256} | {checked_at} | "
             "{recorded_at} | {stale_after} | {freshness} | {source_pointer} | "
-            "{claims} |".format(
+            "{claims} | {context} |".format(
                 signal_id=cell(signal["signal_id"]),
                 signal_type=cell(signal["signal_type"]),
                 citation=cell(signal["subject"]["citation_key"]),
@@ -325,6 +340,7 @@ def render_advisory_section(signals: list[dict[str, Any]]) -> str:
                 freshness=cell(provenance["freshness"]),
                 source_pointer=cell(signal["subject"]["source_pointer"]),
                 claims=cell(claims),
+                context=cell(context),
             )
         )
     return "\n".join(lines) + "\n"

@@ -42,6 +42,18 @@ GET /works?query.title={url_encoded_title}&rows=5
 
 The check fires only when `obtained_via != 'manual'`.
 
+## `retraction_status` observation (#651)
+
+For a DOI-matched record, retain both top-level and relation-form
+`updated-by`/`update-to` metadata. The #651 resolver recognizes an update only
+when `updated-by` belongs to the cited DOI or an update notice's `update-to`
+points to the cited DOI. It preserves source, record id, notice DOI and date,
+and handles a later reinstatement without treating the earlier retraction as
+current. The full record already returned by `GET /works/{doi}` is sufficient
+for the common `updated-by` path; optional notice records may be supplied for
+the inverse `update-to` path and reason enrichment. Manual entries with a DOI
+use this path; DOI-less entries remain unresolved rather than title-matched.
+
 ## Degradation handling
 
 | Condition | Action |

@@ -38,6 +38,10 @@ This file is the **single source of truth** for firm-rule wording that is otherw
 - **R-L3-2-E (gate refusal list unchanged by advisory tiers; terminal blocks ride a separate generic rule):** All triangulation *annotations* are advisory. The terminal gate **refusal list** is NOT extended by any advisory marker shape. The gate's **advisory pass-through allowlist** MUST be extended in lockstep with any new advisory suffix so that new advisory suffixes are not accidentally routed through a refusal rule. The fix for a new advisory suffix is pass-through-list expansion, not refusal-list change. v3.10 adds a *generic* terminal-refusal rule (formatter rule 11) that fires on any unresolved `severity=HIGH-BLOCK` token inside a `<!--ref:...-->` marker — it is NOT a per-suffix refusal entry, so the advisory suffix table and pass-through allowlist stay unchanged when a strict policy promotes a signal. The formatter is STAMP-CHECK ONLY: it compares each marker's `policy_hash` against the passport's current `terminal_policies` (freshness guard) and never re-runs policy logic; the finalizer is the sole policy evaluator.
 <!-- /canonical:R-L3-2-E -->
 
+<!-- canonical:R-L3-2-F -->
+- **R-L3-2-F (retraction authority is canonical and advisory-first):** A v1.1 `bibliographic_integrity_signals[].retraction_status` row is the only retraction-status authority. Legacy `retraction_check` is a process attestation only. Detection is unconditional; absent `terminal_policies.retraction` is advisory. Only the citation finalizer may promote an eligible current, undisputed retracted row under explicit `strict`; reinstated, stale, unknown/degraded, resolver-disagreement, and deterministic declared-legitimate-use rows never promote. The ethics agent points to this result and the formatter remains stamp-only. No retraction advisory marker token is minted.
+<!-- /canonical:R-L3-2-F -->
+
 **Mirrored in (contamination rules):**
 
 - `academic-paper/agents/formatter_agent.md` — R-L3-2-A + R-L3-2-E (in the contamination pass-through paragraph).
@@ -45,6 +49,7 @@ This file is the **single source of truth** for firm-rule wording that is otherw
 - `deep-research/references/openalex_api_protocol.md` — R-L3-2-A reference.
 - `academic-pipeline/agents/pipeline_orchestrator_agent.md` — R-L3-2-C / R-L3-2-D / R-L3-2-E (finalizer logic).
 - `deep-research/agents/bibliography_agent.md` — R-L3-2-B (ingest-time computation).
+- `shared/bibliographic_integrity_signals.md`, `deep-research/agents/ethics_review_agent.md`, and `docs/design/2026-08-08-651-retraction-status-spec.md` — R-L3-2-F.
 
 > These mirrors are **intentionally by-ID prose references**, not full-block copies (e.g. crossref's "the user retains discretion per R-L3-2-A", the formatter's "advisory per ... R-L3-2-A + R-L3-2-E"). The wording lives in exactly one place — the canonical block above — so the single-source goal (D3) is met without duplicating the full rule text into five files. The v3.10 PR-B reword therefore changes ONLY the canonical block, not the mirrors. Because the mirrors are by-ID references, the sync lint does NOT wording-check them; it (1) ID-guards the contamination side (no contamination context reuses an `R-CIM-*` ID, no claim-manifest surface reuses an `R-L3-2-*` ID), and (2) **contradiction-guards** the contamination mirrors against phrasing that would contradict the broad reword — a by-ID reference's surrounding prose MUST NOT assert an unqualified "advisory only" / "never block" / "cannot block" / "must not block" / "non-blocking" claim, since a strict terminal policy can now block (see `check_firm_rules_sync.py` contradiction guard). (Wording-sync IS enforced for the `R-CIM-*` blocks below, whose mirrors ARE full-block copies.)
 

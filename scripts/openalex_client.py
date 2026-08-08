@@ -47,7 +47,9 @@ _API_BASE = "https://api.openalex.org"
 _API_HOST = "api.openalex.org"
 _API_KEY_ENV = "OPENALEX_API_KEY"
 _POLITE_EMAIL_ENV = "OPENALEX_POLITE_EMAIL"
-_FIELDS = "id,title,authorships,publication_year,doi,primary_location"
+# #651: is_retracted is part of the normal Works response and is retained in
+# the same lookup. No additional request is required.
+_FIELDS = "id,title,authorships,publication_year,doi,primary_location,is_retracted"
 
 _AUTHENTICATED_MIN_INTERVAL = 0.1
 _ANONYMOUS_MIN_INTERVAL = 1.0

@@ -759,8 +759,8 @@ The contamination annotation does NOT apply to HIGH-WARN / MED-WARN / MED-WARN-N
 
 ### Canonical bibliographic-integrity carrier (#678)
 `literature_corpus[].bibliographic_integrity_signals[]`, validated by `shared/contracts/passport/bibliographic_integrity_signal.schema.json`, is the canonical structured carrier for new observations.
-The finalizer remains the sole terminal-policy owner; v1 `terminal_policy.eligible: false` is advisory-only and MUST NOT produce `HIGH-BLOCK`.
-The finalizer writes no marker token from this array; `display.marker_token` is null, while dual write continues deriving the one legacy `CONTAMINATED-*` suffix from `contamination_signals`.
+The finalizer remains the sole terminal-policy owner. v1.0 `terminal_policy.eligible: false` is advisory-only. A v1.1 `retraction_status` row may be eligible for the explicit `terminal_policies.retraction` policy under the frozen #651 rules below.
+The finalizer writes no advisory marker token from this array; `display.marker_token` is null. A strict eligible retraction row uses the existing generic terminal-token channel, while the one legacy `CONTAMINATED-*` advisory suffix remains derived from `contamination_signals`.
 All canonical records compose as lexically sorted formatter-owned `Bibliographic Integrity Advisories` rows in `provenance_summary.md`.
 Any `finding: unresolved` or `not_checked`/`unknown`/`degraded` status is unresolved, never clean results; see `shared/bibliographic_integrity_signals.md` for the epistemic/deprecation contract.
 
@@ -833,7 +833,7 @@ v3.10 adds an **opt-in terminal policy layer** on top of the v3.9.0 advisory cha
 
 ### policy_hash stamp (added ONLY under a non-advisory policy)
 
-When — and ONLY when — the passport's `terminal_policies` carries at least one non-advisory CITATION-TIME key value, the finalizer appends `policy_hash=<slug>` to every marker it finalizes (so the formatter can detect a draft finalized under a stale policy). The citation-time keys are `contamination_triangulation`, `citation_existence`, and (forward) `temporal_integrity` — the marker-carrier policies; the package-level `submission_package` key (#394) NEVER participates in marker stamping and is OMITTED from the slug regardless of its value — its carrier is the #394 verifier's report file (`policy_slug` + `package_fingerprint`, the package-level analog of this stamp), so a `submission_package: strict`-only passport stamps nothing here. The slug is a **fully-encoded, human-readable canonical token** of the passport's citation-time `terminal_policies` state — NOT a computed digest (the finalizer is an LLM agent; it cannot reliably compute sha256 by hand). The slug encodes EVERY non-advisory citation-time policy key so two distinct policy configurations can never collide on one slug:
+When — and ONLY when — the passport's `terminal_policies` carries at least one non-advisory CITATION-TIME key value, the finalizer appends `policy_hash=<slug>` to every marker it finalizes (so the formatter can detect a draft finalized under a stale policy). The citation-time keys are `contamination_triangulation`, `citation_existence`, `retraction`, and (forward) `temporal_integrity` — the marker-carrier policies; the package-level `submission_package` key (#394) NEVER participates in marker stamping and is OMITTED from the slug regardless of its value — its carrier is the #394 verifier's report file (`policy_slug` + `package_fingerprint`, the package-level analog of this stamp), so a `submission_package: strict`-only passport stamps nothing here. The slug is a **fully-encoded, human-readable canonical token** of the passport's citation-time `terminal_policies` state — NOT a computed digest (the finalizer is an LLM agent; it cannot reliably compute sha256 by hand). The slug encodes EVERY non-advisory citation-time policy key so two distinct policy configurations can never collide on one slug:
 
 - **All-advisory** (absent `terminal_policies`, or every key explicitly `advisory`): NO stamp is emitted — the marker is the bare v3.9.0 shape (Invariant 7 byte-equivalence). There is no `policy_hash=advisory` sentinel; the *absence* of a stamp IS the advisory signal.
 - **Any non-advisory key present:** stamp `policy_hash=<slug>`, where `<slug>` joins each NON-ADVISORY policy key with its value as `key.value`, sorted by key name, separated by `+`. Examples:
@@ -856,7 +856,7 @@ Every finalized marker takes ONE of two shapes (the literal `TERMINAL-BLOCK` sen
     ```
 - **Terminal** (entry hit a HIGH-BLOCK under a strict policy — only reachable under a non-advisory policy, so always stamped): the advisory suffix stays in its optional slot; the terminal token sequence is ADDITIONAL:
   ```
-  <!--ref:<slug> <base-status> [<advisory-suffix>] TERMINAL-BLOCK severity=HIGH-BLOCK policy=<contamination_triangulation|temporal_integrity|citation_existence> reason=<reason-token> mode=<strict|strict_articles_only> policy_hash=<slug>-->
+  <!--ref:<slug> <base-status> [<advisory-suffix>] TERMINAL-BLOCK severity=HIGH-BLOCK policy=<contamination_triangulation|citation_existence|retraction|temporal_integrity> reason=<reason-token> mode=<strict|strict_articles_only> policy_hash=<slug>-->
   ```
 
 Where `<base-status>` ∈ {`ok`, `LOW-WARN`} (the v3.7.3 5-cell base resolution) and `[<advisory-suffix>]` is the OPTIONAL v3.9.0 contamination suffix (one token max, drawn from the v3.9.0 allowlist), present iff the entry fired an advisory signal. `reason` carries the typed payload that preserves remediation context — for contamination k=3 it is `reason=k3_all_indexes_unmatched`. The `mode=` enumeration above is the union across policies; the valid modes are **per-policy**: `contamination_triangulation` ∈ {`strict`, `strict_articles_only`}, `citation_existence` is `strict` only (no `strict_articles_only`), and `temporal_integrity` is forward-reserved advisory-only (no terminal mode wired). A `policy=citation_existence` token therefore always carries `mode=strict`.
@@ -893,9 +893,35 @@ Example (strict, ID-keyed false): `<!--ref:bogus2024 ok TERMINAL-BLOCK severity=
 
 **Recompute each pass; nothing cached (C-V6(h)).** Both the marker severity (strict terminal vs advisory) and the output gate are recomputed by the finalizer at every finalization pass — they are pure functions of the CURRENT `terminal_policies` state and the CURRENT `citation_verification_summary[]`, never cached status. Flipping `citation_existence` advisory→strict between passes re-stamps markers and re-applies the gate on the next finalize; a `resume_from_passport` / reset that re-enters finalization re-evaluates against the resumed summary. A previously-granted output (a draft that reached formatting) is never inherited across a resume without re-passing the gate under the then-current policy — there is no path where a stale certification survives a citation that resolves to `false` under `strict`. This is the same idempotency-on-current-evidence discipline as the v3.7.1 finalizer matrix above.
 
+### Retraction terminal promotion (#651)
+
+The authoritative input is a schema-valid v1.1
+`bibliographic_integrity_signals[].retraction_status` row. Ignore legacy
+`retraction_check` for both status and policy. Detection remains visible in the
+formatter-owned `Bibliographic Integrity Advisories` section under every
+policy, and no retraction advisory suffix is added to the marker.
+
+- absent `terminal_policies.retraction` or `advisory`: emit no terminal token;
+- `strict`: emit `TERMINAL-BLOCK severity=HIGH-BLOCK policy=retraction
+  reason=retracted_reference mode=strict` only when the canonical row carries
+  `terminal_policy.eligible: true` and `policy_key: retraction`;
+- never promote reinstated, disputed, stale, unknown/degraded, or
+  deterministic declared-legitimate rows. Do not recompute those conditions;
+  validate and consume the canonical eligibility bit;
+- include `retraction.strict` in the sorted `policy_hash` slug even when no row
+  fires, so policy changes cannot reuse stale markers.
+
+Example: `<!--ref:smith2024 ok TERMINAL-BLOCK severity=HIGH-BLOCK
+policy=retraction reason=retracted_reference mode=strict
+policy_hash=retraction.strict-->`.
+
+The ethics agent has no independent retraction terminality. Its report points
+to this row/finalizer result and may discuss context only as an advisory human
+judgment.
+
 ### Manual-entry exemption preserved
 
-Manual entries (`obtained_via: manual`) carry no `*_unmatched` fields (v3.9.0 §3.1 not-rule), so k=3 is structurally unreachable for them — no terminal promotion can fire (Invariant 8). For `citation_existence`, a manual entry's resolvers are all `skipped`, so its `lookup_verified` reduces to `unresolvable` (never `false`), and the strict citation-existence block is likewise unreachable (C-V6(f)). Preserved across all policy modes.
+Manual entries (`obtained_via: manual`) carry no `*_unmatched` fields (v3.9.0 §3.1 not-rule), so k=3 is structurally unreachable for them — no contamination terminal promotion can fire (Invariant 8). For `citation_existence`, a manual entry's resolvers are all `skipped`, so its `lookup_verified` reduces to `unresolvable` (never `false`). Retraction is deliberately different: a DOI makes the mutable-status lookup attemptable even on a manual entry; a DOI-less manual entry emits a visible unresolved v1.1 row and cannot promote.
 
 ### `/ars-mark-read` and HIGH-BLOCK
 
@@ -905,7 +931,7 @@ Manual entries (`obtained_via: manual`) carry no `*_unmatched` fields (v3.9.0 §
 
 The per-pass resolution counts gain a `terminal_blocked[]` bucket recording each ref slug promoted to a terminal block, with its `policy` / `reason` / `mode`. **Non-additive (R2-P2):** a single strict k=3 ref increments BOTH its advisory-signal count (e.g. CONTAMINATED-TRIANGULATION-UNMATCHED) AND the `terminal_blocked[]` bucket, but it remains ONE unique affected ref — any downstream aggregate "total affected refs" MUST dedupe by ref slug across the advisory and terminal buckets, NEVER sum them.
 
-**Multiple terminal policies co-emit independently (C-V6(g)).** A single ref that violates BOTH `contamination_triangulation == strict` (k=3) AND `citation_existence == strict` (`lookup_verified == false`) carries **two** `TERMINAL-BLOCK` tokens in its marker — one per `policy=` value (`policy=contamination_triangulation` and `policy=citation_existence`) — alongside the shared advisory slot. The two tokens are additive at the marker, but the ref is counted ONCE in any "total affected refs" aggregate: dedupe by ref slug across BOTH policy buckets (the same non-additive rule as above, now spanning policies). The `policy_hash` slug encodes both non-advisory keys, sorted by key name: `policy_hash=citation_existence.strict+contamination_triangulation.strict`. The formatter's generic "refuse on any unresolved `severity=HIGH-BLOCK`" rule already handles N tokens without per-policy enumeration — no per-policy refusal rule is added.
+**Multiple terminal policies co-emit independently (C-V6(g)).** A single ref may carry independent `TERMINAL-BLOCK` tokens for contamination, citation existence, and retraction, alongside the shared advisory slot. Tokens are additive, but the ref is counted ONCE in any "total affected refs" aggregate: dedupe by ref slug across all policy buckets. The `policy_hash` slug encodes every non-advisory citation-time key in lexical order (for example `citation_existence.strict+retraction.strict`). The formatter's generic "refuse on any unresolved `severity=HIGH-BLOCK`" rule already handles N tokens without per-policy enumeration.
 
 ---
 

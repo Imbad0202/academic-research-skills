@@ -61,7 +61,7 @@ _RESOLVERS = ("crossref", "openalex", "semantic_scholar", "arxiv")
 # The documented select/fields values each client sends — pinned here
 # INDEPENDENTLY of the clients' private _FIELDS constants, so an accidental
 # field-list edit in a client fails this suite instead of auto-following.
-_OPENALEX_SELECT = "id,title,authorships,publication_year,doi,primary_location"
+_OPENALEX_SELECT = "id,title,authorships,publication_year,doi,primary_location,is_retracted"
 _S2_FIELDS = "title,authors,year,externalIds,venue,publicationDate"
 
 

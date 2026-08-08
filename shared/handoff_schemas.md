@@ -105,7 +105,7 @@ Consuming agents should validate input and request re-generation if schema viola
 | `relevance_score` | integer | Yes | 1-10 relevance to the research question |
 | `annotation` | string | Yes | 2-3 sentence summary of key findings and relevance |
 | `verified` | boolean | No | Whether DOI/existence has been verified |
-| `retraction_check` | boolean | No | Legacy execution attestation: whether a Retraction Watch check was reportedly run, **not** its result. New producers dual-write `bibliographic_integrity_signals[]`; see `shared/bibliographic_integrity_signals.md`. `true` never means “not retracted” or otherwise clean. |
+| `retraction_check` | boolean | No | Deprecated, read-only. Legacy execution attestation: whether a Retraction Watch check was reportedly run, **not** its result. New producers write only the v1.1 `bibliographic_integrity_signals[].retraction_status` authority; see `shared/bibliographic_integrity_signals.md`. `true` never means “not retracted” or otherwise clean and cannot drive terminal policy. |
 | `semantic_scholar_id` | string / null | No | Semantic Scholar paper ID (v3.3). Null if S2 lookup failed or API unavailable. Used for deduplication and re-verification. |
 
 ### Optional Fields

@@ -50,6 +50,12 @@ Schemas for Material Passport input ports.
 
 - `passport/literature_corpus_entry.schema.json` (v3.6.4) — Schema 9 `literature_corpus[]`
   entries produced by user-written adapters.
+- `passport/bibliographic_integrity_signal.schema.json` (#678/#651) — v1.0
+  additive signal carrier plus v1.1 authoritative retraction-status rows,
+  including resolver disagreement/reinstatement, judgment context, freshness,
+  and opt-in finalizer policy eligibility. The separate
+  `retraction_status_cache_v1` namespace and pure resolver live in
+  `scripts/retraction_status.py`.
 - `passport/rejection_log.schema.json` (v3.6.4) — adapter output companion logging
   entries that could not be included in the corpus.
 - `passport/reset_ledger_entry.schema.json` (v3.6.3) — `reset_boundary[]` ledger entries

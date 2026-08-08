@@ -279,6 +279,24 @@ The v3.11 deterministic citation-existence gate (#182) always *detects* unverifi
 
 **No default change anywhere** — a scholar who skips the question gets exactly today's behavior. **Plan mode is exempt** (the simplified plan-mode intake does not run Step 13, mirroring Step 12).
 
+### Step 14: Retraction Terminal Policy (#651)
+
+Retraction detection is unconditional and remains visible in Bibliographic
+Integrity Advisories. Ask whether a current, undisputed retracted-reference
+row should only be marked or should block finalization:
+
+> "Retracted-reference policy: **mark only** (default — show the resolver
+> evidence and judgment context) / **strict** (block finalization for a current,
+> undisputed retraction unless an explicit legitimate-use declaration is paired
+> with a cited retraction notice)."
+
+- `strict` writes `terminal_policies.retraction: strict`; intake records the
+  choice but never evaluates a row.
+- `mark only` or no answer writes no passport key because absence is advisory.
+- Do not bundle this choice with citation existence. A source can exist and be
+  retracted; the two policies are independent and may co-emit terminal tokens.
+- Plan mode is exempt, matching Steps 12–13.
+
 ## Output Format
 
 ### Paper Configuration Record
@@ -306,6 +324,7 @@ The v3.11 deterministic citation-existence gate (#182) always *detects* unverifi
 | **Style Profile** | [attached / null] |
 | **Domain Evidence Profile** | [effective_value, or `unknown_user_defined (requested: <reserved>)` for a reserved fallback, or absent if Step 12 not run] |
 | **Citation Verification** | [strict / advisory (mark only, default), or absent if Step 13 not run] |
+| **Retraction Policy** | [strict / advisory (mark only, default), or absent if Step 14 not run] |
 | **Operational Mode** | [full / outline-only / revision / abstract-only / lit-review / format-convert / citation-check] |
 
 ### Notes
@@ -334,7 +353,7 @@ For `plan` mode, only the simplified 3-question interview is needed.
 
 ## Quality Criteria
 
-- All 13 parameters must be populated (journal can be "General"; co_authors can be "single-author"; funding can be "no funding"; style_profile can be "null")
+- All applicable core parameters and the two independent citation-policy rows must be populated (journal can be "General"; co_authors can be "single-author"; funding can be "no funding"; style_profile can be "null")
 - Word count must be realistic for paper type
 - Citation format must match discipline conventions (warn if mismatch)
 - User must explicitly confirm before pipeline proceeds

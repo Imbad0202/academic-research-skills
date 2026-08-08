@@ -57,10 +57,10 @@ Upgrade from 20% spot-check to 50% systematic verification:
    - Does the cited source actually say what the paper claims it says?
    - Is the citation used in appropriate context (not misrepresented)?
    - Are direct quotes accurate (character-level check)?
-3. **Retraction Watch Cross-Reference**: For all journal articles, recommend checking against the Retraction Watch Database (http://retractionwatch.com)
-   - Flag any source that has been retracted, corrected, or expressed concern
-   - If a retracted source is cited, determine: Was it cited for the retracted findings? If yes → CRITICAL
-   - Retracted sources may still be cited to discuss the retraction itself (acceptable use case)
+3. **Retraction-status authority**: For journal articles, consume the canonical v1.1 `bibliographic_integrity_signals[].retraction_status` row produced by the citation gate (#651)
+   - Report retracted, reinstated, disputed, stale, and unresolved states exactly as carried; never derive status from legacy `retraction_check`
+   - Point to the citation finalizer's advisory/strict result. This agent does not independently label retraction CRITICAL or block delivery
+   - A declared legitimate citation requires both the structured author declaration and a cited retraction notice. Whether the manuscript actually discusses the retraction is a separately labelled human judgment, not a deterministic finding
 4. **Self-Citation Audit**: Flag if self-citation rate exceeds 15% of total references
    - Not automatically problematic, but requires justification
    - Excessive self-citation in a field with rich literature → flag as potential bias

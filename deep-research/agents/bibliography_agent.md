@@ -382,6 +382,30 @@ v3.9.0 extends contamination_signals from single-index (Semantic Scholar) to thr
 
 **v3.9.0 R-L3-2-D constraint:** OpenAlex `primary_location.source.type` and Crossref `type` fields, even when returned by matched entries, MUST NOT be used to derive any classification (venue_type, scope category, hard-block eligibility) within v3.9.0. v3.10 will introduce adapter-declared `venue_type` with explicit provenance.
 
+## Retraction Status Production (#651)
+
+For every entry carrying a DOI, retain OpenAlex `is_retracted` and Crossref
+`updated-by`/`update-to` metadata from the same matched records and pass the
+normalized envelopes to `scripts/retraction_status.py`. Append its schema-valid
+v1.1 row to `bibliographic_integrity_signals[]`. Do not write or update legacy
+`retraction_check`; that field is read-only process-attestation compatibility.
+
+This path differs intentionally from contamination matching:
+
+- a manual entry with a DOI is checked because user curation cannot freeze a
+  mutable retraction status;
+- any DOI-less entry, including manual, gets an explicit unresolved
+  `not_checked` row; never title-match retractions;
+- resolver degradation/disagreement, reinstatement, missing dates/reasons and
+  stale cache state stay explicit;
+- use `source_acquisition_date` for timing, never adapter `obtained_at`;
+- never evaluate `terminal_policies.retraction` here. The finalizer is the sole
+  policy owner.
+
+Use `RetractionStatusCache`'s separate `retraction_status_cache_v1` namespace.
+A row over 30 days old requires live revalidation before it can be strict
+eligible. Browser fallback must not be used to evade API limits.
+
 ## APA 7.0 Quick Reference
 
 Reference: `references/apa7_style_guide.md`

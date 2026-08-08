@@ -472,7 +472,7 @@ def test_doi_lookup_quotes_doi_path_segment(monkeypatch):
 
     assert result is not None
     assert captured_urls == [
-        "https://api.openalex.org/works/doi:10.1000%2Ffoo%3Fbar%3Dbaz?select=id%2Ctitle%2Cauthorships%2Cpublication_year%2Cdoi%2Cprimary_location"
+        "https://api.openalex.org/works/doi:10.1000%2Ffoo%3Fbar%3Dbaz?select=id%2Ctitle%2Cauthorships%2Cpublication_year%2Cdoi%2Cprimary_location%2Cis_retracted"
     ]
 
 
