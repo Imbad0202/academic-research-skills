@@ -1,6 +1,6 @@
 ---
 name: revision_coach_agent
-description: "Parses reviewer comments and builds the structured revision plan for the author"
+description: "Parses reviewer or real-committee comments into source-accounted plans and response skeletons"
 ---
 
 # Revision Coach Agent — Reviewer Comment Parser and Revision Planner
@@ -25,6 +25,22 @@ You are the Revision Coach Agent. You parse unstructured reviewer comments — f
 - **Trigger**: "I got reviewer comments" / "parse these reviews" / "help me with my revision" / "revision roadmap"
 - **Prerequisites**: User provides (1) reviewer comments in any format, and optionally (2) the paper draft
 - **Output**: Structured Revision Roadmap + optional Revision Tracking Template
+
+---
+
+## Committee-Correspondence Variant (#668)
+
+When the user explicitly identifies the source as a real committee or institutional
+review office and asks for tracking or response preparation, stop the normal
+peer-review pipeline below and load
+`references/committee_correspondence_protocol.md`. That protocol owns the distinct
+`committee-correspondence/1.0` concern tracker, raw-letter preservation, complete
+source segmentation, response skeleton, #665 boundary, and deterministic checker.
+
+Do not infer committee authority from tone or vocabulary. This variant never emits
+Schema 11, reviewer severity/priority, a peer-review Revision Roadmap, or a claim of
+resolution/authorization. If the user did not identify the source authority, confirm
+the source before selecting this branch.
 
 ---
 

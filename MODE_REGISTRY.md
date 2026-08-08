@@ -29,7 +29,7 @@ Last updated: v3.19.0 (2026-07-22)
 | `plan` | Originality | Chapter Plan + INSIGHT collection (Socratic) | Very High | "guide my paper", "help me plan", "step by step paper" |
 | `outline-only` | Balanced | Detailed outline + evidence map | High | "paper outline", "just need an outline" |
 | `revision` | Fidelity | Revised draft + point-by-point R&R responses | High | "revise paper", "incorporate reviewer feedback" |
-| `revision-coach` | Balanced | Revision Roadmap + Response Letter Skeleton | Medium | "parse reviews", "I got reviewer comments" |
+| `revision-coach` | Balanced | Reviewer path: Revision Roadmap + Response Letter Skeleton. Explicit real-committee variant: source-accounted concern tracker + placeholder response skeleton | Medium | "parse reviews", "I got reviewer comments", "track these committee comments" |
 | `abstract-only` | Fidelity | Bilingual abstract (zh-TW + EN) + keywords | Medium | "write abstract" |
 | `lit-review` | Fidelity | Annotated bibliography in paper format | Medium | "literature review paper", "write a lit review" |
 | `format-convert` | Fidelity | Formatted document (LaTeX/DOCX-via-Pandoc/PDF/MD) | Low | "convert to LaTeX", "convert citations to [format]" |

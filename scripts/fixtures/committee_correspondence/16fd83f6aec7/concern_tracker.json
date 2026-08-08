@@ -1,0 +1,129 @@
+{
+  "schema_version": "committee-correspondence/1.0",
+  "tracker_id": "committee-16fd83f6aec7",
+  "generated_at": "2026-08-08T20:00:00+08:00",
+  "source_artifact": {
+    "path": "source_letter.txt",
+    "sha256": "16fd83f6aec71db6a5aba2b83e87ad7c67fab021a87b3b71fedd907dc61e8067",
+    "byte_length": 258,
+    "encoding": "utf-8",
+    "segments": [
+      {
+        "segment_id": "SC-001",
+        "source_order": 1,
+        "kind": "non_comment",
+        "byte_start": 0,
+        "byte_end": 48,
+        "sha256": "8dcbb68864cafd9475507eba24ee112d6ccb4ddd97aed0aa8a4ab14c040ae6e4"
+      },
+      {
+        "segment_id": "SC-002",
+        "source_order": 2,
+        "kind": "comment",
+        "byte_start": 48,
+        "byte_end": 146,
+        "sha256": "482872f933b2cdaa1e16af40906a6ef63f82aa1ff77cbde744e4f2c9cb74a248"
+      },
+      {
+        "segment_id": "SC-003",
+        "source_order": 3,
+        "kind": "comment",
+        "byte_start": 146,
+        "byte_end": 222,
+        "sha256": "4cf431c6bbc7fd4a91ca0f62faf1ba62498c4d6559d1ec35475be02acee0be45"
+      },
+      {
+        "segment_id": "SC-004",
+        "source_order": 4,
+        "kind": "non_comment",
+        "byte_start": 222,
+        "byte_end": 258,
+        "sha256": "77be779e6dbd543392901c4b6ae38499acd509d0383befebc1b70b022db6901f"
+      }
+    ]
+  },
+  "human_subjects_status": {
+    "submission_readiness": "unresolved",
+    "authorization_status": "not_provided",
+    "authorization_source_comment_id": null,
+    "review_pathway": "institutional determination required",
+    "boundary_footer": "Human-subjects boundary: This output does not authorize recruitment, consent, access to identifiable data, intervention, or data collection."
+  },
+  "profile_context": {
+    "state": "not_selected",
+    "selected_profile_ids": [],
+    "artifact_resolution_state": "artifact_agnostic"
+  },
+  "concerns": [
+    {
+      "concern_id": "CC-001",
+      "source_comment_id": "SC-002",
+      "source_order": 2,
+      "source_locator": {
+        "segment_id": "SC-002",
+        "source_order": 2,
+        "byte_start": 48,
+        "byte_end": 146,
+        "sha256": "482872f933b2cdaa1e16af40906a6ef63f82aa1ff77cbde744e4f2c9cb74a248"
+      },
+      "verbatim_text": "Required: Remove the course instructor from recruitment and revise the consent form accordingly.\n\n",
+      "authority_status": "explicitly_required",
+      "authority_basis": {
+        "provenance": "committee_explicit",
+        "exact_text": "Required:"
+      },
+      "action_type": ["design", "revise_artifact"],
+      "affected_artifacts": [
+        {"name": "Recruitment plan", "provenance": "committee_explicit"},
+        {"name": "Consent form", "provenance": "committee_explicit"}
+      ],
+      "profile_requirement_ids": [],
+      "owner": {"name": null, "provenance": "unresolved"},
+      "dependencies": [],
+      "required_before": null,
+      "response_placeholder": "[AUTHOR RESPONSE REQUIRED — drafting aid; do not claim resolved]",
+      "evidence_placeholder": "[EVIDENCE OR ARTIFACT POINTER REQUIRED]",
+      "resolution_status": "unresolved"
+    },
+    {
+      "concern_id": "CC-002",
+      "source_comment_id": "SC-003",
+      "source_order": 3,
+      "source_locator": {
+        "segment_id": "SC-003",
+        "source_order": 3,
+        "byte_start": 146,
+        "byte_end": 222,
+        "sha256": "4cf431c6bbc7fd4a91ca0f62faf1ba62498c4d6559d1ec35475be02acee0be45"
+      },
+      "verbatim_text": "Question: Please clarify who will hold the participant-code relinking key.\n\n",
+      "authority_status": "question",
+      "authority_basis": {
+        "provenance": "committee_explicit",
+        "exact_text": "Question:"
+      },
+      "action_type": ["explanation", "administrative"],
+      "affected_artifacts": [],
+      "profile_requirement_ids": [],
+      "owner": {"name": null, "provenance": "unresolved"},
+      "dependencies": [],
+      "required_before": null,
+      "response_placeholder": "[AUTHOR RESPONSE REQUIRED — drafting aid; do not claim resolved]",
+      "evidence_placeholder": "[EVIDENCE OR ARTIFACT POINTER REQUIRED]",
+      "resolution_status": "unresolved"
+    }
+  ],
+  "working_views": [
+    {
+      "view_id": "administrative-first",
+      "label": "Administrative working view",
+      "concern_ids": ["CC-002", "CC-001"]
+    }
+  ],
+  "response_skeleton": {
+    "path": "response_skeleton.md",
+    "sha256": "a3f46fa2d85ef7277dff581bf646967d8804591c0ea6e8dc9b5f0cf4be951e01",
+    "status": "drafting_aid",
+    "asserts_resolution": false
+  }
+}
