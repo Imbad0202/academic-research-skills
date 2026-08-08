@@ -1,0 +1,99 @@
+{
+  "schema_version": "review-criteria-registry/1.0",
+  "registry_id": "ars-field-general-review-criteria",
+  "registry_version": "2026.08",
+  "as_of": "2026-08-08",
+  "authority_classes": {
+    "official_venue_type": [],
+    "field_society_standard": [],
+    "reporting_design_overlay": [],
+    "broad_field_fallback": [
+      "broad.claim-evidence-alignment",
+      "broad.method-evidence-alignment",
+      "broad.limitation-calibration",
+      "broad.submission-traceability"
+    ]
+  },
+  "criteria": [
+    {
+      "criterion_id": "broad.claim-evidence-alignment",
+      "version": "1.0",
+      "authority_class": "broad_field_fallback",
+      "dimension": "scientific_validity",
+      "title": "Claim and evidence alignment",
+      "statement": "Each material claim should be supported at the strength and scope asserted, with uncertainty preserved.",
+      "source": {
+        "title": "ARS Review Criteria Framework",
+        "publisher": "Academic Research Skills",
+        "uri": "repository://academic-paper-reviewer/references/review_criteria_framework.md",
+        "effective_date": "2026-08-08",
+        "verified_at": "2026-08-08",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "broad.method-evidence-alignment",
+      "version": "1.0",
+      "authority_class": "broad_field_fallback",
+      "dimension": "scientific_validity",
+      "title": "Method and evidence alignment",
+      "statement": "Methods, data, and analysis should be fit for the research question and support reproducible scrutiny at the level claimed.",
+      "source": {
+        "title": "ARS Review Criteria Framework",
+        "publisher": "Academic Research Skills",
+        "uri": "repository://academic-paper-reviewer/references/review_criteria_framework.md",
+        "effective_date": "2026-08-08",
+        "verified_at": "2026-08-08",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "broad.limitation-calibration",
+      "version": "1.0",
+      "authority_class": "broad_field_fallback",
+      "dimension": "scientific_validity",
+      "title": "Limitation calibration",
+      "statement": "Limitations, uncertainty, boundary conditions, and plausible alternatives should be visible and proportionate to the evidence.",
+      "source": {
+        "title": "ARS Review Criteria Framework",
+        "publisher": "Academic Research Skills",
+        "uri": "repository://academic-paper-reviewer/references/review_criteria_framework.md",
+        "effective_date": "2026-08-08",
+        "verified_at": "2026-08-08",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "broad.submission-traceability",
+      "version": "1.0",
+      "authority_class": "broad_field_fallback",
+      "dimension": "submission_readiness",
+      "title": "Submission traceability",
+      "statement": "Required declarations, supporting artifacts, and unresolved limitations should be traceable without presenting field-general guidance as venue-specific compliance.",
+      "source": {
+        "title": "ARS Review Criteria Framework",
+        "publisher": "Academic Research Skills",
+        "uri": "repository://academic-paper-reviewer/references/review_criteria_framework.md",
+        "effective_date": "2026-08-08",
+        "verified_at": "2026-08-08",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "advisory_only",
+      "conflict_group": null
+    }
+  ]
+}
