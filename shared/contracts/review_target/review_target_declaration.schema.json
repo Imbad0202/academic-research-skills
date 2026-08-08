@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/review_target/review_target_declaration.schema.json",
+  "title": "Review Target Declaration",
+  "description": "Author-confirmed Phase 0 review target. Closed by design: a resolver must not infer a venue, target type, manuscript facts, or numeric weights.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "confirmed_by",
+    "confirmed_at",
+    "criteria_as_of",
+    "discipline",
+    "target",
+    "reporting_design_overlays",
+    "criterion_selection",
+    "precedence"
+  ],
+  "properties": {
+    "schema_version": {"const": "review-target-declaration/1.0"},
+    "confirmed_by": {"const": "author"},
+    "confirmed_at": {"type": "string", "format": "date-time"},
+    "criteria_as_of": {"type": "string", "format": "date"},
+    "discipline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "subfield", "additional_disciplines"],
+      "properties": {
+        "primary": {"type": "string", "minLength": 1},
+        "subfield": {"type": ["string", "null"], "minLength": 1},
+        "additional_disciplines": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["venue", "track", "contribution_type"],
+      "properties": {
+        "venue": {"type": ["string", "null"], "minLength": 1},
+        "track": {"type": ["string", "null"], "minLength": 1},
+        "contribution_type": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"venue": {"type": "null"}}, "required": ["venue"]},
+          "then": {"properties": {"track": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"venue": {"type": "string"}}, "required": ["venue"]},
+          "then": {"properties": {"track": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "reporting_design_overlays": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "criterion_selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "ids"],
+      "properties": {
+        "mode": {"enum": ["all_applicable", "explicit"]},
+        "ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "all_applicable"}}, "required": ["mode"]},
+          "then": {"properties": {"ids": {"maxItems": 0}}}
+        },
+        {
+          "if": {"properties": {"mode": {"const": "explicit"}}, "required": ["mode"]},
+          "then": {"properties": {"ids": {"minItems": 1}}}
+        }
+      ]
+    },
+    "precedence": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "allOf": [
+        {"contains": {"properties": {"rank": {"const": 1}}, "required": ["rank"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"rank": {"const": 2}}, "required": ["rank"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"rank": {"const": 3}}, "required": ["rank"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"rank": {"const": 4}}, "required": ["rank"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"authority_class": {"const": "official_venue_type"}}, "required": ["authority_class"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"authority_class": {"const": "field_society_standard"}}, "required": ["authority_class"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"authority_class": {"const": "reporting_design_overlay"}}, "required": ["authority_class"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"authority_class": {"const": "broad_field_fallback"}}, "required": ["authority_class"]}, "minContains": 1, "maxContains": 1}
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rank", "authority_class"],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1, "maximum": 4},
+          "authority_class": {
+            "enum": [
+              "official_venue_type",
+              "field_society_standard",
+              "reporting_design_overlay",
+              "broad_field_fallback"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

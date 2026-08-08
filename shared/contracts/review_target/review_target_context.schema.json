@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/review_target/review_target_context.schema.json",
+  "title": "Resolved Review Target Context",
+  "description": "Deterministic, pointer-only review target resolved from an author declaration and versioned registry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "declaration", "registry", "selected_criterion_ids", "selected_criteria",
+    "outcomes", "parallel_conflicts", "fallback_state", "resolution_state", "unresolved",
+    "resolved_digest", "phase1_safe", "numeric_weights_applied"
+  ],
+  "properties": {
+    "schema_version": {"const": "review-target-context/1.0"},
+    "declaration": {"$ref": "review_target_declaration.schema.json"},
+    "registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_id", "registry_version", "as_of", "registry_digest"],
+      "properties": {
+        "registry_id": {"type": "string", "minLength": 1},
+        "registry_version": {"type": "string", "minLength": 1},
+        "as_of": {"type": "string", "format": "date"},
+        "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "selected_criterion_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+    },
+    "selected_criteria": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/criterion_pointer"}
+    },
+    "outcomes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scientific_validity", "venue_fit", "submission_readiness"],
+      "properties": {
+        "scientific_validity": {"$ref": "#/$defs/id_list"},
+        "venue_fit": {"$ref": "#/$defs/id_list"},
+        "submission_readiness": {"$ref": "#/$defs/id_list"}
+      }
+    },
+    "parallel_conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["conflict_group", "criterion_ids", "reason"],
+        "properties": {
+          "conflict_group": {"type": "string", "minLength": 1},
+          "criterion_ids": {"$ref": "#/$defs/id_list"},
+          "reason": {"const": "parallel_interdisciplinary_criteria_require_human_resolution"}
+        }
+      }
+    },
+    "fallback_state": {"enum": ["field_general", "venue_exact", "venue_exact_advisory", "declared_target_unresolved"]},
+    "resolution_state": {"enum": ["resolved", "advisory_only", "partial"]},
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "dimension", "message"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "dimension": {"enum": ["scientific_validity", "venue_fit", "submission_readiness"]},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "resolved_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "phase1_safe": {"const": true},
+    "numeric_weights_applied": {"const": false}
+  },
+  "$defs": {
+    "id_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+    },
+    "criterion_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "criterion_id", "criterion_version", "criterion_digest", "authority_class", "authority_rank",
+        "dimension", "source_uri", "source_freshness", "blocking_eligible", "advisory_reasons", "registry_pointer"
+      ],
+      "properties": {
+        "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "criterion_version": {"type": "string", "minLength": 1},
+        "criterion_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "authority_class": {"enum": ["official_venue_type", "field_society_standard", "reporting_design_overlay", "broad_field_fallback"]},
+        "authority_rank": {"type": "integer", "minimum": 1, "maximum": 4},
+        "dimension": {"enum": ["scientific_validity", "venue_fit", "submission_readiness"]},
+        "source_uri": {"type": "string", "minLength": 1},
+        "source_freshness": {"enum": ["current", "stale", "unverified"]},
+        "blocking_eligible": {"type": "boolean"},
+        "advisory_reasons": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "registry_pointer": {"type": "string", "pattern": "^/criteria/[0-9]+$"}
+      }
+    }
+  }
+}

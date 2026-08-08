@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/review_target/criteria_registry.schema.json",
+  "title": "Review Criteria Registry",
+  "description": "Versioned criteria registry with explicit authority partitions, applicability, provenance, freshness, and blocking policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "registry_id", "registry_version", "as_of", "authority_classes", "criteria"],
+  "properties": {
+    "schema_version": {"const": "review-criteria-registry/1.0"},
+    "registry_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "registry_version": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "format": "date"},
+    "authority_classes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["official_venue_type", "field_society_standard", "reporting_design_overlay", "broad_field_fallback"],
+      "properties": {
+        "official_venue_type": {"$ref": "#/$defs/id_list"},
+        "field_society_standard": {"$ref": "#/$defs/id_list"},
+        "reporting_design_overlay": {"$ref": "#/$defs/id_list"},
+        "broad_field_fallback": {"$ref": "#/$defs/id_list"}
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/criterion"}
+    }
+  },
+  "$defs": {
+    "id_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disciplines", "subfields", "venues", "tracks", "contribution_types", "overlays"],
+      "properties": {
+        "disciplines": {"$ref": "#/$defs/string_list"},
+        "subfields": {"$ref": "#/$defs/string_list"},
+        "venues": {"$ref": "#/$defs/string_list"},
+        "tracks": {"$ref": "#/$defs/string_list"},
+        "contribution_types": {"$ref": "#/$defs/string_list"},
+        "overlays": {"$ref": "#/$defs/string_list"}
+      }
+    },
+    "string_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "publisher", "uri", "effective_date", "verified_at", "freshness"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1},
+        "publisher": {"type": "string", "minLength": 1},
+        "uri": {"type": "string", "minLength": 1},
+        "effective_date": {"type": "string", "format": "date"},
+        "verified_at": {"type": ["string", "null"], "format": "date"},
+        "freshness": {"enum": ["current", "stale", "unverified"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"freshness": {"const": "current"}}, "required": ["freshness"]},
+          "then": {"properties": {"verified_at": {"type": "string", "format": "date"}}}
+        }
+      ]
+    },
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "criterion_id", "version", "authority_class", "dimension", "title", "statement",
+        "source", "applicability", "exclusions", "blocking_policy", "conflict_group"
+      ],
+      "properties": {
+        "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "version": {"type": "string", "minLength": 1},
+        "authority_class": {
+          "enum": ["official_venue_type", "field_society_standard", "reporting_design_overlay", "broad_field_fallback"]
+        },
+        "dimension": {"enum": ["scientific_validity", "venue_fit", "submission_readiness"]},
+        "title": {"type": "string", "minLength": 1},
+        "statement": {"type": "string", "minLength": 1},
+        "source": {"$ref": "#/$defs/source"},
+        "applicability": {"$ref": "#/$defs/axes"},
+        "exclusions": {"$ref": "#/$defs/axes"},
+        "blocking_policy": {"enum": ["blocking_allowed", "advisory_only"]},
+        "conflict_group": {"type": ["string", "null"], "minLength": 1}
+      }
+    }
+  }
+}

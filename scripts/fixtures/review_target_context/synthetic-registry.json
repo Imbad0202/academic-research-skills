@@ -1,0 +1,92 @@
+{
+  "schema_version": "review-criteria-registry/1.0",
+  "registry_id": "synthetic-review-target-test-registry",
+  "registry_version": "1.0-test",
+  "as_of": "2026-08-08",
+  "authority_classes": {
+    "official_venue_type": ["official.example.scope", "official.example.format"],
+    "field_society_standard": ["field.computing.transparency", "field.education.context"],
+    "reporting_design_overlay": ["overlay.prisma.flow"],
+    "broad_field_fallback": ["broad.synthetic.claims"]
+  },
+  "criteria": [
+    {
+      "criterion_id": "official.example.scope",
+      "version": "2.1",
+      "authority_class": "official_venue_type",
+      "dimension": "venue_fit",
+      "title": "Synthetic scope match",
+      "statement": "The contribution should match the declared synthetic track scope.",
+      "source": {"title": "Synthetic venue instructions", "publisher": "Example Research Journal", "uri": "https://example.invalid/venue/scope", "effective_date": "2026-01-01", "verified_at": "2026-08-01", "freshness": "current"},
+      "applicability": {"disciplines": [], "subfields": [], "venues": ["Example Research Journal"], "tracks": ["Research Article"], "contribution_types": ["Empirical Article"], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "official.example.format",
+      "version": "1.4",
+      "authority_class": "official_venue_type",
+      "dimension": "submission_readiness",
+      "title": "Synthetic format check",
+      "statement": "The synthetic submission package should expose its required declarations.",
+      "source": {"title": "Synthetic venue checklist", "publisher": "Example Research Journal", "uri": "https://example.invalid/venue/checklist", "effective_date": "2025-01-01", "verified_at": "2025-01-01", "freshness": "stale"},
+      "applicability": {"disciplines": [], "subfields": [], "venues": ["Example Research Journal"], "tracks": ["Research Article"], "contribution_types": ["Empirical Article"], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "field.computing.transparency",
+      "version": "1.0",
+      "authority_class": "field_society_standard",
+      "dimension": "scientific_validity",
+      "title": "Synthetic computing transparency",
+      "statement": "Computing evidence should expose implementation choices relevant to the claim.",
+      "source": {"title": "Synthetic computing standard", "publisher": "Example Computing Society", "uri": "https://example.invalid/field/computing", "effective_date": "2026-01-01", "verified_at": "2026-08-01", "freshness": "current"},
+      "applicability": {"disciplines": ["Computing"], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": "synthetic.reporting-emphasis"
+    },
+    {
+      "criterion_id": "field.education.context",
+      "version": "3.0",
+      "authority_class": "field_society_standard",
+      "dimension": "scientific_validity",
+      "title": "Synthetic education context",
+      "statement": "Education evidence should preserve the learning and institutional context.",
+      "source": {"title": "Synthetic education standard", "publisher": "Example Education Society", "uri": "https://example.invalid/field/education", "effective_date": "2026-01-01", "verified_at": "2026-08-01", "freshness": "current"},
+      "applicability": {"disciplines": ["Education"], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": "synthetic.reporting-emphasis"
+    },
+    {
+      "criterion_id": "overlay.prisma.flow",
+      "version": "2020-test",
+      "authority_class": "reporting_design_overlay",
+      "dimension": "submission_readiness",
+      "title": "Synthetic reporting flow",
+      "statement": "The synthetic review workflow should carry a study-selection flow artifact.",
+      "source": {"title": "Synthetic reporting overlay", "publisher": "Example Reporting Group", "uri": "https://example.invalid/overlay/prisma", "effective_date": "2020-01-01", "verified_at": null, "freshness": "unverified"},
+      "applicability": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": ["PRISMA 2020"]},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "version": "1.0",
+      "authority_class": "broad_field_fallback",
+      "dimension": "scientific_validity",
+      "title": "Synthetic claim support",
+      "statement": "Synthetic claims should remain proportionate to synthetic evidence.",
+      "source": {"title": "Synthetic broad framework", "publisher": "Example Maintainer", "uri": "repository://scripts/fixtures/review_target_context/synthetic-registry.json", "effective_date": "2026-01-01", "verified_at": "2026-08-01", "freshness": "current"},
+      "applicability": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "advisory_only",
+      "conflict_group": null
+    }
+  ]
+}

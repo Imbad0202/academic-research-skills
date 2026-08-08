@@ -407,3 +407,7 @@ path = "scripts/test_check_human_subjects_output_contract.py"
 [[pytest]]
 id = "678-bibliographic-integrity-signals"
 path = "scripts/test_check_bibliographic_integrity_signals.py"
+
+[[pytest]]
+id = "683-review-target-context"
+path = "scripts/test_resolve_review_target_context.py"
