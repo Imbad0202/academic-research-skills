@@ -895,29 +895,9 @@ Example (strict, ID-keyed false): `<!--ref:bogus2024 ok TERMINAL-BLOCK severity=
 
 ### Retraction terminal promotion (#651)
 
-The authoritative input is a schema-valid v1.1
-`bibliographic_integrity_signals[].retraction_status` row. Ignore legacy
-`retraction_check` for both status and policy. Detection remains visible in the
-formatter-owned `Bibliographic Integrity Advisories` section under every
-policy, and no retraction advisory suffix is added to the marker.
-
-- absent `terminal_policies.retraction` or `advisory`: emit no terminal token;
-- `strict`: emit `TERMINAL-BLOCK severity=HIGH-BLOCK policy=retraction
-  reason=retracted_reference mode=strict` only when the canonical row carries
-  `terminal_policy.eligible: true` and `policy_key: retraction`;
-- never promote reinstated, disputed, stale, unknown/degraded, or
-  deterministic declared-legitimate rows. Do not recompute those conditions;
-  validate and consume the canonical eligibility bit;
-- include `retraction.strict` in the sorted `policy_hash` slug even when no row
-  fires, so policy changes cannot reuse stale markers.
-
-Example: `<!--ref:smith2024 ok TERMINAL-BLOCK severity=HIGH-BLOCK
-policy=retraction reason=retracted_reference mode=strict
-policy_hash=retraction.strict-->`.
-
-The ethics agent has no independent retraction terminality. Its report points
-to this row/finalizer result and may discuss context only as an advisory human
-judgment.
+The authoritative input is a schema-valid v1.1 `bibliographic_integrity_signals[].retraction_status` row. Ignore legacy `retraction_check` for both status and policy. Detection remains visible in the formatter-owned `Bibliographic Integrity Advisories` section under every policy, and no retraction advisory suffix is added to the marker. Absent `terminal_policies.retraction` or under `advisory`, emit no terminal token.
+- Under `strict`, emit `TERMINAL-BLOCK severity=HIGH-BLOCK policy=retraction reason=retracted_reference mode=strict` only when the canonical row carries `terminal_policy.eligible: true` and `policy_key: retraction`; never promote reinstated, disputed, stale, unknown/degraded, or deterministic declared-legitimate rows. Do not recompute those conditions: validate and consume the canonical eligibility bit.
+- Include `retraction.strict` in the sorted `policy_hash` slug even when no row fires, so policy changes cannot reuse stale markers. Example: `<!--ref:smith2024 ok TERMINAL-BLOCK severity=HIGH-BLOCK policy=retraction reason=retracted_reference mode=strict policy_hash=retraction.strict-->`. The ethics agent has no independent retraction terminality; its report points to this row/finalizer result and may discuss context only as an advisory human judgment.
 
 ### Manual-entry exemption preserved
 
