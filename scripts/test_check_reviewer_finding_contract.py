@@ -848,8 +848,8 @@ def test_m62_synth_roadmap_severity_column_dropped(tmp_path):
     root = _mirror(tmp_path)
     _edit(root, SYNTH_REL,
           lambda t: t.replace(
-              "| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Priority | Estimated Effort |",
-              "| # | Revision Item | Sub-Claim(s) | Source | Priority | Estimated Effort |", 1))
+              "| Transport ref | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Obligation class | Cost scope | Bounded consequence |",
+              "| Transport ref | Revision Item | Sub-Claim(s) | Source | Obligation class | Cost scope | Bounded consequence |", 1))
     code, err = _run2(root)
     assert code == 1
     assert "transported-metadata columns" in err
@@ -940,11 +940,11 @@ def test_m69_template_suggested_columns_dropped(tmp_path):
     root = _mirror(tmp_path)
     _edit(root, DECISION_TEMPLATE_REL,
           lambda t: t.replace(
-              "| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source Reviewer | Priority | Section | Expected Improvement |",
-              "| # | Revision Item | Sub-Claim(s) | Source Reviewer | Priority | Section | Expected Improvement |"))
+              "| Transport ref | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source Reviewer | Obligation class | Cost scope | Bounded consequence |",
+              "| Transport ref | Revision Item | Sub-Claim(s) | Source Reviewer | Obligation class | Cost scope | Bounded consequence |"))
     code, err = _run2(root)
     assert code == 1
-    assert "lost its transported-metadata columns" in err
+    assert "transported-metadata columns" in err
 
 
 def test_m70_standards_qualitative_base_rate_restored(tmp_path):

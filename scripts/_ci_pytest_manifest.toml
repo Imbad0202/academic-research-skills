@@ -341,6 +341,14 @@ id = "576-re-review-synthesis-checker"
 path = "scripts/test_check_re_review_synthesis.py"
 
 [[pytest]]
+id = "670-non-ranking-revision-roadmap"
+path = "scripts/test_revision_roadmap.py"
+
+[[pytest]]
+id = "670-revision-roadmap-integration"
+path = "scripts/test_check_670_revision_roadmap_integration.py"
+
+[[pytest]]
 id = "576-persuasion-invariance-fixtures"
 path = "scripts/test_check_persuasion_invariance_fixtures.py"
 

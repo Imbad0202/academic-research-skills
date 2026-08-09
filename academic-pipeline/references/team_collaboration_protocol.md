@@ -76,7 +76,7 @@ For each stage transition, the following handoff procedure applies:
 |------|--------|
 | **Who hands off** | Lead Author |
 | **Who receives** | Review Coordinator |
-| **Materials** | Revised Draft + Original (pre-revision) Draft (#576 §3.1 Phase 2A comparison base) + Response to Reviewers (Schema 8) + Editorial Decision Letter (Schema 6 — its Review Panel Provenance block feeds the #539 Judge Record) + Round-1 review findings (Schema 6 reports — #576 §4 level-3 criterion layer) + Round-1 Revision Roadmap + apply report(s) with their paired revision patch/diff files (#390/#576 §11 — the two travel together) + Round-1 Reviewer Configuration Cards (yardstick continuity — `re_review_mode_protocol.md` § Yardstick Continuity). Re-review-mode transfer (default); a user-requested fresh full review at 3' hands over the Revised Draft + available context only |
+| **Materials** | Revised Draft + hard-required Original pre-revision Draft + immutable Round-1 Revision Roadmap + exact author-adjudication sidecar + fully replayed Revision-Evidence Bundle + Response to Reviewers + Editorial Decision Letter + Round-1 findings + exact ordered patch/report pairs matching the bundle + Round-1 Reviewer Configuration Cards. This is the default current #576 1.1 re-review transfer; missing original/roadmap/author/bundle fails closed. A user-requested fresh full review at 3' is a separate branch with Revised Draft + available context. |
 | **Approval needed** | Lead Author confirms all addressable items are handled |
 | **Handoff checklist** | Re-review mode: Response to Reviewers covers every roadmap item; new references verified. Fresh full review at 3': no roadmap-coverage check (no Round-1 Roadmap exists); new references verified |
 

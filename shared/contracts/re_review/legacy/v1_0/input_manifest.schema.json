@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/re_review/legacy/v1_0/input_manifest.schema.json",
+  "title": "Re-review Input Manifest (hash-bound, freshness-checked)",
+  "description": "Emitted by the dispatching layer BEFORE Phase 1 of the #576 Spec B three-gate re-review contract. Every gate input is a present-DISCRIMINATED union — an absent artifact carries NO ref, hash, or freshness fields (no sentinel strings, no fabricated hashes); the §11 presence policies decide what each absence means. Its JSON-Canonical-Form sha256 rides in every phase artifact (input_manifest_hash -> precommitment_hash -> verdict_record_hash chain), so scripts/check_re_review_synthesis.py can prove all three gates saw the same inputs. Spec: docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md §11.",
+
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["round_id", "cross_model_active", "artifacts"],
+
+  "properties": {
+    "round_id": { "type": "string", "minLength": 1 },
+    "cross_model_active": {
+      "type": "boolean",
+      "description": "The dispatching layer's configuration declaration at emission — the checker input for every configuration-dependent rule (e.g. single_family_disclosed validity). Consistency-checked against the sidecar: any row with cross_model_status in {agree, diverges, unavailable} (only not_configured is neutral), any RebuttalAdjudication, any judge-shortcut record, or any booked_disclosed disposition implies true."
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_manuscript",
+        "revised_manuscript",
+        "revision_roadmap",
+        "editorial_decision_letter",
+        "response_to_reviewers",
+        "revision_patches",
+        "apply_reports",
+        "round1_findings",
+        "round1_config_cards"
+      ],
+      "properties": {
+        "original_manuscript": { "$ref": "#/$defs/artifact_entry" },
+        "revised_manuscript": {
+          "$ref": "#/$defs/artifact_entry",
+          "description": "Hard-required (absent -> G0 manifest_incomplete)."
+        },
+        "revision_roadmap": {
+          "$ref": "#/$defs/artifact_entry",
+          "description": "Hard-required (absent -> G0 manifest_incomplete)."
+        },
+        "editorial_decision_letter": { "$ref": "#/$defs/artifact_entry" },
+        "response_to_reviewers": { "$ref": "#/$defs/artifact_entry" },
+        "revision_patches": {
+          "$ref": "#/$defs/artifact_array_entry",
+          "description": "By-position pair of apply_reports; when both arrays are present their lengths MUST be equal, and each apply report's patch_digest must equal the paired entry's sha256 (content-bound pairing, §11)."
+        },
+        "apply_reports": {
+          "$ref": "#/$defs/artifact_array_entry",
+          "description": "present: false IS the canonical empty encoding (zero reports <=> the witness's not_run_no_reports — one fact, one encoding). apply_reports present with revision_patches absent or length-mismatched -> manifest_incomplete, G0."
+        },
+        "round1_findings": { "$ref": "#/$defs/artifact_entry" },
+        "round1_config_cards": { "$ref": "#/$defs/artifact_entry" }
+      }
+    }
+  },
+
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "artifact_ref": {
+      "type": "string",
+      "pattern": "^(passport:.+|path:(?![/\\\\])(?![A-Za-z]:)(?!\\.\\.(?:[/\\\\]|$))(?!.*[/\\\\]\\.\\.(?:[/\\\\]|$)).+)$",
+      "description": "TAGGED union with closed grammar passport:<artifact_ref> | path:<relative path> — the prefix IS the passport-tracked discriminator; no untagged strings. The path form is RELATIVE only: no leading separator, no drive letter, no '..' traversal segments (checker-mirrored)."
+    },
+    "freshness_value": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "null" }
+      ],
+      "description": "Copied from the artifact's Material Passport entry when the ref is passport:-tagged, else null. A null on a passport: entry fails the checker; null on a path: entry is a visible degradation (freshness rules skip it)."
+    },
+
+    "artifact_entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["present", "path_or_passport_ref", "sha256", "version_label", "origin_date"],
+          "properties": {
+            "present": { "const": true },
+            "path_or_passport_ref": { "$ref": "#/$defs/artifact_ref" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "version_label": { "$ref": "#/$defs/freshness_value" },
+            "origin_date": { "$ref": "#/$defs/freshness_value" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["present"],
+          "properties": {
+            "present": { "const": false }
+          }
+        }
+      ]
+    },
+
+    "artifact_array_entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["present", "items"],
+          "properties": {
+            "present": { "const": true },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path_or_passport_ref", "sha256", "version_label", "origin_date"],
+                "properties": {
+                  "path_or_passport_ref": { "$ref": "#/$defs/artifact_ref" },
+                  "sha256": { "$ref": "#/$defs/sha256" },
+                  "version_label": { "$ref": "#/$defs/freshness_value" },
+                  "origin_date": { "$ref": "#/$defs/freshness_value" }
+                }
+              },
+              "description": "Every element FULLY populated (no per-element absence). The array discriminates at the ARRAY level."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["present"],
+          "properties": {
+            "present": { "const": false }
+          }
+        }
+      ]
+    }
+  }
+}

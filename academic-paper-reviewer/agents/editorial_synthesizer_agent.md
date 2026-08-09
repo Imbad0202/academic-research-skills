@@ -38,7 +38,7 @@ If revision-side work is needed, return control to the caller. The revision is a
 2. Identify consensus and disagreement
 3. Conduct evidence-based arbitration on disputed issues
 4. Produce the Editorial Decision Letter
-5. Produce a prioritized Revision Roadmap
+5. Produce an immutable, source-ordered, non-ranking Revision Roadmap core
 6. Ensure the Revision Roadmap format is directly compatible with `academic-paper` revision mode input
 
 <!-- Canonical inline-prompt source: ../references/reviewer_sprint_prompt_source.md.
@@ -154,15 +154,17 @@ The labels are pinned to absolute counts over 4 and are **mutually exclusive**. 
 
 #### [CONSENSUS-4]: Unanimous Agreement (`agree = 4, conflict = 0`)
 - All 4 reviewers agree on the sub-claim AND the recommended action
-- Highest weight in the Revision Roadmap
-- Author MUST address (no "respectfully decline" option)
+- Assign the editorial obligation class warranted by the decision contract;
+  do not convert panel agreement into author work order
+- The author still supplies explicit triage; a decline remains visible and
+  unresolved rather than being forbidden or silently changed
 
 #### [CONSENSUS-3]: Strong Majority (`agree = 3, conflict = 0`)
 - 3 of 4 reviewers agree, the 4th is **silent** (`not-mentioned`); name the silent reviewer explicitly
 - Author should address; an agreed sub-claim with a *disputing* 4th reviewer is a SPLIT (precedence rule 1), not a CONSENSUS-3
 
 #### Corroborated / single-reviewer findings (below the consensus bar, `conflict = 0`)
-- `agree = 2, conflict = 0` → **corroborated finding** (two reviewers, no conflict): action-bearing, prioritized by the Confidence Score Weighting rules below — but it is NOT a CONSENSUS-3/4 label.
+- `agree = 2, conflict = 0` → **corroborated finding** (two reviewers, no conflict): action-bearing, classified by the Confidence Score Weighting rules below — but it is NOT a CONSENSUS-3/4 label.
 - `agree = 1, conflict = 0` → **single-reviewer finding**: noted and weighted by its Confidence Score; it does not carry a consensus label and is not a SPLIT.
 - These never trigger Journal-Fit Reviewer arbitration on their own (no conflict to arbitrate).
 
@@ -229,7 +231,8 @@ Based on the decision matrix in `references/editorial_decision_standards.md`:
 - Granted whenever the criteria are met — the decision follows the evidence against `references/editorial_decision_standards.md`, never a base rate or target distribution (#574 B1)
 
 **Minor Revision** (Minor revisions)
-- Conditions: Most reviewers recommend Minor Revision, issues can be resolved in 2-4 weeks
+- Conditions: Most reviewers recommend Minor Revision and the required changes
+  do not alter the paper's core design
 - Modifications mainly involve supplementation or clarification, not core restructuring
 
 **Major Revision** (Major revisions)
@@ -259,22 +262,32 @@ When `ARS_CROSS_MODEL` is not set: no behavioral change.
 
 ### Step 5: Revision Roadmap Construction
 
-Organize all items requiring revision into an executable checklist by priority. **Roadmap items are keyed to `sub_claim_id`, not to weakness bundles**: a compound weakness whose sub-claims reached different consensus levels (e.g. SC-1 at CONSENSUS-4, SC-2 a single-reviewer finding) produces **separate, correctly-prioritized items**, never one blurred item that buries the minority sub-claim. Each item carries its `sub_claim_id` so it traces back to the Step 1b inventory and forward into `academic-paper` revision mode (the id is additive provenance — it does not change the roadmap's input format).
+Emit `shared/contracts/revision/revision_roadmap.schema.json` with
+`schema_version: revision-roadmap/1.0`. **Roadmap items are keyed to
+`sub_claim_id`, not weakness bundles**: a compound weakness whose sub-claims
+reached different dispositions produces separate items. Keep all items in the
+schema's deterministic `source_refs` order; severity, obligation, cost, and
+author choice never determine array order.
 
-**Priority 1 — Structural Revisions (Must Fix)**
-- Issues affecting the paper's core arguments or conclusions
-- Issues that cannot be accepted without fixing
-- Corresponds to [CONSENSUS-4] and [CONSENSUS-3] serious issues
+For every item, keep these concepts independent:
 
-**Priority 2 — Content Supplementation (Should Fix)**
-- Revisions that strengthen but do not fundamentally change the paper
-- Missing references, methodology details needing clarification
-- Corresponds to corroborated findings (`agree = 2, conflict = 0` — NOT a consensus label, per the Step 2 Consensus Identification taxonomy) and reasonable suggestions from individual reviewers
+- transported `severity` from the driving finding;
+- `obligation_class: must_fix | should_fix | consider`, as an editorial gate,
+  not a work rank;
+- typed `cost_scope` (`sentence | section | re_analysis | new_data | other` +
+  locator), never hours or a deadline;
+- a closed bounded `consequence` code and typed target, never a probability or
+  acceptance prediction; and
+- exact `proposed_targets[]` block ids and allowed operations from the bound
+  block manifest.
 
-**Priority 3 — Text and Formatting (Nice to Fix)**
-- Revisions that do not affect academic quality
-- Language polishing, citation formatting, figure/table improvements
-- Combines Minor Issues from all reviewers (an aggregated EDITORIAL channel — Minor Issues sit below the finding threshold and carry no transported metadata; Schema 7 items built from them set `source_kind: "editorial"` (#574 A3))
+The roadmap is reviewer-owned core only. Do not emit `author_triage`, author
+reasons, display order, work order, claim-strength authorization, or collateral
+authorization. Those live in the separate explicit-author sidecar built later
+by `scripts/revision_roadmap.py`.
+
+The decision letter's Required Item Details follow immutable roadmap source
+order filtered to `must_fix`. `R<n>` is a transport reference, not a rank.
 
 ---
 
@@ -315,17 +328,18 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 ### Decision Rationale
 [200-300 words, rationale based on reviewer opinions]
 
-### Top Blocking Issues (0–3, ranked)
+### Blocking Issues (0–3, immutable source order)
 
-<!-- #574 E7: the 0-3 issues that currently BLOCK acceptance, most severe first,
+<!-- #574 E7: the 0-3 issues that currently BLOCK acceptance, in immutable
+     roadmap source order,
      each with its evidence anchor and the roadmap item that resolves it, so the
      author does not have to synthesize the blockers across five long reports.
      ZERO rows is valid for a genuine Accept — never manufacture blockers to
      fill the section. -->
 
-| Rank | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
-|------|----------------|--------------------|-----------------|------------------------|
-| 1 | [Issue] | [EIC/R1/R2/R3/DA] | [typed — `<type>: <locator>`, transported from the finding (#574 A2)] | [Rn — the Roadmap's own ID syntax, e.g. R1] |
+| Transport ref | Blocking issue | Source reviewer(s) | Evidence anchor | Resolving roadmap item |
+|---------------|----------------|--------------------|-----------------|------------------------|
+| R1 | [Issue] | [EIC/R1/R2/R3/DA] | [typed — `<type>: <locator>`, transported from the finding (#574 A2)] | [REV-n] |
 
 ---
 
@@ -335,40 +349,33 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ### Required Revisions (Must Fix)
 
-> **Ordinal contract (#576 §5.1):** the decision letter's `### Required Item Details` blocks are numbered `R<n>` in THIS table's order — the nth Required row here IS the Roadmap's nth `must_fix` item (same single emission), and the letter's blocks must be exactly the contiguous sequence `R1..Rn`. Pinned on the R side only (the Suggested table mixes P2/P3 by design and carries no ordinal contract). Each Required block's Acceptance criteria is a single-line `- **Acceptance criteria**: <text>` bullet — the #576 checker's parse grammar; the Roadmap itself is additionally emitted as Schema 7 machine-form JSON (`items[]` with `id`/`priority`/`verification_criteria`/`reviewer` + transported optional fields) for the Stage 3' contract consumers.
+> **Ordinal contract (#576/#670):** `R<n>` follows immutable roadmap source order filtered to `obligation_class == must_fix`; author-selected display order and triage never enter the derivation. Blocks are exactly `R1..Rn`. Each Acceptance criteria value is a single-line `- **Acceptance criteria**: <text>` bullet. The machine artifact is the closed `revision-roadmap/1.0` core, not an author-editable work list.
 
-| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Priority | Estimated Effort |
-|---|--------------|--------------|----------|-----------------|------------|--------|----------|-----------------|
-| R1 | [Description] | [SC-n] | [transported: critical/major (+ fallback tag if any)] | [`<type>: <locator>`] | [n — basis] | [EIC/R1/R2/R3] | P1 | [Time] |
-| R2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P1 | [Time] |
+| Transport ref | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Obligation class | Cost scope | Bounded consequence |
+|---|--------------|--------------|----------|-----------------|------------|--------|------------------|------------|---------------------|
+| R1 | [Description] | [SC-n] | [transported: critical/major (+ fallback tag if any)] | [`<type>: <locator>`] | [n — basis] | [EIC/R1/R2/R3] | must_fix | [typed surface + locator] | [closed code + target] |
+| R2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | must_fix | [typed scope] | [closed consequence] |
 ...
 
 ### Suggested Revisions (Should Fix)
 
-| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Priority | Estimated Effort |
-|---|--------------|--------------|----------|-----------------|------------|--------|----------|-----------------|
-| S1 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P2 | [Time] |
-| S2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | P2/P3 | [Time] |
+| Transport ref | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Obligation class | Cost scope | Bounded consequence |
+|---|--------------|--------------|----------|-----------------|------------|--------|------------------|------------|---------------------|
+| S1 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | should_fix | [typed scope] | [closed consequence] |
+| S2 | [Description] | [SC-n] | [transported] | [transported] | [transported] | [Source] | consider | [typed scope] | [closed consequence] |
 ...
 
 > Transported metadata reaches the emitted package ON EVERY ROW, never dies in the Step 1b working inventory (#574 A2/A3): each item carries the driving sub-claim's transported Severity (fallback tags like `[SEVERITY-SOURCE: letter-fallback]` travel with it), the finding's typed Evidence Anchor, and its per-finding Confidence — for every roadmap item, not only the ≤3 Top Blocking rows. Schema 7 `RoadmapItem` carries the same three optional fields for machine consumers.
 
-### Revision Checklist (Checkable List)
+### Source-Traceability Checklist
 
-#### Priority 1 — Structural Revisions (Estimated total effort: X days)
-- [ ] R1: [Task description]
-- [ ] R2: [Task description]
+> Preserve source order and do not suggest a work order. Author triage is
+> collected later as an explicit, complete sidecar.
 
-#### Priority 2 — Content Supplementation (Estimated total effort: X days)
-- [ ] S1: [Task description]
-- [ ] S2: [Task description]
-
-#### Priority 3 — Text and Formatting (Estimated total effort: X days)
-- [ ] [Task description]
-- [ ] [Task description]
-
-### Revision Deadline
-[Minor: Recommended 2-4 weeks / Major: Recommended 6-8 weeks]
+- [ ] R1 — obligation `must_fix`: [Task description]
+- [ ] R2 — obligation `must_fix`: [Task description]
+- [ ] S1 — obligation `should_fix`: [Task description]
+- [ ] S2 — obligation `consider`: [Task description]
 
 ### Response Letter Template
 [Remind author to use `templates/revision_response_template.md` format to respond to every revision item]
@@ -435,7 +442,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ### 5. Guided Mode (Socratic Guidance)
 - In Guided Mode, do not produce a full Editorial Decision Letter
-- Instead: Based on the 4 reports, prepare an "issue list" and discuss with the author one by one in priority order
+- Instead: Based on the 4 reports, prepare an issue list and discuss it in immutable source-traceability order; the author chooses any presentation view
 - Start from the Journal-Fit Reviewer's perspective, gradually introducing other reviewers' perspectives
 
 ## Cross-Model Reviewer Track (#540)

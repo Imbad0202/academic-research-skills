@@ -21,13 +21,17 @@ import jsonschema
 import pytest
 
 from scripts import check_re_review_synthesis as crs
+from scripts._block_parser import base_draft_hash, parse_document
+from scripts.ars_anchorize_draft import build_manifest
+from scripts.ars_apply_revision_patch import run as apply_revision_patch
+from scripts.revision_roadmap import author_decision_digest
 
 REPO = Path(__file__).resolve().parents[1]
 SCHEMA_DIR = REPO / "shared" / "contracts" / "re_review"
 EXAMPLES = REPO / "academic-paper-reviewer" / "examples"
 
-ORIGINAL_BYTES = b"# Manuscript v1\n\nOriginal body.\n"
-REVISED_BYTES = b"# Manuscript v2\n\nRevised body.\n"
+ORIGINAL_BYTES = b"<!--block:B0001-->\nOriginal body.\n"
+REVISED_BYTES = b"<!--block:B0001-->\nRevised body.\n"
 PATCH_BYTES = b'{"synthetic": "patch bytes"}\n'
 ORIGINAL_SHA = hashlib.sha256(ORIGINAL_BYTES).hexdigest()
 REVISED_SHA = hashlib.sha256(REVISED_BYTES).hexdigest()
@@ -78,7 +82,7 @@ def scenario_accept():
                 "description": "Justify the sample size",
                 "reviewer": "R1",
                 "type": "Major",
-                "priority": "must_fix",
+                "obligation_class": "must_fix",
                 "severity": "major",
                 "target_section": "Methods",
                 "suggested_action": "Add a power analysis",
@@ -90,7 +94,7 @@ def scenario_accept():
                 "description": "Clarify limitations",
                 "reviewer": "EIC",
                 "type": "Minor",
-                "priority": "should_fix",
+                "obligation_class": "should_fix",
                 "severity": "minor",
                 "target_section": "Discussion",
                 "suggested_action": "Add a limitations paragraph",
@@ -115,13 +119,13 @@ def scenario_accept():
         "## Closing\n"
     )
     precommitment = {
-        "contract_version": "1.0",
+        "contract_version": "1.1",
         "round_id": "round-2",
         "input_manifest_hash": "0" * 64,
         "items": [
             {
                 "item_id": "REV-001",
-                "priority": "must_fix",
+                "obligation_class": "must_fix",
                 "inherited_criterion": {
                     "roadmap_text": "A power analysis with a stated effect size appears in Methods.",
                     "letter_text": "A formal power analysis appears in Methods §3.2.",
@@ -139,7 +143,7 @@ def scenario_accept():
             },
             {
                 "item_id": "REV-002",
-                "priority": "should_fix",
+                "obligation_class": "should_fix",
                 "inherited_criterion": {
                     "roadmap_text": "A limitations paragraph names the generalizability bounds.",
                 },
@@ -155,6 +159,7 @@ def scenario_accept():
         "new_standards": [],
     }
     verdict_record = {
+        "contract_version": "1.1",
         "round_id": "round-2",
         "precommitment_hash": "0" * 64,
         "items": [
@@ -180,6 +185,7 @@ def scenario_accept():
         "escalation_exceptions": [],
     }
     traceability = {
+        "contract_version": "1.1",
         "round_id": "round-2",
         "revision": 1,
         "verdict_record_hash": "0" * 64,
@@ -187,7 +193,7 @@ def scenario_accept():
             {
                 "item_id": "REV-001",
                 "concern_id": "R1",
-                "priority": "MUST_FIX",
+                "obligation_class": "MUST_FIX",
                 "original_comment": "Sample size is asserted, not justified.",
                 "authors_claim": "We added a power analysis in §3.2.",
                 "revision_location": "Methods §3.2",
@@ -202,7 +208,7 @@ def scenario_accept():
             {
                 "item_id": "REV-002",
                 "concern_id": "S1",
-                "priority": "SHOULD_FIX",
+                "obligation_class": "SHOULD_FIX",
                 "original_comment": "Limitations are unclear.",
                 "authors_claim": "We added a limitations paragraph.",
                 "revision_location": "Discussion §5",
@@ -230,8 +236,8 @@ def scenario_accept():
                 {"item_id": "REV-001", "final_verdict": "FULLY_ADDRESSED", "driving_severity": "major"},
             ],
             "verdict_counts": _counts(must_fix={"FULLY_ADDRESSED": 1}, should_fix={"FULLY_ADDRESSED": 1}),
-            "residual_magnitude_counts": _magnitudes(),
-            "p2_addressed_rate": {"numerator": 1, "denominator": 1},
+            "residual_obligation_class_counts": _magnitudes(),
+            "should_fix_addressed_rate": {"numerator": 1, "denominator": 1},
             "regressions": [],
             "non_regression_new_issue_ids": [],
             "escalations": [],
@@ -246,7 +252,7 @@ def scenario_accept():
         "letter": letter,
         "reports": [
             {
-                "report_format_version": "1.2",
+                "report_format_version": "1.3",
                 "base_draft_hash": ORIGINAL_SHA[:12],
                 "output_draft_hash": REVISED_SHA[:12],
             }
@@ -270,7 +276,7 @@ def _counts(must_fix=None, should_fix=None, consider=None):
 def _magnitudes(must_fix=None, should_fix=None, consider=None):
     result = {}
     for name, given in (("must_fix", must_fix), ("should_fix", should_fix), ("consider", consider)):
-        bucket = {mag: 0 for mag in crs.MAGNITUDES}
+        bucket = {mag: 0 for mag in crs.RESIDUAL_OBLIGATION_CLASSES}
         bucket.update(given or {})
         result[name] = bucket
     return result
@@ -287,7 +293,7 @@ def scenario_complex():
                 "description": "Confounded treatment assignment",
                 "reviewer": "R1, R3",
                 "type": "Major",
-                "priority": "must_fix",
+                "obligation_class": "must_fix",
                 "severity": "critical",
                 "target_section": "Design",
                 "suggested_action": "Re-run with matched controls or rebut",
@@ -299,7 +305,7 @@ def scenario_complex():
                 "description": "Missing robustness checks",
                 "reviewer": "Peer Reviewer 2 (Domain)",
                 "type": "Major",
-                "priority": "must_fix",
+                "obligation_class": "must_fix",
                 "severity": "major",
                 "target_section": "Results",
                 "suggested_action": "Add robustness table",
@@ -311,7 +317,7 @@ def scenario_complex():
                 "description": "Terminology drift",
                 "reviewer": "EIC",
                 "type": "Editorial",
-                "priority": "should_fix",
+                "obligation_class": "should_fix",
                 "severity": "minor",
                 "target_section": "Throughout",
                 "suggested_action": "Unify terminology",
@@ -323,7 +329,7 @@ def scenario_complex():
                 "description": "Consider a figure for the pipeline",
                 "reviewer": "EIC",
                 "type": "Editorial",
-                "priority": "consider",
+                "obligation_class": "consider",
                 "source_kind": "editorial",
                 "target_section": "Methods",
                 "suggested_action": "Optional figure",
@@ -335,7 +341,7 @@ def scenario_complex():
                 "description": "Legacy-style item without transported severity",
                 "reviewer": "R2",
                 "type": "Minor",
-                "priority": "should_fix",
+                "obligation_class": "should_fix",
                 "target_section": "Appendix",
                 "suggested_action": "Tidy appendix tables",
                 "consensus_level": "SPLIT",
@@ -365,7 +371,7 @@ def scenario_complex():
     pre_items = [
         {
             "item_id": "REV-001",
-            "priority": "must_fix",
+            "obligation_class": "must_fix",
             "inherited_criterion": {
                 "roadmap_text": "Assignment confound is removed or rebutted with evidence.",
                 "letter_text": "The confound is removed by design or rebutted with matched evidence.",
@@ -383,7 +389,7 @@ def scenario_complex():
         },
         {
             "item_id": "REV-002",
-            "priority": "must_fix",
+            "obligation_class": "must_fix",
             "inherited_criterion": {
                 "roadmap_text": "A robustness table covers the two alternative specifications.",
                 "letter_text": "A robustness table covers both alternative specifications.",
@@ -401,7 +407,7 @@ def scenario_complex():
         },
         {
             "item_id": "REV-003",
-            "priority": "should_fix",
+            "obligation_class": "should_fix",
             "inherited_criterion": {"roadmap_text": "The construct is named consistently throughout."},
             "operationalization": {"fully_addressed": "One construct name is used consistently in every section."},
             "expected_change_surface": "Throughout",
@@ -411,7 +417,7 @@ def scenario_complex():
         },
         {
             "item_id": "REV-005",
-            "priority": "should_fix",
+            "obligation_class": "should_fix",
             "inherited_criterion": {"roadmap_text": "Appendix tables carry readable headers."},
             "operationalization": {"fully_addressed": "Every appendix table carries descriptive column headers."},
             "expected_change_surface": "Appendix",
@@ -421,7 +427,7 @@ def scenario_complex():
         },
     ]
     precommitment = {
-        "contract_version": "1.0",
+        "contract_version": "1.1",
         "round_id": "round-2",
         "input_manifest_hash": "0" * 64,
         "items": pre_items,
@@ -446,6 +452,7 @@ def scenario_complex():
         "decision_impact_note": "Slightly narrows the consistency surface.",
     }
     verdict_record = {
+        "contract_version": "1.1",
         "round_id": "round-2",
         "precommitment_hash": "0" * 64,
         "items": [
@@ -454,7 +461,7 @@ def scenario_complex():
                 "verdict": "PARTIALLY_ADDRESSED",
                 "evidence_anchor": ['text: §2 "matched controls"'],
                 "change_summary": "Design adds matched controls for one cohort.",
-                "residual_gap": {"text": "Second cohort remains unmatched.", "residual_magnitude": "should_fix"},
+                "residual_gap": {"text": "Second cohort remains unmatched.", "residual_obligation_class": "should_fix"},
                 "verified_by": "R1",
                 "applied_criterion": "precommitted",
             },
@@ -533,6 +540,7 @@ def scenario_complex():
         "source_ref": "reapplication:RAP-1",
     }
     traceability = {
+        "contract_version": "1.1",
         "round_id": "round-2",
         "revision": 2,
         "supersedes_hash": "ab" * 32,
@@ -541,7 +549,7 @@ def scenario_complex():
             {
                 "item_id": "REV-001",
                 "concern_id": "R1",
-                "priority": "MUST_FIX",
+                "obligation_class": "MUST_FIX",
                 "original_comment": "Assignment correlates with cohort.",
                 "authors_claim": "We disagree; matched evidence attached.",
                 "revision_location": "Design §2",
@@ -559,7 +567,7 @@ def scenario_complex():
             {
                 "item_id": "REV-002",
                 "concern_id": "R2",
-                "priority": "MUST_FIX",
+                "obligation_class": "MUST_FIX",
                 "original_comment": "Single specification only.",
                 "authors_claim": "Robustness table added (appendix).",
                 "revision_location": "Appendix Table 4",
@@ -576,7 +584,7 @@ def scenario_complex():
             {
                 "item_id": "REV-003",
                 "concern_id": "S1",
-                "priority": "SHOULD_FIX",
+                "obligation_class": "SHOULD_FIX",
                 "original_comment": "Terminology drifts.",
                 "authors_claim": "Unified throughout.",
                 "revision_location": "Body sections",
@@ -590,7 +598,7 @@ def scenario_complex():
             {
                 "item_id": "REV-004",
                 "concern_id": "S2",
-                "priority": "CONSIDER",
+                "obligation_class": "CONSIDER",
                 "original_comment": "A pipeline figure would help.",
                 "authors_claim": "Figure 2 added.",
                 "revision_location": "Methods Figure 2",
@@ -604,7 +612,7 @@ def scenario_complex():
             {
                 "item_id": "REV-005",
                 "concern_id": "S3",
-                "priority": "SHOULD_FIX",
+                "obligation_class": "SHOULD_FIX",
                 "original_comment": "Appendix tables unreadable.",
                 "authors_claim": "Headers streamlined.",
                 "revision_location": "Appendix",
@@ -685,8 +693,8 @@ def scenario_complex():
                 should_fix={"FULLY_ADDRESSED": 1, "MADE_WORSE": 1},
                 consider={"FULLY_ADDRESSED": 1},
             ),
-            "residual_magnitude_counts": _magnitudes(),
-            "p2_addressed_rate": {"numerator": 1, "denominator": 2},
+            "residual_obligation_class_counts": _magnitudes(),
+            "should_fix_addressed_rate": {"numerator": 1, "denominator": 2},
             "regressions": [{"new_issue_id": "NEW-1", "severity": "minor"}],
             "non_regression_new_issue_ids": ["NEW-2", "NEW-3"],
             "escalations": [
@@ -708,7 +716,7 @@ def scenario_complex():
         "letter": letter,
         "reports": [
             {
-                "report_format_version": "1.2",
+                "report_format_version": "1.3",
                 "base_draft_hash": ORIGINAL_SHA[:12],
                 "output_draft_hash": REVISED_SHA[:12],
             }
@@ -731,7 +739,7 @@ def scenario_g2d(accepted: bool):
                 "description": "Anonymization claim unsupported",
                 "reviewer": "R1",
                 "type": "Major",
-                "priority": "must_fix",
+                "obligation_class": "must_fix",
                 "severity": "critical",
                 "target_section": "Ethics",
                 "suggested_action": "Document the de-identification procedure",
@@ -743,7 +751,7 @@ def scenario_g2d(accepted: bool):
                 "description": "Figure captions too terse",
                 "reviewer": "R2",
                 "type": "Minor",
-                "priority": "should_fix",
+                "obligation_class": "should_fix",
                 "severity": "minor",
                 "target_section": "Figures",
                 "suggested_action": "Expand captions",
@@ -769,7 +777,7 @@ def scenario_g2d(accepted: bool):
     )
     pre_rev001 = {
         "item_id": "REV-001",
-        "priority": "must_fix",
+        "obligation_class": "must_fix",
         "inherited_criterion": {
             "roadmap_text": "The de-identification procedure is documented and matches the data release.",
             "letter_text": "The de-identification procedure is documented step by step.",
@@ -786,14 +794,14 @@ def scenario_g2d(accepted: bool):
         "source_reviewer_labels": ["R1"],
     }
     precommitment = {
-        "contract_version": "1.0",
+        "contract_version": "1.1",
         "round_id": "round-3",
         "input_manifest_hash": "0" * 64,
         "items": [
             pre_rev001,
             {
                 "item_id": "REV-002",
-                "priority": "should_fix",
+                "obligation_class": "should_fix",
                 "inherited_criterion": {"roadmap_text": "Every figure caption states what the figure shows."},
                 "operationalization": {"fully_addressed": "Each caption names the variable and the takeaway."},
                 "expected_change_surface": "Figures",
@@ -815,6 +823,7 @@ def scenario_g2d(accepted: bool):
         "decision_impact_note": "Release matching moves to the appendix surface.",
     }
     verdict_record = {
+        "contract_version": "1.1",
         "round_id": "round-3",
         "precommitment_hash": "0" * 64,
         "items": [
@@ -850,6 +859,7 @@ def scenario_g2d(accepted: bool):
         "criterion_ref": "phase1:REV-001",
     }
     traceability = {
+        "contract_version": "1.1",
         "round_id": "round-3",
         "revision": 2 if accepted else 1,
         "verdict_record_hash": "0" * 64,
@@ -857,7 +867,7 @@ def scenario_g2d(accepted: bool):
             {
                 "item_id": "REV-001",
                 "concern_id": "R1",
-                "priority": "MUST_FIX",
+                "obligation_class": "MUST_FIX",
                 "original_comment": "The claim is asserted without procedure.",
                 "authors_claim": "Procedure documented in §6.",
                 "revision_location": "Ethics §6",
@@ -872,7 +882,7 @@ def scenario_g2d(accepted: bool):
             {
                 "item_id": "REV-002",
                 "concern_id": "S1",
-                "priority": "SHOULD_FIX",
+                "obligation_class": "SHOULD_FIX",
                 "original_comment": "Captions too terse.",
                 "authors_claim": "Expanded.",
                 "revision_location": "Figures",
@@ -914,8 +924,8 @@ def scenario_g2d(accepted: bool):
                 must_fix={"CANNOT_VERIFY": 1} if accepted else {"FULLY_ADDRESSED": 1},
                 should_fix={"FULLY_ADDRESSED": 1},
             ),
-            "residual_magnitude_counts": _magnitudes(),
-            "p2_addressed_rate": {"numerator": 1, "denominator": 1},
+            "residual_obligation_class_counts": _magnitudes(),
+            "should_fix_addressed_rate": {"numerator": 1, "denominator": 1},
             "regressions": [],
             "non_regression_new_issue_ids": [],
             "escalations": [],
@@ -948,7 +958,7 @@ def scenario_g2d(accepted: bool):
         "letter": letter,
         "reports": [
             {
-                "report_format_version": "1.2",
+                "report_format_version": "1.3",
                 "base_draft_hash": ORIGINAL_SHA[:12],
                 "output_draft_hash": REVISED_SHA[:12],
             }
@@ -977,7 +987,7 @@ def scenario_g2d_retry():
         }
     ]
     rap2_anchors = [_anchor('text: §6 "procedure vs release table"')]
-    residual = {"text": "Release matching still undocumented for one dataset.", "residual_magnitude": "should_fix"}
+    residual = {"text": "Release matching still undocumented for one dataset.", "residual_obligation_class": "should_fix"}
     rationale = "Re-application under the original criterion finds partial satisfaction."
     t["reapplications"].append(
         {
@@ -1028,13 +1038,13 @@ def scenario_g2d_retry():
             "item_id": "REV-001",
             "final_verdict": "PARTIALLY_ADDRESSED",
             "driving_severity": "critical",
-            "residual_magnitude": "should_fix",
+            "residual_obligation_class": "should_fix",
         }
     ]
     di["verdict_counts"] = _counts(
         must_fix={"PARTIALLY_ADDRESSED": 1}, should_fix={"FULLY_ADDRESSED": 1}
     )
-    di["residual_magnitude_counts"] = _magnitudes(must_fix={"should_fix": 1})
+    di["residual_obligation_class_counts"] = _magnitudes(must_fix={"should_fix": 1})
     di["reject_recommended"] = False
     t["decision_state"] = "Minor Revision"
     return s
@@ -1046,9 +1056,171 @@ def scenario_g2d_retry():
 def emit(tmp_path: Path, scenario: dict, *, resync: bool = True):
     """Write every fixture file, resync hashes, and return the checker argv."""
     scenario = copy.deepcopy(scenario)
+
+    original_path = tmp_path / "manuscript.v1.md"
+    revised_path = tmp_path / "manuscript.v2.md"
+    original_path.write_bytes(ORIGINAL_BYTES)
+    parsed_original = parse_document(ORIGINAL_BYTES.decode("utf-8"))
+    block_manifest = build_manifest(ORIGINAL_BYTES, parsed_original)
+    block_manifest_path = tmp_path / "block-manifest.json"
+    block_manifest_path.write_text(
+        json.dumps(block_manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    block_manifest_sha = hashlib.sha256(block_manifest_path.read_bytes()).hexdigest()
+
+    # Scenario builders focus on #576 arithmetic. Upgrade their roadmap rows
+    # to the closed #670 core before writing the exact artifact consumed by
+    # current re-review and its replayed evidence bundle.
+    roadmap_payload = scenario["roadmap"]
+    roadmap_payload.pop("must_fix_count", None)
+    roadmap_payload.update(
+        {
+            "schema_version": "revision-roadmap/1.0",
+            "revision_round": 1,
+            "base_draft_sha256": ORIGINAL_SHA,
+            "block_manifest_sha256": block_manifest_sha,
+        }
+    )
+    counts = {"must_fix": 0, "should_fix": 0, "consider": 0}
+    for ordinal, item in enumerate(roadmap_payload["items"], start=1):
+        item.pop("type", None)
+        counts[item["obligation_class"]] += 1
+        item["source_refs"] = [
+            {
+                "seat": "R1",
+                "channel": "finding" if "severity" in item else item.get("source_kind", "editorial"),
+                "ordinal": ordinal,
+                "subclaim_ordinal": 0,
+            }
+        ]
+        if "severity" in item:
+            item.pop("source_kind", None)
+            item.setdefault(
+                "evidence_anchor",
+                {
+                    "anchor_type": "text",
+                    "locator": "B0001",
+                    "quote": "Original body.",
+                },
+            )
+            item.setdefault("confidence", 4)
+            item.setdefault("competence_basis", "Current re-review fixture basis.")
+        else:
+            item.setdefault("source_kind", "editorial")
+        item.setdefault("cost_scope", {"kind": "sentence", "locator": "B0001"})
+        item.setdefault(
+            "consequence_if_unaddressed",
+            {
+                "code": "acceptance_criterion_unmet",
+                "target": {"kind": "manuscript", "locator": "B0001"},
+            },
+        )
+        item["proposed_targets"] = [
+            {"block_id": "B0001", "allowed_operations": ["replace_block"]}
+        ]
+    roadmap_payload["obligation_counts"] = counts
     roadmap_path = tmp_path / "roadmap.json"
-    roadmap_path.write_text(json.dumps(scenario["roadmap"], ensure_ascii=False, indent=2), encoding="utf-8")
+    roadmap_path.write_text(
+        json.dumps(roadmap_payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     roadmap_sha = hashlib.sha256(roadmap_path.read_bytes()).hexdigest()
+
+    claim_surface = {
+        "schema_version": "claim-surface-manifest/1.0",
+        "revision_round": 1,
+        "roadmap_sha256": roadmap_sha,
+        "base_draft_sha256": ORIGINAL_SHA,
+        "claim_intent_sources": [],
+        "surfaces": [],
+    }
+    claim_surface_path = tmp_path / "claim-surfaces.json"
+    claim_surface_path.write_text(
+        json.dumps(claim_surface, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    claim_surface_sha = hashlib.sha256(claim_surface_path.read_bytes()).hexdigest()
+
+    event_id = "AUTHOR-EVENT-re-review-fixture"
+    author_records = []
+    author_overrides = scenario.get("author_triage_overrides", {})
+    for item in roadmap_payload["items"]:
+        record = {
+            "item_id": item["id"],
+            "author_event_id": event_id,
+            "author_triage": "will_address",
+            "authorized_targets": [
+                {
+                    "block_id": "B0001",
+                    "allowed_operations": ["replace_block"],
+                }
+            ],
+            "claim_strength_authorizations": [],
+        }
+        record.update(copy.deepcopy(author_overrides.get(item["id"], {})))
+        author_records.append(record)
+    author_adjudication = {
+        "schema_version": "author-adjudication/1.0",
+        "revision_round": 1,
+        "roadmap_sha256": roadmap_sha,
+        "base_draft_sha256": ORIGINAL_SHA,
+        "claim_surface_manifest_sha256": claim_surface_sha,
+        "adjudication_status": "complete",
+        "author_events": [
+            {
+                "event_id": event_id,
+                "source": "explicit_session_user_message",
+                "actor_role": "author",
+                "input_sha256": hashlib.sha256(b"explicit fixture author triage").hexdigest(),
+            }
+        ],
+        "display_order": {
+            "mode": "source_traceability",
+            "item_ids": [item["id"] for item in roadmap_payload["items"]],
+            "author_event_id": event_id,
+        },
+        "author_adjudications": author_records,
+        "collateral_authorizations": [],
+    }
+    accepted_ids = [
+        record["item_id"]
+        for record in author_records
+        if record["author_triage"] == "will_address"
+    ]
+    if accepted_ids:
+        for index, record in enumerate(author_records, start=1):
+            if record["author_triage"] in ("wont_address", "not_on_point"):
+                author_adjudication["collateral_authorizations"].append(
+                    {
+                        "authorization_id": f"COLLATERAL-AUTH-fixture-{index}",
+                        "author_event_id": event_id,
+                        "authorizing_item_id": accepted_ids[0],
+                        "constrained_item_id": record["item_id"],
+                        "block_id": "B0001",
+                        "operation": "replace_block",
+                        "reason": "Explicit fixture authority for the shared test block.",
+                    }
+                )
+    author_adjudication["display_order"].update(
+        copy.deepcopy(scenario.get("author_display_override", {}))
+    )
+    author_path = tmp_path / "author-adjudication.json"
+    author_path.write_text(
+        json.dumps(author_adjudication, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    author_by_item = {record["item_id"]: record for record in author_records}
+    for row in scenario["traceability"]["rows"]:
+        author = author_by_item[row["item_id"]]
+        for field in (
+            "author_triage",
+            "authorized_targets",
+            "claim_strength_authorizations",
+        ):
+            row.setdefault(field, copy.deepcopy(author[field]))
+        if "author_reason" in author:
+            row.setdefault("author_reason", author["author_reason"])
 
     argv = []
     letter_sha = None
@@ -1058,29 +1230,177 @@ def emit(tmp_path: Path, scenario: dict, *, resync: bool = True):
         letter_sha = hashlib.sha256(letter_path.read_bytes()).hexdigest()
         argv += ["--letter", str(letter_path)]
 
+    patch_path = tmp_path / "patch.json"
+    canonical_report_path = tmp_path / "canonical-apply-report.json"
+    will_address_ids = [
+        record["item_id"]
+        for record in author_records
+        if record["author_triage"] == "will_address"
+    ]
+    canonical_report = None
+    patch_sha = None
+    if scenario["reports"]:
+        assert will_address_ids, "write-round fixture needs at least one will_address item"
+        patch = {
+            "patch_format_version": "1.1",
+            "authorization_context": "review_roadmap",
+            "revision_round": 1,
+            "base_draft_hash": base_draft_hash(ORIGINAL_BYTES),
+            "roadmap_sha256": roadmap_sha,
+            "author_adjudication_sha256": hashlib.sha256(author_path.read_bytes()).hexdigest(),
+            "author_decision_digest": author_decision_digest(author_adjudication),
+            "claim_surface_manifest_sha256": claim_surface_sha,
+            "ops": [
+                {
+                    "op": "replace_block",
+                    "block_id": "B0001",
+                    "old_hash": parsed_original.block_by_id()["B0001"].norm_hash,
+                    "new_text": "Revised body.",
+                    "roadmap_item_ids": will_address_ids,
+                    "claim_strength_changes": [],
+                    "collateral_authorization_ids": [
+                        row["authorization_id"]
+                        for row in author_adjudication["collateral_authorizations"]
+                    ],
+                }
+            ],
+            "emitted_by": "draft_writer_agent",
+        }
+        patch_path.write_text(
+            json.dumps(patch, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        patch_sha = hashlib.sha256(patch_path.read_bytes()).hexdigest()
+        canonical_report = apply_revision_patch(
+            original_path,
+            patch_path,
+            revised_path,
+            canonical_report_path,
+            acknowledge_structural=False,
+            touched_ratio_threshold=None,
+            block_manifest_path=block_manifest_path,
+            roadmap_path=roadmap_path,
+            author_adjudication_path=author_path,
+            claim_surface_manifest_path=claim_surface_path,
+            artifact_root=tmp_path,
+        )
+        assert revised_path.read_bytes() == REVISED_BYTES
+    else:
+        revised_path.write_bytes(ORIGINAL_BYTES)
+
     report_paths = []
     report_shas = []
     for i, payload in enumerate(scenario["reports"]):
-        payload = dict(payload)
+        payload = {**(canonical_report or {}), **dict(payload)}
         try:
             format_12_plus = tuple(int(p) for p in payload["report_format_version"].split(".")) >= (1, 2)
         except ValueError:
             format_12_plus = False
         if format_12_plus:
-            payload.setdefault("patch_digest", PATCH_SHA)
+            payload.setdefault("patch_digest", patch_sha)
+        payload.setdefault(
+            "authorization_witness",
+            {
+                "status": "pass",
+                "unregistered_claim_drift_review_required": True,
+            },
+        )
         path = tmp_path / f"apply-report-{i}.json"
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         report_paths.append(path)
         report_shas.append(hashlib.sha256(path.read_bytes()).hexdigest())
         argv += ["--apply-report", str(path)]
 
+    receipt_path = tmp_path / "integrity-pass.json"
+    receipt_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "integrity-pass-receipt/1.0",
+                "receipt_id": "INTEGRITY-PASS-re-review-fixture",
+                "checked_draft_sha256": ORIGINAL_SHA,
+                "verdict": "PASS",
+                "open_issue_count": 0,
+                "issued_by": "integrity_verification_agent",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    def artifact(path: Path) -> dict:
+        return {
+            "path": path.relative_to(tmp_path).as_posix(),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+
+    if scenario["reports"]:
+        bundle_round = {
+            "kind": "review_roadmap",
+            "revision_round": 1,
+            "pre_round_draft": artifact(original_path),
+            "pre_round_block_manifest": artifact(block_manifest_path),
+            "revision_roadmap": artifact(roadmap_path),
+            "claim_surface_manifest": artifact(claim_surface_path),
+            "author_adjudication": artifact(author_path),
+            "revision_patch": artifact(patch_path),
+            "apply_report": artifact(report_paths[0]),
+            "post_round_draft": artifact(revised_path),
+        }
+    else:
+        bundle_round = {
+            "kind": "review_noop",
+            "revision_round": 1,
+            "pre_round_draft": artifact(original_path),
+            "pre_round_block_manifest": artifact(block_manifest_path),
+            "revision_roadmap": artifact(roadmap_path),
+            "claim_surface_manifest": artifact(claim_surface_path),
+            "author_adjudication": artifact(author_path),
+            "post_round_draft": artifact(revised_path),
+        }
+    bundle = {
+        "schema_version": "revision-evidence-bundle/1.0",
+        "chain_start": {
+            "first_revision_round": 1,
+            "draft": artifact(original_path),
+            "block_manifest": artifact(block_manifest_path),
+            "integrity_pass_receipt": artifact(receipt_path),
+        },
+        "rounds": [bundle_round],
+        "final_draft": artifact(revised_path),
+    }
+    bundle_path = tmp_path / "revision-evidence-bundle.json"
+    bundle_path.write_text(
+        json.dumps(bundle, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    # Invalid top-level sidecar mutations are written only after the valid
+    # apply/bundle fixture exists, so the checker—not fixture construction—
+    # owns the expected failure.
+    author_adjudication.update(copy.deepcopy(scenario.get("author_top_overrides", {})))
+    author_path.write_text(
+        json.dumps(author_adjudication, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    author_sha = hashlib.sha256(author_path.read_bytes()).hexdigest()
+    bundle_sha = hashlib.sha256(bundle_path.read_bytes()).hexdigest()
+    revised_sha = hashlib.sha256(revised_path.read_bytes()).hexdigest()
+
     manifest = {
+        "contract_version": "1.1",
         "round_id": scenario["precommitment"]["round_id"],
         "cross_model_active": scenario["cross_model_active"],
         "artifacts": {
             "original_manuscript": _entry("path:manuscript.v1.md", ORIGINAL_SHA),
-            "revised_manuscript": _entry("path:manuscript.v2.md", REVISED_SHA),
+            "revised_manuscript": _entry("path:manuscript.v2.md", revised_sha),
             "revision_roadmap": _entry("path:roadmap.json", roadmap_sha),
+            "author_adjudication": _entry(
+                "path:author-adjudication.json", author_sha
+            ),
+            "revision_evidence_bundle": _entry(
+                "path:revision-evidence-bundle.json", bundle_sha
+            ),
             "editorial_decision_letter": (
                 _entry("path:letter.md", letter_sha) if letter_sha else {"present": False}
             ),
@@ -1088,7 +1408,7 @@ def emit(tmp_path: Path, scenario: dict, *, resync: bool = True):
             "revision_patches": {
                 "present": True,
                 "items": [
-                    {"path_or_passport_ref": "path:patch.json", "sha256": PATCH_SHA,
+                    {"path_or_passport_ref": "path:patch.json", "sha256": patch_sha,
                      "version_label": None, "origin_date": None}
                 ],
             } if scenario["reports"] else {"present": False},
@@ -1106,6 +1426,10 @@ def emit(tmp_path: Path, scenario: dict, *, resync: bool = True):
     }
     for key, value in scenario["manifest_overrides"].items():
         manifest["artifacts"][key] = value
+    if manifest["artifacts"]["revision_patches"]["present"]:
+        for item in manifest["artifacts"]["revision_patches"]["items"]:
+            if item["sha256"] == PATCH_SHA:
+                item["sha256"] = patch_sha
 
     if resync:
         pre_by_item = {rec["item_id"]: rec for rec in scenario["precommitment"]["items"]}
@@ -1132,6 +1456,9 @@ def emit(tmp_path: Path, scenario: dict, *, resync: bool = True):
         "--verdict-record", str(tmp_path / "verdict_record.json"),
         "--traceability", str(tmp_path / "traceability.json"),
         "--roadmap", str(roadmap_path),
+        "--author-adjudication", str(author_path),
+        "--revision-evidence-bundle", str(bundle_path),
+        "--revision-evidence-root", str(tmp_path),
     ] + argv
     return argv, manifest
 
@@ -1222,7 +1549,38 @@ def test_missing_hard_required_artifact_is_manifest_incomplete(tmp_path, capsys)
 def test_apply_reports_without_patches_is_manifest_incomplete(tmp_path, capsys):
     s = scenario_accept()
     s["manifest_overrides"]["revision_patches"] = {"present": False}
-    assert_exit2(tmp_path, s, capsys, "manifest_incomplete", "revision_patches absent")
+    assert_exit2(tmp_path, s, capsys, "manifest_incomplete", "must travel together")
+
+
+def test_patches_without_reports_is_manifest_incomplete_even_for_noop_bundle(
+    tmp_path, capsys
+):
+    s = scenario_accept()
+    s["reports"] = []
+    s["author_triage_overrides"] = {
+        item["id"]: {
+            "author_triage": "wont_address",
+            "author_reason": "The author explicitly declines this fixture item.",
+            "authorized_targets": [],
+            "claim_strength_authorizations": [],
+        }
+        for item in s["roadmap"]["items"]
+    }
+    s["traceability"]["decision_inputs"][
+        "apply_chain_witness"
+    ] = "not_run_no_reports"
+    s["manifest_overrides"]["revision_patches"] = {
+        "present": True,
+        "items": [
+            {
+                "path_or_passport_ref": "path:patch.json",
+                "sha256": SYNTH_SHA,
+                "version_label": None,
+                "origin_date": None,
+            }
+        ],
+    }
+    assert_exit2(tmp_path, s, capsys, "manifest_incomplete", "must travel together")
 
 
 def test_array_length_mismatch_is_manifest_incomplete(tmp_path, capsys):
@@ -1251,10 +1609,12 @@ def test_absent_artifact_with_fields_is_manifest_incomplete(tmp_path, capsys):
 
 def test_roadmap_older_than_letter_fails_closed(tmp_path, capsys):
     s = scenario_accept()
-    argv, _m = emit(tmp_path, s)
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    emit(seed, s)
     # rebuild with passport-tagged freshness on roadmap + letter
-    roadmap_sha = hashlib.sha256((tmp_path / "roadmap.json").read_bytes()).hexdigest()
-    letter_sha = hashlib.sha256((tmp_path / "letter.md").read_bytes()).hexdigest()
+    roadmap_sha = hashlib.sha256((seed / "roadmap.json").read_bytes()).hexdigest()
+    letter_sha = hashlib.sha256((seed / "letter.md").read_bytes()).hexdigest()
     s["manifest_overrides"]["revision_roadmap"] = _entry("passport:roadmap", roadmap_sha, "v1", "2026-07-01")
     s["manifest_overrides"]["editorial_decision_letter"] = _entry("passport:letter", letter_sha, "v1", "2026-07-15")
     assert_exit2(tmp_path, s, capsys, "manifest_hash_mismatch", "freshness")
@@ -1287,8 +1647,8 @@ def test_broken_apply_chain_first_link(tmp_path, capsys):
 def test_broken_apply_chain_inner_link(tmp_path, capsys):
     s = scenario_accept()
     s["reports"] = [
-        {"report_format_version": "1.2", "base_draft_hash": ORIGINAL_SHA[:12], "output_draft_hash": "aaaaaaaaaaaa"},
-        {"report_format_version": "1.2", "base_draft_hash": "bbbbbbbbbbbb", "output_draft_hash": REVISED_SHA[:12]},
+        {"report_format_version": "1.3", "base_draft_hash": ORIGINAL_SHA[:12], "output_draft_hash": "aaaaaaaaaaaa"},
+        {"report_format_version": "1.3", "base_draft_hash": "bbbbbbbbbbbb", "output_draft_hash": REVISED_SHA[:12]},
     ]
     s["manifest_overrides"]["revision_patches"] = {
         "present": True,
@@ -1298,6 +1658,83 @@ def test_broken_apply_chain_inner_link(tmp_path, capsys):
         ],
     }
     assert_exit2(tmp_path, s, capsys, "manifest_hash_mismatch", "output_draft_hash")
+
+
+def test_bundle_binding_requires_exact_ordered_write_pair_projection():
+    roadmap_sha = "1" * 64
+    author_sha = "2" * 64
+    original_sha = "3" * 64
+    final_sha = "4" * 64
+    first_patch = "5" * 64
+    first_report = "6" * 64
+    second_patch = "7" * 64
+    second_report = "8" * 64
+    bundle = {
+        "final_draft": {"sha256": final_sha},
+        "rounds": [
+            {
+                "kind": "review_roadmap",
+                "pre_round_draft": {"sha256": original_sha},
+                "revision_roadmap": {"sha256": roadmap_sha},
+                "author_adjudication": {"sha256": author_sha},
+                "revision_patch": {"sha256": first_patch},
+                "apply_report": {"sha256": first_report},
+            },
+            {
+                "kind": "integrity_correction",
+                "revision_patch": {"sha256": second_patch},
+                "apply_report": {"sha256": second_report},
+            },
+        ],
+    }
+    manifest = {
+        "artifacts": {
+            "revised_manuscript": {"sha256": final_sha},
+            "revision_roadmap": {"sha256": roadmap_sha},
+            "author_adjudication": {"sha256": author_sha},
+            "original_manuscript": {"present": True, "sha256": original_sha},
+            "revision_patches": {
+                "present": True,
+                "items": [{"sha256": first_patch}, {"sha256": second_patch}],
+            },
+            "apply_reports": {
+                "present": True,
+                "items": [{"sha256": first_report}, {"sha256": second_report}],
+            },
+        }
+    }
+    crs.validate_revision_bundle_binding(bundle, manifest)
+
+    for name, mutated in (
+        (
+            "omitted",
+            [
+                {"sha256": first_patch},
+            ],
+        ),
+        (
+            "reordered",
+            [
+                {"sha256": second_patch},
+                {"sha256": first_patch},
+            ],
+        ),
+        (
+            "substituted",
+            [
+                {"sha256": first_patch},
+                {"sha256": "9" * 64},
+            ],
+        ),
+    ):
+        with pytest.raises(crs.ManifestError, match="ordered write patch/report pairs"):
+            changed = copy.deepcopy(manifest)
+            changed["artifacts"]["revision_patches"]["items"] = mutated
+            if name == "omitted":
+                changed["artifacts"]["apply_reports"]["items"] = [
+                    {"sha256": first_report}
+                ]
+            crs.validate_revision_bundle_binding(bundle, changed)
 
 
 def test_format_12_report_without_patch_digest_is_incomplete(tmp_path, capsys):
@@ -1330,34 +1767,160 @@ def test_format_12_report_without_patch_digest_is_incomplete(tmp_path, capsys):
     assert "requires patch_digest" in out
 
 
-def test_pre_12_report_gets_patch_binding_absent_marker_not_abort(tmp_path, capsys):
+def test_legacy_report_is_rejected_by_current_contract(tmp_path, capsys):
     s = scenario_accept()
     s["reports"][0] = {
         "report_format_version": "1.1",
         "base_draft_hash": ORIGINAL_SHA[:12],
         "output_draft_hash": REVISED_SHA[:12],
     }
-    code, out, err = run_checker(tmp_path, s, capsys)
+    code, out, _err = run_checker(tmp_path, s, capsys)
+    assert code == crs.EXIT_INVALID, out
+    assert "current contract requires report format 1.3" in out
+    assert "archived loader" in out
+
+
+@pytest.mark.parametrize(
+    "artifact_name",
+    ("manifest", "precommitment", "verdict_record", "traceability"),
+)
+def test_current_checker_rejects_every_mixed_legacy_contract_version(
+    tmp_path, capsys, artifact_name
+):
+    argv, _manifest = emit(tmp_path, scenario_accept())
+    path = tmp_path / f"{artifact_name}.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["contract_version"] = "1.0"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    code = crs.run(argv)
+    out = capsys.readouterr().out
+    assert code == crs.EXIT_INVALID, out
+    assert "1.1" in out
+
+
+@pytest.mark.parametrize("artifact_name", ("author_adjudication", "revision_evidence_bundle"))
+def test_current_manifest_hard_requires_author_and_bundle_artifacts(
+    tmp_path, capsys, artifact_name
+):
+    scenario = scenario_accept()
+    scenario["manifest_overrides"][artifact_name] = {"present": False}
+    assert_exit2(
+        tmp_path,
+        scenario,
+        capsys,
+        "manifest_incomplete",
+        f"hard-required artifact {artifact_name} absent",
+    )
+
+
+def test_current_checker_requires_existing_bundle_file(tmp_path, capsys):
+    argv, _manifest = emit(tmp_path, scenario_accept())
+    (tmp_path / "revision-evidence-bundle.json").unlink()
+    code = crs.run(argv)
+    out = capsys.readouterr().out
+    assert code == crs.EXIT_INVALID, out
+    assert "[RE-REVIEW-ABORT: manifest_incomplete]" in out
+    assert "revision_evidence_bundle file" in out
+
+
+def test_current_checker_rejects_bundle_file_hash_drift(tmp_path, capsys):
+    argv, _manifest = emit(tmp_path, scenario_accept())
+    bundle_path = tmp_path / "revision-evidence-bundle.json"
+    bundle_path.write_bytes(bundle_path.read_bytes() + b"\n")
+    code = crs.run(argv)
+    out = capsys.readouterr().out
+    assert code == crs.EXIT_INVALID, out
+    assert "[RE-REVIEW-ABORT: manifest_hash_mismatch]" in out
+    assert "revision_evidence_bundle file" in out
+
+
+def test_author_sidecar_raw_roadmap_binding_rejects_substitution(tmp_path, capsys):
+    scenario = scenario_accept()
+    scenario["author_top_overrides"] = {"roadmap_sha256": "f" * 64}
+    assert_exit2(
+        tmp_path,
+        scenario,
+        capsys,
+        "manifest_hash_mismatch",
+        "does not match the exact roadmap bytes",
+    )
+
+
+def test_traceability_author_triage_must_equal_bound_sidecar(tmp_path, capsys):
+    scenario = scenario_accept()
+    scenario["traceability"]["rows"][0].update(
+        {
+            "author_triage": "wont_address",
+            "author_reason": "A forged downstream decline.",
+            "authorized_targets": [],
+            "claim_strength_authorizations": [],
+        }
+    )
+    assert_mismatch(
+        tmp_path,
+        scenario,
+        capsys,
+        "author_triage is not an exact copy",
+    )
+
+
+def test_declined_author_reason_roundtrips_into_traceability(tmp_path, capsys):
+    scenario = scenario_accept()
+    scenario["author_triage_overrides"] = {
+        "REV-002": {
+            "author_triage": "not_on_point",
+            "author_reason": "The author explicitly states that this request is out of scope.",
+            "authorized_targets": [],
+            "claim_strength_authorizations": [],
+        }
+    }
+    code, out, _err = run_checker(tmp_path, scenario, capsys)
     assert code == crs.EXIT_PASS, out
-    assert "[PATCH-BINDING-ABSENT: report format < 1.2]" in err
+
+
+def test_user_display_order_cannot_change_roadmap_or_letter_transport_order(
+    tmp_path, capsys
+):
+    scenario = scenario_accept()
+    scenario["author_display_override"] = {
+        "mode": "user_selected",
+        "item_ids": ["REV-002", "REV-001"],
+    }
+    code, out, _err = run_checker(tmp_path, scenario, capsys)
+    assert code == crs.EXIT_PASS, out
+    # The letter still joins R1 to the first must_fix item in immutable
+    # roadmap order; the author's view permutation is presentation-only.
+    assert "'Accept'" in out
 
 
 def test_no_reports_is_not_run_no_reports_witness(tmp_path, capsys):
     s = scenario_accept()
     s["reports"] = []
+    s["author_triage_overrides"] = {
+        item["id"]: {
+            "author_triage": "wont_address",
+            "author_reason": "The author explicitly declines this fixture item.",
+            "authorized_targets": [],
+            "claim_strength_authorizations": [],
+        }
+        for item in s["roadmap"]["items"]
+    }
     s["traceability"]["decision_inputs"]["apply_chain_witness"] = "not_run_no_reports"
     code, out, _err = run_checker(tmp_path, s, capsys)
     assert code == crs.EXIT_PASS, out
     assert "'not_run_no_reports'" in out
 
 
-def test_absent_original_is_first_link_not_run_witness(tmp_path, capsys):
+def test_absent_original_is_manifest_incomplete_in_current_contract(tmp_path, capsys):
     s = scenario_accept()
     s["manifest_overrides"]["original_manuscript"] = {"present": False}
-    s["traceability"]["decision_inputs"]["apply_chain_witness"] = "first_link_not_run"
-    code, out, _err = run_checker(tmp_path, s, capsys)
-    assert code == crs.EXIT_PASS, out
-    assert "'first_link_not_run'" in out
+    assert_exit2(
+        tmp_path,
+        s,
+        capsys,
+        "manifest_incomplete",
+        "hard-required artifact original_manuscript",
+    )
 
 
 def test_letter_declared_but_not_provided_is_incomplete(tmp_path, capsys):
@@ -1416,7 +1979,7 @@ def test_stale_verdict_record_hash(tmp_path, capsys):
 def test_invalid_precommitment_is_phase1_lint(tmp_path, capsys):
     s = scenario_accept()
     s["precommitment"]["items"][1]["operationalization"]["made_worse_discriminator"] = "forbidden on P2"
-    assert_exit2(tmp_path, s, capsys, "phase1_lint_failed", "P2 lighter form")
+    assert_exit2(tmp_path, s, capsys, "phase1_lint_failed", "should_fix lighter form")
 
 
 def test_invalid_verdict_record_is_phase2a_lint(tmp_path, capsys):
@@ -1557,7 +2120,7 @@ def test_precommitment_record_for_p3_item_is_extra(tmp_path, capsys):
     s = scenario_complex()
     s["precommitment"]["items"].append({
         "item_id": "REV-004",
-        "priority": "should_fix",
+        "obligation_class": "should_fix",
         "inherited_criterion": {"roadmap_text": "A pipeline figure exists or the omission is reasonable."},
         "operationalization": {"fully_addressed": "A pipeline figure exists."},
         "expected_change_surface": "Methods",
@@ -1628,12 +2191,16 @@ def test_new_standard_ref_target_must_be_escalation_requested(tmp_path, capsys):
 # --- exit-1 class: freeze witness + rows ---------------------------------------
 
 
-def test_no_original_manuscript_forces_indeterminate_attribution(tmp_path, capsys):
+def test_no_original_manuscript_is_rejected_at_manifest_gate(tmp_path, capsys):
     s = scenario_complex()
     s["manifest_overrides"]["original_manuscript"] = {"present": False}
-    s["traceability"]["decision_inputs"]["apply_chain_witness"] = "first_link_not_run"
-    # NEW-1 (regression) / NEW-2 (previously_missed) are now guesses (§11 (i))
-    assert_mismatch(tmp_path, s, capsys, "never a guess")
+    assert_exit2(
+        tmp_path,
+        s,
+        capsys,
+        "manifest_incomplete",
+        "hard-required artifact original_manuscript",
+    )
 
 
 def test_new_issue_freeze_is_whole_record(tmp_path, capsys):
@@ -1684,9 +2251,9 @@ def test_cross_model_status_rederives_per_emission(tmp_path, capsys):
     assert_mismatch(tmp_path, s, capsys, "per-emission derivation")
 
 
-def test_row_priority_binds_to_roadmap(tmp_path, capsys):
+def test_row_obligation_class_binds_to_roadmap(tmp_path, capsys):
     s = scenario_accept()
-    s["traceability"]["rows"][1]["priority"] = "CONSIDER"
+    s["traceability"]["rows"][1]["obligation_class"] = "CONSIDER"
     assert_mismatch(tmp_path, s, capsys, "does not match the roadmap")
 
 
@@ -1703,7 +2270,7 @@ def test_g1_silent_verdict_change_is_criteria_drift(tmp_path, capsys):
     di = s["traceability"]["decision_inputs"]
     di["verdict_counts"]["should_fix"] = {v: 0 for v in crs.VERDICTS}
     di["verdict_counts"]["should_fix"]["NOT_ADDRESSED"] = 1
-    di["p2_addressed_rate"] = {"numerator": 0, "denominator": 1}
+    di["should_fix_addressed_rate"] = {"numerator": 0, "denominator": 1}
     assert_mismatch(tmp_path, s, capsys, "[RE-REVIEW-ABORT: criteria_drift]")
 
 
@@ -1964,16 +2531,16 @@ def test_verdict_counts_recompute(tmp_path, capsys):
     assert_mismatch(tmp_path, s, capsys, "verdict_counts does not recompute")
 
 
-def test_residual_magnitude_counts_recompute(tmp_path, capsys):
+def test_residual_obligation_class_counts_recompute(tmp_path, capsys):
     s = scenario_accept()
-    s["traceability"]["decision_inputs"]["residual_magnitude_counts"]["must_fix"]["must_fix"] = 1
-    assert_mismatch(tmp_path, s, capsys, "residual_magnitude_counts does not recompute")
+    s["traceability"]["decision_inputs"]["residual_obligation_class_counts"]["must_fix"]["must_fix"] = 1
+    assert_mismatch(tmp_path, s, capsys, "residual_obligation_class_counts does not recompute")
 
 
 def test_p2_rate_recomputes_over_final_verdicts(tmp_path, capsys):
     s = scenario_complex()
-    s["traceability"]["decision_inputs"]["p2_addressed_rate"]["numerator"] = 2
-    assert_mismatch(tmp_path, s, capsys, "p2_addressed_rate does not recompute")
+    s["traceability"]["decision_inputs"]["should_fix_addressed_rate"]["numerator"] = 2
+    assert_mismatch(tmp_path, s, capsys, "should_fix_addressed_rate does not recompute")
 
 
 def test_regression_list_recomputes(tmp_path, capsys):
@@ -1996,7 +2563,7 @@ def test_escalation_summary_joins_from_approvals(tmp_path, capsys):
 
 def test_recorded_witness_must_match_recomputed(tmp_path, capsys):
     s = scenario_accept()
-    s["traceability"]["decision_inputs"]["apply_chain_witness"] = "first_link_not_run"
+    s["traceability"]["decision_inputs"]["apply_chain_witness"] = "fail"
     assert_mismatch(tmp_path, s, capsys, "apply_chain_witness")
 
 
@@ -2107,7 +2674,7 @@ def test_valid_rebuttal_upgrades_to_fully_only(tmp_path, capsys):
     s = scenario_complex()
     adj = s["traceability"]["adjustments"][0]
     adj["to_verdict"] = "PARTIALLY_ADDRESSED"
-    adj["residual_gap"] = {"text": "residual", "residual_magnitude": "should_fix"}
+    adj["residual_gap"] = {"text": "residual", "residual_obligation_class": "should_fix"}
     assert_exit2(tmp_path, s, capsys, "phase2b_lint_failed", "upgrade to FULLY_ADDRESSED")
 
 
@@ -2140,14 +2707,14 @@ def test_author_pointer_downgrade_rejected(tmp_path, capsys):
         "to_verdict": "PARTIALLY_ADDRESSED",
         "basis": "author_pointer_located_evidence",
         "evidence_anchor": [_anchor()],
-        "residual_gap": {"text": "residual", "residual_magnitude": "consider"},
+        "residual_gap": {"text": "residual", "residual_obligation_class": "consider"},
         "rationale": "a downgrade",
     })
     assert_exit2(tmp_path, s, capsys, "phase2b_lint_failed", "upgrades to PARTIALLY/FULLY_ADDRESSED")
 
 
 def test_malformed_report_version_is_manifest_incomplete(tmp_path, capsys):
-    # codex #1: a non-numeric version must not ride the pre-1.2 absence policy
+    # A malformed value cannot cross the exact current report-1.3 boundary.
     s = scenario_accept()
     s["reports"][0]["report_format_version"] = "not-a-version"
     assert_exit2(tmp_path, s, capsys, "manifest_incomplete", "not a numeric dotted version")
@@ -2232,8 +2799,7 @@ def test_duplicate_drafted_body_rejected(tmp_path, capsys):
     assert_mismatch(tmp_path, s, capsys, "duplicate PendingRebuttalUpgrade drafted body")
 
 
-def test_escalation_exception_unsubstantiatable_without_original(tmp_path, capsys):
-    # codex #7: §11 degradation (iii) — no original manuscript, no exception
+def test_escalation_with_absent_original_is_rejected_at_manifest_gate(tmp_path, capsys):
     s = scenario_accept()
     s["manifest_overrides"]["original_manuscript"] = {"present": False}
     s["verdict_record"]["escalation_exceptions"] = [
@@ -2256,10 +2822,16 @@ def test_escalation_exception_unsubstantiatable_without_original(tmp_path, capsy
             "mechanical_decision_impact": "Major Revision",
         }
     ]
-    di["apply_chain_witness"] = "first_link_not_run"
+    di["apply_chain_witness"] = "pass"
     di.pop("reject_recommended")
     s["traceability"]["decision_state"] = "user_review_required"
-    assert_mismatch(tmp_path, s, capsys, "ESCALATION-UNSUBSTANTIATABLE")
+    assert_exit2(
+        tmp_path,
+        s,
+        capsys,
+        "manifest_incomplete",
+        "hard-required artifact original_manuscript",
+    )
 
 
 def test_source_reviewer_is_verbatim_roadmap_copy(tmp_path, capsys):
@@ -2270,14 +2842,14 @@ def test_source_reviewer_is_verbatim_roadmap_copy(tmp_path, capsys):
     assert_mismatch(tmp_path, s, capsys, "VERBATIM copy of the Schema 7 reviewer field")
 
 
-def test_half_transported_item_cannot_carry_null_severity(tmp_path, capsys):
+def test_half_transported_item_cannot_carry_null_severity():
     # general P2-1 / codex #5
     s = scenario_accept()
     item = s["roadmap"]["items"][0]
     del item["severity"]
     item["confidence"] = 4
-    s["traceability"]["decision_inputs"]["per_item"][0]["driving_severity"] = None
-    assert_mismatch(tmp_path, s, capsys, "non-legacy finding-driven P1 item cannot carry driving_severity null")
+    with pytest.raises(crs.ManifestError, match="requires transported severity"):
+        crs.load_roadmap({"items": [item]})
 
 
 def test_aborted_emission_with_lint_reason_is_exempt(tmp_path, capsys):
@@ -2428,7 +3000,7 @@ def test_system_intent_requires_evaluated_p1_row(tmp_path, capsys):
     s["traceability"]["resolution_intents"].append(
         {"intent_id": "INT-1", "item_id": "REV-001", "answered_by": "system"}
     )
-    assert_mismatch(tmp_path, s, capsys, "system intents exist only for evaluated P1 diverges rows")
+    assert_mismatch(tmp_path, s, capsys, "system intents exist only for evaluated must_fix diverges rows")
 
 
 def test_divergence_reapplication_requires_evaluated_p1_row(tmp_path, capsys):
@@ -2457,7 +3029,7 @@ def test_divergence_reapplication_requires_evaluated_p1_row(tmp_path, capsys):
         "resolved_by": "system",
         "rationale": "forged resolution",
     })
-    assert_mismatch(tmp_path, s, capsys, "divergence-only re-application exists only for an evaluated P1 row")
+    assert_mismatch(tmp_path, s, capsys, "divergence-only re-application exists only for an evaluated must_fix row")
 
 
 def test_forged_divergence_on_agree_row_rejected(tmp_path, capsys):
@@ -2607,21 +3179,29 @@ def _witness_manifest(original_present=True):
     }
 
 
+def _authorization_witness():
+    return {
+        "status": "pass",
+        "unregistered_claim_drift_review_required": True,
+    }
+
+
 def test_witness_pass_and_prefix_format():
-    report = {"report_format_version": "1.2", "base_draft_hash": ORIGINAL_SHA[:12],
-              "output_draft_hash": REVISED_SHA[:12], "patch_digest": PATCH_SHA}
+    report = {"report_format_version": "1.3", "base_draft_hash": ORIGINAL_SHA[:12],
+              "output_draft_hash": REVISED_SHA[:12], "patch_digest": PATCH_SHA,
+              "authorization_witness": _authorization_witness()}
     witness, notes = crs.compute_apply_chain_witness(_witness_manifest(), [report])
     assert witness == "pass" and notes == []
 
 
-def test_witness_first_link_not_run_checks_last_link():
-    report = {"report_format_version": "1.2", "base_draft_hash": "aaaaaaaaaaaa",
-              "output_draft_hash": REVISED_SHA[:12], "patch_digest": PATCH_SHA}
-    witness, _notes = crs.compute_apply_chain_witness(_witness_manifest(original_present=False), [report])
-    assert witness == "first_link_not_run"
-    broken = dict(report, output_draft_hash="bbbbbbbbbbbb")
-    with pytest.raises(crs.ManifestError):
-        crs.compute_apply_chain_witness(_witness_manifest(original_present=False), [broken])
+def test_witness_rejects_absent_original_in_current_contract():
+    report = {"report_format_version": "1.3", "base_draft_hash": "aaaaaaaaaaaa",
+              "output_draft_hash": REVISED_SHA[:12], "patch_digest": PATCH_SHA,
+              "authorization_witness": _authorization_witness()}
+    with pytest.raises(crs.ManifestError, match="hard-requires original_manuscript"):
+        crs.compute_apply_chain_witness(
+            _witness_manifest(original_present=False), [report]
+        )
 
 
 def test_witness_no_reports():
@@ -2753,7 +3333,8 @@ def _assert_4_5_ingestion_pinned(path_marker: str):
         "the Stage 3' traceability sidecar's frozen `previously_missed` AND "
         "`indeterminate` new-issue records" in integrity
     ), "integrity_verification_agent must consume BOTH attributions (#576 §8)"
-    assert "consuming only `previously_missed` would ignore the whole set" in integrity
+    assert "Current #576 1.1 hard-requires the original manuscript" in integrity
+    assert "Consume both attributions as integrity-check input" in integrity
     assert "disposition appears in the report" in integrity, (
         "ingestion means per-record assessment, not just arrival"
     )
@@ -2801,18 +3382,17 @@ def test_rev_pm_closed_mapping_all_fields_pinned():
     start = text.index("- `previously_missed`")
     block = text[start:text.index("- `indeterminate`", start)]
     for needle in (
-        "`id` = `REV-PM-<n>`",
-        "`description` = `[PREVIOUSLY-MISSED: NEW-<n>] `",
-        "`reviewer` = the record's `found_by`",
-        "`type` = `Minor`",
-        "`priority` = `consider`",
-        "`target_section` = derived from `location_anchor`",
-        '`suggested_action` = "assess; address or record as a limitation"',
-        "`consensus_level` = `SINGLE-VERIFIER`",
-        "`verification_criteria` = \"the issue described at `location_anchor` is resolved",
-        "`severity` = the record's Schema 6 severity",
-        "`evidence_anchor` = derived from `location_anchor`",
-        "`confidence` = the record's `confidence`",
-        "`competence_basis` = the record's `competence_basis`",
+        "`id = REV-PM-<n>`",
+        "`source_refs = [{seat: found_by, channel: finding, ordinal: <n>, subclaim_ordinal: 0}]`",
+        "`obligation_class = consider`",
+        "`cost_scope = {kind: section, locator: <location_anchor section>}`",
+        "`consequence_if_unaddressed = {code: reader_traceability_reduced",
+        "target section derives from `location_anchor`",
+        'suggested action is "assess; address or record as a limitation"',
+        "consensus is `SINGLE-VERIFIER`",
+        "verification criteria require resolution or explicit limitation",
+        "severity/evidence/confidence/competence copy the frozen record",
+        "`proposed_targets` is the unique exact current block",
+        "Legacy `type` is not emitted",
     ):
         assert needle in block, f"REV-PM closed mapping missing field derivation: {needle!r}"

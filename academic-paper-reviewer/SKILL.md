@@ -150,7 +150,7 @@ User: "Review this paper"
          - Arbitration and argumentation for disputed issues
          - Devil's Advocate CRITICAL issues are specially flagged in the Editorial Decision
          - Editorial Decision Letter
-         - Revision Roadmap (prioritized, can be directly input to academic-paper revision mode)
+         - Immutable non-ranking Revision Roadmap core (directly consumed with a separate explicit author sidecar)
      |
 === Phase 2.5: REVISION COACHING (Socratic Revision Guidance) ===
      |
@@ -165,13 +165,13 @@ User: "Review this paper"
             there), anchored to what the manuscript already claims ("the revised
             paper"). Questions only — never propose, substitute, rank, expand, or
             select a contribution claim (Kong L2 verb test); the user answers.
-         4. Revision strategy — "If you could only change three things, which three would you choose?"
+         4. Explicit author triage — records `will_address`, `wont_address`, or `not_on_point` for every source-ordered item, with no inferred work order
          5. Counter-argument response — Guides user to think about how to respond to Devil's Advocate challenges
-         6. Implementation planning — Helps prioritize revisions
+         6. Implementation planning — confirms exact block/operation scope and any registered-claim or declined-overlap authorization
      |
      +-> After dialogue ends, produces:
          - User's self-formulated revision strategy
-         - Reprioritized Revision Roadmap
+         - Immutable Roadmap unchanged + complete `author-adjudication/1.0` sidecar
      |
      ** User can say "just fix it" to skip guidance **
 ```
@@ -242,7 +242,7 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 Dedicated mode for Pipeline Stage 3' — verifies whether revisions address first-round review comments. Uses R&R Traceability Matrix (Schema 11 + machine-readable sidecar) with Author's Claim + Verified? columns. Runs under the #576 three-gate evidence-before-persuasion contract: Phase 1 criteria commitment (revision-blind) → Phase 2A evidence verdict (persuasion-blind) → Phase 2B claim matching (letter revealed), checker-verified before any outcome surfaces.
 
-**Input**: Original Revision Roadmap + Original (pre-revision) draft (Phase 2A comparison base — regression attribution and MADE_WORSE discriminators; absent → visible degradations, every new issue `indeterminate`) + Revised manuscript + Response to Reviewers (optional; withheld until Phase 2B) + Editorial Decision Letter (optional, #539 — its Review Panel Provenance block feeds the Judge Record) + Round-1 review findings (Schema 6 reports — the level-3 criterion layer; absent → transported Schema 7 fields alone, `[ROUND1-FINDINGS-ABSENT]`) + Round-1 Reviewer Configuration Cards (yardstick continuity, § Yardstick Continuity in the protocol; absent → visible regeneration fallback) + apply report(s) + the paired revision patch/diff files (#390, when the revision used patch apply — the two travel together, verified by the §11 ordered-chain rule)
+**Input**: Original immutable Revision Roadmap + exact author-adjudication sidecar + Revision-Evidence Bundle + Original pre-revision draft (Phase 2A comparison base) + Revised manuscript + Response to Reviewers (optional; withheld until Phase 2B) + Editorial Decision Letter (optional) + Round-1 findings/cards + current patch 1.1/apply-report 1.3 chain. The #576 current 1.1 manifest hard-requires original, revised, roadmap, author, and bundle artifacts; mixed legacy/current chains fail.
 **Output**: Verification Review Report with traceability matrix + new issues + Decision (or `user_review_required` deferral / fail-closed abort)
 
 > See `references/re_review_mode_protocol.md` for full verification logic, output format template, and Socratic guidance details.
@@ -306,7 +306,7 @@ deep-research --> academic-paper --> [integrity check] --> academic-paper-review
 |----------------------|-------------|
 | **Upstream: academic-paper -> reviewer** | Receives the complete paper output from `academic-paper` full mode, directly enters Phase 0 |
 | **Upstream: integrity check -> reviewer** | In the Pipeline, the paper must pass integrity check before entering reviewer |
-| **Downstream: reviewer -> academic-paper** | The Revision Roadmap format can be directly used as reviewer feedback input for `academic-paper` revision mode |
+| **Downstream: reviewer -> academic-paper** | `revision-roadmap/1.0` remains immutable; revision mode additionally requires the exact claim-surface manifest and complete explicit `author-adjudication/1.0` sidecar |
 | **Downstream: reviewer (re-review) -> integrity** | After re-review completes, proceeds to final integrity verification |
 
 ### Pipeline Usage Example

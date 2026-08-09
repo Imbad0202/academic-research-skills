@@ -19,6 +19,34 @@ Implementation-round decisions recorded against this spec (amendment mode — th
 
 The §3.3 apply-report definition is amended: report format **1.1** adds `output_draft_hash` — the same 12-hex `base_draft_hash()` digest, computed over the exact revised-draft bytes the apply step wrote. This binds the report to the artifact it describes: a post-apply rewrite (finalizer pass, manual edit) makes the mismatch detectable at the Stage 4 → 3' handoff, where the report is a required re-review input. Consumers MUST check `output_draft_hash` against the draft they were handed before relying on the untouched-block evidence (normative consumer wording: `academic-paper/references/revision_patch_protocol.md`). Additive — every 1.0 field is unchanged; consumers reading only 1.0 fields are unaffected. Emitter: `scripts/ars_apply_revision_patch.py` (`REPORT_FORMAT_VERSION = "1.1"`); pinned by `TestReportOutputHash`.
 
+## §0.2 #670 integrity-authorization amendment (2026-08-10)
+
+Issue #670 adopts integrity FAIL correction rounds into the current patch 1.1
+write path and supersedes the historical §1.1 / §5.2 statement that those
+rounds are outside this spec. Its normative contract is
+`docs/design/2026-08-10-670-non-ranking-revision-roadmap-spec.md`; current
+successful writes emit apply-report 1.3 and participate in the complete
+`revision-evidence-bundle/1.0` chain.
+
+The integrity gate emits `integrity-correction-list/1.0` with exact
+`proposed_targets` only. That list, a gate finding, and a PASS/FAIL status are
+proposal evidence, never write authority. The writer first emits the complete
+exact `authorization_context: integrity_correction` patch. The author then
+provides explicit `integrity-correction-authorization-input/1.0` approving the
+exact `revision_patch_sha256`, with one `authorize` or `stop_without_write`
+decision per issue and exact target/operation subsets. The deterministic
+builder copies that digest and adds the exact base/list/round bindings in
+`integrity-correction-authorization/1.0`; it does not synthesize approval from
+the producer's patch.
+
+Apply requires the pair `--integrity-issue-list` and
+`--integrity-authorization` and rejects review-roadmap authority arguments on
+this branch. It replays the sidecar against the exact patch bytes before any
+structural analysis or output write. `stop_without_write` grants no operation;
+if the exact patch is not approved, the round stops without writing. Any patch
+change invalidates the authorization and requires a fresh explicit author
+input.
+
 ## 0. TL;DR
 
 Every ARS revision round today asks `draft_writer_agent` to re-emit the complete paper. DELEGATE-52 (arXiv:2604.15597) measures exactly this round-trip shape and finds that frontier models corrupt documents by **subtle modification, not deletion** — and that 80–98% of total degradation comes from rare single-step critical failures. Full re-emission exposes every character of the paper to that failure mode on every round.
@@ -118,18 +146,26 @@ The writer's revision deliverable. JSON (schema at `shared/contracts/patch/revis
 
 ```json
 {
-  "patch_format_version": "1.0",
+  "patch_format_version": "1.1",
+  "authorization_context": "review_roadmap",
   "revision_round": 1,
   "base_draft_hash": "3c4d5e6f7a8b",
+  "roadmap_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "author_adjudication_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "author_decision_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "claim_surface_manifest_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
   "ops": [
     { "op": "replace_block", "block_id": "B0042", "old_hash": "a1b2c3d4e5f6",
       "new_text": "Revised paragraph text... (Smith, 2024)<!--ref:smith2024--><!--anchor:page:14-->",
-      "roadmap_item_ids": ["REV-001"] },
+      "roadmap_item_ids": ["REV-001"],
+      "claim_strength_changes": [], "collateral_authorization_ids": [] },
     { "op": "insert_after", "block_id": "B0042", "old_hash": "a1b2c3d4e5f6",
       "new_text": "A new paragraph...\n\nAnd a second new paragraph...",
-      "roadmap_item_ids": ["REV-001"] },
+      "roadmap_item_ids": ["REV-001"],
+      "claim_strength_changes": [], "collateral_authorization_ids": [] },
     { "op": "delete_block", "block_id": "B0050", "old_hash": "0f9e8d7c6b5a",
-      "roadmap_item_ids": ["REV-003"] }
+      "roadmap_item_ids": ["REV-003"],
+      "claim_strength_changes": [], "collateral_authorization_ids": [] }
   ],
   "emitted_by": "draft_writer_agent"
 }
@@ -139,9 +175,17 @@ The writer's revision deliverable. JSON (schema at `shared/contracts/patch/revis
 
 | op | fields | semantics |
 |---|---|---|
-| `replace_block` | `block_id`, `old_hash`, `new_text`, `roadmap_item_ids` | Replace the block's text. If `new_text` segments into multiple blocks, the **first** retains the target's ID and the rest receive fresh IDs in order (one paragraph legitimately becomes two; the anchor stays on the head) |
-| `insert_after` | `block_id` + `old_hash` of the anchor block (or sentinel `"DOC-BODY-START"` with `old_hash` omitted), `new_text`, `roadmap_item_ids` | Insert new block(s) after the named block; the parser segments `new_text` and assigns fresh IDs in order. The anchor's hash is required because insertion *position* is meaningful only relative to the anchor's *content* ("after the paragraph that says X") |
-| `delete_block` | `block_id`, `old_hash`, `roadmap_item_ids` | Remove block and its marker |
+| `replace_block` | `block_id`, `old_hash`, `new_text`, `roadmap_item_ids`, explicit `claim_strength_changes[]`, explicit `collateral_authorization_ids[]` | Replace the block's text. If `new_text` segments into multiple blocks, the **first** retains the target's ID and the rest receive fresh IDs in order (one paragraph legitimately becomes two; the anchor stays on the head) |
+| `insert_after` | `block_id` + `old_hash` of the anchor block (or sentinel `"DOC-BODY-START"` with `old_hash` omitted), `new_text`, `roadmap_item_ids`, empty `claim_strength_changes[]`, explicit `collateral_authorization_ids[]` | Insert new block(s) after the named block; the parser segments `new_text` and assigns fresh IDs in order. The anchor's hash is required because insertion *position* is meaningful only relative to the anchor's *content* ("after the paragraph that says X") |
+| `delete_block` | `block_id`, `old_hash`, `roadmap_item_ids`, explicit `claim_strength_changes[]`, explicit `collateral_authorization_ids[]` | Remove block and its marker |
+
+Patch 1.1 is the only current write format. Its `review_roadmap` and
+`integrity_correction` branches bind distinct authority artifacts and the
+current apply CLI rejects 1.0. The closed historical 1.0 schema and replay
+loader live under `shared/contracts/patch/legacy/v1_0/` and `scripts/legacy/`;
+historical replay cannot emit a current authorization-PASS report. The #670
+amendment is normative at
+`docs/design/2026-08-10-670-non-ranking-revision-roadmap-spec.md`.
 
 `DOC-BODY-START` = the position after YAML frontmatter (if any) and before the first body block. Frontmatter is never patchable (§3.1); there is deliberately no `DOC-START` that could land an insertion above it.
 

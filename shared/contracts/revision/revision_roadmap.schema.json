@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/revision_roadmap.schema.json",
+  "title": "Immutable Non-ranking Revision Roadmap Core",
+  "description": "Reviewer-owned Schema 7 successor for #670. It contains findings, non-ranking obligation classes, bounded cost/consequence metadata, and deterministic source-trace order only. Author choices live in the separately hash-bound author_adjudication.schema.json sidecar; a reviewer roadmap can never carry or infer them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "revision_round",
+    "base_draft_sha256",
+    "block_manifest_sha256",
+    "items",
+    "total_items",
+    "obligation_counts",
+    "editorial_decision",
+    "consensus_summary",
+    "dissenting_opinions"
+  ],
+  "properties": {
+    "schema_version": { "const": "revision-roadmap/1.0" },
+    "revision_round": { "type": "integer", "minimum": 1 },
+    "base_draft_sha256": { "$ref": "#/$defs/sha256" },
+    "block_manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/roadmap_item" }
+    },
+    "total_items": { "type": "integer", "minimum": 0 },
+    "obligation_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["must_fix", "should_fix", "consider"],
+      "properties": {
+        "must_fix": { "type": "integer", "minimum": 0 },
+        "should_fix": { "type": "integer", "minimum": 0 },
+        "consider": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "editorial_decision": {
+      "enum": ["Accept", "Minor Revision", "Major Revision", "Reject"]
+    },
+    "consensus_summary": { "$ref": "#/$defs/nonempty_string" },
+    "dissenting_opinions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonempty_string" }
+    }
+  },
+  "$defs": {
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "item_id": {
+      "type": "string",
+      "pattern": "^REV-[A-Za-z0-9-]+$"
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat", "channel", "ordinal", "subclaim_ordinal"],
+      "properties": {
+        "seat": { "enum": ["EIC", "R1", "R2", "R3", "DA"] },
+        "channel": { "enum": ["finding", "question", "editorial"] },
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "subclaim_ordinal": { "type": "integer", "minimum": 0 }
+      },
+      "description": "Immutable source position. Runtime orders by fixed seat order EIC,R1,R2,R3,DA, then ordinal, subclaim_ordinal, and item id; severity/obligation never enter sorting."
+    },
+    "evidence_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_type", "locator"],
+      "properties": {
+        "anchor_type": {
+          "enum": ["text", "table", "figure", "equation", "dataset", "absence"]
+        },
+        "locator": { "$ref": "#/$defs/nonempty_string" },
+        "quote": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "absence_scope": { "$ref": "#/$defs/nonempty_string" },
+        "check_performed": { "$ref": "#/$defs/nonempty_string" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["anchor_type"],
+            "properties": { "anchor_type": { "const": "text" } }
+          },
+          "then": {
+            "required": ["quote"],
+            "not": {
+              "anyOf": [
+                { "required": ["absence_scope"] },
+                { "required": ["check_performed"] }
+              ]
+            }
+          },
+          "else": {
+            "if": {
+              "required": ["anchor_type"],
+              "properties": { "anchor_type": { "const": "absence" } }
+            },
+            "then": {
+              "required": ["absence_scope", "check_performed"],
+              "not": { "required": ["quote"] }
+            },
+            "else": {
+              "not": {
+                "anyOf": [
+                  { "required": ["quote"] },
+                  { "required": ["absence_scope"] },
+                  { "required": ["check_performed"] }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "cost_scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "locator"],
+          "properties": {
+            "kind": {
+              "enum": ["sentence", "section", "re_analysis", "new_data"]
+            },
+            "locator": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "surface_id", "locator"],
+          "properties": {
+            "kind": { "const": "other" },
+            "surface_id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "locator": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ]
+    },
+    "consequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "target"],
+      "properties": {
+        "code": {
+          "enum": [
+            "acceptance_criterion_unmet",
+            "evidence_gap_remains",
+            "claim_scope_unsupported",
+            "method_reproducibility_unresolved",
+            "reporting_requirement_unmet",
+            "editorial_conformance_unmet",
+            "interpretive_ambiguity_remains",
+            "reader_traceability_reduced"
+          ]
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "locator"],
+          "properties": {
+            "kind": {
+              "enum": ["manuscript", "section", "claim", "table", "figure", "dataset"]
+            },
+            "locator": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      },
+      "description": "Closed consequence code plus typed target. It carries no probability or acceptance prediction."
+    },
+    "target_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["block_id", "allowed_operations"],
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "pattern": "^(?:B[0-9]{4,}|DOC-BODY-START)$"
+        },
+        "allowed_operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["replace_block", "insert_after", "delete_block"]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["block_id"],
+            "properties": { "block_id": { "const": "DOC-BODY-START" } }
+          },
+          "then": {
+            "properties": {
+              "allowed_operations": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": { "const": "insert_after" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "corroborating_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer", "severity", "evidence_anchor", "confidence"],
+      "properties": {
+        "reviewer": { "$ref": "#/$defs/nonempty_string" },
+        "severity": { "enum": ["critical", "major", "minor"] },
+        "evidence_anchor": { "$ref": "#/$defs/evidence_anchor" },
+        "confidence": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "competence_basis": { "$ref": "#/$defs/nonempty_string" },
+        "severity_source": { "$ref": "#/$defs/nonempty_string" },
+        "confidence_source": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
+    "roadmap_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source_refs",
+        "description",
+        "reviewer",
+        "obligation_class",
+        "cost_scope",
+        "consequence_if_unaddressed",
+        "target_section",
+        "suggested_action",
+        "consensus_level",
+        "verification_criteria",
+        "proposed_targets"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/item_id" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/source_ref" }
+        },
+        "description": { "$ref": "#/$defs/nonempty_string" },
+        "reviewer": { "$ref": "#/$defs/nonempty_string" },
+        "sub_claim_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^SC-[A-Za-z0-9-]+$" }
+        },
+        "obligation_class": {
+          "enum": ["must_fix", "should_fix", "consider"]
+        },
+        "severity": { "enum": ["critical", "major", "minor"] },
+        "severity_source": { "$ref": "#/$defs/nonempty_string" },
+        "evidence_anchor": { "$ref": "#/$defs/evidence_anchor" },
+        "confidence": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "competence_basis": { "$ref": "#/$defs/nonempty_string" },
+        "confidence_source": { "$ref": "#/$defs/nonempty_string" },
+        "corroborating_sources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/corroborating_source" }
+        },
+        "source_kind": { "enum": ["question", "editorial"] },
+        "cost_scope": { "$ref": "#/$defs/cost_scope" },
+        "consequence_if_unaddressed": { "$ref": "#/$defs/consequence" },
+        "target_section": { "$ref": "#/$defs/nonempty_string" },
+        "suggested_action": { "$ref": "#/$defs/nonempty_string" },
+        "consensus_level": {
+          "enum": ["CONSENSUS-4", "CONSENSUS-3", "SPLIT", "DA-CRITICAL", "SINGLE-VERIFIER"]
+        },
+        "verification_criteria": { "$ref": "#/$defs/nonempty_string" }
+        ,
+        "proposed_targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/target_scope" },
+          "description": "Reviewer-proposed exact pre-round block scope. It is not write authority: a will_address author decision must explicitly select a subset in the separately hash-bound adjudication sidecar. For a declined item, every listed block is a no-touch constraint unless an exact collateral authorization exists."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "not": { "required": ["source_kind"] } },
+          "then": {
+            "required": ["severity", "evidence_anchor", "confidence", "competence_basis"]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                { "required": ["severity"] },
+                { "required": ["severity_source"] },
+                { "required": ["evidence_anchor"] },
+                { "required": ["confidence"] },
+                { "required": ["competence_basis"] },
+                { "required": ["confidence_source"] },
+                { "required": ["corroborating_sources"] }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

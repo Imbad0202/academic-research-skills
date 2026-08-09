@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/re_review/legacy/v1_0/precommitment.schema.json",
+  "title": "Re-review Phase 1 Pre-commitment Artifact",
+  "description": "Phase 1 (revision-blind) criteria-commitment artifact of the #576 Spec B three-gate re-review contract. One PrecommitmentRecord per Priority 1 (must_fix) and Priority 2 (should_fix) Schema 7 roadmap item; Priority 3 (consider) items get NO record (spec §3.2/§5.1). Each record OPERATIONALIZES the inherited author-visible criterion (Schema 7 verification_criteria + decision-letter Acceptance criteria) — it never invents a new yardstick; post-revision new standards go to new_standards[] as NewStandardRecord, advisory by default. Hash-bound to the §11 input manifest via input_manifest_hash; scripts/check_re_review_synthesis.py recomputes every binding. Spec: docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md §5.1.",
+
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "round_id", "input_manifest_hash", "items", "new_standards"],
+
+  "properties": {
+    "contract_version": {
+      "const": "1.0",
+      "description": "Frozen contract-family version for the v1 three-gate contract (equivalence_policy is likewise constant in v1)."
+    },
+    "round_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Re-review round identifier; MUST equal the round_id of the §11 input manifest and of the Phase 2A/2B artifacts (checker-enforced)."
+    },
+    "input_manifest_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "sha256 hex over the §11 input manifest's JSON Canonical Form (RFC 8785 / JCS, the v3.6.3 passport hashing convention). First link of the §11 hash chain; the checker recomputes it."
+    },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/precommitment_record" },
+      "description": "Exactly one record per must_fix/should_fix roadmap item (checker-enforced against the hash-bound roadmap). consider items carry no record."
+    },
+    "new_standards": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/new_standard_record" },
+      "description": "Acceptance requirements beyond the inherited criterion (SD-2 boundary). Advisory by default; escalation_requested entries are only requests — substantiation happens at Phase 2A via EscalationExceptionRecord.new_standard_ref."
+    }
+  },
+
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "item_id": {
+      "type": "string",
+      "pattern": "^REV-[A-Za-z0-9-]+$",
+      "description": "Schema 7 RoadmapItem id (e.g. REV-001, forward-seeded REV-PM-1). The join key every §13 invariant uses."
+    },
+    "nonempty_string": { "type": "string", "minLength": 1 },
+    "seat_label": {
+      "enum": ["EIC", "R1", "R2", "R3", "DA"],
+      "description": "Closed §10 normalization vocabulary."
+    },
+
+    "precommitment_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "priority",
+        "inherited_criterion",
+        "operationalization",
+        "expected_change_surface",
+        "equivalence_policy",
+        "source_reviewer",
+        "source_reviewer_labels"
+      ],
+      "properties": {
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "priority": {
+          "enum": ["must_fix", "should_fix"],
+          "description": "consider items get no pre-commitment record (§3.2), so the priority set here is closed at P1/P2."
+        },
+        "inherited_criterion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["roadmap_text"],
+          "properties": {
+            "roadmap_text": {
+              "$ref": "#/$defs/nonempty_string",
+              "description": "VERBATIM copy of the Schema 7 item's verification_criteria (level-1 yardstick). The checker byte-compares it against the hash-bound roadmap."
+            },
+            "letter_text": {
+              "$ref": "#/$defs/nonempty_string",
+              "description": "VERBATIM copy of the decision letter's Acceptance-criteria text at the item's derived R<n> block (level-2 yardstick). must_fix items only; biconditional with letter_item_ref."
+            },
+            "letter_item_ref": {
+              "type": "string",
+              "pattern": "^R[1-9][0-9]*$",
+              "description": "DERIVED, never chosen: R<n> <=> the roadmap's nth must_fix item in roadmap order (§5.1). Checker recomputes the ordinal, uniqueness, and must_fix-only compatibility."
+            }
+          },
+          "dependentRequired": {
+            "letter_text": ["letter_item_ref"],
+            "letter_item_ref": ["letter_text"]
+          }
+        },
+        "operationalization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fully_addressed"],
+          "properties": {
+            "fully_addressed": {
+              "$ref": "#/$defs/nonempty_string",
+              "description": "The concrete manuscript evidence pattern that satisfies the inherited criterion (not \"the author says so\")."
+            },
+            "partially_addressed": {
+              "$ref": "#/$defs/nonempty_string",
+              "description": "What a genuine-but-incomplete fix looks like. must_fix items only — P2 lighter form derives PARTIALLY_ADDRESSED on-criterion from the committed fully_addressed pattern (§5.1)."
+            },
+            "made_worse_discriminator": {
+              "$ref": "#/$defs/nonempty_string",
+              "description": "What distinguishes a regression on this item. must_fix items only — P2 uses the protocol-level generic discriminator (§5.1)."
+            }
+          }
+        },
+        "expected_change_surface": {
+          "$ref": "#/$defs/nonempty_string",
+          "description": "Where the fix is EXPECTED to manifest. Navigation hypothesis only (SD-10): an equivalent fix elsewhere that satisfies fully_addressed counts; a cosmetic edit at this location does not."
+        },
+        "equivalence_policy": {
+          "const": "allowed",
+          "description": "Constant in v1: equivalent fixes and evidence-backed disagreement are admissible (SD-10)."
+        },
+        "source_reviewer": {
+          "$ref": "#/$defs/nonempty_string",
+          "description": "VERBATIM copy of the Schema 7 item's required reviewer field (free-text string, e.g. \"R1, R3\"). No new Schema 7 fields exist."
+        },
+        "source_reviewer_labels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/seat_label" },
+          "description": "Produced by the §10 normalization grammar (strip parentheticals, then em-dash tails, split, trim, case-fold, whole-token exact match; unrecognized tokens dropped). Possibly empty. The checker recomputes it from source_reviewer and requires equality."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["priority"],
+            "properties": { "priority": { "const": "should_fix" } }
+          },
+          "then": {
+            "properties": {
+              "inherited_criterion": {
+                "not": {
+                  "anyOf": [
+                    { "required": ["letter_text"] },
+                    { "required": ["letter_item_ref"] }
+                  ]
+                }
+              },
+              "operationalization": {
+                "not": {
+                  "anyOf": [
+                    { "required": ["partially_addressed"] },
+                    { "required": ["made_worse_discriminator"] }
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "operationalization": {
+                "required": ["fully_addressed", "partially_addressed", "made_worse_discriminator"]
+              }
+            }
+          }
+        }
+      ]
+    },
+
+    "new_standard_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["new_standard_id", "item_id", "standard_text", "why_not_in_round1", "classification"],
+      "properties": {
+        "new_standard_id": {
+          "type": "string",
+          "pattern": "^NS-[1-9][0-9]*$",
+          "description": "Unique id within the artifact; the target of EscalationExceptionRecord.new_standard_ref (§5.2)."
+        },
+        "item_id": {
+          "anyOf": [
+            { "$ref": "#/$defs/item_id" },
+            { "const": "global" }
+          ]
+        },
+        "standard_text": { "$ref": "#/$defs/nonempty_string" },
+        "why_not_in_round1": { "$ref": "#/$defs/nonempty_string" },
+        "classification": {
+          "enum": ["advisory", "escalation_requested"],
+          "description": "escalation_requested is only a REQUEST — the substantiating EscalationExceptionRecord is created at Phase 2A; a request never substantiated at 2A lapses to advisory (§5.1)."
+        }
+      }
+    }
+  }
+}

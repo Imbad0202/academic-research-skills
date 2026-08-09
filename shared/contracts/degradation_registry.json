@@ -1,6 +1,6 @@
 {
   "$comment": "Degradation registry (#511 Part A). Machine-readable INDEX of every graceful-degradation mechanism in ARS: what fails, what degraded state is emitted, where the degradation is visible, who consumes it, and how the terminal-policy layer treats it. The registry INDEXES — it never re-authors: each row's `authority` points at the per-mechanism source of truth (a content anchor that must appear verbatim in the cited file), so semantics live in exactly one place and this file cannot drift into a second authority. Rows use each mechanism's NATIVE semantics (unresolvable / not_checked / PASS WITH NOTES / omit-field / warn-and-continue); there is deliberately NO universal score-cap column — ARS's gate model is tri-state outcomes + advisory suffixes + opt-in terminal policies, not a shared scalar score (#511 'Explicitly rejected: score capping'). Numeric/severity caps appear only where a scale already exists (see compliance_non_sr_warn_cap). Adding a row: fill every required field, cite the authority file with a short verbatim anchor (never a line number — anchors survive drift, line numbers do not), list the tests/lints/schemas that pin the behavior under `pinned_by` (path, or path::test_function), then run scripts/check_degradation_registry.py.",
-  "registry_version": "1.1.0",
+  "registry_version": "1.2.0",
   "mechanisms": [
     {
       "mechanism": "citation_resolver_outage",
@@ -141,59 +141,12 @@
       ]
     },
     {
-      "mechanism": "re_review_made_worse_unevaluable",
-      "failure_class": "Stage 3' re-review with the original (pre-revision) manuscript absent from the input manifest: the MADE_WORSE discriminators (per-item and the protocol-level generic P2 one) compare against the original text (#576 §11)",
-      "degraded_state": "MADE_WORSE is assignable only where the diff/apply report supplies the pre-revision span; elsewhere it is unevaluable and the verdict follows the remaining criteria — never guessed",
-      "diagnostic_marker": "[MADE-WORSE-UNEVALUABLE: no original manuscript]",
-      "downstream_consumer": "Stage 3' decision derivation (B1/B3/B5 MADE_WORSE operands) and the Stage 3' checkpoint reader",
-      "terminal_policy_effect": "none — visible degradation marker, never a block; the manifest's required set stays revised_manuscript + revision_roadmap only",
-      "authority": [
-        {
-          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
-          "anchor": "[MADE-WORSE-UNEVALUABLE: no original manuscript]"
-        }
-      ],
-      "pinned_by": [
-        "scripts/test_check_re_review_synthesis.py::test_absent_original_is_first_link_not_run_witness"
-      ]
-    },
-    {
-      "mechanism": "re_review_escalation_unsubstantiatable",
-      "failure_class": "Stage 3' escalation exception requires an original-manuscript evidence anchor (proving the problem existed in Round 1), but the original manuscript is absent (#576 §11)",
-      "degraded_state": "The exception cannot be substantiated; the underlying new_standard stays advisory — the goalpost-guard override path is closed rather than weakened",
-      "diagnostic_marker": "[ESCALATION-UNSUBSTANTIATABLE: no original manuscript]",
-      "downstream_consumer": "Stage 3' decision derivation Step 3 (no floor contribution) and the Stage 3' checkpoint reader",
-      "terminal_policy_effect": "none — the escalation path fails toward advisory, never toward a fabricated floor",
-      "authority": [
-        {
-          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
-          "anchor": "[ESCALATION-UNSUBSTANTIATABLE: no original manuscript]"
-        }
-      ],
-      "pinned_by": []
-    },
-    {
-      "mechanism": "re_review_change_basis_absent",
-      "failure_class": "Stage 3' Phase 2A change_summary with BOTH of its sources absent: no original manuscript AND no apply report (#576 §11)",
-      "degraded_state": "change_summary is written from the revised manuscript alone; the required field stays total on the degraded path (schema does not hard-fail)",
-      "diagnostic_marker": "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]",
-      "downstream_consumer": "Stage 3' verdict records (Phase 2A) and the Stage 3' checkpoint reader",
-      "terminal_policy_effect": "none — visible marker on the affected records, never a block",
-      "authority": [
-        {
-          "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
-          "anchor": "[CHANGE-BASIS-ABSENT: no original manuscript, no apply report]"
-        }
-      ],
-      "pinned_by": []
-    },
-    {
       "mechanism": "re_review_attribution_indeterminate",
-      "failure_class": "Stage 3' new-issue provenance cannot be established (original manuscript unavailable, non-comparable formats, manifest gaps) (#576 §8/SD-9)",
+      "failure_class": "Stage 3' new-issue provenance cannot be established despite the hard-required original manuscript (for example, non-comparable formats or an exact-span comparison that remains unavailable) (#576 §8/SD-9)",
       "degraded_state": "Attribution 'indeterminate' — treated as previously_missed for decision purposes (cannot escalate the decision), never silently promoted to regression",
       "diagnostic_marker": "[ATTRIBUTION-INDETERMINATE]",
       "downstream_consumer": "Stage 3' decision derivation (goalpost guard — indeterminate never appears in Step 2) and integrity_verification_agent at Stage 4.5 (consumes indeterminate records as gate input)",
-      "terminal_policy_effect": "none — fail-closed on attribution, decision-inert by design; on the no-original path EVERY new issue is indeterminate",
+      "terminal_policy_effect": "none — fail-closed on attribution and decision-inert by design; current 1.1 never uses missing original-manuscript bytes as this degradation path",
       "authority": [
         {
           "file": "academic-paper-reviewer/references/re_review_mode_protocol.md",
@@ -235,7 +188,7 @@
         },
         {
           "file": "academic-paper-reviewer/templates/editorial_decision_template.md",
-          "anchor": "a violated sequence degrades the whole letter criterion layer"
+          "anchor": "Required blocks are exactly `R1..Rn` with no gaps, duplicates, or extras"
         }
       ],
       "pinned_by": [
@@ -271,27 +224,6 @@
         }
       ],
       "pinned_by": []
-    },
-    {
-      "mechanism": "re_review_patch_binding_absent",
-      "failure_class": "An apply report predating format 1.2 carries no patch_digest, so the #576 §11 content-binding between the report and its paired revision_patches[] entry cannot run (cross-version chains are normal — early rounds from a pre-upgrade emitter)",
-      "degraded_state": "Content-binding recorded as NOT-RUN for that report; its hash-chain links are still checked, no digest is fabricated, no abort fires",
-      "diagnostic_marker": "[PATCH-BINDING-ABSENT: report format < 1.2]",
-      "downstream_consumer": "check_re_review_synthesis.py apply-chain witness notes and the Judge Record Apply-report chain line reader",
-      "terminal_policy_effect": "none — a missing binding is a visible per-report note; only a CHECKED link that BROKE aborts (manifest_hash_mismatch)",
-      "authority": [
-        {
-          "file": "scripts/check_re_review_synthesis.py",
-          "anchor": "[PATCH-BINDING-ABSENT: report format < 1.2]"
-        },
-        {
-          "file": "academic-paper/references/revision_patch_protocol.md",
-          "anchor": "`patch_digest` (report format 1.2: full 64-hex sha256 over the exact patch-file bytes applied"
-        }
-      ],
-      "pinned_by": [
-        "scripts/test_check_re_review_synthesis.py::test_pre_12_report_gets_patch_binding_absent_marker_not_abort"
-      ]
     },
     {
       "mechanism": "re_review_routing_degraded_unmapped_labels",
@@ -354,27 +286,26 @@
         },
         {
           "file": "academic-pipeline/agents/pipeline_orchestrator_agent.md",
-          "anchor": "NEVER a silent legacy fallback"
+          "anchor": "Never convert an abort into a decision or a silent legacy run"
         }
       ],
       "pinned_by": []
     },
     {
       "mechanism": "re_review_apply_chain_witness_not_run",
-      "failure_class": "Stage 3' apply-chain witness with a link that cannot be CHECKED (as opposed to a checked link that broke): apply_reports empty (legitimate outside-toolchain revision) or original_manuscript absent (first link unverifiable) (#576 §11)",
-      "degraded_state": "Closed composite states not_run_no_reports (zero reports — never a silent vacuous pass) and first_link_not_run (inner + last links still checked), under the declared total precedence; only 'fail' (positive breakage evidence) aborts",
-      "diagnostic_marker": "apply_chain_witness == 'not_run_no_reports' | 'first_link_not_run' in DecisionInputs and on the Judge Record Apply-report chain line",
+      "failure_class": "Stage 3' apply-chain witness has no links to check because apply_reports is empty for an all-declined no-op round (#576 current 1.1 §11)",
+      "degraded_state": "Closed composite state not_run_no_reports (zero reports — never a silent vacuous pass); original_manuscript is hard-required and first_link_not_run belongs only to archived 1.0",
+      "diagnostic_marker": "apply_chain_witness == 'not_run_no_reports' in DecisionInputs and on the Judge Record Apply-report chain line",
       "downstream_consumer": "check_re_review_synthesis.py (witness compared on every emission kind) + Schema 6 judge_record.apply_chain_witness",
-      "terminal_policy_effect": "none for the not-run states — absence markers outrank nothing; 'fail' outranks both (fail > not_run_no_reports > first_link_not_run > pass) and is the G0 manifest_hash_mismatch abort, which is fail-closed by design",
+      "terminal_policy_effect": "none for not_run_no_reports; 'fail' outranks it (fail > not_run_no_reports > pass) and is the G0 manifest_hash_mismatch abort",
       "authority": [
         {
           "file": "scripts/check_re_review_synthesis.py",
-          "anchor": "fail > not_run_no_reports > first_link_not_run > pass"
+          "anchor": "fail > not_run_no_reports > pass"
         }
       ],
       "pinned_by": [
         "scripts/test_check_re_review_synthesis.py::test_no_reports_is_not_run_no_reports_witness",
-        "scripts/test_check_re_review_synthesis.py::test_absent_original_is_first_link_not_run_witness",
         "scripts/test_check_re_review_synthesis.py::test_recorded_witness_must_match_recomputed"
       ]
     }

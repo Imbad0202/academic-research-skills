@@ -210,6 +210,50 @@ lookup. `scripts/evidence_rows.py` exposes `build_advisory(...)` for this
 surface, while the existing `evidence-row/1.0` builder and rendered bytes remain
 unchanged. The versioned surfaces cannot be mixed in one page.
 
+## Non-ranking revision authority (#670)
+
+The current reviewer-to-author revision family lives under `revision/`:
+
+- `revision_roadmap.schema.json` — immutable reviewer-owned
+  `revision-roadmap/1.0`, exact draft/manifest bindings, source-trace order,
+  independent severity/obligation/cost/consequence, and proposed target scopes;
+- `claim_surface_manifest.schema.json` — exact registered Claim Intent surfaces,
+  raw UTF-8 spans, hashes, blocks, current rungs, and byte-identical equality
+  between every protected surface and its referenced ClaimIntent `claim_text`;
+- `author_adjudication_input.schema.json` and
+  `author_adjudication.schema.json` — explicit session-author choices and the
+  deterministic raw-hash-bound sidecar; and
+- `integrity_correction_list.schema.json` plus the integrity authorization
+  input/output schemas — proposal-only issues and explicit author approval of
+  the complete exact patch SHA-256; and
+- `revision_evidence_bundle.schema.json` plus the integrity receipt schema
+  — a continuous local chain from exact integrity PASS through current
+  review-write/no-op/integrity rounds to the final draft.
+
+`scripts/revision_roadmap.py` builds, validates, renders, and bundle-replays this
+family without a model, network, API, directory scan, or ambient clock. It opens
+only explicitly named local artifacts through containment, symlink, and
+read-once guards. Bundle validation reruns the pure current patch engine for
+every write round and requires byte-exact replay output to equal the named post
+draft; rewritten artifact/report hashes cannot substitute for authorized bytes.
+
+The current patch schema accepts only format 1.1 and separates
+`review_roadmap` from `integrity_correction` authority. Registered claim
+replacements and declined-overlap collateral authority are exact and
+single-use. An integrity issue list grants no write by itself: apply requires a
+separate author sidecar whose explicit input already carries the exact proposed
+patch digest. Apply report 1.3 records the replayed witness and explicitly leaves
+unregistered semantic drift to E6 review. Patch 1.0 lives only under
+`patch/legacy/v1_0/` with its archived loader.
+
+The current #576 `re_review/` family is version 1.1, uses
+`obligation_class`, hard-requires original/revised drafts, roadmap, author
+sidecar, and bundle, and copies
+author fields exactly into Schema 11. Version 1.0 is archived under
+`re_review/legacy/v1_0/`; mixed chains are invalid.
+
+Spec: `docs/design/2026-08-10-670-non-ranking-revision-roadmap-spec.md`.
+
 ## Human-subjects correspondence contract (#668)
 
 `human_subjects/committee_correspondence.schema.json` defines the standalone

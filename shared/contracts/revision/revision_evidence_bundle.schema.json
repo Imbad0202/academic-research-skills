@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/revision_evidence_bundle.schema.json",
+  "title": "Revision-Evidence Bundle",
+  "description": "Closed local replay chain from one exact integrity-PASS draft through continuous review/no-op/integrity rounds to one exact final draft. Every write round binds pre/post drafts, current 1.1 patch bytes, and report bytes; review rounds additionally bind immutable roadmap, author sidecar, and registered claim surfaces.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "chain_start", "rounds", "final_draft"],
+  "properties": {
+    "schema_version": { "const": "revision-evidence-bundle/1.0" },
+    "chain_start": { "$ref": "#/$defs/chain_start" },
+    "rounds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/review_roadmap_round" },
+          { "$ref": "#/$defs/review_noop_round" },
+          { "$ref": "#/$defs/integrity_correction_round" }
+        ]
+      }
+    },
+    "final_draft": { "$ref": "#/$defs/artifact" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?!\\.\\.(?:[/\\\\]|$))(?!.*[/\\\\]\\.\\.(?:[/\\\\]|$)).+$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relative_path" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "chain_start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_revision_round", "draft", "block_manifest", "integrity_pass_receipt"],
+      "properties": {
+        "first_revision_round": { "type": "integer", "minimum": 1 },
+        "draft": { "$ref": "#/$defs/artifact" },
+        "block_manifest": { "$ref": "#/$defs/artifact" },
+        "integrity_pass_receipt": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "review_roadmap_round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "revision_round",
+        "pre_round_draft",
+        "pre_round_block_manifest",
+        "revision_roadmap",
+        "claim_surface_manifest",
+        "author_adjudication",
+        "revision_patch",
+        "apply_report",
+        "post_round_draft"
+      ],
+      "properties": {
+        "kind": { "const": "review_roadmap" },
+        "revision_round": { "type": "integer", "minimum": 1 },
+        "pre_round_draft": { "$ref": "#/$defs/artifact" },
+        "pre_round_block_manifest": { "$ref": "#/$defs/artifact" },
+        "revision_roadmap": { "$ref": "#/$defs/artifact" },
+        "claim_surface_manifest": { "$ref": "#/$defs/artifact" },
+        "author_adjudication": { "$ref": "#/$defs/artifact" },
+        "revision_patch": { "$ref": "#/$defs/artifact" },
+        "apply_report": { "$ref": "#/$defs/artifact" },
+        "post_round_draft": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "review_noop_round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "revision_round",
+        "pre_round_draft",
+        "pre_round_block_manifest",
+        "revision_roadmap",
+        "claim_surface_manifest",
+        "author_adjudication",
+        "post_round_draft"
+      ],
+      "properties": {
+        "kind": { "const": "review_noop" },
+        "revision_round": { "type": "integer", "minimum": 1 },
+        "pre_round_draft": { "$ref": "#/$defs/artifact" },
+        "pre_round_block_manifest": { "$ref": "#/$defs/artifact" },
+        "revision_roadmap": { "$ref": "#/$defs/artifact" },
+        "claim_surface_manifest": { "$ref": "#/$defs/artifact" },
+        "author_adjudication": { "$ref": "#/$defs/artifact" },
+        "post_round_draft": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "integrity_correction_round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "revision_round",
+        "pre_round_draft",
+        "pre_round_block_manifest",
+        "issue_list",
+        "integrity_authorization",
+        "revision_patch",
+        "apply_report",
+        "post_round_draft"
+      ],
+      "properties": {
+        "kind": { "const": "integrity_correction" },
+        "revision_round": { "type": "integer", "minimum": 1 },
+        "pre_round_draft": { "$ref": "#/$defs/artifact" },
+        "pre_round_block_manifest": { "$ref": "#/$defs/artifact" },
+        "issue_list": { "$ref": "#/$defs/artifact" },
+        "integrity_authorization": { "$ref": "#/$defs/artifact" },
+        "revision_patch": { "$ref": "#/$defs/artifact" },
+        "apply_report": { "$ref": "#/$defs/artifact" },
+        "post_round_draft": { "$ref": "#/$defs/artifact" }
+      }
+    }
+  }
+}

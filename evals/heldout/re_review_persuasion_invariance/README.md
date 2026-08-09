@@ -2,6 +2,12 @@
 
 Issue: #576. Authority: `docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md` §14.
 
+> **Archived contract boundary:** v0.1 is frozen evidence for re-review contract
+> 1.0. Its P-3 no-original arm and `first_link_not_run` expectations are not
+> valid current 1.1 emissions after #670; current 1.1 hard-requires the original
+> manuscript and exact Revision-Evidence Bundle replay. This historical set is
+> preserved without re-scoring and must not gate current 1.1 behavior.
+
 Held-out paired controls for the re-review three-gate contract that PR-B1 and PR-B2 shipped.
 Every scenario is a **pair or triple of Stage 3' re-review runs that differ in exactly one
 controlled factor**, with the expected difference — or expected *sameness* — documented per
@@ -252,10 +258,12 @@ model and prompt pair did / did not hold the invariant". It supports no distribu
 - New scenarios must anchor every cell to a spec clause (`rule_anchor`) and ship in both
   languages.
 - New observables extend `observable_enum` in `heldout_set.json` first.
-- v0.2 candidates, all deliberately out of v0.1 scope: cross-model-active variants (the §9
+- A future current-contract successor must use a new set version and authority;
+  v0.2 candidates, all deliberately out of archived v0.1 scope: cross-model-active variants (the §9
   resolution gate, judge-adjudicated dissent, the §3.4 critical-rebuttal judgment pass); a
   `critical`-severity P-4 exercising `critical_rebuttal_check`; multi-round apply-report chains
-  exercising the §11 inner-link and `first_link_not_run` states; `[LEGACY-NO-CONTRACT]` runs as
+  exercising the §11 inner-link state and hard-required-original failure; archived
+  1.0 alone retains `first_link_not_run`; `[LEGACY-NO-CONTRACT]` runs as
   a negative control.
 - Cross-model authoring of additional surface variants (the `rq_framing_offlist` construction
   discipline) is the intended step before this set is used to gate a contract change.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/re_review/precommitment.schema.json",
   "title": "Re-review Phase 1 Pre-commitment Artifact",
-  "description": "Phase 1 (revision-blind) criteria-commitment artifact of the #576 Spec B three-gate re-review contract. One PrecommitmentRecord per Priority 1 (must_fix) and Priority 2 (should_fix) Schema 7 roadmap item; Priority 3 (consider) items get NO record (spec §3.2/§5.1). Each record OPERATIONALIZES the inherited author-visible criterion (Schema 7 verification_criteria + decision-letter Acceptance criteria) — it never invents a new yardstick; post-revision new standards go to new_standards[] as NewStandardRecord, advisory by default. Hash-bound to the §11 input manifest via input_manifest_hash; scripts/check_re_review_synthesis.py recomputes every binding. Spec: docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md §5.1.",
+  "description": "Phase 1 (revision-blind) criteria-commitment artifact of the #576 three-gate re-review contract. One PrecommitmentRecord per must_fix and should_fix roadmap item; consider items get no record. Each record operationalizes the inherited author-visible criterion without inventing a new yardstick. Hash-bound to the current 1.1 input manifest; scripts/check_re_review_synthesis.py recomputes every binding.",
 
   "type": "object",
   "additionalProperties": false,
@@ -10,7 +10,7 @@
 
   "properties": {
     "contract_version": {
-      "const": "1.0",
+      "const": "1.1",
       "description": "Frozen contract-family version for the v1 three-gate contract (equivalence_policy is likewise constant in v1)."
     },
     "round_id": {
@@ -52,7 +52,7 @@
       "additionalProperties": false,
       "required": [
         "item_id",
-        "priority",
+        "obligation_class",
         "inherited_criterion",
         "operationalization",
         "expected_change_surface",
@@ -62,9 +62,9 @@
       ],
       "properties": {
         "item_id": { "$ref": "#/$defs/item_id" },
-        "priority": {
+        "obligation_class": {
           "enum": ["must_fix", "should_fix"],
-          "description": "consider items get no pre-commitment record (§3.2), so the priority set here is closed at P1/P2."
+          "description": "consider items get no pre-commitment record (§3.2), so the obligation_class set here is closed at must_fix/should_fix."
         },
         "inherited_criterion": {
           "type": "object",
@@ -101,11 +101,11 @@
             },
             "partially_addressed": {
               "$ref": "#/$defs/nonempty_string",
-              "description": "What a genuine-but-incomplete fix looks like. must_fix items only — P2 lighter form derives PARTIALLY_ADDRESSED on-criterion from the committed fully_addressed pattern (§5.1)."
+              "description": "What a genuine-but-incomplete fix looks like. must_fix items only; the should_fix lighter form derives PARTIALLY_ADDRESSED from the committed fully_addressed pattern."
             },
             "made_worse_discriminator": {
               "$ref": "#/$defs/nonempty_string",
-              "description": "What distinguishes a regression on this item. must_fix items only — P2 uses the protocol-level generic discriminator (§5.1)."
+              "description": "What distinguishes a regression on this item. must_fix items only; should_fix uses the protocol-level generic discriminator."
             }
           }
         },
@@ -131,8 +131,8 @@
       "allOf": [
         {
           "if": {
-            "required": ["priority"],
-            "properties": { "priority": { "const": "should_fix" } }
+            "required": ["obligation_class"],
+            "properties": { "obligation_class": { "const": "should_fix" } }
           },
           "then": {
             "properties": {

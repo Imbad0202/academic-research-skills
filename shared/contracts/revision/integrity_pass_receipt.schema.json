@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/integrity_pass_receipt.schema.json",
+  "title": "Revision Chain-start Integrity PASS Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "checked_draft_sha256", "verdict", "open_issue_count", "issued_by"],
+  "properties": {
+    "schema_version": { "const": "integrity-pass-receipt/1.0" },
+    "receipt_id": { "type": "string", "pattern": "^INTEGRITY-PASS-[A-Za-z0-9._-]+$" },
+    "checked_draft_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "verdict": { "const": "PASS" },
+    "open_issue_count": { "const": 0 },
+    "issued_by": { "const": "integrity_verification_agent" }
+  }
+}

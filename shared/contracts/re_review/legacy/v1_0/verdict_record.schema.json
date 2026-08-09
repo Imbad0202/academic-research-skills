@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/re_review/legacy/v1_0/verdict_record.schema.json",
+  "title": "Re-review Phase 2A Verdict-record Artifact",
+  "description": "Phase 2A (persuasion-blind) evidence-verdict artifact of the #576 Spec B three-gate re-review contract. Committed BEFORE the Response to Reviewers is revealed; immutable once emitted ([EVIDENCE-COMMITTED]) — Phase 2B differences ride typed AdjustmentRecords in the §5.3 traceability sidecar, and the new_issues set FREEZES here whole-record (§13 byte-equality witness). Hash-bound to the Phase 1 artifact via precommitment_hash. Spec: docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md §5.2.",
+
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["round_id", "precommitment_hash", "items", "new_issues", "dissents", "escalation_exceptions"],
+
+  "properties": {
+    "round_id": { "type": "string", "minLength": 1 },
+    "precommitment_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "sha256 hex over the Phase 1 pre-commitment artifact's JSON Canonical Form (RFC 8785 / JCS). Second link of the §11 hash chain; the checker recomputes it."
+    },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/verdict_record" },
+      "description": "Exactly one record per roadmap item, ALL priorities — the all-rows G1 guard needs a 2A-side witness on every row (§13)."
+    },
+    "new_issues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/new_issue_record" },
+      "description": "Issues found while reading the revised manuscript that are not traceable to a roadmap item (§8). This SET — every record, WHOLE-RECORD — freezes at [EVIDENCE-COMMITTED]; §5.3 carries the frozen copy."
+    },
+    "dissents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dissent_record" },
+      "description": "Phase 2A discoveries that a pre-committed operationalization cannot be applied as written (§7). A criterion swap, visible, before the verdict — never a verdict-relaxation channel."
+    },
+    "escalation_exceptions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/escalation_exception_record" },
+      "description": "§6.4 escalation exceptions, emitted at 2A with approval_state pending; approval happens only in §5.3 escalation_approvals."
+    }
+  },
+
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "item_id": { "type": "string", "pattern": "^REV-[A-Za-z0-9-]+$" },
+    "nonempty_string": { "type": "string", "minLength": 1 },
+    "verdict": {
+      "enum": ["FULLY_ADDRESSED", "PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+    },
+    "verifier_seat": {
+      "enum": ["EIC", "R1", "R2", "R3"],
+      "description": "The DA seat is never a verification persona (§10)."
+    },
+    "severity": { "enum": ["critical", "major", "minor"] },
+    "typed_anchor": {
+      "type": "string",
+      "pattern": "^(text|table|figure|equation|dataset|absence): .+$",
+      "description": "Schema 6 typed anchor grammar."
+    },
+    "residual_gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "residual_magnitude"],
+      "properties": {
+        "text": { "$ref": "#/$defs/nonempty_string" },
+        "residual_magnitude": {
+          "enum": ["must_fix", "should_fix", "consider"],
+          "description": "Re-grading of what remains; feeds the §6 decision derivation (B4/B5)."
+        }
+      }
+    },
+
+    "verdict_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "verdict", "change_summary", "verified_by", "applied_criterion"],
+      "properties": {
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "verdict": { "$ref": "#/$defs/verdict" },
+        "evidence_anchor": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/typed_anchor" },
+          "description": "Typed anchor(s) into the REVISED manuscript. Required for every verdict except CANNOT_VERIFY."
+        },
+        "cannot_verify_reason": {
+          "$ref": "#/$defs/nonempty_string",
+          "description": "Required iff verdict = CANNOT_VERIFY (e.g. evidence surface inaccessible, criterion requires an artifact not in the input set)."
+        },
+        "change_summary": {
+          "$ref": "#/$defs/nonempty_string",
+          "description": "What actually changed relative to the original manuscript (from diff/apply report + comparison), one sentence. Stays total on the degraded no-original path with the §11 [CHANGE-BASIS-ABSENT] marker."
+        },
+        "residual_gap": { "$ref": "#/$defs/residual_gap" },
+        "verified_by": { "$ref": "#/$defs/verifier_seat" },
+        "applied_criterion": {
+          "anyOf": [
+            { "const": "precommitted" },
+            { "const": "not_precommitted" },
+            { "type": "string", "pattern": "^dissented:DIS-[1-9][0-9]*$" }
+          ],
+          "description": "not_precommitted is valid ONLY for priority consider items (no Phase-1 record exists, §3.2); a P1/P2 item carrying it fails the checker."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["verdict"],
+            "properties": { "verdict": { "const": "CANNOT_VERIFY" } }
+          },
+          "then": {
+            "required": ["cannot_verify_reason"],
+            "not": { "required": ["evidence_anchor"] }
+          },
+          "else": {
+            "required": ["evidence_anchor"],
+            "not": { "required": ["cannot_verify_reason"] }
+          }
+        },
+        {
+          "if": {
+            "required": ["verdict"],
+            "properties": { "verdict": { "const": "PARTIALLY_ADDRESSED" } }
+          },
+          "then": { "required": ["residual_gap"] },
+          "else": { "not": { "required": ["residual_gap"] } }
+        }
+      ]
+    },
+
+    "new_issue_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "new_issue_id",
+        "description",
+        "location_anchor",
+        "severity",
+        "found_by",
+        "confidence",
+        "competence_basis",
+        "attribution",
+        "attribution_evidence",
+        "nearest_roadmap_item",
+        "non_match_rationale"
+      ],
+      "properties": {
+        "new_issue_id": { "type": "string", "pattern": "^NEW-[1-9][0-9]*$" },
+        "description": { "$ref": "#/$defs/nonempty_string" },
+        "location_anchor": { "$ref": "#/$defs/typed_anchor" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "found_by": {
+          "$ref": "#/$defs/verifier_seat",
+          "description": "The discovering verifier's seat label — new issues are item-untraceable so no item-side verified_by exists (§8)."
+        },
+        "confidence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "#574 A3 per-finding confidence vocabulary."
+        },
+        "competence_basis": { "$ref": "#/$defs/nonempty_string" },
+        "attribution": {
+          "enum": ["regression", "previously_missed", "indeterminate"],
+          "description": "Only regression can move the decision (§6 goalpost guard); indeterminate is never silently promoted (SD-9)."
+        },
+        "attribution_evidence": { "$ref": "#/$defs/nonempty_string" },
+        "nearest_roadmap_item": {
+          "anyOf": [
+            { "$ref": "#/$defs/item_id" },
+            { "type": "null" }
+          ],
+          "description": "Typed non-match witness: the closest roadmap item, or null when nothing is even adjacent (§8)."
+        },
+        "non_match_rationale": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
+
+    "dissent_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dissent_id",
+        "item_id",
+        "criterion_hash",
+        "reason_code",
+        "original_operationalization",
+        "replacement_operationalization",
+        "evidence",
+        "decision_impact_note"
+      ],
+      "properties": {
+        "dissent_id": { "type": "string", "pattern": "^DIS-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "criterion_hash": {
+          "$ref": "#/$defs/sha256",
+          "description": "sha256 hex over the referenced Phase-1 PrecommitmentRecord's JSON Canonical Form (v3.6.3 convention). §13 RECOMPUTES it against the record — a stale or arbitrary value fails."
+        },
+        "reason_code": {
+          "enum": ["criterion_ambiguous", "criterion_infeasible_as_written", "evidence_surface_moved", "criterion_error"]
+        },
+        "original_operationalization": { "$ref": "#/$defs/nonempty_string" },
+        "replacement_operationalization": { "$ref": "#/$defs/nonempty_string" },
+        "evidence": { "$ref": "#/$defs/nonempty_string" },
+        "decision_impact_note": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
+
+    "escalation_exception_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exception_id",
+        "escalation_class",
+        "reason_code",
+        "evidence_anchor",
+        "why_round1_missed_it",
+        "mechanical_decision_impact",
+        "approval_state"
+      ],
+      "properties": {
+        "exception_id": { "type": "string", "pattern": "^ESC-[1-9][0-9]*$" },
+        "new_standard_ref": {
+          "type": "string",
+          "pattern": "^NS-[1-9][0-9]*$",
+          "description": "Optional pointer back to the Phase-1 NewStandardRecord that requested escalation. 2A may also emit an exception with no Phase-1 request (§5.1)."
+        },
+        "escalation_class": {
+          "enum": ["research_integrity", "ethics", "safety", "legal_compliance", "fatal_validity"]
+        },
+        "reason_code": { "$ref": "#/$defs/nonempty_string" },
+        "evidence_anchor": {
+          "$ref": "#/$defs/typed_anchor",
+          "description": "ORIGINAL-manuscript-side anchor — proving the issue existed in Round 1; revision-introduced content is a regression instead (§6.4)."
+        },
+        "why_round1_missed_it": { "$ref": "#/$defs/nonempty_string" },
+        "mechanical_decision_impact": {
+          "enum": ["Minor Revision", "Major Revision"],
+          "description": "Step-3 floor; Reject is not a Stage 3' decision (§6.4)."
+        },
+        "approval_state": {
+          "const": "pending",
+          "description": "Literal emission constant — approval happens only in §5.3 escalation_approvals; DecisionInputs joins effective_approval_state from there and never copies this field."
+        }
+      }
+    }
+  }
+}

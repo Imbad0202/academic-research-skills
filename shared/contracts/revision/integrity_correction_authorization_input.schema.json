@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/integrity_correction_authorization_input.schema.json",
+  "title": "Explicit Integrity Correction Authorization Input",
+  "description": "The input accepted by the deterministic integrity-authorization builder. It contains explicit session-user event receipts, one author decision per issue, and the exact revision_patch_sha256 the author approved. It omits only producer-computed revision, draft, and issue-list bindings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "revision_patch_sha256", "author_events", "author_decisions"],
+  "properties": {
+    "schema_version": { "const": "integrity-correction-authorization-input/1.0" },
+    "revision_patch_sha256": {
+      "$ref": "integrity_correction_authorization.schema.json#/$defs/sha256",
+      "description": "Explicit author-approved hash of the complete proposed integrity patch bytes; the builder copies and validates this value rather than synthesizing approval."
+    },
+    "author_events": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "integrity_correction_authorization.schema.json#/$defs/author_event" }
+    },
+    "author_decisions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "integrity_correction_authorization.schema.json#/$defs/author_decision" }
+    }
+  }
+}

@@ -22,7 +22,7 @@ from pathlib import Path
 from unittest import mock
 
 from scripts._block_parser import base_draft_hash, parse_document
-from scripts.ars_anchorize_draft import anchorize_text
+from scripts.ars_anchorize_draft import anchorize_text, build_manifest
 from scripts.ars_apply_revision_patch import (
     DEFAULT_TOUCHED_RATIO_THRESHOLD,
     ApplyRejection,
@@ -30,6 +30,8 @@ from scripts.ars_apply_revision_patch import (
     main,
     run,
 )
+from scripts.legacy import ars_apply_revision_patch_v1_0 as legacy_apply
+from scripts.revision_roadmap import author_decision_digest
 
 FIXTURE_BODY = """# Introduction
 
@@ -54,17 +56,190 @@ Closing paragraph.
 FIXTURE_WITH_FRONTMATTER = "---\ntitle: fixture\n---\n\n" + FIXTURE_BODY
 
 
+class TestVersionIsolation(unittest.TestCase):
+    def test_legacy_loader_is_pinned_to_archived_v1_0_schema(self):
+        self.assertEqual(
+            legacy_apply.PATCH_SCHEMA_PATH,
+            Path(__file__).resolve().parent.parent
+            / "shared"
+            / "contracts"
+            / "patch"
+            / "legacy"
+            / "v1_0"
+            / "revision_patch.schema.json",
+        )
+        schema = legacy_apply._load_patch_schema()
+        self.assertEqual(schema["properties"]["patch_format_version"]["const"], "1.0")
+
+
 def _hash_of(anchored: str, block_id: str) -> str:
     return parse_document(anchored).block_by_id()[block_id].norm_hash
 
 
 def _base_patch(anchored: str, ops: list[dict], round_: int = 1) -> dict:
+    current_ops = []
+    for source in ops:
+        op = dict(source)
+        op.setdefault("claim_strength_changes", [])
+        op.setdefault("collateral_authorization_ids", [])
+        current_ops.append(op)
     return {
-        "patch_format_version": "1.0",
+        "patch_format_version": "1.1",
+        "authorization_context": "review_roadmap",
         "revision_round": round_,
         "base_draft_hash": base_draft_hash(anchored.encode("utf-8")),
-        "ops": ops,
+        "ops": current_ops,
         "emitted_by": "draft_writer_agent",
+    }
+
+
+def _json_bytes(value: dict) -> bytes:
+    return (
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
+    ).encode("utf-8")
+
+
+def _authority_fixture(root: Path, anchored: str, patch: dict) -> dict:
+    """Write a minimal exact #670 review authority chain for structural tests."""
+    base_raw = anchored.encode("utf-8")
+    manifest = build_manifest(base_raw, parse_document(anchored))
+    manifest_raw = _json_bytes(manifest)
+    manifest_path = root / "block-manifest.json"
+    manifest_path.write_bytes(manifest_raw)
+
+    item_targets: dict[str, dict[str, set[str]]] = {}
+    for op in patch.get("ops", []):
+        for item_id in op.get("roadmap_item_ids", []):
+            item_targets.setdefault(item_id, {}).setdefault(op["block_id"], set()).add(
+                op["op"]
+            )
+    op_order = {"replace_block": 0, "insert_after": 1, "delete_block": 2}
+    items = []
+    for ordinal, item_id in enumerate(sorted(item_targets), start=1):
+        targets = [
+            {
+                "block_id": block_id,
+                "allowed_operations": sorted(operations, key=op_order.__getitem__),
+            }
+            for block_id, operations in sorted(
+                item_targets[item_id].items(),
+                key=lambda pair: (-1 if pair[0] == "DOC-BODY-START" else int(pair[0][1:])),
+            )
+        ]
+        items.append(
+            {
+                "id": item_id,
+                "source_refs": [
+                    {
+                        "seat": "R1",
+                        "channel": "finding",
+                        "ordinal": ordinal,
+                        "subclaim_ordinal": 0,
+                    }
+                ],
+                "description": f"Fixture finding {item_id}",
+                "reviewer": "R1",
+                "obligation_class": "must_fix",
+                "severity": "major",
+                "evidence_anchor": {
+                    "anchor_type": "text",
+                    "locator": "fixture",
+                    "quote": "fixture",
+                },
+                "confidence": 5,
+                "competence_basis": "fixture",
+                "cost_scope": {"kind": "sentence", "locator": "fixture block"},
+                "consequence_if_unaddressed": {
+                    "code": "acceptance_criterion_unmet",
+                    "target": {"kind": "section", "locator": "fixture"},
+                },
+                "target_section": "fixture",
+                "suggested_action": "Apply the declared block-local change.",
+                "consensus_level": "SINGLE-VERIFIER",
+                "verification_criteria": "Declared bytes are present.",
+                "proposed_targets": targets,
+            }
+        )
+    roadmap = {
+        "schema_version": "revision-roadmap/1.0",
+        "revision_round": patch.get("revision_round", 1),
+        "base_draft_sha256": hashlib.sha256(base_raw).hexdigest(),
+        "block_manifest_sha256": hashlib.sha256(manifest_raw).hexdigest(),
+        "items": items,
+        "total_items": len(items),
+        "obligation_counts": {
+            "must_fix": len(items),
+            "should_fix": 0,
+            "consider": 0,
+        },
+        "editorial_decision": "Major Revision",
+        "consensus_summary": "Fixture consensus.",
+        "dissenting_opinions": [],
+    }
+    roadmap_raw = _json_bytes(roadmap)
+    roadmap_path = root / "roadmap.json"
+    roadmap_path.write_bytes(roadmap_raw)
+
+    claim_surface = {
+        "schema_version": "claim-surface-manifest/1.0",
+        "revision_round": patch.get("revision_round", 1),
+        "roadmap_sha256": hashlib.sha256(roadmap_raw).hexdigest(),
+        "base_draft_sha256": hashlib.sha256(base_raw).hexdigest(),
+        "claim_intent_sources": [],
+        "surfaces": [],
+    }
+    claim_raw = _json_bytes(claim_surface)
+    claim_path = root / "claim-surfaces.json"
+    claim_path.write_bytes(claim_raw)
+
+    event_id = "AUTHOR-EVENT-test-fixture"
+    adjudication = {
+        "schema_version": "author-adjudication/1.0",
+        "revision_round": patch.get("revision_round", 1),
+        "roadmap_sha256": hashlib.sha256(roadmap_raw).hexdigest(),
+        "base_draft_sha256": hashlib.sha256(base_raw).hexdigest(),
+        "claim_surface_manifest_sha256": hashlib.sha256(claim_raw).hexdigest(),
+        "adjudication_status": "complete",
+        "author_events": [
+            {
+                "event_id": event_id,
+                "source": "explicit_session_user_message",
+                "actor_role": "author",
+                "input_sha256": hashlib.sha256(b"explicit fixture author choice").hexdigest(),
+            }
+        ],
+        "display_order": {
+            "mode": "source_traceability",
+            "item_ids": [item["id"] for item in items],
+            "author_event_id": event_id,
+        },
+        "author_adjudications": [
+            {
+                "item_id": item["id"],
+                "author_event_id": event_id,
+                "author_triage": "will_address",
+                "authorized_targets": item["proposed_targets"],
+                "claim_strength_authorizations": [],
+            }
+            for item in items
+        ],
+        "collateral_authorizations": [],
+    }
+    author_raw = _json_bytes(adjudication)
+    author_path = root / "author-adjudication.json"
+    author_path.write_bytes(author_raw)
+
+    patch["roadmap_sha256"] = hashlib.sha256(roadmap_raw).hexdigest()
+    patch["author_adjudication_sha256"] = hashlib.sha256(author_raw).hexdigest()
+    patch["author_decision_digest"] = author_decision_digest(adjudication)
+    patch["claim_surface_manifest_sha256"] = hashlib.sha256(claim_raw).hexdigest()
+    return {
+        "block_manifest_path": manifest_path,
+        "roadmap_path": roadmap_path,
+        "author_adjudication_path": author_path,
+        "claim_surface_manifest_path": claim_path,
+        "artifact_root": root,
     }
 
 
@@ -77,9 +252,11 @@ class ApplyHarness(unittest.TestCase):
         self.patch_path = self.tmp / "patch.json"
         self.output_path = self.tmp / "revised.md"
         self.report_path = self.tmp / "revised.md.apply-report.json"
+        self.authority_kwargs: dict = {}
 
     def _write(self, anchored: str, patch: dict) -> None:
         self.base_path.write_bytes(anchored.encode("utf-8"))
+        self.authority_kwargs = _authority_fixture(self.tmp, anchored, patch)
         self.patch_path.write_text(json.dumps(patch), encoding="utf-8")
 
     def _run(self, **kwargs) -> dict:
@@ -90,8 +267,23 @@ class ApplyHarness(unittest.TestCase):
             self.patch_path,
             self.output_path,
             self.report_path,
+            **self.authority_kwargs,
             **defaults,
         )
+
+    def _cli_authority_args(self) -> list[str]:
+        return [
+            "--block-manifest",
+            str(self.authority_kwargs["block_manifest_path"]),
+            "--roadmap",
+            str(self.authority_kwargs["roadmap_path"]),
+            "--author-adjudication",
+            str(self.authority_kwargs["author_adjudication_path"]),
+            "--claim-surface-manifest",
+            str(self.authority_kwargs["claim_surface_manifest_path"]),
+            "--artifact-root",
+            str(self.authority_kwargs["artifact_root"]),
+        ]
 
     def _assert_no_artifacts(self):
         self.assertFalse(self.output_path.exists())
@@ -756,7 +948,13 @@ class TestStructuralTriggers(ApplyHarness):
             for bid in ("B0001", "B0002", "B0003")
         ]
         self._write(anchored, _base_patch(anchored, ops))
-        argv = [str(self.base_path), str(self.patch_path), "--output", str(self.output_path)]
+        argv = [
+            str(self.base_path),
+            str(self.patch_path),
+            *self._cli_authority_args(),
+            "--output",
+            str(self.output_path),
+        ]
         self.assertEqual(main(argv), 3)
         self.assertFalse(self.output_path.exists())
         # Strict comparator boundary: a threshold equal to the ratio does
@@ -778,7 +976,13 @@ class TestStructuralTriggers(ApplyHarness):
             }
         ]
         self._write(anchored, _base_patch(anchored, ops))
-        argv = [str(self.base_path), str(self.patch_path), "--output", str(self.output_path)]
+        argv = [
+            str(self.base_path),
+            str(self.patch_path),
+            *self._cli_authority_args(),
+            "--output",
+            str(self.output_path),
+        ]
         for bad in ("nan", "inf", "-0.1", "1.5"):
             with self.assertRaises(SystemExit) as ctx:
                 main(argv + ["--touched-ratio-threshold", bad])
@@ -924,11 +1128,15 @@ class TestReportOutputHash(ApplyHarness):
         persisted = json.loads(self.report_path.read_text(encoding="utf-8"))
         self.assertEqual(persisted["output_draft_hash"], report["output_draft_hash"])
 
-    def test_report_format_version_bumped_for_patch_digest(self):
+    def test_report_format_version_bumped_for_authorization_witness(self):
         anchored = self.anchored_fixture()
         self._write(anchored, self._single_replace_patch(anchored))
         report = self._run()
-        self.assertEqual(report["report_format_version"], "1.2")
+        self.assertEqual(report["report_format_version"], "1.3")
+        self.assertEqual(report["authorization_witness"]["status"], "pass")
+        self.assertTrue(
+            report["authorization_witness"]["unregistered_claim_drift_review_required"]
+        )
 
     def test_report_carries_patch_digest_of_exact_patch_bytes(self):
         anchored = self.anchored_fixture()
@@ -956,7 +1164,13 @@ class TestCliExitCodes(ApplyHarness):
             ],
         )
         self._write(anchored, patch)
-        argv = [str(self.base_path), str(self.patch_path), "--output", str(self.output_path)]
+        argv = [
+            str(self.base_path),
+            str(self.patch_path),
+            *self._cli_authority_args(),
+            "--output",
+            str(self.output_path),
+        ]
         self.assertEqual(main(argv), 0)
 
         patch["base_draft_hash"] = "0" * 12
@@ -975,10 +1189,19 @@ class TestCliExitCodes(ApplyHarness):
                 }
             ],
         )
-        self.patch_path.write_text(json.dumps(heading_patch))
+        self._write(anchored, heading_patch)
         out2 = self.tmp / "revised2.md"
         self.assertEqual(
-            main([str(self.base_path), str(self.patch_path), "--output", str(out2)]), 3
+            main(
+                [
+                    str(self.base_path),
+                    str(self.patch_path),
+                    *self._cli_authority_args(),
+                    "--output",
+                    str(out2),
+                ]
+            ),
+            3,
         )
         self.assertFalse(out2.exists())
 
@@ -1058,6 +1281,7 @@ class TestByteIdentityProperty(ApplyHarness):
             patch_path = tmp / "patch.json"
             output_path = tmp / "out.md"
             base_path.write_bytes(anchored.encode("utf-8"))
+            authority_kwargs = _authority_fixture(tmp, anchored, patch)
             patch_path.write_text(json.dumps(patch))
             run(
                 base_path,
@@ -1066,6 +1290,7 @@ class TestByteIdentityProperty(ApplyHarness):
                 tmp / "report.json",
                 acknowledge_structural=False,
                 touched_ratio_threshold=None,
+                **authority_kwargs,
             )
             out_text = output_path.read_bytes().decode("utf-8")
 

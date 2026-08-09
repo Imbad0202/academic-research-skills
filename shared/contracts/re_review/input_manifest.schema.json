@@ -6,9 +6,10 @@
 
   "type": "object",
   "additionalProperties": false,
-  "required": ["round_id", "cross_model_active", "artifacts"],
+  "required": ["contract_version", "round_id", "cross_model_active", "artifacts"],
 
   "properties": {
+    "contract_version": { "const": "1.1" },
     "round_id": { "type": "string", "minLength": 1 },
     "cross_model_active": {
       "type": "boolean",
@@ -21,6 +22,8 @@
         "original_manuscript",
         "revised_manuscript",
         "revision_roadmap",
+        "author_adjudication",
+        "revision_evidence_bundle",
         "editorial_decision_letter",
         "response_to_reviewers",
         "revision_patches",
@@ -29,14 +32,25 @@
         "round1_config_cards"
       ],
       "properties": {
-        "original_manuscript": { "$ref": "#/$defs/artifact_entry" },
+        "original_manuscript": {
+          "$ref": "#/$defs/required_artifact_entry",
+          "description": "Hard-required current 1.1 pre-revision draft. The fully replayed bundle makes an absent/first-link-not-run degradation dishonest."
+        },
         "revised_manuscript": {
-          "$ref": "#/$defs/artifact_entry",
+          "$ref": "#/$defs/required_artifact_entry",
           "description": "Hard-required (absent -> G0 manifest_incomplete)."
         },
         "revision_roadmap": {
-          "$ref": "#/$defs/artifact_entry",
+          "$ref": "#/$defs/required_artifact_entry",
           "description": "Hard-required (absent -> G0 manifest_incomplete)."
+        },
+        "author_adjudication": {
+          "$ref": "#/$defs/required_artifact_entry",
+          "description": "Hard-required current #670 author-owned sidecar. Its exact bytes are separately verified and copied into Schema 11; author choices never live in the reviewer roadmap."
+        },
+        "revision_evidence_bundle": {
+          "$ref": "#/$defs/required_artifact_entry",
+          "description": "Hard-required current #670/#569 chain witness carrying the same roadmap and author-sidecar bytes through revision mode. Bundle replay is a prior gate; this manifest preserves its exact artifact binding."
         },
         "editorial_decision_letter": { "$ref": "#/$defs/artifact_entry" },
         "response_to_reviewers": { "$ref": "#/$defs/artifact_entry" },
@@ -67,6 +81,19 @@
         { "type": "null" }
       ],
       "description": "Copied from the artifact's Material Passport entry when the ref is passport:-tagged, else null. A null on a passport: entry fails the checker; null on a path: entry is a visible degradation (freshness rules skip it)."
+    },
+
+    "required_artifact_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "path_or_passport_ref", "sha256", "version_label", "origin_date"],
+      "properties": {
+        "present": { "const": true },
+        "path_or_passport_ref": { "$ref": "#/$defs/artifact_ref" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "version_label": { "$ref": "#/$defs/freshness_value" },
+        "origin_date": { "$ref": "#/$defs/freshness_value" }
+      }
     },
 
     "artifact_entry": {

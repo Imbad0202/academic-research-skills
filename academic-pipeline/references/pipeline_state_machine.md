@@ -247,7 +247,7 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | Synthesis Report | Stage 1 | Stage 2 (Phase 3) | Recommended |
 | Paper Draft | Stage 2 | Stage 2.5 (input) | **Required** |
 | **Integrity Report (Pre)** | **Stage 2.5** | **Stage 3 (prerequisite)** | **Required** |
-| **Verified Paper Draft** | **Stage 2.5** | **Stage 3 (Phase 0) + Stage 3' (re-review mode — the original (pre-revision) manuscript, #576 §3.1 Phase 2A comparison base)** | **Required (Stage 3' consumption Recommended — §11 presence policy: absent → every new issue `indeterminate`, visible degradations, never a block)** |
+| **Verified Paper Draft** | **Stage 2.5** | **Stage 3 (Phase 0) + Stage 3' (re-review mode — the original pre-revision manuscript, #576 1.1 §3.1 Phase 2A comparison base)** | **Required, including Stage 3' consumption; current manifest and bundle fail closed if absent** |
 | Review Reports (x5) | Stage 3 | Stage 4 (input) + Stage 3' (re-review mode — the #576 §4 level-3 driving-finding criterion layer; absent → transported Schema 7 fields alone, `[ROUND1-FINDINGS-ABSENT]`) | Required (Stage 3' consumption Recommended — §11 presence policy) |
 | Editorial Decision | Stage 3 | Stage 4 (input) | Required |
 | Revision Roadmap | Stage 3 | Stage 4 (input) + Stage 3' (re-review mode — verification checklist basis; the fresh-full-review branch consumes none) | Required (Stage 3' consumption re-review-mode-only) |

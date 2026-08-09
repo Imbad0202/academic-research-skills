@@ -70,10 +70,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # reviewed against the #528 resolutions.
 # ---------------------------------------------------------------------------
 CONTENT_LOCKS = {
-    "academic-pipeline/SKILL.md": "a37492536f1eda2b974efe53d9cad2324587c759f1d542a8c6d6af6603990bd7",
-    "academic-pipeline/agents/pipeline_orchestrator_agent.md": "790e21880619139002aa1fe7a3aeed19e3e3f9656b045d6da56f6495d14e78b2",
-    "academic-pipeline/agents/state_tracker_agent.md": "7c1762740a1bc57e47aa5ab02f6b07dc7fea6a40b6e7adbc1e4c3741e66a0f26",
-    "academic-pipeline/references/pipeline_state_machine.md": "acd65b3abcd844f1b2baaf850bafe9d9739b3d2302c62706a9d8e0040abe37b0",
+    "academic-pipeline/SKILL.md": "2ec9302ce877f5126d2ef0d69ef306009e478a0c0dadc2343b18c15692b13bba",
+    "academic-pipeline/agents/pipeline_orchestrator_agent.md": "22782dd247b34683fca81198de14523c6503988cc9f2f772258a1f7be6b5f084",
+    "academic-pipeline/agents/state_tracker_agent.md": "1222cf0ca75646cb5e0a5e27fba344e15f45ea45df4ed5ce10301cbf5bf265d8",
+    "academic-pipeline/references/pipeline_state_machine.md": "34d6baa2af3dddc0e8692584195405153f5fcfe0f4794786a6c19b959b16e404",
     "academic-pipeline/references/process_summary_protocol.md": "5c7053230d73b39d0a5d9d6f5e9f339c12570ae6d3aa2eae2eaf74f51d571e94",
 }
 

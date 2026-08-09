@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/author_adjudication.schema.json",
+  "title": "Author Revision Adjudication Sidecar",
+  "description": "Author-owned choices separated from the immutable reviewer roadmap. The sidecar binds exact roadmap/base/claim-surface bytes and preserves explicit session-user event receipts; it cannot change reviewer findings, obligations, or verification criteria.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "revision_round",
+    "roadmap_sha256",
+    "base_draft_sha256",
+    "claim_surface_manifest_sha256",
+    "adjudication_status",
+    "author_events",
+    "display_order",
+    "author_adjudications",
+    "collateral_authorizations"
+  ],
+  "properties": {
+    "schema_version": { "const": "author-adjudication/1.0" },
+    "revision_round": { "type": "integer", "minimum": 1 },
+    "roadmap_sha256": { "$ref": "#/$defs/sha256" },
+    "base_draft_sha256": { "$ref": "#/$defs/sha256" },
+    "claim_surface_manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "adjudication_status": { "const": "complete" },
+    "author_events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/author_event" }
+    },
+    "display_order": { "$ref": "#/$defs/display_order" },
+    "author_adjudications": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/adjudication" }
+    },
+    "collateral_authorizations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/collateral_authorization" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "item_id": {
+      "type": "string",
+      "pattern": "^REV-[A-Za-z0-9-]+$"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^AUTHOR-EVENT-[A-Za-z0-9._-]+$"
+    },
+    "author_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "source", "actor_role", "input_sha256"],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/event_id" },
+        "source": { "const": "explicit_session_user_message" },
+        "actor_role": { "const": "author" },
+        "input_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "display_order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "item_ids", "author_event_id"],
+      "properties": {
+        "mode": { "enum": ["source_traceability", "user_selected"] },
+        "item_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/item_id" }
+        },
+        "author_event_id": { "$ref": "#/$defs/event_id" }
+      },
+      "description": "Presentation-only view. It never affects decision-letter Required Item Details, transport references, patch authority, or re-review derivation."
+    },
+    "target_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["block_id", "allowed_operations"],
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "pattern": "^(?:B[0-9]{4,}|DOC-BODY-START)$"
+        },
+        "allowed_operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["replace_block", "insert_after", "delete_block"]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["block_id"],
+            "properties": { "block_id": { "const": "DOC-BODY-START" } }
+          },
+          "then": {
+            "properties": {
+              "allowed_operations": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": { "const": "insert_after" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "claim_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id",
+        "author_event_id",
+        "surface_id",
+        "scoped_manifest_id",
+        "claim_id",
+        "block_id",
+        "original_text_sha256",
+        "replacement_text",
+        "replacement_text_sha256",
+        "from_rung",
+        "to_rung",
+        "direction",
+        "reason"
+      ],
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "pattern": "^CLAIM-AUTH-[A-Za-z0-9._-]+$"
+        },
+        "author_event_id": { "$ref": "#/$defs/event_id" },
+        "surface_id": {
+          "type": "string",
+          "pattern": "^CLAIM-SURFACE-[A-Za-z0-9._-]+$"
+        },
+        "scoped_manifest_id": {
+          "type": "string",
+          "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "^C-[0-9]{3,}$"
+        },
+        "block_id": {
+          "type": "string",
+          "pattern": "^B[0-9]{4,}$"
+        },
+        "original_text_sha256": { "$ref": "#/$defs/sha256" },
+        "replacement_text": { "type": "string", "maxLength": 4000 },
+        "replacement_text_sha256": { "$ref": "#/$defs/sha256" },
+        "from_rung": { "$ref": "#/$defs/nonempty_string" },
+        "to_rung": { "$ref": "#/$defs/nonempty_string" },
+        "direction": { "enum": ["strengthen", "weaken"] },
+        "reason": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
+    "adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "author_event_id",
+        "author_triage",
+        "authorized_targets",
+        "claim_strength_authorizations"
+      ],
+      "properties": {
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "author_event_id": { "$ref": "#/$defs/event_id" },
+        "author_triage": {
+          "enum": ["will_address", "wont_address", "not_on_point"]
+        },
+        "author_reason": { "$ref": "#/$defs/nonempty_string" },
+        "authorized_targets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/target_scope" }
+        },
+        "claim_strength_authorizations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/claim_authorization" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["author_triage"],
+            "properties": { "author_triage": { "const": "will_address" } }
+          },
+          "then": {
+            "not": { "required": ["author_reason"] },
+            "properties": {
+              "authorized_targets": { "minItems": 1 }
+            }
+          },
+          "else": {
+            "required": ["author_reason"],
+            "properties": {
+              "authorized_targets": { "maxItems": 0 },
+              "claim_strength_authorizations": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "collateral_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id",
+        "author_event_id",
+        "authorizing_item_id",
+        "constrained_item_id",
+        "block_id",
+        "operation",
+        "reason"
+      ],
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "pattern": "^COLLATERAL-AUTH-[A-Za-z0-9._-]+$"
+        },
+        "author_event_id": { "$ref": "#/$defs/event_id" },
+        "authorizing_item_id": { "$ref": "#/$defs/item_id" },
+        "constrained_item_id": { "$ref": "#/$defs/item_id" },
+        "block_id": {
+          "type": "string",
+          "pattern": "^(?:B[0-9]{4,}|DOC-BODY-START)$"
+        },
+        "operation": {
+          "enum": ["replace_block", "insert_after", "delete_block"]
+        },
+        "reason": { "$ref": "#/$defs/nonempty_string" }
+      }
+    }
+  }
+}

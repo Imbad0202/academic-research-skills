@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/integrity_correction_authorization.schema.json",
+  "title": "Integrity Correction Authorization Sidecar",
+  "description": "Author-owned approval of exact integrity-correction patch bytes for a hash-bound issue list and base draft. Runtime validation requires exactly one decision per issue, exact author-event references, and authorized targets that are a subset of the issue's proposed targets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "revision_round",
+    "base_draft_sha256",
+    "issue_list_sha256",
+    "revision_patch_sha256",
+    "author_events",
+    "author_decisions"
+  ],
+  "properties": {
+    "schema_version": { "const": "integrity-correction-authorization/1.0" },
+    "revision_round": { "type": "integer", "minimum": 1 },
+    "base_draft_sha256": { "$ref": "#/$defs/sha256" },
+    "issue_list_sha256": { "$ref": "#/$defs/sha256" },
+    "revision_patch_sha256": { "$ref": "#/$defs/sha256" },
+    "author_events": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/author_event" }
+    },
+    "author_decisions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/author_decision" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "correction_id": {
+      "type": "string",
+      "pattern": "^(?:IL-(?:SERIOUS|MEDIUM|MINOR)-[1-9][0-9]*|EA-[0-9]{3,})$"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^AUTHOR-EVENT-[A-Za-z0-9._-]+$"
+    },
+    "author_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "source", "actor_role", "input_sha256"],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/event_id" },
+        "source": { "const": "explicit_session_user_message" },
+        "actor_role": { "const": "author" },
+        "input_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "target_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["block_id", "allowed_operations"],
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "pattern": "^(?:B[0-9]{4,}|DOC-BODY-START)$"
+        },
+        "allowed_operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["replace_block", "insert_after", "delete_block"]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["block_id"],
+            "properties": { "block_id": { "const": "DOC-BODY-START" } }
+          },
+          "then": {
+            "properties": {
+              "allowed_operations": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": { "const": "insert_after" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "author_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "correction_id",
+        "author_event_id",
+        "decision",
+        "authorized_targets"
+      ],
+      "properties": {
+        "correction_id": { "$ref": "#/$defs/correction_id" },
+        "author_event_id": { "$ref": "#/$defs/event_id" },
+        "decision": { "enum": ["authorize", "stop_without_write"] },
+        "authorized_targets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/target_scope" }
+        },
+        "reason": { "$ref": "#/$defs/nonempty_string" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["decision"],
+            "properties": { "decision": { "const": "authorize" } }
+          },
+          "then": {
+            "properties": { "authorized_targets": { "minItems": 1 } },
+            "not": { "required": ["reason"] }
+          },
+          "else": {
+            "required": ["reason"],
+            "properties": { "authorized_targets": { "maxItems": 0 } }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/claim_surface_manifest.schema.json",
+  "title": "Registered Claim Surface Manifest",
+  "description": "Hash-bound exact UTF-8 surfaces for claims already registered in Claim Intent Manifests. Apply can mechanically preserve or replace these known surfaces; unregistered semantic moves remain a mandatory E6 review surface and are not claimed to be machine-detected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "revision_round",
+    "roadmap_sha256",
+    "base_draft_sha256",
+    "claim_intent_sources",
+    "surfaces"
+  ],
+  "properties": {
+    "schema_version": { "const": "claim-surface-manifest/1.0" },
+    "revision_round": { "type": "integer", "minimum": 1 },
+    "roadmap_sha256": { "$ref": "#/$defs/sha256" },
+    "base_draft_sha256": { "$ref": "#/$defs/sha256" },
+    "claim_intent_sources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claim_intent_source" }
+    },
+    "surfaces": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/surface" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?!\\.\\.(?:[/\\\\]|$))(?!.*[/\\\\]\\.\\.(?:[/\\\\]|$)).+$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relative_path" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "claim_intent_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scoped_manifest_id", "artifact"],
+      "properties": {
+        "scoped_manifest_id": {
+          "type": "string",
+          "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$"
+        },
+        "artifact": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface_id",
+        "scoped_manifest_id",
+        "claim_id",
+        "block_id",
+        "utf8_start",
+        "utf8_end",
+        "original_text",
+        "original_text_sha256",
+        "intent_claim_text_sha256",
+        "current_rung"
+      ],
+      "properties": {
+        "surface_id": {
+          "type": "string",
+          "pattern": "^CLAIM-SURFACE-[A-Za-z0-9._-]+$"
+        },
+        "scoped_manifest_id": {
+          "type": "string",
+          "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "^C-[0-9]{3,}$"
+        },
+        "block_id": { "type": "string", "pattern": "^B[0-9]{4,}$" },
+        "utf8_start": { "type": "integer", "minimum": 0 },
+        "utf8_end": { "type": "integer", "minimum": 1 },
+        "original_text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "original_text_sha256": { "$ref": "#/$defs/sha256" },
+        "intent_claim_text_sha256": { "$ref": "#/$defs/sha256" },
+        "current_rung": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    }
+  }
+}

@@ -6,9 +6,10 @@
 
   "type": "object",
   "additionalProperties": false,
-  "required": ["round_id", "precommitment_hash", "items", "new_issues", "dissents", "escalation_exceptions"],
+  "required": ["contract_version", "round_id", "precommitment_hash", "items", "new_issues", "dissents", "escalation_exceptions"],
 
   "properties": {
+    "contract_version": { "const": "1.1" },
     "round_id": { "type": "string", "minLength": 1 },
     "precommitment_hash": {
       "$ref": "#/$defs/sha256",
@@ -56,10 +57,10 @@
     "residual_gap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text", "residual_magnitude"],
+      "required": ["text", "residual_obligation_class"],
       "properties": {
         "text": { "$ref": "#/$defs/nonempty_string" },
-        "residual_magnitude": {
+        "residual_obligation_class": {
           "enum": ["must_fix", "should_fix", "consider"],
           "description": "Re-grading of what remains; feeds the §6 decision derivation (B4/B5)."
         }
@@ -85,7 +86,7 @@
         },
         "change_summary": {
           "$ref": "#/$defs/nonempty_string",
-          "description": "What actually changed relative to the original manuscript (from diff/apply report + comparison), one sentence. Stays total on the degraded no-original path with the §11 [CHANGE-BASIS-ABSENT] marker."
+          "description": "What actually changed relative to the hard-required original manuscript, using the exact bundle/patch/report comparison, in one sentence."
         },
         "residual_gap": { "$ref": "#/$defs/residual_gap" },
         "verified_by": { "$ref": "#/$defs/verifier_seat" },
@@ -95,7 +96,7 @@
             { "const": "not_precommitted" },
             { "type": "string", "pattern": "^dissented:DIS-[1-9][0-9]*$" }
           ],
-          "description": "not_precommitted is valid ONLY for priority consider items (no Phase-1 record exists, §3.2); a P1/P2 item carrying it fails the checker."
+          "description": "not_precommitted is valid only for obligation_class consider items; a must_fix/should_fix item carrying it fails the checker."
         }
       },
       "allOf": [

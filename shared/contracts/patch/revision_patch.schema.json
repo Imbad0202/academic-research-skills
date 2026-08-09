@@ -1,46 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/patch/revision_patch.schema.json",
-  "title": "Revision Patch Document",
-  "description": "#89 Item 7 patch document (spec docs/design/2026-06-10-390-diff-patch-revision-mode-spec.md §3.2). The writer's revision deliverable: a closed-vocabulary list of block operations against an anchored base draft. Every hash in this document — base_draft_hash and every per-op old_hash — is a mechanical copy from the script-generated block manifest (§3.1); the writer never computes hashes. The DOC-BODY-START insert_after shape is the ONLY legal hash-less op: it names a position (after frontmatter, before the first body block), not an anchor block, so there is no content to precondition on. Schema validation is the apply script's step zero; everything the schema cannot see (target existence, hash staleness, per-block single-op rule, marker-free new_text) is Phase 1's job (§3.3).",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["patch_format_version", "revision_round", "base_draft_hash", "ops", "emitted_by"],
-  "properties": {
-    "patch_format_version": {
-      "type": "string",
-      "const": "1.0",
-      "description": "Pinned so a future Item 9 revision contract can audit exactly what shape it gates (spec §7)."
-    },
-    "revision_round": {
-      "type": "integer",
-      "minimum": 1,
-      "description": "1-based revision round this patch belongs to. Each patch is generated per-round against the current base (§3.1 trigger point c)."
-    },
-    "base_draft_hash": {
-      "$ref": "#/$defs/hash12",
-      "description": "First 12 hex chars of SHA-256 over the anchored base file's raw bytes — copied from the block manifest's base_draft_hash, never computed by the writer. Document-level staleness gate: any mismatch rejects the whole patch (§3.3 Phase 1)."
-    },
-    "ops": {
-      "type": "array",
-      "minItems": 1,
-      "description": "Block operations, defined simultaneously against the base — array order is not semantic; the apply script splices in base-document order (§3.2). Each block_id may appear in at most one op, in any role (Phase 1 enforces; the schema cannot see across items).",
-      "items": {
-        "oneOf": [
-          {"$ref": "#/$defs/replace_block"},
-          {"$ref": "#/$defs/insert_after_anchored"},
-          {"$ref": "#/$defs/insert_after_doc_body_start"},
-          {"$ref": "#/$defs/delete_block"}
-        ]
-      }
-    },
-    "emitted_by": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Emitting agent (e.g. draft_writer_agent). Provenance surface only; the role split itself is enforced by the #134 write guard, not by this field (§3.5)."
-    }
-  },
+  "title": "Current Revision Patch Document",
+  "description": "Current write contract for #390/#670. Only patch format 1.1 is accepted by the current apply CLI. Review-roadmap and integrity-correction authority are closed, disjoint branches; historical 1.0 validation/replay lives only under shared/contracts/patch/legacy/v1_0 and scripts/legacy and can never produce a current PASS report.",
+  "oneOf": [
+    { "$ref": "#/$defs/review_patch" },
+    { "$ref": "#/$defs/integrity_patch" }
+  ],
   "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
     "hash12": {
       "type": "string",
       "pattern": "^[0-9a-f]{12}$"
@@ -52,58 +23,227 @@
     "roadmap_item_ids": {
       "type": "array",
       "minItems": 1,
-      "items": {"type": "string", "minLength": 1},
-      "description": "Schema 7 RoadmapItem IDs this op addresses. Presence is machine-checked; semantic fit is an LLM/human-layer judgment (§3.2 — Anti-Pattern 7 made visible, not impossible)."
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
     },
     "new_text": {
       "type": "string",
-      "minLength": 1,
-      "description": "Replacement / inserted markdown. MUST NOT contain <!--block: markers (ID assignment is the apply script's exclusive authority) and MUST carry v3.7.1/v3.7.3 citation markers for any citation it introduces (§3.2). Segmented by the shared parser; multi-block text receives fresh IDs at apply time."
+      "minLength": 1
+    },
+    "claim_strength_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id",
+        "surface_id",
+        "scoped_manifest_id",
+        "claim_id",
+        "block_id",
+        "original_text_sha256",
+        "replacement_text_sha256",
+        "from_rung",
+        "to_rung",
+        "direction"
+      ],
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "pattern": "^CLAIM-AUTH-[A-Za-z0-9._-]+$"
+        },
+        "surface_id": {
+          "type": "string",
+          "pattern": "^CLAIM-SURFACE-[A-Za-z0-9._-]+$"
+        },
+        "scoped_manifest_id": {
+          "type": "string",
+          "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$"
+        },
+        "claim_id": { "type": "string", "pattern": "^C-[0-9]{3,}$" },
+        "block_id": { "$ref": "#/$defs/block_id" },
+        "original_text_sha256": { "$ref": "#/$defs/sha256" },
+        "replacement_text_sha256": { "$ref": "#/$defs/sha256" },
+        "from_rung": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "to_rung": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "direction": { "enum": ["strengthen", "weaken"] }
+      }
+    },
+    "authorization_fields": {
+      "type": "object",
+      "required": ["roadmap_item_ids", "claim_strength_changes", "collateral_authorization_ids"],
+      "properties": {
+        "roadmap_item_ids": { "$ref": "#/$defs/roadmap_item_ids" },
+        "claim_strength_changes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/claim_strength_change" }
+        },
+        "collateral_authorization_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^COLLATERAL-AUTH-[A-Za-z0-9._-]+$"
+          }
+        }
+      }
     },
     "replace_block": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "block_id", "old_hash", "new_text", "roadmap_item_ids"],
+      "required": [
+        "op", "block_id", "old_hash", "new_text",
+        "roadmap_item_ids", "claim_strength_changes", "collateral_authorization_ids"
+      ],
       "properties": {
-        "op": {"const": "replace_block"},
-        "block_id": {"$ref": "#/$defs/block_id"},
-        "old_hash": {"$ref": "#/$defs/hash12"},
-        "new_text": {"$ref": "#/$defs/new_text"},
-        "roadmap_item_ids": {"$ref": "#/$defs/roadmap_item_ids"}
+        "op": { "const": "replace_block" },
+        "block_id": { "$ref": "#/$defs/block_id" },
+        "old_hash": { "$ref": "#/$defs/hash12" },
+        "new_text": { "$ref": "#/$defs/new_text" },
+        "roadmap_item_ids": { "$ref": "#/$defs/roadmap_item_ids" },
+        "claim_strength_changes": {
+          "type": "array", "uniqueItems": true,
+          "items": { "$ref": "#/$defs/claim_strength_change" }
+        },
+        "collateral_authorization_ids": {
+          "type": "array", "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^COLLATERAL-AUTH-[A-Za-z0-9._-]+$" }
+        }
       }
     },
     "insert_after_anchored": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "block_id", "old_hash", "new_text", "roadmap_item_ids"],
+      "required": [
+        "op", "block_id", "old_hash", "new_text",
+        "roadmap_item_ids", "claim_strength_changes", "collateral_authorization_ids"
+      ],
       "properties": {
-        "op": {"const": "insert_after"},
-        "block_id": {"$ref": "#/$defs/block_id"},
-        "old_hash": {"$ref": "#/$defs/hash12"},
-        "new_text": {"$ref": "#/$defs/new_text"},
-        "roadmap_item_ids": {"$ref": "#/$defs/roadmap_item_ids"}
+        "op": { "const": "insert_after" },
+        "block_id": { "$ref": "#/$defs/block_id" },
+        "old_hash": { "$ref": "#/$defs/hash12" },
+        "new_text": { "$ref": "#/$defs/new_text" },
+        "roadmap_item_ids": { "$ref": "#/$defs/roadmap_item_ids" },
+        "claim_strength_changes": {
+          "type": "array", "maxItems": 0,
+          "items": { "$ref": "#/$defs/claim_strength_change" }
+        },
+        "collateral_authorization_ids": {
+          "type": "array", "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^COLLATERAL-AUTH-[A-Za-z0-9._-]+$" }
+        }
       }
     },
     "insert_after_doc_body_start": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "block_id", "new_text", "roadmap_item_ids"],
+      "required": [
+        "op", "block_id", "new_text",
+        "roadmap_item_ids", "claim_strength_changes", "collateral_authorization_ids"
+      ],
       "properties": {
-        "op": {"const": "insert_after"},
-        "block_id": {"const": "DOC-BODY-START"},
-        "new_text": {"$ref": "#/$defs/new_text"},
-        "roadmap_item_ids": {"$ref": "#/$defs/roadmap_item_ids"}
+        "op": { "const": "insert_after" },
+        "block_id": { "const": "DOC-BODY-START" },
+        "new_text": { "$ref": "#/$defs/new_text" },
+        "roadmap_item_ids": { "$ref": "#/$defs/roadmap_item_ids" },
+        "claim_strength_changes": { "type": "array", "maxItems": 0 },
+        "collateral_authorization_ids": {
+          "type": "array", "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^COLLATERAL-AUTH-[A-Za-z0-9._-]+$" }
+        }
       }
     },
     "delete_block": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "block_id", "old_hash", "roadmap_item_ids"],
+      "required": [
+        "op", "block_id", "old_hash",
+        "roadmap_item_ids", "claim_strength_changes", "collateral_authorization_ids"
+      ],
       "properties": {
-        "op": {"const": "delete_block"},
-        "block_id": {"$ref": "#/$defs/block_id"},
-        "old_hash": {"$ref": "#/$defs/hash12"},
-        "roadmap_item_ids": {"$ref": "#/$defs/roadmap_item_ids"}
+        "op": { "const": "delete_block" },
+        "block_id": { "$ref": "#/$defs/block_id" },
+        "old_hash": { "$ref": "#/$defs/hash12" },
+        "roadmap_item_ids": { "$ref": "#/$defs/roadmap_item_ids" },
+        "claim_strength_changes": {
+          "type": "array", "uniqueItems": true,
+          "items": { "$ref": "#/$defs/claim_strength_change" }
+        },
+        "collateral_authorization_ids": {
+          "type": "array", "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^COLLATERAL-AUTH-[A-Za-z0-9._-]+$" }
+        }
+      }
+    },
+    "ops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/replace_block" },
+          { "$ref": "#/$defs/insert_after_anchored" },
+          { "$ref": "#/$defs/insert_after_doc_body_start" },
+          { "$ref": "#/$defs/delete_block" }
+        ]
+      }
+    },
+    "integrity_ops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "oneOf": [
+              { "$ref": "#/$defs/replace_block" },
+              { "$ref": "#/$defs/insert_after_anchored" },
+              { "$ref": "#/$defs/insert_after_doc_body_start" },
+              { "$ref": "#/$defs/delete_block" }
+            ]
+          },
+          {
+            "properties": {
+              "claim_strength_changes": { "maxItems": 0 },
+              "collateral_authorization_ids": { "maxItems": 0 }
+            }
+          }
+        ]
+      }
+    },
+    "review_patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patch_format_version", "authorization_context", "revision_round",
+        "base_draft_hash", "roadmap_sha256", "author_adjudication_sha256",
+        "author_decision_digest", "claim_surface_manifest_sha256", "ops", "emitted_by"
+      ],
+      "properties": {
+        "patch_format_version": { "const": "1.1" },
+        "authorization_context": { "const": "review_roadmap" },
+        "revision_round": { "type": "integer", "minimum": 1 },
+        "base_draft_hash": { "$ref": "#/$defs/hash12" },
+        "roadmap_sha256": { "$ref": "#/$defs/sha256" },
+        "author_adjudication_sha256": { "$ref": "#/$defs/sha256" },
+        "author_decision_digest": { "$ref": "#/$defs/sha256" },
+        "claim_surface_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "ops": { "$ref": "#/$defs/ops" },
+        "emitted_by": { "type": "string", "minLength": 1 }
+      }
+    },
+    "integrity_patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patch_format_version", "authorization_context", "revision_round",
+        "base_draft_hash", "issue_list_sha256", "ops", "emitted_by"
+      ],
+      "properties": {
+        "patch_format_version": { "const": "1.1" },
+        "authorization_context": { "const": "integrity_correction" },
+        "revision_round": { "type": "integer", "minimum": 1 },
+        "base_draft_hash": { "$ref": "#/$defs/hash12" },
+        "issue_list_sha256": { "$ref": "#/$defs/sha256" },
+        "ops": { "$ref": "#/$defs/integrity_ops" },
+        "emitted_by": { "type": "string", "minLength": 1 }
       }
     }
   }

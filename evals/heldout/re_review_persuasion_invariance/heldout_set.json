@@ -3,7 +3,7 @@
   "issue": 576,
   "spec_authority": "docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md",
   "spec_section": "14",
-  "measured_surface": "academic-paper-reviewer re-review mode at Pipeline Stage 3', dispatched under the #576 Spec B three-gate contract",
+  "measured_surface": "ARCHIVED re-review contract 1.0 at Pipeline Stage 3'; no-original and first_link_not_run arms are historical and are not valid current 1.1 emissions after #670",
   "harness": {
     "joins": "evals/heldout/reviewer_seeded_defects",
     "sd_11": "SD-11: the persuasion-invariance behavioral eval joins the #574 E4 harness as paired controls, not a separate suite. E4's formal-gate machinery (evidence contract, blocked-run separation, closed record status fields, replicate discipline) is reused; E4's own 2026-07-27 NOT COMPUTABLE outcome is a cohort result and is neither restated nor recomputed here.",

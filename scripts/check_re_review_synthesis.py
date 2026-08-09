@@ -12,14 +12,14 @@ normalization grammar), §11 (input manifest + apply-chain witness), §13
 Responsibilities (spec §13):
 
 1. Schema-validate the three phase artifacts + manifest (self-contained
-   validators, no jsonschema dependency — repo convention).
+   validators), and replay the hash-bound #670 Revision-Evidence Bundle.
 2. Hash-chain: ``input_manifest_hash`` -> ``precommitment_hash`` ->
    ``verdict_record_hash`` verbatim binding; criterion inheritance binding
    (roadmap_text / letter_text byte comparison + R<n> ordinal recomputation
    with the §5.1 contiguity degradation).
-3. Consumer-side apply-chain witness (§11) incl. ``patch_digest``
-   content-bound positional pairing and the ``[PATCH-BINDING-ABSENT]``
-   pre-1.2 absence policy.
+3. Consumer-side apply-chain witness (§11), including mandatory report-1.3
+   ``patch_digest`` content-bound positional pairing. Older reports are
+   accepted only by the isolated archived loader.
 4. Recompute invariants: coverage cardinalities, applied_criterion rules,
    adjustment-chain grammar, deferral-loop referential integrity
    (reapplications / resolutions / adjudications / acceptances / pending
@@ -58,14 +58,15 @@ Usage:
     python scripts/check_re_review_synthesis.py \
         --manifest M.json --precommitment P.json \
         --verdict-record V.json --traceability T.json \
-        --roadmap roadmap.json [--letter letter.md] \
+        --roadmap roadmap.json --author-adjudication author.json \
+        --revision-evidence-bundle bundle.json \
+        [--revision-evidence-root bundle-root] \
+        [--letter letter.md] \
         [--apply-report R1.json ...]
 
-The ``--roadmap`` / ``--letter`` / ``--apply-report`` files are the
-hash-bound §11 artifacts the checker must READ (criterion binding, ordinal
-derivation, chain witness); every other §11 artifact participates through
-its manifest hash alone. ``--apply-report`` order must follow the
-manifest's ``apply_reports[]`` order.
+The roadmap, author sidecar, Revision-Evidence Bundle, optional letter, and
+ordered apply reports are exact §11 files the checker reads. Bundle replay
+uses only its explicitly declared local artifacts under the supplied root.
 """
 from __future__ import annotations
 
@@ -78,16 +79,22 @@ import sys
 import unicodedata
 from pathlib import Path
 
+if __package__ in (None, ""):  # pragma: no cover - direct CLI invocation
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts.revision_roadmap import ContractError as RevisionContractError
+from scripts.revision_roadmap import validate_bundle
+
 EXIT_PASS = 0
 EXIT_SYNTHESIS = 1
 EXIT_INVALID = 2
 
 VERDICTS = ("FULLY_ADDRESSED", "PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY")
 JUDGE_VERDICTS = ("FULLY_ADDRESSED", "PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE")
-PRIORITIES = ("must_fix", "should_fix", "consider")
-ROW_PRIORITY_MAP = {"MUST_FIX": "must_fix", "SHOULD_FIX": "should_fix", "CONSIDER": "consider"}
+OBLIGATION_CLASSES = ("must_fix", "should_fix", "consider")
+ROW_OBLIGATION_MAP = {"MUST_FIX": "must_fix", "SHOULD_FIX": "should_fix", "CONSIDER": "consider"}
 SEVERITIES = ("critical", "major", "minor")
-MAGNITUDES = ("must_fix", "should_fix", "consider")
+RESIDUAL_OBLIGATION_CLASSES = ("must_fix", "should_fix", "consider")
 SEAT_LABELS = ("EIC", "R1", "R2", "R3", "DA")
 VERIFIER_SEATS = ("EIC", "R1", "R2", "R3")
 ADJUSTMENT_BASES = (
@@ -108,7 +115,7 @@ ABORT_REASONS = (
     "criteria_drift",
     "synthesis_mismatch",
 )
-WITNESS_STATES = ("pass", "fail", "first_link_not_run", "not_run_no_reports")
+WITNESS_STATES = ("pass", "fail", "not_run_no_reports")
 DECISION_ORDER = {"Accept": 0, "Minor Revision": 1, "Major Revision": 2}
 # §5.3 mechanical 5->4 map (MADE_WORSE -> NO: the concern stands unresolved —
 # verification happened, outcome negative).
@@ -133,6 +140,14 @@ _ANSWER_REF_RE = re.compile(r"^(adjudication:DIS-[1-9][0-9]*|intent:INT-[1-9][0-
 _CRITERION_REF_RE = re.compile(r"^(phase1:REV-[A-Za-z0-9-]+|dissent:DIS-[1-9][0-9]*)$")
 _SOURCE_REF_RE = re.compile(r"^(reapplication:RAP-[1-9][0-9]*|acceptance:ACC-[1-9][0-9]*)$")
 _CHECK_ADJUDICATED_RE = re.compile(r"^adjudicated:(RADJ-[1-9][0-9]*)$")
+_AUTHOR_EVENT_RE = re.compile(r"^AUTHOR-EVENT-[A-Za-z0-9._-]+$")
+_BLOCK_ID_RE = re.compile(r"^(?:B[0-9]{4,}|DOC-BODY-START)$")
+_CLAIM_AUTH_RE = re.compile(r"^CLAIM-AUTH-[A-Za-z0-9._-]+$")
+_CLAIM_SURFACE_RE = re.compile(r"^CLAIM-SURFACE-[A-Za-z0-9._-]+$")
+_CLAIM_ID_RE = re.compile(r"^C-[0-9]{3,}$")
+_MANIFEST_ID_RE = re.compile(
+    r"^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$"
+)
 _ID_RES = {
     "NS": re.compile(r"^NS-[1-9][0-9]*$"),
     "NEW": re.compile(r"^NEW-[1-9][0-9]*$"),
@@ -168,6 +183,29 @@ def canonical_hash(obj) -> str:
     """sha256 hex over the object's JSON Canonical Form (RFC 8785 / JCS)."""
     payload = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _strict_json_bytes(raw: bytes, label: str):
+    """Parse interoperable JSON: UTF-8, unique keys, no NaN/Infinity."""
+    def unique_object(pairs):
+        value = {}
+        for key, child in pairs:
+            if key in value:
+                raise ValueError(f"duplicate object key {key!r}")
+            value[key] = child
+        return value
+
+    def reject_constant(token):
+        raise ValueError(f"non-finite JSON constant {token!r}")
+
+    try:
+        return json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"{label}: invalid interoperable JSON ({exc})") from exc
 
 
 # --- §10 normalization grammar -------------------------------------------------
@@ -279,9 +317,83 @@ class _V:
 
 
 def _validate_residual_gap(v: _V, gap, path):
-    v.obj(gap, path, ["text", "residual_magnitude"])
+    v.obj(gap, path, ["text", "residual_obligation_class"])
     v.string(gap["text"], f"{path}.text")
-    v.enum(gap["residual_magnitude"], f"{path}.residual_magnitude", MAGNITUDES)
+    v.enum(gap["residual_obligation_class"], f"{path}.residual_obligation_class", RESIDUAL_OBLIGATION_CLASSES)
+
+
+def _validate_author_targets(v: _V, targets, path):
+    v.array(targets, path)
+    seen = set()
+    operation_order = {"replace_block": 0, "insert_after": 1, "delete_block": 2}
+    prior_key = None
+    for i, target in enumerate(targets):
+        row_path = f"{path}[{i}]"
+        v.obj(target, row_path, ["block_id", "allowed_operations"])
+        v.pattern(target["block_id"], f"{row_path}.block_id", _BLOCK_ID_RE, "B<n> | DOC-BODY-START")
+        if target["block_id"] in seen:
+            v.fail(path, f"duplicate block_id {target['block_id']!r}")
+        seen.add(target["block_id"])
+        v.array(target["allowed_operations"], f"{row_path}.allowed_operations")
+        if not target["allowed_operations"]:
+            v.fail(f"{row_path}.allowed_operations", "must not be empty")
+        if len(target["allowed_operations"]) != len(set(target["allowed_operations"])):
+            v.fail(f"{row_path}.allowed_operations", "must be duplicate-free")
+        for op in target["allowed_operations"]:
+            v.enum(op, f"{row_path}.allowed_operations", tuple(operation_order))
+        if target["allowed_operations"] != sorted(
+            target["allowed_operations"], key=operation_order.__getitem__
+        ):
+            v.fail(f"{row_path}.allowed_operations", "must use canonical operation order")
+        block_order = -1 if target["block_id"] == "DOC-BODY-START" else int(target["block_id"][1:])
+        key = (block_order, target["block_id"])
+        if prior_key is not None and key < prior_key:
+            v.fail(path, "must use canonical block order")
+        prior_key = key
+
+
+def _validate_claim_authorizations(v: _V, authorizations, path):
+    v.array(authorizations, path)
+    seen = set()
+    required = [
+        "authorization_id",
+        "author_event_id",
+        "surface_id",
+        "scoped_manifest_id",
+        "claim_id",
+        "block_id",
+        "original_text_sha256",
+        "replacement_text",
+        "replacement_text_sha256",
+        "from_rung",
+        "to_rung",
+        "direction",
+        "reason",
+    ]
+    for i, authorization in enumerate(authorizations):
+        row_path = f"{path}[{i}]"
+        v.obj(authorization, row_path, required)
+        v.pattern(authorization["authorization_id"], f"{row_path}.authorization_id", _CLAIM_AUTH_RE, "CLAIM-AUTH-<id>")
+        if authorization["authorization_id"] in seen:
+            v.fail(path, f"duplicate authorization_id {authorization['authorization_id']!r}")
+        seen.add(authorization["authorization_id"])
+        v.pattern(authorization["author_event_id"], f"{row_path}.author_event_id", _AUTHOR_EVENT_RE, "AUTHOR-EVENT-<id>")
+        v.pattern(authorization["surface_id"], f"{row_path}.surface_id", _CLAIM_SURFACE_RE, "CLAIM-SURFACE-<id>")
+        v.pattern(authorization["scoped_manifest_id"], f"{row_path}.scoped_manifest_id", _MANIFEST_ID_RE, "scoped manifest id")
+        v.pattern(authorization["claim_id"], f"{row_path}.claim_id", _CLAIM_ID_RE, "C-<n>")
+        if authorization["block_id"] == "DOC-BODY-START":
+            v.fail(f"{row_path}.block_id", "claim surfaces require an anchored B<n> block")
+        v.pattern(authorization["block_id"], f"{row_path}.block_id", _BLOCK_ID_RE, "B<n>")
+        for field in ("original_text_sha256", "replacement_text_sha256"):
+            v.pattern(authorization[field], f"{row_path}.{field}", _SHA256_RE, "sha256 hex")
+        v.string(authorization["replacement_text"], f"{row_path}.replacement_text", nonempty=False)
+        if hashlib.sha256(authorization["replacement_text"].encode("utf-8")).hexdigest() != authorization["replacement_text_sha256"]:
+            v.fail(row_path, "replacement_text_sha256 does not match replacement_text")
+        for field in ("from_rung", "to_rung", "reason"):
+            v.string(authorization[field], f"{row_path}.{field}")
+        if authorization["from_rung"] == authorization["to_rung"]:
+            v.fail(row_path, "from_rung and to_rung must differ")
+        v.enum(authorization["direction"], f"{row_path}.direction", ("strengthen", "weaken"))
 
 
 def _validate_tagged_anchors(v: _V, anchors, path):
@@ -318,19 +430,19 @@ def _validate_new_issue(v: _V, rec, path):
 def validate_precommitment(art: dict):
     v = _V("phase1_lint_failed", "precommitment")
     v.obj(art, "$", ["contract_version", "round_id", "input_manifest_hash", "items", "new_standards"])
-    v.enum(art["contract_version"], "$.contract_version", ("1.0",))
+    v.enum(art["contract_version"], "$.contract_version", ("1.1",))
     v.string(art["round_id"], "$.round_id")
     v.pattern(art["input_manifest_hash"], "$.input_manifest_hash", _SHA256_RE, "sha256 hex")
     v.array(art["items"], "$.items")
     for i, rec in enumerate(art["items"]):
         path = f"$.items[{i}]"
         v.obj(rec, path, [
-            "item_id", "priority", "inherited_criterion", "operationalization",
+            "item_id", "obligation_class", "inherited_criterion", "operationalization",
             "expected_change_surface", "equivalence_policy", "source_reviewer",
             "source_reviewer_labels",
         ])
         v.pattern(rec["item_id"], f"{path}.item_id", _ITEM_ID_RE, "REV-<id>")
-        v.enum(rec["priority"], f"{path}.priority", ("must_fix", "should_fix"))
+        v.enum(rec["obligation_class"], f"{path}.obligation_class", ("must_fix", "should_fix"))
         crit = rec["inherited_criterion"]
         v.obj(crit, f"{path}.inherited_criterion", ["roadmap_text"], ["letter_text", "letter_item_ref"])
         v.string(crit["roadmap_text"], f"{path}.inherited_criterion.roadmap_text")
@@ -341,12 +453,12 @@ def validate_precommitment(art: dict):
         if has_text:
             v.string(crit["letter_text"], f"{path}.inherited_criterion.letter_text")
             v.pattern(crit["letter_item_ref"], f"{path}.inherited_criterion.letter_item_ref", _LETTER_REF_RE, "R<n>")
-            if rec["priority"] != "must_fix":
+            if rec["obligation_class"] != "must_fix":
                 v.fail(f"{path}.inherited_criterion", "letter fields exist ONLY on must_fix items (§5.1)")
         op = rec["operationalization"]
         v.obj(op, f"{path}.operationalization", ["fully_addressed"], ["partially_addressed", "made_worse_discriminator"])
         v.string(op["fully_addressed"], f"{path}.operationalization.fully_addressed")
-        if rec["priority"] == "must_fix":
+        if rec["obligation_class"] == "must_fix":
             for field in ("partially_addressed", "made_worse_discriminator"):
                 if field not in op:
                     v.fail(f"{path}.operationalization", f"must_fix items require {field!r} (§5.1)")
@@ -354,7 +466,7 @@ def validate_precommitment(art: dict):
         else:
             for field in ("partially_addressed", "made_worse_discriminator"):
                 if field in op:
-                    v.fail(f"{path}.operationalization", f"P2 lighter form forbids {field!r} (§5.1)")
+                    v.fail(f"{path}.operationalization", f"should_fix lighter form forbids {field!r} (§5.1)")
         v.string(rec["expected_change_surface"], f"{path}.expected_change_surface")
         v.enum(rec["equivalence_policy"], f"{path}.equivalence_policy", ("allowed",))
         v.string(rec["source_reviewer"], f"{path}.source_reviewer")
@@ -383,7 +495,8 @@ def validate_precommitment(art: dict):
 
 def validate_verdict_record(art: dict):
     v = _V("phase2a_lint_failed", "verdict_record")
-    v.obj(art, "$", ["round_id", "precommitment_hash", "items", "new_issues", "dissents", "escalation_exceptions"])
+    v.obj(art, "$", ["contract_version", "round_id", "precommitment_hash", "items", "new_issues", "dissents", "escalation_exceptions"])
+    v.enum(art["contract_version"], "$.contract_version", ("1.1",))
     v.string(art["round_id"], "$.round_id")
     v.pattern(art["precommitment_hash"], "$.precommitment_hash", _SHA256_RE, "sha256 hex")
     v.array(art["items"], "$.items")
@@ -534,12 +647,13 @@ def _validate_adjustment_body(v: _V, rec, path, *, drafted: bool):
 def validate_traceability(art: dict):
     v = _V("phase2b_lint_failed", "traceability")
     v.obj(art, "$", [
-        "round_id", "revision", "verdict_record_hash", "rows", "adjustments",
+        "contract_version", "round_id", "revision", "verdict_record_hash", "rows", "adjustments",
         "new_issues", "post_letter_observations", "dissent_adjudications",
         "resolution_intents", "cross_model_resolutions", "rebuttal_adjudications",
         "g2d_acceptances", "pending_rebuttal_upgrades", "escalation_approvals",
         "reapplications", "decision_inputs", "decision_state",
     ], ["supersedes_hash", "abort_reason"])
+    v.enum(art["contract_version"], "$.contract_version", ("1.1",))
     v.string(art["round_id"], "$.round_id")
     v.integer(art["revision"], "$.revision", minimum=1)
     if art["revision"] == 1:
@@ -562,13 +676,14 @@ def validate_traceability(art: dict):
     for i, row in enumerate(art["rows"]):
         path = f"$.rows[{i}]"
         v.obj(row, path, [
-            "item_id", "concern_id", "priority", "original_comment", "authors_claim",
+            "item_id", "concern_id", "obligation_class", "original_comment", "authors_claim",
             "revision_location", "verified", "status", "quality_assessment",
-            "final_verdict", "phase2a_verdict", "verified_by",
-        ], ["adjustment_id", "addressed_by_rebuttal", "cross_model_status", "cross_model_verdict"])
+            "final_verdict", "phase2a_verdict", "verified_by", "author_triage",
+            "authorized_targets", "claim_strength_authorizations",
+        ], ["adjustment_id", "addressed_by_rebuttal", "cross_model_status", "cross_model_verdict", "author_reason"])
         v.pattern(row["item_id"], f"{path}.item_id", _ITEM_ID_RE, "REV-<id>")
         v.pattern(row["concern_id"], f"{path}.concern_id", _CONCERN_ID_RE, "R<n>/S<n>/N<n>")
-        v.enum(row["priority"], f"{path}.priority", tuple(ROW_PRIORITY_MAP))
+        v.enum(row["obligation_class"], f"{path}.obligation_class", tuple(ROW_OBLIGATION_MAP))
         for field in ("original_comment", "authors_claim", "revision_location", "quality_assessment"):
             v.string(row[field], f"{path}.{field}")
         v.enum(row["verified"], f"{path}.verified", ("YES", "PARTIAL", "NO", "CANNOT_VERIFY"))
@@ -576,13 +691,32 @@ def validate_traceability(art: dict):
         v.enum(row["final_verdict"], f"{path}.final_verdict", VERDICTS)
         v.enum(row["phase2a_verdict"], f"{path}.phase2a_verdict", VERDICTS)
         v.enum(row["verified_by"], f"{path}.verified_by", VERIFIER_SEATS)
+        v.enum(
+            row["author_triage"],
+            f"{path}.author_triage",
+            ("will_address", "wont_address", "not_on_point"),
+        )
+        _validate_author_targets(v, row["authorized_targets"], f"{path}.authorized_targets")
+        _validate_claim_authorizations(
+            v,
+            row["claim_strength_authorizations"],
+            f"{path}.claim_strength_authorizations",
+        )
+        if row["author_triage"] in ("wont_address", "not_on_point"):
+            if "author_reason" not in row:
+                v.fail(path, "declined author triage requires author_reason")
+            v.string(row["author_reason"], f"{path}.author_reason")
+            if row["authorized_targets"] or row["claim_strength_authorizations"]:
+                v.fail(path, "declined author triage carries no work/claim authority")
+        elif "author_reason" in row:
+            v.fail(path, "will_address rows do not carry an inferred author_reason")
         if "adjustment_id" in row:
             v.pattern(row["adjustment_id"], f"{path}.adjustment_id", _ID_RES["ADJ"], "ADJ-<n>")
         if "addressed_by_rebuttal" in row and row["addressed_by_rebuttal"] is not True:
             v.fail(f"{path}.addressed_by_rebuttal", "when present the marker is the literal true")
         has_status = "cross_model_status" in row
         has_cmv = "cross_model_verdict" in row
-        if row["priority"] == "MUST_FIX":
+        if row["obligation_class"] == "MUST_FIX":
             if not has_status:
                 v.fail(path, "MUST_FIX rows always carry cross_model_status (§5.3 / #539)")
         elif has_status or has_cmv:
@@ -725,31 +859,31 @@ def validate_traceability(art: dict):
 
     di = art["decision_inputs"]
     v.obj(di, "$.decision_inputs", [
-        "per_item", "verdict_counts", "residual_magnitude_counts", "p2_addressed_rate",
+        "per_item", "verdict_counts", "residual_obligation_class_counts", "should_fix_addressed_rate",
         "regressions", "non_regression_new_issue_ids", "escalations", "apply_chain_witness",
     ], ["reject_recommended"])
     v.array(di["per_item"], "$.decision_inputs.per_item")
     for i, entry in enumerate(di["per_item"]):
         path = f"$.decision_inputs.per_item[{i}]"
-        v.obj(entry, path, ["item_id", "final_verdict", "driving_severity"], ["residual_magnitude"])
+        v.obj(entry, path, ["item_id", "final_verdict", "driving_severity"], ["residual_obligation_class"])
         v.pattern(entry["item_id"], f"{path}.item_id", _ITEM_ID_RE, "REV-<id>")
         v.enum(entry["final_verdict"], f"{path}.final_verdict", VERDICTS)
         if entry["driving_severity"] is not None:
             v.enum(entry["driving_severity"], f"{path}.driving_severity", SEVERITIES)
-        if "residual_magnitude" in entry:
-            v.enum(entry["residual_magnitude"], f"{path}.residual_magnitude", MAGNITUDES)
-    for bucket_name in ("verdict_counts", "residual_magnitude_counts"):
+        if "residual_obligation_class" in entry:
+            v.enum(entry["residual_obligation_class"], f"{path}.residual_obligation_class", RESIDUAL_OBLIGATION_CLASSES)
+    for bucket_name in ("verdict_counts", "residual_obligation_class_counts"):
         bucket = di[bucket_name]
-        v.obj(bucket, f"$.decision_inputs.{bucket_name}", list(PRIORITIES))
-        keys = VERDICTS if bucket_name == "verdict_counts" else MAGNITUDES
-        for prio in PRIORITIES:
+        v.obj(bucket, f"$.decision_inputs.{bucket_name}", list(OBLIGATION_CLASSES))
+        keys = VERDICTS if bucket_name == "verdict_counts" else RESIDUAL_OBLIGATION_CLASSES
+        for prio in OBLIGATION_CLASSES:
             v.obj(bucket[prio], f"$.decision_inputs.{bucket_name}.{prio}", list(keys))
             for key in keys:
                 v.integer(bucket[prio][key], f"$.decision_inputs.{bucket_name}.{prio}.{key}", minimum=0)
-    rate = di["p2_addressed_rate"]
-    v.obj(rate, "$.decision_inputs.p2_addressed_rate", ["numerator", "denominator"])
-    v.integer(rate["numerator"], "$.decision_inputs.p2_addressed_rate.numerator", minimum=0)
-    v.integer(rate["denominator"], "$.decision_inputs.p2_addressed_rate.denominator", minimum=0)
+    rate = di["should_fix_addressed_rate"]
+    v.obj(rate, "$.decision_inputs.should_fix_addressed_rate", ["numerator", "denominator"])
+    v.integer(rate["numerator"], "$.decision_inputs.should_fix_addressed_rate.numerator", minimum=0)
+    v.integer(rate["denominator"], "$.decision_inputs.should_fix_addressed_rate.denominator", minimum=0)
     v.array(di["regressions"], "$.decision_inputs.regressions")
     for i, entry in enumerate(di["regressions"]):
         path = f"$.decision_inputs.regressions[{i}]"
@@ -783,9 +917,11 @@ def validate_manifest(manifest: dict):
 
     if not isinstance(manifest, dict):
         fail("must be an object")
-    expected_top = {"round_id", "cross_model_active", "artifacts"}
+    expected_top = {"contract_version", "round_id", "cross_model_active", "artifacts"}
     if set(manifest) != expected_top:
         fail(f"top-level fields must be exactly {sorted(expected_top)}")
+    if manifest["contract_version"] != "1.1":
+        fail("contract_version must be current 1.1; legacy/mixed chains use the archived loader")
     if not _is_str(manifest["round_id"]):
         fail("round_id must be a non-empty string")
     if not isinstance(manifest["cross_model_active"], bool):
@@ -793,12 +929,13 @@ def validate_manifest(manifest: dict):
     artifacts = manifest["artifacts"]
     single_keys = (
         "original_manuscript", "revised_manuscript", "revision_roadmap",
+        "author_adjudication", "revision_evidence_bundle",
         "editorial_decision_letter", "response_to_reviewers",
         "round1_findings", "round1_config_cards",
     )
     array_keys = ("revision_patches", "apply_reports")
     if not isinstance(artifacts, dict) or set(artifacts) != set(single_keys) | set(array_keys):
-        fail("artifacts must carry exactly the nine §11 keys")
+        fail("artifacts must carry exactly the eleven current §11 keys")
 
     def check_entry_fields(entry, key, path):
         ref = entry.get("path_or_passport_ref")
@@ -854,14 +991,23 @@ def validate_manifest(manifest: dict):
             fail(f"artifacts.{key}: an absent artifact carries NO ref, hash, or freshness fields (§11)")
 
     # Required set + array pairing (G0).
-    for key in ("revised_manuscript", "revision_roadmap"):
+    for key in (
+        "original_manuscript",
+        "revised_manuscript",
+        "revision_roadmap",
+        "author_adjudication",
+        "revision_evidence_bundle",
+    ):
         if not artifacts[key]["present"]:
             raise ManifestError("manifest_incomplete", f"manifest: hard-required artifact {key} absent (§11)")
     patches = artifacts["revision_patches"]
     reports = artifacts["apply_reports"]
+    if patches["present"] != reports["present"]:
+        raise ManifestError(
+            "manifest_incomplete",
+            "manifest: revision_patches and apply_reports must travel together (§11)",
+        )
     if reports["present"]:
-        if not patches["present"]:
-            raise ManifestError("manifest_incomplete", "manifest: apply_reports present with revision_patches absent (§11)")
         if len(reports["items"]) != len(patches["items"]):
             raise ManifestError("manifest_incomplete", "manifest: apply_reports / revision_patches length mismatch (§11)")
 
@@ -888,7 +1034,7 @@ def compute_apply_chain_witness(manifest: dict, report_payloads):
     Returns (witness, notes). A broken checked link raises ManifestError
     (manifest_hash_mismatch, G0) — positive breakage evidence outranks the
     absence markers, matching the declared precedence
-    fail > not_run_no_reports > first_link_not_run > pass.
+    fail > not_run_no_reports > pass.
     """
     artifacts = manifest["artifacts"]
     notes = []
@@ -905,7 +1051,7 @@ def compute_apply_chain_witness(manifest: dict, report_payloads):
             raise ManifestError(
                 "manifest_incomplete",
                 f"apply report [{i}]: report_format_version {report['report_format_version']!r} is not a numeric "
-                "dotted version — the pre-1.2 absence policy applies only to a VALID explicit version below 1.2 (§11)",
+                "dotted version; current contract requires exact report format 1.3 (§11)",
             )
         for field in ("base_draft_hash", "output_draft_hash"):
             if not _HASH12_RE.match(report[field]):
@@ -914,27 +1060,44 @@ def compute_apply_chain_witness(manifest: dict, report_payloads):
                     f"apply report [{i}]: {field} must be the 12-hex base_draft_hash format (§11)",
                 )
         version = tuple(int(part) for part in report["report_format_version"].split("."))
-        if version >= (1, 2):
-            digest = report.get("patch_digest")
-            if not isinstance(digest, str) or not _SHA256_RE.match(digest):
-                raise ManifestError("manifest_incomplete", f"apply report [{i}]: format >= 1.2 requires patch_digest")
-            if digest != patches[i]["sha256"]:
-                raise ManifestError(
-                    "manifest_hash_mismatch",
-                    f"apply report [{i}]: patch_digest does not equal the paired revision_patches[{i}].sha256 (§11 content-bound pairing)",
-                )
-        else:
-            notes.append(f"[PATCH-BINDING-ABSENT: report format < 1.2] (apply report [{i}])")
-    first_link_not_run = False
-    original = artifacts["original_manuscript"]
-    if original["present"]:
-        if report_payloads[0]["base_draft_hash"] != _hash_prefix(original["sha256"]):
+        if version != (1, 3):
+            raise ManifestError(
+                "manifest_incomplete",
+                f"apply report [{i}]: current contract requires report format 1.3; legacy reports use the archived loader",
+            )
+        digest = report.get("patch_digest")
+        if not isinstance(digest, str) or not _SHA256_RE.match(digest):
+            raise ManifestError("manifest_incomplete", f"apply report [{i}]: format 1.3 requires patch_digest")
+        if digest != patches[i]["sha256"]:
             raise ManifestError(
                 "manifest_hash_mismatch",
-                "apply-chain witness: first report base_draft_hash does not equal the original_manuscript hash prefix (§11)",
+                f"apply report [{i}]: patch_digest does not equal the paired revision_patches[{i}].sha256 (§11 content-bound pairing)",
             )
-    else:
-        first_link_not_run = True
+        authorization = report.get("authorization_witness")
+        if not isinstance(authorization, dict) or authorization.get("status") not in (
+            "pass",
+            "not_applicable_integrity_correction",
+        ):
+            raise ManifestError(
+                "manifest_incomplete",
+                f"apply report [{i}]: format 1.3 requires a current replayed authorization_witness",
+            )
+        if authorization.get("unregistered_claim_drift_review_required") is not True:
+            raise ManifestError(
+                "manifest_incomplete",
+                f"apply report [{i}]: authorization witness must surface the E6 unregistered-claim review boundary",
+            )
+    original = artifacts["original_manuscript"]
+    if not original["present"]:
+        raise ManifestError(
+            "manifest_incomplete",
+            "apply-chain witness: current contract hard-requires original_manuscript",
+        )
+    if report_payloads[0]["base_draft_hash"] != _hash_prefix(original["sha256"]):
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "apply-chain witness: first report base_draft_hash does not equal the original_manuscript hash prefix (§11)",
+        )
     for i in range(1, len(report_payloads)):
         if report_payloads[i]["base_draft_hash"] != report_payloads[i - 1]["output_draft_hash"]:
             raise ManifestError(
@@ -947,7 +1110,73 @@ def compute_apply_chain_witness(manifest: dict, report_payloads):
             "manifest_hash_mismatch",
             "apply-chain witness: last report output_draft_hash does not equal the revised_manuscript hash prefix (§11)",
         )
-    return ("first_link_not_run" if first_link_not_run else "pass"), notes
+    return "pass", notes
+
+
+def validate_revision_bundle_binding(bundle: dict, manifest: dict) -> None:
+    """Bind the replayed bundle to the exact §11 current-round artifacts."""
+    artifacts = manifest["artifacts"]
+    revised_sha = artifacts["revised_manuscript"]["sha256"]
+    if bundle["final_draft"]["sha256"] != revised_sha:
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "revision_evidence_bundle.final_draft does not equal revised_manuscript",
+        )
+
+    roadmap_sha = artifacts["revision_roadmap"]["sha256"]
+    author_sha = artifacts["author_adjudication"]["sha256"]
+    partial_matches = []
+    exact_matches = []
+    for index, row in enumerate(bundle["rounds"]):
+        if row["kind"] not in ("review_roadmap", "review_noop"):
+            continue
+        roadmap_match = row["revision_roadmap"]["sha256"] == roadmap_sha
+        author_match = row["author_adjudication"]["sha256"] == author_sha
+        if roadmap_match != author_match:
+            partial_matches.append(index)
+        if roadmap_match and author_match:
+            exact_matches.append((index, row))
+    if partial_matches:
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "revision_evidence_bundle splits the current roadmap/author pair across rounds",
+        )
+    if len(exact_matches) != 1:
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "revision_evidence_bundle must contain exactly one round with the exact current roadmap/author pair",
+        )
+
+    _index, current = exact_matches[0]
+    original = artifacts["original_manuscript"]
+    if original["present"] and current["pre_round_draft"]["sha256"] != original["sha256"]:
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "revision_evidence_bundle current round pre draft differs from original_manuscript",
+        )
+    bundle_pairs = [
+        (row["revision_patch"]["sha256"], row["apply_report"]["sha256"])
+        for row in bundle["rounds"]
+        if row["kind"] in ("review_roadmap", "integrity_correction")
+    ]
+    patches = artifacts["revision_patches"]
+    reports = artifacts["apply_reports"]
+    if patches["present"] != reports["present"]:
+        raise ManifestError(
+            "manifest_incomplete",
+            "revision_evidence_bundle cannot bind asymmetric revision_patches/apply_reports state",
+        )
+    manifest_pairs = []
+    if patches["present"] and reports["present"]:
+        manifest_pairs = [
+            (patch["sha256"], report["sha256"])
+            for patch, report in zip(patches["items"], reports["items"])
+        ]
+    if bundle_pairs != manifest_pairs:
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "revision_evidence_bundle ordered write patch/report pairs differ from the input manifest",
+        )
 
 
 # --- letter + roadmap parsing --------------------------------------------------
@@ -1017,7 +1246,7 @@ def load_roadmap(payload: dict):
     for i, item in enumerate(payload["items"]):
         if not isinstance(item, dict):
             fail(f"items[{i}] must be an object")
-        for field in ("id", "priority", "verification_criteria", "reviewer"):
+        for field in ("id", "obligation_class", "verification_criteria", "reviewer"):
             if not _is_str(item.get(field)):
                 fail(f"items[{i}].{field} must be a non-empty string")
         if not _ITEM_ID_RE.match(item["id"]):
@@ -1025,16 +1254,206 @@ def load_roadmap(payload: dict):
         if item["id"] in seen:
             fail(f"duplicate roadmap id {item['id']!r}")
         seen.add(item["id"])
-        if item["priority"] not in PRIORITIES:
-            fail(f"items[{i}].priority must be one of {PRIORITIES}")
+        if item["obligation_class"] not in OBLIGATION_CLASSES:
+            fail(f"items[{i}].obligation_class must be one of {OBLIGATION_CLASSES}")
         severity = item.get("severity")
         if severity is not None and severity not in SEVERITIES:
             fail(f"items[{i}].severity must be one of {SEVERITIES} when present")
         source_kind = item.get("source_kind")
         if source_kind is not None and source_kind not in ("question", "editorial"):
             fail(f"items[{i}].source_kind must be question|editorial when present")
+        transported = {
+            "severity",
+            "severity_source",
+            "evidence_anchor",
+            "confidence",
+            "competence_basis",
+            "confidence_source",
+            "corroborating_sources",
+        }
+        if source_kind is None:
+            for field in ("severity", "evidence_anchor", "confidence", "competence_basis"):
+                if field not in item:
+                    fail(f"items[{i}] finding-driven row requires transported {field}")
+        elif transported & set(item):
+            fail(f"items[{i}] source_kind row must not carry transported finding fields")
         items.append(item)
     return items
+
+
+def load_author_adjudication(
+    payload: dict,
+    *,
+    roadmap_items: list[dict],
+    roadmap_sha256: str,
+    original_manuscript_sha256: str | None,
+):
+    """Validate the #670 sidecar projection this consumer copies.
+
+    Full target/claim-surface replay already occurs at patch apply and bundle
+    validation. This consumer independently validates the closed sidecar shape,
+    exact roadmap/base bindings, explicit user-event references, full item
+    cardinality, and the author-owned fields Schema 11 must copy unchanged.
+    """
+
+    def fail(message: str):
+        raise ManifestError("manifest_incomplete", f"author_adjudication: {message}")
+
+    expected_top = {
+        "schema_version",
+        "revision_round",
+        "roadmap_sha256",
+        "base_draft_sha256",
+        "claim_surface_manifest_sha256",
+        "adjudication_status",
+        "author_events",
+        "display_order",
+        "author_adjudications",
+        "collateral_authorizations",
+    }
+    if not isinstance(payload, dict) or set(payload) != expected_top:
+        fail(f"top-level fields must be exactly {sorted(expected_top)}")
+    if payload["schema_version"] != "author-adjudication/1.0":
+        fail("schema_version must be author-adjudication/1.0")
+    if not isinstance(payload["revision_round"], int) or isinstance(payload["revision_round"], bool) or payload["revision_round"] < 1:
+        fail("revision_round must be an integer >= 1")
+    for field in ("roadmap_sha256", "base_draft_sha256", "claim_surface_manifest_sha256"):
+        if not isinstance(payload[field], str) or not _SHA256_RE.match(payload[field]):
+            fail(f"{field} must be 64-hex")
+    if payload["roadmap_sha256"] != roadmap_sha256:
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "author_adjudication.roadmap_sha256 does not match the exact roadmap bytes",
+        )
+    if (
+        original_manuscript_sha256 is not None
+        and payload["base_draft_sha256"] != original_manuscript_sha256
+    ):
+        raise ManifestError(
+            "manifest_hash_mismatch",
+            "author_adjudication.base_draft_sha256 does not match original_manuscript bytes",
+        )
+    if payload["adjudication_status"] != "complete":
+        fail("adjudication_status must be complete")
+
+    events = payload["author_events"]
+    if not isinstance(events, list):
+        fail("author_events must be an array")
+    event_ids = set()
+    for index, event in enumerate(events):
+        if not isinstance(event, dict) or set(event) != {
+            "event_id",
+            "source",
+            "actor_role",
+            "input_sha256",
+        }:
+            fail(f"author_events[{index}] has an invalid closed shape")
+        if not _AUTHOR_EVENT_RE.match(event["event_id"]):
+            fail(f"author_events[{index}].event_id is invalid")
+        if event["event_id"] in event_ids:
+            fail(f"duplicate author event {event['event_id']!r}")
+        event_ids.add(event["event_id"])
+        if event["source"] != "explicit_session_user_message" or event["actor_role"] != "author":
+            fail(f"author_events[{index}] is not an explicit author session event")
+        if not isinstance(event["input_sha256"], str) or not _SHA256_RE.match(event["input_sha256"]):
+            fail(f"author_events[{index}].input_sha256 must be 64-hex")
+
+    roadmap_ids = [item["id"] for item in roadmap_items]
+    display = payload["display_order"]
+    if not isinstance(display, dict) or set(display) != {"mode", "item_ids", "author_event_id"}:
+        fail("display_order has an invalid closed shape")
+    if display["mode"] not in ("source_traceability", "user_selected"):
+        fail("display_order.mode is invalid")
+    if (
+        not isinstance(display["item_ids"], list)
+        or len(display["item_ids"]) != len(set(display["item_ids"]))
+        or set(display["item_ids"]) != set(roadmap_ids)
+    ):
+        fail("display_order.item_ids must be a full unique roadmap permutation")
+    if display["mode"] == "source_traceability" and display["item_ids"] != roadmap_ids:
+        fail("source_traceability display order must equal immutable roadmap order")
+    if display["author_event_id"] not in event_ids:
+        fail("display_order.author_event_id does not resolve")
+
+    records = payload["author_adjudications"]
+    if not isinstance(records, list):
+        fail("author_adjudications must be an array")
+    by_item = {}
+    for index, record in enumerate(records):
+        required = {
+            "item_id",
+            "author_event_id",
+            "author_triage",
+            "authorized_targets",
+            "claim_strength_authorizations",
+        }
+        allowed = required | {"author_reason"}
+        if not isinstance(record, dict) or not required.issubset(record) or not set(record).issubset(allowed):
+            fail(f"author_adjudications[{index}] has an invalid closed shape")
+        item_id = record["item_id"]
+        if item_id in by_item:
+            fail(f"duplicate author adjudication for {item_id!r}")
+        by_item[item_id] = record
+        if record["author_event_id"] not in event_ids:
+            fail(f"author adjudication {item_id}: author_event_id does not resolve")
+        if record["author_triage"] not in ("will_address", "wont_address", "not_on_point"):
+            fail(f"author adjudication {item_id}: invalid author_triage")
+        try:
+            validator = _V("manifest_incomplete", f"author adjudication {item_id}")
+            _validate_author_targets(validator, record["authorized_targets"], "$.authorized_targets")
+            _validate_claim_authorizations(
+                validator,
+                record["claim_strength_authorizations"],
+                "$.claim_strength_authorizations",
+            )
+        except ArtifactSchemaError as exc:
+            fail(str(exc))
+        if record["author_triage"] == "will_address":
+            if not record["authorized_targets"]:
+                fail(f"author adjudication {item_id}: will_address requires exact targets")
+            if "author_reason" in record:
+                fail(f"author adjudication {item_id}: will_address must not invent author_reason")
+        else:
+            if not _is_str(record.get("author_reason")):
+                fail(f"author adjudication {item_id}: declined choice requires author_reason")
+            if record["authorized_targets"] or record["claim_strength_authorizations"]:
+                fail(f"author adjudication {item_id}: declined choice carries no authority")
+    if set(by_item) != set(roadmap_ids):
+        fail("complete sidecar must carry exactly one author adjudication per roadmap item")
+
+    collateral = payload["collateral_authorizations"]
+    if not isinstance(collateral, list):
+        fail("collateral_authorizations must be an array")
+    for index, record in enumerate(collateral):
+        required = {
+            "authorization_id",
+            "author_event_id",
+            "authorizing_item_id",
+            "constrained_item_id",
+            "block_id",
+            "operation",
+            "reason",
+        }
+        if not isinstance(record, dict) or set(record) != required:
+            fail(f"collateral_authorizations[{index}] has an invalid closed shape")
+        if record["author_event_id"] not in event_ids:
+            fail(f"collateral_authorizations[{index}].author_event_id does not resolve")
+        if record["authorizing_item_id"] not in by_item or record["constrained_item_id"] not in by_item:
+            fail(f"collateral_authorizations[{index}] item reference does not resolve")
+        if by_item[record["authorizing_item_id"]]["author_triage"] != "will_address":
+            fail(f"collateral_authorizations[{index}] authorizing item is not will_address")
+        if by_item[record["constrained_item_id"]]["author_triage"] not in (
+            "wont_address",
+            "not_on_point",
+        ):
+            fail(f"collateral_authorizations[{index}] constrained item is not declined")
+        if not _BLOCK_ID_RE.match(record["block_id"]):
+            fail(f"collateral_authorizations[{index}].block_id is invalid")
+        if record["operation"] not in ("replace_block", "insert_after", "delete_block"):
+            fail(f"collateral_authorizations[{index}].operation is invalid")
+        if not _is_str(record["reason"]):
+            fail(f"collateral_authorizations[{index}].reason must be non-empty")
+    return by_item
 
 
 # --- synthesis recomputation ---------------------------------------------------
@@ -1053,7 +1472,7 @@ def _decision_max(*decisions):
 
 
 def derive_decision(p1_items, p2_partial_magnitudes, p2_made_worse, rate_num, rate_den, regression_severities, escalations):
-    """§6 Steps 2-3. ``p1_items`` = [(final_verdict, driving_severity, residual_magnitude)].
+    """§6 Steps 2-3. ``p1_items`` = [(final_verdict, driving_severity, residual_obligation_class)].
 
     Returns (decision, reject_recommended, base_rule).
     """
@@ -1139,7 +1558,17 @@ def _adjustment_chains(traceability, fails: Failures):
     return chains
 
 
-def check(manifest, precommitment, verdict_record, traceability, roadmap_items, letter_blocks, witness, witness_notes):
+def check(
+    manifest,
+    precommitment,
+    verdict_record,
+    traceability,
+    roadmap_items,
+    author_by_item,
+    letter_blocks,
+    witness,
+    witness_notes,
+):
     """All §13 recomputation on schema-valid, hash-bound inputs.
 
     Returns (failures, warnings, recomputed_outcome) where
@@ -1149,14 +1578,16 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
     warnings = list(witness_notes)
 
     roadmap_by_id = {item["id"]: item for item in roadmap_items}
-    must_fix_order = [item["id"] for item in roadmap_items if item["priority"] == "must_fix"]
-    p12_ids = {item["id"] for item in roadmap_items if item["priority"] in ("must_fix", "should_fix")}
+    must_fix_order = [item["id"] for item in roadmap_items if item["obligation_class"] == "must_fix"]
+    p12_ids = {item["id"] for item in roadmap_items if item["obligation_class"] in ("must_fix", "should_fix")}
     cross_model_active = manifest["cross_model_active"]
 
     # round_id equality across all artifacts.
     for name, art in (("precommitment", precommitment), ("verdict_record", verdict_record), ("traceability", traceability)):
         if art["round_id"] != manifest["round_id"]:
             fails.add(f"{name}.round_id != manifest.round_id")
+        if art["contract_version"] != manifest["contract_version"]:
+            fails.add(f"{name}.contract_version != manifest.contract_version")
 
     # --- Phase 1 coverage + criterion binding (§4/§5.1) ---
     pre_by_item = {}
@@ -1185,8 +1616,8 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         item = roadmap_by_id.get(item_id)
         if item is None:
             continue
-        if rec["priority"] != item["priority"]:
-            fails.add(f"precommitment {item_id}: priority {rec['priority']} != roadmap {item['priority']}")
+        if rec["obligation_class"] != item["obligation_class"]:
+            fails.add(f"precommitment {item_id}: obligation_class {rec['obligation_class']} != roadmap {item['obligation_class']}")
         if rec["inherited_criterion"]["roadmap_text"] != item["verification_criteria"]:
             fails.add(f"precommitment {item_id}: inherited_criterion.roadmap_text does not match the roadmap verbatim (§4)")
         if rec["source_reviewer"] != item["reviewer"]:
@@ -1201,7 +1632,7 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                 f"!= §10 normalization of source_reviewer ({labels!r})"
             )
         has_letter_fields = "letter_text" in rec["inherited_criterion"]
-        if item["priority"] == "must_fix":
+        if item["obligation_class"] == "must_fix":
             ordinal = must_fix_order.index(item_id) + 1
             derived_ref = f"R{ordinal}"
             block_text = block_by_rid.get(derived_ref) if letter_present and letter_sound else None
@@ -1254,11 +1685,11 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                 f"dissent {rec['dissent_id']}: the item's verdict record must carry "
                 f"applied_criterion dissented:{rec['dissent_id']} — a dissent that was never applied is a ghost (§7)"
             )
-    # §7 bounds (SD-5): dissent on a P1 item, or dissents on > ceil(N/3) of
+    # §7 bounds (SD-5): dissent on a must_fix item, or dissents on > ceil(N/3) of
     # all items, trips independent adjudication of EVERY dissent record.
     total_items = len(roadmap_items)
     bound_tripped = any(
-        roadmap_by_id.get(dissent["item_id"], {}).get("priority") == "must_fix"
+        roadmap_by_id.get(dissent["item_id"], {}).get("obligation_class") == "must_fix"
         for dissent in dissent_by_id.values()
     ) or (len(dissent_by_id) > math.ceil(total_items / 3))
     for item_id, rec in verdict_by_item.items():
@@ -1266,7 +1697,7 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         if item is None:
             continue
         applied = rec["applied_criterion"]
-        if item["priority"] == "consider":
+        if item["obligation_class"] == "consider":
             if applied != "not_precommitted":
                 fails.add(f"verdict {item_id}: consider items carry applied_criterion not_precommitted (§5.2)")
         else:
@@ -1278,12 +1709,6 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                     fails.add(f"verdict {item_id}: applied_criterion {applied!r} does not resolve to a dissent on this item")
 
     ns_by_id = {rec["new_standard_id"]: rec for rec in precommitment["new_standards"]}
-    if not manifest["artifacts"]["original_manuscript"]["present"] and verdict_record["escalation_exceptions"]:
-        fails.add(
-            "escalation exceptions cannot be substantiated with the original manuscript absent — the required "
-            "original-text anchor cannot be produced, so the new_standard stays advisory "
-            "([ESCALATION-UNSUBSTANTIATABLE], §11 degradation (iii))"
-        )
     exceptions_by_id = {}
     for rec in verdict_record["escalation_exceptions"]:
         if rec["exception_id"] in exceptions_by_id:
@@ -1313,12 +1738,6 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                 f"ADVISORY: regression {rec['new_issue_id']} names nearest_roadmap_item {nearest} — "
                 "review for roadmap-item overlap (§8)"
             )
-        if not manifest["artifacts"]["original_manuscript"]["present"] and rec["attribution"] != "indeterminate":
-            fails.add(
-                f"new issue {rec['new_issue_id']}: with the original manuscript absent every attribution is "
-                "indeterminate, never a guess (§11 degradation (i))"
-            )
-
     # --- rows (§5.3) ---
     row_by_item = {}
     for row in traceability["rows"]:
@@ -1334,8 +1753,29 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         item = roadmap_by_id.get(item_id)
         if item is None:
             continue
-        if ROW_PRIORITY_MAP[row["priority"]] != item["priority"]:
-            fails.add(f"row {item_id}: priority {row['priority']} does not match the roadmap ({item['priority']})")
+        if ROW_OBLIGATION_MAP[row["obligation_class"]] != item["obligation_class"]:
+            fails.add(f"row {item_id}: obligation_class {row['obligation_class']} does not match the roadmap ({item['obligation_class']})")
+        author = author_by_item.get(item_id)
+        if author is None:
+            fails.add(f"row {item_id}: no hash-bound author adjudication exists")
+        else:
+            for field in (
+                "author_triage",
+                "authorized_targets",
+                "claim_strength_authorizations",
+            ):
+                if row[field] != author[field]:
+                    fails.add(
+                        f"row {item_id}: {field} is not an exact copy of the hash-bound author adjudication"
+                    )
+            row_has_reason = "author_reason" in row
+            author_has_reason = "author_reason" in author
+            if row_has_reason != author_has_reason or (
+                row_has_reason and row["author_reason"] != author["author_reason"]
+            ):
+                fails.add(
+                    f"row {item_id}: author_reason presence/value is not an exact author-adjudication copy"
+                )
         vrec = verdict_by_item.get(item_id)
         if vrec is not None:
             if row["phase2a_verdict"] != vrec["verdict"]:
@@ -1379,13 +1819,13 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             fails.add(f"duplicate intent_id {rec['intent_id']}")
         intents_by_id[rec["intent_id"]] = rec
         if rec["answered_by"] == "system":
-            # §5.3: system intents are emitted for every P1 diverges row —
-            # the row must be an EVALUATED P1 row (cross_model_verdict
+            # §5.3: system intents are emitted for every must_fix diverges row —
+            # the row must be an evaluated must_fix row (cross_model_verdict
             # present implies an active configuration).
             intent_row = row_by_item.get(rec["item_id"])
-            if intent_row is None or intent_row["priority"] != "MUST_FIX" or "cross_model_verdict" not in intent_row:
+            if intent_row is None or intent_row["obligation_class"] != "MUST_FIX" or "cross_model_verdict" not in intent_row:
                 fails.add(
-                    f"resolution intent {rec['intent_id']}: system intents exist only for evaluated P1 diverges "
+                    f"resolution intent {rec['intent_id']}: system intents exist only for evaluated must_fix diverges "
                     "rows under ACTIVE cross-model (§5.3)"
                 )
     adjudications_by_dissent = {}
@@ -1405,13 +1845,13 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         dissent = dissent_by_id.get(rec["dissent_id"])
         dissent_item = roadmap_by_id.get(dissent["item_id"]) if dissent else None
         if rec["adjudicator"] == "cross_model":
-            if dissent_item is None or dissent_item["priority"] != "must_fix":
+            if dissent_item is None or dissent_item["obligation_class"] != "must_fix":
                 fails.add(
                     f"dissent adjudication {rec['dissent_id']}: the judge's adjudication scope EQUALS the §9 pass's "
-                    "P1 coverage — dissents on non-P1 items always take the G2(a) user path, even on an active "
+                    "must_fix coverage — dissents on non-must_fix items always take the G2(a) user path, even on an active "
                     "setup (§7)"
                 )
-        # A `user` adjudication on an active-setup P1 dissent stays LEGAL:
+        # A `user` adjudication on an active-setup must_fix dissent stays legal:
         # the §6 deferral loop records "a user-adjudicated DissentAdjudication
         # ... DIRECTLY" without an activity qualifier, and the §9 pass can be
         # per-row unavailable — rejecting the user path would make a
@@ -1502,17 +1942,17 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         ]
         # §6 trigger binding: a reapplication whose answer_refs carry ONLY
         # intent refs is a DIVERGENCE re-verification — it exists only for
-        # an EVALUATED P1 row (one carrying cross_model_verdict, which
+        # an evaluated must_fix row (one carrying cross_model_verdict, which
         # itself implies an active configuration): "diverges rows exist
         # only under ACTIVE cross-model (a not_configured run has none)".
         # A G2(d) retry is unaffected — its refs are CUMULATIVE and always
         # include the mandating adjudication.
         if has_intent_ref and not has_adjudication_ref:
             row = row_by_item.get(item_id)
-            if row is None or row["priority"] != "MUST_FIX" or "cross_model_verdict" not in row:
+            if row is None or row["obligation_class"] != "MUST_FIX" or "cross_model_verdict" not in row:
                 fails.add(
                     f"reapplication {rec['reapplication_id']}: a divergence-only re-application exists only for an "
-                    "evaluated P1 row under ACTIVE cross-model (§6/§5.3) — no committed verdict moves without its "
+                    "evaluated must_fix row under active cross-model (§6/§5.3) — no committed verdict moves without its "
                     "triggering divergence"
                 )
             elif row["cross_model_verdict"] == rec["pre_reapplication_verdict"]:
@@ -1863,7 +2303,7 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
     # --- DecisionInputs recomputation (§13) ---
     di = traceability["decision_inputs"]
 
-    def _final_residual_magnitude(item_id):
+    def _final_residual_obligation_class(item_id):
         row = row_by_item.get(item_id)
         if row is None or row["final_verdict"] != "PARTIALLY_ADDRESSED":
             return None
@@ -1872,7 +2312,7 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         if record is None:
             return None
         gap = record.get("residual_gap")
-        return gap["residual_magnitude"] if gap else None
+        return gap["residual_obligation_class"] if gap else None
 
     expected_per_item = []
     for item_id in must_fix_order:
@@ -1882,7 +2322,7 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         item = roadmap_by_id[item_id]
         severity = item.get("severity")
         # §5.3: a null driving_severity is legal ONLY for source_kind items
-        # and legacy roadmaps. A P1 item carrying OTHER transported markers
+        # and legacy roadmaps. A must_fix item carrying other transported markers
         # (#574 A2/A3) but no severity is a half-transported finding-driven
         # item, not a legacy one — B1's critical join would be silently
         # suppressed, so it fails here.
@@ -1893,43 +2333,43 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         ):
             fails.add(
                 f"roadmap item {item_id}: transported fields present but severity absent — a non-legacy "
-                "finding-driven P1 item cannot carry driving_severity null (§5.3)"
+                "finding-driven must_fix item cannot carry driving_severity null (§5.3)"
             )
         entry = {
             "item_id": item_id,
             "final_verdict": row["final_verdict"],
             "driving_severity": severity if severity in SEVERITIES else None,
         }
-        magnitude = _final_residual_magnitude(item_id)
+        magnitude = _final_residual_obligation_class(item_id)
         if magnitude is not None:
-            entry["residual_magnitude"] = magnitude
+            entry["residual_obligation_class"] = magnitude
         expected_per_item.append(entry)
     if di["per_item"] != expected_per_item:
-        fails.add("decision_inputs.per_item does not equal the recomputed per-P1 operand list (roadmap must_fix order, §13)")
+        fails.add("decision_inputs.per_item does not equal the recomputed per-must_fix operand list (immutable roadmap order, §13)")
 
-    expected_counts = {prio: {verdict: 0 for verdict in VERDICTS} for prio in PRIORITIES}
-    expected_magnitudes = {prio: {mag: 0 for mag in MAGNITUDES} for prio in PRIORITIES}
+    expected_counts = {prio: {verdict: 0 for verdict in VERDICTS} for prio in OBLIGATION_CLASSES}
+    expected_magnitudes = {prio: {mag: 0 for mag in RESIDUAL_OBLIGATION_CLASSES} for prio in OBLIGATION_CLASSES}
     for item_id, row in row_by_item.items():
         item = roadmap_by_id.get(item_id)
         if item is None:
             continue
-        expected_counts[item["priority"]][row["final_verdict"]] += 1
+        expected_counts[item["obligation_class"]][row["final_verdict"]] += 1
         if row["final_verdict"] == "PARTIALLY_ADDRESSED":
-            magnitude = _final_residual_magnitude(item_id)
+            magnitude = _final_residual_obligation_class(item_id)
             if magnitude is not None:
-                expected_magnitudes[item["priority"]][magnitude] += 1
+                expected_magnitudes[item["obligation_class"]][magnitude] += 1
     if di["verdict_counts"] != expected_counts:
         fails.add("decision_inputs.verdict_counts does not recompute from the final row verdicts (§13)")
-    if di["residual_magnitude_counts"] != expected_magnitudes:
-        fails.add("decision_inputs.residual_magnitude_counts does not recompute from the PARTIALLY_ADDRESSED rows (§13)")
+    if di["residual_obligation_class_counts"] != expected_magnitudes:
+        fails.add("decision_inputs.residual_obligation_class_counts does not recompute from the PARTIALLY_ADDRESSED rows (§13)")
 
-    p2_ids = [item["id"] for item in roadmap_items if item["priority"] == "should_fix"]
+    p2_ids = [item["id"] for item in roadmap_items if item["obligation_class"] == "should_fix"]
     expected_num = sum(
         1 for item_id in p2_ids
         if row_by_item.get(item_id, {}).get("final_verdict") in ("FULLY_ADDRESSED", "PARTIALLY_ADDRESSED")
     )
-    if di["p2_addressed_rate"] != {"numerator": expected_num, "denominator": len(p2_ids)}:
-        fails.add("decision_inputs.p2_addressed_rate does not recompute over FINAL P2 verdicts (§6)")
+    if di["should_fix_addressed_rate"] != {"numerator": expected_num, "denominator": len(p2_ids)}:
+        fails.add("decision_inputs.should_fix_addressed_rate does not recompute over final should_fix verdicts (§6)")
 
     expected_regressions = [
         {"new_issue_id": rec["new_issue_id"], "severity": rec["severity"]}
@@ -1983,9 +2423,9 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
         return False
 
     for item_id, row in row_by_item.items():
-        if row.get("cross_model_status") == "diverges" and ROW_PRIORITY_MAP[row["priority"]] == "must_fix":
+        if row.get("cross_model_status") == "diverges" and ROW_OBLIGATION_MAP[row["obligation_class"]] == "must_fix":
             if not _covering_resolution(item_id, row["final_verdict"]):
-                pending.append(f"G2(b): P1 diverges row {item_id} has no COVERING CrossModelResolution")
+                pending.append(f"G2(b): must_fix diverges row {item_id} has no covering CrossModelResolution")
     for rec in verdict_record["escalation_exceptions"]:
         if rec["exception_id"] not in approvals_by_exception:
             pending.append(f"G2(c): escalation exception {rec['exception_id']} is pending user approval")
@@ -2051,9 +2491,9 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
                     continue
                 item = roadmap_by_id[item_id]
                 severity = item.get("severity") if item.get("severity") in SEVERITIES else None
-                p1_operands.append((row["final_verdict"], severity, _final_residual_magnitude(item_id)))
+                p1_operands.append((row["final_verdict"], severity, _final_residual_obligation_class(item_id)))
             p2_partial_magnitudes = [
-                _final_residual_magnitude(item_id) for item_id in p2_ids
+                _final_residual_obligation_class(item_id) for item_id in p2_ids
                 if row_by_item.get(item_id, {}).get("final_verdict") == "PARTIALLY_ADDRESSED"
             ]
             p2_made_worse = any(
@@ -2066,19 +2506,19 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
             )
             # ...AND from the emitted DecisionInputs copies.
             di_p1 = [
-                (entry["final_verdict"], entry["driving_severity"], entry.get("residual_magnitude"))
+                (entry["final_verdict"], entry["driving_severity"], entry.get("residual_obligation_class"))
                 for entry in di["per_item"]
             ]
             di_p2_partials = [
-                mag for mag in MAGNITUDES
-                for _ in range(di["residual_magnitude_counts"]["should_fix"][mag])
+                mag for mag in RESIDUAL_OBLIGATION_CLASSES
+                for _ in range(di["residual_obligation_class_counts"]["should_fix"][mag])
             ]
             di_decision, di_reject, _di_rule = derive_decision(
                 di_p1,
                 di_p2_partials,
                 di["verdict_counts"]["should_fix"]["MADE_WORSE"] > 0,
-                di["p2_addressed_rate"]["numerator"],
-                di["p2_addressed_rate"]["denominator"],
+                di["should_fix_addressed_rate"]["numerator"],
+                di["should_fix_addressed_rate"]["denominator"],
                 {entry["severity"] for entry in di["regressions"]},
                 di["escalations"],
             )
@@ -2104,8 +2544,8 @@ def check(manifest, precommitment, verdict_record, traceability, roadmap_items, 
 
 def _load_json(path: Path, reason: str, label: str):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        return _strict_json_bytes(path.read_bytes(), label)
+    except (OSError, ValueError) as exc:
         if reason.startswith("manifest"):
             raise ManifestError(reason, f"{label}: unreadable or invalid JSON ({exc})")
         raise ArtifactSchemaError(reason, f"{label}: unreadable or invalid JSON ({exc})")
@@ -2130,6 +2570,24 @@ def run(argv=None) -> int:
     parser.add_argument("--traceability", type=Path, required=True)
     parser.add_argument("--roadmap", type=Path, required=True,
                         help="the file the manifest's revision_roadmap entry hash-binds (Schema 7 machine form)")
+    parser.add_argument(
+        "--author-adjudication",
+        type=Path,
+        required=True,
+        help="the exact #670 author sidecar hash-bound by the current input manifest",
+    )
+    parser.add_argument(
+        "--revision-evidence-bundle",
+        type=Path,
+        required=True,
+        help="the exact #670 bundle hash-bound by the current input manifest",
+    )
+    parser.add_argument(
+        "--revision-evidence-root",
+        type=Path,
+        default=None,
+        help="root for paths declared inside the bundle (default: bundle parent)",
+    )
     parser.add_argument("--letter", type=Path, default=None,
                         help="the file the manifest's editorial_decision_letter entry hash-binds (markdown)")
     parser.add_argument("--apply-report", type=Path, action="append", default=[], dest="apply_reports",
@@ -2142,7 +2600,31 @@ def run(argv=None) -> int:
         artifacts = manifest["artifacts"]
 
         roadmap_raw = _verify_file_hash(args.roadmap, artifacts["revision_roadmap"]["sha256"], "revision_roadmap file")
-        roadmap_items = load_roadmap(json.loads(roadmap_raw.decode("utf-8")))
+        try:
+            roadmap_payload = _strict_json_bytes(roadmap_raw, "revision_roadmap file")
+        except ValueError as exc:
+            raise ManifestError("manifest_incomplete", str(exc)) from exc
+        roadmap_items = load_roadmap(roadmap_payload)
+        author_raw = _verify_file_hash(
+            args.author_adjudication,
+            artifacts["author_adjudication"]["sha256"],
+            "author_adjudication file",
+        )
+        try:
+            author_payload = _strict_json_bytes(author_raw, "author_adjudication file")
+        except ValueError as exc:
+            raise ManifestError("manifest_incomplete", str(exc)) from exc
+        original_sha = (
+            artifacts["original_manuscript"]["sha256"]
+            if artifacts["original_manuscript"]["present"]
+            else None
+        )
+        author_by_item = load_author_adjudication(
+            author_payload,
+            roadmap_items=roadmap_items,
+            roadmap_sha256=hashlib.sha256(roadmap_raw).hexdigest(),
+            original_manuscript_sha256=original_sha,
+        )
 
         letter_blocks = None
         if artifacts["editorial_decision_letter"]["present"]:
@@ -2163,10 +2645,32 @@ def run(argv=None) -> int:
         for i, (path, entry) in enumerate(zip(args.apply_reports, report_entries)):
             raw = _verify_file_hash(path, entry["sha256"], f"apply report [{i}]")
             try:
-                report_payloads.append(json.loads(raw.decode("utf-8")))
-            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-                raise ManifestError("manifest_incomplete", f"apply report [{i}]: invalid JSON ({exc})")
+                report_payloads.append(_strict_json_bytes(raw, f"apply report [{i}]"))
+            except ValueError as exc:
+                raise ManifestError("manifest_incomplete", str(exc)) from exc
         witness, witness_notes = compute_apply_chain_witness(manifest, report_payloads)
+
+        bundle_entry = artifacts["revision_evidence_bundle"]
+        bundle_raw = _verify_file_hash(
+            args.revision_evidence_bundle,
+            bundle_entry["sha256"],
+            "revision_evidence_bundle file",
+        )
+        try:
+            bundle = _strict_json_bytes(bundle_raw, "revision_evidence_bundle file")
+        except ValueError as exc:
+            raise ManifestError("manifest_incomplete", str(exc)) from exc
+        try:
+            validate_bundle(
+                bundle,
+                root=args.revision_evidence_root or args.revision_evidence_bundle.parent,
+            )
+        except RevisionContractError as exc:
+            raise ManifestError(
+                "manifest_hash_mismatch",
+                "revision_evidence_bundle replay failed: " + "; ".join(exc.failures),
+            ) from exc
+        validate_revision_bundle_binding(bundle, manifest)
 
         precommitment = _load_json(args.precommitment, "phase1_lint_failed", "precommitment")
         validate_precommitment(precommitment)
@@ -2193,7 +2697,7 @@ def run(argv=None) -> int:
 
     fails, warnings, recomputed = check(
         manifest, precommitment, verdict_record, traceability,
-        roadmap_items, letter_blocks, witness, witness_notes,
+        roadmap_items, author_by_item, letter_blocks, witness, witness_notes,
     )
     for note in warnings:
         print(note, file=sys.stderr)

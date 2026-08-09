@@ -36,9 +36,9 @@ RE_REVIEW_PROTOCOL = "academic-paper-reviewer/references/re_review_mode_protocol
 # decision-linked numeric threshold (e.g. a reintroduced "Accept: score >= 80")
 # in that file still fails the residency rule.
 RE_REVIEW_SANCTIONED_LITERALS = (
-    "≥ 50% of P1 items",
-    "`p2_addressed_rate < 80%`",
-    "`p2_addressed_rate ≥ 80%`",
+    "≥ 50% of must_fix items",
+    "`should_fix_addressed_rate < 80%`",
+    "`should_fix_addressed_rate ≥ 80%`",
 )
 STANDARDS = "academic-paper-reviewer/references/editorial_decision_standards.md"
 SKILL = "academic-paper-reviewer/SKILL.md"

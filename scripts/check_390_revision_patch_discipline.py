@@ -12,13 +12,13 @@ Invariants:
      the pre-drafting escalation tag, the <!--block: prohibition, the
      retry-once rule, and the provisional-response role boundary.
   2. pipeline_orchestrator_agent.md carries the sequencing block with the
-     five steps IN ORDER (anchorize → dispatch → apply → finalizer →
-     Schema 8 completion), the no-rewrite window, both escalation trigger
-     layers, the MANDATORY checkpoint, full_reemission_escalated
-     provenance, never-auto-fallback, and the 0.6 threshold.
+     current steps IN ORDER (anchorize → authority → dispatch → apply →
+     finalizer → Schema 8/bundle completion), the no-rewrite window, both
+     escalation trigger layers, the MANDATORY checkpoint, current/legacy
+     isolation, exact-authority rebinding, and the 0.6 threshold.
   3. academic-paper/SKILL.md: mode-table revision row says patch document;
-     the Revision Mode Patch Protocol section exists with the honest
-     boundary sentence and the protocol-doc pointer.
+     the Revision Mode Patch Protocol section exists with the #670 exact
+     authority/bundle boundary and the protocol-doc pointer.
   4. Schema 8 (shared/handoff_schemas.md): ResponseItem carries
      change_block_ids, populated by the orchestrator, never by the writer.
   5. revision_patch_protocol.md ships the exact Mode B commands
@@ -73,10 +73,10 @@ ESCALATION_TAG = "[PATCH-ESCALATION-REQUIRED:"
 def check_writer(text: str) -> list[str]:
     """Invariant 1."""
     return check_section_literals(1, text, WRITER_HEADING, "writer", {
-        "patch-not-full-draft": "NOT a re-emitted complete paper",
+        "patch-not-full-draft": "cannot produce a current #670 authorization witness",
         "schema path": "shared/contracts/patch/revision_patch.schema.json",
         "sidecar emission path": "phase6_*/revision_patch_round<N>.json",
-        "hash copy discipline": "Copy hashes, never compute them.",
+        "hash copy discipline": "Copy hashes/bindings, never compute them.",
         "escalation tag": ESCALATION_TAG + " layer=pre_drafting",
         "block-marker prohibition": "MUST NOT contain `<!--block:` markers",
         "retry-once": "Do not patch the patch",
@@ -91,21 +91,23 @@ def check_orchestrator(text: str) -> list[str]:
         "layer-1 trigger": ESCALATION_TAG,
         "layer-2 trigger": "refused_structural",
         "checkpoint": "MANDATORY CHECKPOINT",
-        "escalated provenance": "mode: full_reemission_escalated",
-        "no auto-fallback": "NEVER auto-fallback to full re-emission",
-        "retry-once": "ONE patch re-emission",
+        "legacy isolation": "outside the current #670 contract",
+        "no current replay fallback": "cannot emit a current",
+        "retry-once": "one patch re-emission",
         "Schema 8 completion": "change_block_ids",
+        "bundle completion": "revision-evidence-bundle/1.0",
         "budget surface": "preserved_ratio",
         "threshold value": "0.6",
-        "re-anchorize generation": "new ID generation",
+        "authority rebinding": "re-anchorize/rebuild bindings",
     })
     section = h2_section_body(text, ORCH_HEADING)
     if section is not None:
         steps = [
-            "**Anchorize (manifest refresh):**",
+            "**Anchorize and chain-start:**",
+            "**Build/validate explicit authority:**",
             "**Dispatch the writer**",
-            "**Apply:**",
-            "**Finalizer pass:**",
+            "**Apply with full authority arguments:**",
+            "**Token-conservation + finalizer:**",
             "**Complete Schema 8 mechanical fields**",
         ]
         positions = [section.find(s) for s in steps]
@@ -116,8 +118,8 @@ def check_orchestrator(text: str) -> list[str]:
         elif positions != sorted(positions):
             fails.append(
                 "invariant 2: orchestrator sequencing steps are out of the "
-                "normative order (anchorize → dispatch → apply → finalizer "
-                "→ Schema 8 completion)")
+                "normative order (anchorize → authority → dispatch → apply "
+                "→ finalizer → Schema 8/bundle completion)")
     return fails
 
 
@@ -125,9 +127,10 @@ def check_paper_skill(text: str) -> list[str]:
     """Invariant 3."""
     fails = check_section_literals(3, text, SKILL_HEADING, "SKILL.md", {
         "protocol doc pointer": "references/revision_patch_protocol.md",
-        "escalated provenance": "full_reemission_escalated",
-        "honest boundary": "does not make the revision itself better",
-        "item 9 boundary": "Item 9 boundary",
+        "current patch": "patch 1.1",
+        "bundle boundary": "revision-evidence-bundle/1.0",
+        "honest boundary": "unregistered semantic drift still requires E6 review",
+        "legacy boundary": "legacy full re-emission cannot claim current authorization PASS",
     })
     row = next(
         (line for line in text.splitlines()

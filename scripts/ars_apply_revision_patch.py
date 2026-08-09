@@ -47,9 +47,13 @@ Exit codes: 0 = applied; 2 = Phase 1 rejection (structured report on
 stdout); 3 = structural-shape refusal (unacknowledged); 4 = post-write
 self-check failure (bug, not user error).
 
-Usage:
+Current-write usage (patch 1.1 only):
     python scripts/ars_apply_revision_patch.py base.md patch.json \
+        --block-manifest base.md.block-manifest.json \
         --output base.rev2.md [--report-out R.json] \
+        [--roadmap roadmap.json --author-adjudication author.json \
+         --claim-surface-manifest claims.json --artifact-root BUNDLE_ROOT] \
+        [--integrity-issue-list issue-list.json] \
         [--acknowledge-structural] [--touched-ratio-threshold 0.6]
 """
 from __future__ import annotations
@@ -76,20 +80,26 @@ from scripts._block_parser import (
     parse_document,
     segment_fragment,
 )
+from scripts.revision_roadmap import (
+    ArtifactStore,
+    ContractError,
+    _read_path_once,
+    load_json_path,
+    validate_block_manifest,
+    validate_claim_surface_manifest,
+    validate_integrity_patch_authorization,
+    validate_review_patch_authorization,
+    validate_roadmap,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PATCH_SCHEMA_PATH = REPO_ROOT / "shared" / "contracts" / "patch" / "revision_patch.schema.json"
 DOC_BODY_START = "DOC-BODY-START"
-# 1.1: adds `output_draft_hash` (12-hex, same format as `base_draft_hash`),
-# binding the report to the exact revised-draft bytes it describes.
-# Additive; consumers reading 1.0 fields are unaffected.
-# 1.2: adds `patch_digest` (full 64-hex sha256 over the exact patch-file
-# bytes applied), the #576 Spec B §11 content-binding for positional
-# manifest pairing — it must equal the paired `revision_patches[i]`
-# entry's `sha256`, so a substituted same-base patch cannot pass as the
-# diff that produced the draft. Additive; consumers reading 1.0/1.1
-# fields are unaffected.
-REPORT_FORMAT_VERSION = "1.2"
+# 1.3 is the first current-write report under #670. It adds the replayed
+# authorization_witness and explicit per-op claim/collateral declarations.
+# Historical patch/report replay is isolated in scripts/legacy; this CLI does
+# not write an authorization PASS for patch 1.0.
+REPORT_FORMAT_VERSION = "1.3"
 # #424 Slice B ship decision (spec §3.3 required it; recorded in the spec's
 # amendment log). Strict `>` comparator per the spec's "above a threshold":
 # 1.0 disables the trigger because touched/total never exceeds 1.0.
@@ -229,7 +239,6 @@ def validate_patch(
     # Structural-shape flags (§3.3) — deterministic, computed on the
     # validated patch only.
     heading_op_indexes: list[int] = []
-    headings_before = sum(1 for b in base.blocks if b.kind == "heading")
     headings_delta = 0
     touched = 0
     for analysis in analyses:
@@ -396,6 +405,8 @@ def apply_patch(base_text: str, base: ParsedDocument, analysis: dict) -> tuple[s
                 "op": "insert_after",
                 "block_id": DOC_BODY_START,
                 "roadmap_item_ids": a["op"]["roadmap_item_ids"],
+                "claim_strength_changes": a["op"]["claim_strength_changes"],
+                "collateral_authorization_ids": a["op"]["collateral_authorization_ids"],
                 "new_block_ids": ids,
             }
         )
@@ -413,6 +424,8 @@ def apply_patch(base_text: str, base: ParsedDocument, analysis: dict) -> tuple[s
                     "op": "delete_block",
                     "block_id": block.block_id,
                     "roadmap_item_ids": a["op"]["roadmap_item_ids"],
+                    "claim_strength_changes": a["op"]["claim_strength_changes"],
+                    "collateral_authorization_ids": a["op"]["collateral_authorization_ids"],
                     "new_block_ids": [],
                 }
             )
@@ -447,6 +460,8 @@ def apply_patch(base_text: str, base: ParsedDocument, analysis: dict) -> tuple[s
                     "op": "replace_block",
                     "block_id": block.block_id,
                     "roadmap_item_ids": op["roadmap_item_ids"],
+                    "claim_strength_changes": op["claim_strength_changes"],
+                    "collateral_authorization_ids": op["collateral_authorization_ids"],
                     "new_block_ids": ids,
                 }
             )
@@ -469,6 +484,8 @@ def apply_patch(base_text: str, base: ParsedDocument, analysis: dict) -> tuple[s
                     "op": "insert_after",
                     "block_id": block.block_id,
                     "roadmap_item_ids": op["roadmap_item_ids"],
+                    "claim_strength_changes": op["claim_strength_changes"],
+                    "collateral_authorization_ids": op["collateral_authorization_ids"],
                     "new_block_ids": ids,
                 }
             )
@@ -509,6 +526,13 @@ def run(
     *,
     acknowledge_structural: bool,
     touched_ratio_threshold: float | None,
+    block_manifest_path: Path | None = None,
+    roadmap_path: Path | None = None,
+    author_adjudication_path: Path | None = None,
+    claim_surface_manifest_path: Path | None = None,
+    artifact_root: Path | None = None,
+    integrity_issue_list_path: Path | None = None,
+    integrity_authorization_path: Path | None = None,
 ) -> dict:
     """Full two-phase apply. Raises ApplyRejection / StructuralRefusal /
     BlockParseError; returns the success report dict.
@@ -551,15 +575,23 @@ def run(
     if exists:
         raise ApplyRejection(exists)
 
-    base_raw = base_path.read_bytes()
-    base_text = base_raw.decode("utf-8")
-
-    patch_raw = patch_path.read_bytes()
     try:
-        patch = json.loads(patch_raw.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        base_raw = _read_path_once(base_path, "base draft")
+        base_text = base_raw.decode("utf-8")
+    except (ContractError, UnicodeDecodeError) as exc:
+        message = "; ".join(exc.failures) if isinstance(exc, ContractError) else str(exc)
         raise ApplyRejection(
-            [{"op_index": None, "kind": "patch_json_invalid", "message": str(exc)}]
+            [{"op_index": None, "kind": "base_read_invalid", "message": message}]
+        ) from exc
+
+    try:
+        patch, patch_raw = load_json_path(patch_path, "revision patch")
+    except ContractError as exc:
+        raise ApplyRejection(
+            [
+                {"op_index": None, "kind": "patch_read_invalid", "message": failure}
+                for failure in exc.failures
+            ]
         ) from exc
 
     try:
@@ -572,6 +604,138 @@ def run(
     analysis = validate_patch(
         patch, base_raw, base, touched_ratio_threshold=touched_ratio_threshold
     )
+
+    # Authority replay is a Phase-1 gate. All named inputs are read once,
+    # exact-byte/hash checked, and validated before any output is written.
+    try:
+        if block_manifest_path is None:
+            raise ContractError(["current patch apply requires --block-manifest"])
+        block_manifest, block_manifest_raw = load_json_path(
+            block_manifest_path, "block manifest"
+        )
+        validate_block_manifest(block_manifest, block_manifest_raw, base_raw)
+        context = patch["authorization_context"]
+        if context == "review_roadmap":
+            missing = [
+                name
+                for name, value in (
+                    ("--roadmap", roadmap_path),
+                    ("--author-adjudication", author_adjudication_path),
+                    ("--claim-surface-manifest", claim_surface_manifest_path),
+                    ("--artifact-root", artifact_root),
+                )
+                if value is None
+            ]
+            forbidden_integrity = [
+                name
+                for name, value in (
+                    ("--integrity-issue-list", integrity_issue_list_path),
+                    ("--integrity-authorization", integrity_authorization_path),
+                )
+                if value is not None
+            ]
+            if forbidden_integrity:
+                raise ContractError(
+                    [
+                        "review-roadmap patch must not receive "
+                        + ", ".join(forbidden_integrity)
+                    ]
+                )
+            if missing:
+                raise ContractError(
+                    ["review-roadmap patch is missing " + ", ".join(missing)]
+                )
+            assert roadmap_path is not None
+            assert author_adjudication_path is not None
+            assert claim_surface_manifest_path is not None
+            assert artifact_root is not None
+            roadmap, roadmap_raw = load_json_path(roadmap_path, "revision roadmap")
+            validate_roadmap(
+                roadmap,
+                roadmap_raw=roadmap_raw,
+                base_raw=base_raw,
+                block_manifest=block_manifest,
+                block_manifest_raw=block_manifest_raw,
+            )
+            claim_surface, claim_surface_raw = load_json_path(
+                claim_surface_manifest_path, "claim surface manifest"
+            )
+            surfaces = validate_claim_surface_manifest(
+                claim_surface,
+                claim_surface_raw=claim_surface_raw,
+                roadmap=roadmap,
+                roadmap_raw=roadmap_raw,
+                base_raw=base_raw,
+                artifact_store=ArtifactStore(artifact_root),
+            )
+            adjudication, adjudication_raw = load_json_path(
+                author_adjudication_path, "author adjudication"
+            )
+            authorization_witness = validate_review_patch_authorization(
+                patch,
+                base_raw=base_raw,
+                roadmap=roadmap,
+                roadmap_raw=roadmap_raw,
+                adjudication=adjudication,
+                adjudication_raw=adjudication_raw,
+                claim_surface=claim_surface,
+                claim_surface_raw=claim_surface_raw,
+                surfaces_by_id=surfaces,
+            )
+        elif context == "integrity_correction":
+            forbidden = [
+                name
+                for name, value in (
+                    ("--roadmap", roadmap_path),
+                    ("--author-adjudication", author_adjudication_path),
+                    ("--claim-surface-manifest", claim_surface_manifest_path),
+                    ("--artifact-root", artifact_root),
+                )
+                if value is not None
+            ]
+            if forbidden:
+                raise ContractError(
+                    ["integrity-correction patch must not receive " + ", ".join(forbidden)]
+                )
+            missing = [
+                name
+                for name, value in (
+                    ("--integrity-issue-list", integrity_issue_list_path),
+                    ("--integrity-authorization", integrity_authorization_path),
+                )
+                if value is None
+            ]
+            if missing:
+                raise ContractError(
+                    ["integrity-correction patch requires " + ", ".join(missing)]
+                )
+            assert integrity_issue_list_path is not None
+            assert integrity_authorization_path is not None
+            issue_list, issue_list_raw = load_json_path(
+                integrity_issue_list_path, "integrity correction list"
+            )
+            integrity_authorization, integrity_authorization_raw = load_json_path(
+                integrity_authorization_path,
+                "integrity correction authorization",
+            )
+            authorization_witness = validate_integrity_patch_authorization(
+                patch,
+                patch_raw=patch_raw,
+                base_raw=base_raw,
+                issue_list=issue_list,
+                issue_list_raw=issue_list_raw,
+                integrity_authorization=integrity_authorization,
+                integrity_authorization_raw=integrity_authorization_raw,
+            )
+        else:  # schema validation makes this unreachable; keep fail-closed.
+            raise ContractError([f"unsupported authorization_context {context!r}"])
+    except ContractError as exc:
+        raise ApplyRejection(
+            [
+                {"op_index": None, "kind": "authorization_invalid", "message": failure}
+                for failure in exc.failures
+            ]
+        ) from exc
 
     flags = analysis["structural_flags"]
     flags["acknowledged"] = acknowledge_structural
@@ -605,6 +769,8 @@ def run(
         # §11 manifest's `revision_patches[i].sha256`, which is full-width.
         "patch_digest": hashlib.sha256(patch_raw).hexdigest(),
         "revision_round": patch["revision_round"],
+        "authorization_context": patch["authorization_context"],
+        "authorization_witness": authorization_witness,
         "ops_applied": phase2["ops_applied"],
         "fresh_block_ids": phase2["fresh_block_ids"],
         "pure_move_pairs": phase2["pure_move_pairs"],
@@ -637,6 +803,38 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("base", type=Path, help="anchored base draft (never modified)")
     parser.add_argument("patch", type=Path, help="revision patch JSON")
+    parser.add_argument(
+        "--block-manifest",
+        type=Path,
+        required=True,
+        help="exact script-generated block manifest for the base draft",
+    )
+    parser.add_argument("--roadmap", type=Path, help="immutable reviewer roadmap (review context)")
+    parser.add_argument(
+        "--author-adjudication",
+        type=Path,
+        help="hash-bound explicit author-choice sidecar (review context)",
+    )
+    parser.add_argument(
+        "--claim-surface-manifest",
+        type=Path,
+        help="registered exact claim surfaces (review context)",
+    )
+    parser.add_argument(
+        "--artifact-root",
+        type=Path,
+        help="root for claim-intent artifacts named by the claim-surface manifest",
+    )
+    parser.add_argument(
+        "--integrity-issue-list",
+        type=Path,
+        help="hash-bound correction proposal list (integrity context only)",
+    )
+    parser.add_argument(
+        "--integrity-authorization",
+        type=Path,
+        help="explicit-author exact-patch authorization (integrity context only)",
+    )
     parser.add_argument("--output", type=Path, required=True, help="revised draft output path")
     parser.add_argument(
         "--report-out",
@@ -668,6 +866,13 @@ def main(argv: list[str] | None = None) -> int:
             report_path,
             acknowledge_structural=args.acknowledge_structural,
             touched_ratio_threshold=args.touched_ratio_threshold,
+            block_manifest_path=args.block_manifest,
+            roadmap_path=args.roadmap,
+            author_adjudication_path=args.author_adjudication,
+            claim_surface_manifest_path=args.claim_surface_manifest,
+            artifact_root=args.artifact_root,
+            integrity_issue_list_path=args.integrity_issue_list,
+            integrity_authorization_path=args.integrity_authorization,
         )
     except ApplyRejection as exc:
         print(json.dumps({"result": "rejected", "phase": 1, "failures": exc.failures}, indent=2))

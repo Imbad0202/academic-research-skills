@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/integrity_correction_list.schema.json",
+  "title": "Hash-bound Integrity Correction List",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "revision_round", "base_draft_sha256", "issues"],
+  "properties": {
+    "schema_version": { "const": "integrity-correction-list/1.0" },
+    "revision_round": { "type": "integer", "minimum": 1 },
+    "base_draft_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "issues": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["correction_id", "description", "proposed_targets"],
+        "properties": {
+          "correction_id": {
+            "type": "string",
+            "pattern": "^(?:IL-(?:SERIOUS|MEDIUM|MINOR)-[1-9][0-9]*|EA-[0-9]{3,})$"
+          },
+          "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "proposed_targets": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["block_id", "allowed_operations"],
+              "properties": {
+                "block_id": { "type": "string", "pattern": "^(?:B[0-9]{4,}|DOC-BODY-START)$" },
+                "allowed_operations": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "enum": ["replace_block", "insert_after", "delete_block"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -7,6 +7,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "contract_version",
     "round_id",
     "revision",
     "verdict_record_hash",
@@ -27,6 +28,7 @@
   ],
 
   "properties": {
+    "contract_version": { "const": "1.1" },
     "round_id": { "type": "string", "minLength": 1 },
     "revision": {
       "type": "integer",
@@ -162,10 +164,10 @@
     "residual_gap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text", "residual_magnitude"],
+      "required": ["text", "residual_obligation_class"],
       "properties": {
         "text": { "$ref": "#/$defs/nonempty_string" },
-        "residual_magnitude": { "enum": ["must_fix", "should_fix", "consider"] }
+        "residual_obligation_class": { "enum": ["must_fix", "should_fix", "consider"] }
       }
     },
     "verdict_count_map": {
@@ -180,7 +182,7 @@
         "CANNOT_VERIFY": { "type": "integer", "minimum": 0 }
       }
     },
-    "magnitude_count_map": {
+    "residual_obligation_class_count_map": {
       "type": "object",
       "additionalProperties": false,
       "required": ["must_fix", "should_fix", "consider"],
@@ -190,6 +192,44 @@
         "consider": { "type": "integer", "minimum": 0 }
       }
     },
+    "author_target_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["block_id", "allowed_operations"],
+      "properties": {
+        "block_id": { "type": "string", "pattern": "^(?:B[0-9]{4,}|DOC-BODY-START)$" },
+        "allowed_operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["replace_block", "insert_after", "delete_block"] }
+        }
+      }
+    },
+    "claim_strength_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id", "author_event_id", "surface_id", "scoped_manifest_id",
+        "claim_id", "block_id", "original_text_sha256", "replacement_text",
+        "replacement_text_sha256", "from_rung", "to_rung", "direction", "reason"
+      ],
+      "properties": {
+        "authorization_id": { "type": "string", "pattern": "^CLAIM-AUTH-[A-Za-z0-9._-]+$" },
+        "author_event_id": { "type": "string", "pattern": "^AUTHOR-EVENT-[A-Za-z0-9._-]+$" },
+        "surface_id": { "type": "string", "pattern": "^CLAIM-SURFACE-[A-Za-z0-9._-]+$" },
+        "scoped_manifest_id": { "type": "string", "pattern": "^M-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z-[0-9a-f]{4}$" },
+        "claim_id": { "type": "string", "pattern": "^C-[0-9]{3,}$" },
+        "block_id": { "type": "string", "pattern": "^B[0-9]{4,}$" },
+        "original_text_sha256": { "$ref": "#/$defs/sha256" },
+        "replacement_text": { "type": "string", "maxLength": 4000 },
+        "replacement_text_sha256": { "$ref": "#/$defs/sha256" },
+        "from_rung": { "$ref": "#/$defs/nonempty_string" },
+        "to_rung": { "$ref": "#/$defs/nonempty_string" },
+        "direction": { "enum": ["strengthen", "weaken"] },
+        "reason": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
 
     "matrix_row": {
       "type": "object",
@@ -197,7 +237,7 @@
       "required": [
         "item_id",
         "concern_id",
-        "priority",
+        "obligation_class",
         "original_comment",
         "authors_claim",
         "revision_location",
@@ -206,7 +246,10 @@
         "quality_assessment",
         "final_verdict",
         "phase2a_verdict",
-        "verified_by"
+        "verified_by",
+        "author_triage",
+        "authorized_targets",
+        "claim_strength_authorizations"
       ],
       "properties": {
         "item_id": {
@@ -214,14 +257,14 @@
           "description": "The Schema 7 roadmap id — the JOIN KEY every §13 invariant uses; concern_id stays Schema 11's human numbering and is never used for joins."
         },
         "concern_id": { "type": "string", "pattern": "^[RSN][1-9][0-9]*$" },
-        "priority": {
+        "obligation_class": {
           "enum": ["MUST_FIX", "SHOULD_FIX", "CONSIDER"],
           "description": "Schema 11 casing; the checker maps it mechanically onto the roadmap item's must_fix/should_fix/consider."
         },
         "original_comment": { "$ref": "#/$defs/nonempty_string" },
         "authors_claim": {
           "$ref": "#/$defs/nonempty_string",
-          "description": "Under a letter-absent manifest, the §11 \"—\" fill is the recorded value (the P1 non-empty requirement stands; contract mode derives verified from final_verdict)."
+          "description": "Under a letter-absent manifest, the §11 \"—\" fill is the recorded value (the must_fix non-empty requirement stands; contract mode derives verified from final_verdict)."
         },
         "revision_location": { "$ref": "#/$defs/nonempty_string" },
         "verified": {
@@ -238,6 +281,22 @@
         "verified_by": {
           "$ref": "#/$defs/verifier_seat",
           "description": "Copied from the item's §5.2 verdict record (checker-enforced equality)."
+        },
+        "author_triage": {
+          "enum": ["will_address", "wont_address", "not_on_point"],
+          "description": "Exact copy from the hash-bound #670 author-adjudication sidecar."
+        },
+        "author_reason": { "$ref": "#/$defs/nonempty_string" },
+        "authorized_targets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/author_target_scope" },
+          "description": "Exact full copy of the author-owned work scope; declined rows carry an empty array."
+        },
+        "claim_strength_authorizations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/claim_strength_authorization" },
+          "description": "Exact full copy of the author-owned scoped claim authorizations; declined rows carry an empty array."
         },
         "adjustment_id": {
           "type": "string",
@@ -260,8 +319,24 @@
       "allOf": [
         {
           "if": {
-            "required": ["priority"],
-            "properties": { "priority": { "const": "MUST_FIX" } }
+            "required": ["author_triage"],
+            "properties": {
+              "author_triage": { "enum": ["wont_address", "not_on_point"] }
+            }
+          },
+          "then": {
+            "required": ["author_reason"],
+            "properties": {
+              "authorized_targets": { "maxItems": 0 },
+              "claim_strength_authorizations": { "maxItems": 0 }
+            }
+          },
+          "else": { "not": { "required": ["author_reason"] } }
+        },
+        {
+          "if": {
+            "required": ["obligation_class"],
+            "properties": { "obligation_class": { "const": "MUST_FIX" } }
           },
           "then": { "required": ["cross_model_status"] },
           "else": {
@@ -514,7 +589,7 @@
         "item_id": { "$ref": "#/$defs/item_id" },
         "answered_by": {
           "enum": ["system", "user"],
-          "description": "system intents are emitted by the orchestrator at Phase 2B completion for every P1 diverges row; user intents exist only on the §6 G2(b)/G2(d) fallback paths."
+          "description": "system intents are emitted at Phase 2B completion for every must_fix diverges row; user intents exist only on the §6 fallback paths."
         },
         "guidance_note": { "$ref": "#/$defs/nonempty_string" }
       },
@@ -728,8 +803,8 @@
       "required": [
         "per_item",
         "verdict_counts",
-        "residual_magnitude_counts",
-        "p2_addressed_rate",
+        "residual_obligation_class_counts",
+        "should_fix_addressed_rate",
         "regressions",
         "non_regression_new_issue_ids",
         "escalations",
@@ -752,13 +827,13 @@
                 ],
                 "description": "null for source_kind items and legacy roadmaps whose Schema 7 severity is legitimately absent — B1 treats null as NOT critical, never fabricating a severity."
               },
-              "residual_magnitude": {
+              "residual_obligation_class": {
                 "enum": ["must_fix", "should_fix", "consider"],
                 "description": "The magnitude on the record that set the item's FINAL verdict (chain-tail adjustment or its reapplication when adjusted; else the 2A verdict record)."
               }
             }
           },
-          "description": "Per-P1 (must_fix) item operands for §6 Steps 2-3."
+          "description": "Per-must_fix-item operands for §6 Steps 2-3."
         },
         "verdict_counts": {
           "type": "object",
@@ -770,18 +845,18 @@
             "consider": { "$ref": "#/$defs/verdict_count_map" }
           }
         },
-        "residual_magnitude_counts": {
+        "residual_obligation_class_counts": {
           "type": "object",
           "additionalProperties": false,
           "required": ["must_fix", "should_fix", "consider"],
           "properties": {
-            "must_fix": { "$ref": "#/$defs/magnitude_count_map" },
-            "should_fix": { "$ref": "#/$defs/magnitude_count_map" },
-            "consider": { "$ref": "#/$defs/magnitude_count_map" }
+            "must_fix": { "$ref": "#/$defs/residual_obligation_class_count_map" },
+            "should_fix": { "$ref": "#/$defs/residual_obligation_class_count_map" },
+            "consider": { "$ref": "#/$defs/residual_obligation_class_count_map" }
           },
-          "description": "Per-priority residual_magnitude counts over PARTIALLY_ADDRESSED rows (final verdicts)."
+          "description": "Per-obligation_class residual_obligation_class counts over PARTIALLY_ADDRESSED rows (final verdicts)."
         },
-        "p2_addressed_rate": {
+        "should_fix_addressed_rate": {
           "type": "object",
           "additionalProperties": false,
           "required": ["numerator", "denominator"],
@@ -789,7 +864,7 @@
             "numerator": { "type": "integer", "minimum": 0 },
             "denominator": { "type": "integer", "minimum": 0 }
           },
-          "description": "§6 definition: numerator = |P2 items with final_verdict in {FULLY_ADDRESSED, PARTIALLY_ADDRESSED}|; denominator = |P2 items|; zero P2 items -> vacuously 100%. Computed over FINAL (post-2B) verdicts."
+          "description": "§6 definition: numerator = should_fix items with final_verdict in {FULLY_ADDRESSED, PARTIALLY_ADDRESSED}; denominator = all should_fix items; zero should_fix items -> vacuously 100%. Computed over final post-2B verdicts."
         },
         "regressions": {
           "type": "array",
@@ -832,8 +907,8 @@
           "description": "PRESENT iff the emission is non-gated (§6 Steps 2-3 ran) — on a gated emission the field is ABSENT, never a fabricated false (checker-enforced presence biconditional). True on B1/B2 or an approved research_integrity-class exception."
         },
         "apply_chain_witness": {
-          "enum": ["pass", "fail", "first_link_not_run", "not_run_no_reports"],
-          "description": "§11 closed composite with declared TOTAL PRECEDENCE fail > not_run_no_reports > first_link_not_run > pass. Compared on every emission kind (§13)."
+          "enum": ["pass", "fail", "not_run_no_reports"],
+          "description": "§11 current closed composite with declared TOTAL PRECEDENCE fail > not_run_no_reports > pass. Original manuscript is hard-required in 1.1; first_link_not_run remains archived in 1.0 only. Compared on every emission kind (§13)."
         }
       }
     }

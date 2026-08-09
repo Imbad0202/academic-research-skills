@@ -8,11 +8,13 @@ does not check. Mechanism shape borrowed from
 [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills) by
 @MissOrangePeel (`sci-ssci-polishing`, `references/invariants.md`).
 
-**Epistemic status:** advisory / interpretive guidance for revision surfaces. It
-does NOT gate, does NOT block, and makes no runtime-enforcement claim. Detection is
-a judgment the revising agent and the integrity gate perform; there is no script
-that verifies claim strength (the deterministic sibling, `#570`, conserves only
-numbers and citation tokens — see `scripts/check_revision_token_conservation.py`).
+**Epistemic status:** the field-relative ladder remains advisory / interpretive
+guidance. Since #670, exact claim surfaces that were explicitly registered and
+hash-bound are mechanically preserved or replaced only by exact author-approved
+bytes in current patch 1.1; the runtime does not infer a rung from prose and does
+not detect unregistered semantic movement. E6 therefore remains mandatory for
+unregistered prose. The deterministic sibling `#570` separately conserves
+numbers and citation tokens; see `scripts/check_revision_token_conservation.py`.
 
 ## The ladder
 
@@ -71,8 +73,8 @@ NOT a move — no authorization needed:
 ## Where this is consumed
 
 - `draft_writer_agent` § Claim-Strength Ladder (#569) — revision mode: a patch op
-  touching a claim-bearing block records whether claim strength moved and, if so,
-  which `roadmap_item_ids` authorized it.
+  touching a registered claim surface carries its exact #670 authorization when
+  movement is author-approved; unregistered surfaces remain explicit E6 scope.
 - Stage 4.5 integrity audit — the audit vocabulary names the drift class so a
   reviewer/gate can flag it; advisory rows only, never terminal.
 

@@ -672,21 +672,21 @@ def check(root: Path) -> list[str]:
     # (round-7 P1, extended round-8: Confidence + Evidence Anchor columns too,
     # and the template's tables in lockstep).
     n_sev_tables = synth.count(
-        "| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Priority | Estimated Effort |")
+        "| Transport ref | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Obligation class | Cost scope | Bounded consequence |")
     if n_sev_tables != 2:
         errors.append(
             f"{SYNTH_REL}: expected the transported-metadata columns on both "
             f"roadmap tables (Required + Suggested), found {n_sev_tables}"
         )
-    for header in (
-        "| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source Reviewer | Section | Estimated Effort |",
-        "| # | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source Reviewer | Priority | Section | Expected Improvement |",
-    ):
-        if header not in dt:
-            errors.append(
-                f"{DECISION_TEMPLATE_REL}: roadmap table lost its transported-metadata "
-                f"columns: {header[:60]!r}..."
-            )
+    template_header = (
+        "| Transport ref | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | "
+        "Confidence | Source Reviewer | Obligation class | Cost scope | Bounded consequence |"
+    )
+    if dt.count(template_header) != 2:
+        errors.append(
+            f"{DECISION_TEMPLATE_REL}: expected the non-ranking transported-metadata "
+            f"columns on both roadmap tables, found {dt.count(template_header)}"
+        )
     _require(errors, synth_norm, SYNTH_REL,
              "never dies in the Step 1b working inventory (#574 A2/A3)",
              "emitted-package metadata rule (A3)")

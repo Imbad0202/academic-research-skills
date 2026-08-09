@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/author_adjudication_input.schema.json",
+  "title": "Explicit Author Choice Input",
+  "description": "The only input accepted by the deterministic author-sidecar builder. It contains explicit session-user event receipts and author choices, but no reviewer-owned fields or producer-computed bindings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "author_events", "display_order", "author_adjudications", "collateral_authorizations"],
+  "properties": {
+    "schema_version": { "const": "author-adjudication-input/1.0" },
+    "author_events": {
+      "type": "array",
+      "items": { "$ref": "author_adjudication.schema.json#/$defs/author_event" }
+    },
+    "display_order": { "$ref": "author_adjudication.schema.json#/$defs/display_order" },
+    "author_adjudications": {
+      "type": "array",
+      "items": { "$ref": "author_adjudication.schema.json#/$defs/adjudication" }
+    },
+    "collateral_authorizations": {
+      "type": "array",
+      "items": { "$ref": "author_adjudication.schema.json#/$defs/collateral_authorization" }
+    }
+  }
+}

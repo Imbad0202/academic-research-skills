@@ -106,7 +106,7 @@ def test_writer_missing_section_fails(writer_text):
 
 def test_writer_lost_hash_discipline_fails(writer_text):
     errs = check_writer(_mutate(
-        writer_text, "Copy hashes, never compute them."))
+        writer_text, "Copy hashes/bindings, never compute them."))
     assert errs and "hash copy discipline" in errs[0]
 
 def test_writer_lost_escalation_tag_fails(writer_text):
@@ -131,29 +131,30 @@ def test_orchestrator_lost_no_rewrite_window_fails(orchestrator_text):
         "nothing may rewrite the draft between steps 1 and 3"))
     assert errs and "no-rewrite window" in errs[0]
 
-def test_orchestrator_lost_auto_fallback_ban_fails(orchestrator_text):
+def test_orchestrator_lost_current_replay_ban_fails(orchestrator_text):
     errs = check_orchestrator(_mutate(
-        orchestrator_text, "NEVER auto-fallback to full re-emission"))
-    assert errs and "no auto-fallback" in errs[0]
+        orchestrator_text, "outside the current #670 contract"))
+    assert errs and "legacy isolation" in errs[0]
 
 def test_orchestrator_lost_step_fails(orchestrator_text):
     errs = check_orchestrator(_mutate(
-        orchestrator_text, "**Finalizer pass:**"))
+        orchestrator_text, "**Token-conservation + finalizer:**"))
     assert errs and any("lost step" in e for e in errs)
 
 def test_orchestrator_steps_out_of_order_fails(orchestrator_text):
     # Swap the anchorize and apply step labels: same literals, wrong order.
     swapped = orchestrator_text.replace(
-        "**Anchorize (manifest refresh):**", "@@TMP@@").replace(
-        "**Apply:**", "**Anchorize (manifest refresh):**").replace(
-        "@@TMP@@", "**Apply:**")
+        "**Anchorize and chain-start:**", "@@TMP@@").replace(
+        "**Apply with full authority arguments:**",
+        "**Anchorize and chain-start:**").replace(
+        "@@TMP@@", "**Apply with full authority arguments:**")
     errs = check_orchestrator(swapped)
     assert errs and any("normative order" in e for e in errs)
 
-def test_orchestrator_lost_escalated_provenance_fails(orchestrator_text):
+def test_orchestrator_lost_bundle_completion_fails(orchestrator_text):
     errs = check_orchestrator(_mutate(
-        orchestrator_text, "mode: full_reemission_escalated"))
-    assert errs and any("escalated provenance" in e for e in errs)
+        orchestrator_text, "revision-evidence-bundle/1.0"))
+    assert errs and any("bundle completion" in e for e in errs)
 
 
 # --- invariant 3: SKILL.md ---------------------------------------------------
@@ -163,7 +164,7 @@ def test_skill_real_tree_passes(skill_text):
 
 def test_skill_lost_honest_boundary_fails(skill_text):
     errs = check_paper_skill(_mutate(
-        skill_text, "does not make the revision itself better"))
+        skill_text, "unregistered semantic drift still requires E6 review"))
     assert errs and "honest boundary" in errs[0]
 
 def test_skill_mode_row_regressed_to_full_draft_fails(skill_text):
@@ -260,7 +261,8 @@ def test_spec_example_real_tree_passes(spec_text, patch_schema):
 def test_spec_example_extracted(spec_text):
     example = spec_example_patch(spec_text)
     assert example is not None
-    assert example["patch_format_version"] == "1.0"
+    assert example["patch_format_version"] == "1.1"
+    assert example["authorization_context"] == "review_roadmap"
 
 def test_spec_example_invalidated_fails(spec_text, patch_schema):
     # Give the example an op shape the schema forbids (hash-less replace),

@@ -1,0 +1,841 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/re_review/legacy/v1_0/traceability.schema.json",
+  "title": "Re-review Phase 2B Traceability Sidecar (machine-readable Schema 11 sidecar)",
+  "description": "Phase 2B (letter-revealed) final traceability artifact of the #576 Spec B three-gate re-review contract. Every difference between a committed 2A verdict and the final matrix verdict rides a typed AdjustmentRecord (closed basis set, §3.4); the 2A new-issue set is carried FROZEN (whole-record byte-identical, §13 witness); all user-answerable states (§6 G2) resolve through typed records inside the deferral loop, each re-emission incrementing revision and superseding the prior emission by hash. scripts/check_re_review_synthesis.py recomputes every invariant and the §6 decision derivation from this sidecar plus the raw artifacts. Spec: docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md §5.3.",
+
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "round_id",
+    "revision",
+    "verdict_record_hash",
+    "rows",
+    "adjustments",
+    "new_issues",
+    "post_letter_observations",
+    "dissent_adjudications",
+    "resolution_intents",
+    "cross_model_resolutions",
+    "rebuttal_adjudications",
+    "g2d_acceptances",
+    "pending_rebuttal_upgrades",
+    "escalation_approvals",
+    "reapplications",
+    "decision_inputs",
+    "decision_state"
+  ],
+
+  "properties": {
+    "round_id": { "type": "string", "minLength": 1 },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Starts at 1; each §6 deferral-loop re-emission increments it."
+    },
+    "supersedes_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "sha256 (JSON Canonical Form) of the superseded emission. Present iff revision >= 2."
+    },
+    "verdict_record_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "sha256 hex over the Phase 2A artifact's JSON Canonical Form. NEVER changes across re-emissions — the 2A artifact is immutable (§6 loop step 3). Third link of the §11 hash chain; the checker recomputes it."
+    },
+    "rows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/matrix_row" },
+      "description": "EVERY Schema 7 roadmap item, all priorities, has exactly one row (Schema 11 completeness rule; checker-enforced)."
+    },
+    "adjustments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/adjustment_record" }
+    },
+    "new_issues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/new_issue_record" },
+      "description": "The FROZEN 2A set, copied verbatim — WHOLE-RECORD byte-identical to §5.2, every field including found_by (§13 witness)."
+    },
+    "post_letter_observations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Free-form advisory entries noticed only after letter reveal; decision-inert; next-round seed (§3.3)."
+    },
+    "dissent_adjudications": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dissent_adjudication" }
+    },
+    "resolution_intents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resolution_intent" }
+    },
+    "cross_model_resolutions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cross_model_resolution" }
+    },
+    "rebuttal_adjudications": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rebuttal_adjudication" }
+    },
+    "g2d_acceptances": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/g2d_acceptance" }
+    },
+    "pending_rebuttal_upgrades": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pending_rebuttal_upgrade" }
+    },
+    "escalation_approvals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/escalation_approval" }
+    },
+    "reapplications": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reapplication_record" }
+    },
+    "decision_inputs": { "$ref": "#/$defs/decision_inputs" },
+    "decision_state": {
+      "enum": ["Accept", "Minor Revision", "Major Revision", "user_review_required", "aborted"],
+      "description": "The emitted outcome §13 compares against. Reject is NOT a Stage 3' decision (§6) — B1/B2 set DecisionInputs.reject_recommended instead."
+    },
+    "abort_reason": {
+      "enum": [
+        "phase1_lint_failed",
+        "phase2a_lint_failed",
+        "phase2b_lint_failed",
+        "manifest_incomplete",
+        "manifest_hash_mismatch",
+        "criteria_drift",
+        "synthesis_mismatch"
+      ],
+      "description": "§3.5 closed abort taxonomy. Required iff decision_state = aborted."
+    }
+  },
+
+  "allOf": [
+    {
+      "if": {
+        "required": ["revision"],
+        "properties": { "revision": { "const": 1 } }
+      },
+      "then": { "not": { "required": ["supersedes_hash"] } },
+      "else": { "required": ["supersedes_hash"] }
+    },
+    {
+      "if": {
+        "required": ["decision_state"],
+        "properties": { "decision_state": { "const": "aborted" } }
+      },
+      "then": { "required": ["abort_reason"] },
+      "else": { "not": { "required": ["abort_reason"] } }
+    }
+  ],
+
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "item_id": { "type": "string", "pattern": "^REV-[A-Za-z0-9-]+$" },
+    "nonempty_string": { "type": "string", "minLength": 1 },
+    "verdict": {
+      "enum": ["FULLY_ADDRESSED", "PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+    },
+    "judge_verdict": {
+      "enum": ["FULLY_ADDRESSED", "PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE"],
+      "description": "The #539 judge's closed verdict set (no CANNOT_VERIFY)."
+    },
+    "verifier_seat": { "enum": ["EIC", "R1", "R2", "R3"] },
+    "severity": { "enum": ["critical", "major", "minor"] },
+    "typed_anchor": {
+      "type": "string",
+      "pattern": "^(text|table|figure|equation|dataset|absence): .+$"
+    },
+    "tagged_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor", "anchor_artifact"],
+      "properties": {
+        "anchor": { "$ref": "#/$defs/typed_anchor" },
+        "anchor_artifact": {
+          "enum": ["manuscript", "letter"],
+          "description": "Basis-enforced (§5.3): author_pointer_located_evidence and scope_correction anchors must be manuscript; valid_rebuttal may use either; cross_model_adjudication anchors are mechanically copied, tags included, from the referenced ReapplicationRecord."
+        }
+      }
+    },
+    "residual_gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "residual_magnitude"],
+      "properties": {
+        "text": { "$ref": "#/$defs/nonempty_string" },
+        "residual_magnitude": { "enum": ["must_fix", "should_fix", "consider"] }
+      }
+    },
+    "verdict_count_map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["FULLY_ADDRESSED", "PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"],
+      "properties": {
+        "FULLY_ADDRESSED": { "type": "integer", "minimum": 0 },
+        "PARTIALLY_ADDRESSED": { "type": "integer", "minimum": 0 },
+        "NOT_ADDRESSED": { "type": "integer", "minimum": 0 },
+        "MADE_WORSE": { "type": "integer", "minimum": 0 },
+        "CANNOT_VERIFY": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "magnitude_count_map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["must_fix", "should_fix", "consider"],
+      "properties": {
+        "must_fix": { "type": "integer", "minimum": 0 },
+        "should_fix": { "type": "integer", "minimum": 0 },
+        "consider": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "matrix_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "concern_id",
+        "priority",
+        "original_comment",
+        "authors_claim",
+        "revision_location",
+        "verified",
+        "status",
+        "quality_assessment",
+        "final_verdict",
+        "phase2a_verdict",
+        "verified_by"
+      ],
+      "properties": {
+        "item_id": {
+          "$ref": "#/$defs/item_id",
+          "description": "The Schema 7 roadmap id — the JOIN KEY every §13 invariant uses; concern_id stays Schema 11's human numbering and is never used for joins."
+        },
+        "concern_id": { "type": "string", "pattern": "^[RSN][1-9][0-9]*$" },
+        "priority": {
+          "enum": ["MUST_FIX", "SHOULD_FIX", "CONSIDER"],
+          "description": "Schema 11 casing; the checker maps it mechanically onto the roadmap item's must_fix/should_fix/consider."
+        },
+        "original_comment": { "$ref": "#/$defs/nonempty_string" },
+        "authors_claim": {
+          "$ref": "#/$defs/nonempty_string",
+          "description": "Under a letter-absent manifest, the §11 \"—\" fill is the recorded value (the P1 non-empty requirement stands; contract mode derives verified from final_verdict)."
+        },
+        "revision_location": { "$ref": "#/$defs/nonempty_string" },
+        "verified": {
+          "enum": ["YES", "PARTIAL", "NO", "CANNOT_VERIFY"],
+          "description": "Mechanical 5->4 map from final_verdict (§5.3): FULLY->YES, PARTIALLY->PARTIAL, NOT_ADDRESSED->NO, MADE_WORSE->NO, CANNOT_VERIFY->CANNOT_VERIFY. Checker-enforced."
+        },
+        "status": {
+          "$ref": "#/$defs/verdict",
+          "description": "Mechanical 1:1 map from final_verdict (Schema 11 status enum + the §16 CANNOT_VERIFY extension). Checker-enforced."
+        },
+        "quality_assessment": { "$ref": "#/$defs/nonempty_string" },
+        "final_verdict": { "$ref": "#/$defs/verdict" },
+        "phase2a_verdict": { "$ref": "#/$defs/verdict" },
+        "verified_by": {
+          "$ref": "#/$defs/verifier_seat",
+          "description": "Copied from the item's §5.2 verdict record (checker-enforced equality)."
+        },
+        "adjustment_id": {
+          "type": "string",
+          "pattern": "^ADJ-[1-9][0-9]*$",
+          "description": "Names the LATEST record of the item's adjustment chain. Present iff a chain exists (§5.3 row invariant)."
+        },
+        "addressed_by_rebuttal": {
+          "const": true,
+          "description": "Marker for a valid_rebuttal chain-tail upgrade to FULLY_ADDRESSED (§3.4)."
+        },
+        "cross_model_status": {
+          "enum": ["agree", "diverges", "unavailable", "not_configured"],
+          "description": "DERIVED PER EMISSION on the rows the #539 pass EVALUATED (those carrying cross_model_verdict): agree <=> cross_model_verdict = final_verdict, else diverges; unavailable/not_configured rows keep their recorded status. MUST_FIX rows always carry it; SHOULD_FIX/CONSIDER rows carry neither field."
+        },
+        "cross_model_verdict": {
+          "$ref": "#/$defs/judge_verdict",
+          "description": "The #539 judge's recorded verdict — immutable once the pass ran; present exactly on evaluated (agree/diverges) rows."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["priority"],
+            "properties": { "priority": { "const": "MUST_FIX" } }
+          },
+          "then": { "required": ["cross_model_status"] },
+          "else": {
+            "not": {
+              "anyOf": [
+                { "required": ["cross_model_status"] },
+                { "required": ["cross_model_verdict"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["cross_model_status"],
+            "properties": { "cross_model_status": { "enum": ["agree", "diverges"] } }
+          },
+          "then": { "required": ["cross_model_verdict"] },
+          "else": { "not": { "required": ["cross_model_verdict"] } }
+        }
+      ]
+    },
+
+    "adjustment_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adjustment_id", "item_id", "from_verdict", "to_verdict", "basis", "rationale"],
+      "properties": {
+        "adjustment_id": { "type": "string", "pattern": "^ADJ-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "from_verdict": { "$ref": "#/$defs/verdict" },
+        "to_verdict": { "$ref": "#/$defs/verdict" },
+        "basis": {
+          "enum": [
+            "author_pointer_located_evidence",
+            "valid_rebuttal",
+            "scope_correction",
+            "user_accepted_fail_closed",
+            "cross_model_adjudication"
+          ]
+        },
+        "evidence_anchor": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/tagged_anchor" }
+        },
+        "cannot_verify_reason": { "$ref": "#/$defs/nonempty_string" },
+        "residual_gap": { "$ref": "#/$defs/residual_gap" },
+        "critical_rebuttal_check": {
+          "anyOf": [
+            { "type": "string", "pattern": "^adjudicated:RADJ-[1-9][0-9]*$" },
+            { "const": "single_family_disclosed" },
+            { "const": "pass_unavailable_disclosed" }
+          ],
+          "description": "§3.4 closed union — present exactly on critical valid_rebuttal adjustments (checker-enforced against the roadmap's driving severity). single_family_disclosed is invalid on a run whose cross-model configuration was active."
+        },
+        "rationale": { "$ref": "#/$defs/nonempty_string" },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^(reapplication:RAP-[1-9][0-9]*|acceptance:ACC-[1-9][0-9]*)$",
+          "description": "Basis-DISCRIMINATED: required reapplication:<id> iff basis = cross_model_adjudication; required acceptance:<id> iff basis = user_accepted_fail_closed; FORBIDDEN on every other basis."
+        },
+        "supersedes_adjustment_id": {
+          "type": "string",
+          "pattern": "^ADJ-[1-9][0-9]*$",
+          "description": "Ordered-chain link: the prior latest record on the same item (§5.3 chain grammar)."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["to_verdict"],
+            "properties": { "to_verdict": { "const": "CANNOT_VERIFY" } }
+          },
+          "then": {
+            "required": ["cannot_verify_reason"],
+            "properties": { "basis": { "const": "user_accepted_fail_closed" } },
+            "not": { "required": ["evidence_anchor"] }
+          },
+          "else": {
+            "required": ["evidence_anchor"],
+            "not": { "required": ["cannot_verify_reason"] }
+          }
+        },
+        {
+          "if": {
+            "required": ["basis"],
+            "properties": { "basis": { "const": "user_accepted_fail_closed" } }
+          },
+          "then": {
+            "properties": {
+              "to_verdict": { "const": "CANNOT_VERIFY" },
+              "source_ref": { "pattern": "^acceptance:ACC-[1-9][0-9]*$" }
+            },
+            "required": ["source_ref"]
+          }
+        },
+        {
+          "if": {
+            "required": ["basis"],
+            "properties": { "basis": { "const": "cross_model_adjudication" } }
+          },
+          "then": {
+            "properties": {
+              "source_ref": { "pattern": "^reapplication:RAP-[1-9][0-9]*$" }
+            },
+            "required": ["source_ref"]
+          }
+        },
+        {
+          "if": {
+            "required": ["basis"],
+            "properties": {
+              "basis": {
+                "enum": ["author_pointer_located_evidence", "valid_rebuttal", "scope_correction"]
+              }
+            }
+          },
+          "then": { "not": { "required": ["source_ref"] } }
+        },
+        {
+          "if": {
+            "required": ["basis"],
+            "properties": {
+              "basis": { "enum": ["author_pointer_located_evidence", "scope_correction"] }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_anchor": {
+                "items": {
+                  "properties": { "anchor_artifact": { "const": "manuscript" } }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["basis"],
+            "properties": { "basis": { "const": "valid_rebuttal" } }
+          },
+          "then": {
+            "properties": {
+              "to_verdict": { "const": "FULLY_ADDRESSED" },
+              "from_verdict": {
+                "enum": ["PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+              }
+            },
+            "description": "§3.4 Direction column: valid_rebuttal is 'upgrade to FULLY_ADDRESSED' — the only basis allowing letter-side anchors must land on the fully-addressed verdict, or the persuasion channel §1 closes reopens."
+          }
+        },
+        {
+          "if": {
+            "required": ["basis"],
+            "properties": { "basis": { "const": "author_pointer_located_evidence" } }
+          },
+          "then": {
+            "oneOf": [
+              {
+                "properties": {
+                  "to_verdict": { "const": "FULLY_ADDRESSED" },
+                  "from_verdict": {
+                    "enum": ["PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "to_verdict": { "const": "PARTIALLY_ADDRESSED" },
+                  "from_verdict": {
+                    "enum": ["NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"]
+                  }
+                }
+              }
+            ],
+            "description": "§3.4 Direction column: author_pointer_located_evidence is an UPGRADE — located evidence satisfies the Phase-1 operationalization (fully or partially), so the target is PARTIALLY/FULLY and strictly better than the source (MADE_WORSE/CANNOT_VERIFY rank lowest)."
+          }
+        },
+        {
+          "if": {
+            "required": ["to_verdict"],
+            "properties": { "to_verdict": { "const": "PARTIALLY_ADDRESSED" } }
+          },
+          "then": { "required": ["residual_gap"] },
+          "else": { "not": { "required": ["residual_gap"] } }
+        },
+        {
+          "if": { "required": ["critical_rebuttal_check"] },
+          "then": {
+            "properties": { "basis": { "const": "valid_rebuttal" } }
+          }
+        }
+      ]
+    },
+
+    "new_issue_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "new_issue_id",
+        "description",
+        "location_anchor",
+        "severity",
+        "found_by",
+        "confidence",
+        "competence_basis",
+        "attribution",
+        "attribution_evidence",
+        "nearest_roadmap_item",
+        "non_match_rationale"
+      ],
+      "properties": {
+        "new_issue_id": { "type": "string", "pattern": "^NEW-[1-9][0-9]*$" },
+        "description": { "$ref": "#/$defs/nonempty_string" },
+        "location_anchor": { "$ref": "#/$defs/typed_anchor" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "found_by": { "$ref": "#/$defs/verifier_seat" },
+        "confidence": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "competence_basis": { "$ref": "#/$defs/nonempty_string" },
+        "attribution": { "enum": ["regression", "previously_missed", "indeterminate"] },
+        "attribution_evidence": { "$ref": "#/$defs/nonempty_string" },
+        "nearest_roadmap_item": {
+          "anyOf": [
+            { "$ref": "#/$defs/item_id" },
+            { "type": "null" }
+          ]
+        },
+        "non_match_rationale": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
+
+    "dissent_adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dissent_id", "adjudicator", "outcome", "rationale"],
+      "properties": {
+        "dissent_id": { "type": "string", "pattern": "^DIS-[1-9][0-9]*$" },
+        "adjudicator": { "enum": ["cross_model", "user"] },
+        "outcome": { "enum": ["replacement_approved", "original_upheld"] },
+        "rationale": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
+
+    "resolution_intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent_id", "item_id", "answered_by"],
+      "properties": {
+        "intent_id": { "type": "string", "pattern": "^INT-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "answered_by": {
+          "enum": ["system", "user"],
+          "description": "system intents are emitted by the orchestrator at Phase 2B completion for every P1 diverges row; user intents exist only on the §6 G2(b)/G2(d) fallback paths."
+        },
+        "guidance_note": { "$ref": "#/$defs/nonempty_string" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["answered_by"],
+            "properties": { "answered_by": { "const": "system" } }
+          },
+          "then": { "not": { "required": ["guidance_note"] } }
+        }
+      ]
+    },
+
+    "cross_model_resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolution_id", "item_id", "intent_id", "reapplication_id", "state", "resolved_by", "rationale"],
+      "properties": {
+        "resolution_id": { "type": "string", "pattern": "^RES-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "intent_id": { "type": "string", "pattern": "^INT-[1-9][0-9]*$" },
+        "reapplication_id": { "type": "string", "pattern": "^RAP-[1-9][0-9]*$" },
+        "state": { "enum": ["primary_upheld", "primary_revised"] },
+        "resolved_by": {
+          "enum": ["system", "user"],
+          "description": "system: created mechanically when the reapplication derives a state (reapplied_verdict != CANNOT_VERIFY). user: the acceptance form — the user accepts primary_upheld on a CANNOT_VERIFY reapplication; the user never hand-sets a verdict."
+        },
+        "rationale": { "$ref": "#/$defs/nonempty_string" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["resolved_by"],
+            "properties": { "resolved_by": { "const": "user" } }
+          },
+          "then": {
+            "properties": { "state": { "const": "primary_upheld" } }
+          }
+        }
+      ]
+    },
+
+    "rebuttal_adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rebuttal_adjudication_id", "item_id", "verdict", "rationale"],
+      "properties": {
+        "rebuttal_adjudication_id": { "type": "string", "pattern": "^RADJ-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "verdict": {
+          "enum": ["upheld", "challenged"],
+          "description": "§3.4 critical-rebuttal pass: upheld books the drafted AdjustmentRecord; challenged means it is NEVER booked."
+        },
+        "rationale": { "$ref": "#/$defs/nonempty_string" }
+      }
+    },
+
+    "g2d_acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptance_id", "item_id", "reapplication_id", "accepted_by"],
+      "properties": {
+        "acceptance_id": { "type": "string", "pattern": "^ACC-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "reapplication_id": {
+          "type": "string",
+          "pattern": "^RAP-[1-9][0-9]*$",
+          "description": "Must resolve to a CANNOT_VERIFY ReapplicationRecord on the same item (checker-enforced)."
+        },
+        "accepted_by": { "const": "user" }
+      }
+    },
+
+    "pending_rebuttal_upgrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposal_id", "item_id", "drafted_adjustment", "disposition"],
+      "properties": {
+        "proposal_id": { "type": "string", "pattern": "^PRB-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "drafted_adjustment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["item_id", "from_verdict", "to_verdict", "basis", "evidence_anchor", "rationale"],
+          "properties": {
+            "item_id": { "$ref": "#/$defs/item_id" },
+            "from_verdict": {
+              "enum": ["PARTIALLY_ADDRESSED", "NOT_ADDRESSED", "MADE_WORSE", "CANNOT_VERIFY"],
+              "description": "§3.4 Direction: a rebuttal upgrade starts below FULLY_ADDRESSED."
+            },
+            "to_verdict": {
+              "const": "FULLY_ADDRESSED",
+              "description": "§3.4 Direction: valid_rebuttal upgrades to FULLY_ADDRESSED only."
+            },
+            "basis": { "const": "valid_rebuttal" },
+            "evidence_anchor": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/tagged_anchor" }
+            },
+            "residual_gap": { "$ref": "#/$defs/residual_gap" },
+            "rationale": { "$ref": "#/$defs/nonempty_string" }
+          },
+          "description": "The full would-be AdjustmentRecord body. Content-equality with the booked record is checker-enforced field-for-field, excluding EXACTLY {adjustment_id, supersedes_adjustment_id, critical_rebuttal_check} (assigned at booking / by the dispatching layer); item_id is draft-time-known and NEVER excluded (§5.3)."
+        },
+        "disposition": {
+          "anyOf": [
+            { "type": "string", "pattern": "^booked:ADJ-[1-9][0-9]*$" },
+            { "type": "string", "pattern": "^challenged:RADJ-[1-9][0-9]*$" },
+            { "type": "string", "pattern": "^booked_disclosed:ADJ-[1-9][0-9]*$" },
+            { "type": "string", "pattern": "^booked_single_family:ADJ-[1-9][0-9]*$" }
+          ],
+          "description": "booked: upheld by the §3.4 pass; challenged: never booked; booked_disclosed: active cross-model, pass unavailable (adjustment carries pass_unavailable_disclosed); booked_single_family: cross-model not configured (adjustment carries single_family_disclosed)."
+        }
+      }
+    },
+
+    "escalation_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exception_id", "approval_state", "approved_by"],
+      "properties": {
+        "exception_id": { "type": "string", "pattern": "^ESC-[1-9][0-9]*$" },
+        "approval_state": { "enum": ["approved", "rejected"] },
+        "approved_by": { "const": "user" }
+      }
+    },
+
+    "reapplication_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reapplication_id",
+        "item_id",
+        "answer_refs",
+        "pre_reapplication_verdict",
+        "reapplied_verdict",
+        "rationale",
+        "criterion_ref"
+      ],
+      "properties": {
+        "reapplication_id": { "type": "string", "pattern": "^RAP-[1-9][0-9]*$" },
+        "item_id": { "$ref": "#/$defs/item_id" },
+        "answer_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(adjudication:DIS-[1-9][0-9]*|intent:INT-[1-9][0-9]*)$"
+          },
+          "description": "Tagged refs to the answers this re-application discharges. A G2(b)/G2(d) retry's refs are CUMULATIVE: the original mandating answer PLUS every retry ResolutionIntent to date (§6)."
+        },
+        "supersedes_reapplication_id": {
+          "type": "string",
+          "pattern": "^RAP-[1-9][0-9]*$",
+          "description": "A retry names the failed attempt it supersedes; the failed record is preserved. Per mandating answer exactly ONE reapplication is CURRENT (non-superseded)."
+        },
+        "pre_reapplication_verdict": {
+          "$ref": "#/$defs/verdict",
+          "description": "The row's verdict at dispatch — the chain tail before this loop iteration, or phase2a_verdict when no chain. The TIME ANCHOR every §9 comparison binds to."
+        },
+        "reapplied_verdict": { "$ref": "#/$defs/verdict" },
+        "evidence_anchor": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/tagged_anchor" }
+        },
+        "cannot_verify_reason": {
+          "$ref": "#/$defs/nonempty_string",
+          "description": "Required iff reapplied_verdict = CANNOT_VERIFY. An undispatchable/crashed 2B' call is recorded by the ORCHESTRATOR with reason \"dispatch_failed: <why>\" — a transport fact, not a verification judgment (§6)."
+        },
+        "residual_gap": { "$ref": "#/$defs/residual_gap" },
+        "rationale": { "$ref": "#/$defs/nonempty_string" },
+        "criterion_ref": {
+          "type": "string",
+          "pattern": "^(phase1:REV-[A-Za-z0-9-]+|dissent:DIS-[1-9][0-9]*)$",
+          "description": "EFFECTIVE-criterion rule (§6): adjudication-mandated -> phase1 (re-applying the ORIGINAL is its definition); divergence-only -> dissent:<id> when a replacement_approved adjudication exists for the item, else phase1."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["reapplied_verdict"],
+            "properties": { "reapplied_verdict": { "const": "CANNOT_VERIFY" } }
+          },
+          "then": {
+            "required": ["cannot_verify_reason"],
+            "not": { "required": ["evidence_anchor"] }
+          },
+          "else": {
+            "required": ["evidence_anchor"],
+            "not": { "required": ["cannot_verify_reason"] }
+          }
+        },
+        {
+          "if": {
+            "required": ["reapplied_verdict"],
+            "properties": { "reapplied_verdict": { "const": "PARTIALLY_ADDRESSED" } }
+          },
+          "then": { "required": ["residual_gap"] },
+          "else": { "not": { "required": ["residual_gap"] } }
+        }
+      ]
+    },
+
+    "decision_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "per_item",
+        "verdict_counts",
+        "residual_magnitude_counts",
+        "p2_addressed_rate",
+        "regressions",
+        "non_regression_new_issue_ids",
+        "escalations",
+        "apply_chain_witness"
+      ],
+      "properties": {
+        "per_item": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item_id", "final_verdict", "driving_severity"],
+            "properties": {
+              "item_id": { "$ref": "#/$defs/item_id" },
+              "final_verdict": { "$ref": "#/$defs/verdict" },
+              "driving_severity": {
+                "anyOf": [
+                  { "$ref": "#/$defs/severity" },
+                  { "type": "null" }
+                ],
+                "description": "null for source_kind items and legacy roadmaps whose Schema 7 severity is legitimately absent — B1 treats null as NOT critical, never fabricating a severity."
+              },
+              "residual_magnitude": {
+                "enum": ["must_fix", "should_fix", "consider"],
+                "description": "The magnitude on the record that set the item's FINAL verdict (chain-tail adjustment or its reapplication when adjusted; else the 2A verdict record)."
+              }
+            }
+          },
+          "description": "Per-P1 (must_fix) item operands for §6 Steps 2-3."
+        },
+        "verdict_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["must_fix", "should_fix", "consider"],
+          "properties": {
+            "must_fix": { "$ref": "#/$defs/verdict_count_map" },
+            "should_fix": { "$ref": "#/$defs/verdict_count_map" },
+            "consider": { "$ref": "#/$defs/verdict_count_map" }
+          }
+        },
+        "residual_magnitude_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["must_fix", "should_fix", "consider"],
+          "properties": {
+            "must_fix": { "$ref": "#/$defs/magnitude_count_map" },
+            "should_fix": { "$ref": "#/$defs/magnitude_count_map" },
+            "consider": { "$ref": "#/$defs/magnitude_count_map" }
+          },
+          "description": "Per-priority residual_magnitude counts over PARTIALLY_ADDRESSED rows (final verdicts)."
+        },
+        "p2_addressed_rate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["numerator", "denominator"],
+          "properties": {
+            "numerator": { "type": "integer", "minimum": 0 },
+            "denominator": { "type": "integer", "minimum": 0 }
+          },
+          "description": "§6 definition: numerator = |P2 items with final_verdict in {FULLY_ADDRESSED, PARTIALLY_ADDRESSED}|; denominator = |P2 items|; zero P2 items -> vacuously 100%. Computed over FINAL (post-2B) verdicts."
+        },
+        "regressions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["new_issue_id", "severity"],
+            "properties": {
+              "new_issue_id": { "type": "string", "pattern": "^NEW-[1-9][0-9]*$" },
+              "severity": { "$ref": "#/$defs/severity" }
+            }
+          }
+        },
+        "non_regression_new_issue_ids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^NEW-[1-9][0-9]*$" },
+          "description": "Frozen previously_missed + indeterminate ids — never in the decision path (§6 goalpost guard)."
+        },
+        "escalations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["exception_id", "effective_approval_state", "escalation_class", "mechanical_decision_impact"],
+            "properties": {
+              "exception_id": { "type": "string", "pattern": "^ESC-[1-9][0-9]*$" },
+              "effective_approval_state": {
+                "enum": ["pending", "approved", "rejected"],
+                "description": "JOINED from the EscalationApproval via exception_id (pending when none exists); the EscalationExceptionRecord's own field is the literal emission constant and is never copied here."
+              },
+              "escalation_class": {
+                "enum": ["research_integrity", "ethics", "safety", "legal_compliance", "fatal_validity"]
+              },
+              "mechanical_decision_impact": { "enum": ["Minor Revision", "Major Revision"] }
+            }
+          }
+        },
+        "reject_recommended": {
+          "type": "boolean",
+          "description": "PRESENT iff the emission is non-gated (§6 Steps 2-3 ran) — on a gated emission the field is ABSENT, never a fabricated false (checker-enforced presence biconditional). True on B1/B2 or an approved research_integrity-class exception."
+        },
+        "apply_chain_witness": {
+          "enum": ["pass", "fail", "first_link_not_run", "not_run_no_reports"],
+          "description": "§11 closed composite with declared TOTAL PRECEDENCE fail > not_run_no_reports > first_link_not_run > pass. Compared on every emission kind (§13)."
+        }
+      }
+    }
+  }
+}
