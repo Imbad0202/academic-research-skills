@@ -1,0 +1,347 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/human_subjects/resolved_authority_context.schema.json",
+  "title": "Resolved human-subjects authority context",
+  "description": "Pointer-only deterministic trace of exact authority selections and three-valued applicability. It never states compliance, legality, approval, exemption, readiness, or authorization.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "context_pointer",
+    "registry_pointer",
+    "selected_profiles",
+    "selected_overlays",
+    "requirement_results",
+    "collisions",
+    "trace_order",
+    "resolution_state",
+    "unresolved_reasons",
+    "downstream_gate",
+    "resolved_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "resolved-human-subjects-authority-context/1.0"},
+    "context_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_record_id", "schema_version", "context_digest"],
+      "properties": {
+        "context_record_id": {"$ref": "#/$defs/identifier"},
+        "schema_version": {"const": "irb-context-record/1.0"},
+        "context_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "registry_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_id", "registry_version", "as_of", "registry_digest"],
+      "properties": {
+        "registry_id": {"$ref": "#/$defs/identifier"},
+        "registry_version": {"$ref": "#/$defs/version"},
+        "as_of": {"type": "string", "format": "date"},
+        "registry_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "selected_profiles": {
+      "type": "array",
+      "maxItems": 64,
+      "description": "Resolved state includes at least one profile on each axis. Exact identity uniqueness and equality with the bound context are replay-checker invariants.",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/profile_result"}
+    },
+    "selected_overlays": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/overlay_result"}
+    },
+    "requirement_results": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/requirement_result"}
+    },
+    "collisions": {
+      "type": "array",
+      "maxItems": 2048,
+      "items": {"$ref": "#/$defs/collision"}
+    },
+    "trace_order": {
+      "type": "array",
+      "maxItems": 4096,
+      "description": "Display order only; every requirement result occurs exactly once. Semantic set equality is checker-enforced.",
+      "items": {"$ref": "#/$defs/trace_entry"}
+    },
+    "resolution_state": {
+      "enum": ["resolved", "jurisdiction_unresolved", "applicability_unresolved"]
+    },
+    "unresolved_reasons": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/unresolved_reason"}
+    },
+    "downstream_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "both_axes_selected",
+        "exact_selection_resolved",
+        "all_applicability_resolved",
+        "profile_dependent_result_allowed"
+      ],
+      "properties": {
+        "both_axes_selected": {"type": "boolean"},
+        "exact_selection_resolved": {"type": "boolean"},
+        "all_applicability_resolved": {"type": "boolean"},
+        "profile_dependent_result_allowed": {"type": "boolean"}
+      }
+    },
+    "resolved_digest": {
+      "description": "SHA-256 of the canonical resolved object with this field excluded; the replay checker recomputes it.",
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"resolution_state": {"const": "resolved"}},
+        "required": ["resolution_state"]
+      },
+      "then": {
+        "properties": {
+          "selected_profiles": {
+            "minItems": 2,
+            "allOf": [
+              {
+                "contains": {
+                  "properties": {"axis": {"const": "review_ethics"}},
+                  "required": ["axis"]
+                },
+                "minContains": 1
+              },
+              {
+                "contains": {
+                  "properties": {"axis": {"const": "data_protection"}},
+                  "required": ["axis"]
+                },
+                "minContains": 1
+              }
+            ],
+            "items": {
+              "properties": {
+                "applicability": {"const": "true"},
+                "source_state": {"const": "current"}
+              },
+              "required": ["applicability", "source_state"]
+            }
+          },
+          "requirement_results": {
+            "items": {
+              "properties": {
+                "applicability": {"enum": ["true", "false"]}
+              },
+              "required": ["applicability"]
+            }
+          },
+          "unresolved_reasons": {"maxItems": 0},
+          "downstream_gate": {
+            "properties": {
+              "both_axes_selected": {"const": true},
+              "exact_selection_resolved": {"const": true},
+              "all_applicability_resolved": {"const": true},
+              "profile_dependent_result_allowed": {"const": true}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "resolution_state": {"enum": ["jurisdiction_unresolved", "applicability_unresolved"]}
+        },
+        "required": ["resolution_state"]
+      },
+      "then": {
+        "properties": {
+          "unresolved_reasons": {"minItems": 1},
+          "downstream_gate": {
+            "properties": {"profile_dependent_result_allowed": {"const": false}}
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "axis": {"enum": ["review_ethics", "data_protection"]},
+    "identifier": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tri_state": {"enum": ["true", "false", "unknown"]},
+    "id_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "predicate_trace": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expression_path", "operator", "result", "fact_id", "declared_state"],
+        "properties": {
+          "expression_path": {"type": "string", "pattern": "^/"},
+          "operator": {"enum": ["fact_equals", "fact_in", "fact_contains", "all", "any", "not"]},
+          "result": {"$ref": "#/$defs/tri_state"},
+          "fact_id": {
+            "oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]
+          },
+          "declared_state": {"enum": ["declared", "unknown", "missing", "compound"]}
+        }
+      }
+    },
+    "profile_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "axis",
+        "profile_id",
+        "profile_version",
+        "profile_digest",
+        "authority_scope_ids",
+        "profile_pointer",
+        "applicability",
+        "predicate_trace",
+        "source_state"
+      ],
+      "properties": {
+        "axis": {"$ref": "#/$defs/axis"},
+        "profile_id": {"$ref": "#/$defs/identifier"},
+        "profile_version": {"$ref": "#/$defs/version"},
+        "profile_digest": {"$ref": "#/$defs/sha256"},
+        "authority_scope_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "profile_pointer": {"type": "string", "pattern": "^/profiles/[0-9]+$"},
+        "applicability": {"$ref": "#/$defs/tri_state"},
+        "predicate_trace": {"$ref": "#/$defs/predicate_trace"},
+        "source_state": {"enum": ["current", "unresolved"]}
+      }
+    },
+    "overlay_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlay_kind",
+        "axis",
+        "overlay_id",
+        "overlay_version",
+        "overlay_digest",
+        "overlay_pointer",
+        "target_profile_ids",
+        "requirements_removed"
+      ],
+      "properties": {
+        "overlay_kind": {"enum": ["institutional", "funder"]},
+        "axis": {"$ref": "#/$defs/axis"},
+        "overlay_id": {"$ref": "#/$defs/identifier"},
+        "overlay_version": {"$ref": "#/$defs/version"},
+        "overlay_digest": {"$ref": "#/$defs/sha256"},
+        "overlay_pointer": {"type": "string", "pattern": "^/overlays/[0-9]+$"},
+        "target_profile_ids": {"$ref": "#/$defs/id_list"},
+        "requirements_removed": {"const": false}
+      }
+    },
+    "requirement_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id",
+        "authority_kind",
+        "authority_id",
+        "authority_version",
+        "authority_digest",
+        "axis",
+        "obligated_actor",
+        "consumer_scopes",
+        "applicability",
+        "predicate_trace",
+        "requirement_digest",
+        "requirement_pointer",
+        "authority_anchor_pointer"
+      ],
+      "properties": {
+        "requirement_id": {"$ref": "#/$defs/identifier"},
+        "authority_kind": {"enum": ["profile", "institutional_overlay", "funder_overlay"]},
+        "authority_id": {"$ref": "#/$defs/identifier"},
+        "authority_version": {"$ref": "#/$defs/version"},
+        "authority_digest": {"$ref": "#/$defs/sha256"},
+        "axis": {"$ref": "#/$defs/axis"},
+        "obligated_actor": {"$ref": "#/$defs/identifier"},
+        "consumer_scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "applicability": {"$ref": "#/$defs/tri_state"},
+        "predicate_trace": {"$ref": "#/$defs/predicate_trace"},
+        "requirement_digest": {"$ref": "#/$defs/sha256"},
+        "requirement_pointer": {"type": "string", "pattern": "^/(profiles|overlays)/[0-9]+/requirements/[0-9]+$"},
+        "authority_anchor_pointer": {"type": "string", "pattern": "^/(profiles|overlays)/[0-9]+/requirements/[0-9]+/authority_anchor$"}
+      }
+    },
+    "collision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collision_key", "requirement_ids", "resolution", "requirements_removed"],
+      "properties": {
+        "collision_key": {"$ref": "#/$defs/identifier"},
+        "requirement_ids": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "resolution": {"const": "parallel_authorities_require_human_resolution"},
+        "requirements_removed": {"const": false}
+      }
+    },
+    "trace_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "requirement_id", "authority_id", "purpose"],
+      "properties": {
+        "position": {"type": "integer", "minimum": 1},
+        "requirement_id": {"$ref": "#/$defs/identifier"},
+        "authority_id": {"$ref": "#/$defs/identifier"},
+        "purpose": {"const": "display_only_no_suppression"}
+      }
+    },
+    "unresolved_reason": {
+      "type": "object",
+      "description": "Closed pointer-only diagnostic. It contains no copied source, requirement, manuscript, or other free text.",
+      "additionalProperties": false,
+      "required": ["code", "axis", "authority_id", "requirement_id"],
+      "properties": {
+        "code": {
+          "enum": [
+            "JURISDICTION_UNRESOLVED",
+            "APPLICABILITY_UNRESOLVED",
+            "OVERLAY_BASE_UNRESOLVED",
+            "AUTHORITY_SOURCE_NOT_CURRENT",
+            "PROFILE_SCOPE_CONFLICT"
+          ]
+        },
+        "axis": {"$ref": "#/$defs/axis"},
+        "authority_id": {
+          "oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]
+        },
+        "requirement_id": {
+          "oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]
+        }
+      }
+    }
+  }
+}

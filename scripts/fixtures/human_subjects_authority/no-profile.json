@@ -1,0 +1,33 @@
+{
+  "schema_version": "irb-context-record/1.0",
+  "context_record_id": "fixture.no-profile-despite-hints",
+  "confirmed_by": "author",
+  "confirmed_at": "2026-08-09T10:00:00+08:00",
+  "applicability_as_of": "2026-08-09",
+  "scope_dimensions": {
+    "review_jurisdictions": ["support.us_hhs_or_common_rule", "scope.tw_hsra"],
+    "institutions": [],
+    "data_protection_regimes": ["scope.eu_gdpr"],
+    "funders": [],
+    "study_types": ["activity.human_subjects", "purpose.scientific_research"],
+    "populations": [],
+    "data_locations": ["processing.personal_data"],
+    "cross_border_transfers": ["scope.eu_gdpr"]
+  },
+  "declared_facts": [
+    {"fact_id": "activity.human_subjects", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "support.us_hhs_or_common_rule", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "scope.tw_hsra", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "scope.eu_gdpr", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "processing.personal_data", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "purpose.scientific_research", "value_type": "boolean", "state": "unknown", "value": null, "provenance": "author_declared"}
+  ],
+  "profile_selection_state": {"review_ethics": "unresolved", "data_protection": "unresolved"},
+  "selected_profiles": [],
+  "overlay_selection_state": {"institutional": "not_provided", "funder": "not_provided"},
+  "selected_overlays": [],
+  "display_precedence": [
+    {"axis": "review_ethics", "purpose": "display_only_no_suppression", "ordered_authorities": []},
+    {"axis": "data_protection", "purpose": "display_only_no_suppression", "ordered_authorities": []}
+  ]
+}

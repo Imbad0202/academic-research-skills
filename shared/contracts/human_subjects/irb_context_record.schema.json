@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/human_subjects/irb_context_record.schema.json",
+  "title": "IRB Context Record",
+  "description": "Author-owned, declaration-only applicability input. It records exact authority selections and typed facts; it never infers a jurisdiction, establishes authorization, or emits a review pathway or conformance result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "context_record_id",
+    "confirmed_by",
+    "confirmed_at",
+    "applicability_as_of",
+    "scope_dimensions",
+    "declared_facts",
+    "profile_selection_state",
+    "selected_profiles",
+    "overlay_selection_state",
+    "selected_overlays",
+    "display_precedence"
+  ],
+  "properties": {
+    "schema_version": {"const": "irb-context-record/1.0"},
+    "context_record_id": {"$ref": "#/$defs/identifier"},
+    "confirmed_by": {"const": "author"},
+    "confirmed_at": {"type": "string", "format": "date-time"},
+    "applicability_as_of": {"type": "string", "format": "date"},
+    "scope_dimensions": {
+      "type": "object",
+      "description": "Fact ids assigned to the eight required declaration dimensions. An empty list means that the dimension is undeclared/unknown, not that no regime or condition applies.",
+      "additionalProperties": false,
+      "required": [
+        "review_jurisdictions",
+        "institutions",
+        "data_protection_regimes",
+        "funders",
+        "study_types",
+        "populations",
+        "data_locations",
+        "cross_border_transfers"
+      ],
+      "properties": {
+        "review_jurisdictions": {"$ref": "#/$defs/fact_id_list"},
+        "institutions": {"$ref": "#/$defs/fact_id_list"},
+        "data_protection_regimes": {"$ref": "#/$defs/fact_id_list"},
+        "funders": {"$ref": "#/$defs/fact_id_list"},
+        "study_types": {"$ref": "#/$defs/fact_id_list"},
+        "populations": {"$ref": "#/$defs/fact_id_list"},
+        "data_locations": {"$ref": "#/$defs/fact_id_list"},
+        "cross_border_transfers": {"$ref": "#/$defs/fact_id_list"}
+      }
+    },
+    "declared_facts": {
+      "type": "array",
+      "maxItems": 512,
+      "description": "Typed values declared by the author. Registry validation supplies the vocabulary and checker validation binds value_type to the corresponding fact definition. Missing facts and state=unknown remain UNKNOWN; they are never coerced to false.",
+      "items": {"$ref": "#/$defs/declared_fact"}
+    },
+    "profile_selection_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_ethics", "data_protection"],
+      "properties": {
+        "review_ethics": {"enum": ["selected", "unresolved"]},
+        "data_protection": {"enum": ["selected", "unresolved"]}
+      }
+    },
+    "selected_profiles": {
+      "type": "array",
+      "maxItems": 64,
+      "description": "Plural, axis-qualified, exact profile selections. A resolver must match all four pointer fields; it must not choose a latest version or infer a profile from locale, language, affiliation, or content.",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/profile_selection"}
+    },
+    "overlay_selection_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["institutional", "funder"],
+      "properties": {
+        "institutional": {"enum": ["selected", "not_provided", "none_declared_by_author"]},
+        "funder": {"enum": ["selected", "not_provided", "none_declared_by_author"]}
+      }
+    },
+    "selected_overlays": {
+      "type": "array",
+      "maxItems": 64,
+      "description": "Exact additive overlay selections. Funder and institution are overlay kinds, never authority axes.",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/overlay_selection"}
+    },
+    "display_precedence": {
+      "type": "array",
+      "description": "Author-declared display order only. A resolver may not use this order to suppress, merge, satisfy, or override requirements.",
+      "minItems": 2,
+      "maxItems": 2,
+      "allOf": [
+        {
+          "contains": {"properties": {"axis": {"const": "review_ethics"}}, "required": ["axis"]},
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {"properties": {"axis": {"const": "data_protection"}}, "required": ["axis"]},
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["axis", "purpose", "ordered_authorities"],
+        "properties": {
+          "axis": {"$ref": "#/$defs/axis"},
+          "purpose": {"const": "display_only_no_suppression"},
+          "ordered_authorities": {
+            "type": "array",
+            "maxItems": 128,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/display_authority_ref"}
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"profile_selection_state": {"properties": {"review_ethics": {"const": "selected"}}, "required": ["review_ethics"]}},
+        "required": ["profile_selection_state"]
+      },
+      "then": {
+        "properties": {
+          "selected_profiles": {
+            "contains": {"properties": {"axis": {"const": "review_ethics"}}, "required": ["axis"]},
+            "minContains": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "selected_profiles": {
+            "contains": {"properties": {"axis": {"const": "review_ethics"}}, "required": ["axis"]},
+            "minContains": 0,
+            "maxContains": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"profile_selection_state": {"properties": {"data_protection": {"const": "selected"}}, "required": ["data_protection"]}},
+        "required": ["profile_selection_state"]
+      },
+      "then": {
+        "properties": {
+          "selected_profiles": {
+            "contains": {"properties": {"axis": {"const": "data_protection"}}, "required": ["axis"]},
+            "minContains": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "selected_profiles": {
+            "contains": {"properties": {"axis": {"const": "data_protection"}}, "required": ["axis"]},
+            "minContains": 0,
+            "maxContains": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"overlay_selection_state": {"properties": {"institutional": {"const": "selected"}}, "required": ["institutional"]}},
+        "required": ["overlay_selection_state"]
+      },
+      "then": {
+        "properties": {
+          "selected_overlays": {
+            "contains": {"properties": {"overlay_kind": {"const": "institutional"}}, "required": ["overlay_kind"]},
+            "minContains": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "selected_overlays": {
+            "contains": {"properties": {"overlay_kind": {"const": "institutional"}}, "required": ["overlay_kind"]},
+            "minContains": 0,
+            "maxContains": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"overlay_selection_state": {"properties": {"funder": {"const": "selected"}}, "required": ["funder"]}},
+        "required": ["overlay_selection_state"]
+      },
+      "then": {
+        "properties": {
+          "selected_overlays": {
+            "contains": {"properties": {"overlay_kind": {"const": "funder"}}, "required": ["overlay_kind"]},
+            "minContains": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "selected_overlays": {
+            "contains": {"properties": {"overlay_kind": {"const": "funder"}}, "required": ["overlay_kind"]},
+            "minContains": 0,
+            "maxContains": 0
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "axis": {"enum": ["review_ethics", "data_protection"]},
+    "identifier": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "fact_id_list": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "declared_value": {
+      "oneOf": [
+        {"type": "boolean"},
+        {"type": "string", "minLength": 1, "maxLength": 512},
+        {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 256}
+        },
+        {"type": "null"}
+      ]
+    },
+    "declared_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact_id", "value_type", "state", "value", "provenance"],
+      "properties": {
+        "fact_id": {"$ref": "#/$defs/identifier"},
+        "value_type": {"enum": ["boolean", "string", "string_enum", "string_set", "date"]},
+        "state": {"enum": ["declared", "unknown"]},
+        "value": {"$ref": "#/$defs/declared_value"},
+        "provenance": {"const": "author_declared"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "unknown"}}, "required": ["state"]},
+          "then": {"properties": {"value": {"type": "null"}}},
+          "else": {"properties": {"value": {"not": {"type": "null"}}}}
+        },
+        {
+          "if": {"properties": {"state": {"const": "declared"}, "value_type": {"const": "boolean"}}, "required": ["state", "value_type"]},
+          "then": {"properties": {"value": {"type": "boolean"}}}
+        },
+        {
+          "if": {"properties": {"state": {"const": "declared"}, "value_type": {"enum": ["string", "string_enum"]}}, "required": ["state", "value_type"]},
+          "then": {"properties": {"value": {"type": "string", "minLength": 1, "maxLength": 512}}}
+        },
+        {
+          "if": {"properties": {"state": {"const": "declared"}, "value_type": {"const": "string_set"}}, "required": ["state", "value_type"]},
+          "then": {
+            "properties": {
+              "value": {
+                "type": "array",
+                "maxItems": 128,
+                "uniqueItems": true,
+                "items": {"type": "string", "minLength": 1, "maxLength": 256}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"state": {"const": "declared"}, "value_type": {"const": "date"}}, "required": ["state", "value_type"]},
+          "then": {"properties": {"value": {"type": "string", "format": "date"}}}
+        }
+      ]
+    },
+    "profile_selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "profile_id", "profile_version", "profile_digest", "authority_scope_ids"],
+      "properties": {
+        "axis": {"$ref": "#/$defs/axis"},
+        "profile_id": {"$ref": "#/$defs/identifier"},
+        "profile_version": {"$ref": "#/$defs/version"},
+        "profile_digest": {"$ref": "#/$defs/sha256"},
+        "authority_scope_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        }
+      }
+    },
+    "overlay_selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlay_kind", "axis", "overlay_id", "overlay_version", "overlay_digest"],
+      "properties": {
+        "overlay_kind": {"enum": ["institutional", "funder"]},
+        "axis": {"$ref": "#/$defs/axis"},
+        "overlay_id": {"$ref": "#/$defs/identifier"},
+        "overlay_version": {"$ref": "#/$defs/version"},
+        "overlay_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "display_authority_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_kind", "axis", "authority_id", "authority_version", "authority_digest"],
+      "properties": {
+        "authority_kind": {"enum": ["profile", "institutional_overlay", "funder_overlay"]},
+        "axis": {"$ref": "#/$defs/axis"},
+        "authority_id": {"$ref": "#/$defs/identifier"},
+        "authority_version": {"$ref": "#/$defs/version"},
+        "authority_digest": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

@@ -1,0 +1,1236 @@
+{
+  "schema_version": "human-subjects-authority-registry/1.0",
+  "registry_id": "human-subjects-authority-v1",
+  "registry_version": "2026-08-09",
+  "as_of": "2026-08-09",
+  "fact_definitions": [
+    {
+      "fact_id": "activity.human_subjects",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that the activity involves human subjects; omission or null remains unknown."
+    },
+    {
+      "fact_id": "support.us_hhs_or_common_rule",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that U.S. HHS support, Common Rule assurance, or another identified basis places the activity within the selected Common Rule scope."
+    },
+    {
+      "fact_id": "scope.tw_hsra",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that Taiwan's Human Subjects Research Act is an identified review authority for the activity."
+    },
+    {
+      "fact_id": "scope.eu_gdpr",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that the GDPR is an identified data-protection authority for the processing."
+    },
+    {
+      "fact_id": "processing.personal_data",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that the activity processes personal data within the selected GDPR scope."
+    },
+    {
+      "fact_id": "data.special_category",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that the processing includes special categories of personal data."
+    },
+    {
+      "fact_id": "data.collected_from_subject",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that the personal data is obtained from the data subject; false indicates it is obtained elsewhere, while omission or null remains unknown."
+    },
+    {
+      "fact_id": "purpose.scientific_research",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that the processing purpose includes scientific research."
+    },
+    {
+      "fact_id": "gdpr.member_state_research_law_identified",
+      "value_type": "boolean",
+      "allowed_values": null,
+      "description": "User declaration that a specific applicable Union or Member State law supporting a claimed research derogation has been identified."
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "us.ecfr.45-cfr-46.107",
+      "title": "45 CFR 46.107 — IRB membership",
+      "publisher": "U.S. Government Publishing Office eCFR",
+      "canonical_url": "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-46/subpart-A/section-46.107",
+      "snapshot_url": null,
+      "provision_locator": "45 CFR 46.107",
+      "allowed_provisions": [
+        "45 CFR 46.107"
+      ],
+      "effective_from": "2018-07-19",
+      "effective_until": null,
+      "source_amended_or_published_date": "2017-01-19",
+      "retrieved_at": "2026-08-09",
+      "verified_at": "2026-08-09",
+      "source_language": "en",
+      "controlling_language": true,
+      "authenticity_status": "authoritative_unofficial",
+      "content_digest": null,
+      "digest_scope": "not_recorded",
+      "rights_status": "link_only",
+      "freshness": "current"
+    },
+    {
+      "source_id": "us.ecfr.45-cfr-46.116",
+      "title": "45 CFR 46.116 — General requirements for informed consent",
+      "publisher": "U.S. Government Publishing Office eCFR",
+      "canonical_url": "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-46/subpart-A/section-46.116",
+      "snapshot_url": null,
+      "provision_locator": "45 CFR 46.116",
+      "allowed_provisions": [
+        "45 CFR 46.116"
+      ],
+      "effective_from": "2018-07-19",
+      "effective_until": null,
+      "source_amended_or_published_date": "2017-01-19",
+      "retrieved_at": "2026-08-09",
+      "verified_at": "2026-08-09",
+      "source_language": "en",
+      "controlling_language": true,
+      "authenticity_status": "authoritative_unofficial",
+      "content_digest": null,
+      "digest_scope": "not_recorded",
+      "rights_status": "link_only",
+      "freshness": "current"
+    },
+    {
+      "source_id": "tw.moj.hsra.article-7.zh-hant",
+      "title": "Human Subjects Research Act — Article 7 (controlling Chinese text)",
+      "publisher": "Taiwan Ministry of Justice Laws and Regulations Database",
+      "canonical_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0020176",
+      "snapshot_url": null,
+      "provision_locator": "人體研究法第 7 條",
+      "allowed_provisions": [
+        "人體研究法第 7 條"
+      ],
+      "effective_from": "2011-12-28",
+      "effective_until": null,
+      "source_amended_or_published_date": "2019-01-02",
+      "retrieved_at": "2026-08-09",
+      "verified_at": "2026-08-09",
+      "source_language": "zh-Hant-TW",
+      "controlling_language": true,
+      "authenticity_status": "official_controlling_language",
+      "content_digest": null,
+      "digest_scope": "not_recorded",
+      "rights_status": "link_only",
+      "freshness": "current"
+    },
+    {
+      "source_id": "tw.moj.hsra.article-14.zh-hant",
+      "title": "Human Subjects Research Act — Article 14 (controlling Chinese text)",
+      "publisher": "Taiwan Ministry of Justice Laws and Regulations Database",
+      "canonical_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0020176",
+      "snapshot_url": null,
+      "provision_locator": "人體研究法第 14 條",
+      "allowed_provisions": [
+        "人體研究法第 14 條"
+      ],
+      "effective_from": "2011-12-28",
+      "effective_until": null,
+      "source_amended_or_published_date": "2019-01-02",
+      "retrieved_at": "2026-08-09",
+      "verified_at": "2026-08-09",
+      "source_language": "zh-Hant-TW",
+      "controlling_language": true,
+      "authenticity_status": "official_controlling_language",
+      "content_digest": null,
+      "digest_scope": "not_recorded",
+      "rights_status": "link_only",
+      "freshness": "current"
+    },
+    {
+      "source_id": "tw.moj.hsra.english-reference",
+      "title": "Human Subjects Research Act (official English reference translation)",
+      "publisher": "Taiwan Ministry of Justice Laws and Regulations Database",
+      "canonical_url": "https://law.moj.gov.tw/ENG/LawClass/LawAll.aspx?pcode=L0020176",
+      "snapshot_url": null,
+      "provision_locator": "Articles 7 and 14 (reference translation)",
+      "allowed_provisions": [
+        "Human Subjects Research Act Article 7",
+        "Human Subjects Research Act Article 14"
+      ],
+      "effective_from": "2011-12-28",
+      "effective_until": null,
+      "source_amended_or_published_date": "2019-01-02",
+      "retrieved_at": "2026-08-09",
+      "verified_at": "2026-08-09",
+      "source_language": "en",
+      "controlling_language": false,
+      "authenticity_status": "official_reference_translation",
+      "content_digest": null,
+      "digest_scope": "not_recorded",
+      "rights_status": "link_only",
+      "freshness": "current"
+    },
+    {
+      "source_id": "eu.eur-lex.gdpr.2016-679",
+      "title": "Regulation (EU) 2016/679",
+      "publisher": "EUR-Lex, Publications Office of the European Union",
+      "canonical_url": "https://eur-lex.europa.eu/eli/reg/2016/679/2016-05-04/eng",
+      "snapshot_url": null,
+      "provision_locator": "Articles 6, 9, 13, 14, and 89",
+      "allowed_provisions": [
+        "GDPR Article 6",
+        "GDPR Article 9",
+        "GDPR Article 13",
+        "GDPR Article 14",
+        "GDPR Article 89(1)",
+        "GDPR Article 89(2)"
+      ],
+      "effective_from": "2018-05-25",
+      "effective_until": null,
+      "source_amended_or_published_date": "2016-05-04",
+      "retrieved_at": "2026-08-09",
+      "verified_at": "2026-08-09",
+      "source_language": "en",
+      "controlling_language": true,
+      "authenticity_status": "authentic_official",
+      "content_digest": null,
+      "digest_scope": "not_recorded",
+      "rights_status": "link_only",
+      "freshness": "current"
+    }
+  ],
+  "profiles": [
+    {
+      "profile_id": "us.hhs.45-cfr-46.subpart-a",
+      "profile_version": "2019-01-21",
+      "profile_digest": "46fd0b39b1ca1706363e1163c2b4a1149bb2ff22fc2f64c5426fc3ec8b6b0fd4",
+      "axis": "review_ethics",
+      "authority_scope_ids": [
+        "us.common-rule"
+      ],
+      "title": "U.S. Common Rule review-ethics profile (bounded subset)",
+      "authority_level": "national",
+      "coverage_status": "bounded_subset",
+      "covered_provisions": [
+        "45 CFR 46.107 IRB membership",
+        "45 CFR 46.116 general informed-consent requirements"
+      ],
+      "known_exclusions": [
+        "45 CFR 46 Subparts B through E and FDA human-subject protection rules are outside this profile.",
+        "Exemption, limited-review, expedited-review, waiver, and alteration pathways are not exhaustively profiled.",
+        "State, local, tribal, foreign, institutional, and funder requirements are not supplied by this base profile."
+      ],
+      "known_gaps": [
+        "This profile does not encode every condition in 45 CFR 46.101 through 46.124.",
+        "Institution-specific assurance, registration, roster, and submission procedures require separate authority records.",
+        "The profile version records the 2019-01-21 general compliance date; source and requirement effective dates separately record the revised rule's 2018-07-19 effective date, and publication is recorded as 2017-01-19."
+      ],
+      "no_completeness_claim": true,
+      "source_ids": [
+        "us.ecfr.45-cfr-46.107",
+        "us.ecfr.45-cfr-46.116"
+      ],
+      "applies_if": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "fact_equals",
+            "fact_id": "activity.human_subjects",
+            "value": true
+          },
+          {
+            "op": "fact_equals",
+            "fact_id": "support.us_hhs_or_common_rule",
+            "value": true
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "requirement_id": "us.45cfr46.107.irb-composition",
+          "axis": "review_ethics",
+          "title": "IRB membership and composition",
+          "summary": "An IRB must have a sufficiently qualified and diverse membership, including scientific, nonscientific, and unaffiliated participation.",
+          "obligation_kind": "require",
+          "obligated_actor": "institution_or_irb",
+          "consumer_scopes": [
+            "committee_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "activity.human_subjects",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "support.us_hhs_or_common_rule",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "committee.at_least_five_members",
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "field_id": "committee.includes_scientific_member",
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "field_id": "committee.includes_nonscientific_member",
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "field_id": "committee.includes_unaffiliated_member",
+              "operator": "equals",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "irb.roster-and-qualifications",
+              "held_by": "institution_or_irb",
+              "artifact_type": "committee_roster",
+              "description": "Current roster and qualification records maintained by the institution or IRB."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "not_profiled_in_bounded_profile",
+            "requirement_ids": [],
+            "decision_maker_role": null
+          },
+          "authoritative_decision_maker": {
+            "role_id": "institution_or_irb",
+            "description": "The institution operating the IRB applies the membership rule, subject to oversight by the competent federal authority."
+          },
+          "interaction": {
+            "collision_key": "committee.composition",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "us.ecfr.45-cfr-46.107",
+            "authority_url": "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-46/subpart-A/section-46.107",
+            "snapshot_url": null,
+            "provision": "45 CFR 46.107",
+            "effective_date": "2018-07-19",
+            "effective_until": null,
+            "source_amended_or_published_date": "2017-01-19",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authoritative_unofficial",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        },
+        {
+          "requirement_id": "us.45cfr46.116.informed-consent",
+          "axis": "review_ethics",
+          "title": "General informed-consent requirements",
+          "summary": "Consent must be sought in circumstances that support informed and voluntary choice and must include the applicable information required by the rule.",
+          "obligation_kind": "require",
+          "obligated_actor": "investigator_and_irb",
+          "consumer_scopes": [
+            "participant_information",
+            "submission_packet",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "activity.human_subjects",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "support.us_hhs_or_common_rule",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "consent.prospective_information",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.voluntary_circumstances",
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "field_id": "consent.applicable_elements_addressed",
+              "operator": "equals",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "consent.participant-materials",
+              "held_by": "investigator",
+              "artifact_type": "consent_materials",
+              "description": "Participant-facing consent materials and the process description submitted for review."
+            },
+            {
+              "evidence_id": "consent.irb-determination",
+              "held_by": "irb",
+              "artifact_type": "review_determination",
+              "description": "IRB record addressing consent requirements and any authority-owned waiver or alteration decision."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "external_authority_required",
+            "requirement_ids": [],
+            "decision_maker_role": "irb"
+          },
+          "authoritative_decision_maker": {
+            "role_id": "irb",
+            "description": "The IRB determines whether the reviewed consent process satisfies the rule and whether any separately governed waiver or alteration route applies."
+          },
+          "interaction": {
+            "collision_key": "participant.information",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "us.ecfr.45-cfr-46.116",
+            "authority_url": "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-46/subpart-A/section-46.116",
+            "snapshot_url": null,
+            "provision": "45 CFR 46.116",
+            "effective_date": "2018-07-19",
+            "effective_until": null,
+            "source_amended_or_published_date": "2017-01-19",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authoritative_unofficial",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "tw.mohw.human-subjects-research-act",
+      "profile_version": "2019-01-02",
+      "profile_digest": "d01b501c7e5d3c3c3009ea26071c0743f60469fc80ecc64a7f64dc7bb9aa665c",
+      "axis": "review_ethics",
+      "authority_scope_ids": [
+        "tw.hsra"
+      ],
+      "title": "Taiwan Human Subjects Research Act review-ethics profile (bounded subset)",
+      "authority_level": "national",
+      "coverage_status": "bounded_subset",
+      "covered_provisions": [
+        "Human Subjects Research Act Article 7 review-committee composition",
+        "Human Subjects Research Act Article 14 consent information"
+      ],
+      "known_exclusions": [
+        "Other articles of the Act and subordinate regulations are outside this bounded profile.",
+        "Drug, medical-device, biobank, medical-care, privacy, institutional, and funder rules are not supplied by this base profile.",
+        "Consent exceptions and special-population procedures are not exhaustively profiled."
+      ],
+      "known_gaps": [
+        "Competent-authority interpretations, institutional procedures, and current committee forms require separate verification.",
+        "The official English source is reference-only; the linked Chinese text controls.",
+        "The 2011-12-28 date records the Act's promulgation and immediate-effect basis; this profile does not adjudicate article-by-article amendment-effective history."
+      ],
+      "no_completeness_claim": true,
+      "source_ids": [
+        "tw.moj.hsra.article-7.zh-hant",
+        "tw.moj.hsra.article-14.zh-hant",
+        "tw.moj.hsra.english-reference"
+      ],
+      "applies_if": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "fact_equals",
+            "fact_id": "activity.human_subjects",
+            "value": true
+          },
+          {
+            "op": "fact_equals",
+            "fact_id": "scope.tw_hsra",
+            "value": true
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "requirement_id": "tw.hsra.article-7.committee-composition",
+          "axis": "review_ethics",
+          "title": "Review-committee composition",
+          "summary": "The review committee must meet the Act's membership, external-participation, expertise, and gender-composition conditions.",
+          "obligation_kind": "require",
+          "obligated_actor": "research_institution_or_review_committee",
+          "consumer_scopes": [
+            "committee_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "activity.human_subjects",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.tw_hsra",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "committee.at_least_five_members",
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "field_id": "committee.includes_legal_expert",
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "field_id": "committee.includes_other_socially_impartial_member",
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "field_id": "committee.external_member_fraction",
+              "operator": "gte",
+              "value": {
+                "numerator": 2,
+                "denominator": 5
+              }
+            },
+            {
+              "field_id": "committee.each_gender_fraction",
+              "operator": "gte",
+              "value": {
+                "numerator": 1,
+                "denominator": 3
+              }
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "review-committee.roster-and-affiliations",
+              "held_by": "research_institution_or_review_committee",
+              "artifact_type": "committee_roster",
+              "description": "Roster, expertise, affiliation, and gender-composition records maintained for the review committee."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "not_profiled_in_bounded_profile",
+            "requirement_ids": [],
+            "decision_maker_role": null
+          },
+          "authoritative_decision_maker": {
+            "role_id": "research_institution_or_review_committee",
+            "description": "The research institution and its review committee apply the composition conditions, subject to the competent authority's powers."
+          },
+          "interaction": {
+            "collision_key": "committee.composition",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "tw.moj.hsra.article-7.zh-hant",
+            "authority_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0020176",
+            "snapshot_url": null,
+            "provision": "人體研究法第 7 條",
+            "effective_date": "2011-12-28",
+            "effective_until": null,
+            "source_amended_or_published_date": "2019-01-02",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "zh-Hant-TW",
+            "controlling_language": true,
+            "authenticity_status": "official_controlling_language",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        },
+        {
+          "requirement_id": "tw.hsra.article-14.consent-information",
+          "axis": "review_ethics",
+          "title": "Consent information",
+          "summary": "Before consent, the principal investigator must explain the specified study, funding, data, withdrawal, risk, remedy, retention, reuse, and commercial-interest information.",
+          "obligation_kind": "information",
+          "obligated_actor": "principal_investigator",
+          "consumer_scopes": [
+            "participant_information",
+            "submission_packet",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "activity.human_subjects",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.tw_hsra",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "consent.research_institution_and_funding_source",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.principal_investigator_identity_and_responsibility",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.purpose_and_methods",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.data_protection_measures",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.withdrawal_and_related_rights",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.foreseeable_risks_and_remedies",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.material_retention_and_further_use",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.commercial_benefits_and_interests",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "consent.research_contact_name_and_contact_information",
+              "operator": "present",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "consent.article-14-materials",
+              "held_by": "principal_investigator",
+              "artifact_type": "consent_materials",
+              "description": "Participant-facing consent materials addressing the profiled Article 14 information categories."
+            },
+            {
+              "evidence_id": "consent.committee-review-record",
+              "held_by": "review_committee",
+              "artifact_type": "review_determination",
+              "description": "Review record showing committee consideration of the participant-facing information."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "not_profiled_in_bounded_profile",
+            "requirement_ids": [],
+            "decision_maker_role": null
+          },
+          "authoritative_decision_maker": {
+            "role_id": "review_committee",
+            "description": "The review committee reviews the consent materials; any consent exception requires the separately applicable authority-owned route."
+          },
+          "interaction": {
+            "collision_key": "participant.information",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "tw.moj.hsra.article-14.zh-hant",
+            "authority_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0020176",
+            "snapshot_url": null,
+            "provision": "人體研究法第 14 條",
+            "effective_date": "2011-12-28",
+            "effective_until": null,
+            "source_amended_or_published_date": "2019-01-02",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "zh-Hant-TW",
+            "controlling_language": true,
+            "authenticity_status": "official_controlling_language",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "eu.gdpr.research-core-bounded",
+      "profile_version": "2018-05-25",
+      "profile_digest": "53d4c3783d35d8f60c883b6254b8e43831f5d3fc87fa0e6e0304d24bc7cc5cbe",
+      "axis": "data_protection",
+      "authority_scope_ids": [
+        "eu.gdpr"
+      ],
+      "title": "GDPR research data-protection profile (bounded subset)",
+      "authority_level": "supranational",
+      "coverage_status": "bounded_subset",
+      "covered_provisions": [
+        "GDPR Article 6 lawful basis",
+        "GDPR Article 9 special-category processing",
+        "GDPR Articles 13 and 14 information duties",
+        "GDPR Article 89 research safeguards and law-dependent derogations"
+      ],
+      "known_exclusions": [
+        "GDPR provisions outside Articles 6, 9, 13, 14, and 89 are not profiled.",
+        "Member State and sector-specific laws, international transfers, security, DPIA, breach, DPO, and data-subject-rights procedures are outside this profile.",
+        "This profile does not choose a lawful basis, special-category condition, exemption, or derogation for the user."
+      ],
+      "known_gaps": [
+        "Any Article 89(2) research derogation depends on separately identified applicable Union or Member State law.",
+        "Controller, joint-controller, processor, representative, and supervisory-authority allocation requires case-specific facts not inferred here."
+      ],
+      "no_completeness_claim": true,
+      "source_ids": [
+        "eu.eur-lex.gdpr.2016-679"
+      ],
+      "applies_if": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "fact_equals",
+            "fact_id": "scope.eu_gdpr",
+            "value": true
+          },
+          {
+            "op": "fact_equals",
+            "fact_id": "processing.personal_data",
+            "value": true
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "requirement_id": "eu.gdpr.article-6.lawful-basis",
+          "axis": "data_protection",
+          "title": "Lawful basis for processing",
+          "summary": "The controller must identify and document an applicable Article 6 basis for the personal-data processing; this profile does not select one.",
+          "obligation_kind": "condition",
+          "obligated_actor": "controller",
+          "consumer_scopes": [
+            "data_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.eu_gdpr",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "processing.personal_data",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "processing.article-6-basis",
+              "operator": "present",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "gdpr.article-6-basis-record",
+              "held_by": "controller",
+              "artifact_type": "lawful_basis_assessment",
+              "description": "Controller record identifying the relied-on Article 6 basis and the facts supporting it."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "not_applicable",
+            "requirement_ids": [],
+            "decision_maker_role": null
+          },
+          "authoritative_decision_maker": {
+            "role_id": "controller",
+            "description": "The controller is accountable for identifying and documenting the basis, subject to review by the competent supervisory authority or court."
+          },
+          "interaction": {
+            "collision_key": "processing.lawful-basis",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "eu.eur-lex.gdpr.2016-679",
+            "authority_url": "https://eur-lex.europa.eu/eli/reg/2016/679/2016-05-04/eng",
+            "snapshot_url": null,
+            "provision": "GDPR Article 6",
+            "effective_date": "2018-05-25",
+            "effective_until": null,
+            "source_amended_or_published_date": "2016-05-04",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authentic_official",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        },
+        {
+          "requirement_id": "eu.gdpr.article-9.special-category-research",
+          "axis": "data_protection",
+          "title": "Special-category research condition",
+          "summary": "Special-category processing requires an applicable Article 9 condition and the safeguards required by the relied-on legal route; this profile does not select that route.",
+          "obligation_kind": "condition",
+          "obligated_actor": "controller",
+          "consumer_scopes": [
+            "data_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.eu_gdpr",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "processing.personal_data",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "data.special_category",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "processing.article-9-condition",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "processing.article-9-safeguards",
+              "operator": "present",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "gdpr.article-9-condition-record",
+              "held_by": "controller",
+              "artifact_type": "special_category_assessment",
+              "description": "Controller record identifying the Article 9 condition, linked legal authority, and safeguards."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "external_authority_required",
+            "requirement_ids": [],
+            "decision_maker_role": "controller_or_competent_authority"
+          },
+          "authoritative_decision_maker": {
+            "role_id": "controller_or_competent_authority",
+            "description": "The controller documents the relied-on condition; the competent supervisory authority or court resolves authoritative disputes."
+          },
+          "interaction": {
+            "collision_key": "processing.special-category-condition",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "eu.eur-lex.gdpr.2016-679",
+            "authority_url": "https://eur-lex.europa.eu/eli/reg/2016/679/2016-05-04/eng",
+            "snapshot_url": null,
+            "provision": "GDPR Article 9",
+            "effective_date": "2018-05-25",
+            "effective_until": null,
+            "source_amended_or_published_date": "2016-05-04",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authentic_official",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        },
+        {
+          "requirement_id": "eu.gdpr.article-13.direct-collection-information",
+          "axis": "data_protection",
+          "title": "Information when data is obtained from the data subject",
+          "summary": "When personal data is obtained from the data subject, the controller must provide the applicable Article 13 information in the required manner and timing.",
+          "obligation_kind": "information",
+          "obligated_actor": "controller",
+          "consumer_scopes": [
+            "participant_information",
+            "data_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.eu_gdpr",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "processing.personal_data",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "data.collected_from_subject",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "privacy-notice.article-13-elements",
+              "operator": "present",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "gdpr.article-13-notice",
+              "held_by": "controller",
+              "artifact_type": "privacy_notice",
+              "description": "The applicable Article 13 notice and a record of its delivery timing and channel."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "not_profiled_in_bounded_profile",
+            "requirement_ids": [],
+            "decision_maker_role": null
+          },
+          "authoritative_decision_maker": {
+            "role_id": "controller",
+            "description": "The controller provides and documents the information, subject to review by the competent supervisory authority or court."
+          },
+          "interaction": {
+            "collision_key": "participant.information",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "eu.eur-lex.gdpr.2016-679",
+            "authority_url": "https://eur-lex.europa.eu/eli/reg/2016/679/2016-05-04/eng",
+            "snapshot_url": null,
+            "provision": "GDPR Article 13",
+            "effective_date": "2018-05-25",
+            "effective_until": null,
+            "source_amended_or_published_date": "2016-05-04",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authentic_official",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        },
+        {
+          "requirement_id": "eu.gdpr.article-14.indirect-collection-information",
+          "axis": "data_protection",
+          "title": "Information when data is obtained elsewhere",
+          "summary": "When personal data is not obtained from the data subject, the controller must provide the applicable Article 14 information unless a separately established exception applies.",
+          "obligation_kind": "information",
+          "obligated_actor": "controller",
+          "consumer_scopes": [
+            "participant_information",
+            "data_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.eu_gdpr",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "processing.personal_data",
+                "value": true
+              },
+              {
+                "op": "not",
+                "operand": {
+                  "op": "fact_equals",
+                  "fact_id": "data.collected_from_subject",
+                  "value": true
+                }
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "privacy-notice.article-14-elements",
+              "operator": "present",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "gdpr.article-14-notice-or-exception-record",
+              "held_by": "controller",
+              "artifact_type": "privacy_notice_or_exception_assessment",
+              "description": "The Article 14 notice and delivery record, or the controller's separately supported exception assessment."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "external_authority_required",
+            "requirement_ids": [],
+            "decision_maker_role": "controller_or_competent_authority"
+          },
+          "authoritative_decision_maker": {
+            "role_id": "controller_or_competent_authority",
+            "description": "The controller documents any relied-on exception; the competent supervisory authority or court resolves authoritative disputes."
+          },
+          "interaction": {
+            "collision_key": "participant.information",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "eu.eur-lex.gdpr.2016-679",
+            "authority_url": "https://eur-lex.europa.eu/eli/reg/2016/679/2016-05-04/eng",
+            "snapshot_url": null,
+            "provision": "GDPR Article 14",
+            "effective_date": "2018-05-25",
+            "effective_until": null,
+            "source_amended_or_published_date": "2016-05-04",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authentic_official",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        },
+        {
+          "requirement_id": "eu.gdpr.article-89.1.research-safeguards",
+          "axis": "data_protection",
+          "title": "Research safeguards",
+          "summary": "Scientific-research processing must use appropriate safeguards for data-subject rights and freedoms, including data-minimisation measures and pseudonymisation where those purposes can be fulfilled that way.",
+          "obligation_kind": "safeguard",
+          "obligated_actor": "controller",
+          "consumer_scopes": [
+            "data_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.eu_gdpr",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "processing.personal_data",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "purpose.scientific_research",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "research-safeguards.technical-and-organisational-measures",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "research-safeguards.data-minimisation",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "research-safeguards.pseudonymisation-assessed",
+              "operator": "equals",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "gdpr.article-89-safeguards-record",
+              "held_by": "controller",
+              "artifact_type": "research_safeguards_assessment",
+              "description": "Assessment and implementation record for the technical and organisational research safeguards."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "not_applicable",
+            "requirement_ids": [],
+            "decision_maker_role": null
+          },
+          "authoritative_decision_maker": {
+            "role_id": "controller",
+            "description": "The controller implements and documents safeguards, subject to review by the competent supervisory authority or court."
+          },
+          "interaction": {
+            "collision_key": "research.data-protection-safeguards",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "eu.eur-lex.gdpr.2016-679",
+            "authority_url": "https://eur-lex.europa.eu/eli/reg/2016/679/2016-05-04/eng",
+            "snapshot_url": null,
+            "provision": "GDPR Article 89(1)",
+            "effective_date": "2018-05-25",
+            "effective_until": null,
+            "source_amended_or_published_date": "2016-05-04",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authentic_official",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        },
+        {
+          "requirement_id": "eu.gdpr.article-89.2.member-state-derogation",
+          "axis": "data_protection",
+          "title": "Law-dependent research derogation route",
+          "summary": "A claimed Article 89(2) research derogation must be grounded in an identified applicable Union or Member State law and remain within that law's necessary conditions; no such law is inferred here.",
+          "obligation_kind": "route",
+          "obligated_actor": "controller",
+          "consumer_scopes": [
+            "data_governance",
+            "pathway_trace"
+          ],
+          "applies_if": {
+            "op": "all",
+            "operands": [
+              {
+                "op": "fact_equals",
+                "fact_id": "scope.eu_gdpr",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "processing.personal_data",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "purpose.scientific_research",
+                "value": true
+              },
+              {
+                "op": "fact_equals",
+                "fact_id": "gdpr.member_state_research_law_identified",
+                "value": true
+              }
+            ]
+          },
+          "structured_expectations": [
+            {
+              "field_id": "derogation.applicable-law-citation",
+              "operator": "present",
+              "value": true
+            },
+            {
+              "field_id": "derogation.conditions-and-safeguards-assessment",
+              "operator": "present",
+              "value": true
+            }
+          ],
+          "evidence_expected": [
+            {
+              "evidence_id": "gdpr.article-89-derogation-record",
+              "held_by": "controller",
+              "artifact_type": "derogation_authority_assessment",
+              "description": "Citation to the applicable Union or Member State law and an assessment of its conditions, necessity, and safeguards."
+            }
+          ],
+          "waiver_or_exception_route": {
+            "state": "external_authority_required",
+            "requirement_ids": [],
+            "decision_maker_role": "competent_legislature_supervisory_authority_or_court"
+          },
+          "authoritative_decision_maker": {
+            "role_id": "competent_legislature_supervisory_authority_or_court",
+            "description": "The applicable Union or Member State legislature supplies the route; competent supervisory authorities and courts interpret or enforce it."
+          },
+          "interaction": {
+            "collision_key": "research.derogation-route",
+            "policy": "parallel_authorities"
+          },
+          "authority_anchor": {
+            "source_id": "eu.eur-lex.gdpr.2016-679",
+            "authority_url": "https://eur-lex.europa.eu/eli/reg/2016/679/2016-05-04/eng",
+            "snapshot_url": null,
+            "provision": "GDPR Article 89(2)",
+            "effective_date": "2018-05-25",
+            "effective_until": null,
+            "source_amended_or_published_date": "2016-05-04",
+            "retrieved_at": "2026-08-09",
+            "verified_at": "2026-08-09",
+            "source_language": "en",
+            "controlling_language": true,
+            "authenticity_status": "authentic_official",
+            "content_digest": null,
+            "digest_scope": "not_recorded",
+            "rights_status": "link_only"
+          }
+        }
+      ]
+    }
+  ],
+  "overlays": []
+}

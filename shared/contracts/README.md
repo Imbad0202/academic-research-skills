@@ -98,6 +98,50 @@ comment-to-concern accounting, source order, full-permutation working views, and
 response-skeleton coverage. Spec:
 `docs/design/2026-08-08-668-committee-correspondence-spec.md`.
 
+## Human-subjects authority context (#666)
+
+The `human_subjects/` authority family keeps selection explicit and separates three
+closed artifacts:
+
+- `irb_context_record.schema.json` — the author-confirmed facts plus exact,
+  axis-qualified profile and overlay pins;
+- `authority_profile_registry.schema.json` — curator-owned, versioned, bounded
+  profiles and row-local source anchors;
+- `resolved_authority_context.schema.json` — a pointer-only, deterministic
+  three-valued applicability trace and downstream gate.
+
+V1 has exactly two axes: `review_ethics` and `data_protection`. Institutional and
+funder rules are additive overlays, never a third axis; display precedence cannot
+remove, merge, or satisfy a requirement. The shipped registry demonstrates the
+same contract with bounded US 45 CFR 46, Taiwan Human Subjects Research Act, and
+GDPR research subsets. It is not a completeness, compliance, pathway, exemption,
+or authorization claim.
+
+Resolve an explicit context offline, lint the registry alone, or replay-check a
+serialized result before consuming it:
+
+```bash
+python scripts/resolve_human_subjects_authority.py \
+  --context context.json \
+  --registry shared/human_subjects_authority_registry.json \
+  --output resolved-authority-context.json
+
+python scripts/resolve_human_subjects_authority.py \
+  --registry shared/human_subjects_authority_registry.json \
+  --check-registry
+
+python scripts/resolve_human_subjects_authority.py \
+  --context context.json \
+  --registry shared/human_subjects_authority_registry.json \
+  --check-resolved resolved-authority-context.json
+```
+
+The resolver is standard-library-only, opens only named files, evaluates a closed
+Strong-Kleene predicate AST, never infers a jurisdiction, and rejects duplicate
+JSON keys and non-finite numbers. Protocol:
+`shared/references/human_subjects_authority_protocol.md`. Spec:
+`docs/design/2026-08-09-666-human-subjects-authority-contract-spec.md`.
+
 ## Audit artifact contracts (v3.6.7 Step 6)
 
 The `audit/` directory carries the three wrapper-emitted artifact schemas that pair

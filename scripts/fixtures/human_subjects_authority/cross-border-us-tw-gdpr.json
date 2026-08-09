@@ -1,0 +1,71 @@
+{
+  "schema_version": "irb-context-record/1.0",
+  "context_record_id": "fixture.cross-border-us-tw-gdpr",
+  "confirmed_by": "author",
+  "confirmed_at": "2026-08-09T10:00:00+08:00",
+  "applicability_as_of": "2026-08-09",
+  "scope_dimensions": {
+    "review_jurisdictions": ["support.us_hhs_or_common_rule", "scope.tw_hsra"],
+    "institutions": [],
+    "data_protection_regimes": ["scope.eu_gdpr"],
+    "funders": [],
+    "study_types": ["activity.human_subjects", "purpose.scientific_research"],
+    "populations": [],
+    "data_locations": ["processing.personal_data", "data.collected_from_subject"],
+    "cross_border_transfers": ["scope.eu_gdpr"]
+  },
+  "declared_facts": [
+    {"fact_id": "activity.human_subjects", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "support.us_hhs_or_common_rule", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "scope.tw_hsra", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "scope.eu_gdpr", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "processing.personal_data", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "data.special_category", "value_type": "boolean", "state": "declared", "value": false, "provenance": "author_declared"},
+    {"fact_id": "data.collected_from_subject", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "purpose.scientific_research", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"},
+    {"fact_id": "gdpr.member_state_research_law_identified", "value_type": "boolean", "state": "declared", "value": true, "provenance": "author_declared"}
+  ],
+  "profile_selection_state": {"review_ethics": "selected", "data_protection": "selected"},
+  "selected_profiles": [
+    {
+      "axis": "review_ethics",
+      "profile_id": "us.hhs.45-cfr-46.subpart-a",
+      "profile_version": "2019-01-21",
+      "profile_digest": "46fd0b39b1ca1706363e1163c2b4a1149bb2ff22fc2f64c5426fc3ec8b6b0fd4",
+      "authority_scope_ids": ["us.common-rule"]
+    },
+    {
+      "axis": "review_ethics",
+      "profile_id": "tw.mohw.human-subjects-research-act",
+      "profile_version": "2019-01-02",
+      "profile_digest": "d01b501c7e5d3c3c3009ea26071c0743f60469fc80ecc64a7f64dc7bb9aa665c",
+      "authority_scope_ids": ["tw.hsra"]
+    },
+    {
+      "axis": "data_protection",
+      "profile_id": "eu.gdpr.research-core-bounded",
+      "profile_version": "2018-05-25",
+      "profile_digest": "53d4c3783d35d8f60c883b6254b8e43831f5d3fc87fa0e6e0304d24bc7cc5cbe",
+      "authority_scope_ids": ["eu.gdpr"]
+    }
+  ],
+  "overlay_selection_state": {"institutional": "none_declared_by_author", "funder": "none_declared_by_author"},
+  "selected_overlays": [],
+  "display_precedence": [
+    {
+      "axis": "review_ethics",
+      "purpose": "display_only_no_suppression",
+      "ordered_authorities": [
+        {"authority_kind": "profile", "axis": "review_ethics", "authority_id": "us.hhs.45-cfr-46.subpart-a", "authority_version": "2019-01-21", "authority_digest": "46fd0b39b1ca1706363e1163c2b4a1149bb2ff22fc2f64c5426fc3ec8b6b0fd4"},
+        {"authority_kind": "profile", "axis": "review_ethics", "authority_id": "tw.mohw.human-subjects-research-act", "authority_version": "2019-01-02", "authority_digest": "d01b501c7e5d3c3c3009ea26071c0743f60469fc80ecc64a7f64dc7bb9aa665c"}
+      ]
+    },
+    {
+      "axis": "data_protection",
+      "purpose": "display_only_no_suppression",
+      "ordered_authorities": [
+        {"authority_kind": "profile", "axis": "data_protection", "authority_id": "eu.gdpr.research-core-bounded", "authority_version": "2018-05-25", "authority_digest": "53d4c3783d35d8f60c883b6254b8e43831f5d3fc87fa0e6e0304d24bc7cc5cbe"}
+      ]
+    }
+  ]
+}
