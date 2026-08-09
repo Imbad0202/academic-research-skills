@@ -409,6 +409,10 @@ id = "666-human-subjects-authority"
 path = "scripts/test_resolve_human_subjects_authority.py"
 
 [[pytest]]
+id = "680-human-subjects-reference-migration"
+path = "scripts/test_check_human_subjects_reference_migration.py"
+
+[[pytest]]
 id = "678-bibliographic-integrity-signals"
 path = "scripts/test_check_bibliographic_integrity_signals.py"
 

@@ -236,6 +236,7 @@ User: "Research [topic]"
      |   - Fair representation check
      |   - Integrity verdict only: CLEARED / CONDITIONAL / BLOCKED
      |   - Human subjects: readiness and authorization reported separately; institutional determination required
+     |   - Authority-bound planning: exact requirement IDs + actor/consumer scope only after the #666 replay-validated resolved-context gate
      |
      +-> [devils_advocate_agent] -- CHECKPOINT 3
          - Final vulnerability scan
@@ -441,7 +442,10 @@ See `academic-pipeline/SKILL.md` for the complete workflow.
 | `references/socratic_questioning_framework.md` | 6 types of Socratic questions + 30+ prompt patterns | socratic_mentor |
 | `references/failure_paths.md` | 12 failure scenarios with triggers and recovery paths | all agents |
 | `references/mode_selection_guide.md` | Mode selection flowchart and comparison table | orchestrator |
-| `references/irb_decision_tree.md` | IRB decision tree + Taiwan process + HE quick reference | ethics_review, research_architect |
+| `references/irb_decision_tree.md` | Portable human-subjects navigation aid; not an authority, universal taxonomy, or pathway determination | ethics_review, research_architect |
+| `shared/references/human_subjects_authority_protocol.md` | Exact authority selection, replay validation, actor/consumer filtering, and fail-closed resolved-context gate | ethics_review, research_architect |
+| `shared/human_subjects_authority_registry.json` | Bounded jurisdiction profiles with exact requirement IDs, authority anchors, obligated actors, and consumer scopes | ethics_review, research_architect |
+| `shared/contracts/human_subjects/resolved_authority_context.schema.json` | Pointer-only resolved-context shape; consumers still require deterministic replay validation | ethics_review, research_architect |
 | `references/equator_reporting_guidelines.md` | EQUATOR reporting guideline mapping | research_architect, report_compiler |
 | `references/preregistration_guide.md` | Preregistration decision tree + platforms + checklist | research_architect |
 | `references/systematic_review_toolkit.md` | Cochrane v6.4, PRISMA 2020, RoB 2, ROBINS-I, I² guide, GRADE, protocol registration | risk_of_bias, meta_analysis, bibliography, report_compiler |

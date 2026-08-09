@@ -100,7 +100,9 @@ prioritize [specific ethical principle].
 - [ ] Geographic and cultural diversity in sources
 
 ### Sensitive Topics
-- Indigenous knowledge: Respect OCAP principles (Ownership, Control, Access, Possession)
+- Indigenous knowledge: Identify and follow the specific community-governance
+  convention in scope; use OCAP (Ownership, Control, Access, Possession) only
+  where the relevant First Nations authority or community has adopted it
 - Disability: Person-first language unless community prefers identity-first
 - Gender/sexuality: Use inclusive, current terminology
 - Race/ethnicity: Use preferred terminology of the communities discussed
@@ -115,20 +117,29 @@ prioritize [specific ethical principle].
 
 ## 5. Data Ethics
 
-### Data Source Ethics
-- [ ] All data sources are legal to use
-- [ ] Public data: Confirm public domain or appropriate license
-- [ ] Licensed data: Usage complies with license terms
-- [ ] Scraped data: Complies with robots.txt and terms of service
-- [ ] Personal data: GDPR/privacy law compliance (if applicable)
-- [ ] Institutional data: Authorized access confirmed
+### Data Source Ethics — Portable Integrity Planning
+
+These are **planning and documentation conventions**, not legal conclusions.
+Applicable law, licence interpretation, and institutional authorization remain
+with the responsible authority.
+
+- [ ] For each source, the asserted access/use basis and unresolved questions are documented
+- [ ] Public data: Publication status, access terms, provenance, and licence are recorded
+- [ ] Licensed data: Relevant licence terms and the team's intended use are recorded
+- [ ] Scraped data: Site terms, robots instructions, collection method, and unresolved authority questions are recorded
+- [ ] Personal data: Each candidate data-protection authority is recorded; no jurisdiction or legal basis is inferred
+- [ ] Institutional data: The supplying institution's documented access status and conditions are recorded
 
 ### Privacy Protection
-- [ ] No personally identifiable information (PII) without consent
-- [ ] Aggregated data used where possible
-- [ ] Small-N groups protected from identification
-- [ ] Institutional identities protected when not public
-- [ ] Data retention/deletion plan (if primary data collected)
+
+The following are **portable technical planning prompts**, not a universal
+privacy-law checklist:
+
+- [ ] Direct identifiers, quasi-identifiers, platform metadata, and re-link keys are inventoried
+- [ ] The asserted authority or institutional basis for collecting and processing identifiers is recorded; consent is not presumed to be the only or applicable basis
+- [ ] Aggregation, masking, or other disclosure controls have been considered for small-N groups and identifiable institutions
+- [ ] Access roles, recipients, security, retention, deletion, reuse, and incident handling are documented
+- [ ] If the exact GDPR profile is selected, the trace points to the applicable bounded rows (`eu.gdpr.article-6.lawful-basis`, `eu.gdpr.article-9.special-category-research`, `eu.gdpr.article-13.direct-collection-information`, `eu.gdpr.article-14.indirect-collection-information`, and/or `eu.gdpr.article-89.1.research-safeguards`) rather than asserting a result
 
 ### AI-Specific Data Concerns
 - [ ] AI training data biases acknowledged
@@ -171,62 +182,86 @@ or conditions].
 
 ## 8. Human Subjects Ethics
 
-> **Temporary authority state (#665; migration tracked in #680/#666):** This section is a non-authoritative navigation aid. The category names and examples below come from mixed jurisdictional conventions and must not be emitted as a universal rule or as an ARS determination. Record candidate-pathway facts only; the output pathway is `institutional determination required`. Obtain requirements, applicability, and timing from the responsible institution and selected authority profile.
+> **Authority boundary (#665/#666/#680):** Mixed-jurisdiction review-level mappings are not part of this checklist. This section collects facts and exact bounded requirement pointers only; the output pathway is `institutional determination required`. Unknown selection or applicability stays unresolved, and neither this checklist nor #666 emits a review determination, readiness result, compliance conclusion, or authorization.
 
-### 8.1 Human Subjects Determination
+Apply `shared/references/human_subjects_authority_protocol.md` and use only
+curated rows from `shared/human_subjects_authority_registry.json`. All shipped
+profiles are bounded subsets.
 
-- [ ] Does the research collect, use, or analyze human-related data?
-- [ ] If yes, is the data personally identifiable?
-- [ ] If the data is publicly available and de-identified, has the responsible institution documented the applicable pathway or exception?
+### 8.1 Authority Context and Exact Facts
 
-### 8.2 IRB Review Levels
+- [ ] The review-ethics and data-protection axes each have an exact selected #666 profile or a visible unresolved state
+- [ ] Profile selection records id, version, digest, and authority scope; geography, funder, language, and topic are not used to infer selection
+- [ ] Confirmed, false, and unknown facts remain distinct
+- [ ] The exact #666 fact catalogue has been addressed where relevant:
+  - [ ] `activity.human_subjects`
+  - [ ] `support.us_hhs_or_common_rule`
+  - [ ] `scope.tw_hsra`
+  - [ ] `scope.eu_gdpr`
+  - [ ] `processing.personal_data`
+  - [ ] `data.special_category`
+  - [ ] `data.collected_from_subject`
+  - [ ] `purpose.scientific_research`
+  - [ ] `gdpr.member_state_research_law_identified`
+- [ ] Additional interaction, intervention, recruitment, population, power-relationship, sensitivity, deception, identifiability, and risk facts are labelled `illustrative/unprofiled` when they are not in the registry
 
-| Candidate pathway | Facts to prepare for institutional review | Timeline |
-|-------------------|-------------------------------------------|----------|
-| **Possible exempt pathway** | Public/de-identified data or anonymous, non-sensitive survey facts | Institution-specific; obtain current estimate |
-| **Possible expedited pathway** | Minimal-risk, population, survey/interview, and privacy facts | Institution-specific; obtain current estimate |
-| **Possible full-board pathway** | Risk, vulnerable-population, sensitive-topic, or deception facts | Institution-specific; obtain current estimate |
+Vulnerability, sensitivity, deception, public availability, identifiability,
+and estimated risk are facts for the responsible institution. They do not map
+to a pathway in this checklist.
 
-- [ ] Candidate-pathway facts and unresolved questions have been prepared for institutional determination
-- [ ] The current institutional timeline has been requested; absent a dated institutional estimate, it is recorded as unknown
-- [ ] Researcher has completed research ethics training (CITI or equivalent course)
+### 8.2 Exact Bounded Requirement Trace
 
-### 8.3 Informed Consent
+Use these identifiers only as pointers to the full selected registry row,
+including its predicate, obligated actor, consumer scopes, expected evidence,
+and primary-source anchor. Do not restate them as universal requirements.
 
-- [ ] Informed consent form includes research title, purpose, procedures, risks, and benefits
-- [ ] Clearly states voluntary nature of participation (may withdraw at any time, no penalties)
-- [ ] Provides researcher and IRB contact information
-- [ ] Special situations addressed:
-  - [ ] Online survey: Electronic consent (clicking "I agree")
-  - [ ] Audio/video recording: Separate checkbox item
-  - [ ] Minors: Legal guardian consent + subject assent
-  - [ ] Indigenous research: Community consent + individual informed consent
+| Axis | Exact #666 requirement ids currently available |
+|---|---|
+| Review ethics — U.S. bounded profile | `us.45cfr46.107.irb-composition`; `us.45cfr46.116.informed-consent` |
+| Review ethics — Taiwan bounded profile | `tw.hsra.article-7.committee-composition`; `tw.hsra.article-14.consent-information` |
+| Data protection — GDPR bounded profile | `eu.gdpr.article-6.lawful-basis`; `eu.gdpr.article-9.special-category-research`; `eu.gdpr.article-13.direct-collection-information`; `eu.gdpr.article-14.indirect-collection-information`; `eu.gdpr.article-89.1.research-safeguards`; `eu.gdpr.article-89.2.member-state-derogation` |
 
-### 8.4 Data De-identification
+- [ ] Each pointer belongs to an exactly selected profile whose resolved result permits profile-dependent use
+- [ ] Committee-composition rows remain with their institutional/committee actors and are not converted into investigator packet requirements
+- [ ] U.S. and Taiwan rows retain their own authority vocabulary and are not translated into one another's pathway terms
+- [ ] Requirements outside these bounded rows are labelled `unprofiled` and referred to the responsible authority
 
-- [ ] Remove direct identifiers (names, student IDs, national ID numbers)
-- [ ] Assess indirect identifier risks (department + year + gender combinations)
-- [ ] Small sample re-identification risk assessment (small departments may allow re-identification of individuals)
-- [ ] Remove identifiable details from qualitative quotations
-- [ ] Encrypt data storage with access controls
-- [ ] Establish data retention and destruction timeline
+### 8.3 Participant-Information and Consent Preparation
 
-### 8.5 Vulnerable Population Protection
+- [ ] If applicable after exact resolution, the trace uses `us.45cfr46.116.informed-consent` or `tw.hsra.article-14.consent-information` rather than a merged universal element list
+- [ ] If the selected GDPR facts resolve direct collection, participant information points to `eu.gdpr.article-13.direct-collection-information`; if they resolve collection elsewhere, it points to `eu.gdpr.article-14.indirect-collection-information`
+- [ ] Waiver, exception, signature, assent, representative, recording, community-governance, sector, and institution-specific questions absent from the registry are visibly `unprofiled`
+- [ ] Online-survey language accurately says whether the platform, institution, or research team collects or can access IP addresses, cookies, device identifiers, timestamps, contact fields, or other metadata
+- [ ] A statement that metadata is not recorded is used only after platform settings and actual exports have been verified; unknown behavior is disclosed as unknown
+- [ ] An electronic `I agree` interaction is described as an interaction record, not automatically as legally sufficient consent or signature
 
-| Population | Additional Protective Measures |
-|-----------|-------------------------------|
-| **Minors** | Legal guardian consent + age-appropriate assent form |
-| **Persons with disabilities** | Assess consent capacity, provide accessible consent procedures |
-| **Students (researcher is a teacher)** | Avoid power dynamics affecting voluntariness, use third-party recruitment |
-| **Indigenous peoples** | Community consultation and consent, respect OCAP principles |
-| **Economically disadvantaged** | Compensation must not constitute undue inducement |
-| **Incarcerated persons** | Additional IRB review, ensure non-coercive participation |
+### 8.4 Data-Handling Facts — Illustrative Technical Planning
 
-- [ ] Vulnerable populations involved in the research have been identified
-- [ ] Corresponding additional protective measures have been planned
-- [ ] Vulnerability and contextual safeguards have been documented for institutional assessment
+These prompts do not establish an authority-defined anonymity,
+de-identification, or compliance status:
 
-> For a non-authoritative navigation aid and retained Taiwan-specific examples: see `references/irb_decision_tree.md`. Do not treat the reference as authorization.
+- [ ] Direct identifiers, quasi-identifiers, quotations, rare attributes, and small-cell risks are inventoried
+- [ ] Every identifier/re-link key has a named holder, access boundary, purpose, and retention state
+- [ ] Platform collection, exports, logs, backups, recipients, transfers, encryption, access controls, retention, destruction, and incident handling are documented
+- [ ] Participant-facing statements match the actual data flow and withdrawal/deletion feasibility
+- [ ] Terminology is bound to the named convention in `shared/references/irb_terminology_glossary.md`
+
+### 8.5 Population and Context Facts — Illustrative and Unprofiled
+
+| Population or context | Facts/questions to prepare; no pathway or requirement implied |
+|---|---|
+| Minors or participants with uncertain decision-making capacity | age, capacity, representative/assent questions, accessible explanation, and the applicable authority's process |
+| Persons with disabilities | accessibility needs, communication format, capacity assumptions, support persons, and accommodation plan |
+| Students, employees, or dependent relationships | recruitment authority, grading/employment effects, alternatives, privacy, and role separation |
+| Indigenous peoples or communities | the specific community-governance authority/convention, collective and individual interests, data governance, and engagement expectations |
+| Economically constrained participants | compensation, alternatives, dependency, undue-influence questions, and local institutional assessment |
+| Incarcerated or otherwise institutionally confined participants | custodial setting, permission structure, voluntariness/coercion risks, privacy, and the applicable authority's process |
+
+- [ ] Relevant population and contextual facts have been recorded without treating identity or vulnerability as an automatic review level
+- [ ] Proposed safeguards and unresolved questions are presented to the responsible institution without a verdict
+- [ ] Current institutional timeline, training, submission, reporting, and authorization requirements are requested; absent a dated response, they remain `unknown/unprofiled`
+
+> For the portable fact flow, exact requirement anchors, survey metadata disclosure rule, and illustrative Taiwan/institution planning questions, see `references/irb_decision_tree.md`. Do not treat that reference as authorization.
 
 ---
 
@@ -239,9 +274,9 @@ Before delivery, confirm ALL items (this is a self-check, not a veto):
 - [ ] No fabricated citations detected
 - [ ] Dual-use assessment completed
 - [ ] Fair representation reviewed
-- [ ] Data sources legally and ethically used
+- [ ] Data-source bases and unresolved legal/ethical questions documented
 - [ ] Conflicts of interest disclosed
 - [ ] Reproducibility documentation provided
 - [ ] Writing is inclusive and respectful
 - [ ] Report benefits stated audience without causing foreseeable harm
-- [ ] If the research involves human subjects, has IRB review been planned?
+- [ ] If human-subjects activity is possible, are exact authority pointers or unresolved states, institutional questions, and the `institutional determination required` boundary visible?

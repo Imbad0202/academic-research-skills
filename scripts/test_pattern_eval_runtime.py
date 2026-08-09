@@ -134,6 +134,65 @@ def _load_json(path: Path) -> dict:
         return json.load(fp)
 
 
+_RETAINED_KEY_PSEUDONYM_CLAIM = re.compile(
+    r"(?:"
+    r"\b(?:a|an|any|the)?\s*retained\s+(?:(?:re-?link|link)\s+)?key\b|"
+    r"\b(?:keeping|retaining)\s+(?:a|an|any|the)?\s*"
+    r"(?:(?:re-?link|link)\s+)?key\b"
+    r").{0,120}\b(?:is|are|makes?|means?|constitutes?)\b.{0,80}"
+    r"\bpseudonymi[sz]\w*\b",
+    re.IGNORECASE,
+)
+_PSEUDONYM_CLAIM_RETAINED_KEY = re.compile(
+    r"\bpseudonymi[sz]\w*\b.{0,100}\b(?:because|since|when|if|by)\b.{0,60}"
+    r"(?:"
+    r"\b(?:a|an|any|the)?\s*retained\s+(?:(?:re-?link|link)\s+)?key\b|"
+    r"\b(?:keeping|retaining)\s+(?:a|an|any|the)?\s*"
+    r"(?:(?:re-?link|link)\s+)?key\b"
+    r")",
+    re.IGNORECASE,
+)
+_NAMED_TERMINOLOGY_SCOPE = re.compile(
+    r"\b(?:under|within|according to)\s+(?:(?:the|a|an)\s+)?(?:"
+    r"(?:named|selected|applicable|governing|project-specific)\b.{0,60}"
+    r"\b(?:authority|convention|regime|standard|gdpr)\b|gdpr\b)",
+    re.IGNORECASE,
+)
+_NEGATED_PSEUDONYM_EFFECT = re.compile(
+    r"\b(?:do|does|did|is|are)\s+not\b.{0,40}"
+    r"\b(?:make|mean|constitute|pseudonymi[sz])\w*\b|"
+    r"\b(?:doesn['’]t|isn['’]t|aren['’]t|never)\b.{0,40}"
+    r"\b(?:make|mean|constitute|pseudonymi[sz])\w*\b",
+    re.IGNORECASE,
+)
+
+
+def _unscoped_retained_key_pseudonym_clauses(text: str) -> list[str]:
+    """Return clauses that turn retained linkage into a portable verdict.
+
+    The B1 oracle may describe terminology under a named governing convention,
+    or explicitly reject a portable implication. It must not infer a
+    pseudonymization status from retention of a key alone.
+    """
+
+    normalized = " ".join(text.split())
+    clauses = [
+        clause.strip()
+        for clause in re.split(r"(?<=[.!?])\s+", normalized)
+        if clause.strip()
+    ]
+    return [
+        clause
+        for clause in clauses
+        if (
+            _RETAINED_KEY_PSEUDONYM_CLAIM.search(clause)
+            or _PSEUDONYM_CLAIM_RETAINED_KEY.search(clause)
+        )
+        and _NAMED_TERMINOLOGY_SCOPE.search(clause) is None
+        and _NEGATED_PSEUDONYM_EFFECT.search(clause) is None
+    ]
+
+
 def _simulate_orchestrator_decision(
     verdict: dict, expected_phase: str
 ) -> dict:
@@ -398,6 +457,78 @@ def test_micro_run_id_uniqueness_within_fixture(pattern_id):
     assert bad["run_id"] != good["run_id"], (
         f"{pattern_id} BAD and GOOD must have distinct run_ids"
     )
+
+
+def test_b1_good_fixture_does_not_pass_unnamed_deidentification_status():
+    """#680: the B1 PASS fixture must state facts, not an unnamed legal status."""
+
+    fixture_dir = FIXTURE_ROOT / "B1"
+    manifest = _load_json(fixture_dir / "manifest.json")
+    deliverable = (
+        fixture_dir / manifest["good_run"]["deliverable_path"]
+    ).read_text(encoding="utf-8")
+    normalized = " ".join(deliverable.split())
+
+    assert "Aggregate or de-identified results may be published." not in deliverable
+    assert "identity IS known to the researcher" not in deliverable
+    assert (
+        "Anonymity — no identifier collected; cannot contact respondent"
+        not in deliverable
+    )
+    assert "confidential within the named research-team boundary" in normalized
+    assert "ARS drafting convention" in normalized
+    assert "during the stated 12-month lifecycle" in normalized
+    assert "no record-level dataset release is planned" in normalized
+    assert "not an authority-defined de-identification status" in normalized
+
+
+def test_b1_bad_finding_does_not_reclassify_a_retained_identifier():
+    """#680: retained linkage is a fact, not a portable pseudonymization verdict."""
+
+    fixture_dir = FIXTURE_ROOT / "B1"
+    manifest = _load_json(fixture_dir / "manifest.json")
+    verdict = _load_yaml(
+        fixture_dir / manifest["bad_run"]["expected_audit_findings_path"]
+    )
+    finding = verdict["findings"][0]
+    finding_text = f"{finding['description']} {finding['suggested_fix']}"
+
+    assert _unscoped_retained_key_pseudonym_clauses(finding_text) == []
+    assert "Under the ARS drafting convention" in finding_text
+    assert "does not permit the auditor to" in finding_text
+    assert "governing authority, institutional convention, or" in finding_text
+    assert "re-link-key state" in finding_text
+
+
+@pytest.mark.parametrize(
+    "claim",
+    (
+        "A retained re-link key is pseudonymized.",
+        "Data with a retained link key are pseudonymized.",
+        "Keeping a key makes the data pseudonymized.",
+        "Any retained re-link key means pseudonymized data.",
+        "A retained link key constitutes pseudonymization.",
+        "The data are pseudonymized because a retained re-link key exists.",
+    ),
+)
+def test_b1_retained_key_pseudonym_mutations_are_detected(claim: str):
+    assert _unscoped_retained_key_pseudonym_clauses(claim) == [claim]
+
+
+@pytest.mark.parametrize(
+    "discussion",
+    (
+        "Under the named governing convention, any retained re-link key means "
+        "pseudonymized data.",
+        "Within the applicable GDPR regime, data with a retained link key are "
+        "pseudonymized.",
+        "Keeping a key does not mean the data are pseudonymized across regimes.",
+    ),
+)
+def test_b1_named_or_negative_retained_key_discussion_is_allowed(
+    discussion: str,
+):
+    assert _unscoped_retained_key_pseudonym_clauses(discussion) == []
 
 
 # ---------------------------------------------------------------------------

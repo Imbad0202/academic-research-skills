@@ -15,18 +15,27 @@ findings:
     description: >
       Confidentiality-vs-anonymity conflation (B1): The consent script claims
       responses are "anonymous" (line 10) while simultaneously collecting
-      institutional email addresses for follow-up contact (line 11). Per
-      irb_terminology_glossary.md, anonymity requires that no identity key is
-      collected; collecting email for follow-up constitutes confidentiality, not
-      anonymity. Additionally, "anonymized data" at line 17 misuses the term —
-      data linked to an email address that is retained for 12 months is
-      pseudonymized (email = reversible identifier), not anonymized.
+      institutional email addresses for follow-up contact (line 11). Under the
+      ARS drafting convention named in irb_terminology_glossary.md, that email
+      creates an identity-response link inconsistent with the anonymity claim;
+      the script's separately stated access/disclosure promise is a
+      confidentiality commitment within that convention. Additionally,
+      "anonymized data" at line 17 misuses the term —
+      the fixture names no governing authority, institutional convention, or
+      technical release test and does not state the transformations, actor
+      boundary, or re-link-key state. Retaining an email shows that an identity
+      link exists during the stated lifecycle, but does not permit the auditor to
+      relabel the data as pseudonymized or decide a de-identification status
+      across regimes.
     suggested_fix: >
       Replace "anonymous" with "confidential" throughout the consent script.
       Remove the claim of anonymity. Add a sentence clarifying that email is
       collected for follow-up purposes, that identified data will be held for
-      12 months, and that only the named team has access. Verify all terms
-      against shared/references/irb_terminology_glossary.md before output.
+      12 months, and that only the named team has access. Replace the unsupported
+      "anonymized data" claim with the actual release plan, or name the governing
+      convention/test and document transformations, actor boundary, re-link-key
+      state, and residual-risk method. Verify all terms against
+      shared/references/irb_terminology_glossary.md before output.
 generated_at: "2026-04-30T10:11:44.000Z"
 generated_by: scripts/run_codex_audit.sh
 generator_version: 1.0.0

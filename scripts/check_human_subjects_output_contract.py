@@ -2,8 +2,8 @@
 """Lint the #665 human-subjects readiness/authorization output boundary.
 
 This is a prompt/reference contract lint, not an authorization engine.  It pins
-the load-bearing output grammar on the two emitting agents and the visibly
-degraded authority state on their references.
+the load-bearing output grammar on the two emitting agents and the durable
+post-migration authority boundary on their references.
 """
 from __future__ import annotations
 
@@ -60,11 +60,11 @@ REQUIRED: dict[Path, tuple[str, ...]] = {
         "readiness and authorization reported separately; institutional determination required",
     ),
     ETHICS_CHECKLIST: (
-        "Temporary authority state (#665; migration tracked in #680/#666)",
+        "Authority boundary (#665/#666/#680)",
         "the output pathway is `institutional determination required`",
     ),
     IRB_REFERENCE: (
-        "Temporary authority state (#665; correction/migration tracked in #680/#666)",
+        "Authority boundary (#665/#666/#680)",
         "ARS output must use `institutional determination required`",
     ),
     FAILURE_PATHS: (

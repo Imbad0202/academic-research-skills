@@ -31,6 +31,22 @@ def test_real_repository_passes() -> None:
     assert contract.run_checks(REPO_ROOT) == []
 
 
+@pytest.mark.parametrize(
+    "rel", [contract.ETHICS_CHECKLIST, contract.IRB_REFERENCE]
+)
+def test_post_migration_authority_boundary_is_pinned(
+    tmp_path: Path, rel: Path
+) -> None:
+    root = mirror(tmp_path)
+    mutate(
+        root,
+        rel,
+        "Authority boundary (#665/#666/#680)",
+        "Authority result",
+    )
+    assert contract.run_checks(root)
+
+
 @pytest.mark.parametrize("rel", [contract.ETHICS_AGENT, contract.ARCHITECT_AGENT])
 def test_fixed_footer_mutation_fails(tmp_path: Path, rel: Path) -> None:
     root = mirror(tmp_path)
