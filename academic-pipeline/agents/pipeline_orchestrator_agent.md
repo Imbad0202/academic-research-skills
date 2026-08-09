@@ -984,6 +984,44 @@ When a revision stage dispatches `academic-paper` revision mode (Stage 3 → 4 /
 6. **Complete Schema 8 mechanical fields**, including `change_block_ids` from the apply report, append the exact review round to `revision-evidence-bundle/1.0`, and validate it with `scripts/revision_roadmap.py validate-bundle`. Only a valid continuous bundle moves forward.
 7. **Surface `preserved_ratio`** next to round-trip count. It is byte-preservation evidence, not edit quality or acceptance probability.
 
+**Escalation gate (§3.6/#670) — current rounds remain exact-scope patches.** Two trigger layers:
+
+- **Layer 1 (pre-drafting):** the writer returns `[PATCH-ESCALATION-REQUIRED: layer=pre_drafting, ...]` instead of a patch — a roadmap item demands restructuring.
+- **Layer 2 (apply-time):** the apply script exits 3 (`refused_structural`) — heading-block ops, section-count change, or touched-ratio above threshold on an emitted patch (the writer misclassified a structural change as local). Note the heading-anchor exemption (#424): an `insert_after` merely anchored on a heading does not flag; rewriting/deleting a heading or inserting heading-bearing text does.
+
+On either trigger, STOP and present the MANDATORY checkpoint:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ MANDATORY CHECKPOINT — Structural revision detected (#390)
+
+Trigger: [pre-drafting classification: items REV-00X (reason) |
+          apply-time shape flags: heading ops at indexes [...], section_count_delta=N, touched_ratio=0.NN > 0.6]
+
+Your options:
+  (a) narrow — explicitly narrow/defer targets and build a new sidecar
+  (b) expand exact scope — explicitly adjudicate new block/operations,
+      then emit a new current patch
+  (c) [layer 2 only] acknowledge structural shape — apply the already-
+      authorized exact patch with --acknowledge-structural
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Structural acknowledgment never broadens author authority. Legacy full
+re-emission is outside the current #670 contract and cannot emit a current
+authorization PASS witness or Revision-Evidence Bundle round. Never represent
+it as current replay.
+
+**Apply-failure path (distinct from escalation):** a Phase 1 rejection feeds
+the structured report back for one patch re-emission against unchanged exact
+authority. If scope must change, build a new explicit sidecar first. Second
+failure → re-anchorize/rebuild bindings, narrow/expand explicit scope, or abort.
+The base is byte-untouched on every rejection.
+
+---
+
+## Revision Authority and Evidence-Bundle Extension (#670)
+
 **Revision-Evidence Bundle (#569/#670 — feeds E6 and #576).** Use `shared/contracts/revision/revision_evidence_bundle.schema.json`. The chain starts only from an exact integrity-PASS draft/manifest/receipt, then carries every continuous `review_roadmap`, all-declined `review_noop`, or `integrity_correction` round with exact pre/post and authority artifacts through the exact final draft. Current #576 re-review hard-requires this artifact; it is not reconstructed conversationally and no current round may be omitted.
 
 **Integrity-correction variant (Stage 2.5 / 4.5 FAIL rounds, #89/#670).**
@@ -1021,40 +1059,6 @@ issue list, authorization sidecar, exact patch/report, and pre/post drafts as
 the integrity round in the bundle, then return the output to the SAME
 integrity gate for re-verification; report 1.3 is evidence, never authority or
 a substitute for that gate.
-
-**Escalation gate (§3.6/#670) — current rounds remain exact-scope patches.** Two trigger layers:
-
-- **Layer 1 (pre-drafting):** the writer returns `[PATCH-ESCALATION-REQUIRED: layer=pre_drafting, ...]` instead of a patch — a roadmap item demands restructuring.
-- **Layer 2 (apply-time):** the apply script exits 3 (`refused_structural`) — heading-block ops, section-count change, or touched-ratio above threshold on an emitted patch (the writer misclassified a structural change as local). Note the heading-anchor exemption (#424): an `insert_after` merely anchored on a heading does not flag; rewriting/deleting a heading or inserting heading-bearing text does.
-
-On either trigger, STOP and present the MANDATORY checkpoint:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ MANDATORY CHECKPOINT — Structural revision detected (#390)
-
-Trigger: [pre-drafting classification: items REV-00X (reason) |
-          apply-time shape flags: heading ops at indexes [...], section_count_delta=N, touched_ratio=0.NN > 0.6]
-
-Your options:
-  (a) narrow — explicitly narrow/defer targets and build a new sidecar
-  (b) expand exact scope — explicitly adjudicate new block/operations,
-      then emit a new current patch
-  (c) [layer 2 only] acknowledge structural shape — apply the already-
-      authorized exact patch with --acknowledge-structural
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-Structural acknowledgment never broadens author authority. Legacy full
-re-emission is outside the current #670 contract and cannot emit a current
-authorization PASS witness or Revision-Evidence Bundle round. Never represent
-it as current replay.
-
-**Apply-failure path (distinct from escalation):** a Phase 1 rejection feeds
-the structured report back for one patch re-emission against unchanged exact
-authority. If scope must change, build a new explicit sidecar first. Second
-failure → re-anchorize/rebuild bindings, narrow/expand explicit scope, or abort.
-The base is byte-untouched on every rejection.
 
 ---
 
