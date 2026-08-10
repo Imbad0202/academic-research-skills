@@ -81,12 +81,98 @@ authorized change); its value is as a standing regression tripwire.
 
 ## Re-run protocol (for any future advisory / mechanism change)
 
-- Dispatch one fresh subject per item with ONLY the natural revision task (no
-  fidelity meta-language). Collect the revised passage.
-- Run the deterministic checker (pair mode) and the blind cross-model judge;
-  adjudicate disagreements by reading the logic, not by trusting either model.
-- Report numeric/citation unauthorized-drift count and claim-strength/hedge
-  drift rate, plus control pass/fail.
+Issue #679 adds a prospective v2 protocol. It performs no re-run, creates no new
+measurement row, and does not rescore either historical row. The v1 rubric and
+historical bytes stay frozen by
+[`historical_artifacts.lock.json`](historical_artifacts.lock.json); the README is
+excluded from that lock solely so this protocol can be recorded. A future row opts
+into [`adjudication_rubric_v2.md`](adjudication_rubric_v2.md) only by
+pre-registering its exact hash from
+[`rubric_amendments.json`](rubric_amendments.json). The complete frozen design is
+[`docs/design/2026-08-10-679-revision-claim-drift-suite-v2-spec.md`](../../../docs/design/2026-08-10-679-revision-claim-drift-suite-v2-spec.md).
+
+### v2 subject-context isolation protocol (prospective)
+
+The bounded claim is **repository-instruction isolation**, not global context or
+model isolation. Before any future subject fleet:
+
+1. Create a fresh working directory outside the repository and hash its resolved
+   physical path; retain the categorical repository-membership probe. Raw physical
+   paths are not stored. Passing a neutral `cwd` option without this evidence is
+   insufficient.
+2. Seal the closed, suite-local launcher-config artifact before the probe. Record the actual CLI
+   mode, whether `--bare` was requested and used, and the
+   authentication result. `--bare` can break provider authentication and is never
+   proof of isolation; a fallback is disclosed, not treated as clean. Hash the
+   canonical UTF-8 JSON of exactly the disclosed launcher, working-directory,
+   and instruction-loading objects (sorted keys, compact separators,
+   `ensure_ascii=false`)
+   used by both the probe and subjects. Before the probe, also seal the closed
+   subject-call plan: frozen held-out-set ref/hash, sorted arms, every item × arm ×
+   replicate subject call, every judge × item-replicate call, precommitted judge
+   model/family/template/blinding identities, canonical raw prompt/output refs,
+   exact subject-prompt hashes, and deferred judge-prompt dependencies. Judge
+   prompt bytes are materialized only after the corresponding subject output and
+   must equal template + labeled subject input + labeled subject output; the
+   execution manifest then binds their exact post-composition hash.
+   rp-07 and rp-08 remain controls. A generic execution
+   manifest later replays this exact subject-call plan; it cannot omit or relabel
+   an early subject call.
+3. In a fresh context using the launcher-config artifact, run one
+   pre-fleet contamination probe that asks what repository or task instruction
+   text is visible. Retain exact prompt/output SHA-256 values and start/completion
+   timestamps. Do not reveal held-out items, rubric criteria, labels, or guard text
+   in the probe. A negative probe is evidence, not proof of cleanliness.
+4. Bind neutral-cwd evidence, actual CLI mode, visibility findings, probe, run ID,
+   suite commit, and the precommitted execution-manifest `ref` in the closed
+   [`revision-claim-drift-subject-context/1.0`](subject_context_record.schema.json)
+   record before the first subject call. The future manifest SHA cannot be stored
+   there without a hash cycle. Its data-minimization fields prohibit storage of
+   raw cwd, instruction, probe-prompt, and probe-output content. The future
+   measurement row binds the record as
+   `subject.config.subject_context={ref,sha256,status}`, requires that status to
+   equal the record's root status, repeats the same `ref` in `raw_outputs.paths`,
+   and binds the completed execution-manifest `ref`/`sha256` separately.
+   `subject.config.launcher_config={ref,sha256}` and
+   `subject.config.subject_call_plan={ref,sha256}` must equal their context-record
+   bindings; both refs and every planned prompt/output ref appear in
+   `raw_outputs.paths`. A prose settings field or two unresolvable matching hashes
+   cannot replace these joins.
+
+The exact statuses are `machine_supported`, `attested_only`, `not_isolated`, and
+`unknown`. A future report may render repository-instruction isolation only from a
+referenced `machine_supported` record or, explicitly labeled operator-attested
+only, a referenced `attested_only` record with its closed neutral-context
+attestation of repository-instruction isolation and the same launcher
+configuration. `machine_supported` can record either a successful bare launch or a
+fully disclosed standard/fallback launch; bare mode alone is never the evidence.
+Global instructions may be visible when repository instructions and mechanism text
+are both not detected. Visible repository instructions require `not_isolated`. If
+mechanism text is also visible, the closed contamination acknowledgement is
+mandatory; if mechanism text is expressly not detected, the non-contamination
+branch instead uses `attestation=null`. In either case the report must not say
+isolated or clean. An inside-repository physical working directory is likewise a
+truthful `not_isolated` record even when the probe did not detect mechanism text.
+Missing or unresolved evidence yields `unknown`, also not an isolation claim. This
+protocol cannot establish absence of platform prompts, provider policy,
+training-data influence, or other unobservable context.
+
+After the context gate is recorded:
+
+- Dispatch one fresh subject per item with only the natural revision task (no
+  fidelity meta-language), retaining the exact prompt and output hashes.
+- Run the deterministic checker (pair mode) and 2..8 judges spanning at least two
+  model families, blind to arms, controls, and subject-context status;
+  adjudicate disagreements under the precommitted rubric by reading the logic,
+  not by trusting either model.
+- Report numeric/citation-token drift, v2 C9 citation-attachment violations, the
+  C1/C2 claim-strength/hedge rate, and control pass/fail as distinct layers.
+- A C9 finding is confirmed only from an explicit typed raw judge flag. Retain its
+  closed `c9/<finding_id>.json` evidence with C9 criterion, raw judge IDs,
+  adjudication disposition, attachment hashes, and const-false raw-rationale
+  receipt; an arbitrary raw file is not C9 evidence. A closed decision receipt
+  resolves every typed C9 raw true pair as confirmed or rejected; C5 is never a
+  C9 rejection authority, and no raw C9 flag may disappear silently.
 - Add ≥2 replicates per item for any decision-relevant run (single-run wording
   flips are expected on borderline items). n=8 single-generator English-only is
   a seed, not a verdict on the population. Model- and time-specific — re-run,

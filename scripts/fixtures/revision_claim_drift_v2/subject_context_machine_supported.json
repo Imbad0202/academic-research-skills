@@ -1,0 +1,49 @@
+{
+  "schema_version": "revision-claim-drift-subject-context/1.0",
+  "suite": "revision_claim_drift",
+  "run_id": "synthetic-machine-supported",
+  "suite_commit": "1111111111111111111111111111111111111111",
+  "execution_manifest": {
+    "ref": "evals/heldout/revision_claim_drift/runs/synthetic-machine-supported/execution-manifest.json"
+  },
+  "subject_call_plan": {
+    "ref": "evals/heldout/revision_claim_drift/runs/synthetic-machine-supported/subject-call-plan.json",
+    "sha256": "2424242424242424242424242424242424242424242424242424242424242424"
+  },
+  "recorded_at": "2026-08-10T01:00:03Z",
+  "status": "machine_supported",
+  "neutral_cwd": {
+    "pwd_p_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "repo_membership_probe": "outside_suite_repository"
+  },
+  "cli": {
+    "mode": "standard",
+    "bare_requested": true,
+    "bare_used": false,
+    "authentication_result": "failed",
+    "launcher_config": {
+      "ref": "evals/heldout/revision_claim_drift/runs/synthetic-machine-supported/launcher-config.json",
+      "sha256": "2323232323232323232323232323232323232323232323232323232323232323"
+    }
+  },
+  "instruction_visibility": {
+    "repository_instructions": "not_detected",
+    "global_instructions": "visible",
+    "mechanism_text": "not_detected"
+  },
+  "context_probe": {
+    "status": "completed",
+    "prompt_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "output_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "started_at": "2026-08-10T01:00:00Z",
+    "completed_at": "2026-08-10T01:00:02Z",
+    "mechanism_result": "no_visible_mechanism"
+  },
+  "attestation": null,
+  "data_minimization": {
+    "raw_physical_cwd_stored": false,
+    "raw_instruction_content_stored": false,
+    "raw_probe_prompt_stored": false,
+    "raw_probe_output_stored": false
+  }
+}

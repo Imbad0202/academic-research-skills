@@ -395,6 +395,13 @@ jobs:
         # unified manifest (#156).
         run: python3 scripts/check_heldout_measurement_report.py --all
 
+      - name: Check revision-claim-drift suite v2 protocol (#679)
+        # Pins the prospective C9 rubric amendment, historical-artifact lock,
+        # context/launcher/call-plan schemas, fixtures, complete future call/raw
+        # inventory, C9 evidence replay, and future measurement-row binding.
+        # Mutation tests run through the unified pytest manifest above.
+        run: python scripts/check_revision_claim_drift_suite_v2.py
+
       - name: Check human-subjects output boundary (#665)
         # Pins separate readiness/authorization fields, integrity-only verdict
         # scope, the institution-owned pathway value, fixed footer, and the

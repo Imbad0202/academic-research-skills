@@ -409,6 +409,10 @@ id = "654-heldout-measurement-contract"
 path = "scripts/test_check_heldout_measurement_report.py"
 
 [[pytest]]
+id = "679-revision-claim-drift-suite-v2"
+path = "scripts/test_check_revision_claim_drift_suite_v2.py"
+
+[[pytest]]
 id = "665-human-subjects-output-contract"
 path = "scripts/test_check_human_subjects_output_contract.py"
 

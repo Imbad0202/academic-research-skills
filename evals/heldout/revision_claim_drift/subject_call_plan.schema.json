@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/revision_claim_drift/subject_call_plan.schema.json",
+  "title": "Revision-claim-drift precommitted call plan",
+  "description": "Closed planned subject-and-judge inventory used to identify subject calls and bind every prompt/output artifact after execution.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite",
+    "run_id",
+    "suite_commit",
+    "subject_model_id",
+    "created_at",
+    "launcher_config",
+    "heldout_set",
+    "arm_ids",
+    "judges",
+    "calls",
+    "data_minimization"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "revision-claim-drift-subject-call-plan/1.0"
+    },
+    "suite": {
+      "const": "revision_claim_drift"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "suite_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "subject_model_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "launcher_config": {
+      "$ref": "#/$defs/binding"
+    },
+    "heldout_set": {
+      "$ref": "#/$defs/binding"
+    },
+    "arm_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+      }
+    },
+    "judges": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/judge"
+      }
+    },
+    "calls": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "$ref": "#/$defs/call"
+      }
+    },
+    "data_minimization": {
+      "type": "object",
+      "required": [
+        "prompt_content_embedded",
+        "output_content_embedded"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "prompt_content_embedded": {
+          "const": false
+        },
+        "output_content_embedded": {
+          "const": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "binding": {
+      "type": "object",
+      "required": [
+        "ref",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "deferredJudgePrompt": {
+      "type": "object",
+      "required": [
+        "ref",
+        "sha256",
+        "composition",
+        "template_ref",
+        "subject_prompt_ref",
+        "subject_output_ref"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "sha256": {
+          "type": "null"
+        },
+        "composition": {
+          "const": "template_then_subject_input_then_subject_output/1.0"
+        },
+        "template_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "subject_prompt_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "subject_output_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      }
+    },
+    "judge": {
+      "type": "object",
+      "required": [
+        "judge_id",
+        "model_id",
+        "model_family",
+        "prompt_template",
+        "blinded_to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "judge_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "model_family": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "prompt_template": {
+          "$ref": "#/$defs/binding"
+        },
+        "blinded_to": {
+          "const": [
+            "arm_identity",
+            "control_status",
+            "mechanism_state"
+          ]
+        }
+      }
+    },
+    "call": {
+      "type": "object",
+      "required": [
+        "call_id",
+        "sequence_index",
+        "role",
+        "judge_id",
+        "item_id",
+        "item_replicate_id",
+        "replicate_index",
+        "arm_id",
+        "control_item",
+        "prompt",
+        "output_ref"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "call_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "sequence_index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "role": {
+          "enum": [
+            "subject",
+            "judge"
+          ]
+        },
+        "judge_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "item_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "item_replicate_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "replicate_index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "arm_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "control_item": {
+          "type": "boolean"
+        },
+        "prompt": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/binding"
+            },
+            {
+              "$ref": "#/$defs/deferredJudgePrompt"
+            }
+          ]
+        },
+        "output_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "subject"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "judge_id": {
+                "type": "null"
+              },
+              "prompt": {
+                "$ref": "#/$defs/binding"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "judge"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "judge_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+              },
+              "prompt": {
+                "$ref": "#/$defs/deferredJudgePrompt"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

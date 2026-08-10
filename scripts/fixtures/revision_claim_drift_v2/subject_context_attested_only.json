@@ -1,0 +1,55 @@
+{
+  "schema_version": "revision-claim-drift-subject-context/1.0",
+  "suite": "revision_claim_drift",
+  "run_id": "synthetic-attested-only",
+  "suite_commit": "6666666666666666666666666666666666666666",
+  "execution_manifest": {
+    "ref": "evals/heldout/revision_claim_drift/runs/synthetic-attested-only/execution-manifest.json"
+  },
+  "subject_call_plan": {
+    "ref": "evals/heldout/revision_claim_drift/runs/synthetic-attested-only/subject-call-plan.json",
+    "sha256": "7979797979797979797979797979797979797979797979797979797979797979"
+  },
+  "recorded_at": "2026-08-10T02:00:04Z",
+  "status": "attested_only",
+  "neutral_cwd": {
+    "pwd_p_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "repo_membership_probe": "outside_suite_repository"
+  },
+  "cli": {
+    "mode": "standard",
+    "bare_requested": true,
+    "bare_used": false,
+    "authentication_result": "failed",
+    "launcher_config": {
+      "ref": "evals/heldout/revision_claim_drift/runs/synthetic-attested-only/launcher-config.json",
+      "sha256": "7878787878787878787878787878787878787878787878787878787878787878"
+    }
+  },
+  "instruction_visibility": {
+    "repository_instructions": "unknown",
+    "global_instructions": "unknown",
+    "mechanism_text": "unknown"
+  },
+  "context_probe": {
+    "status": "unavailable",
+    "prompt_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+    "output_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "started_at": "2026-08-10T02:00:00Z",
+    "completed_at": "2026-08-10T02:00:01Z",
+    "mechanism_result": "unknown"
+  },
+  "attestation": {
+    "type": "neutral_context_attestation",
+    "declaration": "repository_instruction_isolation_and_same_launcher_config_operator_attested",
+    "attestor_role": "operator",
+    "attested_at": "2026-08-10T02:00:03Z",
+    "raw_statement_stored": false
+  },
+  "data_minimization": {
+    "raw_physical_cwd_stored": false,
+    "raw_instruction_content_stored": false,
+    "raw_probe_prompt_stored": false,
+    "raw_probe_output_stored": false
+  }
+}

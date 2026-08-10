@@ -1,0 +1,56 @@
+{
+  "schema_version": "revision-claim-drift-subject-context/1.0",
+  "suite": "revision_claim_drift",
+  "run_id": "synthetic-not-isolated",
+  "suite_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "execution_manifest": {
+    "ref": "evals/heldout/revision_claim_drift/runs/synthetic-not-isolated/execution-manifest.json"
+  },
+  "subject_call_plan": {
+    "ref": "evals/heldout/revision_claim_drift/runs/synthetic-not-isolated/subject-call-plan.json",
+    "sha256": "cececececececececececececececececececececececececececececececece"
+  },
+  "recorded_at": "2026-08-10T03:00:04Z",
+  "status": "not_isolated",
+  "neutral_cwd": {
+    "pwd_p_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "repo_membership_probe": "outside_suite_repository"
+  },
+  "cli": {
+    "mode": "standard",
+    "bare_requested": true,
+    "bare_used": false,
+    "authentication_result": "failed",
+    "launcher_config": {
+      "ref": "evals/heldout/revision_claim_drift/runs/synthetic-not-isolated/launcher-config.json",
+      "sha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+    }
+  },
+  "instruction_visibility": {
+    "repository_instructions": "visible",
+    "global_instructions": "unknown",
+    "mechanism_text": "visible"
+  },
+  "context_probe": {
+    "status": "completed",
+    "prompt_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "output_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "started_at": "2026-08-10T03:00:00Z",
+    "completed_at": "2026-08-10T03:00:02Z",
+    "mechanism_result": "visible_mechanism"
+  },
+  "attestation": {
+    "type": "contamination_acknowledgement",
+    "declaration": "visible_instruction_mechanism_may_have_contaminated_subject_output",
+    "attestor_role": "operator",
+    "attested_at": "2026-08-10T03:00:03Z",
+    "acknowledged": true,
+    "raw_statement_stored": false
+  },
+  "data_minimization": {
+    "raw_physical_cwd_stored": false,
+    "raw_instruction_content_stored": false,
+    "raw_probe_prompt_stored": false,
+    "raw_probe_output_stored": false
+  }
+}

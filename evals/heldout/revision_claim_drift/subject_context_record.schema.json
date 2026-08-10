@@ -1,0 +1,1013 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/revision_claim_drift/subject_context_record.schema.json",
+  "title": "Revision-claim-drift subject context record",
+  "description": "Closed, content-minimized evidence for the context in which a held-out subject was executed. This record never contains a raw physical path, instruction text, or probe content.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite",
+    "run_id",
+    "suite_commit",
+    "execution_manifest",
+    "subject_call_plan",
+    "recorded_at",
+    "status",
+    "neutral_cwd",
+    "cli",
+    "instruction_visibility",
+    "context_probe",
+    "attestation",
+    "data_minimization"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "revision-claim-drift-subject-context/1.0"
+    },
+    "suite": {
+      "const": "revision_claim_drift"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "suite_commit": {
+      "$ref": "#/$defs/gitCommit"
+    },
+    "execution_manifest": {
+      "$ref": "#/$defs/executionManifestBinding"
+    },
+    "subject_call_plan": {
+      "$ref": "#/$defs/callPlanBinding"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "machine_supported",
+        "attested_only",
+        "not_isolated",
+        "unknown"
+      ]
+    },
+    "neutral_cwd": {
+      "$ref": "#/$defs/neutralCwd"
+    },
+    "cli": {
+      "$ref": "#/$defs/cli"
+    },
+    "instruction_visibility": {
+      "$ref": "#/$defs/instructionVisibility"
+    },
+    "context_probe": {
+      "$ref": "#/$defs/contextProbe"
+    },
+    "attestation": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/neutralContextAttestation"
+        },
+        {
+          "$ref": "#/$defs/contaminationAcknowledgement"
+        }
+      ]
+    },
+    "data_minimization": {
+      "$ref": "#/$defs/dataMinimization"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "instruction_visibility": {
+            "properties": {
+              "mechanism_text": {
+                "const": "visible"
+              }
+            },
+            "required": [
+              "mechanism_text"
+            ]
+          }
+        },
+        "required": [
+          "instruction_visibility"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "not_isolated"
+          },
+          "attestation": {
+            "$ref": "#/$defs/contaminationAcknowledgement"
+          },
+          "context_probe": {
+            "oneOf": [
+              {
+                "properties": {
+                  "status": {
+                    "const": "completed"
+                  },
+                  "mechanism_result": {
+                    "const": "visible_mechanism"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "not_run",
+                      "unavailable"
+                    ]
+                  },
+                  "mechanism_result": {
+                    "const": "unknown"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "context_probe": {
+            "properties": {
+              "mechanism_result": {
+                "const": "visible_mechanism"
+              }
+            },
+            "required": [
+              "mechanism_result"
+            ]
+          }
+        },
+        "required": [
+          "context_probe"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "not_isolated"
+          },
+          "instruction_visibility": {
+            "properties": {
+              "mechanism_text": {
+                "const": "visible"
+              }
+            }
+          },
+          "attestation": {
+            "$ref": "#/$defs/contaminationAcknowledgement"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "instruction_visibility": {
+            "properties": {
+              "repository_instructions": {
+                "const": "visible"
+              }
+            },
+            "required": [
+              "repository_instructions"
+            ]
+          }
+        },
+        "required": [
+          "instruction_visibility"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "not_isolated"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "neutral_cwd": {
+            "properties": {
+              "repo_membership_probe": {
+                "const": "inside_suite_repository"
+              }
+            },
+            "required": [
+              "repo_membership_probe"
+            ]
+          }
+        },
+        "required": [
+          "neutral_cwd"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "not_isolated"
+          }
+        }
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "$ref": "#/$defs/machineSupportedRecord"
+    },
+    {
+      "$ref": "#/$defs/attestedOnlyRecord"
+    },
+    {
+      "$ref": "#/$defs/notIsolatedRecord"
+    },
+    {
+      "$ref": "#/$defs/unknownRecord"
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nullableSha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableDateTime": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "executionManifestBinding": {
+      "type": "object",
+      "required": [
+        "ref"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "type": "string",
+          "pattern": "^evals/heldout/revision_claim_drift/runs/[A-Za-z0-9][A-Za-z0-9._-]{0,127}/execution-manifest\\.json$"
+        }
+      }
+    },
+    "launcherConfigBinding": {
+      "type": "object",
+      "required": [
+        "ref",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "type": "string",
+          "pattern": "^evals/heldout/revision_claim_drift/runs/[A-Za-z0-9][A-Za-z0-9._-]{0,127}/launcher-config\\.json$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "callPlanBinding": {
+      "type": "object",
+      "required": [
+        "ref",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "type": "string",
+          "pattern": "^evals/heldout/revision_claim_drift/runs/[A-Za-z0-9][A-Za-z0-9._-]{0,127}/subject-call-plan\\.json$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "neutralCwd": {
+      "type": "object",
+      "required": [
+        "pwd_p_sha256",
+        "repo_membership_probe"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pwd_p_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "repo_membership_probe": {
+          "enum": [
+            "outside_suite_repository",
+            "inside_suite_repository",
+            "unresolved"
+          ]
+        }
+      }
+    },
+    "cli": {
+      "type": "object",
+      "required": [
+        "mode",
+        "bare_requested",
+        "bare_used",
+        "authentication_result",
+        "launcher_config"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "bare",
+            "standard",
+            "unknown"
+          ]
+        },
+        "bare_requested": {
+          "type": "boolean"
+        },
+        "bare_used": {
+          "type": "boolean"
+        },
+        "authentication_result": {
+          "enum": [
+            "not_tested",
+            "succeeded",
+            "failed",
+            "unavailable"
+          ]
+        },
+        "launcher_config": {
+          "$ref": "#/$defs/launcherConfigBinding"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "bare_used": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bare_requested": {
+                "const": true
+              },
+              "mode": {
+                "const": "bare"
+              },
+              "authentication_result": {
+                "const": "succeeded"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "bare"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bare_requested": {
+                "const": true
+              },
+              "bare_used": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "bare_requested": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bare_used": {
+                "const": false
+              },
+              "authentication_result": {
+                "const": "not_tested"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "bare_requested": {
+                "const": true
+              },
+              "bare_used": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "standard",
+                  "unknown"
+                ]
+              },
+              "authentication_result": {
+                "enum": [
+                  "failed",
+                  "unavailable"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visibilityFinding": {
+      "enum": [
+        "not_detected",
+        "visible",
+        "unknown"
+      ]
+    },
+    "instructionVisibility": {
+      "type": "object",
+      "required": [
+        "repository_instructions",
+        "global_instructions",
+        "mechanism_text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository_instructions": {
+          "$ref": "#/$defs/visibilityFinding"
+        },
+        "global_instructions": {
+          "$ref": "#/$defs/visibilityFinding"
+        },
+        "mechanism_text": {
+          "$ref": "#/$defs/visibilityFinding"
+        }
+      }
+    },
+    "contextProbe": {
+      "type": "object",
+      "required": [
+        "status",
+        "prompt_sha256",
+        "output_sha256",
+        "started_at",
+        "completed_at",
+        "mechanism_result"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "completed",
+            "not_run",
+            "unavailable"
+          ]
+        },
+        "prompt_sha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "output_sha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "started_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "mechanism_result": {
+          "enum": [
+            "no_visible_mechanism",
+            "visible_mechanism",
+            "unknown"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "prompt_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "output_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "started_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "mechanism_result": {
+                "enum": [
+                  "no_visible_mechanism",
+                  "visible_mechanism"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not_run"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "prompt_sha256": {
+                "type": "null"
+              },
+              "output_sha256": {
+                "type": "null"
+              },
+              "started_at": {
+                "type": "null"
+              },
+              "completed_at": {
+                "type": "null"
+              },
+              "mechanism_result": {
+                "const": "unknown"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "prompt_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "started_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "mechanism_result": {
+                "const": "unknown"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "neutralContextAttestation": {
+      "type": "object",
+      "required": [
+        "type",
+        "declaration",
+        "attestor_role",
+        "attested_at",
+        "raw_statement_stored"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "neutral_context_attestation"
+        },
+        "declaration": {
+          "const": "repository_instruction_isolation_and_same_launcher_config_operator_attested"
+        },
+        "attestor_role": {
+          "const": "operator"
+        },
+        "attested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "raw_statement_stored": {
+          "const": false
+        }
+      }
+    },
+    "contaminationAcknowledgement": {
+      "type": "object",
+      "required": [
+        "type",
+        "declaration",
+        "attestor_role",
+        "attested_at",
+        "acknowledged",
+        "raw_statement_stored"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "contamination_acknowledgement"
+        },
+        "declaration": {
+          "const": "visible_instruction_mechanism_may_have_contaminated_subject_output"
+        },
+        "attestor_role": {
+          "const": "operator"
+        },
+        "attested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "acknowledged": {
+          "const": true
+        },
+        "raw_statement_stored": {
+          "const": false
+        }
+      }
+    },
+    "dataMinimization": {
+      "type": "object",
+      "required": [
+        "raw_physical_cwd_stored",
+        "raw_instruction_content_stored",
+        "raw_probe_prompt_stored",
+        "raw_probe_output_stored"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "raw_physical_cwd_stored": {
+          "const": false
+        },
+        "raw_instruction_content_stored": {
+          "const": false
+        },
+        "raw_probe_prompt_stored": {
+          "const": false
+        },
+        "raw_probe_output_stored": {
+          "const": false
+        }
+      }
+    },
+    "machineSupportedRecord": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "machine_supported"
+        },
+        "neutral_cwd": {
+          "properties": {
+            "repo_membership_probe": {
+              "const": "outside_suite_repository"
+            }
+          }
+        },
+        "cli": {
+          "oneOf": [
+            {
+              "properties": {
+                "mode": {
+                  "const": "bare"
+                },
+                "bare_requested": {
+                  "const": true
+                },
+                "bare_used": {
+                  "const": true
+                },
+                "authentication_result": {
+                  "const": "succeeded"
+                }
+              }
+            },
+            {
+              "properties": {
+                "mode": {
+                  "const": "standard"
+                },
+                "bare_requested": {
+                  "const": true
+                },
+                "bare_used": {
+                  "const": false
+                },
+                "authentication_result": {
+                  "enum": [
+                    "failed",
+                    "unavailable"
+                  ]
+                }
+              }
+            },
+            {
+              "properties": {
+                "mode": {
+                  "const": "standard"
+                },
+                "bare_requested": {
+                  "const": false
+                },
+                "bare_used": {
+                  "const": false
+                },
+                "authentication_result": {
+                  "const": "not_tested"
+                }
+              }
+            }
+          ]
+        },
+        "instruction_visibility": {
+          "properties": {
+            "repository_instructions": {
+              "const": "not_detected"
+            },
+            "global_instructions": {
+              "enum": [
+                "not_detected",
+                "visible"
+              ]
+            },
+            "mechanism_text": {
+              "const": "not_detected"
+            }
+          }
+        },
+        "context_probe": {
+          "properties": {
+            "status": {
+              "const": "completed"
+            },
+            "mechanism_result": {
+              "const": "no_visible_mechanism"
+            }
+          }
+        },
+        "attestation": {
+          "type": "null"
+        }
+      }
+    },
+    "attestedOnlyRecord": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "attested_only"
+        },
+        "neutral_cwd": {
+          "properties": {
+            "repo_membership_probe": {
+              "const": "outside_suite_repository"
+            }
+          }
+        },
+        "cli": {
+          "properties": {
+            "bare_used": {
+              "const": false
+            }
+          }
+        },
+        "instruction_visibility": {
+          "properties": {
+            "mechanism_text": {
+              "const": "unknown"
+            }
+          }
+        },
+        "context_probe": {
+          "properties": {
+            "status": {
+              "enum": [
+                "not_run",
+                "unavailable"
+              ]
+            },
+            "mechanism_result": {
+              "const": "unknown"
+            }
+          }
+        },
+        "attestation": {
+          "$ref": "#/$defs/neutralContextAttestation"
+        }
+      }
+    },
+    "notIsolatedRecord": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "not_isolated"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "instruction_visibility": {
+              "properties": {
+                "mechanism_text": {
+                  "const": "visible"
+                }
+              }
+            },
+            "attestation": {
+              "$ref": "#/$defs/contaminationAcknowledgement"
+            }
+          }
+        },
+        {
+          "properties": {
+            "instruction_visibility": {
+              "properties": {
+                "repository_instructions": {
+                  "const": "visible"
+                },
+                "mechanism_text": {
+                  "enum": [
+                    "not_detected",
+                    "unknown"
+                  ]
+                }
+              }
+            },
+            "attestation": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "neutral_cwd": {
+              "properties": {
+                "repo_membership_probe": {
+                  "const": "inside_suite_repository"
+                }
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "instruction_visibility": {
+                    "properties": {
+                      "mechanism_text": {
+                        "const": "visible"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "attestation": {
+                    "$ref": "#/$defs/contaminationAcknowledgement"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "attestation": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "unknownRecord": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "unknown"
+        },
+        "instruction_visibility": {
+          "properties": {
+            "mechanism_text": {
+              "enum": [
+                "not_detected",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "context_probe": {
+          "properties": {
+            "status": {
+              "enum": [
+                "not_run",
+                "unavailable"
+              ]
+            },
+            "mechanism_result": {
+              "const": "unknown"
+            }
+          }
+        },
+        "attestation": {
+          "type": "null"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "neutral_cwd": {
+              "properties": {
+                "repo_membership_probe": {
+                  "const": "unresolved"
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "instruction_visibility": {
+              "properties": {
+                "mechanism_text": {
+                  "const": "unknown"
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "context_probe": {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "not_run",
+                    "unavailable"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

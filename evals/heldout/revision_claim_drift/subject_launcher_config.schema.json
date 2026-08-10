@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/revision_claim_drift/subject_launcher_config.schema.json",
+  "title": "Revision-claim-drift probe and subject launcher configuration",
+  "description": "Closed, content-minimized canonical configuration shared by the pre-fleet context probe and every subject call.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite",
+    "run_id",
+    "sealed_at",
+    "applies_to",
+    "launcher",
+    "working_directory",
+    "instruction_loading",
+    "invocation_sha256",
+    "data_minimization"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "revision-claim-drift-launcher-config/1.0"
+    },
+    "suite": {
+      "const": "revision_claim_drift"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "sealed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "applies_to": {
+      "const": [
+        "context_probe",
+        "subject_fleet"
+      ]
+    },
+    "launcher": {
+      "$ref": "#/$defs/launcher"
+    },
+    "working_directory": {
+      "$ref": "#/$defs/workingDirectory"
+    },
+    "instruction_loading": {
+      "$ref": "#/$defs/instructionLoading"
+    },
+    "invocation_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "data_minimization": {
+      "$ref": "#/$defs/dataMinimization"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "launcher": {
+      "type": "object",
+      "required": [
+        "client_id",
+        "client_version",
+        "mode",
+        "bare_requested",
+        "bare_used",
+        "authentication_result"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+        },
+        "client_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "mode": {
+          "enum": [
+            "bare",
+            "standard",
+            "unknown"
+          ]
+        },
+        "bare_requested": {
+          "type": "boolean"
+        },
+        "bare_used": {
+          "type": "boolean"
+        },
+        "authentication_result": {
+          "enum": [
+            "not_tested",
+            "succeeded",
+            "failed",
+            "unavailable"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "bare_used": {
+                "const": true
+              }
+            },
+            "required": [
+              "bare_used"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "bare"
+              },
+              "bare_requested": {
+                "const": true
+              },
+              "authentication_result": {
+                "const": "succeeded"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "bare"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bare_requested": {
+                "const": true
+              },
+              "bare_used": {
+                "const": true
+              },
+              "authentication_result": {
+                "const": "succeeded"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "bare_requested": {
+                "const": false
+              }
+            },
+            "required": [
+              "bare_requested"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bare_used": {
+                "const": false
+              },
+              "authentication_result": {
+                "const": "not_tested"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "bare_requested": {
+                "const": true
+              },
+              "bare_used": {
+                "const": false
+              }
+            },
+            "required": [
+              "bare_requested",
+              "bare_used"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "standard",
+                  "unknown"
+                ]
+              },
+              "authentication_result": {
+                "enum": [
+                  "failed",
+                  "unavailable"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "workingDirectory": {
+      "type": "object",
+      "required": [
+        "policy",
+        "pwd_p_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "policy": {
+          "enum": [
+            "fresh_outside_suite_repository",
+            "inside_suite_repository",
+            "unresolved"
+          ]
+        },
+        "pwd_p_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "instructionLoading": {
+      "type": "object",
+      "required": [
+        "repository_instructions",
+        "global_instructions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository_instructions": {
+          "enum": [
+            "disabled",
+            "enabled",
+            "unknown"
+          ]
+        },
+        "global_instructions": {
+          "enum": [
+            "disabled",
+            "enabled",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "dataMinimization": {
+      "type": "object",
+      "required": [
+        "raw_command_stored",
+        "raw_environment_stored",
+        "raw_physical_cwd_stored",
+        "raw_instruction_content_stored"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "raw_command_stored": {
+          "const": false
+        },
+        "raw_environment_stored": {
+          "const": false
+        },
+        "raw_physical_cwd_stored": {
+          "const": false
+        },
+        "raw_instruction_content_stored": {
+          "const": false
+        }
+      }
+    }
+  }
+}

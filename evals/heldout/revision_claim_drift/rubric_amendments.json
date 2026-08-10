@@ -1,0 +1,40 @@
+{
+  "schema_version": "revision-claim-drift-rubric-amendments/1.0",
+  "suite": "revision_claim_drift",
+  "append_only": true,
+  "rubrics": [
+    {
+      "version": "1.0",
+      "path": "evals/heldout/revision_claim_drift/adjudication_rubric.md",
+      "sha256": "56e014d5da2c9074afa7d327803caa2de0e16c864cf0374e4cd1f3cf90e35863",
+      "status": "frozen_historical"
+    },
+    {
+      "version": "2.0",
+      "path": "evals/heldout/revision_claim_drift/adjudication_rubric_v2.md",
+      "sha256": "6bb537807f7f0ab02ae2379764551aa0896ca9390919a69cc5812e2f889a315d",
+      "status": "prospective"
+    }
+  ],
+  "amendments": [
+    {
+      "amendment_id": "RCD-RUBRIC-2026-08-10-001",
+      "recorded_on": "2026-08-10",
+      "issue": 679,
+      "from_version": "1.0",
+      "from_sha256": "56e014d5da2c9074afa7d327803caa2de0e16c864cf0374e4cd1f3cf90e35863",
+      "to_version": "2.0",
+      "to_sha256": "6bb537807f7f0ab02ae2379764551aa0896ca9390919a69cc5812e2f889a315d",
+      "changes": [
+        "add_C9_non_control_citation_attachment",
+        "replace_ladder_examples_with_canonical_pointers"
+      ],
+      "historical_effect": "none",
+      "historical_rows": [
+        "evals/heldout/revision_claim_drift/measurement-2026-07-22.json",
+        "evals/heldout/revision_claim_drift/measurement-2026-08-07.json"
+      ],
+      "rescoring_permitted": false
+    }
+  ]
+}

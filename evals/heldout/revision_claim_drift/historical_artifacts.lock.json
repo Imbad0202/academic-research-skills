@@ -1,0 +1,37 @@
+{
+  "schema_version": "revision-claim-drift-historical-lock/1.0",
+  "suite": "revision_claim_drift",
+  "baseline_commit": "682b30a200951e058a7ac7848aab600959669198",
+  "hash_algorithm": "sha256",
+  "readme_exclusion": {
+    "path": "evals/heldout/revision_claim_drift/README.md",
+    "reason": "Issue #679 must document the prospective v2 context protocol; the README is not a scored row, frozen rubric, held-out item set, or retained raw run artifact."
+  },
+  "protected_files": [
+    {
+      "path": "evals/heldout/revision_claim_drift/adjudication_rubric.md",
+      "sha256": "56e014d5da2c9074afa7d327803caa2de0e16c864cf0374e4cd1f3cf90e35863"
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/heldout_set.json",
+      "sha256": "4b2392e95ae7569907438d9e731ead8eb1db35489b0583a601631d22cdc4eb98"
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/measurement-2026-07-22.json",
+      "sha256": "d0c7e5f53d21775d32fb820665cf17f6baec056262765767467e56d1e428bd1f"
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/measurement-2026-08-07.json",
+      "sha256": "1af137c798e6cf3a5d0a742e379a8af78fe802cb924b4ece22cdf57cb881f573"
+    }
+  ],
+  "protected_trees": [
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07",
+      "file_count": 128,
+      "inventory_algorithm": "Recursively select regular files; use POSIX paths relative to this tree; sort paths by UTF-8 bytes; append for each file: relative-path UTF-8, one NUL byte, lowercase file sha256 ASCII, one LF byte; sha256 the concatenated bytes.",
+      "inventory_sha256": "71dcc3bd6a391c80a38fbe504970ac5e0780be9deb3ef8fa2d07e0954044ae61"
+    }
+  ],
+  "mutation_policy": "fail_closed"
+}
