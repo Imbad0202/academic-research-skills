@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import shutil
 import sys
@@ -51,6 +52,9 @@ COPIED_FILES = (
     integration.WORKFLOW,
     integration.CONFORMANCE_README,
     integration.MEASUREMENT_PLAN,
+    integration.MEASUREMENT_REPORT,
+    integration.MEASUREMENT_TRANSCRIPT,
+    integration.MEASUREMENT_EXECUTION_MANIFEST,
     integration.SUITE_REGISTRY,
     integration.MEASUREMENT_CONTRACT,
 )
@@ -75,6 +79,34 @@ def _rewrite_json(
         json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
+
+
+def _rewrite_canonical_json(
+    root: Path, relative: Path, mutation: Callable[[dict[str, Any]], None]
+) -> None:
+    path = root / relative
+    value = json.loads(path.read_text(encoding="utf-8"))
+    mutation(value)
+    path.write_text(
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _set_json_path(
+    value: dict[str, Any], path: tuple[str | int, ...], replacement: Any
+) -> None:
+    target: Any = value
+    for component in path[:-1]:
+        target = target[component]
+    target[path[-1]] = replacement
 
 
 def _replace(root: Path, relative: Path, old: str, new: str) -> None:
@@ -906,7 +938,7 @@ def test_frozen_measurement_plan_token_drift_fails(
 @pytest.mark.parametrize(
     ("old", "new"),
     (
-        ("remains `UNMEASURED`", "becomes `MEASURED`"),
+        ("remain `UNMEASURED`", "become `MEASURED`"),
         (
             "contextual false-positive/false-negative labels",
             "contextual accuracy labels",
@@ -921,22 +953,332 @@ def test_conformance_readme_claim_ceiling_drift_fails(
     _assert_error(root, "UNMEASURED/contextual claim ceiling drifted")
 
 
-def test_scored_heldout_row_is_forbidden_on_implementation_branch(
+def test_second_tortured_phrase_measurement_row_is_forbidden(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    second = (
+        root
+        / integration.HELDOUT_ROOT
+        / "tortured_phrase_conformance"
+        / "measurement-2026-08-11.json"
+    )
+    second.write_bytes((root / integration.MEASUREMENT_REPORT).read_bytes())
+    _assert_error(root, "second #660 measurement row is forbidden")
+
+
+def test_escaped_measurement_contract_cannot_hide_second_row(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    second = (
+        root
+        / integration.HELDOUT_ROOT
+        / "other_suite"
+        / "measurement-2026-08-10.json"
+    )
+    second.parent.mkdir(parents=True)
+    raw = (root / integration.MEASUREMENT_REPORT).read_bytes()
+    second.write_bytes(
+        raw.replace(b'"measurement_contract"', b'"measurement\\u005fcontract"')
+    )
+    _assert_error(root, "second #660 measurement row is forbidden")
+
+
+def test_uppercase_json_extension_cannot_hide_second_row(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    second = (
+        root
+        / integration.HELDOUT_ROOT
+        / "tortured_phrase_conformance"
+        / "measurement-2026-08-11.JSON"
+    )
+    second.write_bytes((root / integration.MEASUREMENT_REPORT).read_bytes())
+    _assert_error(root, "second #660 measurement row is forbidden")
+
+
+def test_internal_symlinked_directory_cannot_hide_second_row(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    source = root / "internal_measurement_alias"
+    source.mkdir()
+    (source / "measurement.json").write_bytes(
+        (root / integration.MEASUREMENT_REPORT).read_bytes()
+    )
+    link = root / integration.HELDOUT_ROOT / "linked_suite"
+    link.symlink_to(source, target_is_directory=True)
+    _assert_error(root, "second #660 measurement row is forbidden")
+
+
+@pytest.mark.parametrize(
+    "relative",
+    (
+        integration.MEASUREMENT_REPORT,
+        integration.MEASUREMENT_TRANSCRIPT,
+        integration.MEASUREMENT_EXECUTION_MANIFEST,
+    ),
+)
+def test_each_canonical_measurement_artifact_is_required(
+    tmp_path: Path, relative: Path
+) -> None:
+    root = _copy_repo(tmp_path)
+    (root / relative).unlink()
+    _assert_error(root, "cannot load canonical #660 measurement artifact")
+
+
+def test_measurement_plan_exact_byte_hash_is_frozen(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    path = root / integration.MEASUREMENT_PLAN
+    path.write_bytes(path.read_bytes() + b" ")
+    _assert_error(root, "frozen plan sha256 drifted")
+
+
+def test_registered_measurement_command_hash_is_frozen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _copy_repo(tmp_path)
+    monkeypatch.setattr(
+        integration,
+        "MEASUREMENT_COMMAND",
+        integration.MEASUREMENT_COMMAND + " ",
+    )
+    _assert_error(root, "registered command bytes no longer match")
+
+
+@pytest.mark.parametrize(
+    ("path", "replacement", "expected"),
+    (
+        (("schema_version",), "tortured-phrase-conformance-transcript/1.1", "schema_version"),
+        (("command_utf8",), "python -m pytest scripts/test_tortured_phrase_screening.py", "command_utf8"),
+        (("started_at",), integration.MEASUREMENT_COMPLETED_AT, "started_at"),
+        (("completed_at",), integration.MEASUREMENT_STARTED_AT, "completed_at"),
+        (("exit_code",), 1, "exit_code"),
+        (("stdout_utf8",), "190 passed in 0.01s\n", "stdout_utf8"),
+        (("stderr_utf8",), "warning\n", "stderr_utf8"),
+        (("environment", "python_implementation"), "PyPy", "environment"),
+        (("environment", "python_version"), "3.12.0", "environment"),
+        (("environment", "pytest_version"), "9.0.4", "environment"),
+        (("environment", "jsonschema_version"), "4.26.1", "environment"),
+        (("environment", "ruamel_yaml_version"), "0.18.0", "environment"),
+        (("environment", "unexpected"), "forbidden", "environment"),
+        (("unexpected",), True, "closed field set drifted"),
+    ),
+)
+def test_transcript_semantic_drift_fails_closed(
+    tmp_path: Path,
+    path: tuple[str | int, ...],
+    replacement: Any,
+    expected: str,
+) -> None:
+    root = _copy_repo(tmp_path)
+    _rewrite_canonical_json(
+        root,
+        integration.MEASUREMENT_TRANSCRIPT,
+        lambda value: _set_json_path(value, path, replacement),
+    )
+    _assert_error(root, expected)
+
+
+def test_transcript_missing_environment_field_fails_closed(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+
+    def mutate(value: dict[str, Any]) -> None:
+        value["environment"].pop("pytest_version")
+
+    _rewrite_canonical_json(root, integration.MEASUREMENT_TRANSCRIPT, mutate)
+    _assert_error(root, "frozen field 'environment' drifted")
+
+
+def test_transcript_noncanonical_serialization_is_rejected(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    path = root / integration.MEASUREMENT_TRANSCRIPT
+    value = json.loads(path.read_text(encoding="utf-8"))
+    path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    _assert_error(root, "bytes must be canonical sorted compact JSON")
+
+
+@pytest.mark.parametrize(
+    "relative",
+    (
+        integration.MEASUREMENT_REPORT,
+        integration.MEASUREMENT_EXECUTION_MANIFEST,
+    ),
+)
+def test_report_and_manifest_noncanonical_bytes_are_rejected(
+    tmp_path: Path, relative: Path
+) -> None:
+    root = _copy_repo(tmp_path)
+    path = root / relative
+    value = json.loads(path.read_text(encoding="utf-8"))
+    path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    _assert_error(root, "bytes must be canonical sorted compact JSON")
+
+
+def test_transcript_bom_is_rejected(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    path = root / integration.MEASUREMENT_TRANSCRIPT
+    path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+    _assert_error(root, "UTF-8 BOM is forbidden")
+
+
+def test_transcript_tamper_cannot_be_hidden_by_rehashing_chain(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+    _rewrite_canonical_json(
+        root,
+        integration.MEASUREMENT_TRANSCRIPT,
+        lambda value: _set_json_path(
+            value,
+            ("stdout_utf8",),
+            value["stdout_utf8"].replace("190 passed", "189 passed"),
+        ),
+    )
+    transcript_sha = hashlib.sha256(
+        (root / integration.MEASUREMENT_TRANSCRIPT).read_bytes()
+    ).hexdigest()
+    _rewrite_canonical_json(
+        root,
+        integration.MEASUREMENT_EXECUTION_MANIFEST,
+        lambda value: _set_json_path(
+            value, ("calls", 0, "output_sha256"), transcript_sha
+        ),
+    )
+    manifest_sha = hashlib.sha256(
+        (root / integration.MEASUREMENT_EXECUTION_MANIFEST).read_bytes()
+    ).hexdigest()
+    _rewrite_canonical_json(
+        root,
+        integration.MEASUREMENT_REPORT,
+        lambda value: _set_json_path(
+            value, ("execution_manifest", "sha256"), manifest_sha
+        ),
+    )
+    _assert_error(root, "frozen transcript sha256 drifted")
+
+
+@pytest.mark.parametrize(
+    ("path", "replacement", "expected"),
+    (
+        (("schema_version",), "heldout-execution-manifest/1.1", "schema_version"),
+        (("suite",), "other_suite", "suite"),
+        (("created_at",), integration.MEASUREMENT_STARTED_AT, "created_at"),
+        (("write_once",), False, "write_once"),
+        (("calls", 0, "call_id"), "tpc-retry", "calls"),
+        (("calls", 0, "sequence_index"), 2, "calls"),
+        (("calls", 0, "started_at"), integration.MEASUREMENT_COMPLETED_AT, "calls"),
+        (("calls", 0, "completed_at"), integration.MEASUREMENT_STARTED_AT, "calls"),
+        (("calls", 0, "prompt_sha256"), "0" * 64, "calls"),
+        (("calls", 0, "output_sha256"), "0" * 64, "calls"),
+        (("calls", 0, "attempt"), 2, "calls"),
+        (("calls", 0, "concurrency_group"), "parallel", "calls"),
+        (
+            ("execution_window",),
+            {
+                "window_id": "invented",
+                "started_at": integration.MEASUREMENT_STARTED_AT,
+                "completed_at": integration.MEASUREMENT_COMPLETED_AT,
+            },
+            "closed field set drifted",
+        ),
+    ),
+)
+def test_execution_manifest_semantic_drift_fails_closed(
+    tmp_path: Path,
+    path: tuple[str | int, ...],
+    replacement: Any,
+    expected: str,
+) -> None:
+    root = _copy_repo(tmp_path)
+    _rewrite_canonical_json(
+        root,
+        integration.MEASUREMENT_EXECUTION_MANIFEST,
+        lambda value: _set_json_path(value, path, replacement),
+    )
+    _assert_error(root, expected)
+
+
+def test_execution_manifest_second_call_is_a_forbidden_retry(tmp_path: Path) -> None:
+    root = _copy_repo(tmp_path)
+
+    def mutate(value: dict[str, Any]) -> None:
+        retry = dict(value["calls"][0])
+        retry["call_id"] = "tpc-2026-08-10-pytest-retry"
+        retry["sequence_index"] = 2
+        retry["attempt"] = 2
+        value["calls"].append(retry)
+
+    _rewrite_canonical_json(root, integration.MEASUREMENT_EXECUTION_MANIFEST, mutate)
+    _assert_error(root, "frozen field 'calls' drifted")
+
+
+def test_manifest_reserialization_and_report_rehash_cannot_rewrite_evidence(
     tmp_path: Path,
 ) -> None:
     root = _copy_repo(tmp_path)
-    path = root / integration.HELDOUT_ROOT / "tortured_phrase" / "measurement.json"
-    path.parent.mkdir(parents=True)
-    path.write_text(
-        json.dumps(
-            {
-                "measurement_contract": "heldout-measurement/1.0",
-                "surface": "tortured_phrase",
-            }
+    manifest_path = root / integration.MEASUREMENT_EXECUTION_MANIFEST
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    rewritten_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    _rewrite_canonical_json(
+        root,
+        integration.MEASUREMENT_REPORT,
+        lambda value: _set_json_path(
+            value, ("execution_manifest", "sha256"), rewritten_sha
         ),
-        encoding="utf-8",
     )
-    _assert_error(root, "must remain UNMEASURED")
+    _assert_error(root, "frozen manifest sha256 drifted")
+    _assert_error(root, "frozen report sha256 drifted")
+
+
+@pytest.mark.parametrize(
+    ("path", "replacement", "expected"),
+    (
+        (("measurement_contract",), "heldout-measurement/1.0", "measurement_contract"),
+        (("suite",), "tortured_phrase", "suite"),
+        (("suite_class",), "llm_judged", "suite_class"),
+        (("measurement_date",), "2026-08-11", "measurement_date"),
+        (("decision_relevant",), False, "decision_relevant"),
+        (("subject", "model_id"), "deterministic-runtime/other.py", "subject"),
+        (("subject", "config", "suite_commit"), "0" * 40, "subject"),
+        (("judge_plan", "exception"), "none", "judge_plan"),
+        (("judges",), [{"judge_id": "invented"}], "judges"),
+        (("aggregate", "headline", "metric_name"), "accuracy", "aggregate"),
+        (("aggregate", "headline", "value"), 0.99, "aggregate"),
+        (("aggregate", "agreement", "rate"), 1.0, "aggregate"),
+        (("replicates", "per_item"), 2, "replicates"),
+        (("adjudication", "applies"), True, "adjudication"),
+        (("preregistration", "plan_sha256"), "0" * 64, "preregistration"),
+        (("preregistration", "frozen_commit"), "0" * 40, "preregistration"),
+        (("preregistration", "judge_template_version"), "invented", "preregistration"),
+        (("execution_manifest", "claims"), ["ordering"], "execution_manifest"),
+        (("execution_manifest", "sha256"), "0" * 64, "execution_manifest"),
+        (("attempts", "partial_published"), True, "attempts"),
+        (("attempts", "blocked_runs"), ["invented-retry"], "attempts"),
+        (("raw_outputs", "paths"), [], "raw_outputs"),
+        (("results", "design"), "two-arm experiment", "results"),
+        (("results", "arm_roles", "treatment_or_cohort_arms"), ["treatment"], "results"),
+        (("results", "arm_roles", "variant_packet_arms"), ["variant"], "results"),
+        (("results", "passed_tests"), 189, "results"),
+        (("results", "collected_tests"), 191, "results"),
+        (("results", "exit_status"), 1, "results"),
+        (("results", "synthetic_conformance_test_pass_rate"), 0.99, "results"),
+        (("verdict",), "The runtime is accurate in real manuscripts.", "verdict"),
+        (("caveats",), ["No caveats."], "caveats"),
+        (("unexpected",), "forbidden", "closed field set drifted"),
+    ),
+)
+def test_measurement_row_semantic_drift_fails_closed(
+    tmp_path: Path,
+    path: tuple[str | int, ...],
+    replacement: Any,
+    expected: str,
+) -> None:
+    root = _copy_repo(tmp_path)
+    _rewrite_canonical_json(
+        root,
+        integration.MEASUREMENT_REPORT,
+        lambda value: _set_json_path(value, path, replacement),
+    )
+    message = (
+        f"frozen field '{expected}' drifted"
+        if expected != "closed field set drifted"
+        else expected
+    )
+    _assert_error(root, message)
 
 
 def test_checker_imports_no_network_model_or_process_modules() -> None:

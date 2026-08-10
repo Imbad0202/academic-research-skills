@@ -15,6 +15,7 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 import sys
 import tomllib
 from pathlib import Path
@@ -69,6 +70,37 @@ CONFORMANCE_README = HELDOUT_ROOT / "tortured_phrase_conformance/README.md"
 MEASUREMENT_PLAN = HELDOUT_ROOT / "tortured_phrase_conformance/measurement_plan.md"
 SUITE_REGISTRY = HELDOUT_ROOT / "suite_registry.json"
 MEASUREMENT_CONTRACT = HELDOUT_ROOT / "MEASUREMENT_CONTRACT.md"
+MEASUREMENT_REPORT = (
+    HELDOUT_ROOT / "tortured_phrase_conformance/measurement-2026-08-10.json"
+)
+MEASUREMENT_TRANSCRIPT = (
+    HELDOUT_ROOT
+    / "tortured_phrase_conformance/runs/2026-08-10/raw/pytest-transcript.json"
+)
+MEASUREMENT_EXECUTION_MANIFEST = (
+    HELDOUT_ROOT
+    / "tortured_phrase_conformance/runs/2026-08-10/execution-manifest.json"
+)
+
+FROZEN_MAIN_SHA = "86bf0e5c2cedb300d6d1c6428470cdcedfbf97df"
+FROZEN_PLAN_SHA256 = (
+    "c5ca307f2e5941d8b6ed411169d7dc956d0290de7c75a54b25b8e04e070e0792"
+)
+MEASUREMENT_COMMAND = "python -m pytest -q scripts/test_tortured_phrase_screening.py"
+MEASUREMENT_COMMAND_SHA256 = (
+    "3c85403d49ddbe4907b6277d2664c006b364c045fb1c1db412a817dcd855c110"
+)
+MEASUREMENT_TRANSCRIPT_SHA256 = (
+    "62252493e7c5b04e5a7276e60d54696c6df251f704f6237980f4932b9bb76541"
+)
+MEASUREMENT_EXECUTION_MANIFEST_SHA256 = (
+    "a3801e22c2482a3fba05e65b520ceeedacf7e4d8fdc57f8fce1bfd111d05e6c1"
+)
+MEASUREMENT_REPORT_SHA256 = (
+    "fdb3f4b1300dbe10a9982c7663668e997556868507e4bfcf7cd088f10990fd11"
+)
+MEASUREMENT_STARTED_AT = "2026-08-10T04:31:45.398248Z"
+MEASUREMENT_COMPLETED_AT = "2026-08-10T04:31:50.553009Z"
 
 SNAPSHOT_VERSION = "tortured-phrase-snapshot/1.0"
 MANIFEST_VERSION = "tortured-phrase-snapshot-manifest/1.0"
@@ -1446,7 +1478,14 @@ def _measurement_plan_errors(root: Path) -> list[str]:
 
     readme = _squash_whitespace(texts.get(CONFORMANCE_README, ""))
     readme_tokens = (
-        "implementation PR registers and freezes this suite but remains `UNMEASURED`",
+        f"The frozen post-main measurement was executed once on 2026-08-10 "
+        f"against commit `{FROZEN_MAIN_SHA}`",
+        "190 of 190 collected tests passed",
+        "uses zero judges",
+        "exact execution evidence",
+        "The supported conclusion is only that the pinned deterministic runtime "
+        "passed the pinned repository-owned synthetic conformance suite",
+        "real-world false-positive/false-negative performance remain `UNMEASURED`",
         "contextual false-positive/false-negative labels",
         "not empirical false-positive or false-negative rates",
         "only a synthetic grammar/normalization/parser/replay conformance statement",
@@ -1460,29 +1499,403 @@ def _measurement_plan_errors(root: Path) -> list[str]:
     return errors
 
 
-def _measurement_errors(root: Path) -> list[str]:
+def _json_values_equal(actual: Any, expected: Any) -> bool:
+    """Compare JSON values without Python's bool/int or int/float coercions."""
+
+    if type(actual) is not type(expected):
+        return False
+    if isinstance(actual, dict):
+        return set(actual) == set(expected) and all(
+            _json_values_equal(actual[key], expected[key]) for key in actual
+        )
+    if isinstance(actual, list):
+        return len(actual) == len(expected) and all(
+            _json_values_equal(left, right)
+            for left, right in zip(actual, expected, strict=True)
+        )
+    return bool(actual == expected)
+
+
+def _exact_frozen_object_errors(
+    actual: dict[str, Any],
+    expected: dict[str, Any],
+    label: Path,
+) -> list[str]:
+    """Compare a closed evidence object while keeping diagnostics field-local."""
+
     errors: list[str] = []
+    actual_keys = set(actual)
+    expected_keys = set(expected)
+    if actual_keys != expected_keys:
+        errors.append(
+            f"{label}: closed field set drifted; expected "
+            f"{sorted(expected_keys)}, got {sorted(actual_keys)}"
+        )
+    for field in sorted(actual_keys & expected_keys):
+        if not _json_values_equal(actual[field], expected[field]):
+            errors.append(f"{label}: frozen field {field!r} drifted")
+    return errors
+
+
+def _canonical_json_bytes(value: dict[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _walk_heldout_json_files(root: Path) -> tuple[list[Path], list[str]]:
+    """Mirror held-out discovery for the closed one-row #660 cardinality rule."""
+
     heldout = root / HELDOUT_ROOT
-    if not heldout.exists():
-        return errors
-    for path in sorted(heldout.rglob("*.json")):
+    found: list[Path] = []
+    walk_errors: list[str] = []
+    visited: set[Path] = set()
+    repo_real = root.resolve()
+    heldout_real = heldout.resolve()
+
+    def walk(directory: Path) -> None:
         try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeError) as exc:
-            errors.append(f"{path.relative_to(root)}: cannot inspect measurement boundary: {exc}")
-            continue
-        lowered = text.lower()
-        if "measurement_contract" in text and any(
-            marker in lowered
-            for marker in (
-                "tortured-phrase",
-                "tortured_phrase",
-                "ars-synthetic-conformance-2026-08-10",
+            real = directory.resolve()
+        except OSError as exc:
+            walk_errors.append(f"{directory}: cannot resolve directory: {exc}")
+            return
+        if real in visited:
+            return
+        if not (real.is_relative_to(heldout_real) or real.is_relative_to(repo_real)):
+            walk_errors.append(
+                f"{directory}: symlinked directory resolves outside the repository"
             )
+            return
+        visited.add(real)
+        try:
+            entries = sorted(os.scandir(directory), key=lambda entry: entry.name)
+        except OSError as exc:
+            walk_errors.append(f"{directory}: unreadable directory: {exc}")
+            return
+        for entry in entries:
+            path = directory / entry.name
+            try:
+                is_dir = entry.is_dir(follow_symlinks=True)
+            except OSError:
+                is_dir = False
+            if is_dir:
+                walk(path)
+                continue
+            if path.suffix.lower() != ".json":
+                continue
+            try:
+                file_real = path.resolve()
+            except OSError as exc:
+                walk_errors.append(f"{path}: cannot resolve JSON file: {exc}")
+                continue
+            if not (
+                file_real.is_relative_to(heldout_real)
+                or file_real.is_relative_to(repo_real)
+            ):
+                walk_errors.append(
+                    f"{path}: file symlink resolves outside the repository"
+                )
+                continue
+            found.append(path)
+
+    if heldout.exists():
+        walk(heldout)
+    return found, walk_errors
+
+
+def _expected_measurement_transcript() -> dict[str, Any]:
+    return {
+        "schema_version": "tortured-phrase-conformance-transcript/1.0",
+        "command_utf8": MEASUREMENT_COMMAND,
+        "started_at": MEASUREMENT_STARTED_AT,
+        "completed_at": MEASUREMENT_COMPLETED_AT,
+        "exit_code": 0,
+        "environment": {
+            "python_implementation": "CPython",
+            "python_version": "3.11.15",
+            "pytest_version": "9.0.3",
+            "jsonschema_version": "4.26.0",
+            "ruamel_yaml_version": "0.17.21",
+        },
+        "stdout_utf8": (
+            "........................................................................ "
+            "[ 37%]\n"
+            "........................................................................ "
+            "[ 75%]\n"
+            "..............................................                           "
+            "[100%]\n"
+            "190 passed in 4.28s\n"
+        ),
+        "stderr_utf8": "",
+    }
+
+
+def _expected_execution_manifest() -> dict[str, Any]:
+    return {
+        "schema_version": "heldout-execution-manifest/1.0",
+        "suite": "tortured_phrase_conformance",
+        "created_at": MEASUREMENT_COMPLETED_AT,
+        "write_once": True,
+        "calls": [
+            {
+                "call_id": "tpc-2026-08-10-pytest",
+                "sequence_index": 1,
+                "started_at": MEASUREMENT_STARTED_AT,
+                "completed_at": MEASUREMENT_COMPLETED_AT,
+                "prompt_sha256": MEASUREMENT_COMMAND_SHA256,
+                "output_sha256": MEASUREMENT_TRANSCRIPT_SHA256,
+                "attempt": 1,
+            }
+        ],
+    }
+
+
+def _expected_measurement_report(manifest_sha256: str) -> dict[str, Any]:
+    return {
+        "measurement_contract": "heldout-measurement/1.1",
+        "suite": "tortured_phrase_conformance",
+        "suite_class": "mechanical_match",
+        "measurement_date": "2026-08-10",
+        "decision_relevant": True,
+        "subject": {
+            "model_id": "deterministic-runtime/tortured_phrase_screening.py",
+            "config": {"suite_commit": FROZEN_MAIN_SHA},
+        },
+        "judge_plan": {"exception": "mechanical_suite"},
+        "judges": [],
+        "aggregate": {
+            "headline": {
+                "metric_name": "synthetic_conformance_test_pass_rate",
+                "value": 1.0,
+                "construction_rule": (
+                    "passed_tests divided by collected_tests only when exit_status "
+                    "is 0, all collected tests pass, and failed, error, skipped, "
+                    "xfailed, and xpassed counts are zero."
+                ),
+                "estimand_status": "point_estimate",
+            },
+            "agreement": {
+                "rate": None,
+                "divergent_items": [],
+                "note": (
+                    "No judges are used for this mechanical suite, so agreement "
+                    "is not applicable."
+                ),
+            },
+        },
+        "replicates": {
+            "per_item": 1,
+            "rule_ref": (
+                "evals/heldout/tortured_phrase_conformance/measurement_plan.md"
+                "#frozen-metric-and-verdict"
+            ),
+            "spread": None,
+            "exception": (
+                "The deterministic exact-byte replay is not rerun to manufacture "
+                "variance."
+            ),
+        },
+        "adjudication": {"applies": False},
+        "preregistration": {
+            "plan_ref": str(MEASUREMENT_PLAN),
+            "plan_sha256": FROZEN_PLAN_SHA256,
+            "frozen_commit": FROZEN_MAIN_SHA,
+            "frozen_before_dispatch": True,
+            "rubric_and_plan_frozen_together": True,
+            "amendments_append_only": True,
+            "amendments": [],
+        },
+        "execution_manifest": {
+            "ref": str(MEASUREMENT_EXECUTION_MANIFEST),
+            "sha256": manifest_sha256,
+            "write_once": True,
+            "claims": [],
+        },
+        "attempts": {
+            "atomicity": (
+                "The exact registered command was dispatched once, with no retry "
+                "permitted."
+            ),
+            "partial_published": False,
+            "blocked_runs": [],
+        },
+        "raw_outputs": {
+            "retained": True,
+            "paths": [str(MEASUREMENT_TRANSCRIPT)],
+        },
+        "results": {
+            "design": "single-arm deterministic synthetic conformance",
+            "arm_roles": {
+                "treatment_or_cohort_arms": [],
+                "variant_packet_arms": [],
+            },
+            "passed_tests": 190,
+            "collected_tests": 190,
+            "exit_status": 0,
+            "synthetic_conformance_test_pass_rate": 1.0,
+        },
+        "verdict": (
+            "The pinned deterministic runtime passed the pinned repository-owned "
+            "synthetic conformance suite."
+        ),
+        "caveats": [
+            "Contextual validity and real-world false-positive/false-negative "
+            "performance remain UNMEASURED.",
+            "This result cannot certify clean text or infer paper-mill, AI, "
+            "misconduct, contamination, quality, acceptance, or origin.",
+        ],
+    }
+
+
+def _measurement_errors(root: Path) -> list[str]:
+    """Bind the one audited #660 measurement row and its exact evidence chain.
+
+    ``FROZEN_MAIN_SHA`` is the commit whose main ancestry and pre-dispatch freeze
+    were established by the human/git-history audit.  This integration checker
+    deliberately remains process-free.  The shared held-out report checker owns
+    the separate R3/R4 Git-object existence checks; here both commit fields are
+    closed to that audited object so neither can drift independently.
+    """
+
+    errors: list[str] = []
+    values: dict[Path, dict[str, Any]] = {}
+    raw_bytes: dict[Path, bytes] = {}
+    for relative in (
+        MEASUREMENT_REPORT,
+        MEASUREMENT_TRANSCRIPT,
+        MEASUREMENT_EXECUTION_MANIFEST,
+    ):
+        try:
+            value, raw = _load_json_bytes(root / relative)
+        except (OSError, UnicodeError, ValueError, DuplicateKeyError) as exc:
+            errors.append(
+                f"{relative}: cannot load canonical #660 measurement artifact: {exc}"
+            )
+        else:
+            values[relative] = value
+            raw_bytes[relative] = raw
+
+    heldout_files, walk_errors = _walk_heldout_json_files(root)
+    errors.extend(f"{HELDOUT_ROOT}: #660 row discovery failed: {error}" for error in walk_errors)
+    for path in heldout_files:
+        relative = path.relative_to(root)
+        if relative in {
+            MEASUREMENT_REPORT,
+            MEASUREMENT_TRANSCRIPT,
+            MEASUREMENT_EXECUTION_MANIFEST,
+        }:
+            continue
+        try:
+            candidate, _ = _load_json_bytes(path)
+        except (OSError, UnicodeError, ValueError, DuplicateKeyError) as exc:
+            if "tortured_phrase_conformance" in path.parts:
+                errors.append(
+                    f"{relative}: cannot inspect the closed #660 row set: {exc}"
+                )
+            continue
+        if "measurement_contract" in candidate and (
+            candidate.get("suite") == "tortured_phrase_conformance"
+            or "tortured_phrase_conformance" in path.parts
         ):
             errors.append(
-                f"{path.relative_to(root)}: #660 must remain UNMEASURED in this implementation"
+                f"{relative}: second #660 measurement row is forbidden; "
+                f"the only canonical row is {MEASUREMENT_REPORT}"
             )
+
+    try:
+        plan_sha256 = hashlib.sha256((root / MEASUREMENT_PLAN).read_bytes()).hexdigest()
+    except OSError as exc:
+        errors.append(f"{MEASUREMENT_PLAN}: cannot hash frozen plan bytes: {exc}")
+    else:
+        if plan_sha256 != FROZEN_PLAN_SHA256:
+            errors.append(
+                f"{MEASUREMENT_PLAN}: frozen plan sha256 drifted; expected "
+                f"{FROZEN_PLAN_SHA256}, got {plan_sha256}"
+            )
+
+    command_sha256 = hashlib.sha256(MEASUREMENT_COMMAND.encode("utf-8")).hexdigest()
+    if command_sha256 != MEASUREMENT_COMMAND_SHA256:
+        errors.append(
+            "#660 registered command bytes no longer match "
+            f"MEASUREMENT_COMMAND_SHA256 {MEASUREMENT_COMMAND_SHA256}"
+        )
+
+    transcript = values.get(MEASUREMENT_TRANSCRIPT)
+    transcript_raw = raw_bytes.get(MEASUREMENT_TRANSCRIPT)
+    if transcript is not None and transcript_raw is not None:
+        canonical_transcript = _canonical_json_bytes(transcript)
+        if transcript_raw != canonical_transcript:
+            errors.append(
+                f"{MEASUREMENT_TRANSCRIPT}: bytes must be canonical sorted compact "
+                "JSON with exactly one terminal LF"
+            )
+        transcript_sha256 = hashlib.sha256(transcript_raw).hexdigest()
+        if transcript_sha256 != MEASUREMENT_TRANSCRIPT_SHA256:
+            errors.append(
+                f"{MEASUREMENT_TRANSCRIPT}: frozen transcript sha256 drifted; "
+                f"expected {MEASUREMENT_TRANSCRIPT_SHA256}, got {transcript_sha256}"
+            )
+        errors.extend(
+            _exact_frozen_object_errors(
+                transcript,
+                _expected_measurement_transcript(),
+                MEASUREMENT_TRANSCRIPT,
+            )
+        )
+
+    manifest = values.get(MEASUREMENT_EXECUTION_MANIFEST)
+    manifest_raw = raw_bytes.get(MEASUREMENT_EXECUTION_MANIFEST)
+    manifest_sha256 = ""
+    if manifest is not None and manifest_raw is not None:
+        if manifest_raw != _canonical_json_bytes(manifest):
+            errors.append(
+                f"{MEASUREMENT_EXECUTION_MANIFEST}: bytes must be canonical sorted "
+                "compact JSON with exactly one terminal LF"
+            )
+        manifest_sha256 = hashlib.sha256(manifest_raw).hexdigest()
+        if manifest_sha256 != MEASUREMENT_EXECUTION_MANIFEST_SHA256:
+            errors.append(
+                f"{MEASUREMENT_EXECUTION_MANIFEST}: frozen manifest sha256 drifted; "
+                f"expected {MEASUREMENT_EXECUTION_MANIFEST_SHA256}, got "
+                f"{manifest_sha256}"
+            )
+        errors.extend(
+            _exact_frozen_object_errors(
+                manifest,
+                _expected_execution_manifest(),
+                MEASUREMENT_EXECUTION_MANIFEST,
+            )
+        )
+
+    report = values.get(MEASUREMENT_REPORT)
+    report_raw = raw_bytes.get(MEASUREMENT_REPORT)
+    if report is not None and report_raw is not None:
+        if report_raw != _canonical_json_bytes(report):
+            errors.append(
+                f"{MEASUREMENT_REPORT}: bytes must be canonical sorted compact JSON "
+                "with exactly one terminal LF"
+            )
+        report_sha256 = hashlib.sha256(report_raw).hexdigest()
+        if report_sha256 != MEASUREMENT_REPORT_SHA256:
+            errors.append(
+                f"{MEASUREMENT_REPORT}: frozen report sha256 drifted; expected "
+                f"{MEASUREMENT_REPORT_SHA256}, got {report_sha256}"
+            )
+    if report is not None and manifest_sha256:
+        errors.extend(
+            _exact_frozen_object_errors(
+                report,
+                _expected_measurement_report(manifest_sha256),
+                MEASUREMENT_REPORT,
+            )
+        )
     return errors
 
 
