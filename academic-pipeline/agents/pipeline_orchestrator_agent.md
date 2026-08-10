@@ -874,13 +874,6 @@ The finalizer writes no advisory marker token from this array; `display.marker_t
 All canonical records compose as lexically sorted formatter-owned `Bibliographic Integrity Advisories` rows in `provenance_summary.md`.
 Any `finding: unresolved` or `not_checked`/`unknown`/`degraded` status is unresolved, never clean results; see `shared/bibliographic_integrity_signals.md` for the epistemic/deprecation contract.
 
-The v1.2 `tortured_phrase_match` profile is permanently ineligible for terminal
-policy and adds no marker. Its `cited_title` and `cited_abstract` rows remain
-separate; `ABSTRACT_MISSING` remains visible as unresolved. The finalizer
-validates/carries those rows but does not rerun their local matcher, infer
-origin or paper-mill production, judge contextual validity, rewrite prose, or
-interpret `not_detected` as clean or accurate.
-
 ### Updated 5-cell + annotation resolution order
 
 For each `<!--ref:slug--><!--anchor:<kind>:<value>-->` marker pair:
