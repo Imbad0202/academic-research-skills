@@ -48,3 +48,15 @@ paths = [
 description = "Frozen E4 evidence-bundle model prose misread as generic-api-key (venue descriptors, not credentials)"
 targetRules = ["generic-api-key"]
 paths = ['''evals/heldout/reviewer_seeded_defects/runs/raw/.*\.md''']
+
+# Class 3 (rule-targeted): #660's repository-owned synthetic conformance
+# fixtures use citation_key values such as fixture_missing_2026. These are
+# deterministic literature-record identifiers, not credentials. All other
+# secret rules remain active over the same fixture bytes.
+[[allowlists]]
+description = "Synthetic tortured-phrase fixture citation keys misread as generic-api-key"
+targetRules = ["generic-api-key"]
+paths = [
+  '''scripts/fixtures/tortured_phrase_screening/.*''',
+  '''scripts/fixtures/bibliographic_integrity_signals/tortured_phrase_v1_2_.*\.json''',
+]
