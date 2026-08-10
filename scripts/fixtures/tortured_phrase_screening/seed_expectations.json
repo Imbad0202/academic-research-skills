@@ -1,0 +1,218 @@
+{
+  "schema_version": "tortured-phrase-seed-expectations/1.0",
+  "snapshot_id": "ars-synthetic-conformance-2026-08-10",
+  "snapshot_sha256": "962879909bfdd338047dc4569ff42188c4200fcd56a0a459b0e0f9169f2446c4",
+  "label_scope": "mechanical_matcher_conformance_only",
+  "empirical_accuracy_claimed": false,
+  "contextual_false_positive_labels_provided": false,
+  "contextual_false_negative_labels_provided": false,
+  "inputs": [
+    {
+      "path": "own_draft.md",
+      "expected_counts": {
+        "matched_rule_count": 14,
+        "rule_match_count": 15,
+        "unique_instance_count": 14
+      },
+      "expected_matches": [
+        {
+          "rule_id": "syn_literal_author",
+          "count": 1,
+          "context": "author_prose"
+        },
+        {
+          "rule_id": "syn_all_segment",
+          "count": 1,
+          "context": "author_prose"
+        },
+        {
+          "rule_id": "syn_any_segment",
+          "count": 1,
+          "context": "author_prose",
+          "matched_alternative_index": 0
+        },
+        {
+          "rule_id": "syn_near_ordered",
+          "count": 1,
+          "context": "author_prose"
+        },
+        {
+          "rule_id": "syn_exclude_segment",
+          "count": 1,
+          "context": "quote"
+        },
+        {
+          "rule_id": "syn_overlap_long",
+          "count": 1,
+          "context": "author_prose",
+          "overlap_group": "md-overlap-1"
+        },
+        {
+          "rule_id": "syn_overlap_short",
+          "count": 1,
+          "context": "author_prose",
+          "overlap_group": "md-overlap-1"
+        },
+        {
+          "rule_id": "syn_nfkc_casefold",
+          "count": 1,
+          "context": "author_prose",
+          "normalization_case": "nfkc_casefold"
+        },
+        {
+          "rule_id": "syn_dash_same_line",
+          "count": 1,
+          "context": "author_prose",
+          "normalization_case": "same_line_dash_separator"
+        },
+        {
+          "rule_id": "syn_soft_hyphen",
+          "count": 1,
+          "context": "author_prose",
+          "normalization_case": "soft_hyphen_join"
+        },
+        {
+          "rule_id": "syn_hyphen_line_break",
+          "count": 1,
+          "context": "author_prose",
+          "normalization_case": "line_break_hyphen_join"
+        },
+        {
+          "rule_id": "syn_context_quote",
+          "count": 1,
+          "context": "quote"
+        },
+        {
+          "rule_id": "syn_context_code",
+          "count": 2,
+          "context": "code_or_verbatim"
+        },
+        {
+          "rule_id": "syn_context_reference",
+          "count": 1,
+          "context": "reference_entry"
+        }
+      ],
+      "expected_suppressions": [
+        {
+          "rule_id": "syn_exclude_segment",
+          "count": 1,
+          "context": "author_prose",
+          "reason": "exclude_if_within_token_window"
+        }
+      ],
+      "expected_non_matches": [
+        {
+          "rule_id": "syn_boundary_orb",
+          "reason": "token_boundary"
+        }
+      ]
+    },
+    {
+      "path": "own_draft.tex",
+      "expected_counts": {
+        "matched_rule_count": 5,
+        "rule_match_count": 5,
+        "unique_instance_count": 5
+      },
+      "expected_matches": [
+        {
+          "rule_id": "syn_literal_author",
+          "count": 1,
+          "context": "author_prose"
+        },
+        {
+          "rule_id": "syn_dash_same_line",
+          "count": 1,
+          "context": "author_prose",
+          "normalization_case": "same_line_dash_separator"
+        },
+        {
+          "rule_id": "syn_context_quote",
+          "count": 1,
+          "context": "quote"
+        },
+        {
+          "rule_id": "syn_context_code",
+          "count": 1,
+          "context": "code_or_verbatim"
+        },
+        {
+          "rule_id": "syn_context_reference",
+          "count": 1,
+          "context": "reference_entry"
+        }
+      ],
+      "expected_suppressions": [],
+      "expected_non_matches": []
+    },
+    {
+      "path": "corpus_input.yaml",
+      "records": [
+        {
+          "citation_key": "fixture_complete_2026",
+          "surfaces": {
+            "title": {
+              "check_status": "checked",
+              "reason": "CHECK_COMPLETED",
+              "expected_rule_ids": [
+                "syn_context_reference"
+              ]
+            },
+            "abstract": {
+              "check_status": "checked",
+              "reason": "CHECK_COMPLETED",
+              "expected_rule_ids": [
+                "syn_corpus_abstract"
+              ]
+            }
+          }
+        },
+        {
+          "citation_key": "fixture_missing_2026",
+          "surfaces": {
+            "title": {
+              "check_status": "checked",
+              "reason": "CHECK_COMPLETED",
+              "expected_rule_ids": [
+                "syn_corpus_missing_abstract_title"
+              ]
+            },
+            "abstract": {
+              "check_status": "not_checked",
+              "reason": "ABSTRACT_MISSING",
+              "expected_rule_ids": []
+            }
+          }
+        },
+        {
+          "citation_key": "fixture_negative_2026",
+          "surfaces": {
+            "title": {
+              "check_status": "checked",
+              "reason": "CHECK_COMPLETED",
+              "expected_rule_ids": [],
+              "non_match_reasons": [
+                {
+                  "rule_id": "syn_boundary_orb",
+                  "reason": "token_boundary"
+                }
+              ]
+            },
+            "abstract": {
+              "check_status": "checked",
+              "reason": "CHECK_COMPLETED",
+              "expected_rule_ids": [],
+              "non_match_reasons": [
+                {
+                  "rule_id": "syn_exclude_segment",
+                  "reason": "exclude_if_in_same_segment"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

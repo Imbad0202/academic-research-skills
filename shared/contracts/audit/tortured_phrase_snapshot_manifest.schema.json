@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/audit/tortured_phrase_snapshot_manifest.schema.json",
+  "title": "Tortured-phrase snapshot manifest",
+  "description": "Detached provenance, preprocessing, and rights manifest for one exact canonical tortured-phrase snapshot. snapshot_sha256 covers the exact UTF-8 snapshot file bytes; it is not a hash of a reserialized JSON value. The manifest never authorizes fetching or redistribution by itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "source",
+    "supply_mode",
+    "snapshot_schema_version",
+    "snapshot_sha256",
+    "grammar_profile",
+    "normalizer_profile",
+    "preprocessor",
+    "unsupported_rule_count",
+    "rule_count",
+    "rights"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tortured-phrase-snapshot-manifest/1.0"
+    },
+    "snapshot_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "supply_mode": {
+      "enum": [
+        "user_supplied",
+        "synthetic_fixture"
+      ]
+    },
+    "snapshot_schema_version": {
+      "const": "tortured-phrase-snapshot/1.0"
+    },
+    "snapshot_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "grammar_profile": {
+      "const": "ars-tortured-phrase-canonical-ast/1.0"
+    },
+    "normalizer_profile": {
+      "const": "ars-nfkc-casefold-token/1.0"
+    },
+    "preprocessor": {
+      "$ref": "#/$defs/preprocessor"
+    },
+    "unsupported_rule_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 512
+    },
+    "rule_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 512
+    },
+    "rights": {
+      "$ref": "#/$defs/rights"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "supply_mode": {
+            "const": "synthetic_fixture"
+          }
+        },
+        "required": [
+          "supply_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "basis": {
+                "const": "synthetic_fixture"
+              },
+              "redistribution_status": {
+                "const": "permitted"
+              },
+              "reference": {
+                "type": "null"
+              },
+              "user_declaration": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "basis": {
+                "const": "user_declared_authorized"
+              }
+            },
+            "required": [
+              "basis"
+            ]
+          }
+        },
+        "required": [
+          "rights"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "user_declaration": {
+                "$ref": "#/$defs/nonempty_reference"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "basis": {
+                "const": "written_permission"
+              }
+            },
+            "required": [
+              "basis"
+            ]
+          }
+        },
+        "required": [
+          "rights"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "reference": {
+                "$ref": "#/$defs/nonempty_reference"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "basis": {
+                "const": "unresolved"
+              }
+            },
+            "required": [
+              "basis"
+            ]
+          }
+        },
+        "required": [
+          "rights"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rights": {
+            "properties": {
+              "redistribution_status": {
+                "const": "unresolved"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "bounded_line": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "nonempty_reference": {
+      "$ref": "#/$defs/bounded_line"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "as_of",
+        "locator"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date"
+        },
+        "locator": {
+          "$ref": "#/$defs/bounded_line"
+        }
+      }
+    },
+    "preprocessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "native_grammar",
+        "reduction_notes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+        },
+        "native_grammar": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reduction_notes": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/bounded_line"
+          }
+        }
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basis",
+        "redistribution_status",
+        "reference",
+        "user_declaration"
+      ],
+      "properties": {
+        "basis": {
+          "enum": [
+            "synthetic_fixture",
+            "user_declared_authorized",
+            "written_permission",
+            "unresolved"
+          ]
+        },
+        "redistribution_status": {
+          "enum": [
+            "permitted",
+            "not_permitted",
+            "unresolved"
+          ]
+        },
+        "reference": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/nonempty_reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "user_declaration": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/nonempty_reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

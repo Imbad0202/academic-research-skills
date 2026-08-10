@@ -441,6 +441,14 @@ id = "678-bibliographic-integrity-signals"
 path = "scripts/test_check_bibliographic_integrity_signals.py"
 
 [[pytest]]
+id = "660-tortured-phrase-screening"
+path = "scripts/test_tortured_phrase_screening.py"
+
+[[pytest]]
+id = "660-tortured-phrase-integration"
+path = "scripts/test_check_tortured_phrase_screening_integration.py"
+
+[[pytest]]
 id = "651-retraction-status"
 path = "scripts/test_retraction_status.py"
 

@@ -78,6 +78,7 @@ table below is an informative mirror:
 | `pipeline_behavior_robustness` | `mechanical_match` | full-expectation mechanical match; judge only transcribes |
 | `reviewer_seeded_defects` | `seeded_manifest_adjudicated` | E4 machinery remains normative and unchanged; see adoption surface below |
 | `re_review_persuasion_invariance` | `paired_controls` | reuses E4 machinery per its README (SD-11) |
+| `tortured_phrase_conformance` | `mechanical_match` | synthetic grammar, normalization, parsing, replay, and fail-safe conformance only; no contextual-accuracy claim |
 
 Class semantics (schema branches B1-B3 + checker):
 

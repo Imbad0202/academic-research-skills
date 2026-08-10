@@ -37,13 +37,22 @@ except ImportError as e:
     )
     sys.exit(2)
 
-# Dual-path import (mirrors arxiv_client.py): the v3.10 laundering guard
-# (#329) lives in check_v3_10_policy and is wired here so it runs over REAL
-# passport entries, not just fixtures.
-try:
+# Dual-path imports: package mode must stay anchored to this repository's
+# ``scripts`` namespace so an earlier PYTHONPATH entry cannot shadow either
+# policy dependency. Direct-script mode has no package context and therefore
+# uses the sibling modules exposed by the script directory on sys.path.
+if __package__:
+    from .check_v3_10_policy import assert_venue_type_source_clean
+    from .tortured_phrase_screening import (
+        ScreeningError as TorturedPhraseScreeningError,
+        validate_cited_signal_binding,
+    )
+else:
     from check_v3_10_policy import assert_venue_type_source_clean
-except ImportError:
-    from scripts.check_v3_10_policy import assert_venue_type_source_clean
+    from tortured_phrase_screening import (
+        ScreeningError as TorturedPhraseScreeningError,
+        validate_cited_signal_binding,
+    )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENTRY_SCHEMA_PATH = REPO_ROOT / "shared/contracts/passport/literature_corpus_entry.schema.json"
@@ -162,8 +171,10 @@ def validate_passport(
                 signals = entry.get("bibliographic_integrity_signals", [])
                 if isinstance(signals, list):
                     signal_ids: dict[str, int] = {}
+                    current_phrase_surfaces: dict[str, list[dict]] = {}
                     for signal_i, signal in enumerate(signals):
-                        for err in signal_validator.iter_errors(signal):
+                        signal_problems = list(signal_validator.iter_errors(signal))
+                        for err in signal_problems:
                             errors.append(
                                 f"{path}: literature_corpus[{i}]."
                                 f"bibliographic_integrity_signals[{signal_i}] "
@@ -188,6 +199,30 @@ def validate_passport(
                                     f"targets citation_key {signal_citation!r}, not "
                                     f"its containing entry {entry_citation!r}"
                                 )
+                            if (
+                                not signal_problems
+                                and signal.get("signal_type")
+                                == "tortured_phrase_match"
+                            ):
+                                try:
+                                    validate_cited_signal_binding(signal, entry)
+                                except TorturedPhraseScreeningError as exc:
+                                    errors.append(
+                                        f"{path}: literature_corpus[{i}]."
+                                        f"bibliographic_integrity_signals[{signal_i}] "
+                                        f"tortured-phrase binding error: {exc}"
+                                    )
+                                context = signal.get("tortured_phrase_context")
+                                if (
+                                    signal.get("schema_version")
+                                    == "bibliographic-integrity-signal/1.2"
+                                    and isinstance(context, dict)
+                                    and isinstance(context.get("surface"), str)
+                                ):
+                                    surface = context["surface"]
+                                    current_phrase_surfaces.setdefault(surface, []).append(
+                                        signal
+                                    )
                     for signal_id, count in signal_ids.items():
                         if count > 1:
                             errors.append(
@@ -195,6 +230,66 @@ def validate_passport(
                                 "bibliographic_integrity_signals: duplicate "
                                 f"signal_id {signal_id!r} appears {count} times"
                             )
+                    for surface, rows in current_phrase_surfaces.items():
+                        if len(rows) > 1:
+                            errors.append(
+                                f"{path}: literature_corpus[{i}]."
+                                "bibliographic_integrity_signals: multiple current "
+                                f"tortured-phrase rows for surface {surface!r}"
+                            )
+                    if current_phrase_surfaces:
+                        for required_surface in (
+                            "cited_title",
+                            "cited_abstract",
+                        ):
+                            if not current_phrase_surfaces.get(required_surface):
+                                errors.append(
+                                    f"{path}: literature_corpus[{i}]."
+                                    "bibliographic_integrity_signals: current "
+                                    "tortured-phrase v1.2 rows require exactly one "
+                                    f"{required_surface!r} row; none was found"
+                                )
+                        title_rows = current_phrase_surfaces.get("cited_title", [])
+                        abstract_rows = current_phrase_surfaces.get(
+                            "cited_abstract", []
+                        )
+                        if len(title_rows) == len(abstract_rows) == 1:
+                            title_row = title_rows[0]
+                            abstract_row = abstract_rows[0]
+                            title_context = title_row["tortured_phrase_context"]
+                            abstract_context = abstract_row["tortured_phrase_context"]
+                            if title_context["snapshot"] != abstract_context["snapshot"]:
+                                errors.append(
+                                    f"{path}: literature_corpus[{i}]."
+                                    "bibliographic_integrity_signals: current "
+                                    "tortured-phrase title/abstract rows must bind the "
+                                    "same snapshot and detached manifest"
+                                )
+                            title_provenance = title_row["provenance"]
+                            abstract_provenance = abstract_row["provenance"]
+                            if (
+                                title_provenance["recorded_at"]
+                                != abstract_provenance["recorded_at"]
+                            ):
+                                errors.append(
+                                    f"{path}: literature_corpus[{i}]."
+                                    "bibliographic_integrity_signals: current "
+                                    "tortured-phrase title/abstract rows must come "
+                                    "from the same recorded run"
+                                )
+                            title_checked = title_provenance["checked_at"]
+                            abstract_checked = abstract_provenance["checked_at"]
+                            if (
+                                title_checked is not None
+                                and abstract_checked is not None
+                                and title_checked != abstract_checked
+                            ):
+                                errors.append(
+                                    f"{path}: literature_corpus[{i}]."
+                                    "bibliographic_integrity_signals: checked "
+                                    "tortured-phrase title/abstract rows must share "
+                                    "the exact checked_at value"
+                                )
             vts = entry.get("venue_type_source", "")
             vtp = entry.get("venue_type_provenance", "")
             if isinstance(vts, str) and isinstance(vtp, str):

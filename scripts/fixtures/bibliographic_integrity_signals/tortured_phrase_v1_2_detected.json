@@ -1,0 +1,124 @@
+{
+  "schema_version": "bibliographic-integrity-signal/1.2",
+  "signal_id": "bis:fixture_complete_2026:tpm_title_bd2b4979a30f74c7fd4a",
+  "signal_type": "tortured_phrase_match",
+  "epistemic_class": "heuristic_advisory",
+  "epistemic_label": "HEURISTIC-INDICATOR",
+  "check_status": "checked",
+  "finding": "detected",
+  "evidence": [
+    {
+      "evidence_type": "phrase_match",
+      "source_name": "ARS synthetic matcher conformance fixture",
+      "record_locator": "title",
+      "observed_value": 1,
+      "evidence_sha256": "ac8cea1f2d462d7b9d80ed20a9be321dd2b928a4d3672ed8b716357f41c9f278"
+    }
+  ],
+  "provenance": {
+    "source_name": "ARS synthetic matcher conformance fixture",
+    "source_version": "synthetic/1.0",
+    "source_sha256": "962879909bfdd338047dc4569ff42188c4200fcd56a0a459b0e0f9169f2446c4",
+    "checked_at": "2026-08-10T01:00:00Z",
+    "recorded_at": "2026-08-10T01:00:01Z",
+    "stale_after": null,
+    "freshness": "unknown"
+  },
+  "subject": {
+    "citation_key": "fixture_complete_2026",
+    "source_pointer": "fixture://tortured-phrase/complete",
+    "affected_claims": []
+  },
+  "terminal_policy": {
+    "eligible": false,
+    "owner": "none",
+    "policy_key": null,
+    "current_effect": "advisory_only"
+  },
+  "display": {
+    "carrier": "provenance_summary",
+    "section": "Bibliographic Integrity Advisories",
+    "summary_label": "Phrase-list screening advisory",
+    "marker_token": null
+  },
+  "tortured_phrase_context": {
+    "layer": "HEURISTIC-ADVISORY",
+    "evaluation_status": "UNMEASURED",
+    "surface": "cited_title",
+    "surface_binding": {
+      "content_sha256": "ac8cea1f2d462d7b9d80ed20a9be321dd2b928a4d3672ed8b716357f41c9f278",
+      "content_utf8_bytes": 41
+    },
+    "snapshot": {
+      "status": "loaded",
+      "reason_code": "CHECK_COMPLETED",
+      "snapshot_sha256": "962879909bfdd338047dc4569ff42188c4200fcd56a0a459b0e0f9169f2446c4",
+      "manifest_sha256": "34bfa9f92a612cd7e794024dded98ed96b0968dbc0f2c924d68cafbe3f280924",
+      "snapshot_id": "ars-synthetic-conformance-2026-08-10",
+      "source": {
+        "name": "ARS synthetic matcher conformance fixture",
+        "version": "synthetic/1.0",
+        "as_of": "2026-08-10",
+        "locator": "fixture://tortured-phrase/snapshot"
+      },
+      "supply_mode": "synthetic_fixture",
+      "snapshot_schema_version": "tortured-phrase-snapshot/1.0",
+      "grammar_profile": "ars-tortured-phrase-canonical-ast/1.0",
+      "normalizer_profile": "ars-nfkc-casefold-token/1.0",
+      "unicode_data_version": "14.0.0",
+      "rule_count": 17,
+      "unsupported_rule_count": 0,
+      "rights": {
+        "basis": "synthetic_fixture",
+        "redistribution_status": "permitted",
+        "reference": null,
+        "user_declaration": null
+      }
+    },
+    "reason_code": "CHECK_COMPLETED",
+    "counts": {
+      "rules_evaluated": 17,
+      "matched_rule_count": 1,
+      "rule_match_count": 1,
+      "unique_instance_count": 1,
+      "segments_total": 1,
+      "unknown_segments": 0,
+      "matches_by_context": {
+        "author_prose": 0,
+        "quote": 0,
+        "cited_title": 1,
+        "reference_entry": 0,
+        "code_or_verbatim": 0,
+        "unknown": 0,
+        "cited_abstract": 0
+      }
+    },
+    "matches": [
+      {
+        "match_id": "tpm-04fd3e70898ad5db821c74aa",
+        "pattern_id": "syn_context_reference",
+        "pattern_sha256": "2d027178f5c464a221e29031a8a681d7de16ed35371d0d8a2aaadc59dc114230",
+        "segment_id": "SEG-000001",
+        "context": "cited_title",
+        "disposition": "preserve_verbatim_review_context",
+        "source_span": {
+          "codepoint_start": 0,
+          "codepoint_end": 18,
+          "utf8_start": 0,
+          "utf8_end": 18
+        },
+        "matched_text": "Cited Turnip Atlas",
+        "matched_text_sha256": "d4376a7af4908abd3f1b9b7af94af9d75d6bf30da78ee43590e12bd9e15e8dff"
+      }
+    ],
+    "boundary": {
+      "list_match_only": true,
+      "origin_inference": "not_performed",
+      "contextual_judgment": "not_performed",
+      "automatic_rewrite": false,
+      "absence_is_clean_certificate": false,
+      "native_pps_compatibility": "not_claimed",
+      "sharing_scope": "local_only"
+    }
+  }
+}

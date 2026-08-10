@@ -44,6 +44,34 @@ Execution steps:
 5. ⚠️ **IRON RULE**: Must PASS with zero issues to proceed to Stage 5
 ```
 
+## Tortured-Phrase Advisory Boundary (#660)
+
+Tortured-phrase screening is not a sixth integrity phase and never changes a
+Stage 2.5 or Stage 4.5 PASS/FAIL decision. After the exact final draft passes
+Stage 4.5, the orchestrator builds the separate own-draft
+`tortured-phrase-advisory/1.0` immediately before formatting. It remains
+`HEURISTIC-ADVISORY` / `UNMEASURED`; a match requires review but establishes no
+AI/author origin, paper-mill production, misconduct, cleanliness, contextual
+false-positive/false-negative status, accuracy, or publisher acceptance. A
+zero-match result states only that no list match was observed on the checked
+bytes and is not a clean certification.
+
+The checker consumes only the explicitly named local draft and, when supplied,
+canonical snapshot and detached-manifest paths. The manifest's
+`snapshot_sha256` binds the exact raw snapshot bytes and declares
+`user_supplied` or `synthetic_fixture` supply; omitted supply produces an
+explicit `not_checked` artifact. The #660 path
+has no native PPS import/fetch or redistributed PPS content and invokes no
+model, external API, human/model judge, ambient clock, file time, or network
+time; timestamps are explicit inputs. It never edits the draft. A user-chosen
+revision changes the checked bytes and must re-enter the existing integrity
+and screening sequence rather than being auto-rewritten by the advisory.
+
+Cited-source v1.2 rows remain separate per title and abstract. A missing
+abstract is explicit `not_checked` / `unresolved` (`ABSTRACT_MISSING`). They
+render only in the single `Bibliographic Integrity Advisories` section and
+never mint a marker, trigger a gate, or supply replacement text.
+
 ## Score Trajectory Tracking (v3.3)
 
 Reference: `academic-pipeline/references/score_trajectory_protocol.md`

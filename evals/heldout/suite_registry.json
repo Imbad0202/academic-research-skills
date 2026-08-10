@@ -4,5 +4,6 @@
   "rq_framing_offlist": "llm_judged",
   "pipeline_behavior_robustness": "mechanical_match",
   "reviewer_seeded_defects": "seeded_manifest_adjudicated",
-  "re_review_persuasion_invariance": "paired_controls"
+  "re_review_persuasion_invariance": "paired_controls",
+  "tortured_phrase_conformance": "mechanical_match"
 }

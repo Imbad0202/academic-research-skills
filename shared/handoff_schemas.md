@@ -704,6 +704,33 @@ Consumer integration ships in v3.6.5: `bibliography_agent` (deep-research, Phase
 
 See [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md) for the adapter contract.
 
+### Tortured-Phrase Advisory Extension (#660)
+
+An entry's existing optional `bibliographic_integrity_signals[]` carrier may
+hold `bibliographic-integrity-signal/1.2` tortured-phrase rows. When the local
+check is invoked, there is one current row for `cited_title` and one for
+`cited_abstract`; the surfaces never share a rolled-up status. A missing
+abstract is retained as `not_checked` / `unresolved` with
+`ABSTRACT_MISSING`; a present whitespace-only abstract uses `ABSTRACT_EMPTY`.
+A checked zero-match row reports only no observed match on
+the exact hash-bound surface and is not a clean certificate.
+
+The producer consumes an explicitly named, exact-byte-SHA-256-bound
+user-supplied or synthetic snapshot/manifest pair. It has no native PPS
+importer or fetch path, redistributes no PPS list content, and invokes no
+model, API, judge, or ambient clock. It writes a new passport copy rather than
+changing the source passport, title, abstract, or citation in place. Phase 1
+corpus consumers remain read-only and do not use this heuristic to include,
+exclude, rank, rewrite, or label a source's origin.
+
+Rows remain `HEURISTIC-INDICATOR` with a closed
+`HEURISTIC-ADVISORY` / `UNMEASURED` context. They render only in the single
+`Bibliographic Integrity Advisories` section, never as a reference marker,
+terminal policy, gate, replacement, or rewrite. The separate own-draft
+`tortured-phrase-advisory/1.0` artifact is not a Schema 9 field and carries no
+paper-mill, AI/author-origin, cleanliness, contextual-validity, or accuracy
+claim. Authority: [`shared/bibliographic_integrity_signals.md`](bibliographic_integrity_signals.md).
+
 ### Audit Artifact Ledger (v3.6.7)
 
 Schema 9 gains an optional append-only `audit_artifact[]` ledger recording cross-model audit runs that gate the three v3.6.7 downstream agents (`synthesis_agent`, `research_architect_agent` survey-designer mode, `report_compiler_agent` abstract-only mode). Each entry conforms to [`shared/contracts/passport/audit_artifact_entry.schema.json`](contracts/passport/audit_artifact_entry.schema.json).

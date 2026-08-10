@@ -1,0 +1,29 @@
+{
+  "schema_version": "tortured-phrase-snapshot-manifest/1.0",
+  "snapshot_id": "ars-synthetic-conformance-2026-08-10",
+  "source": {
+    "name": "ARS synthetic matcher conformance fixture",
+    "version": "synthetic/1.0",
+    "as_of": "2026-08-10",
+    "locator": "fixture://tortured-phrase/snapshot"
+  },
+  "supply_mode": "synthetic_fixture",
+  "snapshot_schema_version": "tortured-phrase-snapshot/1.0",
+  "snapshot_sha256": "962879909bfdd338047dc4569ff42188c4200fcd56a0a459b0e0f9169f2446c4",
+  "grammar_profile": "ars-tortured-phrase-canonical-ast/1.0",
+  "normalizer_profile": "ars-nfkc-casefold-token/1.0",
+  "preprocessor": {
+    "name": "ars-synthetic-fixture-authoring",
+    "version": "1.0",
+    "native_grammar": "synthetic-canonical-ast/1.0",
+    "reduction_notes": []
+  },
+  "unsupported_rule_count": 0,
+  "rule_count": 17,
+  "rights": {
+    "basis": "synthetic_fixture",
+    "redistribution_status": "permitted",
+    "reference": null,
+    "user_declaration": null
+  }
+}

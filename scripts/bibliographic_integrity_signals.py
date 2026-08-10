@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import argparse
 import copy
+import datetime as dt
 import hashlib
+import html
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +47,35 @@ _SUMMARY_LABELS = {
     "tortured_phrase_match": "Tortured-phrase heuristic match",
 }
 
+_TORTURED_PHRASE_CONTEXTS = (
+    "author_prose",
+    "quote",
+    "cited_title",
+    "reference_entry",
+    "code_or_verbatim",
+    "unknown",
+    "cited_abstract",
+)
+_TORTURED_PHRASE_RFC3339_RE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt]"
+    r"(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"
+    r"(?:\.[0-9]{1,6})?(?:[Zz]|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+)
+
+
+def _empty_tortured_phrase_counts() -> dict[str, Any]:
+    return {
+        "rules_evaluated": 0,
+        "matched_rule_count": 0,
+        "rule_match_count": 0,
+        "unique_instance_count": 0,
+        "segments_total": 0,
+        "unknown_segments": 0,
+        "matches_by_context": {
+            context: 0 for context in _TORTURED_PHRASE_CONTEXTS
+        },
+    }
+
 
 def _signal_id(citation_key: str, signal_type: str) -> str:
     if re.fullmatch(r"[A-Za-z0-9_:-]+", citation_key):
@@ -63,6 +95,282 @@ def validation_errors(signal: dict[str, Any]) -> list[str]:
         load_schema(), format_checker=Draft202012Validator.FORMAT_CHECKER
     )
     return sorted(error.message for error in validator.iter_errors(signal))
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+
+
+def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
+    """Validate v1.2 invariants that do not require the source corpus entry."""
+
+    if signal.get("schema_version") != "bibliographic-integrity-signal/1.2":
+        return
+    context = signal["tortured_phrase_context"]
+    surface = context["surface"]
+    binding = context["surface_binding"]
+    snapshot = context["snapshot"]
+    content_utf8_bytes = binding["content_utf8_bytes"]
+    if binding["content_sha256"] is not None and (
+        isinstance(content_utf8_bytes, bool)
+        or not isinstance(content_utf8_bytes, int)
+        or content_utf8_bytes < 1
+    ):
+        raise ValueError(
+            "present tortured-phrase surface requires positive content_utf8_bytes"
+        )
+    citation_key = signal["subject"]["citation_key"]
+    payload = {
+        "citation_key": citation_key,
+        "surface": surface,
+        "snapshot_sha256": snapshot["snapshot_sha256"],
+        "content_sha256": binding["content_sha256"],
+    }
+    suffix = hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()[:20]
+    surface_slug = "title" if surface == "cited_title" else "abstract"
+    expected_signal_id = f"bis:{citation_key}:tpm_{surface_slug}_{suffix}"
+    if signal["signal_id"] != expected_signal_id:
+        raise ValueError("tortured-phrase signal_id binding mismatch")
+
+    matches = context["matches"]
+    counts = context["counts"]
+    if counts["rule_match_count"] != len(matches):
+        raise ValueError("tortured-phrase rule_match_count mismatch")
+    if counts["matched_rule_count"] != len({item["pattern_id"] for item in matches}):
+        raise ValueError("tortured-phrase matched_rule_count mismatch")
+    intervals: dict[str, list[tuple[int, int]]] = {}
+    seen_match_ids: set[str] = set()
+    artifact_sha = binding["content_sha256"] or hashlib.sha256(b"").hexdigest()
+    expected_context = surface
+    expected_disposition = (
+        "preserve_verbatim_review_context"
+        if surface == "cited_title"
+        else "review_cited_source_no_automatic_rewrite"
+    )
+    for index, match in enumerate(matches):
+        if match["segment_id"] != "SEG-000001":
+            raise ValueError(
+                f"tortured-phrase matches[{index}] segment_id mismatch"
+            )
+        if match["context"] != expected_context:
+            raise ValueError(f"tortured-phrase matches[{index}] context mismatch")
+        if match["disposition"] != expected_disposition:
+            raise ValueError(
+                f"tortured-phrase matches[{index}] disposition mismatch"
+            )
+        if hashlib.sha256(match["matched_text"].encode("utf-8")).hexdigest() != match[
+            "matched_text_sha256"
+        ]:
+            raise ValueError(f"tortured-phrase matches[{index}] text hash mismatch")
+        span = match["source_span"]
+        codepoint_start = span["codepoint_start"]
+        codepoint_end = span["codepoint_end"]
+        utf8_start = span["utf8_start"]
+        utf8_end = span["utf8_end"]
+        matched_text = match["matched_text"]
+        if not codepoint_start < codepoint_end or not utf8_start < utf8_end:
+            raise ValueError(f"tortured-phrase matches[{index}] has an empty/reversed span")
+        if codepoint_end - codepoint_start != len(matched_text):
+            raise ValueError(
+                f"tortured-phrase matches[{index}] codepoint span length mismatch"
+            )
+        if utf8_end - utf8_start != len(matched_text.encode("utf-8")):
+            raise ValueError(
+                f"tortured-phrase matches[{index}] UTF-8 span length mismatch"
+            )
+        if not (
+            codepoint_start <= utf8_start <= 4 * codepoint_start
+            and codepoint_end <= utf8_end <= 4 * codepoint_end
+        ):
+            raise ValueError(
+                f"tortured-phrase matches[{index}] has an impossible UTF-8 prefix offset"
+            )
+        if (
+            not isinstance(content_utf8_bytes, int)
+            or codepoint_end > content_utf8_bytes
+            or utf8_end > content_utf8_bytes
+        ):
+            raise ValueError(
+                f"tortured-phrase matches[{index}] exceeds the bound surface bytes"
+            )
+        if len(matched_text) > 1000 or len(matched_text.split()) > 25:
+            raise ValueError(f"tortured-phrase matches[{index}] exceeds evidence bounds")
+        match_payload = {
+            "artifact_sha256": artifact_sha,
+            "snapshot_sha256": snapshot["snapshot_sha256"],
+            "surface": surface,
+            "segment_id": match["segment_id"],
+            "context": match["context"],
+            "rule_id": match["pattern_id"],
+            "codepoint_start": span["codepoint_start"],
+            "codepoint_end": span["codepoint_end"],
+        }
+        expected_match_id = "tpm-" + hashlib.sha256(
+            _canonical_json(match_payload).encode("utf-8")
+        ).hexdigest()[:24]
+        if match["match_id"] != expected_match_id:
+            raise ValueError(f"tortured-phrase matches[{index}] match_id mismatch")
+        if match["match_id"] in seen_match_ids:
+            raise ValueError(f"tortured-phrase matches[{index}] duplicates match_id")
+        seen_match_ids.add(match["match_id"])
+        intervals.setdefault(match["segment_id"], []).append(
+            (span["codepoint_start"], span["codepoint_end"])
+        )
+    unique_instances = 0
+    for values in intervals.values():
+        current_end: int | None = None
+        for start, end in sorted(set(values)):
+            if current_end is None or start >= current_end:
+                unique_instances += 1
+                current_end = end
+            else:
+                current_end = max(current_end, end)
+    if counts["unique_instance_count"] != unique_instances:
+        raise ValueError("tortured-phrase unique_instance_count mismatch")
+    if counts["matched_rule_count"] > counts["rules_evaluated"]:
+        raise ValueError("tortured-phrase matched_rule_count exceeds rules_evaluated")
+    matches_by_context = counts["matches_by_context"]
+    if any(
+        matches_by_context[name]
+        != (len(matches) if name == expected_context else 0)
+        for name in _TORTURED_PHRASE_CONTEXTS
+    ):
+        raise ValueError("tortured-phrase matches_by_context mismatch")
+
+    status = signal["check_status"]
+    reason_code = context["reason_code"]
+    if binding["content_sha256"] is None:
+        if (
+            surface != "cited_abstract"
+            or reason_code not in {"ABSTRACT_MISSING", "ABSTRACT_EMPTY"}
+            or status != "not_checked"
+            or signal["finding"] != "unresolved"
+            or matches
+            or counts != _empty_tortured_phrase_counts()
+        ):
+            raise ValueError(
+                "unbound cited surface must be an explicit missing/empty abstract"
+            )
+    elif status == "checked":
+        if (
+            reason_code != "CHECK_COMPLETED"
+            or snapshot["status"] != "loaded"
+            or snapshot["reason_code"] != "CHECK_COMPLETED"
+            or counts["rules_evaluated"] != snapshot["rule_count"]
+            or counts["segments_total"] != 1
+            or counts["unknown_segments"] != 0
+        ):
+            raise ValueError(
+                "checked cited surface lacks complete loaded-snapshot coverage"
+            )
+    else:
+        if matches or counts != _empty_tortured_phrase_counts():
+            raise ValueError(
+                "not-checked/degraded cited surface must discard partial match state"
+            )
+        if reason_code == "MATCH_RESOURCE_LIMIT":
+            if (
+                status != "degraded"
+                or signal["finding"] != "unresolved"
+                or snapshot["status"] != "loaded"
+                or snapshot["reason_code"] != "CHECK_COMPLETED"
+            ):
+                raise ValueError(
+                    "match resource failure requires a loaded snapshot and degraded output"
+                )
+        elif (
+            reason_code != snapshot["reason_code"]
+            or status != snapshot["status"]
+            or signal["finding"] != "unresolved"
+        ):
+            raise ValueError(
+                "cited surface status/reason does not replay snapshot availability"
+            )
+
+    evidence = signal["evidence"]
+    if len(evidence) != 1:
+        raise ValueError("tortured-phrase signal requires exactly one evidence row")
+    expected_type = (
+        "phrase_match"
+        if signal["check_status"] == "checked" and signal["finding"] == "detected"
+        else "list_record"
+        if signal["check_status"] == "checked"
+        else "degradation_record"
+    )
+    expected_value: Any = (
+        counts["rule_match_count"]
+        if signal["check_status"] == "checked"
+        else context["reason_code"]
+    )
+    evidence_row = evidence[0]
+    if evidence_row["evidence_type"] != expected_type:
+        raise ValueError("tortured-phrase evidence_type mismatch")
+    if evidence_row.get("record_locator") != (
+        "title" if surface == "cited_title" else "abstract"
+    ):
+        raise ValueError("tortured-phrase evidence locator mismatch")
+    if signal["check_status"] == "checked" and (
+        isinstance(evidence_row["observed_value"], bool)
+        or not isinstance(evidence_row["observed_value"], int)
+    ):
+        raise ValueError("checked tortured-phrase evidence count must be an integer")
+    if evidence_row["observed_value"] != expected_value:
+        raise ValueError("tortured-phrase evidence observed_value mismatch")
+    if evidence_row.get("evidence_sha256") != binding["content_sha256"]:
+        raise ValueError("tortured-phrase evidence hash mismatch")
+    provenance = signal["provenance"]
+    if provenance["source_sha256"] != snapshot["snapshot_sha256"]:
+        raise ValueError("tortured-phrase provenance snapshot hash mismatch")
+    snapshot_source = snapshot["source"]
+    expected_source_name = (
+        snapshot_source["name"]
+        if isinstance(snapshot_source, dict)
+        else "tortured-phrase snapshot unavailable"
+    )
+    expected_source_version = (
+        snapshot_source["version"] if isinstance(snapshot_source, dict) else None
+    )
+    if provenance["source_name"] != expected_source_name:
+        raise ValueError("tortured-phrase provenance source_name mismatch")
+    if provenance["source_version"] != expected_source_version:
+        raise ValueError("tortured-phrase provenance source_version mismatch")
+    if evidence_row["source_name"] != expected_source_name:
+        raise ValueError("tortured-phrase evidence source_name mismatch")
+    checked_at = provenance["checked_at"]
+    recorded_at = provenance["recorded_at"]
+    if signal["check_status"] == "not_checked":
+        if checked_at is not None:
+            raise ValueError("not-checked tortured-phrase row must have null checked_at")
+    else:
+        if not isinstance(checked_at, str) or not isinstance(recorded_at, str):
+            raise ValueError("checked/degraded tortured-phrase row requires checked_at")
+        if (
+            _TORTURED_PHRASE_RFC3339_RE.fullmatch(checked_at) is None
+            or _TORTURED_PHRASE_RFC3339_RE.fullmatch(recorded_at) is None
+        ):
+            raise ValueError(
+                "tortured-phrase timestamps require RFC 3339 with at most 6 fraction digits"
+            )
+        checked_value = (
+            checked_at[:-1] + "+00:00"
+            if checked_at[-1] in {"Z", "z"}
+            else checked_at
+        )
+        recorded_value = (
+            recorded_at[:-1] + "+00:00"
+            if recorded_at[-1] in {"Z", "z"}
+            else recorded_at
+        )
+        checked = dt.datetime.fromisoformat(checked_value)
+        recorded = dt.datetime.fromisoformat(recorded_value)
+        if recorded < checked:
+            raise ValueError("tortured-phrase recorded_at precedes checked_at")
 
 
 def _signal(
@@ -283,22 +591,44 @@ def migrate_legacy_entry(
 
 
 def render_advisory_section(signals: list[dict[str, Any]]) -> str:
-    """Compose any number of signals in one provenance-summary section."""
+    """Compose one complete, injection-safe canonical provenance summary."""
     if not signals:
         return ""
 
     def cell(value: Any) -> str:
         if value is None or value == "":
             return "—"
-        return str(value).replace("|", "\\|").replace("\n", " ")
+        rendered = str(value).replace("\r", " ").replace("\n", " ")
+        rendered = "".join(
+            char
+            if unicodedata.category(char) not in {"Cc", "Cf", "Zl", "Zp"}
+            else f"U+{ord(char):04X}"
+            for char in rendered
+        )
+        if len(rendered) > 1000:
+            rendered = rendered[:999] + "…"
+        rendered = html.escape(rendered, quote=False)
+        for char in ("\\", "|", "`", "[", "]", "!", "*"):
+            rendered = rendered.replace(char, "\\" + char)
+        return rendered
+
+    ordered = sorted(signals, key=lambda item: item["signal_id"])
+    for signal in ordered:
+        problems = validation_errors(signal)
+        if problems:
+            raise ValueError(
+                f"invalid bibliographic-integrity signal {signal.get('signal_id')!r}: "
+                + "; ".join(problems)
+            )
+        _validate_tortured_phrase_projection(signal)
 
     lines = [
         "## Bibliographic Integrity Advisories",
         "",
-        "| signal_id | signal type | citation | label | status | finding | source | source version | source sha256 | checked at | recorded at | stale after | freshness | source pointer | claims | context |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| signal_id | signal type | citation | label | summary label | layer | evaluation status | status | finding | reason code | surface | rule matches | unique instances | evidence | source | source version | snapshot as of | source sha256 | manifest sha256 | checked at | recorded at | stale after | freshness | source pointer | claims | context |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for signal in sorted(signals, key=lambda item: item["signal_id"]):
+    for signal in ordered:
         status = signal["check_status"]
         finding = signal["finding"]
         if finding == "unresolved" or status in {"not_checked", "unknown", "degraded"}:
@@ -306,6 +636,16 @@ def render_advisory_section(signals: list[dict[str, Any]]) -> str:
         claims = ", ".join(signal["subject"]["affected_claims"]) or "—"
         provenance = signal["provenance"]
         context = "—"
+        summary_label = "—"
+        layer = "—"
+        evaluation_status = "—"
+        reason_code = "—"
+        surface = "—"
+        rule_matches: Any = "—"
+        unique_instances: Any = "—"
+        evidence_projection = "—"
+        snapshot_as_of = "—"
+        manifest_sha256 = "—"
         retraction = signal.get("retraction_context")
         if isinstance(retraction, dict):
             reasons = ", ".join(retraction.get("retraction_reasons", [])) or "not served"
@@ -320,20 +660,79 @@ def render_advisory_section(signals: list[dict[str, Any]]) -> str:
                 f"timing={retraction.get('timing_vs_acquisition', 'not_decidable')}; "
                 f"legitimate_exception={str(bool(legitimate)).lower()}"
             )
+        phrase = signal.get("tortured_phrase_context")
+        if isinstance(phrase, dict):
+            summary_label = signal["display"]["summary_label"]
+            layer = phrase["layer"]
+            evaluation_status = phrase["evaluation_status"]
+            reason_code = phrase["reason_code"]
+            surface = phrase.get("surface", "—")
+            snapshot = phrase["snapshot"]
+            snapshot_source = snapshot["source"]
+            if isinstance(snapshot_source, dict):
+                snapshot_as_of = snapshot_source["as_of"]
+            manifest_sha256 = snapshot["manifest_sha256"] or "—"
+            counts = phrase.get("counts", {})
+            rule_matches = counts.get("rule_match_count", "—")
+            unique_instances = counts.get("unique_instance_count", "—")
+            projected: list[str] = []
+            for match in phrase.get("matches", [])[:3]:
+                span = match.get("source_span", {})
+                projected.append(
+                    "{pattern}@{start}:{end}={text} [{disposition}]".format(
+                        pattern=match.get("pattern_id", "?"),
+                        start=span.get("utf8_start", "?"),
+                        end=span.get("utf8_end", "?"),
+                        text=match.get("matched_text", "?"),
+                        disposition=match.get("disposition", "?"),
+                    )
+                )
+            omitted = len(phrase.get("matches", [])) - len(projected)
+            if omitted > 0:
+                projected.append(f"+{omitted} more machine rows")
+            evidence_projection = "; ".join(projected) or phrase.get(
+                "reason_code", "—"
+            )
+            if finding == "detected":
+                outcome = "phrase-list match requiring review"
+            elif finding == "not_detected":
+                outcome = (
+                    "no phrase-list match observed on the checked surface; "
+                    "absence is not a clean certificate"
+                )
+            else:
+                outcome = "phrase-list screening unresolved; no clean conclusion"
+            context = (
+                f"{outcome}; list-match only; origin not inferred; contextual judgment "
+                "not performed; no automatic rewrite"
+            )
         lines.append(
-            "| {signal_id} | {signal_type} | {citation} | {label} | {status} | {finding} | "
-            "{source} | {source_version} | {source_sha256} | {checked_at} | "
+            "| {signal_id} | {signal_type} | {citation} | {label} | {summary_label} | "
+            "{layer} | {evaluation_status} | {status} | {finding} | {reason_code} | "
+            "{surface} | {rule_matches} | {unique_instances} | {evidence} | "
+            "{source} | {source_version} | {snapshot_as_of} | {source_sha256} | "
+            "{manifest_sha256} | {checked_at} | "
             "{recorded_at} | {stale_after} | {freshness} | {source_pointer} | "
             "{claims} | {context} |".format(
                 signal_id=cell(signal["signal_id"]),
                 signal_type=cell(signal["signal_type"]),
                 citation=cell(signal["subject"]["citation_key"]),
                 label=cell(signal["epistemic_label"]),
+                summary_label=cell(summary_label),
+                layer=cell(layer),
+                evaluation_status=cell(evaluation_status),
                 status=cell(status),
                 finding=cell(finding),
+                reason_code=cell(reason_code),
+                surface=cell(surface),
+                rule_matches=cell(rule_matches),
+                unique_instances=cell(unique_instances),
+                evidence=cell(evidence_projection),
                 source=cell(provenance["source_name"]),
                 source_version=cell(provenance["source_version"]),
+                snapshot_as_of=cell(snapshot_as_of),
                 source_sha256=cell(provenance["source_sha256"]),
+                manifest_sha256=cell(manifest_sha256),
                 checked_at=cell(provenance["checked_at"]),
                 recorded_at=cell(provenance["recorded_at"]),
                 stale_after=cell(provenance["stale_after"]),

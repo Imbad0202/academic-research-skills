@@ -737,6 +737,61 @@ Mid-Entry Material Passport Check:
 
 ---
 
+## Tortured-Phrase Advisory Dispatch (#660)
+
+After Stage 4.5 passes, and immediately before Stage 5 converts the exact
+accepted working draft, dispatch `scripts/tortured_phrase_screening.py` on that
+draft. The input draft and output advisory paths must differ. Supply only an
+explicitly named local canonical snapshot and detached manifest; the manifest
+must bind the exact raw snapshot bytes by SHA-256 and declare
+`user_supplied` or `synthetic_fixture`. If the pair is intentionally absent,
+retain the runtime's explicit `not_checked` result rather than skipping the
+record or calling the draft clean. A partial, invalid, mismatched, unsupported,
+or nonzero-unsupported-rule pair is degraded/unresolved and never becomes a
+zero-match result.
+
+A scan may atomically write a schema-valid degraded advisory and then exit 1.
+Preserve and validate that exact artifact, surface its reason, and never delete it,
+skip its handoff, or reinterpret the nonzero status as a new Stage 4.5 or terminal
+gate.
+
+Pass `checked_at` and `recorded_at` as explicit RFC 3339 inputs. This path must
+not read the system clock, file times, Git time, timezone, or network time. It
+has no native PPS parser/importer, URL fetch path, or redistributed PPS list
+content and invokes no model, external API, human/model judge, contextual
+classifier, or expensive evaluation. Do not attempt to manufacture or repair a
+snapshot from remembered phrases or fetched content.
+
+Validate the complete `tortured-phrase-advisory/1.0` before handoff to the
+formatter. It is always `layer: HEURISTIC-ADVISORY` and
+`evaluation_status: UNMEASURED`. The fixed positive meaning is **phrase-list
+match requiring review**; a zero match means only no match was observed on the
+exact checked bytes and is not a clean certification. It never establishes
+AI/author origin, paper-mill production, misconduct, contextual validity,
+precision/recall, false-positive/false-negative rate, list coverage, or
+publisher acceptance.
+
+This advisory does not alter Stage 4.5 PASS, the mandatory Stage-5 checkpoint,
+or any terminal-policy state. It never edits the draft or suggests replacement
+text. Surface the validated report and let the user preserve, revise, or
+proceed. A revision changes the input bytes, invalidates the current advisory,
+and must return through the existing integrity/final-screen sequence; the
+checker itself never rewrites. The formatter only renders the already validated
+artifact and does not rerun matching or change counts.
+
+Carry schema-valid `bibliographic-integrity-signal/1.2` cited-source rows
+forward unchanged. They are independently bound to `cited_title` and
+`cited_abstract`; a missing abstract stays `not_checked` / `unresolved` with
+`ABSTRACT_MISSING`. These rows compose lexically in the one existing
+`Bibliographic Integrity Advisories` section. They have
+`display.marker_token: null` and `terminal_policy.eligible: false`; the
+Cite-Time Provenance Finalizer must not promote them, and neither finalizer nor
+formatter may create a marker, gate, terminal token, rewrite, or replacement
+from them. Corpus enrichment is producer-owned, returns a new passport copy,
+and never authorizes this read-only orchestrator to mutate a passport in place.
+
+---
+
 ## Cite-Time Provenance Finalizer (v3.7.1)
 
 When `academic-pipeline` mode is active, the orchestrator runs the **Cite-Time Provenance Finalizer** at every Stage 4 → Stage 5 transition (and on every revision loop pass back through Stage 4) to resolve the two-layer citation markers emitted by `synthesis_agent`, `draft_writer_agent`, and `report_compiler_agent` per Step 3a.
@@ -818,6 +873,13 @@ The finalizer remains the sole terminal-policy owner. v1.0 `terminal_policy.elig
 The finalizer writes no advisory marker token from this array; `display.marker_token` is null. A strict eligible retraction row uses the existing generic terminal-token channel, while the one legacy `CONTAMINATED-*` advisory suffix remains derived from `contamination_signals`.
 All canonical records compose as lexically sorted formatter-owned `Bibliographic Integrity Advisories` rows in `provenance_summary.md`.
 Any `finding: unresolved` or `not_checked`/`unknown`/`degraded` status is unresolved, never clean results; see `shared/bibliographic_integrity_signals.md` for the epistemic/deprecation contract.
+
+The v1.2 `tortured_phrase_match` profile is permanently ineligible for terminal
+policy and adds no marker. Its `cited_title` and `cited_abstract` rows remain
+separate; `ABSTRACT_MISSING` remains visible as unresolved. The finalizer
+validates/carries those rows but does not rerun their local matcher, infer
+origin or paper-mill production, judge contextual validity, rewrite prose, or
+interpret `not_detected` as clean or accurate.
 
 ### Updated 5-cell + annotation resolution order
 

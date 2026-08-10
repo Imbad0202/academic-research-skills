@@ -1,0 +1,164 @@
+{
+  "schema_version": "tortured-phrase-snapshot/1.0",
+  "snapshot_id": "ars-synthetic-conformance-2026-08-10",
+  "grammar_profile": "ars-tortured-phrase-canonical-ast/1.0",
+  "normalizer_profile": "ars-nfkc-casefold-token/1.0",
+  "rules": [
+    {
+      "rule_id": "syn_literal_author",
+      "expression": {
+        "op": "literal",
+        "value": "luminous turnip"
+      }
+    },
+    {
+      "rule_id": "syn_all_segment",
+      "expression": {
+        "op": "all",
+        "terms": [
+          {
+            "op": "literal",
+            "value": "velvet algorithm"
+          },
+          {
+            "op": "literal",
+            "value": "meadow protocol"
+          }
+        ],
+        "max_span_tokens": 12
+      }
+    },
+    {
+      "rule_id": "syn_any_segment",
+      "expression": {
+        "op": "any",
+        "alternatives": [
+          {
+            "op": "literal",
+            "value": "quartz llama"
+          },
+          {
+            "op": "literal",
+            "value": "cobalt radish"
+          }
+        ]
+      }
+    },
+    {
+      "rule_id": "syn_near_ordered",
+      "expression": {
+        "op": "near",
+        "left": {
+          "op": "literal",
+          "value": "nebula"
+        },
+        "right": {
+          "op": "literal",
+          "value": "cabbage"
+        },
+        "max_gap_tokens": 1,
+        "ordered": true
+      }
+    },
+    {
+      "rule_id": "syn_exclude_segment",
+      "expression": {
+        "op": "literal",
+        "value": "moonlit pickle"
+      },
+      "exclude_if": [
+        {
+          "expression": {
+            "op": "literal",
+            "value": "recipe glossary"
+          },
+          "within_tokens": 8
+        }
+      ]
+    },
+    {
+      "rule_id": "syn_overlap_long",
+      "expression": {
+        "op": "literal",
+        "value": "prism otter engine"
+      }
+    },
+    {
+      "rule_id": "syn_overlap_short",
+      "expression": {
+        "op": "literal",
+        "value": "otter engine"
+      }
+    },
+    {
+      "rule_id": "syn_boundary_orb",
+      "expression": {
+        "op": "literal",
+        "value": "orb"
+      }
+    },
+    {
+      "rule_id": "syn_nfkc_casefold",
+      "expression": {
+        "op": "literal",
+        "value": "fullwidth comet"
+      }
+    },
+    {
+      "rule_id": "syn_dash_same_line",
+      "expression": {
+        "op": "literal",
+        "value": "silver leaf"
+      }
+    },
+    {
+      "rule_id": "syn_soft_hyphen",
+      "expression": {
+        "op": "literal",
+        "value": "crystalfern"
+      }
+    },
+    {
+      "rule_id": "syn_hyphen_line_break",
+      "expression": {
+        "op": "literal",
+        "value": "silverleaf"
+      }
+    },
+    {
+      "rule_id": "syn_context_quote",
+      "expression": {
+        "op": "literal",
+        "value": "quoted acorn engine"
+      }
+    },
+    {
+      "rule_id": "syn_context_reference",
+      "expression": {
+        "op": "literal",
+        "value": "cited turnip atlas"
+      }
+    },
+    {
+      "rule_id": "syn_context_code",
+      "expression": {
+        "op": "literal",
+        "value": "coded radish loop"
+      }
+    },
+    {
+      "rule_id": "syn_corpus_abstract",
+      "expression": {
+        "op": "literal",
+        "value": "abstract saffron circuit"
+      }
+    },
+    {
+      "rule_id": "syn_corpus_missing_abstract_title",
+      "expression": {
+        "op": "literal",
+        "value": "missing indigo compass"
+      }
+    }
+  ]
+}

@@ -106,6 +106,39 @@ Consumer agents never modify, backfill, or derive new content into `literature_c
 
 Consumer agents do NOT re-validate schema, do NOT parse JSON Schema at runtime, and do NOT dereference `source_pointer` URIs. The v3.6.4 input-port lint validates adapter output, but a passport may reach a Phase 1 agent through other paths (hand-edits, `resume_from_passport`, assembled passports). When a consumer cannot parse `literature_corpus[]`, emit `[CORPUS PARSE FAILURE: <cause>]` in the Search Strategy Report and fall back to external-DB-only flow. Do not abort Phase 1, do not attempt schema repair, do not invent contents.
 
+## Tortured-phrase advisory rows (#660)
+
+`bibliographic-integrity-signal/1.2` tortured-phrase rows are read-only
+advisories, not pre-screening criteria. A consumer may preserve and surface the
+row, but must not use it to include, exclude, rank, downgrade, relabel, or
+rewrite a corpus entry. In particular, a phrase-list match is not evidence of
+AI/author origin, paper-mill production, misconduct, source quality, or
+contextual invalidity. A checked zero-match is not a clean certificate and is
+not evidence that screening coverage is complete.
+
+The two cited surfaces remain independent: `cited_title` and
+`cited_abstract` each have one current row when the check is invoked. A missing
+abstract remains visible as `not_checked` / `unresolved` with
+`ABSTRACT_MISSING`; a consumer must not copy the title result into the abstract
+slot or silently drop the row. Manual entries have no exemption from this
+local metadata check.
+
+Only the dedicated producer may call the non-in-place enricher. It consumes an
+explicitly named local canonical snapshot plus detached manifest whose SHA-256
+binds the exact snapshot bytes; accepted supply is `user_supplied` or
+`synthetic_fixture`. Phase 1 consumers do not build, fetch, import, repair, or
+redistribute a PPS list, do not dereference `source_pointer`, and do not run a
+model, external API, human/model judge, or ambient clock for this advisory.
+They never modify `literature_corpus[]`; a producer returns a separate passport
+copy and takes explicit timestamps.
+
+Every v1.2 row stays `HEURISTIC-INDICATOR` with
+`HEURISTIC-ADVISORY` / `UNMEASURED` context. It composes only in the existing
+single `Bibliographic Integrity Advisories` section. It creates no ref-marker
+token, terminal policy, gate, replacement text, or automatic rewrite. The
+separate own-draft advisory follows the same claim boundary and is not a corpus
+screening input.
+
 ## Zero-hit and provenance reporting (F3 / F4)
 
 Two reproducibility surfaces sit inside the PRE-SCREENED block. Every consumer agent must emit each one when the corresponding trigger fires; both are non-blocking and independent of which Step 2 case dispatches next.

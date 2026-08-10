@@ -50,8 +50,9 @@ Schemas for Material Passport input ports.
 
 - `passport/literature_corpus_entry.schema.json` (v3.6.4) — Schema 9 `literature_corpus[]`
   entries produced by user-written adapters.
-- `passport/bibliographic_integrity_signal.schema.json` (#678/#651) — v1.0
-  additive signal carrier plus v1.1 authoritative retraction-status rows,
+- `passport/bibliographic_integrity_signal.schema.json` (#678/#651/#660) — v1.0
+  additive signal carrier, v1.1 authoritative retraction-status rows, and the
+  v1.2 title/abstract tortured-phrase advisory profile,
   including resolver disagreement/reinstatement, judgment context, freshness,
   and opt-in finalizer policy eligibility. The separate
   `retraction_status_cache_v1` namespace and pure resolver live in
@@ -428,6 +429,39 @@ there is no render-all mode.
 Protocol:
 `shared/references/authority_content_coverage_advisory_protocol.md`. Spec:
 `docs/design/2026-08-09-681-authority-content-coverage-advisory-spec.md`.
+
+## Tortured-phrase screening contracts (#660)
+
+The #660 family is local, hash-bound, and advisory-only:
+
+- `audit/tortured_phrase_snapshot.schema.json` defines the closed canonical
+  `literal` / `all` / `any` / `near` AST and rule-level `exclude_if` grammar;
+- `audit/tortured_phrase_snapshot_manifest.schema.json` binds the exact raw
+  snapshot bytes, source/version/as-of metadata, preprocessing disclosure,
+  zero unsupported rules, and rights; and
+- `audit/tortured_phrase_advisory.schema.json` defines the replay-bound
+  own-draft `HEURISTIC-ADVISORY` / `UNMEASURED` transcript.
+
+`scripts/tortured_phrase_screening.py` accepts only explicitly named local
+snapshot/manifest and input paths. A snapshot is either user supplied or a
+repository-authored synthetic fixture. ARS includes no native PPS importer,
+fetch option, or redistributed PPS list content, and this path invokes no
+model, external API, human/model judge, ambient clock, file time, or network
+time. Snapshot SHA-256 covers the exact UTF-8 file bytes; required timestamps
+are explicit arguments.
+
+The same runtime can return a new passport copy carrying
+`bibliographic-integrity-signal/1.2` rows for each cited title and abstract
+surface. A missing abstract is an explicit `not_checked` / `unresolved`
+`ABSTRACT_MISSING` row; a present whitespace-only abstract uses
+`ABSTRACT_EMPTY`. Consumers remain read-only and the enricher refuses
+in-place output. A detected row is only a phrase-list match requiring review;
+a zero match is not a clean certificate. No result establishes origin,
+paper-mill production, contextual validity, or accuracy, and no result creates
+a marker, terminal gate, replacement text, or automatic rewrite. All corpus
+rows render in the one canonical `Bibliographic Integrity Advisories` section.
+
+Spec: `docs/design/2026-08-10-660-tortured-phrase-screening-spec.md`.
 
 ## Audit artifact contracts (v3.6.7 Step 6)
 

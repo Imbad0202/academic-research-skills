@@ -1,0 +1,30 @@
+literature_corpus:
+  - citation_key: fixture_complete_2026
+    title: Cited Turnip Atlas for Imaginary Orchards
+    authors:
+      - family: Fixture
+        given: Ada
+    year: 2026
+    source_pointer: fixture://tortured-phrase/complete
+    obtained_via: manual
+    obtained_at: '2026-08-10T00:00:00Z'
+    abstract: An abstract saffron circuit appears in this wholly synthetic summary.
+  - citation_key: fixture_missing_2026
+    title: Missing Indigo Compass in a Paper Orchard
+    authors:
+      - family: Fixture
+        given: Bea
+    year: 2026
+    source_pointer: fixture://tortured-phrase/missing-abstract
+    obtained_via: manual
+    obtained_at: '2026-08-10T00:00:00Z'
+  - citation_key: fixture_negative_2026
+    title: Orbital Greenhouses and Ordinary Seed Catalogues
+    authors:
+      - family: Fixture
+        given: Cy
+    year: 2026
+    source_pointer: fixture://tortured-phrase/legitimate-negative
+    obtained_via: manual
+    obtained_at: '2026-08-10T00:00:00Z'
+    abstract: This recipe glossary explains why the harmless moonlit pickle is expected here.

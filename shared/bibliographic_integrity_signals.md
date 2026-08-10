@@ -5,6 +5,11 @@ single schema authority for bibliographic-integrity observations carried in
 `literature_corpus[].bibliographic_integrity_signals[]`. Version 1.0 is the
 additive migration carrier. Version 1.1 is the #651 retraction-status policy
 cutover. Both preserve the one-advisory-token reference-marker grammar.
+Version 1.2 is the #660 tortured-phrase advisory profile; it is additive and
+does not change the validity of shipped canonical v1.0/v1.1 fixtures or producer
+outputs, nor their policy meaning. Its signal-type invariant intentionally rejects
+noncanonical, previously underconstrained tortured-phrase mutations that claimed
+deterministic or terminal authority.
 
 ## Epistemic boundary
 
@@ -50,6 +55,43 @@ declared-legitimate exception did not fire. The finalizer then evaluates the
 explicit `terminal_policies.retraction` choice. Adding a signal never silently
 promotes it to `HIGH-BLOCK`.
 
+## Tortured-phrase advisory profile (v1.2 / #660)
+
+Version 1.2 carries one current `tortured_phrase_match` row per
+`(citation_key, cited_title|cited_abstract)` surface. It is always
+`heuristic_advisory` / `HEURISTIC-INDICATOR`; its closed context remains
+`layer: HEURISTIC-ADVISORY` and `evaluation_status: UNMEASURED`. A detected
+row means only **phrase-list match requiring review**. A checked zero-match row
+means only that no phrase-list match was observed on that exact checked
+surface; absence is not a clean certification. It never establishes AI,
+author, paper-mill, misconduct, or other origin, and it carries no precision,
+recall, false-positive, false-negative, coverage, or publisher-acceptance
+claim.
+
+The local producer consumes only an explicitly named canonical snapshot and
+detached manifest. The manifest binds the exact raw UTF-8 snapshot bytes by
+SHA-256 and declares either `user_supplied` or `synthetic_fixture` supply;
+ARS ships no native PPS parser/importer, fetch path, or redistributed PPS list
+content. Matching reads no model, external API, human/model judge, system
+clock, file time, or network time. Required timestamps are explicit inputs.
+
+Each invoked corpus check keeps title and abstract coverage separate. A valid
+title is checked independently. A missing abstract remains an explicit
+`not_checked` / `unresolved` row with reason `ABSTRACT_MISSING`, while a present
+whitespace-only abstract uses `ABSTRACT_EMPTY`; neither state can be
+folded into the title result or omitted. Manual corpus entries have no
+exemption. Every row binds the exact local surface bytes plus snapshot and
+manifest hashes. The producer returns a new passport copy and never rewrites a
+source title, abstract, citation, or input passport in place.
+
+All v1.2 rows compose in the existing single `Bibliographic Integrity
+Advisories` section. `display.marker_token` is `null`,
+`terminal_policy.eligible` is `false`, and neither the finalizer nor formatter
+may mint a marker, gate, terminal promotion, suggested replacement, or
+automatic rewrite from the row. The separate own-draft carrier is
+`tortured-phrase-advisory/1.0`; it has the same
+`HEURISTIC-ADVISORY` / `UNMEASURED` boundary and is not a corpus authority.
+
 ## Retraction authority cutover (v1.1 / #651)
 
 The v1.1 `retraction_status` row is authoritative for retraction status. It
@@ -94,3 +136,7 @@ resolver-specific record with `check_status: degraded` and
 absence/unknown; it is never synthesized as a clean result. Existing
 `provenance_summary.md` text is an output projection and is never parsed back
 as evidence.
+
+The v1.2 profile is not a migration of the older tortured-phrase scaffold.
+Existing v1.0 heuristic rows remain readable with their original meaning, but
+cannot be treated as completed title/abstract checks.

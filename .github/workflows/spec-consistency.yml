@@ -409,6 +409,15 @@ jobs:
         # the unified pytest manifest above.
         run: python3 scripts/check_bibliographic_integrity_signals.py
 
+      - name: Check tortured-phrase screening integration (#660)
+        # Locks the closed snapshot/manifest/advisory schemas, v1.2 carrier,
+        # exact-byte synthetic fixture, hermetic runtime, one-page renderer,
+        # UNMEASURED claim ceiling, documentation, and CI bindings. Behavioral
+        # and mutation tests run through the unified pytest manifest above.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_tortured_phrase_screening_integration.py
+
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
         # block, 16 Bucket B/C/D agents DON'T, and each Bucket A block

@@ -2,10 +2,12 @@
 against their schemas and enforces citation_key uniqueness."""
 import copy
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import yaml
+
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -13,6 +15,10 @@ SCRIPT = REPO_ROOT / "scripts/check_literature_corpus_schema.py"
 SIGNAL_FIXTURE = (
     REPO_ROOT / "scripts/fixtures/bibliographic_integrity_signals/retraction.json"
 )
+TORTURED_PHRASE_FIXTURES = REPO_ROOT / "scripts/fixtures/tortured_phrase_screening"
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+import tortured_phrase_screening as screening  # noqa: E402
 
 
 def _write_yaml(tmp_path, name, data):
@@ -33,6 +39,42 @@ def _run(args, cwd=None):
 
 def test_script_exists():
     assert SCRIPT.exists()
+
+
+def test_package_import_cannot_be_shadowed_by_pythonpath(tmp_path):
+    for module_name in ("check_v3_10_policy", "tortured_phrase_screening"):
+        (tmp_path / f"{module_name}.py").write_text(
+            f'raise RuntimeError("shadow {module_name} imported")\n',
+            encoding="utf-8",
+        )
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join((str(tmp_path), str(REPO_ROOT)))
+    probe = "\n".join(
+        (
+            "from pathlib import Path",
+            "import sys",
+            "import scripts.check_literature_corpus_schema as checker",
+            f"repo = Path({str(REPO_ROOT)!r})",
+            "assert checker.assert_venue_type_source_clean.__module__ "
+            "== 'scripts.check_v3_10_policy'",
+            "assert checker.validate_cited_signal_binding.__module__ "
+            "== 'scripts.tortured_phrase_screening'",
+            "assert Path(sys.modules['scripts.check_v3_10_policy'].__file__).resolve() "
+            "== repo / 'scripts/check_v3_10_policy.py'",
+            "assert Path(sys.modules['scripts.tortured_phrase_screening'].__file__).resolve() "
+            "== repo / 'scripts/tortured_phrase_screening.py'",
+        )
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_passes_on_valid_passport(tmp_path):
@@ -63,6 +105,37 @@ def _entry_with_signals(signals):
     }
 
 
+def _runtime_enriched_passport(citation_key="fixture_complete_2026"):
+    source = yaml.safe_load(
+        (TORTURED_PHRASE_FIXTURES / "corpus_input.yaml").read_text(encoding="utf-8")
+    )
+    entry = copy.deepcopy(
+        next(
+            item
+            for item in source["literature_corpus"]
+            if item["citation_key"] == citation_key
+        )
+    )
+    bundle = screening.load_snapshot(
+        TORTURED_PHRASE_FIXTURES / "snapshot.json",
+        TORTURED_PHRASE_FIXTURES / "snapshot_manifest.json",
+    )
+    state = screening.SnapshotState(
+        status="loaded",
+        reason_code="CHECK_COMPLETED",
+        bundle=bundle,
+        snapshot_sha256=bundle.snapshot_sha256,
+        manifest_sha256=bundle.manifest_sha256,
+        detail=None,
+    )
+    return screening.enrich_passport(
+        {"literature_corpus": [entry]},
+        state=state,
+        checked_at="2026-08-10T01:00:00Z",
+        recorded_at="2026-08-10T01:00:01Z",
+    )
+
+
 def test_passport_cross_validates_canonical_signal(tmp_path):
     signal = json.loads(SIGNAL_FIXTURE.read_text(encoding="utf-8"))
     signal["subject"]["citation_key"] = "chen2024"
@@ -70,6 +143,109 @@ def test_passport_cross_validates_canonical_signal(tmp_path):
     path = _write_yaml(tmp_path, "passport.yaml", passport)
     result = _run(["--passport", str(path)])
     assert result.returncode == 0, result.stderr
+
+
+def test_passport_accepts_runtime_generated_current_tortured_phrase_pair(tmp_path):
+    passport = _runtime_enriched_passport()
+    signals = passport["literature_corpus"][0]["bibliographic_integrity_signals"]
+    surfaces = {
+        signal["tortured_phrase_context"]["surface"]
+        for signal in signals
+        if signal.get("schema_version") == "bibliographic-integrity-signal/1.2"
+    }
+    assert surfaces == {"cited_title", "cited_abstract"}
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    result = _run(["--passport", str(path)])
+    assert result.returncode == 0, result.stderr
+
+
+def test_passport_accepts_missing_abstract_current_pair_with_null_checked_at(tmp_path):
+    passport = _runtime_enriched_passport("fixture_missing_2026")
+    signals = passport["literature_corpus"][0]["bibliographic_integrity_signals"]
+    title = next(
+        signal
+        for signal in signals
+        if signal["tortured_phrase_context"]["surface"] == "cited_title"
+    )
+    abstract = next(
+        signal
+        for signal in signals
+        if signal["tortured_phrase_context"]["surface"] == "cited_abstract"
+    )
+    assert title["provenance"]["checked_at"] == "2026-08-10T01:00:00Z"
+    assert abstract["provenance"]["checked_at"] is None
+    assert (
+        title["tortured_phrase_context"]["snapshot"]
+        == abstract["tortured_phrase_context"]["snapshot"]
+    )
+    assert title["provenance"]["recorded_at"] == abstract["provenance"]["recorded_at"]
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    result = _run(["--passport", str(path)])
+    assert result.returncode == 0, result.stderr
+
+
+def test_passport_rejects_current_tortured_phrase_pair_with_one_row_deleted(
+    tmp_path,
+):
+    passport = _runtime_enriched_passport()
+    entry = passport["literature_corpus"][0]
+    entry["bibliographic_integrity_signals"] = [
+        signal
+        for signal in entry["bibliographic_integrity_signals"]
+        if signal["tortured_phrase_context"]["surface"] != "cited_abstract"
+    ]
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    result = _run(["--passport", str(path)])
+    assert result.returncode != 0
+    assert "require exactly one 'cited_abstract' row" in result.stderr
+
+
+def test_passport_rejects_duplicate_current_tortured_phrase_surface(tmp_path):
+    passport = _runtime_enriched_passport()
+    entry = passport["literature_corpus"][0]
+    title = next(
+        signal
+        for signal in entry["bibliographic_integrity_signals"]
+        if signal["tortured_phrase_context"]["surface"] == "cited_title"
+    )
+    entry["bibliographic_integrity_signals"].append(copy.deepcopy(title))
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    result = _run(["--passport", str(path)])
+    assert result.returncode != 0
+    assert (
+        "multiple current tortured-phrase rows for surface 'cited_title'"
+        in result.stderr
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("snapshot", "same snapshot and detached manifest"),
+        ("recorded_at", "same recorded run"),
+        ("checked_at", "exact checked_at value"),
+    ],
+)
+def test_passport_rejects_incoherent_current_tortured_phrase_pair(
+    tmp_path, mutation, message
+):
+    passport = _runtime_enriched_passport()
+    signals = passport["literature_corpus"][0]["bibliographic_integrity_signals"]
+    abstract = next(
+        signal
+        for signal in signals
+        if signal["tortured_phrase_context"]["surface"] == "cited_abstract"
+    )
+    if mutation == "snapshot":
+        abstract["tortured_phrase_context"]["snapshot"]["manifest_sha256"] = "0" * 64
+    elif mutation == "recorded_at":
+        abstract["provenance"]["recorded_at"] = "2026-08-10T01:00:02Z"
+    else:
+        abstract["provenance"]["checked_at"] = "2026-08-10T01:00:00.5Z"
+    path = _write_yaml(tmp_path, "passport.yaml", passport)
+    result = _run(["--passport", str(path)])
+    assert result.returncode != 0
+    assert message in result.stderr
 
 
 def test_passport_rejects_schema_invalid_canonical_signal(tmp_path):

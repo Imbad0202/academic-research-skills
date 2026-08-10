@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/audit/tortured_phrase_snapshot.schema.json",
+  "title": "Tortured-phrase canonical snapshot",
+  "description": "Closed canonical-AST snapshot for deterministic tortured-phrase list matching. The grammar is positive-only: exclusion contexts are represented solely by rule.exclude_if[]. There is no NOT, regex, wildcard, executable expression, or implicit operator. Cross-rule identifier uniqueness, AST depth, word budgets, and exact snapshot-byte replay are enforced by the runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "grammar_profile",
+    "normalizer_profile",
+    "rules"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tortured-phrase-snapshot/1.0"
+    },
+    "snapshot_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "grammar_profile": {
+      "const": "ars-tortured-phrase-canonical-ast/1.0"
+    },
+    "normalizer_profile": {
+      "const": "ars-nfkc-casefold-token/1.0"
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "literal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$",
+      "description": "A bounded literal token sequence. Metacharacters have no special meaning: regex and wildcard interpretation are forbidden. The runtime additionally caps a literal at eight normalized tokens."
+    },
+    "expression": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/literal_expression"
+        },
+        {
+          "$ref": "#/$defs/all_expression"
+        },
+        {
+          "$ref": "#/$defs/any_expression"
+        },
+        {
+          "$ref": "#/$defs/near_expression"
+        }
+      ]
+    },
+    "literal_expression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "value"
+      ],
+      "properties": {
+        "op": {
+          "const": "literal"
+        },
+        "value": {
+          "$ref": "#/$defs/literal"
+        }
+      }
+    },
+    "all_expression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "terms",
+        "max_span_tokens"
+      ],
+      "properties": {
+        "op": {
+          "const": "all"
+        },
+        "terms": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/expression"
+          }
+        },
+        "max_span_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      }
+    },
+    "any_expression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "alternatives"
+      ],
+      "properties": {
+        "op": {
+          "const": "any"
+        },
+        "alternatives": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/expression"
+          }
+        }
+      }
+    },
+    "near_expression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "left",
+        "right",
+        "max_gap_tokens",
+        "ordered"
+      ],
+      "properties": {
+        "op": {
+          "const": "near"
+        },
+        "left": {
+          "$ref": "#/$defs/expression"
+        },
+        "right": {
+          "$ref": "#/$defs/expression"
+        },
+        "max_gap_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "ordered": {
+          "type": "boolean"
+        }
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expression",
+        "within_tokens"
+      ],
+      "properties": {
+        "expression": {
+          "$ref": "#/$defs/expression"
+        },
+        "within_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "expression"
+      ],
+      "properties": {
+        "rule_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "expression": {
+          "$ref": "#/$defs/expression"
+        },
+        "exclude_if": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/exclusion"
+          }
+        }
+      }
+    }
+  }
+}
