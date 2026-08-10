@@ -77,6 +77,11 @@ NOT a move — no authorization needed:
   movement is author-approved; unregistered surfaces remain explicit E6 scope.
 - Stage 4.5 integrity audit — the audit vocabulary names the drift class so a
   reviewer/gate can flag it; advisory rows only, never terminal.
+- #672 cross-document consistency advisory — semantic callers may use the ladder
+  for field-relative abstract/results or discussion/results rung observations.
+  The deterministic finalizer implements no keyword matcher or numeric ranker;
+  the `LLM-ADVISORY` / `UNMEASURED` result grants no revision authority and
+  cannot change Stage 4.5 or Stage-5 routing.
 
 ## Measurement
 

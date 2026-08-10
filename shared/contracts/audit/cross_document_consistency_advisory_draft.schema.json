@@ -1,0 +1,564 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/audit/cross_document_consistency_advisory_draft.schema.json",
+  "title": "Cross-document consistency advisory draft",
+  "description": "Closed untrusted caller-supplied semantic input for deterministic #672 finalization. The schema fixes the four pair, outcome, role, evidence-state, no-match, and preregistration witness matrices; exact bytes, hashes, spans, ordering, uniqueness, and semantics are replayed or checked by the runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "layer", "recorded_at", "observations"],
+  "properties": {
+    "schema_version": {"const": "cross-document-consistency-advisory-draft/1.0"},
+    "layer": {"const": "LLM-ADVISORY"},
+    "recorded_at": {"$ref": "#/$defs/rfc3339"},
+    "observations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/observation"},
+      "allOf": [
+        {"$ref": "#/$defs/contains_abstract_results"},
+        {"$ref": "#/$defs/contains_discussion_results"},
+        {"$ref": "#/$defs/contains_methods_reported_analyses"},
+        {"$ref": "#/$defs/contains_manuscript_preregistration"}
+      ]
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:[Zz]|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+    },
+    "pair_kind": {
+      "enum": [
+        "abstract_results",
+        "discussion_results",
+        "methods_reported_analyses",
+        "manuscript_preregistration"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "POTENTIAL_INCONSISTENCY_LOCATED",
+        "NO_LISTED_INCONSISTENCY_LOCATED"
+      ]
+    },
+    "finding_type": {
+      "enum": [
+        "numeric_mismatch",
+        "direction_mismatch",
+        "significance_mismatch",
+        "claim_strength_rung_mismatch",
+        "scope_or_population_overreach",
+        "declared_analysis_no_reported_counterpart",
+        "reported_analysis_no_declared_counterpart",
+        "analysis_specification_conflict",
+        "undisclosed_preregistration_deviation"
+      ]
+    },
+    "negative_basis": {
+      "enum": [
+        "legitimate_compression",
+        "same_rung_rewording",
+        "disclosed_deviation",
+        "other_no_listed_observation"
+      ]
+    },
+    "not_checked_reason": {
+      "enum": [
+        "PAIR_CHECK_NOT_PERFORMED",
+        "COUNTERPART_DOCUMENT_MISSING",
+        "COUNTERPART_SCOPE_NOT_PROVIDED",
+        "SOURCE_ACCESS_FAILED",
+        "SOURCE_RETRIEVAL_FAILED"
+      ]
+    },
+    "deviation_domain": {
+      "enum": [
+        "hypothesis",
+        "primary_outcome",
+        "sample_size_or_stopping",
+        "analysis_model",
+        "transformation",
+        "exclusion",
+        "inference_criterion",
+        "confirmatory_exploratory_designation"
+      ]
+    },
+    "failure_state": {
+      "enum": ["not_checked", "source_missing", "access_failed", "retrieval_failed"]
+    },
+    "source_span_utf8": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0, "maximum": 67108863},
+        "end": {"type": "integer", "minimum": 1, "maximum": 67108864}
+      }
+    },
+    "document_locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "provenance"],
+      "properties": {
+        "kind": {"enum": ["document", "page", "section", "paragraph", "other"]},
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF]+$"
+        },
+        "provenance": {"const": "agent_supplied_not_independently_authenticated"}
+      }
+    },
+    "checked_scope_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_span_utf8", "checked_at", "scope_completeness"],
+      "properties": {
+        "source_span_utf8": {"$ref": "#/$defs/source_span_utf8"},
+        "checked_at": {"$ref": "#/$defs/rfc3339"},
+        "scope_completeness": {
+          "const": "caller_declared_complete_named_scope_not_independently_authenticated"
+        }
+      }
+    },
+    "evidence_slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_role",
+        "artifact_id",
+        "document_locator",
+        "evidence_state",
+        "anchor_value_encoded",
+        "quote_source_span_utf8",
+        "checked_scope_input",
+        "captured_at",
+        "sharing_scope",
+        "rights_basis"
+      ],
+      "properties": {
+        "logical_role": {
+          "enum": [
+            "abstract",
+            "results",
+            "discussion",
+            "methods",
+            "reported_analyses",
+            "manuscript_report",
+            "preregistration",
+            "disclosure_scope"
+          ]
+        },
+        "artifact_id": {"$ref": "#/$defs/identifier"},
+        "document_locator": {"$ref": "#/$defs/document_locator"},
+        "evidence_state": {
+          "enum": [
+            "agent_extracted",
+            "checked_no_match",
+            "not_checked",
+            "source_missing",
+            "access_failed",
+            "retrieval_failed"
+          ]
+        },
+        "anchor_value_encoded": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "quote_source_span_utf8": {
+          "oneOf": [{"$ref": "#/$defs/source_span_utf8"}, {"type": "null"}]
+        },
+        "checked_scope_input": {
+          "oneOf": [{"$ref": "#/$defs/checked_scope_input"}, {"type": "null"}]
+        },
+        "captured_at": {
+          "oneOf": [{"$ref": "#/$defs/rfc3339"}, {"type": "null"}]
+        },
+        "sharing_scope": {"enum": ["session_only", "user_confirmed_shareable"]},
+        "rights_basis": {"enum": ["not_assessed", "user_declared_authorized"]}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"sharing_scope": {"const": "user_confirmed_shareable"}},
+            "required": ["sharing_scope"]
+          },
+          "then": {
+            "properties": {"rights_basis": {"const": "user_declared_authorized"}}
+          }
+        },
+        {
+          "if": {
+            "properties": {"rights_basis": {"const": "user_declared_authorized"}},
+            "required": ["rights_basis"]
+          },
+          "then": {
+            "properties": {"sharing_scope": {"const": "user_confirmed_shareable"}}
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"const": "agent_extracted"}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "anchor_value_encoded": {"type": "string", "minLength": 1, "maxLength": 12000},
+              "quote_source_span_utf8": {"$ref": "#/$defs/source_span_utf8"},
+              "checked_scope_input": {"type": "null"},
+              "captured_at": {"$ref": "#/$defs/rfc3339"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"const": "checked_no_match"}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "anchor_value_encoded": {"type": "null"},
+              "quote_source_span_utf8": {"type": "null"},
+              "checked_scope_input": {"$ref": "#/$defs/checked_scope_input"},
+              "captured_at": {"type": "null"},
+              "sharing_scope": {"const": "session_only"},
+              "rights_basis": {"const": "not_assessed"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"$ref": "#/$defs/failure_state"}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "anchor_value_encoded": {"type": "null"},
+              "quote_source_span_utf8": {"type": "null"},
+              "checked_scope_input": {"type": "null"},
+              "captured_at": {"type": "null"},
+              "sharing_scope": {"const": "session_only"},
+              "rights_basis": {"const": "not_assessed"}
+            }
+          }
+        }
+      ]
+    },
+    "slot_abstract": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "abstract"}}}]},
+    "slot_results": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "results"}}}]},
+    "slot_discussion": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "discussion"}}}]},
+    "slot_methods": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "methods"}}}]},
+    "slot_reported_analyses": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "reported_analyses"}}}]},
+    "slot_manuscript_report": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "manuscript_report"}}}]},
+    "slot_preregistration": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "preregistration"}}}]},
+    "slot_disclosure_scope": {"allOf": [{"$ref": "#/$defs/evidence_slot"}, {"properties": {"logical_role": {"const": "disclosure_scope"}}}]},
+    "abstract_results_slots": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [{"$ref": "#/$defs/slot_abstract"}, {"$ref": "#/$defs/slot_results"}],
+      "items": false
+    },
+    "discussion_results_slots": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [{"$ref": "#/$defs/slot_discussion"}, {"$ref": "#/$defs/slot_results"}],
+      "items": false
+    },
+    "methods_reported_analyses_slots": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [{"$ref": "#/$defs/slot_methods"}, {"$ref": "#/$defs/slot_reported_analyses"}],
+      "items": false
+    },
+    "manuscript_preregistration_slots": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"$ref": "#/$defs/slot_manuscript_report"},
+        {"$ref": "#/$defs/slot_preregistration"},
+        {"$ref": "#/$defs/slot_disclosure_scope"}
+      ],
+      "items": false
+    },
+    "states_quote_quote": {
+      "prefixItems": [
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+      ]
+    },
+    "states_quote_checked": {
+      "prefixItems": [
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+        {"properties": {"evidence_state": {"const": "checked_no_match"}}}
+      ]
+    },
+    "states_checked_quote": {
+      "prefixItems": [
+        {"properties": {"evidence_state": {"const": "checked_no_match"}}},
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+      ]
+    },
+    "states_quote_quote_checked": {
+      "prefixItems": [
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+        {"properties": {"evidence_state": {"const": "checked_no_match"}}}
+      ]
+    },
+    "states_quote_quote_quote": {
+      "prefixItems": [
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+        {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+      ]
+    },
+    "contains_failure": {
+      "contains": {
+        "type": "object",
+        "properties": {"evidence_state": {"$ref": "#/$defs/failure_state"}},
+        "required": ["evidence_state"]
+      },
+      "minContains": 1
+    },
+    "contains_state_source_missing": {"contains": {"properties": {"evidence_state": {"const": "source_missing"}}, "required": ["evidence_state"]}},
+    "contains_state_access_failed": {"contains": {"properties": {"evidence_state": {"const": "access_failed"}}, "required": ["evidence_state"]}},
+    "contains_state_retrieval_failed": {"contains": {"properties": {"evidence_state": {"const": "retrieval_failed"}}, "required": ["evidence_state"]}},
+    "scope_not_provided_configuration": {
+      "oneOf": [
+        {
+          "properties": {
+            "pair_kind": {"const": "methods_reported_analyses"},
+            "evidence_slots": {
+              "oneOf": [
+                {"prefixItems": [{"properties": {"evidence_state": {"const": "agent_extracted"}}}, {"properties": {"evidence_state": {"const": "not_checked"}}}]},
+                {"prefixItems": [{"properties": {"evidence_state": {"const": "not_checked"}}}, {"properties": {"evidence_state": {"const": "agent_extracted"}}}]}
+              ]
+            }
+          },
+          "required": ["pair_kind", "evidence_slots"]
+        },
+        {
+          "properties": {
+            "pair_kind": {"const": "manuscript_preregistration"},
+            "evidence_slots": {
+              "prefixItems": [
+                {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+                {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+                {"properties": {"evidence_state": {"const": "not_checked"}}}
+              ]
+            }
+          },
+          "required": ["pair_kind", "evidence_slots"]
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_key",
+        "pair_kind",
+        "check_state",
+        "outcome",
+        "finding_type",
+        "negative_basis",
+        "not_checked_reason",
+        "deviation_id",
+        "deviation_domain",
+        "evidence_slots"
+      ],
+      "properties": {
+        "observation_key": {"$ref": "#/$defs/identifier"},
+        "pair_kind": {"$ref": "#/$defs/pair_kind"},
+        "check_state": {"enum": ["performed", "not_checked"]},
+        "outcome": {"oneOf": [{"$ref": "#/$defs/outcome"}, {"type": "null"}]},
+        "finding_type": {"oneOf": [{"$ref": "#/$defs/finding_type"}, {"type": "null"}]},
+        "negative_basis": {"oneOf": [{"$ref": "#/$defs/negative_basis"}, {"type": "null"}]},
+        "not_checked_reason": {"oneOf": [{"$ref": "#/$defs/not_checked_reason"}, {"type": "null"}]},
+        "deviation_id": {"oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]},
+        "deviation_domain": {"oneOf": [{"$ref": "#/$defs/deviation_domain"}, {"type": "null"}]},
+        "evidence_slots": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/evidence_slot"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"pair_kind": {"const": "abstract_results"}}, "required": ["pair_kind"]},
+          "then": {
+            "properties": {
+              "evidence_slots": {"$ref": "#/$defs/abstract_results_slots"},
+              "deviation_id": {"type": "null"},
+              "deviation_domain": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"pair_kind": {"const": "discussion_results"}}, "required": ["pair_kind"]},
+          "then": {
+            "properties": {
+              "evidence_slots": {"$ref": "#/$defs/discussion_results_slots"},
+              "deviation_id": {"type": "null"},
+              "deviation_domain": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"pair_kind": {"const": "methods_reported_analyses"}}, "required": ["pair_kind"]},
+          "then": {
+            "properties": {
+              "evidence_slots": {"$ref": "#/$defs/methods_reported_analyses_slots"},
+              "deviation_id": {"type": "null"},
+              "deviation_domain": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"pair_kind": {"const": "manuscript_preregistration"}}, "required": ["pair_kind"]},
+          "then": {"properties": {"evidence_slots": {"$ref": "#/$defs/manuscript_preregistration_slots"}}}
+        },
+        {
+          "if": {"properties": {"check_state": {"const": "performed"}}, "required": ["check_state"]},
+          "then": {
+            "properties": {
+              "outcome": {"$ref": "#/$defs/outcome"},
+              "not_checked_reason": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "outcome": {"type": "null"},
+              "finding_type": {"type": "null"},
+              "negative_basis": {"type": "null"},
+              "not_checked_reason": {"$ref": "#/$defs/not_checked_reason"},
+              "deviation_id": {"type": "null"},
+              "deviation_domain": {"type": "null"},
+              "evidence_slots": {"$ref": "#/$defs/contains_failure"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "POTENTIAL_INCONSISTENCY_LOCATED"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {
+              "finding_type": {"$ref": "#/$defs/finding_type"},
+              "negative_basis": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "NO_LISTED_INCONSISTENCY_LOCATED"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {
+              "finding_type": {"type": "null"},
+              "negative_basis": {"$ref": "#/$defs/negative_basis"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"finding_type": {"enum": ["numeric_mismatch", "significance_mismatch"]}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"const": "abstract_results"}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"finding_type": {"const": "direction_mismatch"}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"enum": ["abstract_results", "discussion_results"]}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"finding_type": {"const": "claim_strength_rung_mismatch"}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"enum": ["abstract_results", "discussion_results"]}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"finding_type": {"const": "scope_or_population_overreach"}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"const": "discussion_results"}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"finding_type": {"const": "declared_analysis_no_reported_counterpart"}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"const": "methods_reported_analyses"}, "evidence_slots": {"$ref": "#/$defs/states_quote_checked"}}}
+        },
+        {
+          "if": {"properties": {"finding_type": {"const": "reported_analysis_no_declared_counterpart"}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"const": "methods_reported_analyses"}, "evidence_slots": {"$ref": "#/$defs/states_checked_quote"}}}
+        },
+        {
+          "if": {"properties": {"finding_type": {"const": "analysis_specification_conflict"}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"const": "methods_reported_analyses"}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"finding_type": {"const": "undisclosed_preregistration_deviation"}}, "required": ["finding_type"]},
+          "then": {"properties": {"pair_kind": {"const": "manuscript_preregistration"}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote_checked"}}}
+        },
+        {
+          "if": {"properties": {"negative_basis": {"const": "legitimate_compression"}}, "required": ["negative_basis"]},
+          "then": {"properties": {"pair_kind": {"const": "abstract_results"}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"negative_basis": {"const": "same_rung_rewording"}}, "required": ["negative_basis"]},
+          "then": {"properties": {"pair_kind": {"enum": ["abstract_results", "discussion_results"]}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"negative_basis": {"const": "disclosed_deviation"}}, "required": ["negative_basis"]},
+          "then": {"properties": {"pair_kind": {"const": "manuscript_preregistration"}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote_quote"}}}
+        },
+        {
+          "if": {"properties": {"negative_basis": {"const": "other_no_listed_observation"}}, "required": ["negative_basis"]},
+          "then": {"properties": {"pair_kind": {"enum": ["abstract_results", "discussion_results", "methods_reported_analyses"]}, "evidence_slots": {"$ref": "#/$defs/states_quote_quote"}}}
+        },
+        {
+          "if": {
+            "properties": {"pair_kind": {"const": "manuscript_preregistration"}, "check_state": {"const": "performed"}},
+            "required": ["pair_kind", "check_state"]
+          },
+          "then": {
+            "properties": {
+              "deviation_id": {"$ref": "#/$defs/identifier"},
+              "deviation_domain": {"$ref": "#/$defs/deviation_domain"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"check_state": {"const": "not_checked"}},
+            "required": ["check_state"]
+          },
+          "then": {
+            "if": {"properties": {"evidence_slots": {"$ref": "#/$defs/contains_state_source_missing"}}, "required": ["evidence_slots"]},
+            "then": {"properties": {"not_checked_reason": {"const": "COUNTERPART_DOCUMENT_MISSING"}}},
+            "else": {
+              "if": {"properties": {"evidence_slots": {"$ref": "#/$defs/contains_state_access_failed"}}, "required": ["evidence_slots"]},
+              "then": {"properties": {"not_checked_reason": {"const": "SOURCE_ACCESS_FAILED"}}},
+              "else": {
+                "if": {"properties": {"evidence_slots": {"$ref": "#/$defs/contains_state_retrieval_failed"}}, "required": ["evidence_slots"]},
+                "then": {"properties": {"not_checked_reason": {"const": "SOURCE_RETRIEVAL_FAILED"}}},
+                "else": {
+                  "if": {"properties": {"not_checked_reason": {"const": "COUNTERPART_SCOPE_NOT_PROVIDED"}}, "required": ["not_checked_reason"]},
+                  "then": {"$ref": "#/$defs/scope_not_provided_configuration"},
+                  "else": {"properties": {"not_checked_reason": {"const": "PAIR_CHECK_NOT_PERFORMED"}}}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "contains_abstract_results": {"contains": {"properties": {"pair_kind": {"const": "abstract_results"}}, "required": ["pair_kind"]}, "minContains": 1},
+    "contains_discussion_results": {"contains": {"properties": {"pair_kind": {"const": "discussion_results"}}, "required": ["pair_kind"]}, "minContains": 1},
+    "contains_methods_reported_analyses": {"contains": {"properties": {"pair_kind": {"const": "methods_reported_analyses"}}, "required": ["pair_kind"]}, "minContains": 1},
+    "contains_manuscript_preregistration": {"contains": {"properties": {"pair_kind": {"const": "manuscript_preregistration"}}, "required": ["pair_kind"]}, "minContains": 1}
+  }
+}

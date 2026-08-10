@@ -731,6 +731,45 @@ terminal policy, gate, replacement, or rewrite. The separate own-draft
 paper-mill, AI/author-origin, cleanliness, contextual-validity, or accuracy
 claim. Authority: [`shared/bibliographic_integrity_signals.md`](bibliographic_integrity_signals.md).
 
+### Preregistration Artifact Handoff and #672 Advisory
+
+`preregistration-artifact/1.0` accompanies Schema 9 as a separately named,
+byte-preserved JSON sidecar; it is not embedded into or reconstructed from an
+ad hoc Material Passport field. Its provided companion is a second separately
+named artifact. This keeps the raw sidecar bytes available for finalizer replay
+without changing the legacy passport roster.
+
+The research architect supplies only the caller declaration and, for a completed
+provided preregistration, an explicitly named companion handle. Because that
+agent has no shell, it does not compute a digest or build/update the sidecar. A
+shell-capable orchestrator is the sole caller of
+`scripts/build_cross_document_consistency_advisory.py
+build-preregistration-artifact`, including for an explicit unavailable receipt,
+and supplies the caller-held RFC3339 `declared_at`.
+
+Academic-paper intake and every pipeline transition strict-parse, digest-check,
+and replay the exact `preregistration-artifact/1.0` sidecar and provided companion
+before carrying both byte-for-byte. Consumers do not infer a missing status,
+repair a digest, reinterpret provenance, follow a stored path, or replace the
+artifact with `deep-research/templates/preregistration_template.md`. Later
+explicit user supply creates a new sidecar through the same builder.
+
+At Stage 4.5, the #672 source manifest projects the exact sidecar: `provided`
+becomes `present`; `not_provided` becomes `source_missing`; and
+`access_failed`/`retrieval_failed` retain their state. Unavailable entries keep
+the sidecar artifact ID and have null path/bindings with `not_provided`
+provenance. A formerly provided companion that no longer replays is
+`SOURCE_BINDING_INVALID`, not an ordinary not-checked receipt.
+
+The final `cross-document-consistency-advisory/1.0` is a separate checkpoint
+carrier, not a Material Passport field or terminal state. It is
+`LLM-ADVISORY` / `UNMEASURED`, creates no score, gate, authorization, ClaimIntent,
+rewrite, or consent/protocol duplicate, and cannot change integrity status or
+Stage-5 routing. #660 runs first and #672 second at the same one mandatory
+checkpoint against the identical accepted-draft artifact ID/SHA-256; a manuscript
+revision stales both. See
+[`shared/references/cross_document_consistency_advisory_protocol.md`](references/cross_document_consistency_advisory_protocol.md).
+
 ### Audit Artifact Ledger (v3.6.7)
 
 Schema 9 gains an optional append-only `audit_artifact[]` ledger recording cross-model audit runs that gate the three v3.6.7 downstream agents (`synthesis_agent`, `research_architect_agent` survey-designer mode, `report_compiler_agent` abstract-only mode). Each entry conforms to [`shared/contracts/passport/audit_artifact_entry.schema.json`](contracts/passport/audit_artifact_entry.schema.json).
@@ -1017,7 +1056,7 @@ Ordering: chronological by `generated_at`. A Stage 2.5 FAIL followed by backfill
 4. **Version tracking**: Each handoff artifact MUST carry a Material Passport (Schema 9) with a version label. Version labels must be monotonically increasing within a pipeline run
 5. **Failure on missing**: If a required field is missing, return `HANDOFF_INCOMPLETE` with a list of missing fields; do NOT proceed with partial data
 6. **Producer validation**: Producing agent must validate output against its schema BEFORE handoff
-7. **Consumer validation**: Consuming agent should validate input on receipt and request re-generation if schema violations are found
+7. **Consumer validation**: Consuming agent should validate input on receipt and request re-generation if schema violations are found. For a current #672 chain this includes exact byte replay of the one `preregistration-artifact/1.0` sidecar and its explicitly named companion when provided. Absence, substitution, a repaired digest, or a changed companion is `HANDOFF_INCOMPLETE`/contract failure, never an inferred unavailable receipt.
 8. **Integrity gating**: Artifacts that have passed through integrity verification (Schema 5) must have their Material Passport updated with `verification_status: "VERIFIED"` and `integrity_pass_date`
 9. **Staleness detection**: If an upstream artifact is modified after a downstream artifact was produced, the downstream artifact's Material Passport should be updated to `verification_status: "STALE"`
 10. **Passport freshness**: A Material Passport's integrity results are considered STALE if `integrity_pass_date` is more than 24 hours old relative to the current timestamp. Stale passports require re-verification before proceeding

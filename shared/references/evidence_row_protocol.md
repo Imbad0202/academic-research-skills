@@ -1,4 +1,4 @@
-# Shared Evidence-row Protocol (`evidence-row/1.0` and `evidence-row/1.1`)
+# Shared Evidence-row Protocol (`evidence-row/1.0`, `1.1`, and `1.2`)
 
 This protocol is the runtime-facing authority for evidence rows. The canonical
 field shape is `shared/contracts/evidence/evidence_row.schema.json`; cross-field
@@ -162,7 +162,7 @@ machine row, not a copied enum or a parsed rendered table. They may not upgrade
 `unconfirmed_anchor`, `not_checked`, `source_missing`, `access_failed`,
 `retrieval_failed`, or `anchorless` into evidence-bearing states.
 
-## Version 1.1 authority-profile advisory extension (#681)
+## Version 1.1 (`evidence-row/1.1`) authority-profile advisory extension (#681)
 
 `shared/contracts/evidence/evidence_row_v1_1.schema.json` is a separate closed
 version for `surface=authority_profile_content_coverage`. It does not extend the
@@ -202,3 +202,39 @@ V1.1 rows are nested only in the replay-bound
 labels remain `LLM-ADVISORY`; neither an exact passage nor a checked-no-match
 state changes #667 deterministic status, readiness, authorization, or
 institutional acceptance, and neither is an adequacy or efficacy finding.
+
+## Version 1.2 cross-document consistency extension (#672)
+
+`shared/contracts/evidence/evidence_row_v1_2.schema.json` is a separate closed
+version whose only surface is `cross_document_consistency`. It is nested only in
+`cross-document-consistency-advisory/1.0` and is finalized and replayed by
+`scripts/build_cross_document_consistency_advisory.py`. It does not widen either
+earlier schema or enter the Phase E Integrity Report. The 1.0 and 1.1 schemas,
+`scripts/evidence_rows.py` behavior, cache semantics, rendering, and serialized
+identities remain unchanged; versions and surfaces cannot be mixed.
+
+One 1.2 row is the complete ordered evidence unit for one observation. The first
+three pair kinds have two logical-role slots. Manuscript/preregistration has
+exactly three: `manuscript_report`, `preregistration`, then the manuscript-bound
+`disclosure_scope`. Logical roles remain distinct even when several bind the
+same accepted manuscript bytes.
+
+Its states are `agent_extracted`, `checked_no_match`, `not_checked`,
+`source_missing`, `access_failed`, and `retrieval_failed`. A quote is exact-span
+replayed. `checked_no_match` binds an exact, non-empty, named source scope and
+only records the caller's semantic assertion that no counterpart was located;
+it does not prove semantic absence or scope completeness. Methods absence
+requires one quote plus a checked counterpart scope. An undisclosed
+preregistration deviation requires two quotes plus its third checked disclosure
+scope. Consumers cannot promote an unavailable or unperformed slot.
+
+V1.2 retains strict single percent decode with literal `+`, the 25-word and
+1,000-code-point ceilings, exact strict-UTF-8 hash/span replay, inert rendering,
+and paired sharing/rights values. It performs no cache lookup, model/API call,
+retrieval, normalization, or ambient-clock read. One canonical `row_sha256`
+binds the complete bilateral or trilateral row.
+
+The row supports only a caller-supplied `LLM-ADVISORY` / `UNMEASURED`
+observation. It creates no PASS/FAIL, score, gate, clean/agreement certificate,
+ClaimIntent, revision authority, or consent/protocol finding. See
+`shared/references/cross_document_consistency_advisory_protocol.md`.

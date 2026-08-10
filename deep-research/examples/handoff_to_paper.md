@@ -102,6 +102,33 @@ Key themes identified:
 - Faculty perceptions and behavioral changes
 ```
 
+### 5. Preregistration artifact handoff
+
+This qualitative example has no completed preregistration artifact. The
+shell-capable dispatcher still runs the named deterministic builder and carries
+one explicit `preregistration-artifact/1.0` receipt:
+
+```yaml
+schema_version: preregistration-artifact/1.0
+status: not_provided
+artifact_id: preregistration-unavailable
+relative_path: null
+artifact_provenance: not_provided
+source_artifact_sha256: null
+source_artifact_size_bytes: null
+source_content_sha256: null
+source_content_utf8_bytes: null
+declared_at: <explicit caller-held RFC3339 value>
+record_digest: <builder-derived canonical digest>
+```
+
+The shell-capable dispatcher passes the schema-safe artifact ID and the canonical
+builder computes `record_digest`; the non-shell research architect never guesses
+a digest. There is no companion for this receipt.
+Academic-paper and every later pipeline handoff validate and carry the complete
+sidecar bytes unchanged. This explicit unavailable state means the
+manuscript/preregistration pair is not checked; it is not evidence of agreement.
+
 ---
 
 ## Handoff Instruction
@@ -144,11 +171,21 @@ Scanning available materials...
   - Action: SKIP academic-paper analysis phase
   - Note: Will structure Findings and Discussion sections around synthesis
 
+[DETECTED] Preregistration artifact sidecar
+  - Source: deep-research dispatching layer
+  - Status: not_provided (explicit unavailable receipt; no companion)
+  - Action: VALIDATE and CARRY sidecar byte-for-byte
+  - Advisory effect: manuscript/preregistration pair remains NOT CHECKED
+
 Materials Assessment: COMPREHENSIVE
 Recommended academic-paper mode: full (with accelerated pipeline)
 Estimated sections already covered: 60-70%
 Remaining work: Writing, formatting, argumentation, and polish
 ```
+
+`COMPREHENSIVE` above describes the four prose research materials only. It does
+not certify preregistration coverage, cross-document agreement, or a clean
+manuscript.
 
 ---
 

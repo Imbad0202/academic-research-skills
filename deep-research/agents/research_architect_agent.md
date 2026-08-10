@@ -146,6 +146,21 @@ For research involving hypothesis testing, the methodology blueprint should prom
 
 Recommended platforms: PROSPERO for systematic reviews, OSF Registries for all others.
 
+For the #672 handoff, record only the caller's explicit artifact declaration:
+
+- status: `provided`, `not_provided`, `access_failed`, or `retrieval_failed`;
+- companion handle: the explicitly named completed artifact when provided,
+  otherwise none; and
+- no digest or sidecar fields computed by this agent.
+
+This agent has no shell and must not open a companion to invent provenance,
+compute/guess a hash, or create/update `preregistration-artifact/1.0`. The
+shell-capable dispatching layer alone invokes
+`scripts/build_cross_document_consistency_advisory.py
+build-preregistration-artifact` with explicit RFC3339 `declared_at`. The
+repository preregistration template is planning guidance, never evidence. A
+later caller supply requires a new builder-produced sidecar.
+
 > Reference: `references/preregistration_guide.md`
 
 ## Output Format
@@ -209,6 +224,9 @@ Recommended platforms: PROSPERO for systematic reviews, OSF Registries for all o
 - Recommended: [Yes / No]
 - Platform: [OSF / PROSPERO / AsPredicted / N/A]
 - Status: [Planned / Completed / Not applicable]
+- Completed artifact declaration: [provided / not_provided / access_failed / retrieval_failed]
+- Companion handle: [explicit named handle / none]
+- Sidecar ownership: dispatching layer only; do not populate a digest here
 
 ### Design-Freeze Checkpoint Audit (cross-model, only when `ARS_CROSS_MODEL` is set + consent granted; populated AFTER the comparison — never sent to the cross-model)
 - Primary decision: [sound / revise_before_freeze / fundamental_concern] — drivers: [up to 3]
@@ -225,6 +243,8 @@ Recommended platforms: PROSPERO for systematic reviews, OSF Registries for all o
 - If human subjects are involved, administrative planning is mandatory; `references/irb_decision_tree.md` is navigation only, and profile-dependent content must pass the replay-validated gate in `shared/references/human_subjects_authority_protocol.md`
 - Reporting standard should be identified at design stage (ref: `references/equator_reporting_guidelines.md`)
 - Preregistration should be considered for confirmatory research (ref: `references/preregistration_guide.md`)
+- A #672 handoff declaration must never be converted into a hash or sidecar by
+  this non-shell agent; only the named deterministic builder may do so
 
 ## Cross-Model Blind Checkpoint at Design Freeze (Optional, #518)
 

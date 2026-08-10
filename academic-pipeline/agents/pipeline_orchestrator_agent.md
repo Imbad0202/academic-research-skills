@@ -570,8 +570,18 @@ Reference helper: `scripts/slr_lineage.py` `emit(stages, incoming_slr_lineage)`.
 | Stage 3' -> **coaching** -> 4' | New Revision Roadmap (if Major) | #670 authority family + `shared/contracts/re_review/traceability.schema.json` | Pass the immutable roadmap, exact claim surfaces, traceability sidecar, and new complete author sidecar to revision mode; coaching uses a source-ordered explicit author checkpoint, and prior-round choices are never inferred or carried forward |
 | Stage 3' -> 4.5 | (Accept/Minor direct path — no Stage 4' between) Verified Revised Draft + the traceability sidecar with its frozen `previously_missed`/`indeterminate` new-issue records (#576 §8 — Material Passport cargo consumed by the Stage 4.5 gate) | Schema 4 (revised) + traceability sidecar | Pass to integrity_verification_agent (final verification); the frozen records are gate INPUT, not just cargo |
 | Stage 4/4' -> 4.5 | Revised/Re-Revised Draft + #547/#548 context + complete validated `revision-evidence-bundle/1.0` from exact integrity PASS through every review write/no-op/integrity round + (Major-via-4' path) the Stage 3' traceability sidecar with its frozen `previously_missed`/`indeterminate` new-issue records | Schema 4 + #670 bundle + traceability sidecar | Pass to integrity_verification_agent; registered surfaces are replayed, while the explicit unregistered-claim boundary remains mandatory E6 review input |
-| Stage 4.5 -> 5 | Final Verified Draft + Final Integrity Report | Schema 4 + Schema 5 (Integrity Report) | Produce MD -> DOCX via Pandoc when available (otherwise instructions) -> ask about LaTeX -> confirm -> PDF. Carry forward `experiment_alignment_results[]` + `experiment_intake_declaration` (#260) to formatter surface + Stage 6 histogram |
+| Stage 4.5 -> 5 | Final Verified Draft + Final Integrity Report + exact preregistration sidecar/companion + independent #660/#672 results | Schema 4 + Schema 5 + `preregistration-artifact/1.0`; independent advisory schemas | At the one mandatory entry checkpoint run #660 then #672 on identical accepted-draft ID/SHA and surface both without changing routing. On confirmation: Produce MD -> DOCX via Pandoc when available (otherwise instructions) -> ask about LaTeX -> confirm -> PDF. Carry forward `experiment_alignment_results[]` + `experiment_intake_declaration` (#260) to formatter surface + Stage 6 histogram |
 | Stage 5 -> 6 | Final deliverables list + pipeline state history (state_tracker JSON, agent logs) | — (Process Record; no numbered schema) | Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL). User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`. Protocol: `../references/process_summary_protocol.md`; terminal semantics: `../references/pipeline_state_machine.md` § Stage 6 terminal semantics |
+
+**#672 sidecar continuity:** At Stage 1, this shell-capable orchestrator alone
+invokes `scripts/build_cross_document_consistency_advisory.py
+build-preregistration-artifact` using the research architect's explicit caller
+declaration, named companion handle, and caller-held RFC3339 `declared_at`. It
+must create exactly one receipt, including an unavailable receipt. Strict-parse,
+digest-check, and replay that exact sidecar and provided companion at every
+transition, then carry both byte-for-byte. Never infer status, repair/rebuild the
+record, follow its display path, or use the repository template as evidence. A
+later explicit user supply requires a new builder-produced sidecar.
 
 **All artifacts must carry a Material Passport (Schema 9)** with `origin_skill`, `origin_mode`, `origin_date`, `verification_status`, and `version_label`. From v3.7.4+, the passport also carries the run-level `slr_lineage` boolean computed per the emission step above.
 
@@ -789,6 +799,57 @@ Cite-Time Provenance Finalizer must not promote them, and neither finalizer nor
 formatter may create a marker, gate, terminal token, rewrite, or replacement
 from them. Corpus enrichment is producer-owned, returns a new passport copy,
 and never authorizes this read-only orchestrator to mutate a passport in place.
+
+---
+
+## Cross-Document Consistency Advisory Dispatch (#672)
+
+At the same single mandatory Stage-5 entry checkpoint, after the same exact
+Stage 4.5 PASS, run #660 first and #672 second. Both use the identical designated
+accepted draft. Enforce this exact machine join before either carrier is shown:
+
+```text
+#660 input_binding.artifact.artifact_id
+  == #672 input_binding.accepted_draft_artifact_id
+#660 input_binding.artifact.artifact_sha256
+  == #672 input_binding.accepted_draft_sha256
+```
+
+Build the #672 source manifest with exactly two entries: the designated accepted
+draft and the exact current `preregistration-artifact/1.0` projection. Every
+manuscript/disclosure evidence slot binds that accepted-draft ID; only the
+preregistration slot binds the sidecar artifact. For `provided`, replay the
+named companion and project the same path, provenance, hashes, and sizes as
+`present`. Project `not_provided` to `source_missing`; preserve
+`access_failed`/`retrieval_failed`; all unavailable projections keep the sidecar
+ID with null path/bindings and `not_provided` provenance. A provided companion
+that no longer replays is `SOURCE_BINDING_INVALID`, never not checked.
+
+Invoke the finalizer only with the explicitly named draft, source manifest,
+sidecar, accepted manuscript, and provided companion. It must replay the full
+sidecar/source bundle before observations and bind the accepted-draft ID/SHA,
+sidecar raw SHA/record digest, manifest SHA, draft SHA, and bundle SHA. Methods
+absence requires an exact named counterpart scope. A performed preregistration
+finding requires its third exact manuscript disclosure-scope witness.
+
+Surface #672 only as a separate `LLM-ADVISORY` / `UNMEASURED` `ADV-XDOC-*`
+carrier. It has no PASS/FAIL, score, confidence, severity, gate, readiness,
+authorization, acceptance, ClaimIntent, rewrite, consent/protocol duplicate, or
+clean/agreement meaning. It cannot change Integrity Report issue counts or
+verdict, Stage 4.5, formatter/terminal policy, the checkpoint, or Stage-5 routing.
+
+Keep the failure models independent. If #660 exits 1 after writing a schema-valid
+degraded artifact, preserve and validate it. If #672 fails contract/runtime
+validation, write or replace no advisory and retain only its closed, bounded,
+redacted `ADVISORY_UNAVAILABLE:<CODE>` diagnostic. Neither result blocks or
+delays the checkpoint or requires remediation before Stage 5.
+
+Any manuscript revision stales both carriers. Return through existing integrity
+review to a fresh exact Stage 4.5 PASS, then rerun #660 followed by #672 on the
+new accepted bytes. Reusing either old carrier or rerunning only one is invalid
+handoff cargo. Rendering is replay-first, one explicit page of at most 25, with
+no `--all`. See
+`shared/references/cross_document_consistency_advisory_protocol.md`.
 
 ---
 

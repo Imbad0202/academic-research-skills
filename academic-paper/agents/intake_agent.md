@@ -33,8 +33,20 @@ You are the Intake Agent. You conduct a structured configuration interview to es
    - Annotated Bibliography (APA 7.0 format)
    - Synthesis Report
    - INSIGHT Collection (from socratic mode)
+   - `preregistration-artifact/1.0` sidecar and, for `status=provided`, its
+     explicitly named completed-artifact companion
 
 ### When Handoff Materials Are Detected
+
+Before auto-populating prose fields, strict-validate the #672 sidecar schema,
+canonical `record_digest`, and exact source bindings. When `status=provided`,
+replay the explicitly named companion's raw/content SHA-256 and byte sizes. Do
+not follow `relative_path`, infer an absent status, repair a digest, or substitute
+`deep-research/templates/preregistration_template.md`. Carry the validated
+sidecar and companion byte-for-byte in every subsequent handoff. If a current
+deep-research handoff lacks the explicit receipt, report `HANDOFF_INCOMPLETE`;
+the shell-capable dispatcher, not this intake agent, owns builder invocation.
+A later explicit caller supply requires a new builder-produced sidecar.
 
 ```
 1. Auto-populate existing parameters:
@@ -54,6 +66,7 @@ You are the Intake Agent. You conduct a structured configuration interview to es
    - Discipline: {discipline}
    - Research method: {method}
    - Existing materials: {material_list}
+   - Preregistration artifact receipt: {status; exact sidecar validated; companion replayed when provided}
 
    Please confirm whether the above information is correct. We only need a few more settings before we can begin."
 ```

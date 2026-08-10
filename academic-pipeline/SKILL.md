@@ -278,6 +278,7 @@ After user confirmation:
 1. Pass the previous stage's deliverables as input to the next stage
 2. Trigger handoff protocol (defined in each skill's SKILL.md):
    - Stage 1  --> 2: deep-research handoff (RQ Brief + Methodology Blueprint + Bibliography + Synthesis)
+   - #672 cargo on every transition: exact builder-produced `preregistration-artifact/1.0` receipt and its named companion when provided; validate and carry byte-for-byte
    - Stage 2  --> 2.5: Pass complete paper to integrity_verification_agent
    - Stage 2.5 --> 3: Pass verified paper to reviewer
    - Stage 3  --> 4: Pass Revision Roadmap to academic-paper revision mode
@@ -285,7 +286,7 @@ After user confirmation:
    - Stage 3' --> 4': Pass new Revision Roadmap + R&R Traceability Matrix (Schema 11) to academic-paper revision mode; the traceability sidecar (frozen `previously_missed`/`indeterminate` records, #576 §8) rides through 4' toward Stage 4.5
    - Stage 3' --> 4.5 (Accept/Minor direct path): Pass verified revised draft + the traceability sidecar's frozen records to integrity_verification_agent as gate input
    - Stage 4/4' --> 4.5: Pass revision-completed paper to integrity_verification_agent (final verification); on the Major-via-4' path the Stage 3' traceability sidecar travels along as gate input
-   - Stage 4.5 --> 5: Pass verified final draft to format-convert mode
+   - Stage 4.5 --> 5: Pass verified final draft to the one mandatory Stage-5 entry checkpoint; run #660 then #672 against that same accepted artifact ID/SHA-256 before format-convert dispatch
    - Stage 5  --> 6: Pass final deliverables list + pipeline state history to Process Summary (user may decline Stage 6 at the Stage 5 completion checkpoint)
 3. Begin next stage
 ```
@@ -352,6 +353,31 @@ Stage 2.5 (pre-review) and Stage 4.5 (post-revision) verification. 5-phase proto
 After the exact Stage 4.5 pass and immediately before Stage 5 formatting, the orchestrator runs the deterministic #660 checker over the exact accepted working draft using an explicit user-supplied or synthetic-fixture snapshot and detached manifest bound to the raw snapshot SHA-256; omitted supply produces an explicit `not_checked` artifact. The path ships no native PPS content/importer/fetcher or redistributed phrase list and uses no live model, external API, human or model judge, or ambient clock; timestamps are explicit inputs. Its own-draft result is `HEURISTIC-ADVISORY` / `UNMEASURED`, never changes the Stage 4.5 PASS or Stage 5 gate, never rewrites prose, and must be re-run only after a revision has re-entered the existing integrity/screen sequence.
 
 For the literature corpus, a non-in-place producer emits one current v1.2 advisory row per `cited_title` and `cited_abstract`; a missing abstract remains explicitly `not_checked` / `unresolved` with `ABSTRACT_MISSING`. Downstream consumers are read-only and compose every row into the one existing `Bibliographic Integrity Advisories` section. The advisory mints no marker, triggers no terminal policy, gate, finalizer promotion, ranking, citation rewrite, or replacement text, and supports no clean-draft, origin, papermill, contextual-validity, publisher-acceptance, or matcher-accuracy claim.
+
+### Cross-document consistency advisory (#672)
+
+The Stage-1 shell-capable dispatcher is the only consumer that may invoke
+`scripts/build_cross_document_consistency_advisory.py
+build-preregistration-artifact`. The non-shell research architect supplies only
+the caller declaration and named companion handle. The resulting exact sidecar
+and provided companion are replay-validated and carried byte-for-byte through
+every handoff. Omission, silent substitution, template replacement, or digest
+repair is invalid.
+
+After the same exact Stage 4.5 PASS, the single mandatory Stage-5 entry
+checkpoint runs #660 first and #672 second. Both bind the identical accepted
+draft; #660 `input_binding.artifact.artifact_id/artifact_sha256` must equal #672
+`input_binding.accepted_draft_artifact_id/accepted_draft_sha256`. They remain
+separate carriers with separate failure semantics: preserve a schema-valid #660
+degraded artifact on exit 1; a #672 contract/runtime failure writes no artifact
+and records only bounded `ADVISORY_UNAVAILABLE:<CODE>`.
+
+#672 is always `LLM-ADVISORY` / `UNMEASURED`. It has no score, pass/fail, gate,
+readiness, authorization, ClaimIntent, rewrite, consent/protocol duplicate, or
+clean/agreement meaning. It cannot change Stage 4.5, block or delay the existing
+checkpoint, or alter Stage-5 routing after user confirmation. A manuscript
+revision stales both advisories and must re-enter integrity before #660 and #672
+rerun, in that order, against the new accepted bytes.
 
 ---
 

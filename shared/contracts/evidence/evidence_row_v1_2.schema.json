@@ -1,0 +1,714 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/evidence/evidence_row_v1_2.schema.json",
+  "title": "ARS Shared Evidence Row v1.2 — cross-document consistency",
+  "description": "Closed observation-level evidence-row/1.2 carrier for the cross-document consistency advisory. One row integrity-binds the complete ordered bilateral or preregistration three-witness evidence set. Evidence and checked-scope states are caller-supplied semantic observations whose bytes are replayed; they are not agreement, completeness, readiness, acceptance, or authorization findings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "surface",
+    "row_id",
+    "pair_kind",
+    "observation_key",
+    "deviation_id",
+    "deviation_domain",
+    "evidence_slots",
+    "row_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "evidence-row/1.2"},
+    "surface": {"const": "cross_document_consistency"},
+    "row_id": {
+      "type": "string",
+      "pattern": "^EVR-XDOC-[0-9]{6}$"
+    },
+    "pair_kind": {"$ref": "#/$defs/pair_kind"},
+    "observation_key": {"$ref": "#/$defs/identifier"},
+    "deviation_id": {
+      "oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]
+    },
+    "deviation_domain": {
+      "oneOf": [{"$ref": "#/$defs/deviation_domain"}, {"type": "null"}]
+    },
+    "evidence_slots": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/evidence_slot"}
+    },
+    "row_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"pair_kind": {"const": "abstract_results"}},
+        "required": ["pair_kind"]
+      },
+      "then": {
+        "properties": {
+          "deviation_id": {"type": "null"},
+          "deviation_domain": {"type": "null"},
+          "evidence_slots": {"$ref": "#/$defs/abstract_results_slots"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"pair_kind": {"const": "discussion_results"}},
+        "required": ["pair_kind"]
+      },
+      "then": {
+        "properties": {
+          "deviation_id": {"type": "null"},
+          "deviation_domain": {"type": "null"},
+          "evidence_slots": {"$ref": "#/$defs/discussion_results_slots"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"pair_kind": {"const": "methods_reported_analyses"}},
+        "required": ["pair_kind"]
+      },
+      "then": {
+        "properties": {
+          "deviation_id": {"type": "null"},
+          "deviation_domain": {"type": "null"},
+          "evidence_slots": {"$ref": "#/$defs/methods_reported_analyses_slots"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"pair_kind": {"const": "manuscript_preregistration"}},
+        "required": ["pair_kind"]
+      },
+      "then": {
+        "properties": {
+          "evidence_slots": {"$ref": "#/$defs/manuscript_preregistration_slots"}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "evidence_slots": {
+                  "contains": {
+                    "type": "object",
+                    "properties": {
+                      "evidence_state": {"$ref": "#/$defs/failure_state"}
+                    },
+                    "required": ["evidence_state"]
+                  }
+                }
+              },
+              "required": ["evidence_slots"]
+            },
+            "then": {
+              "properties": {
+                "deviation_id": {"type": "null"},
+                "deviation_domain": {"type": "null"}
+              }
+            },
+            "else": {
+              "properties": {
+                "deviation_id": {"$ref": "#/$defs/identifier"},
+                "deviation_domain": {"$ref": "#/$defs/deviation_domain"}
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:[Zz]|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+    },
+    "pair_kind": {
+      "enum": [
+        "abstract_results",
+        "discussion_results",
+        "methods_reported_analyses",
+        "manuscript_preregistration"
+      ]
+    },
+    "deviation_domain": {
+      "enum": [
+        "hypothesis",
+        "primary_outcome",
+        "sample_size_or_stopping",
+        "analysis_model",
+        "transformation",
+        "exclusion",
+        "inference_criterion",
+        "confirmatory_exploratory_designation"
+      ]
+    },
+    "failure_state": {
+      "enum": [
+        "not_checked",
+        "source_missing",
+        "access_failed",
+        "retrieval_failed"
+      ]
+    },
+    "source_span_utf8": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0, "maximum": 67108863},
+        "end": {"type": "integer", "minimum": 1, "maximum": 67108864}
+      },
+      "description": "Zero-based, end-exclusive byte offsets in the exact source_content_sha256 UTF-8 byte stream; runtime validation requires start < end."
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^/\\\\\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF][^\\\\\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF]*$",
+      "allOf": [
+        {"not": {"pattern": "(?:^|/)(?:\\.|\\.\\.)(?:/|$)"}},
+        {"not": {"pattern": "//|/$"}},
+        {
+          "not": {
+            "pattern": "[­؀-؅؜۝܏࢐-࢑࣢᠎​-‏‪-‮⁠-⁤⁦-⁯﻿￹-￻]"
+          }
+        }
+      ]
+    },
+    "document_locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "provenance"],
+      "properties": {
+        "kind": {"enum": ["document", "page", "section", "paragraph", "other"]},
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF]+$"
+        },
+        "provenance": {"const": "agent_supplied_not_independently_authenticated"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "document_kind",
+        "relative_path",
+        "source_artifact_sha256",
+        "source_artifact_size_bytes",
+        "source_content_sha256",
+        "source_content_utf8_bytes"
+      ],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/identifier"},
+        "document_kind": {"enum": ["manuscript", "preregistration"]},
+        "relative_path": {
+          "oneOf": [{"$ref": "#/$defs/relative_path"}, {"type": "null"}]
+        },
+        "source_artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "source_artifact_size_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 67108864
+        },
+        "source_content_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "source_content_utf8_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 67108864
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"document_kind": {"const": "manuscript"}},
+            "required": ["document_kind"]
+          },
+          "then": {
+            "properties": {
+              "source_artifact_size_bytes": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 8388608
+              },
+              "source_content_utf8_bytes": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 8388608
+              }
+            }
+          }
+        }
+      ]
+    },
+    "source_present": {
+      "type": "object",
+      "properties": {
+        "relative_path": {"$ref": "#/$defs/relative_path"},
+        "source_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "source_artifact_size_bytes": {"type": "integer", "minimum": 1},
+        "source_content_sha256": {"$ref": "#/$defs/sha256"},
+        "source_content_utf8_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "source_unavailable": {
+      "type": "object",
+      "properties": {
+        "relative_path": {"type": "null"},
+        "source_artifact_sha256": {"type": "null"},
+        "source_artifact_size_bytes": {"type": "null"},
+        "source_content_sha256": {"type": "null"},
+        "source_content_utf8_bytes": {"type": "null"}
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value_encoded", "value_decoded"],
+      "properties": {
+        "kind": {"enum": ["quote", "none"]},
+        "value_encoded": {"type": "string", "maxLength": 12000},
+        "value_decoded": {"type": "string", "maxLength": 1000}
+      }
+    },
+    "quote_anchor": {
+      "type": "object",
+      "properties": {
+        "kind": {"const": "quote"},
+        "value_encoded": {"type": "string", "minLength": 1, "maxLength": 12000},
+        "value_decoded": {"type": "string", "minLength": 1, "maxLength": 1000}
+      }
+    },
+    "empty_anchor": {
+      "type": "object",
+      "properties": {
+        "kind": {"const": "none"},
+        "value_encoded": {"const": ""},
+        "value_decoded": {"const": ""}
+      }
+    },
+    "excerpt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "excerpt_sha256", "source_span_utf8", "captured_at"],
+      "properties": {
+        "text": {"type": ["string", "null"], "minLength": 1, "maxLength": 1000},
+        "excerpt_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "source_span_utf8": {
+          "oneOf": [{"$ref": "#/$defs/source_span_utf8"}, {"type": "null"}]
+        },
+        "captured_at": {
+          "oneOf": [{"$ref": "#/$defs/rfc3339"}, {"type": "null"}]
+        }
+      }
+    },
+    "quote_excerpt": {
+      "type": "object",
+      "properties": {
+        "text": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "excerpt_sha256": {"$ref": "#/$defs/sha256"},
+        "source_span_utf8": {"$ref": "#/$defs/source_span_utf8"},
+        "captured_at": {"$ref": "#/$defs/rfc3339"}
+      }
+    },
+    "null_excerpt": {
+      "type": "object",
+      "properties": {
+        "text": {"type": "null"},
+        "excerpt_sha256": {"type": "null"},
+        "source_span_utf8": {"type": "null"},
+        "captured_at": {"type": "null"}
+      }
+    },
+    "checked_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_span_utf8",
+        "scope_sha256",
+        "scope_utf8_bytes",
+        "checked_at",
+        "completeness_provenance"
+      ],
+      "properties": {
+        "source_span_utf8": {"$ref": "#/$defs/source_span_utf8"},
+        "scope_sha256": {"$ref": "#/$defs/sha256"},
+        "scope_utf8_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "checked_at": {"$ref": "#/$defs/rfc3339"},
+        "completeness_provenance": {
+          "const": "caller_declared_complete_named_scope_not_independently_authenticated"
+        }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "key_sha256"],
+      "properties": {
+        "status": {"const": "not_used"},
+        "key_sha256": {"type": "null"}
+      }
+    },
+    "content_handling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contains_external_text", "sharing_scope", "rights_basis"],
+      "properties": {
+        "contains_external_text": {"type": "boolean"},
+        "sharing_scope": {"enum": ["session_only", "user_confirmed_shareable"]},
+        "rights_basis": {"enum": ["not_assessed", "user_declared_authorized"]}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"sharing_scope": {"const": "user_confirmed_shareable"}},
+            "required": ["sharing_scope"]
+          },
+          "then": {
+            "properties": {"rights_basis": {"const": "user_declared_authorized"}}
+          }
+        },
+        {
+          "if": {
+            "properties": {"rights_basis": {"const": "user_declared_authorized"}},
+            "required": ["rights_basis"]
+          },
+          "then": {
+            "properties": {"sharing_scope": {"const": "user_confirmed_shareable"}}
+          }
+        }
+      ]
+    },
+    "no_external_text_handling": {
+      "type": "object",
+      "properties": {
+        "contains_external_text": {"const": false},
+        "sharing_scope": {"const": "session_only"},
+        "rights_basis": {"const": "not_assessed"}
+      }
+    },
+    "evidence_slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_role",
+        "source",
+        "document_locator",
+        "evidence_state",
+        "anchor",
+        "excerpt",
+        "checked_scope",
+        "cache",
+        "content_handling"
+      ],
+      "properties": {
+        "logical_role": {
+          "enum": [
+            "abstract",
+            "results",
+            "discussion",
+            "methods",
+            "reported_analyses",
+            "manuscript_report",
+            "preregistration",
+            "disclosure_scope"
+          ]
+        },
+        "source": {"$ref": "#/$defs/source"},
+        "document_locator": {"$ref": "#/$defs/document_locator"},
+        "evidence_state": {
+          "enum": [
+            "agent_extracted",
+            "checked_no_match",
+            "not_checked",
+            "source_missing",
+            "access_failed",
+            "retrieval_failed"
+          ]
+        },
+        "anchor": {"$ref": "#/$defs/anchor"},
+        "excerpt": {"$ref": "#/$defs/excerpt"},
+        "checked_scope": {
+          "oneOf": [{"$ref": "#/$defs/checked_scope"}, {"type": "null"}]
+        },
+        "cache": {"$ref": "#/$defs/cache"},
+        "content_handling": {"$ref": "#/$defs/content_handling"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"logical_role": {"const": "preregistration"}},
+            "required": ["logical_role"]
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "properties": {"document_kind": {"const": "preregistration"}}
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "source": {
+                "properties": {"document_kind": {"const": "manuscript"}}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"const": "agent_extracted"}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "source": {"$ref": "#/$defs/source_present"},
+              "anchor": {"$ref": "#/$defs/quote_anchor"},
+              "excerpt": {"$ref": "#/$defs/quote_excerpt"},
+              "checked_scope": {"type": "null"},
+              "content_handling": {
+                "properties": {"contains_external_text": {"const": true}}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"const": "checked_no_match"}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "source": {"$ref": "#/$defs/source_present"},
+              "anchor": {"$ref": "#/$defs/empty_anchor"},
+              "excerpt": {"$ref": "#/$defs/null_excerpt"},
+              "checked_scope": {"$ref": "#/$defs/checked_scope"},
+              "content_handling": {"$ref": "#/$defs/no_external_text_handling"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"const": "not_checked"}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "source": {"$ref": "#/$defs/source_present"},
+              "anchor": {"$ref": "#/$defs/empty_anchor"},
+              "excerpt": {"$ref": "#/$defs/null_excerpt"},
+              "checked_scope": {"type": "null"},
+              "content_handling": {"$ref": "#/$defs/no_external_text_handling"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"enum": ["source_missing", "access_failed", "retrieval_failed"]}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "source": {"$ref": "#/$defs/source_unavailable"},
+              "anchor": {"$ref": "#/$defs/empty_anchor"},
+              "excerpt": {"$ref": "#/$defs/null_excerpt"},
+              "checked_scope": {"type": "null"},
+              "content_handling": {"$ref": "#/$defs/no_external_text_handling"}
+            }
+          }
+        }
+      ]
+    },
+    "slot_abstract": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "abstract"}}}
+      ]
+    },
+    "slot_results": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "results"}}}
+      ]
+    },
+    "slot_discussion": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "discussion"}}}
+      ]
+    },
+    "slot_methods": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "methods"}}}
+      ]
+    },
+    "slot_reported_analyses": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "reported_analyses"}}}
+      ]
+    },
+    "slot_manuscript_report": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "manuscript_report"}}}
+      ]
+    },
+    "slot_preregistration": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "preregistration"}}}
+      ]
+    },
+    "slot_disclosure_scope": {
+      "allOf": [
+        {"$ref": "#/$defs/evidence_slot"},
+        {"properties": {"logical_role": {"const": "disclosure_scope"}}}
+      ]
+    },
+    "two_slot_failure": {
+      "contains": {
+        "type": "object",
+        "properties": {"evidence_state": {"$ref": "#/$defs/failure_state"}},
+        "required": ["evidence_state"]
+      },
+      "minContains": 1
+    },
+    "three_slot_failure": {
+      "contains": {
+        "type": "object",
+        "properties": {"evidence_state": {"$ref": "#/$defs/failure_state"}},
+        "required": ["evidence_state"]
+      },
+      "minContains": 1
+    },
+    "abstract_results_slots": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"$ref": "#/$defs/slot_abstract"},
+        {"$ref": "#/$defs/slot_results"}
+      ],
+      "items": false,
+      "oneOf": [
+        {
+          "prefixItems": [
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+          ]
+        },
+        {"$ref": "#/$defs/two_slot_failure"}
+      ]
+    },
+    "discussion_results_slots": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"$ref": "#/$defs/slot_discussion"},
+        {"$ref": "#/$defs/slot_results"}
+      ],
+      "items": false,
+      "oneOf": [
+        {
+          "prefixItems": [
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+          ]
+        },
+        {"$ref": "#/$defs/two_slot_failure"}
+      ]
+    },
+    "methods_reported_analyses_slots": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"$ref": "#/$defs/slot_methods"},
+        {"$ref": "#/$defs/slot_reported_analyses"}
+      ],
+      "items": false,
+      "oneOf": [
+        {
+          "prefixItems": [
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+          ]
+        },
+        {
+          "prefixItems": [
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "checked_no_match"}}}
+          ]
+        },
+        {
+          "prefixItems": [
+            {"properties": {"evidence_state": {"const": "checked_no_match"}}},
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+          ]
+        },
+        {"$ref": "#/$defs/two_slot_failure"}
+      ]
+    },
+    "manuscript_preregistration_slots": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"$ref": "#/$defs/slot_manuscript_report"},
+        {"$ref": "#/$defs/slot_preregistration"},
+        {"$ref": "#/$defs/slot_disclosure_scope"}
+      ],
+      "items": false,
+      "oneOf": [
+        {
+          "prefixItems": [
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "checked_no_match"}}}
+          ]
+        },
+        {
+          "prefixItems": [
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}},
+            {"properties": {"evidence_state": {"const": "agent_extracted"}}}
+          ]
+        },
+        {"$ref": "#/$defs/three_slot_failure"}
+      ]
+    }
+  }
+}

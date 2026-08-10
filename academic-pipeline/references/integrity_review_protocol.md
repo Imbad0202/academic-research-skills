@@ -72,6 +72,30 @@ abstract is explicit `not_checked` / `unresolved` (`ABSTRACT_MISSING`). They
 render only in the single `Bibliographic Integrity Advisories` section and
 never mint a marker, trigger a gate, or supply replacement text.
 
+## Cross-Document Consistency Advisory Boundary (#672)
+
+#672 is not a sixth integrity phase. After the same exact Stage 4.5 PASS, it runs
+second, after #660, inside the one existing mandatory Stage-5 entry checkpoint.
+Both bind the identical accepted draft: #660's
+`input_binding.artifact.artifact_id/artifact_sha256` must equal #672's
+`input_binding.accepted_draft_artifact_id/accepted_draft_sha256`. Their
+independent carriers and failure semantics must not be merged.
+
+Before observations are consumed, the #672 finalizer replay-validates the exact
+builder-produced `preregistration-artifact/1.0` sidecar, its provided companion,
+the exact two-artifact source manifest, and the accepted draft. Methods absence
+requires an exact named counterpart scope; a performed preregistration deviation
+requires its third exact manuscript disclosure-scope witness. Missing or
+unavailable evidence remains not checked and cannot become a clean result.
+
+The result is always `LLM-ADVISORY` / `UNMEASURED`. It has no score, pass/fail,
+gate, issue-count effect, ClaimIntent, rewrite authority, consent/protocol
+duplicate, or agreement/clean meaning. A #672 contract failure writes no carrier
+and leaves only bounded `ADVISORY_UNAVAILABLE:<CODE>`; it does not change the
+Stage 4.5 verdict, block or delay the checkpoint, enter Phase E, or change
+formatter/Stage-5 routing. A later manuscript revision stales both #660 and #672
+and must re-enter integrity before both rerun in fixed order.
+
 ## Score Trajectory Tracking (v3.3)
 
 Reference: `academic-pipeline/references/score_trajectory_protocol.md`

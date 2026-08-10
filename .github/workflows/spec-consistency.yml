@@ -418,6 +418,15 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_tortured_phrase_screening_integration.py
 
+      - name: Check cross-document consistency advisory integration (#672)
+        # Locks the five closed contracts, exact bilateral/trilateral evidence
+        # replay, preregistration handoff binding, #660 checkpoint coexistence,
+        # hermetic runtime, UNMEASURED claim ceiling, and legacy isolation.
+        # Behavioral and mutation tests run through the unified manifest above.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_cross_document_consistency_advisory_integration.py
+
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
         # block, 16 Bucket B/C/D agents DON'T, and each Bucket A block

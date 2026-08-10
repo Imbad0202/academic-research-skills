@@ -1,0 +1,75 @@
+{
+  "positive": [
+    {
+      "observation_key": "abstract.numeric-mismatch",
+      "pair_kind": "abstract_results",
+      "finding_type": "numeric_mismatch",
+      "quotes": [
+        "Students receiving the intervention improved by 12 percent.",
+        "Students receiving the intervention improved by 8 percent."
+      ]
+    },
+    {
+      "observation_key": "discussion.scope-overreach",
+      "pair_kind": "discussion_results",
+      "finding_type": "scope_or_population_overreach",
+      "quotes": [
+        "The intervention benefits every university student.",
+        "The observed sample included first-year students at one university."
+      ]
+    },
+    {
+      "observation_key": "methods.declared-no-counterpart",
+      "pair_kind": "methods_reported_analyses",
+      "finding_type": "declared_analysis_no_reported_counterpart",
+      "quotes": [
+        "We preregistered a linear regression adjusted for baseline score."
+      ],
+      "checked_scope": "Reported analyses included descriptive statistics and a robustness check."
+    },
+    {
+      "observation_key": "prereg.undisclosed-campus",
+      "pair_kind": "manuscript_preregistration",
+      "finding_type": "undisclosed_preregistration_deviation",
+      "deviation_id": "campus-subgroup",
+      "deviation_domain": "analysis_model",
+      "quotes": [
+        "We report an exploratory subgroup analysis by campus.",
+        "We planned a confirmatory pooled analysis with no campus subgroup."
+      ],
+      "checked_scope": "Methods and discussion disclose all analysis changes except no subgroup amendment is described."
+    }
+  ],
+  "negative": [
+    {
+      "observation_key": "abstract.legitimate-compression",
+      "pair_kind": "abstract_results",
+      "negative_basis": "legitimate_compression",
+      "quotes": [
+        "The intervention improved student retention.",
+        "The intervention improved student retention across both semesters."
+      ]
+    },
+    {
+      "observation_key": "discussion.same-rung",
+      "pair_kind": "discussion_results",
+      "negative_basis": "same_rung_rewording",
+      "quotes": [
+        "The intervention was associated with higher engagement.",
+        "Higher engagement was associated with the intervention."
+      ]
+    },
+    {
+      "observation_key": "prereg.disclosed-gender",
+      "pair_kind": "manuscript_preregistration",
+      "negative_basis": "disclosed_deviation",
+      "deviation_id": "gender-subgroup",
+      "deviation_domain": "confirmatory_exploratory_designation",
+      "quotes": [
+        "The subgroup analysis by gender was exploratory and deviated from the preregistered plan.",
+        "We planned a confirmatory pooled analysis with no gender subgroup.",
+        "The subgroup analysis by gender was exploratory and deviated from the preregistered plan."
+      ]
+    }
+  ]
+}

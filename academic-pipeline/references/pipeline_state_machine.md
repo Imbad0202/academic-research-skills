@@ -219,6 +219,18 @@ The two boundaries below were under-specified before v3.17 (different runtimes c
 
 Transition state: `awaiting_confirmation` → on user confirmation → Stage 5 `in_progress`.
 
+#660 and #672 surface inside this same one checkpoint, after the same exact
+Stage 4.5 PASS and before the confirmation. The orchestrator runs #660 first and
+#672 second against the identical accepted-draft artifact ID/SHA-256. They do
+not create a second checkpoint or transition state. A schema-valid #660 degraded
+artifact (exit 1) is preserved; a #672 failure writes no carrier and records only
+bounded `ADVISORY_UNAVAILABLE:<CODE>`. Neither result blocks/delays confirmation,
+changes Stage 4.5, adds remediation routing, or changes Stage-5 dispatch.
+
+Any manuscript revision stales both carriers and returns through integrity before
+the fixed #660-then-#672 sequence reruns on the new accepted bytes. Reusing only
+one old carrier is invalid handoff cargo, not a new state-machine branch.
+
 Other confirmations near Stage 5 are NOT this MANDATORY boundary:
 
 1. The in-stage interactions of the Stage 5 output process — the "Need LaTeX?" question (Step 3) and the content confirmation before the final PDF (Step 4) — are part of Stage 5 execution, not pipeline checkpoints; they are asked during the stage, never at the gate.
@@ -245,6 +257,7 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 | Methodology Blueprint | Stage 1 | Stage 2 (Phase 0) | Recommended |
 | Bibliography | Stage 1 | Stage 2 (Phase 1) | Recommended |
 | Synthesis Report | Stage 1 | Stage 2 (Phase 3) | Recommended |
+| `preregistration-artifact/1.0` sidecar + provided named companion | Stage 1 shell-capable dispatch | Academic-paper intake, every handoff, Stage 4.5/#672 checkpoint | **Receipt required** (content may be unavailable); validate and carry exact bytes, never infer/rebuild/template-substitute |
 | Paper Draft | Stage 2 | Stage 2.5 (input) | **Required** |
 | **Integrity Report (Pre)** | **Stage 2.5** | **Stage 3 (prerequisite)** | **Required** |
 | **Verified Paper Draft** | **Stage 2.5** | **Stage 3 (Phase 0) + Stage 3' (re-review mode — the original pre-revision manuscript, #576 1.1 §3.1 Phase 2A comparison base)** | **Required, including Stage 3' consumption; current manifest and bundle fail closed if absent** |

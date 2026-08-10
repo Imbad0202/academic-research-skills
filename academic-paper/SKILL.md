@@ -356,7 +356,15 @@ Socratic mode that guides users through paper planning one chapter at a time. Bu
 
 ## Handoff Protocol: deep-research -> academic-paper
 
-`intake_agent` automatically detects deep-research materials (RQ Brief / Bibliography / Synthesis / INSIGHT Collection) and skips redundant steps. See `deep-research/SKILL.md` Handoff Protocol for the complete handoff material format.
+`intake_agent` automatically detects deep-research materials (RQ Brief /
+Bibliography / Synthesis / INSIGHT Collection) and skips redundant steps. It
+also requires the exact builder-produced `preregistration-artifact/1.0` handoff
+receipt and, when provided, its explicitly named companion. Intake validates and
+carries those bytes unchanged; it does not infer status, repair/rebuild the
+sidecar, follow its display path, or substitute a planning template. A later
+explicit user supply must be represented by a new sidecar from the named
+deterministic builder. See `deep-research/SKILL.md` Handoff Protocol and
+`shared/references/cross_document_consistency_advisory_protocol.md`.
 
 ---
 

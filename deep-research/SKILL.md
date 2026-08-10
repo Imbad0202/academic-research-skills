@@ -393,6 +393,9 @@ After research is complete, the following materials can be handed off to `academ
 3. **Annotated Bibliography** (from bibliography_agent)
 4. **Synthesis Report** (from synthesis_agent)
 5. **[If socratic mode] INSIGHT Collection and Research Plan Summary**
+6. **Preregistration handoff** — exactly one builder-produced
+   `preregistration-artifact/1.0` sidecar (including an unavailable receipt) and,
+   when `status=provided`, its explicitly named companion bytes
 
 **Trigger**: User says "now help me write a paper" or "write a paper based on this"
 
@@ -400,6 +403,16 @@ After research is complete, the following materials can be handed off to `academ
 - Has RQ Brief -> skip topic scoping
 - Has Bibliography -> skip literature search
 - Has Synthesis -> accelerate findings / discussion writing
+- Has preregistration sidecar -> strict-validate it and its named companion,
+  then carry both byte-for-byte; never rebuild it from prose or a template
+
+The non-shell `research_architect_agent` supplies only the explicit caller
+declaration and companion handle. Before handoff, a shell-capable dispatcher
+must run the named deterministic `build-preregistration-artifact` subcommand in
+`scripts/build_cross_document_consistency_advisory.py`, with caller-held RFC3339
+`declared_at`. Only that builder may create or update the sidecar. A later
+explicit user supply creates a new builder-produced sidecar; omission or silent
+substitution is invalid.
 
 See `examples/handoff_to_paper.md` for a detailed handoff example.
 
@@ -455,6 +468,8 @@ See `academic-pipeline/SKILL.md` for the complete workflow.
 | `shared/contracts/evidence/evidence_row_v1_1.schema.json` | Requirement/expectation/artifact-bound bounded excerpt rows for the #681 advisory surface | ethics_review |
 | `references/equator_reporting_guidelines.md` | EQUATOR reporting guideline mapping | research_architect, report_compiler |
 | `references/preregistration_guide.md` | Preregistration decision tree + platforms + checklist | research_architect |
+| `shared/references/cross_document_consistency_advisory_protocol.md` | Exact preregistration sidecar ownership/replay plus #672 advisory and #660 coexistence boundaries | research_architect, academic-paper intake, pipeline orchestrator |
+| `shared/contracts/passport/preregistration_artifact.schema.json` | Closed persistent preregistration handoff receipt; companion bytes remain separately named | dispatching layer, intake, pipeline orchestrator |
 | `references/systematic_review_toolkit.md` | Cochrane v6.4, PRISMA 2020, RoB 2, ROBINS-I, I² guide, GRADE, protocol registration | risk_of_bias, meta_analysis, bibliography, report_compiler |
 | `references/literature_monitoring_strategies.md` | Google Scholar alerts, PubMed alerts, RSS feeds, Retraction Watch, citation tracking, monitoring cadence | monitoring_agent |
 | `references/argumentation_reasoning_framework.md` | Cognitive framework for evaluating argument strength: Toulmin model, causal reasoning (Bradford Hill), inference to best explanation, epistemic status classification | synthesis, devils_advocate, source_verification, socratic_mentor, research_architect |

@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/preregistration_artifact.schema.json",
+  "title": "Preregistration artifact handoff sidecar",
+  "description": "Closed preregistration-artifact/1.0 handoff receipt. It binds one explicitly supplied UTF-8 completed preregistration companion, or records one caller-declared unavailable state. Provenance values are caller declarations, not independent authenticity, timeliness, completeness, or registration findings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "artifact_id",
+    "relative_path",
+    "artifact_provenance",
+    "source_artifact_sha256",
+    "source_artifact_size_bytes",
+    "source_content_sha256",
+    "source_content_utf8_bytes",
+    "declared_at",
+    "record_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "preregistration-artifact/1.0"},
+    "status": {
+      "enum": ["provided", "not_provided", "access_failed", "retrieval_failed"]
+    },
+    "artifact_id": {"$ref": "#/$defs/identifier"},
+    "relative_path": {
+      "oneOf": [{"$ref": "#/$defs/relative_path"}, {"type": "null"}]
+    },
+    "artifact_provenance": {
+      "enum": [
+        "author_provided_completed_preregistration",
+        "synthetic_fixture",
+        "not_provided"
+      ]
+    },
+    "source_artifact_sha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "source_artifact_size_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 67108864
+    },
+    "source_content_sha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "source_content_utf8_bytes": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 67108864
+    },
+    "declared_at": {"$ref": "#/$defs/rfc3339"},
+    "record_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"const": "provided"}},
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "relative_path": {"$ref": "#/$defs/relative_path"},
+          "artifact_provenance": {
+            "enum": [
+              "author_provided_completed_preregistration",
+              "synthetic_fixture"
+            ]
+          },
+          "source_artifact_sha256": {"$ref": "#/$defs/sha256"},
+          "source_artifact_size_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 67108864
+          },
+          "source_content_sha256": {"$ref": "#/$defs/sha256"},
+          "source_content_utf8_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 67108864
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "relative_path": {"type": "null"},
+          "artifact_provenance": {"const": "not_provided"},
+          "source_artifact_sha256": {"type": "null"},
+          "source_artifact_size_bytes": {"type": "null"},
+          "source_content_sha256": {"type": "null"},
+          "source_content_utf8_bytes": {"type": "null"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:[Zz]|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^/\\\\\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF][^\\\\\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF]*$",
+      "allOf": [
+        {"not": {"pattern": "(?:^|/)(?:\\.|\\.\\.)(?:/|$)"}},
+        {"not": {"pattern": "//|/$"}},
+        {
+          "not": {
+            "pattern": "[­؀-؅؜۝܏࢐-࢑࣢᠎​-‏‪-‮⁠-⁤⁦-⁯﻿￹-￻]"
+          }
+        }
+      ],
+      "description": "Normalized relative POSIX display path. Runtime validation also rejects non-normalized or platform-absolute forms before any companion access."
+    }
+  }
+}

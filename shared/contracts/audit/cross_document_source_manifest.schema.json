@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/audit/cross_document_source_manifest.schema.json",
+  "title": "Cross-document consistency source manifest",
+  "description": "Closed cross-document-source-manifest/1.0 authority for exactly one accepted Stage 4.5 manuscript and one preregistration sidecar projection. Paths are inert relative display paths; this manifest never locates, scans, or fetches content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "accepted_draft_artifact_id",
+    "accepted_draft_sha256",
+    "artifacts",
+    "manifest_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "cross-document-source-manifest/1.0"},
+    "manifest_id": {"$ref": "#/$defs/identifier"},
+    "accepted_draft_artifact_id": {"$ref": "#/$defs/identifier"},
+    "accepted_draft_sha256": {"$ref": "#/$defs/sha256"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/artifact"},
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": {"document_kind": {"const": "manuscript"}},
+            "required": ["document_kind"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {"document_kind": {"const": "preregistration"}},
+            "required": ["document_kind"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "manifest_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^/\\\\\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF][^\\\\\\u0000-\\u001f\\u007f-\\u009f\\uD800-\\uDFFF]*$",
+      "allOf": [
+        {"not": {"pattern": "(?:^|/)(?:\\.|\\.\\.)(?:/|$)"}},
+        {"not": {"pattern": "//|/$"}},
+        {
+          "not": {
+            "pattern": "[­؀-؅؜۝܏࢐-࢑࣢᠎​-‏‪-‮⁠-⁤⁦-⁯﻿￹-￻]"
+          }
+        }
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "document_kind",
+        "relative_path",
+        "artifact_state",
+        "artifact_provenance",
+        "source_artifact_sha256",
+        "source_artifact_size_bytes",
+        "source_content_sha256",
+        "source_content_utf8_bytes"
+      ],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/identifier"},
+        "document_kind": {"enum": ["manuscript", "preregistration"]},
+        "relative_path": {
+          "oneOf": [{"$ref": "#/$defs/relative_path"}, {"type": "null"}]
+        },
+        "artifact_state": {
+          "enum": ["present", "source_missing", "access_failed", "retrieval_failed"]
+        },
+        "artifact_provenance": {
+          "enum": [
+            "author_provided_manuscript",
+            "author_provided_completed_preregistration",
+            "synthetic_fixture",
+            "not_provided"
+          ]
+        },
+        "source_artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "source_artifact_size_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 67108864
+        },
+        "source_content_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "source_content_utf8_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 67108864
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"artifact_state": {"const": "present"}},
+            "required": ["artifact_state"]
+          },
+          "then": {
+            "properties": {
+              "relative_path": {"$ref": "#/$defs/relative_path"},
+              "source_artifact_sha256": {"$ref": "#/$defs/sha256"},
+              "source_artifact_size_bytes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 67108864
+              },
+              "source_content_sha256": {"$ref": "#/$defs/sha256"},
+              "source_content_utf8_bytes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 67108864
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "relative_path": {"type": "null"},
+              "artifact_provenance": {"const": "not_provided"},
+              "source_artifact_sha256": {"type": "null"},
+              "source_artifact_size_bytes": {"type": "null"},
+              "source_content_sha256": {"type": "null"},
+              "source_content_utf8_bytes": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"document_kind": {"const": "manuscript"}},
+            "required": ["document_kind"]
+          },
+          "then": {
+            "properties": {
+              "artifact_state": {"const": "present"},
+              "artifact_provenance": {
+                "enum": ["author_provided_manuscript", "synthetic_fixture"]
+              },
+              "source_artifact_size_bytes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8388608
+              },
+              "source_content_utf8_bytes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8388608
+              }
+            }
+          },
+          "else": {
+            "if": {
+              "properties": {"artifact_state": {"const": "present"}},
+              "required": ["artifact_state"]
+            },
+            "then": {
+              "properties": {
+                "artifact_provenance": {
+                  "enum": [
+                    "author_provided_completed_preregistration",
+                    "synthetic_fixture"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

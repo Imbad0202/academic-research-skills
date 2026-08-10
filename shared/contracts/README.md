@@ -211,6 +211,13 @@ lookup. `scripts/evidence_rows.py` exposes `build_advisory(...)` for this
 surface, while the existing `evidence-row/1.0` builder and rendered bytes remain
 unchanged. The versioned surfaces cannot be mixed in one page.
 
+`shared/contracts/evidence/evidence_row_v1_2.schema.json` is the separate closed
+version for `surface: cross_document_consistency` (#672). It binds one complete
+ordered bilateral or trilateral advisory observation to the exact accepted
+manuscript and optional completed-preregistration bytes. It is finalized only by
+`scripts/build_cross_document_consistency_advisory.py`; the existing 1.0/1.1
+schemas and `scripts/evidence_rows.py` identities and behavior remain unchanged.
+
 ## Non-ranking revision authority (#670)
 
 The current reviewer-to-author revision family lives under `revision/`:
@@ -462,6 +469,46 @@ a marker, terminal gate, replacement text, or automatic rewrite. All corpus
 rows render in the one canonical `Bibliographic Integrity Advisories` section.
 
 Spec: `docs/design/2026-08-10-660-tortured-phrase-screening-spec.md`.
+
+## Cross-document consistency advisory (#672)
+
+The #672 family is a standalone replay-bound advisory:
+
+- `passport/preregistration_artifact.schema.json` defines the persistent
+  `preregistration-artifact/1.0` handoff sidecar;
+- `audit/cross_document_source_manifest.schema.json` binds exactly the accepted
+  manuscript plus the exact sidecar projection;
+- `audit/cross_document_consistency_advisory_draft.schema.json` accepts the
+  closed caller-supplied semantic observations;
+- `evidence/evidence_row_v1_2.schema.json` binds their exact bilateral or
+  trilateral evidence; and
+- `audit/cross_document_consistency_advisory.schema.json` defines the canonical
+  final `LLM-ADVISORY` / `UNMEASURED` carrier.
+
+Only `scripts/build_cross_document_consistency_advisory.py` may build or update
+the preregistration sidecar. The non-shell research architect supplies only the
+explicit caller status and companion handle. Academic-paper intake and every
+pipeline handoff validate and carry the same sidecar and, when provided, the
+same companion bytes unchanged. The repository template is guidance, not
+evidence.
+
+Finalization replays the sidecar, exact two-artifact manifest, accepted draft,
+optional preregistration companion, and every quote or checked scope before
+consuming observations. Methods absence requires an exact named counterpart
+scope. An undisclosed preregistration deviation requires a third exact manuscript
+disclosure-scope witness. Missing or unavailable inputs cannot become a
+no-listed result.
+
+At the one mandatory Stage-5 entry checkpoint, #660 runs first and #672 second
+against the same accepted-draft artifact ID/SHA-256. Their carriers and failure
+semantics stay separate. #672 failure writes no output and produces only bounded
+`ADVISORY_UNAVAILABLE:<CODE>`; neither advisory changes Stage 4.5 or Stage-5
+routing. Any manuscript revision stales both and requires both to rerun.
+
+The final carrier has no score, pass/fail, gate, readiness, authorization,
+rewrite, ClaimIntent, consent/protocol duplicate, or clean-document meaning.
+Protocol: `shared/references/cross_document_consistency_advisory_protocol.md`.
+Spec: `docs/design/2026-08-10-672-cross-document-consistency-advisory-spec.md`.
 
 ## Audit artifact contracts (v3.6.7 Step 6)
 
