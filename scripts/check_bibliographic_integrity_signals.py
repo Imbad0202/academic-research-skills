@@ -8,7 +8,6 @@ import hashlib
 import importlib.util
 import json
 import sys
-import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +24,7 @@ LEGACY_FIXTURE_SHA256 = {
 }
 V12_DETECTED_FIXTURE = "tortured_phrase_v1_2_detected.json"
 V12_ABSTRACT_MISSING_FIXTURE = "tortured_phrase_v1_2_abstract_missing.json"
+V12_FIXTURE_UNICODE_DATA_VERSION = "14.0.0"
 CONTEXTS = (
     "author_prose",
     "quote",
@@ -272,7 +272,7 @@ def _check_v12_fixture(
             "snapshot_schema_version": manifest.get("snapshot_schema_version"),
             "grammar_profile": manifest.get("grammar_profile"),
             "normalizer_profile": manifest.get("normalizer_profile"),
-            "unicode_data_version": unicodedata.unidata_version,
+            "unicode_data_version": V12_FIXTURE_UNICODE_DATA_VERSION,
             "rule_count": manifest.get("rule_count"),
             "unsupported_rule_count": manifest.get("unsupported_rule_count"),
             "rights": manifest.get("rights"),

@@ -583,6 +583,14 @@ and degraded rows carry a typed degradation item. Evidence never embeds a full
 abstract: a witness contains its bounded raw span/hash and rule id, while the local
 machine artifact remains the complete replay authority.
 
+`unicode_data_version` records the producer interpreter's Unicode database; it is
+not rewritten to the validator's local version. The shipped v1.2 fixtures freeze
+their generation provenance at `14.0.0`. A validator running another Unicode version
+must validate that frozen value and compare the remaining replay projection exactly,
+not relabel the stored artifact with its ambient version. A newly produced row still
+records its actual runtime version, and byte-exact reproduction of that row requires
+the same recorded Unicode data version.
+
 The producer is idempotent by the citation×surface current-row rule in §2.2.
 Re-running on unchanged bytes and identical explicit timestamps yields byte-identical
 output. Changed surface or snapshot bytes change the hash-bound id and atomically

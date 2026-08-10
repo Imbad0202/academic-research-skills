@@ -69,7 +69,7 @@ def test_all_epistemic_class_fixtures_round_trip() -> None:
         assert json.loads(json.dumps(fixture)) == fixture
 
 
-def test_v1_2_fixtures_are_exact_current_runtime_outputs() -> None:
+def test_v1_2_fixtures_replay_except_frozen_unicode_provenance() -> None:
     corpus_path = SCRIPTS / "fixtures/tortured_phrase_screening/corpus_input.yaml"
     corpus = yaml.safe_load(corpus_path.read_text(encoding="utf-8"))[
         "literature_corpus"
@@ -97,6 +97,17 @@ def test_v1_2_fixtures_are_exact_current_runtime_outputs() -> None:
             recorded_at="2026-08-10T01:00:01Z",
         )
         fixture = _fixture(fixture_name)
+        runtime_version = expected["tortured_phrase_context"]["snapshot"][
+            "unicode_data_version"
+        ]
+        assert runtime_version == state.bundle.unicode_data_version
+        fixture_version = fixture["tortured_phrase_context"]["snapshot"][
+            "unicode_data_version"
+        ]
+        assert fixture_version == checker.V12_FIXTURE_UNICODE_DATA_VERSION
+        expected["tortured_phrase_context"]["snapshot"][
+            "unicode_data_version"
+        ] = fixture_version
         assert fixture == expected
         screening.validate_cited_signal_binding(fixture, by_key[citation_key])
 
@@ -483,6 +494,7 @@ def test_sync_checker_detects_legacy_fixture_byte_drift(tmp_path: Path) -> None:
         ("hash", "evidence_sha256 drifted"),
         ("count", "rule_match_count does not equal the complete match array"),
         ("provenance", "provenance stale_after drifted"),
+        ("unicode_version", "unicode_data_version does not replay fixture provenance"),
         ("missing_abstract", "CHECK_COMPLETED cannot describe an absent cited surface"),
     ],
 )
@@ -530,6 +542,10 @@ def test_sync_checker_rejects_v1_2_mutations(
         elif mutation == "provenance":
             fixture["provenance"]["stale_after"] = "2026-08-11T01:00:00Z"
             fixture["provenance"]["freshness"] = "stale"
+        elif mutation == "unicode_version":
+            fixture["tortured_phrase_context"]["snapshot"][
+                "unicode_data_version"
+            ] = "15.0.0"
         else:
             fixture["evidence"][0]["evidence_sha256"] = "0" * 64
         detected_path.write_text(
