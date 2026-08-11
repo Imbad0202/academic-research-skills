@@ -120,9 +120,17 @@ REQUIRED_TEXT: dict[Path, tuple[str, ...]] = {
     HANDOFFS: ("Separately named review-target authority (#683/#684)",),
     MEASUREMENT: (
         "identical target context bytes",
-        "at least two fresh isolated replicates",
+        "exactly two fresh isolated replicates",
         "No composite score",
         "PRE-REGISTERED / NOT RUN",
+        "dispatches exactly 24 subject calls",
+        "at least two judge configurations",
+        "Human expert labels do not satisfy",
+        "Human expert labels remain required in addition",
+        "incremental metered API spend ceiling of **USD 0**",
+        "There is no API fallback within this run",
+        "provider_managed_not_exposed",
+        "citation adapter is not this launcher",
         "validate these artifacts and the scorer but never dispatch",
     ),
 }

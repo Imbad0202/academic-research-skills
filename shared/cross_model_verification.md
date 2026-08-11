@@ -23,6 +23,12 @@ API credentials. The selector is closed: unset or `api` keeps the existing API
 route, `codex` selects this citation-only route, and every other value fails visibly
 without falling back.
 
+This runtime boundary does not forbid a separately preregistered, offline
+held-out suite from choosing Codex CLI as its subject transport. In particular,
+the #684 constructive-value plan is a synthetic evaluation with its own frozen
+call plan, USD 0 API ceiling, and human expert labels; it is not a generic
+reviewer/DA handoff and must not call this citation adapter with reviewer data.
+
 ## Why Cross-Model Verification
 
 A stress test of 68 AI-generated citations found 31% had problems — and all passed three rounds of same-model integrity checks. The root cause: the verifying AI and the generating AI share the same training data distribution, so they share the same blind spots. A different model (trained on overlapping but not identical data, with different RLHF tuning) can catch errors that the primary model systematically misses.

@@ -185,9 +185,24 @@ separately; there is no composite “review quality” score.
 The run publishes under `heldout-measurement/1.1`, retains raw outputs and exact
 execution manifests, uses at least two replicates per item, and discloses judges
 and adjudication. No model/API/subscription/network call runs in CI. Dispatch
-requires explicit operator consent for provider, synthetic content class, and
-cost. Until a valid report is committed, documentation says the constructive-
-value effect is unmeasured and makes no efficacy claim.
+requires explicit operator consent for provider, exact model, synthetic content
+class, and quota/cost. The default subject transport is an isolated Codex CLI
+session authenticated by the operator's ChatGPT subscription: the minimum run is
+24 subject calls (six items, two arms, two replicates), human experts supply the
+required labels, and the measurement envelope's two-family judge requirement is
+met with subscription CLIs wherever available. Its incremental metered API spend
+ceiling is USD 0. Subscription quota consumption is still disclosed. A missing
+second subscribed model family blocks publication; it does not relax the contract.
+
+There is no automatic API fallback. A subscription quota interruption, missing
+model, or unavailable CLI control is retained as blocked/partial and pauses the
+run. Moving to an API is a new amended run and requires a call-count estimate,
+worst-case USD estimate, an explanation of why the CLI is insufficient, and new
+explicit operator consent. An API key or environment selector is never consent.
+Provider-managed settings that the CLI does not expose are recorded as
+unavailable rather than invented; both arms use the same observable controls and
+balanced same-window order. Until a valid report is committed, documentation
+says the constructive-value effect is unmeasured and makes no efficacy claim.
 
 ## Non-goals
 

@@ -149,6 +149,36 @@ def test_measurement_cannot_drop_same_context_rule() -> None:
     assert "identical target context bytes" in "\n".join(guard.check_wiring(texts))
 
 
+def test_measurement_cannot_restore_api_as_default() -> None:
+    texts = _texts()
+    texts[guard.MEASUREMENT] = texts[guard.MEASUREMENT].replace(
+        "incremental metered API spend ceiling of **USD 0**",
+        "API spend is estimated before dispatch",
+    )
+    joined = "\n".join(guard.check_wiring(texts))
+    assert "USD 0" in joined
+
+
+def test_measurement_cannot_add_automatic_api_fallback() -> None:
+    texts = _texts()
+    texts[guard.MEASUREMENT] = texts[guard.MEASUREMENT].replace(
+        "There is no API fallback within this run",
+        "API fallback is permitted when subscription quota is exhausted",
+    )
+    joined = "\n".join(guard.check_wiring(texts))
+    assert "no API fallback" in joined
+
+
+def test_measurement_cannot_drop_two_family_judges() -> None:
+    texts = _texts()
+    texts[guard.MEASUREMENT] = texts[guard.MEASUREMENT].replace(
+        "at least two judge configurations",
+        "one judge configuration",
+    )
+    joined = "\n".join(guard.check_wiring(texts))
+    assert "two judge configurations" in joined
+
+
 def test_phase1_checker_accepts_pointer_commitment_without_extra_h2() -> None:
     contract = json.loads(
         (guard.REPO_ROOT / "shared/contracts/reviewer/full.json").read_text()
