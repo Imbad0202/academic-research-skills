@@ -1,0 +1,555 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/activity/adjudication_activity_input.schema.json",
+  "title": "Adjudication Activity Eligible-run Source Manifest",
+  "description": "Closed, data-minimized input to the deterministic adjudication-activity recorder. One manifest represents one terminal eligible run and points only to exact source artifacts. Callers cannot submit activity events, counts, rates, or overturn classifications; the recorder replays the hash-bound artifacts and derives the closed event vocabulary mechanically.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "store_id",
+    "run_id",
+    "terminal_state",
+    "terminal_stage",
+    "terminal_receipt",
+    "sources",
+    "data_minimization"
+  ],
+  "properties": {
+    "schema_version": { "const": "adjudication-activity-input/1.0" },
+    "store_id": { "$ref": "#/$defs/store_id" },
+    "run_id": {
+      "$ref": "#/$defs/run_id",
+      "description": "Stable pipeline run identity. Runtime must match it to the replayed terminal receipt and all captured source artifacts; a caller assertion alone is never accepted."
+    },
+    "terminal_state": {
+      "enum": ["completed", "aborted"],
+      "description": "Claimed terminal state, accepted only after equality with terminal_receipt.pipeline_state."
+    },
+    "terminal_stage": {
+      "$ref": "#/$defs/pipeline_stage",
+      "description": "Claimed terminal stage, accepted only after equality with terminal_receipt.current_stage."
+    },
+    "terminal_receipt": { "$ref": "#/$defs/terminal_receipt" },
+    "sources": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "prefixItems": [
+        {
+          "allOf": [
+            { "$ref": "#/$defs/source_receipt" },
+            {
+              "properties": {
+                "source_family": { "const": "revision_author_adjudication" },
+                "artifacts": {
+                  "items": {
+                    "allOf": [
+                      { "$ref": "#/$defs/source_artifact" },
+                      {
+                        "properties": {
+                          "artifact_role": {
+                            "enum": [
+                              "author_adjudication_input",
+                              "author_adjudication"
+                            ]
+                          },
+                          "artifact_group_stage": {
+                            "enum": ["pipeline_stage_3", "pipeline_stage_3_prime"]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": ["capture_state"],
+                "properties": { "capture_state": { "const": "captured" } }
+              },
+              "then": {
+                "properties": {
+                  "artifacts": {
+                    "minItems": 2,
+                    "maxItems": 4,
+                    "allOf": [
+                      {
+                        "contains": {
+                          "required": ["artifact_role"],
+                          "properties": {
+                            "artifact_role": { "const": "author_adjudication_input" }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 2
+                      },
+                      {
+                        "contains": {
+                          "required": ["artifact_role"],
+                          "properties": {
+                            "artifact_role": { "const": "author_adjudication" }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 2
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/source_receipt" },
+            {
+              "properties": {
+                "source_family": { "const": "compliance_report" },
+                "artifacts": {
+                  "items": {
+                    "allOf": [
+                      { "$ref": "#/$defs/source_artifact" },
+                      {
+                        "properties": {
+                          "artifact_role": {
+                            "enum": [
+                              "compliance_report",
+                              "compliance_override_action_receipt"
+                            ]
+                          },
+                          "artifact_group_stage": { "type": "null" }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": ["capture_state"],
+                "properties": { "capture_state": { "const": "captured" } }
+              },
+              "then": {
+                "properties": {
+                  "artifacts": {
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "allOf": [
+                      {
+                        "contains": {
+                          "required": ["artifact_role"],
+                          "properties": {
+                            "artifact_role": { "const": "compliance_report" }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 16
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/source_receipt" },
+            {
+              "properties": {
+                "source_family": { "const": "re_review_traceability" },
+                "artifacts": {
+                  "items": {
+                    "allOf": [
+                      { "$ref": "#/$defs/source_artifact" },
+                      {
+                        "properties": {
+                          "artifact_role": {
+                            "enum": [
+                              "input_manifest",
+                              "precommitment",
+                              "verdict_record",
+                              "traceability"
+                            ]
+                          },
+                          "artifact_group_stage": { "type": "null" }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": ["capture_state"],
+                "properties": { "capture_state": { "const": "captured" } }
+              },
+              "then": {
+                "properties": {
+                  "artifacts": {
+                    "minItems": 4,
+                    "maxItems": 4,
+                    "allOf": [
+                      {
+                        "contains": {
+                          "required": ["artifact_role"],
+                          "properties": {
+                            "artifact_role": { "const": "input_manifest" }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 1
+                      },
+                      {
+                        "contains": {
+                          "required": ["artifact_role"],
+                          "properties": {
+                            "artifact_role": { "const": "precommitment" }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 1
+                      },
+                      {
+                        "contains": {
+                          "required": ["artifact_role"],
+                          "properties": {
+                            "artifact_role": { "const": "verdict_record" }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 1
+                      },
+                      {
+                        "contains": {
+                          "required": ["artifact_role"],
+                          "properties": {
+                            "artifact_role": { "const": "traceability" }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 1
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/source_receipt" },
+            {
+              "properties": {
+                "source_family": { "const": "explicit_user_request" },
+                "artifacts": {
+                  "items": {
+                    "allOf": [
+                      { "$ref": "#/$defs/source_artifact" },
+                      {
+                        "properties": {
+                          "artifact_role": { "const": "explicit_user_request_log" },
+                          "artifact_group_stage": { "type": "null" }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": ["capture_state"],
+                "properties": { "capture_state": { "const": "captured" } }
+              },
+              "then": { "properties": { "artifacts": { "minItems": 1, "maxItems": 1 } } }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/source_receipt" },
+            {
+              "properties": {
+                "source_family": { "const": "mandatory_checkpoint_response" },
+                "artifacts": {
+                  "items": {
+                    "allOf": [
+                      { "$ref": "#/$defs/source_artifact" },
+                      {
+                        "properties": {
+                          "artifact_role": {
+                            "const": "mandatory_checkpoint_response_log"
+                          },
+                          "artifact_group_stage": { "type": "null" }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": ["capture_state"],
+                "properties": { "capture_state": { "const": "captured" } }
+              },
+              "then": { "properties": { "artifacts": { "minItems": 1, "maxItems": 1 } } }
+            }
+          ]
+        }
+      ],
+      "items": false,
+      "description": "Exactly one receipt for each source family, in this canonical order. A normally inapplicable family is represented as not_applicable; a captured family with no qualifying records is captured with artifacts and later derives zero events."
+    },
+    "data_minimization": { "$ref": "#/$defs/data_minimization" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["terminal_state"],
+        "properties": { "terminal_state": { "const": "completed" } }
+      },
+      "then": {
+        "properties": {
+          "terminal_stage": { "const": "pipeline_stage_6" },
+          "terminal_receipt": {
+            "properties": {
+              "pipeline_state": { "const": "completed" },
+              "current_stage": { "const": "pipeline_stage_6" },
+              "current_stage_status": { "enum": ["completed", "skipped"] }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "terminal_receipt": {
+            "properties": { "pipeline_state": { "const": "aborted" } }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "store_id": {
+      "type": "string",
+      "pattern": "^ADJ-ACTIVITY-STORE-[A-Za-z0-9][A-Za-z0-9._-]{0,95}$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "pipeline_stage": {
+      "enum": [
+        "pipeline_stage_1",
+        "pipeline_stage_2",
+        "pipeline_stage_2_5",
+        "pipeline_stage_3",
+        "pipeline_stage_3_prime",
+        "pipeline_stage_4",
+        "pipeline_stage_4_prime",
+        "pipeline_stage_4_5",
+        "pipeline_stage_5",
+        "pipeline_stage_6"
+      ]
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?![A-Za-z]:/)(?!.*\\\\)(?!\\.\\.?(?:/|$))(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*//)(?!.*\\/$)(?!.*[\\u0000-\\u001F\\u007F]).+$",
+      "description": "Canonical POSIX path relative to the explicit artifact root. Absolute paths, drive paths, backslashes, control characters, empty components, trailing separators, and dot or parent-traversal components are forbidden. Runtime resolution must also prove containment beneath the artifact root."
+    },
+    "terminal_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "relative_path",
+        "sha256",
+        "run_id",
+        "pipeline_state",
+        "current_stage",
+        "current_stage_status"
+      ],
+      "properties": {
+        "artifact_id": { "const": "pipeline-state-terminal-receipt" },
+        "relative_path": { "$ref": "#/$defs/relative_path" },
+        "sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 over the exact strict pipeline-state JSON bytes that runtime replays."
+        },
+        "run_id": { "$ref": "#/$defs/run_id" },
+        "pipeline_state": { "enum": ["completed", "aborted"] },
+        "current_stage": { "$ref": "#/$defs/pipeline_stage" },
+        "current_stage_status": {
+          "enum": ["pending", "in_progress", "completed", "skipped", "blocked"]
+        }
+      }
+    },
+    "source_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "artifact_role",
+        "artifact_group_id",
+        "artifact_group_stage",
+        "relative_path",
+        "sha256"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "description": "Opaque identity within the manifest. It is not role authority; artifact_role controls replay semantics."
+        },
+        "artifact_role": {
+          "enum": [
+            "author_adjudication_input",
+            "author_adjudication",
+            "compliance_report",
+            "compliance_override_action_receipt",
+            "input_manifest",
+            "precommitment",
+            "verdict_record",
+            "traceability",
+            "explicit_user_request_log",
+            "mandatory_checkpoint_response_log"
+          ]
+        },
+        "artifact_group_id": {
+          "type": "string",
+          "pattern": "^SOURCE-GROUP-[A-Za-z0-9][A-Za-z0-9._-]{0,95}$",
+          "description": "Stable group join key. Runtime requires each group to contain the exact source-family role set once, rejects mixed families, duplicate roles, partial groups, and more than 16 compliance groups."
+        },
+        "artifact_group_stage": {
+          "oneOf": [
+            { "$ref": "#/$defs/pipeline_stage" },
+            { "type": "null" }
+          ],
+          "description": "Per-group author-stage binding. It is Stage 3 or Stage 3 prime only for revision-author groups and null for every other source family."
+        },
+        "relative_path": { "$ref": "#/$defs/relative_path" },
+        "sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 over the exact artifact bytes that the recorder must replay."
+        }
+      }
+    },
+    "source_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_family",
+        "capture_state",
+        "reason_code",
+        "artifacts"
+      ],
+      "properties": {
+        "source_family": {
+          "enum": [
+            "revision_author_adjudication",
+            "compliance_report",
+            "re_review_traceability",
+            "explicit_user_request",
+            "mandatory_checkpoint_response"
+          ]
+        },
+        "capture_state": {
+          "enum": ["captured", "not_applicable", "unavailable"]
+        },
+        "reason_code": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "enum": [
+                "not_applicable_for_run",
+                "source_not_provided",
+                "source_unreadable",
+                "source_invalid",
+                "capture_not_supported"
+              ]
+            }
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/source_artifact" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["capture_state"],
+            "properties": { "capture_state": { "const": "captured" } }
+          },
+          "then": {
+            "properties": {
+              "reason_code": { "type": "null" },
+              "artifacts": { "minItems": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["capture_state"],
+            "properties": { "capture_state": { "const": "not_applicable" } }
+          },
+          "then": {
+            "properties": {
+              "reason_code": { "const": "not_applicable_for_run" },
+              "artifacts": { "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["capture_state"],
+            "properties": { "capture_state": { "const": "unavailable" } }
+          },
+          "then": {
+            "properties": {
+              "reason_code": {
+                "enum": [
+                  "source_not_provided",
+                  "source_unreadable",
+                  "source_invalid",
+                  "capture_not_supported"
+                ]
+              },
+              "artifacts": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "data_minimization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_prose_embedded",
+        "user_identity_embedded",
+        "absolute_paths_embedded"
+      ],
+      "properties": {
+        "raw_prose_embedded": { "const": false },
+        "user_identity_embedded": { "const": false },
+        "absolute_paths_embedded": { "const": false }
+      }
+    }
+  }
+}

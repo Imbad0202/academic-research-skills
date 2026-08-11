@@ -445,6 +445,14 @@ id = "672-cross-document-consistency-integration"
 path = "scripts/test_check_cross_document_consistency_advisory_integration.py"
 
 [[pytest]]
+id = "673-adjudication-activity-runtime"
+path = "scripts/test_adjudication_activity.py"
+
+[[pytest]]
+id = "673-adjudication-activity-integration"
+path = "scripts/test_check_673_adjudication_activity.py"
+
+[[pytest]]
 id = "680-human-subjects-reference-migration"
 path = "scripts/test_check_human_subjects_reference_migration.py"
 

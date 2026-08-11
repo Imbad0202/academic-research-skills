@@ -1,0 +1,560 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/activity/adjudication_activity_store.schema.json",
+  "title": "Local Adjudication Activity Store",
+  "description": "Closed, user-owned local store of runtime-derived explicit adjudication activity. Runs are sealed immutable records ordered only by append_sequence; no clock, prose, identity, path, aggregate, rate, score, target, threshold, or caller-supplied overturn boolean is stored. Deletion rewrites the selected store without tombstones or derived aggregates, increments revision, and never renumbers or reuses surviving append sequences.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "store_id",
+    "revision",
+    "next_sequence",
+    "runs",
+    "data_minimization"
+  ],
+  "properties": {
+    "schema_version": { "const": "adjudication-activity-store/1.0" },
+    "store_id": { "$ref": "#/$defs/store_id" },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "An empty initialized store starts at 0. Every successful append or explicit deletion rewrite increments the prior revision by exactly one; cross-revision enforcement is runtime-owned."
+    },
+    "next_sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The sequence assigned to the next append while holding the store lock. It starts at 1 and never decreases or reuses a number after deletion."
+    },
+    "runs": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/run_record" },
+      "description": "Append-ordered sealed records. Runtime additionally caps derived events at 4,096 per run and 100,000 per store and fails closed at the configured 16 MiB store limit; it never evicts an older run automatically."
+    },
+    "data_minimization": { "$ref": "#/$defs/data_minimization" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["revision"],
+        "properties": { "revision": { "const": 0 } }
+      },
+      "then": {
+        "properties": {
+          "next_sequence": { "const": 1 },
+          "runs": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["runs"],
+        "properties": { "runs": { "minItems": 1 } }
+      },
+      "then": {
+        "properties": { "revision": { "minimum": 1 } }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "store_id": {
+      "type": "string",
+      "pattern": "^ADJ-ACTIVITY-STORE-[A-Za-z0-9][A-Za-z0-9._-]{0,95}$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^ACTIVITY-EVENT-[0-9a-f]{64}$",
+      "description": "ACTIVITY-EVENT- followed by SHA-256 over the versioned event-id domain separator and restricted JCS-compatible event payload with only event_id omitted; no clock or random source is consulted."
+    },
+    "pipeline_stage": {
+      "enum": [
+        "pipeline_stage_1",
+        "pipeline_stage_2",
+        "pipeline_stage_2_5",
+        "pipeline_stage_3",
+        "pipeline_stage_3_prime",
+        "pipeline_stage_4",
+        "pipeline_stage_4_prime",
+        "pipeline_stage_4_5",
+        "pipeline_stage_5",
+        "pipeline_stage_6"
+      ]
+    },
+    "event_type": {
+      "enum": [
+        "author_triage_wont_address",
+        "author_triage_not_on_point",
+        "compliance_block_override",
+        "re_review_verdict_changed",
+        "finding_justification_requested",
+        "finding_redo_requested",
+        "mandatory_checkpoint_non_proceed"
+      ],
+      "description": "Every row is explicit adjudication activity. The derived overturn subset is exactly author_triage_not_on_point, compliance_block_override, and re_review_verdict_changed; wont_address, requests, and checkpoint non-proceed dispositions remain visible activity but are not overturns."
+    },
+    "disposition": {
+      "enum": [
+        "wont_address",
+        "not_on_point",
+        "block_overridden",
+        "verdict_changed",
+        "justification_requested",
+        "redo_requested",
+        "pause",
+        "adjust",
+        "view_progress",
+        "redo",
+        "abort",
+        "skip_refused"
+      ]
+    },
+    "event_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "event_type",
+        "stage",
+        "disposition",
+        "interaction_sha256",
+        "source_event_sha256"
+      ],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/event_id" },
+        "event_type": { "$ref": "#/$defs/event_type" },
+        "stage": { "$ref": "#/$defs/pipeline_stage" },
+        "disposition": { "$ref": "#/$defs/disposition" },
+        "interaction_sha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ],
+          "description": "Digest of the same explicit user interaction when a closed source receipt exposes one, else null. Runtime deduplicates equal non-null values across families by canonical source order while retaining every per-item event inside the winning family."
+        },
+        "source_event_sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 over the family-specific canonical source event using the recorder's restricted JCS-compatible serializer (ASCII contract keys, integers only, compact UTF-8) and versioned source-event domain separator. The store retains the digest, never source prose."
+        }
+      }
+    },
+    "author_wont_address_event": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "properties": {
+            "event_type": { "const": "author_triage_wont_address" },
+            "stage": {
+              "enum": ["pipeline_stage_3", "pipeline_stage_3_prime"]
+            },
+            "disposition": { "const": "wont_address" },
+            "interaction_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "author_not_on_point_event": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "properties": {
+            "event_type": { "const": "author_triage_not_on_point" },
+            "stage": {
+              "enum": ["pipeline_stage_3", "pipeline_stage_3_prime"]
+            },
+            "disposition": { "const": "not_on_point" },
+            "interaction_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "compliance_override_event": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "properties": {
+            "event_type": { "const": "compliance_block_override" },
+            "stage": {
+              "enum": ["pipeline_stage_2_5", "pipeline_stage_4_5"]
+            },
+            "disposition": { "const": "block_overridden" },
+            "interaction_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "re_review_changed_event": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "properties": {
+            "event_type": { "const": "re_review_verdict_changed" },
+            "stage": { "const": "pipeline_stage_3_prime" },
+            "disposition": { "const": "verdict_changed" },
+            "interaction_sha256": { "type": "null" }
+          }
+        }
+      ]
+    },
+    "justification_requested_event": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "properties": {
+            "event_type": { "const": "finding_justification_requested" },
+            "disposition": { "const": "justification_requested" },
+            "interaction_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "redo_requested_event": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "properties": {
+            "event_type": { "const": "finding_redo_requested" },
+            "disposition": { "const": "redo_requested" },
+            "interaction_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "mandatory_non_proceed_event": {
+      "allOf": [
+        { "$ref": "#/$defs/event_base" },
+        {
+          "properties": {
+            "event_type": { "const": "mandatory_checkpoint_non_proceed" },
+            "stage": { "$ref": "#/$defs/pipeline_stage" },
+            "interaction_sha256": { "$ref": "#/$defs/sha256" },
+            "disposition": {
+              "enum": [
+                "pause",
+                "adjust",
+                "view_progress",
+                "redo",
+                "abort",
+                "skip_refused"
+              ],
+              "description": "skip_refused records an explicit skip command at a MANDATORY checkpoint. It is activity but never an overturn and cannot change checkpoint or pipeline state."
+            }
+          }
+        }
+      ]
+    },
+    "source_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_family",
+        "capture_state",
+        "reason_code",
+        "artifact_sha256s",
+        "events"
+      ],
+      "properties": {
+        "source_family": {
+          "enum": [
+            "revision_author_adjudication",
+            "compliance_report",
+            "re_review_traceability",
+            "explicit_user_request",
+            "mandatory_checkpoint_response"
+          ]
+        },
+        "capture_state": {
+          "enum": ["captured", "not_applicable", "unavailable"]
+        },
+        "reason_code": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "enum": [
+                "not_applicable_for_run",
+                "source_not_provided",
+                "source_unreadable",
+                "source_invalid",
+                "capture_not_supported"
+              ]
+            }
+          ]
+        },
+        "artifact_sha256s": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/sha256" },
+          "description": "Exact artifact-byte digests copied from the validated input receipt in canonical artifact order, including legitimate repeated hashes from distinct role/group identities. Artifact ids and paths are deliberately not retained."
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 4096,
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["capture_state"],
+            "properties": { "capture_state": { "const": "captured" } }
+          },
+          "then": {
+            "properties": {
+              "reason_code": { "type": "null" },
+              "artifact_sha256s": { "minItems": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["capture_state"],
+            "properties": { "capture_state": { "const": "not_applicable" } }
+          },
+          "then": {
+            "properties": {
+              "reason_code": { "const": "not_applicable_for_run" },
+              "artifact_sha256s": { "maxItems": 0 },
+              "events": { "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["capture_state"],
+            "properties": { "capture_state": { "const": "unavailable" } }
+          },
+          "then": {
+            "properties": {
+              "reason_code": {
+                "enum": [
+                  "source_not_provided",
+                  "source_unreadable",
+                  "source_invalid",
+                  "capture_not_supported"
+                ]
+              },
+              "artifact_sha256s": { "maxItems": 0 },
+              "events": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "run_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "append_sequence",
+        "run_id",
+        "terminal_state",
+        "terminal_stage",
+        "terminal_receipt_sha256",
+        "input_receipt_sha256",
+        "record_sha256",
+        "sealed",
+        "sources"
+      ],
+      "properties": {
+        "append_sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "run_id": { "$ref": "#/$defs/run_id" },
+        "terminal_state": { "enum": ["completed", "aborted"] },
+        "terminal_stage": { "$ref": "#/$defs/pipeline_stage" },
+        "terminal_receipt_sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "Exact-byte SHA-256 copied from the validated terminal_receipt artifact binding after strict state replay."
+        },
+        "input_receipt_sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 over one NUL-terminated versioned input-receipt domain separator followed by the restricted JCS-compatible serialization (ASCII contract keys, integers only, compact UTF-8) of the complete validated input manifest."
+        },
+        "record_sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 over one NUL-terminated versioned run-record domain separator followed by the restricted JCS-compatible serialization (ASCII contract keys, integers only, compact UTF-8) of this complete run record with only record_sha256 omitted. append_sequence is included."
+        },
+        "sealed": {
+          "const": true,
+          "description": "Runtime seal marker. An existing run record is immutable across store revisions; only whole selected records may be explicitly deleted."
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/source_receipt" },
+                {
+                  "properties": {
+                    "source_family": { "const": "revision_author_adjudication" },
+                    "events": {
+                      "items": {
+                        "oneOf": [
+                          { "$ref": "#/$defs/author_wont_address_event" },
+                          { "$ref": "#/$defs/author_not_on_point_event" }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": ["capture_state"],
+                    "properties": { "capture_state": { "const": "captured" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "artifact_sha256s": {
+                        "oneOf": [
+                          { "minItems": 2, "maxItems": 2 },
+                          { "minItems": 4, "maxItems": 4 }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/source_receipt" },
+                {
+                  "properties": {
+                    "source_family": { "const": "compliance_report" },
+                    "events": {
+                      "items": { "$ref": "#/$defs/compliance_override_event" }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": ["capture_state"],
+                    "properties": { "capture_state": { "const": "captured" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "artifact_sha256s": { "minItems": 1, "maxItems": 32 }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/source_receipt" },
+                {
+                  "properties": {
+                    "source_family": { "const": "re_review_traceability" },
+                    "events": {
+                      "items": { "$ref": "#/$defs/re_review_changed_event" }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": ["capture_state"],
+                    "properties": { "capture_state": { "const": "captured" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "artifact_sha256s": { "minItems": 4, "maxItems": 4 }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/source_receipt" },
+                {
+                  "properties": {
+                    "source_family": { "const": "explicit_user_request" },
+                    "events": {
+                      "items": {
+                        "oneOf": [
+                          { "$ref": "#/$defs/justification_requested_event" },
+                          { "$ref": "#/$defs/redo_requested_event" }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": ["capture_state"],
+                    "properties": { "capture_state": { "const": "captured" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "artifact_sha256s": { "minItems": 1, "maxItems": 1 }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/source_receipt" },
+                {
+                  "properties": {
+                    "source_family": { "const": "mandatory_checkpoint_response" },
+                    "events": {
+                      "items": { "$ref": "#/$defs/mandatory_non_proceed_event" }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": ["capture_state"],
+                    "properties": { "capture_state": { "const": "captured" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "artifact_sha256s": { "minItems": 1, "maxItems": 1 }
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "items": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["terminal_state"],
+            "properties": { "terminal_state": { "const": "completed" } }
+          },
+          "then": {
+            "properties": { "terminal_stage": { "const": "pipeline_stage_6" } }
+          }
+        }
+      ]
+    },
+    "data_minimization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_prose_embedded",
+        "user_identity_embedded",
+        "absolute_paths_embedded"
+      ],
+      "properties": {
+        "raw_prose_embedded": { "const": false },
+        "user_identity_embedded": { "const": false },
+        "absolute_paths_embedded": { "const": false }
+      }
+    }
+  }
+}

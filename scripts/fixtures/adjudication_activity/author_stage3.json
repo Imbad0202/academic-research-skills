@@ -1,0 +1,32 @@
+{
+  "schema_version": "author-adjudication/1.0",
+  "revision_round": 1,
+  "roadmap_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "base_draft_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "claim_surface_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "adjudication_status": "complete",
+  "author_events": [
+    {
+      "event_id": "AUTHOR-EVENT-ONE",
+      "source": "explicit_session_user_message",
+      "actor_role": "author",
+      "input_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "display_order": {
+    "mode": "source_traceability",
+    "item_ids": ["REV-001"],
+    "author_event_id": "AUTHOR-EVENT-ONE"
+  },
+  "author_adjudications": [
+    {
+      "item_id": "REV-001",
+      "author_event_id": "AUTHOR-EVENT-ONE",
+      "author_triage": "wont_address",
+      "author_reason": "Fixture rationale is transient and must not enter the store.",
+      "authorized_targets": [],
+      "claim_strength_authorizations": []
+    }
+  ],
+  "collateral_authorizations": []
+}

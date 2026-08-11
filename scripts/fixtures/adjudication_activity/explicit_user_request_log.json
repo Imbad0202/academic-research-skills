@@ -1,0 +1,26 @@
+{
+  "schema_version": "adjudication-explicit-user-request-log/1.0",
+  "run_id": "run-all-events",
+  "records": [
+    {
+      "request_id": "REQUEST-1",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "action": "justify_finding",
+      "stage": "pipeline_stage_3",
+      "finding_id": "REV-001",
+      "interaction_id": "USER-REQUEST-SHARED",
+      "interaction_sha256": "ecdb25466fbd5c0580ca4821a7b280637ab022c19c80dc260242836569b8a7b0"
+    },
+    {
+      "request_id": "REQUEST-2",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "action": "redo_finding",
+      "stage": "pipeline_stage_3_prime",
+      "finding_id": "REV-002",
+      "interaction_id": "USER-REQUEST-REDO",
+      "interaction_sha256": "77ee95953c5b664d667d281098209757ae0505ca9ba01dc02ac2d0231732714a"
+    }
+  ]
+}

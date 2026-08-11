@@ -42,7 +42,25 @@
      Stage 6 in_progress — they are not acknowledgements.
    - On acknowledgement: state_tracker marks Stage 6 completed and sets the pipeline global state to completed. There is no next stage.
      (See pipeline_state_machine.md § Stage 6 terminal semantics.)
+   - Persist that terminal transition first and without consulting #673
+     adjudication-activity metadata. If the user selected a local activity
+     store, seal/build/append/render runs only afterward as best-effort
+     post-terminal work; its failure cannot change completion.
 ```
+
+## Adjudication-activity exclusion (#673)
+
+The Process Record may describe the user-visible decisions already present in
+the ordinary dialogue and state history. It MUST NOT read, copy, summarize,
+score, or mention activity metadata. It MUST NOT include
+`pending_adjudication_activity_bindings[]`, the sealed
+`adjudication_activity_sources` inventory, the selected store/path, stored
+records, renderer output, or diagnostics. Those artifacts are a
+separate local advisory side channel, not Process Record evidence. They also
+must not be passed to `collaboration_depth_agent` or any model/judge/eval call.
+The Stage 6 compilation rules do not perform an ambient filesystem scan for
+them. See `../agents/state_tracker_agent.md` § "Adjudication-activity metadata"
+for the single producer/state authority.
 
 ## Required Content in Process Record
 

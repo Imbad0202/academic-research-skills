@@ -287,7 +287,7 @@ After user confirmation:
    - Stage 3' --> 4.5 (Accept/Minor direct path): Pass verified revised draft + the traceability sidecar's frozen records to integrity_verification_agent as gate input
    - Stage 4/4' --> 4.5: Pass revision-completed paper to integrity_verification_agent (final verification); on the Major-via-4' path the Stage 3' traceability sidecar travels along as gate input
    - Stage 4.5 --> 5: Pass verified final draft to the one mandatory Stage-5 entry checkpoint; run #660 then #672 against that same accepted artifact ID/SHA-256 before format-convert dispatch
-   - Stage 5  --> 6: Pass final deliverables list + pipeline state history to Process Summary (user may decline Stage 6 at the Stage 5 completion checkpoint)
+   - Stage 5  --> 6: Pass final deliverables list + the Process-Summary projection of pipeline state history, omitting the #673 activity projection of terminal root `run_id`, pending/sealed activity fields, selected-store data, renderer output, and diagnostics (user may decline Stage 6 at the Stage 5 completion checkpoint)
 3. Begin next stage
 ```
 
@@ -439,6 +439,40 @@ At the end of each revision round, if **delta < 3 points** on the 0-100 rubric A
 At pipeline start, estimate token cost based on paper length, mode, and cross-model toggle. Present estimate and ask for user confirmation before Stage 1 begins.
 
 Alongside the token estimate, present the **interaction-count budget**: long-horizon document corruption compounds with the number of document round-trips, not with token volume (DELEGATE-52, arXiv:2604.15597). Enumerate the round-trip caps the pipeline already enforces — 2 full revision loops (Early-Stopping above), 8 + 5 Socratic coaching rounds (Stage 3→4 / 3'→4'), and the integrity-gate fix→re-verify loop at Stages 2.5/4.5 — and state the worst-case round-trip total those caps imply for the chosen mode. At each stage checkpoint, report the accumulated round-trip count next to the stage status. **Advisory only**: the count never blocks; the per-loop caps remain the enforcement layer. A run that exceeds its stated worst case signals a loop the caps do not cover — surface that explicitly rather than silently continuing.
+
+---
+
+## Cross-run Adjudication Activity (#673; opt-in advisory side channel)
+
+The state tracker section "Adjudication-activity metadata" is the single
+producer/state authority. Each run receives one stable explicit `run_id`.
+Structured handlers first durably apply their existing author-choice,
+compliance-override, explicit-request, or MANDATORY-checkpoint routing/state
+effect and only then best-effort append a data-minimized binding to the
+five-row `pending_adjudication_activity_bindings[]` inventory. A refused
+MANDATORY skip leaves state unchanged before the optional receipt stores
+`skip_refused`. Author groups use `artifact_group_stage` and may preserve both
+Stage 3 and Stage 3-prime; receipt stages use the complete Stage 1-through-6
+closed enum, with no Stage 0. Compliance permits a plain report-only
+captured-zero group and requires the paired action receipt only for a fully
+qualifying override.
+
+Terminal behavior is unchanged and runs first. After the completed/aborted
+state is durable, and only for a user-selected local store, the orchestrator
+passes explicit state/artifact-root paths and the explicit pending five rows to
+`seal_terminal_inventory(state_path, artifact_root, pending_bindings)`, then
+best-effort runs sealed-inventory `build-input`, idempotent `append-run`, and
+optional `render`. The helper computes hashes; it does not read pending state,
+accept caller hashes, infer sources, or scan. Root `run_id` plus sealed root
+`adjudication_activity_sources` are exact authority. Any activity failure is an
+advisory diagnostic and cannot affect the already-durable terminal outcome.
+
+Activity data never enters a Material Passport, handoff, Process Record,
+reviewer/model/observer/compliance input, gate, verdict, checkpoint input, or
+stage transition. No live model, judge, eval, network/API, ambient clock,
+directory scan, or glob participates. Full details and frozen receipt schemas
+remain in `docs/design/2026-08-10-673-cross-run-adjudication-activity-spec.md`
+and `shared/contracts/activity/`.
 
 ---
 

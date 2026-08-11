@@ -1,0 +1,50 @@
+{
+  "mode": "systematic_review",
+  "stage": "2.5",
+  "generated_at": "2026-04-20T10:00:00Z",
+  "prisma_trAIce": {
+    "items_total": 17,
+    "by_tier": {
+      "mandatory": {"total": 9, "pass": 8, "fail": ["M4"]},
+      "highly_recommended": {"total": 1, "pass": 1, "fail": []},
+      "recommended": {"total": 4, "pass": 4, "fail": []},
+      "optional": {"total": 3, "pass": 3, "fail": []}
+    },
+    "block_decision": "block"
+  },
+  "raise": {
+    "mode": "full",
+    "principles": {
+      "human_oversight": "pass",
+      "transparency": "pass",
+      "reproducibility": "pass",
+      "fit_for_purpose": "pass"
+    },
+    "principle_evidence": {
+      "human_oversight": ["fixture"],
+      "transparency": ["fixture"],
+      "reproducibility": ["fixture"],
+      "fit_for_purpose": ["fixture"]
+    },
+    "roles": {
+      "evidence_synthesists": ["fixture"],
+      "ai_development_teams": [],
+      "methodologists": [],
+      "publishers": [],
+      "users": [],
+      "trainers": [],
+      "organisations": [],
+      "funders": []
+    },
+    "block_decision": "pass"
+  },
+  "overall_decision": "block",
+  "user_action_required": true,
+  "evidence": ["fixture"],
+  "user_override": {
+    "decision": true,
+    "timestamp": "2026-04-20T10:01:00Z",
+    "rationale": "Fixture override for the one recomputed blocking contributor.",
+    "scope": ["M4"]
+  }
+}

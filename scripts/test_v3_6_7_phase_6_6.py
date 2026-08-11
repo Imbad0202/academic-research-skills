@@ -178,6 +178,13 @@ LINE_BUDGET_660_ADVISORY_DISPATCH = 60
 # Measured at first write: 60 lines; budget 66 leaves 6 lines of headroom.
 LINE_BUDGET_672_ADVISORY_DISPATCH = 66
 
+# #673 adds three bounded orchestrator surfaces: the stable run-identity
+# paragraph, the action-time receipt hook, and the post-terminal seal/append
+# sequence. They form one independent 2026-08 advisory side-channel scope, so
+# they are subtracted from the historical v3.6.7 budget and receive a dedicated
+# cap. Measured at landing: 51 lines; budget 57 leaves 6 lines of headroom.
+LINE_BUDGET_673_ADJUDICATION_ACTIVITY = 57
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -677,6 +684,41 @@ def _measure_672_advisory_dispatch_block_lines(text: str) -> int:
     return dispatch_lines + sidecar_lines
 
 
+def _measure_673_adjudication_activity_lines(text: str) -> int:
+    """Return the three #673 orchestrator paragraphs/sections."""
+    import re as _re
+
+    run_marker = "**Run identity (#673):**"
+    run_start = text.find(run_marker)
+    if run_start < 0:
+        return 0
+    run_end = text.find("\n\n", run_start)
+    if run_end < 0:
+        return 0
+    total = len(text[run_start:run_end].splitlines())
+
+    for heading, maximum_level in (
+        ("#### Adjudication-activity action-time hook (#673)", 4),
+        ("### Post-terminal adjudication-activity sequence (#673)", 3),
+    ):
+        start = text.find(heading)
+        if start < 0:
+            return 0
+        heading_end = text.find("\n", start)
+        if heading_end < 0:
+            return 0
+        next_heading = _re.search(
+            rf"(?m)^#{{1,{maximum_level}}}[ \t]+", text[heading_end + 1 :]
+        )
+        end = (
+            heading_end + 1 + next_heading.start()
+            if next_heading is not None
+            else len(text)
+        )
+        total += len(text[start:end].splitlines())
+    return total
+
+
 class Advisory660LineBudgetTest(unittest.TestCase):
     """#660 tortured-phrase dispatch block stays independently bounded."""
 
@@ -714,6 +756,26 @@ class Advisory672LineBudgetTest(unittest.TestCase):
             LINE_BUDGET_672_ADVISORY_DISPATCH,
             f"#672 cross-document advisory dispatch block is {block_lines} "
             f"lines, over its {LINE_BUDGET_672_ADVISORY_DISPATCH}-line budget",
+        )
+
+
+class Advisory673LineBudgetTest(unittest.TestCase):
+    """#673 action-time and post-terminal wiring stays independently bounded."""
+
+    def test_673_adjudication_activity_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_673_adjudication_activity_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "#673 adjudication-activity wiring is missing from "
+            "pipeline_orchestrator_agent.md",
+        )
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_673_ADJUDICATION_ACTIVITY,
+            f"#673 adjudication-activity wiring is {block_lines} lines, "
+            f"over its {LINE_BUDGET_673_ADJUDICATION_ACTIVITY}-line budget",
         )
 
 
@@ -799,6 +861,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
         evidence_656_lines = _measure_656_evidence_rendering_block_lines(text)
         advisory_660_lines = _measure_660_advisory_dispatch_block_lines(text)
         advisory_672_lines = _measure_672_advisory_dispatch_block_lines(text)
+        advisory_673_lines = _measure_673_adjudication_activity_lines(text)
         # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
         # finalizer extension, v3.8 §3.6 audit-gate, v3.9.0 triangulation
         # extension, v3.10 terminal-policy extension, the #394 slice-4
@@ -806,13 +869,14 @@ class Phase66LineBudgetTest(unittest.TestCase):
         # sequencing, the #670 authority/bundle extension, the #576 Spec B
         # Stage 3' contract-dispatch, AND the #656 Phase E evidence-row
         # checkpoint-rendering, the #660 tortured-phrase advisory dispatch,
-        # AND the #672 cross-document advisory dispatch subsections (each has
-        # its own dedicated budget test).
+        # the #672 cross-document advisory dispatch, AND the #673
+        # adjudication-activity wiring (each has its own dedicated budget
+        # test).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines
             - authority_670_lines - dispatch_576_lines - evidence_656_lines
-            - advisory_660_lines - advisory_672_lines
+            - advisory_660_lines - advisory_672_lines - advisory_673_lines
         )
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
@@ -832,7 +896,9 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"dispatch subsection, {evidence_656_lines} are in the #656 "
             f"evidence-rendering subsection, and {advisory_660_lines} are in "
             f"the #660 advisory-dispatch subsection, and {advisory_672_lines} "
-            f"are in the #672 advisory-dispatch subsection; "
+            f"are in the #672 advisory-dispatch subsection, and "
+            f"{advisory_673_lines} are in the #673 adjudication-activity "
+            f"wiring; "
             f"v3.6.7-attributed lines = "
             f"{v367_line_count} exceeds {ceiling} (baseline "
             f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "

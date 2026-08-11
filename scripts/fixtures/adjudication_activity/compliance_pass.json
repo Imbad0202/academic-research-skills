@@ -1,0 +1,44 @@
+{
+  "mode": "systematic_review",
+  "stage": "2.5",
+  "generated_at": "2026-04-20T10:00:00Z",
+  "prisma_trAIce": {
+    "items_total": 17,
+    "by_tier": {
+      "mandatory": {"total": 9, "pass": 9, "fail": []},
+      "highly_recommended": {"total": 1, "pass": 1, "fail": []},
+      "recommended": {"total": 4, "pass": 4, "fail": []},
+      "optional": {"total": 3, "pass": 3, "fail": []}
+    },
+    "block_decision": "pass"
+  },
+  "raise": {
+    "mode": "full",
+    "principles": {
+      "human_oversight": "pass",
+      "transparency": "pass",
+      "reproducibility": "pass",
+      "fit_for_purpose": "pass"
+    },
+    "principle_evidence": {
+      "human_oversight": ["fixture"],
+      "transparency": ["fixture"],
+      "reproducibility": ["fixture"],
+      "fit_for_purpose": ["fixture"]
+    },
+    "roles": {
+      "evidence_synthesists": ["fixture"],
+      "ai_development_teams": [],
+      "methodologists": [],
+      "publishers": [],
+      "users": [],
+      "trainers": [],
+      "organisations": [],
+      "funders": []
+    },
+    "block_decision": "pass"
+  },
+  "overall_decision": "pass",
+  "user_action_required": false,
+  "evidence": ["fixture"]
+}

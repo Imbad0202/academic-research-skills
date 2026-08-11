@@ -1,0 +1,14 @@
+{
+  "schema_version": "adjudication-compliance-override-action/1.0",
+  "receipt_id": "COMPLIANCE-OVERRIDE-1",
+  "run_id": "run-all-events",
+  "actor_role": "user",
+  "source": "explicit_session_user_action",
+  "action": "acknowledge_compliance_limitation",
+  "stage": "pipeline_stage_2_5",
+  "scope": ["M4"],
+  "report_sha256": "0d67c5d3847d6b002e0a23288d7f6a58222abc800fccb959e37e9f04a479cd8d",
+  "override_ordinal": 1,
+  "interaction_id": "USER-COMPLIANCE-1",
+  "interaction_sha256": "ef0a0dcdceb0eccb9a2aaa68124b73cfaf547f65f5447f812a425457c71a55d6"
+}

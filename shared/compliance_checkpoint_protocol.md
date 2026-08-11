@@ -95,6 +95,34 @@ Round count is per-stage-per-pipeline-run, stored in `compliance_history[].user_
 
 On any successful override, the agent generates `disclosure_addendum` text and the orchestrator **auto-injects** it into the manuscript's AI disclosure section. The addendum is non-removable — this is the concrete form of the `no detection evasion` iron rule in CONTRIBUTING.md.
 
+### Advisory adjudication-activity receipt (#673)
+
+The compliance decision, friction-ladder enforcement, manuscript disclosure,
+and ordinary routing/state effect are completed and made durable first. Only
+afterward may the action-time producer best-effort append a closed activity
+binding through the state tracker's sole-writer path; receipt failure cannot
+change the override or checkpoint outcome.
+
+Every executed compliance report is eligible to be bound as the
+`compliance_report` role. A plain PASS or WARN report with no `user_override`
+is a valid report-only **captured-zero** group. The paired
+`compliance_override_action_receipt` is required only when the report satisfies
+the complete qualifying-override predicate in the frozen #673 spec: a
+systematic-review compliance contribution actually blocks, user action is
+required, the user override is true, and the recomputed blocker scope, stage,
+run, report hash, actor/source/action, ordinal/friction, occurrence id, and
+interaction digest all match. The action receipt contains no rationale. It is
+forbidden for a plain report and may not turn a legacy-only block, PASS/WARN,
+`user_action_required=false`, or malformed/non-qualifying override claim into
+activity.
+
+These receipt bindings remain internal activity metadata under
+`state_tracker_agent.md` § "Adjudication-activity metadata". They never enter
+`compliance_history`, the Material Passport, manuscript disclosure, checkpoint
+decision, gate/verdict input, Process Record, handoff, or model prompt, and are
+never reconstructed from prose. No model/judge/eval, network/API, clock, or
+ambient scan participates in their production.
+
 ### `disclosure_addendum` template
 
 ```

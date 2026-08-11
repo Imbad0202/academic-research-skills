@@ -1,0 +1,27 @@
+{
+  "schema_version": "author-adjudication-input/1.0",
+  "author_events": [
+    {
+      "event_id": "AUTHOR-EVENT-TWO",
+      "source": "explicit_session_user_message",
+      "actor_role": "author",
+      "input_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "display_order": {
+    "mode": "source_traceability",
+    "item_ids": ["REV-002"],
+    "author_event_id": "AUTHOR-EVENT-TWO"
+  },
+  "author_adjudications": [
+    {
+      "item_id": "REV-002",
+      "author_event_id": "AUTHOR-EVENT-TWO",
+      "author_triage": "not_on_point",
+      "author_reason": "Second transient fixture rationale.",
+      "authorized_targets": [],
+      "claim_strength_authorizations": []
+    }
+  ],
+  "collateral_authorizations": []
+}

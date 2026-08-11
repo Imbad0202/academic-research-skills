@@ -247,6 +247,39 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 3. On acknowledgement: state_tracker marks Stage 6 `completed` and sets the pipeline global state to `completed`. This is the terminal transition — there is no next stage.
 4. After `completed`, no stage transition is legal (see Prohibited Transitions). New requests start a new pipeline run or a targeted single-skill invocation (mid-entry).
 
+### Post-terminal adjudication-activity side channel (#673)
+
+The ordinary state machine is authoritative and always terminates first. A
+`completed` run durably records Stage 6 with status `completed` or `skipped` as
+defined above. An `aborted` run durably records its first replayable terminal
+stage. The closed replayable activity vocabulary is Stage 1, 2, 2.5, 3,
+3-prime, 4, 4-prime, 4.5, 5, and 6; there is no Stage 0.
+
+Only after that terminal write succeeds, and only for an explicitly selected
+local store, may the orchestrator invoke the state tracker's #673
+post-terminal sequence. It passes explicit state/artifact-root paths plus the
+explicit five-row `pending_adjudication_activity_bindings[]` value to
+`seal_terminal_inventory(state_path, artifact_root, pending_bindings)`. Pending
+captured artifact bindings carry id, role, group id,
+`artifact_group_stage`, and relative path but no hash; the helper computes raw
+hashes. Non-applicable/unavailable rows carry empty artifacts and a closed
+reason. The helper neither reads the pending field itself nor infers or scans
+for sources.
+
+The helper seals the exact root `adjudication_activity_sources` inventory while
+leaving terminal state, stage, and status byte-semantically unchanged. The
+terminal file's root `run_id` plus that sealed root inventory are exact
+source/run authority; pending rows are not. `build-input` can project only the
+sealed inventory and cannot accept caller-reported hashes. Idempotent append
+and optional render follow. Any post-terminal failure is advisory, creates no
+substitute record, and cannot change the already-durable terminal state.
+
+This side channel is never a legal transition, precondition, gate, verdict,
+checkpoint input, passport/handoff/Process Record field, or model/observer/
+compliance input. It uses no live model, judge, eval, network/API, ambient
+clock, directory scan, or glob. Producer details are single-homed in
+`../agents/state_tracker_agent.md` § "Adjudication-activity metadata".
+
 ---
 
 ## Material Dependency Matrix

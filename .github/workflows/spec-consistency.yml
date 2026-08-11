@@ -434,6 +434,15 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_cross_document_consistency_advisory_integration.py
 
+      - name: Check adjudication-activity advisory integration (#673)
+        # Static, hermetic guard for the closed schemas and CLI, exact renderer
+        # language, terminal-first/post-terminal best-effort wiring, sealed
+        # terminal authority, and the non-consumer boundary. Mutation tests run
+        # through the unified pytest manifest above.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_673_adjudication_activity.py
+
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
         # block, 16 Bucket B/C/D agents DON'T, and each Bucket A block

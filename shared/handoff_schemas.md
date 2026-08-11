@@ -8,6 +8,18 @@ Consuming agents should validate input and request re-generation if schema viola
 
 > **Convention**: All schemas use Markdown-based structured output. Agents MUST validate required fields before accepting a handoff. Missing required fields trigger a `HANDOFF_INCOMPLETE` failure path.
 
+> **#673 activity exclusion:** adjudication activity is not handoff cargo.
+> the #673 activity projection of the terminal state root `run_id`,
+> `pending_adjudication_activity_bindings[]`, sealed
+> `adjudication_activity_sources`, selected-store information, store records,
+> renderer output, and activity diagnostics remain only in the state tracker's
+> local advisory side channel. They MUST NOT be added to any numbered schema,
+> Material Passport, stage transfer, gate/verdict/checkpoint input, Process
+> Record, or model/observer/compliance input. See
+> `academic-pipeline/agents/state_tracker_agent.md` §
+> "Adjudication-activity metadata". This exclusion does not remove or alter any
+> existing schema-owned `run_id` field used by another contract.
+
 ---
 
 ## Schema 1: RQ Brief (deep-research -> academic-paper)
@@ -601,6 +613,13 @@ equal the carried post draft; matching reported hashes alone are insufficient.
 ## Schema 9: Material Passport (cross-stage metadata)
 
 **Purpose**: Accompanies every artifact as it passes between stages, providing provenance and verification tracking.
+
+The #673 activity fields named in the top-level exclusion are deliberately not
+Schema 9 fields. In particular, the #673 projection of the terminal state
+file's root `run_id` plus sealed root `adjudication_activity_sources` are
+activity source/run authority; copying either activity projection into a
+passport would create an unauthorized second authority. Existing independently
+schema-owned `run_id` fields are unaffected.
 
 ### Required Fields
 

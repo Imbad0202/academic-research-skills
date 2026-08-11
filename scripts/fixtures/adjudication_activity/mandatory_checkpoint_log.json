@@ -1,0 +1,116 @@
+{
+  "schema_version": "adjudication-mandatory-checkpoint-log/1.0",
+  "run_id": "run-all-events",
+  "records": [
+    {
+      "response_id": "RESPONSE-1",
+      "checkpoint_id": "stage-1",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_1",
+      "disposition": "proceed",
+      "interaction_id": "USER-MANDATORY-1",
+      "interaction_sha256": "9f0df35414059b150ceb7c96bdca9a0e039905734ca4154c82ea968d5cb39c4f"
+    },
+    {
+      "response_id": "RESPONSE-2",
+      "checkpoint_id": "stage-2",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_2",
+      "disposition": "skip",
+      "interaction_id": "USER-MANDATORY-2",
+      "interaction_sha256": "59e7782ba9a58e3c5c148c456c967f7661d0336b444467d77f3f812bffa90db0"
+    },
+    {
+      "response_id": "RESPONSE-3",
+      "checkpoint_id": "stage-2.5",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_2_5",
+      "disposition": "pause",
+      "interaction_id": "USER-MANDATORY-3",
+      "interaction_sha256": "5457b04643bdd484c83f55fae68d274960f61331c7d08a2ca9631453d2f1976a"
+    },
+    {
+      "response_id": "RESPONSE-4",
+      "checkpoint_id": "stage-3",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_3",
+      "disposition": "adjust",
+      "interaction_id": "USER-REQUEST-SHARED",
+      "interaction_sha256": "ecdb25466fbd5c0580ca4821a7b280637ab022c19c80dc260242836569b8a7b0"
+    },
+    {
+      "response_id": "RESPONSE-5",
+      "checkpoint_id": "stage-3-prime",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_3_prime",
+      "disposition": "view_progress",
+      "interaction_id": "USER-MANDATORY-5",
+      "interaction_sha256": "60b1c7779abbc6e756049b83d5dac53c67fd625399f0daea696d6f4415b4ada3"
+    },
+    {
+      "response_id": "RESPONSE-6",
+      "checkpoint_id": "stage-4",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_4",
+      "disposition": "redo",
+      "interaction_id": "USER-MANDATORY-6",
+      "interaction_sha256": "eac55e0845623714a75beb596266b9d799d268575355af5cf07116e1bf2d519b"
+    },
+    {
+      "response_id": "RESPONSE-7",
+      "checkpoint_id": "stage-4-prime",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_4_prime",
+      "disposition": "abort",
+      "interaction_id": "USER-MANDATORY-7",
+      "interaction_sha256": "fba035a6fbd9a40d887688e3e29fe8bbc05d2bfab98d4934d567a55599d1ea3e"
+    },
+    {
+      "response_id": "RESPONSE-8",
+      "checkpoint_id": "stage-4.5",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_4_5",
+      "disposition": "proceed",
+      "interaction_id": "USER-MANDATORY-8",
+      "interaction_sha256": "66b12ee5e3b00db2927e099e3a6d6683e2deebda6d5c0957b14d3d0bf1b4526a"
+    },
+    {
+      "response_id": "RESPONSE-9",
+      "checkpoint_id": "stage-5",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_5",
+      "disposition": "pause",
+      "interaction_id": "USER-MANDATORY-9",
+      "interaction_sha256": "d02020a9bc154468a29dfc6c7c8fb211c32a27c9bab9ff2784d7b93e545d2468"
+    },
+    {
+      "response_id": "RESPONSE-10",
+      "checkpoint_id": "stage-6",
+      "checkpoint_type": "MANDATORY",
+      "actor_role": "user",
+      "source": "explicit_session_user_action",
+      "stage": "pipeline_stage_6",
+      "disposition": "adjust",
+      "interaction_id": "USER-MANDATORY-10",
+      "interaction_sha256": "ce6816fd63c208fc00a6a7883b5b4ceaab5e0e3bc27bb9cc3e7466df72d0ecfa"
+    }
+  ]
+}
