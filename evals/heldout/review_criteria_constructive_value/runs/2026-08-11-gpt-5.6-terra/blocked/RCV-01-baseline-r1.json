@@ -1,0 +1,8 @@
+{
+  "api_spend_usd": 0,
+  "call_id": "RCV-01-baseline-r1",
+  "partial_published": true,
+  "reason": "subscription CLI exited 1 for RCV-01-baseline-r1",
+  "schema_version": "review-criteria-blocked-call/1.0",
+  "sequence_index": 1
+}

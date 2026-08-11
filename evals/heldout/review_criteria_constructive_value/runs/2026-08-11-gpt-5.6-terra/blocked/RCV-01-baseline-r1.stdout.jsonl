@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"019ff033-4c22-7c72-be4c-3a94ad1230cc"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`."}}
+{"type":"turn.started"}
+{"type":"error","message":"{\n  \"type\": \"error\",\n  \"error\": {\n    \"type\": \"invalid_request_error\",\n    \"code\": \"invalid_json_schema\",\n    \"message\": \"Invalid schema for response_format 'codex_output_schema': In context=('properties', 'schema_version'), schema must have a 'type' key.\",\n    \"param\": \"text.format.schema\"\n  },\n  \"status\": 400\n}"}
+{"type":"turn.failed","error":{"message":"{\n  \"type\": \"error\",\n  \"error\": {\n    \"type\": \"invalid_request_error\",\n    \"code\": \"invalid_json_schema\",\n    \"message\": \"Invalid schema for response_format 'codex_output_schema': In context=('properties', 'schema_version'), schema must have a 'type' key.\",\n    \"param\": \"text.format.schema\"\n  },\n  \"status\": 400\n}"}}
