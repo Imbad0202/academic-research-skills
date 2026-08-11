@@ -16,7 +16,7 @@
     "evals/heldout/review_criteria_constructive_value/subject_output.schema.json": "2f650570f1b3ea774a38b625ede0cd7e5ad7017403a187c679be094581151c35",
     "evals/heldout/review_criteria_constructive_value/treatment_prompt.md": "16907b4c35d9df226f831a837de0788d47d0790209d6f1a14e7fbebbb0921f22",
     "scripts/fixtures/review_target_context/synthetic-registry.json": "ad8a7892f975842ec99d66e16e4a45fc63bb9da09a14e38d86785532d26f2be1",
-    "scripts/run_review_criteria_constructive_value.py": "f515e8b1eb409431eb02352e395dcd8ab5b61e91edefb55f74148cd8e5df9fe8",
+    "scripts/run_review_criteria_constructive_value.py": "2a26f1ff156dc37425aa4a5449b742895c9910aa252e1dd1e73e8e768db64b21",
     "scripts/score_review_criteria_constructive_value.py": "1f1c2be5844da3be0933d71fd1c305f9d697cf8601efcc582bffddc8e1d1fd7f"
   }
 }

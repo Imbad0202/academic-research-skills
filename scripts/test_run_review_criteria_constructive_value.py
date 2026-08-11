@@ -16,7 +16,8 @@ import score_review_criteria_constructive_value as scorer
 
 def _fake_codex(
     tmp_path: Path, *, status: str = "Logged in using ChatGPT",
-    forbidden_event: bool = False, invalid_output: bool = False,
+    status_to_stderr: bool = False, forbidden_event: bool = False,
+    invalid_output: bool = False,
 ) -> tuple[Path, Path]:
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir()
@@ -30,6 +31,7 @@ from pathlib import Path
 import sys
 
 STATUS = {status!r}
+STATUS_TO_STDERR = {status_to_stderr!r}
 FORBIDDEN = {forbidden_event!r}
 INVALID = {invalid_output!r}
 CAPTURE = Path(__file__).with_name("capture.jsonl")
@@ -38,7 +40,7 @@ if sys.argv[1:] == ["--version"]:
     print("codex-cli 0.147.0")
     raise SystemExit(0)
 if sys.argv[1:] == ["login", "status"]:
-    print(STATUS)
+    print(STATUS, file=sys.stderr if STATUS_TO_STDERR else sys.stdout)
     raise SystemExit(0)
 if not sys.argv[1:] or sys.argv[1] != "exec":
     raise SystemExit(9)
@@ -190,6 +192,12 @@ def test_detection_requires_exact_chatgpt_subscription_status(tmp_path) -> None:
     unavailable = runner.detect("gpt-5.6", _env(other, fake_bin))
     assert unavailable["available"] is False
     assert unavailable["reason_code"] == "AUTH_NOT_CHATGPT_SUBSCRIPTION"
+
+    stderr_home = tmp_path / "stderr-status"
+    stderr_home.mkdir()
+    fake_bin, _ = _fake_codex(stderr_home, status_to_stderr=True)
+    detected = runner.detect("gpt-5.6", _env(stderr_home, fake_bin))
+    assert detected["auth_mode"] == "chatgpt_subscription"
 
 
 def test_dispatch_requires_flag_and_exact_plan_hash(monkeypatch, tmp_path) -> None:

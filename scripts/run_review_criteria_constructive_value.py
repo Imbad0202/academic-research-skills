@@ -660,7 +660,12 @@ def detect(model: str, environ: dict[str, str] | None = None) -> dict[str, Any]:
     if version < MIN_CODEX_VERSION:
         result["reason_code"] = "CODEX_VERSION_TOO_OLD"
         return result
-    if status_run.returncode or status_run.stdout.strip() != "Logged in using ChatGPT":
+    status_lines = {
+        line.strip()
+        for line in (status_run.stdout + "\n" + status_run.stderr).splitlines()
+        if line.strip()
+    }
+    if status_run.returncode or "Logged in using ChatGPT" not in status_lines:
         result["reason_code"] = "AUTH_NOT_CHATGPT_SUBSCRIPTION"
         return result
     result.update(
