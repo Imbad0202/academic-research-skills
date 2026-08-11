@@ -261,6 +261,27 @@ def _validate(schema_path: Path, value: Any, label: str) -> None:
         _fail(f"{label} schema failure at {location}: {first.message}")
 
 
+def _validate_provider_response_schema(node: Any, path: str = "$") -> None:
+    """Pin the strict response-schema subset required by Codex/OpenAI."""
+    if isinstance(node, list):
+        for index, value in enumerate(node):
+            _validate_provider_response_schema(value, f"{path}[{index}]")
+        return
+    if not isinstance(node, dict):
+        return
+    if ("const" in node or "enum" in node) and "type" not in node:
+        _fail(f"provider response schema requires explicit type at {path}")
+    if node.get("type") == "object":
+        properties = node.get("properties")
+        required = node.get("required")
+        if not isinstance(properties, dict) or node.get("additionalProperties") is not False:
+            _fail(f"provider response object must be closed at {path}")
+        if not isinstance(required, list) or set(required) != set(properties):
+            _fail(f"provider response object must require every property at {path}")
+    for key, value in node.items():
+        _validate_provider_response_schema(value, f"{path}.{key}")
+
+
 def _repo_ref(ref: str) -> Path:
     if not isinstance(ref, str) or not ref or ref.startswith("/") or "\\" in ref:
         _fail(f"invalid repository reference: {ref!r}")
@@ -386,6 +407,7 @@ def validate_assets() -> dict[str, Any]:
         EXECUTION_SCHEMA_PATH,
     ):
         _schema(schema_path)
+    _validate_provider_response_schema(_schema(OUTPUT_SCHEMA_PATH))
     return {
         "suite": SUITE,
         "assets": len(assets),

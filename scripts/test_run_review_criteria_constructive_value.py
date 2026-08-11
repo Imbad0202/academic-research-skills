@@ -161,6 +161,29 @@ def test_lock_hash_mutation_fails(monkeypatch, tmp_path) -> None:
         runner.validate_assets()
 
 
+@pytest.mark.parametrize("keyword", ["const", "enum"])
+def test_provider_response_schema_requires_explicit_types(keyword: str) -> None:
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["value"],
+        "properties": {"value": {keyword: "x" if keyword == "const" else ["x"]}},
+    }
+    with pytest.raises(runner.MeasurementError, match="requires explicit type"):
+        runner._validate_provider_response_schema(schema)
+
+
+def test_provider_response_schema_requires_closed_fully_required_objects() -> None:
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [],
+        "properties": {"value": {"type": "string"}},
+    }
+    with pytest.raises(runner.MeasurementError, match="require every property"):
+        runner._validate_provider_response_schema(schema)
+
+
 def test_init_run_seals_same_context_bytes_and_only_treatment_binding(
     monkeypatch, tmp_path
 ) -> None:

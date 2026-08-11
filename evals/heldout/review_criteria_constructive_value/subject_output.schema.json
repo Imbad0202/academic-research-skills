@@ -6,10 +6,10 @@
   "additionalProperties": false,
   "required": ["schema_version", "item_id", "consumer_id", "role", "profile", "applicability", "findings"],
   "properties": {
-    "schema_version": {"const": "review-criteria-subject-output/1.0"},
+    "schema_version": {"type": "string", "const": "review-criteria-subject-output/1.0"},
     "item_id": {"type": "string", "pattern": "^RCV-0[1-6]$"},
-    "consumer_id": {"enum": ["formative_planning", "internal_evaluator", "external_panel"]},
-    "role": {"enum": ["FORMATIVE", "INTERNAL", "EIC", "R1", "R2", "R3", "DA"]},
+    "consumer_id": {"type": "string", "enum": ["formative_planning", "internal_evaluator", "external_panel"]},
+    "role": {"type": "string", "enum": ["FORMATIVE", "INTERNAL", "EIC", "R1", "R2", "R3", "DA"]},
     "profile": {
       "type": "object",
       "additionalProperties": false,
@@ -31,7 +31,7 @@
         "required": ["criterion_id", "predicted", "rationale"],
         "properties": {
           "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
-          "predicted": {"enum": ["applicable", "not_applicable", "unresolved"]},
+          "predicted": {"type": "string", "enum": ["applicable", "not_applicable", "unresolved"]},
           "rationale": {"type": "string", "minLength": 1, "maxLength": 1200}
         }
       }
@@ -48,7 +48,7 @@
         ],
         "properties": {
           "finding_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
-          "predicted_severity": {"enum": ["critical", "major"]},
+          "predicted_severity": {"type": "string", "enum": ["critical", "major"]},
           "criterion_ids": {
             "type": "array",
             "minItems": 1,
@@ -65,7 +65,7 @@
             }
           },
           "scholarly_relevance": {"type": "string", "minLength": 1, "maxLength": 1200},
-          "predicted_venue_alignment": {"enum": ["aligned", "not_aligned", "not_claimed"]},
+          "predicted_venue_alignment": {"type": "string", "enum": ["aligned", "not_aligned", "not_claimed"]},
           "remedy": {
             "type": "object",
             "additionalProperties": false,
@@ -75,11 +75,11 @@
               "proposed_result_values", "no_honest_reason"
             ],
             "properties": {
-              "status": {"enum": ["available", "none"]},
+              "status": {"type": "string", "enum": ["available", "none"]},
               "minimum_action": {"type": ["string", "null"], "minLength": 1, "maxLength": 1200},
-              "effort_scope": {"enum": ["sentence", "section", "re_analysis", "new_data", "other", "none"]},
+              "effort_scope": {"type": "string", "enum": ["sentence", "section", "re_analysis", "new_data", "other", "none"]},
               "cost_tradeoffs": {"type": "string", "maxLength": 1200},
-              "changes_research_intent": {"enum": ["no", "yes_author_choice_required", "uncertain_author_choice_required", "not_applicable"]},
+              "changes_research_intent": {"type": "string", "enum": ["no", "yes_author_choice_required", "uncertain_author_choice_required", "not_applicable"]},
               "requires_new_data": {"type": "boolean"},
               "proposed_result_values": {"type": "boolean"},
               "no_honest_reason": {"type": ["string", "null"], "minLength": 1, "maxLength": 1200}

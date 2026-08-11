@@ -1,4 +1,4 @@
-# Frozen measurement plan — review_criteria_constructive_value/1.2
+# Frozen measurement plan — review_criteria_constructive_value/1.3
 
 Status: PRE-REGISTERED / NOT RUN. Issue: #684. Contract:
 `heldout-measurement/1.1`; suite class: `paired_controls`.
@@ -145,3 +145,11 @@ new plan version and new run; results are not pooled.
   removed redundant model-judge calls. The exact subject design remains 24
   contained Codex subscription calls; metered API spend remains USD 0. Plans
   1.0 and 1.1 produced no subject, judge, or expert output.
+- 2026-08-11, plan 1.3, after the first plan 1.2 dispatch attempt: the provider
+  rejected call 1 before subject generation because string `const`/`enum`
+  nodes in `subject_output.schema.json` lacked explicit `type: "string"`.
+  The blocked event stream and stderr are retained; no subject output was
+  produced, calls 2–24 were not dispatched, and the plan 1.2 run is not
+  retried. Plan 1.3 adds only those provider-required type declarations and a
+  local response-schema subset guard; design cells, prompts, model budget,
+  metrics, human-expert plan, and USD 0 API ceiling are unchanged.
