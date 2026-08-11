@@ -151,6 +151,17 @@ When receiving feedback from peer_reviewer_agent (Phase 6 -> back to Phase 4):
 
 ## Output Format
 
+## Review-criteria continuity (#684)
+
+When the upstream outline carries a `FORMATIVE` binding receipt, use its exact
+criterion-id coverage plan as a writing constraint. Do not re-resolve the
+target, copy registry prose, manufacture supporting evidence or result values,
+or silently alter the author's research intent. Parallel interdisciplinary
+criteria remain separate. This phase does not create a new criteria receipt;
+the Phase 2 formative artifact remains the authority. If the binding is
+unavailable, preserve `criteria_binding_unavailable` and make no venue-
+alignment claim.
+
 > Applies to **Phase 4 drafting** and to a **`full_reemission_escalated` Phase 6 round only** (§3.6). A normal Phase 6 revision round emits a patch document instead — see § Patch-Document Revision Emission (#390); do NOT emit a complete draft in that case.
 
 ```markdown

@@ -63,20 +63,22 @@ RUNTIME_HASHES = {
     RE_REVIEW_RUNTIME: "8347ec3766857366cc0c6ffd30021afcebf8d0528a83927fabfce9ecb66a59ab",
 }
 
-# #670 changes synthesis/presentation and revision authority, not the five
-# reviewer finding producers or their report grammar. Exact hashes make that
-# boundary auditable without a live-model comparison.
+# #670 originally froze the five reviewer finding producers. #684
+# intentionally extends their Phase 1/2 grammar with pointer-only criteria
+# binding and constructive-finding sidecars; these hashes were reviewed and
+# re-pinned with that semantic change. Exact hashes keep subsequent drift
+# auditable without a live-model comparison.
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
-        "6c8637a92bb0d70bb226ebf736cd5b3906c97087b331830491861a940e0accff",
+        "e1ddd06f398b0fbfeaa39d38c92e18da62a230bc640a6c081de89424f504ab12",
     Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
-        "353e8a291eaa9d25d96f0fe9655a8f34a68c541d4c8e28b869ecb3bfb1f09ab2",
+        "0a056ab04963b4ccb1af050b3e40390da2f675a6fa723f0df44674551e83838a",
     Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "723049577b8492dbe46b45db53766329973c6686756464f09a42fe9592af68c0",
+        "f9ee56957e213c0f850551bf2cf7985002efe2f71f909599bd8ecdac73b37052",
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
-        "851799aae558c63d31727a9be8de86dd0ffe38687cab8752c543f035b9585f0c",
+        "ee6099e548cefe5c79df73be06a8e1691af7f20bacd288190c960fde76cd1258",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "7f2f115eb537114fe1dd5230b68444103b4a430e41a48f48fa790db813801b55",
+        "612ea6371ba3107524c72a21cfb1966e196eb0512c9072b18af83caa6005be61",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
         "d42f780246191ed84dd2d75a3c40bf7533afdbe74994f1ebd9630902978d2b9b",
 }

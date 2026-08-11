@@ -1,0 +1,50 @@
+{
+  "schema_version": "review-criteria-heldout-set/1.0",
+  "suite": "review_criteria_constructive_value",
+  "content_class": "repository_owned_synthetic",
+  "scenario_policy": "Exact materials are sealed before dispatch; expert labels and arm identity are withheld from every subject call.",
+  "items": [
+    {
+      "item_id": "RCV-01",
+      "consumer": "formative_planning",
+      "role": "FORMATIVE",
+      "target_axis": "field_general_with_unresolved_venue",
+      "behavioral_focus": ["profile_resolution", "applicability", "no_invented_evidence"]
+    },
+    {
+      "item_id": "RCV-02",
+      "consumer": "internal_evaluator",
+      "role": "INTERNAL",
+      "target_axis": "synthetic_exact_profile",
+      "behavioral_focus": ["unsupported_findings", "severity", "minimum_remedy"]
+    },
+    {
+      "item_id": "RCV-03",
+      "consumer": "external_panel",
+      "role": "EIC",
+      "target_axis": "synthetic_venue_track_type",
+      "behavioral_focus": ["venue_alignment", "scientific_validity_separation"]
+    },
+    {
+      "item_id": "RCV-04",
+      "consumer": "external_panel",
+      "role": "R1",
+      "target_axis": "synthetic_methodology_overlay",
+      "behavioral_focus": ["applicability", "severity", "new_data_author_choice"]
+    },
+    {
+      "item_id": "RCV-05",
+      "consumer": "external_panel",
+      "role": "R3",
+      "target_axis": "synthetic_interdisciplinary_conflict",
+      "behavioral_focus": ["parallel_conflicts", "unresolved_applicability", "usefulness"]
+    },
+    {
+      "item_id": "RCV-06",
+      "consumer": "external_panel",
+      "role": "DA",
+      "target_axis": "synthetic_adversarial_clean_control",
+      "behavioral_focus": ["unsupported_findings", "singleton_critical", "honest_no_remedy"]
+    }
+  ]
+}

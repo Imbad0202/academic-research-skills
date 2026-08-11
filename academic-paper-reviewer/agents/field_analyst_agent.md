@@ -51,11 +51,12 @@ After reading the paper, analyze the following 6 dimensions sequentially:
 - Comparative Study
 
 ### 5. Target Journal Tier
-- Q1: Top international journals (Nature, Science level or field top journals)
-- Q2: Well-known international journals (mainstream field journals)
-- Q3: Regional or specialized journals
-- Q4: Entry-level or emerging journals
-- Basis for judgment: paper quality, ambition level, tier of cited references
+- When an author-confirmed #683 Review Target Context is supplied, reproduce
+  its venue/track/article-type metadata exactly for panel configuration. Do not
+  infer, upgrade, downgrade, or replace the target from paper quality.
+- Without confirmed target metadata, state `criteria_binding_unavailable` and
+  describe only a field-general maturity/tier observation. Do not claim a
+  specific venue fit or manufacture venue criteria from model memory.
 
 ### 6. Paper Maturity
 - First draft: Incomplete structure, arguments not yet formed
@@ -88,9 +89,15 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 ### Configuration Principles
 
 1. **Journal-Fit Reviewer Configuration** (internal role `EIC`):
-   - Select the international journal that best matches the paper (reference `references/top_journals_by_field.md`)
+   - If an author-confirmed target exists, configure expertise for that exact
+     venue/track/type and the supplied pointer-only Target Criteria Brief.
+     Otherwise stay field-general; do not select a substitute journal.
    - The Journal-Fit Reviewer's perspective is "does this paper fit the configured journal, would its readers be interested"
    - Focus on big picture: originality, significance, fit
+
+The field analyst may recommend disciplinary expertise, but it is not a target
+resolver. It cannot overwrite the author-confirmed target, selected criterion
+ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
 
 2. **Reviewer 1 (Methodology) Configuration**:
    - Based on the paper's research paradigm and methodology type, select the corresponding methodology expert

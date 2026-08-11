@@ -104,6 +104,18 @@ Conclusion: Thesis restated -> Implications -> Future research
 
 ## Output Format
 
+## Review-criteria continuity (#684)
+
+When the approved outline carries a `FORMATIVE` binding receipt, reuse its
+exact target-review authority and criterion-id coverage plan. Do not re-resolve
+the target, copy registry statements, collapse interdisciplinary conflicts, or
+create another receipt. A criterion may identify an argument or evidence need;
+it does not license invented evidence, results, methods, or a silent change to
+the author's thesis. Keep scientific validity, venue fit, and submission
+readiness distinct. When the outline discloses
+`criteria_binding_unavailable`, retain that disclosure and make no venue-fit
+claim.
+
 ```markdown
 ## Argument Blueprint
 

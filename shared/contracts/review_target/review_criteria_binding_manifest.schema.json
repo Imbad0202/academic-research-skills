@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/review_target/review_criteria_binding_manifest.schema.json",
+  "title": "Review Criteria Consumer Binding Manifest",
+  "description": "Pointer-only authority proving that the formative, internal-evaluator, and external-panel consumers used one resolved ReviewTargetContext.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "target_review_id",
+    "context_authority",
+    "predecessor",
+    "receipts",
+    "manifest_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "review-criteria-binding/1.0"},
+    "target_review_id": {"$ref": "#/$defs/id"},
+    "context_authority": {"$ref": "#/$defs/context_authority"},
+    "predecessor": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_review_id", "resolved_digest", "comparability"],
+          "properties": {
+            "target_review_id": {"$ref": "#/$defs/id"},
+            "resolved_digest": {"$ref": "#/$defs/sha256"},
+            "comparability": {"const": "new_target_review_not_comparable"}
+          }
+        }
+      ]
+    },
+    "receipts": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/receipt"},
+      "allOf": [
+        {
+          "contains": {"properties": {"consumer_id": {"const": "formative_planning"}}, "required": ["consumer_id"]},
+          "minContains": 0,
+          "maxContains": 1
+        },
+        {
+          "contains": {"properties": {"consumer_id": {"const": "internal_evaluator"}}, "required": ["consumer_id"]},
+          "minContains": 0,
+          "maxContains": 1
+        },
+        {
+          "contains": {"properties": {"consumer_id": {"const": "external_panel"}}, "required": ["consumer_id"]},
+          "minContains": 0,
+          "maxContains": 1
+        }
+      ]
+    },
+    "manifest_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "portable_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[^/]+(?:/[^/]+)*$"
+    },
+    "criterion_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+    },
+    "criterion_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterion_id", "criterion_version", "criterion_digest", "dimension", "blocking_eligible"],
+      "properties": {
+        "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "criterion_version": {"type": "string", "minLength": 1},
+        "criterion_digest": {"$ref": "#/$defs/sha256"},
+        "dimension": {"enum": ["scientific_validity", "venue_fit", "submission_readiness"]},
+        "blocking_eligible": {"type": "boolean"}
+      }
+    },
+    "parallel_conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conflict_group", "criterion_ids"],
+      "properties": {
+        "conflict_group": {"type": "string", "minLength": 1},
+        "criterion_ids": {"$ref": "#/$defs/criterion_ids"}
+      }
+    },
+    "unresolved_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "dimension"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "dimension": {"enum": ["scientific_validity", "venue_fit", "submission_readiness"]}
+      }
+    },
+    "context_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context_ref",
+        "context_sha256",
+        "registry_ref",
+        "registry_sha256",
+        "resolved_digest",
+        "selected_criterion_ids",
+        "selected_criteria",
+        "parallel_conflicts",
+        "unresolved",
+        "phase1_safe"
+      ],
+      "properties": {
+        "context_ref": {"$ref": "#/$defs/portable_ref"},
+        "context_sha256": {"$ref": "#/$defs/sha256"},
+        "registry_ref": {"$ref": "#/$defs/portable_ref"},
+        "registry_sha256": {"$ref": "#/$defs/sha256"},
+        "resolved_digest": {"$ref": "#/$defs/sha256"},
+        "selected_criterion_ids": {"$ref": "#/$defs/criterion_ids"},
+        "selected_criteria": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/criterion_pointer"}
+        },
+        "parallel_conflicts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/parallel_conflict"}
+        },
+        "unresolved": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/unresolved_pointer"}
+        },
+        "phase1_safe": {"const": true}
+      }
+    },
+    "artifact_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "artifact_ref", "artifact_sha256"],
+      "properties": {
+        "role": {"enum": ["FORMATIVE", "INTERNAL", "EIC", "R1", "R2", "R3", "DA"]},
+        "artifact_ref": {"$ref": "#/$defs/portable_ref"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consumer_id",
+        "context_ref",
+        "context_sha256",
+        "resolved_digest",
+        "selected_criterion_ids",
+        "artifacts",
+        "receipt_digest"
+      ],
+      "properties": {
+        "consumer_id": {"enum": ["formative_planning", "internal_evaluator", "external_panel"]},
+        "context_ref": {"$ref": "#/$defs/portable_ref"},
+        "context_sha256": {"$ref": "#/$defs/sha256"},
+        "resolved_digest": {"$ref": "#/$defs/sha256"},
+        "selected_criterion_ids": {"$ref": "#/$defs/criterion_ids"},
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {"$ref": "#/$defs/artifact_binding"}
+        },
+        "receipt_digest": {"$ref": "#/$defs/sha256"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"consumer_id": {"const": "formative_planning"}}, "required": ["consumer_id"]},
+          "then": {
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1,
+                "prefixItems": [
+                  {"$ref": "#/$defs/artifact_binding", "properties": {"role": {"const": "FORMATIVE"}}}
+                ],
+                "items": false
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"consumer_id": {"const": "internal_evaluator"}}, "required": ["consumer_id"]},
+          "then": {
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1,
+                "prefixItems": [
+                  {"$ref": "#/$defs/artifact_binding", "properties": {"role": {"const": "INTERNAL"}}}
+                ],
+                "items": false
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"consumer_id": {"const": "external_panel"}}, "required": ["consumer_id"]},
+          "then": {
+            "properties": {
+              "artifacts": {
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                  {"$ref": "#/$defs/artifact_binding", "properties": {"role": {"const": "EIC"}}},
+                  {"$ref": "#/$defs/artifact_binding", "properties": {"role": {"const": "R1"}}},
+                  {"$ref": "#/$defs/artifact_binding", "properties": {"role": {"const": "R2"}}},
+                  {"$ref": "#/$defs/artifact_binding", "properties": {"role": {"const": "R3"}}},
+                  {"$ref": "#/$defs/artifact_binding", "properties": {"role": {"const": "DA"}}}
+                ],
+                "items": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

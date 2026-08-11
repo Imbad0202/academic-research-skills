@@ -450,6 +450,16 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/check_673_adjudication_activity.py
 
+      - name: Check review-criteria consumer binding integration (#684)
+        # Pins the one manifest authority, three exact consumer receipts,
+        # paper-blind Phase 1 wiring, five external seats including DA,
+        # constructive finding safety, advisory/non-consumer boundaries, and
+        # the manual-only same-context/same-budget held-out plan. Focused and
+        # mutation tests run through the unified pytest manifest above.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_684_review_criteria_binding.py
+
       - name: Run v3.9.2 Phase Boundary coverage lint (#133)
         # Enforces 22 Bucket A agents have ## Phase Boundary (v3.9.2)
         # block, 16 Bucket B/C/D agents DON'T, and each Bucket A block

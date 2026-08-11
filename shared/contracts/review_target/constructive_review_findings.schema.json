@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/review_target/constructive_review_findings.schema.json",
+  "title": "Constructive Critical and Major Review Findings",
+  "description": "Pointer-bound Critical/Major findings with feasible remedies, explicit costs and trade-offs, and author-intent protection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "target_review_id", "resolved_digest", "selected_criterion_ids", "findings"],
+  "properties": {
+    "schema_version": {"const": "constructive-review-findings/1.0"},
+    "target_review_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "resolved_digest": {"$ref": "#/$defs/sha256"},
+    "selected_criterion_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}
+    },
+    "findings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/finding"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "criterion_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterion_id", "criterion_version", "criterion_digest"],
+      "properties": {
+        "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "criterion_version": {"type": "string", "minLength": 1},
+        "criterion_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidence_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_type", "locator"],
+      "properties": {
+        "anchor_type": {"enum": ["text", "table", "figure", "equation", "dataset", "absence"]},
+        "locator": {"type": "string", "minLength": 1},
+        "quote": {"type": "string", "minLength": 1},
+        "absence_scope": {"type": "string", "minLength": 1},
+        "check_performed": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"anchor_type": {"const": "text"}}, "required": ["anchor_type"]},
+          "then": {"required": ["quote"], "not": {"anyOf": [{"required": ["absence_scope"]}, {"required": ["check_performed"]}]}},
+          "else": {
+            "if": {"properties": {"anchor_type": {"const": "absence"}}, "required": ["anchor_type"]},
+            "then": {"required": ["absence_scope", "check_performed"], "not": {"required": ["quote"]}},
+            "else": {"not": {"anyOf": [{"required": ["quote"]}, {"required": ["absence_scope"]}, {"required": ["check_performed"]}]}}
+          }
+        }
+      ]
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "resource_effort",
+        "trade_offs",
+        "changes_research_intent",
+        "requires_new_data",
+        "proposed_result_values"
+      ],
+      "properties": {
+        "action": {"type": "string", "minLength": 1},
+        "resource_effort": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scope", "description"],
+          "properties": {
+            "scope": {"enum": ["sentence", "section", "re_analysis", "new_data", "other"]},
+            "description": {"type": "string", "minLength": 1}
+          }
+        },
+        "trade_offs": {"type": "string", "minLength": 1},
+        "changes_research_intent": {"enum": ["no", "yes_author_choice_required", "uncertain_author_choice_required"]},
+        "requires_new_data": {"type": "boolean"},
+        "proposed_result_values": {"const": false}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "resource_effort": {
+                "properties": {"scope": {"const": "new_data"}},
+                "required": ["scope"]
+              }
+            },
+            "required": ["resource_effort"]
+          },
+          "then": {"properties": {"requires_new_data": {"const": true}}},
+          "else": {"properties": {"requires_new_data": {"const": false}}}
+        }
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "consumer_id",
+        "reviewer_id",
+        "severity",
+        "criterion_refs",
+        "evidence_anchor",
+        "scholarly_relevance",
+        "confirmed_target_relevance",
+        "remedy_status",
+        "minimum_viable_remedy",
+        "stronger_option",
+        "stronger_option_reason",
+        "no_honest_remedy_reason"
+      ],
+      "properties": {
+        "finding_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+        "consumer_id": {"enum": ["internal_evaluator", "external_panel"]},
+        "reviewer_id": {"enum": ["INTERNAL", "EIC", "R1", "R2", "R3", "DA"]},
+        "severity": {"enum": ["critical", "major"]},
+        "criterion_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/criterion_ref"}},
+        "evidence_anchor": {"$ref": "#/$defs/evidence_anchor"},
+        "scholarly_relevance": {"type": "string", "minLength": 1},
+        "confirmed_target_relevance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "rationale"],
+          "properties": {
+            "status": {"enum": ["confirmed", "not_applicable", "unresolved"]},
+            "rationale": {"type": "string", "minLength": 1}
+          }
+        },
+        "remedy_status": {"enum": ["available", "none"]},
+        "minimum_viable_remedy": {"oneOf": [{"$ref": "#/$defs/option"}, {"type": "null"}]},
+        "stronger_option": {"oneOf": [{"$ref": "#/$defs/option"}, {"type": "null"}]},
+        "stronger_option_reason": {"type": ["string", "null"], "minLength": 1},
+        "no_honest_remedy_reason": {"type": ["string", "null"], "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"remedy_status": {"const": "available"}}, "required": ["remedy_status"]},
+          "then": {
+            "properties": {
+              "minimum_viable_remedy": {"$ref": "#/$defs/option"},
+              "no_honest_remedy_reason": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "minimum_viable_remedy": {"type": "null"},
+              "stronger_option": {"type": "null"},
+              "no_honest_remedy_reason": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"stronger_option": {"type": "null"}}, "required": ["stronger_option"]},
+          "then": {"properties": {"stronger_option_reason": {"type": "string", "minLength": 1}}},
+          "else": {"properties": {"stronger_option_reason": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"consumer_id": {"const": "internal_evaluator"}}, "required": ["consumer_id"]},
+          "then": {"properties": {"reviewer_id": {"const": "INTERNAL"}}},
+          "else": {"properties": {"reviewer_id": {"enum": ["EIC", "R1", "R2", "R3", "DA"]}}}
+        }
+      ]
+    }
+  }
+}

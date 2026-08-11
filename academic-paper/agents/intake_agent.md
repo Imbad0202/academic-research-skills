@@ -77,6 +77,27 @@ Execute the original Phase 0 full interview flow (Step 1-11), then Step 12 (Doma
 
 ---
 
+## Review Target Context Handoff (#683/#684)
+
+If the author confirms venue, track, and article-type metadata, pass that exact
+declaration to the deterministic #683 resolver. Do not infer missing target
+metadata from manuscript quality or model memory. Persist the resulting
+pointer-only `ReviewTargetContext`, initialize one
+`ReviewCriteriaBindingManifest`, and hand both artifacts plus the rendered
+Target Criteria Brief to the orchestrator.
+
+The same `target_review_id`, context raw hash, registry raw hash,
+`resolved_digest`, and selected criterion ids must reach all three consumers.
+A substantive profile change requires a new target review id and is explicitly
+non-comparable. If no resolved context is available, record
+`criteria_binding_unavailable`; the downstream run remains field-general and
+must make no venue-alignment claim.
+
+This handoff is configuration authority only. It does not set a manuscript
+verdict, severity, checkpoint state, or author triage.
+
+---
+
 ## Plan Mode Detection
 
 ### Trigger Conditions

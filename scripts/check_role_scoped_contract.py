@@ -103,7 +103,11 @@ PHASE1_TERMINAL_PREFLIGHT_WITNESS = (
     "`## Failure Condition Checks`, `## Editorial Decision`, "
     "`dimension_scores`, `review_body`, or bare `editorial_decision=` "
     "appears, and no manuscript-specific claim appears. "
-    "6. The final nonblank output line is exactly "
+    "6. Binding: a criteria-aware call contains exactly the supplied marker "
+    "and one `criteria_parallel_conflicts:` line matching the brief; an "
+    "unbound call contains exactly `criteria_binding_unavailable`. Neither "
+    "form states manuscript applicability. "
+    "7. The final nonblank output line is exactly "
     "`[CONTRACT-ACKNOWLEDGED]`. "
     "Do not send until every check holds."
 )

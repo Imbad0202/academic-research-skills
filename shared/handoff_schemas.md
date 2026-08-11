@@ -621,6 +621,28 @@ activity source/run authority; copying either activity projection into a
 passport would create an unauthorized second authority. Existing independently
 schema-owned `run_id` fields are unaffected.
 
+### Separately named review-target authority (#683/#684)
+
+`ReviewTargetContext`, its rendered Target Criteria Brief, and
+`ReviewCriteriaBindingManifest` are separately named handoff artifacts, not
+Material Passport fields. The binding manifest is the single pointer/receipt
+authority for one `target_review_id`; a passport or state record may name its
+portable reference but must not copy or independently reconstruct its selected
+criteria, hashes, digest, conflict groups, or receipts.
+
+The three receipt consumers are `formative_planning` (`FORMATIVE`),
+`internal_evaluator` (`INTERNAL`), and `external_panel` (exactly `EIC`, `R1`,
+`R2`, `R3`, `DA`). External and internal Phase 1 calls are manuscript-blind;
+applicability is assessed only after the paper-visible boundary. A changed
+target/profile requires a new non-comparable target review id. Skipped or
+mid-entry stages never receive fabricated receipts.
+
+Critical/Major criteria-aware findings use the separately named
+`constructive-review-findings/1.0` sidecar. Its validation is handoff
+conformance, not a manuscript verdict or integrity/checkpoint input. See
+`shared/references/review_criteria_consumer_protocol.md` and the schemas under
+`shared/contracts/review_target/`.
+
 ### Required Fields
 
 | Field | Type | Description |

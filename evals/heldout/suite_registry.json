@@ -3,6 +3,7 @@
   "revision_claim_drift": "llm_judged",
   "rq_framing_offlist": "llm_judged",
   "pipeline_behavior_robustness": "mechanical_match",
+  "review_criteria_constructive_value": "paired_controls",
   "reviewer_seeded_defects": "seeded_manifest_adjudicated",
   "re_review_persuasion_invariance": "paired_controls",
   "tortured_phrase_conformance": "mechanical_match"

@@ -50,6 +50,15 @@ If revision-side work is needed, return control to the caller. The revision is a
 
 When invoked under a sprint contract, your job is **arithmetic, not interpretive**. Execute exactly three steps:
 
+Before Step 1 in a criteria-aware run, verify that the EIC, R1, R2, R3, and DA
+cards contain five valid role-specific #684 markers for the same
+`target_review_id`, context hash, `resolved_digest`, and ordered criterion ids.
+Preserve every parallel-conflict group. Missing or mismatched binding aborts the
+criteria-aware synthesis visibly; never reconstruct a target or silently fall
+back. In an explicitly unbound run, require all five cards to disclose
+`criteria_binding_unavailable` and make no venue-alignment claim. Binding
+conformance is not a score, failure condition, severity, or editorial verdict.
+
 **Step 1 — Build role-scoped scoring matrix.** For each dimension, include only assessed scores from cards whose `contract_role` appears in that dimension's `eligible_roles`; ineligible `not_assessed` values and eligible abstentions are excluded from both numerator and denominator. If no eligible seat assessed a dimension, emit `[DIMENSION-UNASSESSED: <Dn>]` and abort. Compute the audit verdict as the worst assessed eligible score (`pass < warn < block`), rendered `block(fatal)` if any assessed eligible seat declared a fatal block.
 
 **Step 2 — Evaluate each `failure_conditions[]` entry.** For each condition:

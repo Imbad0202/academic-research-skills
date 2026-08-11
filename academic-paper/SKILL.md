@@ -132,6 +132,32 @@ Phase 7: FORMAT        -> [formatter]                  -> Final Output Package
 
 > See `references/workflow_phase_details.md` for detailed per-phase agent behavior and output descriptions.
 
+### Review-target criteria binding (#684)
+
+When Phase 0 has produced an author-confirmed `ReviewTargetContext` (#683), the
+orchestrator initializes one pointer-only `ReviewCriteriaBindingManifest` and
+uses it unchanged across the formative, internal-evaluator, and external-panel
+consumers. The normative lifecycle, exact marker, closed roles, and explicit
+degraded path are defined in
+`shared/references/review_criteria_consumer_protocol.md`.
+
+- Phase 2 owns the `FORMATIVE` receipt. The Structure Architect maps selected
+  criterion ids to planned sections and evidence needs; later writing phases
+  reuse that receipt and do not re-resolve the target.
+- Phase 6a receives the same pointer authority and Target Criteria Brief while
+  remaining paper-blind; its pre-commitment artifact owns the `INTERNAL`
+  receipt. Phase 6b receives that unchanged artifact, may assess applicability
+  after it sees the draft, and owns any Critical/Major constructive finding
+  sidecar.
+- Scientific validity, venue fit, and submission readiness remain distinct.
+  Criteria never authorize invented evidence, results, methods, or changes to
+  the author's contribution claim.
+
+Binding validation is a handoff-conformance check only. It never supplies an
+editorial verdict, severity, checkpoint state, or author triage. If the binding
+is unavailable, disclose `criteria_binding_unavailable`; do not claim venue
+alignment and do not silently reconstruct a target from model memory.
+
 ### Checkpoint Rules
 
 1. ⚠️ **IRON RULE**: User must confirm Paper Configuration Record before proceeding to Phase 1
@@ -188,13 +214,13 @@ For each `academic-paper full` invocation, Phase 4 + Phase 6 expand from two sin
    - Lint: 4 structural checks (see § "Phase 4b / 6b output lint" below).
 3. **Phase 6a — evaluator paper-blind pre-commitment.**
    - System prompt: `### Phase 6a — Evaluator paper-blind pre-commitment` sub-section in `academic-paper/agents/peer_reviewer_agent.md` § "v3.6.6 Generator-Evaluator Contract Protocol".
-   - User content: `evaluator_full` contract JSON + paper metadata + the writer's most recent `<phase4a_output>` (the writer artefact the evaluator must verify per `disagreement_handling.pre_commitment_check_protocol.check_writer_artifact`).
-   - Output: `## Contract Paraphrase` + `## Scoring Plan` (per-dimension `dimension_id` / `what_to_look_for` / `what_triggers_block` / `what_triggers_warn`) + terminal `[PRE-COMMITMENT-ACKNOWLEDGED]` tag.
+   - User content: `evaluator_full` contract JSON + paper metadata + the writer's most recent `<phase4a_output>` (the writer artefact the evaluator must verify per `disagreement_handling.pre_commitment_check_protocol.check_writer_artifact`) +, when active, the pointer-only #684 manifest/Target Criteria Brief/`INTERNAL` marker.
+   - Output: `## Contract Paraphrase` + `## Scoring Plan` (per-dimension `dimension_id` / `what_to_look_for` / `what_triggers_block` / `what_triggers_warn`) + pointer-only binding commitment (or `criteria_binding_unavailable`) + terminal `[PRE-COMMITMENT-ACKNOWLEDGED]` tag. No additional H2 is introduced.
    - Lint: 5 structural checks.
 4. **Phase 6b — evaluator paper-visible scoring + decision.**
    - System prompt: `### Phase 6b — Evaluator paper-visible scoring + decision` sub-section in the same agent file.
-   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the writer Phase 4b draft (the artefact under review).
-   - Output: `## Dimension Scores` → `## Failure Condition Checks` → `## Review Body` → `## Evaluator Decision`.
+   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the writer Phase 4b draft (the artefact under review) + the unchanged #684 authority when it was supplied in Phase 6a.
+   - Output: `## Dimension Scores` → `## Failure Condition Checks` → `## Review Body` → `## Evaluator Decision`, plus the role marker/unavailable disclosure and a separately validated constructive sidecar when applicable.
    - Lint: 5 structural checks.
 
 ### System prompt vs user content discipline
@@ -215,7 +241,7 @@ All dynamic LLM output (Phase Na runtime emissions, paper content) lives in user
 Mode-specific structural check counts, per `sprint_contract_protocol.md` §4 enumeration convention:
 
 - **Writer Phase 4a (3 checks)**: required sections in order (`## Acceptance Criteria Paraphrase`, terminal `[PRE-COMMITMENT-ACKNOWLEDGED]`); paraphrase paragraph count ≥ `pre_commitment_artifacts.acceptance_criteria_paraphrase.minimum_dimensions`; Phase 4a content references contract JSON + paper metadata only. **No `## Scoring Plan` section** — `writer_full` carries no scoring_plan.
-- **Evaluator Phase 6a (5 checks)**: required sections in order (`## Contract Paraphrase`, `## Scoring Plan`, terminal `[PRE-COMMITMENT-ACKNOWLEDGED]`); paraphrase paragraph count ≥ `disagreement_handling.paraphrase_minimum_dimensions`; one `### <Dn>: <name>` subsection per acceptance dimension; each scoring_plan subsection contains `disagreement_handling.scoring_plan.per_dimension_criteria` four-field shape (`dimension_id`, `what_to_look_for`, `what_triggers_block`, `what_triggers_warn`); Phase 6a content references contract JSON + paper metadata + the writer's `<phase4a_output>` only (no full draft / paper content).
+- **Evaluator Phase 6a (5 checks)**: required sections in order (`## Contract Paraphrase`, `## Scoring Plan`, terminal `[PRE-COMMITMENT-ACKNOWLEDGED]`); paraphrase paragraph count ≥ `disagreement_handling.paraphrase_minimum_dimensions`; one `### <Dn>: <name>` subsection per acceptance dimension; each scoring_plan subsection contains `disagreement_handling.scoring_plan.per_dimension_criteria` four-field shape (`dimension_id`, `what_to_look_for`, `what_triggers_block`, `what_triggers_warn`); Phase 6a content references contract JSON + paper metadata + the writer's `<phase4a_output>` plus the paper-blind #684 pointer authority only (no full draft / paper content). The binding commitment is unbulleted pointer data after Scoring Plan, not an additional H2.
 
 Retry semantics: lint failure on the first attempt → retry once with the specific lint gap hinted in the system prompt; second failure → mark this role unusable per § "Single-agent generator unusable handling" below.
 
@@ -393,7 +419,7 @@ See `academic-pipeline/SKILL.md` for the complete workflow.
 
 ## Phase 0: Configuration Interview
 
-See `agents/intake_agent.md` for the complete field definitions of the Phase 0 configuration interview. The interview covers 9 core items: paper type, discipline, target journal, citation format, output format, language, abstract, word count, and existing materials — plus co-authors, funding, optional style calibration, the domain evidence profile (Step 12), the citation-verification level (Step 13, #392), and the independent retraction policy (Step 14, #651). Both citation policies are mark-only by default with explicit strict opt-in, seeding `terminal_policies.citation_existence` and `terminal_policies.retraction` respectively. Outputs a Paper Configuration Record, awaiting user confirmation.
+See `agents/intake_agent.md` for the complete field definitions of the Phase 0 configuration interview. The interview covers 9 core items: paper type, discipline, target journal, citation format, output format, language, abstract, word count, and existing materials — plus co-authors, funding, optional style calibration, the domain evidence profile (Step 12), the citation-verification level (Step 13, #392), and the independent retraction policy (Step 14, #651). Both citation policies are mark-only by default with explicit strict opt-in, seeding `terminal_policies.citation_existence` and `terminal_policies.retraction` respectively. When an author confirms a venue/track/type target, Phase 0 also resolves the #683 `ReviewTargetContext` and initializes the #684 pointer-only binding manifest before any criteria-aware consumer runs; absence uses the explicit field-general `criteria_binding_unavailable` path. Outputs a Paper Configuration Record, awaiting user confirmation.
 
 ---
 

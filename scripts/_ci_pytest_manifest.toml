@@ -489,6 +489,18 @@ id = "683-review-target-context"
 path = "scripts/test_resolve_review_target_context.py"
 
 [[pytest]]
+id = "684-review-criteria-binding-runtime"
+path = "scripts/test_review_criteria_binding.py"
+
+[[pytest]]
+id = "684-review-criteria-binding-integration"
+path = "scripts/test_check_684_review_criteria_binding.py"
+
+[[pytest]]
+id = "684-review-criteria-constructive-value-scorer"
+path = "scripts/test_score_review_criteria_constructive_value.py"
+
+[[pytest]]
 id = "656-shared-evidence-row-contract"
 path = "scripts/test_evidence_rows.py"
 

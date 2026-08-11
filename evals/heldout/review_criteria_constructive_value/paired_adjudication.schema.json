@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/review_criteria_constructive_value/paired_adjudication.schema.json",
+  "title": "Review criteria constructive-value paired expert adjudication",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "subject", "experts", "adjudication", "items"],
+  "properties": {
+    "schema_version": {"const": "review-criteria-paired-adjudication/1.0"},
+    "suite": {"const": "review_criteria_constructive_value"},
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite_commit", "model_id", "model_family", "tools", "sampling", "input_token_cap", "output_token_cap", "replicates_per_item"],
+      "properties": {
+        "suite_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "model_id": {"type": "string", "minLength": 1},
+        "model_family": {"type": "string", "minLength": 1},
+        "tools": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "sampling": {"type": "string", "minLength": 1},
+        "input_token_cap": {"type": "integer", "minimum": 1},
+        "output_token_cap": {"type": "integer", "minimum": 1},
+        "replicates_per_item": {"type": "integer", "minimum": 2}
+      }
+    },
+    "experts": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expert_id", "expertise", "independent", "blinded_to"],
+        "properties": {
+          "expert_id": {"$ref": "#/$defs/id"},
+          "expertise": {"type": "string", "minLength": 1},
+          "independent": {"const": true},
+          "blinded_to": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {"enum": ["arm_identity", "mechanism_state", "other_experts", "raw_aggregate", "expected_direction"]},
+            "allOf": [
+              {"contains": {"const": "arm_identity"}},
+              {"contains": {"const": "mechanism_state"}}
+            ]
+          }
+        }
+      }
+    },
+    "adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adjudicator_id", "method", "arm_blind", "disagreements_retained"],
+      "properties": {
+        "adjudicator_id": {"$ref": "#/$defs/id"},
+        "method": {"type": "string", "minLength": 1},
+        "arm_blind": {"const": true},
+        "disagreements_retained": {"const": true}
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/item"}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "portable_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[^/]+(?:/[^/]+)*$"
+    },
+    "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "applicability": {"enum": ["applicable", "not_applicable", "unresolved"]},
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "target_context", "arms"],
+      "properties": {
+        "item_id": {"$ref": "#/$defs/id"},
+        "target_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["context_ref", "context_sha256", "resolved_digest", "selected_criterion_ids"],
+          "properties": {
+            "context_ref": {"$ref": "#/$defs/portable_ref"},
+            "context_sha256": {"$ref": "#/$defs/sha256"},
+            "resolved_digest": {"$ref": "#/$defs/sha256"},
+            "selected_criterion_ids": {"type": "array", "items": {"$ref": "#/$defs/criterion_id"}, "uniqueItems": true}
+          }
+        },
+        "arms": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/arm"}
+        }
+      }
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arm_id", "mechanism", "target_context", "budget", "replicates"],
+      "properties": {
+        "arm_id": {"enum": ["baseline", "treatment"]},
+        "mechanism": {"enum": ["pre_684", "criteria_binding_v1"]},
+        "target_context": {"$ref": "#/$defs/arm_context"},
+        "budget": {"$ref": "#/$defs/budget"},
+        "replicates": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/replicate"}
+        }
+      }
+    },
+    "arm_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_ref", "context_sha256", "resolved_digest", "selected_criterion_ids"],
+      "properties": {
+        "context_ref": {"$ref": "#/$defs/portable_ref"},
+        "context_sha256": {"$ref": "#/$defs/sha256"},
+        "resolved_digest": {"$ref": "#/$defs/sha256"},
+        "selected_criterion_ids": {"type": "array", "items": {"$ref": "#/$defs/criterion_id"}, "uniqueItems": true}
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "model_family", "tools", "sampling", "input_token_cap", "output_token_cap"],
+      "properties": {
+        "model_id": {"type": "string", "minLength": 1},
+        "model_family": {"type": "string", "minLength": 1},
+        "tools": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "sampling": {"type": "string", "minLength": 1},
+        "input_token_cap": {"type": "integer", "minimum": 1},
+        "output_token_cap": {"type": "integer", "minimum": 1}
+      }
+    },
+    "replicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["replicate_id", "profile", "applicability", "findings"],
+      "properties": {
+        "replicate_id": {"$ref": "#/$defs/id"},
+        "profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resolved_digest", "selected_criterion_ids"],
+          "properties": {
+            "resolved_digest": {"$ref": "#/$defs/sha256"},
+            "selected_criterion_ids": {"type": "array", "items": {"$ref": "#/$defs/criterion_id"}, "uniqueItems": true}
+          }
+        },
+        "applicability": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["criterion_id", "predicted", "expert_labels", "expert_label"],
+            "properties": {
+              "criterion_id": {"$ref": "#/$defs/criterion_id"},
+              "predicted": {"$ref": "#/$defs/applicability"},
+              "expert_labels": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["expert_id", "label"],
+                  "properties": {
+                    "expert_id": {"$ref": "#/$defs/id"},
+                    "label": {"$ref": "#/$defs/applicability"}
+                  }
+                }
+              },
+              "expert_label": {"$ref": "#/$defs/applicability"}
+            }
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/finding"}
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_id", "expert_labels", "support_label", "predicted_severity", "expert_severity", "predicted_venue_alignment", "expert_venue_alignment", "usefulness"],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/id"},
+        "expert_labels": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["expert_id", "support_label", "severity", "venue_alignment", "usefulness"],
+            "properties": {
+              "expert_id": {"$ref": "#/$defs/id"},
+              "support_label": {"enum": ["supported", "unsupported", "unresolved"]},
+              "severity": {"enum": ["critical", "major", "minor", "none", "unresolved"]},
+              "venue_alignment": {"enum": ["aligned", "not_aligned", "not_claimed", "unresolved"]},
+              "usefulness": {"type": "integer", "minimum": 1, "maximum": 5}
+            }
+          }
+        },
+        "support_label": {"enum": ["supported", "unsupported", "unresolved"]},
+        "predicted_severity": {"enum": ["critical", "major", "minor", "none"]},
+        "expert_severity": {"enum": ["critical", "major", "minor", "none", "unresolved"]},
+        "predicted_venue_alignment": {"enum": ["aligned", "not_aligned", "not_claimed"]},
+        "expert_venue_alignment": {"enum": ["aligned", "not_aligned", "not_claimed", "unresolved"]},
+        "usefulness": {"type": "integer", "minimum": 1, "maximum": 5}
+      }
+    }
+  }
+}

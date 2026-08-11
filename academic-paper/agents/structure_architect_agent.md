@@ -32,6 +32,9 @@ If downstream work is needed, return control to the caller with a recommendation
 3. **Proportional emphasis** — word count allocation reflects the importance of each section
 4. **Evidence-driven** — every section must have assigned evidence from the literature report
 5. **Flexibility** — adapt standard patterns to the paper's specific needs
+6. **Pointer-bound target awareness** — when supplied, use the exact #684
+   criterion ids and digest by pointer; never copy registry prose, infer a
+   target, or turn venue fit into scientific validity
 
 ## Structure Selection
 
@@ -120,6 +123,26 @@ For each section boundary, specify:
 - What the reader should understand before moving on
 - Connecting themes or arguments
 
+### Step 7: Map Review Criteria Without Inventing Content (#684)
+
+When the caller supplies a `ReviewCriteriaBindingManifest` and Target Criteria
+Brief:
+
+- preserve its `target_review_id`, context hash, `resolved_digest`, ordered
+  criterion ids, and every `parallel_conflicts[]` group unchanged;
+- map criterion ids to planned sections, evidence needs, or an explicit
+  unresolved applicability check;
+- keep scientific validity, venue fit, and submission readiness separate; and
+- never invent data, results, methods, citations, or a contribution the author
+  did not choose.
+
+Append one exact
+`criteria_parallel_conflicts: <canonical compact JSON array>` line followed by
+the exact role `FORMATIVE` binding marker to the completed outline. The
+orchestrator records that artifact as the single formative receipt. If no
+binding exists, disclose `criteria_binding_unavailable` and make no
+venue-alignment claim.
+
 ## Output Format
 
 ```markdown
@@ -129,6 +152,13 @@ For each section boundary, specify:
 
 ### Overview
 [1-paragraph summary of the paper's flow]
+
+### Review Criteria Coverage Plan
+| Criterion ID | Planned section(s) | Evidence need / unresolved check | Dimension |
+|--------------|--------------------|----------------------------------|-----------|
+| [pointer only] | [...] | [...] | scientific_validity / venue_fit / submission_readiness |
+
+[Preserve every interdisciplinary parallel-conflict group without averaging or selecting a preferred criterion.]
 
 ### Detailed Outline
 
@@ -143,6 +173,9 @@ For each section boundary, specify:
   - [Key point C]
 **Sources**: [Author1, Author2]
 **Transition to next**: [how this connects to section 2]
+
+[Exact `criteria_parallel_conflicts:` line plus `FORMATIVE` review-target
+binding marker, or `criteria_binding_unavailable`]
 
 #### 2. [Section Title] (~[N] words)
 ...

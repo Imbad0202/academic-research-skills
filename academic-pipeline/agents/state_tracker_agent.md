@@ -110,6 +110,37 @@ no live model, judge, eval, network/API, ambient clock, directory scan, or glob.
 The frozen design spec and activity schemas remain authoritative for receipt
 shapes, capture-state reasons, group/role ordering, hashing, and replay.
 
+### Review-criteria binding pointer (#684)
+
+The tracker may store one non-authoritative root index named
+`review_criteria_binding`:
+
+```json
+{
+  "status": "active",
+  "manifest_ref": "phase0/review_criteria_binding.json",
+  "target_review_id": "review-001"
+}
+```
+
+`status` is `active` or `unavailable`; the latter carries null reference/id and
+means the explicit field-general path. This index only tells the orchestrator
+which explicitly named manifest to validate. The manifest itself is the sole
+context/criterion/receipt authority; the tracker never copies selected ids,
+hashes, digest, conflict groups, or receipts into state and never reconstructs
+them from prompt output or the filesystem.
+
+Only the tracker writes the index, after deterministic `init` succeeds or the
+caller explicitly chooses the unavailable path. A target/profile change under
+one `target_review_id` is rejected by the builder; a new id records a
+non-comparable predecessor. Before a criteria-aware handoff, the orchestrator
+validates the explicitly referenced manifest and named context/registry. This
+check may refuse only that mismatched criteria-aware handoff. It never supplies
+or alters a severity, editorial verdict, pipeline stage decision, checkpoint,
+or author triage. Consumer receipts are written only by the deterministic
+recorder after their ordinary artifacts exist; no missing consumer is
+fabricated for a skipped or mid-entry stage.
+
 ### State Update Protocol
 
 1. Requesting agent calls `request_update(field, new_value, reason)`
@@ -148,6 +179,11 @@ Every material artifact produced by the pipeline carries a version label. These 
 ```json
 {
   "run_id": "run-42",
+  "review_criteria_binding": {
+    "status": "active",
+    "manifest_ref": "phase0/review_criteria_binding.json",
+    "target_review_id": "review-001"
+  },
   "topic": "Paper topic (determined by Stage 1 or user input)",
   "language": "en",
   "pipeline_version": "2.6",

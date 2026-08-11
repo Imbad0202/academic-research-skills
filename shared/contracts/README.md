@@ -633,3 +633,24 @@ The resolver is standard-library-only and opens only the named context and regis
 inputs. It never reads manuscript content, infers a venue, averages interdisciplinary
 criteria, or applies adaptive numeric weights. Spec:
 `docs/design/2026-08-08-683-review-target-context-spec.md`.
+
+## Review criteria consumer binding (#684)
+
+The #684 layer binds the #683 context across the three actual consumer classes
+without copying criterion prose or inventing a second resolver:
+
+- `review_target/review_criteria_binding_manifest.schema.json` — the closed,
+  pointer-only manifest with exact formative, internal-evaluator, and
+  five-seat external-panel receipt roles;
+- `review_target/constructive_review_findings.schema.json` — the closed
+  Critical/Major finding sidecar with exact criterion pointers, typed
+  manuscript anchors, separate scholarly/target relevance, honest remedies,
+  costs/trade-offs, and author-choice boundaries.
+
+Build, record, render markers, and validate with
+`scripts/review_criteria_binding.py`. The tool reads only explicit paths,
+hashes artifacts itself, and has no model/API/network/clock/ambient-scan path.
+The manifest is workflow-conformance authority only: it never supplies a
+severity, verdict, checkpoint, or author triage. Operational protocol:
+`shared/references/review_criteria_consumer_protocol.md`. Frozen spec:
+`docs/design/2026-08-11-684-review-criteria-consumer-binding-spec.md`.
