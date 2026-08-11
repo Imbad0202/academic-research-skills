@@ -1,0 +1,3 @@
+{"method":"item/completed","params":{"item":{"id":"search-1","type":"webSearch","query":"Attention Need Vaswani Transformer","results":[{"url":"https://example.org/unrelated-result"}]}}}
+{"method":"item/completed","params":{"item":{"id":"final-1","type":"agentMessage","phase":"final_answer","text":"{\"verdict\":\"VERIFIED\",\"detail\":\"Echoed the input URL.\",\"sources\":[\"https://arxiv.org/abs/1706.03762\"]}"}}}
+{"method":"turn/completed","params":{"turn":{"id":"turn-1","status":"completed"}}}

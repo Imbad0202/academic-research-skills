@@ -1,0 +1,3 @@
+{"method":"item/completed","params":{"item":{"id":"search-1","type":"webSearch","query":"Attention Need Vaswani Transformer","results":[]}}}
+{"method":"item/completed","params":{"item":{"id":"final-1","type":"agentMessage","phase":"final_answer","text":"not-json"}}}
+{"method":"turn/completed","params":{"turn":{"id":"turn-1","status":"completed"}}}

@@ -100,7 +100,7 @@
     },
     {
       "mechanism": "cross_model_unavailable",
-      "failure_class": "Transport-level failure of a CONFIGURED cross-model verifier mid-run (API error, rate limit, expired key). An unset ARS_CROSS_MODEL is NOT a degradation — it is the standard single-model configuration and produces no error marker or disclosure",
+      "failure_class": "Transport-level failure of a CONFIGURED cross-model verifier mid-run (API error, rate limit, expired key, or selected Codex citation transport unavailable). An unset ARS_CROSS_MODEL is NOT a degradation — it is the standard single-model configuration and produces no error marker or disclosure; an unset or api ARS_CROSS_MODEL_TRANSPORT is likewise ordinary API-route selection, while an invalid selector is a visible configuration error",
       "degraded_state": "Warn-and-continue: pipeline proceeds single-model; NEVER blocks on cross-model transport failure; a NOT_SEARCHED grounded-lookup result is NOT a transport failure and does not fall back (it is counted separately and surfaced for re-run/human review)",
       "diagnostic_marker": "[CROSS-MODEL-ERROR: reason] log line + required report disclosure 'Cross-model verification was configured but unavailable for this run. Results are single-model only.'",
       "downstream_consumer": "integrity_verification_agent (Stage 2.5/4.5 sample checks), devils_advocate reviewers, blind disagreement checkpoints (#518)",
@@ -120,7 +120,9 @@
         }
       ],
       "pinned_by": [
-        "scripts/check_cross_model_verification_sync.py"
+        "scripts/check_cross_model_verification_sync.py",
+        "scripts/test_cross_model_codex_transport.py",
+        "scripts/check_630_codex_subscription_transport.py"
       ]
     },
     {

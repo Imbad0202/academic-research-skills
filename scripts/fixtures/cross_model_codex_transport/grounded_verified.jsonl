@@ -1,0 +1,3 @@
+{"method":"item/completed","params":{"item":{"id":"search:One","type":"webSearch","query":"Attention Need Vaswani Transformer","results":[{"title":"Attention Is All You Need","url":"https://arxiv.org/abs/1706.03762"}]}}}
+{"method":"item/completed","params":{"item":{"id":"final.One","type":"agentMessage","phase":"final_answer","text":"{\"verdict\":\"VERIFIED\",\"detail\":\"The title and authors match.\",\"sources\":[\"https://arxiv.org/abs/1706.03762\"]}"}}}
+{"method":"turn/completed","params":{"turn":{"id":"turn-1","status":"completed"}}}

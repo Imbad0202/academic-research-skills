@@ -495,3 +495,11 @@ path = "scripts/test_evidence_rows.py"
 [[pytest]]
 id = "656-evidence-row-integration"
 path = "scripts/test_check_evidence_row_integration.py"
+
+[[pytest]]
+id = "630-codex-subscription-transport"
+path = "scripts/test_cross_model_codex_transport.py"
+
+[[pytest]]
+id = "630-codex-subscription-integration"
+path = "scripts/test_check_630_codex_subscription_transport.py"

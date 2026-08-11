@@ -691,6 +691,12 @@ jobs:
         # 346-349-cross-model-grounding-guards.
         run: python3 scripts/check_cross_model_verification_sync.py
 
+      - name: Check Codex subscription citation transport (#630)
+        # Pins the closed citation-only selector, auth-only containment,
+        # structured app-server result binding, Bash 3.2 wrappers, contributor
+        # credit, hermetic fixtures/tests, and explicit exclusion of live smoke.
+        run: python3 scripts/check_630_codex_subscription_transport.py
+
       - name: Run v3.8 claim_audit pipeline + schema + uncited-assertion + manifest + finalizer + e2e + calibration tests (#103)
         # The v3.8 #103 test suite covers the L3 claim-faithfulness audit
         # contract end-to-end:

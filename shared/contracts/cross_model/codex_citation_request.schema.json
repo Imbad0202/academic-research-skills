@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/cross_model/codex_citation_request.schema.json",
+  "title": "Codex subscription citation verification request",
+  "description": "One bounded citation-integrity request. It carries data only, never a caller-authored model prompt or filesystem path.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "reference_text", "citation_context"],
+  "properties": {
+    "schema_version": {"const": "ars-codex-citation-request/1.0"},
+    "request_id": {"$ref": "#/$defs/identifier"},
+    "reference_text": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "citation_context": {"type": "string", "minLength": 1, "maxLength": 8192}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    }
+  }
+}

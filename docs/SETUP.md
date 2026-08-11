@@ -121,6 +121,7 @@ ARS exposes a few opt-in flags. All default to OFF; setting them changes behavio
 | Flag | Since | What it does | Reference |
 |---|---|---|---|
 | `ARS_CROSS_MODEL` | v3.0 | Enable cross-model verification (see next section) | [§"Cross-model verification"](#cross-model-verification-optional) |
+| `ARS_CROSS_MODEL_TRANSPORT=codex` | #630 | Use ChatGPT subscription transport for citation-integrity calls only; all DA/reviewer/judgment paths remain API-key based | `shared/cross_model_verification.md` |
 | `ARS_SOCRATIC_READING_PROBE=1` | v3.5.1 | Activate the Socratic reading-check probe layer in `socratic_mentor_agent`. Goal-oriented intent only; fires at most once per session when user has cited a specific paper; decline logged without penalty. | `deep-research/agents/socratic_mentor_agent.md` |
 | `ARS_PASSPORT_RESET=1` | v3.6.3 | Promote every FULL checkpoint to a context-reset boundary. Required to *emit* boundary entries; **not** required to invoke `resume_from_passport=<hash>` in a fresh session. With the flag ON in `systematic-review` mode, reset is mandatory at every FULL checkpoint. | `academic-pipeline/references/passport_as_reset_boundary.md` |
 | `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | Sampling interval for cross-model integrity checks (advisory) | `shared/cross_model_verification.md` |
@@ -210,6 +211,29 @@ Full pipeline adds ~$0.60-1.10 in cross-model API costs (order-of-magnitude; mea
 ### No API key? No problem
 
 Without `ARS_CROSS_MODEL` set, everything works exactly as before. The cross-model features are invisible and add zero overhead.
+
+### ChatGPT subscription transport (citation integrity only)
+
+If Codex CLI 0.147.0+ is logged in through a ChatGPT subscription, citation-integrity
+calls can use that subscription without an OpenAI API key. This does not cover
+Devil's Advocate, Reviewer 2, calibration, re-review, or checkpoint judgments.
+
+```bash
+# Citation-integrity calls only. General DA/reviewer/judgment calls remain on API transport.
+export ARS_CROSS_MODEL_TRANSPORT="codex"
+export ARS_CROSS_MODEL="gpt-5.5"
+
+python3 scripts/cross_model_codex_transport.py detect
+# The producer sends one closed codex_citation_request/1.0 object on stdin:
+printf '%s' "$CITATION_REQUEST_JSON" | scripts/cross_model_codex_verify.sh
+```
+
+The detector honors custom `CODEX_HOME` and requires the exact subscription
+attestation `Logged in using ChatGPT`; it never prints credentials. The adapter
+uses an auth-only ephemeral home, empty working root, read-only sandbox, no local
+tools, and binds accepted source URLs to structured search results. The optional
+live smoke `scripts/cross_model_smoke_test_codex.sh` spends subscription/model/network
+capacity and is never run by CI.
 
 ---
 

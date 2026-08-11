@@ -777,6 +777,22 @@ When the environment variable `ARS_CROSS_MODEL` is set, this agent enables cross
 
 **Consent gate (required before any upload):** When `ARS_CROSS_MODEL` is set, do not send the sampled references automatically. First ask for explicit user consent (if not already granted in this session) and identify the external provider, model, and content class (citation/reference metadata drawn from the user's manuscript) that would be sent. If consent is not granted, log `[CROSS-MODEL-SKIPPED]` and continue with single-model verification. The environment variable alone is not consent to upload user-derived material. See `shared/cross_model_verification.md` for the consent boundary.
 
+**Closed transport selector (#630):** For these one-reference integrity calls only,
+`ARS_CROSS_MODEL_TRANSPORT=codex` selects the contained ChatGPT-subscription
+adapter. Construct exactly one `ars-codex-citation-request/1.0` object from the
+already-selected reference (`request_id`, exact `reference_text`, exact
+`citation_context`), pipe it to `scripts/cross_model_codex_verify.sh`, and validate
+the input against
+`shared/contracts/cross_model/codex_citation_request.schema.json` and
+the returned one-line object against
+`shared/contracts/cross_model/codex_citation_receipt.schema.json` before consuming
+it. Never pass a file path, arbitrary prompt, Claude verdict, or unrelated paper
+content. A nonzero exit is `[CROSS-MODEL-ERROR]`; a valid `NOT_SEARCHED` receipt is
+recorded as ungrounded, not relabelled as a transport error. Unset or `api` retains
+the documented provider API route; any other selector is an explicit configuration
+error with no fallback. This adapter is not available to DA, reviewer, calibration,
+re-review, checkpoint-judgment, or handoff calls.
+
 **Summary of behavior when enabled (and consent granted):**
 - After Phase A completes, select references by **risk stratification** (#518; replaces the pre-#518 uniform random 30%). Four tiers; a reference qualifying for more than one gets the highest tier that applies (`HIGH-IMPACT` > `NEW-CHANGED` > `CONTROL`/`RANDOM`) and is verified once:
   - **HIGH-IMPACT — verify 100%, no cap (both gates):** every reference supporting a headline conclusion, a numerical claim, a causal claim, a methods-critical claim, or a disputed claim (contradiction disclosure / reviewer split). Classify at selection time and record the tier per reference.

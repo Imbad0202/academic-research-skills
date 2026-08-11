@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/cross_model/codex_citation_receipt.schema.json",
+  "title": "Codex subscription citation verification receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "transport",
+    "auth_mode",
+    "model",
+    "request_digest",
+    "event_stream_digest",
+    "verdict",
+    "searched",
+    "reason_code",
+    "detail",
+    "search_queries",
+    "sources",
+    "containment"
+  ],
+  "properties": {
+    "schema_version": {"const": "ars-codex-citation-receipt/1.0"},
+    "request_id": {"$ref": "#/$defs/identifier"},
+    "transport": {"const": "codex_subscription"},
+    "auth_mode": {"const": "chatgpt_subscription"},
+    "model": {"type": "string", "pattern": "^gpt-[a-z0-9][a-z0-9._-]*$", "maxLength": 128},
+    "request_digest": {"$ref": "#/$defs/sha256"},
+    "event_stream_digest": {"$ref": "#/$defs/sha256"},
+    "verdict": {"enum": ["VERIFIED", "MISMATCH", "NOT_FOUND", "NOT_SEARCHED"]},
+    "searched": {"type": "boolean"},
+    "reason_code": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "enum": [
+            "MODEL_RETURNED_NOT_SEARCHED",
+            "NO_BOUND_SEARCH_RESULTS",
+            "NO_REFERENCE_BOUND_QUERY",
+            "FINAL_OUTPUT_INVALID",
+            "FORBIDDEN_TOOL_EVENT",
+            "EVENT_STREAM_INVALID",
+            "TURN_NOT_COMPLETED",
+            "SOURCE_NOT_IN_SEARCH_RESULTS",
+            "MISSING_SOURCE_FOR_VERDICT"
+          ]
+        }
+      ]
+    },
+    "detail": {"type": "string", "maxLength": 2048},
+    "search_queries": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {"$ref": "#/$defs/search_query"}
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/source_binding"}
+    },
+    "containment": {"$ref": "#/$defs/containment"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"verdict": {"const": "NOT_SEARCHED"}}, "required": ["verdict"]},
+      "then": {
+        "properties": {
+          "searched": {"const": false},
+          "reason_code": {"type": "string"},
+          "search_queries": {"maxItems": 0},
+          "sources": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"verdict": {"enum": ["VERIFIED", "MISMATCH"]}}, "required": ["verdict"]},
+      "then": {
+        "properties": {
+          "searched": {"const": true},
+          "reason_code": {"type": "null"},
+          "search_queries": {"minItems": 1},
+          "sources": {"minItems": 1}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"verdict": {"const": "NOT_FOUND"}}, "required": ["verdict"]},
+      "then": {
+        "properties": {
+          "searched": {"const": true},
+          "reason_code": {"type": "null"},
+          "search_queries": {"minItems": 1},
+          "sources": {"maxItems": 0}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "https_url": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://[^\\s\\x00-\\x1f\\x7f]+$"
+    },
+    "search_query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["search_item_id", "query"],
+      "properties": {
+        "search_item_id": {"$ref": "#/$defs/event_id"},
+        "query": {"type": "string", "minLength": 1, "maxLength": 2048}
+      }
+    },
+    "source_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "search_item_id", "result_index", "search_result_digest"],
+      "properties": {
+        "url": {"$ref": "#/$defs/https_url"},
+        "search_item_id": {"$ref": "#/$defs/event_id"},
+        "result_index": {"type": "integer", "minimum": 0, "maximum": 127},
+        "search_result_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "containment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ephemeral_auth_home",
+        "empty_working_root",
+        "local_tools_disabled",
+        "forbidden_event_scan",
+        "standalone_search_results_required"
+      ],
+      "properties": {
+        "ephemeral_auth_home": {"const": true},
+        "empty_working_root": {"const": true},
+        "local_tools_disabled": {"const": true},
+        "forbidden_event_scan": {"const": true},
+        "standalone_search_results_required": {"const": true}
+      }
+    }
+  }
+}

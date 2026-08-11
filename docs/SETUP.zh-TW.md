@@ -121,6 +121,7 @@ ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 sessi
 | Flag | 起始版本 | 作用 | 參考 |
 |---|---|---|---|
 | `ARS_CROSS_MODEL` | v3.0 | 啟用跨模型驗證（見下節） | [§「跨模型驗證」](#跨模型驗證選用) |
+| `ARS_CROSS_MODEL_TRANSPORT=codex` | #630 | 僅讓引用完整性查驗使用 ChatGPT 訂閱；DA／審稿／判斷路徑仍須 API key | `shared/cross_model_verification.md` |
 | `ARS_SOCRATIC_READING_PROBE=1` | v3.5.1 | 啟用 `socratic_mentor_agent` 的讀書檢查 probe layer。僅 goal-oriented intent；使用者引用過具體論文時最多觸發一次；婉拒不留紀錄懲罰。 | `deep-research/agents/socratic_mentor_agent.md` |
 | `ARS_PASSPORT_RESET=1` | v3.6.3 | 把每個 FULL checkpoint 提升為 context 重置邊界。**emit** boundary entry 必須設此 flag；新 session 用 `resume_from_passport=<hash>` 續跑**不需要** flag。`systematic-review` 模式下 flag ON 時，每個 FULL checkpoint 一律強制重置。 | `academic-pipeline/references/passport_as_reset_boundary.md` |
 | `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | 跨模型完整性抽查的取樣間隔（advisory） | `shared/cross_model_verification.md` |
@@ -210,6 +211,28 @@ claude
 ### 沒有 API key？沒問題
 
 沒有設定 `ARS_CROSS_MODEL` 時，一切照舊運作。跨模型功能不會出現，也不會增加任何額外開銷。
+
+### ChatGPT 訂閱傳輸（僅限引用完整性）
+
+若 Codex CLI 0.147.0 以上已透過 ChatGPT 訂閱登入，引用完整性查驗可不使用
+OpenAI API key 而改走該訂閱。這不涵蓋魔鬼代言人、Reviewer 2、校準、re-review
+或檢查點判斷。
+
+```bash
+# Citation-integrity calls only. General DA/reviewer/judgment calls remain on API transport.
+export ARS_CROSS_MODEL_TRANSPORT="codex"
+export ARS_CROSS_MODEL="gpt-5.5"
+
+python3 scripts/cross_model_codex_transport.py detect
+# The producer sends one closed codex_citation_request/1.0 object on stdin:
+printf '%s' "$CITATION_REQUEST_JSON" | scripts/cross_model_codex_verify.sh
+```
+
+偵測與執行都遵守自訂 `CODEX_HOME`，並要求訂閱狀態逐字為
+`Logged in using ChatGPT`；憑證絕不輸出。Adapter 使用僅含 auth 的暫時 home、
+空白工作根、read-only sandbox、停用本機工具，且接受的來源 URL 必須綁定到
+結構化搜尋結果。選用的 live smoke `scripts/cross_model_smoke_test_codex.sh` 會耗用
+訂閱／模型／網路資源，CI 永不執行。
 
 ---
 

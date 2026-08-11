@@ -3,6 +3,19 @@
 Schema files for cross-skill contracts: reviewer sprint contracts, Material Passport
 ports, and (v3.6.7+) cross-model audit artifact pipelines.
 
+## Codex subscription citation transport (#630)
+
+- `cross_model/codex_citation_request.schema.json` — closed, bounded data-only
+  request for one citation; no path or caller-authored prompt is representable.
+- `cross_model/codex_citation_receipt.schema.json` — closed verdict plus exact
+  app-server search-result bindings and a fixed containment receipt.
+
+Runtime: `scripts/cross_model_codex_transport.py`. Protocol and limitations:
+`shared/cross_model_verification.md`. Frozen design:
+`docs/design/2026-08-11-630-codex-subscription-citation-transport-spec.md`.
+The adapter is scoped to Stage 2.5 / 4.5 citation-integrity calls and is not a
+general DA, reviewer, judgment, or handoff transport.
+
 ## Sprint contracts (v3.6.2+)
 
 Sprint contract templates for reviewer hard-gate orchestration.
