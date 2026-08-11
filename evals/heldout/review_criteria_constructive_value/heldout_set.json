@@ -8,7 +8,7 @@
       "item_id": "RCV-01",
       "consumer": "formative_planning",
       "role": "FORMATIVE",
-      "target_axis": "field_general_with_unresolved_venue",
+      "target_axis": "field_general_without_declared_venue",
       "behavioral_focus": ["profile_resolution", "applicability", "no_invented_evidence"]
     },
     {

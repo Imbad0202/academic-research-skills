@@ -12,17 +12,20 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import subprocess
 from pathlib import Path
 
 import pytest
 
+import check_heldout_measurement_report as measurement_mod
 from check_heldout_measurement_report import (
     HELDOUT_ROOT,
     REPO_ROOT,
     TEMPLATE_PATH,
     _execution_claim_errors,
     _execution_validator,
+    _resolution_findings,
     _validate_obj,
     contract_version,
     is_contract_report,
@@ -191,6 +194,32 @@ def make_valid_legacy_row() -> dict:
     return report
 
 
+def make_valid_human_expert_report() -> dict:
+    """A paired-controls row whose judgments come only from a human panel."""
+    report = make_valid_report()
+    report["suite"] = "review_criteria_constructive_value"
+    report["suite_class"] = "paired_controls"
+    report["judge_plan"] = {
+        "exception": "human_expert_panel",
+        "expert_panel_ref": (
+            "evals/heldout/review_criteria_constructive_value/runs/"
+            "2026-08-11/paired-adjudication.json"
+        ),
+        "expert_panel_sha256": "d" * 64,
+    }
+    report["judges"] = []
+    report["aggregate"]["agreement"] = {
+        "rate": None,
+        "divergent_items": [],
+        "note": "model-judge agreement does not apply; human labels are in the panel record",
+    }
+    report["adjudication"]["overrides"] = []
+    report["preregistration"]["judge_template_version"] = (
+        "review-criteria-human-expert-label/1.0"
+    )
+    return report
+
+
 def make_valid_v1_0_report() -> dict:
     """The pre-#664 shape remains valid without any v1.1 retrofit fields."""
     report = make_valid_report()
@@ -229,6 +258,10 @@ def test_valid_mechanical_report_passes():
 
 def test_valid_legacy_row_passes():
     assert errors_of(make_valid_legacy_row()) == []
+
+
+def test_valid_human_expert_report_passes_without_model_judges():
+    assert errors_of(make_valid_human_expert_report()) == []
 
 
 def test_new_v1_0_report_is_rejected_even_if_schema_valid():
@@ -609,6 +642,44 @@ def test_llm_judged_adjudication_applies_false_fails():
 def test_mechanical_exception_on_llm_judged_fails():
     report = make_valid_report()
     report["judge_plan"] = {"exception": "mechanical_suite"}
+    assert errors_of(report)
+
+
+def test_human_expert_exception_on_llm_judged_fails():
+    report = make_valid_report()
+    report["judge_plan"] = {
+        "exception": "human_expert_panel",
+        "expert_panel_ref": "evals/heldout/revision_claim_drift/panel.json",
+        "expert_panel_sha256": "d" * 64,
+    }
+    assert errors_of(report)
+
+
+@pytest.mark.parametrize("field", ["expert_panel_ref", "expert_panel_sha256"])
+def test_human_expert_exception_requires_both_bindings(field: str):
+    report = make_valid_human_expert_report()
+    del report["judge_plan"][field]
+    assert errors_of(report)
+
+
+def test_human_expert_exception_rejects_model_judges():
+    report = make_valid_human_expert_report()
+    report["judges"] = [make_valid_report()["judges"][0]]
+    assert errors_of(report)
+
+
+def test_human_expert_exception_requires_applied_adjudication():
+    report = make_valid_human_expert_report()
+    report["adjudication"] = {"applies": False}
+    assert errors_of(report)
+
+
+@pytest.mark.parametrize("exception", ["none", "legacy_comparability", "mechanical_suite"])
+def test_other_exceptions_reject_expert_panel_fields(exception: str):
+    report = make_valid_human_expert_report()
+    report["judge_plan"]["exception"] = exception
+    if exception == "legacy_comparability":
+        report["judge_plan"]["legacy_baseline_ref"] = "legacy.json"
     assert errors_of(report)
 
 
@@ -1198,6 +1269,120 @@ def test_bogus_legacy_baseline_ref_fails_with_refs():
     }
     errors, _ = validate_report(report, resolve_refs=True)
     assert any("R1" in e for e in errors)
+
+
+def _valid_expert_panel() -> dict:
+    return {
+        "schema_version": "test-human-expert-panel/1.0",
+        "suite": "review_criteria_constructive_value",
+        "experts": [
+            {
+                "expert_id": "expert-a",
+                "expert_type": "human",
+                "expertise": "methods",
+                "independent": True,
+                "blinded_to": ["arm_identity", "mechanism_state"],
+            },
+            {
+                "expert_id": "expert-b",
+                "expert_type": "human",
+                "expertise": "venue",
+                "independent": True,
+                "blinded_to": ["arm_identity", "mechanism_state"],
+            },
+        ],
+        "adjudication": {
+            "adjudicator_type": "human",
+            "arm_blind": True,
+            "disagreements_retained": True,
+        },
+    }
+
+
+def _r6_errors(
+    monkeypatch, tmp_path: Path, panel: dict, *, outside: bool = False
+) -> list[str]:
+    root = tmp_path / "repo"
+    suite_root = root / "evals" / "heldout" / "review_criteria_constructive_value"
+    panel_path = (root / "outside-panel.json") if outside else (suite_root / "panel.json")
+    panel_path.parent.mkdir(parents=True)
+    raw = json.dumps(panel, sort_keys=True).encode()
+    panel_path.write_bytes(raw)
+
+    report = make_valid_human_expert_report()
+    report["judge_plan"]["expert_panel_ref"] = str(panel_path.relative_to(root))
+    report["judge_plan"]["expert_panel_sha256"] = hashlib.sha256(raw).hexdigest()
+    monkeypatch.setattr(measurement_mod, "REPO_ROOT", root)
+    monkeypatch.setattr(measurement_mod, "HELDOUT_ROOT", root / "evals" / "heldout")
+    return [error for error in _resolution_findings(report) if error.startswith("R6")]
+
+
+def test_human_expert_panel_ref_resolves(monkeypatch, tmp_path):
+    assert _r6_errors(monkeypatch, tmp_path, _valid_expert_panel()) == []
+
+
+def test_human_expert_panel_must_live_under_suite(monkeypatch, tmp_path):
+    errors = _r6_errors(monkeypatch, tmp_path, _valid_expert_panel(), outside=True)
+    assert any("not under" in error for error in errors)
+
+
+def test_human_expert_panel_hash_mismatch_fails(monkeypatch, tmp_path):
+    panel = _valid_expert_panel()
+    root = tmp_path / "repo"
+    panel_path = root / "evals/heldout/review_criteria_constructive_value/panel.json"
+    panel_path.parent.mkdir(parents=True)
+    panel_path.write_text(json.dumps(panel))
+    report = make_valid_human_expert_report()
+    report["judge_plan"]["expert_panel_ref"] = str(panel_path.relative_to(root))
+    report["judge_plan"]["expert_panel_sha256"] = "0" * 64
+    monkeypatch.setattr(measurement_mod, "REPO_ROOT", root)
+    monkeypatch.setattr(measurement_mod, "HELDOUT_ROOT", root / "evals" / "heldout")
+    assert any("hash mismatch" in error for error in _resolution_findings(report))
+
+
+def test_human_expert_panel_requires_two_experts(monkeypatch, tmp_path):
+    panel = _valid_expert_panel()
+    panel["experts"] = panel["experts"][:1]
+    assert _r6_errors(monkeypatch, tmp_path, panel)
+
+
+def test_human_expert_panel_requires_independence(monkeypatch, tmp_path):
+    panel = _valid_expert_panel()
+    panel["experts"][1]["independent"] = False
+    assert _r6_errors(monkeypatch, tmp_path, panel)
+
+
+def test_human_expert_panel_rejects_model_as_expert(monkeypatch, tmp_path):
+    panel = _valid_expert_panel()
+    panel["experts"][1]["expert_type"] = "model"
+    assert _r6_errors(monkeypatch, tmp_path, panel)
+
+
+def test_human_expert_panel_requires_human_adjudicator(monkeypatch, tmp_path):
+    panel = _valid_expert_panel()
+    panel["adjudication"]["adjudicator_type"] = "model"
+    assert _r6_errors(monkeypatch, tmp_path, panel)
+
+
+def test_human_expert_panel_rejects_fold_duplicate_ids(monkeypatch, tmp_path):
+    panel = _valid_expert_panel()
+    panel["experts"][1]["expert_id"] = "EXPERT-A"
+    assert _r6_errors(monkeypatch, tmp_path, panel)
+
+
+def test_human_expert_panel_requires_subject_blinding(monkeypatch, tmp_path):
+    panel = _valid_expert_panel()
+    panel["experts"][1]["blinded_to"] = ["arm_identity"]
+    assert _r6_errors(monkeypatch, tmp_path, panel)
+
+
+@pytest.mark.parametrize("field", ["arm_blind", "disagreements_retained"])
+def test_human_expert_panel_requires_blind_retained_adjudication(
+    monkeypatch, tmp_path, field: str
+):
+    panel = _valid_expert_panel()
+    panel["adjudication"][field] = False
+    assert _r6_errors(monkeypatch, tmp_path, panel)
 
 
 def test_commitish_suite_commit_rejected_by_schema():

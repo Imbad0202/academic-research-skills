@@ -501,6 +501,10 @@ id = "684-review-criteria-constructive-value-scorer"
 path = "scripts/test_score_review_criteria_constructive_value.py"
 
 [[pytest]]
+id = "684-review-criteria-constructive-value-runner"
+path = "scripts/test_run_review_criteria_constructive_value.py"
+
+[[pytest]]
 id = "656-shared-evidence-row-contract"
 path = "scripts/test_evidence_rows.py"
 

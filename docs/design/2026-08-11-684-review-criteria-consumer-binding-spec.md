@@ -183,16 +183,17 @@ states costs/trade-offs, and avoids invented evidence. Metrics are reported
 separately; there is no composite “review quality” score.
 
 The run publishes under `heldout-measurement/1.1`, retains raw outputs and exact
-execution manifests, uses at least two replicates per item, and discloses judges
-and adjudication. No model/API/subscription/network call runs in CI. Dispatch
+execution manifests, uses at least two replicates per item, and discloses either
+model judges or the closed human-expert exception plus adjudication. No
+model/API/subscription/network call runs in CI. Dispatch
 requires explicit operator consent for provider, exact model, synthetic content
 class, and quota/cost. The default subject transport is an isolated Codex CLI
 session authenticated by the operator's ChatGPT subscription: the minimum run is
-24 subject calls (six items, two arms, two replicates), human experts supply the
-required labels, and the measurement envelope's two-family judge requirement is
-met with subscription CLIs wherever available. Its incremental metered API spend
-ceiling is USD 0. Subscription quota consumption is still disclosed. A missing
-second subscribed model family blocks publication; it does not relax the contract.
+24 subject calls (six items, two arms, two replicates), and human experts supply
+the required labels. The report selects the paired-controls-only
+`human_expert_panel` exception, binds the suite-owned expert record by SHA-256,
+and dispatches no redundant model judges. Its incremental metered API spend
+ceiling is USD 0. Subscription quota consumption is still disclosed.
 
 There is no automatic API fallback. A subscription quota interruption, missing
 model, or unavailable CLI control is retained as blocked/partial and pauses the

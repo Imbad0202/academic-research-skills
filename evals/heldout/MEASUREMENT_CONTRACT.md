@@ -3,9 +3,10 @@
 Issues: #654 and #664. Machine artifacts: `measurement_report.schema.json`,
 `measurement_report.template.json`, `execution_manifest.schema.json`, and
 `suite_registry.json` (this directory). Enforcement:
-`scripts/check_heldout_measurement_report.py` — schema branches B1-B7,
-cross-field invariants I1-I15, reference-resolution checks R1-R5 (rubric,
-pre-registration plan, execution manifest, raw-output paths, and commit pins), and
+`scripts/check_heldout_measurement_report.py` — schema branches B1-B8,
+cross-field invariants I1-I15, reference-resolution checks R1-R6 (rubric,
+pre-registration plan, execution manifest, raw-output paths, commit pins, and a
+human-expert panel record), and
 location binding L1 (a row filed under `evals/heldout/<dir>/` must declare
 `suite == <dir>`); mutation-tested by
 `scripts/test_check_heldout_measurement_report.py`; CI runs `--all`.
@@ -78,20 +79,26 @@ table below is an informative mirror:
 | `pipeline_behavior_robustness` | `mechanical_match` | full-expectation mechanical match; judge only transcribes |
 | `reviewer_seeded_defects` | `seeded_manifest_adjudicated` | E4 machinery remains normative and unchanged; see adoption surface below |
 | `re_review_persuasion_invariance` | `paired_controls` | reuses E4 machinery per its README (SD-11) |
-| `review_criteria_constructive_value` | `paired_controls` | #684 same-context/same-budget baseline-treatment comparison with expert-adjudicated labels and two-family judges; subscription CLIs first, USD 0 API ceiling |
+| `review_criteria_constructive_value` | `paired_controls` | #684 same-context/same-budget comparison using the paired-controls-only human-expert-panel exception; subscription subject CLI, USD 0 API ceiling |
 | `tortured_phrase_conformance` | `mechanical_match` | synthetic grammar, normalization, parsing, replay, and fail-safe conformance only; no contextual-accuracy claim |
 
-Class semantics (schema branches B1-B3 + checker):
+Class semantics (schema branches B1-B3/B8 + checker):
 
 - `mechanical_match` may run zero judges (`judge_plan.exception: "mechanical_suite"`,
   `adjudication.applies: false`) — pass/fail is a mechanical match against
   documented expectations.
 - `llm_judged` and `seeded_manifest_adjudicated` require `adjudication.applies: true` (B2).
-- Every non-mechanical class requires >= 1 judge (B1), and the `mechanical_suite`
-  exception is legal only on `mechanical_match` (B3).
-- `paired_controls` requires judges but not adjudication: its verdicts are
-  per-pair expectation matches anchored to spec clauses; adjudication applies (and
-  should then be declared) only when judged elements enter the comparison.
+- Every non-mechanical class requires >= 1 model judge (B1), except the closed
+  `human_expert_panel` path below. The `mechanical_suite` exception is legal only
+  on `mechanical_match` (B3).
+- `paired_controls` normally requires model judges but not adjudication: its
+  verdicts are per-pair expectation matches anchored to spec clauses.
+- `human_expert_panel` is legal only on `paired_controls` (B8). It requires zero
+  model judges, `adjudication.applies: true`, and a suite-owned
+  `expert_panel_ref` + `expert_panel_sha256`. R6 requires at least two unique,
+  independent experts blinded to arm identity and mechanism state, plus blind
+  adjudication that retains disagreements. This is an alternative judgment
+  design, not a claim that human labels form independent model families.
 
 **Adoption surface for E4-shaped suites** (`reviewer_seeded_defects`,
 `re_review_persuasion_invariance`): the envelope is a whole-file format, and E4
@@ -113,6 +120,12 @@ disclosure around the E4 machinery, it does not replace or reshape it.
   These are the mechanically detectable forms — an *aliased* model id
   (`gpt-x` vs `gpt-x-run2`) is not machine-decidable and stays a review item
   (§ Known residue).
+- **The human-expert exception is narrow**: only a `paired_controls` report may
+  select `judge_plan.exception: "human_expert_panel"`. The report's `judges` array
+  must then be empty, so it cannot combine a partial model panel with human labels
+  to imply the ordinary two-family rule was met. Other exceptions cannot carry
+  expert-panel fields. The suite-specific schema remains responsible for the full
+  expert label/adjudication record; R6 enforces the shared minimum and byte hash.
 - **Per-judge disclosure is mandatory** (schema-required): exact `model_id`,
   `model_family`, `prompt_ref`, `evidence_provided`, `judging_budget`, and the full
   `per_item` rows — each row carries at least one verdict field beside `item_id`,
@@ -199,8 +212,9 @@ disclosure around the E4 machinery, it does not replace or reshape it.
   `rubric_sha256`; the rubric values must equal the adjudication record (I14);
 - `frozen_commit`, `frozen_before_dispatch: true`, and
   `rubric_and_plan_frozen_together: true`;
-- the exact `judge_template_version` for judge-bearing suite classes (a
-  zero-judge `mechanical_match` row does not invent one);
+- the exact `judge_template_version` for judgment-bearing suite classes: the
+  model-judge template normally, or the frozen human-expert label template under
+  `human_expert_panel` (a zero-judge `mechanical_match` row does not invent one);
 - `amendments_append_only: true` plus an append-ordered amendment ledger. An
   amendment never mutates the frozen plan or rubric; it names the change and,
   where applicable, the superseded hash.

@@ -1,0 +1,22 @@
+{
+  "schema_version": "review-criteria-suite-lock/1.0",
+  "suite": "review_criteria_constructive_value",
+  "assets": {
+    "evals/heldout/review_criteria_constructive_value/adjudication_decisions.schema.json": "41e182e9ea0a2694207c0ca700417e7cc83ee7da212be6c154f407685a99e611",
+    "evals/heldout/review_criteria_constructive_value/baseline_prompt.md": "1ea5ee7e2586ea58053b8f4b269774794caf5a2b7c09a89c4abc4502f5f6d7a3",
+    "evals/heldout/review_criteria_constructive_value/call_plan.json": "fe86d4007658a5107f7628783693d21deda6165c22457238f46754235959a257",
+    "evals/heldout/review_criteria_constructive_value/expert_label_guide.md": "4211da63ab34489fb78f48b3ee9f7206dcd8a4ea03e85391aaab669a07177db6",
+    "evals/heldout/review_criteria_constructive_value/expert_labels.schema.json": "7856c37648372665bd3fd701c793e1a98f94e0be5324671257136bc340baa258",
+    "evals/heldout/review_criteria_constructive_value/expert_packet.schema.json": "c3d3a707b3480f8e6b4357f3c5c8ad624396a685778469948a6bfaf8f49a5077",
+    "evals/heldout/review_criteria_constructive_value/heldout_set.json": "c7728656b30f626f6c2b487893405d5f7459b77a69d293e7ec70855c43984384",
+    "evals/heldout/review_criteria_constructive_value/measurement_plan.md": "7670624c96d476a752a960e0fd69afd5ec0967a0f3f3617fe2f755e17e71fbc5",
+    "evals/heldout/review_criteria_constructive_value/paired_adjudication.schema.json": "0bbcf55e465afdea27d911f295276bbd2ac1a87df2d4ff6b6278a92a3a89d0f1",
+    "evals/heldout/review_criteria_constructive_value/scenarios.json": "5dfa559578d27e498285ab33eca2b50237210e69dd6ed39b0cad4a4b2d5c6af9",
+    "evals/heldout/review_criteria_constructive_value/scenarios.schema.json": "e592085f097981b9a0308e12c85a41fceba99993fbc72dd9c5a27a10026b159e",
+    "evals/heldout/review_criteria_constructive_value/subject_output.schema.json": "2f650570f1b3ea774a38b625ede0cd7e5ad7017403a187c679be094581151c35",
+    "evals/heldout/review_criteria_constructive_value/treatment_prompt.md": "16907b4c35d9df226f831a837de0788d47d0790209d6f1a14e7fbebbb0921f22",
+    "scripts/fixtures/review_target_context/synthetic-registry.json": "ad8a7892f975842ec99d66e16e4a45fc63bb9da09a14e38d86785532d26f2be1",
+    "scripts/run_review_criteria_constructive_value.py": "f515e8b1eb409431eb02352e395dcd8ab5b61e91edefb55f74148cd8e5df9fe8",
+    "scripts/score_review_criteria_constructive_value.py": "1f1c2be5844da3be0933d71fd1c305f9d697cf8601efcc582bffddc8e1d1fd7f"
+  }
+}

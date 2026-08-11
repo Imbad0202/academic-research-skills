@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/review_criteria_constructive_value/expert_labels.schema.json",
+  "title": "Independent blinded expert labels",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "packet_sha256", "expert", "labels"],
+  "properties": {
+    "schema_version": {"const": "review-criteria-expert-labels/1.0"},
+    "suite": {"const": "review_criteria_constructive_value"},
+    "packet_sha256": {"$ref": "#/$defs/sha256"},
+    "expert": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expert_id", "expert_type", "expertise", "independent", "blinded_to"],
+      "properties": {
+        "expert_id": {"$ref": "#/$defs/id"},
+        "expert_type": {"const": "human"},
+        "expertise": {"type": "string", "minLength": 1},
+        "independent": {"const": true},
+        "blinded_to": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {"enum": ["arm_identity", "mechanism_state", "other_experts", "raw_aggregate", "expected_direction"]}
+        }
+      }
+    },
+    "labels": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "items": {"$ref": "#/$defs/output_label"}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "applicability": {"enum": ["applicable", "not_applicable", "unresolved"]},
+    "output_label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blind_output_id", "applicability", "findings", "rationale"],
+      "properties": {
+        "blind_output_id": {"type": "string", "pattern": "^blind-[0-9a-f]{16}$"},
+        "applicability": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["criterion_id", "label"],
+            "properties": {
+              "criterion_id": {"$ref": "#/$defs/criterion_id"},
+              "label": {"$ref": "#/$defs/applicability"}
+            }
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["finding_id", "support_label", "severity", "venue_alignment", "usefulness"],
+            "properties": {
+              "finding_id": {"$ref": "#/$defs/id"},
+              "support_label": {"enum": ["supported", "unsupported", "unresolved"]},
+              "severity": {"enum": ["critical", "major", "minor", "none", "unresolved"]},
+              "venue_alignment": {"enum": ["aligned", "not_aligned", "not_claimed", "unresolved"]},
+              "usefulness": {"type": "integer", "minimum": 1, "maximum": 5}
+            }
+          }
+        },
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

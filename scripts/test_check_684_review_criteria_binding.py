@@ -71,6 +71,53 @@ def test_adjudication_must_retain_raw_expert_labels() -> None:
     )
 
 
+def test_adjudication_must_keep_exact_five_way_blinding() -> None:
+    texts = _texts()
+    schema = json.loads(texts[guard.ADJUDICATION_SCHEMA])
+    blinded = schema["properties"]["experts"]["items"]["properties"]["blinded_to"]
+    blinded["maxItems"] = 4
+    texts[guard.ADJUDICATION_SCHEMA] = json.dumps(schema)
+    assert "five-way blinding" in "\n".join(guard.check_contracts(texts))
+
+
+def test_adjudication_cannot_relabel_model_as_human_expert() -> None:
+    texts = _texts()
+    schema = json.loads(texts[guard.ADJUDICATION_SCHEMA])
+    expert = schema["properties"]["experts"]["items"]["properties"]
+    expert["expert_type"] = {"type": "string"}
+    texts[guard.ADJUDICATION_SCHEMA] = json.dumps(schema)
+    assert "expert_type must be human" in "\n".join(guard.check_contracts(texts))
+
+
+def test_measurement_call_plan_cannot_enable_api_or_drop_calls() -> None:
+    texts = _texts()
+    plan = json.loads(texts[guard.CALL_PLAN])
+    plan["api_spend_ceiling_usd"] = 1
+    plan["calls"].pop()
+    texts[guard.CALL_PLAN] = json.dumps(plan)
+    assert "24-call subscription/USD-0" in "\n".join(
+        guard.check_measurement_assets(texts)
+    )
+
+
+def test_measurement_suite_lock_hash_mutation_fails() -> None:
+    texts = _texts()
+    lock = json.loads(texts[guard.SUITE_LOCK])
+    first = next(iter(lock["assets"]))
+    lock["assets"][first] = "0" * 64
+    texts[guard.SUITE_LOCK] = json.dumps(lock)
+    assert "hash mismatch" in "\n".join(guard.check_measurement_assets(texts))
+
+
+def test_measurement_runner_rejects_network_import_and_consent_flag_removal() -> None:
+    source = _texts()[guard.MEASUREMENT_RUNNER]
+    source += "\nimport requests\n"
+    source = source.replace('"--execute-24-subscription-calls"', '"--execute-calls"')
+    joined = "\n".join(guard.check_measurement_runner(source))
+    assert "forbidden API/network import requests" in joined
+    assert "execute-24-subscription-calls" in joined
+
+
 def test_runtime_consumer_order_mutation_fails() -> None:
     source = _texts()[guard.RUNTIME].replace(
         '("formative_planning", "internal_evaluator", "external_panel")',
@@ -169,14 +216,14 @@ def test_measurement_cannot_add_automatic_api_fallback() -> None:
     assert "no API fallback" in joined
 
 
-def test_measurement_cannot_drop_two_family_judges() -> None:
+def test_measurement_cannot_drop_human_expert_exception() -> None:
     texts = _texts()
     texts[guard.MEASUREMENT] = texts[guard.MEASUREMENT].replace(
-        "at least two judge configurations",
-        "one judge configuration",
+        'judge_plan.exception: "human_expert_panel"',
+        'judge_plan.exception: "none"',
     )
     joined = "\n".join(guard.check_wiring(texts))
-    assert "two judge configurations" in joined
+    assert "human_expert_panel" in joined
 
 
 def test_phase1_checker_accepts_pointer_commitment_without_extra_h2() -> None:

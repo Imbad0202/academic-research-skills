@@ -454,8 +454,8 @@ jobs:
         # Pins the one manifest authority, three exact consumer receipts,
         # paper-blind Phase 1 wiring, five external seats including DA,
         # constructive finding safety, advisory/non-consumer boundaries, and
-        # the manual-only same-context/same-budget held-out plan. Focused and
-        # mutation tests run through the unified pytest manifest above.
+        # the contained subscription runner plus human-expert held-out plan.
+        # Focused and mutation tests run through the unified pytest manifest.
         env:
           PYTHONPATH: .
         run: python3 scripts/check_684_review_criteria_binding.py

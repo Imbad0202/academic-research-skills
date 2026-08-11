@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/review_criteria_constructive_value/scenarios.schema.json",
+  "title": "Synthetic review-criteria constructive-value scenarios",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "content_class", "items"],
+  "properties": {
+    "schema_version": {"const": "review-criteria-scenarios/1.0"},
+    "suite": {"const": "review_criteria_constructive_value"},
+    "content_class": {"const": "repository_owned_synthetic"},
+    "items": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"$ref": "#/$defs/item"}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id", "consumer_id", "role", "title", "declaration",
+        "manuscript", "author_intent", "review_task"
+      ],
+      "properties": {
+        "item_id": {"$ref": "#/$defs/id"},
+        "consumer_id": {
+          "enum": ["formative_planning", "internal_evaluator", "external_panel"]
+        },
+        "role": {"enum": ["FORMATIVE", "INTERNAL", "EIC", "R1", "R2", "R3", "DA"]},
+        "title": {"type": "string", "minLength": 1},
+        "declaration": {"$ref": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/review_target/review_target_declaration.schema.json"},
+        "manuscript": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "abstract", "methods", "results", "limitations", "data_availability"],
+          "properties": {
+            "title": {"type": "string", "minLength": 1},
+            "abstract": {"type": "string", "minLength": 1},
+            "methods": {"type": "string", "minLength": 1},
+            "results": {"type": "string", "minLength": 1},
+            "limitations": {"type": "string", "minLength": 1},
+            "data_availability": {"type": "string", "minLength": 1}
+          }
+        },
+        "author_intent": {"type": "string", "minLength": 1},
+        "review_task": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

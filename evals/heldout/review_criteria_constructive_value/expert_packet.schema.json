@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/review_criteria_constructive_value/expert_packet.schema.json",
+  "title": "Blinded expert packet for review-criteria constructive value",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "content_class", "blinding", "outputs"],
+  "properties": {
+    "schema_version": {"const": "review-criteria-expert-packet/1.0"},
+    "suite": {"const": "review_criteria_constructive_value"},
+    "content_class": {"const": "repository_owned_synthetic"},
+    "blinding": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"enum": ["arm_identity", "mechanism_state", "other_experts", "raw_aggregate", "expected_direction"]}
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blind_output_id", "scenario", "target_context", "subject_output"],
+        "properties": {
+          "blind_output_id": {"type": "string", "pattern": "^blind-[0-9a-f]{16}$"},
+          "scenario": {"type": "object"},
+          "target_context": {"type": "object"},
+          "subject_output": {"type": "object"}
+        }
+      }
+    }
+  }
+}

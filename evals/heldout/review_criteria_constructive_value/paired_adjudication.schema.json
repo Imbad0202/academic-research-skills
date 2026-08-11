@@ -29,19 +29,24 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["expert_id", "expertise", "independent", "blinded_to"],
+        "required": ["expert_id", "expert_type", "expertise", "independent", "blinded_to"],
         "properties": {
           "expert_id": {"$ref": "#/$defs/id"},
+          "expert_type": {"const": "human"},
           "expertise": {"type": "string", "minLength": 1},
           "independent": {"const": true},
           "blinded_to": {
             "type": "array",
-            "minItems": 2,
+            "minItems": 5,
+            "maxItems": 5,
             "uniqueItems": true,
             "items": {"enum": ["arm_identity", "mechanism_state", "other_experts", "raw_aggregate", "expected_direction"]},
             "allOf": [
               {"contains": {"const": "arm_identity"}},
-              {"contains": {"const": "mechanism_state"}}
+              {"contains": {"const": "mechanism_state"}},
+              {"contains": {"const": "other_experts"}},
+              {"contains": {"const": "raw_aggregate"}},
+              {"contains": {"const": "expected_direction"}}
             ]
           }
         }
@@ -50,9 +55,10 @@
     "adjudication": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["adjudicator_id", "method", "arm_blind", "disagreements_retained"],
+      "required": ["adjudicator_id", "adjudicator_type", "method", "arm_blind", "disagreements_retained"],
       "properties": {
         "adjudicator_id": {"$ref": "#/$defs/id"},
+        "adjudicator_type": {"const": "human"},
         "method": {"type": "string", "minLength": 1},
         "arm_blind": {"const": true},
         "disagreements_retained": {"const": true}

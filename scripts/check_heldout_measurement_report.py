@@ -4,10 +4,10 @@
 Layers:
   1. JSON Schema (evals/heldout/measurement_report.schema.json) — shape,
      enums, const attestations (rubric_precommitted / raw_published /
-     raw_outputs.retained), and the version/suite branches B1-B7.
+     raw_outputs.retained), and the version/suite branches B1-B8.
   2. Cross-field invariants I1-I15 — rules a schema cannot express.
      Invariants run only on schema-valid reports (schema errors short-circuit).
-  3. Reference resolution R1-R5 (CLI/CI only; validate_report(...,
+  3. Reference resolution R1-R6 (CLI/CI only; validate_report(...,
      resolve_refs=True)) — attested references must resolve: the rubric file
      exists and matches its hash, raw-output paths exist, the suite commit is
      a real object in this repository.
@@ -17,9 +17,11 @@ Layers:
 Invariants:
   I1   aggregate.agreement.rate equals 1 - |divergent| / |items judged by >=2
        distinct judges| (tolerance 0.005); null iff no such item exists.
-  I2   derived judge minimum: a decision-relevant, non-mechanical run with
+  I2   derived model-judge minimum: a decision-relevant, non-mechanical run with
        judge_plan.exception == "none" requires >= 2 judges drawn from >= 2
-       distinct model families (families compared case-/NFKC-folded).
+       distinct model families (families compared case-/NFKC-folded). The
+       paired-controls-only human_expert_panel exception is schema-closed and
+       its suite-owned evidence is resolved by R6.
   I3   declared divergent items that are not actually divergent are rejected
        (declared set must not exceed the recomputed set).
   I4   every adjudication override targets a judge that exists AND an item
@@ -406,7 +408,6 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
             payload = {k: v for k, v in row.items() if k != "item_id"}
             by_item.setdefault(fid, {})[idx] = payload
 
-    judged_ids = set(by_item)
     comparable = {i for i, per_judge in by_item.items() if len(per_judge) >= 2}
     divergent: set[str] = set()
     for fid in comparable:
@@ -672,7 +673,7 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
 
 
 def _resolution_findings(report: dict) -> list[str]:
-    """R1-R5: attested references must resolve. Repo-relative, traversal-safe."""
+    """R1-R6: attested references must resolve. Repo-relative, traversal-safe."""
     errors: list[str] = []
 
     def _repo_path(ref: str, label: str) -> Path | None:
@@ -728,6 +729,90 @@ def _resolution_findings(report: dict) -> list[str]:
                 f"R1: legacy_baseline_ref {baseline_ref!r} does not exist in the "
                 "repository — the comparability claim must name a real legacy row"
             )
+
+    expert_ref = report["judge_plan"].get("expert_panel_ref")
+    if expert_ref is not None:
+        expert_path = _hashed_file(
+            expert_ref,
+            report["judge_plan"]["expert_panel_sha256"],
+            "R6",
+            "expert_panel_ref",
+        )
+        if expert_path is not None:
+            if not expert_path.is_relative_to(suite_dir):
+                errors.append(
+                    f"R6: expert panel {expert_ref!r} is not under "
+                    f"evals/heldout/{report['suite']}/"
+                )
+            try:
+                panel = _loads_strict(expert_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+                errors.append(f"R6: expert panel is not strict JSON ({exc})")
+            else:
+                if not isinstance(panel, dict):
+                    errors.append("R6: expert panel root must be an object")
+                else:
+                    if panel.get("suite") != report["suite"]:
+                        errors.append(
+                            "R6: expert panel suite does not match the measurement report"
+                        )
+                    experts = panel.get("experts")
+                    if not isinstance(experts, list) or len(experts) < 2:
+                        errors.append(
+                            "R6: human_expert_panel requires at least two experts"
+                        )
+                    else:
+                        expert_ids: list[str] = []
+                        for index, expert in enumerate(experts):
+                            if not isinstance(expert, dict):
+                                errors.append(
+                                    f"R6: experts[{index}] must be an object"
+                                )
+                                continue
+                            expert_id = expert.get("expert_id")
+                            if not isinstance(expert_id, str) or not expert_id.strip():
+                                errors.append(
+                                    f"R6: experts[{index}].expert_id must be non-empty"
+                                )
+                            else:
+                                expert_ids.append(_fold(expert_id))
+                            if expert.get("expert_type") != "human":
+                                errors.append(
+                                    f"R6: experts[{index}] must declare expert_type='human'"
+                                )
+                            if expert.get("independent") is not True:
+                                errors.append(
+                                    f"R6: experts[{index}] must attest independent=true"
+                                )
+                            blinded = expert.get("blinded_to")
+                            required_blinding = {"arm_identity", "mechanism_state"}
+                            if not isinstance(blinded, list) or not required_blinding.issubset(
+                                set(value for value in blinded if isinstance(value, str))
+                            ):
+                                errors.append(
+                                    f"R6: experts[{index}] must be blinded to arm_identity "
+                                    "and mechanism_state"
+                                )
+                        if len(expert_ids) != len(set(expert_ids)):
+                            errors.append(
+                                "R6: expert_id values must be unique after identity folding"
+                            )
+                    panel_adjudication = panel.get("adjudication")
+                    if not isinstance(panel_adjudication, dict):
+                        errors.append("R6: expert panel adjudication must be an object")
+                    else:
+                        if panel_adjudication.get("adjudicator_type") != "human":
+                            errors.append(
+                                "R6: expert panel adjudicator_type must be 'human'"
+                            )
+                        if panel_adjudication.get("arm_blind") is not True:
+                            errors.append(
+                                "R6: expert panel adjudication must attest arm_blind=true"
+                            )
+                        if panel_adjudication.get("disagreements_retained") is not True:
+                            errors.append(
+                                "R6: expert panel adjudication must retain disagreements"
+                            )
 
     commit = report["subject"]["config"]["suite_commit"]
     try:

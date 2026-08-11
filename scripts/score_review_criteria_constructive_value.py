@@ -312,19 +312,44 @@ def _validate_and_count(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
     expert_ids: list[str] = []
     for index, row in enumerate(experts):
         path = f"$.experts[{index}]"
-        obj = _object(row, path, {"expert_id", "expertise", "independent", "blinded_to"})
+        obj = _object(
+            row,
+            path,
+            {"expert_id", "expert_type", "expertise", "independent", "blinded_to"},
+        )
         expert_ids.append(_id(obj["expert_id"], f"{path}.expert_id"))
+        if obj["expert_type"] != "human":
+            _fail(f"{path}.expert_type", "must be human")
         _text(obj["expertise"], f"{path}.expertise")
         if obj["independent"] is not True:
             _fail(f"{path}.independent", "must be true")
         blinded = set(_unique_texts(obj["blinded_to"], f"{path}.blinded_to", minimum=1))
-        if not {"arm_identity", "mechanism_state"}.issubset(blinded):
-            _fail(f"{path}.blinded_to", "must include arm_identity and mechanism_state")
+        required_blinding = {
+            "arm_identity",
+            "mechanism_state",
+            "other_experts",
+            "raw_aggregate",
+            "expected_direction",
+        }
+        if blinded != required_blinding:
+            _fail(f"{path}.blinded_to", "must contain the exact five blind dimensions")
     if len(set(expert_ids)) != len(expert_ids):
         _fail("$.experts", "duplicate expert_id")
 
-    adjudication = _object(record["adjudication"], "$.adjudication", {"adjudicator_id", "method", "arm_blind", "disagreements_retained"})
+    adjudication = _object(
+        record["adjudication"],
+        "$.adjudication",
+        {
+            "adjudicator_id",
+            "adjudicator_type",
+            "method",
+            "arm_blind",
+            "disagreements_retained",
+        },
+    )
     _id(adjudication["adjudicator_id"], "$.adjudication.adjudicator_id")
+    if adjudication["adjudicator_type"] != "human":
+        _fail("$.adjudication.adjudicator_type", "must be human")
     _text(adjudication["method"], "$.adjudication.method")
     if adjudication["arm_blind"] is not True or adjudication["disagreements_retained"] is not True:
         _fail("$.adjudication", "arm_blind and disagreements_retained must be true")

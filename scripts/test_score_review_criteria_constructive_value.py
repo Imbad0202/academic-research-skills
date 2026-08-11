@@ -140,19 +140,34 @@ def _record() -> dict[str, object]:
         "experts": [
             {
                 "expert_id": "expert-a",
+                "expert_type": "human",
                 "expertise": "synthetic domain expert",
                 "independent": True,
-                "blinded_to": ["arm_identity", "mechanism_state"],
+                "blinded_to": [
+                    "arm_identity",
+                    "mechanism_state",
+                    "other_experts",
+                    "raw_aggregate",
+                    "expected_direction",
+                ],
             },
             {
                 "expert_id": "expert-b",
+                "expert_type": "human",
                 "expertise": "synthetic methodology expert",
                 "independent": True,
-                "blinded_to": ["arm_identity", "mechanism_state"],
+                "blinded_to": [
+                    "arm_identity",
+                    "mechanism_state",
+                    "other_experts",
+                    "raw_aggregate",
+                    "expected_direction",
+                ],
             },
         ],
         "adjudication": {
             "adjudicator_id": "expert-c",
+            "adjudicator_type": "human",
             "method": "independent labels followed by arm-blind resolution",
             "arm_blind": True,
             "disagreements_retained": True,

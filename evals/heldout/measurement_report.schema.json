@@ -100,14 +100,25 @@
           "enum": [
             "none",
             "legacy_comparability",
-            "mechanical_suite"
+            "mechanical_suite",
+            "human_expert_panel"
           ],
-          "description": "Why fewer judges than the contract's derived minimum is acceptable. The minimum itself is never author-declared: the checker derives it from (decision_relevant, suite_class) — 2 judges from >=2 model families for decision-relevant non-mechanical runs (I2). 'legacy_comparability' = the #652 pattern (original judge kept for comparability; new judges report separately); 'mechanical_suite' is legal only on mechanical_match (branch B3)."
+          "description": "Why fewer model judges than the contract's derived minimum is acceptable. The minimum itself is never author-declared: the checker derives it from (decision_relevant, suite_class) — 2 judges from >=2 model families for decision-relevant non-mechanical runs (I2). 'legacy_comparability' = the #652 pattern (original judge kept for comparability; new judges report separately); 'mechanical_suite' is legal only on mechanical_match (branch B3); 'human_expert_panel' is legal only on paired_controls and binds a suite-owned record for >=2 independent blinded human experts (branch B8/R6)."
         },
         "legacy_baseline_ref": {
           "type": "string",
           "minLength": 1,
           "description": "Required when exception == 'legacy_comparability': the legacy measurement row this run stays comparable to."
+        },
+        "expert_panel_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required when exception == 'human_expert_panel': repository-relative path to the suite-owned closed human expert adjudication record."
+        },
+        "expert_panel_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of expert_panel_ref, required for the human_expert_panel exception."
         }
       }
     },
@@ -682,19 +693,45 @@
   },
   "allOf": [
     {
-      "description": "B1: non-mechanical suite classes require at least one judge — no exception permits zero judges outside mechanical_match.",
+      "description": "B1: non-mechanical suite classes require at least one model judge, except paired_controls using the closed human_expert_panel path.",
       "if": {
-        "properties": {
-          "suite_class": {
-            "enum": [
-              "llm_judged",
-              "seeded_manifest_adjudicated",
-              "paired_controls"
+        "anyOf": [
+          {
+            "properties": {
+              "suite_class": {
+                "enum": [
+                  "llm_judged",
+                  "seeded_manifest_adjudicated"
+                ]
+              }
+            },
+            "required": [
+              "suite_class"
+            ]
+          },
+          {
+            "properties": {
+              "suite_class": {
+                "const": "paired_controls"
+              },
+              "judge_plan": {
+                "properties": {
+                  "exception": {
+                    "not": {
+                      "const": "human_expert_panel"
+                    }
+                  }
+                },
+                "required": [
+                  "exception"
+                ]
+              }
+            },
+            "required": [
+              "suite_class",
+              "judge_plan"
             ]
           }
-        },
-        "required": [
-          "suite_class"
         ]
       },
       "then": {
@@ -765,7 +802,8 @@
               "exception": {
                 "enum": [
                   "none",
-                  "legacy_comparability"
+                  "legacy_comparability",
+                  "human_expert_panel"
                 ]
               }
             }
@@ -798,6 +836,77 @@
             "required": [
               "legacy_baseline_ref"
             ]
+          }
+        }
+      }
+    },
+    {
+      "description": "B8: human_expert_panel is a paired-controls-only, zero-model-judge path bound to a suite-owned hashed expert record and applied blinded adjudication.",
+      "if": {
+        "properties": {
+          "judge_plan": {
+            "properties": {
+              "exception": {
+                "const": "human_expert_panel"
+              }
+            },
+            "required": [
+              "exception"
+            ]
+          }
+        },
+        "required": [
+          "judge_plan"
+        ]
+      },
+      "then": {
+        "properties": {
+          "suite_class": {
+            "const": "paired_controls"
+          },
+          "judge_plan": {
+            "required": [
+              "expert_panel_ref",
+              "expert_panel_sha256"
+            ],
+            "not": {
+              "required": [
+                "legacy_baseline_ref"
+              ]
+            }
+          },
+          "judges": {
+            "maxItems": 0
+          },
+          "adjudication": {
+            "properties": {
+              "applies": {
+                "const": true
+              }
+            },
+            "required": [
+              "applies"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "judge_plan": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "expert_panel_ref"
+                  ]
+                },
+                {
+                  "required": [
+                    "expert_panel_sha256"
+                  ]
+                }
+              ]
+            }
           }
         }
       }
@@ -897,7 +1006,7 @@
       }
     },
     {
-      "description": "B7: 1.1 judge-bearing suites freeze the exact judge-template version; mechanical suites with no judge do not invent one.",
+      "description": "B7: 1.1 judgment-bearing suites freeze the exact model-judge or human-expert label-template version; mechanical suites do not invent one.",
       "if": {
         "properties": {
           "measurement_contract": {

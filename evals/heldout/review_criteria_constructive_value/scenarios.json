@@ -1,0 +1,199 @@
+{
+  "schema_version": "review-criteria-scenarios/1.0",
+  "suite": "review_criteria_constructive_value",
+  "content_class": "repository_owned_synthetic",
+  "items": [
+    {
+      "item_id": "RCV-01",
+      "consumer_id": "formative_planning",
+      "role": "FORMATIVE",
+      "title": "Field-general formative plan with unresolved venue",
+      "declaration": {
+        "schema_version": "review-target-declaration/1.0",
+        "confirmed_by": "author",
+        "confirmed_at": "2026-08-08T12:00:00+08:00",
+        "criteria_as_of": "2026-08-08",
+        "discipline": {"primary": "Computing", "subfield": "Human-computer interaction", "additional_disciplines": []},
+        "target": {"venue": null, "track": null, "contribution_type": "Empirical Article"},
+        "reporting_design_overlays": [],
+        "criterion_selection": {"mode": "all_applicable", "ids": []},
+        "precedence": [
+          {"rank": 1, "authority_class": "official_venue_type"},
+          {"rank": 2, "authority_class": "field_society_standard"},
+          {"rank": 3, "authority_class": "reporting_design_overlay"},
+          {"rank": 4, "authority_class": "broad_field_fallback"}
+        ]
+      },
+      "manuscript": {
+        "title": "Interruptible dashboards for shift handovers",
+        "abstract": "A synthetic pilot compares two dashboard layouts during twelve simulated shift handovers and reports lower task-completion time for the interruptible layout.",
+        "methods": "Twelve volunteers completed both layouts in counterbalanced order. The planned analysis compares paired completion times and records navigation errors. No venue has been selected.",
+        "results": "Median completion time was 84 seconds for the interruptible layout and 96 seconds for the comparison layout. Individual observations and the analysis script are retained.",
+        "limitations": "The pilot is small, uses a simulated task, and cannot establish workplace effectiveness.",
+        "data_availability": "Synthetic row-level data and analysis code are available in the study package."
+      },
+      "author_intent": "Plan a cautious empirical article without inventing a target venue or expanding the study into a field trial.",
+      "review_task": "Identify the target-aware evidence and limitation checks that the outline should reserve; do not draft results or infer venue rules."
+    },
+    {
+      "item_id": "RCV-02",
+      "consumer_id": "internal_evaluator",
+      "role": "INTERNAL",
+      "title": "Causal overclaim under an exact synthetic profile",
+      "declaration": {
+        "schema_version": "review-target-declaration/1.0",
+        "confirmed_by": "author",
+        "confirmed_at": "2026-08-08T12:01:00+08:00",
+        "criteria_as_of": "2026-08-08",
+        "discipline": {"primary": "Computing", "subfield": "Human-computer interaction", "additional_disciplines": []},
+        "target": {"venue": "Example Research Journal", "track": "Research Article", "contribution_type": "Empirical Article"},
+        "reporting_design_overlays": [],
+        "criterion_selection": {"mode": "all_applicable", "ids": []},
+        "precedence": [
+          {"rank": 1, "authority_class": "official_venue_type"},
+          {"rank": 2, "authority_class": "field_society_standard"},
+          {"rank": 3, "authority_class": "reporting_design_overlay"},
+          {"rank": 4, "authority_class": "broad_field_fallback"}
+        ]
+      },
+      "manuscript": {
+        "title": "Notification batching eliminates decision fatigue",
+        "abstract": "A synthetic workplace study states that notification batching eliminates decision fatigue and improves accuracy.",
+        "methods": "Forty workers were assigned by alternating enrollment order, not random allocation, to immediate or batched notifications. Analysts fit an unadjusted group comparison after viewing the outcome distributions.",
+        "results": "The batching group made 7.2 errors on average and the immediate group made 8.0. The confidence interval for the difference includes zero; the manuscript nevertheless describes a definitive causal effect.",
+        "limitations": "The draft mentions one organization but does not discuss allocation bias, analytic flexibility, or imprecision.",
+        "data_availability": "De-identified synthetic summary data are included; row-level records are not available."
+      },
+      "author_intent": "Preserve the observational workplace comparison; the author is open to recalibrating claims or a feasible re-analysis but has not authorized new data collection.",
+      "review_task": "Perform a paper-visible internal evaluation of material weaknesses and feasible remedies while keeping venue fit separate from scientific validity."
+    },
+    {
+      "item_id": "RCV-03",
+      "consumer_id": "external_panel",
+      "role": "EIC",
+      "title": "Venue-aligned article with a separable validity defect",
+      "declaration": {
+        "schema_version": "review-target-declaration/1.0",
+        "confirmed_by": "author",
+        "confirmed_at": "2026-08-08T12:02:00+08:00",
+        "criteria_as_of": "2026-08-08",
+        "discipline": {"primary": "Computing", "subfield": "Human-computer interaction", "additional_disciplines": []},
+        "target": {"venue": "Example Research Journal", "track": "Research Article", "contribution_type": "Empirical Article"},
+        "reporting_design_overlays": [],
+        "criterion_selection": {"mode": "all_applicable", "ids": []},
+        "precedence": [
+          {"rank": 1, "authority_class": "official_venue_type"},
+          {"rank": 2, "authority_class": "field_society_standard"},
+          {"rank": 3, "authority_class": "reporting_design_overlay"},
+          {"rank": 4, "authority_class": "broad_field_fallback"}
+        ]
+      },
+      "manuscript": {
+        "title": "Accessible chart annotations in screen-reader workflows",
+        "abstract": "A synthetic empirical article evaluates two annotation formats for screen-reader users and is within the declared journal scope.",
+        "methods": "Twenty-four participants completed both formats. The paper reports only the fastest trial per participant and does not disclose that selection rule until the discussion.",
+        "results": "The selected fastest trials favor structured annotations. A sensitivity analysis using all trials is not reported, although all synthetic trials remain available.",
+        "limitations": "The discussion describes recruitment constraints but treats the fastest-trial estimate as representative of routine use.",
+        "data_availability": "All synthetic trial records are available for re-analysis."
+      },
+      "author_intent": "Retain the accessibility contribution and declared venue; the author permits re-analysis but not a change to the research question.",
+      "review_task": "Write an editorial-level review that distinguishes venue alignment from the validity consequence of outcome selection."
+    },
+    {
+      "item_id": "RCV-04",
+      "consumer_id": "external_panel",
+      "role": "R1",
+      "title": "Reporting overlay with recoverable flow omissions",
+      "declaration": {
+        "schema_version": "review-target-declaration/1.0",
+        "confirmed_by": "author",
+        "confirmed_at": "2026-08-08T12:03:00+08:00",
+        "criteria_as_of": "2026-08-08",
+        "discipline": {"primary": "Computing", "subfield": "Information retrieval", "additional_disciplines": []},
+        "target": {"venue": null, "track": null, "contribution_type": "Systematic Review"},
+        "reporting_design_overlays": ["PRISMA 2020"],
+        "criterion_selection": {"mode": "all_applicable", "ids": []},
+        "precedence": [
+          {"rank": 1, "authority_class": "official_venue_type"},
+          {"rank": 2, "authority_class": "field_society_standard"},
+          {"rank": 3, "authority_class": "reporting_design_overlay"},
+          {"rank": 4, "authority_class": "broad_field_fallback"}
+        ]
+      },
+      "manuscript": {
+        "title": "Search interfaces for multilingual evidence synthesis",
+        "abstract": "A synthetic systematic review compares search-interface features across 31 studies.",
+        "methods": "Two screeners used a documented query and retained the screening log. The manuscript omits full-text exclusion counts and reasons even though the log contains them.",
+        "results": "Thirty-one studies are summarized without inventing effect estimates. Study-level extraction tables are internally consistent.",
+        "limitations": "Language coverage and database selection are disclosed. The missing flow information is not discussed.",
+        "data_availability": "The synthetic query, extraction table, and screening log are available."
+      },
+      "author_intent": "Complete the report from retained records; collecting new studies or changing inclusion criteria requires an explicit author choice.",
+      "review_task": "Assess methodological and reporting weaknesses, distinguishing a minimum documentation remedy from stronger work that would require new screening."
+    },
+    {
+      "item_id": "RCV-05",
+      "consumer_id": "external_panel",
+      "role": "R3",
+      "title": "Interdisciplinary criteria that must remain parallel",
+      "declaration": {
+        "schema_version": "review-target-declaration/1.0",
+        "confirmed_by": "author",
+        "confirmed_at": "2026-08-08T12:04:00+08:00",
+        "criteria_as_of": "2026-08-08",
+        "discipline": {"primary": "Computing", "subfield": "Learning analytics", "additional_disciplines": ["Education"]},
+        "target": {"venue": "Example Research Journal", "track": "Research Article", "contribution_type": "Empirical Article"},
+        "reporting_design_overlays": [],
+        "criterion_selection": {"mode": "all_applicable", "ids": []},
+        "precedence": [
+          {"rank": 1, "authority_class": "official_venue_type"},
+          {"rank": 2, "authority_class": "field_society_standard"},
+          {"rank": 3, "authority_class": "reporting_design_overlay"},
+          {"rank": 4, "authority_class": "broad_field_fallback"}
+        ]
+      },
+      "manuscript": {
+        "title": "Transparent early-warning models across classroom contexts",
+        "abstract": "A synthetic learning-analytics article reports an interpretable risk model deployed in three classroom settings.",
+        "methods": "Feature definitions and code are documented, but classroom implementation differs by site and one site omits the support intervention offered after an alert.",
+        "results": "Discrimination is similar across sites. The paper pools sites for its main conclusion and provides no site-specific calibration table.",
+        "limitations": "The authors note institutional variation but do not connect it to intervention delivery or interpretation of pooled performance.",
+        "data_availability": "Synthetic code and aggregate site tables are available; student-level data are withheld."
+      },
+      "author_intent": "Keep the interdisciplinary contribution. The author will add feasible site-level reporting but will not imply that computing transparency resolves educational-context concerns.",
+      "review_task": "Keep conflicting computing-transparency and education-context criteria parallel and give useful, evidence-bounded remedies for any material finding."
+    },
+    {
+      "item_id": "RCV-06",
+      "consumer_id": "external_panel",
+      "role": "DA",
+      "title": "Adversarial clean control",
+      "declaration": {
+        "schema_version": "review-target-declaration/1.0",
+        "confirmed_by": "author",
+        "confirmed_at": "2026-08-08T12:05:00+08:00",
+        "criteria_as_of": "2026-08-08",
+        "discipline": {"primary": "Computing", "subfield": "Human-computer interaction", "additional_disciplines": []},
+        "target": {"venue": "Example Research Journal", "track": "Research Article", "contribution_type": "Empirical Article"},
+        "reporting_design_overlays": [],
+        "criterion_selection": {"mode": "all_applicable", "ids": []},
+        "precedence": [
+          {"rank": 1, "authority_class": "official_venue_type"},
+          {"rank": 2, "authority_class": "field_society_standard"},
+          {"rank": 3, "authority_class": "reporting_design_overlay"},
+          {"rank": 4, "authority_class": "broad_field_fallback"}
+        ]
+      },
+      "manuscript": {
+        "title": "Replicated keyboard layouts for one-handed text entry",
+        "abstract": "A synthetic preregistered crossover study compares two keyboard layouts and reports an imprecise, non-definitive difference in entry speed.",
+        "methods": "The preregistered paired analysis was run on all 60 participants. Allocation order, exclusions, measures, code, and stopping rule match the retained protocol.",
+        "results": "The estimated difference is 1.1 words per minute with a 95% interval from -0.8 to 3.0. The manuscript states that the data are compatible with small effects in either direction and makes no superiority claim.",
+        "limitations": "The authors identify short follow-up, laboratory tasks, and uncertain generalization to long-form use.",
+        "data_availability": "Synthetic row-level data, protocol, and analysis code are available."
+      },
+      "author_intent": "Publish a calibrated null-compatible result without adding an unsupported superiority claim or unnecessary new-data demand.",
+      "review_task": "Adversarially search for a genuine Critical or Major weakness; return no material finding when the supplied record does not support one."
+    }
+  ]
+}

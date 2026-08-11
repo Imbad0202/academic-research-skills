@@ -1,4 +1,4 @@
-# Frozen measurement plan — review_criteria_constructive_value/1.1
+# Frozen measurement plan — review_criteria_constructive_value/1.2
 
 Status: PRE-REGISTERED / NOT RUN. Issue: #684. Contract:
 `heldout-measurement/1.1`; suite class: `paired_controls`.
@@ -21,12 +21,12 @@ context bytes are sealed into the execution manifest.
 
 At least two independent experts with relevant venue/domain or methodology
 competence label every blinded replicate. They do not see arm identity,
-mechanism state, other judges, raw aggregates, or expected treatment direction.
+mechanism state, other experts, raw aggregates, or expected treatment direction.
 They label profile resolution, each declared criterion's applicability,
 finding support, Critical/Major severity, confirmed-target alignment, and remedy
 usefulness. Disagreement is adjudicated by a disclosed expert who also remains
 blind to arm identity. The final closed record conforms to
-`paired_adjudication.schema.json`; pre-adjudication judge records and reasoning
+`paired_adjudication.schema.json`; pre-adjudication expert records and reasoning
 are retained separately. The closed record also binds every raw label row to
 every declared `expert_id`; unanimous raw labels cannot be overwritten by the
 adjudicated value.
@@ -57,11 +57,12 @@ exact model id, reasoning effort, disabled tool surface, isolation settings, and
 every model-visible prompt hash. This plan fixes two replicates for each of six
 items, so it dispatches exactly 24 subject calls: six items x two arms x two
 fresh replicates. Human experts and the disclosed human adjudicator supply the
-required labels. Separately, because this is a decision-relevant `paired_controls` report,
-`heldout-measurement/1.1` requires at least two judge configurations from at
-least two distinct model families. Each judge uses a subscription CLI wherever
-an authenticated subscription is available. Human expert labels do not satisfy
-or replace that model-family requirement.
+required labels. The report selects the paired-controls-only
+`judge_plan.exception: "human_expert_panel"`: `judges` is empty, and the hashed
+suite-owned `paired_adjudication.schema.json` record supplies at least two
+independent blinded human experts plus blind adjudication. No model judge is
+dispatched or represented as an expert, and no human identity is counted as a
+model family.
 
 The default run has an incremental metered API spend ceiling of **USD 0**. It
 consumes subscription quota but sends no request authenticated by an API key.
@@ -74,14 +75,15 @@ over-cap response is retained as partial rather than selectively retried.
 
 The #630 `cross_model_codex_transport.py` citation adapter is not this launcher:
 it intentionally rejects generic prompts and reviewer calls. Before #684
-dispatch, its own explicit call plan and isolated CLI launcher must be frozen and
-validated; an ad-hoc unrecorded `codex exec` call is not an eligible replicate.
+dispatch, `call_plan.json`, `suite_lock.json`, and
+`scripts/run_review_criteria_constructive_value.py` must be frozen and validated;
+an ad-hoc unrecorded `codex exec` call is not an eligible replicate.
 
 There is no API fallback within this run. Quota exhaustion, model
-unavailability, authentication drift, absence of a second subscribed judge
-family, missing controls needed for arm parity, or a transport failure is
-recorded as blocked/partial and dispatch stops. An API run requires a new plan
-version and frozen commit plus, before any call: (1) the reason the subscription
+unavailability, authentication drift, missing controls needed for arm parity,
+or a transport failure is recorded as blocked/partial and dispatch stops. An
+API run requires a new plan version and frozen commit plus, before any call:
+(1) the reason the subscription
 CLI is inadequate, (2) provider and exact model, (3) content class, (4) total
 maximum call count, (5) worst-case USD estimate, and (6) explicit operator
 opt-in to that estimate. API credentials, environment variables, prior CLI
@@ -112,13 +114,14 @@ severity, alignment, and usefulness remain distinct diagnostics.
 ## Evidence and reporting
 
 Use `heldout-measurement/1.1`, `decision_relevant: true`, exactly two subject
-replicates per item, and at least two judge configurations from at least two
-distinct model families. Human expert labels remain required in addition to the
-model judges.
+replicates per item, `judge_plan.exception: "human_expert_panel"`, zero model
+judges, and the hashed closed record for at least two independent blinded human
+experts. `adjudication.applies` is true and binds the same precommitted rubric.
 
-Retain raw subject and judge outputs, exact prompts/hashes, execution manifest,
-environment, blocked attempts, adjudication direction, and agreement. CI may
-validate these artifacts and the scorer but never dispatch subjects or judges.
+Retain raw subject outputs and pre-adjudication expert labels, exact
+prompts/hashes, execution manifest, environment, blocked attempts, adjudication
+direction, and agreement. CI may
+validate these artifacts and the scorer but never dispatch subjects or experts.
 
 The claim ceiling before a valid report is: “the #684 consumer-binding
 mechanism is implemented; its effect on unsupported-finding rate, severity,
@@ -137,3 +140,8 @@ new plan version and new run; results are not pooled.
   required subscription CLI transport first for the existing two-family judge
   rule, and required a separately consented new plan for any API transport. Plan
   1.0 produced no subject, judge, or expert output.
+- 2026-08-11, plan 1.2, before any dispatch: selected the
+  paired-controls-only `human_expert_panel` measurement-contract exception and
+  removed redundant model-judge calls. The exact subject design remains 24
+  contained Codex subscription calls; metered API spend remains USD 0. Plans
+  1.0 and 1.1 produced no subject, judge, or expert output.
