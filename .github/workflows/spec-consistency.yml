@@ -409,6 +409,13 @@ jobs:
         # the unified pytest manifest above.
         run: python3 scripts/check_human_subjects_output_contract.py
 
+      - name: Check review-pathway rule-trace integration (#669)
+        # Pins the closed request/trace schemas, exact selected-profile
+        # predicate/anchor replay, fixed renderer, surface-scoped banned-output
+        # lint, hermetic runtime, and advisory-only non-consumer wiring. Runtime
+        # and mutation tests run through the unified pytest manifest above.
+        run: python3 scripts/check_669_review_pathway_rule_trace.py
+
       - name: Check bibliographic-integrity signal contract (#678)
         # Validates the canonical schema + #651/#660 round-trip fixtures and
         # locks the finalizer/formatter to the one-summary-section,

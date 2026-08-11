@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/human_subjects/review_pathway_rule_trace.schema.json",
+  "title": "Review-pathway rule trace",
+  "description": "A deterministic display of candidate labels and selected-profile predicate work. It never determines, predicts, ranks, approves, clears, or exempts a pathway.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trace_request_id",
+    "request_digest",
+    "context_pointer",
+    "registry_pointer",
+    "resolved_digest",
+    "trace_state",
+    "halt_reasons",
+    "ordering_semantics",
+    "candidate_pathways",
+    "result",
+    "boundary_footer",
+    "trace_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "review-pathway-rule-trace/1.0"},
+    "trace_request_id": {"$ref": "#/$defs/identifier"},
+    "request_digest": {"$ref": "#/$defs/sha256"},
+    "context_pointer": {"$ref": "#/$defs/context_pointer"},
+    "registry_pointer": {"$ref": "#/$defs/registry_pointer"},
+    "resolved_digest": {"$ref": "#/$defs/sha256"},
+    "trace_state": {"enum": ["completed", "jurisdiction_unresolved", "authority_context_unresolved"]},
+    "halt_reasons": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/halt_reason"}
+    },
+    "ordering_semantics": {"const": "display_only_sequence_no_decision_meaning"},
+    "candidate_pathways": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {"$ref": "#/$defs/candidate_trace"}
+    },
+    "result": {"const": "institutional determination required"},
+    "boundary_footer": {
+      "const": "Human-subjects boundary: This output does not authorize recruitment, consent, access to identifiable data, intervention, or data collection."
+    },
+    "trace_digest": {
+      "description": "SHA-256 of canonical JSON for this object with trace_digest omitted.",
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"trace_state": {"const": "completed"}}, "required": ["trace_state"]},
+      "then": {
+        "properties": {
+          "halt_reasons": {"maxItems": 0},
+          "candidate_pathways": {"minItems": 1}
+        }
+      },
+      "else": {
+        "properties": {
+          "halt_reasons": {"minItems": 1},
+          "candidate_pathways": {"maxItems": 0}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "https_url": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://[^\\s\\x00-\\x1f\\x7f]+$"
+    },
+    "declared_value": {
+      "oneOf": [
+        {"type": "boolean"},
+        {"type": "string", "minLength": 1, "maxLength": 512},
+        {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 256}
+        },
+        {"type": "null"}
+      ]
+    },
+    "context_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_record_id", "schema_version", "context_digest"],
+      "properties": {
+        "context_record_id": {"$ref": "#/$defs/identifier"},
+        "schema_version": {"const": "irb-context-record/1.0"},
+        "context_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "registry_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_id", "registry_version", "as_of", "registry_digest"],
+      "properties": {
+        "registry_id": {"$ref": "#/$defs/identifier"},
+        "registry_version": {"$ref": "#/$defs/version"},
+        "as_of": {"type": "string", "format": "date"},
+        "registry_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "profile_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "profile_id", "profile_version", "profile_digest"],
+      "properties": {
+        "axis": {"enum": ["review_ethics", "data_protection"]},
+        "profile_id": {"$ref": "#/$defs/identifier"},
+        "profile_version": {"$ref": "#/$defs/version"},
+        "profile_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "candidate_name_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_kind", "source_locator", "source_url", "effective_date"],
+      "properties": {
+        "source_kind": {"enum": ["institutional_material", "author_declared_question"]},
+        "source_locator": {"type": "string", "minLength": 1, "maxLength": 500},
+        "source_url": {"oneOf": [{"$ref": "#/$defs/https_url"}, {"type": "null"}]},
+        "effective_date": {"oneOf": [{"type": "string", "format": "date"}, {"type": "null"}]}
+      }
+    },
+    "fact_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expression_path",
+        "operator",
+        "predicate_result",
+        "fact_id",
+        "declared_state",
+        "declared_value"
+      ],
+      "properties": {
+        "expression_path": {"type": "string", "pattern": "^/"},
+        "operator": {"enum": ["fact_equals", "fact_in", "fact_contains"]},
+        "predicate_result": {"enum": ["true", "false", "unknown"]},
+        "fact_id": {"$ref": "#/$defs/identifier"},
+        "declared_state": {"enum": ["declared", "unknown", "missing"]},
+        "declared_value": {"$ref": "#/$defs/declared_value"}
+      }
+    },
+    "authority_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "authority_url", "provision", "effective_date"],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "authority_url": {"$ref": "#/$defs/https_url"},
+        "provision": {"type": "string", "minLength": 1, "maxLength": 300},
+        "effective_date": {"type": "string", "format": "date"}
+      }
+    },
+    "predicate_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id",
+        "requirement_digest",
+        "requirement_pointer",
+        "authority_anchor_pointer",
+        "applicability",
+        "fact_bindings",
+        "unresolved_fact_ids",
+        "responsible_authority_role_id",
+        "authority_anchor"
+      ],
+      "properties": {
+        "requirement_id": {"$ref": "#/$defs/identifier"},
+        "requirement_digest": {"$ref": "#/$defs/sha256"},
+        "requirement_pointer": {"type": "string", "pattern": "^/profiles/[0-9]+/requirements/[0-9]+$"},
+        "authority_anchor_pointer": {"type": "string", "pattern": "^/profiles/[0-9]+/requirements/[0-9]+/authority_anchor$"},
+        "applicability": {"enum": ["true", "false", "unknown"]},
+        "fact_bindings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/fact_binding"}
+        },
+        "unresolved_fact_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "responsible_authority_role_id": {"$ref": "#/$defs/identifier"},
+        "authority_anchor": {"$ref": "#/$defs/authority_anchor"}
+      }
+    },
+    "alternative_trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_candidate_id", "predicate"],
+      "properties": {
+        "target_candidate_id": {"$ref": "#/$defs/identifier"},
+        "predicate": {"$ref": "#/$defs/predicate_row"}
+      }
+    },
+    "candidate_trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "profile_ref",
+        "candidate_pathway_name",
+        "candidate_name_source",
+        "matched_predicates",
+        "unmatched_predicates",
+        "unresolved_predicates",
+        "alternative_pathway_triggers",
+        "result"
+      ],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/identifier"},
+        "profile_ref": {"$ref": "#/$defs/profile_ref"},
+        "candidate_pathway_name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "candidate_name_source": {"$ref": "#/$defs/candidate_name_source"},
+        "matched_predicates": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/predicate_row"}},
+        "unmatched_predicates": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/predicate_row"}},
+        "unresolved_predicates": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/predicate_row"}},
+        "alternative_pathway_triggers": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/alternative_trigger"}},
+        "result": {"const": "institutional determination required"}
+      }
+    },
+    "halt_reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "axis", "authority_id", "requirement_id"],
+      "properties": {
+        "code": {
+          "enum": [
+            "JURISDICTION_UNRESOLVED",
+            "APPLICABILITY_UNRESOLVED",
+            "PROFILE_SCOPE_CONFLICT",
+            "AUTHORITY_SOURCE_NOT_CURRENT",
+            "OVERLAY_BASE_UNRESOLVED"
+          ]
+        },
+        "axis": {"enum": ["review_ethics", "data_protection"]},
+        "authority_id": {"oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]},
+        "requirement_id": {"oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]}
+      }
+    }
+  }
+}

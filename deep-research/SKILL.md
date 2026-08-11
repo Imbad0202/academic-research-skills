@@ -237,6 +237,7 @@ User: "Research [topic]"
      |   - Integrity verdict only: CLEARED / CONDITIONAL / BLOCKED
      |   - Human subjects: readiness and authorization reported separately; institutional determination required
      |   - Authority-bound planning: exact requirement IDs + actor/consumer scope only after the #666 replay-validated resolved-context gate
+     |   - Candidate rule trace: display only a replay-validated and surface-linted #669 artifact; never use it as a pathway result or workflow input
      |   - Packet structure: consume only a replay-validated #667 manifest; deterministic status never becomes authorization or content adequacy
      |   - Content coverage: consume only a replay-validated #681 `LLM-ADVISORY`; preserve deterministic status and report efficacy as `UNMEASURED`
      |
@@ -461,6 +462,9 @@ See `academic-pipeline/SKILL.md` for the complete workflow.
 | `shared/references/human_subjects_authority_protocol.md` | Exact authority selection, replay validation, actor/consumer filtering, and fail-closed resolved-context gate | ethics_review, research_architect |
 | `shared/human_subjects_authority_registry.json` | Bounded jurisdiction profiles with exact requirement IDs, authority anchors, obligated actors, and consumer scopes | ethics_review, research_architect |
 | `shared/contracts/human_subjects/resolved_authority_context.schema.json` | Pointer-only resolved-context shape; consumers still require deterministic replay validation | ethics_review, research_architect |
+| `shared/references/review_pathway_rule_trace_protocol.md` | Candidate-name ownership, exact selected-profile predicate partition, replay, render, surface lint, and non-consumer boundary (#669) | ethics_review, research_architect |
+| `shared/contracts/human_subjects/review_pathway_trace_request.schema.json` | Closed caller-owned candidate mapping; every selected-profile `pathway_trace` requirement is accounted for exactly once | dispatching layer |
+| `shared/contracts/human_subjects/review_pathway_rule_trace.schema.json` | Closed candidate-only predicate trace; replay and surface lint remain mandatory | ethics_review, research_architect |
 | `shared/references/submission_packet_manifest_protocol.md` | Deterministic packet inventory, authority replay, status, and non-authorization boundary (#667) | ethics_review, research_architect |
 | `shared/contracts/human_subjects/submission_packet_manifest.schema.json` | Pointer-only deterministic packet-manifest shape; consumers still require exact replay validation | ethics_review, research_architect |
 | `shared/references/authority_content_coverage_advisory_protocol.md` | Replay-bound authority-profile content observations, evidence-row/1.1 provenance, and noninterference boundary (#681) | ethics_review, research_architect |

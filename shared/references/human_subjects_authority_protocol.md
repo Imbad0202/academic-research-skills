@@ -238,8 +238,15 @@ digest-to-input binding, and gate derivation.
   institutional acceptance, or any authority pointer/digest.
 - #668 remains valid in `artifact_agnostic` mode and no profile may rewrite its
   source correspondence or committee authority.
-- #669 may later consume requirement and authority-anchor pointers for a rule
-  trace, never a determination.
+- #669 consumes every selected-profile requirement scoped to `pathway_trace`
+  only after exact #666 replay, then projects exact fact occurrences,
+  authoritative-decision-maker role ids, and authority anchors under
+  `shared/references/review_pathway_rule_trace_protocol.md`. Its caller-owned
+  candidate names and ordering are display-only; the trace never determines,
+  predicts, ranks, approves, clears, exempts, authorizes, or gates. A missing
+  profile preserves `JURISDICTION_UNRESOLVED`. The protocol's narrow display of
+  requirement-level unknown predicates does not open or alter this resolver's
+  `profile_dependent_result_allowed` gate.
 - #680 owns correction and migration of mixed-jurisdiction reference prose.
 
 #666 itself changes no user-facing output. It emits no verdict, pathway,

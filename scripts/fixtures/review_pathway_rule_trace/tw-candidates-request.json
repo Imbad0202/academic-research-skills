@@ -1,0 +1,63 @@
+{
+  "schema_version": "review-pathway-trace-request/1.0",
+  "trace_request_id": "fixture.tw-candidate-pathways",
+  "context_pointer": {
+    "context_record_id": "fixture.tw-gdpr-two-axis",
+    "schema_version": "irb-context-record/1.0",
+    "context_digest": "ec3261d014ce87dab514aa3980bc5825045c41219640c39767a637b19e229c72"
+  },
+  "registry_pointer": {
+    "registry_id": "human-subjects-authority-v1",
+    "registry_version": "2026-08-09.1",
+    "as_of": "2026-08-09",
+    "registry_digest": "eedeeb15ea06471c6df7fe337331d3e79886dcb6c799d764edf6c6a7d884ef73"
+  },
+  "resolved_digest": "5b5c1736289af448175dfa60326160394606e725b21bb6c947306e8d4cccac38",
+  "ordering_semantics": "display_only_sequence_no_decision_meaning",
+  "candidate_pathways": [
+    {
+      "candidate_id": "candidate.data.route",
+      "profile_ref": {
+        "axis": "data_protection",
+        "profile_id": "eu.gdpr.research-core-bounded",
+        "profile_version": "2018-05-25",
+        "profile_digest": "53d4c3783d35d8f60c883b6254b8e43831f5d3fc87fa0e6e0304d24bc7cc5cbe"
+      },
+      "candidate_pathway_name": "Data Protection Route",
+      "candidate_name_source": {
+        "source_kind": "author_declared_question",
+        "source_locator": "Author data question",
+        "source_url": null,
+        "effective_date": null
+      },
+      "predicate_requirement_ids": [
+        "eu.gdpr.article-13.direct-collection-information",
+        "eu.gdpr.article-14.indirect-collection-information",
+        "eu.gdpr.article-6.lawful-basis",
+        "eu.gdpr.article-89.1.research-safeguards",
+        "eu.gdpr.article-89.2.member-state-derogation",
+        "eu.gdpr.article-9.special-category-research"
+      ]
+    },
+    {
+      "candidate_id": "candidate.tw.committee_route",
+      "profile_ref": {
+        "axis": "review_ethics",
+        "profile_id": "tw.mohw.human-subjects-research-act",
+        "profile_version": "2019-01-02",
+        "profile_digest": "d01b501c7e5d3c3c3009ea26071c0743f60469fc80ecc64a7f64dc7bb9aa665c"
+      },
+      "candidate_pathway_name": "Committee Route",
+      "candidate_name_source": {
+        "source_kind": "author_declared_question",
+        "source_locator": "Author question TW",
+        "source_url": null,
+        "effective_date": null
+      },
+      "predicate_requirement_ids": [
+        "tw.hsra.article-14.consent-information",
+        "tw.hsra.article-7.committee-composition"
+      ]
+    }
+  ]
+}

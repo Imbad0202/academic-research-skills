@@ -421,6 +421,14 @@ id = "666-human-subjects-authority"
 path = "scripts/test_resolve_human_subjects_authority.py"
 
 [[pytest]]
+id = "669-review-pathway-rule-trace"
+path = "scripts/test_review_pathway_rule_trace.py"
+
+[[pytest]]
+id = "669-review-pathway-integration"
+path = "scripts/test_check_669_review_pathway_rule_trace.py"
+
+[[pytest]]
 id = "667-submission-packet-manifest"
 path = "scripts/test_build_submission_packet_manifest.py"
 

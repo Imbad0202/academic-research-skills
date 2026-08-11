@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/human_subjects/review_pathway_trace_request.schema.json",
+  "title": "Review-pathway trace request",
+  "description": "Caller-owned candidate labels and an exact partition of selected-profile pathway-trace requirements. The request supplies navigation labels only; it is not a pathway determination.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trace_request_id",
+    "context_pointer",
+    "registry_pointer",
+    "resolved_digest",
+    "ordering_semantics",
+    "candidate_pathways"
+  ],
+  "properties": {
+    "schema_version": {"const": "review-pathway-trace-request/1.0"},
+    "trace_request_id": {"$ref": "#/$defs/identifier"},
+    "context_pointer": {"$ref": "#/$defs/context_pointer"},
+    "registry_pointer": {"$ref": "#/$defs/registry_pointer"},
+    "resolved_digest": {"$ref": "#/$defs/sha256"},
+    "ordering_semantics": {"const": "display_only_sequence_no_decision_meaning"},
+    "candidate_pathways": {
+      "type": "array",
+      "maxItems": 128,
+      "description": "May be empty only when authority context is unresolved. Candidate ids, exact profile pins, ordering, and complete non-overlapping requirement coverage are replay-checker invariants.",
+      "items": {"$ref": "#/$defs/candidate_pathway"}
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "https_url": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://[^\\s\\x00-\\x1f\\x7f]+$"
+    },
+    "context_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_record_id", "schema_version", "context_digest"],
+      "properties": {
+        "context_record_id": {"$ref": "#/$defs/identifier"},
+        "schema_version": {"const": "irb-context-record/1.0"},
+        "context_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "registry_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_id", "registry_version", "as_of", "registry_digest"],
+      "properties": {
+        "registry_id": {"$ref": "#/$defs/identifier"},
+        "registry_version": {"$ref": "#/$defs/version"},
+        "as_of": {"type": "string", "format": "date"},
+        "registry_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "candidate_name_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_kind", "source_locator", "source_url", "effective_date"],
+      "properties": {
+        "source_kind": {"enum": ["institutional_material", "author_declared_question"]},
+        "source_locator": {"type": "string", "minLength": 1, "maxLength": 500},
+        "source_url": {
+          "oneOf": [{"$ref": "#/$defs/https_url"}, {"type": "null"}]
+        },
+        "effective_date": {
+          "oneOf": [{"type": "string", "format": "date"}, {"type": "null"}]
+        }
+      }
+    },
+    "profile_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "profile_id", "profile_version", "profile_digest"],
+      "properties": {
+        "axis": {"enum": ["review_ethics", "data_protection"]},
+        "profile_id": {"$ref": "#/$defs/identifier"},
+        "profile_version": {"$ref": "#/$defs/version"},
+        "profile_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "candidate_pathway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "profile_ref",
+        "candidate_pathway_name",
+        "candidate_name_source",
+        "predicate_requirement_ids"
+      ],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/identifier"},
+        "profile_ref": {"$ref": "#/$defs/profile_ref"},
+        "candidate_pathway_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "A display-only name, never determination-shaped prose. Runtime validation requires NFKC-normalized, single-line inert text; lint limits it to 12 words without sentence punctuation or subject-plus-assertion grammar and permits a pathway term only in this exact field."
+        },
+        "candidate_name_source": {"$ref": "#/$defs/candidate_name_source"},
+        "predicate_requirement_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        }
+      }
+    }
+  }
+}

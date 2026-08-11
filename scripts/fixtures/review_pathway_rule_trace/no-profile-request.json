@@ -1,0 +1,18 @@
+{
+  "schema_version": "review-pathway-trace-request/1.0",
+  "trace_request_id": "fixture.no-profile-pathway-trace",
+  "context_pointer": {
+    "context_record_id": "fixture.no-profile-despite-hints",
+    "schema_version": "irb-context-record/1.0",
+    "context_digest": "c3b87f0c758e77d7e84643d1d40a32d2c97ff3372d214242f141bd8a97b9d181"
+  },
+  "registry_pointer": {
+    "registry_id": "human-subjects-authority-v1",
+    "registry_version": "2026-08-09.1",
+    "as_of": "2026-08-09",
+    "registry_digest": "eedeeb15ea06471c6df7fe337331d3e79886dcb6c799d764edf6c6a7d884ef73"
+  },
+  "resolved_digest": "1db7577eed16e892d756559ddfd2410476e5359b00e58ac832a554fc397aa664",
+  "ordering_semantics": "display_only_sequence_no_decision_meaning",
+  "candidate_pathways": []
+}

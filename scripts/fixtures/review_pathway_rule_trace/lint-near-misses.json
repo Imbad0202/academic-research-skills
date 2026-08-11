@@ -1,0 +1,72 @@
+{
+  "schema_version": "review-pathway-lint-fixtures/1.0",
+  "passing_candidate_names": [
+    "Convened Board",
+    "Exempt",
+    "Expedited",
+    "Full Board",
+    "NHSR"
+  ],
+  "failing_surfaces": [
+    {
+      "fixture_id": "approved-fullwidth",
+      "class": "approved",
+      "text": "ＡＰＰＲＯＶＥＤ"
+    },
+    {
+      "fixture_id": "approved-zero-width",
+      "class": "unicode_format",
+      "text": "A​pproved"
+    },
+    {
+      "fixture_id": "bare-pathway-result",
+      "class": "bare_pathway",
+      "text": "Result: Exempt"
+    },
+    {
+      "fixture_id": "candidate-prefix-near-miss",
+      "class": "candidate_context_prefix",
+      "text": "Candidate pathway examined - Expedited"
+    },
+    {
+      "fixture_id": "candidate-prose",
+      "class": "candidate_prose",
+      "text": "This study is Exempt"
+    },
+    {
+      "fixture_id": "cleared-bare",
+      "class": "cleared",
+      "text": "Cleared"
+    },
+    {
+      "fixture_id": "hedged-determination",
+      "class": "hedged_determination",
+      "text": "The study may be exempt"
+    },
+    {
+      "fixture_id": "low-risk-thin-space",
+      "class": "low_risk",
+      "text": "Low risk"
+    },
+    {
+      "fixture_id": "no-irb-underscore",
+      "class": "whitespace",
+      "text": "No_IRB_required"
+    },
+    {
+      "fixture_id": "no-irb-whitespace",
+      "class": "whitespace",
+      "text": "No IRB\tneeded"
+    },
+    {
+      "fixture_id": "probability-percent",
+      "class": "probability",
+      "text": "There is a 75 % chance"
+    },
+    {
+      "fixture_id": "timeline-estimate",
+      "class": "timeline",
+      "text": "It takes 2 weeks"
+    }
+  ]
+}

@@ -102,6 +102,7 @@ For Moderate or above: Include explicit "Responsible Use" statement
 ### 7. Human Subjects Ethics
 - [ ] Does the research involve human subjects? (collecting, using, or analyzing human-related data)
 - [ ] Candidate-pathway facts and unresolved institutional questions are listed without selecting a pathway
+- [ ] Any displayed #669 candidate rule trace is exact-replay validated and surface-linted, preserves unresolved predicates and authority anchors, and is not used as a result or action source
 - [ ] Any authority-bound consent or participant-information check names the exact applicable `requirement_id`; no universal consent-element list is invented
 - [ ] Each consumed requirement is actor-matched and routed only to a matching `consumer_scopes` use: participant-facing review uses `participant_information`, packet review uses `submission_packet`, data-governance review uses `data_governance`, committee-governance rows remain external institutional/committee dependencies rather than investigator tasks, and `pathway_trace` is trace/provenance only rather than an action assignment
 - [ ] Data terminology is used according to `shared/references/irb_terminology_glossary.md`; anonymity, pseudonymization, and de-identification are not treated as universal synonyms
@@ -118,6 +119,8 @@ Human-subjects reporting uses three independent fields:
 Treat `references/irb_decision_tree.md` as a portable navigation aid, never as authority. Authority-bound review may consume a serialized result only when the permitted dispatching layer supplies its exactly bound context and registry and confirms a successful `validate_resolved_context(result, context, registry)` replay from `scripts/resolve_human_subjects_authority.py`. This role must not simulate or claim that replay check.
 
 Only when `resolution_state=resolved` and `downstream_gate.profile_dependent_result_allowed=true` may this review dereference authority rows. Filter to `requirement_results[].applicability=true`; require the consumer scope appropriate to the reviewed artifact; preserve each exact `requirement_id`, `obligated_actor`, `consumer_scopes`, `requirement_pointer`, and `authority_anchor_pointer`; then follow `requirement_pointer` into the exactly bound registry for scoped expectations and use `authority_anchor_pointer` for provenance. Keep parallel authorities separate, and report requirements held by a committee, controller, or other actor as external-actor dependencies rather than investigator omissions.
+
+For a separately dispatched #669 candidate rule trace, consume only when the permitted dispatching layer supplies the exact request, context, registry, resolved artifact, trace, and optional rendering and confirms successful `validate_review_pathway_rule_trace(...)` replay plus `check_review_pathway_output.py` surface lint under `shared/references/review_pathway_rule_trace_protocol.md`. Preserve candidate labels, matched/unmatched/unresolved buckets, exact fact occurrences, responsible authority role ids, requirement/anchor pointers, anchors, display-only ordering, fixed result, and footer. Do not simulate replay, create or repartition a mapping, turn an unknown predicate into true/false, describe a candidate as likely/usual/preferred, or use this advisory as readiness, authorization, acceptance, an action assignment, an integrity verdict, a checkpoint, or any workflow input. Its narrow display of requirement-level unknowns does not open the #666 gate.
 
 For deterministic submission-packet structure, consume only a manifest that the permitted dispatching layer has replay-validated with `validate_submission_packet_manifest(manifest, inventory, packet_root, context=..., registry=..., resolved=...)` from `scripts/build_submission_packet_manifest.py`. This role must not simulate that replay, inspect packet prose, or derive a structural status itself. Preserve `entries[].status`, `packet_observations[].status`, `unresolved_reasons[].status`, `acceptance_boundary.status`, all pointers, the actor/holder boundary, and authorization copy-through exactly. `DOCUMENTED` means only that listed structure was located consistently; `ACCEPTANCE_UNVERIFIED` is not approval. The deterministic layer never interprets, evaluates, or copies registry `structured_expectations` or evidence descriptions; exact whole-row bytes are hashed only for replay integrity. Content coverage remains a separate #681 advisory surface.
 
@@ -146,6 +149,8 @@ If authority selection, a bound input, replay-validation evidence, or the gate i
 - `shared/references/human_subjects_authority_protocol.md` — exact selection, replay, and consumer rules
 - `shared/human_subjects_authority_registry.json` — bounded actor/scope-tagged requirements
 - `shared/contracts/human_subjects/resolved_authority_context.schema.json` — pointer-only result shape; schema alone is not replay validation
+- `shared/references/review_pathway_rule_trace_protocol.md` — #669 candidate ownership, exact predicate replay, renderer/lint, and non-consumer rules
+- `shared/contracts/human_subjects/review_pathway_rule_trace.schema.json` — closed candidate-only trace shape; schema alone is not replay validation
 - `shared/references/submission_packet_manifest_protocol.md` — deterministic packet structure, replay, and status boundaries
 - `shared/contracts/human_subjects/submission_packet_manifest.schema.json` — pointer-only #667 manifest shape; schema alone is not replay validation
 - `shared/references/authority_content_coverage_advisory_protocol.md` — #681 draft, replay, aggregation, and noninterference rules
@@ -205,6 +210,7 @@ Scope: This verdict covers AI-assisted research integrity only. It is not human-
 | review_pathway | institutional determination required |
 | authority_context | replay-validated resolved context + bound digests / unavailable — missing or unresolved |
 | profile_dependent_result_allowed | true / false |
+| candidate rule trace | exact replay-validated and surface-linted #669 artifact / unavailable — no validated trace |
 | applicable consent/information requirement IDs | exact IDs / unavailable — authority selection unresolved |
 | actor and consumer scope per requirement | `requirement_id` -> `obligated_actor`; `consumer_scopes` |
 | requirement and authority-anchor pointers | `requirement_id` -> `requirement_pointer`; `authority_anchor_pointer` |

@@ -398,6 +398,63 @@ self-consistent but forged manifest digest is insufficient.
 Protocol: `shared/references/submission_packet_manifest_protocol.md`. Spec:
 `docs/design/2026-08-09-667-submission-packet-manifest-spec.md`.
 
+## Review-pathway rule trace (#669)
+
+Two closed Draft 2020-12 contracts define the determination-adjacent trace:
+
+- `shared/contracts/human_subjects/review_pathway_trace_request.schema.json`
+  binds caller-owned candidate question labels to an exact, complete partition
+  of every selected-profile `pathway_trace` requirement; and
+- `shared/contracts/human_subjects/review_pathway_rule_trace.schema.json`
+  carries matched, unmatched, and unresolved predicate work, profile-local
+  alternatives, exact fact occurrences, responsible authority roles, exact
+  requirement/anchor pointers, the fixed institutional result, and the #665
+  footer.
+
+The standard-library-only builder first replays the exact #666 context,
+registry, and resolved artifact. It never invents a candidate name, profile,
+predicate, authority anchor, determination, probability, rank, or timeline. All
+selected profiles on both axes are accounted for, but candidates and
+alternatives stay profile-local. An unknown requirement fact remains unresolved;
+a missing profile halts without candidate rows at `JURISDICTION_UNRESOLVED`.
+
+Build, replay, render, and lint only explicitly named artifacts:
+
+```bash
+python scripts/build_review_pathway_rule_trace.py build \
+  --request pathway-trace-request.json \
+  --context context.json \
+  --registry shared/human_subjects_authority_registry.json \
+  --resolved resolved-authority-context.json \
+  --output pathway-rule-trace.json
+
+python scripts/build_review_pathway_rule_trace.py validate \
+  --request pathway-trace-request.json \
+  --context context.json \
+  --registry shared/human_subjects_authority_registry.json \
+  --resolved resolved-authority-context.json \
+  --trace pathway-rule-trace.json
+
+python scripts/build_review_pathway_rule_trace.py render \
+  --request pathway-trace-request.json \
+  --context context.json \
+  --registry shared/human_subjects_authority_registry.json \
+  --resolved resolved-authority-context.json \
+  --trace pathway-rule-trace.json \
+  --output pathway-rule-trace.md
+
+python scripts/check_review_pathway_output.py \
+  --trace-json pathway-rule-trace.json \
+  --rendered pathway-rule-trace.md
+```
+
+The banned-output lint is surface-scoped to those named generated files and
+permits a pathway term only in the exact candidate grammar. Successful replay or
+lint never changes a readiness, authorization, acceptance, verdict, checkpoint,
+or workflow gate. Protocol:
+`shared/references/review_pathway_rule_trace_protocol.md`. Spec:
+`docs/design/2026-08-11-669-review-pathway-rule-trace-spec.md`.
+
 ## Authority-profile content-coverage advisory (#681)
 
 `shared/contracts/human_subjects/content_coverage_advisory.schema.json` defines

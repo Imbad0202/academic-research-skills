@@ -1,0 +1,77 @@
+{
+  "schema_version": "review-pathway-trace-request/1.0",
+  "trace_request_id": "fixture.us-candidate-pathways",
+  "context_pointer": {
+    "context_record_id": "fixture.us-gdpr-two-axis",
+    "schema_version": "irb-context-record/1.0",
+    "context_digest": "af177482b8c2af388af6d68bbe9118cd49fbc1ee45edbdbef9158fc482208319"
+  },
+  "registry_pointer": {
+    "registry_id": "human-subjects-authority-v1",
+    "registry_version": "2026-08-09.1",
+    "as_of": "2026-08-09",
+    "registry_digest": "eedeeb15ea06471c6df7fe337331d3e79886dcb6c799d764edf6c6a7d884ef73"
+  },
+  "resolved_digest": "10eb77fac196edb3dd00ba038910b7512a129706a6fdfc00e260225810096386",
+  "ordering_semantics": "display_only_sequence_no_decision_meaning",
+  "candidate_pathways": [
+    {
+      "candidate_id": "candidate.data.route",
+      "profile_ref": {
+        "axis": "data_protection",
+        "profile_id": "eu.gdpr.research-core-bounded",
+        "profile_version": "2018-05-25",
+        "profile_digest": "53d4c3783d35d8f60c883b6254b8e43831f5d3fc87fa0e6e0304d24bc7cc5cbe"
+      },
+      "candidate_pathway_name": "Data Protection Route",
+      "candidate_name_source": {
+        "source_kind": "author_declared_question",
+        "source_locator": "Author data question",
+        "source_url": null,
+        "effective_date": null
+      },
+      "predicate_requirement_ids": [
+        "eu.gdpr.article-13.direct-collection-information",
+        "eu.gdpr.article-14.indirect-collection-information",
+        "eu.gdpr.article-6.lawful-basis",
+        "eu.gdpr.article-89.1.research-safeguards",
+        "eu.gdpr.article-89.2.member-state-derogation",
+        "eu.gdpr.article-9.special-category-research"
+      ]
+    },
+    {
+      "candidate_id": "candidate.us.route_a",
+      "profile_ref": {
+        "axis": "review_ethics",
+        "profile_id": "us.hhs.45-cfr-46.subpart-a",
+        "profile_version": "2019-01-21",
+        "profile_digest": "46fd0b39b1ca1706363e1163c2b4a1149bb2ff22fc2f64c5426fc3ec8b6b0fd4"
+      },
+      "candidate_pathway_name": "Exempt",
+      "candidate_name_source": {
+        "source_kind": "author_declared_question",
+        "source_locator": "Author question A",
+        "source_url": null,
+        "effective_date": null
+      },
+      "predicate_requirement_ids": ["us.45cfr46.107.irb-composition"]
+    },
+    {
+      "candidate_id": "candidate.us.route_b",
+      "profile_ref": {
+        "axis": "review_ethics",
+        "profile_id": "us.hhs.45-cfr-46.subpart-a",
+        "profile_version": "2019-01-21",
+        "profile_digest": "46fd0b39b1ca1706363e1163c2b4a1149bb2ff22fc2f64c5426fc3ec8b6b0fd4"
+      },
+      "candidate_pathway_name": "Full Board",
+      "candidate_name_source": {
+        "source_kind": "institutional_material",
+        "source_locator": "Institutional category notice B",
+        "source_url": null,
+        "effective_date": null
+      },
+      "predicate_requirement_ids": ["us.45cfr46.116.informed-consent"]
+    }
+  ]
+}

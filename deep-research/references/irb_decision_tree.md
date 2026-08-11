@@ -14,6 +14,11 @@ authority rows available to this aid are in
 is a `bounded_subset`, not a complete statement of any jurisdiction's law or an
 institution's policy.
 
+When a caller explicitly requests candidate rule-trace display, the derived
+handoff is governed by
+`shared/references/review_pathway_rule_trace_protocol.md`. This file never
+supplies candidate names or unanchored predicates to that handoff.
+
 > **Authority boundary (#665/#666/#680):** Mixed-jurisdiction pathway mappings are not part of this reference. ARS output must use `institutional determination required`; applicability, requirements, timing, and authorization remain with the responsible institution and an exactly selected authority profile. Missing or unknown facts remain unresolved and never become a review determination.
 
 ---
@@ -86,12 +91,36 @@ useful protocol detail but are not predicates or requirement rows in the current
 Do not convert any single fact or combination in this list into a pathway,
 clearance, readiness, compliance, or authorization result.
 
+### 1.3 Derived #669 candidate rule trace
+
+The #669 runtime may display only an explicit, replay-bound request that
+partitions every selected-profile `pathway_trace` requirement. Candidate labels
+come from named institutional material or an author-declared question, never
+from this reference. Both authority axes are accounted for, while alternatives
+remain within one exact profile; a GDPR/data-protection route is never presented
+as an IRB route.
+
+Every emitted row backpoints to an exact requirement and authority anchor in
+section 2. An unknown fact stays in `Unresolved predicates` with the exact
+`authoritative_decision_maker.role_id`. No selected profile means no candidate
+rows and an exact `JURISDICTION_UNRESOLVED` halt. The only result is
+`institutional determination required`.
+
+Consumers must receive confirmation that both
+`validate_review_pathway_rule_trace(...)` and the surface-scoped
+`check_review_pathway_output.py` lint succeeded against the exact named files.
+The trace is display-only and cannot update readiness, authorization, an action,
+a verdict, a checkpoint, or any workflow state.
+
 ---
 
 ## 2. Exact Bounded Requirement Pointers
 
-Use a row below only after the matching profile has been selected by exact
-id/version/digest and the #666 resolved artifact permits profile-dependent use.
+Use a row below for action planning only after the matching profile has been
+selected by exact id/version/digest and the #666 resolved artifact permits
+profile-dependent use. The separately replayed #669 display-only trace may
+preserve a requirement-level unknown under its narrow protocol exception, but
+that row cannot become an action or result.
 The link is the row's primary-source anchor; the requirement id is the navigation
 pointer. The table is deliberately exhaustive only for the current bounded
 registry, not for the underlying authorities.
