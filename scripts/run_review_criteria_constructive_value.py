@@ -64,6 +64,23 @@ MODEL_RE = re.compile(r"^gpt-[a-z0-9][a-z0-9._-]{0,123}$")
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 VERSION_RE = re.compile(r"\bcodex-cli\s+(\d+)\.(\d+)\.(\d+)\b")
+PROVIDER_SCHEMA_STRIPPED_KEYWORDS = frozenset(
+    {"$schema", "$id", "title", "uniqueItems", "minLength", "maxLength"}
+)
+PROVIDER_SCHEMA_ALLOWED_KEYWORDS = frozenset(
+    {
+        "type",
+        "const",
+        "enum",
+        "properties",
+        "required",
+        "additionalProperties",
+        "items",
+        "minItems",
+        "maxItems",
+        "pattern",
+    }
+)
 BLINDING = [
     "arm_identity",
     "mechanism_state",
@@ -261,14 +278,38 @@ def _validate(schema_path: Path, value: Any, label: str) -> None:
         _fail(f"{label} schema failure at {location}: {first.message}")
 
 
+def _project_provider_response_schema(node: Any) -> Any:
+    """Remove local-only assertions from the Codex/OpenAI response schema."""
+    if not isinstance(node, dict):
+        _fail("provider response schema source node must be an object")
+    projected: dict[str, Any] = {}
+    for key, value in node.items():
+        if key in PROVIDER_SCHEMA_STRIPPED_KEYWORDS:
+            continue
+        if key == "properties":
+            if not isinstance(value, dict):
+                _fail("provider response schema properties must be an object")
+            projected[key] = {
+                name: _project_provider_response_schema(child)
+                for name, child in value.items()
+            }
+        elif key == "items":
+            projected[key] = _project_provider_response_schema(value)
+        else:
+            projected[key] = value
+    return projected
+
+
 def _validate_provider_response_schema(node: Any, path: str = "$") -> None:
     """Pin the strict response-schema subset required by Codex/OpenAI."""
-    if isinstance(node, list):
-        for index, value in enumerate(node):
-            _validate_provider_response_schema(value, f"{path}[{index}]")
-        return
     if not isinstance(node, dict):
-        return
+        _fail(f"provider response schema node must be an object at {path}")
+    unsupported = set(node) - PROVIDER_SCHEMA_ALLOWED_KEYWORDS
+    if unsupported:
+        _fail(
+            f"provider response schema has unsupported keywords at {path}: "
+            f"{sorted(unsupported)}"
+        )
     if ("const" in node or "enum" in node) and "type" not in node:
         _fail(f"provider response schema requires explicit type at {path}")
     if node.get("type") == "object":
@@ -278,8 +319,10 @@ def _validate_provider_response_schema(node: Any, path: str = "$") -> None:
             _fail(f"provider response object must be closed at {path}")
         if not isinstance(required, list) or set(required) != set(properties):
             _fail(f"provider response object must require every property at {path}")
-    for key, value in node.items():
-        _validate_provider_response_schema(value, f"{path}.{key}")
+        for key, value in properties.items():
+            _validate_provider_response_schema(value, f"{path}.properties[{key!r}]")
+    if "items" in node:
+        _validate_provider_response_schema(node["items"], f"{path}.items")
 
 
 def _repo_ref(ref: str) -> Path:
@@ -407,7 +450,8 @@ def validate_assets() -> dict[str, Any]:
         EXECUTION_SCHEMA_PATH,
     ):
         _schema(schema_path)
-    _validate_provider_response_schema(_schema(OUTPUT_SCHEMA_PATH))
+    provider_schema = _project_provider_response_schema(_schema(OUTPUT_SCHEMA_PATH))
+    _validate_provider_response_schema(provider_schema)
     return {
         "suite": SUITE,
         "assets": len(assets),
@@ -878,7 +922,9 @@ def _run_one(
         child_home.mkdir(mode=0o700)
         work.mkdir(mode=0o700)
         schema = temp / "subject-output.schema.json"
-        _atomic_create(schema, _safe_explicit_file(OUTPUT_SCHEMA_PATH))
+        provider_schema = _project_provider_response_schema(_schema(OUTPUT_SCHEMA_PATH))
+        _validate_provider_response_schema(provider_schema)
+        _atomic_create(schema, _json_bytes(provider_schema))
         _copy_auth(_codex_home(environ) / "auth.json", child_home / "auth.json")
         output = temp / "last-message.json"
         child_env = {

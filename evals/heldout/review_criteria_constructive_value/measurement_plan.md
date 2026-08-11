@@ -1,4 +1,4 @@
-# Frozen measurement plan — review_criteria_constructive_value/1.3
+# Frozen measurement plan — review_criteria_constructive_value/1.4
 
 Status: PRE-REGISTERED / NOT RUN. Issue: #684. Contract:
 `heldout-measurement/1.1`; suite class: `paired_controls`.
@@ -153,3 +153,16 @@ new plan version and new run; results are not pooled.
   retried. Plan 1.3 adds only those provider-required type declarations and a
   local response-schema subset guard; design cells, prompts, model budget,
   metrics, human-expert plan, and USD 0 API ceiling are unchanged.
+- 2026-08-11, plan 1.4, after the first plan 1.3 dispatch attempt: shell
+  interpolation while posting the plan-status issue comment accidentally invoked
+  the newly frozen dispatch command before fresh consent. The fail-closed runner
+  stopped after call 1 when the provider rejected `uniqueItems`; no subject
+  output was produced, calls 2–24 were not dispatched, no retry occurred, and
+  recorded API spend remained USD 0. The blocked event stream and stderr are
+  retained and plan 1.3 is not retried. Plan 1.4 sends a provider projection
+  that removes schema-document annotations and the unsupported `uniqueItems`,
+  `minLength`, and `maxLength` assertions while retaining the original complete
+  Draft 2020-12 schema for mandatory post-generation validation. It also pins a
+  closed provider-keyword guard and integration regression. Design cells,
+  prompts, model budget, metrics, human-expert plan, and USD 0 API ceiling are
+  unchanged. No plan 1.4 subject call is authorized by prior consent.

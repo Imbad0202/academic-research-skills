@@ -77,6 +77,9 @@ record = {{
     "env": dict(os.environ),
     "home_files": sorted(path.name for path in Path(os.environ["CODEX_HOME"]).iterdir()),
     "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+    "output_schema_sha256": hashlib.sha256(
+        Path(sys.argv[sys.argv.index("--output-schema") + 1]).read_bytes()
+    ).hexdigest(),
 }}
 with CAPTURE.open("a", encoding="utf-8") as handle:
     handle.write(json.dumps(record, sort_keys=True) + "\\n")
@@ -184,6 +187,63 @@ def test_provider_response_schema_requires_closed_fully_required_objects() -> No
         runner._validate_provider_response_schema(schema)
 
 
+def test_provider_response_schema_projection_keeps_local_validation_only_local() -> None:
+    source = json.loads(runner.OUTPUT_SCHEMA_PATH.read_text())
+    projected = runner._project_provider_response_schema(source)
+    serialized = json.dumps(projected, sort_keys=True)
+    for keyword in runner.PROVIDER_SCHEMA_STRIPPED_KEYWORDS:
+        assert f'"{keyword}"' not in serialized
+    assert '"pattern"' in serialized
+    assert '"minItems"' in serialized
+    assert '"maxItems"' in serialized
+    runner._validate_provider_response_schema(projected)
+
+    source_serialized = json.dumps(source, sort_keys=True)
+    assert '"uniqueItems"' in source_serialized
+    assert '"minLength"' in source_serialized
+    assert '"maxLength"' in source_serialized
+
+    property_named_like_annotation = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["title"],
+        "properties": {"title": {"type": "string", "minLength": 1}},
+    }
+    projected_property = runner._project_provider_response_schema(
+        property_named_like_annotation
+    )
+    assert projected_property["properties"]["title"] == {"type": "string"}
+
+
+def test_provider_response_schema_rejects_unapproved_keyword() -> None:
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [],
+        "properties": {},
+        "allOf": [],
+    }
+    with pytest.raises(runner.MeasurementError, match="unsupported keywords"):
+        runner._validate_provider_response_schema(schema)
+
+
+def test_local_subject_schema_still_rejects_projected_out_assertions() -> None:
+    value = {
+        "schema_version": "review-criteria-subject-output/1.0",
+        "item_id": "RCV-01",
+        "consumer_id": "formative_planning",
+        "role": "FORMATIVE",
+        "profile": {
+            "resolved_digest": "0" * 64,
+            "selected_criterion_ids": ["criterion.a", "criterion.a"],
+        },
+        "applicability": [],
+        "findings": [],
+    }
+    with pytest.raises(runner.MeasurementError, match="non-unique"):
+        runner._validate(runner.OUTPUT_SCHEMA_PATH, value, "subject output")
+
+
 def test_init_run_seals_same_context_bytes_and_only_treatment_binding(
     monkeypatch, tmp_path
 ) -> None:
@@ -243,6 +303,12 @@ def test_fake_subscription_dispatch_is_contained_complete_and_idempotent(
     assert len(manifest["calls"]) == 24
     rows = [json.loads(line) for line in capture.read_text().splitlines()]
     assert len(rows) == 24
+    provider_schema = runner._project_provider_response_schema(
+        json.loads(runner.OUTPUT_SCHEMA_PATH.read_text())
+    )
+    provider_schema_sha256 = hashlib.sha256(
+        runner._json_bytes(provider_schema)
+    ).hexdigest()
     for row in rows:
         assert row["home_files"] == ["auth.json"]
         assert "OPENAI_API_KEY" not in row["env"]
@@ -251,6 +317,7 @@ def test_fake_subscription_dispatch_is_contained_complete_and_idempotent(
         assert "--ephemeral" in row["argv"]
         assert "--ignore-user-config" in row["argv"]
         assert "read-only" in row["argv"]
+        assert row["output_schema_sha256"] == provider_schema_sha256
     before = capture.read_bytes()
     manifest_before = (run_dir / "execution-manifest.json").read_bytes()
     runner.dispatch(_dispatch_args(run_dir), environ)
