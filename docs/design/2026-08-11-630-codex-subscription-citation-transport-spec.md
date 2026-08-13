@@ -140,11 +140,19 @@ grounding witness; host-side URL availability is not substituted for it.
 - search items: at most 32;
 - search results per item: at most 128;
 - app-server deadline: bounded by the runtime constant;
+- post-terminal drain: after the target `turn/completed`, close app-server stdin
+  and require clean parent exit and stdout/stderr EOF by
+  `min(global deadline, terminal observation time + drain grace)`;
 - stdout: exactly one receipt line on success.
 
 Any cap breach fails closed. The app-server process group is terminated on
-timeout or protocol failure. Temporary auth and event data are removed by the
-temporary-directory lifecycle.
+timeout or protocol failure. Every stdout line received before EOF, including a
+post-terminal line, remains subject to the same JSON, byte, message, item, tool,
+and grounding rules. Drain timeout, nonzero parent exit, malformed late output,
+reader failure, and stderr overflow are fail-visible transport errors. Final
+process-group cleanup still reaps the parent and descendants. No fixed sleep or
+quiet-period inference substitutes for EOF. Temporary auth and event data are
+removed by the temporary-directory lifecycle.
 
 ## 8. Shell portability and live smoke
 
@@ -171,6 +179,9 @@ Hermetic tests use a fake Codex executable/app-server. They cover:
 - malformed JSONL/RPC, missing search, wrong item/result shapes, duplicate ids,
   multiple final answers/verdicts, positive without a bound source, unrelated
   search, forbidden tool events, transport failure, timeout, and size caps;
+- deterministic stdin-EOF-triggered late events, bounded post-terminal hangs,
+  nonzero exit, malformed late output, stderr overflow, and late byte/message
+  cap breaches;
 - request/receipt Draft 2020-12 metaschema and positive/negative payloads;
 - Bash 3.2 syntax and no live network/model/API calls in tests.
 

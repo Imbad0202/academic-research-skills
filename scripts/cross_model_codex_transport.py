@@ -45,7 +45,9 @@ MAX_SEARCH_ITEMS = 32
 MAX_RESULTS_PER_SEARCH = 128
 MAX_SOURCES = 16
 MAX_AUTH_BYTES = 1024 * 1024
+MAX_STDERR_BYTES = 1024 * 1024
 APP_SERVER_TIMEOUT_SECONDS = 300.0
+APP_SERVER_DRAIN_GRACE_SECONDS = 3.0
 
 IDENTIFIER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 MODEL_RE = re.compile(r"^gpt-[a-z0-9][a-z0-9._-]{0,123}$")
@@ -572,11 +574,11 @@ class _LineReader:
         except BaseException as exc:  # pragma: no cover - OS pipe failures
             self.queue.put(exc)
 
-    def get(self, timeout: float) -> bytes:
+    def get(self, timeout: float, *, timeout_code: str = "APP_SERVER_TIMEOUT") -> bytes:
         try:
             item = self.queue.get(timeout=timeout)
         except queue.Empty as exc:
-            raise TransportError("APP_SERVER_TIMEOUT") from exc
+            raise TransportError(timeout_code) from exc
         if item is None:
             raise TransportError("APP_SERVER_EOF")
         if isinstance(item, BaseException):
@@ -584,24 +586,6 @@ class _LineReader:
                 raise item
             raise TransportError("APP_SERVER_READ_FAILED") from item
         return item
-
-    def drain_closed(self) -> list[bytes]:
-        """Return every line queued before a closed pipe; fail if it is still live."""
-        if self.thread.is_alive():
-            raise TransportError("APP_SERVER_DRAIN_TIMEOUT")
-        lines: list[bytes] = []
-        while True:
-            try:
-                item = self.queue.get_nowait()
-            except queue.Empty:
-                return lines
-            if item is None:
-                return lines
-            if isinstance(item, BaseException):
-                if isinstance(item, TransportError):
-                    raise item
-                raise TransportError("APP_SERVER_READ_FAILED") from item
-            lines.append(item)
 
 
 class _DrainReader:
@@ -682,24 +666,93 @@ def _response_result(message: dict[str, Any], request_id: int) -> dict[str, Any]
 
 
 def _stop_process(proc: subprocess.Popen[bytes]) -> None:
-    if proc.poll() is not None:
+    if proc.poll() is None:
         try:
-            os.killpg(proc.pid, signal.SIGKILL)
-        except OSError:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (OSError, ProcessLookupError):
             pass
-        return
-    try:
-        os.killpg(proc.pid, signal.SIGTERM)
-        proc.wait(timeout=3)
-    except (OSError, ProcessLookupError, subprocess.TimeoutExpired):
         try:
-            os.killpg(proc.pid, signal.SIGKILL)
             proc.wait(timeout=3)
-        except (OSError, ProcessLookupError, subprocess.TimeoutExpired):
+        except subprocess.TimeoutExpired:
+            pass
+    # The parent can exit on SIGTERM while a descendant ignores it. Always seal
+    # the process-group boundary before returning, even when the parent is gone.
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (OSError, ProcessLookupError):
+        pass
+    if proc.poll() is None:
+        try:
+            proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
             try:
                 proc.kill()
-            except OSError:
+                proc.wait(timeout=3)
+            except (OSError, subprocess.TimeoutExpired):
                 pass
+
+
+def _close_app_server_stdin(proc: subprocess.Popen[bytes]) -> None:
+    """Announce that the host will send no RPCs after the target turn terminates."""
+    if proc.stdin is None:
+        raise TransportError("APP_SERVER_STDIN_UNAVAILABLE")
+    try:
+        proc.stdin.close()
+    except (BrokenPipeError, OSError) as exc:
+        raise TransportError("APP_SERVER_STDIN_CLOSE_FAILED") from exc
+
+
+def _remaining_drain_seconds(deadline: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TransportError("APP_SERVER_DRAIN_TIMEOUT")
+    return remaining
+
+
+def _drain_app_server_after_turn(
+    proc: subprocess.Popen[bytes],
+    reader: _LineReader,
+    stderr_reader: _DrainReader,
+    messages: list[dict[str, Any]],
+    raw_lines: list[bytes],
+    deadline: float,
+) -> None:
+    """Require clean parent exit and both pipe EOFs, retaining every stdout event."""
+    while True:
+        try:
+            raw = reader.get(
+                _remaining_drain_seconds(deadline),
+                timeout_code="APP_SERVER_DRAIN_TIMEOUT",
+            )
+        except TransportError as exc:
+            if exc.code == "APP_SERVER_EOF":
+                break
+            raise
+        raw_lines.append(raw)
+        message = _parse_rpc_line(raw)
+        messages.append(message)
+        if len(messages) > MAX_EVENT_MESSAGES:
+            raise TransportError("EVENT_MESSAGE_LIMIT_EXCEEDED")
+        if "id" in message and "method" in message:
+            raise TransportError("APP_SERVER_UNEXPECTED_REQUEST")
+
+    try:
+        returncode = proc.wait(timeout=_remaining_drain_seconds(deadline))
+    except subprocess.TimeoutExpired as exc:
+        raise TransportError("APP_SERVER_DRAIN_TIMEOUT") from exc
+    if returncode != 0:
+        raise TransportError("APP_SERVER_EXIT_NONZERO")
+
+    reader.thread.join(timeout=_remaining_drain_seconds(deadline))
+    if reader.thread.is_alive():
+        raise TransportError("APP_SERVER_DRAIN_TIMEOUT")
+    stderr_reader.thread.join(timeout=_remaining_drain_seconds(deadline))
+    if stderr_reader.thread.is_alive():
+        raise TransportError("APP_SERVER_DRAIN_TIMEOUT")
+    if stderr_reader.failed.is_set():
+        raise TransportError("APP_SERVER_READ_FAILED")
+    if stderr_reader.exceeded.is_set():
+        raise TransportError("APP_SERVER_STDERR_TOO_LARGE")
 
 
 def run_app_server(
@@ -733,15 +786,16 @@ def run_app_server(
             )
         except OSError as exc:
             raise TransportError("APP_SERVER_START_FAILED") from exc
-        if proc.stdout is None or proc.stderr is None:
-            _stop_process(proc)
-            raise TransportError("APP_SERVER_PIPE_UNAVAILABLE")
-        reader = _LineReader(proc.stdout, limit=MAX_EVENT_BYTES)
-        stderr_reader = _DrainReader(proc.stderr, limit=1024 * 1024)
-        messages: list[dict[str, Any]] = []
-        raw_lines: list[bytes] = []
-        deadline = time.monotonic() + APP_SERVER_TIMEOUT_SECONDS
+        reader: _LineReader | None = None
+        stderr_reader: _DrainReader | None = None
         try:
+            if proc.stdout is None or proc.stderr is None:
+                raise TransportError("APP_SERVER_PIPE_UNAVAILABLE")
+            reader = _LineReader(proc.stdout, limit=MAX_EVENT_BYTES)
+            stderr_reader = _DrainReader(proc.stderr, limit=MAX_STDERR_BYTES)
+            messages: list[dict[str, Any]] = []
+            raw_lines: list[bytes] = []
+            deadline = time.monotonic() + APP_SERVER_TIMEOUT_SECONDS
             _send_rpc(
                 proc,
                 {
@@ -827,23 +881,26 @@ def run_app_server(
                 ),
                 deadline,
             )
-            _stop_process(proc)
-            reader.thread.join(timeout=3)
-            stderr_reader.thread.join(timeout=3)
-            for raw in reader.drain_closed():
-                raw_lines.append(raw)
-                messages.append(_parse_rpc_line(raw))
-                if len(messages) > MAX_EVENT_MESSAGES:
-                    raise TransportError("EVENT_MESSAGE_LIMIT_EXCEEDED")
-            if stderr_reader.thread.is_alive():
-                raise TransportError("APP_SERVER_DRAIN_TIMEOUT")
-            if stderr_reader.failed.is_set():
-                raise TransportError("APP_SERVER_READ_FAILED")
-            if stderr_reader.exceeded.is_set():
-                raise TransportError("APP_SERVER_STDERR_TOO_LARGE")
+            terminal_observed_at = time.monotonic()
+            _close_app_server_stdin(proc)
+            drain_deadline = min(
+                deadline, terminal_observed_at + APP_SERVER_DRAIN_GRACE_SECONDS
+            )
+            _drain_app_server_after_turn(
+                proc,
+                reader,
+                stderr_reader,
+                messages,
+                raw_lines,
+                drain_deadline,
+            )
             return messages, b"".join(raw_lines)
         finally:
             _stop_process(proc)
+            if reader is not None:
+                reader.thread.join(timeout=3)
+            if stderr_reader is not None:
+                stderr_reader.thread.join(timeout=3)
 
 
 def _empty_receipt(

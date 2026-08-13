@@ -104,6 +104,100 @@ def test_child_env_secret_mutation_fails(tmp_path: Path, monkeypatch) -> None:
 
 
 @pytest.mark.parametrize(
+    "old,new,expected",
+    [
+        (
+            "_close_app_server_stdin(proc)",
+            "_stop_process(proc)",
+            "post-terminal EOF boundary",
+        ),
+        (
+            "drain_deadline = min(\n"
+            "                deadline, terminal_observed_at + APP_SERVER_DRAIN_GRACE_SECONDS\n"
+            "            )",
+            "drain_deadline = terminal_observed_at + APP_SERVER_DRAIN_GRACE_SECONDS",
+            "post-terminal EOF boundary",
+        ),
+        (
+            "if remaining <= 0:\n"
+            '        raise TransportError("APP_SERVER_DRAIN_TIMEOUT")\n'
+            "    return remaining",
+            "if remaining <= 0:\n        return 0.001\n    return remaining",
+            "deadline no longer fails closed",
+        ),
+        (
+            "            _drain_app_server_after_turn(\n"
+            "                proc,\n"
+            "                reader,\n"
+            "                stderr_reader,\n"
+            "                messages,\n"
+            "                raw_lines,\n"
+            "                drain_deadline,\n"
+            "            )",
+            "            try:\n"
+            "                _drain_app_server_after_turn(\n"
+            "                    proc,\n"
+            "                    reader,\n"
+            "                    stderr_reader,\n"
+            "                    messages,\n"
+            "                    raw_lines,\n"
+            "                    drain_deadline,\n"
+            "                )\n"
+            "            except TransportError:\n"
+            "                pass",
+            "drain failure is caught",
+        ),
+    ],
+    ids=[
+        "stdin-close-removed",
+        "fresh-drain-timeout",
+        "drain-timeout-ignored",
+        "drain-error-swallowed",
+    ],
+)
+def test_terminal_drain_mutations_fail(
+    tmp_path: Path, monkeypatch, old: str, new: str, expected: str
+) -> None:
+    guard = _load_guard()
+    mutated = _mutated_file(tmp_path, guard.RUNTIME, old, new)
+    monkeypatch.setattr(guard, "RUNTIME", mutated)
+    assert any(expected in error for error in guard.check_runtime())
+
+
+@pytest.mark.parametrize(
+    "helper,constructor",
+    [
+        ("reader", "_LineReader(proc.stdout, limit=MAX_EVENT_BYTES)"),
+        ("stderr_reader", "_DrainReader(proc.stderr, limit=MAX_STDERR_BYTES)"),
+    ],
+    ids=["stdout-helper-escaped", "stderr-helper-escaped"],
+)
+def test_reader_helper_construction_must_remain_process_owned(
+    tmp_path: Path, monkeypatch, helper: str, constructor: str
+) -> None:
+    guard = _load_guard()
+    original = guard.RUNTIME.read_text(encoding="utf-8")
+    owner_anchor = (
+        "        try:\n"
+        "            if proc.stdout is None or proc.stderr is None:\n"
+    )
+    mutated = original.replace(
+        owner_anchor,
+        f"        {helper} = {constructor}\n" + owner_anchor,
+        1,
+    ).replace(
+        f"            {helper} = {constructor}\n",
+        f"            {helper} = {helper}\n",
+        1,
+    )
+    assert mutated != original
+    target = tmp_path / "runtime.py"
+    target.write_text(mutated, encoding="utf-8")
+    monkeypatch.setattr(guard, "RUNTIME", target)
+    assert any("not process-owned" in error for error in guard.check_runtime())
+
+
+@pytest.mark.parametrize(
     "attribute,old,new,expected",
     [
         ("SPEC", "Source implementation: PR #567 by `dcs-scd`", "Source implementation: internal", "PR #567"),

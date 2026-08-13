@@ -162,6 +162,15 @@ def check_runtime() -> list[str]:
     try:
         if _assignment_literal(tree, "MIN_CODEX_VERSION") < (0, 147, 0):
             errors.append("minimum Codex version is below 0.147.0")
+        app_timeout = _assignment_literal(tree, "APP_SERVER_TIMEOUT_SECONDS")
+        drain_grace = _assignment_literal(tree, "APP_SERVER_DRAIN_GRACE_SECONDS")
+        if (
+            not isinstance(drain_grace, (int, float))
+            or isinstance(drain_grace, bool)
+            or drain_grace <= 0
+            or drain_grace >= app_timeout
+        ):
+            errors.append("post-terminal drain grace is not positive and smaller than runtime")
         disabled = set(_assignment_literal(tree, "DISABLED_FEATURES"))
         missing = REQUIRED_DISABLED_FEATURES - disabled
         if missing:
@@ -203,6 +212,7 @@ def check_runtime() -> list[str]:
         if token not in detection_source:
             errors.append(f"detection contract dropped {token!r}")
     run_source = ast.get_source_segment(source, _function(tree, "run_app_server")) or ""
+    run_function = _function(tree, "run_app_server")
     for token in (
         '"sandbox": "read-only"',
         '"ephemeral": True',
@@ -215,6 +225,87 @@ def check_runtime() -> list[str]:
             errors.append(f"minimum-privilege runtime dropped {token!r}")
     if run_source.count('"approvalPolicy": "never"') != 2:
         errors.append("minimum-privilege runtime must pin approvalPolicy never at thread and turn")
+    helper_calls = {
+        helper: [
+            node
+            for node in ast.walk(run_function)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == helper
+        ]
+        for helper in ("_LineReader", "_DrainReader")
+    }
+    if any(len(calls) != 1 for calls in helper_calls.values()):
+        errors.append("reader helpers must each be constructed exactly once")
+    else:
+        helper_nodes = [calls[0] for calls in helper_calls.values()]
+        helpers_process_owned = False
+        for try_node in (node for node in ast.walk(run_function) if isinstance(node, ast.Try)):
+            body_nodes = [nested for statement in try_node.body for nested in ast.walk(statement)]
+            final_nodes = [nested for statement in try_node.finalbody for nested in ast.walk(statement)]
+            has_process_stop = any(
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "_stop_process"
+                for node in final_nodes
+            )
+            if has_process_stop and all(node in body_nodes for node in helper_nodes):
+                final_source = "\n".join(
+                    ast.get_source_segment(source, statement) or ""
+                    for statement in try_node.finalbody
+                )
+                if (
+                    "reader.thread.join" in final_source
+                    and "stderr_reader.thread.join" in final_source
+                ):
+                    helpers_process_owned = True
+                    break
+        if not helpers_process_owned:
+            errors.append("reader helper construction is not process-owned through cleanup")
+    for token in (
+        "_close_app_server_stdin(proc)",
+        "terminal_observed_at = time.monotonic()",
+        "drain_deadline = min(",
+        "deadline, terminal_observed_at + APP_SERVER_DRAIN_GRACE_SECONDS",
+        "_drain_app_server_after_turn(",
+        "drain_deadline",
+    ):
+        if token not in run_source:
+            errors.append(f"post-terminal EOF boundary dropped {token!r}")
+    drain_calls = [
+        node
+        for node in ast.walk(run_function)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_drain_app_server_after_turn"
+    ]
+    if len(drain_calls) != 1:
+        errors.append("post-terminal drain must be called exactly once")
+    for try_node in (node for node in ast.walk(run_function) if isinstance(node, ast.Try)):
+        body_nodes = [nested for statement in try_node.body for nested in ast.walk(statement)]
+        if try_node.handlers and any(node in body_nodes for node in drain_calls):
+            errors.append("post-terminal drain failure is caught inside run_app_server")
+    drain_source = ast.get_source_segment(
+        source, _function(tree, "_drain_app_server_after_turn")
+    ) or ""
+    for token in (
+        'timeout_code="APP_SERVER_DRAIN_TIMEOUT"',
+        "_parse_rpc_line(raw)",
+        'raise TransportError("APP_SERVER_UNEXPECTED_REQUEST")',
+        'raise TransportError("EVENT_MESSAGE_LIMIT_EXCEEDED")',
+        "proc.wait(timeout=_remaining_drain_seconds(deadline))",
+        'raise TransportError("APP_SERVER_EXIT_NONZERO")',
+        "reader.thread.join(timeout=_remaining_drain_seconds(deadline))",
+        "stderr_reader.thread.join(timeout=_remaining_drain_seconds(deadline))",
+        'raise TransportError("APP_SERVER_STDERR_TOO_LARGE")',
+    ):
+        if token not in drain_source:
+            errors.append(f"post-terminal closed drain dropped {token!r}")
+    remaining_source = ast.get_source_segment(
+        source, _function(tree, "_remaining_drain_seconds")
+    ) or ""
+    if 'raise TransportError("APP_SERVER_DRAIN_TIMEOUT")' not in remaining_source:
+        errors.append("post-terminal drain deadline no longer fails closed")
     parser_source = ast.get_source_segment(source, _function(tree, "parse_app_server_messages")) or ""
     for token in (
         "webSearch",
@@ -251,6 +342,9 @@ def check_docs_and_wiring() -> list[str]:
         "It is not a transport for Devil's",
         "No model promotion, recommended-default change",
         "CI must never run it",
+        "close app-server stdin",
+        "clean parent exit and stdout/stderr EOF",
+        "min(global deadline, terminal observation time + drain grace)",
     )
     for text in required_spec:
         if text not in spec:
@@ -280,7 +374,7 @@ def check_docs_and_wiring() -> list[str]:
     bash_marker = 'export ARS_CROSS_MODEL_TRANSPORT="codex"'
     if bash_marker not in setup_en or bash_marker not in setup_zh:
         errors.append("SETUP en/zh-TW dropped the closed selector example")
-    for token in ("@dcs-scd", "PR #567", "no model promotion"):
+    for token in ("@dcs-scd", "PR #567", "no model promotion", "#725", "stdin EOF"):
         if token not in changelog:
             errors.append(f"contributor changelog dropped {token}")
     return errors

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -88,27 +89,39 @@ def _make_fake_codex(
     tmp_path: Path,
     *,
     events: list[dict[str, Any]] | None = None,
+    late_events_after_eof: list[dict[str, Any]] | None = None,
+    late_raw_after_eof: bytes = b"",
     version: str = "codex-cli 0.147.0",
     status: str = "Logged in using ChatGPT",
     fail_app_server: bool = False,
     silent_app_server: bool = False,
+    hang_after_eof: bool = False,
+    exit_code_after_eof: int = 0,
+    stderr_bytes_after_eof: int = 0,
 ) -> tuple[Path, Path]:
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir()
     executable = fake_bin / "codex"
     capture = fake_bin / "app-server-capture.json"
     event_rows = events if events is not None else _fixture("grounded_verified.jsonl")[0]
+    late_event_rows = late_events_after_eof if late_events_after_eof is not None else []
     source = f"""#!{sys.executable}
 import json
 import os
 from pathlib import Path
 import sys
+import threading
 
 VERSION = {version!r}
 STATUS = {status!r}
 EVENTS = {event_rows!r}
+LATE_EVENTS_AFTER_EOF = {late_event_rows!r}
+LATE_RAW_AFTER_EOF = {late_raw_after_eof!r}
 FAIL_APP_SERVER = {fail_app_server!r}
 SILENT_APP_SERVER = {silent_app_server!r}
+HANG_AFTER_EOF = {hang_after_eof!r}
+EXIT_CODE_AFTER_EOF = {exit_code_after_eof!r}
+STDERR_BYTES_AFTER_EOF = {stderr_bytes_after_eof!r}
 CAPTURE = Path(__file__).with_name("app-server-capture.json")
 
 if sys.argv[1:] == ["--version"]:
@@ -127,8 +140,10 @@ record = {{
     "argv": sys.argv[1:],
     "cwd": os.getcwd(),
     "env": dict(os.environ),
+    "pid": os.getpid(),
     "codex_home_files": sorted(path.name for path in home.iterdir()),
     "requests": [],
+    "stdin_eof": False,
 }}
 
 def emit(value):
@@ -149,6 +164,20 @@ for line in sys.stdin:
         emit({{"id": 3, "result": {{"turn": {{"id": "turn-1"}}}}}})
         for event in EVENTS:
             emit(event)
+
+record["stdin_eof"] = True
+CAPTURE.write_text(json.dumps(record, sort_keys=True), encoding="utf-8")
+for event in LATE_EVENTS_AFTER_EOF:
+    emit(event)
+if LATE_RAW_AFTER_EOF:
+    sys.stdout.buffer.write(LATE_RAW_AFTER_EOF)
+    sys.stdout.buffer.flush()
+if STDERR_BYTES_AFTER_EOF:
+    sys.stderr.buffer.write(b"x" * STDERR_BYTES_AFTER_EOF)
+    sys.stderr.buffer.flush()
+if HANG_AFTER_EOF:
+    threading.Event().wait()
+raise SystemExit(EXIT_CODE_AFTER_EOF)
 """
     executable.write_text(source, encoding="utf-8")
     executable.chmod(0o755)
@@ -160,6 +189,50 @@ def _make_auth(codex_home: Path) -> None:
     (codex_home / "auth.json").write_text('{"tokens":{"access_token":"fake"}}', encoding="utf-8")
     (codex_home / "config.toml").write_text("model = 'must-not-copy'\n", encoding="utf-8")
     (codex_home / "skills").mkdir()
+
+
+def _assert_helper_start_failure_cleanup(
+    tmp_path: Path, monkeypatch, *, fail_on_start: int
+) -> list[Any]:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    fake_bin, _ = _make_fake_codex(tmp_path)
+    real_popen = runtime.subprocess.Popen
+    real_thread_start = runtime.threading.Thread.start
+    spawned: list[Any] = []
+    started_threads: list[Any] = []
+    start_attempt = 0
+
+    def recording_popen(*args, **kwargs):
+        proc = real_popen(*args, **kwargs)
+        spawned.append(proc)
+        return proc
+
+    def controlled_start(thread) -> None:
+        nonlocal start_attempt
+        start_attempt += 1
+        if start_attempt == fail_on_start:
+            raise RuntimeError(f"forced helper start failure {fail_on_start}")
+        real_thread_start(thread)
+        started_threads.append(thread)
+
+    monkeypatch.setattr(runtime.subprocess, "Popen", recording_popen)
+    monkeypatch.setattr(runtime.threading.Thread, "start", controlled_start)
+    with pytest.raises(RuntimeError, match=f"forced helper start failure {fail_on_start}"):
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert start_attempt == fail_on_start
+    assert len(spawned) == 1
+    assert spawned[0].poll() is not None
+    with pytest.raises(ProcessLookupError):
+        os.killpg(spawned[0].pid, 0)
+    assert all(not thread.is_alive() for thread in started_threads)
+    return started_threads
 
 
 def test_schemas_are_valid_draft_2020_12_and_closed() -> None:
@@ -309,20 +382,19 @@ def test_search_count_and_event_size_caps_fail_closed(monkeypatch) -> None:
 def test_post_terminal_forbidden_event_is_not_ignored(tmp_path: Path) -> None:
     home = tmp_path / "custom-home"
     _make_auth(home)
-    events, _ = _fixture("grounded_verified.jsonl")
-    events.append(
-        {
-            "method": "item/completed",
-            "params": {
-                "item": {
-                    "id": "late-tool",
-                    "type": "commandExecution",
-                    "status": "completed",
-                }
-            },
-        }
+    late_forbidden = {
+        "method": "item/completed",
+        "params": {
+            "item": {
+                "id": "late-tool",
+                "type": "commandExecution",
+                "status": "completed",
+            }
+        },
+    }
+    fake_bin, capture_path = _make_fake_codex(
+        tmp_path, late_events_after_eof=[late_forbidden]
     )
-    fake_bin, _ = _make_fake_codex(tmp_path, events=events)
     completed = subprocess.run(
         [str(WRAPPER)],
         input=runtime.canonical_json(_request()),
@@ -333,7 +405,201 @@ def test_post_terminal_forbidden_event_is_not_ignored(tmp_path: Path) -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stderr.decode()
-    assert runtime.strict_json_loads(completed.stdout)["reason_code"] == "FORBIDDEN_TOOL_EVENT"
+    receipt = runtime.strict_json_loads(completed.stdout)
+    assert receipt["reason_code"] == "FORBIDDEN_TOOL_EVENT"
+    base_events, _ = _fixture("grounded_verified.jsonl")
+    complete_stream = b"".join(
+        runtime.canonical_json(message) + b"\n"
+        for message in [
+            {"id": 1, "result": {}},
+            {"id": 2, "result": {"thread": {"id": "thread-1"}}},
+            {"id": 3, "result": {"turn": {"id": "turn-1"}}},
+            *base_events,
+            late_forbidden,
+        ]
+    )
+    assert receipt["event_stream_digest"] == runtime.sha256_hex(complete_stream)
+    assert json.loads(capture_path.read_text(encoding="utf-8"))["stdin_eof"] is True
+
+
+def test_first_helper_start_failure_reaps_process_group(tmp_path: Path, monkeypatch) -> None:
+    started_threads = _assert_helper_start_failure_cleanup(
+        tmp_path, monkeypatch, fail_on_start=1
+    )
+    assert started_threads == []
+
+
+def test_second_helper_start_failure_reaps_process_group_and_stdout_helper(
+    tmp_path: Path, monkeypatch
+) -> None:
+    started_threads = _assert_helper_start_failure_cleanup(
+        tmp_path, monkeypatch, fail_on_start=2
+    )
+    assert len(started_threads) == 1
+
+
+def test_post_terminal_hang_hits_bounded_drain_and_is_reaped(
+    tmp_path: Path, monkeypatch
+) -> None:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    fake_bin, capture_path = _make_fake_codex(tmp_path, hang_after_eof=True)
+    monkeypatch.setattr(runtime, "APP_SERVER_TIMEOUT_SECONDS", 5.0)
+    monkeypatch.setattr(runtime, "APP_SERVER_DRAIN_GRACE_SECONDS", 0.05)
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert exc_info.value.code == "APP_SERVER_DRAIN_TIMEOUT"
+    capture = json.loads(capture_path.read_text(encoding="utf-8"))
+    assert capture["stdin_eof"] is True
+    with pytest.raises(ProcessLookupError):
+        os.kill(capture["pid"], 0)
+
+
+def test_forced_cleanup_reaps_parent_and_process_group_descendant(tmp_path: Path) -> None:
+    ready = tmp_path / "process-tree-ready.json"
+    child_ready = tmp_path / "process-tree-child-ready"
+    source = f"""
+import json
+from pathlib import Path
+import subprocess
+import sys
+import threading
+import time
+
+child = subprocess.Popen([
+    sys.executable,
+    "-c",
+    "import signal, threading; from pathlib import Path; "
+    "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+    "Path({str(child_ready)!r}).write_text('ready', encoding='utf-8'); "
+    "threading.Event().wait()",
+])
+while not Path({str(child_ready)!r}).exists():
+    time.sleep(0.01)
+Path({str(ready)!r}).write_text(json.dumps({{"child_pid": child.pid}}), encoding="utf-8")
+threading.Event().wait()
+"""
+    proc = subprocess.Popen([sys.executable, "-c", source], start_new_session=True)
+    try:
+        wait_deadline = time.monotonic() + 2.0
+        while not ready.exists() and time.monotonic() < wait_deadline:
+            time.sleep(0.01)
+        assert ready.exists()
+        runtime._stop_process(proc)
+        reap_deadline = time.monotonic() + 1.0
+        while time.monotonic() < reap_deadline:
+            try:
+                os.killpg(proc.pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.01)
+        with pytest.raises(ProcessLookupError):
+            os.killpg(proc.pid, 0)
+    finally:
+        runtime._stop_process(proc)
+    assert proc.returncode is not None
+
+
+def test_late_message_limit_breach_is_fail_visible(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    late_event = {"method": "transport/notice", "params": {}}
+    fake_bin, _ = _make_fake_codex(tmp_path, late_events_after_eof=[late_event])
+    monkeypatch.setattr(runtime, "MAX_EVENT_MESSAGES", 6)
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert exc_info.value.code == "EVENT_MESSAGE_LIMIT_EXCEEDED"
+
+
+def test_late_byte_limit_breach_is_fail_visible(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    late_event = {"method": "transport/notice", "padding": "x" * 8192}
+    fake_bin, _ = _make_fake_codex(tmp_path, late_events_after_eof=[late_event])
+    monkeypatch.setattr(runtime, "MAX_EVENT_BYTES", 4096)
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert exc_info.value.code == "EVENT_STREAM_TOO_LARGE"
+
+
+def test_malformed_late_output_is_fail_visible(tmp_path: Path) -> None:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    fake_bin, _ = _make_fake_codex(tmp_path, late_raw_after_eof=b'{"id":\n')
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert exc_info.value.code == "APP_SERVER_MALFORMED_JSON"
+
+
+def test_late_app_server_request_is_fail_visible(tmp_path: Path) -> None:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    late_request = {"id": 99, "method": "server/request", "params": {}}
+    fake_bin, _ = _make_fake_codex(tmp_path, late_events_after_eof=[late_request])
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert exc_info.value.code == "APP_SERVER_UNEXPECTED_REQUEST"
+
+
+def test_nonzero_exit_after_eof_is_fail_visible(tmp_path: Path) -> None:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    fake_bin, _ = _make_fake_codex(tmp_path, exit_code_after_eof=7)
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert exc_info.value.code == "APP_SERVER_EXIT_NONZERO"
+
+
+def test_stderr_overflow_after_eof_is_fail_visible(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    fake_bin, _ = _make_fake_codex(tmp_path, stderr_bytes_after_eof=128)
+    monkeypatch.setattr(runtime, "MAX_STDERR_BYTES", 64)
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=_base_env(fake_bin, home),
+        )
+    assert exc_info.value.code == "APP_SERVER_STDERR_TOO_LARGE"
 
 
 def test_request_byte_cap_is_enforced() -> None:
