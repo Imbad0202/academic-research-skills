@@ -22,3 +22,6 @@ ROADMAP.md
 .coverage
 .coverage.*
 htmlcov/
+
+# Knowledge-graph local artifacts (do not commit)
+/graphify-out/
