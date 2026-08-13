@@ -1,0 +1,446 @@
+{
+  "schema_version": "within-session-ideation-diversity-heldout/1.0",
+  "suite": "within_session_ideation_diversity",
+  "seed_version": "0.1.0",
+  "content_class": "repository-owned synthetic scholar role cards",
+  "design": {
+    "experiments": [
+      {
+        "mechanism_id": "adjacent_probe",
+        "arms": [
+          "adjacent_probe_off",
+          "adjacent_probe_on"
+        ],
+        "held_constant": "production exploratory guardrails on"
+      },
+      {
+        "mechanism_id": "exploratory_guardrails",
+        "arms": [
+          "exploratory_guardrails_on",
+          "exploratory_guardrails_ablated"
+        ],
+        "held_constant": "adjacent probe off"
+      }
+    ],
+    "minimum_subject_replicates_per_cell": 2,
+    "minimum_independent_judges": 2,
+    "freeze_after_actor_turn": 6,
+    "fresh_context_per_cell": true,
+    "adaptive_actor_forbidden": true
+  },
+  "tools": {
+    "allowed": [],
+    "web": false
+  },
+  "actor_blind_fields": [
+    "mechanism_id",
+    "arm_id",
+    "paired_transcript",
+    "expected_metric_direction",
+    "aggregate"
+  ],
+  "subject_blind_fields": [
+    "pair_id",
+    "equivalence_key",
+    "owned_framings",
+    "response_policy",
+    "expected_metric_direction",
+    "judge_labels"
+  ],
+  "judge_blind_fields": [
+    "mechanism_id",
+    "arm_id",
+    "pair_id",
+    "replicate_id",
+    "expected_metric_direction",
+    "paired_transcript",
+    "aggregate",
+    "other_judge_labels"
+  ],
+  "scenarios": [
+    {
+      "scenario_id": "idi-edtech-en",
+      "pair_id": "idi-edtech",
+      "equivalence_key": "eq-edtech-v1",
+      "language": "en",
+      "domain": "education",
+      "eligible_population": {
+        "mode": "socratic",
+        "intent": "exploratory",
+        "layer": "problem_framing",
+        "experience": "novice_role",
+        "fixed_rq": false,
+        "deliverable_requested": false
+      },
+      "role_brief": "You are a first-year education graduate student exploring classroom AI. You have observations from tutoring sessions but no fixed question, deadline, manuscript, or preferred method. The three framings below are yours before the dialogue begins.",
+      "initial_message": "I keep noticing that students use the same AI tutor in very different ways, and I am not sure what question I actually want to ask about that yet.",
+      "owned_framings": [
+        {
+          "framing_key": "F1",
+          "facet_kind": "implementation_perspective",
+          "statement": "The inquiry could distinguish how students actually use the tutor rather than treating access as one uniform intervention.",
+          "initially_expressed": true,
+          "matching_facet_phrases": [
+            "the implementation perspective",
+            "the use-pattern angle"
+          ]
+        },
+        {
+          "framing_key": "F2",
+          "facet_kind": "stakeholder_perspective",
+          "statement": "Teacher decisions about when and how the tutor enters class may define a separate perspective worth examining.",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "the teacher perspective",
+            "the instructor point of view"
+          ]
+        },
+        {
+          "framing_key": "F3",
+          "facet_kind": "access_dimension",
+          "statement": "Differences in device access and available study time may bound which students can use the tutor in the first place.",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "the access dimension",
+            "the resource-access angle"
+          ]
+        }
+      ],
+      "response_policy": {
+        "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+        "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+        "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+        "model_menu": "reject_menu_and_restate_scholar_authority",
+        "freeze_after_actor_turn": 6
+      },
+      "forbidden_out_of_role": [
+        "Do not invent achievement effects, causal mechanisms, or outcome data.",
+        "Do not adopt a mentor-made research question that is absent from the role card."
+      ],
+      "rule_anchors": [
+        "deep-research/agents/socratic_mentor_agent.md#optional-adjacent-framing-probe-layer-internal-never-mention-probe-to-users",
+        "docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md"
+      ]
+    },
+    {
+      "scenario_id": "idi-edtech-zh",
+      "pair_id": "idi-edtech",
+      "equivalence_key": "eq-edtech-v1",
+      "language": "zh-TW",
+      "domain": "education",
+      "eligible_population": {
+        "mode": "socratic",
+        "intent": "exploratory",
+        "layer": "problem_framing",
+        "experience": "novice_role",
+        "fixed_rq": false,
+        "deliverable_requested": false
+      },
+      "role_brief": "你是教育研究所一年級學生，正在探索課堂 AI 的使用現象。你在輔導課看過一些情況，但還沒有固定研究問題、期限、論文或偏好方法。以下三個 framing 在對話開始前就屬於你的角色設定。",
+      "initial_message": "我一直看到學生用同一個 AI 家教時做法差很多，但我還不確定自己真正想問的是什麼。",
+      "owned_framings": [
+        {
+          "framing_key": "F1",
+          "facet_kind": "implementation_perspective",
+          "statement": "研究可以區分學生實際如何使用 AI 家教，而不是把能否使用視為單一且一致的介入。",
+          "initially_expressed": true,
+          "matching_facet_phrases": [
+            "實際使用的觀點",
+            "使用方式的角度"
+          ]
+        },
+        {
+          "framing_key": "F2",
+          "facet_kind": "stakeholder_perspective",
+          "statement": "教師決定何時以及如何把 AI 家教帶進課堂，可能構成另一個值得檢視的角色觀點。",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "教師的觀點",
+            "授課者的視角"
+          ]
+        },
+        {
+          "framing_key": "F3",
+          "facet_kind": "access_dimension",
+          "statement": "裝置取得與可用讀書時間的差異，可能限制哪些學生一開始就有條件使用 AI 家教。",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "近用條件的面向",
+            "資源取得的角度"
+          ]
+        }
+      ],
+      "response_policy": {
+        "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+        "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+        "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+        "model_menu": "reject_menu_and_restate_scholar_authority",
+        "freeze_after_actor_turn": 6
+      },
+      "forbidden_out_of_role": [
+        "不得虛構學習成效、因果機制或任何結果資料。",
+        "不得採用角色卡以外、由 mentor 直接形成的研究問題。"
+      ],
+      "rule_anchors": [
+        "deep-research/agents/socratic_mentor_agent.md#optional-adjacent-framing-probe-layer-internal-never-mention-probe-to-users",
+        "docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md"
+      ]
+    },
+    {
+      "scenario_id": "idi-quality-policy-en",
+      "pair_id": "idi-quality-policy",
+      "equivalence_key": "eq-quality-policy-v1",
+      "language": "en",
+      "domain": "higher_education_policy",
+      "eligible_population": {
+        "mode": "socratic",
+        "intent": "exploratory",
+        "layer": "problem_framing",
+        "experience": "novice_role",
+        "fixed_rq": false,
+        "deliverable_requested": false
+      },
+      "role_brief": "You are a novice higher-education policy researcher who observed one institutional quality-review cycle. You want to understand why reporting feels disconnected from improvement, but you have no fixed question, draft, deadline, or chosen method.",
+      "initial_message": "During a quality review I saw staff spend weeks preparing reports, and I keep wondering what that reporting work is really doing inside the institution.",
+      "owned_framings": [
+        {
+          "framing_key": "F1",
+          "facet_kind": "implementation_perspective",
+          "statement": "The reporting process itself, including who prepares and checks evidence, may be the immediate object of inquiry.",
+          "initially_expressed": true,
+          "matching_facet_phrases": [
+            "the implementation perspective",
+            "the reporting-process angle"
+          ]
+        },
+        {
+          "framing_key": "F2",
+          "facet_kind": "stakeholder_perspective",
+          "statement": "Faculty may interpret the same review requirements differently from quality-office staff and therefore warrant a distinct perspective.",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "the faculty perspective",
+            "the academic-staff point of view"
+          ]
+        },
+        {
+          "framing_key": "F3",
+          "facet_kind": "time_dimension",
+          "statement": "What happens after the formal visit may matter separately from preparation during the review cycle.",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "the post-review time dimension",
+            "the longer-term angle"
+          ]
+        }
+      ],
+      "response_policy": {
+        "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+        "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+        "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+        "model_menu": "reject_menu_and_restate_scholar_authority",
+        "freeze_after_actor_turn": 6
+      },
+      "forbidden_out_of_role": [
+        "Do not claim that review improves or harms quality without evidence.",
+        "Do not add regulator motives, student outcomes, or a model-made causal question."
+      ],
+      "rule_anchors": [
+        "deep-research/agents/socratic_mentor_agent.md#optional-adjacent-framing-probe-layer-internal-never-mention-probe-to-users",
+        "docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md"
+      ]
+    },
+    {
+      "scenario_id": "idi-quality-policy-zh",
+      "pair_id": "idi-quality-policy",
+      "equivalence_key": "eq-quality-policy-v1",
+      "language": "zh-TW",
+      "domain": "higher_education_policy",
+      "eligible_population": {
+        "mode": "socratic",
+        "intent": "exploratory",
+        "layer": "problem_framing",
+        "experience": "novice_role",
+        "fixed_rq": false,
+        "deliverable_requested": false
+      },
+      "role_brief": "你是剛進入高教政策領域的研究者，曾觀察一所學校的品質評鑑週期。你想理解為何填報與改善感覺脫節，但還沒有固定問題、草稿、期限或指定方法。",
+      "initial_message": "我在一次品質評鑑看到同仁花好幾週準備報告，所以一直想知道這些填報工作在校內究竟做了什麼。",
+      "owned_framings": [
+        {
+          "framing_key": "F1",
+          "facet_kind": "implementation_perspective",
+          "statement": "填報過程本身，包括誰準備與檢查證據，可以是最直接的研究對象。",
+          "initially_expressed": true,
+          "matching_facet_phrases": [
+            "執行過程的觀點",
+            "填報流程的角度"
+          ]
+        },
+        {
+          "framing_key": "F2",
+          "facet_kind": "stakeholder_perspective",
+          "statement": "教師可能與品保單位用不同方式理解相同評鑑要求，因此值得保留獨立的角色視角。",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "教師的觀點",
+            "學術人員的視角"
+          ]
+        },
+        {
+          "framing_key": "F3",
+          "facet_kind": "time_dimension",
+          "statement": "正式訪視結束後發生的事，可能需要與評鑑準備期間分開看待。",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "評鑑後的時間面向",
+            "較長期的角度"
+          ]
+        }
+      ],
+      "response_policy": {
+        "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+        "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+        "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+        "model_menu": "reject_menu_and_restate_scholar_authority",
+        "freeze_after_actor_turn": 6
+      },
+      "forbidden_out_of_role": [
+        "沒有證據時不得宣稱評鑑改善或傷害教育品質。",
+        "不得增加主管機關動機、學生成果或模型形成的因果問題。"
+      ],
+      "rule_anchors": [
+        "deep-research/agents/socratic_mentor_agent.md#optional-adjacent-framing-probe-layer-internal-never-mention-probe-to-users",
+        "docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md"
+      ]
+    },
+    {
+      "scenario_id": "idi-public-health-en",
+      "pair_id": "idi-public-health",
+      "equivalence_key": "eq-public-health-v1",
+      "language": "en",
+      "domain": "public_health",
+      "eligible_population": {
+        "mode": "socratic",
+        "intent": "exploratory",
+        "layer": "problem_framing",
+        "experience": "novice_role",
+        "fixed_rq": false,
+        "deliverable_requested": false
+      },
+      "role_brief": "You are a novice public-health student who volunteered at a fictional vaccination reminder desk. You noticed missed appointments but have no patient data, fixed question, deadline, manuscript, or preferred explanation.",
+      "initial_message": "At the reminder desk, some families missed appointments even after receiving a message, and I am unsure what part of that situation I want to understand.",
+      "owned_framings": [
+        {
+          "framing_key": "F1",
+          "facet_kind": "implementation_perspective",
+          "statement": "The reminder channel and timing may need to be described separately instead of treating every message as the same contact.",
+          "initially_expressed": true,
+          "matching_facet_phrases": [
+            "the delivery perspective",
+            "the reminder-channel angle"
+          ]
+        },
+        {
+          "framing_key": "F2",
+          "facet_kind": "stakeholder_perspective",
+          "statement": "Caregivers who arrange transport and schedules may have a distinct perspective from the person receiving the vaccination.",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "the caregiver perspective",
+            "the family-organizer point of view"
+          ]
+        },
+        {
+          "framing_key": "F3",
+          "facet_kind": "access_dimension",
+          "statement": "Transport, clinic hours, and time away from work may form an access dimension separate from receiving a reminder.",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "the access dimension",
+            "the appointment-access angle"
+          ]
+        }
+      ],
+      "response_policy": {
+        "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+        "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+        "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+        "model_menu": "reject_menu_and_restate_scholar_authority",
+        "freeze_after_actor_turn": 6
+      },
+      "forbidden_out_of_role": [
+        "Do not infer hesitancy, trust, health outcomes, or causal effects from missed appointments.",
+        "Do not invent patient facts or adopt a mentor-generated intervention question."
+      ],
+      "rule_anchors": [
+        "deep-research/agents/socratic_mentor_agent.md#optional-adjacent-framing-probe-layer-internal-never-mention-probe-to-users",
+        "docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md"
+      ]
+    },
+    {
+      "scenario_id": "idi-public-health-zh",
+      "pair_id": "idi-public-health",
+      "equivalence_key": "eq-public-health-v1",
+      "language": "zh-TW",
+      "domain": "public_health",
+      "eligible_population": {
+        "mode": "socratic",
+        "intent": "exploratory",
+        "layer": "problem_framing",
+        "experience": "novice_role",
+        "fixed_rq": false,
+        "deliverable_requested": false
+      },
+      "role_brief": "你是公共衛生領域的新手學生，曾在虛構的疫苗提醒櫃檯擔任志工。你只觀察到有人未依約到場，沒有個案資料、固定問題、期限、論文或偏好解釋。",
+      "initial_message": "我在提醒櫃檯看到有些家庭收到訊息後還是錯過預約，但不確定自己想理解這個情況的哪一部分。",
+      "owned_framings": [
+        {
+          "framing_key": "F1",
+          "facet_kind": "implementation_perspective",
+          "statement": "提醒管道與發送時間可以分開描述，而不是把每一則訊息視為完全相同的接觸。",
+          "initially_expressed": true,
+          "matching_facet_phrases": [
+            "傳遞方式的觀點",
+            "提醒管道的角度"
+          ]
+        },
+        {
+          "framing_key": "F2",
+          "facet_kind": "stakeholder_perspective",
+          "statement": "負責安排交通與時間的照顧者，可能與實際接種者具有不同且需要保留的角色觀點。",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "照顧者的觀點",
+            "家庭安排者的視角"
+          ]
+        },
+        {
+          "framing_key": "F3",
+          "facet_kind": "access_dimension",
+          "statement": "交通、門診時段與請假時間可能形成獨立於收到提醒之外的近用條件。",
+          "initially_expressed": false,
+          "matching_facet_phrases": [
+            "近用條件的面向",
+            "預約可及性的角度"
+          ]
+        }
+      ],
+      "response_policy": {
+        "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+        "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+        "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+        "model_menu": "reject_menu_and_restate_scholar_authority",
+        "freeze_after_actor_turn": 6
+      },
+      "forbidden_out_of_role": [
+        "不得從錯過預約推斷猶豫、信任、健康結果或因果效果。",
+        "不得虛構個案資訊或採用 mentor 生成的介入問題。"
+      ],
+      "rule_anchors": [
+        "deep-research/agents/socratic_mentor_agent.md#optional-adjacent-framing-probe-layer-internal-never-mention-probe-to-users",
+        "docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md"
+      ]
+    }
+  ]
+}

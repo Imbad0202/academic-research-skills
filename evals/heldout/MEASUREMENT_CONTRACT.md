@@ -82,6 +82,7 @@ table below is an informative mirror:
 | `re_review_persuasion_invariance` | `paired_controls` | reuses E4 machinery per its README (SD-11) |
 | `review_criteria_constructive_value` | `paired_controls` | #684 same-context/same-budget comparison using the paired-controls-only human-expert-panel exception; subscription subject CLI, USD 0 API ceiling |
 | `tortured_phrase_conformance` | `mechanical_match` | synthetic grammar, normalization, parsing, replay, and fail-safe conformance only; no contextual-accuracy claim |
+| `within_session_ideation_diversity` | `paired_controls` | #659 separate adjacent-probe and exploratory-guardrail synthetic-role comparisons; count, dispersion, and follow-through stay separate |
 
 Class semantics (schema branches B1-B3/B8 + checker):
 

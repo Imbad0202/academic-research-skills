@@ -1,0 +1,63 @@
+{
+  "schema_version": "ideation-diversity-nonproduction-variant/1.0",
+  "variant_id": "exploratory_guardrails_ablated",
+  "source_path": "deep-research/agents/socratic_mentor_agent.md",
+  "source_sha256": "6d9218971f0787603f0453693af63b2f36c894e4655ccd365aa868bcbd8748c0",
+  "nonproduction_only": true,
+  "runtime_install_forbidden": true,
+  "adjacent_probe_state": "off",
+  "replacements": [
+    {
+      "replacement_id": "enable-auto-convergence",
+      "occurrences": 1,
+      "before": "| Auto-convergence | **Disabled** — never auto-end based on convergence signals | Enabled (standard behavior) |",
+      "after": "| Auto-convergence | Enabled (standard behavior; non-production ablation) | Enabled (standard behavior) |"
+    },
+    {
+      "replacement_id": "enable-summary-prompts",
+      "occurrences": 1,
+      "before": "| \"Want me to summarize?\" prompts | **Never initiate** — wait for user to ask | Standard behavior |",
+      "after": "| \"Want me to summarize?\" prompts | Standard behavior (non-production ablation) | Standard behavior |"
+    },
+    {
+      "replacement_id": "remove-raised-challenge-ratio",
+      "occurrences": 1,
+      "before": "| Challenge frequency | Higher `[Q:CHALLENGE]` ratio (40%+ across all layers) | Standard taxonomy balance |",
+      "after": "| Challenge frequency | Standard taxonomy balance (non-production ablation) | Standard taxonomy balance |"
+    },
+    {
+      "replacement_id": "remove-transition-convergence-relief",
+      "occurrences": 1,
+      "before": "- **Goal-Oriented → Exploratory**: Soft signal: \"I notice you're exploring more broadly — I'll give you more room.\" Then remove convergence pressure and stop suggesting summaries.",
+      "after": "- **Goal-Oriented → Exploratory**: Soft signal: \"I notice you're exploring more broadly — I'll give you more room.\" Standard convergence and summary behavior remains active in this non-production ablation."
+    },
+    {
+      "replacement_id": "remove-anti-premature-closure-block",
+      "occurrences": 1,
+      "before": "### Anti-Premature-Closure Rules\n\nIn exploratory mode, the following are **prohibited**:\n- Suggesting that the discussion \"has reached a natural stopping point\"\n- Asking \"shall I write this up?\" or \"want me to summarize?\"\n- Using phrases like \"we've covered a lot\" or \"to wrap up\"\n- Compressing layers to \"move things along\"\n\nThe user decides when exploration is done. The mentor's job is to keep deepening, not to close.",
+      "after": "### Anti-Premature-Closure Rules — Non-Production Ablation\n\nThe exploratory-only prohibition is disabled in this frozen experimental variant. Standard convergence and summary behavior applies. This variant must never be installed as a production agent."
+    },
+    {
+      "replacement_id": "remove-premature-convergence-correction",
+      "occurrences": 1,
+      "before": "| **Premature Convergence** | You suggested summarizing, wrapping up, or moving to the next step before the user signaled readiness — especially in exploratory mode | Track convergence suggestions vs. user-initiated transitions | In exploratory mode: retract the suggestion and ask a deepening question instead. In goal-oriented mode: proceed normally |",
+      "after": "| **Premature Convergence** | You suggested summarizing, wrapping up, or moving to the next step before the user signaled readiness | Track convergence suggestions vs. user-initiated transitions | Record only; standard convergence behavior remains active in this non-production ablation |"
+    },
+    {
+      "replacement_id": "remove-user-controlled-convergence-standard",
+      "occurrences": 1,
+      "before": "7. **Know when to end** — in **goal-oriented mode**, once the dialogue converges, end it. In **exploratory mode**, let the user control convergence",
+      "after": "7. **Know when to end** — once the dialogue converges, use the standard end behavior in both modes (non-production ablation)"
+    }
+  ],
+  "required_present_after": [
+    "non-production ablation",
+    "Standard taxonomy balance (non-production ablation)",
+    "This variant must never be installed as a production agent."
+  ],
+  "required_absent_after": [
+    "**Disabled** — never auto-end based on convergence signals",
+    "Higher `[Q:CHALLENGE]` ratio (40%+ across all layers)",
+    "In **exploratory mode**, let the user control convergence"
+  ]
+}

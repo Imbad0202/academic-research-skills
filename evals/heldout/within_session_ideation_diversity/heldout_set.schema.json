@@ -1,0 +1,268 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/heldout_set.schema.json",
+  "title": "#659 within-session ideation-diversity seed set",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite",
+    "seed_version",
+    "content_class",
+    "design",
+    "tools",
+    "actor_blind_fields",
+    "subject_blind_fields",
+    "judge_blind_fields",
+    "scenarios"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "within-session-ideation-diversity-heldout/1.0"
+    },
+    "suite": {
+      "const": "within_session_ideation_diversity"
+    },
+    "seed_version": {
+      "const": "0.1.0"
+    },
+    "content_class": {
+      "const": "repository-owned synthetic scholar role cards"
+    },
+    "design": {
+      "type": "object",
+      "required": [
+        "experiments",
+        "minimum_subject_replicates_per_cell",
+        "minimum_independent_judges",
+        "freeze_after_actor_turn",
+        "fresh_context_per_cell",
+        "adaptive_actor_forbidden"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "experiments": {
+          "const": [
+            {
+              "mechanism_id": "adjacent_probe",
+              "arms": [
+                "adjacent_probe_off",
+                "adjacent_probe_on"
+              ],
+              "held_constant": "production exploratory guardrails on"
+            },
+            {
+              "mechanism_id": "exploratory_guardrails",
+              "arms": [
+                "exploratory_guardrails_on",
+                "exploratory_guardrails_ablated"
+              ],
+              "held_constant": "adjacent probe off"
+            }
+          ]
+        },
+        "minimum_subject_replicates_per_cell": {
+          "const": 2
+        },
+        "minimum_independent_judges": {
+          "const": 2
+        },
+        "freeze_after_actor_turn": {
+          "const": 6
+        },
+        "fresh_context_per_cell": {
+          "const": true
+        },
+        "adaptive_actor_forbidden": {
+          "const": true
+        }
+      }
+    },
+    "tools": {
+      "const": {
+        "allowed": [],
+        "web": false
+      }
+    },
+    "actor_blind_fields": {
+      "const": [
+        "mechanism_id",
+        "arm_id",
+        "paired_transcript",
+        "expected_metric_direction",
+        "aggregate"
+      ]
+    },
+    "subject_blind_fields": {
+      "const": [
+        "pair_id",
+        "equivalence_key",
+        "owned_framings",
+        "response_policy",
+        "expected_metric_direction",
+        "judge_labels"
+      ]
+    },
+    "judge_blind_fields": {
+      "const": [
+        "mechanism_id",
+        "arm_id",
+        "pair_id",
+        "replicate_id",
+        "expected_metric_direction",
+        "paired_transcript",
+        "aggregate",
+        "other_judge_labels"
+      ]
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "$ref": "#/$defs/scenario"
+      }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "required": [
+        "scenario_id",
+        "pair_id",
+        "equivalence_key",
+        "language",
+        "domain",
+        "eligible_population",
+        "role_brief",
+        "initial_message",
+        "owned_framings",
+        "response_policy",
+        "forbidden_out_of_role",
+        "rule_anchors"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scenario_id": {
+          "type": "string",
+          "pattern": "^idi-(edtech|quality-policy|public-health)-(en|zh)$"
+        },
+        "pair_id": {
+          "type": "string",
+          "pattern": "^idi-(edtech|quality-policy|public-health)$"
+        },
+        "equivalence_key": {
+          "type": "string",
+          "pattern": "^eq-(edtech|quality-policy|public-health)-v1$"
+        },
+        "language": {
+          "enum": [
+            "en",
+            "zh-TW"
+          ]
+        },
+        "domain": {
+          "enum": [
+            "education",
+            "higher_education_policy",
+            "public_health"
+          ]
+        },
+        "eligible_population": {
+          "const": {
+            "mode": "socratic",
+            "intent": "exploratory",
+            "layer": "problem_framing",
+            "experience": "novice_role",
+            "fixed_rq": false,
+            "deliverable_requested": false
+          }
+        },
+        "role_brief": {
+          "type": "string",
+          "minLength": 40
+        },
+        "initial_message": {
+          "type": "string",
+          "minLength": 20
+        },
+        "owned_framings": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/framing"
+          }
+        },
+        "response_policy": {
+          "const": {
+            "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+            "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+            "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+            "model_menu": "reject_menu_and_restate_scholar_authority",
+            "freeze_after_actor_turn": 6
+          }
+        },
+        "forbidden_out_of_role": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "rule_anchors": {
+          "const": [
+            "deep-research/agents/socratic_mentor_agent.md#optional-adjacent-framing-probe-layer-internal-never-mention-probe-to-users",
+            "docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md"
+          ]
+        }
+      }
+    },
+    "framing": {
+      "type": "object",
+      "required": [
+        "framing_key",
+        "facet_kind",
+        "statement",
+        "initially_expressed",
+        "matching_facet_phrases"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "framing_key": {
+          "type": "string",
+          "pattern": "^F[1-3]$"
+        },
+        "facet_kind": {
+          "enum": [
+            "stakeholder_perspective",
+            "context_dimension",
+            "time_dimension",
+            "level_of_analysis",
+            "access_dimension",
+            "implementation_perspective"
+          ]
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 20
+        },
+        "initially_expressed": {
+          "type": "boolean"
+        },
+        "matching_facet_phrases": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 4
+          }
+        }
+      }
+    }
+  }
+}
