@@ -19,14 +19,14 @@ The pure builder `scripts/build_claim_standing_candidate_ledger.py` accepts only
 1. require exactly one visible initial attempt for every planned query/index pair;
 2. mark hits that have neither a title nor a stable identifier;
 3. apply date, language, and document-type filters in that order;
-4. form work families by normalized DOI, explicit version relation, normalized title/year/first author, then title plus a supplied relation; a no-DOI record cannot transitively bridge distinct DOI components;
+4. form work families by normalized DOI, explicit version relation, normalized title/year/first author, then title plus a supplied relation; normalization-empty DOI, title, provider-record id, and author-family values never count as identity, and a no-DOI record cannot transitively bridge distinct DOI components;
 5. choose a canonical record by published-over-preprint status, DOI presence, abstract presence, provider rank, then ASCII `(index_id, provider_record_id)`;
 6. apply the caller-supplied relevance assessment independently of canonical selection, verifying its canonical exact-claim/candidate/assessor input digest and exact prompt UTF-8 digest, then retaining its outcome, raw output and matching digest, rationale, or explicit failure;
 7. select relevant and ambiguous families by deterministic relevance/rank order, up to 40 families, preserve assessment failures as `not_checked`, and mark every remaining eligible family `candidate_cap_exceeded`; a derived work-family id resolves only otherwise exact ordering ties.
 
 The envelope is fixed at three queries, four indexes, 20 retained hits in aggregate per `(query,index)` across attempts, 240 raw hits, and 40 selected work families. Every raw hit receives exactly one terminal state. Attempt failures remain separate ledger rows; the builder never hides or retries them. A pair has one initial attempt; any later attempt must name the failed attempt and a fresh, unique authorization identifier.
 
-Relevance is an explicit retained input, not a model decision made by this builder. Each row binds the exact claim text/digest, candidate title and abstract state/text digest, assessor identity/version contract, and canonical prompt UTF-8 bytes before its output is considered. A successful assessment must retain checked state, raw output, matching SHA-256, and rationale. A failed assessment retains its failure code/detail and any malformed raw output, and finalizes truthfully as `not_checked`; it is never converted into a relevance judgment or omitted.
+Relevance is an explicit retained input, not a model decision made by this builder. Each row binds the exact claim text/digest, candidate title and abstract state/text digest, assessor identity/version contract, and canonical prompt UTF-8 bytes before its output is considered. An available abstract and a successful assessment's raw output and rationale must contain non-whitespace text. A failed assessment retains a non-whitespace failure detail and any malformed raw output exactly, including whitespace-only output, and finalizes truthfully as `not_checked`; it is never converted into a relevance judgment or omitted.
 
 ## Consent, privacy, and failure behavior
 

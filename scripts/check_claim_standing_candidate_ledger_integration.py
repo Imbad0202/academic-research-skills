@@ -33,21 +33,24 @@ RESOLVER_HASHES = {
     Path("scripts/crossref_client.py"): "06da046164f882e20383cd63ec9e9b6da2507d7a5e1f23066adebb88f2256e25",
     Path("scripts/arxiv_client.py"): "76ace0911bf98b1a288e64ee41f4c2caf993b9df48ef3abb0c57b8446acf02a7",
 }
-ALLOWED_RUNTIME_IMPORTS = {
-    "__future__",
+ALLOWED_RUNTIME_DIRECT_IMPORTS = {
     "argparse",
-    "collections",
     "copy",
-    "datetime",
     "hashlib",
-    "itertools",
     "json",
-    "jsonschema",
-    "pathlib",
     "re",
     "sys",
-    "typing",
     "unicodedata",
+}
+ALLOWED_RUNTIME_FROM_IMPORTS = {
+    "__future__": {"annotations"},
+    "collections": {"Counter"},
+    "datetime": {"datetime"},
+    "itertools": {"combinations"},
+    "jsonschema": {"Draft202012Validator"},
+    "jsonschema.exceptions": {"SchemaError", "ValidationError"},
+    "pathlib": {"Path"},
+    "typing": {"Any"},
 }
 FORBIDDEN_RUNTIME_NAMES = {
     "__builtins__",
@@ -199,16 +202,30 @@ def run_checks(root: Path) -> list[str]:
         except SyntaxError as exc:
             errors.append(f"{RUNTIME}: invalid Python: {exc}")
         else:
-            imports: set[str] = set()
+            forbidden_imports: set[str] = set()
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
-                    imports.update(alias.name.split(".")[0] for alias in node.names)
-                elif isinstance(node, ast.ImportFrom) and node.module:
-                    imports.add(node.module.split(".")[0])
-            bad = sorted(imports - ALLOWED_RUNTIME_IMPORTS)
-            if bad:
+                    forbidden_imports.update(
+                        alias.name
+                        for alias in node.names
+                        if alias.name not in ALLOWED_RUNTIME_DIRECT_IMPORTS
+                    )
+                elif isinstance(node, ast.ImportFrom):
+                    module = node.module or "<relative>"
+                    allowed_symbols = (
+                        ALLOWED_RUNTIME_FROM_IMPORTS.get(module, set())
+                        if node.level == 0
+                        else set()
+                    )
+                    forbidden_imports.update(
+                        f"{module}.{alias.name}"
+                        for alias in node.names
+                        if alias.name not in allowed_symbols
+                    )
+            if forbidden_imports:
                 errors.append(
-                    f"{RUNTIME}: non-allowlisted transport/model/process-capable imports: {bad}"
+                    f"{RUNTIME}: non-allowlisted transport/model/process-capable imports: "
+                    f"{sorted(forbidden_imports)}"
                 )
             dynamic_references: set[str] = set()
             for node in ast.walk(tree):

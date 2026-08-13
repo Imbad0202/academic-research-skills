@@ -239,6 +239,17 @@ def validate_plan(plan: dict[str, Any]) -> None:
     query_map = _unique(queries, "query_id", "queries")
     provider_map = _unique(roster, "index_id", "provider_roster")
     for index_id, provider in provider_map.items():
+        for disclosure_field in (
+            "product_identity",
+            "query_capability",
+            "pagination_behavior",
+        ):
+            disclosure = provider[disclosure_field]
+            _expect(
+                isinstance(disclosure, str) and bool(disclosure.strip()),
+                f"provider_roster.{index_id}.{disclosure_field}",
+                "must contain non-whitespace provider disclosure text",
+            )
         retention_state = provider["retention_state"]
         retention_reference = provider["retention_reference"]
         _expect(
@@ -441,6 +452,18 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
                 f"raw_hits.{hit_id}.{identity_field}",
                 "must be null or contain non-whitespace identity text",
             )
+        for author_index, author in enumerate(hit["authors"]):
+            for author_field in ("family", "given"):
+                author_value = author[author_field]
+                _expect(
+                    author_value is None
+                    or (
+                        isinstance(author_value, str)
+                        and bool(author_value.strip())
+                    ),
+                    f"raw_hits.{hit_id}.authors[{author_index}].{author_field}",
+                    "must be null or contain non-whitespace author text",
+                )
         _expect(hit["probe_id"] == plan["probe_id"], f"raw_hits.{hit_id}.probe_id", "probe drifted")
         _expect(hit["attempt_id"] in attempts, f"raw_hits.{hit_id}.attempt_id", "unknown attempt")
         attempt = attempts[hit["attempt_id"]]
@@ -451,7 +474,12 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
         ranks.add(hit["provider_rank"])
         hits_by_attempt[hit["attempt_id"]] += 1
         if hit["abstract_state"] == "available":
-            _expect(isinstance(hit["abstract_text"], str) and hit["abstract_text"], f"raw_hits.{hit_id}.abstract_text", "available abstract must be present")
+            _expect(
+                isinstance(hit["abstract_text"], str)
+                and bool(hit["abstract_text"].strip()),
+                f"raw_hits.{hit_id}.abstract_text",
+                "available abstract must contain non-whitespace text",
+            )
             _expect(hit["abstract_sha256"] == text_digest(hit["abstract_text"]), f"raw_hits.{hit_id}.abstract_sha256", "does not bind abstract")
         else:
             _expect(hit["abstract_text"] is None and hit["abstract_sha256"] is None, f"raw_hits.{hit_id}.abstract", "missing/not-returned abstract must be null")
@@ -566,14 +594,15 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
                 "successful assessment must have a checked relevance state",
             )
             _expect(
-                raw_output is not None,
+                isinstance(raw_output, str) and bool(raw_output.strip()),
                 f"relevance_assessments[{index}].raw_output",
-                "successful assessment must retain raw output",
+                "successful assessment must retain non-whitespace raw output",
             )
             _expect(
-                assessment["rationale"] is not None,
+                isinstance(assessment["rationale"], str)
+                and bool(assessment["rationale"].strip()),
                 f"relevance_assessments[{index}].rationale",
-                "successful assessment must retain a rationale",
+                "successful assessment must retain a non-whitespace rationale",
             )
             _expect(
                 assessment["failure_code"] is None
@@ -595,9 +624,10 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
             )
             _expect(
                 assessment["failure_code"] is not None
-                and assessment["failure_detail"] is not None,
+                and isinstance(assessment["failure_detail"], str)
+                and bool(assessment["failure_detail"].strip()),
                 f"relevance_assessments[{index}].failure",
-                "failed assessment must retain failure code and detail",
+                "failed assessment must retain failure code and non-whitespace detail",
             )
     _expect(retained["retrieval_input_sha256"] == bound_digest(retained, "retrieval_input_sha256"), "retrieval_input_sha256", "does not bind input")
 
@@ -605,7 +635,20 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
 def normalize_doi(value: str | None) -> str | None:
     if value is None:
         return None
-    return _DOI_PREFIX_RE.sub("", value.strip()).rstrip(".").casefold()
+    return _DOI_PREFIX_RE.sub("", value.strip()).rstrip(".").casefold() or None
+
+
+def normalize_provider_record_id(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return value.strip() or None
+
+
+def normalize_author_family(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = unicodedata.normalize("NFKC", value).casefold().strip()
+    return normalized or None
 
 
 def normalize_title(value: str | None) -> str | None:
@@ -620,11 +663,11 @@ def _canonical_key(hit: dict[str, Any]) -> tuple[Any, ...]:
     status = {"published": 0, "preprint": 1, "other": 2, "unknown": 3}[hit["publication_status"]]
     return (
         status,
-        0 if hit["doi"] else 1,
+        0 if normalize_doi(hit["doi"]) else 1,
         0 if hit["abstract_state"] == "available" else 1,
         hit["provider_rank"],
         hit["index_id"],
-        hit["provider_record_id"] or "",
+        normalize_provider_record_id(hit["provider_record_id"]) or "",
         hit["raw_hit_id"],
     )
 
@@ -658,8 +701,11 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
     eligible: list[dict[str, Any]] = []
     for row in final_rows:
         row.update(terminal_state=None, work_family_id=None, retained_raw_hit_id=None)
-        stable = row["provider_record_id"] is not None or row["doi"] is not None
-        if row["title"] is None and not stable:
+        stable = bool(
+            normalize_provider_record_id(row["provider_record_id"])
+            or normalize_doi(row["doi"])
+        )
+        if normalize_title(row["title"]) is None and not stable:
             row["terminal_state"] = "missing_title_and_stable_id"
             continue
         dates = query_map[row["query_id"]]["date_filter"]
@@ -684,7 +730,7 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
     for left, right in combinations(eligible, 2):
         left_id, right_id = left["raw_hit_id"], right["raw_hit_id"]
         left_doi, right_doi = normalize_doi(left["doi"]), normalize_doi(right["doi"])
-        if left_doi is not None and left_doi == right_doi:
+        if left_doi and left_doi == right_doi:
             union(left_id, right_id)
             continue
         explicitly_related = (
@@ -696,14 +742,14 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
 
     def weak_key(row: dict[str, Any]) -> tuple[str, int, str] | None:
         title = normalize_title(row["title"])
-        first_family = row["authors"][0]["family"] if row["authors"] else None
+        first_family = (
+            normalize_author_family(row["authors"][0]["family"])
+            if row["authors"]
+            else None
+        )
         if title is None or row["year"] is None or first_family is None:
             return None
-        return (
-            title,
-            row["year"],
-            unicodedata.normalize("NFKC", first_family).casefold(),
-        )
+        return (title, row["year"], first_family)
 
     weak_groups: dict[tuple[str, int, str], list[str]] = {}
     for row in eligible:
@@ -718,7 +764,7 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
             if root not in root_dois:
                 continue
             doi = normalize_doi(row["doi"])
-            if doi is not None:
+            if doi:
                 root_dois[root].add(doi)
         distinct_dois = set().union(*(root_dois[root] for root in roots))
         if len(distinct_dois) <= 1:

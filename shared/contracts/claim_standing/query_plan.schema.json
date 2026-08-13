@@ -248,13 +248,15 @@
         "product_identity": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 300
+          "maxLength": 300,
+          "pattern": "\\S"
         },
         "purpose": { "const": "scholarly_discovery" },
         "query_capability": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 500
+          "maxLength": 500,
+          "pattern": "\\S"
         },
         "abstract_availability": {
           "enum": ["available_when_returned", "metadata_only", "mixed"]
@@ -262,7 +264,8 @@
         "pagination_behavior": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 500
+          "maxLength": 500,
+          "pattern": "\\S"
         },
         "adapter_version": { "$ref": "#/$defs/identifier" },
         "retention_state": { "enum": ["known", "unknown"] },

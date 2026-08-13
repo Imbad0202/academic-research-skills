@@ -135,6 +135,45 @@ def test_published_record_wins_canonical_selection_over_preprint() -> None:
     assert ledger.normalize_doi("HTTPS://DOI.ORG/10.1000/EXAMPLE") == "10.1000/example"
 
 
+def test_normalizers_collapse_semantically_empty_identity_values_to_null() -> None:
+    assert ledger.normalize_doi("doi:   ") is None
+    assert ledger.normalize_title("---") is None
+    assert ledger.normalize_provider_record_id("   ") is None
+    assert ledger.normalize_author_family("   ") is None
+
+
+def test_normalization_empty_title_and_doi_do_not_satisfy_minimum_identity() -> None:
+    plan = _plan()
+    retained = _retained()
+    hit = retained["raw_hits"][2]
+    hit.update(provider_record_id=None, doi="doi:   ", title="---")
+    retained["relevance_assessments"] = retained["relevance_assessments"][:1]
+    _rehash_input(retained, plan)
+    result = ledger.build_ledger(plan, retained)
+    row = next(row for row in result["raw_hits"] if row["raw_hit_id"] == "hit-3")
+    assert row["terminal_state"] == "missing_title_and_stable_id"
+
+
+def test_normalization_empty_dois_never_create_a_strong_union() -> None:
+    plan = _plan()
+    retained = _retained()
+    retained["raw_hits"][0]["doi"] = "doi:   "
+    retained["raw_hits"][1].update(
+        doi="https://doi.org/",
+        title="A distinct candidate",
+        explicit_version_of_raw_hit_id=None,
+    )
+    assessment = copy.deepcopy(retained["relevance_assessments"][0])
+    assessment["canonical_raw_hit_id"] = "hit-2"
+    assessment["raw_output"] = "assessment-hit-2"
+    assessment["raw_output_sha256"] = ledger.text_digest(assessment["raw_output"])
+    retained["relevance_assessments"].append(assessment)
+    _rehash_input(retained, plan)
+    result = ledger.build_ledger(plan, retained)
+    rows = {row["raw_hit_id"]: row for row in result["raw_hits"]}
+    assert rows["hit-1"]["work_family_id"] != rows["hit-2"]["work_family_id"]
+
+
 def test_distinct_dois_defeat_weaker_title_fallback() -> None:
     retained = _retained()
     retained["raw_hits"][1]["doi"] = "10.1000/distinct"
@@ -344,6 +383,33 @@ def test_raw_hit_identity_fields_reject_whitespace_only_values(field: str) -> No
     with pytest.raises(ledger.LedgerError, match=field):
         ledger.validate_input(plan, retained)
     with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+@pytest.mark.parametrize("field", ["family", "given"])
+def test_author_names_reject_whitespace_in_schema_and_runtime(field: str) -> None:
+    plan = _plan()
+    retained = _retained()
+    retained["raw_hits"][0]["authors"][0][field] = "   "
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match=field):
+        ledger.validate_input(plan, retained)
+    with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+@pytest.mark.parametrize(
+    "field", ["product_identity", "query_capability", "pagination_behavior"]
+)
+def test_provider_disclosures_reject_whitespace_in_schema_and_runtime(field: str) -> None:
+    plan = _plan()
+    plan["provider_roster"][0][field] = "   "
+    _rehash_plan(plan)
+    with pytest.raises(ledger.LedgerError, match=field):
+        ledger.validate_plan(plan)
+    retained = _retained()
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="query plan schema violation"):
         ledger.build_ledger(plan, retained)
 
 
@@ -566,6 +632,79 @@ def test_failed_relevance_assessment_remains_truthfully_visible() -> None:
     row = next(row for row in result["raw_hits"] if row["raw_hit_id"] == "hit-1")
     assert row["terminal_state"] == "not_checked"
     assert result["counts"]["raw_hit_state_counts"]["not_checked"] == 1
+
+
+def test_failed_malformed_relevance_preserves_whitespace_raw_output_exactly() -> None:
+    retained = _retained()
+    assessment = retained["relevance_assessments"][0]
+    assessment.update(
+        outcome="failed",
+        state="not_checked",
+        reason_code=None,
+        rationale=None,
+        raw_output="   ",
+        raw_output_sha256=ledger.text_digest("   "),
+        failure_code="malformed_output",
+        failure_detail="Assessor returned only whitespace.",
+    )
+    _rehash_input(retained)
+    result = ledger.build_ledger(_plan(), retained)
+    family = next(
+        row for row in result["work_families"] if row["canonical_raw_hit_id"] == "hit-1"
+    )
+    assert family["relevance"]["raw_output"] == "   "
+    assert family["relevance"]["raw_output_sha256"] == ledger.text_digest("   ")
+
+
+def test_available_abstract_rejects_whitespace_in_schema_and_runtime() -> None:
+    plan = _plan()
+    retained = _retained()
+    hit = retained["raw_hits"][0]
+    hit["abstract_text"] = "   "
+    hit["abstract_sha256"] = ledger.text_digest(hit["abstract_text"])
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="abstract_text"):
+        ledger.validate_input(plan, retained)
+    with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+@pytest.mark.parametrize("field", ["rationale", "raw_output"])
+def test_successful_relevance_text_rejects_whitespace_in_schema_and_runtime(
+    field: str,
+) -> None:
+    plan = _plan()
+    retained = _retained()
+    assessment = retained["relevance_assessments"][0]
+    assessment[field] = "   "
+    if field == "raw_output":
+        assessment["raw_output_sha256"] = ledger.text_digest(assessment[field])
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match=field):
+        ledger.validate_input(plan, retained)
+    with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+def test_failed_relevance_detail_rejects_whitespace_in_schema_and_runtime() -> None:
+    plan = _plan()
+    retained = _retained()
+    assessment = retained["relevance_assessments"][0]
+    assessment.update(
+        outcome="failed",
+        state="not_checked",
+        reason_code=None,
+        rationale=None,
+        raw_output=None,
+        raw_output_sha256=None,
+        failure_code="timeout",
+        failure_detail="   ",
+    )
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="failure"):
+        ledger.validate_input(plan, retained)
+    with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
+        ledger.build_ledger(plan, retained)
 
 
 def test_relevance_raw_output_hash_is_verified() -> None:

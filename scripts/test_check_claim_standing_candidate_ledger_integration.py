@@ -99,6 +99,31 @@ def test_non_allowlisted_and_dynamic_imports_are_rejected(tmp_path: Path) -> Non
 
 
 @pytest.mark.parametrize(
+    ("payload", "symbol"),
+    [
+        (
+            "from sys import modules as registry\n"
+            "registry['os'].spawnl(0, '/bin/true', 'true')\n",
+            "sys.modules",
+        ),
+        (
+            "from sys import _getframe as frame\n"
+            "_scope = frame().f_globals\n",
+            "sys._getframe",
+        ),
+    ],
+)
+def test_from_import_requires_an_exact_per_module_symbol_allowlist(
+    tmp_path: Path, payload: str, symbol: str
+) -> None:
+    root = _tree(tmp_path)
+    path = root / guard.RUNTIME
+    path.write_text(payload + path.read_text(encoding="utf-8"), encoding="utf-8")
+    errors = guard.run_checks(root)
+    assert any("non-allowlisted" in error and symbol in error for error in errors)
+
+
+@pytest.mark.parametrize(
     "payload",
     [
         "_runner = eval\n_runner('1 + 1')\n",

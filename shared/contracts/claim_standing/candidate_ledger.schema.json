@@ -83,12 +83,14 @@
         "family": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 300
+          "maxLength": 300,
+          "pattern": "\\S"
         },
         "given": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 300
+          "maxLength": 300,
+          "pattern": "\\S"
         }
       }
     },
@@ -256,7 +258,8 @@
         "abstract_text": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 10000
+          "maxLength": 10000,
+          "pattern": "\\S"
         },
         "abstract_sha256": {
           "oneOf": [
@@ -414,7 +417,8 @@
         "rationale": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 2000
+          "maxLength": 2000,
+          "pattern": "\\S"
         },
         "assessor_kind": { "enum": ["synthetic_fixture", "external_provided"] },
         "assessor_id": { "$ref": "#/$defs/identifier" },
@@ -444,7 +448,8 @@
         "failure_detail": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 2000
+          "maxLength": 2000,
+          "pattern": "\\S"
         },
         "assessed_at": { "$ref": "#/$defs/rfc3339" }
       },
@@ -457,8 +462,8 @@
           "then": {
             "properties": {
               "state": { "enum": ["relevant", "not_relevant", "ambiguous"] },
-              "rationale": { "type": "string", "minLength": 1, "maxLength": 2000 },
-              "raw_output": { "type": "string", "minLength": 1, "maxLength": 10000 },
+              "rationale": { "type": "string", "minLength": 1, "maxLength": 2000, "pattern": "\\S" },
+              "raw_output": { "type": "string", "minLength": 1, "maxLength": 10000, "pattern": "\\S" },
               "raw_output_sha256": { "$ref": "#/$defs/sha256" },
               "failure_code": { "type": "null" },
               "failure_detail": { "type": "null" }
@@ -472,7 +477,7 @@
               "failure_code": {
                 "enum": ["timeout", "malformed_output", "assessor_unavailable", "cancelled"]
               },
-              "failure_detail": { "type": "string", "minLength": 1, "maxLength": 2000 }
+              "failure_detail": { "type": "string", "minLength": 1, "maxLength": 2000, "pattern": "\\S" }
             }
           }
         },
