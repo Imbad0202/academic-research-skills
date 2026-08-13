@@ -9,14 +9,14 @@
     "evals/heldout/review_criteria_constructive_value/expert_labels.schema.json": "7856c37648372665bd3fd701c793e1a98f94e0be5324671257136bc340baa258",
     "evals/heldout/review_criteria_constructive_value/expert_packet.schema.json": "c3d3a707b3480f8e6b4357f3c5c8ad624396a685778469948a6bfaf8f49a5077",
     "evals/heldout/review_criteria_constructive_value/heldout_set.json": "c7728656b30f626f6c2b487893405d5f7459b77a69d293e7ec70855c43984384",
-    "evals/heldout/review_criteria_constructive_value/measurement_plan.md": "a238e2e9df41513c4c940b5abcd91abbb25e2f5f2e0c38ad3359f7eaa6e76492",
+    "evals/heldout/review_criteria_constructive_value/measurement_plan.md": "0e19e2a9d560384fcd2a67e64175a00fe59e697563fdb1bca0fecc8f7d0b4a5e",
     "evals/heldout/review_criteria_constructive_value/paired_adjudication.schema.json": "0bbcf55e465afdea27d911f295276bbd2ac1a87df2d4ff6b6278a92a3a89d0f1",
     "evals/heldout/review_criteria_constructive_value/scenarios.json": "5dfa559578d27e498285ab33eca2b50237210e69dd6ed39b0cad4a4b2d5c6af9",
     "evals/heldout/review_criteria_constructive_value/scenarios.schema.json": "e592085f097981b9a0308e12c85a41fceba99993fbc72dd9c5a27a10026b159e",
     "evals/heldout/review_criteria_constructive_value/subject_output.schema.json": "b3386be4e1eca8f2ce4850a3067c7ab0bc21cc98a938d2e709956cc397c05531",
     "evals/heldout/review_criteria_constructive_value/treatment_prompt.md": "16907b4c35d9df226f831a837de0788d47d0790209d6f1a14e7fbebbb0921f22",
     "scripts/fixtures/review_target_context/synthetic-registry.json": "ad8a7892f975842ec99d66e16e4a45fc63bb9da09a14e38d86785532d26f2be1",
-    "scripts/run_review_criteria_constructive_value.py": "91ec6b896d24d97d189cb9f8ccf69565b71d2888b9f6c56fa53572823fe3d9a8",
+    "scripts/run_review_criteria_constructive_value.py": "50a0ca64c6fa118714a26dab462dd311a7d2267c4cf8909203c27b0dc731cfa9",
     "scripts/score_review_criteria_constructive_value.py": "1f1c2be5844da3be0933d71fd1c305f9d697cf8601efcc582bffddc8e1d1fd7f"
   }
 }

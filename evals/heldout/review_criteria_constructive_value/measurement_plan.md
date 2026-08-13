@@ -52,9 +52,11 @@ the observed outcome; blocked/partial calls are retained and reported.
 
 The default subject transport is the contained Codex CLI authenticated with the
 operator's ChatGPT subscription. Before dispatch, detection must report
-`Logged in using ChatGPT`; the execution record pins the Codex CLI version,
-exact model id, reasoning effort, disabled tool surface, isolation settings, and
-every model-visible prompt hash. This plan fixes two replicates for each of six
+`Logged in using ChatGPT`, and every frozen `--disable` flag must exist in the
+CLI's no-call `features list` registry; an incompatible registry blocks before
+quota is consumed. The execution record pins the Codex CLI version, exact model
+id, reasoning effort, disabled tool surface, isolation settings, and every
+model-visible prompt hash. This plan fixes two replicates for each of six
 items, so it dispatches exactly 24 subject calls: six items x two arms x two
 fresh replicates. Human experts and the disclosed human adjudicator supply the
 required labels. The report selects the paired-controls-only

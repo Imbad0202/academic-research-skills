@@ -64,6 +64,7 @@ MODEL_RE = re.compile(r"^gpt-[a-z0-9][a-z0-9._-]{0,123}$")
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 VERSION_RE = re.compile(r"\bcodex-cli\s+(\d+)\.(\d+)\.(\d+)\b")
+FEATURE_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 PROVIDER_SCHEMA_STRIPPED_KEYWORDS = frozenset(
     {"$schema", "$id", "title", "uniqueItems", "minLength", "maxLength"}
 )
@@ -109,7 +110,6 @@ LOCKED_ASSET_REFS = {
 DISABLED_FEATURES = (
     "shell_tool",
     "unified_exec",
-    "view_image",
     "apps",
     "plugins",
     "plugin_sharing",
@@ -676,6 +676,22 @@ def _codex_home(environ: dict[str, str]) -> Path:
     return (Path(environ["HOME"]).expanduser() / ".codex").resolve()
 
 
+def _feature_names(raw: str) -> set[str]:
+    names = {
+        parts[0]
+        for line in raw.splitlines()
+        if (
+            (parts := line.split())
+            and len(parts) >= 3
+            and FEATURE_NAME_RE.fullmatch(parts[0]) is not None
+            and parts[-1] in {"true", "false"}
+        )
+    }
+    if not names:
+        raise ValueError("empty or malformed Codex feature registry")
+    return names
+
+
 def detect(model: str, environ: dict[str, str] | None = None) -> dict[str, Any]:
     _model(model)
     env = dict(os.environ if environ is None else environ)
@@ -733,6 +749,27 @@ def detect(model: str, environ: dict[str, str] | None = None) -> dict[str, Any]:
     }
     if status_run.returncode or "Logged in using ChatGPT" not in status_lines:
         result["reason_code"] = "AUTH_NOT_CHATGPT_SUBSCRIPTION"
+        return result
+    try:
+        features_run = subprocess.run(
+            [codex, "features", "list"], env=status_env, stdin=subprocess.DEVNULL,
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        result["reason_code"] = "CODEX_FEATURES_UNAVAILABLE"
+        return result
+    if features_run.returncode:
+        result["reason_code"] = "CODEX_FEATURES_UNAVAILABLE"
+        return result
+    try:
+        feature_names = _feature_names(features_run.stdout)
+    except ValueError:
+        result["reason_code"] = "CODEX_FEATURES_UNAVAILABLE"
+        return result
+    unsupported = sorted(set(DISABLED_FEATURES) - feature_names)
+    if unsupported:
+        result["reason_code"] = "CODEX_FEATURE_FLAGS_INCOMPATIBLE"
+        result["unsupported_feature_flags"] = unsupported
         return result
     result.update(
         available=True,

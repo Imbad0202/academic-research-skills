@@ -17,8 +17,10 @@ import score_review_criteria_constructive_value as scorer
 def _fake_codex(
     tmp_path: Path, *, status: str = "Logged in using ChatGPT",
     status_to_stderr: bool = False, forbidden_event: bool = False,
-    invalid_output: bool = False,
+    invalid_output: bool = False, feature_names: tuple[str, ...] | None = None,
 ) -> tuple[Path, Path]:
+    if feature_names is None:
+        feature_names = runner.DISABLED_FEATURES
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir()
     executable = fake_bin / "codex"
@@ -34,6 +36,7 @@ STATUS = {status!r}
 STATUS_TO_STDERR = {status_to_stderr!r}
 FORBIDDEN = {forbidden_event!r}
 INVALID = {invalid_output!r}
+FEATURE_NAMES = {feature_names!r}
 CAPTURE = Path(__file__).with_name("capture.jsonl")
 
 if sys.argv[1:] == ["--version"]:
@@ -41,6 +44,10 @@ if sys.argv[1:] == ["--version"]:
     raise SystemExit(0)
 if sys.argv[1:] == ["login", "status"]:
     print(STATUS, file=sys.stderr if STATUS_TO_STDERR else sys.stdout)
+    raise SystemExit(0)
+if sys.argv[1:] == ["features", "list"]:
+    for name in FEATURE_NAMES:
+        print(name + " stable false")
     raise SystemExit(0)
 if not sys.argv[1:] or sys.argv[1] != "exec":
     raise SystemExit(9)
@@ -283,6 +290,18 @@ def test_detection_requires_exact_chatgpt_subscription_status(tmp_path) -> None:
     assert detected["auth_mode"] == "chatgpt_subscription"
 
 
+def test_detection_fails_closed_on_unknown_disable_feature(tmp_path) -> None:
+    missing = runner.DISABLED_FEATURES[0]
+    feature_names = tuple(
+        name for name in runner.DISABLED_FEATURES if name != missing
+    )
+    fake_bin, _ = _fake_codex(tmp_path, feature_names=feature_names)
+    detected = runner.detect("gpt-5.6", _env(tmp_path, fake_bin))
+    assert detected["available"] is False
+    assert detected["reason_code"] == "CODEX_FEATURE_FLAGS_INCOMPATIBLE"
+    assert detected["unsupported_feature_flags"] == [missing]
+
+
 def test_dispatch_requires_flag_and_exact_plan_hash(monkeypatch, tmp_path) -> None:
     run_dir, environ, capture = _prepare_run(tmp_path, monkeypatch)
     with pytest.raises(runner.MeasurementError, match="execute-24"):
@@ -317,6 +336,13 @@ def test_fake_subscription_dispatch_is_contained_complete_and_idempotent(
         assert "--ephemeral" in row["argv"]
         assert "--ignore-user-config" in row["argv"]
         assert "read-only" in row["argv"]
+        disabled = [
+            row["argv"][index + 1]
+            for index, value in enumerate(row["argv"][:-1])
+            if value == "--disable"
+        ]
+        assert disabled == list(runner.DISABLED_FEATURES)
+        assert "view_image" not in disabled
         assert row["output_schema_sha256"] == provider_schema_sha256
     before = capture.read_bytes()
     manifest_before = (run_dir / "execution-manifest.json").read_bytes()
