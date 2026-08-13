@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/role_topology_utility/study_plan.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "plan_version", "issue", "phase_status", "content_class", "authority_design_ref", "invocation_adapter_ref", "task_classes", "model_contract", "budgets", "tools", "replicates", "stopping", "uncertainty", "unique_verified_value", "blinding", "dependencies", "claims_boundary"],
+  "properties": {
+    "schema_version": {"const": "role-topology-study-plan/1.0"},
+    "suite": {"const": "role_topology_utility"},
+    "plan_version": {"const": "0.1.0"},
+    "issue": {"const": 582},
+    "phase_status": {"const": "design_and_synthetic_seed_only"},
+    "content_class": {"type": "string", "minLength": 20},
+    "authority_design_ref": {"const": "docs/design/2026-08-13-582-role-topology-utility-design.md"},
+    "invocation_adapter_ref": {"const": "evals/heldout/role_topology_utility/invocation_adapter.md"},
+    "task_classes": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/taskClass"}},
+    "model_contract": {"$ref": "#/$defs/modelContract"},
+    "budgets": {"$ref": "#/$defs/budgets"},
+    "tools": {"$ref": "#/$defs/tools"},
+    "replicates": {"$ref": "#/$defs/replicates"},
+    "stopping": {"$ref": "#/$defs/stopping"},
+    "uncertainty": {"$ref": "#/$defs/uncertainty"},
+    "unique_verified_value": {"$ref": "#/$defs/uvv"},
+    "blinding": {"$ref": "#/$defs/blinding"},
+    "dependencies": {"$ref": "#/$defs/dependencies"},
+    "claims_boundary": {"$ref": "#/$defs/claimsBoundary"}
+  },
+  "$defs": {
+    "role": {
+      "type": "object", "additionalProperties": false,
+      "required": ["seat_id", "role_id", "role_ref", "stage", "depends_on"],
+      "properties": {
+        "seat_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "role_id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "role_ref": {"type": "string", "pattern": "^[^/].*\\.md$"},
+        "stage": {"type": "integer", "minimum": 0, "maximum": 10},
+        "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9-]+$"}}
+      }
+    },
+    "arm": {
+      "type": "object", "additionalProperties": false,
+      "required": ["arm_id", "role_count", "final_output_seat", "topology", "roles"],
+      "properties": {
+        "arm_id": {"type": "string", "pattern": "^(review|writing)_[a-z0-9_]+$"},
+        "role_count": {"enum": [1, 2, 5, 7, 8]},
+        "final_output_seat": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "topology": {"type": "string", "minLength": 8},
+        "roles": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/role"}}
+      }
+    },
+    "taskClass": {
+      "type": "object", "additionalProperties": false,
+      "required": ["task_class_id", "independence_key", "unit_of_analysis", "evaluator_id", "outcome_vocabulary", "forbidden_outcomes", "arms"],
+      "properties": {
+        "task_class_id": {"enum": ["decomposable_reviewer_evidence_review", "sequential_writing_revision"]},
+        "independence_key": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "unit_of_analysis": {"type": "string", "minLength": 20},
+        "evaluator_id": {"enum": ["reviewer-evidence-rubric-v1", "writing-revision-rubric-v1"]},
+        "outcome_vocabulary": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9_]+$"}},
+        "forbidden_outcomes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9_]+$"}},
+        "arms": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/arm"}}
+      }
+    },
+    "modelContract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["subject_provider_model", "selection_gate", "same_subject_model_all_cells", "reasoning_effort", "model_fallback"],
+      "properties": {
+        "subject_provider_model": {"const": "UNSELECTED"},
+        "selection_gate": {"type": "string", "minLength": 40},
+        "same_subject_model_all_cells": {"const": true},
+        "reasoning_effort": {"const": "high"},
+        "model_fallback": {"const": false}
+      }
+    },
+    "budgets": {
+      "type": "object", "additionalProperties": false,
+      "required": ["per_call_input_token_cap", "per_call_output_token_cap", "no_rollover_between_seats", "planned_subject_calls", "judge_calls_included", "api_spend_authorized_usd"],
+      "properties": {
+        "per_call_input_token_cap": {"const": 24000},
+        "per_call_output_token_cap": {"const": 1500},
+        "no_rollover_between_seats": {"const": true},
+        "planned_subject_calls": {"const": 186},
+        "judge_calls_included": {"const": false},
+        "api_spend_authorized_usd": {"const": 0}
+      }
+    },
+    "tools": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowed", "web", "network", "external_corpus", "workspace_reads"],
+      "properties": {"allowed": {"const": []}, "web": {"const": false}, "network": {"const": false}, "external_corpus": {"const": false}, "workspace_reads": {"const": false}}
+    },
+    "replicates": {
+      "type": "object", "additionalProperties": false,
+      "required": ["per_scenario_arm", "paired_by_scenario_and_replicate", "adaptive_extension", "replacement_replicates"],
+      "properties": {"per_scenario_arm": {"const": 3}, "paired_by_scenario_and_replicate": {"const": true}, "adaptive_extension": {"const": false}, "replacement_replicates": {"const": false}}
+    },
+    "stopping": {
+      "type": "object", "additionalProperties": false,
+      "required": ["cell_atomic", "stop_entire_study_on_first_blocked_partial_or_protocol_deviation", "retry_attempts", "imputation", "early_stop_on_outcome", "preserve_partial_as_blocked_evidence", "blocked_evidence_is_measurement"],
+      "properties": {"cell_atomic": {"const": true}, "stop_entire_study_on_first_blocked_partial_or_protocol_deviation": {"const": true}, "retry_attempts": {"const": 0}, "imputation": {"const": false}, "early_stop_on_outcome": {"const": false}, "preserve_partial_as_blocked_evidence": {"const": true}, "blocked_evidence_is_measurement": {"const": false}}
+    },
+    "uncertainty": {
+      "type": "object", "additionalProperties": false,
+      "required": ["report_all_replicate_values", "paired_delta_reference_arm_by_task", "summaries", "confidence_interval", "null_hypothesis_test", "minimum_complete_pairs_for_summary", "pool_task_classes", "pool_metrics_to_scalar"],
+      "properties": {
+        "report_all_replicate_values": {"const": true},
+        "paired_delta_reference_arm_by_task": {"type": "object", "additionalProperties": false, "required": ["decomposable_reviewer_evidence_review", "sequential_writing_revision"], "properties": {"decomposable_reviewer_evidence_review": {"const": "review_inline_1"}, "sequential_writing_revision": {"const": "writing_inline_1"}}},
+        "summaries": {"const": ["median_paired_delta", "minimum_paired_delta", "maximum_paired_delta", "paired_sign_count"]},
+        "confidence_interval": {"const": "none_small_synthetic_seed"},
+        "null_hypothesis_test": {"const": false},
+        "minimum_complete_pairs_for_summary": {"const": 6},
+        "pool_task_classes": {"const": false},
+        "pool_metrics_to_scalar": {"const": false}
+      }
+    },
+    "uvv": {
+      "type": "object", "additionalProperties": false,
+      "required": ["unit_definition", "duplicate_rule", "input_restating_rule", "reviewer_unit", "writing_unit", "human_verification_required", "minimum_independent_experts", "blind_adjudicator_required", "cross_task_label_reuse", "unavailable_panel_status"],
+      "properties": {"unit_definition": {"type": "string", "minLength": 100}, "duplicate_rule": {"type": "string", "minLength": 30}, "input_restating_rule": {"type": "string", "minLength": 30}, "reviewer_unit": {"type": "string", "minLength": 20}, "writing_unit": {"type": "string", "minLength": 20}, "human_verification_required": {"const": true}, "minimum_independent_experts": {"const": 2}, "blind_adjudicator_required": {"const": true}, "cross_task_label_reuse": {"const": false}, "unavailable_panel_status": {"const": "NOT_COMPUTABLE"}}
+    },
+    "blinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["subject_blind_fields", "expert_blind_fields", "adjudicator_blind_fields"],
+      "properties": {
+        "subject_blind_fields": {"const": ["arm_id", "paired_outputs", "gold", "expected_metrics", "expert_labels", "aggregate_results"]},
+        "expert_blind_fields": {"const": ["arm_id", "role_count", "topology", "replicate_id", "provider_model", "other_expert_labels", "aggregate"]},
+        "adjudicator_blind_fields": {"const": ["arm_id", "role_count", "topology", "provider_model", "aggregate"]}
+      }
+    },
+    "dependencies": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reviewer_interpretation_requires_issue_653_measurement", "measurement_envelope", "suite_class", "generic_issue_263_runner_is_dispatcher"],
+      "properties": {"reviewer_interpretation_requires_issue_653_measurement": {"const": true}, "measurement_envelope": {"const": "heldout-measurement/1.1"}, "suite_class": {"const": "paired_controls"}, "generic_issue_263_runner_is_dispatcher": {"const": false}}
+    },
+    "claimsBoundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["dispatch_authorized", "measurement_generated", "full_panels_made_default", "issue_closed_by_assets", "paper_thresholds_imported"],
+      "properties": {"dispatch_authorized": {"const": false}, "measurement_generated": {"const": false}, "full_panels_made_default": {"const": false}, "issue_closed_by_assets": {"const": false}, "paper_thresholds_imported": {"const": false}}
+    }
+  }
+}

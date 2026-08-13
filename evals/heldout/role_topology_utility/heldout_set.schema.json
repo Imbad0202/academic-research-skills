@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/role_topology_utility/heldout_set.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "seed_version", "content_class", "subject_blind_fields", "scenarios"],
+  "properties": {
+    "schema_version": {"const": "role-topology-heldout/1.0"},
+    "suite": {"const": "role_topology_utility"},
+    "seed_version": {"const": "0.1.0"},
+    "content_class": {"type": "string", "minLength": 20},
+    "subject_blind_fields": {"const": ["arm_id", "paired_outputs", "gold", "expected_metrics", "expert_labels", "aggregate_results"]},
+    "scenarios": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/scenario"}}
+  },
+  "$defs": {
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["evidence_id", "text"], "properties": {"evidence_id": {"type": "string", "pattern": "^[A-Z]{1,2}[0-9]+$"}, "text": {"type": "string", "minLength": 40}}},
+    "unit": {"type": "object", "additionalProperties": false, "required": ["unit_id", "kind", "anchor", "evidence_ids"], "properties": {"unit_id": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{2}$"}, "kind": {"type": "string", "pattern": "^[a-z0-9_]+$"}, "critical": {"type": "boolean"}, "anchor": {"type": "string", "minLength": 8}, "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "minimum_correction": {"type": "string", "minLength": 20}, "required_change": {"type": "string", "minLength": 20}}},
+    "reviewGold": {"type": "object", "additionalProperties": false, "required": ["value_units", "distractor"], "properties": {"value_units": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/reviewUnit"}}, "distractor": {"type": "string", "minLength": 30}}},
+    "reviewUnit": {"allOf": [{"$ref": "#/$defs/unit"}, {"type": "object", "required": ["critical", "minimum_correction"]}]},
+    "writingGold": {"type": "object", "additionalProperties": false, "required": ["revision_requirements", "forbidden_claims"], "properties": {"revision_requirements": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/writingUnit"}}, "forbidden_claims": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 5}}}},
+    "writingUnit": {"allOf": [{"$ref": "#/$defs/unit"}, {"type": "object", "required": ["required_change"]}]},
+    "scenario": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scenario_id", "task_class", "language", "domain", "title", "assignment", "draft", "evidence", "constraints", "gold"],
+      "properties": {
+        "scenario_id": {"pattern": "^rtu-(review|writing)-(quant|qual)$"},
+        "task_class": {"enum": ["decomposable_reviewer_evidence_review", "sequential_writing_revision"]},
+        "language": {"const": "en"},
+        "domain": {"enum": ["educational_technology", "higher_education_policy"]},
+        "title": {"type": "string", "minLength": 20},
+        "assignment": {"type": "string", "minLength": 50},
+        "draft": {"type": "string", "minLength": 100},
+        "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+        "constraints": {"type": "array", "minItems": 3, "uniqueItems": true, "items": {"type": "string", "minLength": 15}},
+        "gold": {"oneOf": [{"$ref": "#/$defs/reviewGold"}, {"$ref": "#/$defs/writingGold"}]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"task_class": {"const": "decomposable_reviewer_evidence_review"}}, "required": ["task_class"]},
+          "then": {"properties": {"gold": {"$ref": "#/$defs/reviewGold"}}}
+        },
+        {
+          "if": {"properties": {"task_class": {"const": "sequential_writing_revision"}}, "required": ["task_class"]},
+          "then": {"properties": {"gold": {"$ref": "#/$defs/writingGold"}}}
+        }
+      ]
+    }
+  }
+}

@@ -102,6 +102,10 @@ jobs:
         # scoring tests run through the pytest manifest above.
         run: python3 scripts/run_indirect_prompt_injection_probe.py validate-assets
 
+      - name: Validate role-topology utility dry-run assets (#582)
+        # Design/seed validation only: no provider, model, tool, judge, or dispatch.
+        run: python3 scripts/run_role_topology_utility_dry_run.py validate-assets
+
       - name: Check task_type declarations
         env:
           PYTHONPATH: scripts

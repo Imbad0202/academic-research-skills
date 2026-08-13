@@ -81,6 +81,7 @@ table below is an informative mirror:
 | `reviewer_seeded_defects` | `seeded_manifest_adjudicated` | E4 machinery remains normative and unchanged; see adoption surface below |
 | `re_review_persuasion_invariance` | `paired_controls` | reuses E4 machinery per its README (SD-11) |
 | `review_criteria_constructive_value` | `paired_controls` | #684 same-context/same-budget comparison using the paired-controls-only human-expert-panel exception; subscription subject CLI, USD 0 API ceiling |
+| `role_topology_utility` | `paired_controls` | #582 separate reviewer-evidence and sequential-writing role-topology arms; task metrics and expert labels never pool |
 | `tortured_phrase_conformance` | `mechanical_match` | synthetic grammar, normalization, parsing, replay, and fail-safe conformance only; no contextual-accuracy claim |
 | `within_session_ideation_diversity` | `paired_controls` | #659 separate adjacent-probe and exploratory-guardrail synthetic-role comparisons; count, dispersion, and follow-through stay separate |
 

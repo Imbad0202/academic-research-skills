@@ -1,0 +1,483 @@
+{
+  "schema_version": "role-topology-study-plan/1.0",
+  "suite": "role_topology_utility",
+  "plan_version": "0.1.0",
+  "issue": 582,
+  "phase_status": "design_and_synthetic_seed_only",
+  "content_class": "repository-owned synthetic manuscripts, evidence summaries, and revision briefs",
+  "authority_design_ref": "docs/design/2026-08-13-582-role-topology-utility-design.md",
+  "invocation_adapter_ref": "evals/heldout/role_topology_utility/invocation_adapter.md",
+  "task_classes": [
+    {
+      "task_class_id": "decomposable_reviewer_evidence_review",
+      "independence_key": "reviewer-evidence-v1",
+      "unit_of_analysis": "atomic defect or evidence-alignment finding",
+      "evaluator_id": "reviewer-evidence-rubric-v1",
+      "outcome_vocabulary": [
+        "detected",
+        "partial",
+        "missed",
+        "false_blocker",
+        "duplicate"
+      ],
+      "forbidden_outcomes": [],
+      "arms": [
+        {
+          "arm_id": "review_inline_1",
+          "role_count": 1,
+          "final_output_seat": "review-solo",
+          "topology": "single_inline",
+          "roles": [
+            {
+              "seat_id": "review-solo",
+              "role_id": "inline_evidence_reviewer",
+              "role_ref": "evals/heldout/role_topology_utility/inline_reviewer.md",
+              "stage": 0,
+              "depends_on": []
+            }
+          ]
+        },
+        {
+          "arm_id": "review_panel_2",
+          "role_count": 2,
+          "final_output_seat": "review-synthesis",
+          "topology": "one_specialist_then_synthesis",
+          "roles": [
+            {
+              "seat_id": "review-methodology",
+              "role_id": "methodology_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/methodology_reviewer_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "review-synthesis",
+              "role_id": "editorial_synthesizer",
+              "role_ref": "academic-paper-reviewer/agents/editorial_synthesizer_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "review-methodology"
+              ]
+            }
+          ]
+        },
+        {
+          "arm_id": "review_panel_5",
+          "role_count": 5,
+          "final_output_seat": "review-synthesis",
+          "topology": "four_parallel_specialists_then_synthesis",
+          "roles": [
+            {
+              "seat_id": "review-journal-fit",
+              "role_id": "journal_fit_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/eic_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "review-methodology",
+              "role_id": "methodology_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/methodology_reviewer_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "review-domain",
+              "role_id": "domain_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/domain_reviewer_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "review-devils-advocate",
+              "role_id": "devils_advocate_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "review-synthesis",
+              "role_id": "editorial_synthesizer",
+              "role_ref": "academic-paper-reviewer/agents/editorial_synthesizer_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "review-journal-fit",
+                "review-methodology",
+                "review-domain",
+                "review-devils-advocate"
+              ]
+            }
+          ]
+        },
+        {
+          "arm_id": "review_panel_7",
+          "role_count": 7,
+          "final_output_seat": "review-synthesis",
+          "topology": "field_configuration_five_parallel_reviewers_then_synthesis",
+          "roles": [
+            {
+              "seat_id": "review-field-analysis",
+              "role_id": "field_analyst",
+              "role_ref": "academic-paper-reviewer/agents/field_analyst_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "review-journal-fit",
+              "role_id": "journal_fit_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/eic_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "review-field-analysis"
+              ]
+            },
+            {
+              "seat_id": "review-methodology",
+              "role_id": "methodology_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/methodology_reviewer_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "review-field-analysis"
+              ]
+            },
+            {
+              "seat_id": "review-domain",
+              "role_id": "domain_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/domain_reviewer_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "review-field-analysis"
+              ]
+            },
+            {
+              "seat_id": "review-perspective",
+              "role_id": "perspective_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/perspective_reviewer_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "review-field-analysis"
+              ]
+            },
+            {
+              "seat_id": "review-devils-advocate",
+              "role_id": "devils_advocate_reviewer",
+              "role_ref": "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "review-field-analysis"
+              ]
+            },
+            {
+              "seat_id": "review-synthesis",
+              "role_id": "editorial_synthesizer",
+              "role_ref": "academic-paper-reviewer/agents/editorial_synthesizer_agent.md",
+              "stage": 2,
+              "depends_on": [
+                "review-journal-fit",
+                "review-methodology",
+                "review-domain",
+                "review-perspective",
+                "review-devils-advocate"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "task_class_id": "sequential_writing_revision",
+      "independence_key": "writing-revision-v1",
+      "unit_of_analysis": "atomic required revision or introduced unsupported claim",
+      "evaluator_id": "writing-revision-rubric-v1",
+      "outcome_vocabulary": [
+        "requirement_satisfied",
+        "requirement_partial",
+        "requirement_unsatisfied",
+        "unsupported_claim_introduced",
+        "constraint_violated"
+      ],
+      "forbidden_outcomes": [
+        "accept",
+        "reject",
+        "minor_revision",
+        "major_revision"
+      ],
+      "arms": [
+        {
+          "arm_id": "writing_inline_1",
+          "role_count": 1,
+          "final_output_seat": "writing-solo",
+          "topology": "single_inline",
+          "roles": [
+            {
+              "seat_id": "writing-solo",
+              "role_id": "inline_revision_writer",
+              "role_ref": "evals/heldout/role_topology_utility/inline_writer.md",
+              "stage": 0,
+              "depends_on": []
+            }
+          ]
+        },
+        {
+          "arm_id": "writing_sequence_2",
+          "role_count": 2,
+          "final_output_seat": "writing-draft",
+          "topology": "revision_coach_then_writer",
+          "roles": [
+            {
+              "seat_id": "writing-revision-coach",
+              "role_id": "revision_coach",
+              "role_ref": "academic-paper/agents/revision_coach_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "writing-draft",
+              "role_id": "draft_writer",
+              "role_ref": "academic-paper/agents/draft_writer_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "writing-revision-coach"
+              ]
+            }
+          ]
+        },
+        {
+          "arm_id": "writing_sequence_5",
+          "role_count": 5,
+          "final_output_seat": "writing-draft",
+          "topology": "structure_argument_citation_coach_writer_chain",
+          "roles": [
+            {
+              "seat_id": "writing-structure",
+              "role_id": "structure_architect",
+              "role_ref": "academic-paper/agents/structure_architect_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "writing-argument",
+              "role_id": "argument_builder",
+              "role_ref": "academic-paper/agents/argument_builder_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "writing-structure"
+              ]
+            },
+            {
+              "seat_id": "writing-citation",
+              "role_id": "citation_compliance",
+              "role_ref": "academic-paper/agents/citation_compliance_agent.md",
+              "stage": 2,
+              "depends_on": [
+                "writing-argument"
+              ]
+            },
+            {
+              "seat_id": "writing-revision-coach",
+              "role_id": "revision_coach",
+              "role_ref": "academic-paper/agents/revision_coach_agent.md",
+              "stage": 3,
+              "depends_on": [
+                "writing-citation"
+              ]
+            },
+            {
+              "seat_id": "writing-draft",
+              "role_id": "draft_writer",
+              "role_ref": "academic-paper/agents/draft_writer_agent.md",
+              "stage": 4,
+              "depends_on": [
+                "writing-revision-coach"
+              ]
+            }
+          ]
+        },
+        {
+          "arm_id": "writing_applicable_full_8",
+          "role_count": 8,
+          "final_output_seat": "writing-draft",
+          "topology": "all_applicable_section_revision_roles_in_sequence",
+          "roles": [
+            {
+              "seat_id": "writing-intake",
+              "role_id": "intake",
+              "role_ref": "academic-paper/agents/intake_agent.md",
+              "stage": 0,
+              "depends_on": []
+            },
+            {
+              "seat_id": "writing-literature",
+              "role_id": "literature_strategist",
+              "role_ref": "academic-paper/agents/literature_strategist_agent.md",
+              "stage": 1,
+              "depends_on": [
+                "writing-intake"
+              ]
+            },
+            {
+              "seat_id": "writing-structure",
+              "role_id": "structure_architect",
+              "role_ref": "academic-paper/agents/structure_architect_agent.md",
+              "stage": 2,
+              "depends_on": [
+                "writing-literature"
+              ]
+            },
+            {
+              "seat_id": "writing-argument",
+              "role_id": "argument_builder",
+              "role_ref": "academic-paper/agents/argument_builder_agent.md",
+              "stage": 3,
+              "depends_on": [
+                "writing-structure"
+              ]
+            },
+            {
+              "seat_id": "writing-citation",
+              "role_id": "citation_compliance",
+              "role_ref": "academic-paper/agents/citation_compliance_agent.md",
+              "stage": 4,
+              "depends_on": [
+                "writing-argument"
+              ]
+            },
+            {
+              "seat_id": "writing-peer-review",
+              "role_id": "peer_reviewer",
+              "role_ref": "academic-paper/agents/peer_reviewer_agent.md",
+              "stage": 5,
+              "depends_on": [
+                "writing-citation"
+              ]
+            },
+            {
+              "seat_id": "writing-revision-coach",
+              "role_id": "revision_coach",
+              "role_ref": "academic-paper/agents/revision_coach_agent.md",
+              "stage": 6,
+              "depends_on": [
+                "writing-peer-review"
+              ]
+            },
+            {
+              "seat_id": "writing-draft",
+              "role_id": "draft_writer",
+              "role_ref": "academic-paper/agents/draft_writer_agent.md",
+              "stage": 7,
+              "depends_on": [
+                "writing-revision-coach"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "model_contract": {
+    "subject_provider_model": "UNSELECTED",
+    "selection_gate": "A new hash-frozen execution plan must name one exact provider, model, CLI version, and authentication mode before dispatch.",
+    "same_subject_model_all_cells": true,
+    "reasoning_effort": "high",
+    "model_fallback": false
+  },
+  "budgets": {
+    "per_call_input_token_cap": 24000,
+    "per_call_output_token_cap": 1500,
+    "no_rollover_between_seats": true,
+    "planned_subject_calls": 186,
+    "judge_calls_included": false,
+    "api_spend_authorized_usd": 0
+  },
+  "tools": {
+    "allowed": [],
+    "web": false,
+    "network": false,
+    "external_corpus": false,
+    "workspace_reads": false
+  },
+  "replicates": {
+    "per_scenario_arm": 3,
+    "paired_by_scenario_and_replicate": true,
+    "adaptive_extension": false,
+    "replacement_replicates": false
+  },
+  "stopping": {
+    "cell_atomic": true,
+    "stop_entire_study_on_first_blocked_partial_or_protocol_deviation": true,
+    "retry_attempts": 0,
+    "imputation": false,
+    "early_stop_on_outcome": false,
+    "preserve_partial_as_blocked_evidence": true,
+    "blocked_evidence_is_measurement": false
+  },
+  "uncertainty": {
+    "report_all_replicate_values": true,
+    "paired_delta_reference_arm_by_task": {
+      "decomposable_reviewer_evidence_review": "review_inline_1",
+      "sequential_writing_revision": "writing_inline_1"
+    },
+    "summaries": [
+      "median_paired_delta",
+      "minimum_paired_delta",
+      "maximum_paired_delta",
+      "paired_sign_count"
+    ],
+    "confidence_interval": "none_small_synthetic_seed",
+    "null_hypothesis_test": false,
+    "minimum_complete_pairs_for_summary": 6,
+    "pool_task_classes": false,
+    "pool_metrics_to_scalar": false
+  },
+  "unique_verified_value": {
+    "unit_definition": "A task-relevant atomic unit first originated by one seat, not semantically equivalent to the input or an earlier seat unit, supported by a frozen evidence or requirement anchor, judged correct by two independent arm-blinded task experts or resolved by their arm-blinded adjudicator, and retained in the final synthesis or revised text.",
+    "duplicate_rule": "Semantically equivalent units count once and are credited to the earliest originating seat; later equivalents are duplicate cost.",
+    "input_restating_rule": "Restating a supplied requirement, planted defect description, evidence sentence, or prior-seat unit is not unique value.",
+    "reviewer_unit": "verified defect or evidence-alignment finding",
+    "writing_unit": "verified requirement-satisfying revision or removal of an unsupported claim",
+    "human_verification_required": true,
+    "minimum_independent_experts": 2,
+    "blind_adjudicator_required": true,
+    "cross_task_label_reuse": false,
+    "unavailable_panel_status": "NOT_COMPUTABLE"
+  },
+  "blinding": {
+    "subject_blind_fields": [
+      "arm_id",
+      "paired_outputs",
+      "gold",
+      "expected_metrics",
+      "expert_labels",
+      "aggregate_results"
+    ],
+    "expert_blind_fields": [
+      "arm_id",
+      "role_count",
+      "topology",
+      "replicate_id",
+      "provider_model",
+      "other_expert_labels",
+      "aggregate"
+    ],
+    "adjudicator_blind_fields": [
+      "arm_id",
+      "role_count",
+      "topology",
+      "provider_model",
+      "aggregate"
+    ]
+  },
+  "dependencies": {
+    "reviewer_interpretation_requires_issue_653_measurement": true,
+    "measurement_envelope": "heldout-measurement/1.1",
+    "suite_class": "paired_controls",
+    "generic_issue_263_runner_is_dispatcher": false
+  },
+  "claims_boundary": {
+    "dispatch_authorized": false,
+    "measurement_generated": false,
+    "full_panels_made_default": false,
+    "issue_closed_by_assets": false,
+    "paper_thresholds_imported": false
+  }
+}

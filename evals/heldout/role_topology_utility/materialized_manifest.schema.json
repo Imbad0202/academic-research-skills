@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/role_topology_utility/materialized_manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "plan_sha256", "heldout_sha256", "write_once", "dispatch_authorized", "measurement_generated", "calls"],
+  "properties": {
+    "schema_version": {"const": "role-topology-materialized-manifest/1.0"},
+    "suite": {"const": "role_topology_utility"},
+    "plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "heldout_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "write_once": {"const": true},
+    "dispatch_authorized": {"const": false},
+    "measurement_generated": {"const": false},
+    "calls": {
+      "type": "array", "minItems": 186, "maxItems": 186,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["call_id", "sequence_index", "task_class", "scenario_id", "arm_id", "replicate_id", "seat_id", "role_id", "role_ref", "role_ref_sha256", "role_contract_embedded", "invocation_adapter_ref", "invocation_adapter_sha256", "invocation_adapter_embedded", "stage", "depends_on", "dependency_injection_required", "prompt_template_path", "prompt_template_sha256", "token_estimate_method", "estimated_template_tokens", "reserved_dependency_tokens", "estimated_worst_case_input_tokens", "input_token_cap", "output_token_cap", "tools", "web", "dispatch_authorized"],
+        "properties": {
+          "call_id": {"type": "string", "pattern": "^call-[0-9]{3}$"},
+          "sequence_index": {"type": "integer", "minimum": 1, "maximum": 186},
+          "task_class": {"enum": ["decomposable_reviewer_evidence_review", "sequential_writing_revision"]},
+          "scenario_id": {"type": "string", "pattern": "^rtu-(review|writing)-(quant|qual)$"},
+          "arm_id": {"type": "string", "pattern": "^(review|writing)_[a-z0-9_]+$"},
+          "replicate_id": {"type": "integer", "minimum": 1, "maximum": 3},
+          "seat_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "role_id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "role_ref": {"type": "string", "pattern": "^[^/].*\\.md$"},
+          "role_ref_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "role_contract_embedded": {"const": true},
+          "invocation_adapter_ref": {"const": "evals/heldout/role_topology_utility/invocation_adapter.md"},
+          "invocation_adapter_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "invocation_adapter_embedded": {"const": true},
+          "stage": {"type": "integer", "minimum": 0, "maximum": 10},
+          "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^call-[0-9]{3}$"}},
+          "dependency_injection_required": {"type": "boolean"},
+          "prompt_template_path": {"type": "string", "pattern": "^prompts/call-[0-9]{3}\\.txt$"},
+          "prompt_template_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "token_estimate_method": {"const": "ceil_utf8_bytes_div_3_plus_dependency_output_caps"},
+          "estimated_template_tokens": {"type": "integer", "minimum": 1, "maximum": 24000},
+          "reserved_dependency_tokens": {"type": "integer", "minimum": 0, "maximum": 7500},
+          "estimated_worst_case_input_tokens": {"type": "integer", "minimum": 1, "maximum": 24000},
+          "input_token_cap": {"const": 24000},
+          "output_token_cap": {"const": 1500},
+          "tools": {"const": []},
+          "web": {"const": false},
+          "dispatch_authorized": {"const": false}
+        }
+      }
+    }
+  }
+}
