@@ -707,6 +707,7 @@ def check_ideation_diversity_no_call_contract() -> None:
         "blind_inventory": f"{suite}/blind_inventory.schema.json",
         "blind_manifest": f"{suite}/blind_manifest.schema.json",
         "private_arm_map": f"{suite}/private_arm_map.schema.json",
+        "blind_intent": f"{suite}/blind_intent.schema.json",
     }
     schemas: dict[str, dict] = {}
     for name, rel_path in schema_paths.items():
@@ -775,6 +776,37 @@ def check_ideation_diversity_no_call_contract() -> None:
         "cells", {}
     ).get("maxItems") != 48:
         fail(f"{schema_paths['run_plan']}: cells must remain exactly 48")
+    assets = plan_properties.get("asset_bindings", {})
+    if assets.get("minItems") != 18 or assets.get("maxItems") != 18:
+        fail(f"{schema_paths['run_plan']}: asset bindings must remain exactly 18")
+
+    stop_receipt = (
+        schemas.get("ingestion", {})
+        .get("$defs", {})
+        .get("stop_receipt", {})
+        .get("properties", {})
+    )
+    if "pre_stop_inventory" not in stop_receipt:
+        fail(f"{schema_paths['ingestion']}: compact pre-stop inventory binding missing")
+    blind_intent = schemas.get("blind_intent", {}).get("properties", {})
+    for field, expected in {
+        "staging_ref": "blind-staging",
+        "final_ref": "blind",
+        "recovery_policy": "exact_recovery_only_no_second_bundle",
+    }.items():
+        if blind_intent.get(field, {}).get("const") != expected:
+            fail(f"{schema_paths['blind_intent']}: {field!r} recovery boundary drifted")
+    intent_protection = blind_intent.get("protection", {}).get("properties", {})
+    for field, expected in {
+        "procedural_nondisclosure_only": True,
+        "file_mode": "0600",
+        "deliver_to_judges": False,
+    }.items():
+        if intent_protection.get(field, {}).get("const") != expected:
+            fail(
+                f"{schema_paths['blind_intent']}: "
+                f"protection boundary {field!r} drifted"
+            )
 
     runner_path = "scripts/run_ideation_diversity_no_call.py"
     runner_source = read(runner_path)
@@ -893,6 +925,8 @@ def check_ideation_diversity_no_call_contract() -> None:
                 "48-cell plan",
                 "no transport, dispatch, probe",
                 "The first binding",
+                "compact canonical digest",
+                "blind-intent.json",
                 "exactly one isolated packet",
                 "cannot authenticate the operator",
                 "two independent human judges",
@@ -905,6 +939,7 @@ def check_ideation_diversity_no_call_contract() -> None:
                 "= 48 subject-session",
                 "API spend ceiling USD 0",
                 "48 write-once isolated single-session packets",
+                "durable deterministic blind intent",
                 "does not authenticate operator identity",
                 "No subject, actor, judge, or adjudicator session is authorized",
             ),

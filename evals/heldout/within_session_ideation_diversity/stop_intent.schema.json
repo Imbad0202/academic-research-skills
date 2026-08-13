@@ -15,9 +15,13 @@
     "detail",
     "raw_ref",
     "raw_sha256",
+    "raw_capture_kind",
     "raw_base64",
     "stopped_manifest_sha256",
     "stopped_manifest_base64",
+    "pre_stop_inventory",
+    "stop_intent_publication_staging_ref",
+    "manifest_replacement_staging_ref",
     "retry_forbidden"
   ],
   "properties": {
@@ -48,12 +52,31 @@
       "pattern": "^blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw(?:\\.collision-[0-9a-f]{16})?$"
     },
     "raw_sha256": {"$ref": "#/$defs/sha256"},
+    "raw_capture_kind": {"enum": ["exact_input_bytes", "bounded_acquisition_failure_record"]},
     "raw_base64": {"type": "string", "maxLength": 5592408},
     "stopped_manifest_sha256": {"$ref": "#/$defs/sha256"},
-    "stopped_manifest_base64": {"type": "string", "minLength": 1, "maxLength": 100000},
+    "stopped_manifest_base64": {"type": "string", "minLength": 1, "maxLength": 200000},
+    "pre_stop_inventory": {"$ref": "#/$defs/inventory_binding"},
+    "stop_intent_publication_staging_ref": {
+      "type": "string",
+      "pattern": "^\\.stop-intent\\.json\\.publish-[0-9a-f]{24}\\.tmp$"
+    },
+    "manifest_replacement_staging_ref": {
+      "type": "string",
+      "pattern": "^\\.ingestion-manifest\\.json\\.stop-[0-9a-f]{24}\\.json$"
+    },
     "retry_forbidden": {"const": true}
   },
   "$defs": {
-    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "inventory_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_count", "sha256"],
+      "properties": {
+        "entry_count": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
   }
 }

@@ -67,8 +67,8 @@
       "properties": {
         "status": {"enum": ["authorized", "denied", "revoked"]},
         "decided_at": {"type": "string", "format": "date-time"},
-        "operator_reference": {"type": "string", "minLength": 8, "maxLength": 256},
-        "statement": {"type": "string", "minLength": 20, "maxLength": 2000}
+        "operator_reference": {"type": "string", "minLength": 8, "maxLength": 256, "pattern": "\\S"},
+        "statement": {"type": "string", "minLength": 20, "maxLength": 2000, "pattern": "\\S"}
       }
     },
     "proof_boundary": {
@@ -113,12 +113,12 @@
         "fresh_external_authorization_required"
       ],
       "properties": {
-        "subject_provider": {"type": "string", "minLength": 1, "maxLength": 128},
-        "subject_model": {"type": "string", "minLength": 1, "maxLength": 128},
-        "subject_runtime": {"type": "string", "minLength": 1, "maxLength": 128},
-        "subject_runtime_version": {"type": "string", "minLength": 1, "maxLength": 128},
-        "auth_mode": {"type": "string", "minLength": 1, "maxLength": 128},
-        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64},
+        "subject_provider": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "subject_model": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "subject_runtime": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "subject_runtime_version": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "auth_mode": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "\\S"},
         "input_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
         "output_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
         "token_cap_verification": {

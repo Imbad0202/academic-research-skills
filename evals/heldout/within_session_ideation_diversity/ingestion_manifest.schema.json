@@ -89,7 +89,7 @@
     "stop_receipt": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cell_id", "sequence_index", "reason_code", "detail", "raw_ref", "raw_sha256", "retry_forbidden", "stop_intent_ref", "stop_intent_committed_before_state_replacement", "preserved_auxiliary_artifacts"],
+      "required": ["cell_id", "sequence_index", "reason_code", "detail", "raw_ref", "raw_sha256", "raw_capture_kind", "retry_forbidden", "stop_intent_ref", "stop_intent_committed_before_state_replacement", "stop_intent_publication_staging_ref", "manifest_replacement_staging_ref", "pre_stop_inventory", "preserved_auxiliary_artifacts"],
       "properties": {
         "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
         "sequence_index": {"type": "integer", "minimum": 1, "maximum": 48},
@@ -111,12 +111,22 @@
         "detail": {"type": "string", "minLength": 1, "maxLength": 2000},
         "raw_ref": {"type": "string", "pattern": "^blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw(?:\\.collision-[0-9a-f]{16})?$"},
         "raw_sha256": {"$ref": "#/$defs/sha256"},
+        "raw_capture_kind": {"enum": ["exact_input_bytes", "bounded_acquisition_failure_record"]},
         "retry_forbidden": {"const": true},
         "stop_intent_ref": {"const": "stop-intent.json"},
         "stop_intent_committed_before_state_replacement": {"const": true},
+        "stop_intent_publication_staging_ref": {
+          "type": "string",
+          "pattern": "^\\.stop-intent\\.json\\.publish-[0-9a-f]{24}\\.tmp$"
+        },
+        "manifest_replacement_staging_ref": {
+          "type": "string",
+          "pattern": "^\\.ingestion-manifest\\.json\\.stop-[0-9a-f]{24}\\.json$"
+        },
+        "pre_stop_inventory": {"$ref": "#/$defs/inventory_binding"},
         "preserved_auxiliary_artifacts": {
           "type": "array",
-          "maxItems": 64,
+          "maxItems": 8,
           "uniqueItems": true,
           "items": {"$ref": "#/$defs/preserved_auxiliary_artifact"}
         }
@@ -131,8 +141,7 @@
           "enum": [
             "authorization_record",
             "accepted_transcript_before_state_commit",
-            "ingestion_receipt_before_state_commit",
-            "pre_stop_unregistered_artifact"
+            "ingestion_receipt_before_state_commit"
           ]
         },
         "ref": {
@@ -141,6 +150,15 @@
           "maxLength": 1024,
           "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!run-plan\\.json$)(?!ingestion-manifest\\.json$)(?!stop-intent\\.json$)[^\\u0000]+$"
         },
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "inventory_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_count", "sha256"],
+      "properties": {
+        "entry_count": {"type": "integer", "minimum": 0},
         "sha256": {"$ref": "#/$defs/sha256"}
       }
     }

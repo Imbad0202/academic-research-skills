@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/blind_intent.schema.json",
+  "title": "#659 durable deterministic blind-bundle transaction intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "source_ingestion_manifest_sha256",
+    "private_id_nonce",
+    "protection",
+    "staging_ref",
+    "final_ref",
+    "atomic_alias_root",
+    "atomic_alias_policy",
+    "blind_manifest_sha256",
+    "inventory_sha256",
+    "private_map_sha256",
+    "packets",
+    "recovery_policy"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-blind-intent/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "source_ingestion_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "private_id_nonce": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "protection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["procedural_nondisclosure_only", "file_mode", "deliver_to_judges"],
+      "properties": {
+        "procedural_nondisclosure_only": {"const": true},
+        "file_mode": {"const": "0600"},
+        "deliver_to_judges": {"const": false}
+      }
+    },
+    "staging_ref": {"const": "blind-staging"},
+    "final_ref": {"const": "blind"},
+    "atomic_alias_root": {"const": "blind-atomic-aliases"},
+    "atomic_alias_policy": {"const": "deterministic_target_hash_hardlink_exact_replay"},
+    "blind_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "inventory_sha256": {"$ref": "#/$defs/sha256"},
+    "private_map_sha256": {"$ref": "#/$defs/sha256"},
+    "packets": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blind_session_id", "packet_sha256"],
+        "properties": {
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+          "packet_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "recovery_policy": {"const": "exact_recovery_only_no_second_bundle"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

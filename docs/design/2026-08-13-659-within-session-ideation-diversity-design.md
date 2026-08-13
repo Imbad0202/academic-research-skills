@@ -220,22 +220,45 @@ prompt/role/envelope or authorization-record mismatch, arm leak, ineligible
 session, unplanned tool or network action, evidence-write failure, partial
 output, actor-protocol deviation, out-of-order ingestion, or
 transcript-contract failure first publishes a durable closed write-once stop
-intent embedding the raw bytes and exact stopped-state replay, then preserves
-the rejected transcript at a content-addressed path and atomically replaces the
-manifest. A failed replacement remains retry-forbidden and can recover only by
-exact marker replay. Validation re-reads and hashes the marker and blocked
-evidence. The run tree must match
-the exact state inventory, so an injected/conflicting path cannot restore a
-retryable state. Bytes written before a failed success-state commit are hashed
-and registered as auxiliary stop evidence, then verified on replay rather than
-left as untracked orphans. The append-only manifest must remain an exact ingested prefix
+intent embedding the raw bytes and exact stopped-state replay. Materialization
+precommits one immutable attempt guard per cell; ingestion atomically advances
+the next guard from `ready` to `active` before acquiring external bytes. The
+active guard is a permanent retry poison if both predeclared stop-intent
+publication slots fail, while a successful cell advances it to `completed`.
+An unavailable
+or over-bound transcript produces a bounded terminal acquisition record rather
+than leaving a retryable cell. NFKC-normalized execution, authorization, and
+message fields must contain an NFKC-normalized letter, number, or symbol;
+execution and authorization identity fields require a letter or number, so
+combining-mark-only strings never count as identity, consent, or output.
+The runner then preserves the rejected transcript at a content-addressed path
+and atomically replaces the manifest. A failed replacement remains
+retry-forbidden and can recover only by exact marker replay. Validation
+re-reads and hashes the marker and blocked evidence. The run tree must match
+the exact state inventory. A compact canonical digest binds an arbitrary
+number of unexpected files and directories, while deterministic marker-hardlink
+and state-replacement staging paths bind post-marker crash artifacts. The
+primary and fallback stop slots publish the same staged inode and exact bytes.
+Bytes
+written before a failed success-state commit remain hash-bound evidence rather
+than untracked orphans. The append-only manifest must remain an exact ingested prefix
 followed by pending cells, or by one blocked cell after a stop.
 
 Only 48 complete, unstopped external transcripts can produce blinded material.
 During each ingestion, and again before copying turns, the runner applies NFKC
 plus punctuation/separator normalization and rejects all frozen identifiers, explicit
 pair/arm/replicate markers, and prior-label/adjudication/human-evidence markers
-from transcript free text. It atomically creates 48 write-once isolated single-session packets.
+from transcript free text. Before staging, a durable deterministic blind intent
+freezes a one-time private nonce, all blind ids, and all
+packet/inventory/map/manifest hashes against the exact plan plus complete
+ingestion state. The intent remains a `0600` procedural-nondisclosure artifact
+and is never delivered to judges. Partial staging can only exact-resume that
+transaction or quarantine on collision; it cannot generate a second mapping.
+Every complete-byte publication uses a deterministic intent-bound alias under
+a `0700` run-local root. A cleanup failure preserves that hardlink as evidence;
+validation checks its bytes and inode against the staging or final target.
+The complete staging directory is then atomically renamed into
+48 write-once isolated single-session packets.
 The public inventory contains only blind ids and packet
 hashes; an exact blind manifest binds all packet/map hashes to the complete
 pre-blind ingestion manifest. Final state is `blind_finalized`, and validation

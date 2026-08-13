@@ -1,4 +1,4 @@
-# Within-Session Ideation Diversity (#659, v0.3 hardened no-call envelope)
+# Within-Session Ideation Diversity (#659, v0.4 durable no-call envelope)
 
 This suite freezes a bounded evaluation of two Layer-1 Socratic mechanisms. The
 authority is
@@ -29,6 +29,8 @@ No breadth-efficacy claim is computable.
   evidence contract;
 - `stop_intent.schema.json`: durable write-once quarantine marker that embeds
   blocked raw bytes and the exact stopped-state replay before state replacement;
+- `blind_intent.schema.json`: durable deterministic blinding transaction that
+  freezes blind ids and every packet/inventory/map hash before staging begins;
 - `blind_packet.schema.json`: one isolated arm-blind session packet without
   labels, adjudication, or human evidence;
 - `blind_inventory.schema.json`: public inventory of only 48 blind ids and
@@ -126,26 +128,51 @@ The first binding/authorization mismatch, Unicode-normalized semantic arm/pair/
 replicate leak, ineligible/partial session,
 unplanned tool or network event, evidence-write failure, actor-protocol
 deviation, out-of-order ingestion, or contract failure stops permanently. The
-runner first publishes a closed write-once `stop-intent.json` that embeds and
-hash-binds the raw rejected bytes plus the exact stopped manifest. It then
+runner first advances a materialization-time, per-cell attempt guard from
+`ready` to `active`, then publishes a closed write-once `stop-intent.json` (or
+its exact-byte fallback slot) that embeds and
+hash-binds the raw rejected bytes plus the exact stopped manifest. An input
+that cannot be acquired within the 4 MiB bound instead commits a bounded
+acquisition-failure record with bounded observed metadata and a 64 KiB prefix hash;
+that terminal record is also permanently retry-forbidden. If both marker slots
+fail, the already-active immutable guard remains the durable poison state, so
+later input cannot retry that cell. NFKC-normalized raw messages require a
+letter, number, or symbol, while execution and authorization identity text
+requires a letter or number. Spaces, invisible format characters, and isolated
+combining marks cannot stand in for provider identity, consent, or subject
+output. The runner then
 publishes content-addressed raw evidence and atomically replaces state. If that
 replacement fails, every command rejects retry and a later load may recover
 only the embedded exact stopped state. Validation replays marker, state, and
-blocked evidence. Every state has an exact
-file/directory inventory, so injected artifacts fail closed. If a write failure
-occurs after authorization/transcript/receipt or staging bytes were created but
-before the success manifest commits, the stop receipt hashes and registers any
-surviving artifact; write-once targets use atomic complete-byte publication, so
-a partial target is never visible.
+blocked evidence. A compact canonical digest binds every unexpected file and
+directory without embedding unbounded paths in the marker. Registered marker
+hardlink aliases and manifest-replacement staging bytes are exact-replayed; a
+new, missing, or changed entry fails closed. If a write failure occurs after
+authorization/transcript/receipt or staging bytes were created before the
+success manifest commits, the surviving bytes remain evidence and are bound by
+the receipt or compact inventory rather than deleted.
 
 After all 48 transcripts pass, blinding rejects transcript free text containing
 any frozen cell/scenario/pair/experiment/arm/block identifier, explicit mapping
 marker, prior-label/adjudication marker, or claimed human-evidence marker. It
-then creates one atomic bundle with 48 write-once isolated packets, a
-content-free public inventory, an exact blind manifest, and a private map. The
+first publishes a deterministic write-once `blind-intent.json` that freezes a
+one-time private nonce and binds the exact plan and complete ingestion state.
+The intent freezes all 48 blind ids and every packet, inventory, private-map,
+and manifest hash before writing the in-run `blind-staging/` transaction. The
+intent is a `0600` procedural-nondisclosure artifact that must never be delivered
+to judges. A partial staging failure may only resume
+the same exact transaction; a collision is quarantined, and a second set of
+ids or mappings cannot be generated. The staging directory is then atomically
+renamed into one bundle with 48 isolated packets, a content-free public
+inventory, an exact blind manifest, and a private map. The
+complete-byte staging path uses deterministic aliases derived from target refs
+and intent-bound hashes under a `0700` root. If alias cleanup fails, the
+hardlink remains registered evidence and exact-resumes against the same target
+without creating another mapping. The
 ingestion state becomes `blind_finalized`; validation reconstructs every packet
 from its source transcript and verifies the complete bundle inventory and
-hashes. A crash after atomic bundle publication but before the state update is
+hashes. A crash before bundle publication resumes only the bound staging
+transaction; a crash after publication but before the state update is
 recoverable only by exact replay of that bundle. A first-round judge may
 receive a packet only after a future closed assignment-ledger gate verifies
 that the same judge has not and will not receive another arm or replicate that

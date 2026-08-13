@@ -40,11 +40,17 @@ BLIND_PACKET_SCHEMA = SUITE_ROOT / "blind_packet.schema.json"
 BLIND_INVENTORY_SCHEMA = SUITE_ROOT / "blind_inventory.schema.json"
 BLIND_MANIFEST_SCHEMA = SUITE_ROOT / "blind_manifest.schema.json"
 PRIVATE_ARM_MAP_SCHEMA = SUITE_ROOT / "private_arm_map.schema.json"
+BLIND_INTENT_SCHEMA = SUITE_ROOT / "blind_intent.schema.json"
 PRODUCTION_PROMPT = REPO_ROOT / "deep-research" / "agents" / "socratic_mentor_agent.md"
 CODEBOOK = SUITE_ROOT / "codebook.md"
 MAX_INPUT_BYTES = 4 * 1024 * 1024
 MAX_STOP_INTENT_BYTES = 8 * 1024 * 1024
 STOP_INTENT_REF = "stop-intent.json"
+STOP_INTENT_FALLBACK_REF = "stop-intent.fallback.json"
+BLIND_INTENT_REF = "blind-intent.json"
+BLIND_STAGING_REF = "blind-staging"
+BLIND_ALIAS_ROOT = "blind-atomic-aliases"
+ATTEMPT_JOURNAL_ROOT = "terminal-journal"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 RUN_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,79}$")
 EXTERNAL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,255}$")
@@ -156,6 +162,7 @@ ASSET_PATHS = (
     "evals/heldout/within_session_ideation_diversity/blind_inventory.schema.json",
     "evals/heldout/within_session_ideation_diversity/blind_manifest.schema.json",
     "evals/heldout/within_session_ideation_diversity/private_arm_map.schema.json",
+    "evals/heldout/within_session_ideation_diversity/blind_intent.schema.json",
     "deep-research/agents/socratic_mentor_agent.md",
     "scripts/run_ideation_diversity_no_call.py",
 )
@@ -222,6 +229,62 @@ def _json_bytes(value: Any) -> bytes:
 
 def _sha(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
+
+
+def _has_semantic_text(
+    value: Any, *, allowed_categories: frozenset[str] = frozenset({"L", "N", "S"})
+) -> bool:
+    """Require an NFKC-stable letter, number, or explicitly allowed symbol."""
+    if not isinstance(value, str):
+        return False
+    normalized = unicodedata.normalize("NFKC", value)
+    return any(
+        unicodedata.category(character)[0] in allowed_categories
+        for character in normalized
+    )
+
+
+def _require_semantic_text(value: Any, label: str) -> None:
+    if not _has_semantic_text(value):
+        _fail(f"{label} must contain semantic text")
+
+
+def _require_identity_text(value: Any, label: str) -> None:
+    if not _has_semantic_text(value, allowed_categories=frozenset({"L", "N"})):
+        _fail(f"{label} must contain semantic text with a letter or number")
+
+
+def _hash_file_stable(path: Path) -> tuple[str, int]:
+    """Stream-hash an inventory file without imposing the transcript input cap."""
+    try:
+        if path.is_symlink() or not path.is_file():
+            _fail(f"inventory entry must be a regular non-symlink file: {path}")
+        before = path.stat()
+        digest = hashlib.sha256()
+        size = 0
+        with path.open("rb") as stream:
+            while True:
+                chunk = stream.read(1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+                size += len(chunk)
+        after = path.stat()
+    except OSError as exc:
+        raise EnvelopeError(f"cannot hash inventory file {path}: {exc}") from exc
+    if size != after.st_size or (
+        before.st_dev,
+        before.st_ino,
+        before.st_size,
+        before.st_mtime_ns,
+    ) != (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+    ):
+        _fail(f"inventory file changed while being hashed: {path}")
+    return digest.hexdigest(), size
 
 
 def _read_file(path: Path, *, limit: int = MAX_INPUT_BYTES) -> bytes:
@@ -299,6 +362,83 @@ def _write_new(path: Path, raw: bytes, *, mode: int = 0o644) -> None:
                 ) from exc
 
 
+def _publish_stop_intent(path: Path, raw: bytes, staging_ref: str) -> Path:
+    """Publish to the primary or fallback slot from one durable hardlink alias."""
+    staging = path.parent / staging_ref
+    if staging.exists():
+        if _read_file(staging, limit=MAX_STOP_INTENT_BYTES) != raw:
+            _fail(f"write-once evidence collision at {staging}")
+    else:
+        descriptor: int | None = None
+        try:
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            descriptor = os.open(staging, flags, 0o644)
+            view = memoryview(raw)
+            written = 0
+            while written < len(view):
+                count = os.write(descriptor, view[written:])
+                if count <= 0:
+                    raise OSError("stop-intent staging write made no progress")
+                written += count
+            os.fsync(descriptor)
+            os.close(descriptor)
+            descriptor = None
+            _fsync_directory(staging.parent)
+        except OSError as exc:
+            raise EnvelopeError(
+                f"cannot stage durable stop intent {staging}: {exc}"
+            ) from exc
+        finally:
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+    published: Path | None = None
+    errors: list[str] = []
+    for target in (path, path.parent / STOP_INTENT_FALLBACK_REF):
+        try:
+            if target.exists():
+                if _read_file(target, limit=MAX_STOP_INTENT_BYTES) != raw:
+                    _fail(f"write-once evidence collision at {target}")
+            else:
+                os.link(staging, target, follow_symlinks=False)
+                _fsync_directory(target.parent)
+            if target.stat().st_ino != staging.stat().st_ino:
+                _fail(f"durable stop-intent slot is not the staged hardlink: {target}")
+            published = target
+            break
+        except OSError as exc:
+            # If directory fsync reported after a successful link, that linked
+            # slot is already the durable publication boundary.
+            if target.exists():
+                try:
+                    if (
+                        _read_file(target, limit=MAX_STOP_INTENT_BYTES) == raw
+                        and target.stat().st_ino == staging.stat().st_ino
+                    ):
+                        published = target
+                        break
+                except EnvelopeError:
+                    pass
+            errors.append(f"{target.name}: {exc}")
+    if published is None:
+        raise EnvelopeError(
+            "cannot publish durable stop intent in either predeclared slot: "
+            + "; ".join(errors)
+        )
+    try:
+        staging.unlink()
+        _fsync_directory(staging.parent)
+    except OSError:
+        # The marker is already durable. The exact alias path and bytes are
+        # bound inside the marker and validated on every replay.
+        pass
+    return published
+
+
 def _fsync_directory(path: Path) -> None:
     flags = os.O_RDONLY
     if hasattr(os, "O_DIRECTORY"):
@@ -321,10 +461,17 @@ def _validate_run_tree(run_dir: Path) -> None:
         _fail(f"run directory must not contain symlinks: {links[0]}")
 
 
-def _replace_json(path: Path, value: dict[str, Any]) -> None:
+def _replace_json(
+    path: Path,
+    value: dict[str, Any],
+    *,
+    staging_ref: str | None = None,
+) -> None:
     raw = _json_bytes(value)
-    temporary = path.with_name(
-        f".{path.name}.replace-{_sha(raw)[:24]}.json"
+    temporary = (
+        path.parent / staging_ref
+        if staging_ref is not None
+        else path.with_name(f".{path.name}.replace-{_sha(raw)[:24]}.json")
     )
     _ensure_exact_new(temporary, raw)
     try:
@@ -359,6 +506,27 @@ def _relative_files_and_directories(run_dir: Path) -> tuple[set[str], set[str]]:
     return files, directories
 
 
+def _inventory_binding(
+    run_dir: Path,
+    file_refs: set[str],
+    directory_refs: set[str],
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for ref in sorted(directory_refs):
+        rows.append({"entry_type": "directory", "ref": ref})
+    for ref in sorted(file_refs):
+        digest, size = _hash_file_stable(run_dir / ref)
+        rows.append(
+            {
+                "entry_type": "file",
+                "ref": ref,
+                "sha256": digest,
+                "size_bytes": size,
+            }
+        )
+    return {"entry_count": len(rows), "sha256": _sha(_canonical(rows))}
+
+
 def _parent_directories(refs: set[str]) -> set[str]:
     directories: set[str] = set()
     for ref in refs:
@@ -367,6 +535,123 @@ def _parent_directories(refs: set[str]) -> set[str]:
             directories.add(str(parent))
             parent = parent.parent
     return directories
+
+
+def _journal_ref(state: str, cell_id: str) -> str:
+    return f"{ATTEMPT_JOURNAL_ROOT}/{state}/{cell_id}.json"
+
+
+def _journal_value(plan_sha: str, cell: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": "ideation-diversity-attempt-guard/1.0",
+        "suite": SUITE,
+        "run_plan_sha256": plan_sha,
+        "cell_id": cell["cell_id"],
+        "sequence_index": cell["sequence_index"],
+        "purpose": "precommitted_single_ingestion_attempt_retry_guard",
+    }
+
+
+def _journal_raw(plan_sha: str, cell: dict[str, Any]) -> bytes:
+    return _json_bytes(_journal_value(plan_sha, cell))
+
+
+def _journal_observed_state(run_dir: Path, cell_id: str) -> str | None:
+    states = [
+        state
+        for state in ("ready", "active", "completed")
+        if (run_dir / _journal_ref(state, cell_id)).exists()
+    ]
+    if len(states) > 1:
+        _fail(f"terminal journal has multiple states for {cell_id}")
+    return states[0] if states else None
+
+
+def _validate_terminal_journal(
+    run_dir: Path,
+    plan: dict[str, Any],
+    plan_sha: str,
+    manifest: dict[str, Any],
+    *,
+    durable_stop_present: bool,
+) -> None:
+    if manifest["status"] == "initialized":
+        if (run_dir / ATTEMPT_JOURNAL_ROOT).exists():
+            _fail("initialized run must not contain a terminal attempt journal")
+        return
+    ingested = manifest["next_sequence_index"] - 1
+    for index, cell in enumerate(plan["cells"]):
+        state = _journal_observed_state(run_dir, cell["cell_id"])
+        if state is None:
+            _fail(f"terminal journal guard is missing for {cell['cell_id']}")
+        raw = _read_file(run_dir / _journal_ref(state, cell["cell_id"]))
+        if raw != _journal_raw(plan_sha, cell):
+            _fail(f"terminal journal guard bytes drifted for {cell['cell_id']}")
+        if index < ingested:
+            if state not in {"active", "completed"}:
+                _fail(f"ingested cell terminal journal did not advance: {cell['cell_id']}")
+        elif manifest["stopped"] and index == ingested:
+            if state != "active":
+                _fail("blocked cell must retain its active retry guard")
+        elif index == ingested and state == "active" and not durable_stop_present:
+            _fail(
+                "active terminal journal permanently forbids retry after an "
+                "unrecoverable first-stop publication failure"
+            )
+        elif state != "ready":
+            _fail(f"future cell terminal journal advanced early: {cell['cell_id']}")
+
+
+def _recover_completed_attempts(
+    run_dir: Path, plan: dict[str, Any], manifest: dict[str, Any]
+) -> None:
+    ingested = manifest["next_sequence_index"] - 1
+    for cell in plan["cells"][:ingested]:
+        active = run_dir / _journal_ref("active", cell["cell_id"])
+        completed = run_dir / _journal_ref("completed", cell["cell_id"])
+        if active.exists():
+            try:
+                os.rename(active, completed)
+                _fsync_directory(active.parent)
+                _fsync_directory(completed.parent)
+            except OSError as exc:
+                raise EnvelopeError(
+                    f"cannot recover accepted terminal journal for {cell['cell_id']}: {exc}"
+                ) from exc
+
+
+def _begin_ingestion_attempt(
+    run_dir: Path, plan: dict[str, Any], plan_sha: str, manifest: dict[str, Any]
+) -> None:
+    # Recover only already-accepted cells. No new external bytes are read until
+    # every prior journal transition is durable.
+    _recover_completed_attempts(run_dir, plan, manifest)
+    ingested = manifest["next_sequence_index"] - 1
+    cell = plan["cells"][ingested]
+    ready = run_dir / _journal_ref("ready", cell["cell_id"])
+    active = run_dir / _journal_ref("active", cell["cell_id"])
+    try:
+        os.rename(ready, active)
+        _fsync_directory(ready.parent)
+        _fsync_directory(active.parent)
+    except OSError as exc:
+        raise EnvelopeError(
+            "cannot durably activate the precommitted terminal attempt guard; "
+            "no transcript bytes were acquired"
+        ) from exc
+
+
+def _complete_ingestion_attempt(run_dir: Path, cell_id: str) -> None:
+    active = run_dir / _journal_ref("active", cell_id)
+    completed = run_dir / _journal_ref("completed", cell_id)
+    try:
+        os.rename(active, completed)
+        _fsync_directory(active.parent)
+        _fsync_directory(completed.parent)
+    except OSError as exc:
+        raise EnvelopeError(
+            f"accepted state is durable but terminal journal recovery remains pending: {exc}"
+        ) from exc
 
 
 def _schema(path: Path) -> dict[str, Any]:
@@ -655,6 +940,18 @@ def _config_from_plan(plan: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_execution_text(config: dict[str, Any]) -> None:
+    for key in (
+        "subject_provider",
+        "subject_model",
+        "subject_runtime",
+        "subject_runtime_version",
+        "auth_mode",
+        "reasoning_effort",
+    ):
+        _require_identity_text(config[key], f"execution {key}")
+
+
 def _validate_authorization_record(
     record: dict[str, Any],
     plan: dict[str, Any],
@@ -678,12 +975,22 @@ def _validate_authorization_record(
         _fail("authorization record order hash differs from frozen run plan")
     if record["decision"]["status"] != "authorized":
         _fail("authorization record decision is not authorized")
+    _require_identity_text(
+        record["decision"]["operator_reference"],
+        "authorization operator_reference",
+    )
+    _require_identity_text(
+        record["decision"]["statement"],
+        "authorization statement",
+    )
     _timestamp(record["decision"]["decided_at"], "authorization decided_at")
 
 
 def _validate_plan(plan: dict[str, Any]) -> None:
     _validate_schema(RUN_PLAN_SCHEMA, plan, "run plan")
-    expected = _build_plan(_config_from_plan(plan))
+    config = _config_from_plan(plan)
+    _validate_execution_text(config)
+    expected = _build_plan(config)
     if _canonical(plan) != _canonical(expected):
         _fail("run plan differs from the exact current asset/order/hash expansion")
     cells = plan["cells"]
@@ -858,8 +1165,19 @@ def _expected_run_inventory(
     run_dir: Path, plan: dict[str, Any], manifest: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
     files = {"run-plan.json", "ingestion-manifest.json"}
+    journal_directories: set[str] = set()
     if manifest["status"] != "initialized":
         files.update(_material_map(plan))
+        journal_directories = {
+            ATTEMPT_JOURNAL_ROOT,
+            f"{ATTEMPT_JOURNAL_ROOT}/ready",
+            f"{ATTEMPT_JOURNAL_ROOT}/active",
+            f"{ATTEMPT_JOURNAL_ROOT}/completed",
+        }
+        for cell in plan["cells"]:
+            state = _journal_observed_state(run_dir, cell["cell_id"])
+            if state is not None:
+                files.add(_journal_ref(state, cell["cell_id"]))
     if manifest["authorization_record_path"] is not None:
         files.add(manifest["authorization_record_path"])
     for row in manifest["cells"]:
@@ -868,11 +1186,52 @@ def _expected_run_inventory(
         if row["ingestion_receipt_ref"] is not None:
             files.add(row["ingestion_receipt_ref"])
     if manifest["stop_receipt"] is not None:
-        files.add(STOP_INTENT_REF)
+        for ref in (STOP_INTENT_REF, STOP_INTENT_FALLBACK_REF):
+            if (run_dir / ref).exists():
+                files.add(ref)
         files.update(
             row["ref"]
             for row in manifest["stop_receipt"]["preserved_auxiliary_artifacts"]
         )
+        receipt = manifest["stop_receipt"]
+        for ref in (
+            receipt["stop_intent_publication_staging_ref"],
+            receipt["manifest_replacement_staging_ref"],
+        ):
+            if (run_dir / ref).exists():
+                files.add(ref)
+    if (run_dir / BLIND_INTENT_REF).exists():
+        files.add(BLIND_INTENT_REF)
+        alias_root = run_dir / BLIND_ALIAS_ROOT
+        alias_directories = {BLIND_ALIAS_ROOT} if alias_root.exists() else set()
+        if alias_root.exists():
+            observed_alias_files, observed_alias_directories = (
+                _relative_files_and_directories(alias_root)
+            )
+            files.update(f"{BLIND_ALIAS_ROOT}/{ref}" for ref in observed_alias_files)
+            alias_directories.update(
+                f"{BLIND_ALIAS_ROOT}/{ref}" for ref in observed_alias_directories
+            )
+        staging_root = run_dir / BLIND_STAGING_REF
+        if staging_root.exists():
+            observed_staging_files, observed_staging_directories = (
+                _relative_files_and_directories(staging_root)
+            )
+            files.update(
+                f"{BLIND_STAGING_REF}/{ref}" for ref in observed_staging_files
+            )
+            staging_directories = {
+                BLIND_STAGING_REF,
+                *(
+                    f"{BLIND_STAGING_REF}/{ref}"
+                    for ref in observed_staging_directories
+                ),
+            }
+        else:
+            staging_directories = set()
+    else:
+        alias_directories = set()
+        staging_directories = set()
     if manifest["status"] == "blind_finalized":
         blind_manifest_raw = _read_file(run_dir / "blind/manifest.json")
         blind_manifest = _strict_loads(blind_manifest_raw)
@@ -884,7 +1243,13 @@ def _expected_run_inventory(
             }
         )
         files.update(row["packet_ref"] for row in blind_manifest["packets"])
-    return files, _parent_directories(files)
+    return (
+        files,
+        _parent_directories(files)
+        | staging_directories
+        | alias_directories
+        | journal_directories,
+    )
 
 
 def _validate_run_inventory(
@@ -896,14 +1261,26 @@ def _validate_run_inventory(
         run_dir, plan, manifest
     )
     observed_files, observed_directories = _relative_files_and_directories(run_dir)
-    if observed_files != expected_files:
+    missing_files = observed_files ^ expected_files
+    missing_directories = observed_directories ^ expected_directories
+    if manifest["status"] == "stopped":
+        missing_files = expected_files - observed_files
+        missing_directories = expected_directories - observed_directories
+        extra_files = observed_files - expected_files
+        extra_directories = observed_directories - expected_directories
+        observed_binding = _inventory_binding(
+            run_dir, extra_files, extra_directories
+        )
+        if observed_binding != manifest["stop_receipt"]["pre_stop_inventory"]:
+            _fail("pre-stop compact inventory digest/count drifted")
+    if missing_files:
         unexpected = sorted(observed_files - expected_files)
         missing = sorted(expected_files - observed_files)
         _fail(
             "run file inventory drifted; "
             f"unexpected={unexpected[:3]!r}, missing={missing[:3]!r}"
         )
-    if observed_directories != expected_directories:
+    if missing_directories:
         unexpected = sorted(observed_directories - expected_directories)
         missing = sorted(expected_directories - observed_directories)
         _fail(
@@ -953,6 +1330,10 @@ def _validate_stop_intent(
         marker["detail"],
         marker["raw_ref"],
         marker["raw_sha256"],
+        marker["raw_capture_kind"],
+        marker["pre_stop_inventory"],
+        marker["stop_intent_publication_staging_ref"],
+        marker["manifest_replacement_staging_ref"],
     )
     replayed = (
         receipt["cell_id"],
@@ -961,18 +1342,22 @@ def _validate_stop_intent(
         receipt["detail"],
         receipt["raw_ref"],
         receipt["raw_sha256"],
+        receipt["raw_capture_kind"],
+        receipt["pre_stop_inventory"],
+        receipt["stop_intent_publication_staging_ref"],
+        receipt["manifest_replacement_staging_ref"],
     )
     if bound != replayed:
         _fail("stop intent fields drifted from the stopped-manifest replay")
     return marker, stopped, stopped_raw, raw_evidence
 
 
-def _ensure_exact_new(path: Path, raw: bytes) -> None:
+def _ensure_exact_new(path: Path, raw: bytes, *, mode: int = 0o644) -> None:
     if path.exists():
         if _read_file(path, limit=max(MAX_INPUT_BYTES, len(raw))) != raw:
             _fail(f"write-once evidence collision at {path}")
         return
-    _write_new(path, raw)
+    _write_new(path, raw, mode=mode)
 
 
 def _recover_stop_intent(
@@ -980,20 +1365,36 @@ def _recover_stop_intent(
     plan: dict[str, Any],
     plan_sha: str,
     current_manifest_raw: bytes,
+    marker_path: Path,
 ) -> tuple[dict[str, Any], bytes]:
     marker_raw = _read_file(
-        run_dir / STOP_INTENT_REF, limit=MAX_STOP_INTENT_BYTES
+        marker_path, limit=MAX_STOP_INTENT_BYTES
     )
     marker, stopped, stopped_raw, raw_evidence = _validate_stop_intent(
         marker_raw, plan, plan_sha
     )
+    publication_alias = run_dir / marker["stop_intent_publication_staging_ref"]
+    if publication_alias.exists():
+        if _read_file(publication_alias, limit=MAX_STOP_INTENT_BYTES) != marker_raw:
+            _fail("registered stop-intent publication alias bytes drifted")
+        if publication_alias.stat().st_ino != marker_path.stat().st_ino:
+            _fail("registered stop-intent publication alias is not the marker hardlink")
+    replacement_staging = run_dir / marker["manifest_replacement_staging_ref"]
+    if replacement_staging.exists() and _read_file(
+        replacement_staging, limit=max(MAX_INPUT_BYTES, len(stopped_raw))
+    ) != stopped_raw:
+        _fail("registered stopped-manifest replacement staging bytes drifted")
     current_sha = _sha(current_manifest_raw)
     if current_manifest_raw == stopped_raw:
         pass
     elif current_sha == marker["prior_manifest_sha256"]:
         try:
             _ensure_exact_new(run_dir / marker["raw_ref"], raw_evidence)
-            _replace_json(run_dir / "ingestion-manifest.json", stopped)
+            _replace_json(
+                run_dir / "ingestion-manifest.json",
+                stopped,
+                staging_ref=marker["manifest_replacement_staging_ref"],
+            )
         except EnvelopeError as exc:
             raise EnvelopeError(
                 "durable stop intent forbids retry; stopped-state recovery is "
@@ -1023,15 +1424,29 @@ def _load_run(run_dir: Path, expected_sha: str | None = None) -> tuple[dict[str,
     plan = _strict_loads(plan_raw)
     _validate_plan(plan)
     manifest_raw = _read_file(run_dir / "ingestion-manifest.json")
-    if (run_dir / STOP_INTENT_REF).exists():
+    marker_paths = [
+        run_dir / ref
+        for ref in (STOP_INTENT_REF, STOP_INTENT_FALLBACK_REF)
+        if (run_dir / ref).exists()
+    ]
+    if len(marker_paths) > 1:
+        _fail("multiple durable stop-intent publication slots are present")
+    if marker_paths:
         manifest, manifest_raw = _recover_stop_intent(
-            run_dir, plan, plan_sha, manifest_raw
+            run_dir, plan, plan_sha, manifest_raw, marker_paths[0]
         )
     else:
         manifest = _strict_loads(manifest_raw)
     _validate_manifest(manifest, plan, plan_sha)
-    if manifest["stopped"] and not (run_dir / STOP_INTENT_REF).exists():
+    if manifest["stopped"] and not marker_paths:
         _fail("stopped state is missing its durable write-once stop intent")
+    _validate_terminal_journal(
+        run_dir,
+        plan,
+        plan_sha,
+        manifest,
+        durable_stop_present=bool(marker_paths),
+    )
     return plan, plan_raw, plan_sha, manifest
 
 
@@ -1055,6 +1470,7 @@ def init_run(args: argparse.Namespace) -> dict[str, Any]:
         _fail("--run-id has invalid syntax")
     if COMMIT_RE.fullmatch(args.suite_commit) is None:
         _fail("--suite-commit must be 40 lowercase hex characters")
+    _validate_execution_text(config)
     plan = _build_plan(config)
     _validate_plan(plan)
     plan_raw = _json_bytes(plan)
@@ -1115,11 +1531,19 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
         _fail("refusing to overwrite existing materials")
     for ref, raw in _material_map(plan).items():
         _write_new(args.run_dir / ref, raw)
+    (args.run_dir / ATTEMPT_JOURNAL_ROOT).mkdir()
+    for state in ("ready", "active", "completed"):
+        (args.run_dir / ATTEMPT_JOURNAL_ROOT / state).mkdir()
+    for cell in plan["cells"]:
+        _write_new(
+            args.run_dir / _journal_ref("ready", cell["cell_id"]),
+            _journal_raw(plan_sha, cell),
+        )
     _validate_materials(args.run_dir, plan, required=True)
     manifest["status"] = "materialized"
     _validate_manifest(manifest, plan, plan_sha)
     _replace_json(args.run_dir / "ingestion-manifest.json", manifest)
-    return {"materialized_files": 98, "cells": 48, "dispatch_available": False}
+    return {"materialized_files": 146, "cells": 48, "dispatch_available": False}
 
 
 def _closed_embedded_object(
@@ -1187,10 +1611,15 @@ def _normalize_raw_event(event: dict[str, Any]) -> dict[str, Any]:
             f"raw event {event['event_index']} disagrees with normalized fields",
         )
     if event_kind in MESSAGE_EVENT_KINDS:
-        if not isinstance(normalized["text"], str) or not normalized["text"]:
+        if not _has_semantic_text(normalized["text"]):
+            code = (
+                "partial_subject_output"
+                if event_kind == "subject_message"
+                else "actor_protocol_deviation"
+            )
             raise StopViolation(
-                "transcript_contract_failure",
-                f"raw message event {event['event_index']} has no exact text bytes",
+                code,
+                f"raw message event {event['event_index']} has no semantic text",
             )
     elif normalized["turn_index"] is not None:
         raise StopViolation(
@@ -1380,6 +1809,7 @@ def _validate_ingested_artifacts(
             _validate_transcript(
                 transcript,
                 cell,
+                plan,
                 plan_sha,
                 scenarios[cell["scenario_id"]],
             )
@@ -1409,7 +1839,16 @@ def validate_run(args: argparse.Namespace) -> dict[str, Any]:
         args.run_dir, plan, required=manifest["status"] != "initialized"
     )
     _validate_ingested_artifacts(args.run_dir, plan, plan_sha, manifest)
+    blind_transaction = _validate_blind_transaction(
+        args.run_dir, plan, plan_sha, manifest
+    )
     if manifest["status"] == "blind_finalized":
+        if not blind_transaction["present"]:
+            _fail("blind_finalized state is missing its durable blind intent")
+        _validate_blind_bundle(args.run_dir, plan, plan_sha, manifest)
+    elif (args.run_dir / "blind").exists():
+        if not blind_transaction["present"]:
+            _fail("atomic blind bundle exists without its durable blind intent")
         _validate_blind_bundle(args.run_dir, plan, plan_sha, manifest)
     _validate_run_inventory(args.run_dir, plan, manifest)
     return {
@@ -1417,10 +1856,19 @@ def validate_run(args: argparse.Namespace) -> dict[str, Any]:
         "status": manifest["status"],
         "ingested": sum(row["status"] == "ingested" for row in manifest["cells"]),
         "cells": 48,
+        "blind_transaction_pending": bool(
+            blind_transaction["present"] and manifest["status"] != "blind_finalized"
+        ),
     }
 
 
-def _validate_transcript(value: dict[str, Any], expected: dict[str, Any], plan_sha: str, scenario: dict[str, Any]) -> None:
+def _validate_transcript(
+    value: dict[str, Any],
+    expected: dict[str, Any],
+    plan: dict[str, Any],
+    plan_sha: str,
+    scenario: dict[str, Any],
+) -> None:
     try:
         _validate_schema(TRANSCRIPT_SCHEMA, value, "transcript")
     except EnvelopeError as exc:
@@ -1445,9 +1893,7 @@ def _validate_transcript(value: dict[str, Any], expected: dict[str, Any], plan_s
     normalized_events = [_normalize_raw_event(event) for event in events]
     event_kinds = [event["event_kind"] for event in normalized_events]
     try:
-        _assert_blindable_transcript(
-            {"cells": [expected]}, value
-        )
+        _assert_blindable_transcript(plan, value)
     except EnvelopeError as exc:
         raise StopViolation(
             "arm_leakage",
@@ -1549,6 +1995,8 @@ def _record_stop(
     raw: bytes,
     violation: StopViolation,
     preserved_auxiliary_artifacts: list[dict[str, str]] | None = None,
+    *,
+    raw_capture_kind: str = "exact_input_bytes",
 ) -> None:
     index = manifest["next_sequence_index"] - 1
     expected = plan["cells"][index]
@@ -1575,22 +2023,16 @@ def _record_stop(
     except EnvelopeError as exc:
         raw_write_error = exc
     supplied = list(preserved_auxiliary_artifacts or [])
-    expected_before, _ = _expected_run_inventory(run_dir, plan, manifest)
-    observed_before, _ = _relative_files_and_directories(run_dir)
-    supplied_refs = {row["ref"] for row in supplied}
-    for ref in sorted(observed_before - expected_before - supplied_refs):
-        if ref in {STOP_INTENT_REF, raw_ref}:
-            continue
-        artifact_raw = _read_file(run_dir / ref)
-        supplied.append(
-            {
-                "role": "pre_stop_unregistered_artifact",
-                "ref": ref,
-                "sha256": _sha(artifact_raw),
-            }
-        )
-    if len(supplied) > 64:
-        _fail("too many pre-stop artifacts to register in the closed stop receipt")
+    if len(supplied) > 8:
+        _fail("too many bounded ingestion artifacts to register")
+    publication_staging_ref = (
+        f".stop-intent.json.publish-"
+        f"{_sha((plan_sha + expected['cell_id'] + raw_sha).encode('utf-8'))[:24]}.tmp"
+    )
+    manifest_replacement_staging_ref = (
+        f".ingestion-manifest.json.stop-"
+        f"{_sha((raw_sha + plan_sha + expected['cell_id']).encode('utf-8'))[:24]}.json"
+    )
     stopped_manifest = copy.deepcopy(manifest)
     stopped_manifest["cells"][index].update(
         status="blocked",
@@ -1607,11 +2049,24 @@ def _record_stop(
         "detail": violation.detail[:2000],
         "raw_ref": raw_ref,
         "raw_sha256": raw_sha,
+        "raw_capture_kind": raw_capture_kind,
         "retry_forbidden": True,
         "stop_intent_ref": STOP_INTENT_REF,
         "stop_intent_committed_before_state_replacement": True,
+        "stop_intent_publication_staging_ref": publication_staging_ref,
+        "manifest_replacement_staging_ref": manifest_replacement_staging_ref,
+        "pre_stop_inventory": {"entry_count": 0, "sha256": _sha(_canonical([]))},
         "preserved_auxiliary_artifacts": supplied,
     }
+    expected_before, expected_directories = _expected_run_inventory(
+        run_dir, plan, stopped_manifest
+    )
+    observed_before, observed_directories = _relative_files_and_directories(run_dir)
+    stopped_manifest["stop_receipt"]["pre_stop_inventory"] = _inventory_binding(
+        run_dir,
+        observed_before - expected_before,
+        observed_directories - expected_directories,
+    )
     _validate_manifest(stopped_manifest, plan, plan_sha)
     prior_manifest_raw = _read_file(run_dir / "ingestion-manifest.json")
     if _strict_loads(prior_manifest_raw) != manifest:
@@ -1628,14 +2083,22 @@ def _record_stop(
         "detail": violation.detail[:2000],
         "raw_ref": raw_ref,
         "raw_sha256": raw_sha,
+        "raw_capture_kind": raw_capture_kind,
         "raw_base64": base64.b64encode(raw).decode("ascii"),
         "stopped_manifest_sha256": _sha(stopped_raw),
         "stopped_manifest_base64": base64.b64encode(stopped_raw).decode("ascii"),
+        "pre_stop_inventory": stopped_manifest["stop_receipt"]["pre_stop_inventory"],
+        "stop_intent_publication_staging_ref": publication_staging_ref,
+        "manifest_replacement_staging_ref": manifest_replacement_staging_ref,
         "retry_forbidden": True,
     }
     marker_raw = _json_bytes(marker)
     _validate_stop_intent(marker_raw, plan, plan_sha)
-    _ensure_exact_new(run_dir / STOP_INTENT_REF, marker_raw)
+    _publish_stop_intent(
+        run_dir / STOP_INTENT_REF,
+        marker_raw,
+        publication_staging_ref,
+    )
     try:
         _ensure_exact_new(raw_path, raw)
         raw_write_error = None
@@ -1643,7 +2106,11 @@ def _record_stop(
         raw_write_error = exc
     # The marker is the irreversible boundary. If this replacement fails,
     # every later load rejects retry and can replay the exact stopped state.
-    _replace_json(run_dir / "ingestion-manifest.json", stopped_manifest)
+    _replace_json(
+        run_dir / "ingestion-manifest.json",
+        stopped_manifest,
+        staging_ref=manifest_replacement_staging_ref,
+    )
     if raw_write_error is not None:
         raise EnvelopeError(
             "run is permanently stopped; blocked raw recovery remains pending: "
@@ -1690,6 +2157,38 @@ def _preserved_ingestion_artifacts(
     return preserved
 
 
+def _bounded_acquisition_failure_evidence(
+    path: Path,
+    error: EnvelopeError,
+) -> bytes:
+    observed: dict[str, Any] = {
+        "schema_version": "ideation-diversity-transcript-acquisition-failure/1.0",
+        "kind": "bounded_acquisition_failure_record",
+        "error": str(error)[:2000],
+        "path_name": path.name[:255],
+        "stat": None,
+        "prefix_sha256": None,
+        "prefix_bytes": 0,
+    }
+    try:
+        metadata = path.lstat()
+        observed["stat"] = {
+            "device": metadata.st_dev,
+            "inode": metadata.st_ino,
+            "mode": stat.S_IFMT(metadata.st_mode),
+            "size_bytes": metadata.st_size,
+            "mtime_ns": metadata.st_mtime_ns,
+        }
+        if stat.S_ISREG(metadata.st_mode) and not path.is_symlink():
+            with path.open("rb") as stream:
+                prefix = stream.read(64 * 1024)
+            observed["prefix_sha256"] = _sha(prefix)
+            observed["prefix_bytes"] = len(prefix)
+    except OSError as exc:
+        observed["stat_error"] = str(exc)[:1000]
+    return _json_bytes(observed)
+
+
 def ingest(args: argparse.Namespace) -> dict[str, Any]:
     plan, _, plan_sha, manifest = _load_run(args.run_dir, args.plan_sha256)
     if manifest["stopped"]:
@@ -1698,9 +2197,27 @@ def ingest(args: argparse.Namespace) -> dict[str, Any]:
         _fail("all 48 transcripts are already ingested")
     if manifest["status"] not in {"materialized", "ingesting"}:
         _fail("transcripts may be ingested only after materialization")
-    raw = _read_file(args.transcript)
     expected = plan["cells"][manifest["next_sequence_index"] - 1]
     scenario = _scenario_index(phase1.load_assets()[0])[expected["scenario_id"]]
+    _begin_ingestion_attempt(args.run_dir, plan, plan_sha, manifest)
+    try:
+        raw = _read_file(args.transcript)
+    except EnvelopeError as exc:
+        violation = StopViolation(
+            "transcript_contract_failure",
+            f"cannot acquire bounded external transcript bytes: {exc}",
+        )
+        evidence = _bounded_acquisition_failure_evidence(args.transcript, exc)
+        _record_stop(
+            args.run_dir,
+            plan,
+            plan_sha,
+            manifest,
+            evidence,
+            violation,
+            raw_capture_kind="bounded_acquisition_failure_record",
+        )
+        raise violation from exc
     try:
         _validate_materials(args.run_dir, plan, required=True)
         sequence_state = _validate_ingested_artifacts(
@@ -1720,7 +2237,7 @@ def ingest(args: argparse.Namespace) -> dict[str, Any]:
         raise violation from exc
     try:
         value = _strict_loads(raw)
-        _validate_transcript(value, expected, plan_sha, scenario)
+        _validate_transcript(value, expected, plan, plan_sha, scenario)
         try:
             authorization_raw = _read_file(args.authorization_record)
             authorization = _strict_loads(authorization_raw)
@@ -1876,6 +2393,7 @@ def ingest(args: argparse.Namespace) -> dict[str, Any]:
                 "persisted; do not retry this run"
             ) from stop_exc
         raise violation from exc
+    _complete_ingestion_attempt(args.run_dir, expected["cell_id"])
     return {"ingested": ingested, "next_sequence_index": manifest["next_sequence_index"]}
 
 
@@ -2101,6 +2619,346 @@ def _blind_manifest_value(
     }
 
 
+def _blind_intent_value(
+    plan_sha: str,
+    source_ingestion_manifest_sha: str,
+    private_id_nonce: str,
+    inventory_raw: bytes,
+    packets: list[tuple[str, bytes]],
+    private_map_raw: bytes,
+    blind_manifest_raw: bytes,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "ideation-diversity-blind-intent/1.0",
+        "suite": SUITE,
+        "run_plan_sha256": plan_sha,
+        "source_ingestion_manifest_sha256": source_ingestion_manifest_sha,
+        "private_id_nonce": private_id_nonce,
+        "protection": {
+            "procedural_nondisclosure_only": True,
+            "file_mode": "0600",
+            "deliver_to_judges": False,
+        },
+        "staging_ref": BLIND_STAGING_REF,
+        "final_ref": "blind",
+        "atomic_alias_root": BLIND_ALIAS_ROOT,
+        "atomic_alias_policy": "deterministic_target_hash_hardlink_exact_replay",
+        "blind_manifest_sha256": _sha(blind_manifest_raw),
+        "inventory_sha256": _sha(inventory_raw),
+        "private_map_sha256": _sha(private_map_raw),
+        "packets": [
+            {
+                "blind_session_id": blind_id,
+                "packet_sha256": _sha(packet_raw),
+            }
+            for blind_id, packet_raw in packets
+        ],
+        "recovery_policy": "exact_recovery_only_no_second_bundle",
+    }
+
+
+def _blind_alias_ref(target_ref: str, raw: bytes) -> str:
+    digest = _sha(f"{target_ref}\0{_sha(raw)}".encode("utf-8"))
+    return f"{BLIND_ALIAS_ROOT}/{digest[:32]}.tmp"
+
+
+def _blind_alias_contract(expected_files: dict[str, bytes]) -> dict[str, tuple[str, bytes]]:
+    return {
+        _blind_alias_ref(target_ref, raw): (target_ref, raw)
+        for target_ref, raw in expected_files.items()
+    }
+
+
+def _ensure_blind_exact(
+    run_dir: Path, target_ref: str, raw: bytes
+) -> None:
+    target = run_dir / BLIND_STAGING_REF / target_ref
+    alias = run_dir / _blind_alias_ref(target_ref, raw)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if _read_file(target, limit=max(MAX_INPUT_BYTES, len(raw))) != raw:
+            _fail(f"blind staging artifact collision at {target_ref}")
+        if alias.exists():
+            if _read_file(alias, limit=max(MAX_INPUT_BYTES, len(raw))) != raw:
+                _fail(f"blind atomic alias collision at {alias.name}")
+            if alias.stat().st_ino != target.stat().st_ino:
+                _fail(f"blind atomic alias is not the target hardlink: {alias.name}")
+        return
+    if alias.exists():
+        if _read_file(alias, limit=max(MAX_INPUT_BYTES, len(raw))) != raw:
+            _fail(f"blind atomic alias collision at {alias.name}")
+    else:
+        descriptor: int | None = None
+        try:
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            descriptor = os.open(alias, flags, 0o600)
+            view = memoryview(raw)
+            written = 0
+            while written < len(view):
+                count = os.write(descriptor, view[written:])
+                if count <= 0:
+                    raise OSError("blind atomic alias write made no progress")
+                written += count
+            os.fsync(descriptor)
+            os.close(descriptor)
+            descriptor = None
+            _fsync_directory(alias.parent)
+        except OSError as exc:
+            raise EnvelopeError(
+                f"cannot stage intent-bound blind alias {alias}: {exc}"
+            ) from exc
+        finally:
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+    try:
+        os.link(alias, target, follow_symlinks=False)
+        _fsync_directory(target.parent)
+    except OSError as exc:
+        raise EnvelopeError(
+            f"cannot publish intent-bound blind artifact {target}: {exc}"
+        ) from exc
+    try:
+        alias.unlink()
+        _fsync_directory(alias.parent)
+    except OSError:
+        # This complete alias is deterministic and hash-bound by blind-intent.
+        # It remains durable evidence and is exact-replayed on every load.
+        pass
+
+
+def _validate_blind_aliases(
+    run_dir: Path,
+    expected_files: dict[str, bytes],
+    *,
+    final_published: bool,
+) -> None:
+    root = run_dir / BLIND_ALIAS_ROOT
+    if not root.exists():
+        return
+    if root.is_symlink() or not root.is_dir() or stat.S_IMODE(root.stat().st_mode) != 0o700:
+        _fail("blind atomic alias root must remain a real 0700 directory")
+    observed_files, observed_directories = _relative_files_and_directories(root)
+    if observed_directories:
+        _fail("blind atomic alias root may not contain subdirectories")
+    contract = _blind_alias_contract(expected_files)
+    observed_refs = {f"{BLIND_ALIAS_ROOT}/{ref}" for ref in observed_files}
+    if not observed_refs <= set(contract):
+        _fail("blind atomic alias root contains an unbound artifact")
+    target_root = run_dir / ("blind" if final_published else BLIND_STAGING_REF)
+    for alias_ref in observed_refs:
+        target_ref, raw = contract[alias_ref]
+        alias = run_dir / alias_ref
+        if _read_file(alias, limit=max(MAX_INPUT_BYTES, len(raw))) != raw:
+            _fail(f"blind atomic alias bytes drifted: {alias_ref}")
+        if stat.S_IMODE(alias.stat().st_mode) != 0o600:
+            _fail(f"blind atomic alias mode must remain 0600: {alias_ref}")
+        target = target_root / target_ref
+        if target.exists() and alias.stat().st_ino != target.stat().st_ino:
+            _fail(f"blind atomic alias is not target hardlink: {alias_ref}")
+
+
+def _deterministic_blind_id(
+    plan_sha: str,
+    source_ingestion_manifest_sha: str,
+    cell_id: str,
+    private_id_nonce: str,
+) -> str:
+    digest = _sha(
+        (
+            f"{private_id_nonce}\0{plan_sha}\0"
+            f"{source_ingestion_manifest_sha}\0{cell_id}"
+        ).encode("utf-8")
+    )
+    return f"blind-{digest[:24]}"
+
+
+def _blind_transaction_values(
+    run_dir: Path,
+    plan: dict[str, Any],
+    plan_sha: str,
+    manifest: dict[str, Any],
+    private_id_nonce: str,
+) -> dict[str, Any]:
+    scenarios = _scenario_index(phase1.load_assets()[0])
+    codebook_raw = _read_file(CODEBOOK)
+    source_sha = _sha(_json_bytes(_source_ingestion_manifest(manifest)))
+    packets: list[tuple[str, bytes]] = []
+    inventory_rows: list[dict[str, str]] = []
+    mapping: list[dict[str, Any]] = []
+    for cell, state in zip(plan["cells"], manifest["cells"]):
+        raw = _read_file(run_dir / state["transcript_ref"])
+        if _sha(raw) != state["transcript_sha256"]:
+            _fail(f"transcript drift before blinding: {cell['cell_id']}")
+        transcript = _strict_loads(raw)
+        _assert_blindable_transcript(plan, transcript)
+        blind_id = _deterministic_blind_id(
+            plan_sha,
+            source_sha,
+            cell["cell_id"],
+            private_id_nonce,
+        )
+        isolated_packet = _blind_packet_value(
+            blind_id, scenarios[cell["scenario_id"]], transcript, codebook_raw
+        )
+        _assert_blind_packet_structure(plan, isolated_packet)
+        _validate_schema(BLIND_PACKET_SCHEMA, isolated_packet, "isolated blind packet")
+        packet_raw = _json_bytes(isolated_packet)
+        packets.append((blind_id, packet_raw))
+        inventory_rows.append(
+            {"blind_session_id": blind_id, "packet_sha256": _sha(packet_raw)}
+        )
+        mapping.append(
+            {
+                "blind_session_id": blind_id,
+                "cell_id": cell["cell_id"],
+                "experiment_id": cell["experiment_id"],
+                "arm_id": cell["arm_id"],
+                "scenario_id": cell["scenario_id"],
+                "pair_id": cell["pair_id"],
+                "replicate": cell["replicate"],
+            }
+        )
+    packets.sort(key=lambda row: row[0])
+    inventory_rows.sort(key=lambda row: row["blind_session_id"])
+    mapping.sort(key=lambda row: row["blind_session_id"])
+    if len({blind_id for blind_id, _ in packets}) != 48:
+        _fail("deterministic blind ids collided")
+    inventory = _blind_inventory_value(plan_sha, inventory_rows)
+    _validate_schema(BLIND_INVENTORY_SCHEMA, inventory, "blind inventory")
+    inventory_raw = _json_bytes(inventory)
+    private_map = _private_map_value(plan_sha, inventory_raw, mapping)
+    _validate_schema(PRIVATE_ARM_MAP_SCHEMA, private_map, "private arm map")
+    private_map_raw = _json_bytes(private_map)
+    blind_manifest = _blind_manifest_value(
+        plan_sha,
+        source_sha,
+        inventory_raw,
+        packets,
+        private_map_raw,
+    )
+    _validate_schema(BLIND_MANIFEST_SCHEMA, blind_manifest, "blind manifest")
+    blind_manifest_raw = _json_bytes(blind_manifest)
+    intent = _blind_intent_value(
+        plan_sha,
+        source_sha,
+        private_id_nonce,
+        inventory_raw,
+        packets,
+        private_map_raw,
+        blind_manifest_raw,
+    )
+    _validate_schema(BLIND_INTENT_SCHEMA, intent, "blind intent")
+    expected_files = {
+        **{
+            f"sessions/{blind_id}.json": packet_raw
+            for blind_id, packet_raw in packets
+        },
+        "inventory.json": inventory_raw,
+        "private/arm-map.json": private_map_raw,
+        "manifest.json": blind_manifest_raw,
+    }
+    return {
+        "intent": intent,
+        "intent_raw": _json_bytes(intent),
+        "expected_staging_files": expected_files,
+        "blind_manifest_sha256": _sha(blind_manifest_raw),
+        "inventory_sha256": _sha(inventory_raw),
+    }
+
+
+def _validate_blind_staging(
+    staging: Path,
+    expected_files: dict[str, bytes],
+    *,
+    require_complete: bool,
+) -> None:
+    if staging.is_symlink() or not staging.is_dir():
+        _fail("blind staging must be a real non-symlink directory")
+    observed_files, observed_directories = _relative_files_and_directories(staging)
+    allowed_files = set(expected_files)
+    allowed_directories = _parent_directories(allowed_files)
+    if not observed_files <= allowed_files or not observed_directories <= allowed_directories:
+        _fail("blind staging contains an unbound artifact or directory")
+    if require_complete and (
+        observed_files != allowed_files or observed_directories != allowed_directories
+    ):
+        _fail("blind staging transaction is incomplete")
+    for ref in observed_files:
+        if _read_file(staging / ref) != expected_files[ref]:
+            _fail(f"blind staging artifact collision at {ref}")
+    private_directory = staging / "private"
+    private_map_path = private_directory / "arm-map.json"
+    if private_directory.exists() and stat.S_IMODE(private_directory.stat().st_mode) != 0o700:
+        _fail("blind staging private directory mode must be 0700")
+    if private_map_path.exists() and stat.S_IMODE(private_map_path.stat().st_mode) != 0o600:
+        _fail("blind staging private map mode must be 0600")
+
+
+def _validate_blind_transaction(
+    run_dir: Path,
+    plan: dict[str, Any],
+    plan_sha: str,
+    manifest: dict[str, Any],
+) -> dict[str, Any]:
+    intent_path = run_dir / BLIND_INTENT_REF
+    if not intent_path.exists():
+        if (run_dir / BLIND_STAGING_REF).exists():
+            _fail("blind staging exists without its durable transaction intent")
+        return {"present": False}
+    if manifest["stopped"] or manifest["status"] not in {
+        "complete",
+        "blind_finalized",
+    }:
+        _fail("blind transaction intent is forbidden before complete ingestion")
+    intent_raw = _read_file(intent_path)
+    intent = _strict_loads(intent_raw)
+    _validate_schema(BLIND_INTENT_SCHEMA, intent, "blind intent")
+    if stat.S_IMODE(intent_path.stat().st_mode) != 0o600:
+        _fail("blind transaction intent mode must remain 0600")
+    values = _blind_transaction_values(
+        run_dir,
+        plan,
+        plan_sha,
+        manifest,
+        intent["private_id_nonce"],
+    )
+    if intent_raw != values["intent_raw"]:
+        _fail("blind transaction intent differs from deterministic exact replay")
+    staging = run_dir / BLIND_STAGING_REF
+    final = run_dir / "blind"
+    if staging.exists() and final.exists():
+        _fail("blind transaction has both staging and finalized directories")
+    if staging.exists():
+        _validate_blind_staging(
+            staging,
+            values["expected_staging_files"],
+            require_complete=False,
+        )
+    if final.exists():
+        final_manifest_raw = _read_file(final / "manifest.json")
+        if _sha(final_manifest_raw) != values["blind_manifest_sha256"]:
+            _fail("published blind bundle differs from its durable transaction intent")
+        final_inventory_raw = _read_file(final / "inventory.json")
+        if _sha(final_inventory_raw) != values["inventory_sha256"]:
+            _fail("published blind inventory differs from its durable transaction intent")
+    _validate_blind_aliases(
+        run_dir,
+        values["expected_staging_files"],
+        final_published=final.exists(),
+    )
+    return {
+        **values,
+        "present": True,
+        "staging_present": staging.exists(),
+        "final_present": final.exists(),
+    }
+
+
 def _source_ingestion_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     source = copy.deepcopy(manifest)
     source["status"] = "complete"
@@ -2257,6 +3115,7 @@ def _finalize_blind_state(
 
 def prepare_blind_packet(args: argparse.Namespace) -> dict[str, Any]:
     plan, _, plan_sha, manifest = _load_run(args.run_dir, args.plan_sha256)
+    _recover_completed_attempts(args.run_dir, plan, manifest)
     _validate_materials(args.run_dir, plan, required=True)
     _validate_ingested_artifacts(args.run_dir, plan, plan_sha, manifest)
     if manifest["status"] == "blind_finalized":
@@ -2265,100 +3124,80 @@ def prepare_blind_packet(args: argparse.Namespace) -> dict[str, Any]:
         _fail("blind packet requires 48 complete, unstopped transcript ingestions")
 
     blind_root = args.run_dir / "blind"
-    if blind_root.exists():
-        blind_manifest_sha, inventory_sha = _validate_blind_bundle(
-            args.run_dir, plan, plan_sha, manifest
-        )
-        finalized = _finalize_blind_state(
-            args.run_dir, plan, plan_sha, manifest, blind_manifest_sha
-        )
-        _validate_run_inventory(args.run_dir, plan, finalized)
-        return {
-            "inventory_sha256": inventory_sha,
-            "sessions": 48,
-            "artifact_presence": _artifact_presence(),
-            "state": "blind_finalized",
-            "recovered_existing_atomic_bundle": True,
-        }
-
-    _validate_run_inventory(args.run_dir, plan, manifest)
-    scenarios = _scenario_index(phase1.load_assets()[0])
-    codebook_raw = _read_file(CODEBOOK)
-    packets: list[tuple[str, bytes]] = []
-    inventory_rows: list[dict[str, str]] = []
-    mapping: list[dict[str, Any]] = []
-    used: set[str] = set()
-    for cell, state in zip(plan["cells"], manifest["cells"]):
-        raw = _read_file(args.run_dir / state["transcript_ref"])
-        if _sha(raw) != state["transcript_sha256"]:
-            _fail(f"transcript drift before blinding: {cell['cell_id']}")
-        transcript = _strict_loads(raw)
-        _assert_blindable_transcript(plan, transcript)
-        while True:
-            blind_id = f"blind-{secrets.token_hex(12)}"
-            if blind_id not in used:
-                used.add(blind_id)
-                break
-        isolated_packet = _blind_packet_value(
-            blind_id, scenarios[cell["scenario_id"]], transcript, codebook_raw
-        )
-        _assert_blind_packet_structure(plan, isolated_packet)
-        _validate_schema(BLIND_PACKET_SCHEMA, isolated_packet, "isolated blind packet")
-        packet_raw = _json_bytes(isolated_packet)
-        packets.append((blind_id, packet_raw))
-        inventory_rows.append(
-            {"blind_session_id": blind_id, "packet_sha256": _sha(packet_raw)}
-        )
-        mapping.append(
-            {
-                "blind_session_id": blind_id,
-                "cell_id": cell["cell_id"],
-                "experiment_id": cell["experiment_id"],
-                "arm_id": cell["arm_id"],
-                "scenario_id": cell["scenario_id"],
-                "pair_id": cell["pair_id"],
-                "replicate": cell["replicate"],
-            }
-        )
-    packets.sort(key=lambda row: row[0])
-    inventory_rows.sort(key=lambda row: row["blind_session_id"])
-    mapping.sort(key=lambda row: row["blind_session_id"])
-    inventory = _blind_inventory_value(plan_sha, inventory_rows)
-    _validate_schema(BLIND_INVENTORY_SCHEMA, inventory, "blind inventory")
-    inventory_raw = _json_bytes(inventory)
-    private_map = _private_map_value(plan_sha, inventory_raw, mapping)
-    _validate_schema(PRIVATE_ARM_MAP_SCHEMA, private_map, "private arm map")
-    private_map_raw = _json_bytes(private_map)
-    source_ingestion_manifest_sha = _sha(_json_bytes(manifest))
-    blind_manifest = _blind_manifest_value(
+    intent_path = args.run_dir / BLIND_INTENT_REF
+    intent_preexisting = intent_path.exists()
+    if not intent_preexisting:
+        _validate_run_inventory(args.run_dir, plan, manifest)
+        private_id_nonce = secrets.token_hex(32)
+    else:
+        existing_intent = _strict_loads(_read_file(intent_path))
+        _validate_schema(BLIND_INTENT_SCHEMA, existing_intent, "blind intent")
+        private_id_nonce = existing_intent["private_id_nonce"]
+    values = _blind_transaction_values(
+        args.run_dir,
+        plan,
         plan_sha,
-        source_ingestion_manifest_sha,
-        inventory_raw,
-        packets,
-        private_map_raw,
+        manifest,
+        private_id_nonce,
     )
-    _validate_schema(BLIND_MANIFEST_SCHEMA, blind_manifest, "blind manifest")
-    blind_manifest_raw = _json_bytes(blind_manifest)
-
-    staging = args.run_dir.parent / (
-        f".{args.run_dir.name}.blind-next-{secrets.token_hex(12)}"
-    )
-    try:
-        staging.mkdir(mode=0o755)
-        for blind_id, packet_raw in packets:
-            _write_new(staging / "sessions" / f"{blind_id}.json", packet_raw)
-        _write_new(staging / "inventory.json", inventory_raw)
-        private_directory = staging / "private"
-        private_directory.mkdir(mode=0o700)
-        os.chmod(private_directory, 0o700)
-        _write_new(private_directory / "arm-map.json", private_map_raw, mode=0o600)
-        os.chmod(private_directory / "arm-map.json", 0o600)
-        _write_new(staging / "manifest.json", blind_manifest_raw)
-        os.rename(staging, blind_root)
+    _ensure_exact_new(intent_path, values["intent_raw"], mode=0o600)
+    if intent_preexisting:
+        if stat.S_IMODE(intent_path.stat().st_mode) != 0o600:
+            _fail("blind transaction intent mode must remain 0600")
+    else:
+        os.chmod(intent_path, 0o600)
+    alias_root = args.run_dir / BLIND_ALIAS_ROOT
+    if not alias_root.exists():
+        alias_root.mkdir(mode=0o700)
         _fsync_directory(args.run_dir)
-        _fsync_directory(args.run_dir.parent)
-    except OSError as exc:
-        raise EnvelopeError(f"cannot atomically finalize blind bundle: {exc}") from exc
+    os.chmod(alias_root, 0o700)
+    transaction = _validate_blind_transaction(
+        args.run_dir, plan, plan_sha, manifest
+    )
+    staging = args.run_dir / BLIND_STAGING_REF
+    if not blind_root.exists():
+        _validate_run_inventory(args.run_dir, plan, manifest)
+    recovered = bool(
+        intent_preexisting or transaction["staging_present"] or blind_root.exists()
+    )
+    if not blind_root.exists():
+        if not staging.exists():
+            staging.mkdir(mode=0o755)
+            _fsync_directory(args.run_dir)
+        _validate_blind_staging(
+            staging,
+            values["expected_staging_files"],
+            require_complete=False,
+        )
+        expected_staging_files = values["expected_staging_files"]
+        ordered_refs = [
+            *sorted(ref for ref in expected_staging_files if ref.startswith("sessions/")),
+            "inventory.json",
+            "private/arm-map.json",
+            "manifest.json",
+        ]
+        for ref in ordered_refs:
+            raw = expected_staging_files[ref]
+            target = staging / ref
+            if ref == "private/arm-map.json":
+                target.parent.mkdir(mode=0o700, exist_ok=True)
+                os.chmod(target.parent, 0o700)
+                _ensure_blind_exact(args.run_dir, ref, raw)
+                os.chmod(target, 0o600)
+            else:
+                _ensure_blind_exact(args.run_dir, ref, raw)
+        _validate_blind_staging(
+            staging,
+            values["expected_staging_files"],
+            require_complete=True,
+        )
+        try:
+            os.rename(staging, blind_root)
+            _fsync_directory(args.run_dir)
+        except OSError as exc:
+            raise EnvelopeError(
+                f"cannot atomically finalize deterministic blind bundle: {exc}"
+            ) from exc
 
     blind_manifest_sha, inventory_sha = _validate_blind_bundle(
         args.run_dir, plan, plan_sha, manifest
@@ -2372,7 +3211,7 @@ def prepare_blind_packet(args: argparse.Namespace) -> dict[str, Any]:
         "sessions": 48,
         "artifact_presence": _artifact_presence(),
         "state": "blind_finalized",
-        "recovered_existing_atomic_bundle": False,
+        "recovered_existing_atomic_bundle": recovered,
     }
 
 

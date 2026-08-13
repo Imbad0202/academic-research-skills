@@ -44,8 +44,8 @@
     "created_without_dispatch": {"const": true},
     "asset_bindings": {
       "type": "array",
-      "minItems": 17,
-      "maxItems": 17,
+      "minItems": 18,
+      "maxItems": 18,
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/asset_binding"}
     },
@@ -177,12 +177,12 @@
         "fresh_external_authorization_required"
       ],
       "properties": {
-        "subject_provider": {"type": "string", "minLength": 1, "maxLength": 128},
-        "subject_model": {"type": "string", "minLength": 1, "maxLength": 128},
-        "subject_runtime": {"type": "string", "minLength": 1, "maxLength": 128},
-        "subject_runtime_version": {"type": "string", "minLength": 1, "maxLength": 128},
-        "auth_mode": {"type": "string", "minLength": 1, "maxLength": 128},
-        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64},
+        "subject_provider": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "subject_model": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "subject_runtime": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "subject_runtime_version": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "auth_mode": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S"},
+        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "\\S"},
         "input_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
         "output_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
         "token_cap_verification": {
