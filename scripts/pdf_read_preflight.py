@@ -155,6 +155,8 @@ class _InputWriter:
     def __init__(self, stream: Any, data: bytes):
         self.stream = stream
         self.data = data
+        self.bytes_written = 0
+        self.completed = False
         self.error: BaseException | None = None
         self.unexpected_error: BaseException | None = None
         self.thread = threading.Thread(target=self._run, daemon=True)
@@ -162,8 +164,14 @@ class _InputWriter:
 
     def _run(self) -> None:
         try:
-            self.stream.write(self.data)
+            view = memoryview(self.data)
+            while self.bytes_written < len(view):
+                written = self.stream.write(view[self.bytes_written :])
+                if not isinstance(written, int) or written <= 0:
+                    raise OSError("worker stdin made no forward progress")
+                self.bytes_written += written
             self.stream.flush()
+            self.completed = True
         except (BrokenPipeError, OSError) as exc:
             # A dependency-absent worker intentionally exits without consuming
             # stdin.  The closed stdout result, not this expected broken pipe,
@@ -469,6 +477,14 @@ def _run_content_classifier(
             state = _validate_worker_result(payload, page_count)
         except _ClassifierProtocolError:
             reason = "WORKER_INVALID_OUTPUT"
+            return _unavailable_content(reason), _diagnostic(
+                reason,
+                detail=stderr,
+                stdout_bytes=stdout_reader.total,
+                stderr_bytes=stderr_reader.total,
+            )
+        if state["status"] == "CLASSIFIED" and not input_writer.completed:
+            reason = "WORKER_IO_ERROR"
             return _unavailable_content(reason), _diagnostic(
                 reason,
                 detail=stderr,

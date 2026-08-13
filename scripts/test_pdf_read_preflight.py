@@ -666,6 +666,27 @@ class ContentClassificationSandboxTest(unittest.TestCase):
         self.assertEqual(diagnostic["reason"], "CLASSIFIED")
         self.assert_process_gone(int(pid_path.read_text()))
 
+    def test_classified_result_requires_complete_exact_input_delivery(self):
+        raw = json.dumps(_classified_payload())
+        worker = _write_worker(
+            self.tmp,
+            f"""
+            import sys
+            sys.stdout.write({raw!r})
+            sys.stdout.flush()
+            """,
+            name="classified_without_reading.py",
+        )
+        state, diagnostic = preflight._run_content_classifier(
+            b"NOT-A-PDF-BYTE" * 1_000_000,
+            page_count=1,
+            worker_path=worker,
+            timeout=1.0,
+        )
+        self.assertEqual(state["status"], "UNAVAILABLE")
+        self.assertEqual(state["reason"], "WORKER_IO_ERROR")
+        self.assertEqual(diagnostic["reason"], "WORKER_IO_ERROR")
+
     def test_nonzero_exit_is_closed_and_raw_stderr_is_not_in_sidecar(self):
         worker = _write_worker(
             self.tmp,
