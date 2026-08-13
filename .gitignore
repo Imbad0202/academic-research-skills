@@ -24,4 +24,4 @@ ROADMAP.md
 htmlcov/
 
 # Knowledge-graph local artifacts (do not commit)
-graphify-out/
+/graphify-out/
