@@ -3,6 +3,29 @@
 Schema files for cross-skill contracts: reviewer sprint contracts, Material Passport
 ports, and (v3.6.7+) cross-model audit artifact pipelines.
 
+## Claim-standing candidate ledger (#655 Track A)
+
+- `claim_standing/query_plan.schema.json` (`claim-standing-query-plan/1.0`)
+  binds one exact high-impact checkpoint claim, at most three accepted queries,
+  at most four discovery-index identities, filters, authorized content class,
+  frozen caps, and retrieval-only consent through a closed consentable-plan
+  projection.
+- `claim_standing/retrieval_input.schema.json`
+  (`claim-standing-retrieval-input/1.0`) carries already-retained,
+  adapter-neutral attempts, closed retry-authorization receipts, raw hits,
+  explicit version relations, and caller-supplied relevance success/failure
+  evidence.
+- `claim_standing/candidate_ledger.schema.json`
+  (`claim-standing-candidate-ledger/1.0`) preserves every attempt and raw-hit
+  terminal state while recording deterministic work-family selection.
+
+The pure local finalizer is
+`scripts/build_claim_standing_candidate_ledger.py`; the authoritative boundary
+is `shared/references/claim_standing_candidate_ledger_protocol.md`. This slice
+has no discovery adapter, network/model call, stance classification, rendering,
+evidence-row extension, pipeline hook, or held-out dispatch. It is an offline
+substrate only, remains unmeasured, and does not close #655.
+
 ## Codex subscription citation transport (#630)
 
 - `cross_model/codex_citation_request.schema.json` — closed, bounded data-only

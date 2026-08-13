@@ -1,0 +1,108 @@
+{
+  "schema_version": "claim-standing-query-plan/1.0",
+  "probe_id": "probe-655-fixture",
+  "claim": {
+    "checkpoint": "stage_2_5",
+    "claim_id": "claim-001",
+    "claim_text": "A structured reminder improves artifact completeness by 12%.",
+    "claim_sha256": "edbbc1e1a03bd1daee12c869a5f74f163ae75d225a1f7dab008ec2aa90b2f280",
+    "registry_selection_tier": "HIGH-IMPACT",
+    "high_impact_basis": [
+      "numerical"
+    ],
+    "eligibility_confirmed_by_researcher": true
+  },
+  "queries": [
+    {
+      "query_id": "q1",
+      "original_query_text": "A structured reminder improves artifact completeness by 12%.",
+      "accepted_query_text": "A structured reminder improves artifact completeness by 12%.",
+      "construction": "exact_claim",
+      "source_claim_sha256": "edbbc1e1a03bd1daee12c869a5f74f163ae75d225a1f7dab008ec2aa90b2f280",
+      "language": "en",
+      "date_filter": {
+        "from_year": 2020,
+        "through_year": 2026
+      },
+      "index_targets": [
+        "index-a",
+        "index-b",
+        "index-c"
+      ],
+      "query_sha256": "edbbc1e1a03bd1daee12c869a5f74f163ae75d225a1f7dab008ec2aa90b2f280"
+    }
+  ],
+  "provider_roster": [
+    {
+      "index_id": "index-a",
+      "product_identity": "Synthetic Index A",
+      "purpose": "scholarly_discovery",
+      "query_capability": "synthetic keyword discovery fixture",
+      "abstract_availability": "mixed",
+      "pagination_behavior": "single retained fixture page",
+      "adapter_version": "fixture-1.0",
+      "retention_state": "unknown",
+      "retention_reference": null
+    },
+    {
+      "index_id": "index-b",
+      "product_identity": "Synthetic Index B",
+      "purpose": "scholarly_discovery",
+      "query_capability": "synthetic keyword discovery fixture",
+      "abstract_availability": "mixed",
+      "pagination_behavior": "single retained fixture page",
+      "adapter_version": "fixture-1.0",
+      "retention_state": "unknown",
+      "retention_reference": null
+    },
+    {
+      "index_id": "index-c",
+      "product_identity": "Synthetic Index C",
+      "purpose": "scholarly_discovery",
+      "query_capability": "synthetic keyword discovery fixture",
+      "abstract_availability": "mixed",
+      "pagination_behavior": "single retained fixture page",
+      "adapter_version": "fixture-1.0",
+      "retention_state": "unknown",
+      "retention_reference": null
+    }
+  ],
+  "allowed_languages": [
+    "en",
+    "zh-TW"
+  ],
+  "allowed_document_types": [
+    "journal-article",
+    "preprint"
+  ],
+  "authorized_content_classes": [
+    "accepted_search_query"
+  ],
+  "caps": {
+    "max_queries": 3,
+    "max_indexes": 4,
+    "max_hits_per_query_index": 20,
+    "max_raw_hits": 240,
+    "max_selected_work_families": 40
+  },
+  "consent": {
+    "consent_receipt_id": "consent-001",
+    "decision": "retrieval_only",
+    "accepted_at": "2026-08-13T01:00:00Z",
+    "claim_sha256": "edbbc1e1a03bd1daee12c869a5f74f163ae75d225a1f7dab008ec2aa90b2f280",
+    "provider_roster_sha256": "2c900d381b777d8371aabc5c95199a303b5f7d47876d8926dd9a05327be95819",
+    "caps_sha256": "fecc857409b939fa73b85ce85295ed8dbaa999d07de0a9bb6aeaa48b5e1bc8fd",
+    "queries_sha256": "cb0f06cf422adfe76f199f7b08f57eb7c006fc694560a80025af5af667b0f2d7",
+    "consentable_plan_sha256": "9187567e60be3009fc9bf4278445c55945be1badf96cb3a2dcb48c6b863bfc2b",
+    "stance_classification_authorized": false,
+    "advisory_acknowledged": true,
+    "search_bounded_acknowledged": true,
+    "local_persistence": "session_only",
+    "provider_retention_disclosed": true,
+    "deletion_boundary": "Local deletion does not claim provider erasure.",
+    "export_boundary": "No export is authorized by this fixture.",
+    "receipt_sha256": "fff7ac52e5fb6431220cce8792f833e57cdcea17188842477f45109f489244c3"
+  },
+  "created_at": "2026-08-13T01:00:00Z",
+  "plan_sha256": "9bda2e0b53bc1b762983d899ba866d2ce2f9c33d140b0c8e2ac14e563f240554"
+}

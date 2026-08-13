@@ -74,6 +74,9 @@ jobs:
           PYTHONPATH: .
         run: python3 scripts/run_ci_pytest_manifest.py
 
+      - name: Check claim-standing candidate-ledger integration (#655)
+        run: python3 scripts/check_claim_standing_candidate_ledger_integration.py
+
       - name: Check PREPRINT_VENUES list consistency (#105)
         run: python3 scripts/check_preprint_venues_consistency.py
 

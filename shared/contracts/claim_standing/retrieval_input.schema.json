@@ -1,0 +1,413 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/claim_standing/retrieval_input.schema.json",
+  "title": "ARS Claim-standing Retrieval Input v1",
+  "description": "Closed adapter-neutral input for the offline #655 Track A finalizer. It contains already-returned attempt metadata, bounded raw hits, explicit version relations, and caller-supplied relevance assessments. It is not a network adapter, dispatch plan, stance judgment, or efficacy artifact.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "query_plan_sha256",
+    "attempts",
+    "retry_authorizations",
+    "raw_hits",
+    "researcher_confirmed_version_relations",
+    "relevance_assessments",
+    "completed_at",
+    "retrieval_input_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "claim-standing-retrieval-input/1.0" },
+    "query_plan_sha256": { "$ref": "#/$defs/sha256" },
+    "attempts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/attempt" }
+    },
+    "retry_authorizations": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/retry_authorization" }
+    },
+    "raw_hits": {
+      "type": "array",
+      "maxItems": 240,
+      "items": { "$ref": "#/$defs/raw_hit" }
+    },
+    "researcher_confirmed_version_relations": {
+      "type": "array",
+      "maxItems": 240,
+      "items": { "$ref": "#/$defs/confirmed_relation" }
+    },
+    "relevance_assessments": {
+      "type": "array",
+      "maxItems": 240,
+      "items": { "$ref": "#/$defs/relevance" }
+    },
+    "completed_at": { "$ref": "#/$defs/rfc3339" },
+    "retrieval_input_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?Z$"
+    },
+    "nullable_string": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "given"],
+      "properties": {
+        "family": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "given": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt_id",
+        "query_id",
+        "index_id",
+        "started_at",
+        "completed_at",
+        "outcome",
+        "provider_reported_count",
+        "returned_count",
+        "retained_hit_count",
+        "truncated_count",
+        "retry_of_attempt_id",
+        "retry_authorization_receipt_id",
+        "consent_receipt_id"
+      ],
+      "properties": {
+        "attempt_id": { "$ref": "#/$defs/identifier" },
+        "query_id": { "$ref": "#/$defs/identifier" },
+        "index_id": { "$ref": "#/$defs/identifier" },
+        "started_at": { "$ref": "#/$defs/rfc3339" },
+        "completed_at": { "$ref": "#/$defs/rfc3339" },
+        "outcome": {
+          "enum": [
+            "success",
+            "timeout",
+            "authentication_failed",
+            "rate_limited",
+            "malformed_response",
+            "service_unavailable",
+            "unsupported_query"
+          ]
+        },
+        "provider_reported_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "returned_count": { "type": "integer", "minimum": 0 },
+        "retained_hit_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "truncated_count": { "type": "integer", "minimum": 0 },
+        "retry_of_attempt_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/identifier" },
+            { "type": "null" }
+          ]
+        },
+        "retry_authorization_receipt_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/identifier" },
+            { "type": "null" }
+          ]
+        },
+        "consent_receipt_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "retry_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retry_authorization_receipt_id",
+        "query_plan_sha256",
+        "probe_id",
+        "consent_receipt_id",
+        "failed_attempt_id",
+        "query_id",
+        "index_id",
+        "accepted_at",
+        "receipt_sha256"
+      ],
+      "properties": {
+        "retry_authorization_receipt_id": { "$ref": "#/$defs/identifier" },
+        "query_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "probe_id": { "$ref": "#/$defs/identifier" },
+        "consent_receipt_id": { "$ref": "#/$defs/identifier" },
+        "failed_attempt_id": { "$ref": "#/$defs/identifier" },
+        "query_id": { "$ref": "#/$defs/identifier" },
+        "index_id": { "$ref": "#/$defs/identifier" },
+        "accepted_at": { "$ref": "#/$defs/rfc3339" },
+        "receipt_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "raw_hit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_hit_id",
+        "probe_id",
+        "query_id",
+        "index_id",
+        "attempt_id",
+        "provider_rank",
+        "provider_record_id",
+        "doi",
+        "title",
+        "authors",
+        "year",
+        "language",
+        "document_type",
+        "publication_status",
+        "abstract_state",
+        "abstract_text",
+        "abstract_sha256",
+        "landing_url",
+        "returned_at",
+        "raw_metadata_sha256",
+        "explicit_version_of_raw_hit_id"
+      ],
+      "properties": {
+        "raw_hit_id": { "$ref": "#/$defs/identifier" },
+        "probe_id": { "$ref": "#/$defs/identifier" },
+        "query_id": { "$ref": "#/$defs/identifier" },
+        "index_id": { "$ref": "#/$defs/identifier" },
+        "attempt_id": { "$ref": "#/$defs/identifier" },
+        "provider_rank": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "provider_record_id": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "doi": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "title": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "authors": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/author" }
+        },
+        "year": {
+          "type": ["integer", "null"],
+          "minimum": 1000,
+          "maximum": 9999
+        },
+        "language": {
+          "type": ["string", "null"],
+          "minLength": 2,
+          "maxLength": 35
+        },
+        "document_type": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "publication_status": {
+          "enum": ["published", "preprint", "other", "unknown"]
+        },
+        "abstract_state": { "enum": ["available", "missing", "not_returned"] },
+        "abstract_text": { "$ref": "#/$defs/nullable_string" },
+        "abstract_sha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "landing_url": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "returned_at": { "$ref": "#/$defs/rfc3339" },
+        "raw_metadata_sha256": { "$ref": "#/$defs/sha256" },
+        "explicit_version_of_raw_hit_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/identifier" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "confirmed_relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left_raw_hit_id",
+        "right_raw_hit_id",
+        "confirmation_receipt_id"
+      ],
+      "properties": {
+        "left_raw_hit_id": { "$ref": "#/$defs/identifier" },
+        "right_raw_hit_id": { "$ref": "#/$defs/identifier" },
+        "confirmation_receipt_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "relevance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_raw_hit_id",
+        "outcome",
+        "state",
+        "reason_code",
+        "rationale",
+        "assessor_kind",
+        "assessor_id",
+        "prompt_version",
+        "raw_output",
+        "raw_output_sha256",
+        "failure_code",
+        "failure_detail",
+        "assessed_at"
+      ],
+      "properties": {
+        "canonical_raw_hit_id": { "$ref": "#/$defs/identifier" },
+        "outcome": { "enum": ["success", "failed"] },
+        "state": { "enum": ["relevant", "not_relevant", "ambiguous", "not_checked"] },
+        "reason_code": {
+          "type": ["string", "null"],
+          "enum": [
+            "population_mismatch",
+            "phenomenon_or_exposure_mismatch",
+            "outcome_mismatch",
+            "proposition_mismatch",
+            null
+          ]
+        },
+        "rationale": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "assessor_kind": { "enum": ["synthetic_fixture", "external_provided"] },
+        "assessor_id": { "$ref": "#/$defs/identifier" },
+        "prompt_version": { "$ref": "#/$defs/identifier" },
+        "raw_output": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "raw_output_sha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "failure_code": {
+          "type": ["string", "null"],
+          "enum": ["timeout", "malformed_output", "assessor_unavailable", "cancelled", null]
+        },
+        "failure_detail": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "assessed_at": { "$ref": "#/$defs/rfc3339" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "outcome": { "const": "success" } },
+            "required": ["outcome"]
+          },
+          "then": {
+            "properties": {
+              "state": { "enum": ["relevant", "not_relevant", "ambiguous"] },
+              "rationale": { "type": "string", "minLength": 1, "maxLength": 2000 },
+              "raw_output": { "type": "string", "minLength": 1, "maxLength": 10000 },
+              "raw_output_sha256": { "$ref": "#/$defs/sha256" },
+              "failure_code": { "type": "null" },
+              "failure_detail": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": {
+              "state": { "const": "not_checked" },
+              "reason_code": { "type": "null" },
+              "rationale": { "type": "null" },
+              "failure_code": {
+                "enum": ["timeout", "malformed_output", "assessor_unavailable", "cancelled"]
+              },
+              "failure_detail": { "type": "string", "minLength": 1, "maxLength": 2000 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "not_relevant" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "reason_code": {
+                "enum": [
+                  "population_mismatch",
+                  "phenomenon_or_exposure_mismatch",
+                  "outcome_mismatch",
+                  "proposition_mismatch"
+                ]
+              }
+            }
+          },
+          "else": { "properties": { "reason_code": { "type": "null" } } }
+        },
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "raw_output": { "type": "string", "minLength": 1, "maxLength": 10000 },
+                "raw_output_sha256": { "$ref": "#/$defs/sha256" }
+              }
+            },
+            {
+              "properties": {
+                "raw_output": { "type": "null" },
+                "raw_output_sha256": { "type": "null" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

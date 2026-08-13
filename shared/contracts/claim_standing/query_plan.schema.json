@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/claim_standing/query_plan.schema.json",
+  "title": "ARS Claim-standing Retrieval Query Plan v1",
+  "description": "Closed, researcher-approved, retrieval-only query plan for #655 Track A. The plan authorizes no network, model, stance, gate, or manuscript action by itself. Cross-field hashes, Stage 2.5/4.5 eligibility, unique identifiers, roster membership, date order, and consent binding are replayed by scripts/build_claim_standing_candidate_ledger.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "probe_id",
+    "claim",
+    "queries",
+    "provider_roster",
+    "allowed_languages",
+    "allowed_document_types",
+    "authorized_content_classes",
+    "caps",
+    "consent",
+    "created_at",
+    "plan_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "claim-standing-query-plan/1.0" },
+    "probe_id": { "$ref": "#/$defs/identifier" },
+    "claim": { "$ref": "#/$defs/claim" },
+    "queries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/query" }
+    },
+    "provider_roster": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/provider" }
+    },
+    "allowed_languages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/language" }
+    },
+    "allowed_document_types": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identifier" }
+    },
+    "authorized_content_classes": {
+      "const": ["accepted_search_query"]
+    },
+    "caps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_queries",
+        "max_indexes",
+        "max_hits_per_query_index",
+        "max_raw_hits",
+        "max_selected_work_families"
+      ],
+      "properties": {
+        "max_queries": { "const": 3 },
+        "max_indexes": { "const": 4 },
+        "max_hits_per_query_index": { "const": 20 },
+        "max_raw_hits": { "const": 240 },
+        "max_selected_work_families": { "const": 40 }
+      }
+    },
+    "consent": { "$ref": "#/$defs/consent" },
+    "created_at": { "$ref": "#/$defs/rfc3339" },
+    "plan_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?Z$"
+    },
+    "language": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 35,
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpoint",
+        "claim_id",
+        "claim_text",
+        "claim_sha256",
+        "registry_selection_tier",
+        "high_impact_basis",
+        "eligibility_confirmed_by_researcher"
+      ],
+      "properties": {
+        "checkpoint": { "enum": ["stage_2_5", "stage_4_5"] },
+        "claim_id": { "$ref": "#/$defs/identifier" },
+        "claim_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "claim_sha256": { "$ref": "#/$defs/sha256" },
+        "registry_selection_tier": {
+          "enum": ["HIGH-IMPACT", "RANDOM", "TOP-UP", "NOT-SELECTED", "ALL"]
+        },
+        "high_impact_basis": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "headline_conclusion",
+              "numerical",
+              "causal",
+              "methods_critical",
+              "disputed"
+            ]
+          }
+        },
+        "eligibility_confirmed_by_researcher": { "const": true }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "checkpoint": { "const": "stage_2_5" } },
+            "required": ["checkpoint"]
+          },
+          "then": {
+            "properties": {
+              "registry_selection_tier": { "const": "HIGH-IMPACT" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "checkpoint": { "const": "stage_4_5" } },
+            "required": ["checkpoint"]
+          },
+          "then": {
+            "properties": {
+              "registry_selection_tier": { "const": "ALL" }
+            }
+          }
+        }
+      ]
+    },
+    "date_filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_year", "through_year"],
+      "properties": {
+        "from_year": {
+          "type": ["integer", "null"],
+          "minimum": 1000,
+          "maximum": 9999
+        },
+        "through_year": {
+          "type": ["integer", "null"],
+          "minimum": 1000,
+          "maximum": 9999
+        }
+      }
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query_id",
+        "original_query_text",
+        "accepted_query_text",
+        "construction",
+        "source_claim_sha256",
+        "language",
+        "date_filter",
+        "index_targets",
+        "query_sha256"
+      ],
+      "properties": {
+        "query_id": { "$ref": "#/$defs/identifier" },
+        "original_query_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "accepted_query_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "construction": {
+          "enum": [
+            "exact_claim",
+            "researcher_authored",
+            "assisted_then_researcher_approved"
+          ]
+        },
+        "source_claim_sha256": { "$ref": "#/$defs/sha256" },
+        "language": { "$ref": "#/$defs/language" },
+        "date_filter": { "$ref": "#/$defs/date_filter" },
+        "index_targets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "query_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index_id",
+        "product_identity",
+        "purpose",
+        "query_capability",
+        "abstract_availability",
+        "pagination_behavior",
+        "adapter_version",
+        "retention_state",
+        "retention_reference"
+      ],
+      "properties": {
+        "index_id": { "$ref": "#/$defs/identifier" },
+        "product_identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "purpose": { "const": "scholarly_discovery" },
+        "query_capability": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "abstract_availability": {
+          "enum": ["available_when_returned", "metadata_only", "mixed"]
+        },
+        "pagination_behavior": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "adapter_version": { "$ref": "#/$defs/identifier" },
+        "retention_state": { "enum": ["known", "unknown"] },
+        "retention_reference": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consent_receipt_id",
+        "decision",
+        "accepted_at",
+        "claim_sha256",
+        "provider_roster_sha256",
+        "caps_sha256",
+        "queries_sha256",
+        "consentable_plan_sha256",
+        "stance_classification_authorized",
+        "advisory_acknowledged",
+        "search_bounded_acknowledged",
+        "local_persistence",
+        "provider_retention_disclosed",
+        "deletion_boundary",
+        "export_boundary",
+        "receipt_sha256"
+      ],
+      "properties": {
+        "consent_receipt_id": { "$ref": "#/$defs/identifier" },
+        "decision": { "const": "retrieval_only" },
+        "accepted_at": { "$ref": "#/$defs/rfc3339" },
+        "claim_sha256": { "$ref": "#/$defs/sha256" },
+        "provider_roster_sha256": { "$ref": "#/$defs/sha256" },
+        "caps_sha256": { "$ref": "#/$defs/sha256" },
+        "queries_sha256": { "$ref": "#/$defs/sha256" },
+        "consentable_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "stance_classification_authorized": { "const": false },
+        "advisory_acknowledged": { "const": true },
+        "search_bounded_acknowledged": { "const": true },
+        "local_persistence": { "enum": ["session_only", "explicit_local_export"] },
+        "provider_retention_disclosed": { "const": true },
+        "deletion_boundary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "export_boundary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "receipt_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

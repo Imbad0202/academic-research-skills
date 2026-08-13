@@ -1,0 +1,173 @@
+{
+  "schema_version": "claim-standing-retrieval-input/1.0",
+  "query_plan_sha256": "9bda2e0b53bc1b762983d899ba866d2ce2f9c33d140b0c8e2ac14e563f240554",
+  "attempts": [
+    {
+      "attempt_id": "attempt-a",
+      "query_id": "q1",
+      "index_id": "index-a",
+      "started_at": "2026-08-13T01:00:00Z",
+      "completed_at": "2026-08-13T01:01:00Z",
+      "outcome": "success",
+      "provider_reported_count": 2,
+      "returned_count": 2,
+      "retained_hit_count": 2,
+      "truncated_count": 0,
+      "retry_of_attempt_id": null,
+      "retry_authorization_receipt_id": null,
+      "consent_receipt_id": "consent-001"
+    },
+    {
+      "attempt_id": "attempt-b",
+      "query_id": "q1",
+      "index_id": "index-b",
+      "started_at": "2026-08-13T01:00:00Z",
+      "completed_at": "2026-08-13T01:01:00Z",
+      "outcome": "success",
+      "provider_reported_count": 1,
+      "returned_count": 1,
+      "retained_hit_count": 1,
+      "truncated_count": 0,
+      "retry_of_attempt_id": null,
+      "retry_authorization_receipt_id": null,
+      "consent_receipt_id": "consent-001"
+    },
+    {
+      "attempt_id": "attempt-c",
+      "query_id": "q1",
+      "index_id": "index-c",
+      "started_at": "2026-08-13T01:00:00Z",
+      "completed_at": "2026-08-13T01:01:00Z",
+      "outcome": "service_unavailable",
+      "provider_reported_count": null,
+      "returned_count": 0,
+      "retained_hit_count": 0,
+      "truncated_count": 0,
+      "retry_of_attempt_id": null,
+      "retry_authorization_receipt_id": null,
+      "consent_receipt_id": "consent-001"
+    }
+  ],
+  "retry_authorizations": [],
+  "raw_hits": [
+    {
+      "raw_hit_id": "hit-1",
+      "probe_id": "probe-655-fixture",
+      "query_id": "q1",
+      "index_id": "index-a",
+      "attempt_id": "attempt-a",
+      "provider_rank": 1,
+      "provider_record_id": "record-1",
+      "doi": "10.1000/example",
+      "title": "Reminder Effects",
+      "authors": [
+        {
+          "family": "Lee",
+          "given": "Min"
+        }
+      ],
+      "year": 2024,
+      "language": "en",
+      "document_type": "journal-article",
+      "publication_status": "published",
+      "abstract_state": "available",
+      "abstract_text": "A bounded synthetic abstract.",
+      "abstract_sha256": "6a2bb55b2a3b2f75c3820b0e6c999c4b3a4063b7ff57690c2bf9650a6815fa1f",
+      "landing_url": null,
+      "returned_at": "2026-08-13T01:01:00Z",
+      "raw_metadata_sha256": "5ba33242f2c0f4da906eb89dcd07269e4df0aaa9a9f5775f7d950abb1d6d1692",
+      "explicit_version_of_raw_hit_id": null
+    },
+    {
+      "raw_hit_id": "hit-2",
+      "probe_id": "probe-655-fixture",
+      "query_id": "q1",
+      "index_id": "index-b",
+      "attempt_id": "attempt-b",
+      "provider_rank": 1,
+      "provider_record_id": "record-2",
+      "doi": "HTTPS://DOI.ORG/10.1000/EXAMPLE",
+      "title": "Reminder Effects",
+      "authors": [
+        {
+          "family": "Lee",
+          "given": "Min"
+        }
+      ],
+      "year": 2024,
+      "language": "en",
+      "document_type": "preprint",
+      "publication_status": "preprint",
+      "abstract_state": "available",
+      "abstract_text": "A preprint synthetic abstract.",
+      "abstract_sha256": "2a1920ae66711078552741e5ec4806141461e4692805a99d6a7069c8f018c3e8",
+      "landing_url": null,
+      "returned_at": "2026-08-13T01:01:00Z",
+      "raw_metadata_sha256": "c4711e088177443d7c5c118a55a85eb5729756c5c29c03607886fc57d50e9dd7",
+      "explicit_version_of_raw_hit_id": "hit-1"
+    },
+    {
+      "raw_hit_id": "hit-3",
+      "probe_id": "probe-655-fixture",
+      "query_id": "q1",
+      "index_id": "index-a",
+      "attempt_id": "attempt-a",
+      "provider_rank": 2,
+      "provider_record_id": "record-3",
+      "doi": null,
+      "title": "Unrelated evidence",
+      "authors": [
+        {
+          "family": "Lee",
+          "given": "Min"
+        }
+      ],
+      "year": 2024,
+      "language": "en",
+      "document_type": "journal-article",
+      "publication_status": "published",
+      "abstract_state": "available",
+      "abstract_text": "An unrelated synthetic abstract.",
+      "abstract_sha256": "21e69b9d827e631dea8672473111a4683415dbd382702323102ac6cd33718f18",
+      "landing_url": null,
+      "returned_at": "2026-08-13T01:01:00Z",
+      "raw_metadata_sha256": "bca63fdbc2133b982c991848a23c2ab0f7663aeed9cd0a0c794134b156d931ac",
+      "explicit_version_of_raw_hit_id": null
+    }
+  ],
+  "researcher_confirmed_version_relations": [],
+  "relevance_assessments": [
+    {
+      "canonical_raw_hit_id": "hit-1",
+      "outcome": "success",
+      "state": "relevant",
+      "reason_code": null,
+      "rationale": "The synthetic record addresses the proposition.",
+      "assessor_kind": "synthetic_fixture",
+      "assessor_id": "fixture-assessor",
+      "prompt_version": "fixture-v1",
+      "raw_output": "assessment-hit-1",
+      "raw_output_sha256": "404f5258a42cd116629bf3f853897ed2075688df22bae70f640e17c782594ba4",
+      "failure_code": null,
+      "failure_detail": null,
+      "assessed_at": "2026-08-13T01:01:00Z"
+    },
+    {
+      "canonical_raw_hit_id": "hit-3",
+      "outcome": "success",
+      "state": "not_relevant",
+      "reason_code": "proposition_mismatch",
+      "rationale": "The synthetic record addresses another proposition.",
+      "assessor_kind": "synthetic_fixture",
+      "assessor_id": "fixture-assessor",
+      "prompt_version": "fixture-v1",
+      "raw_output": "assessment-hit-3",
+      "raw_output_sha256": "07669785c5c1509b74cd59e66278a6b0da53a1f2a67619c042f78d6a75d1d18e",
+      "failure_code": null,
+      "failure_detail": null,
+      "assessed_at": "2026-08-13T01:01:00Z"
+    }
+  ],
+  "completed_at": "2026-08-13T01:01:00Z",
+  "retrieval_input_sha256": "b886f0a04db12049415110588c46b24820dda0fdfa20d483f746093ab8117ac8"
+}

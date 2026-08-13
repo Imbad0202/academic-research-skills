@@ -527,3 +527,11 @@ path = "scripts/test_cross_model_codex_transport.py"
 [[pytest]]
 id = "630-codex-subscription-integration"
 path = "scripts/test_check_630_codex_subscription_transport.py"
+
+[[pytest]]
+id = "655-claim-standing-candidate-ledger"
+path = "scripts/test_build_claim_standing_candidate_ledger.py"
+
+[[pytest]]
+id = "655-claim-standing-candidate-ledger-integration"
+path = "scripts/test_check_claim_standing_candidate_ledger_integration.py"
