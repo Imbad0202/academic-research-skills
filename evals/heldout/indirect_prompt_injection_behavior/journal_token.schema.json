@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/journal_token.schema.json",
-  "title": "#675 pre-armed irreversible transaction journal token",
+  "title": "#675 pre-armed ingestion, pre-load, or blind transaction journal token",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -21,7 +21,7 @@
     "transaction_id": {
       "oneOf": [
         {"type": "string", "pattern": "^cell-[0-9]{3}$"},
-        {"const": "blind-bundle"}
+        {"enum": ["blind-bundle", "preload-terminal"]}
       ]
     },
     "sequence_index": {
@@ -36,9 +36,13 @@
   },
   "allOf": [
     {
-      "if": {"properties": {"transaction_id": {"const": "blind-bundle"}}},
-      "then": {"properties": {"sequence_index": {"type": "null"}}},
-      "else": {"properties": {"sequence_index": {"type": "integer"}}}
+      "if": {
+        "properties": {
+          "transaction_id": {"pattern": "^cell-[0-9]{3}$"}
+        }
+      },
+      "then": {"properties": {"sequence_index": {"type": "integer"}}},
+      "else": {"properties": {"sequence_index": {"type": "null"}}}
     }
   ]
 }

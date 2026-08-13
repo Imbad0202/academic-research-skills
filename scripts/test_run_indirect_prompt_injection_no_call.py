@@ -6,6 +6,7 @@ import copy
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import unicodedata
@@ -379,8 +380,16 @@ def test_materializer_is_exclusive_hash_bound_and_non_dispatching(tmp_path):
     blind_armed = run_dir / runner._journal_ref(
         "armed", runner.BLIND_TRANSACTION_ID
     )
-    assert armed.is_file() and blind_armed.is_file()
+    preload_armed = run_dir / runner._journal_ref(
+        "armed", runner.PRELOAD_TRANSACTION_ID
+    )
+    assert armed.is_file() and blind_armed.is_file() and preload_armed.is_file()
+    assert (run_dir / runner.JOURNAL_ROOT / "completed").is_dir()
     assert not (run_dir / runner._journal_ref("claimed", "cell-001")).exists()
+    assert not (run_dir / runner._journal_ref("completed", "cell-001")).exists()
+    assert not (
+        run_dir / runner._journal_ref("claimed", runner.PRELOAD_TRANSACTION_ID)
+    ).exists()
     with pytest.raises(runner.EnvelopeError, match="exactly once"):
         runner.materialize(_command_args(run_dir, plan_sha))
 
@@ -463,6 +472,96 @@ def test_preload_plan_drift_is_durably_quarantined_and_restore_cannot_retry(tmp_
         runner.ingest(args)
 
 
+def test_preload_quarantine_write_failure_claims_before_transcript_and_restore(
+    tmp_path, monkeypatch
+):
+    run_dir, plan_sha, plan = _materialized(tmp_path)
+    source = tmp_path / "transcript.json"
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
+    plan_path = run_dir / "run-plan.json"
+    pristine = plan_path.read_bytes()
+    plan_path.write_bytes(pristine + b"\n")
+    args = _command_args(
+        run_dir,
+        plan_sha,
+        transcript=source,
+        authorization_record=_authorization_file(tmp_path, plan),
+    )
+    original_read = runner._read_file
+    original_ensure = runner._ensure_exact_new
+    transcript_reads = 0
+
+    def observe_read(path, **kwargs):
+        nonlocal transcript_reads
+        if path == source:
+            transcript_reads += 1
+            armed = run_dir / runner._journal_ref(
+                "armed", runner.PRELOAD_TRANSACTION_ID
+            )
+            claimed = run_dir / runner._journal_ref(
+                "claimed", runner.PRELOAD_TRANSACTION_ID
+            )
+            assert claimed.is_file()
+            assert (armed.stat().st_dev, armed.stat().st_ino) == (
+                claimed.stat().st_dev,
+                claimed.stat().st_ino,
+            )
+        return original_read(path, **kwargs)
+
+    def fail_quarantine(path, raw, **kwargs):
+        if path.name == runner.PRELOAD_QUARANTINE_REF:
+            raise runner.EnvelopeError("AUTOMATED QUARANTINE WRITE FAILURE")
+        return original_ensure(path, raw, **kwargs)
+
+    monkeypatch.setattr(runner, "_read_file", observe_read)
+    monkeypatch.setattr(runner, "_ensure_exact_new", fail_quarantine)
+    with pytest.raises(runner.EnvelopeError, match="could not be committed"):
+        runner.ingest(args)
+    assert transcript_reads == 1
+    assert not (run_dir / runner.PRELOAD_QUARANTINE_REF).exists()
+    assert not (run_dir / runner._journal_ref("claimed", "cell-001")).exists()
+
+    plan_path.write_bytes(pristine)
+    monkeypatch.setattr(runner, "_ensure_exact_new", original_ensure)
+    with pytest.raises(runner.EnvelopeError, match="pre-load terminal transaction"):
+        runner.ingest(args)
+    assert transcript_reads == 1
+
+
+def test_preload_claim_failure_never_reads_submitted_transcript(tmp_path, monkeypatch):
+    run_dir, plan_sha, plan = _materialized(tmp_path)
+    source = tmp_path / "transcript.json"
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
+    (run_dir / "run-plan.json").write_bytes(
+        (run_dir / "run-plan.json").read_bytes() + b"\n"
+    )
+    original_read = runner._read_file
+    transcript_reads = 0
+
+    def observe_read(path, **kwargs):
+        nonlocal transcript_reads
+        if path == source:
+            transcript_reads += 1
+        return original_read(path, **kwargs)
+
+    def fail_preload_claim(run_root, supplied_sha, transaction_id, sequence_index):
+        assert transaction_id == runner.PRELOAD_TRANSACTION_ID
+        raise runner.EnvelopeError("AUTOMATED PRELOAD CLAIM FAILURE")
+
+    monkeypatch.setattr(runner, "_read_file", observe_read)
+    monkeypatch.setattr(runner, "_claim_journal_token", fail_preload_claim)
+    with pytest.raises(runner.EnvelopeError, match="transcript was not acquired"):
+        runner.ingest(
+            _command_args(
+                run_dir,
+                plan_sha,
+                transcript=source,
+                authorization_record=_authorization_file(tmp_path, plan),
+            )
+        )
+    assert transcript_reads == 0
+
+
 def test_material_drift_at_ingest_commits_irreversible_stop(tmp_path):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     material = run_dir / plan["cells"][0]["prompt_path"]
@@ -496,6 +595,15 @@ def test_valid_ingestion_preserves_external_bytes_and_never_claims_generation(tm
     auth = json.loads((run_dir / "authorization/record.json").read_bytes())
     assert auth["proof_boundary"]["operator_identity_verified_by_runner"] is False
     assert auth["proof_boundary"]["structural_and_byte_binding_only"] is True
+    armed = run_dir / runner._journal_ref("armed", "cell-001")
+    claimed = run_dir / runner._journal_ref("claimed", "cell-001")
+    completed = run_dir / runner._journal_ref("completed", "cell-001")
+    assert not claimed.exists()
+    assert completed.is_file()
+    assert (armed.stat().st_dev, armed.stat().st_ino) == (
+        completed.stat().st_dev,
+        completed.stat().st_ino,
+    )
 
 
 def test_complete_schema_invalid_subject_response_is_retained_not_rewritten(tmp_path):
@@ -650,7 +758,7 @@ def test_primary_stop_intent_failure_leaves_prearmed_terminal_fallback(
     assert list((run_dir / "blocked").glob("cell-001.transcript.*.raw"))
     monkeypatch.setattr(runner, "_ensure_exact_new", original)
     source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
-    with pytest.raises(runner.EnvelopeError, match="already irreversibly claimed"):
+    with pytest.raises(runner.EnvelopeError, match="quarantined|retry is forbidden"):
         runner.ingest(args)
 
 
@@ -979,10 +1087,217 @@ def test_stop_manifest_write_failure_creates_replayable_write_once_stop_intent(
     assert marker["retry_forbidden"] is True
     assert (run_dir / marker["raw_ref"]).read_bytes() == source.read_bytes()
     monkeypatch.setattr(runner, "_replace_json", original)
+    original_read_file = runner._read_file
+    transcript_reads = 0
+
+    def track_recovery_reads(path, *args, **kwargs):
+        nonlocal transcript_reads
+        if path == source:
+            transcript_reads += 1
+        return original_read_file(path, *args, **kwargs)
+
+    monkeypatch.setattr(runner, "_read_file", track_recovery_reads)
     with pytest.raises(runner.EnvelopeError, match="run is stopped"):
         runner.ingest(args)
+    assert transcript_reads == 0
     manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
     assert manifest["status"] == "stopped"
+
+
+def test_post_replace_fsync_failure_leaves_claimed_manifest_unretryable(
+    tmp_path, monkeypatch
+):
+    run_dir, plan_sha, plan = _materialized(tmp_path)
+    source = tmp_path / "post-replace-transcript.json"
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
+    args = _command_args(
+        run_dir,
+        plan_sha,
+        transcript=source,
+        authorization_record=_authorization_file(tmp_path, plan),
+    )
+    original_fsync_directory = runner._fsync_directory
+    injected = False
+
+    def fail_after_manifest_publication(path):
+        nonlocal injected
+        manifest_path = run_dir / "ingestion-manifest.json"
+        if not injected and manifest_path.is_file():
+            current = json.loads(manifest_path.read_bytes())
+            if current["status"] == "ingesting" and current["next_sequence_index"] == 2:
+                injected = True
+                raise OSError("AUTOMATED POST-REPLACE DIRECTORY FSYNC FAILURE")
+        return original_fsync_directory(path)
+
+    monkeypatch.setattr(runner, "_fsync_directory", fail_after_manifest_publication)
+    with pytest.raises(runner.EnvelopeError, match="published without a completed"):
+        runner.ingest(args)
+    assert injected is True
+    monkeypatch.setattr(runner, "_fsync_directory", original_fsync_directory)
+
+    manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
+    assert manifest["status"] == "ingesting"
+    assert manifest["next_sequence_index"] == 2
+    assert manifest["cells"][0]["status"] == "ingested"
+    assert (run_dir / runner._journal_ref("claimed", "cell-001")).is_file()
+    assert not (run_dir / runner._journal_ref("completed", "cell-001")).exists()
+    assert not (run_dir / runner.STOP_INTENT_REF).exists()
+    with pytest.raises(runner.EnvelopeError, match="lifecycle is ambiguous"):
+        runner.validate_run(_command_args(run_dir, plan_sha))
+
+    next_source = tmp_path / "must-not-read-cell-002.json"
+    next_source.write_bytes(
+        runner._json_bytes(_transcript(plan, plan["cells"][1]))
+    )
+    original_read = runner._read_file
+    next_transcript_reads = 0
+
+    def observe_next_read(path, **kwargs):
+        nonlocal next_transcript_reads
+        if path == next_source:
+            next_transcript_reads += 1
+        return original_read(path, **kwargs)
+
+    monkeypatch.setattr(runner, "_read_file", observe_next_read)
+    with pytest.raises(runner.EnvelopeError, match="before reading another transcript"):
+        runner.ingest(
+            _command_args(
+                run_dir,
+                plan_sha,
+                transcript=next_source,
+                authorization_record=_authorization_file(tmp_path, plan),
+            )
+        )
+    assert next_transcript_reads == 0
+    unchanged = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
+    assert unchanged["next_sequence_index"] == 2
+
+
+def test_completion_destination_fsync_failure_leaves_both_states_terminal(
+    tmp_path, monkeypatch
+):
+    run_dir, plan_sha, plan = _materialized(tmp_path)
+    source = tmp_path / "completion-destination.json"
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
+    args = _command_args(
+        run_dir,
+        plan_sha,
+        transcript=source,
+        authorization_record=_authorization_file(tmp_path, plan),
+    )
+    original_fsync_directory = runner._fsync_directory
+    completed_parent = run_dir / runner.JOURNAL_ROOT / "completed"
+
+    def fail_completed_directory(path):
+        if path == completed_parent:
+            raise OSError("AUTOMATED COMPLETED-DIRECTORY FSYNC FAILURE")
+        return original_fsync_directory(path)
+
+    monkeypatch.setattr(runner, "_fsync_directory", fail_completed_directory)
+    with pytest.raises(runner.EnvelopeError, match="completion is ambiguous"):
+        runner.ingest(args)
+    monkeypatch.setattr(runner, "_fsync_directory", original_fsync_directory)
+    assert (run_dir / runner._journal_ref("claimed", "cell-001")).is_file()
+    assert (run_dir / runner._journal_ref("completed", "cell-001")).is_file()
+    with pytest.raises(runner.EnvelopeError, match="lifecycle is ambiguous"):
+        runner.validate_run(_command_args(run_dir, plan_sha))
+
+
+def test_completion_recovers_after_durable_destination_and_source_fsync_error(
+    tmp_path, monkeypatch
+):
+    run_dir, plan_sha, plan = _materialized(tmp_path)
+    source = tmp_path / "completion-source.json"
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
+    args = _command_args(
+        run_dir,
+        plan_sha,
+        transcript=source,
+        authorization_record=_authorization_file(tmp_path, plan),
+    )
+    original_fsync_directory = runner._fsync_directory
+    completed_parent = run_dir / runner.JOURNAL_ROOT / "completed"
+    claimed_parent = run_dir / runner.JOURNAL_ROOT / "claimed"
+    completed_was_durable = False
+
+    def fail_source_directory_after_completed(path):
+        nonlocal completed_was_durable
+        if path == completed_parent:
+            result = original_fsync_directory(path)
+            completed_was_durable = True
+            return result
+        if completed_was_durable and path == claimed_parent:
+            raise OSError("AUTOMATED CLAIMED-DIRECTORY FSYNC FAILURE")
+        return original_fsync_directory(path)
+
+    monkeypatch.setattr(
+        runner, "_fsync_directory", fail_source_directory_after_completed
+    )
+    result = runner.ingest(args)
+    assert result["ingested"] == 1
+    monkeypatch.setattr(runner, "_fsync_directory", original_fsync_directory)
+    assert not (run_dir / runner._journal_ref("claimed", "cell-001")).exists()
+    assert (run_dir / runner._journal_ref("completed", "cell-001")).is_file()
+    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "ingesting"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "pending_claimed",
+        "pending_completed",
+        "ingested_claimed",
+        "ingested_claimed_and_completed",
+        "ingested_missing_completed",
+        "ingested_completed_different_inode",
+        "blocked_completed",
+    ),
+)
+def test_journal_lifecycle_matrix_rejects_ambiguous_states(tmp_path, mutation):
+    run_dir, plan_sha, plan = _materialized(tmp_path)
+    cell = plan["cells"][0]
+    armed = run_dir / runner._journal_ref("armed", cell["cell_id"])
+    claimed = run_dir / runner._journal_ref("claimed", cell["cell_id"])
+    completed = run_dir / runner._journal_ref("completed", cell["cell_id"])
+
+    if mutation.startswith("ingested"):
+        _ingest_one(tmp_path, run_dir, plan_sha, plan, cell)
+    elif mutation == "blocked_completed":
+        source = tmp_path / "blocked-matrix.json"
+        source.write_bytes(
+            runner._json_bytes(_transcript(plan, cell, partial=True))
+        )
+        with pytest.raises(runner.StopViolation):
+            runner.ingest(
+                _command_args(
+                    run_dir,
+                    plan_sha,
+                    transcript=source,
+                    authorization_record=_authorization_file(tmp_path, plan),
+                )
+            )
+
+    if mutation == "pending_claimed":
+        runner._claim_journal_token(
+            run_dir, plan_sha, cell["cell_id"], cell["sequence_index"]
+        )
+    elif mutation == "pending_completed":
+        os.link(armed, completed)
+    elif mutation == "ingested_claimed":
+        os.rename(completed, claimed)
+    elif mutation == "ingested_claimed_and_completed":
+        os.link(armed, claimed)
+    elif mutation == "ingested_missing_completed":
+        completed.unlink()
+    elif mutation == "ingested_completed_different_inode":
+        raw = completed.read_bytes()
+        completed.unlink()
+        completed.write_bytes(raw)
+    elif mutation == "blocked_completed":
+        os.link(armed, completed)
+
+    with pytest.raises(runner.EnvelopeError, match="journal|token"):
+        runner.validate_run(_command_args(run_dir, plan_sha))
 
 
 def test_partial_or_tampered_stop_intent_never_reopens_run(tmp_path):
@@ -1395,6 +1710,17 @@ def test_full_ingestion_creates_64_isolated_write_once_label_free_packets(
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "complete"
     quarantined_run = tmp_path / "quarantined-run"
     shutil.copytree(run_dir, quarantined_run)
+    # copytree copies hard-linked journal names as distinct files. Recreate the
+    # production same-inode completion invariant before testing blind staging.
+    for cell in plan["cells"]:
+        completed = quarantined_run / runner._journal_ref(
+            "completed", cell["cell_id"]
+        )
+        completed.unlink()
+        os.link(
+            quarantined_run / runner._journal_ref("armed", cell["cell_id"]),
+            completed,
+        )
     incomplete_staging = (
         quarantined_run.parent / f".{quarantined_run.name}.blind-next"
     )

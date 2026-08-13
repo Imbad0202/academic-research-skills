@@ -232,7 +232,8 @@ caps, with an additional conservative output-byte and final packet-size gate.
 Exclusive file creation uses no-follow containment and fsyncs file and
 directory state. The evidence directories are frozen at materialization so a
 failed first write cannot leave an unaccounted empty directory. Materialization
-also pre-arms 64 immutable ingestion journal tokens and one blind-bundle token.
+also pre-arms 64 immutable ingestion journal tokens, one pre-load-terminal
+token, and one blind-bundle token.
 Each transaction claims its token by adding a validated same-inode hard link
 before acquiring external transcript bytes or generating blind ids. A claimed
 token is an irreversible terminal boundary even if transcript acquisition or a
@@ -246,10 +247,17 @@ exact stopped-manifest replay bytes. Exact authorization, transcript, and
 receipt artifacts are registered in the stopped state by hash; a compact
 canonical digest binds every otherwise-unregistered file and directory,
 including empty directories and content-addressed replacement staging. A
-manifest replacement failure is recovered from the stop intent. If the primary
+manifest replacement failure is recovered from the stop intent. A successful
+cell moves its claimed journal name to a same-inode completed name only after
+the advanced manifest replacement and directory fsync succeed. If replacement
+publishes the advanced bytes but its durability step reports failure, the
+claimed-only state is permanently ambiguous: validation and future ingestion
+reject it before another transcript is read. If the primary
 stop-intent write fails, the already-claimed pre-armed token still permanently
 forbids retry. Plan/manifest drift detected before normal loading creates a
-write-once pre-load quarantine, so restoring bytes cannot authorize retry.
+pre-load-terminal claim before reading the submitted transcript, followed by a
+write-once pre-load quarantine. The claim still forbids retry if quarantine
+publication fails, so restoring bytes cannot authorize retry.
 
 Only 64 complete, unstopped ingestions can produce the blind packet. The output
 is 64 separately hashed, runner-write-once session packets plus a public

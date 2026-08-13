@@ -28,7 +28,7 @@ Structural isolation remains #676.
   `stop_intent.schema.json`: closed
   Draft 2020-12 contracts for an exact 64-cell externally executed run;
 - `journal_token.schema.json`: closed contract for materialization-time
-  pre-armed, single-claim ingestion and blind-bundle transaction tokens;
+  pre-armed ingestion, pre-load-terminal, and blind-bundle transaction tokens;
 - `blind_session_packet.schema.json`, `blind_inventory.schema.json`,
   `blind_private_map.schema.json`, and `blind_manifest.schema.json`: isolated
   judge-packet, public inventory, private unblinding, and atomic final-bundle
@@ -99,9 +99,12 @@ python scripts/run_indirect_prompt_injection_no_call.py validate \
 
 Materialization writes 64 neutral prompt files and 64 non-dispatch call
 envelopes using exclusive creation. It also pre-arms one immutable journal
-token for each ingestion and one for blind-bundle construction. Claiming a
-token creates a second hard link to the same validated inode before any
-external transcript bytes are acquired or any blind ids are generated. Every
+token for each ingestion, one pre-load-terminal token, and one for blind-bundle
+construction. Claiming a token creates a second hard link to the same validated
+inode before any external transcript bytes are acquired or any blind ids are
+generated. A successful cell moves its claimed name to a same-inode completed
+name only after the ingestion manifest replacement and directory fsync succeed.
+Every
 envelope fixes `tools=[]`,
 `web_enabled=false`, `runner_transport=none`, `dispatch_available=false`, USD 0
 API spend, no fallback, and a fresh-external-authorization requirement.
@@ -130,8 +133,13 @@ transcript, and receipt artifacts are registered individually, while one
 compact canonical tree digest binds every otherwise-unregistered file and
 directory, including empty directories and replacement staging. A failed
 manifest replacement is replayed from the intent, never retried as a call.
-Plan/manifest failures found before a normal load create a write-once pre-load quarantine,
-so restoring old bytes cannot make ingestion retryable.
+If replacement publishes the advanced manifest but its durability step reports
+failure, the cell remains claimed rather than completed; validation and the next
+ingest both reject that ambiguous state before reading another transcript.
+Plan/manifest failures found before a normal load claim the pre-load-terminal
+token before transcript acquisition and then create a write-once pre-load quarantine,
+so restoring old bytes or losing the quarantine write cannot make ingestion
+retryable.
 
 After all 64 complete records are ingested, `prepare-blind-packet` creates 64
 runner-write-once isolated packets. A finalized blind manifest binds the exact

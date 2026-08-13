@@ -54,6 +54,7 @@ STOP_INTENT_REF = "stop-intent.json"
 PRELOAD_QUARANTINE_REF = "PRELOAD-QUARANTINE.json"
 JOURNAL_ROOT = "transaction-journal"
 BLIND_TRANSACTION_ID = "blind-bundle"
+PRELOAD_TRANSACTION_ID = "preload-terminal"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 RUN_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,79}$")
 EXTERNAL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,255}$")
@@ -428,7 +429,7 @@ def _journal_value(
 
 
 def _journal_ref(state: str, transaction_id: str) -> str:
-    if state not in {"armed", "claimed"}:
+    if state not in {"armed", "claimed", "completed"}:
         _fail(f"invalid transaction-journal state {state!r}")
     return f"{JOURNAL_ROOT}/{state}/{transaction_id}.json"
 
@@ -448,20 +449,20 @@ def _validate_journal_token(
     _validate_schema(JOURNAL_TOKEN_SCHEMA, value, "transaction journal token")
     if actual != expected:
         _fail(f"transaction journal token drifted: {transaction_id}")
-    if state == "claimed":
+    if state in {"claimed", "completed"}:
         try:
             armed_stat = armed.stat()
             claimed_stat = path.stat()
         except OSError as exc:
             raise EnvelopeError(
-                f"cannot verify claimed journal token {transaction_id}: {exc}"
+                f"cannot verify {state} journal token {transaction_id}: {exc}"
             ) from exc
         if (armed_stat.st_dev, armed_stat.st_ino) != (
             claimed_stat.st_dev,
             claimed_stat.st_ino,
         ):
             _fail(
-                f"claimed journal token is not the pre-armed inode: {transaction_id}"
+                f"{state} journal token is not the pre-armed inode: {transaction_id}"
             )
 
 
@@ -473,12 +474,18 @@ def _claim_journal_token(
 ) -> None:
     armed = run_dir / _journal_ref("armed", transaction_id)
     claimed = run_dir / _journal_ref("claimed", transaction_id)
+    completed = run_dir / _journal_ref("completed", transaction_id)
     _validate_journal_token(
         run_dir, plan_sha, transaction_id, sequence_index, "armed"
     )
-    if claimed.exists() or claimed.is_symlink():
+    if (
+        claimed.exists()
+        or claimed.is_symlink()
+        or completed.exists()
+        or completed.is_symlink()
+    ):
         _fail(
-            f"transaction {transaction_id} was already irreversibly claimed; "
+            f"transaction {transaction_id} already crossed its irreversible boundary; "
             "retry or regeneration is forbidden"
         )
     _assert_contained(run_dir, claimed)
@@ -495,6 +502,53 @@ def _claim_journal_token(
         ) from exc
     _validate_journal_token(
         run_dir, plan_sha, transaction_id, sequence_index, "claimed"
+    )
+
+
+def _complete_journal_token(
+    run_dir: Path,
+    plan_sha: str,
+    transaction_id: str,
+    sequence_index: int,
+) -> None:
+    claimed = run_dir / _journal_ref("claimed", transaction_id)
+    completed = run_dir / _journal_ref("completed", transaction_id)
+    _validate_journal_token(
+        run_dir, plan_sha, transaction_id, sequence_index, "claimed"
+    )
+    if completed.exists() or completed.is_symlink():
+        _fail(f"transaction {transaction_id} completion path already exists")
+    _assert_contained(run_dir, completed)
+    if completed.parent.is_symlink() or not completed.parent.is_dir():
+        _fail("completed transaction-journal directory is missing or unsafe")
+    completed_durable = False
+    try:
+        # Publish and fsync the completed hard link before removing claimed.
+        # Thus any failure before durable completion leaves claimed-only or
+        # claimed+completed (both terminal), while a later source-dir fsync
+        # failure still has one already-durable completed name.
+        os.link(claimed, completed, follow_symlinks=False)
+        _fsync_directory(completed.parent)
+        completed_durable = True
+        claimed.unlink()
+        _fsync_directory(claimed.parent)
+    except OSError as exc:
+        if (
+            completed_durable
+            and completed.exists()
+            and not claimed.exists()
+            and not claimed.is_symlink()
+        ):
+            _validate_journal_token(
+                run_dir, plan_sha, transaction_id, sequence_index, "completed"
+            )
+            return
+        raise EnvelopeError(
+            f"cannot complete claimed transaction {transaction_id}; retry is forbidden: "
+            f"{exc}"
+        ) from exc
+    _validate_journal_token(
+        run_dir, plan_sha, transaction_id, sequence_index, "completed"
     )
 
 
@@ -1037,10 +1091,16 @@ def _expected_run_inventory(
             for cell in plan["cells"]
         )
         files.add(_journal_ref("armed", BLIND_TRANSACTION_ID))
+        files.add(_journal_ref("armed", PRELOAD_TRANSACTION_ID))
         files.update(
             _journal_ref("claimed", row["cell_id"])
             for row in manifest["cells"]
-            if row["status"] in {"ingested", "blocked"}
+            if row["status"] == "blocked"
+        )
+        files.update(
+            _journal_ref("completed", row["cell_id"])
+            for row in manifest["cells"]
+            if row["status"] == "ingested"
         )
         if active_attempt_cell_id is not None:
             files.add(_journal_ref("claimed", active_attempt_cell_id))
@@ -1073,7 +1133,12 @@ def _expected_run_inventory(
     if manifest["status"] != "initialized":
         directories.update(EVIDENCE_DIRECTORIES)
         directories.update(
-            {JOURNAL_ROOT, f"{JOURNAL_ROOT}/armed", f"{JOURNAL_ROOT}/claimed"}
+            {
+                JOURNAL_ROOT,
+                f"{JOURNAL_ROOT}/armed",
+                f"{JOURNAL_ROOT}/claimed",
+                f"{JOURNAL_ROOT}/completed",
+            }
         )
     return files, directories
 
@@ -1142,6 +1207,9 @@ def _validate_run_inventory(
         )
     if manifest["status"] != "initialized":
         plan_sha = manifest["run_plan_sha256"]
+        _validate_journal_token(
+            run_dir, plan_sha, PRELOAD_TRANSACTION_ID, None, "armed"
+        )
         for cell, state in zip(plan["cells"], manifest["cells"]):
             _validate_journal_token(
                 run_dir,
@@ -1150,7 +1218,15 @@ def _validate_run_inventory(
                 cell["sequence_index"],
                 "armed",
             )
-            if state["status"] in {"ingested", "blocked"} or (
+            if state["status"] == "ingested":
+                _validate_journal_token(
+                    run_dir,
+                    plan_sha,
+                    cell["cell_id"],
+                    cell["sequence_index"],
+                    "completed",
+                )
+            elif state["status"] == "blocked" or (
                 active_attempt_cell_id == cell["cell_id"]
             ):
                 _validate_journal_token(
@@ -1284,6 +1360,11 @@ def _load_run(
     if quarantine.exists() or quarantine.is_symlink():
         _validate_preload_quarantine(_read_file(quarantine), expected_sha)
         _fail("run is permanently quarantined after pre-load frozen-state drift")
+    preload_claimed = run_dir / _journal_ref(
+        "claimed", PRELOAD_TRANSACTION_ID
+    )
+    if preload_claimed.exists() or preload_claimed.is_symlink():
+        _fail("pre-load terminal transaction was claimed; retry is forbidden")
     plan_raw = _read_file(run_dir / "run-plan.json")
     plan_sha = _sha(plan_raw)
     if expected_sha is not None and expected_sha != plan_sha:
@@ -1300,7 +1381,65 @@ def _load_run(
     _validate_manifest(manifest, plan, plan_sha)
     if manifest["stopped"] and not (run_dir / STOP_INTENT_REF).exists():
         _fail("stopped state is missing its durable write-once stop intent")
+    _validate_ingestion_journal_lifecycle(run_dir, plan, plan_sha, manifest)
     return plan, plan_raw, plan_sha, manifest
+
+
+def _validate_ingestion_journal_lifecycle(
+    run_dir: Path,
+    plan: dict[str, Any],
+    plan_sha: str,
+    manifest: dict[str, Any],
+) -> None:
+    """Reject any ambiguous ingestion transaction before new external bytes."""
+    if manifest["status"] == "initialized":
+        return
+    _validate_journal_token(
+        run_dir, plan_sha, PRELOAD_TRANSACTION_ID, None, "armed"
+    )
+    preload_claimed = run_dir / _journal_ref("claimed", PRELOAD_TRANSACTION_ID)
+    if preload_claimed.exists() or preload_claimed.is_symlink():
+        _fail("pre-load terminal transaction was claimed; retry is forbidden")
+    for cell, state in zip(plan["cells"], manifest["cells"]):
+        _validate_journal_token(
+            run_dir,
+            plan_sha,
+            cell["cell_id"],
+            cell["sequence_index"],
+            "armed",
+        )
+        claimed = run_dir / _journal_ref("claimed", cell["cell_id"])
+        completed = run_dir / _journal_ref("completed", cell["cell_id"])
+        observed = (
+            claimed.exists() or claimed.is_symlink(),
+            completed.exists() or completed.is_symlink(),
+        )
+        expected = {
+            "pending": (False, False),
+            "blocked": (True, False),
+            "ingested": (False, True),
+        }[state["status"]]
+        if observed != expected:
+            _fail(
+                f"transaction journal lifecycle is ambiguous for {cell['cell_id']}; "
+                "retry is forbidden"
+            )
+        if observed[0]:
+            _validate_journal_token(
+                run_dir,
+                plan_sha,
+                cell["cell_id"],
+                cell["sequence_index"],
+                "claimed",
+            )
+        if observed[1]:
+            _validate_journal_token(
+                run_dir,
+                plan_sha,
+                cell["cell_id"],
+                cell["sequence_index"],
+                "completed",
+            )
 
 
 def init_run(args: argparse.Namespace) -> dict[str, Any]:
@@ -1408,6 +1547,7 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
             (args.run_dir / dirname).mkdir(mode=0o755)
         (args.run_dir / JOURNAL_ROOT / "armed").mkdir(parents=True, mode=0o755)
         (args.run_dir / JOURNAL_ROOT / "claimed").mkdir(mode=0o755)
+        (args.run_dir / JOURNAL_ROOT / "completed").mkdir(mode=0o755)
         for cell in plan["cells"]:
             _write_new(
                 args.run_dir / _journal_ref("armed", cell["cell_id"]),
@@ -1421,6 +1561,11 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
         _write_new(
             args.run_dir / _journal_ref("armed", BLIND_TRANSACTION_ID),
             _json_bytes(_journal_value(plan_sha, BLIND_TRANSACTION_ID, None)),
+            root=args.run_dir,
+        )
+        _write_new(
+            args.run_dir / _journal_ref("armed", PRELOAD_TRANSACTION_ID),
+            _json_bytes(_journal_value(plan_sha, PRELOAD_TRANSACTION_ID, None)),
             root=args.run_dir,
         )
         _fsync_directory(args.run_dir)
@@ -2093,9 +2238,55 @@ def _record_preload_quarantine(
 def ingest(args: argparse.Namespace) -> dict[str, Any]:
     if (args.run_dir / PRELOAD_QUARANTINE_REF).exists():
         _fail("run is permanently quarantined; retry is forbidden")
+    preload_claimed = args.run_dir / _journal_ref(
+        "claimed", PRELOAD_TRANSACTION_ID
+    )
+    if preload_claimed.exists() or preload_claimed.is_symlink():
+        _fail("pre-load terminal transaction was claimed; retry is forbidden")
+    claimed_cell = next(
+        (args.run_dir / JOURNAL_ROOT / "claimed").glob("cell-*.json"),
+        None,
+    )
+    stop_intent_path = args.run_dir / STOP_INTENT_REF
+    replaying_existing_stop = (
+        claimed_cell is not None
+        and stop_intent_path.exists()
+        and not stop_intent_path.is_symlink()
+    )
+    if claimed_cell is not None and not replaying_existing_stop:
+        _fail(
+            "an ingestion transaction remains claimed; retry is forbidden before "
+            "reading another transcript"
+        )
     try:
         plan, _, plan_sha, manifest = _load_run(args.run_dir, args.plan_sha256)
     except EnvelopeError as exc:
+        if claimed_cell is not None:
+            raise EnvelopeError(
+                "an ingestion transaction remains claimed and its durable stop "
+                "intent could not be replayed; retry is forbidden before reading "
+                "another transcript"
+            ) from exc
+        preload_armed = args.run_dir / _journal_ref(
+            "armed", PRELOAD_TRANSACTION_ID
+        )
+        if not preload_armed.exists() or preload_armed.is_symlink():
+            raise EnvelopeError(
+                "pre-load validation failed before a transaction boundary was "
+                "available; transcript was not acquired"
+            ) from exc
+        try:
+            _claim_journal_token(
+                args.run_dir,
+                args.plan_sha256,
+                PRELOAD_TRANSACTION_ID,
+                None,
+            )
+        except EnvelopeError as claim_exc:
+            raise EnvelopeError(
+                "pre-load validation failed and the terminal claim could not be "
+                "confirmed; transcript was not acquired and retry is forbidden"
+            ) from claim_exc
         try:
             raw = _read_file(args.transcript, limit=MAX_TRANSCRIPT_BYTES)
             acquisition_detail = ""
@@ -2340,6 +2531,26 @@ def ingest(args: argparse.Namespace) -> dict[str, Any]:
         violation = StopViolation(
             "evidence_write_failure", f"cannot persist ingestion manifest: {exc}"
         )
+        manifest_path = args.run_dir / "ingestion-manifest.json"
+        desired_raw = _json_bytes(manifest)
+        prior_raw = _json_bytes(stop_base)
+        try:
+            observed_manifest_raw = _read_file(manifest_path)
+        except EnvelopeError as observed_exc:
+            raise EnvelopeError(
+                "manifest publication state is unreadable after a failed replace; "
+                "the claimed transaction forbids retry"
+            ) from observed_exc
+        if observed_manifest_raw == desired_raw:
+            raise EnvelopeError(
+                "ingestion manifest was published without a completed transaction "
+                "journal; retry is forbidden"
+            ) from exc
+        if observed_manifest_raw != prior_raw:
+            raise EnvelopeError(
+                "ingestion manifest publication is ambiguous after replace failure; "
+                "the claimed transaction forbids retry"
+            ) from exc
         try:
             partial_evidence = _preserved_ingestion_artifacts(
                 args.run_dir,
@@ -2364,6 +2575,18 @@ def ingest(args: argparse.Namespace) -> dict[str, Any]:
                 "manifest and stop-receipt writes failed; do not retry"
             ) from stop_exc
         raise violation from exc
+    try:
+        _complete_journal_token(
+            args.run_dir,
+            plan_sha,
+            expected["cell_id"],
+            expected["sequence_index"],
+        )
+    except EnvelopeError as exc:
+        raise EnvelopeError(
+            "ingestion manifest was published but transaction completion is "
+            "ambiguous; retry is forbidden"
+        ) from exc
     _validate_run_inventory(args.run_dir, plan, manifest)
     return {
         "ingested": ingested,
