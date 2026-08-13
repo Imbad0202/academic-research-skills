@@ -702,6 +702,7 @@ def check_ideation_diversity_no_call_contract() -> None:
         "authorization": f"{suite}/authorization_record.schema.json",
         "transcript": f"{suite}/transcript.schema.json",
         "ingestion": f"{suite}/ingestion_manifest.schema.json",
+        "stop_intent": f"{suite}/stop_intent.schema.json",
         "blind_packet": f"{suite}/blind_packet.schema.json",
         "blind_inventory": f"{suite}/blind_inventory.schema.json",
         "blind_manifest": f"{suite}/blind_manifest.schema.json",
@@ -746,6 +747,30 @@ def check_ideation_diversity_no_call_contract() -> None:
     for field, expected in no_call_constants.items():
         if execution.get(field, {}).get("const") != expected:
             fail(f"{schema_paths['run_plan']}: no-call constant {field!r} drifted")
+    provenance = plan_properties.get("suite_commit_provenance", {}).get(
+        "properties", {}
+    )
+    if provenance.get("status", {}).get("const") != "operator_declared_unverified":
+        fail(f"{schema_paths['run_plan']}: suite commit must remain unverified")
+    cap_boundary = execution.get("token_cap_verification", {}).get("properties", {})
+    for field, expected in {
+        "status": "operator_declared_unverified",
+        "enforced_by_no_call_runner": False,
+        "observed_usage_recorded": False,
+        "provider_tokenizer_verified": False,
+    }.items():
+        if cap_boundary.get(field, {}).get("const") != expected:
+            fail(
+                f"{schema_paths['run_plan']}: token-cap boundary {field!r} drifted"
+            )
+    judge = plan_properties.get("judge_requirements", {}).get("properties", {})
+    for field, expected in {
+        "first_round_assignment_ledger_required_before_delivery": True,
+        "same_role_card_cross_arm_or_replicate_exposure_forbidden": True,
+        "bundle_alone_proves_judge_exposure_blindness": False,
+    }.items():
+        if judge.get(field, {}).get("const") != expected:
+            fail(f"{schema_paths['run_plan']}: judge exposure boundary {field!r} drifted")
     if plan_properties.get("cells", {}).get("minItems") != 48 or plan_properties.get(
         "cells", {}
     ).get("maxItems") != 48:

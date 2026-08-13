@@ -11,6 +11,7 @@
     "content_class",
     "blinded_to",
     "delivery",
+    "assignment_boundary",
     "artifact_presence",
     "free_text_screening",
     "codebook",
@@ -39,12 +40,14 @@
     "delivery": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["isolated_single_session", "deliver_other_sessions_together"],
+      "required": ["isolated_single_session", "deliver_other_sessions_together", "assignment_ledger_gate_required_before_delivery"],
       "properties": {
         "isolated_single_session": {"const": true},
-        "deliver_other_sessions_together": {"const": false}
+        "deliver_other_sessions_together": {"const": false},
+        "assignment_ledger_gate_required_before_delivery": {"const": true}
       }
     },
+    "assignment_boundary": {"$ref": "#/$defs/assignment_boundary"},
     "artifact_presence": {"$ref": "#/$defs/artifact_presence"},
     "free_text_screening": {
       "type": "object",
@@ -145,6 +148,22 @@
         "structured_judge_labels_attached": {"const": false},
         "adjudication_artifact_attached": {"const": false},
         "human_evidence_artifact_attached": {"const": false}
+      }
+    },
+    "assignment_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "future_closed_assignment_ledger_gate_required",
+        "assignment_ledger_implemented_by_no_call_runner",
+        "same_judge_equivalent_scholar_context_cross_condition_exposure_forbidden",
+        "bundle_alone_proves_judge_exposure_blindness"
+      ],
+      "properties": {
+        "future_closed_assignment_ledger_gate_required": {"const": true},
+        "assignment_ledger_implemented_by_no_call_runner": {"const": false},
+        "same_judge_equivalent_scholar_context_cross_condition_exposure_forbidden": {"const": true},
+        "bundle_alone_proves_judge_exposure_blindness": {"const": false}
       }
     },
     "framing": {

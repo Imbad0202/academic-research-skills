@@ -163,8 +163,13 @@ no one is described as independent unless the execution record supports it.
 
 A decision-relevant baseline requires at least two complete independent subject
 replicates per scenario-arm cell. The later plan freezes actor blocks, subject
-model/provider/auth/runtime, settings, prompt hashes, token limits, tool/web
+model/provider/auth/runtime, settings, prompt hashes, operator-declared token limits, tool/web
 allowance, order seed, judge plan, and spend boundary.
+
+The no-call runner does not resolve Git objects or invoke a provider tokenizer.
+Its suite commit and token caps are explicitly operator-declared and unverified:
+asset bindings plus the run-plan SHA are the verifiable byte authority, while
+observed token usage and cap enforcement require later external receipts.
 
 Stop on the first prompt/role-card hash mismatch, arm leakage, ineligible session,
 unplanned tool/network action, evidence-write failure, partial subject output, or
@@ -199,8 +204,9 @@ off, transport `none`, dispatch
 unavailable, API spend ceiling USD 0, API fallback off, and fresh external
 authorization required.
 
-The closed external authorization record binds exact plan SHA, run id, suite
-commit, complete execution envelope, ordered 48-cell scope, decision, and time.
+The closed external authorization record binds exact plan SHA, run id,
+operator-declared unverified suite commit, complete execution envelope, ordered
+48-cell scope, decision, and time.
 Its bytes must match each transcript's declared hash. A separate hash-bound
 external-session receipt binds unique artifact/receipt/session ids, exact cell
 and sequence, fresh-context attestation, and start/completion times. Session
@@ -213,9 +219,12 @@ reference/digest plus external artifact and session-receipt digests. The first
 prompt/role/envelope or authorization-record mismatch, arm leak, ineligible
 session, unplanned tool or network action, evidence-write failure, partial
 output, actor-protocol deviation, out-of-order ingestion, or
-transcript-contract failure first atomically commits a permanent stopped state,
-then preserves the rejected transcript at a content-addressed path, and forbids
-retry. Validation re-reads and hashes blocked evidence. The run tree must match
+transcript-contract failure first publishes a durable closed write-once stop
+intent embedding the raw bytes and exact stopped-state replay, then preserves
+the rejected transcript at a content-addressed path and atomically replaces the
+manifest. A failed replacement remains retry-forbidden and can recover only by
+exact marker replay. Validation re-reads and hashes the marker and blocked
+evidence. The run tree must match
 the exact state inventory, so an injected/conflicting path cannot restore a
 retryable state. Bytes written before a failed success-state commit are hashed
 and registered as auxiliary stop evidence, then verified on replay rather than
@@ -223,7 +232,8 @@ left as untracked orphans. The append-only manifest must remain an exact ingeste
 followed by pending cells, or by one blocked cell after a stop.
 
 Only 48 complete, unstopped external transcripts can produce blinded material.
-Before copying turns, the runner rejects all frozen identifiers, explicit
+During each ingestion, and again before copying turns, the runner applies NFKC
+plus punctuation/separator normalization and rejects all frozen identifiers, explicit
 pair/arm/replicate markers, and prior-label/adjudication/human-evidence markers
 from transcript free text. It atomically creates 48 write-once isolated single-session packets.
 The public inventory contains only blind ids and packet
@@ -231,10 +241,11 @@ hashes; an exact blind manifest binds all packet/map hashes to the complete
 pre-blind ingestion manifest. Final state is `blind_finalized`, and validation
 replays every packet plus the exact bundle inventory. An already-published
 bundle can recover a crash before the state update only if exact replay passes.
-A first-round judge receives exactly one isolated
-packet per assignment, never the complete directory or another session at the
-same time. Thus `other_transcripts` and pair mapping are absent from delivery,
-not merely hidden in a multi-session bundle. Packet presence flags mean no
+A first-round packet cannot be delivered until a future closed assignment
+ledger gate prevents the same judge from seeing another arm or replicate that
+shares its pair/scenario/role card. This runner does not implement that ledger,
+so the bundle alone never proves judge-exposure blindness. The complete
+directory is never delivered. Packet presence flags mean no
 structured label, adjudication, or human-evidence artifact is attached; they do
 not reinterpret arbitrary text. The private map is a `0600` file under a `0700`
 directory and explicitly declares `procedural_nondisclosure_only` plus

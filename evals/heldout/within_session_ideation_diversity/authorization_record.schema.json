@@ -11,6 +11,7 @@
     "run_plan_sha256",
     "run_id",
     "suite_commit",
+    "suite_commit_provenance",
     "execution",
     "scope",
     "decision",
@@ -26,6 +27,16 @@
     "run_plan_sha256": {"$ref": "#/$defs/sha256"},
     "run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
     "suite_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "suite_commit_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "verified_by_no_call_runner", "verifiable_authority"],
+      "properties": {
+        "status": {"const": "operator_declared_unverified"},
+        "verified_by_no_call_runner": {"const": false},
+        "verifiable_authority": {"const": "run_plan_sha256_and_asset_bindings"}
+      }
+    },
     "execution": {"$ref": "#/$defs/execution"},
     "scope": {
       "type": "object",
@@ -91,6 +102,7 @@
         "reasoning_effort",
         "input_token_cap",
         "output_token_cap",
+        "token_cap_verification",
         "tools",
         "web_enabled",
         "runner_transport",
@@ -109,6 +121,17 @@
         "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64},
         "input_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
         "output_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "token_cap_verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "enforced_by_no_call_runner", "observed_usage_recorded", "provider_tokenizer_verified"],
+          "properties": {
+            "status": {"const": "operator_declared_unverified"},
+            "enforced_by_no_call_runner": {"const": false},
+            "observed_usage_recorded": {"const": false},
+            "provider_tokenizer_verified": {"const": false}
+          }
+        },
         "tools": {"const": []},
         "web_enabled": {"const": false},
         "runner_transport": {"const": "none"},

@@ -27,6 +27,8 @@ No breadth-efficacy claim is computable.
   canonical external-session receipt, and closed canonical raw-event stream;
 - `ingestion_manifest.schema.json`: append-only ingestion and first-stop
   evidence contract;
+- `stop_intent.schema.json`: durable write-once quarantine marker that embeds
+  blocked raw bytes and the exact stopped-state replay before state replacement;
 - `blind_packet.schema.json`: one isolated arm-blind session packet without
   labels, adjudication, or human evidence;
 - `blind_inventory.schema.json`: public inventory of only 48 blind ids and
@@ -92,7 +94,7 @@ PYTHONPATH=scripts python scripts/run_ideation_diversity_no_call.py prepare-blin
 ```
 
 The authorization record must pass its closed schema and bind the exact plan
-SHA, run id, suite commit, complete execution envelope, ordered 48-cell scope,
+SHA, run id, operator-declared suite commit, complete execution envelope, ordered 48-cell scope,
 decision, and decision time. Its bytes must match the transcript-declared hash.
 Each transcript also carries a canonical, hash-bound external-session receipt
 with unique receipt/session ids, exact cell/order binding, fresh-context
@@ -104,6 +106,13 @@ cannot authenticate the operator, recorder, or fresh-context attestation and
 cannot establish that genuine consent occurred. Those remain procedural
 responsibilities; arbitrary or blank records are rejected.
 
+The no-call runner does not inspect Git objects. `suite_commit` is therefore an
+operator-declared, unverified provenance string, not proof that the commit
+exists; the plan SHA and per-file `asset_bindings` are the verifiable byte
+authority. Input/output token caps are likewise operator-declared and
+unverified here: this runner has no provider tokenizer, records no observed
+usage, and does not enforce or claim that either cap was honored.
+
 Every `raw_event_utf8` value is itself canonical closed JSON. The runner parses
 those bytes, derives event kind/turn index from them, rejects unknown fields or
 event kinds, classifies tool/network/partial/write-failure events before
@@ -113,16 +122,21 @@ one first `session_started` and exactly one last `session_completed`; lifecycle
 events may not restart or complete midstream. A free-form runtime event cannot
 be mislabeled as benign and pass.
 
-The first binding/authorization mismatch, arm leak, ineligible/partial session,
+The first binding/authorization mismatch, Unicode-normalized semantic arm/pair/
+replicate leak, ineligible/partial session,
 unplanned tool or network event, evidence-write failure, actor-protocol
 deviation, out-of-order ingestion, or contract failure stops permanently. The
-manifest commits the irreversible stop before writing a content-addressed raw
-rejected transcript; validation re-reads and hashes blocked evidence, and retry
-is forbidden even if an evidence-path conflict occurs. Every state has an exact
+runner first publishes a closed write-once `stop-intent.json` that embeds and
+hash-binds the raw rejected bytes plus the exact stopped manifest. It then
+publishes content-addressed raw evidence and atomically replaces state. If that
+replacement fails, every command rejects retry and a later load may recover
+only the embedded exact stopped state. Validation replays marker, state, and
+blocked evidence. Every state has an exact
 file/directory inventory, so injected artifacts fail closed. If a write failure
-occurs after authorization/transcript/receipt bytes were created but before the
-success manifest commits, the stop receipt hashes and registers those partial
-artifacts; stopped-state replay verifies them instead of leaving orphans.
+occurs after authorization/transcript/receipt or staging bytes were created but
+before the success manifest commits, the stop receipt hashes and registers any
+surviving artifact; write-once targets use atomic complete-byte publication, so
+a partial target is never visible.
 
 After all 48 transcripts pass, blinding rejects transcript free text containing
 any frozen cell/scenario/pair/experiment/arm/block identifier, explicit mapping
@@ -132,13 +146,19 @@ content-free public inventory, an exact blind manifest, and a private map. The
 ingestion state becomes `blind_finalized`; validation reconstructs every packet
 from its source transcript and verifies the complete bundle inventory and
 hashes. A crash after atomic bundle publication but before the state update is
-recoverable only by exact replay of that bundle. A first-round judge receives
-exactly one isolated packet per assignment; never deliver the complete packet
-directory or another session simultaneously. These unlabeled packets cannot
+recoverable only by exact replay of that bundle. A first-round judge may
+receive a packet only after a future closed assignment-ledger gate verifies
+that the same judge has not and will not receive another arm or replicate that
+shares its scenario/pair/role card. This runner does not implement that ledger,
+and the bundle alone does not prove exposure blindness. Never deliver the
+complete packet directory. These unlabeled packets cannot
 stand in for two independent human judges or the separate arm-blind human
 adjudicator. Packet flags state only that no structured label, adjudication, or
 human-evidence artifact is attached; they do not claim the codebook lacks label
 instructions.
+
+Once that gate exists and passes, delivery is exactly one isolated packet per
+first-round assignment.
 
 The assignment map is kept under a `0700` directory as a `0600` file and is
 declared `procedural_nondisclosure_only`, with `encrypted=false`. These local

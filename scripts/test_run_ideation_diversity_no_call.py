@@ -68,6 +68,7 @@ def _authorization(plan: dict) -> dict:
         "run_plan_sha256": plan_sha,
         "run_id": plan["run_id"],
         "suite_commit": plan["suite_commit"],
+        "suite_commit_provenance": plan["suite_commit_provenance"],
         "execution": plan["execution"],
         "scope": {
             "scope_type": "exact_run_plan_all_cells",
@@ -310,7 +311,23 @@ def test_plan_is_exact_48_cell_counterbalanced_no_call_cross_product(tmp_path):
         "envelope_grants_consent": False,
     } == plan["execution"]
     assert plan["created_without_dispatch"] is True
-    assert len(plan["asset_bindings"]) == 16
+    assert len(plan["asset_bindings"]) == 17
+    assert {
+        row["path"] for row in plan["asset_bindings"]
+    } >= {
+        "evals/heldout/within_session_ideation_diversity/stop_intent.schema.json"
+    }
+    assert plan["suite_commit_provenance"] == {
+        "status": "operator_declared_unverified",
+        "verified_by_no_call_runner": False,
+        "verifiable_authority": "run_plan_sha256_and_asset_bindings",
+    }
+    assert plan["execution"]["token_cap_verification"] == {
+        "status": "operator_declared_unverified",
+        "enforced_by_no_call_runner": False,
+        "observed_usage_recorded": False,
+        "provider_tokenizer_verified": False,
+    }
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "initialized"
 
 
@@ -347,6 +364,57 @@ def test_materializer_writes_only_frozen_inputs_and_never_changes_production(tmp
     assert envelope["fresh_external_authorization_required"] is True
     assert "command" not in envelope and "subject_output" not in envelope
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "materialized"
+
+
+def test_suite_commit_and_token_caps_are_declared_unverified_not_enforced(tmp_path):
+    run_dir = tmp_path / "run"
+    args = _args(run_dir)
+    args.suite_commit = "f" * 40  # syntactically valid; existence is not asserted.
+    args.input_token_cap = 1
+    args.output_token_cap = 1
+    result = runner.init_run(args)
+    plan_sha = result["run_plan_sha256"]
+    plan = json.loads((run_dir / "run-plan.json").read_bytes())
+    assert plan["suite_commit"] == "f" * 40
+    assert plan["suite_commit_provenance"]["verified_by_no_call_runner"] is False
+    boundary = plan["execution"]["token_cap_verification"]
+    assert boundary["status"] == "operator_declared_unverified"
+    assert boundary["enforced_by_no_call_runner"] is False
+    assert boundary["observed_usage_recorded"] is False
+    runner.materialize(_command_args(run_dir, plan_sha))
+    source = tmp_path / "longer-than-one-token.json"
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
+    result = runner.ingest(
+        _command_args(
+            run_dir,
+            plan_sha,
+            transcript=source,
+            authorization_record=_authorization_file(tmp_path, plan),
+        )
+    )
+    assert result["ingested"] == 1
+
+
+def test_atomic_write_failure_never_publishes_partial_target_or_orphan(
+    tmp_path, monkeypatch
+):
+    target = tmp_path / "authorization" / "record.json"
+    original_write = runner.os.write
+    writes = 0
+
+    def short_then_fail(descriptor, value):
+        nonlocal writes
+        writes += 1
+        if writes == 1:
+            prefix = value[: max(1, len(value) // 2)]
+            return original_write(descriptor, prefix)
+        raise OSError("AUTOMATED PARTIAL STAGING FAILURE")
+
+    monkeypatch.setattr(runner.os, "write", short_then_fail)
+    with pytest.raises(runner.EnvelopeError, match="cannot create"):
+        runner._write_new(target, b"repository-owned bytes that must stay atomic")
+    assert not target.exists()
+    assert list(target.parent.iterdir()) == []
 
 
 def test_runner_exposes_no_transport_dispatch_probe_or_model_surface():
@@ -466,6 +534,139 @@ def test_first_partial_output_stops_preserves_raw_and_forbids_retry(tmp_path):
     assert blocked.read_bytes() == raw
     with pytest.raises(runner.EnvelopeError, match="forbids retry"):
         runner.ingest(ingest_args)
+
+
+def test_durable_stop_intent_survives_manifest_replacement_failure_and_recovers(
+    tmp_path, monkeypatch
+):
+    run_dir, plan_sha, plan = _initialize(tmp_path)
+    runner.materialize(_command_args(run_dir, plan_sha))
+    raw = runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
+    source = tmp_path / "partial.json"
+    source.write_bytes(raw)
+    ingest_args = _command_args(
+        run_dir,
+        plan_sha,
+        transcript=source,
+        authorization_record=_authorization_file(tmp_path, plan),
+    )
+    original_replace = runner.os.replace
+    fail_replacement = True
+
+    def controlled_replace(source_path, target_path):
+        if fail_replacement and Path(target_path).name == "ingestion-manifest.json":
+            raise OSError("AUTOMATED MANIFEST REPLACEMENT FAILURE")
+        return original_replace(source_path, target_path)
+
+    monkeypatch.setattr(runner.os, "replace", controlled_replace)
+    with pytest.raises(runner.EnvelopeError, match="cannot atomically replace"):
+        runner.ingest(ingest_args)
+    marker_path = run_dir / runner.STOP_INTENT_REF
+    assert marker_path.is_file()
+    marker_raw = marker_path.read_bytes()
+    marker = json.loads(marker_raw)
+    assert marker["run_plan_sha256"] == plan_sha
+    assert marker["cell_id"] == "cell-001"
+    assert marker["reason_code"] == "partial_subject_output"
+    assert marker["raw_sha256"] == hashlib.sha256(raw).hexdigest()
+    with pytest.raises(runner.EnvelopeError, match="forbids retry"):
+        runner.ingest(ingest_args)
+    fail_replacement = False
+    recovered = runner.validate_run(_command_args(run_dir, plan_sha))
+    assert recovered["status"] == "stopped"
+    manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
+    assert manifest["stop_receipt"]["stop_intent_ref"] == runner.STOP_INTENT_REF
+    assert (run_dir / manifest["stop_receipt"]["raw_ref"]).read_bytes() == raw
+    assert marker_path.read_bytes() == marker_raw
+
+
+def test_failed_success_manifest_staging_is_hash_registered_in_stopped_replay(
+    tmp_path, monkeypatch
+):
+    run_dir, plan_sha, plan = _initialize(tmp_path)
+    runner.materialize(_command_args(run_dir, plan_sha))
+    source = tmp_path / "valid.json"
+    raw = runner._json_bytes(_transcript(plan, plan["cells"][0]))
+    source.write_bytes(raw)
+    original_replace = runner.os.replace
+    failures_remaining = 1
+
+    def fail_first_manifest_replace(source_path, target_path):
+        nonlocal failures_remaining
+        if failures_remaining and Path(target_path).name == "ingestion-manifest.json":
+            failures_remaining -= 1
+            raise OSError("AUTOMATED SUCCESS MANIFEST REPLACEMENT FAILURE")
+        return original_replace(source_path, target_path)
+
+    monkeypatch.setattr(runner.os, "replace", fail_first_manifest_replace)
+    with pytest.raises(runner.StopViolation) as caught:
+        runner.ingest(
+            _command_args(
+                run_dir,
+                plan_sha,
+                transcript=source,
+                authorization_record=_authorization_file(tmp_path, plan),
+            )
+        )
+    assert caught.value.code == "evidence_write_failure"
+    manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
+    staging = [
+        row
+        for row in manifest["stop_receipt"]["preserved_auxiliary_artifacts"]
+        if row["role"] == "pre_stop_unregistered_artifact"
+    ]
+    assert len(staging) == 1
+    assert staging[0]["ref"].startswith(".ingestion-manifest.json.replace-")
+    assert hashlib.sha256((run_dir / staging[0]["ref"]).read_bytes()).hexdigest() == (
+        staging[0]["sha256"]
+    )
+    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "stopped"
+
+
+def test_blocked_raw_partial_staging_is_registered_and_replayable(
+    tmp_path, monkeypatch
+):
+    run_dir, plan_sha, plan = _initialize(tmp_path)
+    runner.materialize(_command_args(run_dir, plan_sha))
+    source = tmp_path / "partial.json"
+    source.write_bytes(
+        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
+    )
+    original_write = runner._write_new
+    injected = False
+
+    def leave_one_blocked_raw_staging(path, raw_bytes, **kwargs):
+        nonlocal injected
+        if not injected and path.parent.name == "blocked":
+            injected = True
+            path.parent.mkdir(parents=True, exist_ok=True)
+            orphan = path.with_name(
+                f".{path.name}.atomic-write-{'d' * 24}.tmp"
+            )
+            orphan.write_bytes(b"AUTOMATED PARTIAL BLOCKED RAW STAGING\n")
+            raise runner.EnvelopeError("AUTOMATED BLOCKED RAW STAGING FAILURE")
+        return original_write(path, raw_bytes, **kwargs)
+
+    monkeypatch.setattr(runner, "_write_new", leave_one_blocked_raw_staging)
+    with pytest.raises(runner.StopViolation):
+        runner.ingest(
+            _command_args(
+                run_dir,
+                plan_sha,
+                transcript=source,
+                authorization_record=_authorization_file(tmp_path, plan),
+            )
+        )
+    manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
+    staging = [
+        row
+        for row in manifest["stop_receipt"]["preserved_auxiliary_artifacts"]
+        if row["role"] == "pre_stop_unregistered_artifact"
+    ]
+    assert len(staging) == 1
+    assert staging[0]["ref"].endswith(".tmp")
+    monkeypatch.setattr(runner, "_write_new", original_write)
+    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "stopped"
 
 
 def test_out_of_order_ingestion_stops_on_first_event(tmp_path):
@@ -803,7 +1004,9 @@ def test_preexisting_blocked_path_cannot_prevent_irreversible_first_stop(tmp_pat
     assert caught.value.code == "evidence_write_failure"
     manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
     assert manifest["status"] == "stopped"
-    assert manifest["stop_receipt"]["state_committed_before_evidence_write"] is True
+    assert manifest["stop_receipt"][
+        "stop_intent_committed_before_state_replacement"
+    ] is True
     assert sentinel.read_bytes() == b"PREEXISTING BLOCKED-PATH SENTINEL\n"
     assert (run_dir / manifest["stop_receipt"]["raw_ref"]).read_bytes() == raw
     with pytest.raises(runner.EnvelopeError, match="forbids retry"):
@@ -903,6 +1106,49 @@ def test_blind_packet_free_text_gate_rejects_mapping_or_human_evidence(
         runner._assert_blindable_transcript(plan, transcript)
 
 
+@pytest.mark.parametrize(
+    "leak_text",
+    (
+        "I remember this treatment–arm from the previous‑session.",
+        "cell‑001 pair: idi‑public‑health replicate‑1",
+        "The tie–breaker approved the prior human judge label.",
+    ),
+)
+def test_semantic_leak_stops_during_first_ingestion_before_next_cell(
+    tmp_path, leak_text
+):
+    run_dir, plan_sha, plan = _initialize(tmp_path)
+    runner.materialize(_command_args(run_dir, plan_sha))
+    transcript = _transcript(plan, plan["cells"][0])
+    transcript["turns"][1]["text"] += f" {leak_text}"
+    _set_raw_event(
+        transcript["events"][2],
+        {
+            "event_kind": "subject_message",
+            "turn_index": 2,
+            "text": transcript["turns"][1]["text"],
+        },
+    )
+    source = tmp_path / "semantic-leak.json"
+    source.write_bytes(runner._json_bytes(transcript))
+    with pytest.raises(runner.StopViolation) as caught:
+        runner.ingest(
+            _command_args(
+                run_dir,
+                plan_sha,
+                transcript=source,
+                authorization_record=_authorization_file(tmp_path, plan),
+            )
+        )
+    assert caught.value.code == "arm_leakage"
+    manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
+    assert [row["status"] for row in manifest["cells"][:2]] == [
+        "blocked",
+        "pending",
+    ]
+    assert manifest["next_sequence_index"] == 1
+
+
 def test_partial_success_writes_are_registered_in_stopped_replay(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
@@ -969,6 +1215,7 @@ def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(tmp_path):
     assert result["recovered_existing_atomic_bundle"] is False
     inventory = json.loads((run_dir / "blind/inventory.json").read_bytes())
     assert inventory["artifact_presence"] == runner._artifact_presence()
+    assert inventory["assignment_boundary"] == runner._assignment_boundary()
     assert len(inventory["packets"]) == 48
     assert all(
         set(row) == {"blind_session_id", "packet_sha256"}
@@ -992,7 +1239,9 @@ def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(tmp_path):
         assert isolated["delivery"] == {
             "isolated_single_session": True,
             "deliver_other_sessions_together": False,
+            "assignment_ledger_gate_required_before_delivery": True,
         }
+        assert isolated["assignment_boundary"] == runner._assignment_boundary()
         assert isolated["artifact_presence"] == runner._artifact_presence()
         assert "sessions" not in isolated
         assert len(isolated["transcript"]["turns"]) <= 11

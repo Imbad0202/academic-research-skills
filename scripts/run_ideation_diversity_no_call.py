@@ -9,6 +9,7 @@ fresh authorization; this envelope never grants that authorization.
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 from datetime import datetime
 import hashlib
@@ -19,6 +20,7 @@ import re
 import secrets
 import stat
 import sys
+import unicodedata
 from typing import Any, NoReturn
 
 from jsonschema import Draft202012Validator, FormatChecker
@@ -33,6 +35,7 @@ RUN_PLAN_SCHEMA = SUITE_ROOT / "run_plan.schema.json"
 AUTHORIZATION_SCHEMA = SUITE_ROOT / "authorization_record.schema.json"
 TRANSCRIPT_SCHEMA = SUITE_ROOT / "transcript.schema.json"
 INGESTION_SCHEMA = SUITE_ROOT / "ingestion_manifest.schema.json"
+STOP_INTENT_SCHEMA = SUITE_ROOT / "stop_intent.schema.json"
 BLIND_PACKET_SCHEMA = SUITE_ROOT / "blind_packet.schema.json"
 BLIND_INVENTORY_SCHEMA = SUITE_ROOT / "blind_inventory.schema.json"
 BLIND_MANIFEST_SCHEMA = SUITE_ROOT / "blind_manifest.schema.json"
@@ -40,6 +43,8 @@ PRIVATE_ARM_MAP_SCHEMA = SUITE_ROOT / "private_arm_map.schema.json"
 PRODUCTION_PROMPT = REPO_ROOT / "deep-research" / "agents" / "socratic_mentor_agent.md"
 CODEBOOK = SUITE_ROOT / "codebook.md"
 MAX_INPUT_BYTES = 4 * 1024 * 1024
+MAX_STOP_INTENT_BYTES = 8 * 1024 * 1024
+STOP_INTENT_REF = "stop-intent.json"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 RUN_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,79}$")
 EXTERNAL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,255}$")
@@ -103,8 +108,8 @@ HUMAN_EVIDENCE_PATTERNS = (
     re.compile(r"(?:黃金標準|標註者|編碼者|評分者|裁決者)"),
 )
 MAPPING_LEAK_PATTERNS = (
-    re.compile(r"\breplicate(?:_id)?\s*(?:=|:|#)?\s*[12]\b", re.IGNORECASE),
-    re.compile(r"\b(?:cell|pair|arm|scenario|experiment)_id\s*(?:=|:)", re.IGNORECASE),
+    re.compile(r"\breplicate(?:\s+id)?\s*(?:=|:|#)?\s*[12]\b", re.IGNORECASE),
+    re.compile(r"\b(?:cell|pair|arm|scenario|experiment)\s+id\s*(?:=|:)", re.IGNORECASE),
     re.compile(r"\bother transcripts?\b", re.IGNORECASE),
     re.compile(r"\b(?:adjacent[- ]probe|exploratory[- ]guardrails?)\b", re.IGNORECASE),
     re.compile(
@@ -146,6 +151,7 @@ ASSET_PATHS = (
     "evals/heldout/within_session_ideation_diversity/authorization_record.schema.json",
     "evals/heldout/within_session_ideation_diversity/transcript.schema.json",
     "evals/heldout/within_session_ideation_diversity/ingestion_manifest.schema.json",
+    "evals/heldout/within_session_ideation_diversity/stop_intent.schema.json",
     "evals/heldout/within_session_ideation_diversity/blind_packet.schema.json",
     "evals/heldout/within_session_ideation_diversity/blind_inventory.schema.json",
     "evals/heldout/within_session_ideation_diversity/blind_manifest.schema.json",
@@ -245,21 +251,52 @@ def _read_file(path: Path, *, limit: int = MAX_INPUT_BYTES) -> bytes:
 
 
 def _write_new(path: Path, raw: bytes, *, mode: int = 0o644) -> None:
+    """Publish complete bytes exclusively without ever exposing a partial target."""
+    temporary: Path | None = None
+    descriptor: int | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(
+            f".{path.name}.atomic-write-{secrets.token_hex(12)}.tmp"
+        )
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
-        descriptor = os.open(path, flags, mode)
-        with os.fdopen(descriptor, "wb") as handle:
-            handle.write(raw)
-            handle.flush()
-            os.fsync(handle.fileno())
+        descriptor = os.open(temporary, flags, mode)
+        view = memoryview(raw)
+        written = 0
+        while written < len(view):
+            count = os.write(descriptor, view[written:])
+            if count <= 0:
+                raise OSError("atomic staging write made no progress")
+            written += count
+        os.fsync(descriptor)
+        os.close(descriptor)
+        descriptor = None
+        # A hard link is an atomic, exclusive publication: an existing target
+        # is never replaced and readers can only observe complete staged bytes.
+        os.link(temporary, path, follow_symlinks=False)
         _fsync_directory(path.parent)
     except FileExistsError as exc:
         raise EnvelopeError(f"refusing to overwrite {path}") from exc
     except OSError as exc:
         raise EnvelopeError(f"cannot create {path}: {exc}") from exc
+    finally:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        if temporary is not None and temporary.exists():
+            try:
+                temporary.unlink()
+                _fsync_directory(temporary.parent)
+            except OSError as exc:
+                # A complete target may already be published, but an orphaned
+                # staging name would violate the exact inventory contract.
+                raise EnvelopeError(
+                    f"cannot remove unpublished atomic staging file {temporary}: {exc}"
+                ) from exc
 
 
 def _fsync_directory(path: Path) -> None:
@@ -285,13 +322,22 @@ def _validate_run_tree(run_dir: Path) -> None:
 
 
 def _replace_json(path: Path, value: dict[str, Any]) -> None:
-    temporary = path.with_name(path.name + f".next-{secrets.token_hex(8)}")
-    _write_new(temporary, _json_bytes(value))
+    raw = _json_bytes(value)
+    temporary = path.with_name(
+        f".{path.name}.replace-{_sha(raw)[:24]}.json"
+    )
+    _ensure_exact_new(temporary, raw)
     try:
         os.replace(temporary, path)
         _fsync_directory(path.parent)
     except OSError as exc:
-        raise EnvelopeError(f"cannot atomically replace {path}: {exc}") from exc
+        # Keep the complete content-addressed staging bytes. A stopped-state
+        # marker can replay this exact replacement; normal ingestion registers
+        # the surviving file as pre-stop evidence.
+        raise EnvelopeError(
+            f"cannot atomically replace {path}; complete staging preserved at "
+            f"{temporary}: {exc}"
+        ) from exc
 
 
 def _relative_files_and_directories(run_dir: Path) -> tuple[set[str], set[str]]:
@@ -527,6 +573,11 @@ def _build_plan(config: dict[str, Any]) -> dict[str, Any]:
         "status": "frozen_no_call",
         "run_id": config["run_id"],
         "suite_commit": config["suite_commit"],
+        "suite_commit_provenance": {
+            "status": "operator_declared_unverified",
+            "verified_by_no_call_runner": False,
+            "verifiable_authority": "run_plan_sha256_and_asset_bindings",
+        },
         "content_class": "repository-owned synthetic scholar role cards",
         "created_without_dispatch": True,
         "asset_bindings": _asset_bindings(),
@@ -540,6 +591,12 @@ def _build_plan(config: dict[str, Any]) -> dict[str, Any]:
             "reasoning_effort": config["reasoning_effort"],
             "input_token_cap": config["input_token_cap"],
             "output_token_cap": config["output_token_cap"],
+            "token_cap_verification": {
+                "status": "operator_declared_unverified",
+                "enforced_by_no_call_runner": False,
+                "observed_usage_recorded": False,
+                "provider_tokenizer_verified": False,
+            },
             "tools": [],
             "web_enabled": False,
             "runner_transport": "none",
@@ -574,6 +631,9 @@ def _build_plan(config: dict[str, Any]) -> dict[str, Any]:
             "raw_labels_must_be_retained": True,
             "human_evidence_may_not_be_fabricated": True,
             "packet_contains_no_labels": True,
+            "first_round_assignment_ledger_required_before_delivery": True,
+            "same_role_card_cross_arm_or_replicate_exposure_forbidden": True,
+            "bundle_alone_proves_judge_exposure_blindness": False,
         },
     }
 
@@ -605,6 +665,7 @@ def _validate_authorization_record(
         "run_plan_sha256": plan_sha,
         "run_id": plan["run_id"],
         "suite_commit": plan["suite_commit"],
+        "suite_commit_provenance": plan["suite_commit_provenance"],
         "execution": plan["execution"],
     }
     for key, value in expected.items():
@@ -745,10 +806,15 @@ def _validate_manifest(manifest: dict[str, Any], plan: dict[str, Any], plan_sha:
             f"receipts/{row['cell_id']}.json",
         ):
             _fail(f"ingested artifact paths drifted for {row['cell_id']}")
-        if row["status"] == "blocked" and row["transcript_ref"] != (
-            f"blocked/{row['cell_id']}.transcript.{row['transcript_sha256']}.raw"
-        ):
-            _fail(f"blocked evidence path drifted for {row['cell_id']}")
+        if row["status"] == "blocked":
+            base_ref = (
+                f"blocked/{row['cell_id']}.transcript."
+                f"{row['transcript_sha256']}.raw"
+            )
+            if row["transcript_ref"] != base_ref and not row[
+                "transcript_ref"
+            ].startswith(base_ref + ".collision-"):
+                _fail(f"blocked evidence path drifted for {row['cell_id']}")
     state = manifest["status"]
     if state in {"initialized", "materialized"} and ingested != 0:
         _fail(f"{state} manifest cannot contain ingested cells")
@@ -775,6 +841,8 @@ def _validate_manifest(manifest: dict[str, Any], plan: dict[str, Any], plan_sha:
             blocked["transcript_sha256"],
         ):
             _fail("stop receipt is not bound to the single blocked cell")
+        if receipt["stop_intent_ref"] != STOP_INTENT_REF:
+            _fail("stopped manifest is not bound to the durable stop intent")
     elif manifest["stop_receipt"] is not None:
         _fail("unstopped manifest must not contain a stop receipt")
     if state == "blind_finalized":
@@ -800,6 +868,7 @@ def _expected_run_inventory(
         if row["ingestion_receipt_ref"] is not None:
             files.add(row["ingestion_receipt_ref"])
     if manifest["stop_receipt"] is not None:
+        files.add(STOP_INTENT_REF)
         files.update(
             row["ref"]
             for row in manifest["stop_receipt"]["preserved_auxiliary_artifacts"]
@@ -843,6 +912,108 @@ def _validate_run_inventory(
         )
 
 
+def _decode_base64(value: str, label: str) -> bytes:
+    try:
+        decoded = base64.b64decode(value.encode("ascii"), validate=True)
+    except (UnicodeError, ValueError) as exc:
+        raise EnvelopeError(f"invalid {label} base64") from exc
+    if base64.b64encode(decoded).decode("ascii") != value:
+        _fail(f"non-canonical {label} base64")
+    return decoded
+
+
+def _validate_stop_intent(
+    raw: bytes,
+    plan: dict[str, Any],
+    plan_sha: str,
+) -> tuple[dict[str, Any], dict[str, Any], bytes, bytes]:
+    marker = _strict_loads(raw)
+    if raw != _json_bytes(marker):
+        _fail("stop intent is not canonical write-once replay bytes")
+    _validate_schema(STOP_INTENT_SCHEMA, marker, "stop intent")
+    if marker["run_plan_sha256"] != plan_sha:
+        _fail("stop intent is bound to a different run plan")
+    stopped_raw = _decode_base64(
+        marker["stopped_manifest_base64"], "stopped manifest"
+    )
+    if _sha(stopped_raw) != marker["stopped_manifest_sha256"]:
+        _fail("stop intent stopped-manifest hash drift")
+    stopped = _strict_loads(stopped_raw)
+    if stopped_raw != _json_bytes(stopped):
+        _fail("stop intent stopped manifest is not canonical replay bytes")
+    _validate_manifest(stopped, plan, plan_sha)
+    raw_evidence = _decode_base64(marker["raw_base64"], "blocked raw evidence")
+    if _sha(raw_evidence) != marker["raw_sha256"]:
+        _fail("stop intent blocked-raw hash drift")
+    receipt = stopped["stop_receipt"]
+    bound = (
+        marker["cell_id"],
+        marker["sequence_index"],
+        marker["reason_code"],
+        marker["detail"],
+        marker["raw_ref"],
+        marker["raw_sha256"],
+    )
+    replayed = (
+        receipt["cell_id"],
+        receipt["sequence_index"],
+        receipt["reason_code"],
+        receipt["detail"],
+        receipt["raw_ref"],
+        receipt["raw_sha256"],
+    )
+    if bound != replayed:
+        _fail("stop intent fields drifted from the stopped-manifest replay")
+    return marker, stopped, stopped_raw, raw_evidence
+
+
+def _ensure_exact_new(path: Path, raw: bytes) -> None:
+    if path.exists():
+        if _read_file(path, limit=max(MAX_INPUT_BYTES, len(raw))) != raw:
+            _fail(f"write-once evidence collision at {path}")
+        return
+    _write_new(path, raw)
+
+
+def _recover_stop_intent(
+    run_dir: Path,
+    plan: dict[str, Any],
+    plan_sha: str,
+    current_manifest_raw: bytes,
+) -> tuple[dict[str, Any], bytes]:
+    marker_raw = _read_file(
+        run_dir / STOP_INTENT_REF, limit=MAX_STOP_INTENT_BYTES
+    )
+    marker, stopped, stopped_raw, raw_evidence = _validate_stop_intent(
+        marker_raw, plan, plan_sha
+    )
+    current_sha = _sha(current_manifest_raw)
+    if current_manifest_raw == stopped_raw:
+        pass
+    elif current_sha == marker["prior_manifest_sha256"]:
+        try:
+            _ensure_exact_new(run_dir / marker["raw_ref"], raw_evidence)
+            _replace_json(run_dir / "ingestion-manifest.json", stopped)
+        except EnvelopeError as exc:
+            raise EnvelopeError(
+                "durable stop intent forbids retry; stopped-state recovery is "
+                f"still pending: {exc}"
+            ) from exc
+        current_manifest_raw = _read_file(run_dir / "ingestion-manifest.json")
+        if current_manifest_raw != stopped_raw:
+            _fail("durable stop recovery did not publish exact stopped state")
+    else:
+        _fail("manifest drifted from both pre-stop and durable stopped state")
+    try:
+        _ensure_exact_new(run_dir / marker["raw_ref"], raw_evidence)
+    except EnvelopeError as exc:
+        raise EnvelopeError(
+            "durable stop intent forbids retry; blocked transcript hash drift or "
+            f"evidence recovery failure: {exc}"
+        ) from exc
+    return stopped, stopped_raw
+
+
 def _load_run(run_dir: Path, expected_sha: str | None = None) -> tuple[dict[str, Any], bytes, str, dict[str, Any]]:
     _validate_run_tree(run_dir)
     plan_raw = _read_file(run_dir / "run-plan.json")
@@ -851,8 +1022,16 @@ def _load_run(run_dir: Path, expected_sha: str | None = None) -> tuple[dict[str,
         _fail("--plan-sha256 does not match frozen run-plan bytes")
     plan = _strict_loads(plan_raw)
     _validate_plan(plan)
-    manifest = _strict_loads(_read_file(run_dir / "ingestion-manifest.json"))
+    manifest_raw = _read_file(run_dir / "ingestion-manifest.json")
+    if (run_dir / STOP_INTENT_REF).exists():
+        manifest, manifest_raw = _recover_stop_intent(
+            run_dir, plan, plan_sha, manifest_raw
+        )
+    else:
+        manifest = _strict_loads(manifest_raw)
     _validate_manifest(manifest, plan, plan_sha)
+    if manifest["stopped"] and not (run_dir / STOP_INTENT_REF).exists():
+        _fail("stopped state is missing its durable write-once stop intent")
     return plan, plan_raw, plan_sha, manifest
 
 
@@ -1265,6 +1444,15 @@ def _validate_transcript(value: dict[str, Any], expected: dict[str, Any], plan_s
     events = value["events"]
     normalized_events = [_normalize_raw_event(event) for event in events]
     event_kinds = [event["event_kind"] for event in normalized_events]
+    try:
+        _assert_blindable_transcript(
+            {"cells": [expected]}, value
+        )
+    except EnvelopeError as exc:
+        raise StopViolation(
+            "arm_leakage",
+            f"transcript semantic blinding gate failed: {exc}",
+        ) from exc
     transcript_text = "\n".join(turn["text"] for turn in turns).casefold()
     checks = (
         (
@@ -1366,6 +1554,43 @@ def _record_stop(
     expected = plan["cells"][index]
     raw_sha = _sha(raw)
     raw_ref = f"blocked/{expected['cell_id']}.transcript.{raw_sha}.raw"
+    raw_path = run_dir / raw_ref
+    if raw_path.exists():
+        try:
+            collision = _read_file(raw_path, limit=max(MAX_INPUT_BYTES, len(raw)))
+        except EnvelopeError:
+            collision = None
+        if collision != raw:
+            while True:
+                candidate = raw_ref + f".collision-{secrets.token_hex(8)}"
+                if not (run_dir / candidate).exists():
+                    raw_ref = candidate
+                    raw_path = run_dir / raw_ref
+                    break
+    # Attempt complete-byte publication before freezing the marker so any
+    # surviving atomic staging evidence can be hash-registered in its replay.
+    raw_write_error: EnvelopeError | None = None
+    try:
+        _ensure_exact_new(raw_path, raw)
+    except EnvelopeError as exc:
+        raw_write_error = exc
+    supplied = list(preserved_auxiliary_artifacts or [])
+    expected_before, _ = _expected_run_inventory(run_dir, plan, manifest)
+    observed_before, _ = _relative_files_and_directories(run_dir)
+    supplied_refs = {row["ref"] for row in supplied}
+    for ref in sorted(observed_before - expected_before - supplied_refs):
+        if ref in {STOP_INTENT_REF, raw_ref}:
+            continue
+        artifact_raw = _read_file(run_dir / ref)
+        supplied.append(
+            {
+                "role": "pre_stop_unregistered_artifact",
+                "ref": ref,
+                "sha256": _sha(artifact_raw),
+            }
+        )
+    if len(supplied) > 64:
+        _fail("too many pre-stop artifacts to register in the closed stop receipt")
     stopped_manifest = copy.deepcopy(manifest)
     stopped_manifest["cells"][index].update(
         status="blocked",
@@ -1383,26 +1608,47 @@ def _record_stop(
         "raw_ref": raw_ref,
         "raw_sha256": raw_sha,
         "retry_forbidden": True,
-        "state_committed_before_evidence_write": True,
-        "preserved_auxiliary_artifacts": preserved_auxiliary_artifacts or [],
+        "stop_intent_ref": STOP_INTENT_REF,
+        "stop_intent_committed_before_state_replacement": True,
+        "preserved_auxiliary_artifacts": supplied,
     }
     _validate_manifest(stopped_manifest, plan, plan_sha)
-    # Commit the irreversible stop first. Even a subsequent evidence-path
-    # collision cannot leave the run retryable.
-    _replace_json(run_dir / "ingestion-manifest.json", stopped_manifest)
-    evidence_path = run_dir / raw_ref
+    prior_manifest_raw = _read_file(run_dir / "ingestion-manifest.json")
+    if _strict_loads(prior_manifest_raw) != manifest:
+        _fail("ingestion manifest changed while preparing durable stop intent")
+    stopped_raw = _json_bytes(stopped_manifest)
+    marker = {
+        "schema_version": "ideation-diversity-stop-intent/1.0",
+        "suite": SUITE,
+        "run_plan_sha256": plan_sha,
+        "prior_manifest_sha256": _sha(prior_manifest_raw),
+        "cell_id": expected["cell_id"],
+        "sequence_index": expected["sequence_index"],
+        "reason_code": violation.code,
+        "detail": violation.detail[:2000],
+        "raw_ref": raw_ref,
+        "raw_sha256": raw_sha,
+        "raw_base64": base64.b64encode(raw).decode("ascii"),
+        "stopped_manifest_sha256": _sha(stopped_raw),
+        "stopped_manifest_base64": base64.b64encode(stopped_raw).decode("ascii"),
+        "retry_forbidden": True,
+    }
+    marker_raw = _json_bytes(marker)
+    _validate_stop_intent(marker_raw, plan, plan_sha)
+    _ensure_exact_new(run_dir / STOP_INTENT_REF, marker_raw)
     try:
-        _write_new(evidence_path, raw)
+        _ensure_exact_new(raw_path, raw)
+        raw_write_error = None
     except EnvelopeError as exc:
-        try:
-            if _read_file(evidence_path) == raw:
-                return
-        except EnvelopeError:
-            pass
+        raw_write_error = exc
+    # The marker is the irreversible boundary. If this replacement fails,
+    # every later load rejects retry and can replay the exact stopped state.
+    _replace_json(run_dir / "ingestion-manifest.json", stopped_manifest)
+    if raw_write_error is not None:
         raise EnvelopeError(
-            "run is permanently stopped but blocked raw evidence could not be "
-            f"preserved at {raw_ref}: {exc}"
-        ) from exc
+            "run is permanently stopped; blocked raw recovery remains pending: "
+            f"{raw_write_error}"
+        ) from raw_write_error
 
 
 def _preserved_ingestion_artifacts(
@@ -1641,11 +1887,20 @@ def _artifact_presence() -> dict[str, bool]:
     }
 
 
+def _assignment_boundary() -> dict[str, bool]:
+    return {
+        "future_closed_assignment_ledger_gate_required": True,
+        "assignment_ledger_implemented_by_no_call_runner": False,
+        "same_judge_equivalent_scholar_context_cross_condition_exposure_forbidden": True,
+        "bundle_alone_proves_judge_exposure_blindness": False,
+    }
+
+
 def _blind_identifiers(plan: dict[str, Any]) -> set[str]:
     identifiers: set[str] = set()
     for cell in plan["cells"]:
         identifiers.update(
-            str(cell[key]).casefold()
+            _normalized_blind_text(str(cell[key]))
             for key in (
                 "cell_id",
                 "experiment_id",
@@ -1658,6 +1913,16 @@ def _blind_identifiers(plan: dict[str, Any]) -> set[str]:
     return identifiers
 
 
+def _normalized_blind_text(text: str) -> str:
+    """Normalize compatibility forms and punctuation separators before matching."""
+    normalized = unicodedata.normalize("NFKC", text).casefold()
+    separated = "".join(
+        " " if unicodedata.category(character)[0] in {"C", "P", "Z"} else character
+        for character in normalized
+    )
+    return " ".join(separated.split())
+
+
 def _assert_blindable_transcript(
     plan: dict[str, Any], transcript: dict[str, Any]
 ) -> None:
@@ -1667,16 +1932,16 @@ def _assert_blindable_transcript(
 def _assert_blind_texts(plan: dict[str, Any], texts: list[str]) -> None:
     blind_identifiers = _blind_identifiers(plan)
     for text in texts:
-        folded = text.casefold()
+        folded = _normalized_blind_text(text)
         leaked = next(
             (identifier for identifier in blind_identifiers if identifier in folded),
             None,
         )
         if leaked is not None:
             _fail(f"transcript free text leaks frozen blind identifier {leaked!r}")
-        if any(pattern.search(text) for pattern in MAPPING_LEAK_PATTERNS):
+        if any(pattern.search(folded) for pattern in MAPPING_LEAK_PATTERNS):
             _fail("transcript free text leaks pair/arm/replicate mapping")
-        if any(pattern.search(text) for pattern in HUMAN_EVIDENCE_PATTERNS):
+        if any(pattern.search(folded) for pattern in HUMAN_EVIDENCE_PATTERNS):
             _fail("transcript free text contains prior label/adjudication/human evidence")
 
 
@@ -1735,7 +2000,9 @@ def _blind_packet_value(
         "delivery": {
             "isolated_single_session": True,
             "deliver_other_sessions_together": False,
+            "assignment_ledger_gate_required_before_delivery": True,
         },
+        "assignment_boundary": _assignment_boundary(),
         "artifact_presence": _artifact_presence(),
         "free_text_screening": {
             "frozen_identifiers_rejected": True,
@@ -1776,6 +2043,7 @@ def _blind_inventory_value(
         "delivery_rule": (
             "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"
         ),
+        "assignment_boundary": _assignment_boundary(),
         "artifact_presence": _artifact_presence(),
         "packets": inventory_rows,
     }
@@ -2114,7 +2382,11 @@ def _parser() -> argparse.ArgumentParser:
     init = sub.add_parser("init-run", help="freeze a 48-cell no-call run plan")
     init.add_argument("--run-dir", type=Path, required=True)
     init.add_argument("--run-id", required=True)
-    init.add_argument("--suite-commit", required=True)
+    init.add_argument(
+        "--suite-commit",
+        required=True,
+        help="operator-declared 40-hex provenance; existence is not verified",
+    )
     init.add_argument("--order-seed", required=True)
     init.add_argument("--subject-provider", required=True)
     init.add_argument("--subject-model", required=True)
@@ -2122,8 +2394,18 @@ def _parser() -> argparse.ArgumentParser:
     init.add_argument("--subject-runtime-version", required=True)
     init.add_argument("--auth-mode", required=True)
     init.add_argument("--reasoning-effort", required=True)
-    init.add_argument("--input-token-cap", type=int, required=True)
-    init.add_argument("--output-token-cap", type=int, required=True)
+    init.add_argument(
+        "--input-token-cap",
+        type=int,
+        required=True,
+        help="operator-declared cap; this no-call runner does not verify usage",
+    )
+    init.add_argument(
+        "--output-token-cap",
+        type=int,
+        required=True,
+        help="operator-declared cap; this no-call runner does not verify usage",
+    )
     materialize_parser = sub.add_parser(
         "materialize",
         help="materialize prompt, actor, and operator packets only",

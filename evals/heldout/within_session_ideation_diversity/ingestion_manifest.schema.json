@@ -89,7 +89,7 @@
     "stop_receipt": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cell_id", "sequence_index", "reason_code", "detail", "raw_ref", "raw_sha256", "retry_forbidden", "state_committed_before_evidence_write", "preserved_auxiliary_artifacts"],
+      "required": ["cell_id", "sequence_index", "reason_code", "detail", "raw_ref", "raw_sha256", "retry_forbidden", "stop_intent_ref", "stop_intent_committed_before_state_replacement", "preserved_auxiliary_artifacts"],
       "properties": {
         "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
         "sequence_index": {"type": "integer", "minimum": 1, "maximum": 48},
@@ -109,13 +109,14 @@
           ]
         },
         "detail": {"type": "string", "minLength": 1, "maxLength": 2000},
-        "raw_ref": {"type": "string", "pattern": "^blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw$"},
+        "raw_ref": {"type": "string", "pattern": "^blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw(?:\\.collision-[0-9a-f]{16})?$"},
         "raw_sha256": {"$ref": "#/$defs/sha256"},
         "retry_forbidden": {"const": true},
-        "state_committed_before_evidence_write": {"const": true},
+        "stop_intent_ref": {"const": "stop-intent.json"},
+        "stop_intent_committed_before_state_replacement": {"const": true},
         "preserved_auxiliary_artifacts": {
           "type": "array",
-          "maxItems": 3,
+          "maxItems": 64,
           "uniqueItems": true,
           "items": {"$ref": "#/$defs/preserved_auxiliary_artifact"}
         }
@@ -130,12 +131,15 @@
           "enum": [
             "authorization_record",
             "accepted_transcript_before_state_commit",
-            "ingestion_receipt_before_state_commit"
+            "ingestion_receipt_before_state_commit",
+            "pre_stop_unregistered_artifact"
           ]
         },
         "ref": {
           "type": "string",
-          "pattern": "^(?:authorization/record\\.json|transcripts/cell-[0-9]{3}\\.json|receipts/cell-[0-9]{3}\\.json)$"
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!run-plan\\.json$)(?!ingestion-manifest\\.json$)(?!stop-intent\\.json$)[^\\u0000]+$"
         },
         "sha256": {"$ref": "#/$defs/sha256"}
       }

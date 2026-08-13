@@ -11,6 +11,7 @@
     "status",
     "run_id",
     "suite_commit",
+    "suite_commit_provenance",
     "content_class",
     "created_without_dispatch",
     "asset_bindings",
@@ -29,12 +30,22 @@
     "status": {"const": "frozen_no_call"},
     "run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
     "suite_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "suite_commit_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "verified_by_no_call_runner", "verifiable_authority"],
+      "properties": {
+        "status": {"const": "operator_declared_unverified"},
+        "verified_by_no_call_runner": {"const": false},
+        "verifiable_authority": {"const": "run_plan_sha256_and_asset_bindings"}
+      }
+    },
     "content_class": {"const": "repository-owned synthetic scholar role cards"},
     "created_without_dispatch": {"const": true},
     "asset_bindings": {
       "type": "array",
-      "minItems": 16,
-      "maxItems": 16,
+      "minItems": 17,
+      "maxItems": 17,
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/asset_binding"}
     },
@@ -111,14 +122,20 @@
         "separate_arm_blind_adjudicator_required",
         "raw_labels_must_be_retained",
         "human_evidence_may_not_be_fabricated",
-        "packet_contains_no_labels"
+        "packet_contains_no_labels",
+        "first_round_assignment_ledger_required_before_delivery",
+        "same_role_card_cross_arm_or_replicate_exposure_forbidden",
+        "bundle_alone_proves_judge_exposure_blindness"
       ],
       "properties": {
         "minimum_independent_judges": {"const": 2},
         "separate_arm_blind_adjudicator_required": {"const": true},
         "raw_labels_must_be_retained": {"const": true},
         "human_evidence_may_not_be_fabricated": {"const": true},
-        "packet_contains_no_labels": {"const": true}
+        "packet_contains_no_labels": {"const": true},
+        "first_round_assignment_ledger_required_before_delivery": {"const": true},
+        "same_role_card_cross_arm_or_replicate_exposure_forbidden": {"const": true},
+        "bundle_alone_proves_judge_exposure_blindness": {"const": false}
       }
     }
   },
@@ -149,6 +166,7 @@
         "reasoning_effort",
         "input_token_cap",
         "output_token_cap",
+        "token_cap_verification",
         "tools",
         "web_enabled",
         "runner_transport",
@@ -167,6 +185,17 @@
         "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64},
         "input_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
         "output_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "token_cap_verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "enforced_by_no_call_runner", "observed_usage_recorded", "provider_tokenizer_verified"],
+          "properties": {
+            "status": {"const": "operator_declared_unverified"},
+            "enforced_by_no_call_runner": {"const": false},
+            "observed_usage_recorded": {"const": false},
+            "provider_tokenizer_verified": {"const": false}
+          }
+        },
         "tools": {"const": []},
         "web_enabled": {"const": false},
         "runner_transport": {"const": "none"},
