@@ -113,6 +113,24 @@ HUMAN_EVIDENCE_PATTERNS = (
     re.compile(r"\btie[- ]breaker\b", re.IGNORECASE),
     re.compile(r"(?:黃金標準|標註者|編碼者|評分者|裁決者)"),
 )
+HUMAN_EVIDENCE_COMPACT_PHRASES = (
+    "prior label",
+    "human label",
+    "judge label",
+    "annotator label",
+    "reviewer label",
+    "prior rating",
+    "human rating",
+    "judge rating",
+    "adjudicate",
+    "adjudicated",
+    "adjudication",
+    "adjudicator",
+    "gold standard coder",
+    "gold standard annotator",
+    "gold standard rater",
+    "tie breaker",
+)
 MAPPING_LEAK_PATTERNS = (
     re.compile(r"\breplicate(?:\s+id)?\s*(?:=|:|#)?\s*[12]\b", re.IGNORECASE),
     re.compile(r"\b(?:cell|pair|arm|scenario|experiment)\s+id\s*(?:=|:)", re.IGNORECASE),
@@ -135,6 +153,27 @@ MAPPING_LEAK_PATTERNS = (
     ),
     re.compile(r"(?:處置|控制|實驗)(?:組|條件|臂)"),
     re.compile(r"(?:前一|先前|其他|配對)(?:場次|對話|逐字稿|回應)"),
+)
+MAPPING_LEAK_COMPACT_PHRASES = (
+    "replicate id 1",
+    "replicate id 2",
+    "cell id",
+    "pair id",
+    "arm id",
+    "scenario id",
+    "experiment id",
+    "other transcript",
+    "adjacent probe",
+    "exploratory guardrail",
+    "treatment arm",
+    "control arm",
+    "experimental arm",
+    "previous session",
+    "prior session",
+    "paired session",
+    "previous transcript",
+    "prior transcript",
+    "paired transcript",
 )
 EXPERIMENTS = (
     (
@@ -2442,13 +2481,49 @@ def _normalized_blind_text(text: str) -> str:
 
 
 def _compact_blind_text(text: str) -> str:
-    """Remove Unicode marks and separators from one complete identifier."""
-    normalized = unicodedata.normalize("NFKD", text).casefold()
-    return "".join(
-        character
-        for character in normalized
-        if unicodedata.category(character)[0] not in {"M", "C", "P", "Z"}
-    )
+    """Remove spaces from the mark-safe screening projection."""
+    return "".join(_blind_screen_text(text).split())
+
+
+def _blind_screen_text(text: str) -> str:
+    """Project text without allowing a mark to casefold into a letter.
+
+    Marks and format/control characters disappear. Punctuation and separators
+    become spaces so real word boundaries survive, while a matcher can still
+    allow those spaces between the characters of an obfuscated identifier.
+    """
+    projected: list[str] = []
+    for character in unicodedata.normalize("NFKD", text):
+        category = unicodedata.category(character)[0]
+        if category in {"M", "C"}:
+            continue
+        if category in {"P", "Z"}:
+            projected.append(" ")
+            continue
+        for folded in unicodedata.normalize("NFKD", character.casefold()):
+            folded_category = unicodedata.category(folded)[0]
+            if folded_category in {"M", "C"}:
+                continue
+            projected.append(" " if folded_category in {"P", "Z"} else folded)
+    return " ".join("".join(projected).split())
+
+
+def _joined_blind_text(text: str) -> str:
+    """Repair mark/format/punctuation splits while preserving real spacing."""
+    projected: list[str] = []
+    for character in unicodedata.normalize("NFKD", text):
+        category = unicodedata.category(character)[0]
+        if category in {"M", "C", "P"}:
+            continue
+        if category == "Z":
+            projected.append(" ")
+            continue
+        for folded in unicodedata.normalize("NFKD", character.casefold()):
+            folded_category = unicodedata.category(folded)[0]
+            if folded_category in {"M", "C", "P"}:
+                continue
+            projected.append(" " if folded_category == "Z" else folded)
+    return " ".join("".join(projected).split())
 
 
 def _contains_complete_normalized_identifier(text: str, identifier: str) -> bool:
@@ -2471,14 +2546,14 @@ def _contains_complete_compact_identifier(text: str, identifier: str) -> bool:
     compact = _compact_blind_text(identifier)
     if len(compact) < 4:
         return False
-    normalized = unicodedata.normalize("NFKD", text).casefold()
-    separator = r"[\W_]*"
-    pattern = (
+    haystack = _blind_screen_text(text)
+    separator = r"\s*"
+    return re.search(
         r"(?<![^\W_])"
         + separator.join(re.escape(character) for character in compact)
-        + r"(?![^\W_])"
-    )
-    return re.search(pattern, normalized) is not None
+        + r"(?![^\W_])",
+        haystack,
+    ) is not None
 
 
 def _assert_blindable_transcript(
@@ -2491,6 +2566,7 @@ def _assert_blind_texts(plan: dict[str, Any], texts: list[str]) -> None:
     blind_identifiers = _blind_identifiers(plan)
     for text in texts:
         folded = _normalized_blind_text(text)
+        joined = _joined_blind_text(text)
         leaked = next(
             (
                 identifier
@@ -2502,9 +2578,27 @@ def _assert_blind_texts(plan: dict[str, Any], texts: list[str]) -> None:
         )
         if leaked is not None:
             _fail(f"transcript free text leaks frozen blind identifier {leaked!r}")
-        if any(pattern.search(folded) for pattern in MAPPING_LEAK_PATTERNS):
+        if any(
+            pattern.search(candidate)
+            for pattern in MAPPING_LEAK_PATTERNS
+            for candidate in (folded, joined)
+        ):
             _fail("transcript free text leaks pair/arm/replicate mapping")
-        if any(pattern.search(folded) for pattern in HUMAN_EVIDENCE_PATTERNS):
+        if any(
+            _contains_complete_compact_identifier(text, phrase)
+            for phrase in MAPPING_LEAK_COMPACT_PHRASES
+        ):
+            _fail("transcript free text leaks pair/arm/replicate mapping")
+        if any(
+            pattern.search(candidate)
+            for pattern in HUMAN_EVIDENCE_PATTERNS
+            for candidate in (folded, joined)
+        ):
+            _fail("transcript free text contains prior label/adjudication/human evidence")
+        if any(
+            _contains_complete_compact_identifier(text, phrase)
+            for phrase in HUMAN_EVIDENCE_COMPACT_PHRASES
+        ):
             _fail("transcript free text contains prior label/adjudication/human evidence")
 
 

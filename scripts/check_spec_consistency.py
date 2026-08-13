@@ -976,6 +976,12 @@ def check_ideation_diversity_no_call_contract() -> None:
         elif isinstance(node, ast.ExceptHandler):
             if isinstance(node.name, str) and node.name in direct_module_bindings:
                 shadowed_module_bindings.add(node.name)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)):
+            if isinstance(node.name, str) and node.name in direct_module_bindings:
+                shadowed_module_bindings.add(node.name)
+        elif isinstance(node, ast.MatchMapping):
+            if isinstance(node.rest, str) and node.rest in direct_module_bindings:
+                shadowed_module_bindings.add(node.rest)
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
                 binding = alias.asname or alias.name

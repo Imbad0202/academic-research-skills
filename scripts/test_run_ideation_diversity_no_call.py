@@ -1374,6 +1374,7 @@ def test_blind_packet_free_text_gate_rejects_mapping_or_human_evidence(
     "leak_text",
     (
         "The frozen id is c\u0338e\u0338l\u0338l-048.",
+        "The frozen id is c\u0345ell-048.",
         "The frozen id is c\u200be\u200bl\u200bl-048.",
         "The frozen id is c.e.l.l-048.",
     ),
@@ -1389,8 +1390,10 @@ def test_complete_identifier_gate_rejects_unicode_separator_obfuscation(
 @pytest.mark.parametrize(
     "ordinary_text",
     (
-        "The scell-048 placeholder is not a frozen cell id.",
-        "The cell-048x placeholder is not a frozen cell id.",
+        "The scell-048 placeholder is unrelated.",
+        "The cell-048x placeholder is unrelated.",
+        "The éCell-048 placeholder is unrelated.",
+        "The cell-048é placeholder is unrelated.",
         "Cell biology had 48 samples.",
         "The discussion used adjacent probing.",
     ),
@@ -1409,7 +1412,13 @@ def test_complete_identifier_gate_keeps_letter_number_boundaries(
         "cell‑001 pair: idi‑public‑health replicate‑1",
         "The unrelated frozen identifier is cell‑048.",
         "The tie–breaker approved the prior human judge label.",
+        "The prior l\u0338abel was positive.",
+        "The treat.ment arm was enabled.",
+        "The adjudi\u200bcator approved it.",
+        "前\u200b輪標註已完成。",
+        "處.置組已啟用。",
         "The frozen id is c\u0338e\u0338l\u0338l-048.",
+        "The frozen id is c\u0345ell-048.",
         "The frozen id is c\u200be\u200bl\u200bl-048.",
         "The frozen id is c.e.l.l-048.",
     ),
@@ -1751,6 +1760,9 @@ def test_spec_consistency_integration_rejects_48_cell_drift(monkeypatch):
         "import os\nlauncher = os\nlauncher.system('forbidden')\n",
         "import os\ngetattr(os, 'system')('forbidden')\n",
         "import os\nos.__dict__['system']('forbidden')\n",
+        "import os\nmatch object():\n    case os:\n        os.open('forbidden', 0)\n",
+        "import os\nmatch []:\n    case [*os]:\n        os.open('forbidden', 0)\n",
+        "import os\nmatch {}:\n    case {**os}:\n        os.open('forbidden', 0)\n",
     ),
 )
 def test_spec_consistency_ast_rejects_transport_or_process_surface(
@@ -1773,6 +1785,7 @@ def test_spec_consistency_ast_rejects_transport_or_process_surface(
             "exact import allowlist" in error
             or "exact current-use" in error
             or "dynamic import, introspection" in error
+            or "direct module bindings cannot be shadowed" in error
             for error in spec_consistency.ERRORS
         )
     finally:
@@ -1791,6 +1804,7 @@ def test_spec_consistency_ast_accepts_current_exact_module_surface():
                 "exact import allowlist" in error
                 or "exact current-use" in error
                 or "dynamic import, introspection" in error
+                or "direct module bindings cannot be shadowed" in error
             )
             for error in spec_consistency.ERRORS
         )
