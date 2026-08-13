@@ -96,6 +96,12 @@ jobs:
         # runtime gate (see docs/design/2026-06-07-272-...-design.md § 3/§ 5).
         run: python3 scripts/check_instruction_data_boundary.py
 
+      - name: Validate indirect prompt-injection behavior probe (#675)
+        # Hermetic asset/materialization contract only. This executes no model,
+        # provider, web, tool, or structural enforcement claim; the mutation and
+        # scoring tests run through the pytest manifest above.
+        run: python3 scripts/run_indirect_prompt_injection_probe.py validate-assets
+
       - name: Check task_type declarations
         env:
           PYTHONPATH: scripts

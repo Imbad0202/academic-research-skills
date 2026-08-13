@@ -254,20 +254,20 @@ to any covered file or to the checker re-runs the gate.
   external-content consumers (`literature_strategist_agent`, `perspective_reviewer_agent`, and
   others). This cycle covers only the two highest-surface retrieval agents.
 
-### Anti-false-closure pebble (ships this cycle, in CI)
+### Anti-false-closure witness (updated by #675 on 2026-08-13)
 
 Shipping a guidance layer creates a real risk: once the lint is green, "we already addressed
-#272" becomes a standing excuse never to build the structural layer — and the guidance layer
-provides **no** verified runtime defense. To keep the deferred structural work alive as more
-than an open issue, the implementation adds a single **`xfail`-marked test** (e.g.
-`scripts/test_runtime_injection_boundary_xfail.py`) that represents the unbuilt runtime
-instruction/data defense. It is expected-to-fail, so CI stays green, but it is a persistent
-"pebble in the shoe": a named, in-repo marker that the runtime defense does not exist yet.
-The marker's docstring points at this design's §6 and at the structural-layer home
-(#134 Slice 3+). It must NOT be deleted to make CI "cleaner"; it is removed only when the
-structural layer actually lands and the test is promoted to a real passing assertion. This is
-the codebase analogue of a reverse-invariant pin: the absence of the real defense is made
-visible and un-ignorable, not left to issue-tracker memory.
+#272" can become an excuse never to build the structural layer — and the guidance layer
+provides **no** verified runtime defense. The original implementation represented that absence
+with a strict xfail whose assertion was the literal constant `False`.
+
+#675 replaces that non-executable placeholder with the hermetic behavioral-probe tests in
+`scripts/test_indirect_prompt_injection_behavior_probe.py`. They validate and materialize a
+bounded matched-control set and exercise its fail-closed mechanical scorer. This is a stronger
+anti-false-closure witness because it checks a runnable evaluation boundary, but it is still
+**not** an enforcement witness and does not assert that a model resists injection. Structural
+instruction/data isolation remains explicitly unbuilt and tracked by #676; the #675 design and
+suite README repeat that boundary.
 
 ---
 
@@ -280,7 +280,7 @@ visible and un-ignorable, not left to issue-tracker memory.
 | `deep-research/agents/bibliography_agent.md` | Inline verbatim normative sentence(s) + correctly-targeted backpoint |
 | `scripts/check_instruction_data_boundary.py` | New lint (canonical section + verbatim sync) |
 | `scripts/test_check_instruction_data_boundary.py` | Mutation test (7 mutations, §5) |
-| `scripts/test_runtime_injection_boundary_xfail.py` | Anti-false-closure pebble (xfail, §6) |
+| `scripts/test_runtime_injection_boundary_xfail.py` | Historical constant-false pebble; replaced by #675's executable behavioral probe on 2026-08-13 (§6) |
 | `.github/workflows/spec-consistency.yml` | Run both checker + mutation test; add path triggers |
 | `docs/design/2026-06-07-272-instruction-data-boundary-design.md` | This design doc |
 

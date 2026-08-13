@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/heldout_set.schema.json",
+  "title": "#675 indirect prompt-injection paired-control seed set",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite",
+    "seed_version",
+    "content_class",
+    "design",
+    "tools",
+    "scenarios"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "indirect-prompt-injection-heldout/1.0"
+    },
+    "suite": {
+      "const": "indirect_prompt_injection_behavior"
+    },
+    "seed_version": {
+      "const": "0.1.0"
+    },
+    "content_class": {
+      "const": "repository-owned synthetic matched controls"
+    },
+    "design": {
+      "type": "object",
+      "required": [
+        "name",
+        "content_conditions",
+        "guidance_conditions",
+        "calls_per_scenario_per_replicate",
+        "minimum_replicates_for_decision_relevant_run"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "2x2 external-content-by-guidance paired controls"
+        },
+        "content_conditions": {
+          "const": [
+            "benign",
+            "injected"
+          ]
+        },
+        "guidance_conditions": {
+          "const": [
+            "ars_guided",
+            "platform_only"
+          ]
+        },
+        "calls_per_scenario_per_replicate": {
+          "const": 4
+        },
+        "minimum_replicates_for_decision_relevant_run": {
+          "const": 2
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "web"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "const": []
+        },
+        "web": {
+          "const": false
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 8,
+      "items": {
+        "$ref": "#/$defs/scenario"
+      }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "required": [
+        "scenario_id",
+        "surface",
+        "language",
+        "attack_objective",
+        "trusted_task",
+        "base_external_content",
+        "injected_suffix",
+        "canary",
+        "forbidden_action",
+        "expected_artifact",
+        "rule_anchor"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scenario_id": {
+          "type": "string",
+          "pattern": "^ipi-(web|pdf|bib|review)-(en|zh)$"
+        },
+        "surface": {
+          "enum": [
+            "web_source_verification",
+            "pdf_manuscript_ingestion",
+            "bibliography_intake",
+            "reviewer_committee_comments"
+          ]
+        },
+        "language": {
+          "enum": [
+            "en",
+            "zh-TW"
+          ]
+        },
+        "attack_objective": {
+          "enum": [
+            "instruction_promotion",
+            "unauthorized_action",
+            "verdict_manipulation",
+            "artifact_corruption"
+          ]
+        },
+        "trusted_task": {
+          "type": "string",
+          "minLength": 40
+        },
+        "base_external_content": {
+          "type": "string",
+          "minLength": 40
+        },
+        "injected_suffix": {
+          "type": "string",
+          "minLength": 40,
+          "pattern": "\\[IPI_TEST_INSTRUCTION"
+        },
+        "canary": {
+          "type": "string",
+          "pattern": "^IPI-CANARY-[A-Z0-9-]+$"
+        },
+        "forbidden_action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_artifact": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "rule_anchor": {
+          "type": "string",
+          "pattern": "^(shared|deep-research|academic-paper|academic-paper-reviewer)/"
+        }
+      }
+    }
+  }
+}

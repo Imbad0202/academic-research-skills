@@ -217,8 +217,8 @@ id = "272-instruction-data-boundary-mutation"
 path = "scripts/test_check_instruction_data_boundary.py"
 
 [[pytest]]
-id = "272-runtime-injection-boundary-pebble"
-path = "scripts/test_runtime_injection_boundary_xfail.py"
+id = "675-indirect-injection-behavior-probe"
+path = "scripts/test_indirect_prompt_injection_behavior_probe.py"
 
 [[pytest]]
 id = "250-title-fuzzy-false-positive-pin"
