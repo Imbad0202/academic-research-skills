@@ -211,7 +211,11 @@ def test_consent_receipt_binds_complete_authorization_surface(
 
 @pytest.mark.parametrize(
     ("state", "reference"),
-    [("known", None), ("unknown", "https://example.invalid/terms")],
+    [
+        ("known", None),
+        ("known", "   "),
+        ("unknown", "https://example.invalid/terms"),
+    ],
 )
 def test_retention_disclosure_state_and_reference_are_consistent(
     state: str, reference: str | None
@@ -221,6 +225,22 @@ def test_retention_disclosure_state_and_reference_are_consistent(
     plan["provider_roster"][0]["retention_reference"] = reference
     _rehash_plan(plan)
     with pytest.raises(ledger.LedgerError, match="retention_reference"):
+        ledger.validate_plan(plan)
+    retained = _retained()
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="query plan schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+@pytest.mark.parametrize("field", ["deletion_boundary", "export_boundary"])
+def test_consent_boundary_disclosures_cannot_be_whitespace(field: str) -> None:
+    plan = _plan()
+    plan["consent"][field] = "   "
+    plan["consent"]["receipt_sha256"] = ledger.bound_digest(
+        plan["consent"], "receipt_sha256"
+    )
+    plan["plan_sha256"] = ledger.bound_digest(plan, "plan_sha256")
+    with pytest.raises(ledger.LedgerError, match=field):
         ledger.validate_plan(plan)
     retained = _retained()
     _rehash_input(retained, plan)

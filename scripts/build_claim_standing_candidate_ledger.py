@@ -244,7 +244,7 @@ def validate_plan(plan: dict[str, Any]) -> None:
             (
                 retention_state == "known"
                 and isinstance(retention_reference, str)
-                and bool(retention_reference)
+                and bool(retention_reference.strip())
             )
             or (retention_state == "unknown" and retention_reference is None),
             f"provider_roster.{index_id}.retention_reference",
@@ -263,6 +263,12 @@ def validate_plan(plan: dict[str, Any]) -> None:
     consent = plan["consent"]
     _expect(consent["decision"] == "retrieval_only", "consent.decision", "Track A accepts retrieval_only")
     _expect(consent["stance_classification_authorized"] is False, "consent.stance_classification_authorized", "must be false")
+    for disclosure_field in ("deletion_boundary", "export_boundary"):
+        _expect(
+            bool(consent[disclosure_field].strip()),
+            f"consent.{disclosure_field}",
+            "must contain a non-whitespace disclosure",
+        )
     bindings = {
         "claim_sha256": claim["claim_sha256"],
         "provider_roster_sha256": digest(roster),

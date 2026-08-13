@@ -49,8 +49,54 @@ ALLOWED_RUNTIME_IMPORTS = {
     "typing",
     "unicodedata",
 }
-FORBIDDEN_DYNAMIC_CALLS = {"__import__", "compile", "eval", "exec", "import_module"}
-FORBIDDEN_DYNAMIC_NAMES = {"__builtins__", "__import__"}
+FORBIDDEN_RUNTIME_NAMES = {
+    "__builtins__",
+    "__import__",
+    "breakpoint",
+    "compile",
+    "delattr",
+    "eval",
+    "exec",
+    "getattr",
+    "globals",
+    "locals",
+    "setattr",
+    "vars",
+}
+FORBIDDEN_RUNTIME_ATTRIBUTES = {
+    "Popen",
+    "__bases__",
+    "__builtins__",
+    "__class__",
+    "__closure__",
+    "__code__",
+    "__dict__",
+    "__getattribute__",
+    "__globals__",
+    "__import__",
+    "__loader__",
+    "__subclasses__",
+    "_getframe",
+    "call",
+    "check_call",
+    "check_output",
+    "connect",
+    "create_connection",
+    "execv",
+    "execve",
+    "f_builtins",
+    "f_globals",
+    "f_locals",
+    "fork",
+    "import_module",
+    "modules",
+    "popen",
+    "request",
+    "run",
+    "spawn",
+    "system",
+    "urlopen",
+}
 
 
 def _read(root: Path, relative: Path, errors: list[str]) -> str | None:
@@ -164,34 +210,19 @@ def run_checks(root: Path) -> list[str]:
                 errors.append(
                     f"{RUNTIME}: non-allowlisted transport/model/process-capable imports: {bad}"
                 )
-            dynamic_calls: set[str] = set()
+            dynamic_references: set[str] = set()
             for node in ast.walk(tree):
-                if isinstance(node, ast.Name) and node.id in FORBIDDEN_DYNAMIC_NAMES:
-                    dynamic_calls.add(node.id)
-                if not isinstance(node, ast.Call):
-                    continue
-                if isinstance(node.func, ast.Name):
-                    name = node.func.id
+                if isinstance(node, ast.Name) and node.id in FORBIDDEN_RUNTIME_NAMES:
+                    dynamic_references.add(node.id)
                 elif (
-                    isinstance(node.func, ast.Attribute)
-                    and node.func.attr in {"__import__", "import_module"}
+                    isinstance(node, ast.Attribute)
+                    and node.attr in FORBIDDEN_RUNTIME_ATTRIBUTES
                 ):
-                    name = node.func.attr
-                elif (
-                    isinstance(node.func, ast.Attribute)
-                    and isinstance(node.func.value, ast.Name)
-                    and node.func.value.id == "builtins"
-                    and node.func.attr in {"compile", "eval", "exec"}
-                ):
-                    name = node.func.attr
-                else:
-                    continue
-                if name in FORBIDDEN_DYNAMIC_CALLS:
-                    dynamic_calls.add(name)
-            if dynamic_calls:
+                    dynamic_references.add(node.attr)
+            if dynamic_references:
                 errors.append(
-                    f"{RUNTIME}: dynamic import or code execution is forbidden: "
-                    f"{sorted(dynamic_calls)}"
+                    f"{RUNTIME}: dynamic import, introspection, process, or network "
+                    f"references are forbidden: {sorted(dynamic_references)}"
                 )
         for forbidden in ("add_parser(\"dispatch\"", "add_parser('dispatch'", "urlopen(", ".request("):
             if forbidden in runtime_text:

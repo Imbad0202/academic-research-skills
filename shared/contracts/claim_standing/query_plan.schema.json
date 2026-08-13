@@ -277,7 +277,7 @@
           },
           "then": {
             "properties": {
-              "retention_reference": { "type": "string", "minLength": 1, "maxLength": 1000 }
+              "retention_reference": { "type": "string", "minLength": 1, "maxLength": 1000, "pattern": "\\S" }
             }
           },
           "else": {
@@ -324,12 +324,14 @@
         "deletion_boundary": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 1000
+          "maxLength": 1000,
+          "pattern": "\\S"
         },
         "export_boundary": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 1000
+          "maxLength": 1000,
+          "pattern": "\\S"
         },
         "receipt_sha256": { "$ref": "#/$defs/sha256" }
       }

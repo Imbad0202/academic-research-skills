@@ -4,6 +4,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
 from scripts import check_claim_standing_candidate_ledger_integration as guard
 
 
@@ -93,7 +95,28 @@ def test_non_allowlisted_and_dynamic_imports_are_rejected(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     errors = guard.run_checks(root)
-    assert any("dynamic import or code execution" in error for error in errors)
+    assert any("dynamic import, introspection" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "_runner = eval\n_runner('1 + 1')\n",
+        "sys.modules['os'].system('true')\n",
+        (
+            "getattr(globals()['__built' + 'ins__'], "
+            "'__im' + 'port__')('socket')\n"
+        ),
+    ],
+)
+def test_alias_introspection_and_allowed_module_capability_bypasses_are_rejected(
+    tmp_path: Path, payload: str
+) -> None:
+    root = _tree(tmp_path)
+    path = root / guard.RUNTIME
+    path.write_text(payload + path.read_text(encoding="utf-8"), encoding="utf-8")
+    errors = guard.run_checks(root)
+    assert any("dynamic import, introspection" in error for error in errors)
 
 
 def test_existing_resolver_change_is_rejected(tmp_path: Path) -> None:
