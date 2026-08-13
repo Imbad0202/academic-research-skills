@@ -116,8 +116,10 @@ An opted-in scanned result is therefore represented honestly as structural
 dependency is deterministic `CONTENT_UNAVAILABLE / DEPENDENCY_ABSENT` and leaves the
 structural verdict unchanged.
 
-`--classifier-diagnostics <path>` requires the opt-in flag and creates an exclusive,
-non-overwriting mode-`0600` local JSON file. It may contain at most 512 bytes of explicitly
+On POSIX, `--classifier-diagnostics <path>` requires the opt-in flag and creates an
+exclusive, non-overwriting mode-`0600` local JSON file. Platforms without POSIX
+`fchmod` reject this option before creating the path; classification without a local
+diagnostic remains available. The artifact may contain at most 512 bytes of explicitly
 untrusted worker detail plus byte counts; neither its path nor detail appears in the
 prompt-facing sidecar. Contract:
 `shared/contracts/pdf/pdf_content_classifier_diagnostic.schema.json`. Full frozen design

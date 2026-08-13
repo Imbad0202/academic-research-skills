@@ -20,6 +20,7 @@ import tempfile
 import textwrap
 import time
 import unittest
+from unittest import mock
 from datetime import datetime
 from pathlib import Path
 
@@ -747,6 +748,42 @@ class ContentClassificationSandboxTest(unittest.TestCase):
                 self.assertEqual(result["content_classification"]["reason"], reason)
                 self.assertEqual(diagnostic["reason"], reason)
 
+    def test_limit_plus_one_precedes_timeout_for_flushed_hanging_worker(self):
+        cases = (
+            (
+                "stdout",
+                "stdout",
+                preflight.CLASSIFIER_STDOUT_LIMIT + 1,
+                "WORKER_STDOUT_LIMIT",
+            ),
+            (
+                "stderr",
+                "stderr",
+                preflight.CLASSIFIER_STDERR_LIMIT + 1,
+                "WORKER_STDERR_LIMIT",
+            ),
+        )
+        for name, stream, byte_count, reason in cases:
+            with self.subTest(name=name):
+                worker = _write_worker(
+                    self.tmp,
+                    f"""
+                    import sys
+                    import time
+                    sys.{stream}.buffer.write(b'x' * {byte_count})
+                    sys.{stream}.buffer.flush()
+                    time.sleep(60)
+                    """,
+                    name=f"{name}_limit_plus_one_then_hang.py",
+                )
+                result, diagnostic = self.run_with_worker(worker, timeout=0.25)
+                self.assertEqual(result["content_classification"]["reason"], reason)
+                self.assertEqual(diagnostic["reason"], reason)
+                self.assertEqual(
+                    diagnostic[f"{stream}_bytes_observed"],
+                    byte_count,
+                )
+
     def test_closed_validator_rejects_schema_types_and_page_bound_drift(self):
         cases = []
         extra = _classified_payload()
@@ -795,6 +832,48 @@ class ContentClassificationSandboxTest(unittest.TestCase):
         unknown = _classified_payload()
         unknown["classification"] = "VENDOR_OPEN_ENUM"
         cases.append(("enum", json.dumps(unknown), "WORKER_INVALID_OUTPUT"))
+        classification_list = _classified_payload()
+        classification_list["classification"] = []
+        cases.append(
+            (
+                "classification-list",
+                json.dumps(classification_list),
+                "WORKER_INVALID_OUTPUT",
+            )
+        )
+        classification_object = _classified_payload()
+        classification_object["classification"] = {"open": "enum"}
+        cases.append(
+            (
+                "classification-object",
+                json.dumps(classification_object),
+                "WORKER_INVALID_OUTPUT",
+            )
+        )
+        unavailable_reason_list = {
+            "schema": "pdf_content_classifier_worker/1",
+            "status": "UNAVAILABLE",
+            "reason": [],
+            "classification": None,
+            "confidence": None,
+            "pages_needing_ocr": None,
+        }
+        cases.append(
+            (
+                "unavailable-reason-list",
+                json.dumps(unavailable_reason_list),
+                "WORKER_INVALID_OUTPUT",
+            )
+        )
+        unavailable_reason_object = dict(unavailable_reason_list)
+        unavailable_reason_object["reason"] = {"open": "reason"}
+        cases.append(
+            (
+                "unavailable-reason-object",
+                json.dumps(unavailable_reason_object),
+                "WORKER_INVALID_OUTPUT",
+            )
+        )
         for name, raw, expected_reason in cases:
             with self.subTest(name=name):
                 worker = _write_worker(
@@ -824,6 +903,14 @@ class ContentClassificationSandboxTest(unittest.TestCase):
         Draft202012Validator(schema).validate(json.loads(path.read_text()))
         with self.assertRaises(FileExistsError):
             preflight._write_local_diagnostic(path, diagnostic)
+
+    def test_local_diagnostic_rejects_unsupported_platform_before_creation(self):
+        diagnostic = preflight._diagnostic("WORKER_IO_ERROR")
+        path = self.tmp / "must-not-be-created.json"
+        with mock.patch.object(preflight.os, "name", "nt"):
+            with self.assertRaisesRegex(OSError, "POSIX fchmod"):
+                preflight._write_local_diagnostic(path, diagnostic)
+        self.assertFalse(path.exists())
 
     def test_operator_detail_byte_bound_survives_multibyte_cutoff(self):
         raw = b"x" * (preflight.CLASSIFIER_OPERATOR_DETAIL_LIMIT - 1) + "界".encode("utf-8")

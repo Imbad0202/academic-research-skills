@@ -128,8 +128,13 @@ class _CappedPipeReader:
 
     def _run(self) -> None:
         try:
+            read_chunk = getattr(self.stream, "read1", self.stream.read)
             while True:
-                chunk = self.stream.read(4_096)
+                # BufferedReader.read(size) may wait to fill ``size`` even when a
+                # worker has already flushed limit + 1 bytes and is now hanging.
+                # read1 returns the bytes currently available from the pipe, so the
+                # cap wins deterministically over the later wall timeout.
+                chunk = read_chunk(4_096)
                 if not chunk:
                     return
                 self.total += len(chunk)
@@ -255,8 +260,11 @@ def _validate_worker_result(payload: dict[str, Any], page_count: int) -> dict[st
     confidence = payload.get("confidence")
     pages = payload.get("pages_needing_ocr")
 
+    if not isinstance(status, str):
+        raise _ClassifierProtocolError("worker status is not a string")
+
     if status == "UNAVAILABLE":
-        if reason not in {
+        if not isinstance(reason, str) or reason not in {
             "DEPENDENCY_ABSENT",
             "CLASSIFIER_ERROR",
             "INVALID_CLASSIFIER_RESULT",
@@ -266,9 +274,12 @@ def _validate_worker_result(payload: dict[str, Any], page_count: int) -> dict[st
             raise _ClassifierProtocolError("unavailable worker result carries values")
         return _unavailable_content(reason)
 
-    if status != "CLASSIFIED" or reason != "CLASSIFIED":
+    if status != "CLASSIFIED" or not isinstance(reason, str) or reason != "CLASSIFIED":
         raise _ClassifierProtocolError("invalid worker state transition")
-    if classification not in {"TEXT_AVAILABLE", "OCR_RECOMMENDED"}:
+    if not isinstance(classification, str) or classification not in {
+        "TEXT_AVAILABLE",
+        "OCR_RECOMMENDED",
+    }:
         raise _ClassifierProtocolError("unknown classification")
     if (
         isinstance(confidence, bool)
@@ -426,12 +437,15 @@ def _run_content_classifier(
         stdout = bytes(stdout_reader.buffer)
         stderr = bytes(stderr_reader.buffer)
 
-        if forced_reason is None:
-            if stdout_reader.exceeded.is_set():
-                forced_reason = "WORKER_STDOUT_LIMIT"
-            elif stderr_reader.exceeded.is_set():
-                forced_reason = "WORKER_STDERR_LIMIT"
-            elif (
+        # A reader can observe limit + 1 only after the timeout loop has selected
+        # WORKER_TIMEOUT.  The retained byte evidence is more specific, so cap
+        # breaches always take precedence once all helper threads have joined.
+        if stdout_reader.exceeded.is_set():
+            forced_reason = "WORKER_STDOUT_LIMIT"
+        elif stderr_reader.exceeded.is_set():
+            forced_reason = "WORKER_STDERR_LIMIT"
+        elif forced_reason is None:
+            if (
                 not io_closed
                 or stdout_reader.error
                 or stderr_reader.error
@@ -510,6 +524,8 @@ def _run_content_classifier(
 
 
 def _write_local_diagnostic(path: Path, payload: dict[str, Any]) -> None:
+    if os.name != "posix" or not callable(getattr(os, "fchmod", None)):
+        raise OSError("private classifier diagnostics require POSIX fchmod")
     raw = (
         json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False, sort_keys=True)
         + "\n"
@@ -868,14 +884,19 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--classifier-diagnostics",
         help=(
-            "exclusive local 0600 JSON for bounded untrusted worker detail; "
-            "requires --classify-content and is never referenced by the sidecar"
+            "POSIX-only exclusive local 0600 JSON for bounded untrusted worker "
+            "detail; requires --classify-content and is never referenced by the "
+            "sidecar"
         ),
     )
     args = parser.parse_args(argv)
 
     if args.classifier_diagnostics and not args.classify_content:
         parser.error("--classifier-diagnostics requires --classify-content")
+    if args.classifier_diagnostics and (
+        os.name != "posix" or not callable(getattr(os, "fchmod", None))
+    ):
+        parser.error("--classifier-diagnostics requires POSIX fchmod")
 
     result, diagnostic = _run_preflight(
         args.pdf,

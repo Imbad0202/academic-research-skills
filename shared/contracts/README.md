@@ -14,8 +14,9 @@ ports, and (v3.6.7+) cross-model audit artifact pipelines.
   isolated worker to two classifications, three unavailable reasons, finite bounded
   confidence, and bounded non-negative page indexes. Runtime additionally binds every
   page to the structural page count.
-- `pdf/pdf_content_classifier_diagnostic.schema.json` is the separate local-only,
-  mode-`0600` operator artifact. Its explicitly untrusted detail is capped and never
+- `pdf/pdf_content_classifier_diagnostic.schema.json` is the separate POSIX-only,
+  local mode-`0600` operator artifact. Platforms without `fchmod` reject its CLI
+  option before path creation. Its explicitly untrusted detail is capped and never
   copied into or referenced by the sidecar.
 
 Runtime: `scripts/pdf_read_preflight.py` and

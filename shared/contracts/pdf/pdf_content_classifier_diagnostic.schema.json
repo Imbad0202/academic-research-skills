@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/pdf/pdf_content_classifier_diagnostic.schema.json",
-  "title": "Local-only PDF classifier operator diagnostic",
+  "title": "POSIX local-only PDF classifier operator diagnostic",
   "type": "object",
   "additionalProperties": false,
   "required": [

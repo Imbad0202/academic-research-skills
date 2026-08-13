@@ -123,7 +123,7 @@ result yields `STRUCTURAL_UNAVAILABLE` without starting the optional child.
 ### Operator diagnostics
 
 The prompt-facing sidecar contains only closed reason codes. The upstream type and raw
-exception are absent. With the separate, explicit
+exception are absent. On POSIX, with the separate, explicit
 `--classifier-diagnostics <local-path>` option, the operator may create one exclusive,
 non-overwriting `0600` JSON file containing:
 
@@ -133,6 +133,9 @@ non-overwriting `0600` JSON file containing:
 
 The diagnostic path and detail never appear in the sidecar. The file is local,
 unencrypted, untrusted operator evidence and must not be copied into an agent prompt.
+Platforms without POSIX `fchmod` reject the diagnostics option before path creation;
+the ordinary classifier subprocess remains available under its narrower Windows
+direct-worker containment claim.
 
 ## Optional dependency model
 
