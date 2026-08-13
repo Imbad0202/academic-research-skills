@@ -29,6 +29,7 @@ from jsonschema.exceptions import SchemaError, ValidationError
 PLAN_VERSION = "claim-standing-query-plan/1.0"
 INPUT_VERSION = "claim-standing-retrieval-input/1.0"
 LEDGER_VERSION = "claim-standing-candidate-ledger/1.0"
+RELEVANCE_INPUT_VERSION = "claim-standing-relevance-assessment-input/1.0"
 MAX_QUERIES = 3
 MAX_INDEXES = 4
 MAX_HITS_PER_QUERY_INDEX = 20
@@ -146,6 +147,45 @@ def consentable_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def relevance_assessment_input_projection(
+    plan: dict[str, Any], hit: dict[str, Any], assessment: dict[str, Any]
+) -> dict[str, Any]:
+    """Return the exact claim, candidate, and assessor contract seen at relevance."""
+
+    claim = plan["claim"]
+    return {
+        "schema_version": RELEVANCE_INPUT_VERSION,
+        "claim": {
+            "claim_id": claim["claim_id"],
+            "claim_text": claim["claim_text"],
+            "claim_sha256": claim["claim_sha256"],
+        },
+        "candidate": {
+            "canonical_raw_hit_id": hit["raw_hit_id"],
+            "title": hit["title"],
+            "abstract_state": hit["abstract_state"],
+            "abstract_text": hit["abstract_text"],
+            "abstract_sha256": hit["abstract_sha256"],
+        },
+        "assessor_contract": {
+            "assessor_kind": assessment["assessor_kind"],
+            "assessor_id": assessment["assessor_id"],
+            "prompt_version": assessment["prompt_version"],
+            "task": "topical_relevance_only_no_stance_or_credibility",
+        },
+    }
+
+
+def render_relevance_prompt(projection: dict[str, Any]) -> str:
+    """Render the only prompt bytes bound by a Track A relevance row."""
+
+    return (
+        "Assess topical relevance only. Do not infer stance, credibility, consensus, "
+        "or claim truth. Use exactly this canonical assessment input:\n"
+        + canonical_bytes(projection).decode("utf-8")
+    )
+
+
 def parse_rfc3339(value: str, path: str) -> datetime:
     try:
         return datetime.fromisoformat(value.removesuffix("Z") + "+00:00")
@@ -197,6 +237,19 @@ def validate_plan(plan: dict[str, Any]) -> None:
     )
     query_map = _unique(queries, "query_id", "queries")
     provider_map = _unique(roster, "index_id", "provider_roster")
+    for index_id, provider in provider_map.items():
+        retention_state = provider["retention_state"]
+        retention_reference = provider["retention_reference"]
+        _expect(
+            (
+                retention_state == "known"
+                and isinstance(retention_reference, str)
+                and bool(retention_reference)
+            )
+            or (retention_state == "unknown" and retention_reference is None),
+            f"provider_roster.{index_id}.retention_reference",
+            "known retention requires a non-empty reference; unknown requires null",
+        )
     for query_id, query in query_map.items():
         _expect(query["source_claim_sha256"] == claim["claim_sha256"], f"queries.{query_id}.source_claim_sha256", "claim binding drifted")
         _expect(text_digest(query["accepted_query_text"]) == query["query_sha256"], f"queries.{query_id}.query_sha256", "does not bind accepted query text")
@@ -454,6 +507,25 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
         )
         raw_output = assessment["raw_output"]
         raw_output_sha256 = assessment["raw_output_sha256"]
+        assessment_projection = relevance_assessment_input_projection(
+            plan, hits[assessed_raw_hit_id], assessment
+        )
+        _expect(
+            assessment["assessment_input_sha256"] == digest(assessment_projection),
+            f"relevance_assessments[{index}].assessment_input_sha256",
+            "does not bind exact claim, candidate, and assessor contract",
+        )
+        expected_prompt = render_relevance_prompt(assessment_projection)
+        _expect(
+            assessment["prompt_utf8"] == expected_prompt,
+            f"relevance_assessments[{index}].prompt_utf8",
+            "does not equal the canonical relevance prompt",
+        )
+        _expect(
+            assessment["prompt_sha256"] == text_digest(expected_prompt),
+            f"relevance_assessments[{index}].prompt_sha256",
+            "does not bind exact prompt UTF-8 bytes",
+        )
         if raw_output is None:
             _expect(
                 raw_output_sha256 is None,

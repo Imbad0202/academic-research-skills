@@ -268,7 +268,23 @@
           "minLength": 1,
           "maxLength": 1000
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "retention_state": { "const": "known" } },
+            "required": ["retention_state"]
+          },
+          "then": {
+            "properties": {
+              "retention_reference": { "type": "string", "minLength": 1, "maxLength": 1000 }
+            }
+          },
+          "else": {
+            "properties": { "retention_reference": { "type": "null" } }
+          }
+        }
+      ]
     },
     "consent": {
       "type": "object",

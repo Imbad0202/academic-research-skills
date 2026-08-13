@@ -174,7 +174,10 @@ append-only local plan ledger.
 Each discovery adapter implements one closed request/response interface and
 declares its index id, API/product identity, query capability, returned metadata,
 abstract availability, pagination behavior, terms/retention reference, and
-failure vocabulary. An adapter cannot fall through to a different index.
+failure vocabulary. A `known` retention state requires a non-empty reference;
+an explicit `unknown` state requires a null reference, so the surface cannot
+claim known terms while withholding them. An adapter cannot fall through to a
+different index.
 
 Version 1 ceilings are:
 
@@ -247,8 +250,10 @@ relevance = relevant | not_relevant | ambiguous | not_checked
 ```
 
 A future relevance assessor sees only the exact claim and candidate title plus
-abstract when available. Its prompt/version, raw output, rationale, and failure
-are retained. `not_relevant` requires a recorded reason anchored to population,
+abstract when available. A canonical assessment-input digest binds that exact
+claim, candidate content, and assessor contract; the exact UTF-8 prompt and its
+digest, version, raw output, rationale, and failure are retained. `not_relevant`
+requires a recorded reason anchored to population,
 phenomenon/exposure, outcome, or proposition mismatch. `ambiguous` remains
 eligible; a missing abstract is not enough to declare a record irrelevant.
 

@@ -385,6 +385,9 @@
         "assessor_kind",
         "assessor_id",
         "prompt_version",
+        "assessment_input_sha256",
+        "prompt_utf8",
+        "prompt_sha256",
         "raw_output",
         "raw_output_sha256",
         "failure_code",
@@ -413,6 +416,13 @@
         "assessor_kind": { "enum": ["synthetic_fixture", "external_provided"] },
         "assessor_id": { "$ref": "#/$defs/identifier" },
         "prompt_version": { "$ref": "#/$defs/identifier" },
+        "assessment_input_sha256": { "$ref": "#/$defs/sha256" },
+        "prompt_utf8": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50000
+        },
+        "prompt_sha256": { "$ref": "#/$defs/sha256" },
         "raw_output": {
           "type": ["string", "null"],
           "minLength": 1,

@@ -14,10 +14,13 @@ ports, and (v3.6.7+) cross-model audit artifact pipelines.
   (`claim-standing-retrieval-input/1.0`) carries already-retained,
   adapter-neutral attempts, closed retry-authorization receipts, raw hits,
   explicit version relations, and caller-supplied relevance success/failure
-  evidence.
+  evidence bound to exact claim/candidate inputs and canonical prompt bytes.
 - `claim_standing/candidate_ledger.schema.json`
   (`claim-standing-candidate-ledger/1.0`) preserves every attempt and raw-hit
-  terminal state while recording deterministic work-family selection.
+terminal state while recording deterministic work-family selection.
+
+Provider retention disclosure is also closed: `known` requires a non-empty
+reference and `unknown` requires null.
 
 The pure local finalizer is
 `scripts/build_claim_standing_candidate_ledger.py`; the authoritative boundary

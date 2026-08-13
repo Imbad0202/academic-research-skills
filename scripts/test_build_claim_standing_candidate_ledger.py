@@ -49,8 +49,21 @@ def _rehash_plan(plan: dict) -> None:
 
 
 def _rehash_input(retained: dict, plan: dict | None = None) -> None:
+    active_plan = plan if plan is not None else _plan()
     if plan is not None:
-        retained["query_plan_sha256"] = plan["plan_sha256"]
+        retained["query_plan_sha256"] = active_plan["plan_sha256"]
+    hits = {row["raw_hit_id"]: row for row in retained["raw_hits"]}
+    for assessment in retained["relevance_assessments"]:
+        hit = hits.get(assessment["canonical_raw_hit_id"])
+        if hit is None:
+            continue
+        projection = ledger.relevance_assessment_input_projection(
+            active_plan, hit, assessment
+        )
+        prompt = ledger.render_relevance_prompt(projection)
+        assessment["assessment_input_sha256"] = ledger.digest(projection)
+        assessment["prompt_utf8"] = prompt
+        assessment["prompt_sha256"] = ledger.text_digest(prompt)
     retained["retrieval_input_sha256"] = ledger.bound_digest(
         retained, "retrieval_input_sha256"
     )
@@ -78,7 +91,7 @@ def test_all_contracts_are_valid_closed_draft_2020_12_instances() -> None:
 def test_fixture_replays_dedup_selection_failure_and_hash() -> None:
     result = ledger.build_ledger(_plan(), _retained())
     assert result["candidate_ledger_sha256"] == (
-        "cf9322c70e08ce2b09bbd1d7c03fb0d53a39fb3713d054b574b67704346084cf"
+        "7384b5645f5405a6a4d3e848f40c7ae034619cc8d86d9729ae744072f44e34ac"
     )
     assert result["counts"]["selected_work_families"] == 1
     assert result["counts"]["attempt_failure_counts"]["service_unavailable"] == 1
@@ -193,6 +206,49 @@ def test_consent_receipt_binds_complete_authorization_surface(
     retained = _retained()
     _rehash_input(retained, plan)
     with pytest.raises(ledger.LedgerError, match="consentable plan|query plan schema"):
+        ledger.build_ledger(plan, retained)
+
+
+@pytest.mark.parametrize(
+    ("state", "reference"),
+    [("known", None), ("unknown", "https://example.invalid/terms")],
+)
+def test_retention_disclosure_state_and_reference_are_consistent(
+    state: str, reference: str | None
+) -> None:
+    plan = _plan()
+    plan["provider_roster"][0]["retention_state"] = state
+    plan["provider_roster"][0]["retention_reference"] = reference
+    _rehash_plan(plan)
+    with pytest.raises(ledger.LedgerError, match="retention_reference"):
+        ledger.validate_plan(plan)
+    retained = _retained()
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="query plan schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+def test_relevance_rows_bind_exact_claim_candidate_and_prompt_bytes() -> None:
+    plan = _plan()
+    plan["claim"]["claim_text"] = "A wholly different reconsented claim."
+    plan["queries"][0]["accepted_query_text"] = plan["claim"]["claim_text"]
+    plan["queries"][0]["original_query_text"] = plan["claim"]["claim_text"]
+    _rehash_plan(plan)
+    retained = _retained()
+    retained["query_plan_sha256"] = plan["plan_sha256"]
+    retained["retrieval_input_sha256"] = ledger.bound_digest(
+        retained, "retrieval_input_sha256"
+    )
+    with pytest.raises(ledger.LedgerError, match="exact claim, candidate"):
+        ledger.build_ledger(plan, retained)
+
+    plan = _plan()
+    retained = _retained()
+    retained["relevance_assessments"][0]["prompt_utf8"] += " stale"
+    retained["retrieval_input_sha256"] = ledger.bound_digest(
+        retained, "retrieval_input_sha256"
+    )
+    with pytest.raises(ledger.LedgerError, match="canonical relevance prompt"):
         ledger.build_ledger(plan, retained)
 
 

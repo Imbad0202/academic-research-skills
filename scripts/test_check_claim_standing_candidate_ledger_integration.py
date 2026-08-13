@@ -73,9 +73,27 @@ def test_network_or_dispatch_capability_is_rejected(tmp_path: Path) -> None:
     path = root / guard.RUNTIME
     path.write_text("import requests\n" + path.read_text(encoding="utf-8"), encoding="utf-8")
     errors = guard.run_checks(root)
-    assert any("forbidden transport/model/process imports" in error for error in errors)
+    assert any("non-allowlisted transport/model/process-capable imports" in error for error in errors)
     _replace(root, guard.RUNTIME, 'add_parser("build"', 'add_parser("dispatch"')
     assert any("forbidden capability marker" in error for error in guard.run_checks(root))
+
+
+def test_non_allowlisted_and_dynamic_imports_are_rejected(tmp_path: Path) -> None:
+    root = _tree(tmp_path / "direct")
+    path = root / guard.RUNTIME
+    path.write_text("import httpx\n" + path.read_text(encoding="utf-8"), encoding="utf-8")
+    errors = guard.run_checks(root)
+    assert any("non-allowlisted" in error and "httpx" in error for error in errors)
+
+    root = _tree(tmp_path / "dynamic")
+    path = root / guard.RUNTIME
+    path.write_text(
+        "_process_module = __import__('subprocess')\n"
+        + path.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    errors = guard.run_checks(root)
+    assert any("dynamic import or code execution" in error for error in errors)
 
 
 def test_existing_resolver_change_is_rejected(tmp_path: Path) -> None:

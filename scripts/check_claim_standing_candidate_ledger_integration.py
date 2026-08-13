@@ -33,16 +33,24 @@ RESOLVER_HASHES = {
     Path("scripts/crossref_client.py"): "06da046164f882e20383cd63ec9e9b6da2507d7a5e1f23066adebb88f2256e25",
     Path("scripts/arxiv_client.py"): "76ace0911bf98b1a288e64ee41f4c2caf993b9df48ef3abb0c57b8446acf02a7",
 }
-FORBIDDEN_IMPORTS = {
-    "anthropic",
-    "http",
-    "openai",
-    "os",
-    "requests",
-    "socket",
-    "subprocess",
-    "urllib",
+ALLOWED_RUNTIME_IMPORTS = {
+    "__future__",
+    "argparse",
+    "collections",
+    "copy",
+    "datetime",
+    "hashlib",
+    "itertools",
+    "json",
+    "jsonschema",
+    "pathlib",
+    "re",
+    "sys",
+    "typing",
+    "unicodedata",
 }
+FORBIDDEN_DYNAMIC_CALLS = {"__import__", "compile", "eval", "exec", "import_module"}
+FORBIDDEN_DYNAMIC_NAMES = {"__builtins__", "__import__"}
 
 
 def _read(root: Path, relative: Path, errors: list[str]) -> str | None:
@@ -151,9 +159,40 @@ def run_checks(root: Path) -> list[str]:
                     imports.update(alias.name.split(".")[0] for alias in node.names)
                 elif isinstance(node, ast.ImportFrom) and node.module:
                     imports.add(node.module.split(".")[0])
-            bad = sorted(imports & FORBIDDEN_IMPORTS)
+            bad = sorted(imports - ALLOWED_RUNTIME_IMPORTS)
             if bad:
-                errors.append(f"{RUNTIME}: forbidden transport/model/process imports: {bad}")
+                errors.append(
+                    f"{RUNTIME}: non-allowlisted transport/model/process-capable imports: {bad}"
+                )
+            dynamic_calls: set[str] = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Name) and node.id in FORBIDDEN_DYNAMIC_NAMES:
+                    dynamic_calls.add(node.id)
+                if not isinstance(node, ast.Call):
+                    continue
+                if isinstance(node.func, ast.Name):
+                    name = node.func.id
+                elif (
+                    isinstance(node.func, ast.Attribute)
+                    and node.func.attr in {"__import__", "import_module"}
+                ):
+                    name = node.func.attr
+                elif (
+                    isinstance(node.func, ast.Attribute)
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "builtins"
+                    and node.func.attr in {"compile", "eval", "exec"}
+                ):
+                    name = node.func.attr
+                else:
+                    continue
+                if name in FORBIDDEN_DYNAMIC_CALLS:
+                    dynamic_calls.add(name)
+            if dynamic_calls:
+                errors.append(
+                    f"{RUNTIME}: dynamic import or code execution is forbidden: "
+                    f"{sorted(dynamic_calls)}"
+                )
         for forbidden in ("add_parser(\"dispatch\"", "add_parser('dispatch'", "urlopen(", ".request("):
             if forbidden in runtime_text:
                 errors.append(f"{RUNTIME}: forbidden capability marker {forbidden!r}")
@@ -169,6 +208,9 @@ def run_checks(root: Path) -> list[str]:
             "failed_completed < authorized < retry_started",
             "distinct_dois",
             "started <= returned <= completed",
+            "relevance_assessment_input_projection",
+            "render_relevance_prompt",
+            "assessment_input_sha256",
             '"not_checked"',
         ):
             if marker not in runtime_text:

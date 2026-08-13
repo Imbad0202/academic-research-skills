@@ -146,6 +146,9 @@
       "assessor_kind": "synthetic_fixture",
       "assessor_id": "fixture-assessor",
       "prompt_version": "fixture-v1",
+      "assessment_input_sha256": "021d09dedae80973323a1c5c626d7aa1f26b69fd13edc9acd2c0dd62cdb18269",
+      "prompt_utf8": "Assess topical relevance only. Do not infer stance, credibility, consensus, or claim truth. Use exactly this canonical assessment input:\n{\"assessor_contract\":{\"assessor_id\":\"fixture-assessor\",\"assessor_kind\":\"synthetic_fixture\",\"prompt_version\":\"fixture-v1\",\"task\":\"topical_relevance_only_no_stance_or_credibility\"},\"candidate\":{\"abstract_sha256\":\"6a2bb55b2a3b2f75c3820b0e6c999c4b3a4063b7ff57690c2bf9650a6815fa1f\",\"abstract_state\":\"available\",\"abstract_text\":\"A bounded synthetic abstract.\",\"canonical_raw_hit_id\":\"hit-1\",\"title\":\"Reminder Effects\"},\"claim\":{\"claim_id\":\"claim-001\",\"claim_sha256\":\"edbbc1e1a03bd1daee12c869a5f74f163ae75d225a1f7dab008ec2aa90b2f280\",\"claim_text\":\"A structured reminder improves artifact completeness by 12%.\"},\"schema_version\":\"claim-standing-relevance-assessment-input/1.0\"}",
+      "prompt_sha256": "4d35e4d02af13e26aede820fe2c8e89676c28944f55427e732228adec21ffc8f",
       "raw_output": "assessment-hit-1",
       "raw_output_sha256": "404f5258a42cd116629bf3f853897ed2075688df22bae70f640e17c782594ba4",
       "failure_code": null,
@@ -161,6 +164,9 @@
       "assessor_kind": "synthetic_fixture",
       "assessor_id": "fixture-assessor",
       "prompt_version": "fixture-v1",
+      "assessment_input_sha256": "26dee1514168ed836ca81f0721589ac15545e9c65a3d5538d8ad2c1a42df8e9f",
+      "prompt_utf8": "Assess topical relevance only. Do not infer stance, credibility, consensus, or claim truth. Use exactly this canonical assessment input:\n{\"assessor_contract\":{\"assessor_id\":\"fixture-assessor\",\"assessor_kind\":\"synthetic_fixture\",\"prompt_version\":\"fixture-v1\",\"task\":\"topical_relevance_only_no_stance_or_credibility\"},\"candidate\":{\"abstract_sha256\":\"21e69b9d827e631dea8672473111a4683415dbd382702323102ac6cd33718f18\",\"abstract_state\":\"available\",\"abstract_text\":\"An unrelated synthetic abstract.\",\"canonical_raw_hit_id\":\"hit-3\",\"title\":\"Unrelated evidence\"},\"claim\":{\"claim_id\":\"claim-001\",\"claim_sha256\":\"edbbc1e1a03bd1daee12c869a5f74f163ae75d225a1f7dab008ec2aa90b2f280\",\"claim_text\":\"A structured reminder improves artifact completeness by 12%.\"},\"schema_version\":\"claim-standing-relevance-assessment-input/1.0\"}",
+      "prompt_sha256": "5a8d5b751b4f289650dc41cd5b1dc60918150b9a188f706903689ed37a978282",
       "raw_output": "assessment-hit-3",
       "raw_output_sha256": "07669785c5c1509b74cd59e66278a6b0da53a1f2a67619c042f78d6a75d1d18e",
       "failure_code": null,
@@ -169,5 +175,5 @@
     }
   ],
   "completed_at": "2026-08-13T01:01:00Z",
-  "retrieval_input_sha256": "b886f0a04db12049415110588c46b24820dda0fdfa20d483f746093ab8117ac8"
+  "retrieval_input_sha256": "83ee5010ae03d404555e4bd85a2aeccd46cd9c752327fc600dbebd1b228e1c22"
 }
