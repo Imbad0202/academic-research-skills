@@ -38,6 +38,7 @@ ALLOWED_RUNTIME_DIRECT_IMPORTS = {
     "copy",
     "hashlib",
     "json",
+    "os",
     "re",
     "sys",
     "unicodedata",
@@ -47,10 +48,27 @@ ALLOWED_RUNTIME_FROM_IMPORTS = {
     "collections": {"Counter"},
     "datetime": {"datetime"},
     "itertools": {"combinations"},
+    "json": {"JSONDecodeError"},
     "jsonschema": {"Draft202012Validator"},
     "jsonschema.exceptions": {"SchemaError", "ValidationError"},
     "pathlib": {"Path"},
     "typing": {"Any"},
+}
+ALLOWED_RUNTIME_MODULE_CALLS = {
+    "argparse": {"ArgumentParser"},
+    "copy": {"deepcopy"},
+    "hashlib": {"sha256"},
+    "json": {"dumps", "loads"},
+    "os": {"close", "fdopen", "fsync", "open"},
+    "re": {"compile"},
+    "unicodedata": {"category", "normalize"},
+}
+ALLOWED_RUNTIME_MODULE_VALUES = {
+    # The only non-call module value is the explicit print(..., file=...) sink.
+    "sys": {"stderr"},
+}
+ALLOWED_RUNTIME_MODULE_CONSTANTS = {
+    "os": {"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "name"},
 }
 FORBIDDEN_RUNTIME_NAMES = {
     "__builtins__",
@@ -203,13 +221,20 @@ def run_checks(root: Path) -> list[str]:
             errors.append(f"{RUNTIME}: invalid Python: {exc}")
         else:
             forbidden_imports: set[str] = set()
+            direct_module_bindings: dict[str, str] = {}
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
-                    forbidden_imports.update(
-                        alias.name
-                        for alias in node.names
-                        if alias.name not in ALLOWED_RUNTIME_DIRECT_IMPORTS
-                    )
+                    for alias in node.names:
+                        if alias.name not in ALLOWED_RUNTIME_DIRECT_IMPORTS:
+                            forbidden_imports.add(alias.name)
+                            continue
+                        binding = alias.asname or alias.name
+                        existing = direct_module_bindings.get(binding)
+                        if existing is not None and existing != alias.name:
+                            forbidden_imports.add(
+                                f"ambiguous-binding:{binding}"
+                            )
+                        direct_module_bindings[binding] = alias.name
                 elif isinstance(node, ast.ImportFrom):
                     module = node.module or "<relative>"
                     allowed_symbols = (
@@ -226,6 +251,91 @@ def run_checks(root: Path) -> list[str]:
                 errors.append(
                     f"{RUNTIME}: non-allowlisted transport/model/process-capable imports: "
                     f"{sorted(forbidden_imports)}"
+                )
+            shadowed_module_bindings: set[str] = set()
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Name)
+                    and isinstance(node.ctx, (ast.Store, ast.Del))
+                    and node.id in direct_module_bindings
+                ):
+                    shadowed_module_bindings.add(node.id)
+                elif (
+                    isinstance(node, ast.arg)
+                    and node.arg in direct_module_bindings
+                ):
+                    shadowed_module_bindings.add(node.arg)
+                elif isinstance(node, ast.ImportFrom):
+                    for alias in node.names:
+                        if (alias.asname or alias.name) in direct_module_bindings:
+                            shadowed_module_bindings.add(alias.asname or alias.name)
+            if shadowed_module_bindings:
+                errors.append(
+                    f"{RUNTIME}: direct module bindings cannot be shadowed: "
+                    f"{sorted(shadowed_module_bindings)}"
+                )
+            parents = {
+                child: parent
+                for parent in ast.walk(tree)
+                for child in ast.iter_child_nodes(parent)
+            }
+            module_reference_errors: set[str] = set()
+            for node in ast.walk(tree):
+                if not (
+                    isinstance(node, ast.Name)
+                    and isinstance(node.ctx, ast.Load)
+                    and node.id in direct_module_bindings
+                ):
+                    continue
+                module = direct_module_bindings[node.id]
+                parent = parents.get(node)
+                if not (isinstance(parent, ast.Attribute) and parent.value is node):
+                    module_reference_errors.add(
+                        f"{module} via {node.id}: bare module reference"
+                    )
+                    continue
+                attributes = [parent.attr]
+                outer = parent
+                while True:
+                    ancestor = parents.get(outer)
+                    if not (
+                        isinstance(ancestor, ast.Attribute)
+                        and ancestor.value is outer
+                    ):
+                        break
+                    attributes.append(ancestor.attr)
+                    outer = ancestor
+                attribute_path = ".".join(attributes)
+                use_parent = parents.get(outer)
+                is_allowed_call = (
+                    attribute_path
+                    in ALLOWED_RUNTIME_MODULE_CALLS.get(module, set())
+                    and isinstance(use_parent, ast.Call)
+                    and use_parent.func is outer
+                )
+                is_allowed_value = (
+                    attribute_path
+                    in ALLOWED_RUNTIME_MODULE_VALUES.get(module, set())
+                    and isinstance(use_parent, ast.keyword)
+                    and use_parent.arg == "file"
+                    and isinstance(parents.get(use_parent), ast.Call)
+                    and isinstance(parents[use_parent].func, ast.Name)
+                    and parents[use_parent].func.id == "print"
+                )
+                is_allowed_constant = attribute_path in (
+                    ALLOWED_RUNTIME_MODULE_CONSTANTS.get(module, set())
+                ) and isinstance(outer.ctx, ast.Load)
+                if not (
+                    is_allowed_call or is_allowed_value or is_allowed_constant
+                ):
+                    module_reference_errors.add(
+                        f"{module} via {node.id}.{attribute_path}"
+                    )
+            if module_reference_errors:
+                errors.append(
+                    f"{RUNTIME}: direct module references must match exact "
+                    "current-use call/value allowlists: "
+                    f"{sorted(module_reference_errors)}"
                 )
             dynamic_references: set[str] = set()
             for node in ast.walk(tree):
@@ -259,6 +369,13 @@ def run_checks(root: Path) -> list[str]:
             "relevance_assessment_input_projection",
             "render_relevance_prompt",
             "assessment_input_sha256",
+            "has_visible_semantic_text",
+            "_DOI_BODY_RE",
+            '== "explicit_local_export"',
+            "EXPLICIT_LOCAL_EXPORT_BOUNDARY",
+            "os.O_NOFOLLOW",
+            "os.O_EXCL",
+            "0o600",
             '"not_checked"',
         ):
             if marker not in runtime_text:

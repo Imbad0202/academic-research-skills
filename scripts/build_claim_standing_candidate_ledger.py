@@ -13,12 +13,14 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import re
 import sys
 import unicodedata
 from collections import Counter
 from datetime import datetime
 from itertools import combinations
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +37,9 @@ MAX_INDEXES = 4
 MAX_HITS_PER_QUERY_INDEX = 20
 MAX_RAW_HITS = 240
 MAX_SELECTED = 40
+EXPLICIT_LOCAL_EXPORT_BOUNDARY = (
+    "One local candidate-ledger export to the operator-named output path is authorized."
+)
 CAPS = {
     "max_queries": MAX_QUERIES,
     "max_indexes": MAX_INDEXES,
@@ -65,7 +70,8 @@ SCHEMA_DIR = Path(__file__).resolve().parents[1] / "shared/contracts/claim_stand
 
 _CITATION_MARKER_RE = re.compile(r"<!--(?:ref|anchor):[^>]*-->")
 _ASCII_WS_RE = re.compile(r"[\t\n\r\f\v ]+")
-_DOI_PREFIX_RE = re.compile(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", re.I)
+_DOI_PREFIX_RE = re.compile(r"(?i)^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)")
+_DOI_BODY_RE = re.compile(r"^10\.[0-9]{4,9}/(.+)$")
 
 
 class LedgerError(ValueError):
@@ -94,7 +100,7 @@ def load_json(path: Path) -> Any:
                 ValueError(f"non-finite number {token!r}")
             ),
         )
-    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+    except (OSError, UnicodeError, JSONDecodeError, ValueError) as exc:
         raise LedgerError(f"{path}: cannot read strict UTF-8 JSON: {exc}") from exc
 
 
@@ -109,9 +115,16 @@ def validate_schema(value: Any, filename: str, label: str) -> None:
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
-    ).encode("utf-8")
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except UnicodeError as exc:
+        raise LedgerError("canonical JSON contains invalid Unicode text") from exc
 
 
 def digest(value: Any) -> str:
@@ -119,7 +132,11 @@ def digest(value: Any) -> str:
 
 
 def text_digest(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+    try:
+        encoded = value.encode("utf-8")
+    except UnicodeError as exc:
+        raise LedgerError("text digest input contains invalid Unicode text") from exc
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def bound_digest(value: dict[str, Any], field: str) -> str:
@@ -197,6 +214,28 @@ def exact_claim_query(claim_text: str) -> str:
     return _ASCII_WS_RE.sub(" ", _CITATION_MARKER_RE.sub("", claim_text)).strip()
 
 
+def has_visible_semantic_text(value: Any, *, allow_symbols: bool) -> bool:
+    """Return whether NFKC text has a visible semantic base character.
+
+    Surrogates are rejected anywhere. Unicode control/format/separator-only,
+    combining-mark-only, whitespace-only, and punctuation-only strings are not
+    semantic text. Narrative fields may opt into a symbol as the visible base;
+    provider identifiers and author names require a letter or number.
+    """
+
+    if not isinstance(value, str):
+        return False
+    try:
+        normalized = unicodedata.normalize("NFKC", value)
+        categories = [unicodedata.category(char) for char in normalized]
+    except UnicodeError as exc:
+        raise LedgerError("semantic text contains invalid Unicode") from exc
+    if any(category == "Cs" for category in categories):
+        return False
+    allowed_groups = {"L", "N", "S"} if allow_symbols else {"L", "N"}
+    return any(category[0] in allowed_groups for category in categories)
+
+
 def _expect(condition: bool, path: str, message: str) -> None:
     if not condition:
         raise LedgerError(f"{path}: {message}")
@@ -216,7 +255,11 @@ def validate_plan(plan: dict[str, Any]) -> None:
     _expect(plan.get("schema_version") == PLAN_VERSION, "schema_version", f"must equal {PLAN_VERSION}")
     _expect(plan.get("caps") == CAPS, "caps", "must equal the frozen v1 ceilings")
     claim = plan["claim"]
-    _expect(bool(claim["claim_text"].strip()), "claim.claim_text", "must be non-whitespace")
+    _expect(
+        has_visible_semantic_text(claim["claim_text"], allow_symbols=True),
+        "claim.claim_text",
+        "must contain visible semantic text after NFKC normalization",
+    )
     _expect(text_digest(claim["claim_text"]) == claim["claim_sha256"], "claim.claim_sha256", "does not bind exact claim text")
     checkpoint = claim["checkpoint"]
     tier = claim["registry_selection_tier"]
@@ -246,28 +289,31 @@ def validate_plan(plan: dict[str, Any]) -> None:
         ):
             disclosure = provider[disclosure_field]
             _expect(
-                isinstance(disclosure, str) and bool(disclosure.strip()),
+                has_visible_semantic_text(disclosure, allow_symbols=True),
                 f"provider_roster.{index_id}.{disclosure_field}",
-                "must contain non-whitespace provider disclosure text",
+                "must contain visible semantic provider disclosure text after NFKC normalization",
             )
         retention_state = provider["retention_state"]
         retention_reference = provider["retention_reference"]
         _expect(
             (
                 retention_state == "known"
-                and isinstance(retention_reference, str)
-                and bool(retention_reference.strip())
+                and has_visible_semantic_text(
+                    retention_reference, allow_symbols=True
+                )
             )
             or (retention_state == "unknown" and retention_reference is None),
             f"provider_roster.{index_id}.retention_reference",
-            "known retention requires a non-empty reference; unknown requires null",
+            "known retention requires visible semantic reference text after NFKC normalization; unknown requires null",
         )
     for query_id, query in query_map.items():
         for query_text_field in ("original_query_text", "accepted_query_text"):
             _expect(
-                bool(query[query_text_field].strip()),
+                has_visible_semantic_text(
+                    query[query_text_field], allow_symbols=True
+                ),
                 f"queries.{query_id}.{query_text_field}",
-                "must be non-whitespace",
+                "must contain visible semantic text after NFKC normalization",
             )
         _expect(query["source_claim_sha256"] == claim["claim_sha256"], f"queries.{query_id}.source_claim_sha256", "claim binding drifted")
         _expect(text_digest(query["accepted_query_text"]) == query["query_sha256"], f"queries.{query_id}.query_sha256", "does not bind accepted query text")
@@ -283,9 +329,35 @@ def validate_plan(plan: dict[str, Any]) -> None:
     _expect(consent["stance_classification_authorized"] is False, "consent.stance_classification_authorized", "must be false")
     for disclosure_field in ("deletion_boundary", "export_boundary"):
         _expect(
-            bool(consent[disclosure_field].strip()),
+            has_visible_semantic_text(
+                consent[disclosure_field], allow_symbols=True
+            ),
             f"consent.{disclosure_field}",
-            "must contain a non-whitespace disclosure",
+            "must contain visible semantic disclosure text after NFKC normalization",
+        )
+    if consent["local_persistence"] == "explicit_local_export":
+        _expect(
+            consent["export_boundary"] == EXPLICIT_LOCAL_EXPORT_BOUNDARY,
+            "consent.export_boundary",
+            "explicit_local_export requires the exact closed local-export authorization boundary",
+        )
+        _expect(
+            has_visible_semantic_text(
+                consent.get("authorized_output_path"), allow_symbols=True
+            ),
+            "consent.authorized_output_path",
+            "explicit_local_export requires one hash-bound operator-named output path",
+        )
+        _expect(
+            Path(consent["authorized_output_path"]).is_absolute(),
+            "consent.authorized_output_path",
+            "must be an absolute path so its target cannot vary by working directory",
+        )
+    else:
+        _expect(
+            consent.get("authorized_output_path") is None,
+            "consent.authorized_output_path",
+            "session_only must not authorize an output path",
         )
     bindings = {
         "claim_sha256": claim["claim_sha256"],
@@ -444,25 +516,38 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
             seen.add(cursor)
             cursor = attempts[cursor]["retry_of_attempt_id"]
     for hit_id, hit in hits.items():
-        for identity_field in ("provider_record_id", "doi", "title"):
-            identity_value = hit[identity_field]
-            _expect(
-                identity_value is None
-                or (isinstance(identity_value, str) and bool(identity_value.strip())),
-                f"raw_hits.{hit_id}.{identity_field}",
-                "must be null or contain non-whitespace identity text",
-            )
+        provider_record_id = hit["provider_record_id"]
+        _expect(
+            provider_record_id is None
+            or has_visible_semantic_text(
+                provider_record_id, allow_symbols=False
+            ),
+            f"raw_hits.{hit_id}.provider_record_id",
+            "must be null or contain a visible letter or number after NFKC normalization",
+        )
+        doi = hit["doi"]
+        _expect(
+            doi is None or isinstance(doi, str),
+            f"raw_hits.{hit_id}.doi",
+            "must be null or a retained provider DOI string",
+        )
+        title = hit["title"]
+        _expect(
+            title is None
+            or has_visible_semantic_text(title, allow_symbols=True),
+            f"raw_hits.{hit_id}.title",
+            "must be null or contain visible semantic text after NFKC normalization",
+        )
         for author_index, author in enumerate(hit["authors"]):
             for author_field in ("family", "given"):
                 author_value = author[author_field]
                 _expect(
                     author_value is None
-                    or (
-                        isinstance(author_value, str)
-                        and bool(author_value.strip())
+                    or has_visible_semantic_text(
+                        author_value, allow_symbols=False
                     ),
                     f"raw_hits.{hit_id}.authors[{author_index}].{author_field}",
-                    "must be null or contain non-whitespace author text",
+                    "must be null or contain a visible letter or number after NFKC normalization",
                 )
         _expect(hit["probe_id"] == plan["probe_id"], f"raw_hits.{hit_id}.probe_id", "probe drifted")
         _expect(hit["attempt_id"] in attempts, f"raw_hits.{hit_id}.attempt_id", "unknown attempt")
@@ -475,10 +560,11 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
         hits_by_attempt[hit["attempt_id"]] += 1
         if hit["abstract_state"] == "available":
             _expect(
-                isinstance(hit["abstract_text"], str)
-                and bool(hit["abstract_text"].strip()),
+                has_visible_semantic_text(
+                    hit["abstract_text"], allow_symbols=True
+                ),
                 f"raw_hits.{hit_id}.abstract_text",
-                "available abstract must contain non-whitespace text",
+                "available abstract must contain visible semantic text after NFKC normalization",
             )
             _expect(hit["abstract_sha256"] == text_digest(hit["abstract_text"]), f"raw_hits.{hit_id}.abstract_sha256", "does not bind abstract")
         else:
@@ -594,15 +680,16 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
                 "successful assessment must have a checked relevance state",
             )
             _expect(
-                isinstance(raw_output, str) and bool(raw_output.strip()),
+                has_visible_semantic_text(raw_output, allow_symbols=True),
                 f"relevance_assessments[{index}].raw_output",
-                "successful assessment must retain non-whitespace raw output",
+                "successful assessment must retain visible semantic raw output after NFKC normalization",
             )
             _expect(
-                isinstance(assessment["rationale"], str)
-                and bool(assessment["rationale"].strip()),
+                has_visible_semantic_text(
+                    assessment["rationale"], allow_symbols=True
+                ),
                 f"relevance_assessments[{index}].rationale",
-                "successful assessment must retain a non-whitespace rationale",
+                "successful assessment must retain visible semantic rationale text after NFKC normalization",
             )
             _expect(
                 assessment["failure_code"] is None
@@ -624,10 +711,11 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
             )
             _expect(
                 assessment["failure_code"] is not None
-                and isinstance(assessment["failure_detail"], str)
-                and bool(assessment["failure_detail"].strip()),
+                and has_visible_semantic_text(
+                    assessment["failure_detail"], allow_symbols=True
+                ),
                 f"relevance_assessments[{index}].failure",
-                "failed assessment must retain failure code and non-whitespace detail",
+                "failed assessment must retain a failure code and visible semantic detail after NFKC normalization",
             )
     _expect(retained["retrieval_input_sha256"] == bound_digest(retained, "retrieval_input_sha256"), "retrieval_input_sha256", "does not bind input")
 
@@ -635,27 +723,47 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
 def normalize_doi(value: str | None) -> str | None:
     if value is None:
         return None
-    return _DOI_PREFIX_RE.sub("", value.strip()).rstrip(".").casefold() or None
+    try:
+        normalized = unicodedata.normalize("NFKC", value).strip()
+        normalized = _DOI_PREFIX_RE.sub("", normalized).strip().casefold()
+        match = _DOI_BODY_RE.fullmatch(normalized)
+        if match is None:
+            return None
+        suffix = match.group(1)
+        categories = [unicodedata.category(char) for char in suffix]
+    except (TypeError, UnicodeError):
+        return None
+    if any(
+        category[0] in {"C", "Z"} or char.isspace()
+        for char, category in zip(suffix, categories)
+    ):
+        return None
+    if not any(category[0] in {"L", "N"} for category in categories):
+        return None
+    return normalized
 
 
 def normalize_provider_record_id(value: str | None) -> str | None:
-    if value is None:
+    if value is None or not has_visible_semantic_text(value, allow_symbols=False):
         return None
-    return value.strip() or None
+    return unicodedata.normalize("NFKC", value).strip() or None
 
 
 def normalize_author_family(value: str | None) -> str | None:
-    if value is None:
+    if value is None or not has_visible_semantic_text(value, allow_symbols=False):
         return None
     normalized = unicodedata.normalize("NFKC", value).casefold().strip()
     return normalized or None
 
 
 def normalize_title(value: str | None) -> str | None:
-    if value is None:
+    if value is None or not has_visible_semantic_text(value, allow_symbols=True):
         return None
     text = unicodedata.normalize("NFKC", value).casefold()
-    text = "".join(" " if unicodedata.category(char)[0] in {"P", "Z"} else char for char in text)
+    text = "".join(
+        " " if unicodedata.category(char)[0] in {"C", "P", "Z"} else char
+        for char in text
+    )
     return _ASCII_WS_RE.sub(" ", text).strip() or None
 
 
@@ -823,7 +931,7 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
                 "coverage": coverage,
                 "content_state": state,
                 "content_sha256": canonical["abstract_sha256"] if coverage == "abstract" else None,
-                "sharing_scope": "session_only",
+                "sharing_scope": plan["consent"]["local_persistence"],
                 "rights_basis": "not_assessed",
             }
         )
@@ -859,6 +967,9 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
         "query_plan_sha256": plan["plan_sha256"],
         "claim_sha256": plan["claim"]["claim_sha256"],
         "adapter_registry_sha256": digest(plan["provider_roster"]),
+        "local_persistence": plan["consent"]["local_persistence"],
+        "export_boundary": plan["consent"]["export_boundary"],
+        "authorized_output_path": plan["consent"].get("authorized_output_path"),
         "retrieval_input_sha256": retained["retrieval_input_sha256"],
         "attempts": copy.deepcopy(retained["attempts"]),
         "retry_authorizations": copy.deepcopy(retained["retry_authorizations"]),
@@ -889,17 +1000,34 @@ def validate_ledger(plan: dict[str, Any], retained: dict[str, Any], ledger: dict
 
 
 def write_new_ledger(path: Path, value: dict[str, Any]) -> None:
+    descriptor: int | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("x", encoding="utf-8", newline="\n") as handle:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if os.name != "nt":
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path, flags, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+            descriptor = None
             handle.write(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        if os.name != "nt":
+            directory_descriptor = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_descriptor)
+            finally:
+                os.close(directory_descriptor)
     except FileExistsError as exc:
         raise LedgerError("output: refuses to overwrite an existing path") from exc
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         raise LedgerError(f"output: cannot write new ledger: {exc}") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
 
 
-def _parser() -> argparse.ArgumentParser:
+def _parser() -> Any:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     build = sub.add_parser("build", help="write one new replayable ledger; never retrieve")
@@ -919,6 +1047,19 @@ def main(argv: list[str] | None = None) -> int:
         plan = load_json(args.query_plan)
         retained = load_json(args.retrieval_input)
         if args.command == "build":
+            _expect(
+                plan.get("consent", {}).get("local_persistence")
+                == "explicit_local_export",
+                "output",
+                "local_persistence=session_only forbids writing a ledger; "
+                "a separately consented explicit_local_export plan is required",
+            )
+            _expect(
+                plan.get("consent", {}).get("authorized_output_path")
+                == str(args.output),
+                "output",
+                "does not exactly match the hash-bound authorized_output_path",
+            )
             ledger = build_ledger(plan, retained)
             write_new_ledger(args.output, ledger)
             print(f"PASS: wrote {args.output}")

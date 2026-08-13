@@ -113,6 +113,7 @@
         "checkpoint": { "enum": ["stage_2_5", "stage_4_5"] },
         "claim_id": { "$ref": "#/$defs/identifier" },
         "claim_text": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
@@ -198,12 +199,14 @@
       "properties": {
         "query_id": { "$ref": "#/$defs/identifier" },
         "original_query_text": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
           "pattern": "\\S"
         },
         "accepted_query_text": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
@@ -246,6 +249,7 @@
       "properties": {
         "index_id": { "$ref": "#/$defs/identifier" },
         "product_identity": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 300,
@@ -253,6 +257,7 @@
         },
         "purpose": { "const": "scholarly_discovery" },
         "query_capability": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 500,
@@ -262,6 +267,7 @@
           "enum": ["available_when_returned", "metadata_only", "mixed"]
         },
         "pagination_behavior": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 500,
@@ -270,6 +276,7 @@
         "adapter_version": { "$ref": "#/$defs/identifier" },
         "retention_state": { "enum": ["known", "unknown"] },
         "retention_reference": {
+          "description": "When known, runtime requires NFKC text with a visible letter, number, or symbol and rejects any surrogate; unknown remains null.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 1000
@@ -325,22 +332,58 @@
         "stance_classification_authorized": { "const": false },
         "advisory_acknowledged": { "const": true },
         "search_bounded_acknowledged": { "const": true },
-        "local_persistence": { "enum": ["session_only", "explicit_local_export"] },
+        "local_persistence": {
+          "description": "CLI build refuses every output path for session_only. A write requires this hash-bound receipt to say explicit_local_export.",
+          "enum": ["session_only", "explicit_local_export"]
+        },
         "provider_retention_disclosed": { "const": true },
         "deletion_boundary": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 1000,
           "pattern": "\\S"
         },
         "export_boundary": {
+          "description": "Portable schema uses \\S; runtime additionally requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": "string",
           "minLength": 1,
           "maxLength": 1000,
           "pattern": "\\S"
         },
+        "authorized_output_path": {
+          "description": "Exact absolute string form of the single operator-named CLI output path. Required and hash-bound for explicit_local_export; absent or null for session_only. Runtime rejects relative paths so the target cannot vary by working directory.",
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "\\S"
+        },
         "receipt_sha256": { "$ref": "#/$defs/sha256" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "local_persistence": { "const": "explicit_local_export" }
+            },
+            "required": ["local_persistence"]
+          },
+          "then": {
+            "required": ["authorized_output_path"],
+            "properties": {
+              "export_boundary": {
+                "const": "One local candidate-ledger export to the operator-named output path is authorized."
+              },
+              "authorized_output_path": { "type": "string", "pattern": "\\S" }
+            }
+          },
+          "else": {
+            "properties": {
+              "authorized_output_path": { "type": "null" }
+            }
+          }
+        }
+      ]
     }
   }
 }

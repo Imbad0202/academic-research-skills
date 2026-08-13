@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -48,6 +49,15 @@ def _rehash_plan(plan: dict) -> None:
     plan["plan_sha256"] = ledger.bound_digest(plan, "plan_sha256")
 
 
+def _authorize_local_export(
+    plan: dict, output_path: str = "/operator-named/candidate-ledger.json"
+) -> None:
+    plan["consent"]["local_persistence"] = "explicit_local_export"
+    plan["consent"]["export_boundary"] = ledger.EXPLICIT_LOCAL_EXPORT_BOUNDARY
+    plan["consent"]["authorized_output_path"] = output_path
+    _rehash_plan(plan)
+
+
 def _rehash_input(retained: dict, plan: dict | None = None) -> None:
     active_plan = plan if plan is not None else _plan()
     if plan is not None:
@@ -91,7 +101,7 @@ def test_all_contracts_are_valid_closed_draft_2020_12_instances() -> None:
 def test_fixture_replays_dedup_selection_failure_and_hash() -> None:
     result = ledger.build_ledger(_plan(), _retained())
     assert result["candidate_ledger_sha256"] == (
-        "7384b5645f5405a6a4d3e848f40c7ae034619cc8d86d9729ae744072f44e34ac"
+        "a68d62a08a508a8a9f8aac62fdf2d7aef978f75ba941ea5e38ab52e9d5102843"
     )
     assert result["counts"]["selected_work_families"] == 1
     assert result["counts"]["attempt_failure_counts"]["service_unavailable"] == 1
@@ -107,6 +117,54 @@ def test_build_is_deterministic_and_does_not_mutate_inputs() -> None:
     frozen = copy.deepcopy((plan, retained))
     assert ledger.build_ledger(plan, retained) == ledger.build_ledger(plan, retained)
     assert (plan, retained) == frozen
+
+
+@pytest.mark.parametrize(
+    "persistence", ["session_only", "explicit_local_export"]
+)
+def test_finalized_ledger_truthfully_carries_consent_persistence(
+    persistence: str,
+) -> None:
+    plan = _plan()
+    if persistence == "explicit_local_export":
+        _authorize_local_export(plan)
+    else:
+        _rehash_plan(plan)
+    retained = _retained()
+    _rehash_input(retained, plan)
+    result = ledger.build_ledger(plan, retained)
+    assert result["local_persistence"] == persistence
+    assert result["export_boundary"] == plan["consent"]["export_boundary"]
+    assert result["authorized_output_path"] == plan["consent"].get(
+        "authorized_output_path"
+    )
+    assert {row["sharing_scope"] for row in result["work_families"]} == {
+        persistence
+    }
+    assert {row["rights_basis"] for row in result["work_families"]} == {
+        "not_assessed"
+    }
+
+
+def test_explicit_local_export_requires_exact_bound_consent_language() -> None:
+    plan = _plan()
+    plan["consent"]["local_persistence"] = "explicit_local_export"
+    plan["consent"]["export_boundary"] = "No export is authorized."
+    plan["consent"]["authorized_output_path"] = "/tmp/ledger.json"
+    _rehash_plan(plan)
+    with pytest.raises(ledger.LedgerError, match="export_boundary"):
+        ledger.validate_plan(plan)
+    retained = _retained()
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="query plan schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+def test_explicit_local_export_rejects_relative_authorized_path() -> None:
+    plan = _plan()
+    _authorize_local_export(plan, "ledger.json")
+    with pytest.raises(ledger.LedgerError, match="absolute path"):
+        ledger.validate_plan(plan)
 
 
 @pytest.mark.parametrize(
@@ -142,16 +200,67 @@ def test_normalizers_collapse_semantically_empty_identity_values_to_null() -> No
     assert ledger.normalize_author_family("   ") is None
 
 
-def test_normalization_empty_title_and_doi_do_not_satisfy_minimum_identity() -> None:
+@pytest.mark.parametrize("value", ["\u200b", "\u0301", "\u2028", "\x00", "\ud800"])
+def test_visible_semantic_text_rejects_nonsemantic_unicode(value: str) -> None:
+    assert not ledger.has_visible_semantic_text(value, allow_symbols=True)
+    assert not ledger.has_visible_semantic_text(value, allow_symbols=False)
+
+
+def test_visible_semantic_text_nfkc_base_and_field_symbol_policy() -> None:
+    assert ledger.has_visible_semantic_text("Ａ", allow_symbols=False)
+    assert ledger.has_visible_semantic_text("a\u0301", allow_symbols=False)
+    assert ledger.has_visible_semantic_text("✓", allow_symbols=True)
+    assert not ledger.has_visible_semantic_text("✓", allow_symbols=False)
+    assert not ledger.has_visible_semantic_text("---", allow_symbols=True)
+
+
+def test_semantically_empty_title_fails_closed_at_the_runtime_boundary() -> None:
     plan = _plan()
     retained = _retained()
     hit = retained["raw_hits"][2]
     hit.update(provider_record_id=None, doi="doi:   ", title="---")
+    with pytest.raises(ledger.LedgerError, match="raw_hits.hit-3.title"):
+        ledger.validate_input(plan, retained)
+
+
+@pytest.mark.parametrize(
+    "invalid_doi",
+    ["-", "x", "10.1/", "10.1234/---", "10.1234/x\u200b"],
+)
+def test_invalid_doi_does_not_satisfy_minimum_identity(invalid_doi: str) -> None:
+    plan = _plan()
+    retained = _retained()
+    hit = retained["raw_hits"][2]
+    hit.update(provider_record_id=None, doi=invalid_doi, title=None)
     retained["relevance_assessments"] = retained["relevance_assessments"][:1]
     _rehash_input(retained, plan)
     result = ledger.build_ledger(plan, retained)
     row = next(row for row in result["raw_hits"] if row["raw_hit_id"] == "hit-3")
     assert row["terminal_state"] == "missing_title_and_stable_id"
+
+
+@pytest.mark.parametrize(
+    "invalid_doi",
+    [
+        "-",
+        "x",
+        "10.1/",
+        "10.1234/---",
+        "10.1234/x\u200b",
+        "10.1234/x\ud800",
+    ],
+)
+def test_doi_normalizer_rejects_invalid_or_invisible_suffixes(
+    invalid_doi: str,
+) -> None:
+    assert ledger.normalize_doi(invalid_doi) is None
+
+
+def test_doi_normalizer_accepts_only_a_valid_prefixed_body() -> None:
+    assert ledger.normalize_doi(" doi: 10.1234/X ") == "10.1234/x"
+    assert ledger.normalize_doi("https://doi.org/10.123456789/Ab-1") == (
+        "10.123456789/ab-1"
+    )
 
 
 def test_normalization_empty_dois_never_create_a_strong_union() -> None:
@@ -370,7 +479,7 @@ def test_runtime_enforces_closed_input_contracts() -> None:
         ledger.build_ledger(_plan(), retained)
 
 
-@pytest.mark.parametrize("field", ["provider_record_id", "doi", "title"])
+@pytest.mark.parametrize("field", ["provider_record_id", "title"])
 def test_raw_hit_identity_fields_reject_whitespace_only_values(field: str) -> None:
     plan = _plan()
     retained = _retained()
@@ -382,6 +491,16 @@ def test_raw_hit_identity_fields_reject_whitespace_only_values(field: str) -> No
     _rehash_input(retained, plan)
     with pytest.raises(ledger.LedgerError, match=field):
         ledger.validate_input(plan, retained)
+    with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+def test_whitespace_only_doi_is_structurally_rejected_and_never_identity() -> None:
+    plan = _plan()
+    retained = _retained()
+    hit = retained["raw_hits"][2]
+    hit.update(title=None, provider_record_id=None, doi="   ")
+    assert ledger.normalize_doi(hit["doi"]) is None
     with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
         ledger.build_ledger(plan, retained)
 
@@ -411,6 +530,90 @@ def test_provider_disclosures_reject_whitespace_in_schema_and_runtime(field: str
     _rehash_input(retained, plan)
     with pytest.raises(ledger.LedgerError, match="query plan schema violation"):
         ledger.build_ledger(plan, retained)
+
+
+@pytest.mark.parametrize(
+    ("surface", "value"),
+    [
+        ("claim", "\u200b"),
+        ("query_original", "\u0301"),
+        ("query_accepted", "\u2060"),
+        ("provider_disclosure", "\u200b"),
+        ("retention_reference", "\u0301"),
+        ("deletion_boundary", "\u2060"),
+        ("export_boundary", "\ud800"),
+    ],
+)
+def test_plan_semantic_text_surfaces_reject_invisible_unicode(
+    surface: str, value: str
+) -> None:
+    plan = _plan()
+    if surface == "claim":
+        plan["claim"]["claim_text"] = value
+    elif surface == "query_original":
+        plan["queries"][0]["original_query_text"] = value
+    elif surface == "query_accepted":
+        plan["queries"][0]["accepted_query_text"] = value
+    elif surface == "provider_disclosure":
+        plan["provider_roster"][0]["product_identity"] = value
+    elif surface == "retention_reference":
+        provider = plan["provider_roster"][0]
+        provider["retention_state"] = "known"
+        provider["retention_reference"] = value
+    else:
+        plan["consent"][surface] = value
+    with pytest.raises(ledger.LedgerError, match="semantic|visible"):
+        ledger.validate_plan(plan)
+
+
+@pytest.mark.parametrize(
+    ("surface", "value"),
+    [
+        ("provider_record_id", "\u200b"),
+        ("title", "\u0301"),
+        ("author_family", "\u2060"),
+        ("author_given", "\ud800"),
+        ("abstract", "\x00"),
+        ("success_rationale", "\u200b"),
+        ("success_raw_output", "\u0301"),
+        ("failure_detail", "\u2060"),
+    ],
+)
+def test_retained_semantic_text_surfaces_reject_invisible_unicode(
+    surface: str, value: str
+) -> None:
+    plan = _plan()
+    retained = _retained()
+    hit = retained["raw_hits"][0]
+    assessment = retained["relevance_assessments"][0]
+    if surface == "provider_record_id":
+        hit["provider_record_id"] = value
+    elif surface == "title":
+        hit["title"] = value
+    elif surface == "author_family":
+        hit["authors"][0]["family"] = value
+    elif surface == "author_given":
+        hit["authors"][0]["given"] = value
+    elif surface == "abstract":
+        hit["abstract_text"] = value
+    elif surface == "success_rationale":
+        assessment["rationale"] = value
+    elif surface == "success_raw_output":
+        assessment["raw_output"] = value
+        assessment["raw_output_sha256"] = ledger.text_digest(value)
+    else:
+        assessment.update(
+            outcome="failed",
+            state="not_checked",
+            reason_code=None,
+            rationale=None,
+            raw_output=None,
+            raw_output_sha256=None,
+            failure_code="timeout",
+            failure_detail=value,
+        )
+    with pytest.raises(ledger.LedgerError, match="semantic|visible"):
+        ledger.validate_input(plan, retained)
 
 
 def test_attempt_counts_caps_and_failed_ownership_fail_closed() -> None:
@@ -656,6 +859,32 @@ def test_failed_malformed_relevance_preserves_whitespace_raw_output_exactly() ->
     assert family["relevance"]["raw_output_sha256"] == ledger.text_digest("   ")
 
 
+def test_failed_malformed_relevance_preserves_format_only_raw_output_exactly() -> None:
+    retained = _retained()
+    assessment = retained["relevance_assessments"][0]
+    assessment.update(
+        outcome="failed",
+        state="not_checked",
+        reason_code=None,
+        rationale=None,
+        raw_output="\u200b\u2060",
+        raw_output_sha256=ledger.text_digest("\u200b\u2060"),
+        failure_code="malformed_output",
+        failure_detail="Assessor returned format-only output.",
+    )
+    _rehash_input(retained)
+    result = ledger.build_ledger(_plan(), retained)
+    family = next(
+        row
+        for row in result["work_families"]
+        if row["canonical_raw_hit_id"] == "hit-1"
+    )
+    assert family["relevance"]["raw_output"] == "\u200b\u2060"
+    assert family["relevance"]["raw_output_sha256"] == ledger.text_digest(
+        "\u200b\u2060"
+    )
+
+
 def test_available_abstract_rejects_whitespace_in_schema_and_runtime() -> None:
     plan = _plan()
     retained = _retained()
@@ -811,28 +1040,158 @@ def test_top_40_is_deterministic_and_overflow_remains_visible() -> None:
     assert result["counts"]["raw_hit_state_counts"]["candidate_cap_exceeded"] == 1
 
 
-def test_cli_build_is_write_once_and_validate_replays(tmp_path: Path) -> None:
-    output = tmp_path / "ledger.json"
-    command = [
+def _umask_022() -> None:
+    os.umask(0o022)
+
+
+def _cli_build_command(plan_path: Path, retained_path: Path, output: Path) -> list[str]:
+    return [
         sys.executable,
         str(ROOT / "scripts/build_claim_standing_candidate_ledger.py"),
         "build",
         "--query-plan",
-        str(FIXTURES / "query_plan.json"),
+        str(plan_path),
         "--retrieval-input",
-        str(FIXTURES / "retrieval_input.json"),
+        str(retained_path),
         "--output",
         str(output),
     ]
-    assert subprocess.run(command, capture_output=True, text=True).returncode == 0
+
+
+def test_cli_session_only_build_refuses_before_creating_0644_output(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "would-be-0644" / "ledger.json"
+    command = _cli_build_command(
+        FIXTURES / "query_plan.json",
+        FIXTURES / "retrieval_input.json",
+        output,
+    )
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        preexec_fn=_umask_022,
+    )
+    assert completed.returncode == 1
+    assert "explicit_local_export" in completed.stderr
+    assert not output.exists()
+    assert not output.parent.exists()
+
+
+def test_cli_explicit_local_export_is_write_once_and_validate_replays(
+    tmp_path: Path,
+) -> None:
+    plan = _plan()
+    output = tmp_path / "ledger.json"
+    _authorize_local_export(plan, str(output))
+    retained = _retained()
+    _rehash_input(retained, plan)
+    plan_path = tmp_path / "query-plan.json"
+    retained_path = tmp_path / "retrieval-input.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    retained_path.write_text(json.dumps(retained), encoding="utf-8")
+    command = _cli_build_command(plan_path, retained_path, output)
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        preexec_fn=_umask_022,
+    )
+    assert completed.returncode == 0
+    assert output.stat().st_mode & 0o777 == 0o600
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert written["local_persistence"] == "explicit_local_export"
+    assert written["export_boundary"] == plan["consent"]["export_boundary"]
+    assert {row["sharing_scope"] for row in written["work_families"]} == {
+        "explicit_local_export"
+    }
+    assert {row["rights_basis"] for row in written["work_families"]} == {
+        "not_assessed"
+    }
     assert subprocess.run(command, capture_output=True, text=True).returncode == 1
     validate = command[:2] + [
         "validate",
         "--query-plan",
-        str(FIXTURES / "query_plan.json"),
+        str(plan_path),
         "--retrieval-input",
-        str(FIXTURES / "retrieval_input.json"),
+        str(retained_path),
         "--candidate-ledger",
         str(output),
     ]
     assert subprocess.run(validate, capture_output=True, text=True).returncode == 0
+
+
+def test_cli_invalid_unicode_fails_without_traceback_or_output(tmp_path: Path) -> None:
+    plan = _plan()
+    output = tmp_path / "ledger.json"
+    _authorize_local_export(plan, str(output))
+    plan["claim"]["claim_text"] = "\ud800"
+    plan_path = tmp_path / "query-plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    retained_path = FIXTURES / "retrieval_input.json"
+    completed = subprocess.run(
+        _cli_build_command(plan_path, retained_path, output),
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 1
+    assert "ERROR:" in completed.stderr
+    assert "Traceback" not in completed.stderr
+    assert not output.exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX symlink/no-follow regression")
+def test_cli_explicit_local_export_refuses_a_symlink_output(tmp_path: Path) -> None:
+    plan = _plan()
+    output = tmp_path / "ledger.json"
+    _authorize_local_export(plan, str(output))
+    retained = _retained()
+    _rehash_input(retained, plan)
+    plan_path = tmp_path / "query-plan.json"
+    retained_path = tmp_path / "retrieval-input.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    retained_path.write_text(json.dumps(retained), encoding="utf-8")
+    target = tmp_path / "target.json"
+    output.symlink_to(target)
+    completed = subprocess.run(
+        _cli_build_command(plan_path, retained_path, output),
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 1
+    assert "refuses to overwrite" in completed.stderr
+    assert output.is_symlink()
+    assert not target.exists()
+
+
+def test_cli_explicit_local_export_rejects_any_other_output_path(
+    tmp_path: Path,
+) -> None:
+    authorized = tmp_path / "authorized.json"
+    unauthorized = tmp_path / "unauthorized.json"
+    plan = _plan()
+    _authorize_local_export(plan, str(authorized))
+    retained = _retained()
+    _rehash_input(retained, plan)
+    plan_path = tmp_path / "query-plan.json"
+    retained_path = tmp_path / "retrieval-input.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    retained_path.write_text(json.dumps(retained), encoding="utf-8")
+
+    rejected = subprocess.run(
+        _cli_build_command(plan_path, retained_path, unauthorized),
+        capture_output=True,
+        text=True,
+    )
+    assert rejected.returncode == 1
+    assert "authorized_output_path" in rejected.stderr
+    assert not unauthorized.exists()
+
+    accepted = subprocess.run(
+        _cli_build_command(plan_path, retained_path, authorized),
+        capture_output=True,
+        text=True,
+    )
+    assert accepted.returncode == 0
+    assert authorized.stat().st_mode & 0o777 == 0o600

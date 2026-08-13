@@ -66,6 +66,7 @@
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?Z$"
     },
     "nullable_string": {
+      "description": "Portable schema uses \\S; an available abstract is runtime-checked after NFKC for a visible letter, number, or symbol and any surrogate is rejected.",
       "type": ["string", "null"],
       "minLength": 1,
       "maxLength": 10000,
@@ -77,12 +78,14 @@
       "required": ["family", "given"],
       "properties": {
         "family": {
+          "description": "Portable schema uses \\S; runtime requires NFKC text with a visible letter or number and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 300,
           "pattern": "\\S"
         },
         "given": {
+          "description": "Portable schema uses \\S; runtime requires NFKC text with a visible letter or number and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 300,
@@ -211,18 +214,21 @@
         "attempt_id": { "$ref": "#/$defs/identifier" },
         "provider_rank": { "type": "integer", "minimum": 1, "maximum": 20 },
         "provider_record_id": {
+          "description": "Portable schema uses \\S; a non-null runtime identity requires NFKC text with a visible letter or number and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 1000,
           "pattern": "\\S"
         },
         "doi": {
+          "description": "Retained provider text. Runtime identity accepts only an NFKC/prefix-trimmed 10.<4-9 digits>/<suffix> DOI whose suffix contains a letter or number and no Unicode C/Z/whitespace character; other strings remain visible raw metadata but are not stable identity.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 500,
           "pattern": "\\S"
         },
         "title": {
+          "description": "Portable schema uses \\S; a non-null runtime title requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 2000,
@@ -324,6 +330,7 @@
           ]
         },
         "rationale": {
+          "description": "On success, runtime requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 2000,
@@ -340,6 +347,7 @@
         },
         "prompt_sha256": { "$ref": "#/$defs/sha256" },
         "raw_output": {
+          "description": "On success, runtime requires visible semantic NFKC text and rejects any surrogate. Failed malformed output is retained exactly and may be whitespace-only or format-only, but still must be valid UTF-8 text.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 10000
@@ -355,6 +363,7 @@
           "enum": ["timeout", "malformed_output", "assessor_unavailable", "cancelled", null]
         },
         "failure_detail": {
+          "description": "On failure, runtime requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 2000,

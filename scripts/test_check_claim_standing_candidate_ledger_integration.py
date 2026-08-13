@@ -144,6 +144,65 @@ def test_alias_introspection_and_allowed_module_capability_bypasses_are_rejected
     assert any("dynamic import, introspection" in error for error in errors)
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "argparse._os.spawnl(0, '/bin/true', 'true')\n",
+        "hashlib.__spec__.loader.load_module('os')\n",
+        (
+            "import argparse as parser_alias\n"
+            "parser_alias._os.spawnl(0, '/bin/true', 'true')\n"
+        ),
+        "_escaped_module = argparse\n",
+        "import hashlib as hash_alias\n_escaped_module = hash_alias\n",
+        "_escaped_attribute = hashlib.sha256\n",
+        "_escaped_stream = sys.stderr\n",
+        "os.system('true')\n",
+        "os.O_EXCL = 0\n",
+        "del os.O_NOFOLLOW\n",
+    ],
+)
+def test_direct_module_uses_are_exact_and_cannot_escape(
+    tmp_path: Path, payload: str
+) -> None:
+    root = _tree(tmp_path)
+    path = root / guard.RUNTIME
+    path.write_text(payload + path.read_text(encoding="utf-8"), encoding="utf-8")
+    errors = guard.run_checks(root)
+    assert any("exact current-use" in error for error in errors)
+
+
+def test_safe_direct_module_alias_is_tracked_and_allowed(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    _replace(root, guard.RUNTIME, "import hashlib", "import hashlib as hash_alias")
+    path = root / guard.RUNTIME
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            "hashlib.sha256", "hash_alias.sha256"
+        ),
+        encoding="utf-8",
+    )
+    assert guard.run_checks(root) == []
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "hashlib = object()\n",
+        "def escape(os):\n    return os.open('/tmp/x', 0)\n",
+        "from pathlib import Path as json\n",
+    ],
+)
+def test_direct_module_bindings_cannot_be_shadowed(
+    tmp_path: Path, payload: str
+) -> None:
+    root = _tree(tmp_path)
+    path = root / guard.RUNTIME
+    path.write_text(payload + path.read_text(encoding="utf-8"), encoding="utf-8")
+    errors = guard.run_checks(root)
+    assert any("cannot be shadowed" in error for error in errors)
+
+
 def test_existing_resolver_change_is_rejected(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     path = root / next(iter(guard.RESOLVER_HASHES))

@@ -22,12 +22,29 @@ terminal state while recording deterministic work-family selection.
 Provider retention disclosure is also closed: `known` requires a non-empty
 reference and `unknown` requires null.
 
+The schema-level `\\S` checks are portable first screens. The runtime applies a
+single NFKC visible-semantic-text predicate to the claim/query, disclosure,
+identity, available-abstract, successful-assessment, and failure-detail
+surfaces; it rejects surrogates and text made only of Unicode control/format,
+separator, combining, whitespace, or punctuation characters. Failed malformed
+assessment raw output remains exact evidence and may itself be whitespace- or
+format-only. DOI text is stable identity only when strict NFKC/prefix-trimmed
+`10.<4-9 digits>/<suffix>` validation succeeds.
+
 The pure local finalizer is
 `scripts/build_claim_standing_candidate_ledger.py`; the authoritative boundary
 is `shared/references/claim_standing_candidate_ledger_protocol.md`. This slice
 has no discovery adapter, network/model call, stance classification, rendering,
 evidence-row extension, pipeline hook, or held-out dispatch. It is an offline
 substrate only, remains unmeasured, and does not close #655.
+Its CLI never creates an output for a `session_only` plan. `build --output`
+requires the existing, hash-bound `explicit_local_export` consent state; there
+is no command-line override. Authorized output must exactly match the
+hash-bound absolute `authorized_output_path`, is exclusive/no-follow where the host
+supports it, mode `0600` from creation, file- and directory-fsynced, and
+truthfully carries the consented persistence/export/path state at the ledger root
+and in each work family's sharing scope. Its separate rights basis remains
+`not_assessed`; local persistence consent is not a rights claim.
 
 ## Codex subscription citation transport (#630)
 

@@ -11,6 +11,9 @@
     "query_plan_sha256",
     "claim_sha256",
     "adapter_registry_sha256",
+    "local_persistence",
+    "export_boundary",
+    "authorized_output_path",
     "retrieval_input_sha256",
     "attempts",
     "retry_authorizations",
@@ -27,6 +30,24 @@
     "query_plan_sha256": { "$ref": "#/$defs/sha256" },
     "claim_sha256": { "$ref": "#/$defs/sha256" },
     "adapter_registry_sha256": { "$ref": "#/$defs/sha256" },
+    "local_persistence": {
+      "description": "Exact persistence authority copied from the hash-bound query-plan consent receipt.",
+      "enum": ["session_only", "explicit_local_export"]
+    },
+    "export_boundary": {
+      "description": "Exact export-boundary disclosure copied from the hash-bound consent receipt; runtime validation requires visible semantic NFKC text and rejects any surrogate.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "pattern": "\\S"
+    },
+    "authorized_output_path": {
+      "description": "Exact absolute operator-named CLI output path copied from the hash-bound consent receipt; null for session_only.",
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "\\S"
+    },
     "retrieval_input_sha256": { "$ref": "#/$defs/sha256" },
     "attempts": {
       "type": "array",
@@ -58,6 +79,29 @@
     "completed_at": { "$ref": "#/$defs/rfc3339" },
     "candidate_ledger_sha256": { "$ref": "#/$defs/sha256" }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "local_persistence": { "const": "explicit_local_export" }
+        },
+        "required": ["local_persistence"]
+      },
+      "then": {
+        "properties": {
+          "export_boundary": {
+            "const": "One local candidate-ledger export to the operator-named output path is authorized."
+          },
+          "authorized_output_path": { "type": "string", "pattern": "\\S" }
+        }
+      },
+      "else": {
+        "properties": {
+          "authorized_output_path": { "type": "null" }
+        }
+      }
+    }
+  ],
   "$defs": {
     "identifier": {
       "type": "string",
@@ -81,12 +125,14 @@
       "required": ["family", "given"],
       "properties": {
         "family": {
+          "description": "Portable schema uses \\S; runtime requires NFKC text with a visible letter or number and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 300,
           "pattern": "\\S"
         },
         "given": {
+          "description": "Portable schema uses \\S; runtime requires NFKC text with a visible letter or number and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 300,
@@ -214,18 +260,21 @@
         "attempt_id": { "$ref": "#/$defs/identifier" },
         "provider_rank": { "type": "integer", "minimum": 1, "maximum": 20 },
         "provider_record_id": {
+          "description": "Portable schema uses \\S; a non-null runtime identity requires NFKC text with a visible letter or number and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 1000,
           "pattern": "\\S"
         },
         "doi": {
+          "description": "Retained provider text. Runtime identity accepts only an NFKC/prefix-trimmed 10.<4-9 digits>/<suffix> DOI whose suffix contains a letter or number and no Unicode C/Z/whitespace character; other strings remain visible raw metadata but are not stable identity.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 500,
           "pattern": "\\S"
         },
         "title": {
+          "description": "Portable schema uses \\S; a non-null runtime title requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 2000,
@@ -256,6 +305,7 @@
         },
         "abstract_state": { "enum": ["available", "missing", "not_returned"] },
         "abstract_text": {
+          "description": "Portable schema uses \\S; an available abstract is runtime-checked after NFKC for a visible letter, number, or symbol and any surrogate is rejected.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 10000,
@@ -415,6 +465,7 @@
           ]
         },
         "rationale": {
+          "description": "On success, runtime requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 2000,
@@ -431,6 +482,7 @@
         },
         "prompt_sha256": { "$ref": "#/$defs/sha256" },
         "raw_output": {
+          "description": "On success, runtime requires visible semantic NFKC text and rejects any surrogate. Failed malformed output is retained exactly and may be whitespace-only or format-only, but still must be valid UTF-8 text.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 10000
@@ -446,6 +498,7 @@
           "enum": ["timeout", "malformed_output", "assessor_unavailable", "cancelled", null]
         },
         "failure_detail": {
+          "description": "On failure, runtime requires NFKC text with a visible letter, number, or symbol and rejects any surrogate.",
           "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 2000,
@@ -571,7 +624,10 @@
             { "type": "null" }
           ]
         },
-        "sharing_scope": { "const": "session_only" },
+        "sharing_scope": {
+          "description": "Persistence scope copied from the same consent receipt; runtime requires equality with root local_persistence.",
+          "enum": ["session_only", "explicit_local_export"]
+        },
         "rights_basis": { "const": "not_assessed" }
       }
     },

@@ -230,6 +230,13 @@ Deduplication groups records by the first available deterministic key:
 3. normalized title plus publication year and first-author family name; then
 4. normalized title plus a researcher-confirmed version-family relation.
 
+A DOI participates in minimum identity, canonical preference, or equality only
+after NFKC normalization and known-prefix trimming, and only when the remainder
+matches `10.<4-9 ASCII digits>/<suffix>`. The suffix must contain a Unicode
+letter or number and must contain no Unicode control/format/surrogate,
+separator, or whitespace character. Invalid provider DOI text stays retained
+as raw metadata but is treated as no DOI and can never create a union.
+
 Title normalization is Unicode NFKC, case-folding, punctuation-to-space, and
 ASCII-whitespace collapse. It is a grouping candidate, not proof of identity.
 Ambiguous groups stay separate unless the researcher confirms the relation.
@@ -451,10 +458,36 @@ Query redaction is allowed but visible in the search metadata. A provider that
 cannot disclose its identity or retention state is rendered as `unknown`; that
 does not become implied privacy assurance.
 
-Local artifacts default to `session_only + not_assessed`. Export requires an
-explicit rights/share decision and redaction of unpublished claim text where
-requested. Deletion removes local working copies but does not claim to erase a
-provider's records unless a confirmed provider receipt exists.
+Local artifacts default to `session_only + not_assessed`. The Track A CLI
+refuses `build --output` before path creation while the hash-bound consent says
+`session_only`; a persistent ledger requires the existing
+`explicit_local_export` consent state and has no command-line override. Export
+to the named local path requires that exact consent state; any onward sharing
+requires a separate rights/share decision and redaction of unpublished claim
+text where requested. Deletion removes local working copies but does not claim
+to erase a provider's records unless a confirmed provider receipt exists.
+The consent receipt binds the exact absolute `authorized_output_path`, and the
+CLI rejects any relative or non-matching output string before creating a path,
+so the same receipt cannot be retargeted by changing the working directory. The exporter
+creates the final path exclusively, refuses symlink following on
+supported non-Windows hosts, applies mode `0600` from creation under umask
+`022`, and fsyncs the file and parent directory before reporting success. The
+final ledger copies `local_persistence`, `export_boundary`, and the authorized
+path from the consent receipt and uses the same persistence value for each work family's
+`sharing_scope`; a persisted export is not labeled `session_only`.
+The independent `rights_basis=not_assessed` label remains unchanged because
+local persistence authority does not establish publication, redistribution, or
+provider rights.
+
+Portable schema `\\S` checks are only a first screen. The Track A runtime uses
+one NFKC visible-semantic-text predicate for claims, queries, provider
+disclosures/retention references, consent boundaries, non-null provider ids,
+titles/authors, available abstracts, successful assessment rationale/raw
+output, and failure detail. It rejects surrogates and strings made only of
+Unicode control/format, separator, combining, whitespace, or punctuation
+characters. A failed malformed assessment may retain whitespace-only or
+format-only raw output exactly; this exception never applies to its failure
+detail.
 
 ## 7. Failure, freshness, and revision behavior
 
