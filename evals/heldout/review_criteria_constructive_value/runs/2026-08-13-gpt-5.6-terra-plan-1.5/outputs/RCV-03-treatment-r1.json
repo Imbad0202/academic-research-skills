@@ -1,0 +1,63 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "official.example.format",
+      "predicted": "applicable",
+      "rationale": "The manuscript is presented as a submission to the declared track, so submission-package declarations are relevant; the supplied manuscript excerpt does not establish whether all required package declarations are present."
+    },
+    {
+      "criterion_id": "official.example.scope",
+      "predicted": "applicable",
+      "rationale": "The article explicitly claims to be within the declared journal scope, making scope fit assessable from the supplied manuscript material."
+    },
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The empirical claim relies on a trial-selection and analysis choice whose disclosure is relevant to interpreting the evidence."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript makes a representativeness claim from synthetic trial evidence, so proportionality of that claim is relevant."
+    }
+  ],
+  "consumer_id": "external_panel",
+  "findings": [
+    {
+      "criterion_ids": [
+        "field.computing.transparency",
+        "broad.synthetic.claims"
+      ],
+      "evidence_anchor": {
+        "claim": "The reported conclusion is based only on each participant's fastest trial, with the selection rule disclosed only in the discussion; all-trial sensitivity results are absent despite the records being available, while the fastest-trial estimate is treated as representative of routine use.",
+        "locator": "Methods; Results; Limitations"
+      },
+      "finding_id": "F1",
+      "predicted_severity": "major",
+      "predicted_venue_alignment": "aligned",
+      "remedy": {
+        "changes_research_intent": "no",
+        "cost_tradeoffs": "Requires re-analysis and may require narrowing the routine-use interpretation if it is not supported across the available records.",
+        "effort_scope": "re_analysis",
+        "minimum_action": "Move the trial-selection rule into Methods, analyze the available records without relying solely on fastest trials, report a sensitivity analysis comparing the selection approaches, and revise the representativeness statement to match the analyses.",
+        "no_honest_reason": null,
+        "proposed_result_values": false,
+        "requires_new_data": false,
+        "status": "available"
+      },
+      "scholarly_relevance": "Selective outcome reporting without a disclosed analysis rationale prevents readers from assessing whether the conclusion reflects the full available evidence. The venue-fit claim remains separately supported by the manuscript's stated scope alignment; this is a validity defect, not a scope defect."
+    }
+  ],
+  "item_id": "RCV-03",
+  "profile": {
+    "resolved_digest": "16c2281db5d31ff61c3d2eeaf876eda210d2e23bd558b3f8e0afcd210e958f28",
+    "selected_criterion_ids": [
+      "official.example.format",
+      "official.example.scope",
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "EIC",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

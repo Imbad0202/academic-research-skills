@@ -1,0 +1,38 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "official.example.format",
+      "predicted": "applicable",
+      "rationale": "The supplied manuscript is presented as a submission artifact. The material does not show any required declarations, so applicability does not establish a specific omission."
+    },
+    {
+      "criterion_id": "official.example.scope",
+      "predicted": "applicable",
+      "rationale": "The supplied work is presented as an empirical research contribution. The brief supplies no substantive scope detail against which to determine alignment."
+    },
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The manuscript reports methodological and analytic choices relevant to its stated conclusions."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript makes synthetic-study conclusions, so proportionality of those conclusions to the supplied evidence is applicable."
+    }
+  ],
+  "consumer_id": "internal_evaluator",
+  "findings": [],
+  "item_id": "RCV-02",
+  "profile": {
+    "resolved_digest": "16c2281db5d31ff61c3d2eeaf876eda210d2e23bd558b3f8e0afcd210e958f28",
+    "selected_criterion_ids": [
+      "official.example.format",
+      "official.example.scope",
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "INTERNAL",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

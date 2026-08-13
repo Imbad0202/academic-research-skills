@@ -1,0 +1,26 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The article reports an empirical pilot and identifies retained individual observations, a study package, analysis code, procedures, and a planned paired analysis."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The study uses a simulated task, so the scope of its claims requires assessment against the stated limitations."
+    }
+  ],
+  "consumer_id": "formative_planning",
+  "findings": [],
+  "item_id": "RCV-01",
+  "profile": {
+    "resolved_digest": "d6ce821cbfac65e3228c50fbc28a5e2187bf31aedb9ef6588e589858304fea03",
+    "selected_criterion_ids": [
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "FORMATIVE",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

@@ -1,0 +1,38 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "official.example.format",
+      "predicted": "unresolved",
+      "rationale": "The supplied manuscript record does not provide submission-format details."
+    },
+    {
+      "criterion_id": "official.example.scope",
+      "predicted": "applicable",
+      "rationale": "The described work concerns keyboard-layout text entry within the declared computing/HCI context."
+    },
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The record provides protocol-consistent methods and states that row-level data, protocol, and analysis code are available."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript explicitly characterizes the study materials as synthetic."
+    }
+  ],
+  "consumer_id": "external_panel",
+  "findings": [],
+  "item_id": "RCV-06",
+  "profile": {
+    "resolved_digest": "16c2281db5d31ff61c3d2eeaf876eda210d2e23bd558b3f8e0afcd210e958f28",
+    "selected_criterion_ids": [
+      "official.example.format",
+      "official.example.scope",
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "DA",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

@@ -1,0 +1,26 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The manuscript supplies methods, retained observations, analysis code, and a data-availability statement for an empirical article."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript makes a performance-related claim from a synthetic pilot and states a corresponding limitation."
+    }
+  ],
+  "consumer_id": "formative_planning",
+  "findings": [],
+  "item_id": "RCV-01",
+  "profile": {
+    "resolved_digest": "d6ce821cbfac65e3228c50fbc28a5e2187bf31aedb9ef6588e589858304fea03",
+    "selected_criterion_ids": [
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "FORMATIVE",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

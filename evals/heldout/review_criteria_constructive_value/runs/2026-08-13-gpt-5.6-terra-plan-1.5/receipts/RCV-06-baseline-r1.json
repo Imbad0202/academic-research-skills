@@ -1,0 +1,20 @@
+{
+  "api_spend_usd": 0,
+  "arm": "baseline",
+  "auth_mode": "chatgpt_subscription",
+  "call_id": "RCV-06-baseline-r1",
+  "codex_version": "0.147.0",
+  "completed_at": "2026-08-13T05:16:21.572266Z",
+  "events_sha256": "688cd062e00f278936886496034780b53efc2e50c4433f9e9340faf0dc08b021",
+  "item_id": "RCV-06",
+  "model_id": "gpt-5.6-terra",
+  "output_sha256": "dcbacafe2c0dce2aa321d9be9e2f76688ebd4ee499f9fdcc1260522d70a05a5f",
+  "prompt_sha256": "e56a25d24b254e423f7d11349a7b326dcf86adc52db9b9b7d59aa978ecea6460",
+  "reasoning_effort": "high",
+  "replicate": 1,
+  "schema_version": "review-criteria-subject-receipt/1.0",
+  "sequence_index": 22,
+  "started_at": "2026-08-13T05:15:55.469903Z",
+  "tools_observed": [],
+  "transport": "codex_chatgpt_subscription"
+}

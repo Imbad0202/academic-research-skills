@@ -1,0 +1,32 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The manuscript makes a computing evidence-synthesis claim and describes relevant implementation choices, including the query, two-screening process, extraction table, and screening log."
+    },
+    {
+      "criterion_id": "overlay.prisma.flow",
+      "predicted": "applicable",
+      "rationale": "This is a synthetic systematic review, so its study-selection workflow is within the criterion’s scope."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript’s claims are explicitly based on a synthetic systematic review and summarize the 31 included studies without invented effect estimates."
+    }
+  ],
+  "consumer_id": "external_panel",
+  "findings": [],
+  "item_id": "RCV-04",
+  "profile": {
+    "resolved_digest": "53bcebea02310d2570d15058eee8b9d2bf1a0a9a3889b65ef1ec80b32696eee0",
+    "selected_criterion_ids": [
+      "field.computing.transparency",
+      "overlay.prisma.flow",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "R1",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

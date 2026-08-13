@@ -1,0 +1,20 @@
+{
+  "api_spend_usd": 0,
+  "arm": "treatment",
+  "auth_mode": "chatgpt_subscription",
+  "call_id": "RCV-03-treatment-r2",
+  "codex_version": "0.147.0",
+  "completed_at": "2026-08-13T05:12:20.675518Z",
+  "events_sha256": "217cb2d5d39bf397e2021c3dd6a1d5ad69b4587b3b5de702a8ec4cd96d7f156c",
+  "item_id": "RCV-03",
+  "model_id": "gpt-5.6-terra",
+  "output_sha256": "98ab2059a7538383d0d6790168cadb0fe6f03f352c671cede4adc16692360d58",
+  "prompt_sha256": "80aef4d2e864c53d89e1ee766d0c36a99ab3997a63a2df2c3f945816ad3e4ced",
+  "reasoning_effort": "high",
+  "replicate": 2,
+  "schema_version": "review-criteria-subject-receipt/1.0",
+  "sequence_index": 11,
+  "started_at": "2026-08-13T05:11:54.993652Z",
+  "tools_observed": [],
+  "transport": "codex_chatgpt_subscription"
+}

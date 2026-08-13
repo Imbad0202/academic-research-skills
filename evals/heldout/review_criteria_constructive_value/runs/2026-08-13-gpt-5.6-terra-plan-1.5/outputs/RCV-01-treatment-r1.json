@@ -1,0 +1,50 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The manuscript makes a comparative completion-time claim, so implementation choices relevant to that claim need to be exposed."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript relies on synthetic pilot evidence and therefore requires claims to remain proportionate to that scope."
+    }
+  ],
+  "consumer_id": "formative_planning",
+  "findings": [
+    {
+      "criterion_ids": [
+        "field.computing.transparency"
+      ],
+      "evidence_anchor": {
+        "claim": "The methods identify two dashboard layouts, counterbalancing, and paired completion-time analysis, but do not describe the layouts' claim-relevant implementation differences, task specification, or measurement implementation.",
+        "locator": "manuscript.methods"
+      },
+      "finding_id": "F1",
+      "predicted_severity": "major",
+      "predicted_venue_alignment": "aligned",
+      "remedy": {
+        "changes_research_intent": "no",
+        "cost_tradeoffs": "Adds documentation and protocol-detail work; may require narrowing wording where implementation details cannot support a stronger interpretation.",
+        "effort_scope": "section",
+        "minimum_action": "Reserve a methods subsection specifying the claim-relevant layout and interaction differences, simulated handover-task protocol, software or artifact versioning, completion-time and navigation-error definitions, and analysis-script decisions.",
+        "no_honest_reason": null,
+        "proposed_result_values": false,
+        "requires_new_data": false,
+        "status": "available"
+      },
+      "scholarly_relevance": "Without these details, readers cannot determine what was implemented, reproduce the comparison, or assess whether the reported timing difference supports the stated design-level claim."
+    }
+  ],
+  "item_id": "RCV-01",
+  "profile": {
+    "resolved_digest": "d6ce821cbfac65e3228c50fbc28a5e2187bf31aedb9ef6588e589858304fea03",
+    "selected_criterion_ids": [
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "FORMATIVE",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

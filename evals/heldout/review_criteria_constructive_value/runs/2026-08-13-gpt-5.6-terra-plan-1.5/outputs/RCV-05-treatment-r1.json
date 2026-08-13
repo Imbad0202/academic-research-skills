@@ -1,0 +1,68 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "official.example.format",
+      "predicted": "applicable",
+      "rationale": "The manuscript is presented as a submission-oriented article package, so required declarations are pertinent."
+    },
+    {
+      "criterion_id": "official.example.scope",
+      "predicted": "applicable",
+      "rationale": "The abstract describes a learning-analytics empirical article within the declared contribution type."
+    },
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The article makes an implementation-dependent model claim and reports feature definitions and code."
+    },
+    {
+      "criterion_id": "field.education.context",
+      "predicted": "applicable",
+      "rationale": "The manuscript draws a pooled conclusion across three classroom settings with differing implementation."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript identifies itself as synthetic and advances a central conclusion from the reported evidence."
+    }
+  ],
+  "consumer_id": "external_panel",
+  "findings": [
+    {
+      "criterion_ids": [
+        "field.education.context"
+      ],
+      "evidence_anchor": {
+        "claim": "The main conclusion pools three classroom settings although implementation differs by site, including an omitted post-alert support protocol at one site; the paper provides no site-specific calibration table and does not connect institutional variation to interpretation.",
+        "locator": "Methods; Results; Limitations"
+      },
+      "finding_id": "F1",
+      "predicted_severity": "major",
+      "predicted_venue_alignment": "not_claimed",
+      "remedy": {
+        "changes_research_intent": "no",
+        "cost_tradeoffs": "Requires additional site-level analysis and reporting; smaller site-level summaries may be less precise and add manuscript space.",
+        "effort_scope": "re_analysis",
+        "minimum_action": "Add feasible site-level reporting, including calibration summaries, and revise the interpretation and limitations to relate site implementation and institutional context to the pooled conclusion.",
+        "no_honest_reason": null,
+        "proposed_result_values": false,
+        "requires_new_data": false,
+        "status": "available"
+      },
+      "scholarly_relevance": "Without linking site context and implementation differences to the pooled conclusion, readers cannot judge whether that conclusion is appropriately interpretable across the classroom settings."
+    }
+  ],
+  "item_id": "RCV-05",
+  "profile": {
+    "resolved_digest": "f92c2213d26eec2cf77eb3a6b4036dd441c712d4c399f19acdb11d134543ebc8",
+    "selected_criterion_ids": [
+      "official.example.format",
+      "official.example.scope",
+      "field.computing.transparency",
+      "field.education.context",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "R3",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

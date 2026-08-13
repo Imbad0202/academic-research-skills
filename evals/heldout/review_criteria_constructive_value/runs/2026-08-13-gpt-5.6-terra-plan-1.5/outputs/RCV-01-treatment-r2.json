@@ -1,0 +1,50 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The empirical claim depends on implementation and task-design choices that are not sufficiently exposed in the supplied manuscript."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript makes a claim from synthetic pilot evidence, while explicitly limiting its workplace interpretation."
+    }
+  ],
+  "consumer_id": "formative_planning",
+  "findings": [
+    {
+      "criterion_ids": [
+        "field.computing.transparency"
+      ],
+      "evidence_anchor": {
+        "claim": "The methods state the participant count, ordering approach, and planned measures, but do not describe the dashboard implementations or simulated-handover protocol sufficiently to assess claim-relevant implementation choices.",
+        "locator": "manuscript.methods; manuscript.abstract"
+      },
+      "finding_id": "F1",
+      "predicted_severity": "major",
+      "predicted_venue_alignment": "not_claimed",
+      "remedy": {
+        "changes_research_intent": "no",
+        "cost_tradeoffs": "Requires additional methods detail and may make the outline longer, but does not require expanding the study.",
+        "effort_scope": "section",
+        "minimum_action": "Reserve a methods subsection specifying the implemented dashboard behavior and content, interaction and timing rules, simulated-handover materials and procedure, counterbalancing implementation, and the correspondence between recorded measures and analysis code.",
+        "no_honest_reason": null,
+        "proposed_result_values": false,
+        "requires_new_data": false,
+        "status": "available"
+      },
+      "scholarly_relevance": "Without these details, readers cannot determine what was implemented, reproduce the study conditions, or judge whether the reported evidence supports the stated design-specific claim."
+    }
+  ],
+  "item_id": "RCV-01",
+  "profile": {
+    "resolved_digest": "d6ce821cbfac65e3228c50fbc28a5e2187bf31aedb9ef6588e589858304fea03",
+    "selected_criterion_ids": [
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "FORMATIVE",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

@@ -1,0 +1,38 @@
+{
+  "applicability": [
+    {
+      "criterion_id": "official.example.format",
+      "predicted": "applicable",
+      "rationale": "The record describes an empirical article and supplies data-availability information, but does not enumerate the submission package's required declarations."
+    },
+    {
+      "criterion_id": "official.example.scope",
+      "predicted": "applicable",
+      "rationale": "The manuscript presents a computing/HCI keyboard-entry contribution consistent with the declared article context."
+    },
+    {
+      "criterion_id": "field.computing.transparency",
+      "predicted": "applicable",
+      "rationale": "The implementation and analysis choices relevant to the reported claim are described, including allocation order, exclusions, measures, code, and stopping rule."
+    },
+    {
+      "criterion_id": "broad.synthetic.claims",
+      "predicted": "applicable",
+      "rationale": "The manuscript makes synthetic-evidence claims and expressly limits them to an imprecise difference compatible with small effects in either direction."
+    }
+  ],
+  "consumer_id": "external_panel",
+  "findings": [],
+  "item_id": "RCV-06",
+  "profile": {
+    "resolved_digest": "16c2281db5d31ff61c3d2eeaf876eda210d2e23bd558b3f8e0afcd210e958f28",
+    "selected_criterion_ids": [
+      "official.example.format",
+      "official.example.scope",
+      "field.computing.transparency",
+      "broad.synthetic.claims"
+    ]
+  },
+  "role": "DA",
+  "schema_version": "review-criteria-subject-output/1.0"
+}

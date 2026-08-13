@@ -1,0 +1,253 @@
+{
+  "calls": [
+    {
+      "attempt": 1,
+      "call_id": "RCV-01-baseline-r1",
+      "completed_at": "2026-08-13T05:08:21.925625Z",
+      "concurrency_group": null,
+      "output_sha256": "2a9823b57ec92422e5e97909b0a7fc2f0e418d838611c6000b78f3b1339ff250",
+      "prompt_sha256": "15793f0f34dcfc1dddc3c9f4edf2b916cf029c5ab0dc43a90c8f055044059eef",
+      "sequence_index": 1,
+      "started_at": "2026-08-13T05:08:09.641296Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-01-treatment-r1",
+      "completed_at": "2026-08-13T05:08:41.455951Z",
+      "concurrency_group": null,
+      "output_sha256": "07c6d4e66918fdc047ef529f64f25a39fd3748d1a5e825a15fe9cec836fa3f30",
+      "prompt_sha256": "63c1c0751f6c5e08404b9517b0e1d35b39b6a22122e2b85324de9bdac81440ad",
+      "sequence_index": 2,
+      "started_at": "2026-08-13T05:08:21.932174Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-01-treatment-r2",
+      "completed_at": "2026-08-13T05:08:59.923000Z",
+      "concurrency_group": null,
+      "output_sha256": "60a63a6db4508cbaf684f12f4fa012334ceb6e6b95b080abb4dda4fdac7ecc08",
+      "prompt_sha256": "63c1c0751f6c5e08404b9517b0e1d35b39b6a22122e2b85324de9bdac81440ad",
+      "sequence_index": 3,
+      "started_at": "2026-08-13T05:08:41.462423Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-01-baseline-r2",
+      "completed_at": "2026-08-13T05:09:11.096411Z",
+      "concurrency_group": null,
+      "output_sha256": "f71bf65d129a8155a64ae31fbff54aae37af0dc15c4971a380a46f228b27bfdc",
+      "prompt_sha256": "15793f0f34dcfc1dddc3c9f4edf2b916cf029c5ab0dc43a90c8f055044059eef",
+      "sequence_index": 4,
+      "started_at": "2026-08-13T05:08:59.928753Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-02-treatment-r1",
+      "completed_at": "2026-08-13T05:09:42.101147Z",
+      "concurrency_group": null,
+      "output_sha256": "8f2f11ecfad0de38a7eaca3df081636e559108cf8130474787b825aa01fcb64f",
+      "prompt_sha256": "2c6fc19dcc753ef4ef9bc8caad7e83f29dde37c249adc108926079e42a59d7c0",
+      "sequence_index": 5,
+      "started_at": "2026-08-13T05:09:11.103032Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-02-baseline-r1",
+      "completed_at": "2026-08-13T05:10:08.373052Z",
+      "concurrency_group": null,
+      "output_sha256": "ed5bd715ad49a12a0c59f0773ea55b18e09e58db3531651f82f038f2bd697c2c",
+      "prompt_sha256": "ff70a08be78279caccecf519a27f2e39d23794a1d6dccf3e1423b8f9984cfdf7",
+      "sequence_index": 6,
+      "started_at": "2026-08-13T05:09:42.107830Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-02-baseline-r2",
+      "completed_at": "2026-08-13T05:10:36.301821Z",
+      "concurrency_group": null,
+      "output_sha256": "d71e56a70bb84ab949a40f1ab2d7e5791e129cb64a3b776ae62c0c7c7d7b2c0d",
+      "prompt_sha256": "ff70a08be78279caccecf519a27f2e39d23794a1d6dccf3e1423b8f9984cfdf7",
+      "sequence_index": 7,
+      "started_at": "2026-08-13T05:10:08.379661Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-02-treatment-r2",
+      "completed_at": "2026-08-13T05:11:01.347102Z",
+      "concurrency_group": null,
+      "output_sha256": "f47e6cbb3083229eaee385ae026036de16a0d8909bf5f4c41ef754b86a646e02",
+      "prompt_sha256": "2c6fc19dcc753ef4ef9bc8caad7e83f29dde37c249adc108926079e42a59d7c0",
+      "sequence_index": 8,
+      "started_at": "2026-08-13T05:10:36.308696Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-03-baseline-r1",
+      "completed_at": "2026-08-13T05:11:29.067929Z",
+      "concurrency_group": null,
+      "output_sha256": "060e27f96225c8d90a3a34c58994a2787c53a3ddf584800847c73b3c27361a44",
+      "prompt_sha256": "af441f8e84cae2967e86871add92fecf049d2461dae8b8f163ee9e6b839e741d",
+      "sequence_index": 9,
+      "started_at": "2026-08-13T05:11:01.353801Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-03-treatment-r1",
+      "completed_at": "2026-08-13T05:11:54.986830Z",
+      "concurrency_group": null,
+      "output_sha256": "046a805f215a29770988b092335e02dcaa711980cae3a4af2dd5dab843e1c7af",
+      "prompt_sha256": "80aef4d2e864c53d89e1ee766d0c36a99ab3997a63a2df2c3f945816ad3e4ced",
+      "sequence_index": 10,
+      "started_at": "2026-08-13T05:11:29.074606Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-03-treatment-r2",
+      "completed_at": "2026-08-13T05:12:20.675518Z",
+      "concurrency_group": null,
+      "output_sha256": "98ab2059a7538383d0d6790168cadb0fe6f03f352c671cede4adc16692360d58",
+      "prompt_sha256": "80aef4d2e864c53d89e1ee766d0c36a99ab3997a63a2df2c3f945816ad3e4ced",
+      "sequence_index": 11,
+      "started_at": "2026-08-13T05:11:54.993652Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-03-baseline-r2",
+      "completed_at": "2026-08-13T05:12:49.891188Z",
+      "concurrency_group": null,
+      "output_sha256": "7e11fc2f5f3a5bfe0c5b8097f877c63fbfd5f5b969077411c0267c11d6da991e",
+      "prompt_sha256": "af441f8e84cae2967e86871add92fecf049d2461dae8b8f163ee9e6b839e741d",
+      "sequence_index": 12,
+      "started_at": "2026-08-13T05:12:20.680808Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-04-treatment-r1",
+      "completed_at": "2026-08-13T05:13:09.034985Z",
+      "concurrency_group": null,
+      "output_sha256": "628f9d05322032f522cc5a7b26a2384f39cc198a67011bfaeb1f35d976f99cb4",
+      "prompt_sha256": "75e4bc147db100c3056c72cf827bd982319abc8bbd98c3982580ad7cfd377b01",
+      "sequence_index": 13,
+      "started_at": "2026-08-13T05:12:49.898665Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-04-baseline-r1",
+      "completed_at": "2026-08-13T05:13:24.880853Z",
+      "concurrency_group": null,
+      "output_sha256": "42f463282fbde3a3ce7fcbb32a9bd2071cd186a04f946639928124fd7420bea9",
+      "prompt_sha256": "8563ca2e1d6cf0fe49d74b8525e68fed20c78ffc610f6735e3f9e6dd4871bda8",
+      "sequence_index": 14,
+      "started_at": "2026-08-13T05:13:09.041745Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-04-baseline-r2",
+      "completed_at": "2026-08-13T05:13:41.138541Z",
+      "concurrency_group": null,
+      "output_sha256": "4e47c378aeb2e7c6a67669f7df62d806d5376b2c9de9152c34583efaf737cecf",
+      "prompt_sha256": "8563ca2e1d6cf0fe49d74b8525e68fed20c78ffc610f6735e3f9e6dd4871bda8",
+      "sequence_index": 15,
+      "started_at": "2026-08-13T05:13:24.887466Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-04-treatment-r2",
+      "completed_at": "2026-08-13T05:13:51.981884Z",
+      "concurrency_group": null,
+      "output_sha256": "4917eb8087c82c77285a61a9b4a0156dfa5d730d22d7345044b68f159a94e071",
+      "prompt_sha256": "75e4bc147db100c3056c72cf827bd982319abc8bbd98c3982580ad7cfd377b01",
+      "sequence_index": 16,
+      "started_at": "2026-08-13T05:13:41.145107Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-05-baseline-r1",
+      "completed_at": "2026-08-13T05:14:13.565082Z",
+      "concurrency_group": null,
+      "output_sha256": "b2d66ecad6611999a6840eee2fb3851966b5b2f8773ee28fc4774973df7fdca2",
+      "prompt_sha256": "3ff9989ab521b0db8c5350fbea5bfb2bb83ee507d64e9d8b253bfda2c1950527",
+      "sequence_index": 17,
+      "started_at": "2026-08-13T05:13:51.988757Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-05-treatment-r1",
+      "completed_at": "2026-08-13T05:14:51.704697Z",
+      "concurrency_group": null,
+      "output_sha256": "89c0fafde82e82df97397f8feeeb88d35d2439ef451bfc91e09b48950a5614b9",
+      "prompt_sha256": "18f2370bea1dd0ba6efabfbcfedf70c1bb7e90fab2942ff6ec872ad8509a22d8",
+      "sequence_index": 18,
+      "started_at": "2026-08-13T05:14:13.571752Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-05-treatment-r2",
+      "completed_at": "2026-08-13T05:15:16.326137Z",
+      "concurrency_group": null,
+      "output_sha256": "c38c16739da7b7699a72f2b2b2fd0399d05166d8f959736b39d996b3f66868b0",
+      "prompt_sha256": "18f2370bea1dd0ba6efabfbcfedf70c1bb7e90fab2942ff6ec872ad8509a22d8",
+      "sequence_index": 19,
+      "started_at": "2026-08-13T05:14:51.711525Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-05-baseline-r2",
+      "completed_at": "2026-08-13T05:15:39.790536Z",
+      "concurrency_group": null,
+      "output_sha256": "dad69176032a1ce806550ce2ed01834536c01800591be3b7982fefc8e20117d6",
+      "prompt_sha256": "3ff9989ab521b0db8c5350fbea5bfb2bb83ee507d64e9d8b253bfda2c1950527",
+      "sequence_index": 20,
+      "started_at": "2026-08-13T05:15:16.332663Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-06-treatment-r1",
+      "completed_at": "2026-08-13T05:15:55.463509Z",
+      "concurrency_group": null,
+      "output_sha256": "c04f343bf62aa95fdb2b7eadf6fc59ba630436badc32a201868969285dde1092",
+      "prompt_sha256": "114e428b89dacf340cd45cd2dcdd4b83c92783e7bd3619ce9e9ed590804ad63e",
+      "sequence_index": 21,
+      "started_at": "2026-08-13T05:15:39.796972Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-06-baseline-r1",
+      "completed_at": "2026-08-13T05:16:21.572266Z",
+      "concurrency_group": null,
+      "output_sha256": "dcbacafe2c0dce2aa321d9be9e2f76688ebd4ee499f9fdcc1260522d70a05a5f",
+      "prompt_sha256": "e56a25d24b254e423f7d11349a7b326dcf86adc52db9b9b7d59aa978ecea6460",
+      "sequence_index": 22,
+      "started_at": "2026-08-13T05:15:55.469903Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-06-baseline-r2",
+      "completed_at": "2026-08-13T05:16:33.052986Z",
+      "concurrency_group": null,
+      "output_sha256": "35f799219a50854989ec2b45510ca4f694df7991a0e312757a76709a83d61961",
+      "prompt_sha256": "e56a25d24b254e423f7d11349a7b326dcf86adc52db9b9b7d59aa978ecea6460",
+      "sequence_index": 23,
+      "started_at": "2026-08-13T05:16:21.579362Z"
+    },
+    {
+      "attempt": 1,
+      "call_id": "RCV-06-treatment-r2",
+      "completed_at": "2026-08-13T05:16:45.236121Z",
+      "concurrency_group": null,
+      "output_sha256": "8999a188e613f6834808f8c29abecce69ee3365344a51fbc739a2a332a6434a2",
+      "prompt_sha256": "114e428b89dacf340cd45cd2dcdd4b83c92783e7bd3619ce9e9ed590804ad63e",
+      "sequence_index": 24,
+      "started_at": "2026-08-13T05:16:33.060617Z"
+    }
+  ],
+  "created_at": "2026-08-13T05:08:09.641296Z",
+  "execution_window": {
+    "completed_at": "2026-08-13T05:16:45.236121Z",
+    "started_at": "2026-08-13T05:08:09.641296Z",
+    "window_id": "review_criteria_constructive_value-subscription-window"
+  },
+  "schema_version": "heldout-execution-manifest/1.0",
+  "suite": "review_criteria_constructive_value",
+  "write_once": true
+}
