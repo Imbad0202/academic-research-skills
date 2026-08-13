@@ -1401,6 +1401,9 @@ def test_complete_identifier_gate_rejects_unicode_separator_obfuscation(
         "The cell-048⑴ placeholder is unrelated.",
         "Cell biology had 48 samples.",
         "The discussion used adjacent probing.",
+        "We conducted a feature comparison.",
+        "The probe discussion continued.",
+        "A feature tradeoff was considered.",
     ),
 )
 def test_complete_identifier_gate_keeps_letter_number_boundaries(
@@ -1427,6 +1430,8 @@ def test_complete_identifier_gate_keeps_letter_number_boundaries(
         "前\u00a0輪標註已完成。",
         "The preced\u00a0ing response differed.",
         "The review\u00a0er evidence was positive.",
+        "The prior evi\u00a0dences were positive.",
+        "The other trans\u00a0cripts were compared.",
         "The mech\u00a0anism was clearly ena\u00a0bled.",
         "The treat♥ment arm was active.",
         "The prior lab♥el was positive.",

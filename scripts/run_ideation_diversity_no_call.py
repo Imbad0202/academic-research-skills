@@ -125,7 +125,10 @@ HUMAN_EVIDENCE_COMPACT_PHRASES = (
 ) + tuple(
     f"{source} {evidence}"
     for source in ("prior", "human", "judge", "annotator", "reviewer")
-    for evidence in ("label", "labels", "rating", "ratings", "decision", "decisions", "evidence")
+    for evidence in (
+        "label", "labels", "rating", "ratings", "decision", "decisions",
+        "evidence", "evidences",
+    )
 ) + tuple(
     f"{prefix} {role}"
     for prefix in ("", "gold standard")
@@ -185,7 +188,7 @@ MAPPING_LEAK_COMPACT_PHRASES = (
     f"{relation} {artifact}"
     for relation in ("preceding", "previous", "prior", "other", "paired")
     for artifact in ("session", "transcript", "response")
-) + tuple(
+) + ("other transcripts",) + tuple(
     f"{arm}{kind}"
     for arm in ("處置", "控制", "實驗")
     for kind in ("組", "條件", "臂")
@@ -2604,7 +2607,7 @@ _COMPACT_MAPPING_RELATION_PATTERN = re.compile(
         _obfuscated_token_pattern(token)
         for token in ("mechanism", "feature", "probe", "guardrail", "guardrails")
     )
-    + r")(?:[^\W_]|\s){0,32}(?:"
+    + r")(?:[^\W_]|\s){0,32}(?<![^\W_])(?:"
     + "|".join(
         _obfuscated_token_pattern(token)
         for token in ("enabled", "disabled", "ablated", "on", "off")
