@@ -810,6 +810,20 @@ class ContentClassificationSandboxTest(unittest.TestCase):
         )
         cases.append(
             (
+                "huge-positive-integer",
+                json.dumps(_classified_payload(confidence=10**400)),
+                "WORKER_INVALID_OUTPUT",
+            )
+        )
+        cases.append(
+            (
+                "huge-negative-integer",
+                json.dumps(_classified_payload(confidence=-(10**400))),
+                "WORKER_INVALID_OUTPUT",
+            )
+        )
+        cases.append(
+            (
                 "page-upper",
                 json.dumps(_classified_payload("OCR_RECOMMENDED", pages=[1])),
                 "WORKER_INVALID_OUTPUT",

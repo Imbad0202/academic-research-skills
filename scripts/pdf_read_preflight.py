@@ -281,11 +281,17 @@ def _validate_worker_result(payload: dict[str, Any], page_count: int) -> dict[st
         "OCR_RECOMMENDED",
     }:
         raise _ClassifierProtocolError("unknown classification")
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+        raise _ClassifierProtocolError("confidence is not finite and bounded")
+    try:
+        normalized_confidence = float(confidence)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise _ClassifierProtocolError(
+            "confidence is not finite and bounded"
+        ) from exc
     if (
-        isinstance(confidence, bool)
-        or not isinstance(confidence, (int, float))
-        or not math.isfinite(float(confidence))
-        or not 0.0 <= float(confidence) <= 1.0
+        not math.isfinite(normalized_confidence)
+        or not 0.0 <= normalized_confidence <= 1.0
     ):
         raise _ClassifierProtocolError("confidence is not finite and bounded")
     if not isinstance(pages, list) or len(pages) > CLASSIFIER_MAX_PAGE_ENTRIES:
@@ -304,7 +310,7 @@ def _validate_worker_result(payload: dict[str, Any], page_count: int) -> dict[st
         status="CLASSIFIED",
         reason="CLASSIFIED",
         classification=classification,
-        confidence=float(confidence),
+        confidence=normalized_confidence,
         pages_needing_ocr=pages,
     )
 
