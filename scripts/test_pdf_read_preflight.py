@@ -592,6 +592,63 @@ class ContentClassificationSandboxTest(unittest.TestCase):
             preflight.CLASSIFIER_OPERATOR_DETAIL_LIMIT,
         )
 
+    def test_actual_worker_malformed_upstream_objects_keep_closed_contract(self):
+        cases = (
+            (
+                "overflowing-confidence",
+                """
+                class Result:
+                    pdf_type = "text_based"
+                    confidence = 10 ** 400
+                    pages_needing_ocr = []
+
+                def classify_pdf_bytes(data):
+                    return Result()
+                """,
+                "INVALID_CLASSIFIER_RESULT",
+                "",
+            ),
+            (
+                "iterator-acquisition-error",
+                """
+                class BrokenPages:
+                    def __iter__(self):
+                        raise RuntimeError("ITERATOR-ACQUISITION-FAILED")
+
+                class Result:
+                    pdf_type = "scanned"
+                    confidence = 0.5
+                    pages_needing_ocr = BrokenPages()
+
+                def classify_pdf_bytes(data):
+                    return Result()
+                """,
+                "INVALID_CLASSIFIER_RESULT",
+                "ITERATOR-ACQUISITION-FAILED",
+            ),
+            (
+                "unprintable-classifier-error",
+                """
+                class StrBomb:
+                    def __str__(self):
+                        raise RuntimeError("SECONDARY-STR-FAILURE")
+
+                def classify_pdf_bytes(data):
+                    raise RuntimeError(StrBomb())
+                """,
+                "CLASSIFIER_ERROR",
+                "<unprintable exception>",
+            ),
+        )
+        for name, module_source, reason, diagnostic_marker in cases:
+            with self.subTest(name=name):
+                env = self._module_env(module_source)
+                result, diagnostic = self.run_with_worker(WORKER_PATH, worker_env=env)
+                self.assertEqual(result["content_classification"]["reason"], reason)
+                self.assertEqual(diagnostic["reason"], reason)
+                if diagnostic_marker:
+                    self.assertIn(diagnostic_marker, diagnostic["untrusted_detail"])
+
     def test_worker_timeout_is_hard_and_closed(self):
         worker = _write_worker(
             self.tmp,
