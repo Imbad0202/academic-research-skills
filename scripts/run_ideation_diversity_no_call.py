@@ -114,23 +114,35 @@ HUMAN_EVIDENCE_PATTERNS = (
     re.compile(r"(?:黃金標準|標註者|編碼者|評分者|裁決者)"),
 )
 HUMAN_EVIDENCE_COMPACT_PHRASES = (
-    "prior label",
-    "human label",
-    "judge label",
-    "annotator label",
-    "reviewer label",
-    "prior rating",
-    "human rating",
-    "judge rating",
     "adjudicate",
     "adjudicated",
+    "adjudicates",
+    "adjudicating",
     "adjudication",
     "adjudicator",
-    "gold standard coder",
-    "gold standard annotator",
-    "gold standard rater",
+    "adjudicators",
     "tie breaker",
-)
+) + tuple(
+    f"{source} {evidence}"
+    for source in ("prior", "human", "judge", "annotator", "reviewer")
+    for evidence in ("label", "labels", "rating", "ratings", "decision", "decisions", "evidence")
+) + tuple(
+    f"{prefix} {role}"
+    for prefix in ("", "gold standard")
+    for role in ("coder", "annotator", "rater")
+) + tuple(
+    f"{label} {value}"
+    for label in ("a1", "a2", "m1", "m2", "m3", "m4", "m5")
+    for value in ("yes", "no", "not applicable")
+) + tuple(
+    f"{source}{evidence}"
+    for source in ("真人", "人類")
+    for evidence in ("專家", "評審", "標註", "裁決", "證據")
+) + tuple(
+    f"{source}{evidence}"
+    for source in ("先前", "既有", "前輪")
+    for evidence in ("標註", "評分", "裁決")
+) + ("黃金標準", "標註者", "編碼者", "評分者", "裁決者")
 MAPPING_LEAK_PATTERNS = (
     re.compile(r"\breplicate(?:\s+id)?\s*(?:=|:|#)?\s*[12]\b", re.IGNORECASE),
     re.compile(r"\b(?:cell|pair|arm|scenario|experiment)\s+id\s*(?:=|:)", re.IGNORECASE),
@@ -155,25 +167,32 @@ MAPPING_LEAK_PATTERNS = (
     re.compile(r"(?:前一|先前|其他|配對)(?:場次|對話|逐字稿|回應)"),
 )
 MAPPING_LEAK_COMPACT_PHRASES = (
-    "replicate id 1",
-    "replicate id 2",
-    "cell id",
-    "pair id",
-    "arm id",
-    "scenario id",
-    "experiment id",
-    "other transcript",
     "adjacent probe",
     "exploratory guardrail",
-    "treatment arm",
-    "control arm",
-    "experimental arm",
-    "previous session",
-    "prior session",
-    "paired session",
-    "previous transcript",
-    "prior transcript",
-    "paired transcript",
+    "exploratory guardrails",
+) + tuple(
+    f"replicate {middle}{value}"
+    for middle in ("", "id ")
+    for value in ("1", "2")
+) + tuple(
+    f"{entity} id"
+    for entity in ("cell", "pair", "arm", "scenario", "experiment")
+) + tuple(
+    f"{arm} {kind}"
+    for arm in ("treatment", "control", "experimental")
+    for kind in ("arm", "condition", "group")
+) + tuple(
+    f"{relation} {artifact}"
+    for relation in ("preceding", "previous", "prior", "other", "paired")
+    for artifact in ("session", "transcript", "response")
+) + tuple(
+    f"{arm}{kind}"
+    for arm in ("處置", "控制", "實驗")
+    for kind in ("組", "條件", "臂")
+) + tuple(
+    f"{relation}{artifact}"
+    for relation in ("前一", "先前", "其他", "配對")
+    for artifact in ("場次", "對話", "逐字稿", "回應")
 )
 EXPERIMENTS = (
     (
@@ -2485,6 +2504,19 @@ def _compact_blind_text(text: str) -> str:
     return "".join(_blind_screen_text(text).split())
 
 
+def _fold_blind_alphanumeric(source_character: str) -> str:
+    visible = "".join(
+        folded
+        for folded in unicodedata.normalize("NFKD", source_character.casefold())
+        if unicodedata.category(folded)[0] not in {"M", "C", "P", "S", "Z"}
+    )
+    if visible:
+        return visible
+    # Some compatibility letters decompose entirely to a separator plus a
+    # mark. Retain the original letter as an alphanumeric boundary sentinel.
+    return source_character.casefold()
+
+
 def _blind_screen_text(text: str) -> str:
     """Project text without allowing a mark to casefold into a letter.
 
@@ -2493,36 +2525,31 @@ def _blind_screen_text(text: str) -> str:
     allow those spaces between the characters of an obfuscated identifier.
     """
     projected: list[str] = []
-    for character in unicodedata.normalize("NFKD", text):
-        category = unicodedata.category(character)[0]
-        if category in {"M", "C"}:
+    for source_character in text:
+        source_category = unicodedata.category(source_character)[0]
+        if source_category in {"M", "C"}:
             continue
-        if category in {"P", "Z"}:
+        if source_category in {"P", "S", "Z"}:
             projected.append(" ")
             continue
-        for folded in unicodedata.normalize("NFKD", character.casefold()):
-            folded_category = unicodedata.category(folded)[0]
-            if folded_category in {"M", "C"}:
-                continue
-            projected.append(" " if folded_category in {"P", "Z"} else folded)
+        # Compatibility punctuation created by one source L/N code point is
+        # not a real boundary. Keeping the source character atomic makes
+        # `ĿCell` and parenthesized-number forms remain adjacent to `Cell`.
+        projected.append(_fold_blind_alphanumeric(source_character))
     return " ".join("".join(projected).split())
 
 
 def _joined_blind_text(text: str) -> str:
     """Repair mark/format/punctuation splits while preserving real spacing."""
     projected: list[str] = []
-    for character in unicodedata.normalize("NFKD", text):
-        category = unicodedata.category(character)[0]
-        if category in {"M", "C", "P"}:
+    for source_character in text:
+        source_category = unicodedata.category(source_character)[0]
+        if source_category in {"M", "C", "P", "S"}:
             continue
-        if category == "Z":
+        if source_category == "Z":
             projected.append(" ")
             continue
-        for folded in unicodedata.normalize("NFKD", character.casefold()):
-            folded_category = unicodedata.category(folded)[0]
-            if folded_category in {"M", "C", "P"}:
-                continue
-            projected.append(" " if folded_category == "Z" else folded)
+        projected.append(_fold_blind_alphanumeric(source_character))
     return " ".join("".join(projected).split())
 
 
@@ -2544,16 +2571,47 @@ def _contains_complete_compact_identifier(text: str, identifier: str) -> bool:
     cannot split the characters of a frozen identifier.
     """
     compact = _compact_blind_text(identifier)
+    return _contains_complete_compact_projection(_blind_screen_text(text), compact)
+
+
+def _contains_complete_compact_projection(screen: str, compact: str) -> bool:
     if len(compact) < 4:
         return False
-    haystack = _blind_screen_text(text)
     separator = r"\s*"
     return re.search(
         r"(?<![^\W_])"
         + separator.join(re.escape(character) for character in compact)
         + r"(?![^\W_])",
-        haystack,
+        screen,
     ) is not None
+
+
+def _contains_compact_phrase_projection(
+    screen: str, compact_text: str, compact: str
+) -> bool:
+    if any(ord(character) > 127 for character in compact):
+        return compact in compact_text
+    return _contains_complete_compact_projection(screen, compact)
+
+
+def _obfuscated_token_pattern(token: str) -> str:
+    return r"\s*".join(re.escape(character) for character in token)
+
+
+_COMPACT_MAPPING_RELATION_PATTERN = re.compile(
+    r"(?<![^\W_])(?:"
+    + "|".join(
+        _obfuscated_token_pattern(token)
+        for token in ("mechanism", "feature", "probe", "guardrail", "guardrails")
+    )
+    + r")(?:[^\W_]|\s){0,32}(?:"
+    + "|".join(
+        _obfuscated_token_pattern(token)
+        for token in ("enabled", "disabled", "ablated", "on", "off")
+    )
+    + r")(?![^\W_])",
+    re.IGNORECASE,
+)
 
 
 def _assert_blindable_transcript(
@@ -2564,15 +2622,26 @@ def _assert_blindable_transcript(
 
 def _assert_blind_texts(plan: dict[str, Any], texts: list[str]) -> None:
     blind_identifiers = _blind_identifiers(plan)
+    blind_identifier_projections = tuple(
+        (identifier, _compact_blind_text(identifier))
+        for identifier in blind_identifiers
+    )
+    mapping_phrase_projections = tuple(
+        _compact_blind_text(phrase) for phrase in MAPPING_LEAK_COMPACT_PHRASES
+    )
+    human_phrase_projections = tuple(
+        _compact_blind_text(phrase) for phrase in HUMAN_EVIDENCE_COMPACT_PHRASES
+    )
     for text in texts:
         folded = _normalized_blind_text(text)
         joined = _joined_blind_text(text)
+        screen = _blind_screen_text(text)
+        compact_text = "".join(screen.split())
         leaked = next(
             (
                 identifier
-                for identifier in blind_identifiers
-                if _contains_complete_normalized_identifier(folded, identifier)
-                or _contains_complete_compact_identifier(text, identifier)
+                for identifier, compact in blind_identifier_projections
+                if _contains_complete_compact_projection(screen, compact)
             ),
             None,
         )
@@ -2585,9 +2654,9 @@ def _assert_blind_texts(plan: dict[str, Any], texts: list[str]) -> None:
         ):
             _fail("transcript free text leaks pair/arm/replicate mapping")
         if any(
-            _contains_complete_compact_identifier(text, phrase)
-            for phrase in MAPPING_LEAK_COMPACT_PHRASES
-        ):
+            _contains_compact_phrase_projection(screen, compact_text, compact)
+            for compact in mapping_phrase_projections
+        ) or _COMPACT_MAPPING_RELATION_PATTERN.search(screen):
             _fail("transcript free text leaks pair/arm/replicate mapping")
         if any(
             pattern.search(candidate)
@@ -2596,8 +2665,8 @@ def _assert_blind_texts(plan: dict[str, Any], texts: list[str]) -> None:
         ):
             _fail("transcript free text contains prior label/adjudication/human evidence")
         if any(
-            _contains_complete_compact_identifier(text, phrase)
-            for phrase in HUMAN_EVIDENCE_COMPACT_PHRASES
+            _contains_compact_phrase_projection(screen, compact_text, compact)
+            for compact in human_phrase_projections
         ):
             _fail("transcript free text contains prior label/adjudication/human evidence")
 
