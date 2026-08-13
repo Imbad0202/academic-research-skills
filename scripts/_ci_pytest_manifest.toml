@@ -221,6 +221,10 @@ id = "675-indirect-injection-behavior-probe"
 path = "scripts/test_indirect_prompt_injection_behavior_probe.py"
 
 [[pytest]]
+id = "659-within-session-ideation-diversity-assets"
+path = "scripts/test_validate_ideation_diversity_assets.py"
+
+[[pytest]]
 id = "250-title-fuzzy-false-positive-pin"
 path = "scripts/test_title_fuzzy_false_positive.py"
 
