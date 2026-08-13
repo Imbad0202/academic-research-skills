@@ -115,6 +115,12 @@ def test_complete_hash_bound_role_contract_is_embedded_and_within_budget():
         ).encode()
         assert adapter_marker + adapter_raw + b"</suite_invocation_adapter>" in prompt
         assert call["invocation_adapter_embedded"] is True
+        output_contract_raw = call["study_output_contract"].encode("utf-8")
+        output_marker = (
+            f'<study_output_contract sha256="{call["study_output_contract_sha256"]}">\n'
+        ).encode()
+        assert output_marker + output_contract_raw + b"</study_output_contract>" in prompt
+        assert call["study_output_contract_embedded"] is True
         assert b"highest-precedence runtime authority" in prompt
         assert call["estimated_template_tokens"] == runner._estimated_template_tokens(prompt)
         assert call["reserved_dependency_tokens"] == len(call["depends_on"]) * 1500
@@ -307,6 +313,77 @@ def test_closed_schema_rejects_extra_plan_property():
     mutated["dispatch"] = True
     with pytest.raises(runner.TopologyError, match="Additional properties"):
         runner._validate_schema(mutated, runner.PLAN_SCHEMA_PATH, "study plan")
+
+
+@pytest.mark.parametrize(
+    ("mutation", "value"),
+    [
+        ("extra_dispatch", True),
+        ("api_spend", 100),
+        ("provider", "live-provider/model"),
+    ],
+)
+def test_programmatic_builder_and_integrity_entrypoints_enforce_closed_source_schemas(
+    mutation, value
+):
+    plan, heldout = _assets()
+    baseline, prompts = runner.build_manifest(plan, heldout)
+    mutated = copy.deepcopy(plan)
+    if mutation == "extra_dispatch":
+        mutated["dispatch"] = value
+    elif mutation == "api_spend":
+        mutated["budgets"]["api_spend_authorized_usd"] = value
+    else:
+        mutated["model_contract"]["subject_provider_model"] = value
+    with pytest.raises(runner.TopologyError, match="study plan schema error"):
+        runner.build_manifest(mutated, heldout)
+    with pytest.raises(runner.TopologyError, match="study plan schema error"):
+        runner.validate_manifest_integrity(baseline, prompts, mutated, heldout)
+
+
+def test_each_arm_has_one_hash_bound_final_output_contract_and_role_scoped_intermediates():
+    plan, heldout = runner.load_assets()
+    manifest, prompts = runner.build_manifest(plan, heldout)
+    for task in plan["task_classes"]:
+        for arm in task["arms"]:
+            finals = [
+                role for role in arm["roles"] if role["output_kind"] == "final_outcome"
+            ]
+            assert [role["seat_id"] for role in finals] == [arm["final_output_seat"]]
+            for role in arm["roles"]:
+                contract = role["study_output_contract"].casefold()
+                if role["output_kind"] == "intermediate_artifact":
+                    assert "only" in contract
+                    assert "do not" in contract
+    field_calls = [row for row in manifest["calls"] if row["role_id"] == "field_analyst"]
+    assert field_calls
+    for call in field_calls:
+        contract = call["study_output_contract"].casefold()
+        assert "configuration" in contract
+        assert "do not make findings" in contract
+        assert contract.encode() in prompts[call["prompt_template_path"]].lower()
+    peer_calls = [row for row in manifest["calls"] if row["role_id"] == "peer_reviewer"]
+    assert peer_calls
+    for call in peer_calls:
+        contract = call["study_output_contract"].casefold()
+        assert "do not produce a revised draft" in contract
+        assert call["output_kind"] == "intermediate_artifact"
+
+
+def test_output_contract_or_final_seat_drift_fails_closed():
+    plan, heldout = _assets()
+    mutated = copy.deepcopy(plan)
+    arm = mutated["task_classes"][1]["arms"][2]
+    arm["roles"][0]["output_kind"] = "final_outcome"
+    with pytest.raises(runner.TopologyError, match="only final_output_seat"):
+        runner.validate_assets(mutated, heldout)
+
+    mutated = copy.deepcopy(plan)
+    mutated["task_classes"][1]["arms"][2]["roles"][0][
+        "study_output_contract"
+    ] += " Mutated."
+    with pytest.raises(runner.TopologyError, match="exact role graph drifted"):
+        runner.validate_assets(mutated, heldout)
 
 
 def test_strict_json_rejects_duplicate_keys(tmp_path: Path):

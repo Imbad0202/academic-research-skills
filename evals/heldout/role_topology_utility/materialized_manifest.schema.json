@@ -16,7 +16,7 @@
       "type": "array", "minItems": 186, "maxItems": 186,
       "items": {
         "type": "object", "additionalProperties": false,
-        "required": ["call_id", "sequence_index", "task_class", "scenario_id", "arm_id", "replicate_id", "seat_id", "role_id", "role_ref", "role_ref_sha256", "role_contract_embedded", "invocation_adapter_ref", "invocation_adapter_sha256", "invocation_adapter_embedded", "stage", "depends_on", "dependency_injection_required", "prompt_template_path", "prompt_template_sha256", "token_estimate_method", "estimated_template_tokens", "reserved_dependency_tokens", "estimated_worst_case_input_tokens", "input_token_cap", "output_token_cap", "tools", "web", "dispatch_authorized"],
+        "required": ["call_id", "sequence_index", "task_class", "scenario_id", "arm_id", "replicate_id", "seat_id", "role_id", "role_ref", "role_ref_sha256", "role_contract_embedded", "invocation_adapter_ref", "invocation_adapter_sha256", "invocation_adapter_embedded", "output_kind", "study_output_contract", "study_output_contract_sha256", "study_output_contract_embedded", "stage", "depends_on", "dependency_injection_required", "prompt_template_path", "prompt_template_sha256", "token_estimate_method", "estimated_template_tokens", "reserved_dependency_tokens", "estimated_worst_case_input_tokens", "input_token_cap", "output_token_cap", "tools", "web", "dispatch_authorized"],
         "properties": {
           "call_id": {"type": "string", "pattern": "^call-[0-9]{3}$"},
           "sequence_index": {"type": "integer", "minimum": 1, "maximum": 186},
@@ -32,6 +32,10 @@
           "invocation_adapter_ref": {"const": "evals/heldout/role_topology_utility/invocation_adapter.md"},
           "invocation_adapter_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
           "invocation_adapter_embedded": {"const": true},
+          "output_kind": {"enum": ["intermediate_artifact", "final_outcome"]},
+          "study_output_contract": {"type": "string", "minLength": 80},
+          "study_output_contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "study_output_contract_embedded": {"const": true},
           "stage": {"type": "integer", "minimum": 0, "maximum": 10},
           "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^call-[0-9]{3}$"}},
           "dependency_injection_required": {"type": "boolean"},

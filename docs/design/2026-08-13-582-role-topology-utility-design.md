@@ -31,7 +31,7 @@ citation-alignment, and scope defects. The four exact arms are:
 | `review_inline_1` | 1 | one suite-owned inline reviewer/synthesizer |
 | `review_panel_2` | 2 | methodology reviewer, then one synthesizer |
 | `review_panel_5` | 5 | four parallel specialist reviews, then one synthesizer |
-| `review_panel_7` | 7 | field configuration, five independent reviewers, then one synthesizer |
+| `review_panel_7` | 7 | neutral field configuration, five separately scoped reviewers, then one synthesizer |
 
 Reviewer outcomes are `detected`, `partial`, `missed`, `false_blocker`, and
 `duplicate`. Metrics stay separate: critical-defect recall, all-defect recall,
@@ -138,12 +138,20 @@ templates carry explicit prior-call placeholders; a future dispatcher must repla
 them with the named retained outputs, enforce the exact provider tokenizer against
 the 24,000-token cap, and hash the final prompt before dispatch.
 
+Every role row freezes a hash-bound study output contract. Intermediate reviewer
+seats emit role-scoped findings, the field analyst emits configuration without
+findings, and only the synthesis seat emits a final review. Intermediate writing
+seats emit plans, maps, audits, or diagnostics without revised prose; only the
+declared final writer emits the revised passage. This prevents repeated drafting
+or shared findings from masquerading as a role-topology effect.
+
 Production role files were not authored for these bounded synthetic inputs: for
 example, their phase grammar may assume five reviewer cards, a complete paper, or
 a patch document. Every prompt therefore embeds the hash-bound suite invocation
 adapter as the higher-precedence runtime authority. The production contract is a
 role-perspective source: identity, scholarly focus, anti-invention duties, and
-role boundaries remain operative, while production phase, filesystem, tool,
+role boundaries remain operative and are specialized by those per-seat output
+contracts, while production phase, filesystem, tool,
 panel-size, and output-format clauses do not. This disclosed adaptation keeps an
 input-shape mismatch from masquerading as a topology effect.
 

@@ -28,13 +28,15 @@
   "$defs": {
     "role": {
       "type": "object", "additionalProperties": false,
-      "required": ["seat_id", "role_id", "role_ref", "stage", "depends_on"],
+      "required": ["seat_id", "role_id", "role_ref", "stage", "depends_on", "output_kind", "study_output_contract"],
       "properties": {
         "seat_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
         "role_id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
         "role_ref": {"type": "string", "pattern": "^[^/].*\\.md$"},
         "stage": {"type": "integer", "minimum": 0, "maximum": 10},
-        "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9-]+$"}}
+        "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9-]+$"}},
+        "output_kind": {"enum": ["intermediate_artifact", "final_outcome"]},
+        "study_output_contract": {"type": "string", "minLength": 80}
       }
     },
     "arm": {

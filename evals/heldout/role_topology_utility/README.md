@@ -9,8 +9,11 @@ uncertainty disclosure, blinding, and UVV definition live in `study_plan.json` a
 its closed schema. `heldout_set.json` contains two synthetic fixtures per task and
 a closed schema. `codebook.md` keeps the two evaluators separate.
 `invocation_adapter.md` makes the synthetic task envelope authoritative and
-limits embedded production contracts to role perspective and boundaries; this
-prevents production phase/output grammar from contaminating the matched task.
+limits embedded production contracts to role perspective and boundaries. Each
+role row also freezes a hash-bound study output contract, so intermediate seats
+emit their own artifacts and only the declared final seat emits the evaluated
+outcome; this prevents production phase/output grammar from contaminating the
+matched task.
 
 Run only the offline commands:
 

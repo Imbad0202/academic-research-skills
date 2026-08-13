@@ -33,7 +33,9 @@
               "role_id": "inline_evidence_reviewer",
               "role_ref": "evals/heldout/role_topology_utility/inline_reviewer.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Return atomic anchored findings and one deduplicated final synthesis; do not emit editorial-decision labels."
             }
           ]
         },
@@ -48,7 +50,9 @@
               "role_id": "methodology_reviewer",
               "role_ref": "academic-paper-reviewer/agents/methodology_reviewer_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-synthesis",
@@ -57,7 +61,9 @@
               "stage": 1,
               "depends_on": [
                 "review-methodology"
-              ]
+              ],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Using only retained reviewer outputs, return one deduplicated synthesis of atomic anchored findings; do not emit editorial-decision labels."
             }
           ]
         },
@@ -72,28 +78,36 @@
               "role_id": "journal_fit_reviewer",
               "role_ref": "academic-paper-reviewer/agents/eic_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-methodology",
               "role_id": "methodology_reviewer",
               "role_ref": "academic-paper-reviewer/agents/methodology_reviewer_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-domain",
               "role_id": "domain_reviewer",
               "role_ref": "academic-paper-reviewer/agents/domain_reviewer_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-devils-advocate",
               "role_id": "devils_advocate_reviewer",
               "role_ref": "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-synthesis",
@@ -105,7 +119,9 @@
                 "review-methodology",
                 "review-domain",
                 "review-devils-advocate"
-              ]
+              ],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Using only retained reviewer outputs, return one deduplicated synthesis of atomic anchored findings; do not emit editorial-decision labels."
             }
           ]
         },
@@ -120,7 +136,9 @@
               "role_id": "field_analyst",
               "role_ref": "academic-paper-reviewer/agents/field_analyst_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only reviewer configuration: scoped questions and evidence-to-reviewer assignments; do not make findings, suggest answers, synthesize, or emit editorial-decision labels."
             },
             {
               "seat_id": "review-journal-fit",
@@ -129,7 +147,9 @@
               "stage": 1,
               "depends_on": [
                 "review-field-analysis"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-methodology",
@@ -138,7 +158,9 @@
               "stage": 1,
               "depends_on": [
                 "review-field-analysis"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-domain",
@@ -147,7 +169,9 @@
               "stage": 1,
               "depends_on": [
                 "review-field-analysis"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-perspective",
@@ -156,7 +180,9 @@
               "stage": 1,
               "depends_on": [
                 "review-field-analysis"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-devils-advocate",
@@ -165,7 +191,9 @@
               "stage": 1,
               "depends_on": [
                 "review-field-analysis"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only role-scoped atomic anchored findings; do not synthesize other seats or emit editorial-decision labels."
             },
             {
               "seat_id": "review-synthesis",
@@ -178,7 +206,9 @@
                 "review-domain",
                 "review-perspective",
                 "review-devils-advocate"
-              ]
+              ],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Using only retained reviewer outputs, return one deduplicated synthesis of atomic anchored findings; do not emit editorial-decision labels."
             }
           ]
         }
@@ -214,7 +244,9 @@
               "role_id": "inline_revision_writer",
               "role_ref": "evals/heldout/role_topology_utility/inline_writer.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Return only the revised passage and a requirement-to-span trace; do not emit editorial-decision labels."
             }
           ]
         },
@@ -229,7 +261,9 @@
               "role_id": "revision_coach",
               "role_ref": "academic-paper/agents/revision_coach_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only an anchored revision plan for the final writer; do not draft or rewrite the passage and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-draft",
@@ -238,7 +272,9 @@
               "stage": 1,
               "depends_on": [
                 "writing-revision-coach"
-              ]
+              ],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Return only the revised passage and a requirement-to-span trace; do not emit editorial-decision labels."
             }
           ]
         },
@@ -253,7 +289,9 @@
               "role_id": "structure_architect",
               "role_ref": "academic-paper/agents/structure_architect_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only a bounded structure plan for the passage; do not draft or rewrite prose and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-argument",
@@ -262,7 +300,9 @@
               "stage": 1,
               "depends_on": [
                 "writing-structure"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only an evidence-anchored argument map for the passage; do not draft or rewrite prose and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-citation",
@@ -271,7 +311,9 @@
               "stage": 2,
               "depends_on": [
                 "writing-argument"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only a citation-compliance audit and correction instructions; do not draft or rewrite the passage and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-revision-coach",
@@ -280,7 +322,9 @@
               "stage": 3,
               "depends_on": [
                 "writing-citation"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only an anchored revision plan for the final writer; do not draft or rewrite the passage and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-draft",
@@ -289,7 +333,9 @@
               "stage": 4,
               "depends_on": [
                 "writing-revision-coach"
-              ]
+              ],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Return only the revised passage and a requirement-to-span trace; do not emit editorial-decision labels."
             }
           ]
         },
@@ -304,7 +350,9 @@
               "role_id": "intake",
               "role_ref": "academic-paper/agents/intake_agent.md",
               "stage": 0,
-              "depends_on": []
+              "depends_on": [],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only a bounded revision specification covering supplied constraints; do not draft or rewrite the passage and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-literature",
@@ -313,7 +361,9 @@
               "stage": 1,
               "depends_on": [
                 "writing-intake"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only an evidence-use plan limited to supplied evidence summaries; do not draft or rewrite the passage and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-structure",
@@ -322,7 +372,9 @@
               "stage": 2,
               "depends_on": [
                 "writing-literature"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only a bounded structure plan for the passage; do not draft or rewrite prose and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-argument",
@@ -331,7 +383,9 @@
               "stage": 3,
               "depends_on": [
                 "writing-structure"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only an evidence-anchored argument map for the passage; do not draft or rewrite prose and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-citation",
@@ -340,7 +394,9 @@
               "stage": 4,
               "depends_on": [
                 "writing-argument"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only a citation-compliance audit and correction instructions; do not draft or rewrite the passage and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-peer-review",
@@ -349,7 +405,9 @@
               "stage": 5,
               "depends_on": [
                 "writing-citation"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only a bounded diagnostic of the proposed revision plan; do not produce a revised draft and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-revision-coach",
@@ -358,7 +416,9 @@
               "stage": 6,
               "depends_on": [
                 "writing-peer-review"
-              ]
+              ],
+              "output_kind": "intermediate_artifact",
+              "study_output_contract": "Return only an anchored revision plan for the final writer; do not draft or rewrite the passage and do not emit editorial-decision labels."
             },
             {
               "seat_id": "writing-draft",
@@ -367,7 +427,9 @@
               "stage": 7,
               "depends_on": [
                 "writing-revision-coach"
-              ]
+              ],
+              "output_kind": "final_outcome",
+              "study_output_contract": "Return only the revised passage and a requirement-to-span trace; do not emit editorial-decision labels."
             }
           ]
         }

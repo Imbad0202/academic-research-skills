@@ -46,7 +46,7 @@ EXPECTED_ARMS = {
     },
 }
 EXPECTED_TASK_CLASSES_SHA256 = (
-    "781fabc6ab4f0c5ba90087a4eda5ea08f08c463341e8e7eaae4dc366f4ae450e"
+    "5deed0c6a780219ff61e6a69739ecc4c2a2f16b8123cf412f739711313ddc7a9"
 )
 EXPECTED_SUBJECT_BLIND_FIELDS = [
     "arm_id",
@@ -178,6 +178,15 @@ def validate_assets(plan: dict[str, Any], heldout: dict[str, Any]) -> None:
                 raise TopologyError(f"{arm['arm_id']}: duplicate seat_id")
             if seats.count(arm["final_output_seat"]) != 1:
                 raise TopologyError(f"{arm['arm_id']}: exactly one final output seat required")
+            final_output_rows = [
+                role for role in roles if role["output_kind"] == "final_outcome"
+            ]
+            if [role["seat_id"] for role in final_output_rows] != [
+                arm["final_output_seat"]
+            ]:
+                raise TopologyError(
+                    f"{arm['arm_id']}: only final_output_seat may emit final outcome"
+                )
             prior: set[str] = set()
             for role in sorted(roles, key=lambda row: row["stage"]):
                 missing = set(role["depends_on"]) - prior
@@ -279,6 +288,10 @@ def _render_prompt(
         raise TopologyError(f"role contract collides with source delimiter: {role['role_ref']}")
     if "<suite_invocation_adapter" in invocation_adapter or "</suite_invocation_adapter>" in invocation_adapter:
         raise TopologyError("invocation adapter collides with trusted delimiter")
+    output_contract = role["study_output_contract"]
+    if "<study_output_contract" in output_contract or "</study_output_contract>" in output_contract:
+        raise TopologyError("study output contract collides with trusted delimiter")
+    output_contract_digest = _sha256(output_contract.encode("utf-8"))
     evidence = "\n".join(
         f"- {row['evidence_id']}: {row['text']}" for row in scenario["evidence"]
     )
@@ -287,11 +300,6 @@ def _render_prompt(
         "none"
         if not dependency_calls
         else " ".join(f"<prior-output call=\"{call_id}\"/>" for call_id in dependency_calls)
-    )
-    output_rule = (
-        "Return atomic anchored findings and a deduplicated synthesis."
-        if scenario["task_class"] == "decomposable_reviewer_evidence_review"
-        else "Return only the revised passage and a requirement-to-span trace; no editorial-decision labels."
     )
     text = f"""# Repository-owned synthetic role-topology task
 
@@ -309,6 +317,10 @@ Task class: {scenario['task_class']}
 Title: {scenario['title']}
 Assignment: {scenario['assignment']}
 
+## Hash-pinned seat output contract ({role['output_kind']})
+<study_output_contract sha256="{output_contract_digest}">
+{output_contract}</study_output_contract>
+
 ## Source role contract (subordinate as specified by the adapter)
 <source_role_contract sha256="{role_digest}">
 {role_contract}</source_role_contract>
@@ -325,8 +337,6 @@ Assignment: {scenario['assignment']}
 ## Prior-output placeholders
 {dependencies}
 
-## Output rule
-{output_rule}
 """
     return text.encode("utf-8")
 
@@ -342,6 +352,10 @@ def validate_manifest_integrity(
     plan: dict[str, Any],
     heldout: dict[str, Any],
 ) -> None:
+    _validate_schema(plan, PLAN_SCHEMA_PATH, "study plan")
+    _validate_schema(heldout, SET_SCHEMA_PATH, "held-out set")
+    validate_assets(plan, heldout)
+    _validate_schema(manifest, MANIFEST_SCHEMA_PATH, "materialized manifest")
     calls = manifest["calls"]
     expected_ids = [f"call-{index:03d}" for index in range(1, len(calls) + 1)]
     if [row["call_id"] for row in calls] != expected_ids:
@@ -371,6 +385,14 @@ def validate_manifest_integrity(
         ).encode()
         if adapter_marker + adapter_raw + b"</suite_invocation_adapter>" not in prompt:
             raise TopologyError(f"{row['call_id']}: invocation adapter bytes not embedded")
+        output_contract_raw = row["study_output_contract"].encode("utf-8")
+        if _sha256(output_contract_raw) != row["study_output_contract_sha256"]:
+            raise TopologyError(f"{row['call_id']}: study output contract hash mismatch")
+        output_marker = (
+            f'<study_output_contract sha256="{row["study_output_contract_sha256"]}">\n'
+        ).encode()
+        if output_marker + output_contract_raw + b"</study_output_contract>" not in prompt:
+            raise TopologyError(f"{row['call_id']}: study output contract bytes not embedded")
         estimated = _estimated_template_tokens(prompt)
         reserved = len(row["depends_on"]) * row["output_token_cap"]
         worst_case = estimated + reserved
@@ -466,6 +488,12 @@ def _build_manifest_unchecked(
                             "invocation_adapter_ref": plan["invocation_adapter_ref"],
                             "invocation_adapter_sha256": _sha256(adapter_raw),
                             "invocation_adapter_embedded": True,
+                            "output_kind": role["output_kind"],
+                            "study_output_contract": role["study_output_contract"],
+                            "study_output_contract_sha256": _sha256(
+                                role["study_output_contract"].encode("utf-8")
+                            ),
+                            "study_output_contract_embedded": True,
                             "stage": role["stage"],
                             "depends_on": dependency_calls,
                             "dependency_injection_required": bool(dependency_calls),
@@ -504,6 +532,8 @@ def build_manifest(
     plan: dict[str, Any], heldout: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, bytes]]:
     """Build and exact-replay one canonical in-memory asset snapshot."""
+    _validate_schema(plan, PLAN_SCHEMA_PATH, "study plan")
+    _validate_schema(heldout, SET_SCHEMA_PATH, "held-out set")
     validate_assets(plan, heldout)
     manifest, prompts = _build_manifest_unchecked(plan, heldout)
     _validate_schema(manifest, MANIFEST_SCHEMA_PATH, "materialized manifest")
