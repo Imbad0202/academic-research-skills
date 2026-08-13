@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/blind_manifest.schema.json",
+  "title": "#675 finalized blind-bundle manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "source_ingestion_manifest_sha256",
+    "inventory_ref",
+    "inventory_sha256",
+    "private_map_ref",
+    "private_map_sha256",
+    "packet_count",
+    "packets",
+    "finalized_artifacts",
+    "exact_inventory_required",
+    "assignment_boundary"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-blind-manifest/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "source_ingestion_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "inventory_ref": {"const": "blind/inventory.json"},
+    "inventory_sha256": {"$ref": "#/$defs/sha256"},
+    "private_map_ref": {"const": "blind/private/map.json"},
+    "private_map_sha256": {"$ref": "#/$defs/sha256"},
+    "packet_count": {"const": 64},
+    "packets": {
+      "type": "array",
+      "minItems": 64,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blind_session_id", "packet_ref", "packet_sha256", "packet_bytes"],
+        "properties": {
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+          "packet_ref": {"type": "string", "pattern": "^blind/packets/blind-[0-9a-f]{24}\\.json$"},
+          "packet_sha256": {"$ref": "#/$defs/sha256"},
+          "packet_bytes": {"type": "integer", "minimum": 1, "maximum": 1000000}
+        }
+      }
+    },
+    "finalized_artifacts": {"const": true},
+    "exact_inventory_required": {"const": true},
+    "assignment_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["future_closed_assignment_ledger_gate_required", "future_assignment_ledger_schema_ref", "future_assignment_ledger_schema_sha256", "assignment_ledger_implemented_by_no_call_runner", "same_judge_cross_condition_exposure_forbidden", "bundle_alone_proves_arm_blindness"],
+      "properties": {
+        "future_closed_assignment_ledger_gate_required": {"const": true},
+        "future_assignment_ledger_schema_ref": {"const": "evals/heldout/indirect_prompt_injection_behavior/judge_assignment_ledger.schema.json"},
+        "future_assignment_ledger_schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "assignment_ledger_implemented_by_no_call_runner": {"const": false},
+        "same_judge_cross_condition_exposure_forbidden": {"const": true},
+        "bundle_alone_proves_arm_blindness": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

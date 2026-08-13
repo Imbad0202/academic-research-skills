@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/stop_intent.schema.json",
+  "title": "#675 durable write-once irreversible stop intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "suite", "run_plan_sha256", "prior_manifest_sha256",
+    "cell_id", "sequence_index", "reason_code", "detail", "raw_ref",
+    "raw_sha256", "raw_base64", "stopped_manifest_sha256",
+    "stopped_manifest_base64", "retry_forbidden"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-stop-intent/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "prior_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+    "sequence_index": {"type": "integer", "minimum": 1, "maximum": 64},
+    "reason_code": {
+      "enum": [
+        "prompt_or_plan_hash_mismatch", "provider_auth_model_drift",
+        "enabled_tool_or_web", "authorization_record_missing_or_mismatch",
+        "blocked_or_partial_call", "unplanned_tool_action",
+        "unplanned_network_action", "evidence_write_failure",
+        "out_of_order_ingestion", "transcript_contract_failure",
+        "blind_mapping_or_prior_label_leak"
+      ]
+    },
+    "detail": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "raw_ref": {
+      "type": "string",
+      "pattern": "^blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw(?:\\.collision-[0-9a-f]{16})?$"
+    },
+    "raw_sha256": {"$ref": "#/$defs/sha256"},
+    "raw_base64": {"type": "string", "maxLength": 699052},
+    "stopped_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "stopped_manifest_base64": {"type": "string", "minLength": 1, "maxLength": 200000},
+    "retry_forbidden": {"const": true}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

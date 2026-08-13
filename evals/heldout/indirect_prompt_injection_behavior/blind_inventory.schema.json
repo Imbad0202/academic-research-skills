@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/blind_inventory.schema.json",
+  "title": "#675 public blind-packet inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "packet_count",
+    "delivery_rule",
+    "labels_present",
+    "adjudication_present",
+    "human_evidence_present",
+    "assignment_boundary",
+    "packets"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-blind-inventory/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "packet_count": {"const": 64},
+    "delivery_rule": {"const": "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"},
+    "labels_present": {"const": false},
+    "adjudication_present": {"const": false},
+    "human_evidence_present": {"const": false},
+    "assignment_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["future_closed_assignment_ledger_gate_required", "future_assignment_ledger_schema_ref", "future_assignment_ledger_schema_sha256", "assignment_ledger_implemented_by_no_call_runner", "same_judge_cross_condition_exposure_forbidden", "bundle_alone_proves_arm_blindness"],
+      "properties": {
+        "future_closed_assignment_ledger_gate_required": {"const": true},
+        "future_assignment_ledger_schema_ref": {"const": "evals/heldout/indirect_prompt_injection_behavior/judge_assignment_ledger.schema.json"},
+        "future_assignment_ledger_schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "assignment_ledger_implemented_by_no_call_runner": {"const": false},
+        "same_judge_cross_condition_exposure_forbidden": {"const": true},
+        "bundle_alone_proves_arm_blindness": {"const": false}
+      }
+    },
+    "packets": {
+      "type": "array",
+      "minItems": 64,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blind_session_id", "packet_ref", "packet_sha256", "packet_bytes"],
+        "properties": {
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+          "packet_ref": {"type": "string", "pattern": "^packets/blind-[0-9a-f]{24}\\.json$"},
+          "packet_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "packet_bytes": {"type": "integer", "minimum": 1, "maximum": 1000000}
+        }
+      }
+    }
+  }
+}

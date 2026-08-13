@@ -187,3 +187,97 @@ This PR may freeze the design, fixtures, validator, and probe without running a
 model. #675 remains open until raw subject outputs, the disclosed judgment and
 adjudication record, a valid measurement row, and the bounded residual-risk
 report are published.
+
+## 10. Phase-2 no-call execution and blinding envelope
+
+The offline Phase-2 envelope expands the frozen design into exactly 64 subject
+cells: eight scenarios by two external-content conditions by two guidance
+conditions by two replicates. A precommitted seed deterministically orders the
+eight scenario blocks, rotates or reverses each block's four-factor order, and
+reverses that order in replicate 2. The plan records the ordered projection and
+its SHA-256. Every cell requires a fresh context.
+
+The envelope has only five commands: initialize, materialize, validate, ingest
+one externally recorded transcript, and prepare isolated blind-session packets.
+It has no provider transport, detect, dispatch, probe, model, network, process,
+retry, judge, or adjudicator path. Every call envelope fixes `tools=[]`,
+`web=false`, `transport=none`, `dispatch_available=false`, USD 0 API spend, and
+no API fallback.
+
+An external authorization record must bind the exact run-plan bytes, suite
+commit, provider/model/runtime/auth/settings, ordered 64 cell ids, and order
+hash. Validation proves only its closed structure, bytes, hashes, declared
+scope, and time ordering. It does not authenticate the operator, grant consent,
+or create research/human evidence. Fresh exact-plan authorization remains an
+external procedural responsibility.
+
+At freeze time `suite_commit` must equal the local checkout HEAD and every
+listed asset is bound by its live-byte SHA-256. This proves neither a clean
+worktree nor replay of those live bytes from the Git object; the plan records
+that limitation instead of treating the operator-declared commit as complete
+provenance.
+
+Transcript ingestion is ordered and append-only at the evidence layer. Raw
+responses and bounded base64 event bytes carry exact byte counts and SHA-256
+hashes. The pinned runner decoder derives action class from a closed native
+event type; every canonical raw event binds the external session id, exact cell,
+sequence index, event index, and event id. A separately supplied outer class
+cannot hide a native tool or network type, and the subject-output event must
+reproduce the response bytes exactly. Closed external-session receipts bind a
+unique receipt id and fresh-context session id to the exact next cell. Duplicate
+identities, cross-session stitching, or cross-cell time regression stop the run.
+Observed input/output token usage is required and enforced against the frozen
+caps, with an additional conservative output-byte and final packet-size gate.
+
+Exclusive file creation uses no-follow containment and fsyncs file and
+directory state. The evidence directories are frozen at materialization so a
+failed first write cannot leave an unaccounted empty directory. Materialization
+also pre-arms 64 immutable ingestion journal tokens and one blind-bundle token.
+Each transaction claims its token by adding a validated same-inode hard link
+before acquiring external transcript bytes or generating blind ids. A claimed
+token is an irreversible terminal boundary even if transcript acquisition or a
+later primary marker write fails. The first
+blocked or partial call, plan/prompt/provider/auth drift, enabled capability,
+unplanned tool/network action, malformed record, semantic assignment/prior-label
+leak, transcript-acquisition failure, or evidence-write failure stops the
+entire run. Available raw bytes are preserved content-addressably before the
+primary closed write-once stop intent, which contains the blocked raw bytes and
+exact stopped-manifest replay bytes. Exact authorization, transcript, and
+receipt artifacts are registered in the stopped state by hash; a compact
+canonical digest binds every otherwise-unregistered file and directory,
+including empty directories and content-addressed replacement staging. A
+manifest replacement failure is recovered from the stop intent. If the primary
+stop-intent write fails, the already-claimed pre-armed token still permanently
+forbids retry. Plan/manifest drift detected before normal loading creates a
+write-once pre-load quarantine, so restoring bytes cannot authorize retry.
+
+Only 64 complete, unstopped ingestions can produce the blind packet. The output
+is 64 separately hashed, runner-write-once session packets plus a public
+inventory and a private arm map. Judges receive exactly one packet at a time.
+The public inventory cannot disclose scenario or pair identity, formal
+condition assignment, replicate, or another transcript. Packets contain the
+frozen rubric, trusted task, exact external content, raw response, raw events,
+and schema parse diagnostics, but no labels, adjudication, aggregate, or
+human-evidence claim. Because exact external content exposes whether injection
+text and a canary are visibly present, the packet does not claim those features
+are blind. NFKC/format/punctuation-normalized assignment and prior-label leak
+checks run irreversibly at each cell ingest and again before preparation.
+
+The private map is not encrypted. A `0700` directory, `0600` file, and
+procedural nondisclosure reduce accidental disclosure but do not prove
+reviewer identity or access control. The complete bundle is built under one
+deterministic sibling staging path after the blind transaction token is
+irreversibly claimed, then atomically renamed. A complete staged bundle is
+validated and resumed byte-for-byte; an incomplete, invalid, or legacy staging
+residue is preserved and permanently quarantines regeneration, so a second set
+of blind ids or private mappings cannot be minted. Its final manifest binds the exact
+complete ingestion state, public inventory, private map, and all 64 packet byte
+counts and hashes. Validation semantically rebuilds every packet and rejects
+extra or missing paths. If a crash happens after the rename but before the
+ingestion state update, the same exact bundle is replayed and finalized rather
+than regenerated. A future closed assignment ledger must prevent same-judge
+cross-condition exposure. Its future closed shape is frozen in
+`judge_assignment_ledger.schema.json`, but this runner neither creates nor
+validates a real ledger; the bundle explicitly does not prove that property
+alone. At least two independent arm-blind human judges and a separate arm-blind
+human adjudicator are still required outside this envelope.

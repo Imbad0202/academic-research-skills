@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/judge_assignment_ledger.schema.json",
+  "title": "#675 future closed pre-delivery judge assignment ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "suite", "run_plan_sha256", "blind_manifest_sha256",
+    "status", "independent_judges", "adjudicator", "assignments",
+    "exposure_constraints", "proof_boundary"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-judge-assignment-ledger/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "blind_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"const": "sealed_before_any_packet_delivery"},
+    "independent_judges": {
+      "type": "array", "minItems": 2, "maxItems": 16, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/person"}
+    },
+    "adjudicator": {"$ref": "#/$defs/person"},
+    "assignments": {
+      "type": "array", "minItems": 128, "maxItems": 1024, "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["assignment_id", "person_id", "role", "blind_session_id", "packet_sha256"],
+        "properties": {
+          "assignment_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,255}$"},
+          "person_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,255}$"},
+          "role": {"const": "independent_first_round_judge"},
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+          "packet_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "exposure_constraints": {
+      "type": "object", "additionalProperties": false,
+      "required": ["one_packet_per_assignment", "same_person_cross_condition_equivalent_forbidden", "private_map_validation_required", "adjudicator_kept_arm_blind"],
+      "properties": {
+        "one_packet_per_assignment": {"const": true},
+        "same_person_cross_condition_equivalent_forbidden": {"const": true},
+        "private_map_validation_required": {"const": true},
+        "adjudicator_kept_arm_blind": {"const": true}
+      }
+    },
+    "proof_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["human_identity_verified_by_no_call_runner", "bundle_alone_proves_exposure_blindness", "ledger_validator_implemented_by_no_call_runner"],
+      "properties": {
+        "human_identity_verified_by_no_call_runner": {"const": false},
+        "bundle_alone_proves_exposure_blindness": {"const": false},
+        "ledger_validator_implemented_by_no_call_runner": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "person": {
+      "type": "object", "additionalProperties": false,
+      "required": ["person_id", "human", "independent", "arm_blind_required"],
+      "properties": {
+        "person_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,255}$"},
+        "human": {"const": true},
+        "independent": {"const": true},
+        "arm_blind_required": {"const": true}
+      }
+    }
+  }
+}

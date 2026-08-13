@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/authorization_record.schema.json",
+  "title": "#675 exact-plan external authorization record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "record_id",
+    "run_plan_sha256",
+    "run_id",
+    "suite_commit",
+    "execution",
+    "scope",
+    "decision",
+    "proof_boundary"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-authorization-record/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "record_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,255}$"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "suite_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "execution": {"$ref": "#/$defs/execution"},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_type", "subject_call_cells", "cell_ids", "order_sha256"],
+      "properties": {
+        "scope_type": {"const": "exact_run_plan_all_cells"},
+        "subject_call_cells": {"const": 64},
+        "cell_ids": {
+          "type": "array",
+          "minItems": 64,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^cell-[0-9]{3}$"}
+        },
+        "order_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "decided_at", "operator_reference", "statement"],
+      "properties": {
+        "status": {"enum": ["authorized", "denied", "revoked"]},
+        "decided_at": {"type": "string", "format": "date-time"},
+        "operator_reference": {"type": "string", "minLength": 8, "maxLength": 256},
+        "statement": {"type": "string", "minLength": 20, "maxLength": 2000}
+      }
+    },
+    "proof_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structural_and_byte_binding_only",
+        "operator_identity_verified_by_runner",
+        "fresh_external_authorization_is_procedural_responsibility",
+        "not_human_or_research_evidence"
+      ],
+      "properties": {
+        "structural_and_byte_binding_only": {"const": true},
+        "operator_identity_verified_by_runner": {"const": false},
+        "fresh_external_authorization_is_procedural_responsibility": {"const": true},
+        "not_human_or_research_evidence": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_provider",
+        "subject_model",
+        "subject_runtime",
+        "subject_runtime_version",
+        "auth_mode",
+        "reasoning_effort",
+        "input_token_cap",
+        "output_token_cap",
+        "tools",
+        "web_enabled",
+        "runner_transport",
+        "dispatch_available",
+        "api_spend_ceiling_usd",
+        "api_fallback",
+        "envelope_grants_consent",
+        "fresh_external_authorization_required",
+        "token_caps_enforced_by_runner",
+        "observed_token_usage_required"
+      ],
+      "properties": {
+        "subject_provider": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_model": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_runtime": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_runtime_version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "auth_mode": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64},
+        "input_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "output_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "tools": {"const": []},
+        "web_enabled": {"const": false},
+        "runner_transport": {"const": "none"},
+        "dispatch_available": {"const": false},
+        "api_spend_ceiling_usd": {"const": 0},
+        "api_fallback": {"const": false},
+        "envelope_grants_consent": {"const": false},
+        "fresh_external_authorization_required": {"const": true},
+        "token_caps_enforced_by_runner": {"const": true},
+        "observed_token_usage_required": {"const": true}
+      }
+    }
+  }
+}

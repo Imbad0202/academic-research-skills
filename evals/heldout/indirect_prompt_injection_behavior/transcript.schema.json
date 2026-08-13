@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/transcript.schema.json",
+  "title": "#675 externally recorded subject-call transcript",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "cell_id",
+    "sequence_index",
+    "source",
+    "bindings",
+    "observed_execution",
+    "observed_usage",
+    "call_status",
+    "response",
+    "events",
+    "observations"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-transcript/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+    "sequence_index": {"type": "integer", "minimum": 1, "maximum": 64},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_kind",
+        "source_artifact_id",
+        "recorded_at",
+        "authorization_record_ref",
+        "authorization_record_sha256",
+        "event_normalizer",
+        "external_session_receipt_utf8",
+        "external_session_receipt_sha256"
+      ],
+      "properties": {
+        "source_kind": {"const": "externally_recorded_subject_call"},
+        "source_artifact_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "authorization_record_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+        "authorization_record_sha256": {"$ref": "#/$defs/sha256"},
+        "event_normalizer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract",
+            "normalizer_id",
+            "normalizer_version",
+            "external_provenance_only",
+            "runner_authenticates_normalizer_identity"
+          ],
+          "properties": {
+            "contract": {"const": "runner-decoded-canonical-event/2.0"},
+            "normalizer_id": {"const": "ars-675-canonical-event-decoder"},
+            "normalizer_version": {"const": "2.0"},
+            "external_provenance_only": {"const": false},
+            "runner_authenticates_normalizer_identity": {"const": true}
+          }
+        },
+        "external_session_receipt_utf8": {"type": "string", "minLength": 50, "maxLength": 4000},
+        "external_session_receipt_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_sha256", "scenario_sha256", "call_envelope_sha256"],
+      "properties": {
+        "prompt_sha256": {"$ref": "#/$defs/sha256"},
+        "scenario_sha256": {"$ref": "#/$defs/sha256"},
+        "call_envelope_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "observed_execution": {"$ref": "#/$defs/observed_execution"},
+    "observed_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "source"],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "output_tokens": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "source": {"type": "string", "pattern": "\\S", "maxLength": 128}
+      }
+    },
+    "call_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "blocked", "partial", "status_detail"],
+      "properties": {
+        "complete": {"type": "boolean"},
+        "blocked": {"type": "boolean"},
+        "partial": {"type": "boolean"},
+        "status_detail": {"type": "string", "minLength": 1, "maxLength": 2000}
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_response_utf8",
+        "raw_response_bytes",
+        "raw_response_sha256",
+        "parse_diagnostics"
+      ],
+      "properties": {
+        "raw_response_utf8": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "raw_response_bytes": {"type": "integer", "minimum": 1, "maximum": 262144},
+        "raw_response_sha256": {"$ref": "#/$defs/sha256"},
+        "parse_diagnostics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_valid", "schema_errors"],
+          "properties": {
+            "schema_valid": {"type": "boolean"},
+            "schema_errors": {
+              "type": "array",
+              "maxItems": 64,
+              "items": {"type": "string", "minLength": 1, "maxLength": 1000}
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/event"}
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt_hash_match",
+        "execution_match",
+        "unplanned_tool_actions",
+        "unplanned_network_actions",
+        "evidence_write_failure"
+      ],
+      "properties": {
+        "prompt_hash_match": {"type": "boolean"},
+        "execution_match": {"type": "boolean"},
+        "unplanned_tool_actions": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
+        },
+        "unplanned_network_actions": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
+        },
+        "evidence_write_failure": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "observed_execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_provider",
+        "subject_model",
+        "subject_runtime",
+        "subject_runtime_version",
+        "auth_mode",
+        "reasoning_effort",
+        "input_token_cap",
+        "output_token_cap",
+        "tools",
+        "web_enabled",
+        "api_fallback_used"
+      ],
+      "properties": {
+        "subject_provider": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_model": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_runtime": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_runtime_version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "auth_mode": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64},
+        "input_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "output_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "tools": {"const": []},
+        "web_enabled": {"const": false},
+        "api_fallback_used": {"const": false}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_index",
+        "event_kind",
+        "raw_event_base64",
+        "raw_event_bytes",
+        "raw_event_sha256"
+      ],
+      "properties": {
+        "event_index": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "event_kind": {
+          "enum": [
+            "call_started",
+            "runtime_event",
+            "subject_output",
+            "tool_action",
+            "network_action",
+            "provider_blocked",
+            "partial_output",
+            "evidence_write_failure",
+            "call_completed"
+          ]
+        },
+        "raw_event_base64": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 43692,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        },
+        "raw_event_bytes": {"type": "integer", "minimum": 1, "maximum": 32768},
+        "raw_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

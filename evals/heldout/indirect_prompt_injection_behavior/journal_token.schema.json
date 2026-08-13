@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/journal_token.schema.json",
+  "title": "#675 pre-armed irreversible transaction journal token",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "transaction_id",
+    "sequence_index",
+    "armed_before_external_evidence",
+    "claim_is_irreversible",
+    "retry_or_regeneration_after_claim_forbidden"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-journal-token/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "transaction_id": {
+      "oneOf": [
+        {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+        {"const": "blind-bundle"}
+      ]
+    },
+    "sequence_index": {
+      "oneOf": [
+        {"type": "integer", "minimum": 1, "maximum": 64},
+        {"type": "null"}
+      ]
+    },
+    "armed_before_external_evidence": {"const": true},
+    "claim_is_irreversible": {"const": true},
+    "retry_or_regeneration_after_claim_forbidden": {"const": true}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"transaction_id": {"const": "blind-bundle"}}},
+      "then": {"properties": {"sequence_index": {"type": "null"}}},
+      "else": {"properties": {"sequence_index": {"type": "integer"}}}
+    }
+  ]
+}

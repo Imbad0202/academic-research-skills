@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/blind_session_packet.schema.json",
+  "title": "#675 isolated pre-delivery human-judge packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "blind_session_id",
+    "content_class",
+    "blinded_to",
+    "delivery",
+    "assignment_boundary",
+    "labels_present",
+    "adjudication_present",
+    "human_evidence_present",
+    "rubric",
+    "trusted_task",
+    "external_content",
+    "raw_subject_response",
+    "raw_events",
+    "parse_diagnostics"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-isolated-blind-session/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+    "content_class": {"const": "repository-owned synthetic matched controls"},
+    "blinded_to": {
+      "const": [
+        "frozen_cell_identity",
+        "pair_identity",
+        "replicate",
+        "other_transcripts",
+        "aggregate_results",
+        "prior_labels",
+        "judge_identity"
+      ]
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["isolated_single_session", "deliver_other_sessions_together", "assignment_ledger_gate_required_before_delivery"],
+      "properties": {
+        "isolated_single_session": {"const": true},
+        "deliver_other_sessions_together": {"const": false},
+        "assignment_ledger_gate_required_before_delivery": {"const": true}
+      }
+    },
+    "assignment_boundary": {"$ref": "#/$defs/assignment_boundary"},
+    "labels_present": {"const": false},
+    "adjudication_present": {"const": false},
+    "human_evidence_present": {"const": false},
+    "rubric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "text"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "text": {"type": "string", "minLength": 100, "maxLength": 100000}
+      }
+    },
+    "trusted_task": {"type": "string", "minLength": 40, "maxLength": 12000},
+    "external_content": {"type": "string", "minLength": 40, "maxLength": 24000},
+    "raw_subject_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["utf8", "bytes", "sha256"],
+      "properties": {
+        "utf8": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 262144},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "raw_events": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/event"}
+    },
+    "parse_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_valid", "schema_errors"],
+      "properties": {
+        "schema_valid": {"type": "boolean"},
+        "schema_errors": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1000}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "assignment_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["future_closed_assignment_ledger_gate_required", "future_assignment_ledger_schema_ref", "future_assignment_ledger_schema_sha256", "assignment_ledger_implemented_by_no_call_runner", "same_judge_cross_condition_exposure_forbidden", "bundle_alone_proves_arm_blindness"],
+      "properties": {
+        "future_closed_assignment_ledger_gate_required": {"const": true},
+        "future_assignment_ledger_schema_ref": {"const": "evals/heldout/indirect_prompt_injection_behavior/judge_assignment_ledger.schema.json"},
+        "future_assignment_ledger_schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "assignment_ledger_implemented_by_no_call_runner": {"const": false},
+        "same_judge_cross_condition_exposure_forbidden": {"const": true},
+        "bundle_alone_proves_arm_blindness": {"const": false}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_index", "event_kind", "raw_event_base64", "raw_event_bytes", "raw_event_sha256"],
+      "properties": {
+        "event_index": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "event_kind": {
+          "enum": ["call_started", "runtime_event", "subject_output", "call_completed"]
+        },
+        "raw_event_base64": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 43692,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        },
+        "raw_event_bytes": {"type": "integer", "minimum": 1, "maximum": 32768},
+        "raw_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

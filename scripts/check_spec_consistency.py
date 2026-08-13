@@ -1133,6 +1133,69 @@ def check_ideation_diversity_no_call_contract() -> None:
         "CHANGELOG.md",
         "Within-session ideation-diversity Phase-2 no-call envelope (#659)",
     )
+def check_indirect_prompt_injection_no_call_envelope() -> None:
+    """Pin #675 Phase-2's no-call surface and human-evidence boundary."""
+    readme = "evals/heldout/indirect_prompt_injection_behavior/README.md"
+    design = "docs/design/2026-08-13-675-indirect-prompt-injection-behavior-eval-spec.md"
+    workflow = ".github/workflows/spec-consistency.yml"
+    manifest = "scripts/_ci_pytest_manifest.toml"
+    for rel_path in (
+        "evals/heldout/indirect_prompt_injection_behavior/run_plan.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/authorization_record.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/transcript.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/ingestion_manifest.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/blind_session_packet.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/blind_inventory.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/blind_private_map.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/blind_manifest.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/stop_intent.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/judge_assignment_ledger.schema.json",
+        "evals/heldout/indirect_prompt_injection_behavior/journal_token.schema.json",
+        "scripts/run_indirect_prompt_injection_no_call.py",
+        "scripts/check_indirect_prompt_injection_no_call.py",
+        "scripts/test_run_indirect_prompt_injection_no_call.py",
+    ):
+        if not (ROOT / rel_path).is_file():
+            fail(f"#675 Phase-2 required surface is missing: {rel_path}")
+    for needle in (
+        "8 scenarios x 2 content conditions x 2 guidance",
+        "runner_transport=none",
+        "64 complete records",
+        "two independent arm-blind human judges",
+        "separate arm-blind human",
+        "does not verify",
+        "operator identity",
+        "pinned canonical-event decoder",
+        "unique receipt id",
+        "write-once stop intent",
+        "pre-armed journal claim",
+        "deterministic sibling staging path",
+        "pre-load quarantine",
+        "future closed assignment ledger",
+        "does not prove arm blindness",
+        "finalized blind manifest",
+        "map is unencrypted",
+    ):
+        expect_contains(readme, needle)
+    for needle in (
+        "exactly 64 subject",
+        "provider transport, detect, dispatch, probe, model, network, process",
+        "does not authenticate the operator",
+        "two independent arm-blind human judges",
+        "closed write-once stop",
+        "pre-arms 64 immutable ingestion journal tokens",
+        "deterministic sibling staging path",
+        "pre-load quarantine",
+        "future closed assignment ledger",
+        "does not prove that property",
+        "unique receipt id",
+        "final manifest binds the exact",
+        "private map is not encrypted",
+    ):
+        expect_contains(design, needle)
+    expect_contains(workflow, "python3 scripts/check_indirect_prompt_injection_no_call.py")
+    expect_contains(manifest, 'path = "scripts/test_run_indirect_prompt_injection_no_call.py"')
+    check_relative_markdown_links(readme)
 
 
 def main() -> int:
@@ -1151,6 +1214,7 @@ def main() -> int:
     check_reference_docs()
     check_rebuttal_audit_guard()
     check_ideation_diversity_no_call_contract()
+    check_indirect_prompt_injection_no_call_envelope()
 
     if ERRORS:
         print("Spec consistency check failed:")

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/blind_private_map.schema.json",
+  "title": "#675 private blind-id to arm map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "inventory_sha256",
+    "private",
+    "protection",
+    "labels_present",
+    "adjudication_present",
+    "human_evidence_present",
+    "assignment_boundary",
+    "mappings"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-blind-private-map/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "inventory_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "private": {"const": true},
+    "protection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "encrypted",
+        "directory_mode",
+        "file_mode",
+        "mode_bits_are_not_identity_or_access_control_proof",
+        "unblind_only_after_raw_labels_and_adjudication_sealed"
+      ],
+      "properties": {
+        "kind": {"const": "procedural_nondisclosure_plus_local_mode_bits"},
+        "encrypted": {"const": false},
+        "directory_mode": {"const": "0700"},
+        "file_mode": {"const": "0600"},
+        "mode_bits_are_not_identity_or_access_control_proof": {"const": true},
+        "unblind_only_after_raw_labels_and_adjudication_sealed": {"const": true}
+      }
+    },
+    "labels_present": {"const": false},
+    "adjudication_present": {"const": false},
+    "human_evidence_present": {"const": false},
+    "assignment_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["future_closed_assignment_ledger_gate_required", "future_assignment_ledger_schema_ref", "future_assignment_ledger_schema_sha256", "assignment_ledger_implemented_by_no_call_runner", "same_judge_cross_condition_exposure_forbidden", "bundle_alone_proves_arm_blindness"],
+      "properties": {
+        "future_closed_assignment_ledger_gate_required": {"const": true},
+        "future_assignment_ledger_schema_ref": {"const": "evals/heldout/indirect_prompt_injection_behavior/judge_assignment_ledger.schema.json"},
+        "future_assignment_ledger_schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "assignment_ledger_implemented_by_no_call_runner": {"const": false},
+        "same_judge_cross_condition_exposure_forbidden": {"const": true},
+        "bundle_alone_proves_arm_blindness": {"const": false}
+      }
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 64,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blind_session_id",
+          "packet_sha256",
+          "cell_id",
+          "sequence_index",
+          "scenario_id",
+          "content_condition",
+          "guidance_condition",
+          "replicate"
+        ],
+        "properties": {
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+          "packet_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+          "sequence_index": {"type": "integer", "minimum": 1, "maximum": 64},
+          "scenario_id": {"type": "string", "pattern": "^ipi-(web|pdf|bib|review)-(en|zh)$"},
+          "content_condition": {"enum": ["benign", "injected"]},
+          "guidance_condition": {"enum": ["ars_guided", "platform_only"]},
+          "replicate": {"enum": [1, 2]}
+        }
+      }
+    }
+  }
+}

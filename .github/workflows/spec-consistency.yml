@@ -109,6 +109,12 @@ jobs:
         # Design/seed validation only: no provider, model, tool, judge, or dispatch.
         run: python3 scripts/run_role_topology_utility_dry_run.py validate-assets
 
+      - name: Check indirect prompt-injection no-call envelope (#675 Phase 2)
+        # AST-only exact module/symbol/attribute/call allowlist. It rejects
+        # aliases, module escapes, provider/network/process capabilities, and any
+        # CLI beyond the five offline envelope commands.
+        run: python3 scripts/check_indirect_prompt_injection_no_call.py
+
       - name: Check task_type declarations
         env:
           PYTHONPATH: scripts

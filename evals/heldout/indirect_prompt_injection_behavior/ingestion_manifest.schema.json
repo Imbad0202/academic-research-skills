@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/indirect_prompt_injection_behavior/ingestion_manifest.schema.json",
+  "title": "#675 append-only ingestion manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "append_only_evidence",
+    "authorization_record_path",
+    "authorization_record_sha256",
+    "blind_manifest_ref",
+    "blind_manifest_sha256",
+    "status",
+    "next_sequence_index",
+    "stopped",
+    "stop_receipt",
+    "cells"
+  ],
+  "properties": {
+    "schema_version": {"const": "indirect-prompt-injection-ingestion-manifest/1.0"},
+    "suite": {"const": "indirect_prompt_injection_behavior"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "append_only_evidence": {"const": true},
+    "authorization_record_path": {
+      "oneOf": [
+        {"type": "null"},
+        {"const": "authorization/record.json"}
+      ]
+    },
+    "authorization_record_sha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/sha256"}
+      ]
+    },
+    "blind_manifest_ref": {
+      "oneOf": [
+        {"type": "null"},
+        {"const": "blind/manifest.json"}
+      ]
+    },
+    "blind_manifest_sha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/sha256"}
+      ]
+    },
+    "status": {"enum": ["initialized", "materialized", "ingesting", "complete", "blind_finalized", "stopped"]},
+    "next_sequence_index": {"type": "integer", "minimum": 1, "maximum": 65},
+    "stopped": {"type": "boolean"},
+    "stop_receipt": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/stop_receipt"}
+      ]
+    },
+    "cells": {
+      "type": "array",
+      "minItems": 64,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/cell_state"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "cell_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "sequence_index",
+        "status",
+        "transcript_ref",
+        "transcript_sha256",
+        "ingestion_receipt_ref"
+      ],
+      "properties": {
+        "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+        "sequence_index": {"type": "integer", "minimum": 1, "maximum": 64},
+        "status": {"enum": ["pending", "ingested", "blocked"]},
+        "transcript_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^(transcripts/cell-[0-9]{3}\\.json|blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw(?:\\.collision-[0-9a-f]{16})?)$"}
+          ]
+        },
+        "transcript_sha256": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/sha256"}
+          ]
+        },
+        "ingestion_receipt_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^receipts/cell-[0-9]{3}\\.json$"}
+          ]
+        }
+      }
+    },
+    "stop_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "sequence_index",
+        "reason_code",
+        "detail",
+        "raw_ref",
+        "raw_sha256",
+        "retry_forbidden",
+        "stop_intent_ref",
+        "stop_intent_committed_before_state_replacement",
+        "preserved_auxiliary_artifacts",
+        "preserved_unregistered_tree"
+      ],
+      "properties": {
+        "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+        "sequence_index": {"type": "integer", "minimum": 1, "maximum": 64},
+        "reason_code": {
+          "enum": [
+            "prompt_or_plan_hash_mismatch",
+            "provider_auth_model_drift",
+            "enabled_tool_or_web",
+            "authorization_record_missing_or_mismatch",
+            "blocked_or_partial_call",
+            "unplanned_tool_action",
+            "unplanned_network_action",
+            "evidence_write_failure",
+            "out_of_order_ingestion",
+            "transcript_contract_failure",
+            "blind_mapping_or_prior_label_leak"
+          ]
+        },
+        "detail": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "raw_ref": {"type": "string", "pattern": "^blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw(?:\\.collision-[0-9a-f]{16})?$"},
+        "raw_sha256": {"$ref": "#/$defs/sha256"},
+        "retry_forbidden": {"const": true},
+        "stop_intent_ref": {"const": "stop-intent.json"},
+        "stop_intent_committed_before_state_replacement": {"const": true},
+        "preserved_auxiliary_artifacts": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role", "ref", "sha256"],
+            "properties": {
+              "role": {
+                "enum": [
+                  "authorization_record",
+                  "accepted_transcript_before_state_commit",
+                  "ingestion_receipt_before_state_commit"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024,
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!run-plan\\.json$)(?!ingestion-manifest\\.json$)(?!stop-intent\\.json$)[^\\u0000]+$"
+              },
+              "sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        },
+        "preserved_unregistered_tree": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file_count",
+            "directory_count",
+            "canonical_tree_sha256"
+          ],
+          "properties": {
+            "file_count": {"type": "integer", "minimum": 0},
+            "directory_count": {"type": "integer", "minimum": 0},
+            "canonical_tree_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    }
+  }
+}
