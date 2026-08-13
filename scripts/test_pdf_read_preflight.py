@@ -10,7 +10,9 @@ vouch). Design: docs/design/2026-07-20-512-pdf-read-preflight-spec.md.
 """
 
 import ast
+import errno
 import hashlib
+import io
 import json
 import os
 import stat
@@ -664,8 +666,158 @@ class ContentClassificationSandboxTest(unittest.TestCase):
         self.assertEqual(result["content_classification"]["reason"], "WORKER_TIMEOUT")
         self.assertEqual(diagnostic["reason"], "WORKER_TIMEOUT")
 
+    def test_deadline_observation_precedes_late_exit_poll_acceptance(self):
+        payload = json.dumps(_classified_payload()).encode("utf-8")
+
+        class FakeProcess:
+            pid = 987_654_321
+
+            def __init__(self):
+                self.stdin = io.BytesIO()
+                self.stdout = io.BytesIO(payload)
+                self.stderr = io.BytesIO()
+                self.poll_calls = 0
+
+            def poll(self):
+                self.poll_calls += 1
+                return None if self.poll_calls == 1 else 0
+
+            def wait(self, timeout):
+                return 0
+
+            def kill(self):
+                pass
+
+        process = FakeProcess()
+        observations = iter((0.0, 0.5, 1.0, 1.1, 1.1, 1.1, 1.1))
+
+        def clock():
+            return next(observations, 2.0)
+
+        with (
+            mock.patch.object(preflight.subprocess, "Popen", return_value=process),
+            mock.patch.object(preflight.time, "monotonic", side_effect=clock),
+            mock.patch.object(preflight.time, "sleep"),
+            mock.patch.object(preflight, "_kill_worker"),
+        ):
+            state, diagnostic = preflight._run_content_classifier(
+                b"exact input",
+                page_count=1,
+                timeout=1.0,
+            )
+
+        # The second poll reports success, but the immediately following clock
+        # observation is exactly the deadline, so success is not accepted.
+        self.assertEqual(process.poll_calls, 2)
+        self.assertEqual(state["reason"], "WORKER_TIMEOUT")
+        self.assertEqual(diagnostic["reason"], "WORKER_TIMEOUT")
+
+    def test_each_helper_startup_failure_is_closed_and_reaps_worker(self):
+        worker = _write_worker(
+            self.tmp,
+            """
+            import time
+            time.sleep(60)
+            """,
+            name="helper_startup_failure.py",
+        )
+        real_popen = subprocess.Popen
+        real_reader = preflight._CappedPipeReader
+
+        for failed_helper in ("stdout", "stderr", "stdin"):
+            with self.subTest(failed_helper=failed_helper):
+                processes = []
+
+                def capturing_popen(*args, **kwargs):
+                    proc = real_popen(*args, **kwargs)
+                    processes.append(proc)
+                    return proc
+
+                reader_calls = 0
+
+                def maybe_failing_reader(*args, **kwargs):
+                    nonlocal reader_calls
+                    reader_calls += 1
+                    if failed_helper == "stdout" and reader_calls == 1:
+                        raise RuntimeError("synthetic stdout helper startup failure")
+                    if failed_helper == "stderr" and reader_calls == 2:
+                        raise RuntimeError("synthetic stderr helper startup failure")
+                    return real_reader(*args, **kwargs)
+
+                input_patch = (
+                    mock.patch.object(
+                        preflight,
+                        "_InputWriter",
+                        side_effect=RuntimeError("synthetic stdin helper startup failure"),
+                    )
+                    if failed_helper == "stdin"
+                    else mock.patch.object(
+                        preflight,
+                        "_InputWriter",
+                        wraps=preflight._InputWriter,
+                    )
+                )
+                with (
+                    mock.patch.object(
+                        preflight.subprocess,
+                        "Popen",
+                        side_effect=capturing_popen,
+                    ),
+                    mock.patch.object(
+                        preflight,
+                        "_CappedPipeReader",
+                        side_effect=maybe_failing_reader,
+                    ),
+                    input_patch,
+                ):
+                    state, diagnostic = preflight._run_content_classifier(
+                        b"exact bytes",
+                        page_count=1,
+                        worker_path=worker,
+                        timeout=0.5,
+                    )
+
+                self.assertEqual(state["reason"], "WORKER_IO_ERROR")
+                self.assertEqual(diagnostic["reason"], "WORKER_IO_ERROR")
+                self.assertEqual(len(processes), 1)
+                processes[0].wait(timeout=1.0)
+                self.assertIsNotNone(processes[0].returncode)
+
+    def test_teardown_helpers_share_one_small_grace_budget(self):
+        observed_timeouts = []
+
+        class SlowProcess:
+            pid = 999_999_999
+
+            def wait(self, timeout):
+                observed_timeouts.append(timeout)
+                time.sleep(timeout)
+                raise subprocess.TimeoutExpired("worker", timeout)
+
+        class SlowHelper:
+            def join(self, timeout):
+                observed_timeouts.append(timeout)
+                time.sleep(timeout)
+                return False
+
+        started = time.monotonic()
+        with mock.patch.object(preflight, "_kill_worker"):
+            preflight._teardown_worker(
+                SlowProcess(),
+                stdout_reader=SlowHelper(),
+                stderr_reader=SlowHelper(),
+                input_writer=SlowHelper(),
+            )
+        elapsed = time.monotonic() - started
+
+        self.assertLess(elapsed, preflight.CLASSIFIER_TEARDOWN_GRACE_SECONDS + 0.15)
+        self.assertLessEqual(
+            sum(observed_timeouts),
+            preflight.CLASSIFIER_TEARDOWN_GRACE_SECONDS + 0.02,
+        )
+
     @unittest.skipUnless(os.name == "posix", "process-group teardown is POSIX-only")
-    def test_late_pipe_failure_kills_inherited_pipe_descendant(self):
+    def test_leader_exit_kills_inherited_pipe_descendant_before_joins(self):
         pid_path = self.tmp / "descendant.pid"
         raw = json.dumps(_classified_payload())
         worker = _write_worker(
@@ -688,9 +840,9 @@ class ContentClassificationSandboxTest(unittest.TestCase):
         started = time.monotonic()
         result, diagnostic = self.run_with_worker(worker, timeout=0.25)
         elapsed = time.monotonic() - started
-        self.assertLess(elapsed, 4.0)
-        self.assertEqual(result["content_classification"]["reason"], "WORKER_IO_ERROR")
-        self.assertEqual(diagnostic["reason"], "WORKER_IO_ERROR")
+        self.assertLess(elapsed, 1.0)
+        self.assertEqual(result["content_classification"]["reason"], "CLASSIFIED")
+        self.assertEqual(diagnostic["reason"], "CLASSIFIED")
 
         descendant_pid = int(pid_path.read_text())
         self.assert_process_gone(descendant_pid)
@@ -1076,6 +1228,27 @@ class CliTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(json.loads(proc.stdout)["verdict"], "UNAVAILABLE")
 
+    @unittest.skipUnless(os.name == "posix", "symlink loops require POSIX semantics")
+    def test_cli_default_symlink_loop_remains_exit_zero_unavailable(self):
+        loop = Path(self.tmp) / "loop.pdf"
+        loop.symlink_to(loop.name)
+
+        proc = self._cli(str(loop))
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["verdict"], "UNAVAILABLE")
+
+    @unittest.skipUnless(os.name == "posix", "symlink loops require POSIX semantics")
+    def test_cli_input_resolve_failure_does_not_block_safe_output(self):
+        loop = Path(self.tmp) / "write-loop.pdf"
+        loop.symlink_to(loop.name)
+        output = Path(self.tmp) / "loop-sidecar.json"
+
+        proc = self._cli(str(loop), "--output", str(output))
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(output.read_text())["verdict"], "UNAVAILABLE")
+
     def test_cli_output_flag_writes_sidecar(self):
         p = _write(self.tmp, "doc.pdf", _flat_pdf(1))
         out = Path(self.tmp) / "doc.read_integrity.json"
@@ -1092,6 +1265,678 @@ class CliTest(unittest.TestCase):
         proc = self._cli(str(p), "--classifier-diagnostics", str(Path(self.tmp) / "diag.json"))
         self.assertEqual(proc.returncode, 2)
         self.assertIn("requires --classify-content", proc.stderr)
+
+    @unittest.skipUnless(os.name == "posix", "private diagnostics are POSIX-only")
+    def test_cli_rejects_literal_dotdot_and_symlink_write_aliases_before_run(self):
+        pdf = _write(self.tmp, "doc.pdf", _flat_pdf(1))
+        nested = Path(self.tmp) / "nested"
+        nested.mkdir()
+        real_dir = Path(self.tmp) / "real"
+        real_dir.mkdir()
+        alias_dir = Path(self.tmp) / "alias"
+        alias_dir.symlink_to(real_dir, target_is_directory=True)
+        cases = (
+            (
+                "literal",
+                Path(self.tmp) / "same.json",
+                Path(self.tmp) / "same.json",
+            ),
+            (
+                "dotdot",
+                nested / ".." / "same-dotdot.json",
+                Path(self.tmp) / "same-dotdot.json",
+            ),
+            (
+                "symlink",
+                real_dir / "same-symlink.json",
+                alias_dir / "same-symlink.json",
+            ),
+        )
+
+        for name, output, diagnostic in cases:
+            with self.subTest(name=name):
+                with mock.patch.object(preflight, "_run_preflight") as run:
+                    with self.assertRaises(SystemExit) as raised:
+                        preflight.main(
+                            [
+                                str(pdf),
+                                "--classify-content",
+                                "--output",
+                                str(output),
+                                "--classifier-diagnostics",
+                                str(diagnostic),
+                            ]
+                        )
+                self.assertEqual(raised.exception.code, 2)
+                run.assert_not_called()
+                self.assertFalse(output.exists())
+                self.assertFalse(diagnostic.exists())
+
+    def test_cli_rejects_output_symlink_to_input_before_run(self):
+        pdf = _write(self.tmp, "input.pdf", _flat_pdf(1))
+        output_alias = Path(self.tmp) / "input-alias.json"
+        output_alias.symlink_to(pdf)
+        original = pdf.read_bytes()
+
+        with mock.patch.object(preflight, "_run_preflight") as run:
+            with self.assertRaises(SystemExit) as raised:
+                preflight.main([str(pdf), "--output", str(output_alias)])
+
+        self.assertEqual(raised.exception.code, 2)
+        run.assert_not_called()
+        self.assertEqual(pdf.read_bytes(), original)
+
+    @unittest.skipUnless(hasattr(os, "link"), "hard links unavailable")
+    def test_cli_rejects_output_hardlink_to_input_before_run(self):
+        pdf = _write(self.tmp, "hardlink-input.pdf", _flat_pdf(1))
+        output_alias = Path(self.tmp) / "hardlink-output.json"
+        os.link(pdf, output_alias)
+        original = pdf.read_bytes()
+
+        with mock.patch.object(preflight, "_run_preflight") as run:
+            with self.assertRaises(SystemExit) as raised:
+                preflight.main([str(pdf), "--output", str(output_alias)])
+
+        self.assertEqual(raised.exception.code, 2)
+        run.assert_not_called()
+        self.assertEqual(pdf.read_bytes(), original)
+
+    @unittest.skipUnless(os.name == "posix", "private diagnostics are POSIX-only")
+    def test_cli_rejects_casefold_and_nfc_equivalent_nonexistent_targets(self):
+        pdf = _write(self.tmp, "canonical-input.pdf", _flat_pdf(1))
+        cases = (
+            (
+                "casefold",
+                Path(self.tmp) / "Result.json",
+                Path(self.tmp) / "result.json",
+            ),
+            (
+                "nfc",
+                Path(self.tmp) / "caf\u00e9.json",
+                Path(self.tmp) / "cafe\u0301.json",
+            ),
+        )
+
+        for name, output, diagnostic in cases:
+            with self.subTest(name=name):
+                with mock.patch.object(preflight, "_run_preflight") as run:
+                    with self.assertRaises(SystemExit) as raised:
+                        preflight.main(
+                            [
+                                str(pdf),
+                                "--classify-content",
+                                "--output",
+                                str(output),
+                                "--classifier-diagnostics",
+                                str(diagnostic),
+                            ]
+                        )
+                self.assertEqual(raised.exception.code, 2)
+                run.assert_not_called()
+                self.assertFalse(output.exists())
+                self.assertFalse(diagnostic.exists())
+
+    def test_cli_samefile_io_error_fails_before_preflight(self):
+        pdf = _write(self.tmp, "samefile-input.pdf", _flat_pdf(1))
+        output = Path(self.tmp) / "samefile-output.json"
+
+        with (
+            mock.patch.object(
+                preflight.os.path,
+                "samefile",
+                side_effect=OSError(errno.EIO, "synthetic samefile I/O failure"),
+            ),
+            mock.patch.object(preflight, "_run_preflight") as run,
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                preflight.main([str(pdf), "--output", str(output)])
+
+        self.assertEqual(raised.exception.code, 2)
+        run.assert_not_called()
+        self.assertFalse(output.exists())
+
+    @unittest.skipUnless(os.name == "posix", "link race regression is POSIX-only")
+    def test_atomic_output_does_not_follow_postcheck_input_alias(self):
+        pdf = _write(self.tmp, "race-input.pdf", _flat_pdf(1))
+        original = pdf.read_bytes()
+
+        for alias_kind in ("symlink", "hardlink"):
+            with self.subTest(alias_kind=alias_kind):
+                output = Path(self.tmp) / f"race-{alias_kind}.json"
+
+                def race_after_precheck(*_args, **_kwargs):
+                    if alias_kind == "symlink":
+                        output.symlink_to(pdf)
+                    else:
+                        os.link(pdf, output)
+                    return {"marker": alias_kind}, preflight._diagnostic("NOT_REQUESTED")
+
+                with mock.patch.object(
+                    preflight,
+                    "_run_preflight",
+                    side_effect=race_after_precheck,
+                ):
+                    self.assertEqual(
+                        preflight.main([str(pdf), "--output", str(output)]),
+                        0,
+                    )
+
+                self.assertEqual(pdf.read_bytes(), original)
+                self.assertFalse(output.is_symlink())
+                self.assertEqual(json.loads(output.read_text())["marker"], alias_kind)
+
+    @unittest.skipUnless(os.name == "posix", "private diagnostics are POSIX-only")
+    def test_atomic_output_does_not_follow_postcheck_diagnostic_symlink(self):
+        pdf = _write(self.tmp, "diagnostic-race-input.pdf", _flat_pdf(1))
+        output = Path(self.tmp) / "diagnostic-race-output.json"
+        diagnostic_path = Path(self.tmp) / "diagnostic-race-private.json"
+        expected_diagnostic = preflight._diagnostic(
+            "WORKER_IO_ERROR",
+            detail=b"private diagnostic bytes",
+        )
+
+        def race_after_precheck(*_args, **_kwargs):
+            output.symlink_to(diagnostic_path)
+            return {"marker": "sidecar"}, expected_diagnostic
+
+        with mock.patch.object(
+            preflight,
+            "_run_preflight",
+            side_effect=race_after_precheck,
+        ):
+            self.assertEqual(
+                preflight.main(
+                    [
+                        str(pdf),
+                        "--classify-content",
+                        "--output",
+                        str(output),
+                        "--classifier-diagnostics",
+                        str(diagnostic_path),
+                    ]
+                ),
+                0,
+            )
+
+        self.assertFalse(output.is_symlink())
+        self.assertEqual(json.loads(output.read_text()), {"marker": "sidecar"})
+        self.assertEqual(json.loads(diagnostic_path.read_text()), expected_diagnostic)
+
+    def test_atomic_output_error_is_usage_error_and_cleans_staging_file(self):
+        pdf = _write(self.tmp, "output-error-input.pdf", _flat_pdf(1))
+        output = Path(self.tmp) / "output-error.json"
+
+        with (
+            mock.patch.object(
+                preflight,
+                "_run_preflight",
+                return_value=(
+                    {"marker": "sidecar"},
+                    preflight._diagnostic("NOT_REQUESTED"),
+                ),
+            ),
+            mock.patch.object(
+                preflight.os,
+                "replace",
+                side_effect=OSError(errno.EIO, "synthetic replace failure"),
+            ),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                preflight.main([str(pdf), "--output", str(output)])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertFalse(output.exists())
+        self.assertEqual(list(Path(self.tmp).glob(".ars-pdf-stage-*")), [])
+
+    @unittest.skipUnless(os.name == "posix", "dirfd binding is POSIX-only")
+    def test_output_parent_symlink_retarget_uses_preworker_bound_directory(self):
+        pdf = _write(self.tmp, "parent-race-input.pdf", _flat_pdf(1))
+        original_parent = Path(self.tmp) / "original-parent"
+        attacker_parent = Path(self.tmp) / "attacker-parent"
+        original_parent.mkdir()
+        attacker_parent.mkdir()
+        parent_alias = Path(self.tmp) / "parent-alias"
+        parent_alias.symlink_to(original_parent, target_is_directory=True)
+        requested_output = parent_alias / "sidecar.json"
+
+        def retarget_after_binding(*_args, **_kwargs):
+            parent_alias.unlink()
+            parent_alias.symlink_to(attacker_parent, target_is_directory=True)
+            return {"marker": "bound-parent"}, preflight._diagnostic("NOT_REQUESTED")
+
+        with mock.patch.object(
+            preflight,
+            "_run_preflight",
+            side_effect=retarget_after_binding,
+        ):
+            self.assertEqual(
+                preflight.main([str(pdf), "--output", str(requested_output)]),
+                0,
+            )
+
+        self.assertEqual(
+            json.loads((original_parent / "sidecar.json").read_text()),
+            {"marker": "bound-parent"},
+        )
+        self.assertFalse((attacker_parent / "sidecar.json").exists())
+        self.assertEqual(list(original_parent.glob(".ars-pdf-stage-*")), [])
+
+    @unittest.skipUnless(os.name == "posix", "diagnostic dirfd binding is POSIX-only")
+    def test_diagnostic_parent_symlink_retarget_uses_preworker_bound_directory(self):
+        pdf = _write(self.tmp, "diagnostic-parent-race-input.pdf", _flat_pdf(1))
+        original_parent = Path(self.tmp) / "diagnostic-original-parent"
+        attacker_parent = Path(self.tmp) / "diagnostic-attacker-parent"
+        original_parent.mkdir()
+        attacker_parent.mkdir()
+        parent_alias = Path(self.tmp) / "diagnostic-parent-alias"
+        parent_alias.symlink_to(original_parent, target_is_directory=True)
+        requested_diagnostic = parent_alias / "private.json"
+        expected = preflight._diagnostic(
+            "WORKER_IO_ERROR",
+            detail=b"private-bound-diagnostic",
+        )
+
+        def retarget_after_binding(*_args, **_kwargs):
+            parent_alias.unlink()
+            parent_alias.symlink_to(attacker_parent, target_is_directory=True)
+            return {"marker": "stdout"}, expected
+
+        with (
+            mock.patch.object(
+                preflight,
+                "_run_preflight",
+                side_effect=retarget_after_binding,
+            ),
+            mock.patch("builtins.print"),
+        ):
+            self.assertEqual(
+                preflight.main(
+                    [
+                        str(pdf),
+                        "--classify-content",
+                        "--classifier-diagnostics",
+                        str(requested_diagnostic),
+                    ]
+                ),
+                0,
+            )
+
+        self.assertEqual(
+            json.loads((original_parent / "private.json").read_text()),
+            expected,
+        )
+        self.assertFalse((attacker_parent / "private.json").exists())
+
+    @unittest.skipUnless(os.name == "posix", "diagnostic dirfd binding is POSIX-only")
+    def test_diagnostic_partial_write_failure_removes_own_inode_and_allows_retry(self):
+        diagnostic_path = Path(self.tmp) / "partial-diagnostic.json"
+        payload = preflight._diagnostic("WORKER_IO_ERROR", detail=b"partial")
+        bound = preflight._BoundDiagnosticOutput.bind(diagnostic_path)
+        real_write = preflight.os.write
+        writes = 0
+
+        def partial_then_fail(fd, data):
+            nonlocal writes
+            writes += 1
+            if writes == 1:
+                return real_write(fd, data[:5])
+            raise OSError(errno.EIO, "primary partial diagnostic write failure")
+
+        try:
+            with mock.patch.object(
+                preflight.os,
+                "write",
+                side_effect=partial_then_fail,
+            ):
+                with self.assertRaisesRegex(
+                    OSError,
+                    "primary partial diagnostic write failure",
+                ):
+                    bound.publish(payload)
+
+            self.assertFalse(diagnostic_path.exists())
+            bound.publish(payload)
+            self.assertEqual(json.loads(diagnostic_path.read_text()), payload)
+        finally:
+            bound.cleanup(suppress_errors=True)
+
+    @unittest.skipUnless(os.name == "posix", "diagnostic dirfd binding is POSIX-only")
+    def test_diagnostic_file_fsync_failure_removes_own_inode_and_allows_retry(self):
+        diagnostic_path = Path(self.tmp) / "fsync-diagnostic.json"
+        payload = preflight._diagnostic("WORKER_IO_ERROR", detail=b"fsync")
+        bound = preflight._BoundDiagnosticOutput.bind(diagnostic_path)
+        real_fsync = preflight.os.fsync
+        failed = False
+
+        def fail_file_fsync_once(fd):
+            nonlocal failed
+            if fd != bound.parent_fd and not failed:
+                failed = True
+                raise OSError(errno.EIO, "primary diagnostic fsync failure")
+            return real_fsync(fd)
+
+        try:
+            with mock.patch.object(
+                preflight.os,
+                "fsync",
+                side_effect=fail_file_fsync_once,
+            ):
+                with self.assertRaisesRegex(
+                    OSError,
+                    "primary diagnostic fsync failure",
+                ):
+                    bound.publish(payload)
+
+            self.assertTrue(failed)
+            self.assertFalse(diagnostic_path.exists())
+            bound.publish(payload)
+            self.assertEqual(json.loads(diagnostic_path.read_text()), payload)
+        finally:
+            bound.cleanup(suppress_errors=True)
+
+    @unittest.skipUnless(os.name == "posix", "diagnostic dirfd binding is POSIX-only")
+    def test_diagnostic_close_failure_removes_own_inode_and_allows_retry(self):
+        diagnostic_path = Path(self.tmp) / "close-diagnostic.json"
+        payload = preflight._diagnostic("WORKER_IO_ERROR", detail=b"close")
+        bound = preflight._BoundDiagnosticOutput.bind(diagnostic_path)
+        real_open = preflight.os.open
+        real_close = preflight.os.close
+        diagnostic_fd = None
+        failed = False
+
+        def track_open(path, *args, **kwargs):
+            nonlocal diagnostic_fd
+            fd = real_open(path, *args, **kwargs)
+            if path == diagnostic_path.name and kwargs.get("dir_fd") == bound.parent_fd:
+                diagnostic_fd = fd
+            return fd
+
+        def close_then_fail_once(fd):
+            nonlocal failed
+            real_close(fd)
+            if fd == diagnostic_fd and not failed:
+                failed = True
+                raise OSError(errno.EIO, "primary diagnostic close failure")
+
+        try:
+            with (
+                mock.patch.object(preflight.os, "open", side_effect=track_open),
+                mock.patch.object(preflight.os, "close", side_effect=close_then_fail_once),
+            ):
+                with self.assertRaisesRegex(
+                    OSError,
+                    "primary diagnostic close failure",
+                ):
+                    bound.publish(payload)
+
+            self.assertTrue(failed)
+            self.assertFalse(diagnostic_path.exists())
+            bound.publish(payload)
+            self.assertEqual(json.loads(diagnostic_path.read_text()), payload)
+        finally:
+            bound.cleanup(suppress_errors=True)
+
+    @unittest.skipUnless(os.name == "posix", "diagnostic dirfd binding is POSIX-only")
+    def test_diagnostic_failure_never_deletes_attacker_replacement_leaf(self):
+        payload = preflight._diagnostic("WORKER_IO_ERROR", detail=b"attacker-swap")
+
+        for swap_kind in ("symlink", "hardlink"):
+            with self.subTest(swap_kind=swap_kind):
+                diagnostic_path = Path(self.tmp) / f"diagnostic-swap-{swap_kind}.json"
+                victim = _write(
+                    self.tmp,
+                    f"diagnostic-swap-{swap_kind}-victim.txt",
+                    b"ATTACKER-DIAGNOSTIC-LEAF",
+                )
+                bound = preflight._BoundDiagnosticOutput.bind(diagnostic_path)
+                real_write = preflight.os.write
+                writes = 0
+
+                def partial_swap_then_fail(fd, data):
+                    nonlocal writes
+                    writes += 1
+                    if writes == 1:
+                        return real_write(fd, data[:5])
+                    os.unlink(diagnostic_path.name, dir_fd=bound.parent_fd)
+                    if swap_kind == "symlink":
+                        os.symlink(
+                            victim,
+                            diagnostic_path.name,
+                            dir_fd=bound.parent_fd,
+                        )
+                    else:
+                        os.link(
+                            victim,
+                            diagnostic_path.name,
+                            dst_dir_fd=bound.parent_fd,
+                        )
+                    raise OSError(errno.EIO, "primary diagnostic swap failure")
+
+                try:
+                    with mock.patch.object(
+                        preflight.os,
+                        "write",
+                        side_effect=partial_swap_then_fail,
+                    ):
+                        with self.assertRaisesRegex(
+                            OSError,
+                            "primary diagnostic swap failure",
+                        ):
+                            bound.publish(payload)
+
+                    self.assertTrue(diagnostic_path.exists())
+                    if swap_kind == "symlink":
+                        self.assertTrue(diagnostic_path.is_symlink())
+                    else:
+                        self.assertTrue(os.path.samefile(diagnostic_path, victim))
+                    self.assertEqual(victim.read_bytes(), b"ATTACKER-DIAGNOSTIC-LEAF")
+                finally:
+                    bound.cleanup(suppress_errors=True)
+
+    @unittest.skipUnless(os.name == "posix", "dirfd staging is POSIX-only")
+    def test_staging_swap_symlink_and_hardlink_attacker_inodes_are_rejected(self):
+        pdf = _write(self.tmp, "stage-swap-input.pdf", _flat_pdf(1))
+        real_verify = preflight._require_open_inode_at
+
+        for swap_kind in ("symlink", "hardlink"):
+            with self.subTest(swap_kind=swap_kind):
+                output = Path(self.tmp) / f"stage-swap-{swap_kind}.json"
+                victim = _write(
+                    self.tmp,
+                    f"stage-swap-{swap_kind}-victim.txt",
+                    b"ATTACKER-INODE",
+                )
+                swapped = False
+
+                def swap_before_verification(
+                    opened,
+                    directory_fd,
+                    name,
+                    *,
+                    require_directory=False,
+                ):
+                    nonlocal swapped
+                    if name == "payload" and not require_directory and not swapped:
+                        swapped = True
+                        os.unlink(name, dir_fd=directory_fd)
+                        if swap_kind == "symlink":
+                            os.symlink(victim, name, dir_fd=directory_fd)
+                        else:
+                            os.link(victim, name, dst_dir_fd=directory_fd)
+                    return real_verify(
+                        opened,
+                        directory_fd,
+                        name,
+                        require_directory=require_directory,
+                    )
+
+                with (
+                    mock.patch.object(
+                        preflight,
+                        "_run_preflight",
+                        return_value=(
+                            {"marker": "must-not-publish"},
+                            preflight._diagnostic("NOT_REQUESTED"),
+                        ),
+                    ),
+                    mock.patch.object(
+                        preflight,
+                        "_require_open_inode_at",
+                        side_effect=swap_before_verification,
+                    ),
+                ):
+                    with self.assertRaises(SystemExit) as raised:
+                        preflight.main([str(pdf), "--output", str(output)])
+
+                self.assertEqual(raised.exception.code, 2)
+                self.assertTrue(swapped)
+                self.assertFalse(output.exists())
+                self.assertEqual(victim.read_bytes(), b"ATTACKER-INODE")
+                self.assertEqual(list(Path(self.tmp).glob(".ars-pdf-stage-*")), [])
+
+    @unittest.skipUnless(os.name == "posix", "dirfd staging is POSIX-only")
+    def test_check_to_replace_staging_swap_is_removed_and_rejected(self):
+        pdf = _write(self.tmp, "replace-window-input.pdf", _flat_pdf(1))
+        real_replace = preflight.os.replace
+
+        for swap_kind in ("symlink", "hardlink"):
+            with self.subTest(swap_kind=swap_kind):
+                output = Path(self.tmp) / f"replace-window-{swap_kind}.json"
+                victim = _write(
+                    self.tmp,
+                    f"replace-window-{swap_kind}-victim.txt",
+                    b"WINDOW-ATTACKER-INODE",
+                )
+                swapped = False
+
+                def swap_then_replace(
+                    src,
+                    dst,
+                    *,
+                    src_dir_fd=None,
+                    dst_dir_fd=None,
+                ):
+                    nonlocal swapped
+                    swapped = True
+                    os.unlink(src, dir_fd=src_dir_fd)
+                    if swap_kind == "symlink":
+                        os.symlink(victim, src, dir_fd=src_dir_fd)
+                    else:
+                        os.link(victim, src, dst_dir_fd=src_dir_fd)
+                    return real_replace(
+                        src,
+                        dst,
+                        src_dir_fd=src_dir_fd,
+                        dst_dir_fd=dst_dir_fd,
+                    )
+
+                with (
+                    mock.patch.object(
+                        preflight,
+                        "_run_preflight",
+                        return_value=(
+                            {"marker": "must-not-accept"},
+                            preflight._diagnostic("NOT_REQUESTED"),
+                        ),
+                    ),
+                    mock.patch.object(
+                        preflight.os,
+                        "replace",
+                        side_effect=swap_then_replace,
+                    ),
+                ):
+                    with self.assertRaises(SystemExit) as raised:
+                        preflight.main([str(pdf), "--output", str(output)])
+
+                self.assertEqual(raised.exception.code, 2)
+                self.assertTrue(swapped)
+                self.assertFalse(output.exists())
+                self.assertEqual(victim.read_bytes(), b"WINDOW-ATTACKER-INODE")
+                self.assertEqual(list(Path(self.tmp).glob(".ars-pdf-stage-*")), [])
+
+    @unittest.skipUnless(os.name == "posix", "dirfd staging is POSIX-only")
+    def test_close_failure_does_not_mask_primary_or_leave_staging(self):
+        pdf = _write(self.tmp, "close-failure-input.pdf", _flat_pdf(1))
+        output = Path(self.tmp) / "close-failure-output.json"
+        real_close = preflight.os.close
+        close_failed = False
+
+        def close_then_fail_once(fd):
+            nonlocal close_failed
+            real_close(fd)
+            if not close_failed:
+                close_failed = True
+                raise OSError(errno.EIO, "secondary close failure")
+
+        real_verify = preflight._require_open_inode_at
+
+        def primary_failure(
+            opened,
+            directory_fd,
+            name,
+            *,
+            require_directory=False,
+        ):
+            if name == "payload" and not require_directory:
+                raise OSError(errno.ESTALE, "primary staging identity failure")
+            return real_verify(
+                opened,
+                directory_fd,
+                name,
+                require_directory=require_directory,
+            )
+
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(
+                preflight,
+                "_run_preflight",
+                return_value=(
+                    {"marker": "must-not-publish"},
+                    preflight._diagnostic("NOT_REQUESTED"),
+                ),
+            ),
+            mock.patch.object(
+                preflight,
+                "_require_open_inode_at",
+                side_effect=primary_failure,
+            ),
+            mock.patch.object(preflight.os, "close", side_effect=close_then_fail_once),
+            mock.patch.object(sys, "stderr", stderr),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                preflight.main([str(pdf), "--output", str(output)])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertTrue(close_failed)
+        self.assertIn("primary staging identity failure", stderr.getvalue())
+        self.assertNotIn("secondary close failure", stderr.getvalue())
+        self.assertFalse(output.exists())
+        self.assertEqual(list(Path(self.tmp).glob(".ars-pdf-stage-*")), [])
+
+    @unittest.skipUnless(os.name == "posix", "dirfd staging is POSIX-only")
+    def test_legal_255_byte_output_basename_publishes(self):
+        pdf = _write(self.tmp, "long-name-input.pdf", _flat_pdf(1))
+        output = Path(self.tmp) / ("x" * 255)
+
+        with mock.patch.object(
+            preflight,
+            "_run_preflight",
+            return_value=(
+                {"marker": "long-basename"},
+                preflight._diagnostic("NOT_REQUESTED"),
+            ),
+        ):
+            self.assertEqual(
+                preflight.main([str(pdf), "--output", str(output)]),
+                0,
+            )
+
+        self.assertEqual(
+            json.loads(output.read_text()),
+            {"marker": "long-basename"},
+        )
+        self.assertEqual(list(Path(self.tmp).glob(".ars-pdf-stage-*")), [])
 
 
 if __name__ == "__main__":

@@ -17,7 +17,18 @@ ports, and (v3.6.7+) cross-model audit artifact pipelines.
 - `pdf/pdf_content_classifier_diagnostic.schema.json` is the separate POSIX-only,
   local mode-`0600` operator artifact. Platforms without `fchmod` reject its CLI
   option before path creation. Its explicitly untrusted detail is capped and never
-  copied into or referenced by the sidecar.
+  copied into or referenced by the sidecar. File-writing CLI invocations use
+  conservative NFC/casefold keys, path resolution, and existing-inode checks to reject
+  aliases before worker launch; the stdout-only legacy path adds no such precondition.
+  POSIX sidecar output pre-binds the parent dirfd/inode, then uses a private `0700`
+  fixed-name staging directory and anchored dirfd-relative publication. Open-inode
+  checks reject staging entry swaps; atomic final-entry replacement does not follow
+  post-check links. Non-POSIX output fails closed; stdout classification remains
+  available. The diagnostic parent is likewise dirfd-bound before the worker. These are
+  instantaneous inode postconditions, not a general same-UID sandbox; callers control
+  the output parent. A failed diagnostic unlinks only the no-follow leaf still matching
+  its created fd inode, preserving the primary error and any attacker replacement while
+  keeping its exclusive path retryable.
 
 Runtime: `scripts/pdf_read_preflight.py` and
 `scripts/pdf_content_classifier_worker.py`. Frozen opt-in scope and residual risk:

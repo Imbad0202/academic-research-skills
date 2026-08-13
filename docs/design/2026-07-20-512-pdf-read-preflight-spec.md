@@ -90,10 +90,18 @@ shape and the all-or-nothing opt-in extension below.
 default Stage-1 invocation and never changes the structural verdict. The parent sends the
 exact bytes already read and hashed above to the fixed
 `scripts/pdf_content_classifier_worker.py` child over stdin. Only that child imports the
-optional native `pdf_inspector` package. The parent uses `shell=False`, a fixed five-second
-timeout, concurrent 8,192-byte stdout / 4,096-byte stderr caps, and closed outcomes for
-timeout, non-zero/signal exit, cap breach, pipe failure, malformed JSON, and invalid
-output. Non-`PASS` structural inputs do not start the child.
+optional native `pdf_inspector` package. The exact input write runs outside the timeout
+control loop and is accepted only when complete. The parent uses `shell=False`, one
+five-second execution deadline from child startup, one shared 0.2-second teardown grace,
+and concurrent 8,192-byte stdout / 4,096-byte stderr caps; there is no claimed stdin cap.
+Every loop iteration polls and then immediately observes the monotonic clock. The poll
+result is accepted only if that observation is strictly before the deadline. An exit
+whose poll returns at or after the boundary is therefore `WORKER_TIMEOUT`.
+POSIX cleanup kills the isolated worker group before reader/writer joins, including when
+the leader has exited while descendants retain pipe handles. The portable Windows path
+terminates only the direct worker. Timeout, helper-startup, non-zero/signal exit, cap
+breach, pipe failure, malformed JSON, and invalid output all yield closed outcomes.
+Non-`PASS` structural inputs do not start the child.
 
 Calls without this flag preserve the original sidecar field set and
 `tool: pdf_read_preflight/1.0.0`. Opted-in sidecars change the tool version to 1.1.0 and
@@ -125,6 +133,49 @@ prompt-facing sidecar. Contract:
 `shared/contracts/pdf/pdf_content_classifier_diagnostic.schema.json`. Full frozen design
 and residual-risk boundary:
 `docs/design/2026-08-13-512-pdf-content-classification-sandbox-spec.md`.
+
+The stdout-only legacy invocation performs no alias precheck: an unreadable input or
+symlink loop remains an exit-0 structural `UNAVAILABLE` verdict. When `--output` or
+`--classifier-diagnostics` is present, every requested write target must resolve safely
+before parsing or worker launch. Conservative NFC/casefold keys cover literal, `..`, case-only,
+and canonically equivalent spellings; resolved keys cover symlinks; `samefile` covers
+existing hard links. `samefile` errors fail closed except `ENOENT`, which may mean an
+uncreated target. Failure to resolve the input itself is left to structural preflight and
+does not block a separately safe write target.
+
+The diagnostic remains exclusive-create/no-follow. Its resolved parent directory is
+opened and inode-bound before worker launch, and the final file is created relative to
+that dirfd; a later parent-symlink retarget cannot redirect raw detail. The created fd's
+inode is recorded before fchmod or writing. Any failure before complete publication,
+including fchmod, partial write, file fsync, close, or parent fsync, performs a fresh
+no-follow lookup and unlinks only when the leaf still names that exact created inode;
+parent fsync during cleanup is best-effort and never replaces the primary error. The
+exclusive path is therefore retryable after a partial diagnostic, while a symlink or
+hard-link attacker replacement is retained rather than deleted.
+
+POSIX sidecar output uses a different publication contract. Before structural parsing or worker launch, the CLI opens the
+resolved parent directory, records its inode, and creates through that dirfd a
+fixed-length random-named private `0700` staging directory. All subsequent staging and
+publication operations are relative to these anchored dirfds, so retargeting the parent
+symlink cannot redirect output. Complete bytes go to the fixed staging filename
+`payload`, independent of the destination name (so a legal 255-byte basename works).
+The open payload is fsynced and its inode is checked against the no-follow staging entry;
+a substituted symlink or hard link is rejected. Dirfd-relative `os.replace` atomically
+replaces the target entry, the installed inode is rechecked, and the parent is fsynced.
+Thus final-component links are replaced rather than followed and cannot overwrite the
+source PDF or diagnostic. Cleanup attempts file close, unlink, directory close/rmdir,
+and parent close independently, preserves a primary error over secondary close errors,
+and removes unpublished staging. Publication failures are usage errors. Non-POSIX
+`--output` fails closed because Python does not expose the required anchored publication
+contract there; stdout classification remains available.
+
+This publication contract assumes the output parent is caller-controlled. The private
+random staging directory is `0700`, and the worker group is terminated before
+publication, but Python exposes no atomic compare-inode-and-rename primitive. The
+pre-replace open-inode check plus the instantaneous post-install inode check reject both
+tested swap timings; if the latter observes an attacker inode, that installed entry is
+removed before failure. A same-UID actor that continues changing entries after the final
+postcondition remains outside this process-isolation claim.
 
 ### Layer 2 — prompt rules
 
@@ -187,6 +238,10 @@ UNAVAILABLE with `pypdf-not-installed` warning), sidecar shape + hash stability,
 
 The 2026-08-13 follow-up adds no live PDF or package download. Temporary fake modules and
 workers cover dependency present/absent, text/scanned results, exception isolation,
-timeout, non-zero/signal exits, malformed/invalid/oversize output, finite confidence,
-page bounds, diagnostic privacy/mode, and all three closed schemas. The test file is also
-registered in `scripts/_ci_pytest_manifest.toml`.
+timeout, helper-startup failure, one-deadline/one-grace teardown, leader-exit inherited
+pipes, non-zero/signal exits, malformed/invalid/oversize output, finite confidence, page
+bounds, clock-before-poll late-exit rejection, stdout-only malformed-input compatibility,
+conservative pre-run path-alias rejection, output/diagnostic parent-retarget and final-entry races,
+staging symlink/hard-link swaps, close-failure cleanup, 255-byte basenames, diagnostic
+partial-write/fsync/close cleanup and attacker-leaf retention, privacy/mode, and all three closed schemas. The test file is also registered in
+`scripts/_ci_pytest_manifest.toml`.

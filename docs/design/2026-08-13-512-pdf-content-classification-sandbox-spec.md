@@ -56,21 +56,32 @@ bytes to the structural SHA-256.
 
 The parent never imports `pdf_inspector`. It starts the fixed repository worker with an
 argv list and `shell=False`. On POSIX the child is the process-group leader of a new
-session; every terminal path kills that group, including failures discovered only after
-reader/writer joins and successful workers that left ordinary descendants behind. On
-Windows the portable stdlib path terminates and reaps only the direct worker and makes no
-process-tree containment claim. The parent applies:
+session; the parent kills that group before reader/writer joins, including when the
+leader has exited while an ordinary descendant retains inherited pipe handles. Every
+terminal path repeats best-effort cleanup. On Windows the portable stdlib path terminates
+and reaps only the direct worker and makes no process-tree containment claim. The parent
+applies:
 
-- fixed 5-second wall timeout;
+- one 5-second execution deadline beginning immediately after child startup;
+- one explicitly separate, shared 0.2-second teardown grace (not one grace per wait or
+  helper);
 - 8,192-byte stdout limit;
 - 4,096-byte stderr limit;
 - distinct closed outcomes for launch failure, timeout, non-zero exit, signal exit,
-  stdout/stderr limit, pipe failure, malformed JSON, and invalid closed output.
+  stdout/stderr limit, helper-startup/pipe failure, malformed JSON, and invalid closed
+  output.
+
+The loop polls and then immediately observes the monotonic clock. Only a poll result
+whose following observation is strictly before the execution deadline may be processed
+as a worker exit. A poll that returns at or after the boundary is `WORKER_TIMEOUT`.
 
 Readers drain both pipes concurrently and retain no more than each limit plus one byte.
-The PDF input is written on a separate thread, so a child that never reads stdin cannot
-block the parent's timeout loop. A native abort or segmentation fault terminates the
-child, not the structural preflight process.
+Those are the only byte caps. The exact PDF input is written on a separate thread, so a
+child that never reads stdin cannot block the parent's timeout loop, and a classified
+result is accepted only after the complete input write. Helper construction failures are
+closed `WORKER_IO_ERROR` outcomes inside the same immediate post-`Popen` cleanup region.
+A native abort or segmentation fault terminates the child, not the structural preflight
+process.
 
 This is process isolation, not a general OS sandbox. A POSIX descendant that deliberately
 detaches into another session or process group, and every host-wide resource failure,
@@ -137,6 +148,50 @@ Platforms without POSIX `fchmod` reject the diagnostics option before path creat
 the ordinary classifier subprocess remains available under its narrower Windows
 direct-worker containment claim.
 
+The stdout-only legacy CLI performs no alias precheck, so an unreadable input or symlink
+loop remains an exit-0 structural `UNAVAILABLE` verdict. With either write option, every
+write target must resolve safely before structural parsing or worker launch.
+NFC/casefold canonical keys conservatively reject literal, `..`, case-only, and Unicode
+canonical-equivalent aliases even when their leaves do not exist; resolved keys reject
+symlink aliases; existing-inode comparison rejects hard links. Existing-inode errors
+fail closed except `ENOENT`, while failure to resolve the input itself stays a structural
+preflight concern and does not suppress an otherwise safe output of that verdict.
+
+The local diagnostic remains exclusive-create/no-follow. Its resolved parent directory
+is opened and inode-bound before the worker, and final creation is relative to that
+dirfd, so a parent-symlink retarget cannot redirect raw diagnostic detail. The created
+fd is inode-bound before fchmod/write. On any pre-success fchmod, partial-write,
+file-fsync, close, or parent-fsync failure, cleanup performs a fresh no-follow lookup and
+unlinks the leaf only if it still identifies the created inode; it then best-effort
+parent-fsyncs without replacing the primary error. A malformed partial diagnostic cannot
+permanently consume the exclusive destination and immediate retry works. A symlink or
+hard-link attacker replacement has a different inode and is not removed.
+
+For ordinary sidecar output on
+POSIX, the resolved parent directory is opened and inode-bound before the worker starts.
+A fixed-length random-named private `0700` staging directory is created and opened
+through that parent dirfd; every later operation is relative to the anchored parent or
+staging dirfd, so a parent-symlink retarget cannot redirect publication. Complete bytes
+use the fixed staging leaf `payload`, allowing a legal 255-byte destination basename.
+After file fsync, the open payload inode must still match the no-follow staging entry;
+symlink or hard-link replacement is rejected. Dirfd-relative `os.replace` installs the
+payload, its installed inode is rechecked, and the parent is fsynced. Final-component
+links are replaced rather than followed and cannot truncate the input or diagnostic.
+Cleanup guards close, unlink, staging-dir close/rmdir, and parent close independently;
+secondary cleanup failures never replace a primary publication error, and unpublished
+staging is removed. Any output `OSError` becomes a CLI usage error. Non-POSIX
+`--output` fails closed because the needed anchored dirfd publication surface is absent;
+classification to stdout retains its narrower direct-worker Windows contract.
+
+The output parent must be caller-controlled. Python's standard library exposes no
+atomic compare-inode-and-rename operation. The private random staging directory is
+`0700`, the worker group is terminated before publication, and identity is checked both
+immediately before replace and immediately after install. A substitution observed after
+install is rejected and the observed attacker entry is removed. Those instantaneous
+postconditions cover the tested pre-check and exact check-to-replace swaps; a same-UID
+actor that continues racing after the final check is outside this process-isolation
+claim.
+
 ## Optional dependency model
 
 `pdf-inspector` is not installed by `requirements-dev.txt`. Operators who deliberately
@@ -160,12 +215,26 @@ classification accuracy.
   scanned/open upstream type, classifier exception, and exact input bytes.
 - Fake workers: timeout, non-zero exit, signal, malformed JSON, unknown key/enum,
   non-finite/out-of-range confidence, invalid/duplicate/out-of-range pages, stdout flood,
-  stderr flood, and a direct descendant that inherits pipes and must be terminated.
+  stderr flood, all three helper-startup failures, and a direct descendant that inherits
+  pipes and must be terminated before joins.
 - True top-level dependency absence is distinct from internal and transitive import
   failures; the latter are local-diagnostic-only classifier errors.
 - Schema mutations reject the legacy/extension tool versions on the wrong shape.
 - Prompt-facing sidecar excludes raw worker detail; local diagnostic is bounded,
   exclusive, mode `0600`, and schema-valid.
+- A shared small teardown grace cannot accumulate across sequential waits; conservative
+  case/canonical folding, literal/`..`, symlink, hard-link, `samefile` error, and
+  malformed-input compatibility cases pin the precheck boundary.
+- A clock-before-poll adversarial sequence rejects an otherwise successful exit first
+  observable at the deadline.
+- Post-check output symlink/hard-link races against both input and diagnostic replace the
+  hostile final entry without following it; injected replace failure cleans staging.
+- Parent-symlink retargeting stays on the pre-worker bound directory; staging symlink and
+  hard-link swaps are rejected by open-inode identity; a secondary close failure neither
+  masks the primary error nor leaves staging; a 255-byte basename publishes.
+- Diagnostic-parent retargeting likewise stays on its pre-worker bound directory.
+- Diagnostic partial-write, file-fsync, and close failures remove only the created inode
+  and permit retry; symlink/hard-link attacker replacements survive cleanup unchanged.
 - All three Draft 2020-12 schemas validate; the parent contains no
   `pdf_inspector` import.
 
