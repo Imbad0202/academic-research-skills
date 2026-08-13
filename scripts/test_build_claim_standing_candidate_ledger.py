@@ -164,6 +164,42 @@ def test_exact_claim_construction_allows_only_marker_stripping_and_ascii_space()
         ledger.build_ledger(plan, retained)
 
 
+@pytest.mark.parametrize(
+    ("field", "construction"),
+    [
+        ("original_query_text", "researcher_authored"),
+        ("accepted_query_text", "researcher_authored"),
+        ("accepted_query_text", "assisted_then_researcher_approved"),
+    ],
+)
+def test_all_query_constructions_reject_whitespace_only_text(
+    field: str, construction: str
+) -> None:
+    plan = _plan()
+    query = plan["queries"][0]
+    query["construction"] = construction
+    query[field] = "   "
+    _rehash_plan(plan)
+    with pytest.raises(ledger.LedgerError, match=field):
+        ledger.validate_plan(plan)
+    retained = _retained()
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="query plan schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
+def test_claim_text_rejects_whitespace_only_content() -> None:
+    plan = _plan()
+    plan["claim"]["claim_text"] = "   "
+    _rehash_plan(plan)
+    with pytest.raises(ledger.LedgerError, match="claim_text"):
+        ledger.validate_plan(plan)
+    retained = _retained()
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match="query plan schema violation"):
+        ledger.build_ledger(plan, retained)
+
+
 def test_stage_tier_rule_is_closed() -> None:
     plan = _plan()
     plan["claim"]["registry_selection_tier"] = "ALL"
@@ -293,6 +329,22 @@ def test_runtime_enforces_closed_input_contracts() -> None:
     retained["raw_hits"][0]["undeclared"] = True
     with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
         ledger.build_ledger(_plan(), retained)
+
+
+@pytest.mark.parametrize("field", ["provider_record_id", "doi", "title"])
+def test_raw_hit_identity_fields_reject_whitespace_only_values(field: str) -> None:
+    plan = _plan()
+    retained = _retained()
+    hit = retained["raw_hits"][2]
+    hit["title"] = None
+    hit["provider_record_id"] = None
+    hit["doi"] = None
+    hit[field] = "   "
+    _rehash_input(retained, plan)
+    with pytest.raises(ledger.LedgerError, match=field):
+        ledger.validate_input(plan, retained)
+    with pytest.raises(ledger.LedgerError, match="retrieval input schema violation"):
+        ledger.build_ledger(plan, retained)
 
 
 def test_attempt_counts_caps_and_failed_ownership_fail_closed() -> None:

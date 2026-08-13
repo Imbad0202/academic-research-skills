@@ -115,7 +115,8 @@
         "claim_text": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 4000
+          "maxLength": 4000,
+          "pattern": "\\S"
         },
         "claim_sha256": { "$ref": "#/$defs/sha256" },
         "registry_selection_tier": {
@@ -199,12 +200,14 @@
         "original_query_text": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 4000
+          "maxLength": 4000,
+          "pattern": "\\S"
         },
         "accepted_query_text": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 4000
+          "maxLength": 4000,
+          "pattern": "\\S"
         },
         "construction": {
           "enum": [

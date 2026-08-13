@@ -216,6 +216,7 @@ def validate_plan(plan: dict[str, Any]) -> None:
     _expect(plan.get("schema_version") == PLAN_VERSION, "schema_version", f"must equal {PLAN_VERSION}")
     _expect(plan.get("caps") == CAPS, "caps", "must equal the frozen v1 ceilings")
     claim = plan["claim"]
+    _expect(bool(claim["claim_text"].strip()), "claim.claim_text", "must be non-whitespace")
     _expect(text_digest(claim["claim_text"]) == claim["claim_sha256"], "claim.claim_sha256", "does not bind exact claim text")
     checkpoint = claim["checkpoint"]
     tier = claim["registry_selection_tier"]
@@ -251,6 +252,12 @@ def validate_plan(plan: dict[str, Any]) -> None:
             "known retention requires a non-empty reference; unknown requires null",
         )
     for query_id, query in query_map.items():
+        for query_text_field in ("original_query_text", "accepted_query_text"):
+            _expect(
+                bool(query[query_text_field].strip()),
+                f"queries.{query_id}.{query_text_field}",
+                "must be non-whitespace",
+            )
         _expect(query["source_claim_sha256"] == claim["claim_sha256"], f"queries.{query_id}.source_claim_sha256", "claim binding drifted")
         _expect(text_digest(query["accepted_query_text"]) == query["query_sha256"], f"queries.{query_id}.query_sha256", "does not bind accepted query text")
         if query["construction"] == "exact_claim":
@@ -426,6 +433,14 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
             seen.add(cursor)
             cursor = attempts[cursor]["retry_of_attempt_id"]
     for hit_id, hit in hits.items():
+        for identity_field in ("provider_record_id", "doi", "title"):
+            identity_value = hit[identity_field]
+            _expect(
+                identity_value is None
+                or (isinstance(identity_value, str) and bool(identity_value.strip())),
+                f"raw_hits.{hit_id}.{identity_field}",
+                "must be null or contain non-whitespace identity text",
+            )
         _expect(hit["probe_id"] == plan["probe_id"], f"raw_hits.{hit_id}.probe_id", "probe drifted")
         _expect(hit["attempt_id"] in attempts, f"raw_hits.{hit_id}.attempt_id", "unknown attempt")
         attempt = attempts[hit["attempt_id"]]

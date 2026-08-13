@@ -214,17 +214,20 @@
         "provider_record_id": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 1000
+          "maxLength": 1000,
+          "pattern": "\\S"
         },
         "doi": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 500
+          "maxLength": 500,
+          "pattern": "\\S"
         },
         "title": {
           "type": ["string", "null"],
           "minLength": 1,
-          "maxLength": 2000
+          "maxLength": 2000,
+          "pattern": "\\S"
         },
         "authors": {
           "type": "array",
