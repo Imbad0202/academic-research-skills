@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/transcript.schema.json",
+  "title": "#659 externally recorded session transcript",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "cell_id",
+    "sequence_index",
+    "source",
+    "bindings",
+    "session",
+    "turns",
+    "events",
+    "observations"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-transcript/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+    "sequence_index": {"type": "integer", "minimum": 1, "maximum": 48},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_kind",
+        "source_artifact_id",
+        "external_session_receipt_utf8",
+        "external_session_receipt_sha256",
+        "authorization_record_ref",
+        "authorization_record_sha256"
+      ],
+      "properties": {
+        "source_kind": {"const": "externally_recorded_session"},
+        "source_artifact_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "external_session_receipt_utf8": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "external_session_receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "authorization_record_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+        "authorization_record_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt_sha256",
+        "scenario_sha256",
+        "initial_message_sha256",
+        "actor_packet_sha256",
+        "session_envelope_sha256"
+      ],
+      "properties": {
+        "prompt_sha256": {"$ref": "#/$defs/sha256"},
+        "scenario_sha256": {"$ref": "#/$defs/sha256"},
+        "initial_message_sha256": {"$ref": "#/$defs/sha256"},
+        "actor_packet_sha256": {"$ref": "#/$defs/sha256"},
+        "session_envelope_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fresh_context",
+        "complete",
+        "blocked",
+        "partial",
+        "stop_reason",
+        "actor_turns",
+        "subject_turns",
+        "freeze_after_actor_turn"
+      ],
+      "properties": {
+        "fresh_context": {"type": "boolean"},
+        "complete": {"type": "boolean"},
+        "blocked": {"type": "boolean"},
+        "partial": {"type": "boolean"},
+        "stop_reason": {
+          "enum": [
+            "freeze_point_reached",
+            "actor_decided_early",
+            "blocked",
+            "partial",
+            "protocol_deviation"
+          ]
+        },
+        "actor_turns": {"type": "integer", "minimum": 1, "maximum": 6},
+        "subject_turns": {"type": "integer", "minimum": 0, "maximum": 5},
+        "freeze_after_actor_turn": {"const": 6}
+      }
+    },
+    "turns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 11,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["turn_index", "role", "text"],
+        "properties": {
+          "turn_index": {"type": "integer", "minimum": 1, "maximum": 11},
+          "role": {"enum": ["actor", "subject"]},
+          "text": {"type": "string", "minLength": 1, "maxLength": 12000}
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_index",
+          "event_kind",
+          "turn_index",
+          "raw_event_utf8",
+          "raw_event_sha256"
+        ],
+        "properties": {
+          "event_index": {"type": "integer", "minimum": 1, "maximum": 1024},
+          "event_kind": {
+            "enum": [
+              "session_started",
+              "actor_message",
+              "subject_message",
+              "tool_action",
+              "network_action",
+              "evidence_write_failure",
+              "session_completed",
+              "session_blocked",
+              "session_partial"
+            ]
+          },
+          "turn_index": {
+            "oneOf": [
+              {"type": "null"},
+              {"type": "integer", "minimum": 1, "maximum": 11}
+            ]
+          },
+          "raw_event_utf8": {"type": "string", "minLength": 1, "maxLength": 32768},
+          "raw_event_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt_hash_match",
+        "role_card_hash_match",
+        "arm_leakage",
+        "eligible",
+        "unplanned_tool_actions",
+        "unplanned_network_actions",
+        "evidence_write_failure",
+        "partial_subject_output",
+        "actor_protocol_deviation"
+      ],
+      "properties": {
+        "prompt_hash_match": {"type": "boolean"},
+        "role_card_hash_match": {"type": "boolean"},
+        "arm_leakage": {"type": "boolean"},
+        "eligible": {"type": "boolean"},
+        "unplanned_tool_actions": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
+        },
+        "unplanned_network_actions": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
+        },
+        "evidence_write_failure": {"type": "boolean"},
+        "partial_subject_output": {"type": "boolean"},
+        "actor_protocol_deviation": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

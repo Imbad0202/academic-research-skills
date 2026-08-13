@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+import json
 import re
 import sys
 from pathlib import Path
@@ -692,6 +694,213 @@ def check_rebuttal_audit_guard() -> None:
         )
 
 
+def check_ideation_diversity_no_call_contract() -> None:
+    """Keep #659's schemas, runner, docs, and CI registration aligned."""
+    suite = "evals/heldout/within_session_ideation_diversity"
+    schema_paths = {
+        "run_plan": f"{suite}/run_plan.schema.json",
+        "authorization": f"{suite}/authorization_record.schema.json",
+        "transcript": f"{suite}/transcript.schema.json",
+        "ingestion": f"{suite}/ingestion_manifest.schema.json",
+        "blind_packet": f"{suite}/blind_packet.schema.json",
+        "blind_inventory": f"{suite}/blind_inventory.schema.json",
+        "blind_manifest": f"{suite}/blind_manifest.schema.json",
+        "private_arm_map": f"{suite}/private_arm_map.schema.json",
+    }
+    schemas: dict[str, dict] = {}
+    for name, rel_path in schema_paths.items():
+        try:
+            value = json.loads(read(rel_path))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            fail(f"{rel_path}: cannot load #659 contract: {exc}")
+            continue
+        if not isinstance(value, dict) or value.get("additionalProperties") is not False:
+            fail(f"{rel_path}: root contract must be a closed object")
+            continue
+        schemas[name] = value
+
+    plan = schemas.get("run_plan", {})
+    plan_properties = plan.get("properties", {})
+    design = plan_properties.get("design", {}).get("properties", {})
+    expected_design = {
+        "experiments": 2,
+        "scenarios": 6,
+        "arms_per_experiment": 2,
+        "replicates_per_scenario_arm": 2,
+        "subject_session_cells": 48,
+    }
+    for field, expected in expected_design.items():
+        if design.get(field, {}).get("const") != expected:
+            fail(f"{schema_paths['run_plan']}: {field} must remain const {expected}")
+    execution = plan.get("$defs", {}).get("execution", {}).get("properties", {})
+    no_call_constants = {
+        "tools": [],
+        "web_enabled": False,
+        "runner_transport": "none",
+        "dispatch_available": False,
+        "api_spend_ceiling_usd": 0,
+        "api_fallback": False,
+        "envelope_grants_consent": False,
+        "fresh_external_authorization_required": True,
+    }
+    for field, expected in no_call_constants.items():
+        if execution.get(field, {}).get("const") != expected:
+            fail(f"{schema_paths['run_plan']}: no-call constant {field!r} drifted")
+    if plan_properties.get("cells", {}).get("minItems") != 48 or plan_properties.get(
+        "cells", {}
+    ).get("maxItems") != 48:
+        fail(f"{schema_paths['run_plan']}: cells must remain exactly 48")
+
+    runner_path = "scripts/run_ideation_diversity_no_call.py"
+    runner_source = read(runner_path)
+    try:
+        tree = ast.parse(runner_source)
+    except SyntaxError as exc:
+        fail(f"{runner_path}: cannot parse runner AST: {exc}")
+        tree = ast.Module(body=[], type_ignores=[])
+    forbidden_imports = {
+        "subprocess",
+        "socket",
+        "requests",
+        "httpx",
+        "aiohttp",
+        "urllib",
+        "http",
+        "openai",
+        "anthropic",
+        "cohere",
+        "litellm",
+        "mistralai",
+        "importlib",
+        "ctypes",
+    }
+    forbidden_os_calls = {
+        "system",
+        "popen",
+        "spawnl",
+        "spawnle",
+        "spawnlp",
+        "spawnlpe",
+        "spawnv",
+        "spawnve",
+        "spawnvp",
+        "spawnvpe",
+        "posix_spawn",
+        "posix_spawnp",
+        "fork",
+        "forkpty",
+        "execl",
+        "execle",
+        "execlp",
+        "execlpe",
+        "execv",
+        "execve",
+        "execvp",
+        "execvpe",
+    }
+    commands: set[str] = set()
+    os_module_aliases = {"os"}
+    forbidden_direct_call_aliases: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root_name = alias.name.split(".", 1)[0]
+                if root_name in forbidden_imports:
+                    fail(f"{runner_path}: forbidden import {alias.name!r}")
+                if alias.name == "os":
+                    os_module_aliases.add(alias.asname or "os")
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            root_name = node.module.split(".", 1)[0]
+            if root_name in forbidden_imports:
+                fail(f"{runner_path}: forbidden import {node.module!r}")
+            if node.module == "os":
+                for alias in node.names:
+                    if alias.name in forbidden_os_calls:
+                        forbidden_direct_call_aliases.add(alias.asname or alias.name)
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id in os_module_aliases
+            and node.func.attr in forbidden_os_calls
+        ):
+            fail(
+                f"{runner_path}: forbidden process call "
+                f"{node.func.value.id}.{node.func.attr}"
+            )
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in forbidden_direct_call_aliases
+        ):
+            fail(f"{runner_path}: forbidden imported process call {node.func.id}")
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in {"__import__", "eval", "exec", "compile"}
+        ):
+            fail(f"{runner_path}: forbidden dynamic execution call {node.func.id}")
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "add_parser"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+        ):
+            commands.add(node.args[0].value)
+    expected_commands = {
+        "init-run",
+        "materialize",
+        "validate",
+        "ingest",
+        "prepare-blind-packet",
+    }
+    if commands != expected_commands:
+        fail(f"{runner_path}: command set must be exactly {sorted(expected_commands)!r}")
+
+    readme = f"{suite}/README.md"
+    design_doc = "docs/design/2026-08-13-659-within-session-ideation-diversity-design.md"
+    for rel_path, phrases in (
+        (
+            readme,
+            (
+                "48-cell plan",
+                "no transport, dispatch, probe",
+                "The first binding",
+                "exactly one isolated packet",
+                "cannot authenticate the operator",
+                "two independent human judges",
+            ),
+        ),
+        (
+            design_doc,
+            (
+                "Phase-2 no-call execution envelope",
+                "= 48 subject-session",
+                "API spend ceiling USD 0",
+                "48 write-once isolated single-session packets",
+                "does not authenticate operator identity",
+                "No subject, actor, judge, or adjudicator session is authorized",
+            ),
+        ),
+    ):
+        for phrase in phrases:
+            expect_contains(rel_path, phrase)
+    expect_contains(
+        "scripts/_ci_pytest_manifest.toml",
+        'id = "659-within-session-ideation-diversity-no-call-envelope"',
+    )
+    expect_contains(
+        "scripts/_ci_pytest_manifest.toml",
+        'path = "scripts/test_run_ideation_diversity_no_call.py"',
+    )
+    expect_contains(
+        "CHANGELOG.md",
+        "Within-session ideation-diversity Phase-2 no-call envelope (#659)",
+    )
+
+
 def main() -> int:
     check_mode_registry()
     check_claude_md()
@@ -707,6 +916,7 @@ def main() -> int:
     check_docx_contract()
     check_reference_docs()
     check_rebuttal_audit_guard()
+    check_ideation_diversity_no_call_contract()
 
     if ERRORS:
         print("Spec consistency check failed:")

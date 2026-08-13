@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/private_arm_map.schema.json",
+  "title": "#659 procedural-nondisclosure private blind assignment map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "inventory_sha256",
+    "private",
+    "protection",
+    "mapping"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-private-arm-map/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "inventory_sha256": {"$ref": "#/$defs/sha256"},
+    "private": {"const": true},
+    "protection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "encrypted",
+        "directory_mode",
+        "file_mode",
+        "unblind_only_after_raw_labels_and_adjudication_sealed"
+      ],
+      "properties": {
+        "kind": {"const": "procedural_nondisclosure_only"},
+        "encrypted": {"const": false},
+        "directory_mode": {"const": "0700"},
+        "file_mode": {"const": "0600"},
+        "unblind_only_after_raw_labels_and_adjudication_sealed": {"const": true}
+      }
+    },
+    "mapping": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blind_session_id",
+          "cell_id",
+          "experiment_id",
+          "arm_id",
+          "scenario_id",
+          "pair_id",
+          "replicate"
+        ],
+        "properties": {
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+          "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+          "experiment_id": {"enum": ["adjacent_probe", "exploratory_guardrails"]},
+          "arm_id": {
+            "enum": [
+              "adjacent_probe_off",
+              "adjacent_probe_on",
+              "exploratory_guardrails_on",
+              "exploratory_guardrails_ablated"
+            ]
+          },
+          "scenario_id": {"type": "string", "pattern": "^idi-[a-z-]+-(?:en|zh)$"},
+          "pair_id": {"type": "string", "pattern": "^idi-[a-z-]+$"},
+          "replicate": {"enum": [1, 2]}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/blind_inventory.schema.json",
+  "title": "#659 public inventory of isolated blind packets",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "packet_count",
+    "delivery_rule",
+    "artifact_presence",
+    "packets"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-blind-inventory/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "packet_count": {"const": 48},
+    "delivery_rule": {"const": "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"},
+    "artifact_presence": {"$ref": "#/$defs/artifact_presence"},
+    "packets": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blind_session_id", "packet_sha256"],
+        "properties": {
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+          "packet_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact_presence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structured_judge_labels_attached",
+        "adjudication_artifact_attached",
+        "human_evidence_artifact_attached"
+      ],
+      "properties": {
+        "structured_judge_labels_attached": {"const": false},
+        "adjudication_artifact_attached": {"const": false},
+        "human_evidence_artifact_attached": {"const": false}
+      }
+    }
+  }
+}

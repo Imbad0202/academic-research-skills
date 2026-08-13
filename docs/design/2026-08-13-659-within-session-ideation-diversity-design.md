@@ -1,8 +1,6 @@
 # #659 — Within-session ideation-diversity measurement design
 
-Status: Phase-1 design, codebook, actor-role seed, and non-production ablation
-freeze. No subject, actor, judge, or adjudicator session is authorized by this
-document.
+Status: Phase-1 assets plus a Phase-2 no-call execution envelope are frozen. No subject, actor, judge, or adjudicator session is authorized by this document or by the envelope.
 
 ## 1. Construct and claims boundary
 
@@ -177,12 +175,83 @@ Retain role packets, exact prompts, actor messages, subject responses, event
 streams, eligibility decisions, judge packets, raw labels, adjudication, hashes,
 and the final measurement row.
 
-## 9. Phase boundary
+## 9. Phase-2 no-call execution envelope
 
-This PR may freeze the design, seed, codebook, ablation transform, validator, and
-tests. It does not publish a baseline and cannot satisfy Phase 2 of #659.
+The file-only runner freezes one exact cross-product: 2 experiments x 6
+scenarios x 2 arms x 2 independent subject replicates = 48 subject-session
+cells. A seed-bound SHA-256 order forms 12 experiment/scenario blocks; replicate
+2 reverses replicate 1's two-arm order within every block. Every cell binds the
+suite assets, exact prompt bytes, prompt environment, scenario and initial
+message, repository-owned actor packet, non-executable session envelope, and
+fresh-context requirement by hash.
 
-Any subject, actor, judge, or adjudicator session requires a new exact run plan
-and fresh authorization. No API, subscription-model, web, or tool call is
-authorized here. #659 remains open until the per-mechanism baseline and bounded
-claims row are complete.
+The command surface is limited to `init-run`, `materialize`, `validate`,
+`ingest`, and `prepare-blind-packet`. It contains no provider transport,
+dispatch, probe, actor, subject, judge, or adjudicator execution path.
+`materialize` creates only frozen input files. `ingest` accepts one externally
+recorded transcript, canonical external-session receipt, and closed canonical
+raw-event stream at a time in exact order. The runner parses the raw event bytes
+itself; unknown/free-form events fail closed, action classes come from those
+bytes, every message turn is derived byte-exactly from its raw message event,
+and exactly one first start plus one last completion forbids stitched sessions.
+It does not cause or authorize a session. The run plan pins tools empty, web
+off, transport `none`, dispatch
+unavailable, API spend ceiling USD 0, API fallback off, and fresh external
+authorization required.
+
+The closed external authorization record binds exact plan SHA, run id, suite
+commit, complete execution envelope, ordered 48-cell scope, decision, and time.
+Its bytes must match each transcript's declared hash. A separate hash-bound
+external-session receipt binds unique artifact/receipt/session ids, exact cell
+and sequence, fresh-context attestation, and start/completion times. Session
+start cannot predate authorization, start cannot follow completion, ids cannot
+be reused, and accepted cell times cannot regress behind the preceding cell.
+This proves only structure and byte binding; the runner does not authenticate operator identity,
+recorder identity, fresh context, or genuine consent. Those remain
+procedural responsibilities. The ingestion receipt retains the authorization
+reference/digest plus external artifact and session-receipt digests. The first
+prompt/role/envelope or authorization-record mismatch, arm leak, ineligible
+session, unplanned tool or network action, evidence-write failure, partial
+output, actor-protocol deviation, out-of-order ingestion, or
+transcript-contract failure first atomically commits a permanent stopped state,
+then preserves the rejected transcript at a content-addressed path, and forbids
+retry. Validation re-reads and hashes blocked evidence. The run tree must match
+the exact state inventory, so an injected/conflicting path cannot restore a
+retryable state. Bytes written before a failed success-state commit are hashed
+and registered as auxiliary stop evidence, then verified on replay rather than
+left as untracked orphans. The append-only manifest must remain an exact ingested prefix
+followed by pending cells, or by one blocked cell after a stop.
+
+Only 48 complete, unstopped external transcripts can produce blinded material.
+Before copying turns, the runner rejects all frozen identifiers, explicit
+pair/arm/replicate markers, and prior-label/adjudication/human-evidence markers
+from transcript free text. It atomically creates 48 write-once isolated single-session packets.
+The public inventory contains only blind ids and packet
+hashes; an exact blind manifest binds all packet/map hashes to the complete
+pre-blind ingestion manifest. Final state is `blind_finalized`, and validation
+replays every packet plus the exact bundle inventory. An already-published
+bundle can recover a crash before the state update only if exact replay passes.
+A first-round judge receives exactly one isolated
+packet per assignment, never the complete directory or another session at the
+same time. Thus `other_transcripts` and pair mapping are absent from delivery,
+not merely hidden in a multi-session bundle. Packet presence flags mean no
+structured label, adjudication, or human-evidence artifact is attached; they do
+not reinterpret arbitrary text. The private map is a `0600` file under a `0700`
+directory and explicitly declares `procedural_nondisclosure_only` plus
+`encrypted=false`. This is not an enforced cannot-open seal; operators must
+withhold it until raw labels and adjudication are sealed. The requirement remains at least two independent
+arm-blind human judges and one separate arm-blind human adjudicator. The runner
+does not fabricate or replace any of them.
+
+## 10. Claims and authorization boundary
+
+This phase freezes schemas, ordering, hashes, materialization, ingestion, and
+blinding contracts. It publishes no actor or subject output, no judge or
+adjudicator output, no baseline, and no effectiveness result. It does not modify
+the production Socratic prompt or any historical baseline claim.
+
+Any subject, actor, judge, or adjudicator session requires fresh authorization
+for the exact frozen plan outside this no-call runner. No API,
+subscription-model, web, tool, or other external call is authorized here. #659
+remains open until the per-mechanism baseline and bounded claims row are
+complete.

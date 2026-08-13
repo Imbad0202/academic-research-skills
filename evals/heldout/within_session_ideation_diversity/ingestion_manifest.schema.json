@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/ingestion_manifest.schema.json",
+  "title": "#659 append-only transcript ingestion state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "authorization_record_path",
+    "authorization_record_sha256",
+    "blind_manifest_ref",
+    "blind_manifest_sha256",
+    "status",
+    "next_sequence_index",
+    "stopped",
+    "stop_receipt",
+    "cells"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-ingestion-manifest/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "authorization_record_path": {
+      "oneOf": [
+        {"type": "null"},
+        {"const": "authorization/record.json"}
+      ]
+    },
+    "authorization_record_sha256": {"$ref": "#/$defs/nullable_sha256"},
+    "blind_manifest_ref": {
+      "oneOf": [
+        {"type": "null"},
+        {"const": "blind/manifest.json"}
+      ]
+    },
+    "blind_manifest_sha256": {"$ref": "#/$defs/nullable_sha256"},
+    "status": {"enum": ["initialized", "materialized", "ingesting", "complete", "blind_finalized", "stopped"]},
+    "next_sequence_index": {"type": "integer", "minimum": 1, "maximum": 49},
+    "stopped": {"type": "boolean"},
+    "stop_receipt": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/stop_receipt"}
+      ]
+    },
+    "cells": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "items": {"$ref": "#/$defs/cell_state"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullable_sha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/sha256"}
+      ]
+    },
+    "nullable_path": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^(?:transcripts|blocked|receipts)/[A-Za-z0-9._/-]+$"}
+      ]
+    },
+    "cell_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "sequence_index",
+        "status",
+        "transcript_ref",
+        "transcript_sha256",
+        "ingestion_receipt_ref"
+      ],
+      "properties": {
+        "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+        "sequence_index": {"type": "integer", "minimum": 1, "maximum": 48},
+        "status": {"enum": ["pending", "ingested", "blocked"]},
+        "transcript_ref": {"$ref": "#/$defs/nullable_path"},
+        "transcript_sha256": {"$ref": "#/$defs/nullable_sha256"},
+        "ingestion_receipt_ref": {"$ref": "#/$defs/nullable_path"}
+      }
+    },
+    "stop_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cell_id", "sequence_index", "reason_code", "detail", "raw_ref", "raw_sha256", "retry_forbidden", "state_committed_before_evidence_write", "preserved_auxiliary_artifacts"],
+      "properties": {
+        "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+        "sequence_index": {"type": "integer", "minimum": 1, "maximum": 48},
+        "reason_code": {
+          "enum": [
+            "prompt_or_role_card_hash_mismatch",
+            "arm_leakage",
+            "ineligible_session",
+            "authorization_record_missing_or_mismatch",
+            "unplanned_tool_action",
+            "unplanned_network_action",
+            "evidence_write_failure",
+            "partial_subject_output",
+            "actor_protocol_deviation",
+            "out_of_order_ingestion",
+            "transcript_contract_failure"
+          ]
+        },
+        "detail": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "raw_ref": {"type": "string", "pattern": "^blocked/cell-[0-9]{3}\\.transcript\\.[0-9a-f]{64}\\.raw$"},
+        "raw_sha256": {"$ref": "#/$defs/sha256"},
+        "retry_forbidden": {"const": true},
+        "state_committed_before_evidence_write": {"const": true},
+        "preserved_auxiliary_artifacts": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/preserved_auxiliary_artifact"}
+        }
+      }
+    },
+    "preserved_auxiliary_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "ref", "sha256"],
+      "properties": {
+        "role": {
+          "enum": [
+            "authorization_record",
+            "accepted_transcript_before_state_commit",
+            "ingestion_receipt_before_state_commit"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "pattern": "^(?:authorization/record\\.json|transcripts/cell-[0-9]{3}\\.json|receipts/cell-[0-9]{3}\\.json)$"
+        },
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

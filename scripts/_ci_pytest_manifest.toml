@@ -229,6 +229,10 @@ id = "582-role-topology-utility-dry-run"
 path = "scripts/test_run_role_topology_utility_dry_run.py"
 
 [[pytest]]
+id = "659-within-session-ideation-diversity-no-call-envelope"
+path = "scripts/test_run_ideation_diversity_no_call.py"
+
+[[pytest]]
 id = "250-title-fuzzy-false-positive-pin"
 path = "scripts/test_title_fuzzy_false_positive.py"
 

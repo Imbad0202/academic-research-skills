@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/run_plan.schema.json",
+  "title": "#659 no-call execution-envelope run plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "phase",
+    "status",
+    "run_id",
+    "suite_commit",
+    "content_class",
+    "created_without_dispatch",
+    "asset_bindings",
+    "rendered_variant_sha256",
+    "execution",
+    "design",
+    "order",
+    "cells",
+    "stop_rules",
+    "judge_requirements"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-run-plan/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "phase": {"const": "phase_2_no_call_execution_envelope"},
+    "status": {"const": "frozen_no_call"},
+    "run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "suite_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "content_class": {"const": "repository-owned synthetic scholar role cards"},
+    "created_without_dispatch": {"const": true},
+    "asset_bindings": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/asset_binding"}
+    },
+    "rendered_variant_sha256": {"$ref": "#/$defs/sha256"},
+    "execution": {"$ref": "#/$defs/execution"},
+    "design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "experiments",
+        "scenarios",
+        "arms_per_experiment",
+        "replicates_per_scenario_arm",
+        "subject_session_cells",
+        "fresh_context_per_cell",
+        "adaptive_actor_forbidden",
+        "model_generated_actor_forbidden"
+      ],
+      "properties": {
+        "experiments": {"const": 2},
+        "scenarios": {"const": 6},
+        "arms_per_experiment": {"const": 2},
+        "replicates_per_scenario_arm": {"const": 2},
+        "subject_session_cells": {"const": 48},
+        "fresh_context_per_cell": {"const": true},
+        "adaptive_actor_forbidden": {"const": true},
+        "model_generated_actor_forbidden": {"const": true}
+      }
+    },
+    "order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "seed", "block_count", "cell_ids", "order_sha256"],
+      "properties": {
+        "algorithm": {"const": "sha256-balanced-block-v1"},
+        "seed": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{8,128}$"},
+        "block_count": {"const": 12},
+        "cell_ids": {
+          "type": "array",
+          "minItems": 48,
+          "maxItems": 48,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/cell_id"}
+        },
+        "order_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "cells": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "items": {"$ref": "#/$defs/cell"}
+    },
+    "stop_rules": {
+      "const": [
+        "prompt_or_role_card_hash_mismatch",
+        "arm_leakage",
+        "ineligible_session",
+        "authorization_record_missing_or_mismatch",
+        "unplanned_tool_action",
+        "unplanned_network_action",
+        "evidence_write_failure",
+        "partial_subject_output",
+        "actor_protocol_deviation",
+        "out_of_order_ingestion",
+        "transcript_contract_failure"
+      ]
+    },
+    "judge_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_independent_judges",
+        "separate_arm_blind_adjudicator_required",
+        "raw_labels_must_be_retained",
+        "human_evidence_may_not_be_fabricated",
+        "packet_contains_no_labels"
+      ],
+      "properties": {
+        "minimum_independent_judges": {"const": 2},
+        "separate_arm_blind_adjudicator_required": {"const": true},
+        "raw_labels_must_be_retained": {"const": true},
+        "human_evidence_may_not_be_fabricated": {"const": true},
+        "packet_contains_no_labels": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "cell_id": {"type": "string", "pattern": "^cell-[0-9]{3}$"},
+    "asset_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+        },
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_provider",
+        "subject_model",
+        "subject_runtime",
+        "subject_runtime_version",
+        "auth_mode",
+        "reasoning_effort",
+        "input_token_cap",
+        "output_token_cap",
+        "tools",
+        "web_enabled",
+        "runner_transport",
+        "dispatch_available",
+        "api_spend_ceiling_usd",
+        "api_fallback",
+        "envelope_grants_consent",
+        "fresh_external_authorization_required"
+      ],
+      "properties": {
+        "subject_provider": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_model": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_runtime": {"type": "string", "minLength": 1, "maxLength": 128},
+        "subject_runtime_version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "auth_mode": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 64},
+        "input_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "output_token_cap": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "tools": {"const": []},
+        "web_enabled": {"const": false},
+        "runner_transport": {"const": "none"},
+        "dispatch_available": {"const": false},
+        "api_spend_ceiling_usd": {"const": 0},
+        "api_fallback": {"const": false},
+        "envelope_grants_consent": {"const": false},
+        "fresh_external_authorization_required": {"const": true}
+      }
+    },
+    "prompt_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "sha256", "environment"],
+      "properties": {
+        "kind": {"enum": ["production", "nonproduction_ablation"]},
+        "path": {
+          "enum": [
+            "materials/prompts/production-socratic-mentor.md",
+            "materials/prompts/exploratory-guardrails-ablated.md"
+          ]
+        },
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "environment": {
+          "type": "object",
+          "propertyNames": {"const": "ARS_SOCRATIC_ADJACENT_PROBE"},
+          "additionalProperties": {"const": "1"},
+          "maxProperties": 1
+        }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "sequence_index",
+        "experiment_id",
+        "arm_id",
+        "scenario_id",
+        "pair_id",
+        "language",
+        "replicate",
+        "actor_block_id",
+        "prompt",
+        "scenario_sha256",
+        "initial_message_sha256",
+        "actor_packet_path",
+        "actor_packet_sha256",
+        "session_envelope_path",
+        "session_envelope_sha256",
+        "fresh_context_required"
+      ],
+      "properties": {
+        "cell_id": {"$ref": "#/$defs/cell_id"},
+        "sequence_index": {"type": "integer", "minimum": 1, "maximum": 48},
+        "experiment_id": {"enum": ["adjacent_probe", "exploratory_guardrails"]},
+        "arm_id": {
+          "enum": [
+            "adjacent_probe_off",
+            "adjacent_probe_on",
+            "exploratory_guardrails_on",
+            "exploratory_guardrails_ablated"
+          ]
+        },
+        "scenario_id": {"type": "string", "pattern": "^idi-[a-z-]+-(?:en|zh)$"},
+        "pair_id": {"type": "string", "pattern": "^idi-[a-z-]+$"},
+        "language": {"enum": ["en", "zh-TW"]},
+        "replicate": {"enum": [1, 2]},
+        "actor_block_id": {"type": "string", "pattern": "^actor-block-[0-9]{2}-r[12]$"},
+        "prompt": {"$ref": "#/$defs/prompt_binding"},
+        "scenario_sha256": {"$ref": "#/$defs/sha256"},
+        "initial_message_sha256": {"$ref": "#/$defs/sha256"},
+        "actor_packet_path": {"type": "string", "pattern": "^materials/actor-packets/cell-[0-9]{3}\\.json$"},
+        "actor_packet_sha256": {"$ref": "#/$defs/sha256"},
+        "session_envelope_path": {"type": "string", "pattern": "^materials/session-envelopes/cell-[0-9]{3}\\.json$"},
+        "session_envelope_sha256": {"$ref": "#/$defs/sha256"},
+        "fresh_context_required": {"const": true}
+      }
+    }
+  }
+}

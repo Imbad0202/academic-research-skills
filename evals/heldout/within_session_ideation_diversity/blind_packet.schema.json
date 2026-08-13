@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/blind_packet.schema.json",
+  "title": "#659 isolated arm-blind session packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "blind_session_id",
+    "content_class",
+    "blinded_to",
+    "delivery",
+    "artifact_presence",
+    "free_text_screening",
+    "codebook",
+    "language",
+    "domain",
+    "role_card",
+    "transcript"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-isolated-blind-session/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+    "content_class": {"const": "repository-owned synthetic scholar role cards"},
+    "blinded_to": {
+      "const": [
+        "mechanism",
+        "arm",
+        "pair_mapping",
+        "replicate",
+        "expected_direction",
+        "other_transcripts",
+        "aggregate",
+        "prior_labels"
+      ]
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["isolated_single_session", "deliver_other_sessions_together"],
+      "properties": {
+        "isolated_single_session": {"const": true},
+        "deliver_other_sessions_together": {"const": false}
+      }
+    },
+    "artifact_presence": {"$ref": "#/$defs/artifact_presence"},
+    "free_text_screening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frozen_identifiers_rejected",
+        "mapping_markers_rejected",
+        "prior_label_adjudication_human_markers_rejected"
+      ],
+      "properties": {
+        "frozen_identifiers_rejected": {"const": true},
+        "mapping_markers_rejected": {"const": true},
+        "prior_label_adjudication_human_markers_rejected": {"const": true}
+      }
+    },
+    "codebook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "text"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 100000}
+      }
+    },
+    "language": {"enum": ["en", "zh-TW"]},
+    "domain": {"type": "string", "minLength": 1, "maxLength": 128},
+    "role_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_brief",
+        "initial_message",
+        "owned_framings",
+        "response_policy",
+        "forbidden_out_of_role"
+      ],
+      "properties": {
+        "role_brief": {"type": "string", "minLength": 1},
+        "initial_message": {"type": "string", "minLength": 1},
+        "owned_framings": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/framing"}
+        },
+        "response_policy": {
+          "const": {
+            "matching_directionless_facet": "express_matching_owned_framing_on_next_actor_turn",
+            "nonmatching_or_formed_model_framing": "decline_and_do_not_adopt",
+            "ordinary_open_question": "answer_from_role_card_without_adding_off_card_framings",
+            "model_menu": "reject_menu_and_restate_scholar_authority",
+            "freeze_after_actor_turn": 6
+          }
+        },
+        "forbidden_out_of_role": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 10}
+        }
+      }
+    },
+    "transcript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stop_reason", "turns"],
+      "properties": {
+        "stop_reason": {"enum": ["freeze_point_reached", "actor_decided_early"]},
+        "turns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 11,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["turn_index", "role", "text"],
+            "properties": {
+              "turn_index": {"type": "integer", "minimum": 1, "maximum": 11},
+              "role": {"enum": ["actor", "subject"]},
+              "text": {"type": "string", "minLength": 1, "maxLength": 12000}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact_presence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structured_judge_labels_attached",
+        "adjudication_artifact_attached",
+        "human_evidence_artifact_attached"
+      ],
+      "properties": {
+        "structured_judge_labels_attached": {"const": false},
+        "adjudication_artifact_attached": {"const": false},
+        "human_evidence_artifact_attached": {"const": false}
+      }
+    },
+    "framing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "framing_key",
+        "facet_kind",
+        "statement",
+        "initially_expressed",
+        "matching_facet_phrases"
+      ],
+      "properties": {
+        "framing_key": {"type": "string", "pattern": "^F[1-3]$"},
+        "facet_kind": {
+          "enum": [
+            "stakeholder_perspective",
+            "context_dimension",
+            "time_dimension",
+            "level_of_analysis",
+            "access_dimension",
+            "implementation_perspective"
+          ]
+        },
+        "statement": {"type": "string", "minLength": 20},
+        "initially_expressed": {"type": "boolean"},
+        "matching_facet_phrases": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 4}
+        }
+      }
+    }
+  }
+}

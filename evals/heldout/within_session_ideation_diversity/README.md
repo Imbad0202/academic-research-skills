@@ -1,4 +1,4 @@
-# Within-Session Ideation Diversity (#659, v0.1)
+# Within-Session Ideation Diversity (#659, v0.3 hardened no-call envelope)
 
 This suite freezes a bounded evaluation of two Layer-1 Socratic mechanisms. The
 authority is
@@ -6,9 +6,10 @@ authority is
 
 ## Current status
 
-Phase 1 only: design, codebook, synthetic actor-role seed, non-production
-ablation transform, validator, and tests. **No subject, actor, judge,
-adjudicator, or baseline run exists.** No breadth-efficacy claim is computable.
+Phase 1 assets are frozen. Phase 2 now provides a file-only, no-call execution
+envelope for an exact 48-cell plan (2 experiments x 6 scenarios x 2 arms x 2
+replicates). **No subject, actor, judge, adjudicator, or baseline run exists.**
+No breadth-efficacy claim is computable.
 
 ## Contents
 
@@ -18,8 +19,26 @@ adjudicator, or baseline run exists.** No breadth-efficacy claim is computable.
 - `codebook.md`: frozen units, labels, exclusions, metrics, and blinding rules;
 - `nonproduction_variant.json`: exact source digest and replacements for the
   exploratory-guardrails ablation;
+- `run_plan.schema.json`: exact plan, prompt/order/hash, 48-cell, no-call, stop,
+  and later human-labeling requirements;
+- `authorization_record.schema.json`: closed exact-run authorization structure
+  bound to plan, run, commit, execution, ordered scope, decision, and time;
+- `transcript.schema.json`: contract for one externally recorded session,
+  canonical external-session receipt, and closed canonical raw-event stream;
+- `ingestion_manifest.schema.json`: append-only ingestion and first-stop
+  evidence contract;
+- `blind_packet.schema.json`: one isolated arm-blind session packet without
+  labels, adjudication, or human evidence;
+- `blind_inventory.schema.json`: public inventory of only 48 blind ids and
+  packet hashes, without content or assignment fields;
+- `blind_manifest.schema.json`: exact finalized packet/map inventory and replay
+  binding to the pre-blind ingestion state;
+- `private_arm_map.schema.json`: closed private assignment-map structure with
+  explicit procedural-only protection semantics;
 - `scripts/validate_ideation_diversity_assets.py`: offline asset and variant
-  validator/materializer.
+  validator/materializer;
+- `scripts/run_ideation_diversity_no_call.py`: offline-only plan initializer,
+  materializer, validator, transcript ingester, and blind-packet preparer.
 
 ## Offline validation
 
@@ -33,6 +52,100 @@ python scripts/validate_ideation_diversity_assets.py materialize-variant \
 non-production prompt; it never changes
 `deep-research/agents/socratic_mentor_agent.md`.
 
+## Phase-2 no-call workflow
+
+The runner exposes exactly `init-run`, `materialize`, `validate`, `ingest`, and
+`prepare-blind-packet`. It has no transport, dispatch, probe, actor, subject,
+judge, or adjudicator command. Initialization does not grant consent and every
+run plan requires a fresh external authorization before any session occurs.
+
+```bash
+PYTHONPATH=scripts python scripts/run_ideation_diversity_no_call.py init-run \
+  --run-dir /path/to/new/run --run-id RUN_ID \
+  --suite-commit 40_LOWERCASE_HEX_COMMIT --order-seed ORDER_SEED_AT_LEAST_8_CHARS \
+  --subject-provider PROVIDER --subject-model MODEL \
+  --subject-runtime RUNTIME --subject-runtime-version VERSION \
+  --auth-mode AUTH_MODE --reasoning-effort EFFORT \
+  --input-token-cap INPUT_CAP --output-token-cap OUTPUT_CAP
+
+PYTHONPATH=scripts python scripts/run_ideation_diversity_no_call.py materialize \
+  --run-dir /path/to/new/run --plan-sha256 64_LOWERCASE_HEX_PLAN_SHA
+
+PYTHONPATH=scripts python scripts/run_ideation_diversity_no_call.py validate \
+  --run-dir /path/to/new/run --plan-sha256 64_LOWERCASE_HEX_PLAN_SHA
+```
+
+`materialize` writes only the two frozen prompt inputs, 48 repository-owned
+synthetic actor packets, and 48 non-executable session envelopes. It produces
+no actor or subject messages. After separately authorized sessions have been
+recorded outside this runner, ingest exactly one external transcript at a time
+in the frozen sequence:
+
+```bash
+PYTHONPATH=scripts python scripts/run_ideation_diversity_no_call.py ingest \
+  --run-dir /path/to/new/run --plan-sha256 64_LOWERCASE_HEX_PLAN_SHA \
+  --transcript /path/to/external-transcript.json \
+  --authorization-record /path/to/fresh-external-authorization-record
+
+PYTHONPATH=scripts python scripts/run_ideation_diversity_no_call.py prepare-blind-packet \
+  --run-dir /path/to/new/run --plan-sha256 64_LOWERCASE_HEX_PLAN_SHA
+```
+
+The authorization record must pass its closed schema and bind the exact plan
+SHA, run id, suite commit, complete execution envelope, ordered 48-cell scope,
+decision, and decision time. Its bytes must match the transcript-declared hash.
+Each transcript also carries a canonical, hash-bound external-session receipt
+with unique receipt/session ids, exact cell/order binding, fresh-context
+attestation, and start/completion times. Authorization must precede session
+start; start must not follow completion; accepted sessions cannot reuse an
+artifact, receipt, or session id or regress behind the preceding cell's
+completion time. This proves only structural and byte binding: the runner
+cannot authenticate the operator, recorder, or fresh-context attestation and
+cannot establish that genuine consent occurred. Those remain procedural
+responsibilities; arbitrary or blank records are rejected.
+
+Every `raw_event_utf8` value is itself canonical closed JSON. The runner parses
+those bytes, derives event kind/turn index from them, rejects unknown fields or
+event kinds, classifies tool/network/partial/write-failure events before
+consulting outer normalized fields, and requires every transcript turn's text
+to equal its raw message-event text byte-for-byte. The stream contains exactly
+one first `session_started` and exactly one last `session_completed`; lifecycle
+events may not restart or complete midstream. A free-form runtime event cannot
+be mislabeled as benign and pass.
+
+The first binding/authorization mismatch, arm leak, ineligible/partial session,
+unplanned tool or network event, evidence-write failure, actor-protocol
+deviation, out-of-order ingestion, or contract failure stops permanently. The
+manifest commits the irreversible stop before writing a content-addressed raw
+rejected transcript; validation re-reads and hashes blocked evidence, and retry
+is forbidden even if an evidence-path conflict occurs. Every state has an exact
+file/directory inventory, so injected artifacts fail closed. If a write failure
+occurs after authorization/transcript/receipt bytes were created but before the
+success manifest commits, the stop receipt hashes and registers those partial
+artifacts; stopped-state replay verifies them instead of leaving orphans.
+
+After all 48 transcripts pass, blinding rejects transcript free text containing
+any frozen cell/scenario/pair/experiment/arm/block identifier, explicit mapping
+marker, prior-label/adjudication marker, or claimed human-evidence marker. It
+then creates one atomic bundle with 48 write-once isolated packets, a
+content-free public inventory, an exact blind manifest, and a private map. The
+ingestion state becomes `blind_finalized`; validation reconstructs every packet
+from its source transcript and verifies the complete bundle inventory and
+hashes. A crash after atomic bundle publication but before the state update is
+recoverable only by exact replay of that bundle. A first-round judge receives
+exactly one isolated packet per assignment; never deliver the complete packet
+directory or another session simultaneously. These unlabeled packets cannot
+stand in for two independent human judges or the separate arm-blind human
+adjudicator. Packet flags state only that no structured label, adjudication, or
+human-evidence artifact is attached; they do not claim the codebook lacks label
+instructions.
+
+The assignment map is kept under a `0700` directory as a `0600` file and is
+declared `procedural_nondisclosure_only`, with `encrypted=false`. These local
+permissions reduce accidental disclosure but are not encryption or an
+enforced cannot-open seal. Operators must withhold the map until raw labels and
+adjudication are sealed.
+
 ## Claims and dispatch boundary
 
 The role cards are repository-owned synthetic material. They do not represent
@@ -40,11 +153,12 @@ real scholars or measure real creativity. Count, dispersion, and facet
 follow-through remain separate; model-originated framings never earn scholar
 credit.
 
-Before any baseline, freeze and hash an exact run plan under the shared held-out
-measurement contract. A decision-relevant run needs at least two independent
-replicates per scenario-arm cell, at least two independent blinded judges, and a
-separate blind adjudicator. Obtain fresh consent for the exact subject/actor/
-judge plan. No earlier model-run consent applies.
+The Phase-2 schema freezes and hashes the exact plan under the shared held-out
+measurement contract. A decision-relevant run still needs two complete
+independent replicates per scenario-arm cell, at least two independent blinded
+human judges, and a separate arm-blind human adjudicator. Obtain fresh consent
+for the exact subject/actor/judge plan. No earlier model-run consent applies,
+and the no-call envelope itself is never consent.
 
 The final report uses `heldout-measurement/1.1` with suite class
 `paired_controls`. #659 stays open until the per-mechanism baseline and its raw

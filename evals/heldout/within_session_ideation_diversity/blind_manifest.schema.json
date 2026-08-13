@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/blind_manifest.schema.json",
+  "title": "#659 exact replay manifest for finalized blind artifacts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "source_ingestion_manifest_sha256",
+    "inventory_ref",
+    "inventory_sha256",
+    "private_map_ref",
+    "private_map_sha256",
+    "packet_count",
+    "packets",
+    "finalized_artifacts",
+    "exact_inventory_required"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-blind-manifest/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "source_ingestion_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "inventory_ref": {"const": "blind/inventory.json"},
+    "inventory_sha256": {"$ref": "#/$defs/sha256"},
+    "private_map_ref": {"const": "blind/private/arm-map.json"},
+    "private_map_sha256": {"$ref": "#/$defs/sha256"},
+    "packet_count": {"const": 48},
+    "packets": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blind_session_id", "packet_ref", "packet_sha256"],
+        "properties": {
+          "blind_session_id": {"$ref": "#/$defs/blind_id"},
+          "packet_ref": {
+            "type": "string",
+            "pattern": "^blind/sessions/blind-[0-9a-f]{24}\\.json$"
+          },
+          "packet_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "finalized_artifacts": {"const": true},
+    "exact_inventory_required": {"const": true}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "blind_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"}
+  }
+}
