@@ -1,0 +1,5 @@
+# Optional, opt-in dependency for scripts/pdf_content_classifier_worker.py.
+# Kept out of requirements-dev.txt so the dependency-absent path remains a
+# supported deterministic state and the native parser is never imported by the
+# structural preflight process.
+pdf-inspector==0.2.6

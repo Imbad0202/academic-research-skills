@@ -543,3 +543,7 @@ path = "scripts/test_build_claim_standing_candidate_ledger.py"
 [[pytest]]
 id = "655-claim-standing-candidate-ledger-integration"
 path = "scripts/test_check_claim_standing_candidate_ledger_integration.py"
+
+[[pytest]]
+id = "512-pdf-read-preflight-and-content-sandbox"
+path = "scripts/test_pdf_read_preflight.py"

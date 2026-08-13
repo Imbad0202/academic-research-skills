@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/pdf/pdf_content_classifier_diagnostic.schema.json",
+  "title": "Local-only PDF classifier operator diagnostic",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "reason",
+    "untrusted_detail",
+    "stdout_bytes_observed",
+    "stderr_bytes_observed"
+  ],
+  "properties": {
+    "schema": {"const": "pdf_content_classifier_diagnostic/1"},
+    "reason": {
+      "enum": [
+        "NOT_REQUESTED",
+        "STRUCTURAL_NOT_PASS",
+        "CLASSIFIED",
+        "DEPENDENCY_ABSENT",
+        "CLASSIFIER_ERROR",
+        "INVALID_CLASSIFIER_RESULT",
+        "WORKER_LAUNCH_ERROR",
+        "WORKER_TIMEOUT",
+        "WORKER_NONZERO_EXIT",
+        "WORKER_SIGNAL",
+        "WORKER_STDOUT_LIMIT",
+        "WORKER_STDERR_LIMIT",
+        "WORKER_IO_ERROR",
+        "WORKER_MALFORMED_OUTPUT",
+        "WORKER_INVALID_OUTPUT"
+      ]
+    },
+    "untrusted_detail": {"type": "string", "maxLength": 512},
+    "stdout_bytes_observed": {"type": "integer", "minimum": 0},
+    "stderr_bytes_observed": {"type": "integer", "minimum": 0}
+  }
+}

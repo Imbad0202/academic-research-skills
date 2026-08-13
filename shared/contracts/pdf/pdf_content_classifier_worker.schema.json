@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/pdf/pdf_content_classifier_worker.schema.json",
+  "title": "Isolated PDF content-classifier worker result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "reason",
+    "classification",
+    "confidence",
+    "pages_needing_ocr"
+  ],
+  "properties": {
+    "schema": {"const": "pdf_content_classifier_worker/1"},
+    "status": {"enum": ["CLASSIFIED", "UNAVAILABLE"]},
+    "reason": {
+      "enum": [
+        "CLASSIFIED",
+        "DEPENDENCY_ABSENT",
+        "CLASSIFIER_ERROR",
+        "INVALID_CLASSIFIER_RESULT"
+      ]
+    },
+    "classification": {
+      "enum": ["TEXT_AVAILABLE", "OCR_RECOMMENDED", null]
+    },
+    "confidence": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "pages_needing_ocr": {
+      "oneOf": [
+        {
+          "type": "array",
+          "maxItems": 50000,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 0}
+        },
+        {"type": "null"}
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "status": {"const": "CLASSIFIED"},
+        "reason": {"const": "CLASSIFIED"},
+        "classification": {"enum": ["TEXT_AVAILABLE", "OCR_RECOMMENDED"]},
+        "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "pages_needing_ocr": {
+          "type": "array",
+          "maxItems": 50000,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    {
+      "properties": {
+        "status": {"const": "UNAVAILABLE"},
+        "reason": {
+          "enum": [
+            "DEPENDENCY_ABSENT",
+            "CLASSIFIER_ERROR",
+            "INVALID_CLASSIFIER_RESULT"
+          ]
+        },
+        "classification": {"type": "null"},
+        "confidence": {"type": "null"},
+        "pages_needing_ocr": {"type": "null"}
+      }
+    }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {"classification": {"const": "TEXT_AVAILABLE"}},
+        "required": ["classification"]
+      },
+      "then": {
+        "properties": {"pages_needing_ocr": {"maxItems": 0}}
+      }
+    }
+  ]
+}

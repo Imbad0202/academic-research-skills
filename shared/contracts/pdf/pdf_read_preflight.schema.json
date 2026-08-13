@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/pdf/pdf_read_preflight.schema.json",
+  "title": "PDF read-integrity sidecar with opt-in content extension",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "verdict",
+    "file",
+    "sha256",
+    "declared_page_count",
+    "enumerated_page_count",
+    "reader_page_count",
+    "warnings",
+    "generated_at",
+    "tool"
+  ],
+  "properties": {
+    "schema": {"const": "pdf_read_preflight/1"},
+    "verdict": {"enum": ["PASS", "FAIL", "UNAVAILABLE"]},
+    "verdict_scope": {"const": "STRUCTURE_ONLY"},
+    "file": {"type": "string"},
+    "sha256": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        {"type": "null"}
+      ]
+    },
+    "declared_page_count": {"type": ["integer", "null"]},
+    "enumerated_page_count": {"type": ["integer", "null"]},
+    "reader_page_count": {"type": ["integer", "null"]},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "content_advisory": {
+      "enum": [
+        "TEXT_AVAILABLE",
+        "OCR_RECOMMENDED",
+        "CONTENT_UNAVAILABLE",
+        "STRUCTURAL_UNAVAILABLE"
+      ]
+    },
+    "content_classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "requested",
+        "status",
+        "reason",
+        "classification",
+        "confidence",
+        "pages_needing_ocr"
+      ],
+      "properties": {
+        "schema": {"const": "pdf_content_classification/1"},
+        "requested": {"const": true},
+        "status": {"enum": ["CLASSIFIED", "UNAVAILABLE"]},
+        "reason": {
+          "enum": [
+            "STRUCTURAL_NOT_PASS",
+            "CLASSIFIED",
+            "DEPENDENCY_ABSENT",
+            "CLASSIFIER_ERROR",
+            "INVALID_CLASSIFIER_RESULT",
+            "WORKER_LAUNCH_ERROR",
+            "WORKER_TIMEOUT",
+            "WORKER_NONZERO_EXIT",
+            "WORKER_SIGNAL",
+            "WORKER_STDOUT_LIMIT",
+            "WORKER_STDERR_LIMIT",
+            "WORKER_IO_ERROR",
+            "WORKER_MALFORMED_OUTPUT",
+            "WORKER_INVALID_OUTPUT"
+          ]
+        },
+        "classification": {
+          "enum": ["TEXT_AVAILABLE", "OCR_RECOMMENDED", null]
+        },
+        "confidence": {
+          "type": ["number", "null"],
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "pages_needing_ocr": {
+          "oneOf": [
+            {
+              "type": "array",
+              "maxItems": 50000,
+              "uniqueItems": true,
+              "items": {"type": "integer", "minimum": 0}
+            },
+            {"type": "null"}
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "status": {"const": "CLASSIFIED"},
+            "reason": {"const": "CLASSIFIED"},
+            "classification": {"enum": ["TEXT_AVAILABLE", "OCR_RECOMMENDED"]},
+            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "pages_needing_ocr": {
+              "type": "array",
+              "maxItems": 50000,
+              "uniqueItems": true,
+              "items": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {"const": "UNAVAILABLE"},
+            "reason": {
+              "enum": [
+                "STRUCTURAL_NOT_PASS",
+                "DEPENDENCY_ABSENT",
+                "CLASSIFIER_ERROR",
+                "INVALID_CLASSIFIER_RESULT",
+                "WORKER_LAUNCH_ERROR",
+                "WORKER_TIMEOUT",
+                "WORKER_NONZERO_EXIT",
+                "WORKER_SIGNAL",
+                "WORKER_STDOUT_LIMIT",
+                "WORKER_STDERR_LIMIT",
+                "WORKER_IO_ERROR",
+                "WORKER_MALFORMED_OUTPUT",
+                "WORKER_INVALID_OUTPUT"
+              ]
+            },
+            "classification": {"type": "null"},
+            "confidence": {"type": "null"},
+            "pages_needing_ocr": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "generated_at": {"type": "string", "format": "date-time"},
+    "tool": {"type": "string", "pattern": "^pdf_read_preflight/[0-9]+\\.[0-9]+\\.[0-9]+$"}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "tool": {"const": "pdf_read_preflight/1.0.0"}
+      },
+      "not": {
+        "anyOf": [
+          {"required": ["verdict_scope"]},
+          {"required": ["content_advisory"]},
+          {"required": ["content_classification"]}
+        ]
+      }
+    },
+    {
+      "required": ["verdict_scope", "content_advisory", "content_classification"],
+      "properties": {
+        "tool": {"const": "pdf_read_preflight/1.1.0"}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "verdict": {"enum": ["FAIL", "UNAVAILABLE"]},
+            "content_advisory": {"const": "STRUCTURAL_UNAVAILABLE"},
+            "content_classification": {
+              "properties": {
+                "status": {"const": "UNAVAILABLE"},
+                "reason": {"const": "STRUCTURAL_NOT_PASS"}
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "verdict": {"const": "PASS"},
+            "content_advisory": {"const": "CONTENT_UNAVAILABLE"},
+            "content_classification": {
+              "properties": {
+                "status": {"const": "UNAVAILABLE"},
+                "reason": {
+                  "enum": [
+                    "DEPENDENCY_ABSENT",
+                    "CLASSIFIER_ERROR",
+                    "INVALID_CLASSIFIER_RESULT",
+                    "WORKER_LAUNCH_ERROR",
+                    "WORKER_TIMEOUT",
+                    "WORKER_NONZERO_EXIT",
+                    "WORKER_SIGNAL",
+                    "WORKER_STDOUT_LIMIT",
+                    "WORKER_STDERR_LIMIT",
+                    "WORKER_IO_ERROR",
+                    "WORKER_MALFORMED_OUTPUT",
+                    "WORKER_INVALID_OUTPUT"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "verdict": {"const": "PASS"},
+            "content_advisory": {"const": "TEXT_AVAILABLE"},
+            "content_classification": {
+              "properties": {
+                "status": {"const": "CLASSIFIED"},
+                "classification": {"const": "TEXT_AVAILABLE"},
+                "pages_needing_ocr": {"maxItems": 0}
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "verdict": {"const": "PASS"},
+            "content_advisory": {"const": "OCR_RECOMMENDED"},
+            "content_classification": {
+              "properties": {
+                "status": {"const": "CLASSIFIED"},
+                "classification": {"const": "OCR_RECOMMENDED"}
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

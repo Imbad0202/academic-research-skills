@@ -80,6 +80,50 @@ anchor downstream, so the conservative bucket is the honest one.
 Exit code 0 whenever a verdict was produced (the verdict is data, not an error); 2 on usage
 errors only — so orchestration can always consume the JSON without exit-code branching.
 
+The closed Draft 2020-12 sidecar schema is
+`shared/contracts/pdf/pdf_read_preflight.schema.json`. It accepts this unchanged legacy
+shape and the all-or-nothing opt-in extension below.
+
+### Optional content advisory — isolated and diagnostic-only (2026-08-13 follow-up)
+
+`--classify-content` is an explicit opt-in diagnostic consumer. It is not used by the
+default Stage-1 invocation and never changes the structural verdict. The parent sends the
+exact bytes already read and hashed above to the fixed
+`scripts/pdf_content_classifier_worker.py` child over stdin. Only that child imports the
+optional native `pdf_inspector` package. The parent uses `shell=False`, a fixed five-second
+timeout, concurrent 8,192-byte stdout / 4,096-byte stderr caps, and closed outcomes for
+timeout, non-zero/signal exit, cap breach, pipe failure, malformed JSON, and invalid
+output. Non-`PASS` structural inputs do not start the child.
+
+Calls without this flag preserve the original sidecar field set and
+`tool: pdf_read_preflight/1.0.0`. Opted-in sidecars change the tool version to 1.1.0 and
+add all three extension fields together: `verdict_scope: STRUCTURE_ONLY`, the closed
+`content_advisory`, and the closed `content_classification` object. A partial extension is
+schema-invalid.
+
+The parent applies a hand-written closed validator equivalent to
+`shared/contracts/pdf/pdf_content_classifier_worker.schema.json`, without adding a
+runtime `jsonschema` dependency. It also enforces stricter runtime invariants: exact
+keys, finite confidence in `[0,1]`, sorted unique integer OCR pages, and every page index
+below the structural `reader_page_count`. Open upstream types collapse to
+`TEXT_AVAILABLE` only for the exact positive `text_based` + empty-page combination and
+otherwise to `OCR_RECOMMENDED`; raw upstream type and exception strings never enter the
+sidecar.
+
+An opted-in scanned result is therefore represented honestly as structural
+`verdict: PASS` with `verdict_scope: STRUCTURE_ONLY` and
+`content_advisory: OCR_RECOMMENDED`, never as a content pass. A missing optional
+dependency is deterministic `CONTENT_UNAVAILABLE / DEPENDENCY_ABSENT` and leaves the
+structural verdict unchanged.
+
+`--classifier-diagnostics <path>` requires the opt-in flag and creates an exclusive,
+non-overwriting mode-`0600` local JSON file. It may contain at most 512 bytes of explicitly
+untrusted worker detail plus byte counts; neither its path nor detail appears in the
+prompt-facing sidecar. Contract:
+`shared/contracts/pdf/pdf_content_classifier_diagnostic.schema.json`. Full frozen design
+and residual-risk boundary:
+`docs/design/2026-08-13-512-pdf-content-classification-sandbox-spec.md`.
+
 ### Layer 2 — prompt rules
 
 - **Three emitters** (`synthesis_agent`, `draft_writer_agent`, `report_compiler_agent`): a
@@ -138,3 +182,9 @@ enumeration exercises recursion), lying root `/Count` (FAIL), truncated tail (UN
 FAIL, never PASS), encrypted marker (UNAVAILABLE), page-tree cycle (UNAVAILABLE via guard),
 non-PDF bytes (UNAVAILABLE), missing file (UNAVAILABLE), pypdf absent (monkeypatched →
 UNAVAILABLE with `pypdf-not-installed` warning), sidecar shape + hash stability, exit codes.
+
+The 2026-08-13 follow-up adds no live PDF or package download. Temporary fake modules and
+workers cover dependency present/absent, text/scanned results, exception isolation,
+timeout, non-zero/signal exits, malformed/invalid/oversize output, finite confidence,
+page bounds, diagnostic privacy/mode, and all three closed schemas. The test file is also
+registered in `scripts/_ci_pytest_manifest.toml`.

@@ -28,9 +28,16 @@ Object plumbing rides pypdf (already a repo dependency; `verify_submission_packa
 precedent), which handles classic xref tables, xref streams, /Prev incremental-update
 chains, and object streams — this is deliberately NOT a "grep the first /Count" check.
 
-CLI: `python scripts/pdf_read_preflight.py FILE [--output SIDECAR.json]`. Exit 0 whenever
-a verdict was produced (the verdict is data, not an error; orchestration consumes the
-JSON without exit-code branching); exit 2 on usage errors only.
+Optional content classification is a separate, explicitly requested advisory.  The
+parent never imports the optional native classifier: it sends the exact bytes already
+hashed here to a fixed subprocess worker, applies timeout and pipe-size ceilings, and
+accepts only a closed result.  The structural verdict remains structural; callers that
+opt in must read the separate `content_advisory` field.
+
+CLI: `python scripts/pdf_read_preflight.py FILE [--classify-content]
+[--classifier-diagnostics LOCAL.json] [--output SIDECAR.json]`. Exit 0 whenever a
+verdict was produced (the verdict is data, not an error; orchestration consumes the JSON
+without exit-code branching); exit 2 on usage errors only.
 
 Design: docs/design/2026-07-20-512-pdf-read-preflight-spec.md.
 """
@@ -41,10 +48,17 @@ import argparse
 import io
 import json
 import logging
+import math
+import os
 import re
+import signal
+import subprocess
 import sys
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 try:
     from audit_snapshot import sha256_hex
@@ -57,7 +71,18 @@ except ImportError:  # degrade to UNAVAILABLE, mirroring verify_submission_packa
     pypdf = None
 
 TOOL_VERSION = "pdf_read_preflight/1.0.0"
+CONTENT_TOOL_VERSION = "pdf_read_preflight/1.1.0"
 SCHEMA = "pdf_read_preflight/1"
+CONTENT_SCHEMA = "pdf_content_classification/1"
+WORKER_SCHEMA = "pdf_content_classifier_worker/1"
+DIAGNOSTIC_SCHEMA = "pdf_content_classifier_diagnostic/1"
+
+CLASSIFIER_WORKER = Path(__file__).with_name("pdf_content_classifier_worker.py")
+CLASSIFIER_TIMEOUT_SECONDS = 5.0
+CLASSIFIER_STDOUT_LIMIT = 8_192
+CLASSIFIER_STDERR_LIMIT = 4_096
+CLASSIFIER_OPERATOR_DETAIL_LIMIT = 512
+CLASSIFIER_MAX_PAGE_ENTRIES = 50_000
 
 # Hard ceiling on page-tree nodes visited by the enumeration walk. Real documents sit
 # far below this; hitting it means a pathological or adversarial tree we must not vouch
@@ -81,6 +106,408 @@ class _WarningCollector(logging.Handler):
 
 class _TreeProblem(Exception):
     """Structural page-tree problem that forecloses a confident enumeration."""
+
+
+class _ClassifierProtocolError(Exception):
+    """The isolated worker did not satisfy its closed result contract."""
+
+
+class _CappedPipeReader:
+    """Drain one worker pipe while retaining at most ``limit + 1`` bytes."""
+
+    def __init__(self, stream: Any, limit: int):
+        self.stream = stream
+        self.limit = limit
+        self.buffer = bytearray()
+        self.total = 0
+        self.exceeded = threading.Event()
+        self.done = threading.Event()
+        self.error: BaseException | None = None
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def _run(self) -> None:
+        try:
+            while True:
+                chunk = self.stream.read(4_096)
+                if not chunk:
+                    return
+                self.total += len(chunk)
+                remaining = self.limit + 1 - len(self.buffer)
+                if remaining > 0:
+                    self.buffer.extend(chunk[:remaining])
+                if self.total > self.limit:
+                    self.exceeded.set()
+                    return
+        except BaseException as exc:  # pragma: no cover - OS pipe failure
+            self.error = exc
+        finally:
+            self.done.set()
+
+    def join(self, timeout: float = 1.0) -> bool:
+        self.thread.join(timeout)
+        return not self.thread.is_alive()
+
+
+class _InputWriter:
+    """Write the exact already-hashed PDF bytes without blocking the timeout loop."""
+
+    def __init__(self, stream: Any, data: bytes):
+        self.stream = stream
+        self.data = data
+        self.error: BaseException | None = None
+        self.unexpected_error: BaseException | None = None
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def _run(self) -> None:
+        try:
+            self.stream.write(self.data)
+            self.stream.flush()
+        except (BrokenPipeError, OSError) as exc:
+            # A dependency-absent worker intentionally exits without consuming
+            # stdin.  The closed stdout result, not this expected broken pipe,
+            # determines whether that run is valid.
+            self.error = exc
+        except BaseException as exc:  # pragma: no cover - unexpected stream failure
+            self.error = exc
+            self.unexpected_error = exc
+        finally:
+            try:
+                self.stream.close()
+            except OSError:
+                pass
+
+    def join(self, timeout: float = 1.0) -> bool:
+        self.thread.join(timeout)
+        return not self.thread.is_alive()
+
+
+def _content_state(
+    *,
+    requested: bool,
+    status: str,
+    reason: str,
+    classification: str | None = None,
+    confidence: float | None = None,
+    pages_needing_ocr: list[int] | None = None,
+) -> dict[str, Any]:
+    return {
+        "schema": CONTENT_SCHEMA,
+        "requested": requested,
+        "status": status,
+        "reason": reason,
+        "classification": classification,
+        "confidence": confidence,
+        "pages_needing_ocr": pages_needing_ocr,
+    }
+
+
+def _unavailable_content(reason: str) -> dict[str, Any]:
+    return _content_state(requested=True, status="UNAVAILABLE", reason=reason)
+
+
+def _strict_json_object(raw: bytes) -> dict[str, Any]:
+    def reject_constant(value: str) -> Any:
+        raise ValueError(f"non-finite JSON constant {value}")
+
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise _ClassifierProtocolError("worker result has duplicate keys")
+            result[key] = value
+        return result
+
+    value = json.loads(
+        raw.decode("utf-8", errors="strict"),
+        parse_constant=reject_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
+    if not isinstance(value, dict):
+        raise _ClassifierProtocolError("worker result is not an object")
+    return value
+
+
+def _validate_worker_result(payload: dict[str, Any], page_count: int) -> dict[str, Any]:
+    expected = {
+        "schema",
+        "status",
+        "reason",
+        "classification",
+        "confidence",
+        "pages_needing_ocr",
+    }
+    if set(payload) != expected or payload.get("schema") != WORKER_SCHEMA:
+        raise _ClassifierProtocolError("worker result has unknown or missing fields")
+
+    status = payload.get("status")
+    reason = payload.get("reason")
+    classification = payload.get("classification")
+    confidence = payload.get("confidence")
+    pages = payload.get("pages_needing_ocr")
+
+    if status == "UNAVAILABLE":
+        if reason not in {
+            "DEPENDENCY_ABSENT",
+            "CLASSIFIER_ERROR",
+            "INVALID_CLASSIFIER_RESULT",
+        }:
+            raise _ClassifierProtocolError("unknown unavailable reason")
+        if classification is not None or confidence is not None or pages is not None:
+            raise _ClassifierProtocolError("unavailable worker result carries values")
+        return _unavailable_content(reason)
+
+    if status != "CLASSIFIED" or reason != "CLASSIFIED":
+        raise _ClassifierProtocolError("invalid worker state transition")
+    if classification not in {"TEXT_AVAILABLE", "OCR_RECOMMENDED"}:
+        raise _ClassifierProtocolError("unknown classification")
+    if (
+        isinstance(confidence, bool)
+        or not isinstance(confidence, (int, float))
+        or not math.isfinite(float(confidence))
+        or not 0.0 <= float(confidence) <= 1.0
+    ):
+        raise _ClassifierProtocolError("confidence is not finite and bounded")
+    if not isinstance(pages, list) or len(pages) > CLASSIFIER_MAX_PAGE_ENTRIES:
+        raise _ClassifierProtocolError("OCR page list is not bounded")
+    if any(isinstance(page, bool) or not isinstance(page, int) for page in pages):
+        raise _ClassifierProtocolError("OCR page is not an integer")
+    if pages != sorted(set(pages)):
+        raise _ClassifierProtocolError("OCR pages are not sorted and unique")
+    if any(page < 0 or page >= page_count for page in pages):
+        raise _ClassifierProtocolError("OCR page is outside the structural page count")
+    if classification == "TEXT_AVAILABLE" and pages:
+        raise _ClassifierProtocolError("text-available result carries OCR pages")
+
+    return _content_state(
+        requested=True,
+        status="CLASSIFIED",
+        reason="CLASSIFIED",
+        classification=classification,
+        confidence=float(confidence),
+        pages_needing_ocr=pages,
+    )
+
+
+def _bounded_operator_detail(raw: bytes) -> str:
+    # Dropping a partial/invalid trailing code unit preserves the byte ceiling;
+    # replacement decoding could expand one clipped byte into a three-byte U+FFFD.
+    return raw[:CLASSIFIER_OPERATOR_DETAIL_LIMIT].decode("utf-8", errors="ignore")
+
+
+def _diagnostic(
+    reason: str,
+    *,
+    detail: bytes = b"",
+    stdout_bytes: int = 0,
+    stderr_bytes: int = 0,
+) -> dict[str, Any]:
+    return {
+        "schema": DIAGNOSTIC_SCHEMA,
+        "reason": reason,
+        "untrusted_detail": _bounded_operator_detail(detail),
+        "stdout_bytes_observed": stdout_bytes,
+        "stderr_bytes_observed": stderr_bytes,
+    }
+
+
+def _kill_worker(proc: subprocess.Popen[bytes]) -> None:
+    """Terminate the isolated POSIX worker group, or the direct Windows worker.
+
+    ``start_new_session`` makes the POSIX worker its process-group leader, so the
+    saved ``proc.pid`` remains the group identifier even after the leader exits.
+    Calling this on every terminal path also removes ordinary descendants that
+    inherited the worker's pipes.  The portable Windows stdlib path has no
+    equivalent process-tree handle and therefore kills only the direct process.
+    """
+    try:
+        if os.name == "posix":
+            os.killpg(proc.pid, signal.SIGKILL)
+        else:  # pragma: no cover - exercised on Windows CI only
+            proc.kill()
+    except OSError:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+
+def _teardown_worker(
+    proc: subprocess.Popen[bytes],
+    *,
+    stdout_reader: _CappedPipeReader | None = None,
+    stderr_reader: _CappedPipeReader | None = None,
+    input_writer: _InputWriter | None = None,
+) -> None:
+    """Best-effort terminal cleanup that cannot replace a closed result with a crash."""
+    _kill_worker(proc)
+    try:
+        proc.wait(timeout=1.0)
+    except (OSError, subprocess.TimeoutExpired):
+        _kill_worker(proc)
+        try:
+            proc.wait(timeout=1.0)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    for helper in (input_writer, stdout_reader, stderr_reader):
+        if helper is not None:
+            helper.join()
+
+
+def _run_content_classifier(
+    data: bytes,
+    *,
+    page_count: int,
+    worker_path: Path = CLASSIFIER_WORKER,
+    timeout: float = CLASSIFIER_TIMEOUT_SECONDS,
+    worker_env: dict[str, str] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    command = [sys.executable, str(worker_path)]
+    try:
+        proc = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=False,
+            env=worker_env,
+            start_new_session=(os.name == "posix"),
+        )
+    except OSError as exc:
+        reason = "WORKER_LAUNCH_ERROR"
+        detail = f"{type(exc).__name__}: {exc}".encode("utf-8", errors="replace")
+        return _unavailable_content(reason), _diagnostic(reason, detail=detail)
+
+    if proc.stdin is None or proc.stdout is None or proc.stderr is None:  # pragma: no cover
+        _teardown_worker(proc)
+        reason = "WORKER_IO_ERROR"
+        return _unavailable_content(reason), _diagnostic(reason)
+
+    stdout_reader = _CappedPipeReader(proc.stdout, CLASSIFIER_STDOUT_LIMIT)
+    stderr_reader = _CappedPipeReader(proc.stderr, CLASSIFIER_STDERR_LIMIT)
+    input_writer = _InputWriter(proc.stdin, data)
+    try:
+        deadline = time.monotonic() + timeout
+        forced_reason: str | None = None
+
+        while proc.poll() is None:
+            if stdout_reader.exceeded.is_set():
+                forced_reason = "WORKER_STDOUT_LIMIT"
+                break
+            if stderr_reader.exceeded.is_set():
+                forced_reason = "WORKER_STDERR_LIMIT"
+                break
+            if time.monotonic() >= deadline:
+                forced_reason = "WORKER_TIMEOUT"
+                break
+            time.sleep(0.005)
+
+        if forced_reason is not None:
+            _kill_worker(proc)
+        try:
+            returncode = proc.wait(timeout=1.0)
+        except subprocess.TimeoutExpired:  # pragma: no cover - SIGKILL should be terminal
+            _kill_worker(proc)
+            returncode = proc.wait(timeout=1.0)
+
+        stdout_closed = stdout_reader.join()
+        stderr_closed = stderr_reader.join()
+        input_closed = input_writer.join()
+        io_closed = stdout_closed and stderr_closed and input_closed
+        stdout = bytes(stdout_reader.buffer)
+        stderr = bytes(stderr_reader.buffer)
+
+        if forced_reason is None:
+            if stdout_reader.exceeded.is_set():
+                forced_reason = "WORKER_STDOUT_LIMIT"
+            elif stderr_reader.exceeded.is_set():
+                forced_reason = "WORKER_STDERR_LIMIT"
+            elif (
+                not io_closed
+                or stdout_reader.error
+                or stderr_reader.error
+                or input_writer.unexpected_error
+            ):
+                forced_reason = "WORKER_IO_ERROR"
+
+        if forced_reason is not None:
+            return _unavailable_content(forced_reason), _diagnostic(
+                forced_reason,
+                detail=stderr,
+                stdout_bytes=stdout_reader.total,
+                stderr_bytes=stderr_reader.total,
+            )
+        if returncode < 0:
+            reason = "WORKER_SIGNAL"
+            return _unavailable_content(reason), _diagnostic(
+                reason,
+                detail=f"signal={-returncode}; ".encode("ascii") + stderr,
+                stdout_bytes=stdout_reader.total,
+                stderr_bytes=stderr_reader.total,
+            )
+        if returncode != 0:
+            reason = "WORKER_NONZERO_EXIT"
+            return _unavailable_content(reason), _diagnostic(
+                reason,
+                detail=f"exit={returncode}; ".encode("ascii") + stderr,
+                stdout_bytes=stdout_reader.total,
+                stderr_bytes=stderr_reader.total,
+            )
+
+        try:
+            payload = _strict_json_object(stdout)
+        except (UnicodeError, ValueError, RecursionError, _ClassifierProtocolError):
+            reason = "WORKER_MALFORMED_OUTPUT"
+            return _unavailable_content(reason), _diagnostic(
+                reason,
+                detail=stderr,
+                stdout_bytes=stdout_reader.total,
+                stderr_bytes=stderr_reader.total,
+            )
+        try:
+            state = _validate_worker_result(payload, page_count)
+        except _ClassifierProtocolError:
+            reason = "WORKER_INVALID_OUTPUT"
+            return _unavailable_content(reason), _diagnostic(
+                reason,
+                detail=stderr,
+                stdout_bytes=stdout_reader.total,
+                stderr_bytes=stderr_reader.total,
+            )
+        return state, _diagnostic(
+            state["reason"],
+            detail=stderr,
+            stdout_bytes=stdout_reader.total,
+            stderr_bytes=stderr_reader.total,
+        )
+    finally:
+        # A successful direct child can still leave descendants behind.  POSIX
+        # cleanup therefore targets its isolated process group on every return,
+        # including reasons discovered only after reader/writer joins.
+        _teardown_worker(
+            proc,
+            stdout_reader=stdout_reader,
+            stderr_reader=stderr_reader,
+            input_writer=input_writer,
+        )
+
+
+def _write_local_diagnostic(path: Path, payload: dict[str, Any]) -> None:
+    raw = (
+        json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False, sort_keys=True)
+        + "\n"
+    ).encode("utf-8")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        offset = 0
+        while offset < len(raw):
+            offset += os.write(fd, raw[offset:])
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def _kid_key(kid):
@@ -117,8 +544,8 @@ def _walk_page_tree(node, visited, budget):
     return count
 
 
-def run_preflight(path) -> dict:
-    """Run the read-integrity preflight on one PDF; always returns a sidecar dict."""
+def _run_structural_preflight(path) -> tuple[dict[str, Any], bytes | None]:
+    """Run the unchanged #512 structural preflight and retain its exact input bytes."""
     path = Path(path)
     result = {
         "schema": SCHEMA,
@@ -138,7 +565,7 @@ def run_preflight(path) -> dict:
         data = path.read_bytes()
     except OSError as exc:
         warnings.append(f"unreadable: {exc}")
-        return result
+        return result, None
     result["sha256"] = sha256_hex(data)
 
     # Structural check independent of the parser: a PDF truncated partway through an
@@ -162,7 +589,7 @@ def run_preflight(path) -> dict:
 
     if pypdf is None:
         warnings.append("pypdf-not-installed: preflight cannot parse the document")
-        return result
+        return result, data
 
     collector = _WarningCollector()
     pypdf_logger = logging.getLogger("pypdf")
@@ -172,11 +599,11 @@ def run_preflight(path) -> dict:
             reader = pypdf.PdfReader(io.BytesIO(data))  # bytes already in hand for the hash
         except Exception as exc:  # malformed beyond pypdf's tolerance
             warnings.append(f"parse-error: {exc}")
-            return result
+            return result, data
 
         if getattr(reader, "is_encrypted", False):
             warnings.append("encrypted: preflight cannot verify an encrypted document")
-            return result
+            return result, data
 
         try:
             root = reader.trailer["/Root"].get_object()
@@ -192,18 +619,18 @@ def run_preflight(path) -> dict:
                     f"page-tree-unresolvable: /Count is not an integer object "
                     f"({type(raw_count).__name__}: {raw_count!r})"
                 )
-                return result
+                return result, data
             declared = int(raw_count)
         except Exception as exc:
             warnings.append(f"page-tree-unresolvable: {exc}")
-            return result
+            return result, data
         result["declared_page_count"] = declared
 
         try:
             enumerated = _walk_page_tree(pages_node, set(), NODE_BUDGET)
         except Exception as exc:  # incl. _TreeProblem — same degradation either way
             warnings.append(f"page-tree-walk: {exc}")
-            return result
+            return result, data
         result["enumerated_page_count"] = enumerated
 
         # The walk above verified the /Kids tree is cycle-free, so flattening the same
@@ -212,7 +639,7 @@ def run_preflight(path) -> dict:
             reader_count = len(reader.pages)
         except Exception as exc:
             warnings.append(f"reader-page-list: {exc}")
-            return result
+            return result, data
         result["reader_page_count"] = reader_count
 
         # Xref-coverage check (r2 P1): a malformed incremental update can append new
@@ -336,15 +763,71 @@ def run_preflight(path) -> dict:
 
     if not (declared == enumerated == reader_count):
         result["verdict"] = FAIL
-        return result
+        return result, data
     if declared <= 0:
         warnings.append("empty-page-tree: agreeing counts but zero pages")
-        return result
+        return result, data
     if collector.messages or not trailing_ok:
         # Counts agree, but the parse needed repair or the file carries data after its
         # final %%EOF — cannot vouch, per the spec.
-        return result
+        return result, data
     result["verdict"] = PASS
+    return result, data
+
+
+def _run_preflight(
+    path: str | Path,
+    *,
+    classify_content: bool = False,
+    worker_path: Path = CLASSIFIER_WORKER,
+    classifier_timeout: float = CLASSIFIER_TIMEOUT_SECONDS,
+    worker_env: dict[str, str] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    result, data = _run_structural_preflight(path)
+    diagnostic = _diagnostic("NOT_REQUESTED")
+
+    if not classify_content:
+        return result, diagnostic
+    result["tool"] = CONTENT_TOOL_VERSION
+    result["verdict_scope"] = "STRUCTURE_ONLY"
+    result["content_advisory"] = "CONTENT_UNAVAILABLE"
+    result["content_classification"] = _unavailable_content("STRUCTURAL_NOT_PASS")
+    if result["verdict"] != PASS or data is None:
+        reason = "STRUCTURAL_NOT_PASS"
+        result["content_advisory"] = "STRUCTURAL_UNAVAILABLE"
+        result["content_classification"] = _unavailable_content(reason)
+        return result, _diagnostic(reason)
+
+    page_count = result["reader_page_count"]
+    if isinstance(page_count, bool) or not isinstance(page_count, int) or page_count <= 0:
+        # Defensive: PASS already proves this cannot happen, but do not invoke a
+        # native child if that structural invariant ever drifts.
+        reason = "STRUCTURAL_NOT_PASS"
+        result["content_advisory"] = "STRUCTURAL_UNAVAILABLE"
+        result["content_classification"] = _unavailable_content(reason)
+        return result, _diagnostic(reason)
+
+    state, diagnostic = _run_content_classifier(
+        data,
+        page_count=page_count,
+        worker_path=worker_path,
+        timeout=classifier_timeout,
+        worker_env=worker_env,
+    )
+    result["content_classification"] = state
+    if state["status"] == "CLASSIFIED":
+        result["content_advisory"] = state["classification"]
+    else:
+        result["content_advisory"] = "CONTENT_UNAVAILABLE"
+    return result, diagnostic
+
+
+def run_preflight(path, *, classify_content: bool = False) -> dict[str, Any]:
+    """Return a structural sidecar, optionally with isolated content advisory data."""
+    result, _diagnostic_payload = _run_preflight(
+        path,
+        classify_content=classify_content,
+    )
     return result
 
 
@@ -358,9 +841,42 @@ def main(argv=None) -> int:
         "--output",
         help="write the JSON sidecar here instead of stdout",
     )
+    parser.add_argument(
+        "--classify-content",
+        action="store_true",
+        help=(
+            "opt in to the isolated optional text/OCR advisory; the structural "
+            "verdict remains unchanged"
+        ),
+    )
+    parser.add_argument(
+        "--classifier-diagnostics",
+        help=(
+            "exclusive local 0600 JSON for bounded untrusted worker detail; "
+            "requires --classify-content and is never referenced by the sidecar"
+        ),
+    )
     args = parser.parse_args(argv)
 
-    sidecar = json.dumps(run_preflight(args.pdf), indent=2, ensure_ascii=False)
+    if args.classifier_diagnostics and not args.classify_content:
+        parser.error("--classifier-diagnostics requires --classify-content")
+
+    result, diagnostic = _run_preflight(
+        args.pdf,
+        classify_content=args.classify_content,
+    )
+    if args.classifier_diagnostics:
+        try:
+            _write_local_diagnostic(Path(args.classifier_diagnostics), diagnostic)
+        except OSError as exc:
+            parser.error(f"cannot create classifier diagnostic: {exc}")
+
+    sidecar = json.dumps(
+        result,
+        indent=2,
+        ensure_ascii=False,
+        allow_nan=False,
+    )
     if args.output:
         Path(args.output).write_text(sidecar + "\n", encoding="utf-8")
     else:

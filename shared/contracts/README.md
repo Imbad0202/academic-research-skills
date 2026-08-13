@@ -3,6 +3,25 @@
 Schema files for cross-skill contracts: reviewer sprint contracts, Material Passport
 ports, and (v3.6.7+) cross-model audit artifact pipelines.
 
+## PDF read-integrity and optional content advisory (#512 follow-up)
+
+- `pdf/pdf_read_preflight.schema.json` accepts the unchanged legacy structural sidecar
+  or the all-or-nothing opt-in content extension. In that extension, `verdict` is
+  explicitly `verdict_scope: STRUCTURE_ONLY`; `OCR_RECOMMENDED` never rewrites that
+  structural value into a content claim. The schema binds the legacy shape to tool
+  version 1.0.0 and the extension shape to 1.1.0.
+- `pdf/pdf_content_classifier_worker.schema.json` closes the stdout of the fixed
+  isolated worker to two classifications, three unavailable reasons, finite bounded
+  confidence, and bounded non-negative page indexes. Runtime additionally binds every
+  page to the structural page count.
+- `pdf/pdf_content_classifier_diagnostic.schema.json` is the separate local-only,
+  mode-`0600` operator artifact. Its explicitly untrusted detail is capped and never
+  copied into or referenced by the sidecar.
+
+Runtime: `scripts/pdf_read_preflight.py` and
+`scripts/pdf_content_classifier_worker.py`. Frozen opt-in scope and residual risk:
+`docs/design/2026-08-13-512-pdf-content-classification-sandbox-spec.md`.
+
 ## Claim-standing candidate ledger (#655 Track A)
 
 - `claim_standing/query_plan.schema.json` (`claim-standing-query-plan/1.0`)
