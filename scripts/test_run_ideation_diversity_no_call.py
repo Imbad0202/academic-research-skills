@@ -1373,10 +1373,45 @@ def test_blind_packet_free_text_gate_rejects_mapping_or_human_evidence(
 @pytest.mark.parametrize(
     "leak_text",
     (
+        "The frozen id is c\u0338e\u0338l\u0338l-048.",
+        "The frozen id is c\u200be\u200bl\u200bl-048.",
+        "The frozen id is c.e.l.l-048.",
+    ),
+)
+def test_complete_identifier_gate_rejects_unicode_separator_obfuscation(
+    tmp_path, leak_text
+):
+    _, _, plan = _initialize(tmp_path)
+    with pytest.raises(runner.EnvelopeError, match="frozen blind identifier"):
+        runner._assert_blind_texts(plan, [leak_text])
+
+
+@pytest.mark.parametrize(
+    "ordinary_text",
+    (
+        "The scell-048 placeholder is not a frozen cell id.",
+        "The cell-048x placeholder is not a frozen cell id.",
+        "Cell biology had 48 samples.",
+        "The discussion used adjacent probing.",
+    ),
+)
+def test_complete_identifier_gate_keeps_letter_number_boundaries(
+    tmp_path, ordinary_text
+):
+    _, _, plan = _initialize(tmp_path)
+    runner._assert_blind_texts(plan, [ordinary_text])
+
+
+@pytest.mark.parametrize(
+    "leak_text",
+    (
         "I remember this treatment–arm from the previous‑session.",
         "cell‑001 pair: idi‑public‑health replicate‑1",
         "The unrelated frozen identifier is cell‑048.",
         "The tie–breaker approved the prior human judge label.",
+        "The frozen id is c\u0338e\u0338l\u0338l-048.",
+        "The frozen id is c\u200be\u200bl\u200bl-048.",
+        "The frozen id is c.e.l.l-048.",
     ),
 )
 def test_semantic_leak_stops_during_first_ingestion_before_next_cell(
@@ -1412,6 +1447,18 @@ def test_semantic_leak_stops_during_first_ingestion_before_next_cell(
         "pending",
     ]
     assert manifest["next_sequence_index"] == 1
+    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == (
+        "stopped"
+    )
+    with pytest.raises(runner.EnvelopeError, match="forbids retry"):
+        runner.ingest(
+            _command_args(
+                run_dir,
+                plan_sha,
+                transcript=source,
+                authorization_record=_authorization_file(tmp_path, plan),
+            )
+        )
 
 
 def test_partial_success_writes_are_registered_in_stopped_replay(tmp_path, monkeypatch):
@@ -1701,6 +1748,9 @@ def test_spec_consistency_integration_rejects_48_cell_drift(monkeypatch):
         "import subprocess\nsubprocess.run(['forbidden'])\n",
         "import httpx\nhttpx.get('https://example.invalid')\n",
         "__import__('subprocess').run(['forbidden'])\n",
+        "import os\nlauncher = os\nlauncher.system('forbidden')\n",
+        "import os\ngetattr(os, 'system')('forbidden')\n",
+        "import os\nos.__dict__['system']('forbidden')\n",
     ),
 )
 def test_spec_consistency_ast_rejects_transport_or_process_surface(
@@ -1720,9 +1770,28 @@ def test_spec_consistency_ast_rejects_transport_or_process_surface(
     try:
         spec_consistency.check_ideation_diversity_no_call_contract()
         assert any(
-            "forbidden import" in error
-            or "forbidden process call" in error
-            or "forbidden dynamic execution call" in error
+            "exact import allowlist" in error
+            or "exact current-use" in error
+            or "dynamic import, introspection" in error
+            for error in spec_consistency.ERRORS
+        )
+    finally:
+        spec_consistency.ERRORS.clear()
+        spec_consistency.ERRORS.extend(previous)
+
+
+def test_spec_consistency_ast_accepts_current_exact_module_surface():
+    previous = list(spec_consistency.ERRORS)
+    spec_consistency.ERRORS.clear()
+    try:
+        spec_consistency.check_ideation_diversity_no_call_contract()
+        assert not any(
+            "scripts/run_ideation_diversity_no_call.py" in error
+            and (
+                "exact import allowlist" in error
+                or "exact current-use" in error
+                or "dynamic import, introspection" in error
+            )
             for error in spec_consistency.ERRORS
         )
     finally:

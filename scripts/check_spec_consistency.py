@@ -815,88 +815,136 @@ def check_ideation_diversity_no_call_contract() -> None:
     except SyntaxError as exc:
         fail(f"{runner_path}: cannot parse runner AST: {exc}")
         tree = ast.Module(body=[], type_ignores=[])
-    forbidden_imports = {
-        "subprocess",
-        "socket",
-        "requests",
-        "httpx",
-        "aiohttp",
-        "urllib",
-        "http",
-        "openai",
-        "anthropic",
-        "cohere",
-        "litellm",
-        "mistralai",
-        "importlib",
-        "ctypes",
+    allowed_direct_imports = {
+        "argparse",
+        "base64",
+        "copy",
+        "hashlib",
+        "json",
+        "os",
+        "re",
+        "secrets",
+        "stat",
+        "sys",
+        "unicodedata",
+        "validate_ideation_diversity_assets",
     }
-    forbidden_os_calls = {
-        "system",
-        "popen",
-        "spawnl",
-        "spawnle",
-        "spawnlp",
-        "spawnlpe",
-        "spawnv",
-        "spawnve",
-        "spawnvp",
-        "spawnvpe",
-        "posix_spawn",
-        "posix_spawnp",
-        "fork",
-        "forkpty",
-        "execl",
-        "execle",
-        "execlp",
-        "execlpe",
+    allowed_from_imports = {
+        "__future__": {"annotations"},
+        "datetime": {"datetime"},
+        "jsonschema": {"Draft202012Validator", "FormatChecker"},
+        "pathlib": {"Path"},
+        "typing": {"Any", "NoReturn"},
+    }
+    allowed_module_calls = {
+        "argparse": {"ArgumentParser"},
+        "base64": {"b64decode", "b64encode"},
+        "copy": {"deepcopy"},
+        "hashlib": {"sha256"},
+        "json": {"dumps", "loads"},
+        "os": {
+            "chmod",
+            "close",
+            "fsync",
+            "link",
+            "open",
+            "rename",
+            "replace",
+            "write",
+        },
+        "re": {"compile", "escape", "search"},
+        "secrets": {"token_hex"},
+        "stat": {"S_IFMT", "S_IMODE", "S_ISREG"},
+        "unicodedata": {"category", "normalize"},
+        "validate_ideation_diversity_assets": {"load_assets", "render_variant"},
+    }
+    allowed_module_constants = {
+        "argparse": {"ArgumentParser", "Namespace"},
+        "json": {"JSONDecodeError"},
+        "os": {
+            "O_CREAT",
+            "O_DIRECTORY",
+            "O_EXCL",
+            "O_NOFOLLOW",
+            "O_RDONLY",
+            "O_WRONLY",
+        },
+        "re": {"IGNORECASE"},
+    }
+    forbidden_dynamic_names = {
+        "__builtins__",
+        "__import__",
+        "breakpoint",
+        "compile",
+        "delattr",
+        "eval",
+        "exec",
+        "getattr",
+        "globals",
+        "locals",
+        "setattr",
+        "vars",
+    }
+    forbidden_dynamic_attributes = {
+        "Popen",
+        "__bases__",
+        "__builtins__",
+        "__class__",
+        "__closure__",
+        "__code__",
+        "__dict__",
+        "__getattribute__",
+        "__globals__",
+        "__import__",
+        "__loader__",
+        "__subclasses__",
+        "_getframe",
+        "call",
+        "check_call",
+        "check_output",
+        "connect",
+        "create_connection",
         "execv",
         "execve",
-        "execvp",
-        "execvpe",
+        "f_builtins",
+        "f_globals",
+        "f_locals",
+        "fork",
+        "import_module",
+        "modules",
+        "popen",
+        "request",
+        "run",
+        "spawn",
+        "system",
+        "urlopen",
     }
     commands: set[str] = set()
-    os_module_aliases = {"os"}
-    forbidden_direct_call_aliases: set[str] = set()
+    forbidden_imports: set[str] = set()
+    direct_module_bindings: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                root_name = alias.name.split(".", 1)[0]
-                if root_name in forbidden_imports:
-                    fail(f"{runner_path}: forbidden import {alias.name!r}")
-                if alias.name == "os":
-                    os_module_aliases.add(alias.asname or "os")
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            root_name = node.module.split(".", 1)[0]
-            if root_name in forbidden_imports:
-                fail(f"{runner_path}: forbidden import {node.module!r}")
-            if node.module == "os":
-                for alias in node.names:
-                    if alias.name in forbidden_os_calls:
-                        forbidden_direct_call_aliases.add(alias.asname or alias.name)
-        elif (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.value.id in os_module_aliases
-            and node.func.attr in forbidden_os_calls
-        ):
-            fail(
-                f"{runner_path}: forbidden process call "
-                f"{node.func.value.id}.{node.func.attr}"
+                if alias.name not in allowed_direct_imports:
+                    forbidden_imports.add(alias.name)
+                    continue
+                binding = alias.asname or alias.name
+                existing = direct_module_bindings.get(binding)
+                if existing is not None and existing != alias.name:
+                    forbidden_imports.add(f"ambiguous-binding:{binding}")
+                direct_module_bindings[binding] = alias.name
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or "<relative>"
+            allowed_symbols = (
+                allowed_from_imports.get(module, set())
+                if node.level == 0
+                else set()
             )
-        elif (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id in forbidden_direct_call_aliases
-        ):
-            fail(f"{runner_path}: forbidden imported process call {node.func.id}")
-        elif (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id in {"__import__", "eval", "exec", "compile"}
-        ):
-            fail(f"{runner_path}: forbidden dynamic execution call {node.func.id}")
+            forbidden_imports.update(
+                f"{module}.{alias.name}"
+                for alias in node.names
+                if alias.name not in allowed_symbols
+            )
         if (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Attribute)
@@ -906,6 +954,126 @@ def check_ideation_diversity_no_call_contract() -> None:
             and isinstance(node.args[0].value, str)
         ):
             commands.add(node.args[0].value)
+    if forbidden_imports:
+        fail(
+            f"{runner_path}: imports must match the exact import allowlist: "
+            f"{sorted(forbidden_imports)!r}"
+        )
+
+    shadowed_module_bindings: set[str] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, (ast.Store, ast.Del))
+            and node.id in direct_module_bindings
+        ):
+            shadowed_module_bindings.add(node.id)
+        elif isinstance(node, ast.arg) and node.arg in direct_module_bindings:
+            shadowed_module_bindings.add(node.arg)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if node.name in direct_module_bindings:
+                shadowed_module_bindings.add(node.name)
+        elif isinstance(node, ast.ExceptHandler):
+            if isinstance(node.name, str) and node.name in direct_module_bindings:
+                shadowed_module_bindings.add(node.name)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                binding = alias.asname or alias.name
+                if binding in direct_module_bindings:
+                    shadowed_module_bindings.add(binding)
+    if shadowed_module_bindings:
+        fail(
+            f"{runner_path}: direct module bindings cannot be shadowed: "
+            f"{sorted(shadowed_module_bindings)!r}"
+        )
+
+    parents = {
+        child: parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
+    module_reference_errors: set[str] = set()
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id in direct_module_bindings
+        ):
+            continue
+        module = direct_module_bindings[node.id]
+        parent = parents.get(node)
+        allowed_hasattr = (
+            isinstance(parent, ast.Call)
+            and isinstance(parent.func, ast.Name)
+            and parent.func.id == "hasattr"
+            and len(parent.args) == 2
+            and parent.args[0] is node
+            and isinstance(parent.args[1], ast.Constant)
+            and parent.args[1].value in {"O_DIRECTORY", "O_NOFOLLOW"}
+            and module == "os"
+        )
+        if allowed_hasattr:
+            continue
+        if not (isinstance(parent, ast.Attribute) and parent.value is node):
+            module_reference_errors.add(
+                f"{module} via {node.id}: bare module reference"
+            )
+            continue
+        attributes = [parent.attr]
+        outer = parent
+        while True:
+            ancestor = parents.get(outer)
+            if not (
+                isinstance(ancestor, ast.Attribute) and ancestor.value is outer
+            ):
+                break
+            attributes.append(ancestor.attr)
+            outer = ancestor
+        attribute_path = ".".join(attributes)
+        use_parent = parents.get(outer)
+        allowed_call = (
+            attribute_path in allowed_module_calls.get(module, set())
+            and isinstance(use_parent, ast.Call)
+            and use_parent.func is outer
+        )
+        allowed_print_value = (
+            module == "sys"
+            and attribute_path == "stderr"
+            and isinstance(use_parent, ast.keyword)
+            and use_parent.arg == "file"
+            and isinstance(parents.get(use_parent), ast.Call)
+            and isinstance(parents[use_parent].func, ast.Name)
+            and parents[use_parent].func.id == "print"
+        )
+        allowed_constant = (
+            attribute_path in allowed_module_constants.get(module, set())
+            and isinstance(outer.ctx, ast.Load)
+        )
+        if not (allowed_call or allowed_print_value or allowed_constant):
+            module_reference_errors.add(
+                f"{module} via {node.id}.{attribute_path}"
+            )
+    if module_reference_errors:
+        fail(
+            f"{runner_path}: direct module references must match exact "
+            "current-use call/value allowlists: "
+            f"{sorted(module_reference_errors)!r}"
+        )
+
+    dynamic_references: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in forbidden_dynamic_names:
+            dynamic_references.add(node.id)
+        elif (
+            isinstance(node, ast.Attribute)
+            and node.attr in forbidden_dynamic_attributes
+        ):
+            dynamic_references.add(node.attr)
+    if dynamic_references:
+        fail(
+            f"{runner_path}: dynamic import, introspection, process, or network "
+            f"references are forbidden: {sorted(dynamic_references)!r}"
+        )
     expected_commands = {
         "init-run",
         "materialize",

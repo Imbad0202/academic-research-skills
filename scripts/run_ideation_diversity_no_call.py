@@ -2441,6 +2441,46 @@ def _normalized_blind_text(text: str) -> str:
     return " ".join(separated.split())
 
 
+def _compact_blind_text(text: str) -> str:
+    """Remove Unicode marks and separators from one complete identifier."""
+    normalized = unicodedata.normalize("NFKD", text).casefold()
+    return "".join(
+        character
+        for character in normalized
+        if unicodedata.category(character)[0] not in {"M", "C", "P", "Z"}
+    )
+
+
+def _contains_complete_normalized_identifier(text: str, identifier: str) -> bool:
+    if len(identifier) < 4:
+        return False
+    return re.search(
+        r"(?<![^\W_])" + re.escape(identifier) + r"(?![^\W_])",
+        text,
+    ) is not None
+
+
+def _contains_complete_compact_identifier(text: str, identifier: str) -> bool:
+    """Match an entire identifier despite inserted marks or separators.
+
+    Letter/number boundaries keep the compact comparison from turning ordinary
+    surrounding prose into a match. The separator expression operates on the
+    NFKD form so combining marks, format characters, punctuation, and spacing
+    cannot split the characters of a frozen identifier.
+    """
+    compact = _compact_blind_text(identifier)
+    if len(compact) < 4:
+        return False
+    normalized = unicodedata.normalize("NFKD", text).casefold()
+    separator = r"[\W_]*"
+    pattern = (
+        r"(?<![^\W_])"
+        + separator.join(re.escape(character) for character in compact)
+        + r"(?![^\W_])"
+    )
+    return re.search(pattern, normalized) is not None
+
+
 def _assert_blindable_transcript(
     plan: dict[str, Any], transcript: dict[str, Any]
 ) -> None:
@@ -2452,7 +2492,12 @@ def _assert_blind_texts(plan: dict[str, Any], texts: list[str]) -> None:
     for text in texts:
         folded = _normalized_blind_text(text)
         leaked = next(
-            (identifier for identifier in blind_identifiers if identifier in folded),
+            (
+                identifier
+                for identifier in blind_identifiers
+                if _contains_complete_normalized_identifier(folded, identifier)
+                or _contains_complete_compact_identifier(text, identifier)
+            ),
             None,
         )
         if leaked is not None:
