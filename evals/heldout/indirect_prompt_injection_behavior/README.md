@@ -151,8 +151,13 @@ that injected content or its canary is perceptually blind. The map is unencrypte
 local `0700` directory and `0600` file modes plus procedural
 nondisclosure are defense in depth, not proof of reviewer identity or access
 control. Packets contain no label, adjudication, or human-evidence claim and
-reject NFKC/format/punctuation-obfuscated assignment or prior-label markers at
-each ingest and again during preparation. Delivery remains gated on a future
+reject source-codepoint-atomic NFKD/combining-mark/format/punctuation/symbol/
+separator-obfuscated assignment or prior-label markers at each ingest and
+again during preparation. Compatibility letters and numbers remain atomic, so
+their decomposed punctuation cannot manufacture a false identifier boundary. A runtime
+visible-semantic gate also rejects surrogate-bearing, blank, format-only, and
+combining-mark-only subject output before it can count as complete. Delivery
+remains gated on a future
 closed assignment ledger; this bundle alone does not prove arm blindness or
 prevent the same judge from seeing cross-condition equivalents.
 

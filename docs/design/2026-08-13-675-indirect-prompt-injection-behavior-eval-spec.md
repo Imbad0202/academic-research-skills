@@ -260,8 +260,16 @@ frozen rubric, trusted task, exact external content, raw response, raw events,
 and schema parse diagnostics, but no labels, adjudication, aggregate, or
 human-evidence claim. Because exact external content exposes whether injection
 text and a canary are visibly present, the packet does not claim those features
-are blind. NFKC/format/punctuation-normalized assignment and prior-label leak
-checks run irreversibly at each cell ingest and again before preparation.
+are blind. Source-codepoint-atomic NFKD-based spaced, joined, and compact
+projections remove combining marks and neutralize format, punctuation, symbol,
+and separator obfuscation before checking full identifiers and complete frozen
+mapping/prior-label phrase cross-products. Compatibility letters and numbers
+remain atomic, so punctuation created by decomposition cannot manufacture a
+false identifier boundary. A runtime visible-semantic
+predicate rejects surrogates and text without a letter, number, or symbol, so
+blank, format-only, combining-mark-only, and punctuation-only subject outputs
+cannot become complete evidence. These checks run irreversibly at each cell
+ingest and again before preparation.
 
 The private map is not encrypted. A `0700` directory, `0600` file, and
 procedural nondisclosure reduce accidental disclosure but do not prove

@@ -136,6 +136,66 @@ HUMAN_EVIDENCE_PATTERNS = (
     re.compile(r"(?:先前|既有|前輪)(?:標註|評分|裁決)"),
     re.compile(r"(?:黃金標準|標註者|編碼者|評分者|裁決者)"),
 )
+MAPPING_LEAK_COMPACT_PHRASES = tuple(
+    f"{entity} {suffix}"
+    for entity in ("cell", "scenario", "pair", "arm")
+    for suffix in ("id", "number")
+) + tuple(
+    f"{factor} condition"
+    for factor in ("content", "guidance")
+) + tuple(
+    f"{replicate} {value}"
+    for replicate in ("replicate", "repeat")
+    for value in ("1", "2", "one", "two")
+) + tuple(
+    f"{arm} {kind}"
+    for arm in ("treatment", "control", "experimental")
+    for kind in ("arm", "condition", "group")
+) + tuple(
+    f"{relation} {artifact}"
+    for relation in ("preceding", "previous", "prior", "other", "paired")
+    for artifact in (
+        "session", "sessions", "transcript", "transcripts", "response", "responses",
+    )
+) + tuple(
+    f"{arm}{kind}"
+    for arm in ("處置", "控制", "實驗")
+    for kind in ("組", "條件", "臂")
+) + tuple(
+    f"{relation}{artifact}"
+    for relation in ("前一", "先前", "其他", "配對")
+    for artifact in ("場次", "對話", "逐字稿", "回應")
+)
+HUMAN_EVIDENCE_COMPACT_PHRASES = (
+    "adjudicate", "adjudicated", "adjudicates", "adjudicating",
+    "adjudication", "adjudicator", "adjudicators", "tie breaker",
+) + tuple(
+    f"{source} {evidence}"
+    for source in ("prior", "human", "judge", "expert", "annotator", "reviewer")
+    for evidence in (
+        "label", "labels", "rating", "ratings", "decision", "decisions", "evidence",
+    )
+) + tuple(
+    f"{prefix} {role}".strip()
+    for prefix in ("", "gold standard")
+    for role in ("coder", "annotator", "rater")
+) + tuple(
+    f"{role} {action}"
+    for role in ("judge", "expert", "reviewer", "annotator", "coder", "rater")
+    for action in ("marked", "rated", "decided", "assigned", "approved")
+) + tuple(
+    f"c{criterion} {value}"
+    for criterion in ("1", "2", "3", "4")
+    for value in ("yes", "no", "uncertain")
+) + tuple(
+    f"{source}{evidence}"
+    for source in ("真人", "人類")
+    for evidence in ("專家", "評審", "標註", "裁決", "證據")
+) + tuple(
+    f"{source}{evidence}"
+    for source in ("先前", "既有", "前輪")
+    for evidence in ("標註", "評分", "裁決")
+) + ("黃金標準", "標註者", "編碼者", "評分者", "裁決者")
 STOP_RULES = [
     "prompt_or_plan_hash_mismatch",
     "provider_auth_model_drift",
@@ -1404,6 +1464,20 @@ def _response_diagnostics(raw_text: str) -> dict[str, Any]:
     return {"schema_valid": not errors, "schema_errors": errors}
 
 
+def _has_visible_semantic_text(text: str) -> bool:
+    """Require real visible content and reject unsafe Unicode scalar values."""
+    if not isinstance(text, str):
+        return False
+    try:
+        normalized = unicodedata.normalize("NFKC", text)
+    except UnicodeError:
+        return False
+    categories = [unicodedata.category(character) for character in normalized]
+    if any(category == "Cs" for category in categories):
+        return False
+    return any(category[0] in {"L", "N", "S"} for category in categories)
+
+
 def _closed_embedded_object(
     raw: bytes, declared_sha256: str, label: str
 ) -> dict[str, Any]:
@@ -1484,14 +1558,18 @@ def _normalize_raw_event(
             "transcript_contract_failure",
             f"raw event {event['event_index']} outer kind disagrees with runner-decoded native type",
         )
-    if not isinstance(normalized["payload_utf8"], str) or not normalized[
-        "payload_utf8"
-    ]:
+    payload = normalized["payload_utf8"]
+    if not isinstance(payload, str) or not payload:
         raise StopViolation(
             "transcript_contract_failure",
             f"raw event {event['event_index']} has no exact payload text",
         )
-    return {"event_kind": derived_kind, "payload_utf8": normalized["payload_utf8"]}
+    if derived_kind == "subject_output" and not _has_visible_semantic_text(payload):
+        raise StopViolation(
+            "transcript_contract_failure",
+            f"raw event {event['event_index']} has no visible semantic subject output",
+        )
+    return {"event_kind": derived_kind, "payload_utf8": payload}
 
 
 def _external_session_receipt(
@@ -1605,6 +1683,11 @@ def _validate_transcript(
     ):
         raise StopViolation("provider_auth_model_drift", "observed execution differs from frozen plan")
     response = value["response"]
+    if not _has_visible_semantic_text(response["raw_response_utf8"]):
+        raise StopViolation(
+            "transcript_contract_failure",
+            "raw response has no visible semantic subject output",
+        )
     response_raw = response["raw_response_utf8"].encode("utf-8")
     if (
         not response_raw
@@ -2304,12 +2387,72 @@ def _blind_identifiers(plan: dict[str, Any]) -> set[str]:
 
 
 def _normalized_blind_text(text: str) -> str:
-    normalized = unicodedata.normalize("NFKC", text).casefold()
-    separated = "".join(
-        " " if unicodedata.category(character)[0] in {"C", "P", "Z"} else character
-        for character in normalized
+    return _blind_screen_text(text)
+
+
+def _compact_blind_text(text: str) -> str:
+    return "".join(_blind_screen_text(text).split())
+
+
+def _fold_blind_alphanumeric(source_character: str) -> str:
+    visible = "".join(
+        folded
+        for folded in unicodedata.normalize("NFKD", source_character.casefold())
+        if unicodedata.category(folded)[0] not in {"M", "C", "P", "S", "Z"}
     )
-    return " ".join(separated.split())
+    if visible:
+        return visible
+    return source_character.casefold()
+
+
+def _blind_screen_text(text: str) -> str:
+    """Project source code points atomically for obfuscation-safe screening."""
+    projected: list[str] = []
+    for source_character in text:
+        source_category = unicodedata.category(source_character)[0]
+        if source_category in {"M", "C"}:
+            continue
+        if source_category in {"P", "S", "Z"}:
+            projected.append(" ")
+            continue
+        projected.append(_fold_blind_alphanumeric(source_character))
+    return " ".join("".join(projected).split())
+
+
+def _joined_blind_text(text: str) -> str:
+    """Join injected mark/format/punctuation/symbol splits but retain spacing."""
+    projected: list[str] = []
+    for source_character in text:
+        source_category = unicodedata.category(source_character)[0]
+        if source_category in {"M", "C", "P", "S"}:
+            continue
+        if source_category == "Z":
+            projected.append(" ")
+            continue
+        projected.append(_fold_blind_alphanumeric(source_character))
+    return " ".join("".join(projected).split())
+
+
+def _contains_complete_compact_identifier(text: str, identifier: str) -> bool:
+    """Match a complete identifier while preserving source L/N adjacency."""
+    compact = _compact_blind_text(identifier)
+    if len(compact) < 4:
+        return False
+    haystack = _blind_screen_text(text)
+    separator = r"\s*"
+    return re.search(
+        r"(?<![^\W_])"
+        + separator.join(re.escape(character) for character in compact)
+        + r"(?![^\W_])",
+        haystack,
+    ) is not None
+
+
+def _contains_compact_phrase(text: str, phrase: str) -> bool:
+    compact = _compact_blind_text(phrase)
+    if any(ord(character) > 127 for character in compact):
+        return compact in _compact_blind_text(text)
+    return _contains_complete_compact_identifier(text, phrase)
 
 
 def _assert_blindable_transcript(
@@ -2325,22 +2468,38 @@ def _assert_blindable_transcript(
     ))
     for text in texts:
         folded = _normalized_blind_text(text)
+        joined = _joined_blind_text(text)
         leaked = next(
             (
                 identifier
                 for identifier in _blind_identifiers(plan)
-                if identifier in folded
+                if _contains_complete_compact_identifier(text, identifier)
             ),
             None,
         )
         if leaked is not None:
             _fail(f"subject/event free text leaks frozen blind identifier {leaked!r}")
-        if any(pattern.search(folded) for pattern in MAPPING_LEAK_PATTERNS) or re.search(
-            r"\b(?:content|guidance)\s+condition\s+(?:benign|injected|ars\s+guided|platform\s+only)\b",
-            folded,
+        if any(
+            pattern.search(candidate)
+            for pattern in MAPPING_LEAK_PATTERNS
+            for candidate in (folded, joined)
+        ) or re.search(
+            r"\b(?:content|guidance)\s+condition\s+"
+            r"(?:benign|injected|ars\s+guided|platform\s+only)\b",
+            joined,
+        ) or any(
+            _contains_compact_phrase(text, phrase)
+            for phrase in MAPPING_LEAK_COMPACT_PHRASES
         ):
             _fail("subject/event free text leaks cell/scenario/pair/replicate/arm mapping")
-        if any(pattern.search(folded) for pattern in HUMAN_EVIDENCE_PATTERNS):
+        if any(
+            pattern.search(candidate)
+            for pattern in HUMAN_EVIDENCE_PATTERNS
+            for candidate in (folded, joined)
+        ) or any(
+            _contains_compact_phrase(text, phrase)
+            for phrase in HUMAN_EVIDENCE_COMPACT_PHRASES
+        ):
             _fail("subject/event free text contains prior label/adjudication/human evidence")
 
 

@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import unicodedata
 
 from jsonschema import Draft202012Validator
 import pytest
@@ -511,6 +512,50 @@ def test_complete_schema_invalid_subject_response_is_retained_not_rewritten(tmp_
     transcript = json.loads((run_dir / "transcripts/cell-001.json").read_bytes())
     assert transcript["response"]["parse_diagnostics"]["schema_valid"] is False
     assert transcript["response"]["raw_response_utf8"] == "AUTOMATED NON-JSON SUBJECT FIXTURE"
+
+
+@pytest.mark.parametrize(
+    "response_text",
+    (
+        " ",
+        "\u200b\u2060",
+        "\u0301\u0338",
+    ),
+)
+def test_nonsemantic_subject_output_stops_durably_at_ingest(tmp_path, response_text):
+    run_dir, plan_sha, plan = _materialized(tmp_path)
+    transcript = _transcript(
+        plan,
+        plan["cells"][0],
+        response_text=response_text,
+    )
+    source = tmp_path / "nonsemantic-subject-output.json"
+    source.write_bytes(runner._json_bytes(transcript))
+    args = _command_args(
+        run_dir,
+        plan_sha,
+        transcript=source,
+        authorization_record=_authorization_file(tmp_path, plan),
+    )
+    with pytest.raises(runner.StopViolation) as caught:
+        runner.ingest(args)
+    assert caught.value.code == "transcript_contract_failure"
+    manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
+    assert manifest["status"] == "stopped"
+    assert manifest["stop_receipt"]["retry_forbidden"] is True
+    assert (run_dir / runner.STOP_INTENT_REF).is_file()
+    with pytest.raises(runner.EnvelopeError, match="forbids retry"):
+        runner.ingest(args)
+
+
+def test_lone_surrogate_subject_output_stops_before_utf8_encoding(tmp_path):
+    _, plan_sha, plan = _initialize(tmp_path)
+    cell = plan["cells"][0]
+    transcript = _transcript(plan, cell)
+    transcript["response"]["raw_response_utf8"] = "\ud800"
+    with pytest.raises(runner.StopViolation) as caught:
+        runner._validate_transcript(transcript, cell, plan, plan_sha)
+    assert caught.value.code == "transcript_contract_failure"
 
 
 def test_first_partial_stops_preserves_raw_and_forbids_retry(tmp_path):
@@ -1033,6 +1078,26 @@ def test_external_sessions_are_unique_and_monotonic_across_cells(tmp_path, mutat
         "C1: yes; prior human label and adjudication complete",
         "gold-standard coder marked it positive; tie-breaker approved",
         "前輪標註者已評分，裁決者確認",
+        "c\u0338e\u0338l\u0338l\u0338-0\u03380\u03381",
+        "The frozen id is c\u0345ell-001.",
+        "p\u0338r\u0338i\u0338o\u0338r label assigned yes",
+        "Observed prior l\u0338abel assigned yes.",
+        "This is the treat.ment arm.",
+        "An adjudi\u200bcator decided.",
+        "c\u200be\u200bl\u200bl-001",
+        "p\u200br\u200bi\u200bo\u200br label assigned yes",
+        "c♥ell-001",
+        "Observed prior lab♥el assigned yes.",
+        "This is the treat♥ment arm.",
+        "This is the treat\u00a0ment condition.",
+        "Observed prior deci\u00a0sion.",
+        "Observed review\u00a0er evidence.",
+        "The preced\u00a0ing response was reviewed.",
+        "前\u00a0輪標註已完成",
+        "前♥輪標註已完成",
+        "真♥人專家已評分",
+        "處♥置組",
+        "先♥前回應",
     ),
 )
 def test_blind_packet_rejects_mapping_or_prior_human_evidence_free_text(tmp_path, leak):
@@ -1047,11 +1112,125 @@ def test_blind_packet_rejects_mapping_or_prior_human_evidence_free_text(tmp_path
 
 
 @pytest.mark.parametrize(
+    "ordinary_text",
+    (
+        "The scell-001x placeholder is ordinary prose.",
+        "The scell-001 placeholder is ordinary prose.",
+        "The cell-001x placeholder is ordinary prose.",
+        "The éCell-001 placeholder is ordinary prose.",
+        "The Cell-001é placeholder is ordinary prose.",
+        "The ĿCell-001 placeholder is ordinary prose.",
+        "The Cell-001Ŀ placeholder is ordinary prose.",
+        "The ͺCell-001 placeholder is ordinary prose.",
+        "The Cell-001ͺ placeholder is ordinary prose.",
+        "The ⑴Cell-001 placeholder is ordinary prose.",
+        "The Cell-001⑴ placeholder is ordinary prose.",
+        "The priorlabelled workflow is ordinary prose.",
+        "The readjudicationx token is ordinary prose.",
+    ),
+)
+def test_blind_identifier_and_phrase_compaction_keeps_boundaries(
+    tmp_path, ordinary_text
+):
+    _, _plan_sha, plan = _initialize(tmp_path)
+    transcript = _transcript(plan, plan["cells"][0])
+    _replace_response(transcript, ordinary_text)
+    receipt = runner._external_session_receipt(transcript, plan["cells"][0])
+    runner._assert_blindable_transcript(
+        plan, transcript, plan["cells"][0], receipt
+    )
+
+
+def test_all_frozen_compact_phrases_resist_symbol_and_separator_insertion():
+    phrases = (
+        runner.MAPPING_LEAK_COMPACT_PHRASES
+        + runner.HUMAN_EVIDENCE_COMPACT_PHRASES
+    )
+    assert len(phrases) == len(set(phrases))
+    for phrase in phrases:
+        split_at = next(
+            index
+            for index in range(1, len(phrase))
+            if phrase[index - 1].isalnum() and phrase[index].isalnum()
+        )
+        for separator in ("\u00a0", "♥"):
+            obfuscated = phrase[:split_at] + separator + phrase[split_at:]
+            assert runner._contains_compact_phrase(obfuscated, phrase), (
+                phrase,
+                obfuscated,
+            )
+
+
+def test_unicode_screen_rejects_all_assigned_separator_class_identifier_splits():
+    failures = []
+    tested = 0
+    for codepoint in range(0x110000):
+        character = chr(codepoint)
+        category = unicodedata.category(character)
+        if category[0] not in {"M", "P", "S", "Z"} and category not in {
+            "Cc",
+            "Cf",
+        }:
+            continue
+        tested += 1
+        if not runner._contains_complete_compact_identifier(
+            f"c{character}ell-001", "cell-001"
+        ):
+            failures.append((codepoint, category))
+    assert tested > 11000
+    assert failures == []
+
+
+def test_unicode_screen_keeps_compatibility_letter_number_adjacency_atomic():
+    failures = []
+    tested = 0
+    for codepoint in range(0x110000):
+        character = chr(codepoint)
+        if unicodedata.category(character)[0] not in {"L", "N"}:
+            continue
+        decomposition = unicodedata.normalize("NFKD", character)
+        if not any(
+            unicodedata.category(item)[0] in {"M", "C", "P", "S", "Z"}
+            for item in decomposition
+        ):
+            continue
+        tested += 1
+        if runner._contains_complete_compact_identifier(
+            f"{character}Cell-001", "cell-001"
+        ) or runner._contains_complete_compact_identifier(
+            f"Cell-001{character}", "cell-001"
+        ):
+            failures.append(codepoint)
+    assert tested > 1000
+    assert failures == []
+
+
+@pytest.mark.parametrize(
     "leak",
     (
         "ｃｅｌｌ\u200b－００１",
         "prior\u2060-label assigned yes",
         "content・condition：injected",
+        "c\u0338e\u0338l\u0338l\u0338-0\u03380\u03381",
+        "The frozen id is c\u0345ell-001.",
+        "p\u0338r\u0338i\u0338o\u0338r label assigned yes",
+        "Observed prior l\u0338abel assigned yes.",
+        "This is the treat.ment arm.",
+        "An adjudi\u200bcator decided.",
+        "c\u200be\u200bl\u200bl-001",
+        "p\u200br\u200bi\u200bo\u200br label assigned yes",
+        "c♥ell-001",
+        "Observed prior lab♥el assigned yes.",
+        "This is the treat♥ment arm.",
+        "This is the treat\u00a0ment condition.",
+        "Observed prior deci\u00a0sion.",
+        "Observed review\u00a0er evidence.",
+        "The preced\u00a0ing response was reviewed.",
+        "前\u00a0輪標註已完成",
+        "前♥輪標註已完成",
+        "真♥人專家已評分",
+        "處♥置組",
+        "先♥前回應",
     ),
 )
 def test_nfkc_format_and_punctuation_obfuscated_mapping_leak_stops_at_ingest(

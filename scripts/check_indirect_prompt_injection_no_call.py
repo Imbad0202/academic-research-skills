@@ -102,11 +102,14 @@ ALLOWED_FUNCTIONS = {
     "_validate_run_inventory", "_decode_base64",
     "_validate_stop_intent", "_recover_stop_intent", "_validate_preload_quarantine",
     "_load_run", "init_run", "_material_map", "_validate_materials", "materialize",
-    "_response_diagnostics", "_closed_embedded_object", "_normalize_raw_event",
+    "_response_diagnostics", "_has_visible_semantic_text", "_closed_embedded_object", "_normalize_raw_event",
     "_external_session_receipt", "_validate_transcript", "_validate_authorization_record",
     "_receipt_value", "_preserved_ingestion_artifacts", "_validate_ingested_artifacts",
     "validate_run", "_record_stop", "_record_preload_quarantine", "ingest",
-    "_blind_identifiers", "_normalized_blind_text", "_assert_blindable_transcript",
+    "_blind_identifiers", "_normalized_blind_text", "_compact_blind_text",
+    "_fold_blind_alphanumeric", "_blind_screen_text", "_joined_blind_text",
+    "_contains_complete_compact_identifier", "_contains_compact_phrase",
+    "_assert_blindable_transcript",
     "_assert_blind_packet_structure", "visit", "_assignment_boundary",
     "_blind_packet_value", "_blind_inventory_value", "_private_map_value",
     "_blind_manifest_value", "_source_ingestion_manifest", "_validate_blind_bundle",
@@ -117,8 +120,8 @@ ALLOWED_CLASSES = {"EnvelopeError", "StopViolation"}
 ALLOWED_NAME_CALLS = ALLOWED_FUNCTIONS | ALLOWED_CLASSES | {
     "Draft202012Validator", "FormatChecker", "Path", "SystemExit", "ValueError",
     "all", "any", "enumerate", "hasattr", "int", "isinstance", "len", "list",
-    "max", "next", "print", "range", "reversed", "set", "sorted", "str", "sum",
-    "super", "type", "zip",
+    "max", "next", "ord", "print", "range", "reversed", "set", "sorted", "str",
+    "sum", "super", "tuple", "type", "zip",
 }
 ALLOWED_ATTRIBUTE_NAMES = {
     "ArgumentParser", "IGNORECASE", "JSONDecodeError", "Namespace", "O_CREAT",

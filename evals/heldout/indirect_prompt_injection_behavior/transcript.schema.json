@@ -108,7 +108,13 @@
         "parse_diagnostics"
       ],
       "properties": {
-        "raw_response_utf8": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "raw_response_utf8": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536,
+          "pattern": "\\S",
+          "description": "Portable whitespace screen only; the runner's Unicode visible-semantic predicate is authoritative and also rejects surrogates plus content made only of control, mark, separator, whitespace, or punctuation characters."
+        },
         "raw_response_bytes": {"type": "integer", "minimum": 1, "maximum": 262144},
         "raw_response_sha256": {"$ref": "#/$defs/sha256"},
         "parse_diagnostics": {
@@ -220,7 +226,8 @@
           "type": "string",
           "minLength": 4,
           "maxLength": 43692,
-          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+          "description": "Portable base64 screen only; the runner authoritatively decodes the closed canonical event and requires visible semantic subject-output payload text, rejecting surrogates and subject output made only of control, mark, separator, whitespace, or punctuation characters."
         },
         "raw_event_bytes": {"type": "integer", "minimum": 1, "maximum": 32768},
         "raw_event_sha256": {"$ref": "#/$defs/sha256"}
