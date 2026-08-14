@@ -265,10 +265,12 @@ def _cross_check_stance_record(
     for row in expected_rows:
         event = events_by_family[row["work_family_id"]]
         label = f"stance event for {row['work_family_id']!r}"
-        if (
-            row.get("prompt_sha256") is not None
-            and event["prompt_sha256"] != row["prompt_sha256"]
-        ):
+        if row.get("prompt_sha256") is None:
+            _fail(
+                f"{label}: the record row retains no prompt hash for a "
+                "transport-reaching call"
+            )
+        if event["prompt_sha256"] != row["prompt_sha256"]:
             _fail(f"{label}: prompt hash does not match the record row")
         allowed_states = _ROW_EVENT_RESULT_STATES.get(row.get("failure_state"))
         if allowed_states is None:

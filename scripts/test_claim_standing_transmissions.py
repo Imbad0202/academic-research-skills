@@ -287,6 +287,23 @@ def test_stance_record_cross_check_compares_prompt_and_result_fields() -> None:
         )
 
 
+def test_failed_call_events_still_bind_their_prompt_hash() -> None:
+    # A judge_timeout row must retain the prompt hash it sent, so a tampered
+    # timeout event cannot seal a false hash (codex R3 P2).
+    plan, retained, ledger_value = _stance_setup()
+    record, _, events = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport(TimeoutError())
+    )
+    assert record["rows"][0]["failure_state"] == "judge_timeout"
+    assert record["rows"][0]["prompt_sha256"] == events[0]["prompt_sha256"]
+    tampered = [dict(events[0])]
+    tampered[0]["prompt_sha256"] = "0" * 64
+    with pytest.raises(transmissions.TransmissionError, match="prompt"):
+        transmissions.build_transmission_ledger(
+            plan, retained, stance_transmissions=tampered, stance_record=record
+        )
+
+
 def test_stance_record_cross_check_replays_the_record_digest() -> None:
     # An edited record (row dropped, digest left stale) must not be able to
     # vouch for a ledger missing that row's event.
