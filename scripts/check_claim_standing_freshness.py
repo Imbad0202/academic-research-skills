@@ -151,6 +151,13 @@ def assess_freshness(
             {"consent_receipt", "candidate_ledger", "stance_configuration"}
         )
         expected = runner.expected_identity(plan, candidate_ledger)
+        unmapped = set(expected) - set(IDENTITY_FIELD_REASONS)
+        _require(
+            not unmapped,
+            "identity binding without a stale-reason mapping: "
+            f"{sorted(unmapped)}; extend IDENTITY_FIELD_REASONS before "
+            "assessing (fail-closed parity with the runner's authority)",
+        )
         for field, expected_value in expected.items():
             if identity.get(field) != expected_value:
                 reasons.add(IDENTITY_FIELD_REASONS[field])

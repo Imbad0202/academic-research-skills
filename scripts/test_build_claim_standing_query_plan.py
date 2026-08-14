@@ -248,6 +248,65 @@ def test_filter_change_after_proposal_invalidates_the_acceptance() -> None:
     assert record["reason"] == "consent_invalidated"
 
 
+def test_cancel_after_viewing_a_stance_surface_records_cancelled() -> None:
+    # The real flow: propose with retrieval_plus_stance, researcher cancels.
+    # The decision flip must not be misread as consent_invalidated.
+    row = _registry_row()
+    proposed = _stance_decisions()
+    surface_hash = builder.consent_surface_sha256(
+        builder.build_consent_surface(row, proposed)
+    )
+    cancelled = {
+        **proposed,
+        "decision": "cancel",
+        "recorded_at": "2026-08-14T01:06:00Z",
+        "consent_surface_sha256": surface_hash,
+    }
+    record = builder.bind_plan(row, cancelled)
+    assert record["record_kind"] == "claim-standing-probe-declination/1.0"
+    assert record["reason"] == "consent_cancelled"
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("allowed_languages", False),
+        ("allowed_languages", []),
+        ("allowed_document_types", 0),
+        ("allowed_document_types", []),
+    ],
+)
+def test_falsey_filters_are_refused_at_proposal(field: str, value) -> None:
+    row = _registry_row()
+    with pytest.raises(builder.PlanBuilderError, match=field):
+        builder.build_consent_surface(row, _decisions(**{field: value}))
+
+
+def test_trailing_separator_export_path_is_refused_at_proposal() -> None:
+    row = _registry_row()
+    decisions = _decisions(
+        local_persistence="explicit_local_export",
+        authorized_output_path="/operator-named/probe/",
+    )
+    with pytest.raises(builder.PlanBuilderError, match="separator"):
+        builder.build_consent_surface(row, decisions)
+
+
+def test_cli_declination_exits_with_distinct_status(tmp_path, capsys) -> None:
+    row = _registry_row()
+    rc = builder.main(
+        [
+            "bind",
+            "--registry-claim", str(_write_json(tmp_path / "row.json", row)),
+            "--decisions",
+            str(_write_json(tmp_path / "decisions.json", _decisions())),
+        ]
+    )
+    assert rc == 3  # declination: not a bound plan, not an error
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["reason"] == "consent_absent"
+
+
 def test_cancel_produces_not_checked_declination_and_no_plan() -> None:
     row = _registry_row()
     decisions = _decisions(
@@ -494,6 +553,48 @@ def test_surface_digest_is_stable_and_claim_bound() -> None:
     assert third != first
 
 
+# --- derived-artifact disclosure stays pinned to the owning modules ---------
+
+
+def test_artifact_suffix_map_matches_every_owning_module() -> None:
+    from scripts import claim_standing_discovery as discovery_module
+    from scripts import claim_standing_stance_runner as runner_module
+    from scripts import check_claim_standing_transmissions as transmissions_module
+    from scripts import render_claim_standing_view as view_module
+
+    suffixes = substrate.ARTIFACT_SUFFIXES
+    assert suffixes["candidate_ledger"] == ""
+    assert suffixes["query_plan"] == builder.QUERY_PLAN_SUFFIX
+    assert (
+        suffixes["retrieval_input"] == discovery_module.RETRIEVAL_INPUT_SUFFIX
+    )
+    assert (
+        suffixes["transmission_ledger"]
+        == transmissions_module.TRANSMISSION_LEDGER_SUFFIX
+    )
+    assert suffixes["stance_record"] == runner_module.STANCE_RECORD_SUFFIX
+    assert suffixes["evidence_rows"] == runner_module.EVIDENCE_ROWS_SUFFIX
+    assert suffixes["rendered_view"] == view_module.VIEW_SUFFIX
+
+
+def test_surface_disclosure_covers_the_complete_artifact_family() -> None:
+    row = _registry_row()
+    surface = builder.build_consent_surface(row, _stance_decisions())
+    assert surface["derived_artifact_suffixes"] == substrate.ARTIFACT_SUFFIXES
+
+
+# --- verdict semantics -------------------------------------------------------
+
+
+def test_dispatchable_flag_is_false_while_confirmation_is_outstanding() -> None:
+    verdict = builder.assess_eligibility(_registry_row(basis=None))
+    assert verdict["eligible"] is True
+    assert verdict["requires_confirmation"] is True
+    assert verdict["dispatchable"] is False
+    confirmed = builder.assess_eligibility(_registry_row())
+    assert confirmed["dispatchable"] is True
+
+
 # --- trigger constants stay pinned to the plan schema -----------------------
 
 
@@ -670,7 +771,7 @@ def test_cli_bind_cancel_prints_declination_and_writes_no_plan(
             "--output", str(output),
         ]
     )
-    assert rc == 0
+    assert rc == 3
     payload = json.loads(capsys.readouterr().out)
     assert payload["record_kind"] == "claim-standing-probe-declination/1.0"
     assert not output.exists()

@@ -58,6 +58,19 @@ MAX_SELECTED = 40
 EXPLICIT_LOCAL_EXPORT_BOUNDARY = (
     "One local candidate-ledger export to the operator-named output path is authorized."
 )
+# Complete family of artifacts derivable from one consented
+# authorized_output_path ("" = the candidate ledger at the path itself).
+# Consumed by the consent surface disclosure and pinned to each owning
+# module's suffix constant by test.
+ARTIFACT_SUFFIXES = {
+    "candidate_ledger": "",
+    "query_plan": ".query-plan.json",
+    "retrieval_input": ".retrieval-input.json",
+    "transmission_ledger": ".transmission-ledger.json",
+    "stance_record": ".stance-record.json",
+    "evidence_rows": ".evidence-rows.json",
+    "rendered_view": ".view.md",
+}
 CAPS = {
     "max_queries": MAX_QUERIES,
     "max_indexes": MAX_INDEXES,
@@ -462,6 +475,11 @@ def validate_plan(plan: dict[str, Any]) -> None:
             Path(consent["authorized_output_path"]).is_absolute(),
             "consent.authorized_output_path",
             "must be an absolute path so its target cannot vary by working directory",
+        )
+        _expect(
+            not consent["authorized_output_path"].endswith(("/", "\\")),
+            "consent.authorized_output_path",
+            "must not end with a path separator: derived artifact names would become hidden dotfiles",
         )
     else:
         _expect(

@@ -251,6 +251,57 @@ def test_stance_record_cross_check_accepts_complete_events() -> None:
     assert doc["transmission_ledger_sha256"]
 
 
+def test_resealed_omission_of_a_planned_attempt_is_refused() -> None:
+    # Even a schema-valid, re-sealed retrieval input cannot drop a planned
+    # query/index attempt: the canonical intake's one-initial-attempt-per-
+    # planned-pair rule is enforced here too (gate 14 completeness).
+    plan, retained = _retrieval_only_setup()
+    tampered = copy.deepcopy(retained)
+    del tampered["attempts"][2]
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(
+        tampered, "retrieval_input_sha256"
+    )
+    with pytest.raises(transmissions.TransmissionError, match="initial attempt"):
+        transmissions.build_transmission_ledger(plan, tampered)
+
+
+def test_stance_record_cross_check_compares_prompt_and_result_fields() -> None:
+    plan, retained, ledger_value = _stance_setup()
+    record, _, events = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    tampered = [dict(events[0])]
+    tampered[0]["prompt_sha256"] = "0" * 64
+    with pytest.raises(transmissions.TransmissionError, match="prompt"):
+        transmissions.build_transmission_ledger(
+            plan, retained, stance_transmissions=tampered, stance_record=record
+        )
+    downgraded = [dict(events[0])]
+    downgraded[0]["result_state"] = "judge_error"
+    with pytest.raises(transmissions.TransmissionError, match="result"):
+        transmissions.build_transmission_ledger(
+            plan,
+            retained,
+            stance_transmissions=downgraded,
+            stance_record=record,
+        )
+
+
+def test_stance_record_cross_check_replays_the_record_digest() -> None:
+    # An edited record (row dropped, digest left stale) must not be able to
+    # vouch for a ledger missing that row's event.
+    plan, retained, ledger_value = _stance_setup()
+    record, _, _ = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    edited = copy.deepcopy(record)
+    edited["rows"] = []
+    with pytest.raises(transmissions.TransmissionError, match="digest"):
+        transmissions.build_transmission_ledger(
+            plan, retained, stance_transmissions=[], stance_record=edited
+        )
+
+
 def test_stance_record_cross_check_refuses_omitted_events() -> None:
     plan, retained, ledger_value = _stance_setup()
     record, _, _ = runner.run_stance(

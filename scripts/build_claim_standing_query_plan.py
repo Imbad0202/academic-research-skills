@@ -173,6 +173,9 @@ def assess_eligibility(
         "basis_source": basis_source,
         "reasons": reasons,
         "requires_confirmation": requires_confirmation,
+        # A row is dispatchable only when nothing further is owed by the
+        # researcher — consumers must never branch on `eligible` alone.
+        "dispatchable": not reasons and not requires_confirmation,
     }
 
 
@@ -315,6 +318,18 @@ def _stance_plan(decisions: dict[str, Any]) -> dict[str, Any] | None:
     return copy.deepcopy(stance_plan)
 
 
+def _explicit_string_list(decisions: dict[str, Any], field: str) -> list[str]:
+    values = decisions.get(field)
+    _require(
+        isinstance(values, list)
+        and bool(values)
+        and all(isinstance(item, str) for item in values),
+        f"decisions.{field} must be a non-empty string list (an explicit "
+        "falsey or wrong-type value is refused, never defaulted)",
+    )
+    return list(values)
+
+
 def _draft_plan(
     registry_row: dict[str, Any], decisions: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any] | None, str, dict[str, Any] | None]:
@@ -340,9 +355,11 @@ def _draft_plan(
         },
         "queries": _queries(registry_row, decisions),
         "provider_roster": _roster(decisions),
-        "allowed_languages": list(decisions.get("allowed_languages") or []),
-        "allowed_document_types": list(
-            decisions.get("allowed_document_types") or []
+        "allowed_languages": _explicit_string_list(
+            decisions, "allowed_languages"
+        ),
+        "allowed_document_types": _explicit_string_list(
+            decisions, "allowed_document_types"
         ),
         "authorized_content_classes": list(
             substrate.STANCE_CONTENT_CLASSES
@@ -383,6 +400,14 @@ def _surface_from_draft(
         local_persistence in ("session_only", "explicit_local_export"),
         "local_persistence must be session_only or explicit_local_export",
     )
+    authorized_output_path = decisions.get("authorized_output_path")
+    if local_persistence == "explicit_local_export":
+        _require(
+            isinstance(authorized_output_path, str)
+            and not authorized_output_path.endswith(("/", "\\")),
+            "authorized_output_path must not end with a path separator: "
+            "derived artifact names would become hidden dotfiles",
+        )
     constructions = {
         query["construction"] for query in draft["queries"]
     }
@@ -431,12 +456,8 @@ def _surface_from_draft(
             else None
         ),
         "local_persistence": local_persistence,
-        "authorized_output_path": decisions.get("authorized_output_path"),
-        "derived_artifact_suffixes": [
-            QUERY_PLAN_SUFFIX,
-            ".retrieval-input.json",
-            ".transmission-ledger.json",
-        ],
+        "authorized_output_path": authorized_output_path,
+        "derived_artifact_suffixes": dict(substrate.ARTIFACT_SUFFIXES),
         "deletion_boundary": decisions.get("deletion_boundary"),
         "export_boundary": (
             substrate.EXPLICIT_LOCAL_EXPORT_BOUNDARY
@@ -487,6 +508,12 @@ def bind_plan(
     persistence change), and `consent_cancelled` on an explicit cancel.
     Never mutates its inputs; performs no network or model call.
     """
+    # An explicit cancel is a refusal of consent, not an acceptance to
+    # verify: it needs no surface hash and is recorded before any binding
+    # comparison (a proposed retrieval_plus_stance surface followed by a
+    # cancel must record consent_cancelled, never consent_invalidated).
+    if decisions.get("decision") == "cancel":
+        return _declination(registry_row, decisions, "consent_cancelled")
     draft, stance_plan, basis_source, confirmation = _draft_plan(
         registry_row, decisions
     )
@@ -498,8 +525,6 @@ def bind_plan(
         return _declination(registry_row, decisions, "consent_absent")
     if supplied_hash != consent_surface_sha256(surface):
         return _declination(registry_row, decisions, "consent_invalidated")
-    if decisions.get("decision") == "cancel":
-        return _declination(registry_row, decisions, "consent_cancelled")
 
     version = draft["schema_version"]
     consent: dict[str, Any] = {
@@ -588,7 +613,10 @@ def main(argv: list[str] | None = None) -> int:
         else:
             result = bind_plan(registry_row, decisions)
             if result.get("record_kind") == DECLINATION_KIND:
+                # Distinct status: a declination is neither a bound plan
+                # (0) nor an assessment error (1).
                 print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 3
             elif args.output is None:
                 print(json.dumps(result, ensure_ascii=False, indent=2))
             else:

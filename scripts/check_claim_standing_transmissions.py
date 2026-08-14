@@ -207,29 +207,80 @@ def _stance_events(
     return events
 
 
+# Which event result states can honestly account for a stance-record row.
+_ROW_EVENT_RESULT_STATES = {
+    None: {"performed"},  # performed row (failure_state is null)
+    "judge_timeout": {"judge_timeout"},
+    "judge_error": {"judge_error"},
+    # An oversized judge return is recorded as the row's parse_error with
+    # its own event result state.
+    "parse_error": {"parse_error", "oversized_output"},
+}
+
+
 def _cross_check_stance_record(
     stance_record: dict[str, Any],
     plan: dict[str, Any],
     stance_events: list[dict[str, Any]],
 ) -> None:
-    identity = stance_record.get("identity", {})
-    if identity.get("query_plan_sha256") != plan["plan_sha256"]:
+    try:
+        substrate.validate_schema(
+            stance_record, "stance_record.schema.json", "stance record"
+        )
+    except substrate.LedgerError as exc:
+        raise TransmissionError(str(exc)) from exc
+    if stance_record["stance_record_sha256"] != substrate.bound_digest(
+        stance_record, "stance_record_sha256"
+    ):
+        _fail(
+            "stance record self-digest does not replay; an edited record "
+            "cannot vouch for the transmission ledger"
+        )
+    identity = stance_record["identity"]
+    if identity["query_plan_sha256"] != plan["plan_sha256"]:
         _fail("stance record is not bound to this query plan")
-    if identity.get("consent_receipt_sha256") != plan["consent"]["receipt_sha256"]:
+    if identity["consent_receipt_sha256"] != plan["consent"]["receipt_sha256"]:
         _fail("stance record is not bound to this consent receipt")
     # Every row that reached the transport (everything except an
-    # abstract-missing row, which never builds a prompt) must have its event.
-    expected = sorted(
-        row["work_family_id"]
-        for row in stance_record.get("rows", [])
+    # abstract-missing row, which never builds a prompt) must have its
+    # event, and the event's prompt hash and result state must agree with
+    # the row's retained evidence.
+    events_by_family = {
+        event["work_family_id"]: event for event in stance_events
+    }
+    if len(events_by_family) != len(stance_events):
+        _fail("stance events must be unique per work family")
+    expected_rows = [
+        row
+        for row in stance_record["rows"]
         if row.get("failure_state") != "abstract_missing"
-    )
-    accounted = sorted(event["work_family_id"] for event in stance_events)
-    if expected != accounted:
+    ]
+    expected_ids = sorted(row["work_family_id"] for row in expected_rows)
+    accounted_ids = sorted(events_by_family)
+    if expected_ids != accounted_ids:
         _fail(
             "stance record leaves transmissions unaccounted: expected events "
-            f"for {expected}, got {accounted}"
+            f"for {expected_ids}, got {accounted_ids}"
         )
+    for row in expected_rows:
+        event = events_by_family[row["work_family_id"]]
+        label = f"stance event for {row['work_family_id']!r}"
+        if (
+            row.get("prompt_sha256") is not None
+            and event["prompt_sha256"] != row["prompt_sha256"]
+        ):
+            _fail(f"{label}: prompt hash does not match the record row")
+        allowed_states = _ROW_EVENT_RESULT_STATES.get(row.get("failure_state"))
+        if allowed_states is None:
+            _fail(
+                f"{label}: record row failure state "
+                f"{row.get('failure_state')!r} has no transmission mapping"
+            )
+        if event["result_state"] not in allowed_states:
+            _fail(
+                f"{label}: result state {event['result_state']!r} does not "
+                f"match the record row (expected one of {sorted(allowed_states)})"
+            )
 
 
 def build_transmission_ledger(
@@ -246,6 +297,14 @@ def build_transmission_ledger(
     _validated_inputs(plan, retrieval_input)
     allowed = set(plan["authorized_content_classes"])
     events = _retrieval_events(plan, retrieval_input)
+    try:
+        # The canonical intake's semantic invariants (one initial attempt per
+        # planned query/index pair, retry authorization chains, monotonic
+        # times): a re-sealed input that silently omits a planned attempt is
+        # refused here.
+        substrate.validate_input(plan, retrieval_input)
+    except substrate.LedgerError as exc:
+        raise TransmissionError(f"input is invalid: {exc}") from exc
     stance_authorized = (
         plan["consent"].get("decision") == "retrieval_plus_stance"
     )
