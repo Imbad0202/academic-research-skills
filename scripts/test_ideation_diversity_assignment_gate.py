@@ -511,6 +511,23 @@ def test_fabricated_receipt_over_tampered_bundle_fails_delivery_replay(
         )
 
 
+def test_new_delivery_refuses_any_preexisting_destination(
+    finalized_bundle, tmp_path
+):
+    run_dir = _copy_bundle(finalized_bundle, tmp_path)
+    ledger = _valid_ledger(run_dir)
+    gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
+    row = ledger["first_round_assignments"][0]
+    empty_dest = tmp_path / "pre-existing-empty"
+    empty_dest.mkdir()
+    with pytest.raises(gate.GateError, match="DELIVERY-DEST"):
+        gate.deliver(
+            _deliver_args(
+                run_dir, row["judge_id"], row["blind_session_id"], empty_dest
+            )
+        )
+
+
 def test_concurrent_writer_racing_the_desk_fails_before_completion(
     finalized_bundle, tmp_path, monkeypatch
 ):

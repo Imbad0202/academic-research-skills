@@ -241,8 +241,11 @@ against the embedded ledger, so a hand-fabricated receipt cannot authorize a
 delivery that `verify` would refuse, even over a consistently tampered
 bundle. It then requires the exact
 `judge_id`/`blind_session_id` assignment, verifies the packet's sealed
-inventory hash, and publishes exactly one isolated packet into an empty
-destination outside the run and gate directories. Each assignment is claimed
+inventory hash, and publishes exactly one isolated packet into a
+destination outside the run and gate directories that the gate itself
+creates — `mkdir` is the atomic desk claim, so a new delivery refuses any
+pre-existing destination and two racing deliveries cannot both own one
+desk. Each assignment is claimed
 by a write-once delivery marker (`first_round_delivery_marker.schema.json`)
 and closed by a write-once completion marker after publication: an
 interrupted identical delivery may exact-resume once, but a completed
@@ -250,10 +253,9 @@ assignment is never re-issued, even by an identical command. One residual is
 accepted by design: a crash in the instant between packet publication and the
 completion marker leaves that one assignment resumable, which can
 re-materialize the identical bytes for the same judge — the same assignment,
-so no exposure or blinding property is affected. Concurrent deliveries
-racing one desk are caught by a post-publication isolation re-scan: both
-racers fail before their completion markers, and a desk is certified only by
-a successful exit over exactly one packet. The gate
+so no exposure or blinding property is affected. Desk ownership is acquired atomically at creation, and a
+post-publication isolation re-scan remains as defense in depth: a desk is
+certified only by a successful exit over exactly one packet. The gate
 verifies structural exposure
 constraints only: it cannot authenticate that two handles are two distinct
 people, and judge/adjudicator independence remains a procedural

@@ -245,17 +245,26 @@ def _check_dest(
                 "DELIVERY-DEST",
                 "destination must live outside the run and gate directories",
             )
-    if resolved.exists():
-        if not resolved.is_dir():
-            _fail("DELIVERY-DEST", "destination must be a directory")
-        occupants = [path.name for path in resolved.iterdir()]
-        allowed = [packet_name] if resume else []
-        if occupants and occupants != allowed:
-            _fail(
-                "DELIVERY-DEST",
-                "destination must be empty: a judge desk holds exactly one "
-                "isolated packet",
-            )
+    if resume:
+        if resolved.exists():
+            if not resolved.is_dir():
+                _fail("DELIVERY-DEST", "destination must be a directory")
+            occupants = [path.name for path in resolved.iterdir()]
+            if occupants and occupants != [packet_name]:
+                _fail(
+                    "DELIVERY-DEST",
+                    "destination must be empty: a judge desk holds exactly "
+                    "one isolated packet",
+                )
+    elif resolved.exists():
+        # A new delivery claims its desk by creating it: mkdir is the atomic
+        # ownership acquisition, so two racing deliveries cannot both own one
+        # desk. A pre-existing destination therefore always refuses.
+        _fail(
+            "DELIVERY-DEST",
+            "destination must not exist; the gate creates the judge desk "
+            "itself to claim it atomically",
+        )
     return resolved
 
 
@@ -344,7 +353,15 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
                 f"{args.blind_session_id}; an assignment is delivered once",
             )
     if not dest.exists():
-        dest.mkdir(mode=0o700, parents=True)
+        try:
+            dest.mkdir(mode=0o700)
+        except FileExistsError:
+            _fail(
+                "DELIVERY-DEST",
+                "another delivery claimed this destination first",
+            )
+        except OSError as exc:
+            _fail("DELIVERY-DEST", f"cannot create the judge desk: {exc}")
     delivered_path = dest / packet_name
     try:
         envelope._ensure_exact_new(delivered_path, packet_raw)
