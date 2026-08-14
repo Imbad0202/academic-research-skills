@@ -96,6 +96,18 @@ For each claim-bearing op across the consumed rounds, compare its ladder rung (a
 
 External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corrupts content by subtle modification; the #390 patch confines exposure to touched blocks but does not check their epistemic interior. Baseline evidence that the drift is real on the current frontier model: `evals/heldout/revision_claim_drift/` (2026-07-22: 2/8 under hedge-drop / null-reframe pressure). Mechanism shape borrowed from Yila-AI/sci-ssci-skills (@MissOrangePeel).
 
+## Claim-Standing Probe Offer (#655 — opt-in, advisory-only)
+
+After E1 has emitted the Claim Registry at a Stage 2.5 or Stage 4.5 integrity checkpoint, the user MAY request the search-bounded claim-standing probe on individual registry rows. The probe is an additional user-requested view. It is NOT part of Phase E verification and NOT part of the integrity result: it never changes a Phase E verdict, severity, issue count, checkpoint result, correction route, formatter refusal, or Stage transition, and it never writes read-ledger or manuscript state (`layer = LLM-ADVISORY`, `gate_effect = none`, `read_ledger_effect = none`, `manuscript_mutation = none`).
+
+**Trigger (design §3.1, gate 1 — enforced by `scripts/build_claim_standing_query_plan.py`):**
+
+- Stage 2.5: only registry rows recorded `HIGH-IMPACT` are eligible. `RANDOM`, `TOP-UP`, and `NOT-SELECTED` rows are never eligible — the random sentinel and top-up floor are Phase E quality controls, not consent to expand the probe.
+- Stage 4.5: `ALL` is not permission to probe every claim. A row is eligible only when the registry records the same five-part high-impact classification (headline conclusion / numerical / causal / methods-critical / disputed) for it.
+- A row with no recorded five-part basis is ambiguous and stays ineligible until the researcher confirms the classification. The confirmation is recorded in the probe's own artifacts and never written back to the registry.
+
+**Consent (design §3.2, gate 2):** Eligibility never dispatches anything. Before any query planner, index, or model receives claim text, the researcher sees and affirmatively accepts a closed consent surface (`propose` → `bind` in `scripts/build_claim_standing_query_plan.py`); refusal or cancellation produces an explicit local `not_checked` declination record and no network or model call. Retrieval, stance classification, freshness (`scripts/check_claim_standing_freshness.py`), and per-event transmission accounting (`scripts/check_claim_standing_transmissions.py`) are specified in `shared/references/claim_standing_candidate_ledger_protocol.md`. Every probe surface carries `STANCE CLASSIFICATION UNMEASURED` until the #655 baseline measurement row exists.
+
 ## Verdict Taxonomy
 
 | Verdict | Definition | Severity | Example |

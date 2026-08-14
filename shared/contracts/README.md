@@ -57,6 +57,16 @@ terminal state while recording deterministic work-family selection.
   `claim_and_selected_evidence_to_stance_provider`. A 1.0 plan stays valid
   under its own schema; the runtime validator accepts both versions and
   enforces the stance bindings only on 1.1.
+- `claim_standing/transmission_ledger.schema.json`
+  (`claim-standing-transmission-ledger/1.0`) accounts every event that left the
+  session during one probe: retrieval-query events derived one-to-one from the
+  retained attempts and stance-classification events copied verbatim from the
+  stance runner's transmission records, each carrying recipient, purpose, exact
+  content classes, byte count, local hash, time, consent receipt, retention
+  disclosure, and result state. `scripts/check_claim_standing_transmissions.py`
+  is the normative builder/validator: an event outside the plan's authorized
+  content classes or consented recipient roster fails closed (design §9
+  gate 14), and validation is exact replay.
 - `claim_standing/stance_record.schema.json`
   (`claim-standing-stance-record/1.0`) is the stance-classification output for
   one probe run: full §7 probe-identity hashes, one row per selected work
