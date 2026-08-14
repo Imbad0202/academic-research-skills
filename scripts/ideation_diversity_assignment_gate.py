@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import stat
 import sys
 from typing import Any, NoReturn
 
@@ -85,15 +84,7 @@ def _load_json(
     return value, raw
 
 
-def _check_private_map_modes(run_dir: Path) -> None:
-    private_map_path = _binding_paths(run_dir)["private_map_sha256"]
-    if stat.S_IMODE(private_map_path.parent.stat().st_mode) != 0o700:
-        _fail("DELIVERY-DRIFT", "private arm-map directory mode must remain 0700")
-    if stat.S_IMODE(private_map_path.stat().st_mode) != 0o600:
-        _fail("DELIVERY-DRIFT", "private arm-map file mode must remain 0600")
-
-
-def _load_bundle(run_dir: Path) -> dict[str, Any]:
+def _load_bundle(run_dir: Path, *, code: str = "LEDGER-BINDING") -> dict[str, Any]:
     try:
         plan, _, plan_sha, manifest = envelope._load_run(run_dir)
         if manifest["status"] != "blind_finalized":
@@ -108,7 +99,7 @@ def _load_bundle(run_dir: Path) -> dict[str, Any]:
         inventory_raw = envelope._read_file(paths["inventory_sha256"])
         private_map_raw = envelope._read_file(paths["private_map_sha256"])
     except envelope.EnvelopeError as exc:
-        _fail("LEDGER-BINDING", str(exc))
+        _fail(code, str(exc))
     return {
         "run_plan_sha256": plan_sha,
         "inventory_sha256": inventory_sha,
@@ -119,11 +110,13 @@ def _load_bundle(run_dir: Path) -> dict[str, Any]:
     }
 
 
-def _check_bindings(ledger: dict[str, Any], bundle: dict[str, Any]) -> None:
+def _check_bindings(
+    ledger: dict[str, Any], bundle: dict[str, Any], *, code: str = "LEDGER-BINDING"
+) -> None:
     for field in BINDING_FIELDS:
         if ledger[field] != bundle[field]:
             _fail(
-                "LEDGER-BINDING",
+                code,
                 f"ledger {field} does not match the finalized blind bundle",
             )
 
@@ -176,15 +169,15 @@ def _check_exposure(ledger: dict[str, Any], bundle: dict[str, Any]) -> None:
         blinds = packets_by_judge[judge_id]
         pairs = {pair_by_blind[blind_id] for blind_id in blinds}
         if len(pairs) != len(blinds):
-            # The diagnostic names only the judge. Naming the conflicting
-            # blind ids would itself disclose that they share a pair, which
-            # is private-map information; the operator holds the map and can
-            # locate the offending rows.
+            # The diagnostic carries no judge or blind identifiers: even
+            # "judge X's set contains a shared pair" is private-map
+            # information once combined with the ledger. The operator holds
+            # the map and can locate the conflict directly.
             _fail(
                 "LEDGER-EXPOSURE",
-                f"judge {judge_id} would receive two packets that share an "
-                "equivalent scholar context (pair/scenario/role card); "
-                "consult the private arm map to locate the conflict",
+                "the ledger assigns at least one judge two packets that "
+                "share an equivalent scholar context (pair/scenario/role "
+                "card); consult the private arm map to locate the conflict",
             )
 
 
@@ -242,27 +235,6 @@ def _load_receipt(run_dir: Path) -> tuple[dict[str, Any], bytes]:
     return receipt, receipt_raw
 
 
-def _check_delivery_bindings(
-    run_dir: Path, ledger: dict[str, Any]
-) -> dict[str, Any]:
-    raws: dict[str, bytes] = {}
-    for field, path in _binding_paths(run_dir).items():
-        try:
-            raws[field] = envelope._read_file(path)
-        except envelope.EnvelopeError as exc:
-            _fail("DELIVERY-DRIFT", str(exc))
-        if ledger[field] != envelope._sha(raws[field]):
-            _fail(
-                "DELIVERY-DRIFT",
-                f"bundle {field} drifted after the receipt was sealed",
-            )
-    _check_private_map_modes(run_dir)
-    return {
-        "inventory": envelope._strict_loads(raws["inventory_sha256"]),
-        "private_map": envelope._strict_loads(raws["private_map_sha256"]),
-    }
-
-
 def _check_dest(
     run_dir: Path, dest: Path, packet_name: str, *, resume: bool
 ) -> Path:
@@ -290,10 +262,12 @@ def _check_dest(
 def deliver(args: argparse.Namespace) -> dict[str, Any]:
     receipt, receipt_raw = _load_receipt(args.run_dir)
     ledger = receipt["ledger"]
-    bundle = _check_delivery_bindings(args.run_dir, ledger)
     # The sealed receipt is evidence, not authority: a receipt file is plain
-    # bytes on disk, so every semantic gate check is replayed here against the
-    # embedded ledger before anything is delivered.
+    # bytes on disk, so delivery replays the complete bundle validation and
+    # every semantic gate check against the embedded ledger — exactly what
+    # `verify` runs — before anything is delivered.
+    bundle = _load_bundle(args.run_dir, code="DELIVERY-DRIFT")
+    _check_bindings(ledger, bundle, code="DELIVERY-DRIFT")
     _check_roster(ledger)
     _check_coverage(ledger, bundle)
     _check_exposure(ledger, bundle)

@@ -405,7 +405,7 @@ def test_delivery_refuses_when_bundle_drifts_after_receipt(
         )
 
 
-def test_exposure_diagnostic_names_judge_but_never_blind_ids(
+def test_exposure_diagnostic_carries_no_judge_or_blind_identifiers(
     finalized_bundle, tmp_path
 ):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
@@ -426,7 +426,7 @@ def test_exposure_diagnostic_names_judge_but_never_blind_ids(
         gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
     message = str(caught.value)
     assert "LEDGER-EXPOSURE" in message
-    assert first["judge_id"] in message
+    assert first["judge_id"] not in message
     assert "blind-" not in message
 
 
@@ -468,6 +468,45 @@ def test_fabricated_receipt_cannot_authorize_exposure_violating_delivery(
                 first["judge_id"],
                 first["blind_session_id"],
                 tmp_path / "desk",
+            )
+        )
+
+
+def test_fabricated_receipt_over_tampered_bundle_fails_delivery_replay(
+    finalized_bundle, tmp_path
+):
+    run_dir = _copy_bundle(finalized_bundle, tmp_path)
+    ledger = _valid_ledger(run_dir)
+    map_path = run_dir / "blind" / "private" / "arm-map.json"
+    private_map = json.loads(map_path.read_bytes())
+    swap = private_map["mapping"][0]
+    donor = next(
+        row
+        for row in private_map["mapping"]
+        if row["pair_id"] != swap["pair_id"]
+    )
+    swap["pair_id"] = donor["pair_id"]
+    tampered_raw = runner._json_bytes(private_map)
+    map_path.write_bytes(tampered_raw)
+    ledger["private_map_sha256"] = hashlib.sha256(tampered_raw).hexdigest()
+    receipt = {
+        "schema_version": "ideation-diversity-assignment-gate-receipt/1.0",
+        "suite": runner.SUITE,
+        "verdict": "pass",
+        "ledger_sha256": hashlib.sha256(runner._json_bytes(ledger)).hexdigest(),
+        "ledger": ledger,
+        "delivery_rule": (
+            "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"
+        ),
+    }
+    receipt_path = _receipt_path(run_dir)
+    receipt_path.parent.mkdir(parents=True)
+    receipt_path.write_bytes(runner._json_bytes(receipt))
+    row = ledger["first_round_assignments"][0]
+    with pytest.raises(gate.GateError, match="DELIVERY-DRIFT"):
+        gate.deliver(
+            _deliver_args(
+                run_dir, row["judge_id"], row["blind_session_id"], tmp_path / "desk"
             )
         )
 
