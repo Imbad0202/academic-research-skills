@@ -615,13 +615,19 @@ def validate_stance_record(
                         f"row {row['work_family_id']}: retained output parses "
                         "cleanly; a not_checked state cannot stand"
                     )
-            if row["failure_state"] == "abstract_missing":
-                family = families_by_id[row["work_family_id"]]
-                if family["content_state"] == "available":
+            family = families_by_id[row["work_family_id"]]
+            if family["content_state"] == "available":
+                if row["failure_state"] == "abstract_missing":
                     _fail(
                         f"row {row['work_family_id']}: abstract_missing "
                         "contradicts the ledger's available content state"
                     )
+            elif row["failure_state"] != "abstract_missing":
+                _fail(
+                    f"row {row['work_family_id']}: content-unavailable "
+                    "candidates are never dispatched, so only "
+                    "abstract_missing can stand"
+                )
             continue
         family = families_by_id[row["work_family_id"]]
         hit = hits_by_id[row["canonical_raw_hit_id"]]
