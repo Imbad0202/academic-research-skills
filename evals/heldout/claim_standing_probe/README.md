@@ -49,9 +49,11 @@ exist.** Accordingly:
   as a heuristic defect detector, registration guard).
 - `scripts/claim_standing_stance_scorer.py`: the mechanical scorer required by
   design §8 — compares the frozen subject enum to the adjudicated label with
-  no model in the loop; reports confusion counts and rates by stance,
-  language, evidence scope, and failure class; macro recall and micro accuracy
-  stay separate; an abstention on a gold-performed row lands in an explicit
+  no model in the loop; reports stance/relevance/check-state confusion counts
+  by language, evidence-scope agreement counts, and failure-class counts
+  (per-scope and per-failure-class accuracy strata belong to the future
+  baseline-row compiler); macro recall and micro accuracy stay separate; an
+  abstention on a gold-performed row lands in an explicit
   `NOT_CHECKED` confusion column so abstaining can never inflate recall;
   full-row accuracy includes evidence scope; blocked/partial rows keep their
   failure classes visible and are never imputed; the two-replicate
@@ -86,9 +88,11 @@ requires separate consent to the exact frozen plan.
   subject/harness vocabulary, to be exercised by fault injection in the
   implementation PR's run plan, not by fixtures.
 - The scorer verifies that the adjudication file names two distinct experts
-  and covers every item, but does not verify the referenced expert files'
-  bytes — sealing and hash-verifying expert packets is the implementation
-  PR's labeling-workflow tooling.
+  with distinct file hashes and covers every item, and
+  `validate-expert-file` checks one expert file's complete distinct item
+  coverage — but nothing here verifies the referenced expert files' bytes
+  against the recorded hashes; sealing and hash-verifying expert packets is
+  the implementation PR's labeling-workflow tooling.
 - Design §5.1's "at least one evidence-row reference" applies to the
   implemented probe's #656 evidence rows; the eval subject output carries a
   bounded rationale and evidence scope instead, because no evidence-row

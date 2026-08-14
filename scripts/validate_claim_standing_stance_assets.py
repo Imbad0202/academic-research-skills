@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SUITE_ROOT = REPO_ROOT / "evals" / "heldout" / "claim_standing_probe"
 SET_PATH = SUITE_ROOT / "heldout_stance_set.json"
 SET_SCHEMA = SUITE_ROOT / "heldout_stance_set.schema.json"
+EXPERT_SCHEMA = SUITE_ROOT / "expert_label.schema.json"
 SUITE_REGISTRY = SUITE_ROOT.parent / "suite_registry.json"
 
 EXPECTED_SLOTS = {
@@ -201,13 +202,42 @@ def validate_set(value: dict[str, Any]) -> None:
         )
 
 
+def validate_expert_file(value: dict[str, Any], set_value: dict[str, Any]) -> None:
+    schema = json.loads(EXPERT_SCHEMA.read_bytes())
+    errors = sorted(
+        Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path)
+    )
+    if errors:
+        first = errors[0]
+        _fail(f"expert file schema: {list(first.path)!r}: {first.message}")
+    labeled = [row["item_id"] for row in value["labels"]]
+    if len(set(labeled)) != len(labeled):
+        _fail("expert file labels the same item more than once")
+    set_ids = {item["item_id"] for item in set_value["items"]}
+    if set(labeled) != set_ids:
+        _fail("expert file must label exactly the seed set's 32 distinct items")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("validate-assets", help="validate the shipped seed set")
-    parser.parse_args(argv)
+    expert_parser = subparsers.add_parser(
+        "validate-expert-file",
+        help="validate one expert label file against the seed set",
+    )
+    expert_parser.add_argument("--expert-file", type=Path, required=True)
+    args = parser.parse_args(argv)
     try:
-        validate_set(load_set())
+        set_value = load_set()
+        if args.command == "validate-expert-file":
+            validate_expert_file(
+                _strict_loads(args.expert_file.read_bytes(), "expert file"),
+                set_value,
+            )
+            print("expert label file: complete distinct coverage of the seed set")
+            return 0
+        validate_set(set_value)
     except AssetError as exc:
         print(str(exc))
         return 1

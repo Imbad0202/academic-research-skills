@@ -253,6 +253,25 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "row_state": {
+                "enum": [
+                  "blocked",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure_state": {
+                "type": "string"
+              }
+            }
+          }
         }
       ]
     }

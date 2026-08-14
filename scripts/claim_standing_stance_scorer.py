@@ -119,11 +119,13 @@ def score(
     _validate(ADJUDICATED_SCHEMA, adjudicated, "adjudicated labels")
     _validate(SUBJECT_SCHEMA, subject, "subject output")
 
-    expert_ids = {row["expert_id"] for row in adjudicated["expert_label_files"]}
-    if len(expert_ids) < 2:
+    expert_files = adjudicated["expert_label_files"]
+    expert_ids = {row["expert_id"] for row in expert_files}
+    expert_hashes = {row["sha256"] for row in expert_files}
+    if len(expert_ids) < 2 or len(expert_hashes) < len(expert_files):
         _fail(
             "adjudicated labels must bind at least two distinct independent "
-            "expert label files"
+            "expert label files with distinct file hashes"
         )
 
     language_by_item = {

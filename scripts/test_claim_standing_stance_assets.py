@@ -277,6 +277,80 @@ def test_adjudication_requires_two_distinct_experts(shipped_set):
         scorer.score(shipped_set, adjudicated, subject)
 
 
+def test_blocked_row_must_carry_a_failure_state(shipped_set):
+    adjudicated = _adjudicated_from_design(shipped_set)
+    subject = _subject_from_adjudicated(adjudicated)
+    row = subject["rows"][0]
+    row.update(
+        row_state="blocked",
+        relevance=None,
+        check_state=None,
+        stance=None,
+        failure_state=None,
+        evidence_scope=None,
+        rationale=None,
+    )
+    with pytest.raises(scorer.ScoreError, match="schema"):
+        scorer.score(shipped_set, adjudicated, subject)
+
+
+def test_expert_files_with_identical_hashes_are_rejected(shipped_set):
+    adjudicated = _adjudicated_from_design(shipped_set)
+    subject = _subject_from_adjudicated(adjudicated)
+    adjudicated["expert_label_files"] = [
+        {"expert_id": "expert-a", "sha256": "a" * 64},
+        {"expert_id": "expert-b", "sha256": "a" * 64},
+    ]
+    with pytest.raises(scorer.ScoreError, match="distinct file hashes"):
+        scorer.score(shipped_set, adjudicated, subject)
+
+
+def _expert_file_from_design(set_value: dict) -> dict:
+    labels = []
+    for item in set_value["items"]:
+        target = item["design_target"]
+        labels.append(
+            {
+                "item_id": item["item_id"],
+                "relevance": item["relevance_design"],
+                "check_state": target["check_state"],
+                "stance": target["stance"],
+                "failure_state": target["failure_state"],
+                "evidence_scope": item["candidate"]["coverage"],
+                "rationale": "synthetic test rationale for coverage checking",
+                "label_guide_criterion": "REL",
+            }
+        )
+    return {
+        "schema_version": "claim-standing-expert-label/0.1",
+        "suite": "claim_standing_probe",
+        "expert_id": "expert-test",
+        "blinded_to": [
+            "design_target",
+            "subject_output",
+            "other_expert_labels",
+            "model_or_provider",
+            "expected_baseline_performance",
+        ],
+        "labels": labels,
+    }
+
+
+def test_expert_file_validator_requires_complete_distinct_coverage(shipped_set):
+    expert_file = _expert_file_from_design(shipped_set)
+    validator.validate_expert_file(expert_file, shipped_set)
+    incomplete = copy.deepcopy(expert_file)
+    incomplete["labels"][1]["item_id"] = incomplete["labels"][0]["item_id"]
+    with pytest.raises(
+        validator.AssetError, match="more than once|32 distinct|non-unique"
+    ):
+        validator.validate_expert_file(incomplete, shipped_set)
+    reduced = copy.deepcopy(expert_file)
+    reduced["labels"] = reduced["labels"][:-1]
+    with pytest.raises(validator.AssetError, match="schema|32 distinct"):
+        validator.validate_expert_file(reduced, shipped_set)
+
+
 def test_closed_enums_stay_synchronized_across_schemas():
     def enum_of(schema_file, pointer):
         value = json.loads((SUITE_ROOT / schema_file).read_bytes())
