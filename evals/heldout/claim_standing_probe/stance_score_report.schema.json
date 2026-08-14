@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/claim_standing_probe/stance_score_report.schema.json",
+  "title": "#655 mechanical stance-score report",
+  "description": "Deterministic comparison of one subject run against adjudicated expert labels. This is a raw comparison artifact, NOT a heldout-measurement contract row; the future baseline row is produced separately under the #654/#664 contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "subject_run_id",
+    "not_a_measurement_contract_row",
+    "items",
+    "replicates",
+    "rows",
+    "by_language",
+    "overall"
+  ],
+  "properties": {
+    "schema_version": {"const": "claim-standing-stance-score-report/0.1"},
+    "suite": {"const": "claim_standing_probe"},
+    "subject_run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "not_a_measurement_contract_row": {"const": true},
+    "items": {"const": 32},
+    "replicates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_scored_per_item",
+        "max_scored_per_item",
+        "decision_relevant_two_replicates"
+      ],
+      "properties": {
+        "min_scored_per_item": {"type": "integer", "minimum": 0},
+        "max_scored_per_item": {"type": "integer", "minimum": 0},
+        "decision_relevant_two_replicates": {"type": "boolean"}
+      }
+    },
+    "rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scored", "blocked", "partial"],
+      "properties": {
+        "scored": {"type": "integer", "minimum": 0},
+        "blocked": {"type": "integer", "minimum": 0},
+        "partial": {"type": "integer", "minimum": 0}
+      }
+    },
+    "by_language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en", "zh-TW"],
+      "properties": {
+        "en": {"$ref": "#/$defs/block"},
+        "zh-TW": {"$ref": "#/$defs/block"}
+      }
+    },
+    "overall": {"$ref": "#/$defs/block"}
+  },
+  "$defs": {
+    "count_map": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "nested_count_map": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/count_map"}
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scored_rows",
+        "micro_full_row_accuracy",
+        "stance_macro_recall",
+        "stance_confusion",
+        "relevance_confusion",
+        "check_state_confusion",
+        "failure_state_distribution",
+        "evidence_scope_agreement"
+      ],
+      "properties": {
+        "scored_rows": {"type": "integer", "minimum": 0},
+        "micro_full_row_accuracy": {
+          "anyOf": [
+            {"type": "number", "minimum": 0, "maximum": 1},
+            {"type": "null"}
+          ]
+        },
+        "stance_macro_recall": {
+          "anyOf": [
+            {"type": "number", "minimum": 0, "maximum": 1},
+            {"type": "null"}
+          ]
+        },
+        "stance_confusion": {"$ref": "#/$defs/nested_count_map"},
+        "relevance_confusion": {"$ref": "#/$defs/nested_count_map"},
+        "check_state_confusion": {"$ref": "#/$defs/nested_count_map"},
+        "failure_state_distribution": {"$ref": "#/$defs/count_map"},
+        "evidence_scope_agreement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agree", "disagree"],
+          "properties": {
+            "agree": {"type": "integer", "minimum": 0},
+            "disagree": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    }
+  }
+}

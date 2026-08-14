@@ -1,0 +1,877 @@
+{
+  "ground_truth_boundary": {
+    "design_targets_are_construction_intent_only": true,
+    "design_targets_excluded_from_expert_and_subject_packets": true,
+    "ground_truth_requires_two_blinded_experts_plus_adjudication": true
+  },
+  "items": [
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-support-1",
+        "evidence_text": "Late-evening tablet exposure may delay sleep initiation through short-wavelength light and sustained visual engagement. We conducted a randomized crossover trial with 184 adults from the LumenRest cohort who reported at least 90 minutes of tablet use after 20:00 on five or more nights per week. Participants completed fourteen nights with an amber display filter and fourteen nights with the standard display, separated by a seven-night washout. Wrist actigraphy, bedside light sensors, and daily sleep diaries were collected. Median sleep-onset latency was 27.4 minutes during standard-display nights and 22.3 minutes during filtered nights, corresponding to an adjusted reduction of 18.7% (95% CI, 14.1% to 23.0%). Total tablet-use duration and bedtime did not differ between conditions. The reduction was consistent across baseline chronotype categories. These findings indicate that sustained amber filtering during the two hours before bedtime produces a roughly one-fifth shortening of sleep-onset latency in habitual late-evening tablet users.",
+        "title": "Evening Amber Filtering and Sleep Initiation in Habitual Tablet Users",
+        "venue": "Journal of Nocturnal Behavior",
+        "work_family_id": "wf-csp-en-support-1",
+        "year": 2024
+      },
+      "claim_text": "Activating an amber screen filter for two hours before bedtime reduces sleep-onset latency by approximately 20% among adults who habitually use tablets late in the evening.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "support"
+      },
+      "discipline": "sleep science",
+      "item_id": "csp-en-support-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-support-2",
+        "evidence_text": "Iron-enriched plant chars are increasingly used to retain phosphorus in weathered soils, yet the dominant bonding pathway remains uncertain. We amended 96 microcosms of acidic Ravelle loam with untreated reed char, iron-enriched reed char, or no char and incubated them for 70 days. Sequential extraction showed that the enriched material removed substantially more dissolved phosphate than either comparison treatment. Phosphate retention persisted after ionic-strength adjustment and repeated washing, behavior inconsistent with predominantly electrostatic adsorption. Spectra from the FerraSpec-12 instrument revealed paired phosphate-iron coordination signals, while ligand-exchange assays displaced the retained phosphate only under strongly competitive conditions. Surface-charge reversal altered initial uptake rates but had little effect on the final retained fraction. Across pH values from 4.3 to 5.6, coordination-signal abundance closely tracked non-desorbable phosphate. The combined evidence identifies stable inner-sphere complex formation at iron-rich surface domains as the principal mechanism by which iron-enriched reed biochar immobilizes phosphate in acidic soil.",
+        "title": "Bonding Pathways of Phosphate on Iron-Enriched Reed Char in Acidic Loam",
+        "venue": "Annals of Reactive Soil Systems",
+        "work_family_id": "wf-csp-en-support-2",
+        "year": 2021
+      },
+      "claim_text": "Iron-enriched reed biochar immobilizes soluble phosphate in acidic soils chiefly by forming stable inner-sphere complexes rather than by simple electrostatic attraction.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "support"
+      },
+      "discipline": "soil chemistry",
+      "item_id": "csp-en-support-2",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-contradict-1",
+        "evidence_text": "Practice schedules may shape how adult learners acquire unfamiliar speech contrasts. We assigned 216 novice learners of the constructed Vellic language to blocked practice, interleaved practice, or time-matched listening exposure. Both active groups completed 720 identification trials covering four vowel contrasts. Discrimination was measured immediately, after seven days, and after twenty-eight days using untrained talkers and novel syllables. Immediate accuracy did not differ between the two practice schedules. At seven days, however, the interleaved group made 19% more discrimination errors than the blocked group, and at twenty-eight days it made 24% more errors (adjusted rate ratio 1.24, 95% CI, 1.13 to 1.36). The disadvantage appeared for all four contrasts and remained after adjustment for baseline auditory span and practice response time. Both active schedules outperformed listening exposure. These results indicate that separating unfamiliar vowel contrasts into stable practice blocks yields better delayed discrimination than interleaving them during initial pronunciation training.",
+        "title": "Blocked and Interleaved Vowel Practice in Adult Novice Learners",
+        "venue": "Review of Emerging Language Learning",
+        "work_family_id": "wf-csp-en-contradict-1",
+        "year": 2022
+      },
+      "claim_text": "Interleaving unfamiliar vowel contrasts during pronunciation training lowers delayed discrimination errors compared with practicing each contrast in a separate block.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "contradict"
+      },
+      "discipline": "second-language acquisition",
+      "item_id": "csp-en-contradict-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-contradict-2",
+        "evidence_text": "Cryogenic burnishing has been proposed as a means of extending fatigue life through deeper compressive residual stress. We compared cryogenic and conventional roller burnishing in 480 specimens machined from twelve independently cast batches of Arquen-7 alloy. Processing force, feed rate, tool geometry, and final surface roughness were matched across conditions. Specimens underwent rotating-bending loading at three stress amplitudes, with failure or runout recorded at ten million cycles. The study had 92% power to detect a 12% difference in median fatigue life. Median life was 4.38 million cycles after cryogenic burnishing and 4.35 million cycles after conventional burnishing. The adjusted life ratio was 1.01 (95% CI, 0.96 to 1.06), and no interaction with stress amplitude or casting batch was observed. Cryogenic treatment produced slightly deeper compressive stress but also greater subsurface heterogeneity. Under tightly matched finishing conditions, cryogenic roller burnishing did not provide a measurable fatigue-life advantage, and the confidence interval excluded an improvement of 15%.",
+        "title": "High-Cycle Endurance of Arquen-7 Alloy After Ambient and Cryogenic Burnishing",
+        "venue": "Quarterly of Engineered Fatigue",
+        "work_family_id": "wf-csp-en-contradict-2",
+        "year": 2025
+      },
+      "claim_text": "Cryogenic roller burnishing increases the high-cycle fatigue life of Arquen-7 alloy by at least 15% relative to conventional roller burnishing.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "contradict"
+      },
+      "discipline": "materials engineering",
+      "item_id": "csp-en-contradict-2",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-mixed-1",
+        "evidence_text": "Low-cost reminders may influence repayment behavior, but their effects could depend on borrowers' access to payment points. We randomized 1,248 members of the fictional Larka Circle Network to receive a weekly recorded repayment reminder or usual account communication for six months. Randomization was stratified between market-center circles and remote hillside circles. Among 702 market-center borrowers, reminders raised the proportion of installments paid on time from 71.6% to 80.9%, an adjusted increase of 9.1 percentage points (95% CI, 5.2 to 13.0). Among 546 remote borrowers, reminders lowered on-time repayment from 68.4% to 61.7%, an adjusted decrease of 6.5 points (95% CI, 2.0 to 11.0). Interviews suggested that remote participants often interpreted the recording as notice that mobile collection would replace their usual group meeting. The overall pooled estimate was small and imprecise. Weekly voice reminders improved repayment timing in market-center circles but worsened it in geographically remote circles.",
+        "title": "Voice Reminders and Repayment Timing Across Market-Center and Remote Credit Circles",
+        "venue": "Journal of Local Finance Dynamics",
+        "work_family_id": "wf-csp-en-mixed-1",
+        "year": 2020
+      },
+      "claim_text": "Weekly voice reminders increase on-time repayment among borrowers enrolled in village microcredit circles.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "mixed"
+      },
+      "discipline": "development economics",
+      "item_id": "csp-en-mixed-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-mixed-2",
+        "evidence_text": "Chemical cues released by benthic vegetation can alter the transition of marine larvae to settled juveniles. We exposed 960 competent blue-ridged reef-snail larvae to purified pelagrene at 0, 2, 10, or 50 nanomoles per liter in flow-through settlement chambers. Each concentration was replicated across eight larval families and six collection dates. After 36 hours, settlement was 31% in control chambers, 42% at 2 nanomoles per liter, 45% at 10 nanomoles per liter, and 22% at 50 nanomoles per liter. Relative to controls, the two lower concentrations increased settlement by 34% and 43%, respectively, whereas the highest concentration decreased settlement by 29%. Swimming-speed recordings indicated attraction at low exposure but prolonged immobility at high exposure; mortality remained below 3% in every condition. Pelagrene therefore promotes settlement within a low-concentration range but suppresses settlement when larvae encounter a concentrated pulse, demonstrating a reversal in response across exposure conditions.",
+        "title": "Concentration-Dependent Settlement Responses to Pelagrene in Reef-Snail Larvae",
+        "venue": "Marine Recruitment Letters",
+        "work_family_id": "wf-csp-en-mixed-2",
+        "year": 2019
+      },
+      "claim_text": "Exposure to kelp-derived pelagrene increases settlement of blue-ridged reef-snail larvae.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "mixed"
+      },
+      "discipline": "marine ecology",
+      "item_id": "csp-en-mixed-2",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-notaddr-1",
+        "evidence_text": "Worked examples can organize learners' attention during multistep algebra instruction. We examined how example fading changes visual allocation and perceived mental effort in 168 secondary learners using the invented GazePath Classroom Array. Participants completed six lessons containing either progressively faded solution steps or complete solutions. During instruction, the fading group spent more time viewing operator locations and shifted between problem statements and solution panels more frequently than the complete-example group. Pupil dilation increased during the final two lessons in the fading condition, while self-reported effort rose by 0.6 points on the seven-point LoadTrace scale. Total lesson duration was comparable between conditions, although faded-example learners requested more optional hints. Eye-movement differences were largest among learners with lower initial algebra familiarity. The findings show that fading solution steps redistributes attention and increases effort as instructional support is withdrawn. They clarify the processing demands of two common example formats and may guide the pacing of classroom materials.",
+        "title": "Visual Attention During Faded and Complete Algebra Examples",
+        "venue": "Journal of Instructional Cognition",
+        "work_family_id": "wf-csp-en-notaddr-1",
+        "year": 2023
+      },
+      "claim_text": "Fading worked examples during algebra instruction reduces errors on delayed transfer problems compared with presenting complete worked examples throughout instruction.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "not_addressed"
+      },
+      "discipline": "cognitive psychology",
+      "item_id": "csp-en-notaddr-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-notaddr-2",
+        "evidence_text": "Lornic airway syndrome presents with episodic constriction and a distinctive epithelial cytokine profile, but clinical heterogeneity is substantial. We enrolled 412 diagnosed patients from the Orilon Respiratory Registry and grouped them using blood markers, nasal brush transcription profiles, and symptom histories. Three reproducible phenotypes emerged: an epithelial-inflammatory group, a low-marker constriction group, and a mixed late-onset group. The epithelial-inflammatory phenotype had more frequent nocturnal symptoms and slower recovery after standard bronchodilation. A rare regulatory variant in the invented EPRX4 locus was enriched in that phenotype and was associated with prolonged cytokine expression in cultured nasal cells. Age at onset and household humidity differed modestly among groups. Occupational history, transit use, ambient particle exposure, and disease-free comparison participants were not collected. These findings identify biologically distinct forms of Lornic airway syndrome and suggest that inherited regulation contributes to persistent inflammation in a subset of diagnosed patients.",
+        "title": "Inflammatory Phenotypes Among Patients With Lornic Airway Syndrome",
+        "venue": "Archives of Synthetic Population Health",
+        "work_family_id": "wf-csp-en-notaddr-2",
+        "year": 2021
+      },
+      "claim_text": "Repeated exposure to ultrafine transit dust increases the incidence of Lornic airway syndrome by triggering persistent epithelial inflammation.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "not_addressed"
+      },
+      "discipline": "environmental epidemiology",
+      "item_id": "csp-en-notaddr-2",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-insuff-1",
+        "evidence_text": "Heat-associated blossom loss constrains silverberry production in enclosed trellis systems. This article describes the MIST-Vine cluster trial, designed to determine whether midday canopy misting alters blossom retention under recurrent heat stress. Forty-eight trellis bays containing 1,920 vines will be assigned to misting or standard ventilation for eight weeks spanning peak flowering. The intervention will deliver calibrated droplets whenever canopy temperature exceeds 33 degrees Celsius between 11:30 and 14:30. Blossom counts, abscission timing, leaf temperature, vapor-pressure deficit, fruit initiation, and fungal lesions will be recorded by observers unaware of bay assignment. The primary outcome is the proportion of tagged blossoms lost within fourteen days; secondary outcomes include fruit initiation and water use. Prespecified models will account for cultivar, bay position, and accumulated thermal load. Recruitment of trellis bays and sensor calibration are complete. The protocol establishes a controlled framework for estimating the magnitude and direction of misting effects on heat-related blossom drop.",
+        "title": "Canopy Misting for Heat-Exposed Silverberry Vines: The MIST-Vine Protocol",
+        "venue": "Methods in Crop Microclimates",
+        "work_family_id": "wf-csp-en-insuff-1",
+        "year": 2024
+      },
+      "claim_text": "Midday canopy misting decreases blossom drop by approximately 15% in heat-stressed silverberry vines.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "INSUFFICIENT_EVIDENCE"
+      },
+      "discipline": "plant physiology",
+      "item_id": "csp-en-insuff-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-insuff-2",
+        "evidence_text": "Artificial shoreline lighting may alter the emergence and dispersal of aquatic insects in developed waterfronts. The LumaBank study installed paired cool-white and amber luminaires along twenty-four matched reaches of the fictional Serevan Canal. Over twelve moon cycles, automated emergence traps, surface cameras, and spectral sensors recorded glasswing midge activity from dusk to four hours after sunset. Water temperature, current speed, vegetation cover, and background illumination were measured concurrently. A total of 38,614 adult midges were captured, with successful observations obtained for 94% of scheduled reach-nights. Specimens have been assigned to emergence windows, and image-based counts are undergoing reconciliation with trap records. The planned analysis will compare nightly emergence rates between lighting spectra using hierarchical models that account for reach pairing, weather, and seasonal timing. Spectrum-specific rate estimates and uncertainty intervals are not yet available. Completed analyses will determine whether cool-white and amber lighting produce different emergence patterns.",
+        "title": "The LumaBank Study of Shoreline Spectrum and Glasswing Midge Emergence",
+        "venue": "Urban Insect Systems",
+        "work_family_id": "wf-csp-en-insuff-2",
+        "year": 2025
+      },
+      "claim_text": "Cool-white shoreline lighting increases nocturnal emergence of glasswing midges relative to amber lighting.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "INSUFFICIENT_EVIDENCE"
+      },
+      "discipline": "urban entomology",
+      "item_id": "csp-en-insuff-2",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-ambig-1",
+        "evidence_text": "Peer information can alter voluntary contributions by changing perceived group norms. We enrolled 384 adults in repeated six-person resource circles and assigned tables to receive either a displayed peer-median contribution or no social information before rounds four through ten. Initial contribution distributions and group endowments were balanced. The preregistered model reported that the peer-median display reduced the contribution difference by 1.8 tokens relative to no display (95% CI, 0.4 to 3.2). This reduction was larger in circles with wide initial dispersion and smaller when the displayed median closely matched the prior-round contribution. The results summary did not specify whether “contribution difference” denoted the signed cue-minus-control contrast or the contraction of dispersion within circles, and raw condition means were not presented. Withdrawal rates and total available resources were similar across assignments. The findings indicate that peer-median information altered contribution patterns, particularly in initially heterogeneous circles, although the reported contrast leaves the direction of the average level change unresolved.",
+        "title": "Peer-Median Displays and Contributions in Repeated Resource Circles",
+        "venue": "Experimental Exchange Review",
+        "work_family_id": "wf-csp-en-ambig-1",
+        "year": 2018
+      },
+      "claim_text": "Showing participants the median contribution of their peers lowers the amount they contribute to a shared-resource fund.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "AMBIGUOUS"
+      },
+      "discipline": "behavioral economics",
+      "item_id": "csp-en-ambig-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-ambig-2",
+        "evidence_text": "Leucinate beverages are marketed as adjuncts to protein-rich recovery meals, but tracer responses may vary with training status and habitual intake. We recruited 72 resistance-trained adults aged 20 to 32 years who habitually consumed at least 1.8 grams of protein per kilogram daily. Following a standardized high-protein meal, participants received a leucinate beverage, and muscle biopsies were collected before intake and at two subsequent time points. The TracerFlux-L assay showed a material postprandial shift in fractional synthetic response that exceeded the prespecified relevance threshold. The summary coefficient was presented as an absolute deviation from baseline without its signed component, and no beverage-free condition was included. Plasma amino-acid availability increased after ingestion, while perceived fullness remained stable. These observations characterize the response to leucinate in young trained adults under acute protein-replete conditions. Whether the observed shift represents enhancement or attenuation of synthesis, or applies under prolonged low-protein intake in older adults, cannot be determined from the reported values.",
+        "title": "Muscle Tracer Responses to Leucinate After a Protein-Rich Meal in Young Trained Adults",
+        "venue": "Journal of Adaptive Nutrition Physiology",
+        "work_family_id": "wf-csp-en-ambig-2",
+        "year": 2022
+      },
+      "claim_text": "A leucinate beverage increases postprandial muscle protein synthesis in adults over 70 who have consumed a low-protein diet for at least eight weeks.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "AMBIGUOUS"
+      },
+      "discipline": "sports nutrition",
+      "item_id": "csp-en-ambig-2",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "abstract_missing",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-absmiss-1",
+        "evidence_text": null,
+        "title": "Migrant Thresholds and Genetic Retention in Fragmented Dune Fox Colonies",
+        "venue": "Conservation Genomics Frontiers",
+        "work_family_id": "wf-csp-en-absmiss-1",
+        "year": 2020
+      },
+      "claim_text": "Maintaining at least four migrant dune foxes per generation prevents measurable loss of heterozygosity in isolated dune fox colonies.",
+      "design_target": {
+        "check_state": "not_checked",
+        "failure_state": "abstract_missing",
+        "stance": null
+      },
+      "discipline": "conservation genetics",
+      "item_id": "csp-en-absmiss-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "abstract_missing",
+        "coverage": "metadata_only",
+        "doi": "10.99999/csp-en-metaonly-1",
+        "evidence_text": null,
+        "title": "Field Notes",
+        "venue": "Annals of Applied Soundscapes",
+        "work_family_id": "wf-csp-en-metaonly-1",
+        "year": 2019
+      },
+      "claim_text": "Broadband traffic playback suppresses dawn-song duration in copper-throated reedbirds.",
+      "design_target": {
+        "check_state": "not_checked",
+        "failure_state": "abstract_missing",
+        "stance": null
+      },
+      "discipline": "acoustic ecology",
+      "item_id": "csp-en-metaonly-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-en-irrel-1",
+        "evidence_text": "The Orven loom codices preserve patterned knot sequences whose organizational role in workshop production remains uncertain. We examined 137 illustrated folios and reconstructed 2,460 knot groups using the LoomMark-8 annotation scheme. Sequence clustering identified five recurrent motifs associated with border design, thread-color changes, and transitions between apprentice and master sections. Motif order predicted the placement of decorative panels with 81% accuracy in held-out folios. Wear patterns on surviving wooden frames further suggested that two motifs served as reminders to reverse shuttle direction rather than as numerical inventory marks. Comparisons across four manuscript collections revealed a gradual standardization of notation over approximately six generations of copying. Scribes retained motif order more faithfully than motif shape, implying that sequence position carried the primary instructional meaning. The findings support an interpretation of the codices as operational guides for coordinating complex textile production rather than as commercial ledgers.",
+        "title": "Knot Sequences in the Orven Loom Codices",
+        "venue": "Journal of Historical Weave Systems",
+        "work_family_id": "wf-csp-en-irrel-1",
+        "year": 2023
+      },
+      "claim_text": "A rising ratio of vesicular argon to matrix neon precedes dome-collapse eruptions at silicic volcanoes by at least twelve hours.",
+      "design_target": {
+        "check_state": "not_checked",
+        "failure_state": null,
+        "stance": null
+      },
+      "discipline": "volcanology",
+      "item_id": "csp-en-irrel-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "not_relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "session_held_full_text",
+        "doi": "10.99999/csp-en-fulltext-1",
+        "evidence_text": "Short retrieval activities may strengthen access to prior mathematical knowledge without displacing substantial instructional time. We assigned 64 classrooms containing 1,536 learners to begin each mathematics lesson with a six-minute retrieval warmup or a time-matched review reading for one sixteen-week term. Assignment was stratified by grade and prior achievement. The primary outcome was a common end-of-term examination scored by masked raters. Learners in retrieval classrooms outperformed those in review-reading classrooms by 0.27 standard deviations (95% CI, 0.18 to 0.36) after adjustment for baseline scores and classroom clustering. Effects were similar for computation and multistep reasoning sections, and intervention completion exceeded 90%. Absence rates and total curriculum coverage did not differ between groups. Detailed subgroup tables by prior achievement, grade, and lesson attendance are provided in the full text. A brief retrieval warmup at the beginning of mathematics lessons therefore produced an examination gain close to one quarter of a standard deviation.",
+        "title": "Daily Retrieval Warmups and Mathematics Achievement Across a School Term",
+        "venue": "Journal of Classroom Learning Trials",
+        "work_family_id": "wf-csp-en-fulltext-1",
+        "year": 2024
+      },
+      "claim_text": "Brief retrieval warmups at the start of mathematics lessons improve end-of-term examination performance by approximately 0.25 standard deviations.",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "support"
+      },
+      "discipline": "education science",
+      "item_id": "csp-en-fulltext-1",
+      "language": "en",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-support-1",
+        "evidence_text": "飽水木材乾燥時容易產生不可逆變形，但低溫程序的實際效益仍缺乏成組資料。本研究將144件取自同一虛構遺址層位的冷杉試片隨機分派至低溫真空、常溫真空與氣乾三組，並以乾燥前後的三維輪廓計算弦向翹曲率。控制初始含水率、年輪角度與試片厚度後，低溫真空組的平均翹曲率為4.8%，常溫真空組為6.8%，相對降低29.4%；調整後差異為負2.0個百分點，95%信賴區間為負2.6至負1.4。氣乾組變形最大，且低溫組未出現額外表面裂隙。結果顯示，低溫真空乾燥可大幅改善飽水冷杉的尺寸穩定性。",
+        "title": "低溫真空程序對飽水冷杉尺寸穩定性的影響",
+        "venue": "《遺材保存學刊》",
+        "work_family_id": "wf-csp-zh-support-1",
+        "year": 2022
+      },
+      "claim_text": "對飽水出土冷杉進行低溫真空乾燥，可使乾燥後弦向翹曲率比常溫真空乾燥降低約30%。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "support"
+      },
+      "discipline": "考古木材保存",
+      "item_id": "csp-zh-support-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-support-2",
+        "evidence_text": "觸覺導覽常以形狀複製品傳達器物外觀，較少呈現製作過程的時間次序。本研究招募36名視障成人，參與兩套內容相同的虛構陶器展導覽；其中一套在揉土、陰乾、燒製與冷卻模型上配置相應的冷暖觸點，另一套僅保留形狀與語音。研究蒐集導覽後重述、半結構訪談及模型排列紀錄，並由三名分析者進行主題歸納。參與者在含溫度線索的導覽後，較常以因果連接詞串聯工序，也能主動修正燒製與冷卻的先後關係。訪談顯示，溫度變化被理解為材料狀態轉換的節點，而非孤立的感官裝飾。研究認為，冷暖觸點為製程敘事提供了可觸摸的時間骨架。",
+        "title": "冷暖觸點如何組織視障參觀者的陶作理解",
+        "venue": "《感知展示研究》",
+        "work_family_id": "wf-csp-zh-support-2",
+        "year": 2021
+      },
+      "claim_text": "在陶器製程導覽中加入溫度觸覺線索，能幫助視障成人形成較連貫的工序敘事。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "support"
+      },
+      "discipline": "博物館觸覺傳播",
+      "item_id": "csp-zh-support-2",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-contradict-1",
+        "evidence_text": "透水鋪面可削減地表逕流，但其孔隙結構可能改變溶質輸送。本研究建置72座等面積鋪面槽，分別採用12%、20%與28%孔隙率的再製骨材，經八週熟化後施以四次等強度模擬暴雨。每次事件均連續收集滲流水，測定硝酸鹽濃度、總體積與穿透時間。混合效應模型顯示，孔隙率每增加8個百分點，事件硝酸鹽輸出量平均增加23.7%，95%信賴區間為15.2%至32.9%；最高孔隙組亦較早出現濃度峰值。各組施氮量、初始含水量及表面溫度相近。結果指出，較大的連通孔隙加速水流繞過反應性微區，因而增加而非減少暴雨後的硝酸鹽淋洗。",
+        "title": "高孔隙透水鋪面的暴雨氮輸出",
+        "venue": "《都市介面水文誌》",
+        "work_family_id": "wf-csp-zh-contradict-1",
+        "year": 2020
+      },
+      "claim_text": "提高透水鋪面孔隙率會減少暴雨後的硝酸鹽淋洗量。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "contradict"
+      },
+      "discipline": "鋪面水文地球化學",
+      "item_id": "csp-zh-contradict-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-contradict-2",
+        "evidence_text": "夜行授粉蛾可能利用花朵周邊的細微聲學訊息，但頻率調變是否改善花種辨識仍不清楚。本研究以事前設定的最小可偵測差異進行樣本規劃，納入360隻實驗室繁殖的斑翅暮蛾。個體在雙選飛行廊道中接觸交替調頻翼振聲、固定頻率聲或靜音控制，兩端配置氣味強度相同但蜜源價值不同的人工花。主要結果為首次降落是否選中高蜜源花。三組準確率分別為61.7%、62.2%與61.1%，整體差異不顯著；交替調頻相對靜音的勝算比為1.03，95%信賴區間為0.79至1.34。飛行時間、性別與試次順序的調整亦未改變結果。研究未發現交替頻率調變能提高花種辨識準確率。",
+        "title": "頻率調變翼振聲與夜行授粉蛾的花種選擇",
+        "venue": "《夜行昆蟲訊號學報》",
+        "work_family_id": "wf-csp-zh-contradict-2",
+        "year": 2024
+      },
+      "claim_text": "交替頻率調變的翼振聲可提高夜行授粉蛾辨識蜜源花種的準確率。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "contradict"
+      },
+      "discipline": "昆蟲感覺聲學",
+      "item_id": "csp-zh-contradict-2",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-mixed-1",
+        "evidence_text": "數位岩芯薄片含有大量低對比裂隙，視覺提示可能改變搜尋效率。本研究招募84名判讀員，其中42名為受訓未滿一年的初學者，42名具有五年以上實務經驗。參與者以交叉次序判讀120幅合成與實採混合影像，一種介面在可疑區域提供短暫對比閃爍，另一種維持靜態。初學者使用閃爍提示時，中位辨識時間縮短18.6%，遺漏率亦下降；資深判讀員使用同一提示時，辨識時間反而延長11.3%，且多次回視非裂隙紋理。經驗與介面的交互作用明確，兩組的準確率均未因速度變化而惡化。訪談顯示初學者將提示視為搜尋起點，資深者則認為提示干擾既有的整體掃描策略。",
+        "title": "閃爍提示對不同經驗岩芯判讀員的影響",
+        "venue": "《地層視覺分析季刊》",
+        "work_family_id": "wf-csp-zh-mixed-1",
+        "year": 2023
+      },
+      "claim_text": "對比閃爍提示可縮短判讀員辨識岩芯薄片微裂隙所需的時間。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "mixed"
+      },
+      "discipline": "地質影像判讀",
+      "item_id": "csp-zh-mixed-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-mixed-2",
+        "evidence_text": "微量摻雜可調節耐火陶瓷的晶界結構，但不同添加量可能產生相反作用。本研究製備未摻雜、0.3%鈮與1.2%鈮三種多孔陶瓷，每種配方包含48件試體，反覆承受室溫至九百度的急熱急冷循環。失效定義為彈性模數下降四成或出現貫穿裂紋。0.3%鈮組的中位失效循環數較未摻雜組增加22.4%，裂紋擴展速率同步下降；相較之下，1.2%鈮組的中位壽命縮短19.1%，並形成連續脆性第二相。孔隙率與初始強度校正後，兩種方向均維持。顯微觀察顯示，低劑量可釘扎晶界，高劑量則造成應力集中。因此，鈮摻雜的效果取決於含量，少量延壽而較高添加量促進失效。",
+        "title": "鈮含量決定多孔耐火陶瓷的裂紋演化",
+        "venue": "《高溫孔材工程論叢》",
+        "work_family_id": "wf-csp-zh-mixed-2",
+        "year": 2019
+      },
+      "claim_text": "鈮摻雜可延長多孔耐火陶瓷的熱循環壽命。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "mixed"
+      },
+      "discipline": "耐火陶瓷工程",
+      "item_id": "csp-zh-mixed-2",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-notaddr-1",
+        "evidence_text": "微型濕地屋頂兼具滯水與棲地功能，基質改良材料可能改變無脊椎動物的定殖條件。本研究在60座屋頂池中配置一般基質或含鐵包覆生物炭的基質，連續三個雨季記錄蜻蜓到訪、羽化殼數量、水面溫度與植被遮蔽度。添加生物炭的池體在第二與第三雨季具有較低的日間最高水溫，羽化殼數量則主要受挺水植物覆蓋率影響。兩種基質的成蟲到訪頻率相近，但生物炭池的幼蟲出現時間較早。研究另建立熱影像與人工巡查的一致性資料，供屋頂棲地監測使用。採樣與分析未包含滲流水、磷濃度或養分負荷。結果說明基質配置與微氣候及蜻蜓定殖的關聯。",
+        "title": "鐵包覆生物炭屋頂的蜻蜓定殖與熱環境",
+        "venue": "《立體棲地設計學刊》",
+        "work_family_id": "wf-csp-zh-notaddr-1",
+        "year": 2025
+      },
+      "claim_text": "在微型濕地屋頂基質中加入鐵包覆生物炭，可降低暴雨造成的磷輸出，且效果能維持三個雨季。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "not_addressed"
+      },
+      "discipline": "都市濕地棲地工程",
+      "item_id": "csp-zh-notaddr-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-notaddr-2",
+        "evidence_text": "古紙表面的明礬分布不均，使局部取樣難以代表整頁狀態。本研究以96張人工熟化紙與28張來源不詳的館藏碎片建立非接觸螢光成像流程，使用四個激發波段推估明礬殘留位置。校正資料以微量元素掃描所得的鋁訊號為參照。最佳波段組合對高低殘留區的辨識一致率為89%，且在墨跡、膠料與黴斑存在時仍維持穩定。研究進一步比較平滑、纖維外露及壓光表面，提出依表面紋理修正反射偏差的方法。所有樣本均在固定溫濕度下成像，未施加濕熱循環，也未測量聚合度、鏈斷裂或脆裂強度。此流程可支援明礬殘留的快速定位與後續取樣規劃。",
+        "title": "古紙明礬殘留的非接觸螢光定位方法",
+        "venue": "《文物光譜方法誌》",
+        "work_family_id": "wf-csp-zh-notaddr-2",
+        "year": 2018
+      },
+      "claim_text": "古紙中的明礬殘留會在濕熱循環期間促進纖維素鏈斷裂，因而提高紙頁脆裂風險。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "not_addressed"
+      },
+      "discipline": "文化資產光譜學",
+      "item_id": "csp-zh-notaddr-2",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-insuff-1",
+        "evidence_text": "養殖牡蠣排卵時間分散會降低受精效率，人工光脈衝可能調整群體節律。本研究說明一項預先規劃的多槽隨機方案，預計納入480隻成熟月紋牡蠣，依體型分層後配置至節律光脈衝、等光量持續照明與自然暗期三組。主要結果為首隻排卵後六小時內各槽個體排卵時間的圓形離散度，次要結果包括配子濃度、受精率與閉殼行為。水溫、鹽度、月相模擬與餌料供應將由中央系統同步控制，影像判讀者不知道各槽照明設定。研究亦規定排除標準、缺失資料處理與模型形式。目前內容涵蓋研究程序與分析規格，尚未提供任何組別的排卵時間或同步程度。",
+        "title": "節律光脈衝與月紋牡蠣同步排卵：多槽隨機研究方案",
+        "venue": "《潮汐養殖方法學報》",
+        "work_family_id": "wf-csp-zh-insuff-1",
+        "year": 2024
+      },
+      "claim_text": "夜間節律光脈衝會提高月紋牡蠣群體排卵的同步程度。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "INSUFFICIENT_EVIDENCE"
+      },
+      "discipline": "水產繁殖時序學",
+      "item_id": "csp-zh-insuff-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-insuff-2",
+        "evidence_text": "複層地下空間缺乏遠距視野，初次訪客容易重返已通過的節點。本研究在虛構的霧廊公共通道招募612名首次到訪者，依時段交替提供地標圖預覽或一般樓層編號圖。參與者需完成三個指定目的地的連續尋路任務，穿戴式定位器記錄回走、停頓、樓層切換與總路徑長度；出口訪談另蒐集地標回憶及主觀確定感。資料收集已完成，定位漂移校正與跨樓層軌跡拼接仍在進行。研究團隊將以預先設定的回走率為主要結果，並依空間焦慮與先前導航經驗進行分層分析。目前尚無可用的組間估計值、信賴區間或方向性結果，完整分析將於軌跡清理完成後提出。",
+        "title": "地標圖預覽與複層地下動線：霧廊隊列研究",
+        "venue": "《空間行為與導向研究》",
+        "work_family_id": "wf-csp-zh-insuff-2",
+        "year": 2025
+      },
+      "claim_text": "在複層地下空間進入路線前先提供地標圖，可降低初次訪客的回走率。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "INSUFFICIENT_EVIDENCE"
+      },
+      "discipline": "地下空間導航認知",
+      "item_id": "csp-zh-insuff-2",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-ambig-1",
+        "evidence_text": "圖文呈現次序可能影響幼兒建立新詞表徵的方式。本研究招募128名五至六歲幼兒，隨機接受插圖先行或文字先行的電子共讀版本；每版包含八個罕見詞與八個常見詞，敘事、朗讀速度及觀看時間均相同。研究於共讀後立即及七日後進行指認與命名作業。整體模型顯示詞頻、時間與呈現次序之間存在交互作用，而報告將主要結果表述為：「插圖先行組沒有像文字先行組一樣減少罕見詞優勢。」兩組在立即作業的總正確率相近，七日後的交互作用估計為0.17，但摘要未列各條件下罕見詞與常見詞的平均值。結果指出呈現次序改變了詞頻差異的延宕變化。",
+        "title": "圖文次序與幼兒罕見詞的延宕保持",
+        "venue": "《早期語意發展論集》",
+        "work_family_id": "wf-csp-zh-ambig-1",
+        "year": 2020
+      },
+      "claim_text": "共讀時先呈現插圖再呈現文字，會擴大幼兒對罕見詞相對於常見詞的延宕記憶優勢。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "AMBIGUOUS"
+      },
+      "discipline": "兒童詞彙記憶",
+      "item_id": "csp-zh-ambig-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-ambig-2",
+        "evidence_text": "月塵莧被視為封閉生境的候選葉菜，但不同生長階段與根域條件可能改變其光反應。本研究培養90株萌發後十四日的幼株，全部置於低鹽營養膜系統，並施以每日兩小時的脈衝藍光；另以歷年常模作為生理狀態參照，未設連續光或無藍光的同期組。七日後量測葉片含水率、總離子訊號、葉綠素螢光及新生葉面積。摘要僅報告藍光處理植株維持「較佳的離子狀態」，且總離子訊號落在預定健康範圍，未分列鈉濃度或變化方向。研究對象皆為幼株，期間未施加高鹽基質，也未追蹤成株葉片。作者認為結果可供後續逆境照明研究選定參數。",
+        "title": "低鹽營養膜中的幼株月塵莧對脈衝藍光之反應",
+        "venue": "《封閉生境植物誌》",
+        "work_family_id": "wf-csp-zh-ambig-2",
+        "year": 2023
+      },
+      "claim_text": "脈衝藍光可降低高鹽基質中成株月塵莧葉片的鈉累積。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "AMBIGUOUS"
+      },
+      "discipline": "封閉環境作物生理",
+      "item_id": "csp-zh-ambig-2",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "abstract_missing",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-absmiss-1",
+        "evidence_text": null,
+        "title": "含銅鞣酸墨水與羊皮紙乾濕老化的膠原反應",
+        "venue": "《古寫材化學紀要》",
+        "work_family_id": "wf-csp-zh-absmiss-1",
+        "year": 2019
+      },
+      "claim_text": "含銅鞣酸墨水在反覆乾濕循環下，比無銅鞣酸墨水造成更快的羊皮紙膠原收縮。",
+      "design_target": {
+        "check_state": "not_checked",
+        "failure_state": "abstract_missing",
+        "stance": null
+      },
+      "discipline": "歷史墨水化學",
+      "item_id": "csp-zh-absmiss-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "abstract_missing",
+        "coverage": "metadata_only",
+        "doi": "10.99999/csp-zh-metaonly-1",
+        "evidence_text": null,
+        "title": "沉積物研究",
+        "venue": "《灣泥研究簡報》",
+        "work_family_id": "wf-csp-zh-metaonly-1",
+        "year": 2021
+      },
+      "claim_text": "在缺氧河口泥中施用細粒貝殼粉，可抑制沉積物釋放溶解態磷。",
+      "design_target": {
+        "check_state": "not_checked",
+        "failure_state": "abstract_missing",
+        "stance": null
+      },
+      "discipline": "河口底質修復",
+      "item_id": "csp-zh-metaonly-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "abstract",
+        "doi": "10.99999/csp-zh-irrel-1",
+        "evidence_text": "陶質簧片可提供耐候且可塑形的聲源，但燒成後的釉層差異可能造成音高漂移。本研究製作96枚尺寸一致的陶質簧片，配置四種釉層厚度與三種燒成峰值溫度，並在恆定氣流下量測基頻、泛音比例及連續演奏三十分鐘後的頻率偏移。中等釉層組具有最低的音高變異，過厚釉層則增加高頻泛音衰減；燒成溫度與釉層厚度之間存在明顯交互作用。掃描影像顯示，微孔集中於簧片固定端時，頻率漂移較大。研究另以12件原型共鳴器進行盲聽排序，聽者偏好與頻率穩定度呈中度關聯。結果可供陶質吹奏構件的尺寸補償與燒製程序設計參考。",
+        "title": "陶質簧片共鳴器的音高穩定與釉層厚度",
+        "venue": "《實驗樂器材料學刊》",
+        "work_family_id": "wf-csp-zh-irrel-1",
+        "year": 2022
+      },
+      "claim_text": "週期性降低培養床濕度，可延緩銀脈菌的菌絲前緣擴張速度。",
+      "design_target": {
+        "check_state": "not_checked",
+        "failure_state": null,
+        "stance": null
+      },
+      "discipline": "菌絲病害動力學",
+      "item_id": "csp-zh-irrel-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "not_relevant"
+    },
+    {
+      "candidate": {
+        "content_state": "available",
+        "coverage": "session_held_full_text",
+        "doi": "10.99999/csp-zh-fulltext-1",
+        "evidence_text": "融雪後滲入孔隙的水再次結冰，容易造成路面界面剪切破壞。本研究製備180塊多孔路面試體，隨機採用標準黏結料或含鹽水微膠囊的改質黏結料，並接受十五次融雪與再結冰循環。主要結果為達到預定裂縫面積前的剪切失效次數。微膠囊組的失效比例為31.1%，標準組為42.2%，相對降低26.3%；調整孔隙率與初始強度後的風險比為0.74，95%信賴區間為0.59至0.92。微膠囊組的界面冰層亦較薄，乾燥狀態下的抗滑性未受影響。依孔隙級距、循環批次與試體厚度分列的詳細次群表格收錄於全文。結果支持以鹽水微膠囊降低再結冰引起的剪切失效。",
+        "title": "鹽水微膠囊對多孔路面再結冰剪切耐受性的提升",
+        "venue": "《寒域鋪面技術學報》",
+        "work_family_id": "wf-csp-zh-fulltext-1",
+        "year": 2024
+      },
+      "claim_text": "在多孔路面加入鹽水微膠囊，可使融雪後再結冰造成的剪切失效降低約25%。",
+      "design_target": {
+        "check_state": "performed",
+        "failure_state": null,
+        "stance": "support"
+      },
+      "discipline": "冰雪路面材料",
+      "item_id": "csp-zh-fulltext-1",
+      "language": "zh-TW",
+      "provenance": {
+        "generator": "codex gpt-5.6-sol (model_reasoning_effort=xhigh), cross-model authored 2026-08-14",
+        "rights": "repository-owned synthetic",
+        "synthetic": true
+      },
+      "relevance_design": "relevant"
+    }
+  ],
+  "registered_in_suite_registry": false,
+  "schema_version": "claim-standing-stance-set/0.1",
+  "status": "seed_unmeasured",
+  "suite": "claim_standing_probe"
+}

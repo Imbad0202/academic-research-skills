@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/claim_standing_probe/heldout_stance_set.schema.json",
+  "title": "#655 claim-standing stance seed set (v0.1, unmeasured)",
+  "description": "Repository-owned synthetic claim/candidate pairs for the future stance-classification baseline. design_target fields are construction intent only — never ground truth, never shown to experts or subjects. Ground truth comes exclusively from at least two independent blinded human expert labels plus arm-blind adjudication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "status",
+    "registered_in_suite_registry",
+    "ground_truth_boundary",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {"const": "claim-standing-stance-set/0.1"},
+    "suite": {"const": "claim_standing_probe"},
+    "status": {"const": "seed_unmeasured"},
+    "registered_in_suite_registry": {"const": false},
+    "ground_truth_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "design_targets_are_construction_intent_only",
+        "design_targets_excluded_from_expert_and_subject_packets",
+        "ground_truth_requires_two_blinded_experts_plus_adjudication"
+      ],
+      "properties": {
+        "design_targets_are_construction_intent_only": {"const": true},
+        "design_targets_excluded_from_expert_and_subject_packets": {"const": true},
+        "ground_truth_requires_two_blinded_experts_plus_adjudication": {"const": true}
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/item"}
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "language",
+        "discipline",
+        "claim_text",
+        "candidate",
+        "relevance_design",
+        "design_target",
+        "provenance"
+      ],
+      "properties": {
+        "item_id": {"type": "string", "pattern": "^csp-(en|zh)-[a-z]+-[0-9]$"},
+        "language": {"enum": ["en", "zh-TW"]},
+        "discipline": {"type": "string", "minLength": 3, "maxLength": 80},
+        "claim_text": {"type": "string", "minLength": 15, "maxLength": 800},
+        "candidate": {"$ref": "#/$defs/candidate"},
+        "relevance_design": {"enum": ["relevant", "not_relevant"]},
+        "design_target": {"$ref": "#/$defs/design_target"},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "work_family_id",
+        "title",
+        "venue",
+        "year",
+        "doi",
+        "coverage",
+        "content_state",
+        "evidence_text"
+      ],
+      "properties": {
+        "work_family_id": {"type": "string", "pattern": "^wf-csp-(en|zh)-[a-z]+-[0-9]$"},
+        "title": {"type": "string", "minLength": 4, "maxLength": 300},
+        "venue": {"type": "string", "minLength": 2, "maxLength": 160},
+        "year": {"type": "integer", "minimum": 2010, "maximum": 2026},
+        "doi": {"type": "string", "pattern": "^10\\.99999/csp-(en|zh)-[a-z]+-[0-9]$"},
+        "coverage": {"enum": ["abstract", "session_held_full_text", "metadata_only"]},
+        "content_state": {"enum": ["available", "abstract_missing"]},
+        "evidence_text": {
+          "anyOf": [
+            {"type": "string", "minLength": 40, "maxLength": 4000},
+            {"type": "null"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"content_state": {"const": "available"}}},
+          "then": {"properties": {"evidence_text": {"type": "string"}}}
+        },
+        {
+          "if": {"properties": {"content_state": {"const": "abstract_missing"}}},
+          "then": {"properties": {"evidence_text": {"const": null}}}
+        },
+        {
+          "if": {"properties": {"coverage": {"const": "metadata_only"}}},
+          "then": {"properties": {"evidence_text": {"const": null}, "content_state": {"const": "abstract_missing"}}}
+        }
+      ]
+    },
+    "design_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_state", "stance", "failure_state"],
+      "properties": {
+        "check_state": {"enum": ["performed", "not_checked"]},
+        "stance": {
+          "anyOf": [
+            {
+              "enum": [
+                "support",
+                "contradict",
+                "mixed",
+                "not_addressed",
+                "INSUFFICIENT_EVIDENCE",
+                "AMBIGUOUS"
+              ]
+            },
+            {"type": "null"}
+          ]
+        },
+        "failure_state": {
+          "anyOf": [
+            {"enum": ["abstract_missing", "source_missing"]},
+            {"type": "null"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"check_state": {"const": "performed"}}},
+          "then": {
+            "properties": {
+              "stance": {"type": "string"},
+              "failure_state": {"const": null}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"check_state": {"const": "not_checked"}}},
+          "then": {
+            "properties": {
+              "stance": {"const": null}
+            }
+          }
+        }
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generator", "synthetic", "rights"],
+      "properties": {
+        "generator": {"type": "string", "minLength": 4, "maxLength": 120},
+        "synthetic": {"const": true},
+        "rights": {"const": "repository-owned synthetic"}
+      }
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/claim_standing_probe/adjudicated_labels.schema.json",
+  "title": "#655 adjudicated ground-truth labels",
+  "description": "The sealed ground truth the mechanical scorer consumes. Requires at least two independent expert label files (hash-bound) and a separate adjudicator who resolved every disagreement while blind to subject output; agreement rows carry the agreed label verbatim. Raw expert labels and disagreements remain retained artifacts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "adjudicator_id",
+    "expert_label_files",
+    "rows"
+  ],
+  "properties": {
+    "schema_version": {"const": "claim-standing-adjudicated-labels/0.1"},
+    "suite": {"const": "claim_standing_probe"},
+    "adjudicator_id": {"type": "string", "pattern": "^adjudicator-[a-z0-9][a-z0-9-]{0,30}$"},
+    "expert_label_files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expert_id", "sha256"],
+        "properties": {
+          "expert_id": {"type": "string", "pattern": "^expert-[a-z0-9][a-z0-9-]{0,30}$"},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/row"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "relevance",
+        "check_state",
+        "stance",
+        "failure_state",
+        "evidence_scope",
+        "disagreement",
+        "adjudication_rationale"
+      ],
+      "properties": {
+        "item_id": {"type": "string", "pattern": "^csp-(en|zh)-[a-z]+-[0-9]$"},
+        "relevance": {"enum": ["relevant", "not_relevant"]},
+        "check_state": {"enum": ["performed", "not_checked"]},
+        "stance": {
+          "anyOf": [
+            {
+              "enum": [
+                "support",
+                "contradict",
+                "mixed",
+                "not_addressed",
+                "INSUFFICIENT_EVIDENCE",
+                "AMBIGUOUS"
+              ]
+            },
+            {"type": "null"}
+          ]
+        },
+        "failure_state": {
+          "anyOf": [
+            {"enum": ["abstract_missing", "source_missing"]},
+            {"type": "null"}
+          ]
+        },
+        "evidence_scope": {
+          "enum": ["abstract", "session_held_full_text", "metadata_only"]
+        },
+        "disagreement": {"type": "boolean"},
+        "adjudication_rationale": {
+          "anyOf": [{"type": "string", "minLength": 10, "maxLength": 1200}, {"type": "null"}]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"check_state": {"const": "performed"}}},
+          "then": {
+            "properties": {
+              "stance": {"type": "string"},
+              "failure_state": {"const": null}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"check_state": {"const": "not_checked"}}},
+          "then": {
+            "properties": {
+              "stance": {"const": null}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"disagreement": {"const": true}}},
+          "then": {"properties": {"adjudication_rationale": {"type": "string"}}}
+        }
+      ]
+    }
+  }
+}
