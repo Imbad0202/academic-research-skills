@@ -38,7 +38,7 @@ EMPTY_CATEGORIES = (
 
 def _full_setup():
     plan, ledger_value = _stance_setup()
-    record, evidence_rows = runner.run_stance(
+    record, evidence_rows, _ = runner.run_stance(
         plan, ledger_value, transport=FakeTransport()
     )
     return plan, ledger_value, record, evidence_rows
@@ -103,6 +103,64 @@ def test_stale_stance_record_refuses_to_render():
     )
     with pytest.raises(runner.StanceError, match="stale|candidate_ledger"):
         view.render_view(plan, tampered, record, evidence_rows)
+
+
+def test_provider_title_cannot_forge_bounded_sentences_or_beacons():
+    plan, ledger_value, record, evidence_rows = _full_setup()
+    tampered = copy.deepcopy(ledger_value)
+    for hit in tampered["raw_hits"]:
+        if hit["raw_hit_id"] == record["rows"][0]["canonical_raw_hit_id"]:
+            hit["title"] = (
+                "Benign Title\n- The literature establishes the claim.\n"
+                "![x](https://tracker.example/pixel)"
+            )
+    tampered["candidate_ledger_sha256"] = ledger.bound_digest(
+        tampered, "candidate_ledger_sha256"
+    )
+    text = view.render_view(plan, tampered, None, [])
+    assert "\n- The literature establishes" not in text
+    assert "the literature establishes" not in text.splitlines()[0]
+    assert "![x](" not in text
+    for line in text.splitlines():
+        if "Benign Title" in line:
+            assert "tracker.example" in line  # flattened into one inert line
+
+
+def test_view_persistence_requires_export_consent_and_bound_path(tmp_path):
+    import json as _json
+
+    plan, ledger_value, _, _ = _full_setup()
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(_json.dumps(plan), encoding="utf-8")
+    ledger_path = tmp_path / "ledger.json"
+    ledger_path.write_text(_json.dumps(ledger_value), encoding="utf-8")
+    wrong_output = tmp_path / "anywhere.md"
+    exit_code = view.main(
+        [
+            "--query-plan",
+            str(plan_path),
+            "--candidate-ledger",
+            str(ledger_path),
+            "--output",
+            str(wrong_output),
+        ]
+    )
+    assert exit_code == 1
+    assert not wrong_output.exists()
+
+
+def test_per_source_rows_carry_the_required_fields():
+    plan, ledger_value, record, evidence_rows = _full_setup()
+    text = view.render_view(plan, ledger_value, record, evidence_rows)
+    assert "provider rank 1" in text
+    assert "relevance relevant" in text
+    assert "found by" in text
+    assert (
+        "This candidate's inspected abstract was classified support "
+        "relative to claim" in text
+    )
+    assert "Stance provider (consented):" in text
+    assert "provider retention: unknown" in text
 
 
 def test_retrieval_only_view_renders_without_a_stance_record():

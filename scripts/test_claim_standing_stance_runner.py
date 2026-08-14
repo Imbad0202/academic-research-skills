@@ -57,7 +57,7 @@ def _stance_setup() -> tuple[dict, dict]:
 def test_happy_path_produces_valid_record_and_evidence_rows():
     plan, ledger_value = _stance_setup()
     transport = FakeTransport()
-    record, evidence_rows = runner.run_stance(plan, ledger_value, transport=transport)
+    record, evidence_rows, _ = runner.run_stance(plan, ledger_value, transport=transport)
 
     record_schema = json.loads(
         (CONTRACTS / "claim_standing/stance_record.schema.json").read_bytes()
@@ -167,7 +167,7 @@ def test_prompt_contract_version_binds_the_runner():
 )
 def test_malformed_judge_output_becomes_parse_error(output):
     plan, ledger_value = _stance_setup()
-    record, evidence_rows = runner.run_stance(
+    record, evidence_rows, _ = runner.run_stance(
         plan, ledger_value, transport=FakeTransport(output)
     )
     row = record["rows"][0]
@@ -186,7 +186,7 @@ def test_malformed_judge_output_becomes_parse_error(output):
 )
 def test_transport_failures_map_to_the_closed_vocabulary(raised, failure):
     plan, ledger_value = _stance_setup()
-    record, evidence_rows = runner.run_stance(
+    record, evidence_rows, _ = runner.run_stance(
         plan, ledger_value, transport=FakeTransport(raised)
     )
     row = record["rows"][0]
@@ -196,9 +196,83 @@ def test_transport_failures_map_to_the_closed_vocabulary(raised, failure):
     runner.validate_stance_record(plan, ledger_value, record, evidence_rows)
 
 
+def test_nonstring_transport_return_is_judge_error():
+    plan, ledger_value = _stance_setup()
+
+    class NoneTransport(FakeTransport):
+        def __call__(self, prompt: str):
+            return None
+
+    record, evidence_rows, transmissions = runner.run_stance(
+        plan, ledger_value, transport=NoneTransport()
+    )
+    row = record["rows"][0]
+    assert row["check_state"] == "not_checked"
+    assert row["failure_state"] == "judge_error"
+    assert transmissions[0]["result_state"] == "judge_error"
+
+
+def test_every_transport_call_records_a_transmission_event():
+    plan, ledger_value = _stance_setup()
+    record, evidence_rows, transmissions = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    assert len(transmissions) == 1
+    event = transmissions[0]
+    assert event["recipient_provider_identity"] == STANCE_PLAN["provider_identity"]
+    assert event["content_classes"] == [
+        "claim_and_selected_evidence_to_stance_provider"
+    ]
+    assert event["consent_receipt_id"] == plan["consent"]["consent_receipt_id"]
+    assert event["retention_state"] == "unknown"
+    assert event["result_state"] == "performed"
+    assert event["prompt_sha256"] == record["rows"][0]["prompt_sha256"]
+
+
+def test_forged_cross_candidate_evidence_is_rejected():
+    plan, ledger_value = _stance_setup()
+    record, evidence_rows, _ = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    forged = copy.deepcopy(evidence_rows)
+    forged[0]["candidate"]["canonical_raw_hit_id"] = "hit-2"
+    forged[0]["row_sha256"] = ledger.bound_digest(forged[0], "row_sha256")
+    resealed = copy.deepcopy(record)
+    resealed["rows"][0]["evidence_row_refs"][0]["row_sha256"] = forged[0][
+        "row_sha256"
+    ]
+    resealed["stance_record_sha256"] = ledger.bound_digest(
+        resealed, "stance_record_sha256"
+    )
+    with pytest.raises(runner.StanceError, match="different\s+candidate|candidate"):
+        runner.validate_stance_record(plan, ledger_value, resealed, forged)
+
+
+def test_fabricated_excerpt_fails_span_replay():
+    plan, ledger_value = _stance_setup()
+    record, evidence_rows, _ = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    forged = copy.deepcopy(evidence_rows)
+    forged[0]["excerpt"]["text"] = "totally fabricated excerpt"
+    forged[0]["excerpt"]["excerpt_sha256"] = ledger.text_digest(
+        "totally fabricated excerpt"
+    )
+    forged[0]["row_sha256"] = ledger.bound_digest(forged[0], "row_sha256")
+    resealed = copy.deepcopy(record)
+    resealed["rows"][0]["evidence_row_refs"][0]["row_sha256"] = forged[0][
+        "row_sha256"
+    ]
+    resealed["stance_record_sha256"] = ledger.bound_digest(
+        resealed, "stance_record_sha256"
+    )
+    with pytest.raises(runner.StanceError, match="replay"):
+        runner.validate_stance_record(plan, ledger_value, resealed, forged)
+
+
 def test_semantic_validator_fails_closed_on_tampering():
     plan, ledger_value = _stance_setup()
-    record, evidence_rows = runner.run_stance(
+    record, evidence_rows, _ = runner.run_stance(
         plan, ledger_value, transport=FakeTransport()
     )
     # Re-seal after tampering so the semantic layer, not the record hash,
@@ -236,7 +310,7 @@ def test_semantic_validator_fails_closed_on_tampering():
 
 def test_record_hash_binds_the_whole_record():
     plan, ledger_value = _stance_setup()
-    record, evidence_rows = runner.run_stance(
+    record, evidence_rows, _ = runner.run_stance(
         plan, ledger_value, transport=FakeTransport()
     )
     assert record["stance_record_sha256"] == ledger.bound_digest(

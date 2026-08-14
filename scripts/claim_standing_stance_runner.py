@@ -159,31 +159,38 @@ def _selected_families(ledger_value: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _parse_judge_output(raw_output: str, evidence_text: str) -> dict[str, Any]:
-    """Strict four-line grammar; any deviation is a parse error."""
+    """Strict four-line grammar, in order, nothing else; deviations are parse
+    errors, and the record schema's own bounds are enforced here so a verbose
+    judge degrades one row instead of aborting the run."""
     lines = [line for line in raw_output.splitlines() if line.strip()]
+    prefixes = ("STANCE: ", "EVIDENCE: ", "CONDITIONS: ", "RATIONALE: ")
+    if len(lines) != len(prefixes):
+        raise ValueError("expected exactly four labeled lines and nothing else")
     fields: dict[str, str] = {}
-    for prefix in ("STANCE: ", "EVIDENCE: ", "CONDITIONS: ", "RATIONALE: "):
-        matching = [line for line in lines if line.startswith(prefix)]
-        if len(matching) != 1:
-            raise ValueError(f"expected exactly one {prefix.strip()} line")
-        fields[prefix.strip().rstrip(":")] = matching[0][len(prefix) :].strip()
+    for line, prefix in zip(lines, prefixes):
+        if not line.startswith(prefix):
+            raise ValueError(f"expected the {prefix.strip()} line in order")
+        fields[prefix.strip().rstrip(":")] = line[len(prefix) :].strip()
     if fields["STANCE"] not in STANCES:
         raise ValueError(f"unknown stance token {fields['STANCE']!r}")
     quote = fields["EVIDENCE"]
     if not quote or quote == "none":
         raise ValueError("EVIDENCE must quote the inspected text")
-    if len(quote.split()) > MAX_EVIDENCE_WORDS:
-        raise ValueError("EVIDENCE exceeds the 25-word ceiling")
+    if len(quote.split()) > MAX_EVIDENCE_WORDS or len(quote) > 1000:
+        raise ValueError("EVIDENCE exceeds the bounded-excerpt ceiling")
     if quote not in evidence_text:
         raise ValueError("EVIDENCE is not a verbatim substring of the inspected text")
-    if not fields["RATIONALE"]:
-        raise ValueError("RATIONALE must be non-empty")
+    rationale = fields["RATIONALE"]
+    if not rationale or len(rationale) > 2000:
+        raise ValueError("RATIONALE must be non-empty and at most 2000 characters")
     conditions = fields["CONDITIONS"]
+    if len(conditions) > 1000:
+        raise ValueError("CONDITIONS exceeds 1000 characters")
     return {
         "stance": fields["STANCE"],
         "quote": quote,
         "conditions": None if conditions == "none" else conditions,
-        "rationale": fields["RATIONALE"],
+        "rationale": rationale,
     }
 
 
@@ -215,7 +222,7 @@ def _evidence_row(
         },
         "coverage": family["coverage"],
         "source": {
-            "source_content_sha256": substrate.text_digest(evidence_text),
+            "source_content_sha256": family["content_sha256"],
             "source_content_utf8_bytes": len(evidence_text.encode("utf-8")),
         },
         "excerpt": {
@@ -228,17 +235,16 @@ def _evidence_row(
             },
             "captured_at": captured_at,
         },
-        "cache": {"status": "not_used", "key_sha256": None},
+        # Fresh extraction, recorded as a cache miss per the family rule.
+        "cache": {"status": "miss", "key_sha256": substrate.text_digest(quote)},
         "content_handling": {
             "contains_external_text": True,
-            "sharing_scope": plan["consent"]["local_persistence"],
+            # Local persistence authority never confers sharing authority.
+            "sharing_scope": "session_only",
             "rights_basis": "not_assessed",
         },
         "row_sha256": "0" * 64,
     }
-    # The family's retrieved-state rule requires a non-not_used cache status;
-    # this surface performs a fresh extraction, recorded as a miss.
-    row["cache"] = {"status": "miss", "key_sha256": substrate.text_digest(quote)}
     row["row_sha256"] = substrate.bound_digest(row, "row_sha256")
     _validate_schema(EVIDENCE_ROW_SCHEMA, row, "evidence row")
     return row
@@ -255,6 +261,15 @@ def _stance_prompt(
     )
 
 
+def _tally(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counted = {bucket: 0 for bucket in STANCES}
+    counted["not_checked"] = 0
+    for row in rows:
+        bucket = row["stance"] if row["check_state"] == "performed" else "not_checked"
+        counted[bucket] += 1
+    return counted
+
+
 def run_stance(
     plan: dict[str, Any],
     ledger_value: dict[str, Any],
@@ -268,6 +283,7 @@ def run_stance(
     hits_by_id = {hit["raw_hit_id"]: hit for hit in ledger_value["raw_hits"]}
     rows: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
+    transmissions: list[dict[str, Any]] = []
     for family in _selected_families(ledger_value):
         hit = hits_by_id[family["canonical_raw_hit_id"]]
         base_row = {
@@ -302,14 +318,43 @@ def run_stance(
                 "prompt_sha256": prompt_sha,
             }
         )
+        transmission = {
+            "work_family_id": family["work_family_id"],
+            "recipient_provider_identity": plan["stance_plan"]["provider_identity"],
+            "recipient_model_identity": plan["stance_plan"]["model_identity"],
+            "purpose": "stance_classification",
+            "content_classes": ["claim_and_selected_evidence_to_stance_provider"],
+            "prompt_sha256": prompt_sha,
+            "prompt_utf8_bytes": len(prompt.encode("utf-8")),
+            "consent_receipt_id": plan["consent"]["consent_receipt_id"],
+            "retention_state": plan["stance_plan"]["retention_state"],
+            "retention_reference": plan["stance_plan"]["retention_reference"],
+            "sent_at": _now(),
+            "result_state": None,
+        }
+        transmissions.append(transmission)
         try:
             raw_output = transport(prompt)
         except TimeoutError:
             base_row["failure_state"] = "judge_timeout"
+            transmission["result_state"] = "judge_timeout"
             rows.append(base_row)
             continue
         except Exception:  # noqa: BLE001 — any provider failure is judge_error
             base_row["failure_state"] = "judge_error"
+            transmission["result_state"] = "judge_error"
+            rows.append(base_row)
+            continue
+        if not isinstance(raw_output, str):
+            base_row["failure_state"] = "judge_error"
+            transmission["result_state"] = "judge_error"
+            rows.append(base_row)
+            continue
+        if len(raw_output) > 20000:
+            # The contract's raw-output ceiling; an oversized output is not
+            # retained (retaining a truncation would not be verbatim).
+            base_row["failure_state"] = "parse_error"
+            transmission["result_state"] = "oversized_output"
             rows.append(base_row)
             continue
         assessed_at = _now()
@@ -324,12 +369,14 @@ def run_stance(
             parsed = _parse_judge_output(raw_output, hit["abstract_text"])
         except (ValueError, TypeError):
             base_row["failure_state"] = "parse_error"
+            transmission["result_state"] = "parse_error"
             rows.append(base_row)
             continue
         evidence = _evidence_row(
             plan, ledger_value, family, hit, parsed["quote"], assessed_at
         )
         evidence_rows.append(evidence)
+        transmission["result_state"] = "performed"
         base_row.update(
             check_state="performed",
             stance=parsed["stance"],
@@ -344,17 +391,8 @@ def run_stance(
     distribution = {
         "denominator": "all_selected_work_families",
         "selected_total": len(rows),
-        "support": 0,
-        "contradict": 0,
-        "mixed": 0,
-        "not_addressed": 0,
-        "INSUFFICIENT_EVIDENCE": 0,
-        "AMBIGUOUS": 0,
-        "not_checked": 0,
+        **_tally(rows),
     }
-    for row in rows:
-        bucket = row["stance"] if row["check_state"] == "performed" else "not_checked"
-        distribution[bucket] += 1
 
     record = {
         "schema_version": "claim-standing-stance-record/1.0",
@@ -389,7 +427,7 @@ def run_stance(
     )
     _validate_schema(STANCE_RECORD_SCHEMA, record, "stance record")
     validate_stance_record(plan, ledger_value, record, evidence_rows)
-    return record, evidence_rows
+    return record, evidence_rows, transmissions
 
 
 def validate_stance_record(
@@ -399,6 +437,8 @@ def validate_stance_record(
     evidence_rows: list[dict[str, Any]],
 ) -> None:
     """The semantic verifier the stance-record contract names as required."""
+    _require_stance_consent(plan)
+    _require_bound_ledger(plan, ledger_value)
     _validate_schema(STANCE_RECORD_SCHEMA, record, "stance record")
     if record["stance_record_sha256"] != substrate.bound_digest(
         record, "stance_record_sha256"
@@ -419,6 +459,14 @@ def validate_stance_record(
     for field, value in expected.items():
         if identity[field] != value:
             _fail(f"identity.{field} drifted: the record is stale (candidate_ledger, plan, or consent changed)")
+    runtime = record["stance_runtime"]
+    stance_plan = plan["stance_plan"]
+    for field in ("provider_identity", "model_identity", "prompt_contract_version"):
+        if runtime[field] != stance_plan[field]:
+            _fail(
+                f"stance_runtime.{field} does not match the consented "
+                "stance_plan"
+            )
 
     selected_ids = [
         family["work_family_id"] for family in _selected_families(ledger_value)
@@ -431,17 +479,17 @@ def validate_stance_record(
         )
 
     distribution = record["distribution"]
-    counted = {key: 0 for key in STANCES}
-    counted["not_checked"] = 0
-    for row in record["rows"]:
-        bucket = row["stance"] if row["check_state"] == "performed" else "not_checked"
-        counted[bucket] += 1
-    for bucket, value in counted.items():
+    for bucket, value in _tally(record["rows"]).items():
         if distribution[bucket] != value:
             _fail(f"distribution.{bucket} does not match the rows")
     if distribution["selected_total"] != len(record["rows"]):
         _fail("distribution.selected_total does not match the rows")
 
+    hits_by_id = {hit["raw_hit_id"]: hit for hit in ledger_value["raw_hits"]}
+    families_by_id = {
+        family["work_family_id"]: family
+        for family in ledger_value["work_families"]
+    }
     rows_by_id = {}
     for row in evidence_rows:
         _validate_schema(EVIDENCE_ROW_SCHEMA, row, "evidence row")
@@ -450,6 +498,7 @@ def validate_stance_record(
         if row["row_id"] in rows_by_id:
             _fail(f"duplicate evidence row id {row['row_id']}")
         rows_by_id[row["row_id"]] = row
+    referenced: set[str] = set()
     for row in record["rows"]:
         for ref in row["evidence_row_refs"]:
             evidence = rows_by_id.get(ref["row_id"])
@@ -460,6 +509,56 @@ def validate_stance_record(
                     f"evidence row {ref['row_id']}: row_sha256 does not bind "
                     "the referenced row"
                 )
+            referenced.add(ref["row_id"])
+            # Replay the evidence against the exact ledger candidate: a row
+            # forged for another claim, candidate, or source cannot back a
+            # stance row.
+            claim = evidence["claim"]
+            if (
+                claim["claim_id"] != plan["claim"]["claim_id"]
+                or claim["claim_sha256"] != plan["claim"]["claim_sha256"]
+                or claim["probe_id"] != plan["probe_id"]
+            ):
+                _fail(f"evidence row {ref['row_id']}: claim binding drifted")
+            candidate = evidence["candidate"]
+            if candidate["candidate_ledger_sha256"] != ledger_value[
+                "candidate_ledger_sha256"
+            ]:
+                _fail(f"evidence row {ref['row_id']}: ledger binding drifted")
+            if (
+                candidate["work_family_id"] != row["work_family_id"]
+                or candidate["canonical_raw_hit_id"] != row["canonical_raw_hit_id"]
+            ):
+                _fail(
+                    f"evidence row {ref['row_id']}: bound to a different "
+                    "candidate than the stance row it backs"
+                )
+            family = families_by_id.get(row["work_family_id"])
+            hit = hits_by_id.get(row["canonical_raw_hit_id"])
+            if family is None or hit is None:
+                _fail(f"evidence row {ref['row_id']}: candidate is not in the ledger")
+            if evidence["coverage"] != row["evidence_scope"]:
+                _fail(f"evidence row {ref['row_id']}: coverage disagrees with the stance row")
+            if evidence["source"]["source_content_sha256"] != family["content_sha256"]:
+                _fail(f"evidence row {ref['row_id']}: source hash disagrees with the ledger")
+            excerpt = evidence["excerpt"]
+            if excerpt["state"] == "verified_exact_match":
+                evidence_text = hit["abstract_text"]
+                if evidence_text is None:
+                    _fail(f"evidence row {ref['row_id']}: no inspected text exists")
+                span = excerpt["source_span_utf8"]
+                source_bytes = evidence_text.encode("utf-8")
+                try:
+                    replay = source_bytes[span["start"] : span["end"]].decode("utf-8")
+                except (UnicodeError, ValueError):
+                    _fail(f"evidence row {ref['row_id']}: span does not replay")
+                if replay != excerpt["text"]:
+                    _fail(f"evidence row {ref['row_id']}: span does not replay the excerpt")
+                if excerpt["excerpt_sha256"] != substrate.text_digest(excerpt["text"]):
+                    _fail(f"evidence row {ref['row_id']}: excerpt_sha256 does not bind")
+    orphans = sorted(set(rows_by_id) - referenced)
+    if orphans:
+        _fail(f"unreferenced evidence rows present: {orphans!r}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -469,7 +568,6 @@ def main(argv: list[str] | None = None) -> int:
         "run", help="classify stance for every selected work family"
     )
     run_parser.add_argument("--query-plan", type=Path, required=True)
-    run_parser.add_argument("--candidate-ledger", type=Path, required=True)
     parser_note = (
         "outputs are derived from the consent's authorized_output_path: "
         f"'<path>{STANCE_RECORD_SUFFIX}' and '<path>{EVIDENCE_ROWS_SUFFIX}'"

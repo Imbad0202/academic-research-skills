@@ -8,14 +8,19 @@ Every stance statement uses the search-bounded vocabulary; every category
 renders even when empty, with the fixed empty wording; the primary denominator
 is always all selected work families, and a performed-only distribution may
 appear only beside it, marked secondary. Provider-controlled text is escaped
-before rendering. A stance record is re-verified against the exact plan and
-ledger before rendering, so a stale record cannot be presented as current.
+and line-break-flattened before rendering so it can neither forge a bounded
+sentence nor smuggle active Markdown. A stance record is re-verified against
+the exact plan and ledger before rendering, so a stale record cannot be
+presented as current. Persisting the view requires the same
+`explicit_local_export` consent and hash-bound output path discipline as every
+other Track A artifact.
 """
 from __future__ import annotations
 
 import argparse
-import json
+import os
 from pathlib import Path
+import re
 import sys
 from typing import Any
 
@@ -27,31 +32,39 @@ except ImportError:  # direct script execution
     import build_claim_standing_candidate_ledger as substrate  # noqa: E402
     import claim_standing_stance_runner as stance_runner  # noqa: E402
 
-STANCE_BUCKETS = (
-    "support",
-    "contradict",
-    "mixed",
-    "not_addressed",
-    "INSUFFICIENT_EVIDENCE",
-    "AMBIGUOUS",
-)
+VIEW_SUFFIX = ".view.md"
 COVERAGE_LABELS = {
     "abstract": "ABSTRACT",
     "session_held_full_text": "SESSION-HELD FULL TEXT",
     "metadata_only": "METADATA ONLY",
 }
+COVERAGE_PROSE = {
+    "abstract": "abstract",
+    "session_held_full_text": "full text",
+    "metadata_only": "metadata only",
+}
+_LINE_BREAKS = re.compile(r"[\r\n  ]+")
+
+
+def _fail(message: str) -> None:
+    raise stance_runner.StanceError(message)
 
 
 def _inert(value: Any) -> str:
-    """Escape provider-controlled text so rendered Markdown stays inert."""
+    """Escape and flatten provider-controlled text so rendered Markdown stays
+    inert: no HTML, no backticks, no links/images, and no injected lines that
+    could forge a bounded sentence."""
     if value is None:
         return "(none)"
+    text = _LINE_BREAKS.sub(" ", str(value))
     return (
-        str(value)
-        .replace("&", "&amp;")
+        text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace("`", "&#96;")
+        .replace("[", "&#91;")
+        .replace("]", "&#93;")
+        .replace("!", "&#33;")
     )
 
 
@@ -65,11 +78,7 @@ def render_view(
         plan, substrate.plan_schema_filename(plan), "query plan"
     )
     substrate.validate_plan(plan)
-    substrate.validate_schema(
-        ledger_value, "candidate_ledger.schema.json", "candidate ledger"
-    )
-    if ledger_value["query_plan_sha256"] != plan["plan_sha256"]:
-        stance_runner._fail("candidate ledger is bound to a different query plan")
+    stance_runner._require_bound_ledger(plan, ledger_value)
     if stance_record is not None:
         stance_runner.validate_stance_record(
             plan, ledger_value, stance_record, evidence_rows
@@ -77,7 +86,7 @@ def render_view(
 
     consent = plan["consent"]
     out: list[str] = []
-    out.append("STANCE CLASSIFICATION UNMEASURED")
+    out.append(stance_runner.UNMEASURED_BANNER)
     out.append("")
     out.append(f"# Claim-standing probe {_inert(plan['probe_id'])}")
     out.append("")
@@ -90,12 +99,26 @@ def render_view(
 
     out.append("## Consent and recorded search")
     out.append("")
-    out.append(f"- Claim `{_inert(plan['claim']['claim_id'])}`: {_inert(plan['claim']['claim_text'])}")
+    out.append(
+        f"- Claim `{_inert(plan['claim']['claim_id'])}`: "
+        f"{_inert(plan['claim']['claim_text'])}"
+    )
     out.append(
         f"- Consent receipt `{_inert(consent['consent_receipt_id'])}` — "
         f"decision {consent['decision']}, accepted {consent['accepted_at']}, "
         f"local persistence {consent['local_persistence']}"
     )
+    if plan.get("stance_plan"):
+        stance_plan = plan["stance_plan"]
+        retention = (
+            _inert(stance_plan["retention_reference"])
+            if stance_plan["retention_state"] == "known"
+            else "unknown"
+        )
+        out.append(
+            f"- Stance provider (consented): {_inert(stance_plan['provider_identity'])} / "
+            f"{_inert(stance_plan['model_identity'])}; provider retention: {retention}"
+        )
     for query in plan["queries"]:
         out.append(
             f"- Query `{_inert(query['query_id'])}` ({query['construction']}): "
@@ -109,22 +132,18 @@ def render_view(
         f"{caps['max_raw_hits']} raw rows, "
         f"{caps['max_selected_work_families']} selected families"
     )
-    failures = [
-        attempt
-        for attempt in ledger_value["attempts"]
-        if attempt["outcome"] != "success"
-    ]
-    if failures:
+    out.append("- Index attempts:")
+    for attempt in ledger_value["attempts"]:
         out.append(
-            "- Recorded search with failures — every failed attempt stays "
-            "visible below; nothing was topped up or silently retried:"
+            f"  - `{_inert(attempt['attempt_id'])}` "
+            f"({_inert(attempt['index_id'])} / {_inert(attempt['query_id'])}): "
+            f"{attempt['outcome']}, retained {attempt['retained_hit_count']}"
         )
-        for attempt in failures:
-            out.append(
-                f"  - attempt `{_inert(attempt['attempt_id'])}` "
-                f"({_inert(attempt['index_id'])} / {_inert(attempt['query_id'])}): "
-                f"{attempt['outcome']}"
-            )
+    if any(a["outcome"] != "success" for a in ledger_value["attempts"]):
+        out.append(
+            "- This is a recorded search with failures — every failed attempt "
+            "stays visible above; nothing was topped up or silently retried."
+        )
     out.append(f"- Retrieval completed at {ledger_value['completed_at']}")
     out.append("")
 
@@ -149,7 +168,7 @@ def render_view(
             detail += f", {hit['year']}"
         detail += ")"
         if hit["terminal_state"] == "duplicate_version":
-            detail += f" → retained family {_inert(hit.get('duplicate_of_work_family_id'))}"
+            detail += f" → retained hit `{_inert(hit.get('retained_raw_hit_id'))}`"
         out.append(detail)
     out.append("")
 
@@ -160,6 +179,10 @@ def render_view(
         out.append("")
         return "\n".join(out)
 
+    families_by_id = {
+        family["work_family_id"]: family
+        for family in ledger_value["work_families"]
+    }
     distribution = stance_record["distribution"]
     selected_total = distribution["selected_total"]
     indexes = ", ".join(
@@ -170,7 +193,7 @@ def render_view(
         f"Denominator: all {selected_total} selected work families "
         "(including not-checked and failed candidates)."
     )
-    for bucket in STANCE_BUCKETS:
+    for bucket in stance_runner.STANCES:
         count = distribution[bucket]
         if count:
             out.append(
@@ -184,21 +207,16 @@ def render_view(
                 "candidates within this recorded search."
             )
     not_checked = distribution["not_checked"]
-    if not_checked:
-        out.append(
-            f"- {not_checked}/{selected_total} selected candidates were not "
-            "checked or failed; see the candidate ledger."
-        )
-    else:
-        out.append(
-            f"- 0/{selected_total} selected candidates were not checked or "
-            "failed; see the candidate ledger."
-        )
+    out.append(
+        f"- {not_checked}/{selected_total} selected candidates were not "
+        "checked or failed; see the candidate ledger."
+    )
+    if not not_checked:
         out.append(
             "- No not_checked sources were found among the selected candidates "
             "within this recorded search."
         )
-    performed = sum(distribution[bucket] for bucket in STANCE_BUCKETS)
+    performed = sum(distribution[bucket] for bucket in stance_runner.STANCES)
     out.append(
         f"- Secondary view (performed-only, shown beside the all-selected "
         f"denominator, never instead of it): {performed} performed of "
@@ -208,28 +226,62 @@ def render_view(
     out.append("### Per-source rows")
     out.append("")
     for row in stance_record["rows"]:
-        hit = hits_by_id[row["canonical_raw_hit_id"]]
+        hit = hits_by_id.get(row["canonical_raw_hit_id"])
+        family = families_by_id.get(row["work_family_id"])
+        if hit is None or family is None:
+            _fail(
+                f"stance row {row['work_family_id']!r} names a candidate "
+                "absent from the ledger"
+            )
+        authors = ", ".join(
+            _inert(author.get("family"))
+            for author in hit["authors"][:3]
+        ) or "(no authors returned)"
         outcome = (
             row["stance"] if row["check_state"] == "performed" else row["failure_state"]
         )
         line = (
-            f"- {_inert(hit['title'])}"
-            f" ({_inert(hit.get('year'))}) — coverage "
-            f"{COVERAGE_LABELS[row['evidence_scope']]}, {row['check_state']}: "
-            f"{outcome}"
+            f"- {_inert(hit['title'])} — {authors}"
+            f" ({_inert(hit.get('year'))}); found by "
+            + ", ".join(f"`{_inert(q)}`" for q in family["query_ids"])
+            + " on "
+            + ", ".join(_inert(i) for i in family["index_ids"])
+            + f"; provider rank {hit['provider_rank']}"
+            f"; relevance {family['relevance']['state']}"
+            f"; coverage {COVERAGE_LABELS[row['evidence_scope']]}"
         )
+        if row["check_state"] == "performed":
+            line += (
+                f". This candidate's inspected "
+                f"{COVERAGE_PROSE[row['evidence_scope']]} was classified "
+                f"{outcome} relative to claim "
+                f"`{_inert(plan['claim']['claim_id'])}`."
+            )
+        else:
+            line += f"; {row['check_state']}: {outcome}."
         if row["conditions_noted"]:
-            line += f"; conditions noted: {_inert(row['conditions_noted'])}"
+            line += f" Conditions noted: {_inert(row['conditions_noted'])}."
         if row["evidence_row_refs"]:
             refs = ", ".join(
                 f"`{_inert(ref['row_id'])}`" for ref in row["evidence_row_refs"]
             )
-            line += f"; evidence rows: {refs}"
+            line += f" Evidence rows: {refs}."
         if hit.get("landing_url"):
-            line += f"; source: {_inert(hit['landing_url'])}"
+            line += f" Source: {_inert(hit['landing_url'])}"
         out.append(line)
     out.append("")
     return "\n".join(out)
+
+
+def _write_view_exclusive(path: Path, text: str) -> None:
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if os.name != "nt":
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(path, flags, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -238,7 +290,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidate-ledger", type=Path, required=True)
     parser.add_argument("--stance-record", type=Path)
     parser.add_argument("--evidence-rows", type=Path)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help=(
+            "requires explicit_local_export consent; must equal the consent's "
+            f"authorized_output_path plus '{VIEW_SUFFIX}'"
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         plan = substrate.load_json(args.query_plan)
@@ -253,11 +312,21 @@ def main(argv: list[str] | None = None) -> int:
         )
         text = render_view(plan, ledger_value, stance_record, evidence_rows)
         if args.output:
-            if args.output.exists():
-                stance_runner._fail(
-                    f"refusing to overwrite existing output {args.output}"
+            consent = plan["consent"]
+            if consent["local_persistence"] != "explicit_local_export":
+                _fail(
+                    "the hash-bound consent says session_only: this CLI "
+                    "refuses to persist a rendered view"
                 )
-            args.output.write_text(text, encoding="utf-8", newline="\n")
+            expected = Path(consent["authorized_output_path"] + VIEW_SUFFIX)
+            if str(args.output) != str(expected):
+                _fail(
+                    "output does not match the hash-bound consent: the view "
+                    f"may be written only to {expected}"
+                )
+            if args.output.exists():
+                _fail(f"refusing to overwrite existing output {args.output}")
+            _write_view_exclusive(args.output, text)
         else:
             print(text, end="")
     except (
