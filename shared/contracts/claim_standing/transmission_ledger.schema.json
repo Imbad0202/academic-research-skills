@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/claim_standing/transmission_ledger.schema.json",
   "title": "#655 claim-standing transmission ledger v1",
-  "description": "Closed per-event accounting of what left the session during one claim-standing probe (design §6): retrieval queries to consented scholarly indexes and stance-classification prompts to the consented stance provider. Each event records recipient, purpose, exact content classes, byte count, local hash, time, consent receipt, retention disclosure, and result state. scripts/check_claim_standing_transmissions.py is the normative builder/validator; it refuses any event outside the plan's authorized content classes or consented recipient roster.",
+  "description": "Closed per-event accounting of every authorized transmission attempt in one claim-standing probe (design §6): retrieval queries to consented scholarly indexes and stance-classification prompts to the consented stance provider. Each event records recipient, purpose, exact content classes, byte count, local hash, time, consent receipt, retention disclosure, and result state. Accounting is conservative: an attempt an adapter refused before transport still appears with its failure result state, so the ledger may overstate, never understate, what could have left the session; byte counts are of the consented content class (accepted query text / exact prompt), not transport framing. scripts/check_claim_standing_transmissions.py is the normative builder/validator; it refuses any event outside the plan's authorized content classes or consented recipient roster.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,15 +16,29 @@
     "transmission_ledger_sha256"
   ],
   "properties": {
-    "schema_version": { "const": "claim-standing-transmission-ledger/1.0" },
-    "probe_id": { "$ref": "#/$defs/identifier" },
-    "query_plan_sha256": { "$ref": "#/$defs/sha256" },
-    "consent_receipt_id": { "$ref": "#/$defs/identifier" },
-    "consent_receipt_sha256": { "$ref": "#/$defs/sha256" },
+    "schema_version": {
+      "const": "claim-standing-transmission-ledger/1.0"
+    },
+    "probe_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "query_plan_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "consent_receipt_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "consent_receipt_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "authorized_content_classes": {
       "description": "Copied verbatim from the consented query plan; every event's content classes must be a subset.",
       "oneOf": [
-        { "const": ["accepted_search_query"] },
+        {
+          "const": [
+            "accepted_search_query"
+          ]
+        },
         {
           "const": [
             "accepted_search_query",
@@ -37,12 +51,19 @@
       "type": "array",
       "items": {
         "oneOf": [
-          { "$ref": "#/$defs/retrieval_event" },
-          { "$ref": "#/$defs/stance_event" }
+          {
+            "$ref": "#/$defs/retrieval_event"
+          },
+          {
+            "$ref": "#/$defs/stance_event"
+          }
         ]
-      }
+      },
+      "uniqueItems": true
     },
-    "transmission_ledger_sha256": { "$ref": "#/$defs/sha256" }
+    "transmission_ledger_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
   },
   "$defs": {
     "identifier": {
@@ -88,23 +109,56 @@
         "result_state"
       ],
       "properties": {
-        "event_kind": { "const": "retrieval_query" },
-        "attempt_id": { "$ref": "#/$defs/identifier" },
-        "query_id": { "$ref": "#/$defs/identifier" },
-        "recipient_index_id": { "$ref": "#/$defs/identifier" },
-        "recipient_product_identity": { "$ref": "#/$defs/semantic_text" },
-        "purpose": { "const": "scholarly_discovery" },
-        "content_classes": { "const": ["accepted_search_query"] },
-        "query_sha256": { "$ref": "#/$defs/sha256" },
-        "query_utf8_bytes": { "type": "integer", "minimum": 1 },
-        "consent_receipt_id": { "$ref": "#/$defs/identifier" },
-        "retention_state": { "enum": ["known", "unknown"] },
+        "event_kind": {
+          "const": "retrieval_query"
+        },
+        "attempt_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "query_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "recipient_index_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "recipient_product_identity": {
+          "$ref": "#/$defs/semantic_text"
+        },
+        "purpose": {
+          "const": "scholarly_discovery"
+        },
+        "content_classes": {
+          "const": [
+            "accepted_search_query"
+          ]
+        },
+        "query_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "query_utf8_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "consent_receipt_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "retention_state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
         "retention_reference": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "maxLength": 1000
         },
-        "sent_at": { "$ref": "#/$defs/rfc3339" },
+        "sent_at": {
+          "$ref": "#/$defs/rfc3339"
+        },
         "result_state": {
           "enum": [
             "success",
@@ -117,27 +171,7 @@
           ]
         }
       },
-      "allOf": [
-        {
-          "if": {
-            "properties": { "retention_state": { "const": "known" } },
-            "required": ["retention_state"]
-          },
-          "then": {
-            "properties": {
-              "retention_reference": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1000,
-                "pattern": "\\S"
-              }
-            }
-          },
-          "else": {
-            "properties": { "retention_reference": { "type": "null" } }
-          }
-        }
-      ]
+      "$ref": "#/$defs/retention_conditional"
     },
     "stance_event": {
       "type": "object",
@@ -158,24 +192,53 @@
         "result_state"
       ],
       "properties": {
-        "event_kind": { "const": "stance_classification" },
-        "work_family_id": { "$ref": "#/$defs/identifier" },
-        "recipient_provider_identity": { "$ref": "#/$defs/semantic_text" },
-        "recipient_model_identity": { "$ref": "#/$defs/semantic_text" },
-        "purpose": { "const": "stance_classification" },
-        "content_classes": {
-          "const": ["claim_and_selected_evidence_to_stance_provider"]
+        "event_kind": {
+          "const": "stance_classification"
         },
-        "prompt_sha256": { "$ref": "#/$defs/sha256" },
-        "prompt_utf8_bytes": { "type": "integer", "minimum": 1 },
-        "consent_receipt_id": { "$ref": "#/$defs/identifier" },
-        "retention_state": { "enum": ["known", "unknown"] },
+        "work_family_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "recipient_provider_identity": {
+          "$ref": "#/$defs/semantic_text"
+        },
+        "recipient_model_identity": {
+          "$ref": "#/$defs/semantic_text"
+        },
+        "purpose": {
+          "const": "stance_classification"
+        },
+        "content_classes": {
+          "const": [
+            "claim_and_selected_evidence_to_stance_provider"
+          ]
+        },
+        "prompt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "prompt_utf8_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "consent_receipt_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "retention_state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
         "retention_reference": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "maxLength": 1000
         },
-        "sent_at": { "$ref": "#/$defs/rfc3339" },
+        "sent_at": {
+          "$ref": "#/$defs/rfc3339"
+        },
         "result_state": {
           "enum": [
             "performed",
@@ -186,27 +249,34 @@
           ]
         }
       },
-      "allOf": [
-        {
-          "if": {
-            "properties": { "retention_state": { "const": "known" } },
-            "required": ["retention_state"]
-          },
-          "then": {
-            "properties": {
-              "retention_reference": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1000,
-                "pattern": "\\S"
-              }
-            }
-          },
-          "else": {
-            "properties": { "retention_reference": { "type": "null" } }
+      "$ref": "#/$defs/retention_conditional"
+    },
+    "retention_conditional": {
+      "if": {
+        "properties": {
+          "retention_state": {
+            "const": "known"
+          }
+        },
+        "required": [
+          "retention_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "retention_reference": {
+            "type": "string",
+            "pattern": "\\S"
           }
         }
-      ]
+      },
+      "else": {
+        "properties": {
+          "retention_reference": {
+            "type": "null"
+          }
+        }
+      }
     }
   }
 }

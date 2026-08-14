@@ -431,6 +431,26 @@ def run_stance(
     return record, evidence_rows, transmissions
 
 
+def expected_identity(
+    plan: dict[str, Any], ledger_value: dict[str, Any]
+) -> dict[str, str]:
+    """The §7 probe-identity hash set one (plan, ledger) pair binds.
+
+    Single authority for the identity comparison used by the semantic
+    validator and the freshness checker; adding a binding here extends both.
+    """
+    return {
+        "claim_sha256": plan["claim"]["claim_sha256"],
+        "consent_receipt_sha256": plan["consent"]["receipt_sha256"],
+        "query_plan_sha256": plan["plan_sha256"],
+        "adapter_registry_sha256": substrate.digest(plan["provider_roster"]),
+        "candidate_ledger_sha256": substrate.bound_digest(
+            ledger_value, "candidate_ledger_sha256"
+        ),
+        "stance_plan_sha256": substrate.digest(plan.get("stance_plan")),
+    }
+
+
 def validate_stance_record(
     plan: dict[str, Any],
     ledger_value: dict[str, Any],
@@ -447,16 +467,7 @@ def validate_stance_record(
         _fail("stance_record_sha256 does not bind the record")
 
     identity = record["identity"]
-    expected = {
-        "claim_sha256": plan["claim"]["claim_sha256"],
-        "consent_receipt_sha256": plan["consent"]["receipt_sha256"],
-        "query_plan_sha256": plan["plan_sha256"],
-        "adapter_registry_sha256": substrate.digest(plan["provider_roster"]),
-        "candidate_ledger_sha256": substrate.bound_digest(
-            ledger_value, "candidate_ledger_sha256"
-        ),
-        "stance_plan_sha256": substrate.digest(plan.get("stance_plan")),
-    }
+    expected = expected_identity(plan, ledger_value)
     for field, value in expected.items():
         if identity[field] != value:
             _fail(f"identity.{field} drifted: the record is stale (candidate_ledger, plan, or consent changed)")

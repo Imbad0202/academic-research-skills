@@ -5,9 +5,18 @@ The probe identity binds the exact claim text, consent receipt, query plan,
 adapter registry, candidate ledger, and stance configuration. This checker
 compares a probe's persisted artifacts against the current registry claim
 text (and, opt-in, the currently declared discovery adapters) and reports a
-closed stale-reason list. A stale result remains inspectable but must not
-be presented as current; re-running after new consent creates a new probe
-id and never overwrites the prior ledger. The checker is read-only and
+closed stale-reason list plus an explicit statement of which bindings were
+and were not assessed — a claim-text-only comparison never presents itself
+as a complete freshness assessment. A stale result remains inspectable but
+must not be presented as current; re-running after new consent creates a
+new probe id and never overwrites the prior ledger.
+
+The record-side comparison consumes the runner's single identity authority
+(`claim_standing_stance_runner.expected_identity`), so a new §7 binding
+added there extends this checker automatically. A stance record can only be
+assessed together with its candidate ledger. Artifact semantics (schema and
+deep replay) belong to `validate_stance_record` and the ledger validator
+and are reported as unassessed here. The checker is read-only and
 deterministic: no network, no model call, no input mutation, no file
 output. Corruption (a self-digest that does not replay) is an assessment
 error, never a silent verdict.
@@ -38,6 +47,24 @@ STALE_REASONS = (
     "candidate_ledger_changed",
     "stance_configuration_changed",
 )
+IDENTITY_FIELD_REASONS = {
+    "claim_sha256": "claim_text_changed",
+    "consent_receipt_sha256": "consent_receipt_changed",
+    "query_plan_sha256": "query_plan_changed",
+    "adapter_registry_sha256": "adapter_registry_changed",
+    "candidate_ledger_sha256": "candidate_ledger_changed",
+    "stance_plan_sha256": "stance_configuration_changed",
+}
+ASSESSMENT_TOKENS = (
+    "claim_text",
+    "consent_receipt",
+    "query_plan",
+    "adapter_registry_binding",
+    "current_adapter_registry",
+    "candidate_ledger",
+    "stance_configuration",
+    "artifact_semantic_validation",
+)
 PRESENTATION_RULE = (
     "A stale result remains inspectable but cannot be presented as current; "
     "re-running requires new consent and a new probe id."
@@ -63,13 +90,13 @@ def _require_self_digest(value: dict[str, Any], field: str, label: str) -> None:
         )
 
 
-def _runtime_adapter_reasons(plan: dict[str, Any]) -> list[str]:
+def _runtime_adapter_reasons(plan: dict[str, Any]) -> set[str]:
     declared = discovery.provider_roster_defaults()
     for provider in plan.get("provider_roster", []):
         index_id = provider.get("index_id")
         if index_id not in declared or provider != declared[index_id]:
-            return ["adapter_registry_changed"]
-    return []
+            return {"adapter_registry_changed"}
+    return set()
 
 
 def assess_freshness(
@@ -87,9 +114,16 @@ def assess_freshness(
         substrate.validate_plan(plan)
     except substrate.LedgerError as exc:
         raise FreshnessError(f"query plan is invalid: {exc}") from exc
+    _require(
+        stance_record is None or candidate_ledger is not None,
+        "a stance record can only be assessed together with its candidate "
+        "ledger (identity.candidate_ledger_sha256 is unverifiable without it)",
+    )
 
     reasons: set[str] = set()
+    assessed: set[str] = {"claim_text"}
     claim_sha = plan["claim"]["claim_sha256"]
+    roster_sha = substrate.digest(plan["provider_roster"])
     if substrate.text_digest(current_claim_text) != claim_sha:
         reasons.add("claim_text_changed")
 
@@ -97,13 +131,12 @@ def assess_freshness(
         _require_self_digest(
             candidate_ledger, "candidate_ledger_sha256", "candidate ledger"
         )
+        assessed.update({"query_plan", "adapter_registry_binding"})
         if candidate_ledger.get("query_plan_sha256") != plan["plan_sha256"]:
             reasons.add("query_plan_changed")
         if candidate_ledger.get("claim_sha256") != claim_sha:
             reasons.add("claim_text_changed")
-        if candidate_ledger.get("adapter_registry_sha256") != substrate.digest(
-            plan["provider_roster"]
-        ):
+        if candidate_ledger.get("adapter_registry_sha256") != roster_sha:
             reasons.add("adapter_registry_changed")
 
     if stance_record is not None:
@@ -114,31 +147,22 @@ def assess_freshness(
         _require(
             isinstance(identity, dict), "stance record is missing its identity"
         )
-        if identity.get("claim_sha256") != claim_sha:
-            reasons.add("claim_text_changed")
-        if identity.get("query_plan_sha256") != plan["plan_sha256"]:
-            reasons.add("query_plan_changed")
-        if (
-            identity.get("consent_receipt_sha256")
-            != plan["consent"]["receipt_sha256"]
-        ):
-            reasons.add("consent_receipt_changed")
-        if identity.get("adapter_registry_sha256") != substrate.digest(
-            plan["provider_roster"]
-        ):
-            reasons.add("adapter_registry_changed")
-        if candidate_ledger is not None and identity.get(
-            "candidate_ledger_sha256"
-        ) != candidate_ledger.get("candidate_ledger_sha256"):
-            reasons.add("candidate_ledger_changed")
-        expected_stance_sha = (
-            substrate.digest(plan["stance_plan"])
-            if plan.get("stance_plan") is not None
-            else None
+        assessed.update(
+            {"consent_receipt", "candidate_ledger", "stance_configuration"}
         )
-        if identity.get("stance_plan_sha256") != expected_stance_sha:
-            reasons.add("stance_configuration_changed")
+        expected = runner.expected_identity(plan, candidate_ledger)
+        for field, expected_value in expected.items():
+            if identity.get(field) != expected_value:
+                reasons.add(IDENTITY_FIELD_REASONS[field])
+        if identity.get("claim_sha256") != substrate.text_digest(
+            current_claim_text
+        ):
+            reasons.add("claim_text_changed")
         stance_runtime = stance_record.get("stance_runtime", {})
+        stance_plan = plan.get("stance_plan") or {}
+        for field in ("provider_identity", "model_identity"):
+            if stance_runtime.get(field) != stance_plan.get(field):
+                reasons.add("stance_configuration_changed")
         if (
             stance_runtime.get("prompt_contract_version")
             != runner.PROMPT_CONTRACT_VERSION
@@ -146,6 +170,7 @@ def assess_freshness(
             reasons.add("stance_configuration_changed")
 
     if runtime_check:
+        assessed.add("current_adapter_registry")
         reasons.update(_runtime_adapter_reasons(plan))
 
     stale_reasons = [token for token in STALE_REASONS if token in reasons]
@@ -153,17 +178,16 @@ def assess_freshness(
         "probe_id": plan["probe_id"],
         "status": "stale" if stale_reasons else "current",
         "stale_reasons": stale_reasons,
+        "assessed": [
+            token for token in ASSESSMENT_TOKENS if token in assessed
+        ],
+        "unassessed": [
+            token for token in ASSESSMENT_TOKENS if token not in assessed
+        ],
     }
     if stale_reasons:
         verdict["presentation_rule"] = PRESENTATION_RULE
     return verdict
-
-
-def _load(path: Path) -> Any:
-    try:
-        return substrate.load_json(path)
-    except substrate.LedgerError as exc:
-        raise FreshnessError(str(exc)) from exc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -190,20 +214,28 @@ def main(argv: list[str] | None = None) -> int:
             ) from exc
         verdict = assess_freshness(
             current_claim_text=current_claim_text,
-            plan=_load(args.query_plan),
+            plan=substrate.load_json(args.query_plan),
             candidate_ledger=(
-                _load(args.candidate_ledger)
+                substrate.load_json(args.candidate_ledger)
                 if args.candidate_ledger is not None
                 else None
             ),
             stance_record=(
-                _load(args.stance_record)
+                substrate.load_json(args.stance_record)
                 if args.stance_record is not None
                 else None
             ),
             runtime_check=args.runtime_check,
         )
-    except FreshnessError as exc:
+    except (
+        FreshnessError,
+        substrate.LedgerError,
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+    ) as exc:
         print(f"FRESHNESS ERROR: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(verdict, ensure_ascii=False, indent=2))

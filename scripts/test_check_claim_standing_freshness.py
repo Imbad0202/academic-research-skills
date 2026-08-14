@@ -66,12 +66,38 @@ def test_unchanged_probe_is_current() -> None:
     assert verdict["status"] == "current"
     assert verdict["stale_reasons"] == []
     assert verdict["probe_id"] == plan["probe_id"]
+    assert "stance_configuration" in verdict["assessed"]
+    assert "candidate_ledger" in verdict["assessed"]
 
 
-def test_plan_only_assessment_is_current() -> None:
+def test_plan_only_assessment_declares_what_it_did_not_compare() -> None:
+    # Gate 13 honesty: a claim-text-only comparison must not present itself
+    # as a complete freshness assessment.
     plan, _, _ = _setup()
     verdict = _assess(plan, None, None)
     assert verdict["status"] == "current"
+    assert verdict["assessed"] == ["claim_text"]
+    assert "current_adapter_registry" in verdict["unassessed"]
+    assert "candidate_ledger" in verdict["unassessed"]
+    assert "artifact_semantic_validation" in verdict["unassessed"]
+
+
+def test_stance_record_without_its_ledger_cannot_be_assessed() -> None:
+    plan, _, record = _setup()
+    with pytest.raises(freshness.FreshnessError, match="ledger"):
+        _assess(plan, None, record)
+
+
+def test_resealed_runtime_identity_swap_is_stale() -> None:
+    plan, ledger_value, record = _setup()
+    swapped = copy.deepcopy(record)
+    swapped["stance_runtime"]["model_identity"] = "synthetic-stance-model-9"
+    swapped["stance_record_sha256"] = substrate.bound_digest(
+        swapped, "stance_record_sha256"
+    )
+    verdict = _assess(plan, ledger_value, swapped)
+    assert verdict["status"] == "stale"
+    assert "stance_configuration_changed" in verdict["stale_reasons"]
 
 
 # --- gate 13: each drift axis becomes visibly stale -------------------------
@@ -241,6 +267,8 @@ def test_cli_errors_on_corrupt_record(tmp_path, capsys) -> None:
         [
             "--current-claim-file", str(claim_file),
             "--query-plan", str(_write_json(tmp_path / "plan.json", plan)),
+            "--candidate-ledger",
+            str(_write_json(tmp_path / "ledger.json", ledger_value)),
             "--stance-record",
             str(_write_json(tmp_path / "record.json", corrupt)),
         ]

@@ -174,6 +174,100 @@ def test_ledger_binds_plan_and_receipt_identity() -> None:
 # --- gate 14: consented content allowlist -----------------------------------
 
 
+def test_dropped_attempts_without_rehash_are_refused() -> None:
+    plan, retained = _retrieval_only_setup()
+    tampered = copy.deepcopy(retained)
+    del tampered["attempts"][2]  # digest left stale: silent omission attempt
+    with pytest.raises(transmissions.TransmissionError, match="digest"):
+        transmissions.build_transmission_ledger(plan, tampered)
+
+
+def test_cleared_attempt_array_is_refused_by_the_input_contract() -> None:
+    plan, retained = _retrieval_only_setup()
+    tampered = copy.deepcopy(retained)
+    tampered["attempts"] = []
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(
+        tampered, "retrieval_input_sha256"
+    )
+    with pytest.raises(transmissions.TransmissionError, match="invalid"):
+        transmissions.build_transmission_ledger(plan, tampered)
+
+
+def test_duplicate_attempt_ids_are_refused() -> None:
+    plan, retained = _retrieval_only_setup()
+    tampered = copy.deepcopy(retained)
+    tampered["attempts"].append(copy.deepcopy(tampered["attempts"][0]))
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(
+        tampered, "retrieval_input_sha256"
+    )
+    with pytest.raises(transmissions.TransmissionError, match="unique"):
+        transmissions.build_transmission_ledger(plan, tampered)
+
+
+def test_attempt_index_outside_query_targets_is_refused() -> None:
+    plan, retained, _ = _stance_setup()
+    tampered_plan = copy.deepcopy(plan)
+    tampered_plan["queries"][0]["index_targets"] = ["index-a", "index-b"]
+    _rehash_plan(tampered_plan)
+    tampered = copy.deepcopy(retained)
+    _rehash_input(tampered, tampered_plan)
+    with pytest.raises(transmissions.TransmissionError, match="target"):
+        transmissions.build_transmission_ledger(tampered_plan, tampered)
+
+
+def test_stance_plan_requires_explicit_stance_transmissions() -> None:
+    plan, retained, _ = _stance_setup()
+    with pytest.raises(transmissions.TransmissionError, match="explicit"):
+        transmissions.build_transmission_ledger(plan, retained)
+
+
+def test_explicit_empty_stance_transmissions_build_zero_stance_events() -> None:
+    plan, retained, _ = _stance_setup()
+    doc = transmissions.build_transmission_ledger(
+        plan, retained, stance_transmissions=[]
+    )
+    assert all(event["event_kind"] == "retrieval_query" for event in doc["events"])
+
+
+def test_stance_event_with_unexpected_key_is_refused() -> None:
+    plan, retained, ledger_value = _stance_setup()
+    stance_events = _stance_transmissions(plan, ledger_value)
+    stance_events[0] = dict(stance_events[0])
+    stance_events[0]["event_kind"] = "retrieval_query"
+    with pytest.raises(transmissions.TransmissionError, match="unexpected"):
+        transmissions.build_transmission_ledger(
+            plan, retained, stance_transmissions=stance_events
+        )
+
+
+def test_stance_record_cross_check_accepts_complete_events() -> None:
+    plan, retained, ledger_value = _stance_setup()
+    record, _, events = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    doc = transmissions.build_transmission_ledger(
+        plan, retained, stance_transmissions=events, stance_record=record
+    )
+    assert doc["transmission_ledger_sha256"]
+
+
+def test_stance_record_cross_check_refuses_omitted_events() -> None:
+    plan, retained, ledger_value = _stance_setup()
+    record, _, _ = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    with pytest.raises(transmissions.TransmissionError, match="unaccounted"):
+        transmissions.build_transmission_ledger(
+            plan, retained, stance_transmissions=[], stance_record=record
+        )
+
+
+def test_stance_event_fields_match_the_schema_required_list() -> None:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    required = set(schema["$defs"]["stance_event"]["required"])
+    assert set(transmissions.STANCE_EVENT_FIELDS) == required - {"event_kind"}
+
+
 def test_stance_events_refused_under_retrieval_only_plan() -> None:
     plan, retained, ledger_value = _stance_setup()
     stance_events = _stance_transmissions(plan, ledger_value)
@@ -193,15 +287,35 @@ def test_retrieval_only_plan_builds_without_stance_events() -> None:
     assert all(event["event_kind"] == "retrieval_query" for event in doc["events"])
 
 
-def test_off_allowlist_content_class_refused() -> None:
+@pytest.mark.parametrize(
+    "overrides, match",
+    [
+        (
+            {
+                "content_classes": [
+                    "claim_and_selected_evidence_to_stance_provider",
+                    "session_held_full_text_passage",
+                ]
+            },
+            "content class",
+        ),
+        ({"recipient_provider_identity": "Unconsented Provider"}, "provider"),
+        (
+            {
+                "retention_state": "known",
+                "retention_reference": "https://example.org/terms",
+            },
+            "retention",
+        ),
+        ({"consent_receipt_id": "consent-other"}, "receipt"),
+        ({"result_state": None}, "result_state"),
+    ],
+)
+def test_tampered_stance_event_is_refused(overrides: dict, match: str) -> None:
     plan, retained, ledger_value = _stance_setup()
     stance_events = _stance_transmissions(plan, ledger_value)
-    stance_events[0] = dict(stance_events[0])
-    stance_events[0]["content_classes"] = [
-        "claim_and_selected_evidence_to_stance_provider",
-        "session_held_full_text_passage",
-    ]
-    with pytest.raises(transmissions.TransmissionError, match="content class"):
+    stance_events[0] = {**stance_events[0], **overrides}
+    with pytest.raises(transmissions.TransmissionError, match=match):
         transmissions.build_transmission_ledger(
             plan, retained, stance_transmissions=stance_events
         )
@@ -212,6 +326,9 @@ def test_unconsented_recipient_index_refused() -> None:
     stance_events = _stance_transmissions(plan, ledger_value)
     tampered = copy.deepcopy(retained)
     tampered["attempts"][0]["index_id"] = "index-unconsented"
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(
+        tampered, "retrieval_input_sha256"
+    )
     with pytest.raises(transmissions.TransmissionError, match="index"):
         transmissions.build_transmission_ledger(
             plan, tampered, stance_transmissions=stance_events
@@ -222,6 +339,9 @@ def test_unknown_query_id_refused() -> None:
     plan, retained = _retrieval_only_setup()
     tampered = copy.deepcopy(retained)
     tampered["attempts"][0]["query_id"] = "q-unplanned"
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(
+        tampered, "retrieval_input_sha256"
+    )
     with pytest.raises(transmissions.TransmissionError, match="query"):
         transmissions.build_transmission_ledger(plan, tampered)
 
@@ -230,53 +350,11 @@ def test_attempt_receipt_id_mismatch_refused() -> None:
     plan, retained = _retrieval_only_setup()
     tampered = copy.deepcopy(retained)
     tampered["attempts"][0]["consent_receipt_id"] = "consent-other"
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(
+        tampered, "retrieval_input_sha256"
+    )
     with pytest.raises(transmissions.TransmissionError, match="receipt"):
         transmissions.build_transmission_ledger(plan, tampered)
-
-
-def test_stance_recipient_mismatch_refused() -> None:
-    plan, retained, ledger_value = _stance_setup()
-    stance_events = _stance_transmissions(plan, ledger_value)
-    stance_events[0] = dict(stance_events[0])
-    stance_events[0]["recipient_provider_identity"] = "Unconsented Provider"
-    with pytest.raises(transmissions.TransmissionError, match="provider"):
-        transmissions.build_transmission_ledger(
-            plan, retained, stance_transmissions=stance_events
-        )
-
-
-def test_stance_retention_disclosure_must_match_consent() -> None:
-    plan, retained, ledger_value = _stance_setup()
-    stance_events = _stance_transmissions(plan, ledger_value)
-    stance_events[0] = dict(stance_events[0])
-    stance_events[0]["retention_state"] = "known"
-    stance_events[0]["retention_reference"] = "https://example.org/terms"
-    with pytest.raises(transmissions.TransmissionError, match="retention"):
-        transmissions.build_transmission_ledger(
-            plan, retained, stance_transmissions=stance_events
-        )
-
-
-def test_stance_receipt_id_mismatch_refused() -> None:
-    plan, retained, ledger_value = _stance_setup()
-    stance_events = _stance_transmissions(plan, ledger_value)
-    stance_events[0] = dict(stance_events[0])
-    stance_events[0]["consent_receipt_id"] = "consent-other"
-    with pytest.raises(transmissions.TransmissionError, match="receipt"):
-        transmissions.build_transmission_ledger(
-            plan, retained, stance_transmissions=stance_events
-        )
-
-
-def test_null_result_state_refused() -> None:
-    plan, retained, ledger_value = _stance_setup()
-    stance_events = _stance_transmissions(plan, ledger_value)
-    stance_events[0] = dict(stance_events[0])
-    stance_events[0]["result_state"] = None
-    with pytest.raises(transmissions.TransmissionError, match="result_state"):
-        transmissions.build_transmission_ledger(
-            plan, retained, stance_transmissions=stance_events
-        )
 
 
 def test_retained_input_not_bound_to_plan_refused() -> None:

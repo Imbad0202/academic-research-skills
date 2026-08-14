@@ -16,6 +16,7 @@ COPIED = tuple(
             *(guard.SCHEMA_DIR / name for name in guard.SCHEMAS),
             guard.RUNTIME,
             guard.PROTOCOL,
+            guard.PHASE_E_PROTOCOL,
             guard.DESIGN,
             guard.CONTRACT_README,
             guard.MANIFEST,
@@ -229,3 +230,27 @@ def test_documentation_manifest_and_workflow_markers_are_required(tmp_path: Path
     assert any(str(guard.PROTOCOL) in error for error in errors)
     assert any(str(guard.MANIFEST) in error for error in errors)
     assert any(str(guard.WORKFLOW) in error for error in errors)
+
+
+def test_phase_e_probe_offer_markers_are_required(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    _replace(
+        root,
+        guard.PHASE_E_PROTOCOL,
+        "`ALL` is not permission to probe every claim",
+        "ALL rows may be probed",
+    )
+    errors = guard.run_checks(root)
+    assert any(str(guard.PHASE_E_PROTOCOL) in error for error in errors)
+
+
+def test_stale_deferred_wiring_sentence_is_forbidden(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    path = root / guard.PROTOCOL
+    path.write_text(
+        path.read_text(encoding="utf-8")
+        + "\nA dedicated contract is deferred to the pipeline-wiring slice.\n",
+        encoding="utf-8",
+    )
+    errors = guard.run_checks(root)
+    assert any("must not appear" in error for error in errors)

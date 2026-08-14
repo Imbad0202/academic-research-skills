@@ -117,11 +117,15 @@ def test_stage_4_5_non_all_tiers_are_ineligible(tier: str) -> None:
 
 
 @pytest.mark.parametrize("basis", [None, ()])
-def test_missing_basis_is_ambiguous_until_researcher_confirms(basis) -> None:
+def test_stage_2_5_tier_is_the_witness_but_basis_needs_confirmation(basis) -> None:
+    # The recorded HIGH-IMPACT tier alone makes a Stage 2.5 row eligible
+    # (design §3.1: the tier is the registry witness); the five-part basis
+    # the plan schema requires must then come from the researcher.
     row = _registry_row(basis=basis)
     verdict = builder.assess_eligibility(row)
-    assert verdict["eligible"] is False
+    assert verdict["eligible"] is True
     assert verdict["requires_confirmation"] is True
+    assert verdict["high_impact_basis"] == []
     with pytest.raises(builder.PlanBuilderError, match="confirm"):
         builder.build_consent_surface(row, _decisions())
     confirmation = {
@@ -131,7 +135,51 @@ def test_missing_basis_is_ambiguous_until_researcher_confirms(basis) -> None:
     }
     confirmed = builder.assess_eligibility(row, confirmation=confirmation)
     assert confirmed["eligible"] is True
+    assert confirmed["requires_confirmation"] is False
     assert confirmed["high_impact_basis"] == ["headline_conclusion"]
+    assert confirmed["basis_source"] == "researcher_confirmation"
+
+
+def test_recorded_basis_reports_registry_provenance() -> None:
+    verdict = builder.assess_eligibility(_registry_row())
+    assert verdict["basis_source"] == "registry"
+
+
+def test_stage_4_5_missing_basis_is_ambiguous_until_confirmed() -> None:
+    row = _registry_row(checkpoint="stage_4_5", tier="ALL", basis=None)
+    verdict = builder.assess_eligibility(row)
+    assert verdict["eligible"] is False
+    assert verdict["requires_confirmation"] is True
+    confirmation = {
+        "confirmed_high_impact": True,
+        "high_impact_basis": ["causal"],
+        "recorded_at": "2026-08-14T00:59:00Z",
+    }
+    confirmed = builder.assess_eligibility(row, confirmation=confirmation)
+    assert confirmed["eligible"] is True
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("queries", []),
+        ("queries", "q"),
+        ("indexes", ()),
+    ],
+)
+def test_explicit_falsey_or_wrong_type_decisions_are_refused(
+    field: str, value: object
+) -> None:
+    row = _registry_row()
+    with pytest.raises(builder.PlanBuilderError):
+        builder.build_consent_surface(row, _decisions(**{field: value}))
+
+
+def test_wrong_type_registry_basis_is_refused() -> None:
+    row = _registry_row()
+    row["high_impact_basis"] = "numerical"
+    with pytest.raises(builder.PlanBuilderError, match="basis"):
+        builder.assess_eligibility(row)
 
 
 def test_confirmation_with_invalid_basis_token_is_refused() -> None:
@@ -163,19 +211,41 @@ def test_confirmation_does_not_mutate_the_registry_row() -> None:
 # --- gate 2: consent before any dispatchable plan ---------------------------
 
 
-def test_bind_without_surface_hash_is_refused() -> None:
+def test_bind_without_surface_hash_records_consent_absent() -> None:
+    # Design §3.2: absence of consent produces an explicit local not_checked
+    # record and no plan — never a silent exception path.
     row = _registry_row()
-    with pytest.raises(builder.PlanBuilderError, match="consent surface"):
-        builder.bind_plan(row, _decisions())
+    record = builder.bind_plan(row, _decisions())
+    assert record["record_kind"] == "claim-standing-probe-declination/1.0"
+    assert record["status"] == "not_checked"
+    assert record["reason"] == "consent_absent"
+    assert record["network_calls"] == "none"
 
 
-def test_bind_with_stale_surface_hash_is_refused() -> None:
+def test_bind_with_stale_surface_hash_records_consent_invalidated() -> None:
     row = _registry_row()
     bound = _bound_decisions(row, _decisions())
     revised = dict(row)
     revised["claim_text"] = CLAIM_TEXT + " Revised after proposal."
-    with pytest.raises(builder.PlanBuilderError, match="consent surface"):
-        builder.bind_plan(revised, bound)
+    record = builder.bind_plan(revised, bound)
+    assert record["record_kind"] == "claim-standing-probe-declination/1.0"
+    assert record["reason"] == "consent_invalidated"
+    assert record["claim_sha256"] == substrate.text_digest(
+        revised["claim_text"]
+    )
+    assert "consent" not in record
+
+
+def test_filter_change_after_proposal_invalidates_the_acceptance() -> None:
+    # The surface digest binds the complete consentable-plan projection, so
+    # a language/document-type/stance change after propose cannot ride an
+    # old acceptance (design §3.2; gate 2).
+    row = _registry_row()
+    bound = _bound_decisions(row, _decisions())
+    widened = {**bound, "allowed_languages": ["en", "de"]}
+    record = builder.bind_plan(row, widened)
+    assert record["record_kind"] == "claim-standing-probe-declination/1.0"
+    assert record["reason"] == "consent_invalidated"
 
 
 def test_cancel_produces_not_checked_declination_and_no_plan() -> None:
@@ -186,6 +256,7 @@ def test_cancel_produces_not_checked_declination_and_no_plan() -> None:
     record = builder.bind_plan(row, _bound_decisions(row, decisions))
     assert record["record_kind"] == "claim-standing-probe-declination/1.0"
     assert record["status"] == "not_checked"
+    assert record["reason"] == "consent_cancelled"
     assert record["network_calls"] == "none"
     assert record["model_calls"] == "none"
     assert record["claim_sha256"] == substrate.text_digest(CLAIM_TEXT)
@@ -374,6 +445,28 @@ def test_surface_contains_every_required_consent_element() -> None:
         "approve_retrieval_plus_stance",
         "cancel",
     ]
+    assert surface["claim"]["high_impact_basis_source"] == "registry"
+    projection = surface["consentable_plan"]
+    assert projection["allowed_languages"] == ["en"]
+    assert projection["allowed_document_types"] == [
+        "journal_article",
+        "preprint",
+    ]
+    assert projection["stance_plan"] == STANCE_PLAN
+    assert projection["created_at"] == "2026-08-14T01:00:00Z"
+
+
+def test_receipt_binds_exactly_the_projection_the_surface_displayed() -> None:
+    # The consent receipt's consentable_plan_sha256 must equal the digest of
+    # the projection embedded in the accepted surface — what was shown IS
+    # what is bound (design §3.2; codex/altitude convergence fix).
+    row = _registry_row()
+    decisions = _bound_decisions(row, _stance_decisions())
+    surface = builder.build_consent_surface(row, decisions)
+    plan = builder.bind_plan(row, decisions)
+    assert plan["consent"]["consentable_plan_sha256"] == substrate.digest(
+        surface["consentable_plan"]
+    )
 
 
 def test_surface_for_retrieval_only_names_no_stance_provider() -> None:
@@ -399,6 +492,29 @@ def test_surface_digest_is_stable_and_claim_bound() -> None:
         builder.build_consent_surface(revised, decisions)
     )
     assert third != first
+
+
+# --- trigger constants stay pinned to the plan schema -----------------------
+
+
+def test_substrate_trigger_constants_match_the_plan_schema() -> None:
+    schema = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "shared/contracts/claim_standing/query_plan.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    claim = schema["$defs"]["claim"]
+    assert set(substrate.HIGH_IMPACT_BASIS_VALUES) == set(
+        claim["properties"]["high_impact_basis"]["items"]["enum"]
+    )
+    schema_tiers = {
+        branch["if"]["properties"]["checkpoint"]["const"]: branch["then"][
+            "properties"
+        ]["registry_selection_tier"]["const"]
+        for branch in claim["allOf"]
+    }
+    assert schema_tiers == substrate.CHECKPOINT_REQUIRED_TIER
 
 
 # --- inputs stay unmutated (gate 12 support) --------------------------------
@@ -441,10 +557,72 @@ def test_cli_propose_prints_surface_and_digest(tmp_path, capsys) -> None:
     )
 
 
-def test_cli_bind_writes_a_validating_plan(tmp_path, capsys) -> None:
+def test_cli_bind_prints_plan_under_session_only_and_creates_no_path(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    monkeypatch.chdir(tmp_path)
     row = _registry_row()
     decisions = _bound_decisions(row, _decisions())
-    output = tmp_path / "plan.json"
+    row_file = _write_json(tmp_path / "row.json", row)
+    decisions_file = _write_json(tmp_path / "decisions.json", decisions)
+    rc = builder.main(
+        ["bind", "--registry-claim", str(row_file), "--decisions", str(decisions_file)]
+    )
+    assert rc == 0
+    plan = json.loads(capsys.readouterr().out)
+    substrate.validate_plan(plan)
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "decisions.json",
+        "row.json",
+    ]
+
+
+def test_cli_bind_export_requires_the_consent_derived_path(
+    tmp_path, capsys
+) -> None:
+    row = _registry_row()
+    base = tmp_path / "authorized" / "probe-001"
+    (tmp_path / "authorized").mkdir()
+    decisions = _decisions(
+        local_persistence="explicit_local_export",
+        authorized_output_path=str(base),
+    )
+    bound = _bound_decisions(row, decisions)
+    row_file = _write_json(tmp_path / "row.json", row)
+    decisions_file = _write_json(tmp_path / "decisions.json", bound)
+
+    elsewhere = tmp_path / "elsewhere.json"
+    rc = builder.main(
+        [
+            "bind",
+            "--registry-claim", str(row_file),
+            "--decisions", str(decisions_file),
+            "--output", str(elsewhere),
+        ]
+    )
+    assert rc == 1
+    assert not elsewhere.exists()
+    capsys.readouterr()
+
+    derived = Path(str(base) + ".query-plan.json")
+    rc = builder.main(
+        [
+            "bind",
+            "--registry-claim", str(row_file),
+            "--decisions", str(decisions_file),
+            "--output", str(derived),
+        ]
+    )
+    assert rc == 0
+    capsys.readouterr()
+    plan = json.loads(derived.read_text(encoding="utf-8"))
+    substrate.validate_plan(plan)
+
+
+def test_cli_bind_refuses_output_under_session_only(tmp_path, capsys) -> None:
+    row = _registry_row()
+    decisions = _bound_decisions(row, _decisions())
+    output = tmp_path / "out" / "plan.json"
     rc = builder.main(
         [
             "bind",
@@ -453,9 +631,10 @@ def test_cli_bind_writes_a_validating_plan(tmp_path, capsys) -> None:
             "--output", str(output),
         ]
     )
-    assert rc == 0
-    plan = json.loads(output.read_text(encoding="utf-8"))
-    substrate.validate_plan(plan)
+    assert rc == 1
+    assert "explicit_local_export" in capsys.readouterr().err
+    assert not output.exists()
+    assert not output.parent.exists()
 
 
 def test_cli_bind_refuses_ineligible_row_without_output(tmp_path, capsys) -> None:
