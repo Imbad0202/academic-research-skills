@@ -255,7 +255,16 @@ completion marker leaves that one assignment resumable, which can
 re-materialize the identical bytes for the same judge — the same assignment,
 so no exposure or blinding property is affected. Desk ownership is acquired atomically at creation, and a
 post-publication isolation re-scan remains as defense in depth: a desk is
-certified only by a successful exit over exactly one packet. The gate
+certified only by a successful exit over exactly one packet.
+
+Two known bounded weaknesses are accepted for concurrent operator misuse
+(parallel gate commands aimed at one desk, itself a protocol violation), per
+the 2026-08-14 review disposition: an assignment that loses the atomic desk
+claim keeps its write-once claim marker bound to the lost destination and
+needs manual operator recovery before re-delivery, and two concurrent resumes
+of the same completed-identical delivery can both report success. Neither
+interleaving can expose a judge to a second scholar context, contaminate a
+certified desk, or re-issue a completed assignment. The gate
 verifies structural exposure
 constraints only: it cannot authenticate that two handles are two distinct
 people, and judge/adjudicator independence remains a procedural
