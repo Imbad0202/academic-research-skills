@@ -511,6 +511,37 @@ def test_fabricated_receipt_over_tampered_bundle_fails_delivery_replay(
         )
 
 
+def test_concurrent_writer_racing_the_desk_fails_before_completion(
+    finalized_bundle, tmp_path, monkeypatch
+):
+    run_dir = _copy_bundle(finalized_bundle, tmp_path)
+    ledger = _valid_ledger(run_dir)
+    gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
+    row = ledger["first_round_assignments"][0]
+    dest = tmp_path / "desk"
+    original = gate.envelope._ensure_exact_new
+
+    def racing_writer(path, raw, **kwargs):
+        original(path, raw, **kwargs)
+        if path.parent == dest:
+            (dest / "concurrent-other-packet.json").write_bytes(b"RACER\n")
+
+    monkeypatch.setattr(gate.envelope, "_ensure_exact_new", racing_writer)
+    with pytest.raises(gate.GateError, match="DELIVERY-DEST"):
+        gate.deliver(
+            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
+        )
+    monkeypatch.setattr(gate.envelope, "_ensure_exact_new", original)
+    completion = (
+        run_dir.parent
+        / f"{run_dir.name}-assignment-gate"
+        / "deliveries"
+        / row["judge_id"]
+        / f"{row['blind_session_id']}.completed.json"
+    )
+    assert not completion.exists()
+
+
 def test_completed_delivery_is_never_reissued(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)

@@ -350,6 +350,17 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
         envelope._ensure_exact_new(delivered_path, packet_raw)
     except envelope.EnvelopeError as exc:
         _fail("DELIVERY-DEST", str(exc))
+    # Post-publication isolation check: a concurrent delivery racing the
+    # pre-publication emptiness check would leave more than one file here.
+    # Both racers then fail before their completion markers, so a desk is
+    # certified only by a successful exit over exactly one packet.
+    occupants = sorted(path.name for path in dest.iterdir())
+    if occupants != [packet_name]:
+        _fail(
+            "DELIVERY-DEST",
+            "destination changed during delivery; a judge desk is certified "
+            "only when it holds exactly the delivered packet",
+        )
     # A write-once completion marker (the exact claim bytes) closes the
     # assignment: after this, even an identical command refuses, so a retired
     # packet cannot be silently re-issued. A crash before this line leaves the

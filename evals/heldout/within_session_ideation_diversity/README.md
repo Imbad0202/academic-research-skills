@@ -250,7 +250,10 @@ assignment is never re-issued, even by an identical command. One residual is
 accepted by design: a crash in the instant between packet publication and the
 completion marker leaves that one assignment resumable, which can
 re-materialize the identical bytes for the same judge — the same assignment,
-so no exposure or blinding property is affected. The gate
+so no exposure or blinding property is affected. Concurrent deliveries
+racing one desk are caught by a post-publication isolation re-scan: both
+racers fail before their completion markers, and a desk is certified only by
+a successful exit over exactly one packet. The gate
 verifies structural exposure
 constraints only: it cannot authenticate that two handles are two distinct
 people, and judge/adjudicator independence remains a procedural
