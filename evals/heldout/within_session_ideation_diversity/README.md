@@ -39,10 +39,20 @@ No breadth-efficacy claim is computable.
   binding to the pre-blind ingestion state;
 - `private_arm_map.schema.json`: closed private assignment-map structure with
   explicit procedural-only protection semantics;
+- `judge_assignment_ledger.schema.json`: closed operator-authored first-round
+  assignment ledger (pseudonymous judges + blind ids only, hash-bound to the
+  exact bundle);
+- `assignment_gate_receipt.schema.json`: write-once pass receipt sealed by the
+  assignment-ledger gate, embedding the exact accepted ledger;
+- `first_round_delivery_marker.schema.json`: write-once per-assignment delivery
+  claim marker (one delivery per verified assignment, exact resume only);
 - `scripts/validate_ideation_diversity_assets.py`: offline asset and variant
   validator/materializer;
 - `scripts/run_ideation_diversity_no_call.py`: offline-only plan initializer,
-  materializer, validator, transcript ingester, and blind-packet preparer.
+  materializer, validator, transcript ingester, and blind-packet preparer;
+- `scripts/ideation_diversity_assignment_gate.py`: closed first-round
+  assignment-ledger gate (`verify` + `deliver`), kept outside the no-call
+  runner.
 
 ## Offline validation
 
@@ -174,18 +184,91 @@ from its source transcript and verifies the complete bundle inventory and
 hashes. A crash before bundle publication resumes only the bound staging
 transaction; a crash after publication but before the state update is
 recoverable only by exact replay of that bundle. A first-round judge may
-receive a packet only after a future closed assignment-ledger gate verifies
+receive a packet only after the closed assignment-ledger gate verifies
 that the same judge has not and will not receive another arm or replicate that
-shares its scenario/pair/role card. This runner does not implement that ledger,
-and the bundle alone does not prove exposure blindness. Never deliver the
+shares its scenario/pair/role card. The no-call runner still does not implement
+that ledger, and the bundle alone does not prove exposure blindness; the gate
+is the separate `scripts/ideation_diversity_assignment_gate.py` (see "First-round
+assignment-ledger gate" below). Never deliver the
 complete packet directory. These unlabeled packets cannot
 stand in for two independent human judges or the separate arm-blind human
 adjudicator. Packet flags state only that no structured label, adjudication, or
 human-evidence artifact is attached; they do not claim the codebook lacks label
 instructions.
 
-Once that gate exists and passes, delivery is exactly one isolated packet per
+Once that gate passes, delivery is exactly one isolated packet per
 first-round assignment.
+
+## First-round assignment-ledger gate
+
+`scripts/ideation_diversity_assignment_gate.py` implements the closed gate the
+paragraphs above require, deliberately outside the no-call runner so the
+runner's own boundary statement stays true. The operator authors a ledger
+(`judge_assignment_ledger.schema.json`): binding hashes for the exact run plan,
+inventory, blind manifest, and private arm map; a pseudonymous judge roster; an
+adjudicator handle (schema-excluded from first-round assignments); and the
+first-round assignments themselves as `judge_id`/`blind_session_id` rows only —
+the ledger never carries arm, pair, scenario, experiment, or replicate fields.
+
+```bash
+PYTHONPATH=scripts python scripts/ideation_diversity_assignment_gate.py verify \
+  --run-dir /path/to/run --ledger /path/to/assignment-ledger.json
+
+PYTHONPATH=scripts python scripts/ideation_diversity_assignment_gate.py deliver \
+  --run-dir /path/to/run --judge judge-01 \
+  --blind-session-id blind-24_LOWERCASE_HEX --dest /path/to/judge-desk
+```
+
+`verify` replays the complete finalized bundle, checks the four hash bindings
+and private-map permissions, then enforces: every one of the 48 packets carries
+at least two distinct first-round judges; the roster equals exactly the set of
+assigned judges; and no judge receives two packets whose cells share a
+`pair_id` — the pair groups the en/zh-TW variants of one synthetic scholar
+context, so blocking at pair level subsumes scenario and role-card sharing,
+including the same scenario appearing in both experiments. Only when every
+check passes does it seal a write-once pass receipt
+(`assignment_gate_receipt.schema.json`) embedding the exact accepted ledger. A
+failed check writes nothing, and an exposure failure carries no judge or
+blind identifiers — even that pairing exists inside one judge's set is
+private-map information once combined with the ledger. Gate
+artifacts live in a sibling `<run>-assignment-gate/` directory, never inside
+the run directory, so the runner's exact run-inventory validation stays green.
+
+`deliver` consumes only the sealed receipt (never a mutable ledger path), but
+treats it as evidence rather than authority: it replays the complete bundle
+validation and every semantic gate check — exactly what `verify` runs —
+against the embedded ledger, so a hand-fabricated receipt cannot authorize a
+delivery that `verify` would refuse, even over a consistently tampered
+bundle. It then requires the exact
+`judge_id`/`blind_session_id` assignment, verifies the packet's sealed
+inventory hash, and publishes exactly one isolated packet into a
+destination outside the run and gate directories that the gate itself
+creates — `mkdir` is the atomic desk claim, so a new delivery refuses any
+pre-existing destination and two racing deliveries cannot both own one
+desk. Each assignment is claimed
+by a write-once delivery marker (`first_round_delivery_marker.schema.json`)
+and closed by a write-once completion marker after publication: an
+interrupted identical delivery may exact-resume once, but a completed
+assignment is never re-issued, even by an identical command. One residual is
+accepted by design: a crash in the instant between packet publication and the
+completion marker leaves that one assignment resumable, which can
+re-materialize the identical bytes for the same judge — the same assignment,
+so no exposure or blinding property is affected. Desk ownership is acquired atomically at creation, and a
+post-publication isolation re-scan remains as defense in depth: a desk is
+certified only by a successful exit over exactly one packet.
+
+Two known bounded weaknesses are accepted for concurrent operator misuse
+(parallel gate commands aimed at one desk, itself a protocol violation), per
+the 2026-08-14 review disposition: an assignment that loses the atomic desk
+claim keeps its write-once claim marker bound to the lost destination and
+needs manual operator recovery before re-delivery, and two concurrent resumes
+of the same completed-identical delivery can both report success. Neither
+interleaving can expose a judge to a second scholar context, contaminate a
+certified desk, or re-issue a completed assignment. The gate
+verifies structural exposure
+constraints only: it cannot authenticate that two handles are two distinct
+people, and judge/adjudicator independence remains a procedural
+responsibility, as the ledger's `identity_boundary` block states.
 
 The assignment map is kept under a `0700` directory as a `0600` file and is
 declared `procedural_nondisclosure_only`, with `encrypted=false`. These local
