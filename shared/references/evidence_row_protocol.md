@@ -238,3 +238,23 @@ The row supports only a caller-supplied `LLM-ADVISORY` / `UNMEASURED`
 observation. It creates no PASS/FAIL, score, gate, clean/agreement certificate,
 ClaimIntent, revision authority, or consent/protocol finding. See
 `shared/references/cross_document_consistency_advisory_protocol.md`.
+
+## Version 1.3 claim-standing advisory surface (#655)
+
+`shared/contracts/evidence/evidence_row_v1_3.schema.json` defines
+`evidence-row/1.3`, surface `claim_standing_advisory`: one provenance-only row
+per (probe claim, selected work-family candidate) in the #655 claim-standing
+probe. The row binds a bounded inspected-evidence excerpt to the exact source
+content hash and UTF-8 span, reuses the family's cache, content-handling, and
+row-hash blocks verbatim, and carries a `coverage` declaration
+(`abstract` / `session_held_full_text` / `metadata_only`) in place of 1.0's
+anchor: the two anchor-derived excerpt states do not exist on this surface.
+Cross-field conditionals bind retrieved states to a full payload and a bound
+source, non-retrieved states to null payloads and `contains_external_text:
+false`, the rights coupling in both directions, and metadata-only coverage to
+failure states with a null source hash. The row never carries a stance or
+verdict; an exact excerpt match never determines stance; abstract-level
+coverage is never rendered as verified full text. The consuming stance record
+(`claim-standing-stance-record/1.0`) references rows by id AND row hash. No
+runtime validator for this surface exists yet — the future stance runner owns
+replay verification before rendering.

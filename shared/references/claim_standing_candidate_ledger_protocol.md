@@ -54,4 +54,4 @@ Validate an existing ledger by exact deterministic replay:
 PYTHONPATH=scripts python3 scripts/build_claim_standing_candidate_ledger.py validate --query-plan query_plan.json --retrieval-input retrieval_input.json --candidate-ledger candidate_ledger.json
 ```
 
-The current slice deliberately excludes live adapters, pipeline wiring, evidence-row 1.3, presentation/measurement gates, and held-out dispatch. `STANCE CLASSIFICATION UNMEASURED` remains mandatory until a separately authorized later track is implemented and evaluated.
+The current slice deliberately excludes the relevance assessor, the stance runner, pipeline wiring, presentation/measurement gates, and held-out dispatch. `STANCE CLASSIFICATION UNMEASURED` remains mandatory until a separately authorized later track is implemented and evaluated.

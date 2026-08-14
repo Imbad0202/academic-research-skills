@@ -147,14 +147,12 @@
      "enum": [
       "verified_exact_match",
       "agent_extracted",
-      "unconfirmed_anchor",
       "not_checked",
       "source_missing",
       "access_failed",
-      "retrieval_failed",
-      "anchorless"
+      "retrieval_failed"
      ],
-     "description": "The single canonical evidence provenance/availability vocabulary. It never expresses whether the claim is supported."
+     "description": "The family's canonical provenance/availability vocabulary, minus the two anchor-derived states (this surface carries no anchor). It never expresses whether the claim is supported."
     },
     "text": {
      "type": [
@@ -280,5 +278,247 @@
    "minLength": 64,
    "maxLength": 64
   }
- }
+ },
+ "allOf": [
+  {
+   "if": {
+    "properties": {
+     "content_handling": {
+      "properties": {
+       "sharing_scope": {
+        "const": "user_confirmed_shareable"
+       }
+      },
+      "required": [
+       "sharing_scope"
+      ]
+     }
+    },
+    "required": [
+     "content_handling"
+    ]
+   },
+   "then": {
+    "properties": {
+     "content_handling": {
+      "properties": {
+       "rights_basis": {
+        "const": "user_declared_authorized"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "content_handling": {
+      "properties": {
+       "rights_basis": {
+        "const": "user_declared_authorized"
+       }
+      },
+      "required": [
+       "rights_basis"
+      ]
+     }
+    },
+    "required": [
+     "content_handling"
+    ]
+   },
+   "then": {
+    "properties": {
+     "content_handling": {
+      "properties": {
+       "sharing_scope": {
+        "const": "user_confirmed_shareable"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "excerpt": {
+      "properties": {
+       "state": {
+        "enum": [
+         "verified_exact_match",
+         "agent_extracted"
+        ]
+       }
+      },
+      "required": [
+       "state"
+      ]
+     }
+    },
+    "required": [
+     "excerpt"
+    ]
+   },
+   "then": {
+    "properties": {
+     "source": {
+      "properties": {
+       "source_content_sha256": {
+        "type": "string"
+       },
+       "source_content_utf8_bytes": {
+        "type": "integer"
+       }
+      }
+     },
+     "excerpt": {
+      "properties": {
+       "text": {
+        "type": "string",
+        "minLength": 1
+       },
+       "excerpt_sha256": {
+        "type": "string"
+       },
+       "source_span_utf8": {
+        "type": "object"
+       },
+       "captured_at": {
+        "type": "string",
+        "format": "date-time"
+       }
+      }
+     },
+     "cache": {
+      "properties": {
+       "status": {
+        "enum": [
+         "miss",
+         "hit"
+        ]
+       },
+       "key_sha256": {
+        "type": "string"
+       }
+      }
+     },
+     "content_handling": {
+      "properties": {
+       "contains_external_text": {
+        "const": true
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "excerpt": {
+      "properties": {
+       "state": {
+        "enum": [
+         "not_checked",
+         "source_missing",
+         "access_failed",
+         "retrieval_failed"
+        ]
+       }
+      },
+      "required": [
+       "state"
+      ]
+     }
+    },
+    "required": [
+     "excerpt"
+    ]
+   },
+   "then": {
+    "properties": {
+     "source": {
+      "properties": {
+       "source_content_sha256": {
+        "type": "null"
+       },
+       "source_content_utf8_bytes": {
+        "type": "null"
+       }
+      }
+     },
+     "excerpt": {
+      "properties": {
+       "text": {
+        "type": "null"
+       },
+       "excerpt_sha256": {
+        "type": "null"
+       },
+       "source_span_utf8": {
+        "type": "null"
+       },
+       "captured_at": {
+        "type": "null"
+       }
+      }
+     },
+     "cache": {
+      "properties": {
+       "status": {
+        "const": "not_used"
+       },
+       "key_sha256": {
+        "type": "null"
+       }
+      }
+     },
+     "content_handling": {
+      "properties": {
+       "contains_external_text": {
+        "const": false
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "coverage": {
+      "const": "metadata_only"
+     }
+    },
+    "required": [
+     "coverage"
+    ]
+   },
+   "then": {
+    "properties": {
+     "excerpt": {
+      "properties": {
+       "state": {
+        "enum": [
+         "not_checked",
+         "source_missing",
+         "access_failed",
+         "retrieval_failed"
+        ]
+       }
+      }
+     },
+     "source": {
+      "properties": {
+       "source_content_sha256": {
+        "type": "null"
+       }
+      }
+     }
+    }
+   }
+  }
+ ]
 }

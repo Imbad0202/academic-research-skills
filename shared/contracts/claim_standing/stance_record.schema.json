@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/claim_standing/stance_record.schema.json",
   "title": "#655 claim-standing stance record v1",
-  "description": "The complete stance-classification output for one probe run under a retrieval_plus_stance consent (query plan 1.1). Binds the full §7 probe identity, carries one row per selected work family with the closed §5.1 vocabulary and cross-field rules, and freezes the §5.3 all-selected distribution whose buckets must sum exactly to selected_total (runtime-verified). Every record carries the mandatory unmeasured banner until a valid baseline stance-classification measurement row exists. No scalar credibility, confidence, consensus, or trust value exists anywhere in this contract.",
+  "description": "The complete stance-classification output for one probe run under a retrieval_plus_stance consent (query plan 1.1). Binds the full §7 probe identity, carries one row per selected work family with the closed §5.1 vocabulary and cross-field rules, and freezes the §5.3 all-selected distribution whose buckets must sum exactly to selected_total (the future stance runner is required to verify this; no verifier exists yet). Every record carries the mandatory unmeasured banner until a valid baseline stance-classification measurement row exists. No scalar credibility, confidence, consensus, or trust value exists anywhere in this contract.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,9 +18,15 @@
     "stance_record_sha256"
   ],
   "properties": {
-    "schema_version": {"const": "claim-standing-stance-record/1.0"},
-    "probe_id": {"$ref": "#/$defs/identifier"},
-    "unmeasured_banner": {"const": "STANCE CLASSIFICATION UNMEASURED"},
+    "schema_version": {
+      "const": "claim-standing-stance-record/1.0"
+    },
+    "probe_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "unmeasured_banner": {
+      "const": "STANCE CLASSIFICATION UNMEASURED"
+    },
     "advisory_boundary": {
       "type": "object",
       "additionalProperties": false,
@@ -31,10 +37,18 @@
         "manuscript_mutation"
       ],
       "properties": {
-        "layer": {"const": "LLM-ADVISORY"},
-        "gate_effect": {"const": "none"},
-        "read_ledger_effect": {"const": "none"},
-        "manuscript_mutation": {"const": "none"}
+        "layer": {
+          "const": "LLM-ADVISORY"
+        },
+        "gate_effect": {
+          "const": "none"
+        },
+        "read_ledger_effect": {
+          "const": "none"
+        },
+        "manuscript_mutation": {
+          "const": "none"
+        }
       }
     },
     "identity": {
@@ -49,12 +63,24 @@
         "stance_plan_sha256"
       ],
       "properties": {
-        "claim_sha256": {"$ref": "#/$defs/sha256"},
-        "consent_receipt_sha256": {"$ref": "#/$defs/sha256"},
-        "query_plan_sha256": {"$ref": "#/$defs/sha256"},
-        "adapter_registry_sha256": {"$ref": "#/$defs/sha256"},
-        "candidate_ledger_sha256": {"$ref": "#/$defs/sha256"},
-        "stance_plan_sha256": {"$ref": "#/$defs/sha256"}
+        "claim_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "consent_receipt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "query_plan_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "adapter_registry_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "candidate_ledger_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "stance_plan_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
       }
     },
     "stance_runtime": {
@@ -67,17 +93,36 @@
         "runtime_identity"
       ],
       "properties": {
-        "provider_identity": {"type": "string", "minLength": 1, "maxLength": 300, "pattern": "\\S"},
-        "model_identity": {"type": "string", "minLength": 1, "maxLength": 300, "pattern": "\\S"},
-        "prompt_contract_version": {"$ref": "#/$defs/identifier"},
-        "runtime_identity": {"type": "string", "minLength": 1, "maxLength": 300, "pattern": "\\S"}
+        "provider_identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "\\S"
+        },
+        "model_identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "\\S"
+        },
+        "prompt_contract_version": {
+          "$ref": "#/$defs/identifier"
+        },
+        "runtime_identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "\\S"
+        }
       }
     },
     "rows": {
       "type": "array",
       "minItems": 0,
       "maxItems": 40,
-      "items": {"$ref": "#/$defs/row"}
+      "items": {
+        "$ref": "#/$defs/row"
+      }
     },
     "distribution": {
       "type": "object",
@@ -94,26 +139,67 @@
         "not_checked"
       ],
       "properties": {
-        "denominator": {"const": "all_selected_work_families"},
-        "selected_total": {"type": "integer", "minimum": 0, "maximum": 40},
-        "support": {"$ref": "#/$defs/count"},
-        "contradict": {"$ref": "#/$defs/count"},
-        "mixed": {"$ref": "#/$defs/count"},
-        "not_addressed": {"$ref": "#/$defs/count"},
-        "INSUFFICIENT_EVIDENCE": {"$ref": "#/$defs/count"},
-        "AMBIGUOUS": {"$ref": "#/$defs/count"},
-        "not_checked": {"$ref": "#/$defs/count"}
+        "denominator": {
+          "const": "all_selected_work_families"
+        },
+        "selected_total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40
+        },
+        "support": {
+          "$ref": "#/$defs/count"
+        },
+        "contradict": {
+          "$ref": "#/$defs/count"
+        },
+        "mixed": {
+          "$ref": "#/$defs/count"
+        },
+        "not_addressed": {
+          "$ref": "#/$defs/count"
+        },
+        "INSUFFICIENT_EVIDENCE": {
+          "$ref": "#/$defs/count"
+        },
+        "AMBIGUOUS": {
+          "$ref": "#/$defs/count"
+        },
+        "not_checked": {
+          "$ref": "#/$defs/count"
+        }
       },
-      "description": "The primary presentation denominator: the seven buckets must sum exactly to selected_total (runtime-verified; a performed-only view may render only beside this one, never instead of it)."
+      "description": "The primary presentation denominator: the seven buckets must sum exactly to selected_total (the future stance runner is required to verify the sum, row uniqueness, and exact coverage of the ledger's selected families before sealing a record — no verifier exists yet; a performed-only view may render only beside this one, never instead of it)."
     },
-    "completed_at": {"$ref": "#/$defs/rfc3339"},
-    "stance_record_sha256": {"$ref": "#/$defs/sha256"}
+    "completed_at": {
+      "$ref": "#/$defs/rfc3339"
+    },
+    "stance_record_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
   },
   "$defs": {
-    "identifier": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"},
-    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}(?![\\s\\S])", "minLength": 64, "maxLength": 64},
-    "rfc3339": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:[Zz]|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])(?![\\s\\S])"},
-    "count": {"type": "integer", "minimum": 0, "maximum": 40},
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "rfc3339": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:[Zz]|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])(?![\\s\\S])"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 40
+    },
     "row": {
       "type": "object",
       "additionalProperties": false,
@@ -125,7 +211,7 @@
         "failure_state",
         "conditions_noted",
         "evidence_scope",
-        "evidence_row_ids",
+        "evidence_row_refs",
         "prompt_sha256",
         "assessment_input_sha256",
         "raw_output",
@@ -134,9 +220,22 @@
         "assessed_at"
       ],
       "properties": {
-        "work_family_id": {"type": "string", "minLength": 1, "maxLength": 200},
-        "canonical_raw_hit_id": {"type": "string", "minLength": 1, "maxLength": 200},
-        "check_state": {"enum": ["performed", "not_checked"]},
+        "work_family_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "canonical_raw_hit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "check_state": {
+          "enum": [
+            "performed",
+            "not_checked"
+          ]
+        },
         "stance": {
           "anyOf": [
             {
@@ -149,7 +248,9 @@
                 "AMBIGUOUS"
               ]
             },
-            {"type": "null"}
+            {
+              "type": "null"
+            }
           ]
         },
         "failure_state": {
@@ -165,65 +266,191 @@
                 "parse_error"
               ]
             },
-            {"type": "null"}
+            {
+              "type": "null"
+            }
           ]
         },
         "conditions_noted": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "maxLength": 1000,
           "description": "For mixed/AMBIGUOUS driven by population/condition differences: the condition, stated; otherwise null."
         },
-        "evidence_scope": {"enum": ["abstract", "session_held_full_text", "metadata_only"]},
-        "evidence_row_ids": {
+        "evidence_scope": {
+          "enum": [
+            "abstract",
+            "session_held_full_text",
+            "metadata_only"
+          ]
+        },
+        "prompt_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assessment_input_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw_output": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 20000,
+          "description": "The stance provider's exact raw output, retained verbatim; null only when no call was made."
+        },
+        "raw_output_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rationale": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "assessed_at": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/rfc3339"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_row_refs": {
           "type": "array",
           "minItems": 0,
           "maxItems": 8,
           "uniqueItems": true,
-          "items": {"type": "string", "pattern": "^EVR-CS-[A-Za-z0-9._:-]+(?![\\s\\S])", "maxLength": 200}
-        },
-        "prompt_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
-        "assessment_input_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
-        "raw_output": {
-          "type": ["string", "null"],
-          "maxLength": 20000,
-          "description": "The stance provider's exact raw output, retained verbatim; null only when no call was made."
-        },
-        "raw_output_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
-        "rationale": {"type": ["string", "null"], "minLength": 1, "maxLength": 2000},
-        "assessed_at": {"oneOf": [{"$ref": "#/$defs/rfc3339"}, {"type": "null"}]}
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "row_id",
+              "row_sha256"
+            ],
+            "properties": {
+              "row_id": {
+                "type": "string",
+                "pattern": "^EVR-CS-[A-Za-z0-9._:-]+(?![\\s\\S])",
+                "maxLength": 200
+              },
+              "row_sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          },
+          "description": "Complete pointers AND hashes to the evidence-row/1.3 rows this stance rests on; replacing a row under the same id changes its hash and makes this record visibly stale."
+        }
       },
       "allOf": [
         {
-          "if": {"properties": {"check_state": {"const": "performed"}}},
+          "if": {
+            "properties": {
+              "check_state": {
+                "const": "performed"
+              }
+            },
+            "required": [
+              "check_state"
+            ]
+          },
           "then": {
             "properties": {
-              "stance": {"type": "string"},
-              "failure_state": {"const": null},
-              "evidence_row_ids": {"minItems": 1},
-              "prompt_sha256": {"type": "string"},
-              "assessment_input_sha256": {"type": "string"},
-              "raw_output": {"type": "string"},
-              "raw_output_sha256": {"type": "string"},
-              "rationale": {"type": "string"},
-              "assessed_at": {"type": "string"}
+              "stance": {
+                "type": "string"
+              },
+              "failure_state": {
+                "const": null
+              },
+              "prompt_sha256": {
+                "type": "string"
+              },
+              "assessment_input_sha256": {
+                "type": "string"
+              },
+              "raw_output": {
+                "type": "string"
+              },
+              "raw_output_sha256": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "assessed_at": {
+                "type": "string"
+              },
+              "evidence_row_refs": {
+                "minItems": 1
+              }
             }
           }
         },
         {
-          "if": {"properties": {"check_state": {"const": "not_checked"}}},
+          "if": {
+            "properties": {
+              "check_state": {
+                "const": "not_checked"
+              }
+            },
+            "required": [
+              "check_state"
+            ]
+          },
           "then": {
             "properties": {
-              "stance": {"const": null},
-              "failure_state": {"type": "string"}
+              "stance": {
+                "const": null
+              },
+              "failure_state": {
+                "type": "string"
+              }
             }
           }
         },
         {
-          "if": {"properties": {"evidence_scope": {"const": "metadata_only"}}},
+          "if": {
+            "properties": {
+              "evidence_scope": {
+                "const": "metadata_only"
+              }
+            },
+            "required": [
+              "evidence_scope"
+            ]
+          },
           "then": {
             "properties": {
-              "check_state": {"const": "not_checked"}
+              "check_state": {
+                "const": "not_checked"
+              }
             }
           }
         }

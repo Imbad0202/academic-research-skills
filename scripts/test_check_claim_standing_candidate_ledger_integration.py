@@ -41,7 +41,7 @@ def _replace(root: Path, relative: Path, old: str, new: str) -> None:
     path = root / relative
     text = path.read_text(encoding="utf-8")
     assert old in text
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    path.write_text(text.replace(old, new), encoding="utf-8")
 
 
 def test_current_repository_passes() -> None:

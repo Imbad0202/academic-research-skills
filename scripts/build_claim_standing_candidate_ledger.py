@@ -168,12 +168,7 @@ def plan_schema_filename(plan: dict[str, Any]) -> str:
 def consentable_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
     """Return every plan field whose use requires the named consent receipt."""
 
-    if plan.get("schema_version") == PLAN_VERSION_1_1:
-        base = consentable_plan_projection({**plan, "schema_version": PLAN_VERSION})
-        base["schema_version"] = PLAN_VERSION_1_1
-        base["stance_plan"] = copy.deepcopy(plan["stance_plan"])
-        return base
-    return {
+    projection = {
         "schema_version": plan["schema_version"],
         "probe_id": plan["probe_id"],
         "claim": copy.deepcopy(plan["claim"]),
@@ -187,6 +182,9 @@ def consentable_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
         "caps": copy.deepcopy(plan["caps"]),
         "created_at": plan["created_at"],
     }
+    if plan.get("schema_version") == PLAN_VERSION_1_1:
+        projection["stance_plan"] = copy.deepcopy(plan["stance_plan"])
+    return projection
 
 
 def relevance_assessment_input_projection(
@@ -368,11 +366,8 @@ def validate_plan(plan: dict[str, Any]) -> None:
     _expect(1 <= len(queries) <= MAX_QUERIES, "queries", "must contain 1..3 rows")
     _expect(1 <= len(roster) <= MAX_INDEXES, "provider_roster", "must contain 1..4 rows")
     _expect(
-        plan["authorized_content_classes"] == RETRIEVAL_ONLY_CONTENT_CLASSES
-        or (
-            plan.get("schema_version") == PLAN_VERSION_1_1
-            and plan["authorized_content_classes"] == STANCE_CONTENT_CLASSES
-        ),
+        plan.get("schema_version") == PLAN_VERSION_1_1
+        or plan["authorized_content_classes"] == RETRIEVAL_ONLY_CONTENT_CLASSES,
         "authorized_content_classes",
         "Track A retrieval authorizes only accepted search-query text",
     )

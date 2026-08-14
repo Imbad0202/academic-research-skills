@@ -42,6 +42,12 @@ def _rehash_plan(plan: dict) -> None:
     consent["provider_roster_sha256"] = ledger.digest(plan["provider_roster"])
     consent["caps_sha256"] = ledger.digest(plan["caps"])
     consent["queries_sha256"] = ledger.digest(plan["queries"])
+    if plan["schema_version"] == ledger.PLAN_VERSION_1_1:
+        consent["stance_plan_sha256"] = (
+            ledger.digest(plan["stance_plan"])
+            if plan["stance_plan"] is not None
+            else None
+        )
     consent["consentable_plan_sha256"] = ledger.digest(
         ledger.consentable_plan_projection(plan)
     )

@@ -673,5 +673,70 @@
         }
       ]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "consent": {
+            "properties": {
+              "decision": {
+                "const": "retrieval_only"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          }
+        },
+        "required": [
+          "consent"
+        ]
+      },
+      "then": {
+        "properties": {
+          "authorized_content_classes": {
+            "const": [
+              "accepted_search_query"
+            ]
+          },
+          "stance_plan": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "consent": {
+            "properties": {
+              "decision": {
+                "const": "retrieval_plus_stance"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          }
+        },
+        "required": [
+          "consent"
+        ]
+      },
+      "then": {
+        "properties": {
+          "authorized_content_classes": {
+            "const": [
+              "accepted_search_query",
+              "claim_and_selected_evidence_to_stance_provider"
+            ]
+          },
+          "stance_plan": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ]
 }
