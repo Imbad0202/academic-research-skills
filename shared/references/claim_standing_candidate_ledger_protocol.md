@@ -1,6 +1,6 @@
 # Claim-standing candidate-ledger protocol
 
-Status: Track A offline substrate implemented; live retrieval and claim-standing measurement remain unimplemented.
+Status: Track A offline substrate and live discovery adapters implemented; relevance assessment, stance classification, and claim-standing measurement remain unimplemented.
 
 This protocol fixes the deterministic boundary between a consent-bound search plan, already-retained adapter-neutral retrieval records, and a candidate ledger. It does not retrieve records, call a model, infer stance, render claim standing, or dispatch a held-out evaluation.
 
@@ -13,6 +13,10 @@ This protocol fixes the deterministic boundary between a consent-bound search pl
 All three contracts are closed Draft 2020-12 JSON Schemas. Hashes are lowercase SHA-256 over canonical JSON (UTF-8; sorted keys; compact separators; the digest field omitted from the object being hashed). The consent receipt additionally binds a closed consentable-plan projection containing the probe id, exact claim and eligibility basis, queries and their date/index targets, provider roster, language and document-type allowlists, authorized content classes, caps, and plan creation time. Provider retention is conditional: `known` requires a semantically visible reference and `unknown` requires null. Changing any authorization surface invalidates the old receipt.
 
 The portable schemas use `\\S` as a first structural screen. The runtime then applies one Unicode predicate to every claim/query, provider disclosure and retention reference, consent boundary, non-null provider-record id/title/author name, available abstract, successful rationale/raw output, and failure detail. It NFKC-normalizes for the check, rejects a surrogate anywhere, and rejects control/format/separator-only, combining-only, whitespace-only, and punctuation-only text. Narrative fields may use a visible letter, number, or symbol; provider-record ids and author names require a letter or number. Exact retained strings and their hashes are not rewritten by this check. A failed malformed assessment is the sole raw-output exception: whitespace-only or format-only output remains exact evidence, while its failure detail must still be semantic text.
+
+## Live discovery adapters
+
+`scripts/claim_standing_discovery.py` is the Track A head: one closed adapter per index (`semantic_scholar`, `openalex`, `crossref`, `arxiv`) turns a validated, consent-bound query plan into a `claim-standing-retrieval-input/1.0` record. Adapters request a single page up to the 20-hit per-(query,index) cap, truncate provider overflow at the adapter boundary with exact counts, map failures onto the closed attempt vocabulary with exactly one transport call per attempt and no silent retry, and declare honest `retention_state: unknown` provider blocks. An arXiv year filter is refused as `unsupported_query` before any network call. The emitted record carries an empty `relevance_assessments` array by design: assessments are caller-supplied under these contracts, and the relevance assessor is a later, separately consented slice, so finalization stays blocked until each computed work family has one. The `retrieve` CLI refuses to persist output under a `session_only` consent and writes exclusively. The pinned resolver clients are not imported. Adapters are written against the providers' documented public APIs and are unexercised live until a first diagnostic run.
 
 ## Deterministic finalization
 
