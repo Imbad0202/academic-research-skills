@@ -352,16 +352,18 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
                 f"{args.judge} already claimed a delivery for "
                 f"{args.blind_session_id}; an assignment is delivered once",
             )
-    if not dest.exists():
-        try:
-            dest.mkdir(mode=0o700)
-        except FileExistsError:
+    try:
+        # Unconditional for a new delivery: this single mkdir IS the atomic
+        # desk claim, so a racer that loses it never writes to the desk.
+        dest.mkdir(mode=0o700)
+    except FileExistsError:
+        if not resume:
             _fail(
                 "DELIVERY-DEST",
                 "another delivery claimed this destination first",
             )
-        except OSError as exc:
-            _fail("DELIVERY-DEST", f"cannot create the judge desk: {exc}")
+    except OSError as exc:
+        _fail("DELIVERY-DEST", f"cannot create the judge desk: {exc}")
     delivered_path = dest / packet_name
     try:
         envelope._ensure_exact_new(delivered_path, packet_raw)
