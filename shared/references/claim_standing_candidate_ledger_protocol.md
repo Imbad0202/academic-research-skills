@@ -1,6 +1,6 @@
 # Claim-standing candidate-ledger protocol
 
-Status: Track A offline substrate, live discovery adapters, and the stance-side contracts (query-plan 1.1, stance record, evidence-row 1.3) implemented; the relevance assessor, the stance runner, presentation, pipeline wiring, and claim-standing measurement remain unimplemented.
+Status: Track A offline substrate, live discovery adapters, stance-side contracts, the stance runner (injected-transport only), the semantic stance-record validator, and the deterministic presentation renderer implemented; the relevance assessor, a live stance-provider adapter, pipeline wiring, and claim-standing measurement remain unimplemented.
 
 This protocol fixes the deterministic boundary between a consent-bound search plan, already-retained adapter-neutral retrieval records, and a candidate ledger. It does not retrieve records, call a model, infer stance, render claim standing, or dispatch a held-out evaluation.
 
@@ -10,7 +10,7 @@ This protocol fixes the deterministic boundary between a consent-bound search pl
 - `claim-standing-retrieval-input/1.0`: explicit attempts, retained raw hits, caller-supplied relevance assessments bound to exact claim/candidate/prompt bytes, and a whole-input digest.
 - `claim-standing-candidate-ledger/1.0`: an auditable terminal state for every attempt and raw hit plus deterministic work-family selection.
 - `claim-standing-query-plan/1.1`: the stance-authorizable consent — identical to 1.0 except the decision may be `retrieval_plus_stance`, binding a top-level `stance_plan` (exact provider/model, prompt contract, retention disclosure) by hash and extending the authorized content classes by exactly the stance transmission class. The validator accepts both versions; 1.0 semantics are unchanged.
-- `claim-standing-stance-record/1.0`: the future stance runner's output contract — §7 probe-identity hashes, per-family rows under the closed §5.1 vocabulary with mandatory evidence-row references, the all-selected distribution, and the mandatory `STANCE CLASSIFICATION UNMEASURED` banner. No stance runner exists yet; the contract precedes it.
+- `claim-standing-stance-record/1.0`: the future stance runner's output contract — §7 probe-identity hashes, per-family rows under the closed §5.1 vocabulary with mandatory evidence-row references, the all-selected distribution, and the mandatory `STANCE CLASSIFICATION UNMEASURED` banner. `scripts/claim_standing_stance_runner.py` implements the runner against an injected transport whose declared identity must equal the consented `stance_plan` (no live provider adapter exists; its CLI refuses until one ships with its own consent surface), and `validate_stance_record` is the required semantic verifier (identity hashes, distribution sum, exact selected-family coverage, per-evidence-row hash replay). `scripts/render_claim_standing_view.py` renders the §5.3 three-part view with the §5.4 bounded vocabulary, fixed empty wording, all-selected denominator, inert escaping of provider text, and stale-record refusal.
 
 All three contracts are closed Draft 2020-12 JSON Schemas. Hashes are lowercase SHA-256 over canonical JSON (UTF-8; sorted keys; compact separators; the digest field omitted from the object being hashed). The consent receipt additionally binds a closed consentable-plan projection containing the probe id, exact claim and eligibility basis, queries and their date/index targets, provider roster, language and document-type allowlists, authorized content classes, caps, and plan creation time. Provider retention is conditional: `known` requires a semantically visible reference and `unknown` requires null. Changing any authorization surface invalidates the old receipt.
 
@@ -54,4 +54,4 @@ Validate an existing ledger by exact deterministic replay:
 PYTHONPATH=scripts python3 scripts/build_claim_standing_candidate_ledger.py validate --query-plan query_plan.json --retrieval-input retrieval_input.json --candidate-ledger candidate_ledger.json
 ```
 
-The current slice deliberately excludes the relevance assessor, the stance runner, pipeline wiring, presentation/measurement gates, and held-out dispatch. `STANCE CLASSIFICATION UNMEASURED` remains mandatory until a separately authorized later track is implemented and evaluated.
+The current slice deliberately excludes the relevance assessor, a live stance-provider adapter, pipeline wiring, measurement gates, and held-out dispatch. `STANCE CLASSIFICATION UNMEASURED` remains mandatory until a separately authorized later track is implemented and evaluated.

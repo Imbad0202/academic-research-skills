@@ -39,9 +39,13 @@ import urllib.request
 import xml.etree.ElementTree as ElementTree
 
 # Keep the sibling import working whether this file is executed directly or
-# imported as scripts.claim_standing_discovery (same bridge as sibling tools).
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import build_claim_standing_candidate_ledger as substrate  # noqa: E402
+# imported as scripts.claim_standing_discovery, without creating a second
+# module instance (exception identity matters across these tools).
+try:
+    from scripts import build_claim_standing_candidate_ledger as substrate
+except ImportError:  # direct script execution
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import build_claim_standing_candidate_ledger as substrate  # noqa: E402
 
 USER_AGENT = "ars-claim-standing-discovery/0.1"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
