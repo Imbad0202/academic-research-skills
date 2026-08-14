@@ -604,23 +604,24 @@ def validate_stance_record(
                 "bind the retained output"
             )
         if row["check_state"] != "performed":
-            if (
-                row["failure_state"] == "parse_error"
-                and row["raw_output"] is not None
-            ):
-                hit = hits_by_id[row["canonical_raw_hit_id"]]
-                if hit["abstract_text"] is not None:
-                    try:
-                        _parse_judge_output(
-                            row["raw_output"], hit["abstract_text"]
-                        )
-                    except (ValueError, TypeError):
-                        pass
-                    else:
-                        _fail(
-                            f"row {row['work_family_id']}: retained output "
-                            "parses cleanly; parse_error cannot stand"
-                        )
+            hit = hits_by_id[row["canonical_raw_hit_id"]]
+            if row["raw_output"] is not None and hit["abstract_text"] is not None:
+                try:
+                    _parse_judge_output(row["raw_output"], hit["abstract_text"])
+                except (ValueError, TypeError):
+                    pass
+                else:
+                    _fail(
+                        f"row {row['work_family_id']}: retained output parses "
+                        "cleanly; a not_checked state cannot stand"
+                    )
+            if row["failure_state"] == "abstract_missing":
+                family = families_by_id[row["work_family_id"]]
+                if family["content_state"] == "available":
+                    _fail(
+                        f"row {row['work_family_id']}: abstract_missing "
+                        "contradicts the ledger's available content state"
+                    )
             continue
         family = families_by_id[row["work_family_id"]]
         hit = hits_by_id[row["canonical_raw_hit_id"]]
