@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/judge_assignment_ledger.schema.json",
+  "title": "#659 closed first-round judge assignment ledger",
+  "description": "Operator-authored first-round assignment plan consumed by the closed assignment-ledger gate. The pair_id groups the en/zh-TW scenario variants of one synthetic scholar context; blocking at pair level subsumes scenario and role-card sharing, so no judge may receive two packets whose cells share a pair_id. The ledger itself carries only pseudonymous handles and blind session ids; it never contains arm, pair, scenario, experiment, or replicate fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "run_plan_sha256",
+    "inventory_sha256",
+    "blind_manifest_sha256",
+    "private_map_sha256",
+    "identity_boundary",
+    "judges",
+    "adjudicator_id",
+    "first_round_assignments"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-judge-assignment-ledger/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "run_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "inventory_sha256": {"$ref": "#/$defs/sha256"},
+    "blind_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "private_map_sha256": {"$ref": "#/$defs/sha256"},
+    "identity_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handles_are_pseudonymous",
+        "person_distinctness_verified_by_gate",
+        "independence_is_procedural_responsibility"
+      ],
+      "properties": {
+        "handles_are_pseudonymous": {"const": true},
+        "person_distinctness_verified_by_gate": {"const": false},
+        "independence_is_procedural_responsibility": {"const": true}
+      }
+    },
+    "judges": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 96,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/judge_id"}
+    },
+    "adjudicator_id": {
+      "type": "string",
+      "pattern": "^adjudicator-[a-z0-9][a-z0-9-]{0,30}$"
+    },
+    "first_round_assignments": {
+      "type": "array",
+      "minItems": 96,
+      "maxItems": 384,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["judge_id", "blind_session_id"],
+        "properties": {
+          "judge_id": {"$ref": "#/$defs/judge_id"},
+          "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "judge_id": {"type": "string", "pattern": "^judge-[a-z0-9][a-z0-9-]{0,30}$"}
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/assignment_gate_receipt.schema.json",
+  "title": "#659 write-once assignment-ledger gate pass receipt",
+  "description": "Written exclusively by the assignment gate after every closed check passes against the exact finalized blind bundle. The embedded ledger (validated separately against judge_assignment_ledger.schema.json by the gate on both write and read) carries the four bundle hash bindings; delivery consumes only this receipt, never a mutable external ledger path. A failed verification writes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "verdict",
+    "ledger_sha256",
+    "ledger",
+    "delivery_rule"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-assignment-gate-receipt/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "verdict": {"const": "pass"},
+    "ledger_sha256": {"$ref": "#/$defs/sha256"},
+    "ledger": {
+      "type": "object",
+      "description": "The exact accepted ledger value; ledger_sha256 is the sha256 of the accepted ledger file's exact bytes as read."
+    },
+    "delivery_rule": {
+      "const": "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

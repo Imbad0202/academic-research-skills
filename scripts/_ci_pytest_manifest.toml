@@ -237,6 +237,10 @@ id = "659-within-session-ideation-diversity-no-call-envelope"
 path = "scripts/test_run_ideation_diversity_no_call.py"
 
 [[pytest]]
+id = "659-within-session-ideation-diversity-assignment-gate"
+path = "scripts/test_ideation_diversity_assignment_gate.py"
+
+[[pytest]]
 id = "250-title-fuzzy-false-positive-pin"
 path = "scripts/test_title_fuzzy_false_positive.py"
 

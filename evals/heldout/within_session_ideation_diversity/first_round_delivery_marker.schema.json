@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://evals/heldout/within_session_ideation_diversity/first_round_delivery_marker.schema.json",
+  "title": "#659 write-once first-round delivery claim marker",
+  "description": "Written exclusively by the assignment gate when a verified first-round assignment is delivered. One marker per (judge, blind session); an existing marker with different bytes refuses re-delivery, and an identical marker permits exact resume only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "judge_id",
+    "blind_session_id",
+    "packet_sha256",
+    "dest",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "ideation-diversity-first-round-delivery-marker/1.0"},
+    "suite": {"const": "within_session_ideation_diversity"},
+    "judge_id": {"type": "string", "pattern": "^judge-[a-z0-9][a-z0-9-]{0,30}$"},
+    "blind_session_id": {"type": "string", "pattern": "^blind-[0-9a-f]{24}$"},
+    "packet_sha256": {"$ref": "#/$defs/sha256"},
+    "dest": {"type": "string", "minLength": 1},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
