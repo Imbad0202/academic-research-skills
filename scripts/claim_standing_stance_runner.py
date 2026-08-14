@@ -558,6 +558,13 @@ def validate_stance_record(
                 _fail(f"evidence row {ref['row_id']}: coverage disagrees with the stance row")
             if evidence["source"]["source_content_sha256"] != family["content_sha256"]:
                 _fail(f"evidence row {ref['row_id']}: source hash disagrees with the ledger")
+            if hit["abstract_text"] is not None and family[
+                "content_sha256"
+            ] != substrate.text_digest(hit["abstract_text"]):
+                _fail(
+                    f"evidence row {ref['row_id']}: ledger content hash does "
+                    "not replay from the inspected bytes"
+                )
             excerpt = evidence["excerpt"]
             if excerpt["state"] in ("verified_exact_match", "agent_extracted"):
                 evidence_text = hit["abstract_text"]
@@ -589,6 +596,13 @@ def validate_stance_record(
     # Symmetrically, a parse_error row whose retained output parses cleanly
     # is a downgrade forgery.
     for row in record["rows"]:
+        if row["raw_output"] is not None and row[
+            "raw_output_sha256"
+        ] != substrate.text_digest(row["raw_output"]):
+            _fail(
+                f"row {row['work_family_id']}: raw_output_sha256 does not "
+                "bind the retained output"
+            )
         if row["check_state"] != "performed":
             if (
                 row["failure_state"] == "parse_error"
@@ -610,11 +624,6 @@ def validate_stance_record(
             continue
         family = families_by_id[row["work_family_id"]]
         hit = hits_by_id[row["canonical_raw_hit_id"]]
-        if row["raw_output_sha256"] != substrate.text_digest(row["raw_output"]):
-            _fail(
-                f"row {row['work_family_id']}: raw_output_sha256 does not "
-                "bind the retained output"
-            )
         try:
             parsed = _parse_judge_output(row["raw_output"], hit["abstract_text"])
         except (ValueError, TypeError) as exc:
@@ -630,6 +639,27 @@ def validate_stance_record(
             _fail(
                 f"row {row['work_family_id']}: stance fields do not replay "
                 "from the retained raw output"
+            )
+        expected_prompt = _stance_prompt(plan, family, hit)
+        expected_prompt_sha = substrate.text_digest(expected_prompt)
+        if row["prompt_sha256"] != expected_prompt_sha:
+            _fail(
+                f"row {row['work_family_id']}: prompt_sha256 does not replay "
+                "from the frozen prompt template"
+            )
+        if row["assessment_input_sha256"] != substrate.digest(
+            {
+                "claim_sha256": plan["claim"]["claim_sha256"],
+                "candidate_content_sha256": substrate.text_digest(
+                    hit["abstract_text"]
+                ),
+                "prompt_contract_version": PROMPT_CONTRACT_VERSION,
+                "prompt_sha256": expected_prompt_sha,
+            }
+        ):
+            _fail(
+                f"row {row['work_family_id']}: assessment_input_sha256 does "
+                "not replay"
             )
         quoted = {ref["row_id"] for ref in row["evidence_row_refs"]}
         for ref_id in quoted:
