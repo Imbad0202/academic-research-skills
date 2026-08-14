@@ -174,7 +174,47 @@
               "maxLength": 1000,
               "pattern": "\\S"
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "retention_state": {
+                    "const": "known"
+                  }
+                },
+                "required": [
+                  "retention_state"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "retention_reference": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "retention_state": {
+                    "const": "unknown"
+                  }
+                },
+                "required": [
+                  "retention_state"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "retention_reference": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     }

@@ -136,6 +136,19 @@ def test_v1_3_cross_field_invariants_hold():
     assert not validator.is_valid(meta)  # metadata-only cannot carry inspected evidence
 
 
+@pytest.mark.parametrize(
+    "state, reference",
+    [("known", None), ("unknown", "https://example.org/retention")],
+)
+def test_stance_plan_retention_coupling_is_schema_enforced(state, reference):
+    schema = _schema("claim_standing/query_plan_v1_1.schema.json")
+    plan = _plan_v1_1(stance=True)
+    plan["stance_plan"]["retention_state"] = state
+    plan["stance_plan"]["retention_reference"] = reference
+    _rehash(plan)
+    assert not Draft202012Validator(schema).is_valid(plan)
+
+
 def test_stance_record_carries_no_scalar_score_field():
     schema = _schema("claim_standing/stance_record.schema.json")
 
