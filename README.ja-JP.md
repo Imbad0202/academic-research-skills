@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.19.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.19.0)
+[![Version](https://img.shields.io/badge/version-v3.20.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -236,19 +236,19 @@ You: "status"
 
 エージェントごとの責務とステージごとの成果物は [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) に集約されました。リリースメタデータを一箇所にまとめるため、バージョン番号はここにアンカーされています。
 
-### Deep Research（v2.11.0）
+### Deep Research（v2.12.0）
 
 13 エージェントの研究チーム。モード: full、quick、review、lit-review、three-way-scan、fact-check、socratic、systematic-review。完全なエージェント名簿と成果物: ARCHITECTURE.md §3 を参照。
 
-### Academic Paper（v3.2.0）
+### Academic Paper（v3.3.0）
 
 12 エージェントの論文執筆パイプライン。モード: full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure、rebuttal-audit。出力: MD + DOCX（利用可能な場合 Pandoc 経由）+ LaTeX（APA 7.0 `apa7` クラス / IEEE / Chicago）→ tectonic 経由 PDF。完全なエージェント名簿とフェーズごとの責務: ARCHITECTURE.md §3 を参照。
 
-### Academic Paper Reviewer（v1.10.0）
+### Academic Paper Reviewer（v1.11.0）
 
 **0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.19.0）
+### Academic Pipeline（v3.20.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）はスキップできない。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -330,6 +330,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.20.0 (2026-08-14) — 証拠に結び付いたレビューと改訂、隔離されたトランスポート、再現可能な評価基盤
+
+> **追加・強化:** v3.20.0 は、レビュー、改訂、引用、人を対象とする研究、投稿ワークフローにおける証拠と権限の境界を強化します。ソースに結び付いた evidence row、著者管理で順位付けを行わない改訂 roadmap、リプレイ可能な文書間整合性・内容カバレッジ advisory、統一レビュー基準、ヒト対象研究の authority／pathway trace、決定論的な投稿・委員会対応 artifact、任意の run 間 adjudication 活動可視化、隔離された ChatGPT サブスクリプション引用 transport、オフライン claim-standing 候補 ledger、任意のプロセス分離型 PDF テキスト/OCR advisory を追加しました。Reviewer／re-review contract には role-scoped scoring、evidence-before-persuasion gate、より厳密な provenance／transport 処理を導入し、臨床報告、中国語文献解決、plugin alias、Pi、プラットフォーム文書も拡張しました。新しい eval 資産には、revision drift、role topology、ideation diversity、間接 prompt injection、tortured-phrase screening 向けの凍結 hermetic fixture と no-call envelope が含まれます。`CHANGELOG.md` が保持済みの実測 cohort を明示している場合を除き、これらは protocol または synthetic/offline conformance の証拠であり、安全性、有効性、精度、行動改善を実証するものではありません。スイート／pipeline → v3.20.0；deep-research → v2.12.0；academic-paper → v3.3.0；academic-paper-reviewer → v1.11.0。
 
 ### v3.19.0 (2026-07-22) — 改訂ラウンドのクレームドリフト防御、PDF 読み取り整合性プリフライト、read-scope アテステーション
 

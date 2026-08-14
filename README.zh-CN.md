@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.19.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.19.0)
+[![Version](https://img.shields.io/badge/version-v3.20.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -236,19 +236,19 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 各 agent 的职责与各阶段产出物现已移至 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。版本号保留在此以维持 release metadata 集中管理。
 
-### Deep Research (v2.11.0)
+### Deep Research (v2.12.0)
 
 13 个 Agent 的研究团队。模式：full、quick、review、lit-review、three-way-scan、fact-check、socratic、systematic-review。完整 agent 名单与产出物：见 ARCHITECTURE.md §3。
 
-### Academic Paper (v3.2.0)
+### Academic Paper (v3.3.0)
 
 12 个 Agent 的论文撰写 pipeline。模式：full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure、rebuttal-audit。输出：MD + DOCX（Pandoc 可用时）+ LaTeX（APA 7.0 `apa7` class / IEEE / Chicago）→ tectonic 编译 PDF。完整 agent 名单与各 phase 职责：见 ARCHITECTURE.md §3。
 
-### Academic Paper Reviewer (v1.10.0)
+### Academic Paper Reviewer (v1.11.0)
 
 7 个 Agent 的多视角审查，搭配 **0-100 质量量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**决策对照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.19.0)
+### Academic Pipeline (v3.20.0)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）不可跳过；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -313,6 +313,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新纪录
+
+### v3.20.0（2026-08-14）— 证据绑定的审查与修订、受限传输、可复现的评估基础
+
+> **新增与强化：**v3.20.0 强化审查、修订、引用、涉及人的研究与投稿流程中的证据及权限边界。新增来源绑定 evidence rows、由作者控制且不排名的修订 roadmap、可重放的跨文档一致性与内容覆盖 advisory、统一审查标准、涉及人的研究权威依据与 pathway trace、确定性投稿及委员会往来 artifact、可选的跨 run adjudication 活动观察、受限的 ChatGPT 订阅引用传输、离线 claim-standing 候选 ledger，以及可选的进程隔离 PDF 文本/OCR advisory。Reviewer 与 re-review contract 加入 role-scoped scoring、evidence-before-persuasion gate，并收紧 provenance 与 transport 处理；临床报告、中文文献解析、plugin alias、Pi 与平台文档也有扩展。新 eval 资产包含 revision drift、role topology、ideation diversity、间接 prompt injection 与 tortured-phrase screening 的冻结 hermetic fixture 和 no-call envelope。除非 `CHANGELOG.md` 明确引用已保留的实测 cohort，这些仅证明 protocol 或 synthetic/offline conformance，不证明安全性、效能、准确度或行为改善。套件／pipeline → v3.20.0；deep-research → v2.12.0；academic-paper → v3.3.0；academic-paper-reviewer → v1.11.0。
 
 ### v3.19.0（2026-07-22）— 修订轮次的主张漂移防护、PDF 读取完整性预检、read-scope 诚实覆盖标记
 

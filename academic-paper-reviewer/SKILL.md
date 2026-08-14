@@ -2,8 +2,8 @@
 name: academic-paper-reviewer
 description: "Multi-perspective academic paper review with dynamic reviewer personas. Simulates 5 independent reviewers (Journal-Fit Reviewer + 3 peer reviewers + Devil's Advocate) with field-specific expertise. Supports full review, re-review (verification), quick assessment, methodology focus, Socratic guided, and calibration modes. Triggers on: review paper, peer review, manuscript review, referee report, review my paper, critique paper, simulate review, editorial review, calibrate reviewer, reviewer calibration, measure reviewer accuracy, 審查論文, 論文審查, 模擬審查, 同儕審查, 幫我審這篇, 以審查人角度評估, 審查者校準, 논문 심사, 동료 심사, 모의 심사, 심사자 관점에서 평가, 심사자 보정."
 metadata:
-  version: "1.10.0"
-  last_updated: "2026-07-11"
+  version: "1.11.0"
+  last_updated: "2026-08-14"
   status: active
   data_access_level: verified_only
   task_type: open-ended
@@ -12,7 +12,7 @@ metadata:
     - academic-pipeline
 ---
 
-# Academic Paper Reviewer v1.10.0 — Multi-Perspective Academic Paper Review Agent Team
+# Academic Paper Reviewer v1.11.0 — Multi-Perspective Academic Paper Review Agent Team
 
 Simulates a complete international journal peer review process: automatically identifies the paper's field, dynamically configures 5 reviewers (Journal-Fit Reviewer + 3 peer reviewers + Devil's Advocate) who review from five non-overlapping perspectives — journal fit, methodology, domain expertise, cross-disciplinary viewpoints, and core argument challenges — then uses a separate editorial synthesizer to produce a structured Editorial Decision and Revision Roadmap.
 
@@ -475,8 +475,8 @@ When `ARS_MODEL_TIERING` is set, the dispatching session routes this skill's age
 
 | Item | Content |
 |------|---------|
-| Skill Version | 1.10.0 |
-| Last Updated | 2026-07-11 |
+| Skill Version | 1.11.0 |
+| Last Updated | 2026-08-14 |
 | Maintainer | Cheng-I Wu |
 | Dependent Skills | academic-paper v1.0+ (upstream/downstream integration) |
 | Role | Multi-perspective academic paper review simulator |

@@ -6,10 +6,18 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 
 | Skill | Purpose | Key Modes |
 |-------|---------|-----------|
-| `deep-research` v2.11.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
-| `academic-paper` v3.2.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
-| `academic-paper-reviewer` v1.10.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.19.0 | Full pipeline orchestrator | (coordinates all above) |
+| `deep-research` v2.12.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
+| `academic-paper` v3.3.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
+| `academic-paper-reviewer` v1.11.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
+| `academic-pipeline` v3.20.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.20 Key Additions (review evidence + integrity advisories + contained transports)
+
+- **Reviewer and re-review evidence contracts.** Role-scoped review criteria, typed evidence anchors, terminal output preflights, deterministic arithmetic receipts, complete retry evidence, and a three-gate re-review contract make review decisions replayable without turning rubric conformance into a substitute for human judgment.
+- **Research-integrity and authority substrates.** Versioned evidence rows, bibliographic-integrity signals, retraction observations, human-subjects authority pointers, submission-packet manifests, committee-correspondence accounting, cross-document consistency, and author-controlled revision roadmaps remain advisory or deterministic support layers with explicit institutional and human decision boundaries.
+- **Evaluation discipline without inflated efficacy claims.** New held-out report contracts, synthetic seeds, dry-run materializers, and no-call envelopes freeze reproducible study designs for role topology, ideation diversity, prompt injection, claim standing, and review criteria. Suites that still require independent human judges, expert labels, or adjudication remain explicitly unmeasured.
+- **Contained transports, PDF advisory, and ingestion hardening.** ChatGPT-subscription citation transport uses a closed, bounded protocol without API fallback; opt-in process-isolated PDF text/OCR classification remains advisory; and EOF-complete post-terminal draining rejects late protocol activity and reaps subprocess groups. Separately, no-call evaluation runners use durable stop rules and hermetic regressions. The contained subscription path does not imply that separately invoked citation verification is offline-only, and none of these paths introduces autonomous publication.
+- **Access and platform work.** Chinese-literature resolver support, explicit bare `/ars-*` command aliases, a community-maintained Pi wrapper, and setup guidance for standing preferences broaden access without changing the suite's human-in-the-loop positioning.
 
 ## v3.19 Key Additions (revision-round claim-drift guards + PDF read-integrity preflight + read-scope attestation)
 
@@ -336,7 +344,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.19.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-07-22
+- **Suite version**: 3.20.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-08-14
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
